@@ -292,3 +292,103 @@ is only ts-jest's config source in `jest.config.js`, and jest never compiles the
 error (`erg-005/componentContract.pending.ts`, `nodegrapheditor.ts`, `NodeGraphContext.tsx`,
 `UseCanvasView.ts`, `Icon.tsx`). Identical error set with and without this change, and with and
 without the peer's in-flight edit to that file's `include`. **Pre-existing; not FIX-004's.**
+
+## §C — DRIVEN 2026-08-16 (session 38). All four checks close.
+
+**Slice C is now driven in the real app.** Editor launched, a copy of `Puppy test 3` opened from
+the scratchpad (renamed `fix004c-drive`; `_retainedProjectDirectory` read back before anything was
+touched, per the copy rule), a `Logic Builder` node added to `/Components/BenchLogicProbe`, and the
+Blockly tab opened via the `LogicBuilder.OpenTab` event.
+
+### 1. The `Data` category exists and sits where §C says ✅
+
+19 toolbox items. `Data` is index **13**, immediately after `Lists` (12) and before `Debug` (14) —
+the placement the toolbox comment argues for, confirmed against the live `getToolboxItems()`, not
+the XML.
+
+### 2. 🔴 The flyout draws all seven — read from the FLYOUT WORKSPACE, not the toolbox XML
+
+`toolbox.getFlyout().getWorkspace().getTopBlocks(false)` after selecting `Data`:
+
+| # | type | label as drawn |
+|---|---|---|
+| 1 | `noodl_new_object` | 🆕 empty object |
+| 2 | `noodl_get_object_property_expr` | 📖 get property ? of object ? |
+| 3 | `noodl_set_object_property_expr` | ✏️ set property ? of object ? to ? |
+| 4 | `noodl_object_members` | 🗝️ the property names of object ? |
+| 5 | `noodl_object_has_property` | ❓ object ? has property ? |
+| 6 | `noodl_json_parse` | 📥 read JSON ? |
+| 7 | `noodl_json_stringify` | 📤 JSON text of ? |
+
+`noodl_object_members` drew in its **`KEYS`** default, as `DEFAULT_OBJECT_MEMBERS_MODE` says.
+
+✅ **Two controls, because "7" on its own is not a measurement.** The same reader returns **12** for
+`Lists` (`lists_create_empty`, `lists_create_with`, …), so it is not echoing a constant; and all
+seven types are present in `Blockly.Blocks` while a bogus `noodl_bogus_control_block` is **absent**,
+so the registration probe discriminates. This is the reading the XML cannot give: a block whose
+*definition* failed to register would still be named in the toolbox and simply not draw.
+
+### 3. The four-block chain compiles and runs ✅
+
+Built in the live workspace — every one of **13 connections verified with `isConnected()`**, never
+with `connect()`'s return value (§C already records that it lies in both directions). Generated:
+
+```js
+var obj, total, k;
+obj = JSON.parse('{"a":1,"b":2}');
+total = 0;
+var k_list = Object.keys(obj);
+for (var k_index in k_list) {
+  k = k_list[k_index];
+  total = total + obj[k];
+}
+```
+
+Executed: **`total === 3`, `typeof 'number'`.** Note `obj[k]` — a **computed** key, which is the
+whole point of the slice and was impossible before it.
+
+🔴 **The criterion can fail, and that was demonstrated rather than asserted.** Flipping the members
+dropdown `KEYS → VALUES` in the live workspace changes the emitted call to `Object.values` and the
+answer to **`NaN`**; restoring `KEYS` returns **3**. So the `3` is sensitive to the generator under
+test. (This is the check §A's acceptance 1 failed to have — see line 120.)
+
+### 4. `in` re-measured independently, in the live viewer runtime ✅
+
+s37's table was measured headlessly on a `Model`. It reproduces **exactly** on a real
+`Noodl.Objects` proxy in the running `<webview>` viewer:
+
+| expression | answer |
+|---|---|
+| `Object.keys(o)` / `Object.values(o)` | `['title','count']` / `['hello',3]` ✅ |
+| `o['title']` | `'hello'` ✅ |
+| `hasOwnProperty.call(o,'title')` / missing | `true` / `false` ✅ |
+| **`'title' in o`** | **`false`** 🔴 |
+| **`'data' in o`** | **`true`** 🔴 |
+| `JSON.stringify(o)` | `{"title":"hello","count":3,"id":"s38-in-probe"}` ⚠️ |
+
+Both §C claims hold in the browser runtime, not just headlessly: the `in` inversion **and** the `id`
+that `toJSON` adds. `hasOwnProperty.call` is the right generator.
+
+### On screen: `Data` beside `App Objects` reads fine — the collision does not materialise
+
+The toolbox comment worried that `Objects` would collide with `App Objects`. It does not, because
+the two are **ten rows apart in different visual groups**: `App Objects` sits in the `App *` seam
+block (index 3, above the first separator) and `Data` sits with the generic vocabulary
+(Math / Text / Lists / Data / Debug). Screenshot taken. The naming decision is vindicated by the
+layout rather than merely defended by it.
+
+⚠️ **Fixture noise, not a defect:** the copy inherits `Puppy test 3`'s backend config, so opening it
+raised *"Puppy test 3 backend could not be started … EADDRINUSE 127.0.0.1:8581"*. The real project's
+backend was already bound; the copy's attempt failed and nothing of the original was disturbed.
+Rename the backend too if a future drive needs one.
+
+### Gates
+
+**None taken, and none owed: this session changed no source.** The only edits are this file and the
+handover. `git status` at teardown showed a dozen dirty files, **all peers'** (validation/, nodelibrary,
+noodl-mcp tests) — untouched by me.
+
+### Still owed on §C
+
+🔴 The seam-category ruling at line 276 is **unchanged** by this drive. Findability is the open
+question; the blocks themselves work.

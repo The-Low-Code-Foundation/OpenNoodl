@@ -139,11 +139,27 @@ anything on it.
 | **1** — the request produces a Function/Expression, not a Script-in-a-component | 🔴 **not driven** | Needs a live authoring run; prompt-only change, no spec can grade it |
 | **2** — generated code uses `const`/`let` and `slice` | 🔴 **not driven** | Same run as AC1 |
 | **3** — bad Script warns, `define({…})` Script does not | ✅ **DRIVEN** | Over real MCP stdio into a scratch copy: bad ⇒ `warnings: 1`, `unrunnable-script-node`; `define({…})` ⇒ `warnings: 0`. Both `errors: 0` and `"created"`, so it advises without blocking |
-| **4** — the block renders in both clients' context, on the wire | ◐ **MCP half DRIVEN** | `get_project_info` over real stdio: read-write carries `THREE WAYS TO COMPUTE` + `CODE STYLE` (16,213 chars), read-only omits them (667). Control pair on one variable. **Editor half still source-only** |
+| **4** — the block renders in both clients' context, on the wire | ✅ **BOTH HALVES DRIVEN** | MCP (s36): `get_project_info` over real stdio — read-write carries `THREE WAYS TO COMPUTE` + `CODE STYLE` (16,213 chars), read-only omits them (667). **Editor (s38): `systemPrompt()` called live in the renderer** — `create` 14,505 chars and `update` 14,755 chars, both carrying `THREE WAYS TO COMPUTE` **and** `CODE STYLE`, with an absent-string control returning `false` so `includes` is discriminating |
 
 ✅ **AC4's leading type names were checked against `list_node_types`, not assumed**: `Expression`,
 `Logic Builder`, `JavaScriptFunction` and `Javascript2` are all real `typeName`s (displayName
-"Visual Function", "Function", "Script"), so the block really does name the ids an agent must write.
+"Visual Function", "Function", "Script").
+
+🔴 **CORRECTED s38 — the conclusion that followed that check is half wrong.** *"so the block really
+does name the ids an agent must write"* is true of **three** ids, not four. Read off the live
+`THREE_WAYS_TO_COMPUTE` in the renderer: `Expression`, `Logic Builder` and `JavaScriptFunction`
+each lead a line in backticks, but the fourth item is prose — *"Reach for the **Script** node
+LAST"* — and the string `Javascript2` **does not appear in the prompt at all** (measured:
+`systemPrompt('create').includes('Javascript2') === false`, same for `'update'`, beside an
+absent-string control).
+
+⚠️ **Whether that is a defect is a judgement, and the honest reading is "probably not".** The Script
+paragraph exists to tell the model *not* to reach for that node, and an id is less load-bearing in a
+prohibition than in a recommendation. But `traps.ts:61-63` states the principle as *"the type name
+leads every line … it is also the id the agent must actually write"*, and the fourth item does not
+follow it. **Either the block should name `Javascript2`, or that comment should say the rule applies
+to the three recommendations only.** Cheap either way; noted rather than changed, because it is a
+copy decision.
 
 ⚠️ **`authoringTraps` is gated on `--allow-writes`** (`read.ts:116`). A read-only probe omits it *by
 design* — a first pass here read that absence as a defect. Measure the read-write arm.
