@@ -1,5 +1,11 @@
 /**
- * Bundles the AIX-002 measurement harness into a single CJS executable.
+ * Bundles this directory's two measurement harnesses into CJS executables.
+ *
+ * `aix002-harness.cjs` measures the AUTHORING loop (AIX-002/006/007, FIX-006);
+ * `fix022-plan.cjs` measures the PLANNING loop (FIX-022 — over-decomposition).
+ * One build, one stub, one alias map: the stub below is the thing session 39
+ * had to repair, and a second copy of it in a second build script would be a
+ * second thing to get wrong the next time the client's imports move.
  *
  * Follows noodl-preview's headless-editor recipe, but this import graph is far
  * shallower — the authoring loop, the explain graph, the validation gate and
@@ -71,13 +77,11 @@ const stubPlugin = {
   }
 };
 
-await esbuild.build({
-  entryPoints: [path.join(HERE, 'harness.ts')],
+const common = {
   bundle: true,
   platform: 'node',
   target: 'node18',
   format: 'cjs',
-  outfile: path.join(HERE, 'dist/aix002-harness.cjs'),
   sourcemap: false,
   alias: {
     '@noodl-models': path.join(EDITOR_SRC, 'models'),
@@ -86,4 +90,15 @@ await esbuild.build({
   },
   plugins: [stubPlugin],
   logLevel: 'warning'
-});
+};
+
+for (const [entry, out] of [
+  ['harness.ts', 'aix002-harness.cjs'],
+  ['plan-harness.ts', 'fix022-plan.cjs']
+]) {
+  await esbuild.build({
+    ...common,
+    entryPoints: [path.join(HERE, entry)],
+    outfile: path.join(HERE, 'dist', out)
+  });
+}

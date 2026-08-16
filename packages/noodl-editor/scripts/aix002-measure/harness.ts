@@ -48,13 +48,13 @@ import { buildEffectiveTokens, readStoredTokens } from '../../src/editor/src/mod
 import { buildStyleVocabulary } from '../../src/editor/src/models/StyleTokensModel/StyleVocabulary';
 import type { StyleVocabulary } from '../../src/editor/src/models/StyleTokensModel/StyleVocabulary';
 import type { StyleTokenRecord } from '../../src/editor/src/models/StyleTokensModel/TokenCategories';
-import { createProvider } from '../../src/editor/src/models/AiAssistant/client/AiClient';
 import type {
   AiChatRequest,
   AiEffort,
   AiProvider,
   AiProviderId
 } from '../../src/editor/src/models/AiAssistant/client/types';
+import { buildProvider, findRepoRoot, formatUsd, loadEnv, parseArgs } from './shared';
 import { AI_EFFORT_LEVELS, AI_PROVIDER_IDS } from '../../src/editor/src/models/AiAssistant/client/types';
 import { CODE_STYLE, THREE_WAYS_TO_COMPUTE } from '../../src/editor/src/models/AiAssistant/authoring/prompts/traps';
 import type { ComponentFiles } from '../../src/editor/src/models/AiAssistant/authoring/types';
@@ -63,66 +63,9 @@ import { fromSerialisedProject } from '../../src/editor/src/models/AiAssistant/e
 import type { MeasurePrompt } from './prompts';
 import { PROMPTS } from './prompts';
 
-/**
- * The bundle runs from dist/ one level below this source file, so the root is
- * found by marker, not by counting `..`.
- */
-function findRepoRoot(from: string): string {
-  for (let dir = from; ; dir = path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, 'packages', 'noodl-editor'))) return dir;
-    if (path.dirname(dir) === dir) throw new Error(`Could not find the repo root above ${from}`);
-  }
-}
-
 const REPO_ROOT = findRepoRoot(__dirname);
 const DEFAULT_PROJECT = path.join(REPO_ROOT, 'packages/noodl-editor/tests/testfs/git-repo-utf8/project.json');
 const DEFAULT_OUT_DIR = path.join(REPO_ROOT, 'dev-docs/tasks/phase-15-ai-collaboration/measurements');
-
-// ── Plumbing ─────────────────────────────────────────────────────────────────
-
-function parseArgs(argv: string[]): Record<string, string> {
-  const args: Record<string, string> = {};
-  for (const arg of argv) {
-    const match = /^--([a-z-]+)=(.*)$/.exec(arg);
-    if (!match) throw new Error(`Unrecognised argument: ${arg} (flags are --name=value)`);
-    args[match[1]] = match[2];
-  }
-  return args;
-}
-
-/** Minimal .env reader — the harness must not add a dotenv dependency. */
-function loadEnv(file: string): Record<string, string> {
-  const env: Record<string, string> = {};
-  if (!fs.existsSync(file)) return env;
-  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
-    const match = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim());
-    if (match && match[2]) env[match[1]] = match[2];
-  }
-  return env;
-}
-
-function buildProvider(providerId: AiProviderId, env: Record<string, string>): AiProvider {
-  const need = (key: string): string => {
-    const value = env[key] ?? process.env[key];
-    if (!value) throw new Error(`${key} is not set — fill it in the repo-root .env (see .env.example).`);
-    return value;
-  };
-  switch (providerId) {
-    case 'anthropic':
-      return createProvider('anthropic', { apiKey: need('ANTHROPIC_API_KEY') });
-    case 'openai':
-      return createProvider('openai', { apiKey: need('OPENAI_API_KEY') });
-    case 'openai-compatible':
-      return createProvider('openai-compatible', {
-        apiKey: env.OPENAI_COMPATIBLE_API_KEY ?? process.env.OPENAI_COMPATIBLE_API_KEY,
-        baseUrl: need('OPENAI_COMPATIBLE_BASE_URL')
-      });
-    case 'ollama':
-      return createProvider('ollama', {
-        baseUrl: env.OLLAMA_BASE_URL ?? process.env.OLLAMA_BASE_URL ?? undefined
-      });
-  }
-}
 
 // ── FIX-006 A/B: the code-guidance control arm ───────────────────────────────
 
@@ -357,10 +300,6 @@ async function measureOne(
     transcript: outcome.transcript,
     error: outcome.error
   };
-}
-
-function formatUsd(value: number | null): string {
-  return value === null ? 'unknown' : `$${value.toFixed(4)}`;
 }
 
 function summarise(records: SessionRecord[]): void {
