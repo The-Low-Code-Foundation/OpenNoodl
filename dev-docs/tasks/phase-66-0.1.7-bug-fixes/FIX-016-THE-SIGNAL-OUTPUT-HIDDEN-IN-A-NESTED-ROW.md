@@ -752,3 +752,45 @@ Rejected: **(a) copy/default**, which would paper over the strictness being kept
 want multiple input signals, Functions just have Run."* Document `run` as the Function's only
 trigger; do **not** copy `Node.Signals` into it. ✅ **This closes the only genuinely blocked item in
 the phase.**
+
+## ✅ §3 BUILT 2026-08-16 (session 43) — and the documentation it corrected was WRONG
+
+Two surfaces now carry the asymmetry, one per moment:
+
+| surface | moment | what it now says |
+|---|---|---|
+| `NOTATION_RULES.function` (`notation.ts`) | mid-edit, in the code editor | *"It runs when you signal Run — the only signal input this node has, and one it cannot be given a second of."* |
+| `NOTATION_RULES.script` | mid-edit | *"Each function declared under signals becomes a signal input, which is how a node takes more than one trigger."* |
+| `NodePicker.chooser.ts`, `JavaScriptFunction` card | pre-choice, in the picker | *"Runs when you signal Run — its only trigger — and can fire several signals when it is done."* |
+
+🔴 **The chooser's header asserted the OPPOSITE, and the spec enforced it.** Both said every
+`Node.Signals.X = function(){}` becomes a signal input *"unlimited, and additional to the built-in
+`Run`"*, sourced to `javascriptnodeparser.js`. **That sentence is true of neither node** — it
+splices the two together:
+
+- `Node.Signals` is read at `javascriptnodeparser.js:203-211`, on the `_afterSourced` path, which
+  is reached only by `Javascript2` — and `Javascript2` has **no** built-in `Run` port (its inputs
+  are `scriptInputs`, `scriptOutputs`, `code`/`externalFile` plus whatever it declares).
+- The Function node compiles its body as
+  `AsyncFunction('Inputs', 'Outputs', 'Noodl', 'Component', …)` (`simplejavascript.ts:609-619`).
+  `Node` is not a parameter. Writing `Node.Signals.X = …` in a Function mints nothing; in a browser
+  it assigns a property to the DOM `Node` constructor and reports nothing at all. Its one signal
+  input is the built-in `run` (`simplejavascript.ts:251-265`).
+
+⚠️ **So the ruling did not just unblock the item — it corrected the only place in the product where
+this behaviour was written down.** The header, the spec's own docblock and the `LGC-001` prohibition
+row are all amended, and the prohibition is **narrowed rather than deleted**: the *output* claim
+("only one output signal") stays forbidden, because that half really is false and unlimited signal
+outputs are real.
+
+✅ **The spec is a two-armed control now** (`tests-unit/lgc-001/chooserCopy.test.ts`): one arm shows
+the forbidden sentence still matches the pattern list, the other shows the now-*required* sentence
+does not. A one-armed negative would have gone on passing after the list stopped catching anything.
+
+⚠️ **Documentation only — no runtime change.** Nothing about triggering was altered in either node,
+and the 7-item touch list in the lane notes is now dead work rather than pending work.
+
+⚠️ **`NOTATION_RULES` has one consumer today** — the AI's Function template
+(`AiAssistant/templates/function.ts`). It is exported from `noodl-core-ui`'s code-editor barrel but
+no component renders it, so *"the sentence the editor shows a beginner"* is, as of this session,
+aspirational for the function/script lines. The picker card is the surface a person actually reads.

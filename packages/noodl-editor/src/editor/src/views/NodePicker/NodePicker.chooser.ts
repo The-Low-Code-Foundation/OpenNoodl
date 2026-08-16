@@ -26,20 +26,31 @@
  * ## ⚠️ The one thing this file must never say
  *
  * The originating brief asked the Function card to say it has *"only one input
- * signal and output signal"*. **That is false in both directions** and it was
- * verified in source before a word of this was written:
- *
- *  - every `Node.Signals.X = function(){}` in the script becomes a signal input
- *    (`javascriptnodeparser.js`, `parseSignals`), unlimited, and *additional* to
- *    the built-in `Run`;
- *  - every `Outputs.Done()` / `Outputs["Done"]()` call mints a signal output
- *    (same file, `parseOutputs`), also unlimited, and additional to the built-in
- *    `Success` / `Failure` / `Done` (`simplejavascript.ts`).
+ * signal and output signal"*. The **output** half of that is false, and it was
+ * verified in source before a word of this was written: every `Outputs.Done()` /
+ * `Outputs["Done"]()` call mints a signal output
+ * (`javascriptnodeparser.js:352-366`), unlimited, and additional to the built-in
+ * `Success` / `Failure` / `Done` (`simplejavascript.ts`).
  *
  * This card is the only place in the product where that behaviour is written
  * down at all, which is exactly the shape of the NDA-017 defect — a description
  * that described a trap as if it were a feature, was wrong, and was the sole
- * source. Copy asserting a one-in/one-out limit does not ship.
+ * source. Copy asserting a one-signal-out limit does not ship.
+ *
+ * ⚠️ **The input half of that paragraph used to say the opposite, and it was
+ * wrong (FIX-016 §3, corrected 2026-08-16).** It read: *"every
+ * `Node.Signals.X = function(){}` in the script becomes a signal input,
+ * unlimited, and additional to the built-in `Run`"* — a sentence that is true of
+ * **neither** node, because it splices the two together. `Node.Signals` is the
+ * Script node's API (`javascriptnodeparser.js:203-211`, reached from
+ * `Javascript2` only), and the Script node has **no** built-in `Run`; the
+ * Function node compiles its body as
+ * `AsyncFunction('Inputs', 'Outputs', 'Noodl', 'Component', …)`
+ * (`simplejavascript.ts:609-619`), where `Node` is not in scope at all, so
+ * `Run` is its one and only signal input. Richard ruled the asymmetry
+ * deliberate — *"Script nodes are the ones to use when you want multiple input
+ * signals, Functions just have Run"* — so the card may, and now does, say so.
+ * `notation.ts` carries the same fact for the mid-edit moment.
  *
  * ## The other module that describes these nodes (FUN-009 §4)
  *
@@ -105,10 +116,14 @@ const CHOOSER_NOTES: readonly ChooserNote[] = [
     headline: 'Real JavaScript, when a line is not enough.',
     detail: 'Many inputs and outputs, async/await, calls out to the network.',
     examples: ['Outputs.total = Inputs.items.length', 'await fetch(url)'],
-    // LGC-001 §2, option (a): state the capability. See the file header for why
-    // the alternative — asserting one signal in and one out — is not on the
-    // table at any price.
-    signals: 'Runs when you send it a signal, and can fire several when it is done.'
+    // LGC-001 §2, option (a): state the capability. The output half of that
+    // still holds — "several" is load-bearing and does not become "one".
+    //
+    // FIX-016 §3 names the input half, which the header's correction unblocked:
+    // `Run` is the only signal this node takes, and a person choosing between
+    // the three has no other way to find that out before they have built the
+    // graph that needs a second trigger.
+    signals: 'Runs when you signal Run — its only trigger — and can fire several signals when it is done.'
   }
 ];
 

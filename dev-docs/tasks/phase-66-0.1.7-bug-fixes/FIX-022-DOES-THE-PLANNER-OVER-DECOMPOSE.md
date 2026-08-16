@@ -354,3 +354,54 @@ bound on the real defect rate, not a measurement of it.**
 worth writing — and it must then be stated on the **reuse** axis (*"factor when it will be placed
 more than once"*), which is what `DECOMPOSITION_PLANNING`'s positive rule already half-says, never on
 node count.
+
+## ✅ RE-GRADED 2026-08-16 (session 43) — the rate SURVIVES the reuse axis, 11/11 single-use
+
+Re-scored the 20 saved plans (`measurements/…15-12-23…` ON, `…15-13-21…` OFF, both
+`claude-sonnet-5`, slug `small-logic`, n=10 each) for **how many times the created component is
+placed**. No API calls; the files were already on disk.
+
+| arm | plans that create | of those, placed **once** | placed **twice or more** |
+|---|---|---|---|
+| doctrine **ON** | **5 / 10** (runs 1, 3, 7, 8, 9) | **5** | **0** |
+| doctrine **OFF** | **6 / 10** (runs 1, 3, 6, 8, 9, 10) | **6** | **0** |
+
+**Every creating plan is exactly two operations**: one `create`, and one `update` to
+`/Visual Components/Article/Article` that places the new component **next to the author name** —
+one parent, one site, no second placement anywhere in the plan. Ten of the eleven create a *visual*
+component under `Visual Components/Article/`; OFF run 6 creates `Logic Components/Calculate Reading
+Time` instead, and places that once too.
+
+🔴 **So the ruling does not dissolve the finding — it sharpens it.** 5/10 and 6/10 were an upper
+bound on the defect; measured on the reuse axis they are the defect, because the reuse that would
+justify the factoring is absent in **every** case. There is a real single-use rate, and by §5's
+ruling that is what a rule may address.
+
+### ⚠️ Three bounds on this, stated because they would otherwise be assumed
+
+1. 🔴 **The instrument is the plan's prose, not a graph.** A record carries `operations[].intent`,
+   not an instance count — nothing here counted placements in a built project. "Placed once" is read
+   from *one* operation doing the placing and its intent naming *one* site. An intent that quietly
+   meant two placements would score as one; none of the eleven reads that way, but that is a reading.
+2. 🔴 **One request, and it is a request with nowhere to reuse anything.** `small-logic` asks for a
+   reading time beside the author name — a single site by construction. So this measures
+   over-decomposition **where reuse is impossible**, which is the condition under which the ruling
+   says creation is wrong. It says nothing about whether the planner recognises **genuine** reuse,
+   because no arm contains any. ⚠️ **That is the missing control, and it is the one that prices the
+   fix**: a rule pushing "don't factor for a single use" could damage exactly the case Richard
+   builds on purpose, and there is currently no cell that would notice.
+3. ⚠️ **n=10 per arm, and the ON/OFF gap is noise.** 5 vs 6 is one run. The doctrine is not measurably
+   moving this.
+
+### Reproducing the re-grade
+
+```
+node -e '
+const fs=require("fs");
+for (const f of process.argv.slice(1)) for (const l of fs.readFileSync(f,"utf8").trim().split("\n").map(JSON.parse)) {
+  if (!l.grade.creates) continue;
+  console.log(l.run, l.grade.createTargets, l.operations.map(o=>`${o.kind}:${o.target}`));
+  l.operations.forEach(o=>console.log("   ",o.intent));
+}' dev-docs/tasks/phase-66-0.1.7-bug-fixes/measurements/*15-12-23*.jsonl \
+   dev-docs/tasks/phase-66-0.1.7-bug-fixes/measurements/*15-13-21*.jsonl
+```

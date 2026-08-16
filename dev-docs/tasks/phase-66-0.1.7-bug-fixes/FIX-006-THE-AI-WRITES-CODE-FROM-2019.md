@@ -292,3 +292,24 @@ mode being ruled against is **alternation** — `Function → Substring → Func
 "use the node" will manufacture exactly the alternation this ruling exists to prevent, and the
 current criteria would score that as a win. ⚠️ The n=5 cells (`Substring` 10/10 OFF vs 3/10 ON) are
 **not** a floor to build on — re-run at n=10 first, per s41's finding.
+
+## ✅ AC4 BUILT 2026-08-16 (session 43) — the id is in the prompt
+
+`traps.ts`'s Script paragraph now opens with the id: *"`Javascript2`, the Script node — reach for it
+LAST…"*, so all four items of `THREE WAYS TO COMPUTE` lead with the type name the agent must write,
+which is what the block's own comment claims of itself. The paragraph stays a paragraph rather than
+becoming a fourth `-` bullet: it is a prohibition, and bulleting it beside the three recommendations
+would read as a fourth way to compute.
+
+⚠️ **Not re-measured on the wire.** s38's reading — `systemPrompt('create').includes('Javascript2')
+=== false` — was taken live in the renderer, and the equivalent positive has **not** been taken. The
+string is in the source that both clients assemble from (`traps.ts` → `authoring.ts` for the editor,
+→ `read.ts` for MCP, both already driven at s36/s38 as carrying this block), so the claim here is
+*"the source now contains it"*, not *"the wire now carries it"*.
+
+⚠️ **Nothing grades this string.** No spec anywhere asserts the Script line — checked, including
+`noodl-mcp`'s `rejectionExamples.test.ts`, which asserts four other `authoringTraps` substrings.
+An edit that dropped the id again would be caught by nothing.
+
+🔴 **Still open in this task: the Substring weighting**, which is the one most likely to be got
+wrong. Read the ruling above before touching it.

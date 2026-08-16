@@ -176,32 +176,23 @@ describe('FIX-005 §1 criterion 4 — the control', () => {
 });
 
 /**
- * FIX-005 §1 — the toolbox tree, which had the same defect and a worse reading.
+ * 🔴 FIX-005 §1 — the five toolbox specs that used to sit here are DELETED, and they are the
+ * sharpest thing this file has to say.
  *
- * Its label is `--theme-color-fg-default`, a mid-grey, and it sat on solid primary: **1.19:1 in
- * dark**, against the dropdown row's 2.33. The task file recorded this as "the identical
- * solid-primary problem"; it was in fact the worst reading in the file.
+ * They graded `.blocklyTreeSelected` and `.blocklyTreeLabel`: five green rows, a negative control
+ * that fired at 1.19:1, arithmetic correct throughout. Then the drive opened the toolbox and
+ * counted matches — **both selectors match zero elements**, and had for several major Blockly
+ * versions. Blockly 12 emits `.blocklyToolboxSelected` and `.blocklyToolboxCategoryLabel`, and
+ * paints the selected category from an inline style. So the block measured, in both themes and
+ * with a working control, a rule that has never been on screen.
+ *
+ * ⚠️ **The control did not save it, and could not have.** It varied the *background token* and
+ * held the *selector* constant, so it proved the formula separates two colours — never that either
+ * colour reaches a pixel. Reading a token name out of a stylesheet establishes what the file says,
+ * not what the browser applies, and this file's own header says so in the first paragraph. The
+ * dropdown blocks above are exempt only because session 21 opened the menu and counted matches.
+ *
+ * The stylesheet rules went with them (see the note in `BlocklyWorkspace.module.scss`). Nothing is
+ * asserted about the toolbox here now: what renders is Blockly's own selection at 5.35:1, which
+ * passes AA and is not ours to measure from a token table.
  */
-describe('FIX-005 §1 — the selected toolbox category', () => {
-  const tree = ruleBody('.blocklyTreeSelected');
-  const treeBackground = tokenFor(tree, 'background-color');
-  const treeLabel = tokenFor(ruleBody('.blocklyTreeLabel'), 'color');
-
-  it('does not paint the category label on the accent either', () => {
-    expect(treeBackground).not.toBe('--theme-color-primary');
-  });
-
-  it.each(THEMES)('the category label clears AA when selected — %s theme', (theme) => {
-    const ratio = tokenContrast(theme, treeLabel, treeBackground);
-    // eslint-disable-next-line no-console
-    console.log(`[FIX-005 tree] ${theme}: ${treeLabel} on ${treeBackground} = ${ratio.toFixed(2)}:1`);
-    expect(ratio).toBeGreaterThanOrEqual(AA_TEXT);
-  });
-
-  it.each(THEMES)('🔴 CONTROL: on solid primary that label failed badly — %s theme', (theme) => {
-    const ratio = tokenContrast(theme, treeLabel, '--theme-color-primary');
-    // eslint-disable-next-line no-console
-    console.log(`[FIX-005 tree control] ${theme}: ${treeLabel} on solid primary = ${ratio.toFixed(2)}:1`);
-    expect(ratio).toBeLessThan(2);
-  });
-});

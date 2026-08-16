@@ -84,14 +84,38 @@ export type NotationMode = 'function' | 'script' | 'expression';
  * a comparative card and an in-editor rule are different documents. **They must
  * still agree**, and the fact they share is the Expression rule below. Edit one,
  * read the other.
+ *
+ * ## FIX-016 §3 — `Run` is the Function's only trigger, by ruling
+ *
+ * Signal inputs beyond `Run` were costed for the Function node and **ruled
+ * out**: the Script node is the one you reach for when you want several
+ * triggers. So the two rules below state opposite things about triggering on
+ * purpose, and the difference is measurable rather than stylistic:
+ *
+ *  - `simplejavascript.ts:609-619` compiles a Function body as
+ *    `AsyncFunction('Inputs', 'Outputs', 'Noodl', 'Component', …)`. `Node` is
+ *    not a parameter, so `Node.Signals.X = …` written in a Function mints no
+ *    port at all — in a browser it assigns to the DOM `Node` constructor and
+ *    reports nothing. Its one signal input is the built-in `Run`
+ *    (`simplejavascript.ts:251-265`).
+ *  - `javascriptnodeparser.js:203-211` turns each `Node.Signals` handler into a
+ *    signal input, unlimited — but that path is reached only by `Javascript2`,
+ *    the Script node, which in exchange has **no** built-in `Run` port.
+ *
+ * ⚠️ Neither node has both, which is why a sentence about "the built-in Run"
+ * and a sentence about `Node.Signals` must never end up describing the same
+ * node.
  */
 export const NOTATION_RULES: Record<NotationMode, string> = {
   function:
     'Read an input with Inputs.Name, write an output with Outputs.Name = value, ' +
-    'and fire a signal with Outputs.Name(). Mentioning a name in the code is what creates the port.',
+    'and fire a signal with Outputs.Name(). Mentioning a name in the code is what creates the port. ' +
+    'It runs when you signal Run — the only signal input this node has, and one it cannot be given ' +
+    'a second of.',
   script:
     'Declare ports with define({ inputs: { … }, outputs: { … } }); your handlers receive ' +
-    '(inputs, outputs). A name that is not declared never becomes a port.',
+    '(inputs, outputs). A name that is not declared never becomes a port. Each function declared ' +
+    'under signals becomes a signal input, which is how a node takes more than one trigger.',
   expression:
     'Every name in the expression becomes an input port — write price * quantity and the node ' +
     'grows price and quantity. The value of the expression is the result; there is nothing to assign.'

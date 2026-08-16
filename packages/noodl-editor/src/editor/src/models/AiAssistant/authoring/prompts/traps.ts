@@ -73,10 +73,14 @@ function threeWaysToCompute(): string {
     // and invokes it once. A Script node has no `run` signal and no static outputs, so
     // Function-shaped code in one runs at import and never again — while still minting ports,
     // which is what makes the graph look correctly wired.
-    '   Reach for the Script node LAST. It has no run signal and no static outputs: its body',
-    '   executes once, when the project loads, and only signals declared inside define({…}) or',
-    '   script({…}) ever run again. Function-shaped code in a Script node runs once and can',
-    '   never be triggered — and it still mints ports, so the graph looks wired and is not.'
+    // FIX-006 AC4 — the id leads this line too. It was the one item of the four stated as prose,
+    // and `Javascript2` did not appear anywhere in the assembled prompt. An id matters less in a
+    // prohibition than in a recommendation, but a model that has already written one still needs
+    // to recognise which type this paragraph is about.
+    '   `Javascript2`, the Script node — reach for it LAST. It has no run signal and no static',
+    '   outputs: its body executes once, when the project loads, and only signals declared inside',
+    '   define({…}) or script({…}) ever run again. Function-shaped code in a Script node runs once',
+    '   and can never be triggered — and it still mints ports, so the graph looks wired and is not.'
   ].join('\n');
 }
 

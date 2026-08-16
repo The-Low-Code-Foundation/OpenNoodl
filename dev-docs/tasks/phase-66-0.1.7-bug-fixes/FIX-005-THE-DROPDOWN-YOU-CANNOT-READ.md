@@ -219,6 +219,30 @@ sit with the other `Noodl.*` surfaces; the extra globals in app settings are cal
 after the `Noodl.Config` method they represent. ⚠️ **This knowingly reverses VFN-012**, which renamed
 away from `App Variables` — recorded here so it does not read as an accident later.
 
+## ✅ BUILT 2026-08-16 (session 43) — the four dead selectors are gone
+
+`BlocklyWorkspace.module.scss`: `.blocklyToolboxDiv`, `.blocklyTreeLabel`, `.blocklyTreeRow:hover`
+and `.blocklyTreeSelected` deleted, replaced by a comment that records the measurement (0 matches
+each, both themes, toolbox rendered with a category selected), what Blockly 12 emits instead, and
+why retargeting was rejected. Same shape as `5b91e9c8`'s `.goog-*` note.
+
+⚠️ **No screen changes.** The rules matched nothing, so the toolbox still renders Blockly's own
+category-coloured selection at 5.35:1. Deleting them removes a false claim, not a style.
+
+🔴 **Five specs went with them, and finding them was a lesson.** `tests-unit/fix-005/
+dropdown-contrast.spec.ts`'s last block graded `.blocklyTreeSelected` and `.blocklyTreeLabel` — five
+green rows plus a negative control that fired at 1.19:1, all of it measuring a selector that matches
+nothing. **The control could not have caught it**: it varied the background *token* and held the
+*selector* constant, so it proved the contrast formula separates two colours, never that either
+colour reaches a pixel. The block is replaced by a comment saying so.
+
+⚠️ **My pre-delete grep missed it** — I searched `packages/noodl-editor/tests` and `src/editor/src`
+and concluded "no spec asserts them". `tests-unit/` is a **third** root, and it is where this
+package's copy-and-token specs live. `test:main` caught it; the grep would not have.
+
+🔴 **Still open in this task: the rename** to `App Variables` / `App Config`. Not started here — it
+is the `.jsx`/`test:ci` half, and it knowingly reverses VFN-012.
+
 ## 🔴 A much larger idea the rename exposed — NOT this task
 
 Richard: *"the ultimate would be moving the whole damn thing down to 'Variables / Functions / Blocks'

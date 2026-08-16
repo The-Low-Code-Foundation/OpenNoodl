@@ -279,39 +279,25 @@
 
 /* Override Blockly default styles to match Noodl theme */
 :global {
-  /* Toolbox styling */
-  .blocklyToolboxDiv {
-    background-color: var(--theme-color-bg-2) !important;
-    border-right: 1px solid var(--theme-color-border-default) !important;
-  }
-
-  .blocklyTreeLabel {
-    color: var(--theme-color-fg-default) !important;
-    font-family: var(--font-family) !important;
-    font-size: 13px !important;
-  }
-
-  .blocklyTreeRow:hover {
-    background-color: var(--theme-color-bg-3) !important;
-  }
-
   /*
-   * FIX-005 §1 — the selected category, and it was the worst reading in this file.
+   * FIX-005 §1 — the four toolbox rules are deleted, not retargeted, for the same reason as the
+   * `.goog-*` rules below: they match nothing.
    *
-   * It was solid `--theme-color-primary` under a `.blocklyTreeLabel` painted
-   * `--theme-color-fg-default`: a mid-grey on saturated azure, measuring **1.19:1 in dark and
-   * 1.64:1 in light**. That is worse than the dropdown row the report actually complained about
-   * (2.33 / 3.56), because the label here is the muted foreground rather than the highlight one.
+   * `.blocklyToolboxDiv`, `.blocklyTreeLabel`, `.blocklyTreeRow` and `.blocklyTreeSelected` are
+   * pre-9 Blockly class names. Measured against a fully rendered toolbox (16 categories, one
+   * selected, both themes): **0 matches each**. Blockly 12 emits `.blocklyToolbox`,
+   * `.blocklyToolboxCategoryLabel`, `.blocklyTreeRowContentContainer` and
+   * `.blocklyToolboxSelected` instead.
    *
-   * Same treatment as the dropdown rows below, and for the same reason: a solid accent fill
-   * cannot carry text, so selection moves onto a background step plus a left rule, and the text
-   * stays on a neutral ground. `fg-default` on `bg-5` is **4.65 / 5.58** — AA in both themes.
+   * So the contrast figures once claimed here — 1.19:1 before, 4.65 / 5.58 after — described a
+   * rule that had never applied. What actually renders is Blockly's own selection: an inline
+   * `background-color` taken from the category's colour, with the stock
+   * `.blocklyToolboxSelected .blocklyToolboxCategoryLabel` rule painting the label `#fff`. That
+   * is **5.35:1** in both themes and passes AA, so there is no live defect to fix.
+   *
+   * Retargeting was rejected: beating an inline style needs `!important` and would visibly
+   * redesign the toolbox, which should not fall out of a contrast fix.
    */
-  .blocklyTreeSelected {
-    background-color: var(--theme-color-bg-5) !important;
-    border-left: 3px solid var(--theme-color-primary) !important;
-    font-weight: 600 !important;
-  }
 
   /* Flyout styling */
   .blocklyFlyoutBackground {

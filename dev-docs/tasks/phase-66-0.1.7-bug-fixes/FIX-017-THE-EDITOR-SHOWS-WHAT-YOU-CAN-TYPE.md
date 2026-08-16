@@ -90,8 +90,9 @@ signal-vs-value; bare `Inp` → boosted port completions (FUN-008).
 
 ## Open questions
 
-- Ranking: port completions carry `boost: 99` — verify API names never outrank ports once
-  anything is typed.
+- ~~Ranking: port completions carry `boost: 99` — verify API names never outrank ports once
+  anything is typed.~~ **Closed with criterion 3 (struck):** the two surfaces never compete in one
+  list, so there is nothing to verify.
 - `noodl-api-surface.ts` vs `typings/global.d.ts` are two unlinked lists of the same 19 members —
   pick the source of truth and make the other import it.
 - `ExpressionEditorModal` / `AiChat` / `GeneratedCodeModal` never call `setOpenNodeContext`
@@ -188,6 +189,21 @@ signal-vs-value; bare `Inp` → boosted port completions (FUN-008).
    that followed would have read as "the keymap does not reach the popout" — a false negative on the
    exact claim under test. **Dispatch one printable key and assert it lands before believing any
    chord result.**
+
+   ✅ **ACCEPTED AND CLOSED 2026-08-16 (session 43), per the ruling below.** The criterion asked
+   for a menu that appears *without typing*; what the product has is a menu that appears on a
+   manual trigger, and all three triggers were driven working. The gap is **discoverability**, and
+   the part of it that reads worst — Ctrl-Space producing nothing — is **macOS taking the chord
+   before the app sees it** ("Select the previous input source"), which is not ours to fix.
+   Recorded here rather than left open against a fix the product cannot make.
+
+   ⚠️ **What is therefore true of the shipped editor, stated so nobody re-derives it:** a beginner
+   has two reachable manual triggers, `Alt-\`` and `Alt-i`, and no surface in either package names
+   them — the only mentions are code comments (`library-completions.ts:64`,
+   `completionPosition.ts:9`). §D's browse button remains the built answer to that, unbuilt and
+   **not owed by this criterion**. ⚠️ The OS interception itself is still **unmeasured on a real
+   keyboard** — CDP bypasses OS bindings by construction, so this file cannot settle it and the
+   ruling accepts it as the likely cause rather than a measured one.
 2. ✅ **MET AND DRIVEN 2026-08-15** (session 20), in a real Function popout on a copy of
    `fix012-drive`, `/Probe`'s `JavaScriptFunction` node. Three readings, positive and negative:
 
@@ -234,13 +250,19 @@ signal-vs-value; bare `Inp` → boosted port completions (FUN-008).
    noise — because criterion 2 asks *what* comes back (branch not gated on explicitness) and
    criterion 1 asks *when the menu appears by itself* (branch gated on exactly that). Before reusing
    a trigger, read the predicate under test and ask which branch the trigger takes.
-3. 🔴 **The premise does not hold — this criterion is not falsifiable as written.** Typed `Inp`
+3. ~~Port completions outrank API names once anything is typed.~~ **STRUCK 2026-08-16 (session 43)**
+   — the two surfaces never appear in the same list at any prefix a user can type, so there is no
+   ranking to observe and `boost: 99` is not measurable here. The reading that establishes it is
+   kept below, unchanged, because it is the thing that would otherwise be re-derived a third time.
+
+   🔴 **The premise does not hold — this criterion is not falsifiable as written.** Typed `Inp`
    returns **exactly one** option (`Inputs`, the global); `Inputs.` returns **exactly one** (`qty`,
    the node's real declared port). Ports and API members **never appear in the same list** at these
    prefixes, because bare port completions are gated and member completions are anchored at a dot.
    So there is no ranking to control for, and `boost: 99` is not observable here. Either restate it
    against a prefix where both surfaces genuinely compete (`Noodl.Variables.` is the only known
-   candidate — a name in both the static list and the project's), or strike it. **Needs a ruling.**
+   candidate — a name in both the static list and the project's), or strike it. ✅ **RULED: struck**,
+   not restated — see the strike line above.
 4. ✅ **Done 2026-08-15** — phase-61 `TASKS.md` reconciled to the tree; the residue was prose, not
    status. See §1.
 
