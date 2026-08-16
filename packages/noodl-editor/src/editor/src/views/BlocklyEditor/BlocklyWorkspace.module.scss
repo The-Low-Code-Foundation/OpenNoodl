@@ -295,8 +295,22 @@
     background-color: var(--theme-color-bg-3) !important;
   }
 
+  /*
+   * FIX-005 §1 — the selected category, and it was the worst reading in this file.
+   *
+   * It was solid `--theme-color-primary` under a `.blocklyTreeLabel` painted
+   * `--theme-color-fg-default`: a mid-grey on saturated azure, measuring **1.19:1 in dark and
+   * 1.64:1 in light**. That is worse than the dropdown row the report actually complained about
+   * (2.33 / 3.56), because the label here is the muted foreground rather than the highlight one.
+   *
+   * Same treatment as the dropdown rows below, and for the same reason: a solid accent fill
+   * cannot carry text, so selection moves onto a background step plus a left rule, and the text
+   * stays on a neutral ground. `fg-default` on `bg-5` is **4.65 / 5.58** — AA in both themes.
+   */
   .blocklyTreeSelected {
-    background-color: var(--theme-color-primary) !important;
+    background-color: var(--theme-color-bg-5) !important;
+    border-left: 3px solid var(--theme-color-primary) !important;
+    font-weight: 600 !important;
   }
 
   /* Flyout styling */
@@ -433,51 +447,116 @@
     box-shadow: 0 0 0 1px var(--theme-color-border-control);
   }
 
-  /* Dropdown menus - DARK BACKGROUND with WHITE TEXT (matches Noodl theme) */
-  /* Target ACTUAL Blockly classes: .blocklyMenuItem not .goog-menuitem */
-
-  .goog-menu,
-  :global(.goog-menu) {
-    background-color: var(--theme-color-bg-3) !important; /* DARK background */
-    border: 1px solid var(--theme-color-border-default) !important;
+  /* The menu container. Blockly's own class; `.blocklyDropDownDiv` above paints the surface. */
+  .blocklyMenu,
+  :global(.blocklyMenu) {
+    background-color: var(--theme-color-bg-3) !important;
     border-radius: 4px !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
     max-height: 400px !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     z-index: 10001 !important;
   }
 
-  /* Target Blockly's ACTUAL menu item class - DROPDOWN MENUS */
+  /*
+   * FIX-005 §1 — the dropdown rows. 🔴 Read this before changing a colour here.
+   *
+   * *"The dropdowns that appear on certain nodes have strange highlight colours, between the one
+   * selected and the other non selected ones, their hover animations make them very hard to
+   * read."*
+   *
+   * ## Why state is carried by a LEFT RULE and not by the background
+   *
+   * The obvious fix — move the selected row off solid primary and give hover a bigger background
+   * step — cannot work in this palette, and that is measured rather than assumed. The whole
+   * opaque background ladder is compressed: `bg-4` against `bg-3` is **1.18:1 dark / 1.08:1
+   * light**, and even `bg-5` against `bg-3`, two steps, is only **1.43 / 1.17**. Nothing in the
+   * neutrals is far enough apart to read as a state change, least of all in the light theme.
+   * So the background says *which* row is under discussion and the **rule** says *what is
+   * happening to it* — the rule is the only cue with real contrast to spend.
+   *
+   * The four states, and every number here is from `dropdown-contrast.spec.ts`:
+   *
+   *   resting        `bg-3`, transparent rule       text 13.03 / 14.20
+   *   hover / kbd    `bg-4` + `primary-highlight`   text 11.04 / 13.18, rule 5.94 / 4.77
+   *   selected       `bg-5` + `primary` + 600       text  9.09 / 12.11, rule 3.89 / 3.40
+   *   selected+hover `bg-4`, rule and weight kept   — the background moves, so it responds
+   *
+   * 🔴 **The row that was actually unreadable** was the selected one: `fg-highlight` on solid
+   * `--theme-color-primary` measures **2.33:1 dark / 3.56:1 light**, failing AA in both themes.
+   * Text never sits on the accent now; the accent is only ever a 3px rule, which is a UI
+   * boundary and answers to WCAG 1.4.11's 3:1 rather than to 1.4.3's 4.5:1.
+   *
+   * ⚠️ **`font-weight` on selected is load-bearing, not decoration.** `primary` and
+   * `primary-highlight` are only 2.02:1 apart from each other, so rule colour alone does not
+   * separate *selected* from *hovered*. Weight is a non-colour channel and separates them for a
+   * reader who cannot use hue at all.
+   *
+   * ⚠️ **`.blocklyMenuItemHighlight` is in the same ruleset as `:hover` on purpose.** Blockly's
+   * keyboard and open-menu highlight is a *class*, not `:hover` — its stock rule is
+   * `rgba(0,0,0,.1)`, a black wash that is invisible on a dark ground. It was never styled here,
+   * so mouse and keyboard highlighted differently and, on open, the class fought `[aria-selected]`
+   * for the same row.
+   *
+   * ⚠️ **`[aria-selected]` is listed after `:hover`** — the two have equal specificity and both
+   * carry `!important`, so source order decides. Previously `:hover` came second and won, which
+   * is why hovering the selected row appeared to do nothing at all. Now selected wins the rule
+   * and weight, and hover still moves the background underneath it.
+   */
   .blocklyDropDownDiv .blocklyMenuItem,
   :global(.blocklyDropDownDiv) :global(.blocklyMenuItem) {
-    color: var(--theme-color-fg-highlight) !important; /* WHITE text */
+    color: var(--theme-color-fg-highlight) !important;
     background-color: transparent !important;
+    /*
+     * ⚠️ The 28px left padding is Blockly's checkmark gutter and this rule used to flatten it to
+     * 12px, which pulled the checked row's floated checkbox to −12px — outside the box — so the
+     * tick was clipped and the checked row's label sat at a different x from every other row.
+     * Much of the "strange" in the report is that misalignment. The checkbox is hidden below and
+     * the 3px rule marks selection instead, so the gutter is now a uniform 12px on every row and
+     * nothing shifts when the selection moves.
+     */
     padding: 6px 12px !important;
+    border-left: 3px solid transparent !important;
     cursor: pointer !important;
     font-family: var(--font-family) !important;
     font-size: 13px !important;
 
-    /* ALL children white */
     & *,
     & div,
     & span {
       color: var(--theme-color-fg-highlight) !important;
     }
 
-    /* HOVER - Keep white text with lighter background */
     &:hover,
+    &.blocklyMenuItemHighlight,
     &:hover *,
-    &:hover div,
-    &:hover span {
+    &.blocklyMenuItemHighlight * {
       background-color: var(--theme-color-bg-4) !important;
-      color: var(--theme-color-fg-highlight) !important; /* WHITE on hover */
+      color: var(--theme-color-fg-highlight) !important;
+    }
+
+    &:hover,
+    &.blocklyMenuItemHighlight {
+      border-left-color: var(--theme-color-primary-highlight) !important;
     }
 
     &[aria-selected='true'],
     &[aria-selected='true'] * {
-      background-color: var(--theme-color-primary) !important;
+      background-color: var(--theme-color-bg-5) !important;
       color: var(--theme-color-fg-highlight) !important;
+    }
+
+    &[aria-selected='true'] {
+      border-left-color: var(--theme-color-primary) !important;
+      font-weight: 600 !important;
+    }
+
+    /* Criterion 2: the selected row must visibly respond to being hovered. */
+    &[aria-selected='true']:hover,
+    &[aria-selected='true'].blocklyMenuItemHighlight,
+    &[aria-selected='true']:hover *,
+    &[aria-selected='true'].blocklyMenuItemHighlight * {
+      background-color: var(--theme-color-bg-4) !important;
     }
 
     &[aria-disabled='true'],
@@ -486,6 +565,20 @@
       opacity: 0.5;
       cursor: not-allowed !important;
     }
+  }
+
+  /*
+   * FIX-005 §1, criterion 3 — the tick, retired.
+   *
+   * Blockly floats a fixed sprite into a 28px gutter for the checked row. The sprite is a dark
+   * PNG that reads poorly on a dark ground even when its gutter is intact, and the left rule
+   * above now says the same thing in a way that works in both themes and does not depend on the
+   * padding this stylesheet overrides. Hidden rather than restored, so every row has identical
+   * metrics and the checked row's label cannot drift out of column.
+   */
+  .blocklyDropDownDiv .blocklyMenuItemCheckbox,
+  :global(.blocklyDropDownDiv) :global(.blocklyMenuItemCheckbox) {
+    display: none !important;
   }
 
   /* Target Blockly's ACTUAL content class */
@@ -500,37 +593,14 @@
     }
   }
 
-  /* Fallback for goog- classes if they exist */
-  .goog-menuitem,
-  .goog-option,
-  :global(.goog-menuitem),
-  :global(.goog-option) {
-    color: var(--theme-color-fg-highlight) !important;
-    background-color: transparent !important;
-    padding: 6px 12px !important;
-    font-family: var(--font-family) !important;
-    font-size: 13px !important;
-
-    & *,
-    & div,
-    & span {
-      color: var(--theme-color-fg-highlight) !important;
-    }
-
-    &:hover,
-    &:hover * {
-      background-color: var(--theme-color-bg-4) !important;
-    }
-  }
-
-  .goog-menuitem-content,
-  :global(.goog-menuitem-content) {
-    color: var(--theme-color-fg-highlight) !important;
-
-    & * {
-      color: var(--theme-color-fg-highlight) !important;
-    }
-  }
+  /*
+   * FIX-005 §1 — the `.goog-*` rules are deleted, not moved.
+   *
+   * They were Closure-library class names from Blockly's pre-9 menu implementation. Blockly 12
+   * emits none of them, so they matched nothing and had not for several major versions — while
+   * reading, to anyone scanning this file, as a second set of dropdown rules that might be the
+   * ones in force. That ambiguity is most of why the live rules above were hard to reason about.
+   */
 
   /* Blockly dropdown content container */
   :global(.blocklyDropDownContent) {
