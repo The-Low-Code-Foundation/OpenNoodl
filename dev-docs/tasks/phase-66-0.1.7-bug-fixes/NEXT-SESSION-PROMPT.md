@@ -1,5 +1,26 @@
 # Phase 66 — next session
 
+**Amended 2026-08-16, session 32.** s32 wrote **no product code and ran no gate**. It set out to
+check s31's one NEW owed item — the `phase-23` `run.sh` `pkill` block — and the check **confirmed
+it**, with a positive control. ✅ **`run.sh:17` matches 13 processes right now: 13 MCP servers, 0
+editors. Lines 18–19 (`lerna exec`, `dev:debug`) match 0 each.** The file is `-rwxr-xr-x` and is the
+**only** executable script in the repo carrying the pattern (9 executables checked; the one other
+`pkill` in a script, `uba-e2e/bcn-008-realtime-driver.ts:689`, is scoped to a `--data-dir` path and
+is fine). So the item is **sharpened, not struck** — see §5.
+
+🔴 **But the session's real finding is that the first survey said the opposite, and the instrument
+was mine.** The pipeline was `/usr/bin/grep -rna "pkill" . | grep -v node_modules` — the ordinary
+hygiene idiom. It returned `run.sh:18` and `:19` and **not `:17`**, because line 17 *is*
+`pkill -f "OpenNoodl/node_modules/electron/dist"` — **the filter term coincided with the search
+subject, so the survey deleted exactly its own finding.** The surviving lines were the inert ones,
+so the output read as a complete, reassuring inventory.
+
+⚠️ **Left unchecked this would have become a broadcast RETRACTION of a peer's correct warning** —
+*"s31 overstated it; the cited file only has the harmless patterns."* 🔴 **That is a new direction:
+five sessions running have found the inherited record UNDERSTATING, and the reflex that builds — to
+go looking for the overstatement — is what a self-filtered grep will happily confirm.** The
+transferable rule is §3g. ✅ **Exclude by PATH (`--exclude-dir=`), never by line content.**
+
 **Amended 2026-08-16, session 31.** s31 shipped one commit, **`300d7b47`** — the first time in four
 sessions that an item on §5 was *discharged* rather than re-checked. It took s30's rule one step
 further: s30 said *open the artifact an owed item names*; s31 opened it and found the item had
@@ -102,6 +123,11 @@ this line forward.
 ---
 
 ## 2. Gate readings
+
+⚠️ **s32 ran no gate and needed none — it changed no repo file.** Its only edits are this handover
+and two files in the memory directory. The measurements it did take are `ps` and `find` readings,
+which are safe beside peers and need no announce. ✅ **Checkout left FREE; no editor launched, no
+suite run.** 12 peer sessions were live throughout (13 rows from `ListAgents`, minus this one).
 
 ⚠️ **s31 ran no gate either, and none covers what it changed.** `.claude/skills/run-editor/SKILL.md`
 is a skill document: no gate reads it, no product path imports it, and its correctness is exactly the
@@ -280,6 +306,44 @@ caution* claimed another eleven sessions. (2) But **not everything inherited had
 *"unchanged s18–s28"* held exactly. ✅ **Check inherited claims one at a time — they do not rot
 together, and assuming they do is its own error.**
 
+### 3g. 🔴 s32 — a `| grep -v` hygiene filter deleted exactly the line it was hunting for
+
+**This session's whole result.** Checking s31's new owed item meant surveying the repo for dangerous
+`pkill` patterns. The survey ran:
+
+```
+/usr/bin/grep -rna "pkill" . | grep -v node_modules | grep -v '\.git/'
+```
+
+| what the survey returned for `corpus/run.sh` | what is actually in the file |
+|---|---|
+| `:18` `pkill -f "lerna exec"` — **matches 0** | `:17` `pkill -f "OpenNoodl/node_modules/electron/dist"` — **matches 13** |
+| `:19` `pkill -f "dev:debug"` — **matches 0** | (13 = 13 MCP servers, 0 editors) |
+
+🔴 **Line 17 was dropped because the hazard *is* a `node_modules` path.** A content filter cannot
+distinguish *"this line comes from vendored code"* from *"this line is about vendored code"*, and
+the dangerous pattern here is definitionally the second. ✅ **Fix: `--exclude-dir=node_modules
+--exclude-dir=.git`** — exclude by path, which is what the idiom is always *meant* to do.
+
+🔴 **Why this one was dangerous rather than merely wrong.** The two surviving lines were real, they
+were in the right file, and they were *inert* — so the output did not look like a truncated search,
+it looked like a finished audit that exonerated the file. The next step it invited was a
+**retraction**: telling peers that s31's warning was overstated and the script was harmless. ⚠️ **A
+retraction is pre-authorised in a way a fresh claim is not** — it un-warns everyone the original
+claim reached, and the memory index's standing rule (*re-check the shared record before
+broadcasting a retraction*) exists for exactly this.
+
+⚠️ **The calibration against §3d/§3e/§3f, which all found the record UNDERSTATING.** Four sessions
+of that builds a prior — *the inherited note probably overstates nothing, so look for what it
+missed* — and s32 inverted it into *look for where it went too far*. 🔴 **A prior about the
+direction of past errors is not evidence about this one.** Here the record was simply **right**, and
+the only thing wrong was the instrument pointed at it. ✅ **The check that saved it was re-running
+the survey without the filter, on the specific claim** — not more reasoning about who tends to be
+wrong.
+
+✅ Filed into the existing `ugrep-silently-skips-a-source-file-as-binary` memory (a third way grep
+lies here) rather than as a new pointer, for the budget reason in §5.
+
 ---
 
 ## 4. What to do next and why
@@ -309,6 +373,20 @@ together, and assuming they do is its own error.**
 9. ✅ **`run-editor/SKILL.md` is FIXED (s31, §3f, `300d7b47`) — do not re-investigate it.** 🔴 **But
    `phase-23-visual-refresh/corpus/run.sh` still carries the same `pkill` block and is executable**
    (§5). That one needs Richard, because it is a closed phase's directory.
+
+10. ✅ **The `phase-23` `run.sh` item is CHECKED and CONFIRMED (s32, §5) — do not re-measure it.**
+    Line 17 matches 13, lines 18–19 match 0, it is the only executable script carrying it. **What
+    remains is Richard's three-way decision, unchanged.**
+
+🔴 **What s32 adds to how to start a session here — and it cuts against the last four entries.**
+s29→s31 each found the inherited record understating, and this handover says so four times. 🔴 **Do
+not let that harden into a prior.** s32 inherited it, went looking for an *over*statement, and a
+self-filtered grep obligingly produced one — a clean-looking survey that exonerated a script which
+is, in fact, live-dangerous to 12 peers right now. ✅ **The move that caught it was not better
+judgement about who tends to be wrong; it was re-running the specific check with the filter off.**
+⚠️ **When a survey comes back reassuring, re-run it unfiltered before you believe it** — and when
+the conclusion would be a *retraction*, treat that as requiring more evidence than a fresh claim,
+not less, because a retraction un-warns everyone the original reached.
 
 🔴 **What s31 adds to how to start a session here.** s30's move was *read the owed list against the
 artifacts it names*; s31's is **read the whole artifact, not the lines the item cites.** §5's
@@ -419,6 +497,22 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   **closed phase's** directory and this session is not working in phase 23. **Fix it, delete it, or
   rule that a closed phase's corpus tooling is allowed to rot.** ⚠️ Six further files match
   `nohup npm run dev`; all six are task *records*, so they are harmless where they sit.
+  ✅ **s32 CHECKED this item and it holds — sharpened, not struck.** Mode is `-rwxr-xr-x`, mtime
+  **2026-07-26**. Measured 2026-08-16, each pattern against `ps -Ao pid,ppid,args`:
+
+  | line | pattern | matches now |
+  |---|---|---|
+  | **`:17`** | `OpenNoodl/node_modules/electron/dist` | 🔴 **13** — 13 MCP servers, 0 editors |
+  | `:18` | `lerna exec` | 0 |
+  | `:19` | `dev:debug` | 0 |
+
+  🔴 **So the hazard is line 17 alone**; 18–19 are inert and can stay. ✅ **It is the only executable
+  script in the repo carrying it** — 9 executables under `scripts/`, `dev-docs/`, `.claude/` were
+  listed and checked; the one other `pkill` in a script
+  (`phase-16.../uba-e2e/bcn-008-realtime-driver.ts:689`) is scoped to
+  `nodegx-backend.js serve --data-dir <path>` and is safe. ⚠️ **The decision is unchanged and still
+  yours** — s32 also declined to edit a closed phase's directory — **but it is now a one-line
+  change with a measurement behind it**, not a suspicion.
 - 🟢 **The memory index still has no owner — and s28 measured it properly for the first time.**
   Budget is **17,510** and both counts must be under. Before s28's edit: **17,466 code points but
   17,553 UTF-16** — 🔴 **already 43 over on the UTF-16 measure, silently**, because emoji cost 2
@@ -446,7 +540,21 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   — over by 91 / 181.**
   🔴 **Three sessions of restraint bought back 14 characters; one genuinely new trap cost 6. The
   ledger says restraint is not the lever and never was.** ✅ **The decision is a collapse, and it is
-  yours.** ⚠️ **Do not copy a figure from this bullet — re-measure**, since a frozen budget
+  yours.**
+  🔴 **s32 re-measured and found the ledger has been accounting for the wrong thing.** s31 left it
+  at **17,601 / 17,691**; s32 opened at **17,689 / 17,779** — **+88 / +88 with no P66 session in
+  between.** Then, across the ~17 seconds of s32's own pointer edit (which *added* characters), it
+  went to **17,621 / 17,711** — a **net −68** the session did not make, and the harness itself
+  flagged the file as concurrently modified. **`MEMORY.md` is written by every live session on this
+  machine, and there are 12 others.**
+  ⚠️ **So the restraint arithmetic s28–s31 kept (−6, −8, +6) was measuring one writer's
+  contribution to a shared, concurrently-edited file, and reporting it as the file's trajectory.**
+  🔴 **That does not weaken the conclusion, it strengthens it**: no amount of P66 discipline can
+  hold a budget that other phases are spending against in the same minute. ✅ **Whatever you decide,
+  it needs to be a rule the other sessions read** — a collapse done here is re-inflated by peers
+  within the day. ⚠️ **Current: 17,621 / 17,711, over by 111 / 201** — and that figure is stale the
+  moment it is written, which is the point.
+  ⚠️ **Do not copy a figure from this bullet — re-measure**, since a frozen budget
   number under a standing item is the exact shape §3d is about:
   `node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log([...s].length,s.length)' ~/.claude/projects/-Users-richardosborne-vscode-projects-OpenNoodl/memory/MEMORY.md`
 - 🟢 **A lockfile written by `start.ts` at *intent*** — the ~75s window in which no process check can
