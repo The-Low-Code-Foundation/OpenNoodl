@@ -789,6 +789,44 @@ corrected; anything this phase adds (a `derive_starter`) competes with them.
 > while measuring it. The number only came right after registering through `recordTools` **and**
 > re-running `applyPolicy`. **A measurement instrument has the same failure modes as the code it
 > measures.**
+>
+> ### ✅ Closed 2026-08-16 — and the warning above overstated the hole, in the useful direction
+>
+> `toolDisclosure.test.ts` now carries **"no deferred group reaches `tools/list`, derived from the
+> manifest"**: every non-resident group's tools asserted absent, in both write modes, plus the mirror
+> (every resident tool that *exists* in that mode is advertised) so it cannot pass by the surface
+> collapsing. Derived from `TOOL_GROUPS`, so a group added tomorrow is covered the day it is added
+> rather than the day somebody remembers the file.
+>
+> 🔴 **The control says the guard bites — and it also says the hazard was never as silent as claimed.**
+> Moving `registerLessonTools` after `applyPolicy`: the new assertion fails naming all four
+> (`lesson/check_lesson`, `lesson/create_lesson`, `lesson/derive_starter`, `lesson/get_lesson_brief`),
+> **the hand-listed test still passes** — which is what makes the gap one of *class* rather than of
+> coverage — and **the budget test fails too, at 9,256 tokens.** So does a single escaped
+> `get_import_report`, at **8,487**.
+>
+> ⚠️ **The arithmetic, measured rather than argued:** the bar has **57 tokens** of headroom and the
+> **smallest of the 75 deferred tools is `seed_project_docs` at 86** — nothing is under 57 at all.
+> **So today every escapee breaches the budget**, and *"unless it is big enough to breach the bar on
+> its own"* is true in form and empty in fact.
+>
+> **That leaves the new assertion worth having for two reasons, and they are not the one originally
+> given:**
+>
+> 1. **The budget catches it anonymously.** `{tokens: 8487, tools: 21}` names no tool, no group and no
+>    cause; the new one fails with `"project/get_import_report"` and points at registration order.
+> 2. 🔴 **The arithmetic is scheduled to stop holding.** This entry's own sanctioned next move is a
+>    `$ref`ed node schema, and that schema is inlined three times — the fix frees far more than 86
+>    tokens, at which point the incidental catch disappears and nothing but this test is watching.
+>
+> ⚠️ **A third control was discarded rather than counted**, because it measured nothing: escaping the
+> `theme` group fails the hand-listed test as well, since `set_project_tokens` is one of the five
+> names it already lists. A probe has to be *outside* the thing it is testing the reach of.
+>
+> ✅ **Gates:** `noodl-mcp` **45 suites / 530 specs**, all pass — baseline 45/529, so **+1 spec and no
+> new suite**. `eslint` clean on the changed file. `tsc --noEmit` in `packages/noodl-mcp` reports
+> **8** pre-existing errors, **none** in `toolDisclosure.test.ts`. ⚠️ The last handover quoted **9**;
+> measured today it is 8. The delta is not this change — the only file it touched has zero.
 
 ### Blocker 2 — phase 60's signal wording: **landed upstream, one downstream edit still owed**
 

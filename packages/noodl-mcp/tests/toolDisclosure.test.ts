@@ -288,6 +288,71 @@ describe('AWP-006 — nothing is unreachable', () => {
     expect(names).toContain('get_style_vocabulary');
   });
 
+  it('no deferred group reaches tools/list, derived from the manifest', async () => {
+    // 🔴 **The hole this closes, stated plainly because the test above looks
+    // like it already covers it.** That test hand-lists five names and has never
+    // named the `lesson` group — but the gap is one of *class*, not of coverage.
+    // `server.ts` calls `disclosure.applyPolicy()` exactly once, after every
+    // registration, and a tool registered after that call is never disabled: it
+    // is advertised on every turn of every session whatever the manifest says.
+    // The first describe's third property catches the *other* mis-registration
+    // (on `server` rather than the `rec` proxy) and is blind to this one.
+    //
+    // ⚠️ **What the budget test does about it, measured rather than assumed
+    // (2026-08-16) — because the assumption was wrong in the useful direction.**
+    // Moving `registerLessonTools` after `applyPolicy` was expected to slip past
+    // the budget and be caught only here. It does not: the surface goes to
+    // **9,256** tokens and the budget fails too. Nor is that special to a
+    // four-tool group — one escaped `get_import_report` bills **8,487**. The
+    // reason is arithmetic: the bar has **57 tokens** of headroom and the
+    // *smallest* deferred tool in the server is `seed_project_docs` at **86**,
+    // with nothing under 57 at all. So today every escapee breaches.
+    //
+    // That makes this assertion worth less than it looked and still worth
+    // having, for two reasons that outlive the arithmetic:
+    //
+    // 1. **The budget catches it anonymously.** `{tokens: 8487, tools: 21}`
+    //    names no tool, no group and no cause; this one fails with
+    //    `"project/get_import_report"` and points at registration order.
+    // 2. 🔴 **The arithmetic is scheduled to stop holding.** The budget note
+    //    above names a `$ref`ed node schema as the sanctioned next move, and the
+    //    node schema is inlined three times — that fix frees far more than 86
+    //    tokens, at which point the incidental catch disappears and nothing but
+    //    this test is watching. It is the cheap thing to have already written.
+    //
+    // Derived from TOOL_GROUPS rather than written out, so a group added
+    // tomorrow is covered on the day it is added instead of the day somebody
+    // remembers this file. Both modes, because the write gate decides which
+    // tools exist at all and the policy has to be right about each set.
+    for (const allowWrites of [true, false]) {
+      const deferred = await connectRaw(projectDir, allowWrites, true);
+      const all = await connectRaw(projectDir, allowWrites, false);
+      try {
+        const advertised = new Set(await toolNames(deferred.client));
+        // What this mode registered at all, read from the `--all-tools` server:
+        // the read-only half of the manifest is legitimately absent under
+        // `--no-allow-writes`, so "registered" cannot be taken from the manifest.
+        const registered = new Set(await toolNames(all.client));
+
+        const leaked = TOOL_GROUPS.filter((g) => !g.resident)
+          .flatMap((g) => g.tools.filter((t) => advertised.has(t)).map((t) => `${g.id}/${t}`))
+          .sort();
+        expect({ allowWrites, leaked }).toEqual({ allowWrites, leaked: [] });
+
+        // The mirror, and it is not decoration: an assertion that only forbids
+        // things passes forever on a server that advertises nothing. This one
+        // says every resident tool that *exists* in this mode is advertised, so
+        // a policy that over-hides fails here rather than reading as a clean run.
+        const core = TOOL_GROUPS.find((g) => g.id === 'core')!;
+        const hidden = core.tools.filter((t) => registered.has(t) && !advertised.has(t));
+        expect({ allowWrites, hidden }).toEqual({ allowWrites, hidden: [] });
+      } finally {
+        await deferred.close();
+        await all.close();
+      }
+    }
+  });
+
   it('find_tools names every deferred group, its size and its subject', async () => {
     // The description is the entire disclosure contract for a model that reads
     // nothing else. If a group is added and its purpose is empty, a model has no
