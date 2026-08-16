@@ -1,8 +1,16 @@
 # Phase 66 — next session
 
-**Written 2026-08-16, session 28.** Both of s27's 🟢 unowned loose ends (§5.6, §5.7) are **closed**.
-Fourteen tasks remain closed; **no gate was run, no product behaviour changed** — the only source
-edit is an error-message string in a devtools script.
+**Amended 2026-08-16, session 29.** s29 wrote **no code and ran no gate**; it repaired the phase's own
+records. 🔴 **s28 handed over "everything is blocked on Richard"; that was false, and checking it was
+the session's work.** [TASKS.md](TASKS.md) held **four stale rows** advertising ~14 acceptance drives,
+a re-drive and a vocabulary sweep as owed when all were already done, and **§5 carried a ruling back to
+Richard that he had made, and that was built and driven, on 2026-08-15** (the ⌘C item — struck).
+Both are now reconciled; the full finding is **§3d**, which is the part worth carrying.
+⚠️ **The count "fourteen closed" is retired in favour of names** — see §1.
+
+**Written 2026-08-16, session 28.** Both of s27's 🟢 unowned loose ends (§5.6, §5.7) are **closed**;
+**no gate was run, no product behaviour changed** — the only source edit is an error-message string in
+a devtools script.
 
 🔴 **The one finding worth carrying:** §5.7 was framed as *"one surviving candidate, one look
 confirms it."* The look says the candidate is **FALSE**. All three candidates for s24's DOM null are
@@ -33,7 +41,9 @@ Learnings that outlive the phase go to memory, not here.
 
 ## 1. Built vs. driven
 
-Unchanged from s27 — s28 built no feature and drove nothing.
+Neither s28 nor s29 built a feature or drove anything. ⚠️ **The rows below did not change state in
+either session — but four of them were WRONG until s29 reconciled them against the task files (§3d),
+and this table is where the corrected picture now lives.**
 
 | Task | Built | Driven | Note |
 |---|---|---|---|
@@ -46,7 +56,17 @@ Unchanged from s27 — s28 built no feature and drove nothing.
 | **FIX-008** A, B, E | ✅ | ✅ | C, D not built; **C needs a measurement from Richard** |
 | everything else | 📋 open | — | see [TASKS.md](TASKS.md) |
 
-**Fourteen closed.**
+~~**Fourteen closed.**~~ ⚠️ **s29 replaced the count with names, because "fourteen" silently mixed
+whole tasks with sub-items and cannot be checked.**
+
+**Twelve tasks are closed outright:** FIX-001, 002, 003, 007, 009, 010, 011, 012, 014, 018, 019, 020.
+**Three are partial:** FIX-008 (A/B/E closed; **C, D open**), FIX-016 (**§2 + §3c** closed; §1 awaiting
+a ruling; **§3 open**), FIX-017 (§B closed; §A three-quarters, **AC1 does not close**).
+**Six never started:** FIX-004, 005, 006, 013, 015, 021.
+
+✅ **That is 21 rows and it reconciles against [TASKS.md](TASKS.md)** — which s29 had to repair first;
+see §3d. Count the names if you need a number, and re-derive it from the table rather than copying
+this line forward.
 
 ---
 
@@ -115,6 +135,37 @@ remainder look stronger. That arithmetic is only valid if the list is exhaustive
 checked — while the file held an older, non-overlapping list the whole time. ✅ **When you inherit a
 candidate list, grep the file for an earlier one before crossing anything off.**
 
+### 3d. 🔴 s29 — the phase index had drifted out of agreement with the phase, in the *safe* direction
+
+**This session's whole result, and it was found by checking a summary rather than trusting it.**
+s28's handover said the agent-actionable list was empty. Reading [TASKS.md](TASKS.md) against the
+task files instead of against the handover found **four stale rows**, all understating progress:
+
+| Row | the index claimed | the task file witnessed |
+|---|---|---|
+| **FIX-001** | open, ruling owed | **CLOSED s17**, 5/5 driven, 3 defects found and fixed |
+| **FIX-002** | *"BUILT — NOT DRIVEN"*, 4 criteria + BLD-010 re-drive owed | all 4 driven s10–s12; re-drive **discharged** |
+| **FIX-003** | *"BUILT — NOT DRIVEN"*, 5 criteria + drag-surface drives owed | all 5 driven s11–s13 |
+| **FIX-019 14(a)** | 🟡 sweep still owed | **RULED s18: no sweep** |
+
+So the index was advertising ~**fourteen acceptance drives, one re-drive and one vocabulary sweep as
+outstanding when every one of them was already done.** Sessions 10–18 closed work in the task files
+and never wrote it back. 🔴 **A stale status that *understates* is the dangerous direction here**,
+because nothing about it looks like an error: it reads as honest, conservative bookkeeping, it never
+claims a pass that isn't there, and the only cost — a session re-running drives that already
+happened — lands on whoever picks it up. **Nobody audits caution.**
+
+🔴 **And "driven" is not "passed."** FIX-003's five criteria were all *driven* while criterion 2 was
+**failing** — the drive found ⌘C copying the selected canvas node instead of the selected text. Both
+misreadings of that record are live: *driven ⇒ closed* hides a real defect, *not driven ⇒ do it again*
+burns a session. Only the task file settles it.
+
+⚠️ **The same drift put a ruling Richard had already made back on his own owed list** (§5, the ⌘C
+item — struck this session). It survived four sessions because **its cited `keyboardhandler.ts:165`
+still resolves and still reads exactly as described**: the fix added `selectionOwnsClipboardKey()`
+at `:106`, wired at `:300`, rather than editing the quoted line. ✅ **A stale pointer that still
+resolves is the kind that survives — check the claim, not just the line.**
+
 ---
 
 ## 4. What to do next and why
@@ -135,6 +186,15 @@ candidate list, grep the file for an earlier one before crossing anything off.**
    `PropertyPanelInput-module__Label` rows from the real DOM. **It needs its own measurement.**
    ⚠️ It also has **no live consequence** — the §2 fix is independent of it — so this is curiosity
    debt, not blocking work.
+7. ✅ **The index reconciliation is DONE (s29, §3d) — do not re-run it.** [TASKS.md](TASKS.md) is
+   current as of 2026-08-16 and every closed row now names its closing session and ruling.
+
+🔴 **What s29 changes about how to start a session here.** *"Everything is blocked on Richard"* was
+this handover's own summary and it did not survive twenty minutes of checking. **Do not take the
+inherited status as the starting point — take the task files.** The cheap, high-yield first move is
+to read the phase index against the files it indexes; s29 found four wrong rows and one wrongly-owed
+ruling that way, having been told there was nothing to do. ⚠️ **The rest of §5 genuinely is Richard's**
+— that part of s28's summary checked out — **but it was worth verifying rather than inheriting.**
 
 **Do not start** FIX-015 or FIX-021's brainstorm halves — they need Richard, not an agent.
 
@@ -172,8 +232,16 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   big one.
 - 🔴 **FIX-016's signal-input semantics** (§3) — re-run the body vs named handlers, or rule signal
   inputs out and document `run` as the only trigger.
-- ⚠️ **The ⌘C ruling** (carried by a peer): `keyboardhandler.ts:165` guards on **focus**, not
-  selection.
+- ~~⚠️ **The ⌘C ruling** (carried by a peer): `keyboardhandler.ts:165` guards on **focus**, not
+  selection.~~ 🔴 **STRUCK 2026-08-16 (s29) — this was RULED, BUILT and DRIVEN on 2026-08-15, and had
+  been sitting on Richard's list for four sessions asking for a decision he had already made.**
+  Ruling: *a live text selection outside the canvas owns ⌘C/⌘X, whatever holds focus.* Built as
+  `selectionOwnsClipboardKey()` — verified live in source at `keyboardhandler.ts:106`, wired at
+  **`:300`**, with 9 specs of which 5 are negative controls — and driven passing (C1/C2/C3/C5).
+  ⚠️ The line was **not wrong when written**, it was wrong when *carried*: `:165` really was the
+  focus-based guard, and the fix added a new check rather than editing that line, so the cited
+  line:number still reads exactly as described. **A stale pointer that still resolves is the kind
+  that survives.**
 - ⚠️ **MCP servers hold pre-rebuild code**; the **repackage** is separately owed.
 - 🟡 **`run-editor/SKILL.md:23` teaches `nohup … &`**, which reparents the stack to PID 1 and
   destroys launch provenance. `run_in_background` preserves it. Same file calls `dev:stop` "safe to

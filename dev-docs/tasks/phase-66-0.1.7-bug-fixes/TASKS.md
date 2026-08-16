@@ -73,11 +73,34 @@ remembering to `stat` it. Both spellings of the bad shape were then scanned for 
 **States:** built → spec-proved → driven (the phase-64 discipline: a spec proves the decision;
 only a drive proves the pixels).
 
+---
+
+### 🔴 Read the table, not the narrative above it — reconciled 2026-08-16 (s29)
+
+⚠️ **Every prose block above this line is dated 2026-08-14/15 and stops before the drives.** The
+narrative is kept as a build log; it is **not** a status readout, and four rows of the table below had
+silently drifted out of agreement with it.
+
+**What the reconciliation found.** The table was last touched 2026-08-15. Sessions 10–18 then drove,
+ruled and closed work directly in the task files and **never wrote it back here** — so the phase's own
+index was advertising as outstanding roughly **fourteen acceptance drives, one re-drive and one
+vocabulary sweep that were all already done**: FIX-001 (shown open, closed s17), FIX-002 and FIX-003
+(both shown *"BUILT — NOT DRIVEN"*, both fully driven s11–s13), and FIX-019's 14(a) rider (shown
+owed, ruled *no sweep* s18). Each row below now carries its closing session and the ruling that
+closed it.
+
+🔴 **The transferable bit: "driven" is not "passed."** FIX-003's five criteria were all *driven* while
+criterion 2 was **failing** — a reader who takes a drive record as a pass reads a closed task where
+there was a live defect, and a reader who takes this table's *"not driven"* at face value re-runs
+fourteen drives that already happened. **The two records must be reconciled in the same direction, and
+only the task file is the witness.** ✅ When you close anything here, update this row in the same
+commit.
+
 | Task | One line | Report | Tier | Effort | Blocked on a ruling? |
 |---|---|---|---|---|---|
-| FIX-001 ⭐ | the explainer reads live values, warnings, and the backward walk | 1a–c | **1** | M (+M/L for 1c) | minor (snapshot/truncation) |
-| FIX-002 🟡 | the Explain composer becomes a real multiline input with a Send button | 1d | **1** | S→**M** | 🟡 **BUILT 2026-08-15** (`4bb692a8`), gates green — **NOT DRIVEN**: 4 criteria + **BLD-010 re-drive** owed |
-| FIX-003 🟡 | AI text is selectable and links click, app-wide | 1bis | **1** | S→**M/L** | 🟡 **BUILT 2026-08-15** (`4bb692a8`), gates green — **NOT DRIVEN**: 5 criteria + the **drag-surface drives** owed |
+| FIX-001 ⭐ ✅ | the explainer reads live values, warnings, and the backward walk | 1a–c | **1** | M (+M/L for 1c) | ✅ **CLOSED 2026-08-15 (s17)** — 5/5 criteria driven: 1a s15 (criteria 1–3, defect fixed `f8f215d0`), 1b s16 (criterion 4, nothing to build), 1c built + driven s17 (criterion 5). Three defects found across the three drives, all three fixed. 🟡 Only the **§1a.5 `backwardWalk` stretch** remains, and s15 showed it is worth **re-deciding rather than building** |
+| FIX-002 ✅ | the Explain composer becomes a real multiline input with a Send button | 1d | **1** | S→**M** | ✅ **CLOSED 2026-08-15** — built `4bb692a8`, **all 4 criteria driven**: 1 + 3 s10 (caret visible at 194 chars), 4 s11 (Send button submits), 2 s12 after its own ruling (**auto-grow, capped in rows** — 56 → 176, stops at eight). ⚠️ **BLD-010's re-drive is DISCHARGED** for the send key |
+| FIX-003 ✅ | AI text is selectable and links click, app-wide | 1bis | **1** | S→**M/L** | ✅ **CLOSED 2026-08-15** — built `4bb692a8`/`1b75f99d`, **all 5 criteria driven s11–s13**. 🔴 **Criterion 2 FAILED on first drive** (⌘C copied the selected canvas *node*, not the text) → **RULED s12: a selection-aware clipboard guard**, built in `keyboardhandler.ts` (+9 specs, 5 negative controls) and **driven passing s12**. ⚠️ **Ruling 2: `linkify` stays OFF**, so criterion 1 is narrowed to URLs the model writes as markdown links. ⛔ Criterion 1's 4th surface (a modal) is **not drivable in a dev build** — argued from shared code, not driven |
 | FIX-004 | conversion + log blocks; free toolbox adds; objects-as-data | 2 | 2 | S+XS+M | block shape (minor) |
 | FIX-005 | dropdown contrast fixed; category name ruled | 3 | 2 | S–M | 🔴 naming (reverses VFN-012) |
 | FIX-006 | the AI picks the right code node and writes 2026 JavaScript | 4a–b | 2 | S+S+M | Script demotion (minor) |
@@ -90,10 +113,10 @@ only a drive proves the pixels).
 | FIX-013 | the Data maze is removed; the bench is inputs and outputs | 8c | 2 | S–M | 🔴 zero-rows / AI-preview parity |
 | FIX-014 ✅ | logic nodes get their own column, by prompt and by a layout pass | 9 | 2 | S+M | ✅ **CLOSED 2026-08-15** — built (`1716236a`); criterion 1 driven in **two halves**: Build panel s16, **MCP s18**. ⚠️ `COLLISION_STEP` ruled 40 → `ROW_SPACING` and driven. 🔴 **Driven ≠ shipped: the packaged app still lacks the pass** (deployment debt, not a blocker) |
 | FIX-015 | style tokens: rulings session → a new phase | 10 | brainstorm | session | 🔴 all eight |
-| FIX-016 | Signal offered at add time; declared-vs-called mismatch diagnosed | 11 | 3 | S+S | signal-input semantics (for the M–L half only) |
+| FIX-016 ◐ | Signal offered at add time; declared-vs-called mismatch diagnosed | 11 | 3 | S+S | ◐ **§2 CLOSED `4be3f1f6`** (+ follow-up `6de1ae25`: the diagnostic no longer fails to clear when you obey it); **§3c CLOSED**, driven 6/6. **§1 is fully investigated and driven** — both open questions answered — and **awaits a ruling, not a build**. **§3 (signal *inputs*) is the only genuinely blocked part**: needs the semantics ruling |
 | FIX-017 ◐ | completions at an empty position; `Noodl.Records.` answers; TASKS.md reconciled | 12 | 3 | S+M+S | **§B BUILT + DRIVEN + AC4 DONE 2026-08-15**: `Noodl.Records.` → **11 methods with signatures, menu rendered**, against controls `Noodl.` → 19 and `Noodl.Nonsense.` → 0/no tooltip (11 specs, control-checked); phase-61 register reconciled, the residue was **prose, not status**. 🔴 **AC3 needs a ruling — its premise is false** (ports and API names never share a prefix, so there is no ranking to control). ⚠️ The "nine live editors" that blocked s19 were **nine MCP servers**; the checkout was free. **§A BUILT `9e8b3198` + DRIVEN 2026-08-15 (s22) — AC1 is ◐, three halves of four:** both modes answer at a statement start (Function → the 5 globals; Expression → `Noodl, Variables, Objects, Arrays, min…`) and ordinary code is **not** smothered (`const x = `, `foo(1, `, `1 + ` all silent). 🔴 **"Appears without typing" is NOT met and §A alone cannot meet it** — `getUpdateType` Activates only on `input.type` or an explicit effect; a cursor landing is `tr.selection` → `Reset`, and no repo file calls `startCompletion`. 🔴 **The trap: `startCompletion` sets `explicit = true`, bypassing §A's own gate — the technique that closed criterion 2 gives a FALSE PASS on criterion 1, and would have been recorded as met.** ✅ Criterion 2 **re-driven on the automatic path with real keys** and stands: 11/11 `Records` methods, identical to the explicit path. ⚠️ **Manual triggers DO exist and were driven working** (Ctrl-Space / Alt-` / Alt-i, leak-controlled) but all take the explicit path and are **invisible in the product** — so the ruling is **discoverability**, and **§D is promoted** from nicety to the only non-ruling route to AC1 |
 | FIX-018 ✅ | a component card says it opens; context menu says so too | 13 | 2 | S–M | ✅ **RULED 2026-08-14: option C** — built + driven, **CLOSED** |
-| FIX-019 ✅ | "Show in workbench"; the canvas admits when it left the benched component | 14 | 2 | S+S–M | ✅ **CLOSED 2026-08-14** — built + driven 4/4; 🟡 14(a) vocabulary sweep still owed |
+| FIX-019 ✅ | "Show in workbench"; the canvas admits when it left the benched component | 14 | 2 | S+S–M | ✅ **CLOSED 2026-08-14** — built + driven 4/4. ✅ **14(a) is CLOSED too — RULED 2026-08-15 (s18): NO sweep.** "workbench" stays scoped to the context-menu label; the bench caption keeps describing the mechanism. The whole user-visible surface was **two strings**, not the docstring sweep this task assumed |
 | FIX-020 ✅ | one stylesheet stops fighting the other; five popups uncrop | 15 | 2 | S | no |
 | FIX-021 | project + global memory docs: slice 0 defect now, brainstorm for the loop | 16 | 3 / brainstorm | S+M+session | 🔴 the six memory rulings |
 
