@@ -81,6 +81,51 @@ export class CatalogIndex {
     return this.byType.get(typeName);
   }
 
+  // ── Provenance (CN-003 item 4) ────────────────────────────────────────────
+
+  /**
+   * True when this type is known because **a project kit declares it**, rather
+   * than because we shipped it.
+   *
+   * 🔴 **`hasType()` must stay true for both, and does.** ✅ **D4** rules that a
+   * kit-declared type counts as known and is fully checked; ✅ **P1** forbids a
+   * capability a node cannot reach for being non-first-party. So this is not a
+   * gate — nothing may branch on it to check a kit node *less*. It exists
+   * because two callers need to *say* where a node came from: ✅ **D1**'s
+   * property-panel provenance ("from Cashflow Kit v1.2"), and CN-015's rule that
+   * a failure names the kit responsible.
+   *
+   * ⚠️ Reads a field the generated `CatalogNode` type does not declare — a kit
+   * entry is by construction outside the generated vocabulary (`node-catalog.d.ts`
+   * types `providedBy` as a union of the four shipped sources). The overlay's
+   * `KIT_PROVENANCE` and this cast are the one place that asymmetry is handled.
+   */
+  isProjectKitType(typeName: string): boolean {
+    const node = this.byType.get(typeName) as { providedBy?: string } | undefined;
+    return node?.providedBy === 'project-kit';
+  }
+
+  /**
+   * The kit module that declared this type, or `undefined` for a built-in.
+   *
+   * ⚠️ **Today the editor route answers `'Unknown Module'` for every kit**, and
+   * that is not this method failing. `registerModule` names a module from the
+   * object passed to `Noodl.defineModule` and no kit sets that name; the
+   * manifest holds it and the viewer never reads it. The MCP route reads the
+   * manifest and answers correctly, so the two disagree — measured in slice 3,
+   * asserted in `kitAgreement.test.ts`. A caller showing this to a user is
+   * showing the viewer's answer, so fix it there, not here.
+   */
+  kitModuleOf(typeName: string): string | undefined {
+    const node = this.byType.get(typeName) as { kitModule?: string } | undefined;
+    return this.isProjectKitType(typeName) ? node?.kitModule : undefined;
+  }
+
+  /** Every type name this project's own kits contribute. Empty for a project with none. */
+  projectKitTypeNames(): string[] {
+    return this.allTypeNames.filter((name) => this.isProjectKitType(name));
+  }
+
   /** Type names an author should reasonably use (in the node picker, not deprecated). */
   authorableTypeNames(): string[] {
     return this.catalog.nodes.filter((n) => n.inNodePicker && !n.isDeprecated).map((n) => n.typeName);

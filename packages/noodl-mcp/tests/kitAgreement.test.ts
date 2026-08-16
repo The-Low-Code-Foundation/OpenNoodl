@@ -158,15 +158,30 @@ describe('🔴 the one thing the two routes do not agree about: the kit’s name
    * **empty string**, so the picker's section for a project's own nodes is
    * unnamed too.
    *
-   * ⚠️ This is asserted rather than fixed here: the fix belongs in whatever
-   * gives the viewer the manifest name, which is the deployed runtime's path as
-   * well as the editor's. It matters to ✅ **D1** (provenance in the property
-   * panel — "a node says which kit and version it came from" is currently
-   * "Unknown Module") and to **CN-015** (failures name the kit). Asserting it
-   * keeps it from being fixed by accident and unnoticed.
+   * ## ✅ FIXED 2026-08-16 (slice 4) — and this assertion is now a **fossil**
+   *
+   * 🔴 **Read this before believing the line below.** The defect is fixed:
+   * `@nodegx/module-inject` now emits `window.__noodl_module_name` immediately
+   * before each kit's script tag, and the three runtime bootstraps adopt it in
+   * `defineModule` (graded in `@nodegx/module-inject`'s suite and in
+   * `noodl-viewer-react/tests/module-name.test.js`, both mutation-proven).
+   *
+   * The **recording** on the editor side of this file predates that fix and
+   * still says `'Unknown Module'`, so this test asserts what the editor said on
+   * 2026-08-16 *before* the change — not what it says now. It cannot be
+   * corrected from here: the recording is a capture from a running editor, and
+   * the editor loads its bootstrap from `src/external/viewer` (gitignored build
+   * output of `noodl-viewer-react/static`), so re-recording needs a viewer build
+   * and a drive.
+   *
+   * ⚠️ **Owed: re-record after a viewer build, and this expectation becomes
+   * `['Demo Kit', 'Demo Kit']`.** Until then the line below is a dated
+   * measurement wearing the clothes of a current one, which is exactly the shape
+   * this repo keeps getting caught by — hence the name of the test.
    */
-  it('is named from the manifest headlessly and is unnameable in the editor', () => {
+  it('was, at the 2026-08-16 recording, named from the manifest headlessly and unnameable in the editor', () => {
     expect(mcpNodes.map((n) => n.kitModule)).toEqual(['Demo Kit', 'Demo Kit']);
+    // ⚠️ The recorded editor payload, not a live one. See the note above.
     expect(editorNodes.map((n) => n.kitModule)).toEqual(['Unknown Module', 'Unknown Module']);
 
     // …and the agreement check is silent about it, deliberately: it compares

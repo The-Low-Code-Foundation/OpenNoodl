@@ -194,7 +194,17 @@ function toInjectModules(scanned) {
     const m = {
       dependencies: [],
       browser: manifest.browser,
-      runtimes: manifest.runtimes || ['browser'] // default to browser
+      runtimes: manifest.runtimes || ['browser'], // default to browser
+      // 🔴 CN-003: **the manifest's name, carried through to the page.** Until
+      // now it stopped here, and the consequence was measured in slice 3: the
+      // runtime names a module from the object passed to `Noodl.defineModule`,
+      // no kit sets a name there, so every kit node in the editor reported
+      // `module: 'Unknown Module'` and the node picker's section for a project's
+      // own nodes had the empty string for a heading. The manifest held the
+      // answer the whole time and nothing gave it to the viewer.
+      // The directory name is the fallback, because "material-icons" beats
+      // "Unknown Module" and a manifest may legitimately omit `name`.
+      name: manifest.name || s.name
     };
 
     if (manifest.main) {
@@ -241,6 +251,25 @@ function toInjectModules(scanned) {
  * @param {string} pathPrefix
  * @returns {{ dependencies: string, modulesMain: string }}
  */
+/**
+ * A JS string literal safe to drop into an inline `<script>`.
+ *
+ * 🔴 `JSON.stringify` is not sufficient on its own: a manifest name containing
+ * `</script>` would close the tag and the rest would be parsed as HTML. The
+ * escape of `<` covers that and the ` `/` ` pair covers the two
+ * characters JSON leaves raw and JavaScript treats as line terminators. A
+ * manifest is project-supplied, so it is untrusted input like any other.
+ *
+ * @param {string | undefined} value
+ * @returns {string}
+ */
+function jsString(value) {
+  return JSON.stringify(String(value == null ? '' : value))
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
 function buildInjectionTags(modules, pathPrefix) {
   let dependencies = '';
   let modulesMain = '';
@@ -250,6 +279,20 @@ function buildInjectionTags(modules, pathPrefix) {
     for (let i = 0; i < browserModules.length; i++) {
       const m = browserModules[i];
       if (m.index) {
+        // 🔴 CN-003 — the name marker, and why it is a separate tag rather than
+        // an attribute. A kit's `index.js` calls `Noodl.defineModule({...})` and
+        // has no idea what its own manifest says; the runtime then names the
+        // module from that object and gets `undefined`. Scripts execute in
+        // document order, so setting the global immediately before the kit's tag
+        // is what tells `defineModule` which manifest is running.
+        //
+        // An attribute on the script tag would need `document.currentScript`,
+        // which is null inside a callback and therefore unreliable for a kit
+        // that defers its `defineModule` call. This is boring and works.
+        //
+        // ⚠️ Safe against an older deployed runtime: a `defineModule` that never
+        // reads the global just sees a page that set one.
+        modulesMain += '<script type="text/javascript">window.__noodl_module_name = ' + jsString(m.name) + ';</script>\n';
         modulesMain += '<script type="text/javascript" src="' + pathPrefix + m.index + '"></script>\n';
       }
 
