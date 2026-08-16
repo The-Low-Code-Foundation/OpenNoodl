@@ -79,5 +79,28 @@ export const PROMPTS: MeasurePrompt[] = [
       "A login page with email and password text inputs and a 'Sign in' button. The button must stay " +
       "disabled until both fields are non-empty. Expose 'Email' and 'Password' as component outputs, " +
       "and a 'Sign In' signal output that fires when the button is clicked."
+  },
+  /**
+   * FIX-006 AC1 + AC2 — the reported request, and the only prompt here written to
+   * grade a prompt change rather than the loop.
+   *
+   * The report: *"It made a Script node inside a component for this … it used like
+   * `var foo = "bar"` type code instead of more modern const / let, and used a
+   * complex regex function instead of a simple splice."* AC1 asks which of the
+   * three compute nodes the model reaches for; AC2 asks what the body looks like.
+   *
+   * ⚠️ **Deliberately names no node type, and no JavaScript.** A request that said
+   * "with a Function node" or "using slice" would answer both criteria in the
+   * question. The one addition to the reported wording is the price example — the
+   * report gives no sample value, and "cut the first character" needs one to be a
+   * task rather than a riddle.
+   */
+  {
+    slug: 'fix006-string-math',
+    componentPath: 'Logic Components/AIX Discount',
+    description:
+      "Takes a price that arrives as a piece of text with a currency symbol on the front, like " +
+      "'$42.50'. Drop that first character, turn what is left into a number, and multiply it by " +
+      '0.9. Send the result out of the component as a number.'
   }
 ];

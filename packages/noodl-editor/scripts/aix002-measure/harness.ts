@@ -24,6 +24,9 @@
  *   --timeout=<seconds>     per-session wall clock (default 480)
  *   --effort=low|medium|high|xhigh|max   reasoning depth (default: the loop's own)
  *   --styles=on|off         AIX-006 A/B control arm
+ *   --code-guidance=on|off  FIX-006 A/B control arm — `off` subtracts the shipped
+ *                           THREE WAYS TO COMPUTE and CODE STYLE blocks from the
+ *                           system prompt on the wire, leaving everything else
  *
  * AIX-007 note: sessions run back-to-back on purpose. The cached prefix is
  * shared across the corpus, so a sequential run measures the traffic shape the
@@ -46,8 +49,15 @@ import { buildStyleVocabulary } from '../../src/editor/src/models/StyleTokensMod
 import type { StyleVocabulary } from '../../src/editor/src/models/StyleTokensModel/StyleVocabulary';
 import type { StyleTokenRecord } from '../../src/editor/src/models/StyleTokensModel/TokenCategories';
 import { createProvider } from '../../src/editor/src/models/AiAssistant/client/AiClient';
-import type { AiEffort, AiProvider, AiProviderId } from '../../src/editor/src/models/AiAssistant/client/types';
+import type {
+  AiChatRequest,
+  AiEffort,
+  AiProvider,
+  AiProviderId
+} from '../../src/editor/src/models/AiAssistant/client/types';
 import { AI_EFFORT_LEVELS, AI_PROVIDER_IDS } from '../../src/editor/src/models/AiAssistant/client/types';
+import { CODE_STYLE, THREE_WAYS_TO_COMPUTE } from '../../src/editor/src/models/AiAssistant/authoring/prompts/traps';
+import type { ComponentFiles } from '../../src/editor/src/models/AiAssistant/authoring/types';
 import { AUTHORING_EFFORT } from '../../src/editor/src/models/AiAssistant/authoring/AuthoringSession';
 import { fromSerialisedProject } from '../../src/editor/src/models/AiAssistant/explain/graph';
 import type { MeasurePrompt } from './prompts';
@@ -114,6 +124,70 @@ function buildProvider(providerId: AiProviderId, env: Record<string, string>): A
   }
 }
 
+// ── FIX-006 A/B: the code-guidance control arm ───────────────────────────────
+
+/**
+ * FIX-006 AC1/AC2 — remove the two shipped blocks from the outgoing system prompt.
+ *
+ * The criteria ask whether `THREE WAYS TO COMPUTE` and `CODE STYLE` change what
+ * the model authors. A treatment arm alone cannot answer that: a current model
+ * writes `const` and `slice` unprompted often enough that a clean result is
+ * equally consistent with the blocks doing nothing. So the control arm sends the
+ * same request with exactly those two blocks — and nothing else — removed.
+ *
+ * ⚠️ **The subtraction happens on the wire, not in the editor sources.** The
+ * session injects its chat function, so the arm is a wrapper here; no shipped
+ * prompt is edited, and the treatment arm is byte-identical to what the editor
+ * sends. The blocks are removed by exact string match on the constants
+ * themselves, imported from `traps.ts`, so a reworded block cannot leave a
+ * regex quietly matching nothing.
+ *
+ * 🔴 **Every failure mode here throws.** A control arm that silently failed to
+ * subtract would produce two identical arms and read as "the blocks made no
+ * difference" — the exact false negative this arm exists to rule out.
+ */
+function withoutCodeGuidance(request: AiChatRequest): { request: AiChatRequest; systemChars: number } {
+  let systemsSeen = 0;
+  let systemChars = 0;
+
+  const messages = request.messages.map((message) => {
+    if (message.role !== 'system') return message;
+    systemsSeen += 1;
+    if (typeof message.content !== 'string') {
+      throw new Error('control arm: the system message is not a plain string — the strip cannot be verified');
+    }
+
+    let content = message.content;
+    for (const [name, block] of [
+      ['THREE_WAYS_TO_COMPUTE', THREE_WAYS_TO_COMPUTE],
+      ['CODE_STYLE', CODE_STYLE]
+    ] as const) {
+      if (!content.includes(block)) {
+        throw new Error(`control arm: ${name} is not present in the system prompt — the strip would be a no-op`);
+      }
+      content = content.replace(block, '');
+    }
+
+    // Independent of the removal above: distinctive strings from inside each
+    // block. If the constants ever stop being the thing the prompt embeds, the
+    // replace() calls could succeed against a stale copy while the live text
+    // survives, and only this check would notice.
+    for (const marker of ['THREE WAYS TO COMPUTE', 'CODE STYLE', 'never var', 'Reach for the Script node LAST']) {
+      if (content.includes(marker)) {
+        throw new Error(`control arm: "${marker}" survived the strip — the arms would not differ`);
+      }
+    }
+
+    systemChars = content.length;
+    return { ...message, content };
+  });
+
+  if (systemsSeen !== 1) {
+    throw new Error(`control arm: expected exactly one system message, saw ${systemsSeen}`);
+  }
+  return { request: { ...request, messages }, systemChars };
+}
+
 // ── Measurement ──────────────────────────────────────────────────────────────
 
 interface SessionRecord {
@@ -133,8 +207,20 @@ interface SessionRecord {
   styleStats: { rawValues: number; tokenReferences: number; total: number };
   /** AIX-007: the reasoning depth this session ran at. */
   effort: AiEffort;
+  /** FIX-006 A/B: whether the shipped compute/code-style blocks were sent. */
+  codeGuidance: boolean;
+  /**
+   * FIX-006: the length of the system prompt actually put on the wire. The two
+   * arms must differ here; equal numbers mean the control did not subtract.
+   */
+  systemPromptChars: number;
   /** AIX-007: what caching actually did, per session. */
   cacheStats: CacheStats;
+  /**
+   * FIX-006 AC1/AC2 grade the artefact, not the transcript — which node type the
+   * model reached for, and what the body it wrote looks like.
+   */
+  files?: ComponentFiles;
   transcript: AuthoringOutcome['transcript'];
   error?: string;
 }
@@ -182,11 +268,25 @@ async function measureOne(
   model: string | undefined,
   timeoutMs: number,
   style: { guidance: boolean; vocabulary: StyleVocabulary; tokenRecords: StyleTokenRecord[] },
-  effort: AiEffort
+  effort: AiEffort,
+  codeGuidance: boolean
 ): Promise<SessionRecord> {
   let servedModel = model ?? '(provider default)';
+  let systemPromptChars = 0;
   const chat: AuthoringChatFn = async (request, callbacks) => {
-    const response = await provider.chatStream({ ...request, ...(model ? { model } : {}) }, callbacks ?? {});
+    // FIX-006 A/B. The treatment arm passes the request through untouched, so it
+    // is byte-identical to what the editor sends; the control arm subtracts the
+    // two blocks and records what it sent.
+    let outbound = request;
+    if (codeGuidance) {
+      const system = request.messages.find((m) => m.role === 'system');
+      systemPromptChars = typeof system?.content === 'string' ? system.content.length : 0;
+    } else {
+      const stripped = withoutCodeGuidance(request);
+      outbound = stripped.request;
+      systemPromptChars = stripped.systemChars;
+    }
+    const response = await provider.chatStream({ ...outbound, ...(model ? { model } : {}) }, callbacks ?? {});
     servedModel = response.model;
     return response;
   };
@@ -250,7 +350,10 @@ async function measureOne(
     styleGuidance: style.guidance,
     styleStats,
     effort,
+    codeGuidance,
+    systemPromptChars,
     cacheStats: cacheStatsFor(outcome.metrics),
+    files: outcome.files,
     transcript: outcome.transcript,
     error: outcome.error
   };
@@ -288,6 +391,10 @@ function summarise(records: SessionRecord[]): void {
 
   console.log('\n── Summary ─────────────────────────────────────────────');
   console.log(`style guidance:         ${records[0]?.styleGuidance ? 'ON' : 'OFF'}`);
+  console.log(
+    `code guidance:          ${records[0]?.codeGuidance ? 'ON' : 'OFF'}` +
+      `   (system prompt ${records[0]?.systemPromptChars ?? 0} chars on the wire)`
+  );
   console.log(`effort:                 ${records[0]?.effort ?? '-'}`);
   console.log(`sessions:               ${done}`);
   console.log(`valid on first attempt: ${firstTry.length}/${done}`);
@@ -331,6 +438,8 @@ async function main(): Promise<void> {
   const only = args.only ? args.only.split(',').map((s) => s.trim()) : null;
   // AIX-006 A/B: --styles=off is the control arm (no vocabulary, no lint).
   const styleGuidance = (args.styles ?? 'on').toLowerCase() !== 'off';
+  // FIX-006 A/B: --code-guidance=off subtracts THREE WAYS TO COMPUTE + CODE STYLE.
+  const codeGuidance = (args['code-guidance'] ?? 'on').toLowerCase() !== 'off';
   // AIX-007: sweep reasoning depth. Unset runs whatever the loop ships with.
   const effort = (args.effort ?? AUTHORING_EFFORT) as AiEffort;
   if (!AI_EFFORT_LEVELS.includes(effort)) {
@@ -356,9 +465,13 @@ async function main(): Promise<void> {
 
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const styleTag = styleGuidance ? 'styles-on' : 'styles-off';
+  const codeTag = codeGuidance ? 'code-on' : 'code-off';
   const outFile =
     args.out ??
-    path.join(DEFAULT_OUT_DIR, `${stamp}-${providerId}-${model ?? 'default'}-${styleTag}-effort-${effort}.jsonl`);
+    path.join(
+      DEFAULT_OUT_DIR,
+      `${stamp}-${providerId}-${model ?? 'default'}-${styleTag}-${codeTag}-effort-${effort}.jsonl`
+    );
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
   console.log(
@@ -372,7 +485,17 @@ async function main(): Promise<void> {
   for (const prompt of prompts) {
     console.log(`▶ ${prompt.slug} → ${prompt.componentPath}`);
     try {
-      const record = await measureOne(prompt, graph, provider, providerId, model, timeoutMs, style, effort);
+      const record = await measureOne(
+        prompt,
+        graph,
+        provider,
+        providerId,
+        model,
+        timeoutMs,
+        style,
+        effort,
+        codeGuidance
+      );
       records.push(record);
       fs.appendFileSync(outFile, JSON.stringify(record) + '\n');
       console.log(

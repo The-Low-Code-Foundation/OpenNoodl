@@ -136,8 +136,8 @@ anything on it.
 
 | AC | Status | Evidence |
 |---|---|---|
-| **1** — the request produces a Function/Expression, not a Script-in-a-component | 🔴 **not driven** | Needs a live authoring run; prompt-only change, no spec can grade it |
-| **2** — generated code uses `const`/`let` and `slice` | 🔴 **not driven** | Same run as AC1 |
+| **1** — the request produces a Function/Expression, not a Script-in-a-component | ✅ **DRIVEN** | s39, 20 live sessions. **0/10 Script nodes** in the shipped arm; every run authored a `Expression`, `JavaScriptFunction` or `Substring`+`Expression` graph. ⚠️ The control arm scores the same — see below |
+| **2** — generated code uses `const`/`let` and `slice` | ✅ **DRIVEN** | Same 20 sessions. **0/10 `var`, 0/10 regex** in the shipped arm; the bodies are `const` + `.slice(1)`/`.substring(1)` or a bare `Expression`. ⚠️ Same caveat |
 | **3** — bad Script warns, `define({…})` Script does not | ✅ **DRIVEN** | Over real MCP stdio into a scratch copy: bad ⇒ `warnings: 1`, `unrunnable-script-node`; `define({…})` ⇒ `warnings: 0`. Both `errors: 0` and `"created"`, so it advises without blocking |
 | **4** — the block renders in both clients' context, on the wire | ✅ **BOTH HALVES DRIVEN** | MCP (s36): `get_project_info` over real stdio — read-write carries `THREE WAYS TO COMPUTE` + `CODE STYLE` (16,213 chars), read-only omits them (667). **Editor (s38): `systemPrompt()` called live in the renderer** — `create` 14,505 chars and `update` 14,755 chars, both carrying `THREE WAYS TO COMPUTE` **and** `CODE STYLE`, with an absent-string control returning `false` so `includes` is discriminating |
 
@@ -164,6 +164,109 @@ copy decision.
 ⚠️ **`authoringTraps` is gated on `--allow-writes`** (`read.ts:116`). A read-only probe omits it *by
 design* — a first pass here read that absence as a defect. Measure the read-write arm.
 
-🔴 **AC1 and AC2 remain the undriven half**, and they are the reason fixes 1+2 are still ungraded:
-both are prompt changes, so the honest grade is a re-run of the authoring measurements on the live
-build loop.
+## AC1 + AC2 — driven (2026-08-16, session 39)
+
+**Instrument:** `packages/noodl-editor/scripts/aix002-measure` — the real `AuthoringSession`, the real
+context builder and the real validation gate, against the real 44-component `git-repo-utf8` project,
+with a directly-constructed Anthropic provider. No Electron, no UI. The request was added to the
+corpus as `fix006-string-math` and **names no node type and no JavaScript**: a request saying "with a
+Function node" or "use slice" would have answered both criteria in the question.
+
+**Design: 2 models × 2 arms × n=5 = 20 sessions.** All 20 authored, all valid on first submit.
+
+| model | arm | n | Script node | `var` | regex | `Substring` node | inline `.slice`/`.substring` |
+|---|---|---|---|---|---|---|---|
+| `claude-sonnet-5` | guidance **ON** | 5 | **0** | **0** | **0** | 1 | 4 |
+| `claude-sonnet-5` | guidance OFF | 5 | 0 | 0 | 0 | 5 | 0 |
+| `claude-haiku-4-5` | guidance **ON** | 5 | **0** | **0** | **0** | 2 | 3 |
+| `claude-haiku-4-5` | guidance OFF | 5 | 0 | 0 | 0 | 5 | 0 |
+
+`claude-sonnet-5` is the shipped Anthropic default and carries `recommendedFor: ['act']`, so the ON
+arm is what a real user gets; `claude-haiku-4-5` is the mid-tier model whose behaviour motivated the
+pushed-channel design in this module's own header. Effort `low` — `AUTHORING_EFFORT`, as shipped.
+
+✅ **Both criteria pass in the shipped configuration.** Zero Script nodes, zero `var`, zero regex
+across 10 treatment sessions on two models. A representative body: `const numeric =
+Inputs.Price.slice(1); const value = Number(numeric); Outputs.Discounted = value * 0.9;`
+
+### 🔴 The control arm passes identically, so the blocks are NOT what makes it pass
+
+The control subtracts `THREE_WAYS_TO_COMPUTE` and `CODE_STYLE` — and nothing else — from the system
+prompt on the wire, and scores **0 Script nodes, 0 `var`, 0 regex in 10 sessions too**. The reported
+2019-shaped output does not reproduce on this request on either model, with or without the fix.
+
+⚠️ **This is the "a guard is not proven by a run where the hazard was absent" shape.** The honest
+grade is: *the criteria are met, and the fix's contribution to meeting them is unmeasured.* A
+treatment arm alone would have read as proof and been worth nothing — a current model writes `const`
+and `slice` unprompted, so a clean result was always equally consistent with the blocks doing nothing.
+
+### ✅ The arms are not identical, which is what makes the null result readable
+
+The obvious boring explanation for two arms scoring the same is that the subtraction silently failed.
+Ruled out three ways:
+
+1. **The system prompt differs on the wire** — 14,505 chars ON, 13,003 OFF, recorded per session.
+   The ON figure is byte-for-byte s38's live-renderer reading for `create`, so the treatment arm is
+   the editor's real prompt and not a harness approximation.
+2. **The strip throws rather than degrades.** It removes the imported constants by exact string
+   match and then re-checks four distinctive markers (`THREE WAYS TO COMPUTE`, `CODE STYLE`,
+   `never var`, `Reach for the Script node LAST`); any of them surviving, a missing block, or a
+   non-string system message aborts the run. A no-op control cannot complete.
+3. 🔴 **The arms produce visibly different graphs.** Guidance OFF reached for the dedicated
+   `Substring` node **10/10**; guidance ON did so **3/10**, doing the string surgery inline in the
+   Expression or Function body instead (**7/10** vs **0/10**). The blocks measurably change
+   behaviour — just not along the axis the criteria measure.
+
+⚠️ **And the direction of that difference is worth a ruling.** The blocks' one measured effect here
+is to move work *out* of a purpose-built node and *into* code. `THREE_WAYS_TO_COMPUTE` opens
+"reaching past them costs the user a node that cannot run", and the control arm — with the block
+removed — is the arm that consistently found `Substring`. Whether that is a regression depends on
+whether a `Substring` node or an inline `.slice(1)` is the better thing to hand a beginner; this
+task should not decide that silently. **Ruling added to the phase's list.**
+
+### What this instrument cannot say
+
+⚠️ **The decomposition half of the report is out of reach here.** The reporter's complaint was a
+Script node *inside a component that should not have existed*, and `AuthoringSession` is handed its
+`componentPath` up front — the "should this be a component at all" decision belongs to
+`decomposition.ts` and the planner (§4 of the mechanism). This run grades **node choice and code
+style**, which is what AC1 and AC2 are worded to ask, and says nothing about the over-decomposition.
+
+⚠️ Two models is not every model, and the reporter's model is unknown. The result is "does not
+reproduce on the shipped default or on the mid-tier probe", not "cannot happen".
+
+**Cost:** $0.53 across 22 sessions (20 grid + 2 pilot).
+
+### 🔴 The harness was dead, and nothing anywhere would have said so
+
+The first run failed with `Cannot read properties of undefined (reading 'getActiveProvider')`.
+`packages/noodl-editor/scripts/aix002-measure` last changed **2026-07-26**; `AuthoringSession` began
+calling `AiClient.roleRequestFields` on **2026-08-08** (`5af9fde6`, LAS-009 roles), which put
+`AiConfigStore` on the authoring path for the first time. **The harness has been broken for eight
+days** — and it is in no `tsconfig` `include`, no jest project and no jasmine suite, so its only
+gate is a human choosing to run it.
+
+The stub in `build.mjs` was wrong twice over, and the second one is the one that matters:
+
+1. **Nothing reached the importers.** esbuild's `__toESM` builds a namespace from the module's OWN
+   KEYS; a Proxy carrying only a `get` trap has none, so every named import from the stubbed store
+   resolved to `undefined`. A `get` trap cannot survive CJS→ESM interop.
+2. 🔴 **Had the interop worked, the stub would have corrupted every request.** A catch-all returning
+   a callable noop makes `getActiveProvider()` **truthy**, which sends `resolveRole` down its
+   override branch (`client/roles.ts:110-138`) and spreads a noop `provider` *and* `model` onto every
+   request. The harness builds its own provider from `.env`, so the correct stub is the one that says
+   **AI is off** — `getActiveProvider: () => null` — the branch that contributes only the role tag.
+
+⚠️ **`--model` is now effectively required.** The header's *"omit to use the provider's registry
+default"* was only ever true through `AiConfigStore.getModel()`, which the stub cannot supply;
+omitting it now fails fast with *"No model specified for the Anthropic provider"* rather than
+silently measuring some other model.
+
+✅ **Sampling was checked, not assumed:** `AuthoringSession` sets no temperature and `claudeFrontier`
+declares `sampling: false`, so none is sent and the API default applies. The five runs per cell are
+independent samples, not one result printed five times.
+
+✅ **The grader was checked in both directions** — the reported defect, reconstructed as a
+`Javascript2` node containing `var` and `s.replace(/[^0-9.]/g, '')`, fails both criteria; the real
+runs pass both. A grader that cannot fail grades nothing. It also scores a run that wrote **no** code
+as `n/a` rather than `pass`, so an arm that dodged AC2 cannot borrow credit for answering it.
