@@ -4,7 +4,10 @@
 future phase re-litigates one. Supersedes the "rulings queue" in [README.md](README.md), which now
 points here.
 
-**Status: the queue REOPENED 2026-08-15 — D14 ruled; D15, D16 and (since 2026-08-16) D17 open.** D1 and
+**Status: the queue is EMPTY again — D15, D16 and D17 all ruled 2026-08-16 (fourteenth session).** It
+reopened 2026-08-15 with D14; all three successors are now closed and every one was ruled **as
+recommended**, which is recorded because a queue emptied by agreement is weaker evidence than one
+emptied by argument — see the note under D17. D1 and
 D10 were ruled 2026-08-14 (first session, written up in
 [PRIOR-ART-RECONCILIATION.md](PRIOR-ART-RECONCILIATION.md)); **D2–D9 and D11 were ruled 2026-08-14
 (second session)** and are recorded below. R6's clarification and the UNI-010 verifier question are
@@ -12,17 +15,15 @@ in the reconciliation document. **D13 was ruled 2026-08-14 (fourth session)** �
 delivery layer (LearnBook) is [phase 68](../phase-68-learnbook/README.md), on the platform stack —
 and is **amended 2026-08-15** by D14 (an editor *client*; the build does not move).
 
-> 🔴 **The queue is no longer empty, and that is deliberate.** 2026-08-15 Richard scoped a new
-> surface — the community, mirrored inside the app — which became **UNI-011** and **D14**. Two
-> questions it raises are *not* ruled (**D15**, **D16**) and both change what gets built, so
-> neither should be discovered mid-build. Anything that reads "the queue is empty" elsewhere in
-> this phase is now stale; this file is the register.
+> ✅ **The queue reopened 2026-08-15 and closed again 2026-08-16.** D14 arrived with **D15** and
+> **D16** open; **D17** (curriculum hosting) was added 2026-08-16 out of CURRICULUM-DESIGN §9.3,
+> owed by LEARN-002 since 2026-08-09 and never ruled. All three were put to Richard in one sitting
+> — *before* the work they gate, which was the whole point of raising them — and all three were
+> ruled 2026-08-16. Their sections below carry the rulings.
 >
-> ⚠️ **A third was added 2026-08-16: D17, curriculum hosting.** It is not new work — it is
-> CURRICULUM-DESIGN §9.3, owed by LEARN-002 since 2026-08-09 and never ruled, and one of the two
-> items §11 records as *"owed, and phase 67 never carried"*. The other of the two, the tutor
-> overlay, was **built** the same day. D17 blocks distribution only; authoring and UNI-010 are
-> unaffected, because UNI-007 made the lesson reader injectable.
+> 🔴 **The rule that outlives them:** D15 and D16 gate what UNI-011 may **ship**, not what it may
+> **be built as**. Finding that out after building it is the expensive order, and that is why they
+> were asked while the platform track was starting rather than when the mirror was ready.
 
 > 🔴 **Do not re-litigate any of these.** If one turns out to be wrong, amend it here with a date
 > and a reason — do not leave two live documents in disagreement. That failure mode is what
@@ -48,9 +49,9 @@ and is **amended 2026-08-15** by D14 (an editor *client*; the build does not mov
 | ~~D12~~ | ~~LEARN-002's D1–D6~~ | 🔴 **STRUCK** — a false premise; all six answered 2026-08-09 | 08-14 |
 | **D13** | Coaching delivery (LearnBook) | **Phase 68, platform repo, D1 stack — not NodeGX**; reuses UNI-005's roster and UNI-006's state machine; NodeGX rebuild is a later tranche · ⚠️ **amended 08-15 by D14** — an editor *client* is in scope; the *build* does not move | 08-14 |
 | **D14** | Community surface: web, editor, or both | 🔴 **BOTH — the web is canonical and public; the editor MIRRORS it against the same API.** Editor-only features are the transition incentive, not a different feature set | **08-15** |
-| **D15** | Community for org-minor accounts | 🟡 **OPEN** — blocks UNI-011's visibility rules | — |
-| **D16** | The never-empty launch threshold | 🟡 **OPEN** — blocks UNI-011 shipping, not building | — |
-| **D17** | Curriculum hosting — where lessons are served from | 🟡 **OPEN** — blocks *distribution*, not authoring. CURRICULUM-DESIGN §9.3, unowned until now | — |
+| **D15** | Community for org-minor accounts | **Default OFF; org admin may enable READ-ONLY.** Never write, never post, in either client | **08-16** |
+| **D16** | The never-empty launch threshold | **30 threads · 3 consecutive weeks with a call held · median first reply < 24h.** Until met, the entry point opens the browser | **08-16** |
+| **D17** | Curriculum hosting — where lessons are served from | **Part of the platform API under D14; GitHub Pages as v0.** 🔴 A lesson must stay installable from a **local directory with no origin**, whatever else changes | **08-16** |
 
 ---
 
@@ -436,49 +437,155 @@ editor.
 
 ---
 
-## D15 — community visibility for org-minor accounts · 🟡 OPEN
+## D15 — community visibility for org-minor accounts · ✅ RULED 2026-08-16
 
-**The question:** is the community surface — web, editor, or both — shown at all to the org-owned
-pseudonymous accounts D10 created for under-16s?
+**Ruled: default OFF. An org admin may enable READ-ONLY. There is no setting that lets an org-minor
+account write to the community, in either client.**
+
+```
+org-minor account
+├─ default              ->  community surface ABSENT      (web AND editor)
+└─ admin opt-in         ->  READ-ONLY
+                            no posting · no replying · no reactions · no DMs · no RFP contact
+                            (no setting exists that grants any of these)
+```
+
+🔴 **The ceiling is the ruling, not the default.** A default can be changed by whoever owns the
+setting; a capability that was never built cannot be turned on by an admin who misunderstands the
+consequence. D10 kept child PII off our systems and made the school the data controller — but the
+exposure this ruling governs is *public speech by a minor readable by adults we do not vet*, and no
+data-controller arrangement makes that safe. So the org admin's switch chooses between **absent** and
+**read-only**, and the write path is not on the other end of any switch.
+
+⚠️ **Three consequences that are implementation, not policy, and are easy to get wrong:**
+
+1. **Absent means absent.** Not rendered-and-disabled, exactly as D11 ruled for the analytics row.
+   A greyed-out "Post" button tells a pupil the door exists and that they are the reason it is shut.
+2. 🔴 **This binds both clients, and the editor is the one that will drift.** D14 made the editor a
+   *mirror*, and a mirror's natural implementation renders whatever the API returns. The visibility
+   rule therefore has to live behind the **API**, not in each client's rendering — an editor build
+   that decides for itself is one release away from disagreeing with the web.
+3. **It composes with D9 obligation 5 and phase 68's L5 by construction now**, which was the
+   recommendation's argument and is worth restating as a check rather than an intention: three
+   surfaces agreeing because they read one flag is different from three surfaces agreeing because
+   three people remembered.
+
+**The question it answered:** is the community surface — web, editor, or both — shown at all to the
+org-owned pseudonymous accounts D10 created for under-16s?
 
 **Why it is not answerable by analogy.** D10 made the school the data controller and kept child PII
 off our systems, but it ruled on *identity*, not on *an open forum*. A pupil posting into a public
 thread is a different exposure from a pupil holding an account: it is public speech by a minor,
 under a handle the school can map back to them, readable by adults we do not vet.
 
-**Recommendation (not a ruling):** default **off**, with the org admin able to enable **read-only** —
-matching D9 obligation 5 and phase 68's L5. 🔴 The value of matching is not tidiness: three surfaces
-disagreeing about what a minor may do is how one of them ends up wrong, and that is the FUN-001
-shape this phase has already paid for once.
+**Why it was not answerable by analogy.** D10 made the school the data controller and kept child PII
+off our systems, but it ruled on *identity*, not on *an open forum*. A pupil posting into a public
+thread is a different exposure from a pupil holding an account: it is public speech by a minor, under
+a handle the school can map back to them, readable by adults we do not vet.
 
-**What it blocks:** UNI-011's visibility rules only. The mirror can be built before this is ruled; it
-cannot ship to an org tenant.
-
----
-
-## D16 — the never-empty threshold · 🟡 OPEN
-
-**The question:** what must be true of the community before the editor surfaces it to every user?
-
-**Why it needs a number rather than a judgement.** A mirror that opens onto three threads from two
-months ago advertises a dead community to every user, every day, from inside the product — and a
-first impression of a community is made once. It is not recoverable by shipping more code.
-
-**Recommendation (not a ruling):** a named, checkable threshold before the entry point appears — for
-example **30 threads, three consecutive weeks with a call held, and a median first reply under 24
-hours**. Until it is met, the entry point opens the browser instead of the mirror.
-
-⚠️ **The related design obligation, which is not optional either way:** the mirror's home must be
-*structurally* incapable of looking empty — events, replays, release notes and the prefab shelf all
-exist whether or not anyone posted this week. A threshold protects the launch; the composition
-protects every quiet week after it.
+**What it unblocks:** UNI-011's visibility rules. The mirror was always buildable; it can now ship to
+an org tenant, against a rule that lives in the API.
 
 ---
 
-## D17 — curriculum hosting · 🟡 OPEN
+## D16 — the never-empty threshold · ✅ RULED 2026-08-16
 
-**The question:** where are lesson manifests served from, and by what mechanism does an editor find
-the list of them?
+**Ruled: the editor surfaces the community only once all three of these hold — 30 threads, three
+consecutive weeks in which a call was held, and a median first reply under 24 hours. Until then the
+entry point opens the browser.**
+
+```
+if (threads >= 30 && weeksWithCallHeld >= 3 && medianFirstReplyHours < 24)
+     entry point  ->  the in-editor mirror
+else entry point  ->  the browser, at the web community
+```
+
+🔴 **The threshold is a gate on the *mirror*, never on the *community*.** The entry point exists
+either way and always goes somewhere real — this ruling chooses *where*, and the failure it prevents
+is an in-product surface that advertises a dead community to every user, every day. A first
+impression of a community is made once, and it is not recoverable by shipping more code.
+
+⚠️ **Three things about the numbers, so they are not treated as more precise than they are:**
+
+1. **They are a floor, not a target, and they are cheap to re-rule.** If the community clears 30
+   threads in a fortnight the gate was never the constraint; if it takes six months the number was
+   not the reason. Amend here with a date if it turns out to be wrong — do not quietly reinterpret it.
+2. 🔴 **All three must be *computed*, and the third is the one that will get faked.** "Median first
+   reply < 24h" over a forum with three staff-answered threads is a true statement about nothing.
+   Whatever computes it must state its **n** alongside it, for the same reason a one-sided budget
+   assertion is worth less than one that reports its margin (see the gate-that-could-not-report-its-
+   own-margin entry above). **A threshold nobody can see the approach to is a threshold that gets
+   crossed by rounding.**
+3. **"Weeks with a call held" is deliberately about an event, not a post count.** It is the one
+   component that cannot be manufactured by a quiet week of seeding.
+
+✅ **The design obligation stands and is NOT discharged by this ruling** — it was never an
+alternative to it. The mirror's home must be *structurally* incapable of looking empty: events,
+replays, release notes and the prefab shelf exist whether or not anyone posted this week. **The
+threshold protects the launch; the composition protects every quiet week after it.** Building only
+the threshold ships a surface that passes the gate and then decays.
+
+---
+
+## D17 — curriculum hosting · ✅ RULED 2026-08-16
+
+**Ruled: the curriculum index is part of the platform API under D14 — one content path, the same one
+the web reads — with GitHub Pages as the v0 while `community.nodegx.dev` and the platform do not
+exist.**
+
+This is the posture D7 already took for UNI-004: *build it so the thing that does not exist yet can be
+absent.* The v0 is not a different design, it is the same fetch against a different origin.
+
+```
+v0   editor ──fetch──▸ GitHub Pages (curriculum index)     no domain, no platform
+v1   editor ──fetch──▸ platform API  ◂──fetch── web        one content path (D14)
+ALWAYS
+     editor ──read───▸ a local directory, no origin at all  ◂── UNI-010's lessons live here
+```
+
+🔴 **The property that survives every version of this, and it is the ruling's real content:** a lesson
+must stay installable **from a local directory with no origin**. That is what UNI-010's locally
+authored lessons are, it is what D5 made the Learning folder for, and it is the one path with no
+dependency on any of the above. UNI-007 already built it — `LessonModelArgs.read` — and it must not
+be regressed into a URL fetch when the platform arrives and a single code path looks tidier.
+
+⚠️ **The v0 is a real commitment, not a placeholder, and it carries D2's cost:** GitHub Pages does not
+follow a repo rename. The rename is already done and `has_pages: false` was re-verified 2026-08-16 —
+so attaching Pages to `nodegx-community` is safe **now**, and this ruling is the thing that will
+attach it. ✅ Checked today rather than remembered; two earlier handovers carried the rename as
+outstanding after it had been done.
+
+**Why it intersected three rulings rather than standing alone** — unchanged, and the ruling honours
+all three: **D2** (the domain is unregistered, so "on the site" is not free), **D9** (a curriculum on
+the hosted tier inherits that ops posture; on Pages it does not), **D14** (a curriculum fetched by
+the editor from a different origin than the web reads is the second content path D14 exists to
+prevent — which is why the v0 is explicitly temporary).
+
+**What it blocked:** distribution of the authored curriculum. It blocked **neither authoring nor
+UNI-010**, both of which already work against the injected reader.
+
+---
+
+## ⚠️ A note on how these three were ruled, because it is evidence about the register
+
+All three were ruled **as recommended**, in one sitting, by the person the recommendations were
+written for. That is the cheapest possible outcome and it is worth one paragraph of suspicion:
+**a recommendation adopted wholesale is weaker evidence of a good decision than one argued down.**
+
+What makes these three defensible anyway is that the recommendations were not free-standing opinions —
+each was derived from a ruling already made and paid for (**D15** from D10 + D9's obligation 5;
+**D16** from D14's mirror; **D17** from D2 + D9 + D14), and the register records the derivation, not
+just the conclusion. 🔴 **The check to apply later is therefore not "was it agreed" but "does the
+parent ruling still say what this was derived from".** If one of D9, D10, D14 is ever amended, these
+three are downstream of it and must be re-read — that is the specific thing this note exists to make
+possible.
+
+**Where each was strengthened past its recommendation** — so the sitting is not recorded as pure
+assent: **D15** turned "default off, admin may enable read-only" into a **capability ceiling** (no
+write path exists to be switched on) and moved the rule behind the **API** rather than each client;
+**D16** added that all three components must be **computed with their `n` visible**, and that the
+composition obligation is not discharged by the threshold; **D17** named the **local-directory path**
+as the invariant that outlives both hosting choices.
 
 **Why it is being raised now.** It is the second of CURRICULUM-DESIGN §11's *"two owed items phase 67
 never carried"*. The first — the tutor overlay — was built 2026-08-16

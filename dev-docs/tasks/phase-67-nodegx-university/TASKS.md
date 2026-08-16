@@ -13,11 +13,11 @@ gates nothing; services not features) are acceptance criteria in every task.
 **Surfaces:** `platform` = the new repo (D1), `editor` = this repo, `bridge` = the
 editor-outbound sync between them. No task opens an inbound connection to the user's machine.
 
-> ⚠️ **THE RULINGS QUEUE REOPENED 2026-08-15.** It was emptied 2026-08-14 (D2–D9, D11) and the
-> Blocked column became a record of what each task must *honour*. That is still true of UNI-001…010.
-> **UNI-011 is new**, and it arrived with **D14 ruled** (the web is canonical, the editor mirrors it
-> against the same API) plus **D15 and D16 open**. The register is **[RULINGS.md](RULINGS.md)** —
-> read it, not this banner.
+> ✅ **THE RULINGS QUEUE IS EMPTY AGAIN — D15, D16 and D17 all ruled 2026-08-16.** It was emptied
+> 2026-08-14 (D2–D9, D11), reopened 2026-08-15 with UNI-011 and D14, and closed again. **Nothing in
+> this phase is waiting on a decision.** The Blocked column is once more a record of what each task
+> must *honour*, not what it is waiting for. The register is **[RULINGS.md](RULINGS.md)** — read it,
+> not this banner.
 
 | Task | One line | Surface | Tier | Effort | Rulings it must honour |
 |---|---|---|---|---|---|
@@ -34,7 +34,7 @@ editor-outbound sync between them. No task opens an inbound connection to the us
 
 | [UNI-012](UNI-012-F4-ON-A-PACKAGED-INSTALL.md) | ship the render harness with the sidecar, so F4 is answerable on a packaged install | editor packaging + MCP | falls out of UNI-010 | M | 🆕 **Added 2026-08-16.** ✅ **RULED by Richard — ship the harness**, the first of UNI-010's two options. 🔴 **Scoped, NOT built**: it is verifiable only against a packaged build, and a shipping claim nobody exercised is the artifact this phase has found wrong four times. ⚠️ **Two facts measured while scoping, and the first qualifies the ruling** — the harness probes for a **system Chrome** and refuses without one, so shipping it makes `allow_unrendered` *rare* rather than unnecessary (**both halves of the either/or are probably wanted**); and rendering through the sidecar's own Electron is closed by `ELECTRON_RUN_AS_NODE=1`, which is load-bearing and measured. ✅ CN-001 already did the structural half (`@nodegx/render-measure`) |
 
-| [UNI-011](UNI-011-THE-COMMUNITY-MIRRORED-IN-THE-EDITOR.md) ⭐ | the community mirrored inside the app — same API as the web — plus the editor-only half: ask-about-this-node, share-a-capture | editor + bridge | 2 | M/L | 🆕 **Added 2026-08-15.** ✅ **D14 ruled** — web canonical, editor **mirrors** it; editor-only features are the transition incentive, not a reduced surface. 🟡 **D15** (org-minor visibility) and **D16** (never-empty threshold) **OPEN — both block shipping, neither blocks building**. 🔴 The renderer is `nodeIntegration: true` **and so is the launcher** (`pages/ProjectsPage`, same `BrowserWindow`) — **no post body may render as HTML in it**; pick the `<webview>` island or raw-markdown-plus-sanitiser and prove the boundary with a known-**bad** corpus. ⚠️ Phase 37 (project tabs) is the "reach it mid-project" enabler and is **scoped, not built** — must not be assumed |
+| [UNI-011](UNI-011-THE-COMMUNITY-MIRRORED-IN-THE-EDITOR.md) ⭐ | the community mirrored inside the app — same API as the web — plus the editor-only half: ask-about-this-node, share-a-capture | editor + bridge | 2 | M/L | 🆕 **Added 2026-08-15.** ✅ **D14 ruled** — web canonical, editor **mirrors** it; editor-only features are the transition incentive, not a reduced surface. ✅ **D15 and D16 RULED 2026-08-16 — UNI-011 is fully unblocked, to build *and* to ship.** D15 → org-minor accounts default **absent**, admin may enable **read-only**, and 🔴 **no write path exists to be switched on**; the rule lives **behind the API**, not in each client, or the mirror drifts from the web. D16 → the entry point opens the **browser** until **30 threads · 3 consecutive weeks with a call · median first reply < 24h**, each **computed with its `n` visible**; ⚠️ the never-look-empty *composition* obligation is **not** discharged by the threshold. 🔴 The renderer is `nodeIntegration: true` **and so is the launcher** (`pages/ProjectsPage`, same `BrowserWindow`) — **no post body may render as HTML in it**; pick the `<webview>` island or raw-markdown-plus-sanitiser and prove the boundary with a known-**bad** corpus. ⚠️ Phase 37 (project tabs) is the "reach it mid-project" enabler and is **scoped, not built** — must not be assumed |
 
 **Effort is per-v1-slice, not per-dream** — every task file carries an explicit "not in v1" list.
 
@@ -52,13 +52,15 @@ D9 and D11 all ruled**, and the three curriculum blockers fact-checked against s
 (GitHub Pages does not follow a repo rename) is still open and still safe. Two handovers carried this
 as an outstanding action after it had already been done.
 
-🔴 **But only half of it, and the missing half is the D2 failure mode itself.** The repo
-**description still reads *"NodeGX University — the community platform…"***. D2 ruled the site is
-**NodeGX Community** and University is one wing of it — so the name moved and the sentence about the
-name did not, in the one place every future contributor reads first. **One `gh repo edit` fixes it.**
+✅ **The other half is DONE TOO — 2026-08-16.** The repo description read *"NodeGX University — the
+community platform…"* for two days after D2 ruled the site is **NodeGX Community**: the name moved and
+the sentence about the name did not, in the one place every future contributor reads first. It now
+names Community as the platform and University as **the learning wing**, which is what D2 said.
 
-🔴 **And the number that should decide what the next sitting does: the repo has `size: 0` and no
-commits since it was created on 2026-08-14.** Eight of this phase's twelve tasks live in it.
+🔴 **And the number that decided what this sitting does: `size: 0`, no branches, and `/commits`
+returns HTTP 409 *"Git Repository is empty"*** — re-measured 2026-08-16, not carried. Eight of this
+phase's twelve tasks live in it, and thirteen consecutive sessions were spent in the editor. **The
+platform track starts here.**
 
 **UNI-001 + UNI-009 (minimal cut) land together.** A login with nothing behind it is a broken
 promise — the account must open onto *something* on day one: replays, tutorials index, the
