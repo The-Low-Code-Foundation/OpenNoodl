@@ -86,13 +86,35 @@ reason.
 
 ## AC3 and AC4
 
-**AC3.** `tests/fixtures/kit-annotated` typechecks clean; `src/index.d.ts` also compiles standalone
-under `tsc --noEmit --strict`. 🔴 **`kit-broken` is what makes the clean one mean anything** — a
-`.d.ts` full of `any`, or one that never resolved, produces identical silence. Five planted mistakes,
-each asserted **by the identifier it names**, not by counting.
+**AC3.** `tests/fixtures/kit-annotated` typechecks clean. 🔴 **`kit-broken` is what makes the clean
+one mean anything** — a `.d.ts` full of `any`, or one that never resolved, produces identical
+silence. Five planted mistakes, each asserted **by the identifier it names**, not by counting.
 ⚠️ **One fault per definition, and that was measured:** a single literal holding all five reported
 **two**. TypeScript elaborates an assignability failure and stops early, so a test "passing" for the
 third fault would have been passing on someone else's error.
+
+### 🔴 `skipLibCheck: true` made the standalone-compile gate measure nothing
+
+Worth its own heading because it was believed for about twenty minutes and written into this file
+before the control ran. `skipLibCheck` skips type checking of **every `.d.ts`**, not just the bundled
+lib files. So both the new jest gate *and* the hand-run
+`npx tsc --noEmit --strict --skipLibCheck src/index.d.ts` that this file originally cited as ✅
+passed happily **with `NoSuchTypeAtAll` substituted into the published types**. A `.d.ts` cannot be
+graded by a tool configured to skip `.d.ts` files, and nothing says so.
+
+Corrected to `skipLibCheck: false` and mutation-proven. Which immediately surfaced a real conflict
+the vacuous version had been hiding:
+
+| Environment | Result |
+|---|---|
+| **A kit project** (`types: []` — no `node_modules`, what it ships for) | ✅ clean |
+| **A project that already has `@types/react`** (this repo; CN-007's examples) | ⚠️ exactly one: `Cannot redeclare block-scoped variable 'React'` |
+
+The file declares a global `React: any` because a kit has none to resolve and every kit opens by
+reaching for it. React publishes its own UMD global, so the two collide wherever both are in scope.
+**Pinned by a test asserting exactly that one diagnostic** — a stated limitation rather than a hidden
+one, and if it ever becomes two, somebody hears about it. The remedy is in the `.d.ts` beside the
+declaration: delete that line and use React's own types, which are better than `any`.
 
 **AC4 — the cashflow kit, annotated: 0 diagnostics.** All five nodes, ~60 ports.
 🔴 **A clean run is exactly the reading that must not be trusted**, so three faults were injected into

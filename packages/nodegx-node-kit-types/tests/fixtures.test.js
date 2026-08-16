@@ -36,6 +36,53 @@ function diagnosticsFor(fixture) {
     .map((d) => ts.flattenDiagnosticMessageText(d.messageText, ' '));
 }
 
+describe('the published .d.ts itself', () => {
+  /**
+   * Two environments, because the file is consumed in two and they differ.
+   *
+   * @param {string[]|undefined} types `[]` models a kit project — no
+   *   `node_modules`, so no `@types/*` in scope. `undefined` is the default,
+   *   which pulls in every `@types` package it can find above the file.
+   */
+  const compile = (types) => {
+    const file = path.join(__dirname, '..', 'src', 'index.d.ts');
+    const program = ts.createProgram([file], {
+      strict: true,
+      target: ts.ScriptTarget.ES2020,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      noEmit: true,
+      // 🔴 MUST stay false, and this was measured the hard way: `skipLibCheck`
+      // skips type checking of *every* `.d.ts`, not just the bundled lib files.
+      // With it on, this test — and an `npx tsc --noEmit --strict --skipLibCheck`
+      // run on the same file — passed happily with `NoSuchTypeAtAll` substituted
+      // into the file. It graded nothing at all.
+      skipLibCheck: false,
+      ...(types ? { types } : {})
+    });
+    return ts
+      .getPreEmitDiagnostics(program, program.getSourceFile(file))
+      .map((d) => ts.flattenDiagnosticMessageText(d.messageText, ' '));
+  };
+
+  it('compiles clean in a kit project, which is what it ships for', () => {
+    expect(compile([])).toEqual([]);
+  });
+
+  it('collides with @types/react exactly once, and no more than that', () => {
+    // A stated limitation rather than a hidden one. The file declares a global
+    // `React: any` because a kit has no React types to resolve and every kit
+    // opens by reaching for it — but in a project that *does* have
+    // `@types/react` (this repo, and anywhere CN-007's examples get compiled)
+    // that declaration collides with React's own UMD global.
+    //
+    // Pinned rather than skipped: if this ever becomes two diagnostics, the
+    // limitation has grown and somebody should hear about it.
+    expect(compile(undefined)).toEqual(["Cannot redeclare block-scoped variable 'React'."]);
+  });
+
+});
+
 describe('a correct annotated kit', () => {
   it('typechecks clean', () => {
     expect(diagnosticsFor('kit-annotated')).toEqual([]);

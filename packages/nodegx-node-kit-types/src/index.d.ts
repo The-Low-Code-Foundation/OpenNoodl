@@ -889,6 +889,15 @@ declare global {
    *
    * ⚠️ Prefer bare `React` over `window.React`. Both work in the browser, but
    * the SSR bootstrap installs it on `globalThis` with no `window` to reach.
+   *
+   * 🔴 **The one place this declaration is wrong: a project that already has
+   * `@types/react`.** React publishes its own UMD global, and two global
+   * `React` declarations collide — `Cannot redeclare block-scoped variable
+   * 'React'`. A kit folder has no `node_modules` and so never hits it; a
+   * TypeScript project that pulls this file in alongside React's types will.
+   * Delete this `const React` line in that case and use React's own types,
+   * which are better than `any`. Pinned by a test, so the day it becomes more
+   * than this one diagnostic somebody finds out.
    */
   const React: any;
 
