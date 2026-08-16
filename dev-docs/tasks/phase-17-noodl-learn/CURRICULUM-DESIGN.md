@@ -370,8 +370,25 @@ lessons if skipped. Listed in the order they bite.
    and no UI**, so no lesson may ask a learner to save or reuse a block group.
    Authoring L1–L3 first (as §8 already requires) remains the right order.
 
-Not blocking authoring, still owed: **curriculum hosting** (§9.3) and the
-**tutor lesson-context overlay** (§9.1, required before L2 testing).
+Of the two items this section used to close on, **one is built and one now has an
+owner** — both on 2026-08-16, by phase 67.
+
+- ✅ **The tutor lesson-context overlay (§9.1) is BUILT.** `ExplainSession` takes a
+  `tutorContext` and appends TUTOR-BOUNDARY §4's overlay; the glossary below is
+  **derived** from phase 60's shipped sentence rather than copied, so D7's
+  "if `portCopy.ts` changes, this line changes with it" is now mechanical.
+  Write-up: [UNI-007](../phase-67-nodegx-university/UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md).
+  🔴 **This does NOT clear "required before L2 testing" on its own.** The overlay is
+  built and its *text* is graded; **TUTOR-BOUNDARY §5's six adversarial attacks have
+  not been run**, and they need a live provider. Built ≠ verified, and §5 is the
+  acceptance.
+- 🟡 **Curriculum hosting (§9.3) is now D17** in
+  [phase 67's ruling register](../phase-67-nodegx-university/RULINGS.md), open, with the
+  D2/D9/D14 intersections written down. It was recorded here as *"decision owed by
+  LEARN-002"*, which never ruled it — so it sat unowned for a week. It blocks
+  distribution, not authoring. ⚠️ And it is less urgent than it was: UNI-007 made the
+  lesson reader **injectable**, so a lesson already installs from a local directory
+  with no origin to fetch from at all.
 
 ## 12. References
 

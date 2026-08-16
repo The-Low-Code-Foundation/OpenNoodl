@@ -4,7 +4,7 @@
 future phase re-litigates one. Supersedes the "rulings queue" in [README.md](README.md), which now
 points here.
 
-**Status: the queue REOPENED 2026-08-15 with three entries — D14 ruled, D15 and D16 open.** D1 and
+**Status: the queue REOPENED 2026-08-15 — D14 ruled; D15, D16 and (since 2026-08-16) D17 open.** D1 and
 D10 were ruled 2026-08-14 (first session, written up in
 [PRIOR-ART-RECONCILIATION.md](PRIOR-ART-RECONCILIATION.md)); **D2–D9 and D11 were ruled 2026-08-14
 (second session)** and are recorded below. R6's clarification and the UNI-010 verifier question are
@@ -17,6 +17,12 @@ and is **amended 2026-08-15** by D14 (an editor *client*; the build does not mov
 > questions it raises are *not* ruled (**D15**, **D16**) and both change what gets built, so
 > neither should be discovered mid-build. Anything that reads "the queue is empty" elsewhere in
 > this phase is now stale; this file is the register.
+>
+> ⚠️ **A third was added 2026-08-16: D17, curriculum hosting.** It is not new work — it is
+> CURRICULUM-DESIGN §9.3, owed by LEARN-002 since 2026-08-09 and never ruled, and one of the two
+> items §11 records as *"owed, and phase 67 never carried"*. The other of the two, the tutor
+> overlay, was **built** the same day. D17 blocks distribution only; authoring and UNI-010 are
+> unaffected, because UNI-007 made the lesson reader injectable.
 
 > 🔴 **Do not re-litigate any of these.** If one turns out to be wrong, amend it here with a date
 > and a reason — do not leave two live documents in disagreement. That failure mode is what
@@ -44,6 +50,7 @@ and is **amended 2026-08-15** by D14 (an editor *client*; the build does not mov
 | **D14** | Community surface: web, editor, or both | 🔴 **BOTH — the web is canonical and public; the editor MIRRORS it against the same API.** Editor-only features are the transition incentive, not a different feature set | **08-15** |
 | **D15** | Community for org-minor accounts | 🟡 **OPEN** — blocks UNI-011's visibility rules | — |
 | **D16** | The never-empty launch threshold | 🟡 **OPEN** — blocks UNI-011 shipping, not building | — |
+| **D17** | Curriculum hosting — where lessons are served from | 🟡 **OPEN** — blocks *distribution*, not authoring. CURRICULUM-DESIGN §9.3, unowned until now | — |
 
 ---
 
@@ -465,6 +472,49 @@ hours**. Until it is met, the entry point opens the browser instead of the mirro
 *structurally* incapable of looking empty — events, replays, release notes and the prefab shelf all
 exist whether or not anyone posted this week. A threshold protects the launch; the composition
 protects every quiet week after it.
+
+---
+
+## D17 — curriculum hosting · 🟡 OPEN
+
+**The question:** where are lesson manifests served from, and by what mechanism does an editor find
+the list of them?
+
+**Why it is being raised now.** It is the second of CURRICULUM-DESIGN §11's *"two owed items phase 67
+never carried"*. The first — the tutor overlay — was built 2026-08-16
+([UNI-007](UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md)). This one is not buildable, because it is a
+decision, and §9.3 already flagged it as *"decision owed by LEARN-002"* — which never ruled it.
+It has now been unowned for long enough to be worth a register entry rather than another sentence in
+a follow-ons list.
+
+**What is measured, not assumed:**
+
+- The engine reads a lesson list **from a URL**. `LessonModel` fetches `this.url`, resolved against
+  `baseURL`, through `window.fetch`. The legacy eight are hosted by `the-low-code-foundation`.
+- 🔴 **That is no longer the only path, and the change is phase 67's.** UNI-007 made the *reader*
+  injectable (`LessonModelArgs.read`) precisely because a lesson in the Learning folder is a
+  directory on disk with no origin to fetch from. **So a lesson already reaches a learner with no
+  hosting at all** — which is what makes UNI-010 runnable with no platform (D5).
+
+**Why it therefore intersects three existing rulings rather than standing alone:**
+
+1. **D2** — the site is NodeGX Community at `community.nodegx.dev`, and ⚠️ that domain **is not
+   registered**. Hosting the curriculum "on the site" is not free while that is true.
+2. **D9** — the hosted tier serves an exported frontend *and* a record-capped backend. A curriculum
+   served from the same place inherits that ops posture; served from GitHub Pages it does not.
+3. **D14** — the web is canonical and the editor mirrors it via **one API**. A curriculum fetched by
+   the editor from a *different* origin than the web reads is a second content path, which is the
+   shape D14 exists to prevent.
+
+**Recommendation (not a ruling):** the curriculum index is **part of the platform API** under D14,
+with **GitHub Pages as the v0** while the domain and the platform do not exist — the same
+"build it so payment can be absent" posture D7 took for UNI-004. 🔴 **The property to preserve
+whichever way it is ruled:** a lesson must stay installable **from a local directory with no origin**,
+because that is what UNI-010's locally-authored lessons are and it is the one path with no
+dependency on any of this.
+
+**What it blocks:** distribution of the authored curriculum. It blocks **neither authoring nor
+UNI-010** — both already work against the injected reader.
 
 ---
 

@@ -518,8 +518,87 @@ against `node-catalog.json` — neither currently does.
    identically — proving the open contract before UNI-010 leans on it.
 5. The full loop: completion → evidence → score+feedback on the card → UNI-002 points event.
 
+## ✅ The tutor lesson-context overlay — built 2026-08-16 (CURRICULUM-DESIGN §9.1)
+
+One of the **two owed items phase 67 never carried**, and the one marked *"required before L2
+testing"* since 2026-07-25. TUTOR-BOUNDARY §4 had specified it as an implementable spec for three
+weeks; nothing had been built, and nothing in phase 67 mentioned it.
+
+**What ships.** When the open project is a lesson, `ExplainSession` appends TUTOR-BOUNDARY §4's
+overlay to the explain system prompt, naming the current step and forbidding the tutor from
+completing it.
+
+| Piece | Where |
+|---|---|
+| The overlay, the glossary, the markdown stripper, the `deep` clamp | [`explain/tutor.ts`](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/explain/tutor.ts) — **new, import-free** |
+| Appended to the system prompt, never substituted | [`explain/prompts.ts`](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/explain/prompts.ts) `systemPrompt(tutor?)` |
+| `tutorContext` option; `deep` clamped for every caller | [`ExplainSession.ts`](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/explain/ExplainSession.ts) |
+| Authored step title/body kept beside the compiled HTML | `lessonformat.ts` `CompiledStepSource`, `lessonmodel.ts` `getCurrentStepSource()` |
+| Supplies the context; drops "In depth" from the menu | `ExplainPanel.tsx` |
+
+🔴 **Three decisions worth not re-deriving:**
+
+1. **A lesson being open arms the boundary — not knowing the step.** When the step text cannot be
+   read (a legacy `<!-- # -->` lesson, or a manifest step with neither title nor body) the overlay is
+   *still* appended and still forbids completion; only the task line degrades to saying so. Returning
+   "no tutor context" there would drop the whole boundary for exactly the lessons whose text is
+   hardest to read.
+2. **The step source is carried, not re-parsed.** `CompiledLesson` now holds the authored
+   title/body index-aligned with the compiled HTML. Recovering `{step.title, step.body}` by
+   un-rendering the HTML would be a second, lossier reader of a format `LessonModel`'s own header
+   already warns has exactly one — *"a second compiler is how two producers of one format start
+   disagreeing"*.
+3. **`deep` is clamped in the session, not just hidden in the menu.** §4 disables it because depth
+   *"invites solution-shaped walkthroughs of the exact step"* — and `deep`'s own instruction is
+   literally *"walk the data flow step by step"*, which over a half-built lesson graph is §5.4's
+   oracle-extraction attack available from a dropdown. A hidden menu item protects the panel; a
+   clamp protects every caller, including the measurement harness.
+
+### ✅ D7's obligation is now discharged by construction, and the check that looked like proof was not
+
+CURRICULUM-DESIGN §6 states D7 as prose: *"this glossary cites phase 60's sentence — it does not
+paraphrase it"*, plus *"if `portCopy.ts` changes, this line changes with it"*. That was a promise
+somebody had to keep by remembering. `SIGNAL_SENTENCE` is now **exported** and the tutor glossary
+**derives** its Signal line from it, so the two cannot disagree.
+
+🔴 **The spec asserting that derivation cannot fail, and I claimed it could.** Its first comment read
+*"reword `SIGNAL_SENTENCE.lead` and this fails"*. Measured: rewording the lead to *"Signal — a
+pulse, not a number."* left **all 25 specs in the file green**, because the assertion reads its
+oracle out of the artefact under test — the green-side twin this repo already carries a trap for.
+
+✅ **The system is sound anyway, and the measurement is what shows it:** the same reword fails **two
+specs in `tests-unit/connection-popup/portCopy.test.ts`**, which pin the sentence verbatim. So the
+wording is guarded once, where phase 60 owns it, and the tutor follows by construction. The comment
+now says that instead. ⚠️ The spec still earns its place as a guard against somebody **replacing the
+derivation with a hand-copied string** — the moment that happens it becomes a live drift detector.
+
+### Controls run, because a prompt is the easiest artifact to weaken silently
+
+- **Overlay disconnected from the prompt** (`systemPrompt` ignores its argument): **2 specs fail**,
+  both seam specs. ⚠️ *"keeps every base rule"* correctly still passes — it guards against
+  substitution, not omission, and the "appends" spec is the one that covers omission.
+- **A defect the specs found before review did.** `stripMarkdown` read the first word of an *inline*
+  triple-backtick span as a language tag, so ` ```a > b``` ` came out as `> b` — silently deleting
+  the left-hand side of the expression a step was telling the learner to type. Block fences and
+  inline spans are now handled separately.
+
+### ⚠️ What is NOT closed, stated plainly
+
+🔴 **TUTOR-BOUNDARY §5's adversarial run has not happened, and it is the acceptance.** Six attacks
+are enumerated — direct ask, persistence, reframe, oracle extraction, helpful-refusal scoring,
+false-positive check — and every one needs a **live provider**. What is graded here is that the
+overlay *says* the right things and *reaches* the prompt. **Whether a model obeys it is unmeasured**,
+and the two must not be reported as one. §6 already records the honest limit: the boundary is
+prompt-enforced above the structural read-only floor.
+
+⚠️ **The `ExplainSession` and `ExplainPanel` wiring is not spec-covered** — both reach the AI client
+and `ProjectModel`, so neither is reachable from the plain-Node runner. The seam that *is* covered is
+`tutorOverlay` → `systemPrompt`. **A drive is owed** and belongs with the §5 run, which needs a
+lesson open in a real editor anyway.
+
 ## Not in v1
 
-Tier-2 live AI tutoring inside lessons (the phase-17 tutor overlay work remains its own track),
-certification, community-authored lessons on the platform (the format allows it; the publishing
-surface waits), chaptered replay links from nodes.
+Tier-2 live AI tutoring inside lessons — ⚠️ **partly landed 2026-08-16**: the phase-17 tutor
+*overlay* is built (above), so what remains of that track is §5's live adversarial run and the
+register/accuracy tuning §6 defers to it. Also: certification, community-authored lessons on the
+platform (the format allows it; the publishing surface waits), chaptered replay links from nodes.

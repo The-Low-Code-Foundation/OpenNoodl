@@ -34,6 +34,7 @@ import { findComponent } from './graph';
 import { followUpMessage, initialUserMessage, systemPrompt, type ExplainDetail } from './prompts';
 import { renderContext } from './render';
 import { portsToResolve, renderRuntime, type RuntimePortRef, type RuntimeSnapshot } from './runtime';
+import { clampTutorDetail, type TutorContext } from './tutor';
 import type { ExplainContext, ExplainContextOptions, ExplainGraph } from './types';
 
 export type ExplainTurnRole = 'question' | 'answer';
@@ -70,6 +71,16 @@ export interface ExplainSessionOptions extends ExplainContextOptions {
    * prompt claiming one.
    */
   resolveRuntime?: ExplainRuntimeFn;
+  /**
+   * UNI-007 — the lesson the reader is working through, if any.
+   *
+   * Supplied by `ExplainPanel`, which is the only caller holding
+   * `ProjectModel.instance.lesson`; absent everywhere else, which is why the
+   * overlay cannot be reached by the MCP assembler or the measurement harness
+   * unless they pass one deliberately. Present, it appends TUTOR-BOUNDARY §4's
+   * overlay to the system prompt and clamps `deep` away — see ./tutor.
+   */
+  tutorContext?: TutorContext;
 }
 
 export type ExplainChatFn = (request: AiChatRequest, callbacks?: AiStreamCallbacks) => Promise<AiChatResponse>;
@@ -155,11 +166,15 @@ export class ExplainSession {
   /** The opening explanation. Safe to call once per session. */
   async explain(): Promise<void> {
     if (this.messages.length > 0) return;
-    this.messages.push({ role: 'system', content: systemPrompt() });
+    const tutor = this.options.tutorContext;
+    this.messages.push({ role: 'system', content: systemPrompt(tutor) });
     await this.run(async () => {
       const runtime = await this.readRuntime();
       return initialUserMessage(this.context, renderContext(this.context, runtime), {
-        detail: this.options.detail
+        // UNI-007 — `deep` is clamped here rather than only in the panel's menu,
+        // so a caller that never renders a menu gets the same rule. See
+        // ./tutor's `clampTutorDetail`.
+        detail: clampTutorDetail(this.options.detail, tutor !== undefined)
       });
     });
   }

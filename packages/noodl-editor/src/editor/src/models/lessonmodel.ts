@@ -1,6 +1,6 @@
 import Model from '../../../shared/model';
 import { tracker } from '../utils/tracker';
-import { compileLessonSource, isManifestUrl, looksLikeManifest } from './lessonformat';
+import { compileLessonSource, isManifestUrl, looksLikeManifest, type CompiledStepSource } from './lessonformat';
 
 /**
  * Instruction/content model for a single lesson.
@@ -70,6 +70,15 @@ export default class LessonModel extends Model {
   lessons?: string[];
   /** Per-step `data-*` annotations, extracted from the step HTML. */
   annotations?: LessonAnnotations[];
+  /**
+   * UNI-007 — per-step authored title/body, for the AI tutor's overlay.
+   *
+   * Manifest lessons only; `undefined` for the legacy HTML path. Not serialised
+   * by {@link toJSON}, for the same reason `read` is not: it is re-derived from
+   * the source on every `fetch()`, so persisting it would create a second copy
+   * that can go stale against the file on disk.
+   */
+  stepSources?: CompiledStepSource[];
   /** See {@link LessonModelArgs.read}. Absent for the hosted (HTTP) lessons. */
   read?: () => string | undefined | Promise<string | undefined>;
 
@@ -146,16 +155,20 @@ export default class LessonModel extends Model {
       try {
         if (text === undefined) {
           this.lessons = undefined;
+          this.stepSources = undefined;
         } else if (isManifestUrl(this.url) || looksLikeManifest(text)) {
           // New declarative format.
           const compiled = compileLessonSource(text);
           this.lessons = compiled.steps;
+          this.stepSources = compiled.stepSources;
           if (compiled.title && !this.title) this.title = compiled.title;
           if (compiled.completionBadge && !this.completionBadge) this.completionBadge = compiled.completionBadge;
           this.numberOfLessons = this.lessons.length;
           this.extractAnnotations();
         } else {
-          // Legacy hand-authored HTML.
+          // Legacy hand-authored HTML. No structured step text exists to recover
+          // — cleared rather than left over from a previous fetch.
+          this.stepSources = undefined;
           this.lessons = this.loadLegacyHtml(text);
           this.numberOfLessons = this.lessons.length;
           this.extractAnnotations();
@@ -231,6 +244,25 @@ export default class LessonModel extends Model {
     if (step === undefined) step = 0;
 
     return this.annotations[step];
+  }
+
+  /**
+   * UNI-007 — the step the learner is on, as authored text for the AI tutor.
+   *
+   * ⚠️ **Reads `this.index`, which is the step the *learner* is on** — the same
+   * field `getCurrentIconsDisabled` and `getProgress` read. A tutor overlay built
+   * from any other step would describe a task the reader is not doing, and would
+   * protect the wrong answer while leaving the real one open.
+   *
+   * Returns `undefined` when there is nothing to say: a legacy lesson, a lesson
+   * that has not fetched yet, or an index past the end. The overlay treats that
+   * as "hold the boundary without naming the step" rather than as "no lesson".
+   */
+  getCurrentStepSource(): CompiledStepSource | undefined {
+    if (!this.stepSources) return undefined;
+    const source = this.stepSources[this.index];
+    if (!source || (!source.title && !source.body)) return undefined;
+    return source;
   }
 
   getCurrentSuggestedNodes(): string[] | undefined {

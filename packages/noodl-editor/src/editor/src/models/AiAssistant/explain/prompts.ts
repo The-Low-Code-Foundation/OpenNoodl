@@ -21,6 +21,7 @@
  * @module AiAssistant/explain/prompts
  */
 
+import { tutorOverlay, type TutorContext } from './tutor';
 import type { ExplainContext, ExplainScope } from './types';
 
 /** How much explanation the reader wants. Length, not vocabulary. */
@@ -133,8 +134,21 @@ export interface ExplainPromptOptions {
   detail?: ExplainDetail;
 }
 
-export function systemPrompt(): string {
-  return SYSTEM_PROMPT;
+/**
+ * The explain system prompt, plus UNI-007's tutor overlay when a lesson is
+ * active.
+ *
+ * 🔴 **Appended, never substituted.** TUTOR-BOUNDARY §4 is explicit that the
+ * overlay is *"appended after the existing rules (which all still apply —
+ * citations, bounded honesty, no invented facts)"*. Those three are what make an
+ * explanation trustworthy to a reader who cannot check it, and a beginner is the
+ * reader least able to catch a confabulation — so tutor mode is the last place
+ * to relax them. A `tutorSystemPrompt()` that returned its own text would be the
+ * two-vocabulary failure one layer up.
+ */
+export function systemPrompt(tutor?: TutorContext): string {
+  if (!tutor) return SYSTEM_PROMPT;
+  return `${SYSTEM_PROMPT}\n\n${tutorOverlay(tutor)}`;
 }
 
 /** The opening user turn: the framing, the brevity control, and the context. */

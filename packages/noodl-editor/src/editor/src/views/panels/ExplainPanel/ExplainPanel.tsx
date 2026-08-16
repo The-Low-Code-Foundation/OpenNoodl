@@ -24,6 +24,7 @@ import { componentForCitedNode, componentsInExplanation } from '@noodl-models/Ai
 import { ExplainSession, type ExplainSessionState } from '@noodl-models/AiAssistant/explain/ExplainSession';
 import { fromComponentModel, fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
 import type { ExplainDetail } from '@noodl-models/AiAssistant/explain/prompts';
+import type { TutorContext } from '@noodl-models/AiAssistant/explain/tutor';
 import type { ExplainGraph, ExplainScope } from '@noodl-models/AiAssistant/explain/types';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { createExplainRuntime } from '@noodl-utils/provenance/explainRuntime';
@@ -58,6 +59,40 @@ const DETAIL_OPTIONS = [
 ];
 
 /**
+ * UNI-007 — the same list without "In depth", for tutor mode.
+ *
+ * TUTOR-BOUNDARY §4 disables `deep` while a lesson is active, because `deep`
+ * asks the model to *"walk the data flow step by step"* — which, over the graph
+ * a learner is halfway through building, is §5's oracle-extraction attack
+ * available from a dropdown. The session clamps it too
+ * (`clampTutorDetail`); this is only so the menu does not offer a setting that
+ * silently does not apply.
+ */
+const TUTOR_DETAIL_OPTIONS = DETAIL_OPTIONS.filter((option) => option.value !== 'deep');
+
+/**
+ * UNI-007 — the tutor context for the lesson the learner is in, or `undefined`
+ * when this project is not a lesson.
+ *
+ * 🔴 **A lesson being open is what arms the boundary — not knowing the step.**
+ * When the step text cannot be read (a legacy HTML lesson, or a manifest step
+ * with neither title nor body) this still returns an object, so the overlay is
+ * still appended and still forbids completing the step. Returning `undefined`
+ * there would silently drop the whole boundary for exactly the lessons whose
+ * text is hardest to read, which is the wrong way round.
+ *
+ * This is the only place in the feature that touches `ProjectModel`, which is
+ * why it lives in the panel: the session, the prompt and the overlay stay pure
+ * and injectable, and the measurement harness reaches none of this.
+ */
+function tutorContextForActiveLesson(): TutorContext | undefined {
+  const lesson = ProjectModel.instance?.getLessonModel?.();
+  if (!lesson) return undefined;
+  const step = lesson.getCurrentStepSource?.();
+  return { stepTitle: step?.title, stepBody: step?.body };
+}
+
+/**
  * The graph assembly reads from.
  *
  * FIX-001 §1c — the whole project, not just the active component. Assembly
@@ -90,6 +125,10 @@ export function ExplainPanel() {
   const isActivePanel = useIsActivePanel(ExplainPanel_ID);
   const selection = useCanvasSelection(isActivePanel);
   const [detail, setDetail] = useState<ExplainDetail>('standard');
+  // UNI-007. Read on every render rather than held in state: whether the open
+  // project is a lesson is fixed for the life of the project, and the *step* is
+  // read at session creation, so there is nothing here to subscribe to.
+  const tutorActive = ProjectModel.instance?.isLesson?.() === true;
   const [state, setState] = useState<ExplainSessionState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
@@ -160,7 +199,15 @@ export function ExplainPanel() {
         // FIX-001 §1a. The panel is the only caller with a socket and a
         // `WarningsModel` in reach, so it is the only one that supplies this;
         // the session and everything under it stay pure and injectable.
-        { detail, resolveRuntime: createExplainRuntime(component.fullName) }
+        //
+        // UNI-007 — and the same argument for `tutorContext`: read here, at
+        // session creation, so the overlay names the step the learner is on
+        // *now* rather than the one they were on when the panel mounted.
+        {
+          detail,
+          resolveRuntime: createExplainRuntime(component.fullName),
+          tutorContext: tutorContextForActiveLesson()
+        }
       );
       sessionRef.current = session;
       session.onChange(setState);
@@ -274,8 +321,8 @@ export function ExplainPanel() {
           )}
 
           <Select
-            options={DETAIL_OPTIONS}
-            value={detail}
+            options={tutorActive ? TUTOR_DETAIL_OPTIONS : DETAIL_OPTIONS}
+            value={tutorActive && detail === 'deep' ? 'standard' : detail}
             label="Detail"
             onChange={(value) => setDetail(value as ExplainDetail)}
           />

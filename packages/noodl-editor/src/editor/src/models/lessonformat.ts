@@ -117,12 +117,36 @@ export interface LessonManifest {
 
 // ─── Compiled output ────────────────────────────────────────────────────────
 
+/**
+ * UNI-007 — a step's authored text, kept beside the HTML it compiles to.
+ *
+ * 🔴 **The source, not the rendering, and that is the point.** The tutor overlay
+ * (TUTOR-BOUNDARY §4) wants *"{step.title}: {step.body, markdown stripped}"*.
+ * Recovering that by un-rendering `steps[i]` would mean parsing the HTML this
+ * module just produced — a second, lossier reader of a format that already has
+ * exactly one, which is the fork `LessonModel`'s own header warns about ("a
+ * second compiler is how two producers of one format start disagreeing").
+ */
+export interface CompiledStepSource {
+  title?: string;
+  /** Markdown, exactly as authored. Stripped at the point of use, not here. */
+  body?: string;
+}
+
 export interface CompiledLesson {
   title?: string;
   description?: string;
   completionBadge?: string;
   /** Per-step HTML strings in the legacy internal shape. */
   steps: string[];
+  /**
+   * UNI-007 — per-step authored text, index-aligned with {@link steps}.
+   *
+   * Absent for the legacy `<!-- # -->` HTML path, which never had it: those
+   * lessons are hand-written documents with no structured step text to recover.
+   * The overlay degrades rather than failing — see `tutor.tutorOverlay`.
+   */
+  stepSources?: CompiledStepSource[];
 }
 
 // ─── Format detection ───────────────────────────────────────────────────────
@@ -427,7 +451,11 @@ export function compileLessonManifest(manifest: LessonManifest): CompiledLesson 
     title: manifest.title,
     description: manifest.description,
     completionBadge: manifest.completionBadge,
-    steps: manifest.steps.map((step, i) => compileStep(step, i))
+    steps: manifest.steps.map((step, i) => compileStep(step, i)),
+    // UNI-007. Read from the same array in the same order as `steps` above, so
+    // the two cannot fall out of alignment: an index into one is an index into
+    // the other by construction rather than by convention.
+    stepSources: manifest.steps.map((step) => ({ title: step?.title, body: step?.body }))
   };
 }
 

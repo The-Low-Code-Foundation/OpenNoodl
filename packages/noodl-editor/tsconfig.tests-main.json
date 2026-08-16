@@ -53,6 +53,23 @@
     // `NodeLibrary` — which is what lets the copy itself be graded here,
     // including the one clause phase 60 forbids.
     "src/editor/src/views/ConnectionPopup/portCopy.ts",
+    // UNI-007: `AiAssistant/explain/tutor.ts` is the same shape once more — the
+    // AI tutor's lesson overlay, which is the copy TUTOR-BOUNDARY calls "the
+    // pedagogy". Its only import is `portCopy.ts` (already here, and itself
+    // import-free), because the glossary's Signal line is *derived* from phase
+    // 60's shipped sentence rather than copied from it — so a rewording that
+    // forgot the tutor fails a spec here instead of teaching two vocabularies.
+    // Nothing else in `explain/` is reachable: `ExplainSession` pulls the AI
+    // client, and the overlay is deliberately the half that does not.
+    "src/editor/src/models/AiAssistant/explain/tutor.ts",
+    // …and `prompts.ts` with it, which is the seam that actually matters. The
+    // overlay being correct says nothing about whether anything *uses* it —
+    // this phase has found that exact gap five times ("build the caller"). These
+    // two are pure for the same reason: `prompts.ts` imports the overlay and
+    // `import type`s `./types` (itself import-free), so both erase to nothing at
+    // runtime and the assembled system prompt can be asserted here.
+    "src/editor/src/models/AiAssistant/explain/prompts.ts",
+    "src/editor/src/models/AiAssistant/explain/types.ts",
     "src/editor/src/views/ConnectionPopup/refusalPlan.ts",
     "src/editor/src/views/ConnectionPopup/searchIntent.ts",
     "src/editor/src/models/nodelibrary/cloud-node-library.json",

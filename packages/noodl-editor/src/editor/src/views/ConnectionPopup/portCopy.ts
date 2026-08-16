@@ -81,8 +81,19 @@ export function escapeHtml(value: string): string {
  * signal output (it points at the input it is wired to) and of a signal input
  * (it points at its own node's action), and a second wording would be a second
  * vocabulary — the thing SIG-004 exists to prevent.
+ *
+ * 🔴 **Exported for UNI-007, and the export is the mechanism behind a written
+ * obligation.** Phase 17's curriculum glossary
+ * (`CURRICULUM-DESIGN.md` §6) records D7 as *"this glossary cites phase 60's
+ * sentence — it does not paraphrase it"*, and adds *"if `portCopy.ts` changes,
+ * this line changes with it"*. That was a promise a human had to keep by
+ * remembering. The AI tutor's glossary now **derives** its Signal line from this
+ * constant ({@link ../models/AiAssistant/explain/tutor}), so phase 60 rewording
+ * the sentence rewords the tutor in the same commit rather than leaving the two
+ * to drift — which is the failure this repo has already found three times in a
+ * day, in this exact document.
  */
-const SIGNAL_SENTENCE: PortTypeSentence = {
+export const SIGNAL_SENTENCE: PortTypeSentence = {
   lead: 'Signal — a moment, not a value.',
   body:
     'It runs something on the node it points at. Value connections carry their data on their own, ' +
