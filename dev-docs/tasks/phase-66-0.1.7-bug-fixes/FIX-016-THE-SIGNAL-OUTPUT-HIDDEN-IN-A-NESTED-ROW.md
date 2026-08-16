@@ -108,6 +108,15 @@ Three design calls, each pinned by a spec that fails without it:
   recorded beside message 5 (§"the runtime corroborated the premise") is the *same mechanism*, and it
   was always going to fire here too.
 
+  ⚠️ **Two different things, and the drive measured only one of them — flagged by its own author.**
+  What was measured for row 2 is **`WarningsModel` entries for the node**. What I measured, in the
+  declared case, is a rendered `Last run` diagnostic in the code editor. The link between them is
+  real but is the *mechanism* (`setRuntimeDiagnostic` ← `warningsChanged`, `CodeEditorType.ts:421-429`
+  — the seam `6de1ae25` repaired), **not a second measurement.** So: *"the runtime records a warning
+  for this node"* is driven; *"the author sees it in the gutter for **this** case"* is inferred from
+  a mechanism proven on a different case. It is very likely true and it is not measured, and after
+  today that distinction is worth the extra sentence.
+
   ✅ **The accurate claim, and it still supports a ruling:** row 2 has **no *static* surface** — no
   Type row to discover, no lint warning while authoring — and is reported **only after the node
   runs**. That is materially worse than a declared port, which warns before you run anything, and
