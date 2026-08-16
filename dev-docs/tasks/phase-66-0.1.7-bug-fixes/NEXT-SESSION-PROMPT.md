@@ -1,5 +1,19 @@
 # Phase 66 — next session
 
+**Amended 2026-08-16, session 30.** s30 wrote **no product code**; like s29 it repaired the phase's
+own records, and it did so by taking s29's own advice — check the inherited status, don't inherit it.
+🔴 **The item Richard had been asked about fourteen times — *"`scripts/library/check.ts` is
+uncommitted and **unattributed**; attribute it or bin it"* — was answerable in ten seconds and is
+now struck.** It was **never unattributed**: the diff names `LBR-002` in two of its own comments, and
+phase 65's `TASKS.md` records it as done on 2026-08-15 with a result table. ✅ **Measured, not
+inherited:** the gate passes — **58/58 clean, exit 0**, 2.2s.
+
+🔴 **The mechanism is new and it is the part worth carrying (§3e): a standing instruction not to
+*touch* phase 65's directory was obeyed as an instruction not to *read* it** — and the answer sat
+inside the directory sessions were told to leave alone, adjacent in the same `git status` the item
+was derived from. §6's wording is now fixed so it does not do this again.
+⚠️ **The question did not vanish, it changed**: not *"attribute or bin"* but **"land it"** — see §5.
+
 **Amended 2026-08-16, session 29.** s29 wrote **no code and ran no gate**; it repaired the phase's own
 records. 🔴 **s28 handed over "everything is blocked on Richard"; that was false, and checking it was
 the session's work.** [TASKS.md](TASKS.md) held **four stale rows** advertising ~14 acceptance drives,
@@ -83,6 +97,12 @@ inherited and unmoved.
 | `noodl-core-ui` jest — `tests/code-editor/` | ✅ **18 suites / 327** | s24 |
 | `tsc --noEmit` — `noodl-editor` | ✅ **0 errors** | s24 |
 | `tsc --noEmit` — `noodl-core-ui` | ⚠️ **44**, all pre-existing | s24 |
+| **`library:check`** (PR gate, `pr.yml:193`) | ✅ **58/58 entries clean, exit 0**, 49 warnings *named* | **s30**, working tree incl. the uncommitted LBR-002 diff |
+
+⚠️ **The `library:check` row is the only gate s30 ran**, and it is here because §5's `check.ts` item
+turned on it. **2.2 seconds, plain `ts-node`, no editor** — safe beside peers, so it needs no
+announce. 🔴 **It was run against the WORKING TREE, which is the point**: CI runs the *committed*
+version, so this reading says the unlanded change is good, **not** that CI is currently exercising it.
 
 🔴 **Quote the six `test:ci` failures by NAME, never the count** — 4 × `AIX-006 style vocabulary`,
 2 × `AI model registry`.
@@ -168,6 +188,44 @@ resolves is the kind that survives — check the claim, not just the line.**
 
 ---
 
+### 3e. 🔴 s30 — "leave them" was obeyed as "don't look", and it hid an answer for eleven sessions
+
+**This session's whole result.** §5 carried, s18–s29: *"`scripts/library/check.ts` is STILL
+uncommitted and STILL **unattributed**. Fourteen sessions have asked, none has claimed it."*
+
+🔴 **`git diff scripts/library/check.ts` answers it.** The diff names **`LBR-002`** in two of its own
+comments — a doc comment on the new `warningLines` field and an inline comment at the print site —
+and [phase-65/TASKS.md](../phase-65-the-library/TASKS.md) row 2 records
+*"✅ Done 2026-08-15 (uncommitted)"* against a full result table. The change captures the warning
+*diagnostics* rather than only `summary.warnings`, so the gate **names** its 49 warnings.
+
+| what was checked | reading |
+|---|---|
+| attribution | **`LBR-002`**, twice in-file, plus phase-65 `TASKS.md` row 2 |
+| does the whole diff belong to it | **yes** — `--stat` is 34+/4−, every hunk is `warningLines` |
+| do the two new imports resolve | **yes** — `validation/index.ts:11` `export * from './diagnostics'`; defined `diagnostics.ts:693`, `:717` |
+| does the gate pass | **58/58 clean, exit 0**, 2.2s |
+| *"unchanged s18–s28"* | **TRUE** — mtime `2026-08-15 17:21`; last commit `4b3c95f7`, **08-06** |
+| the cited gate | 🔴 **wrong one** — `cloud-library:check` is `scripts/cloud-node-library/generate.js`. The direct exposure is **`library:check`**, `pr.yml:193`, also a PR gate |
+
+🔴 **The mechanism, which is new — a "don't touch" note became a "don't read" note.** §6 said phase
+65's untracked directory *"belongs to neither this phase — **leave them**"*. That is right about
+committing and was obeyed as advice about **looking**. The answer sat in the directory sessions were
+told to leave alone — **adjacent in the same `git status` the §5 item was derived from.** §6 is
+reworded.
+
+⚠️ **And "unattributed" was never a fact about the file.** It meant *"nobody has claimed it in the
+handover thread"* — a property of the conversation — and carrying it forward hardened it into a
+property of the artifact. ✅ **When an owed item names a file, open the file before re-carrying it.**
+
+⚠️ **Two calibrations against s29's finding.** (1) Same direction — the item **understated** the
+risk, naming the wrong gate; the exposure was more direct than advertised, and *nobody audits
+caution* claimed another eleven sessions. (2) But **not everything inherited had rotted**:
+*"unchanged s18–s28"* held exactly. ✅ **Check inherited claims one at a time — they do not rot
+together, and assuming they do is its own error.**
+
+---
+
 ## 4. What to do next and why
 
 1. 🔴 **Nothing in FIX-016 §1 should be built until Richard rules** (§5 (a) and (b)). Both questions
@@ -188,6 +246,16 @@ resolves is the kind that survives — check the claim, not just the line.**
    debt, not blocking work.
 7. ✅ **The index reconciliation is DONE (s29, §3d) — do not re-run it.** [TASKS.md](TASKS.md) is
    current as of 2026-08-16 and every closed row now names its closing session and ruling.
+8. ✅ **`check.ts` is settled as far as an agent can settle it (s30, §3e) — do not re-investigate.**
+   Attributed, verified, gate passes. 🔴 **What remains is a commit, and it is Richard's call
+   because the work is phase 65's** (§5).
+
+🔴 **What s30 adds to how to start a session here.** s29's rule was *read the phase index against
+the files it indexes*. s30's is one step further out: 🔴 **read the owed list against the artifacts
+it names.** §5 is not a list of decisions — it is a list of *claims about things*, and claims about
+things are checkable. One `git diff` retired an item that had been re-typed into fourteen handovers.
+⚠️ **The next candidate on that list is the memory-index budget bullet, which already tells you to
+re-measure rather than copy its figure** — s30 did, and it is still over.
 
 🔴 **What s29 changes about how to start a session here.** *"Everything is blocked on Richard"* was
 this handover's own summary and it did not survive twenty minutes of checking. **Do not take the
@@ -225,9 +293,28 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   the previous input source".
 - 🔴 **FIX-017 AC3's ruling** — premise false (ports and API names never share a prefix). Restate or
   strike.
-- 🔴 **`scripts/library/check.ts` is STILL uncommitted and STILL unattributed.** Unchanged
-  s18–**s28**; fourteen sessions have asked, none has claimed it. It backs `library:check`, and
-  `cloud-library:check` **is a PR gate**. **Attribute it or bin it.** s28 did not touch it.
+- ~~🔴 **`scripts/library/check.ts` is STILL uncommitted and STILL unattributed.** Unchanged
+  s18–**s28**; fourteen sessions have asked, none has claimed it.~~ 🔴 **ATTRIBUTED 2026-08-16 (s30)
+  — it was never unattributed. The diff says `LBR-002` in two of its own comments**, and
+  [phase-65/TASKS.md](../phase-65-the-library/TASKS.md) row 2 records it as
+  *"✅ Done 2026-08-15 (uncommitted)"* with a full result table. It captures the warning
+  *diagnostics* instead of only `summary.warnings`, so the gate names its 49 warnings instead of
+  counting them.
+  ✅ **Measured, not inherited** (s30, 2.2s, safe beside peers): `npm run library:check` →
+  **58/58 entries clean, exit 0**, warnings now printed. The barrel re-exports both new imports
+  (`validation/index.ts:11` `export * from './diagnostics'`; both defined at `diagnostics.ts:693`
+  and `:717`). ⚠️ **`git diff --stat` is 34+/4− and every hunk is LBR-002** — no residue from
+  anything else, so the attribution covers the whole diff, not part of it.
+  ⚠️ **Two corrections to the struck text.** (1) The cited reason was the wrong gate:
+  `cloud-library:check` runs `scripts/cloud-node-library/generate.js`, a *different* script.
+  The direct exposure is `library:check` itself, **also a PR gate**, at
+  [pr.yml:193](../../../.github/workflows/pr.yml#L193) — the risk was understated, not overstated.
+  (2) *"Unchanged s18–s28"* **checks out**: mtime is **2026-08-15 17:21**, last commit touching it
+  was `4b3c95f7` on **08-06**. It went dirty once, on 08-15, and has not moved since.
+  🔴 **Still genuinely owed by Richard, but the question changed**: not *"attribute it or bin it"* —
+  it is attributed and it passes — but **"land it."** ⚠️ s30 did **not** commit it: it is phase 65's
+  work, a phase this session is not working in, and ten peers were live on the tree.
+  🔴 **Unlanded work on a PR-gated script is exactly what a sibling's `git add -A` sweeps.**
 - 🔴 **FIX-013's four rulings** — ruling 2 (does the AI authoring preview keep its toolbar?) is the
   big one.
 - 🔴 **FIX-016's signal-input semantics** (§3) — re-run the body vs named handlers, or rule signal
@@ -259,7 +346,13 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   ⚠️ **s29 filed its finding INTO an existing memory rather than adding a pointer, precisely because
   of this** — and rewrote that pointer to carry the stronger trap in **fewer** characters, leaving the
   index **net −6 code points / −5 UTF-16** on the session. 🔴 **The decision is unchanged: still over
-  on both measures.** ✅ **Do not copy a figure from this bullet — re-measure**, since a frozen budget
+  on both measures.**
+  ⚠️ **s30 re-measured (as this bullet instructs) and did the same thing again**: filed its finding
+  into an existing memory, added **no** pointer, and paid for the one new clause by deleting a
+  duplicate — item 3 of the *three distances* block was re-stating item 2's trap **and** cross-
+  referencing it to the wrong file. Net **−8 / −8**. 🔴 **Still over on both measures, and two
+  sessions of restraint have now bought back 14 characters against an 85-character overage.**
+  **Restraint is not going to close this.** ✅ **Do not copy a figure from this bullet — re-measure**, since a frozen budget
   number under a standing item is the exact shape §3d is about:
   `node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log([...s].length,s.length)' ~/.claude/projects/-Users-richardosborne-vscode-projects-OpenNoodl/memory/MEMORY.md`
 - 🟢 **A lockfile written by `start.ts` at *intent*** — the ~75s window in which no process check can
@@ -275,7 +368,11 @@ commit`** — the tree held modified files from at least four other sessions thr
 and both s28 commits were pathspec-scoped for exactly that reason.
 
 ⚠️ `dev-docs/tasks/phase-65-the-library/` and the phase-67 `UNI-011` file are untracked and belong to
-neither this phase nor 67 — **leave them**.
+neither this phase nor 67 — **do not commit or modify them.** 🔴 **But DO read them.** s30 rewrote
+this line: it previously said *"leave them"*, and eleven sessions obeyed that as *"don't look"* while
+the answer to an item on Richard's owed list (§5, `check.ts`) sat inside the phase-65 directory the
+whole time. **They are another phase's live records, and they are adjacent in the same `git status`
+these items get derived from.**
 
 ### 🔴 Teardown: the by-pid route is NOT the gentle one
 
