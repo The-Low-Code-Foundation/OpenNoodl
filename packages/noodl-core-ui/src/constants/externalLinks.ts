@@ -30,3 +30,21 @@ export const EXTERNAL_LINKS = {
 } as const;
 
 export type ExternalLinkId = keyof typeof EXTERNAL_LINKS;
+
+/**
+ * Deep links into the docs site.
+ *
+ * CN-007. These are **composed from `EXTERNAL_LINKS.docs`** rather than written
+ * out, for the reason stated above: the docs origin is explicitly temporary, and
+ * the whole point of it being one constant is that moving it stays a one-line
+ * change. A second hardcoded origin here would quietly undo that.
+ *
+ * The path is the Docusaurus route (`routeBasePath: '/docs'` in
+ * `docs-site/docusaurus.config.js`) plus the page's filename.
+ */
+export const DOCS_PAGES = {
+  /** Writing your own nodes — the page that replaces Noodl 2.7's `create-react-lib` guide. */
+  customNodes: `${EXTERNAL_LINKS.docs}docs/custom-nodes`
+} as const;
+
+export type DocsPageId = keyof typeof DOCS_PAGES;

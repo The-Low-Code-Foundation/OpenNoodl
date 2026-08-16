@@ -1,8 +1,11 @@
 import React, { useCallback, useState } from 'react';
 
+import { platform } from '@noodl/platform';
+
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
+import { DOCS_PAGES } from '@noodl-core-ui/constants/externalLinks';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
 import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
 
@@ -101,6 +104,30 @@ export function KitsSection() {
         Create your own node. A kit is a folder under noodl_modules/ with one example node whose every visual
         decision is a port — colour, spacing and size default to design tokens, so it looks like the rest of the
         app from the first render.
+      </div>
+
+      {/*
+        CN-007 AC4. A docs page nobody finds is the failure mode that produced this
+        whole task: the mechanism existed the entire time and was invisible, so people
+        went on following a 2.7 guide that could not work. This is the entry point that
+        makes it reachable without already knowing it exists.
+      */}
+      <div className={css.ButtonRow}>
+        <button
+          onClick={() => platform.openExternal(DOCS_PAGES.customNodes)}
+          data-test="kits-docs-link"
+          style={{
+            padding: '6px 0',
+            fontSize: '12px',
+            background: 'none',
+            border: 'none',
+            color: 'var(--theme-color-primary)',
+            cursor: 'pointer',
+            textAlign: 'left'
+          }}
+        >
+          Read: writing your own nodes →
+        </button>
       </div>
 
       <PanelRow label="Kit name *" helpText="Becomes the folder name under noodl_modules/. Existing kits are never overwritten.">

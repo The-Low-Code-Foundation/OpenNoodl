@@ -170,3 +170,28 @@ into rather than one they have to discover.
 ⚠️ **Applies to this phase's own output too.** The cashflow kit currently hardcodes hex throughout —
 it was a proof, not a model. Before CN-007 uses it as the worked example, it must be brought onto
 tokens, or it will teach the opposite of D8 and P2 at the same time.
+
+### ✅ The cashflow kit is on tokens — built 2026-08-16 (s14), **not yet driven**
+
+8 distinct hex values and 2 `rgba()` literals became 10 `var(--token)` references, all 10 resolved
+against `buildDefaultTokenMap()` and mutation-proven. See
+[notes/cn-007-d8-token-drive.md](notes/cn-007-d8-token-drive.md) — 🔴 **the rendered result is
+still unmeasured**; a peer held the editor for the whole session.
+
+**Two things came out of it that outlive the edit:**
+
+1. 🔴 **The hex was in the file TWICE, and only one copy was a port default.** Every colour read
+   `props.positiveColor || '#1F8A4C'` in the JSX beside a `default: '#1F8A4C'` on the port. A
+   declared `default` **is** assigned to props at initialize (`react-component-node.ts:905-919`), so
+   the `||` arm was a second copy of the decision living in the JavaScript — free to drift from the
+   port it shadowed, and invisible to any sweep that only reads port declarations. ⚠️ **A "move it
+   onto tokens" task that only rewrites `default:` leaves the constant behind and reads as done.**
+2. ⚠️ **The semantic token set has `--destructive` but no `--success` and no `--warning`.** A kit
+   with three status bands has to reach into the palette scale for two of them. The kit now takes
+   all three from the scale (`--green-600` / `--amber-600` / `--red-600`) so they read as one
+   system; mixing one semantic token with two palette ones was the alternative and it is worse.
+   This is a gap in the vocabulary, not in the kit.
+
+🔴 **The cashflow kit lives OUTSIDE this repo** (`NodeGX test projects/cashflow-command-centre`), so
+this change is **not under version control and not covered by any gate**. D5 says it must stay
+working because CN-007 depends on it; nothing enforces that. Worth a task number.
