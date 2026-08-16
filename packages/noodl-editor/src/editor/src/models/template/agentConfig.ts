@@ -333,6 +333,61 @@ export async function backfillAgentConfig(
 }
 
 /**
+ * FIX-021 slice 0 — re-render `CLAUDE.md` once `docs/` has actually landed.
+ *
+ * 🔴 **The defect this closes.** A project scoped by the launcher's AI wizard is created by the
+ * ordinary path first and has its `docs/` written *afterwards* (`ProjectsPage.finishScopedProject`,
+ * deliberately — "a failure here costs the docs, never the project"). So `installAgentConfig` ran
+ * at a moment when `docs/BRIEF.md` did not exist and no summary had been captured, and wrote the
+ * variant with **no summary and no "Where the decisions are" section**. The MCP-created twin gets
+ * both, which violates BST-005's own acceptance criterion that the two paths produce *"the same
+ * two files, same content shape"*.
+ *
+ * ⚠️ **Why this is not simply an overwrite.** `CLAUDE.md` is *"the user's to own"* — that rule is
+ * the reason `installAgentConfig` never rewrites one, and it is right. So this rewrites only when
+ * the bytes on disk are **exactly** what this installer wrote minutes earlier for the same project:
+ * the file is re-rendered with `hasDocs: false` and no summary, and a mismatch of any kind — a
+ * template's own `CLAUDE.md`, a user edit, a future change to the template — is left alone and
+ * reported as `kept-existing`. The only file this can replace is one we know we authored and know
+ * is now wrong.
+ *
+ * Returns a single {@link AgentConfigFileResult} rather than a report: `.mcp.json` does not depend
+ * on `docs/` and is not reconsidered here.
+ */
+export async function upgradeAgentConfigForDocs(
+  host: AgentConfigHost,
+  options: AgentConfigOptions
+): Promise<AgentConfigFileResult> {
+  const path = AGENT_CONFIG_PATHS.claude;
+
+  if (!(await host.exists(path))) {
+    // Nothing was written at creation — the installer skipped or failed. Write the good one now.
+    await host.write(path, renderClaudeMd(options));
+    return { path, outcome: 'written' };
+  }
+
+  const asCreated = renderClaudeMd({ ...options, summary: undefined, hasDocs: false });
+  const current = await host.read(path);
+
+  if (current !== asCreated) {
+    return {
+      path,
+      outcome: 'kept-existing',
+      reason: 'This CLAUDE.md is not the one project creation wrote, so it is the user’s to own.'
+    };
+  }
+
+  const upgraded = renderClaudeMd(options);
+  if (upgraded === current) {
+    // Nothing to say that was not already said — no docs were written, and no summary captured.
+    return { path, outcome: 'kept-existing', reason: 'Already up to date.' };
+  }
+
+  await host.write(path, upgraded);
+  return { path, outcome: 'written' };
+}
+
+/**
  * Add `.mcp.json` to `.gitignore`, appending rather than replacing.
  *
  * ⚠️ The one place here that touches a file the project already owns, so it

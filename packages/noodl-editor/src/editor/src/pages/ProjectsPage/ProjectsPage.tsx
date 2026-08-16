@@ -57,6 +57,7 @@ import LessonTemplatesModel from '../../models/lessontemplatesmodel';
 import { projectFromDirectory } from '../../models/projectmodel.editor';
 import { ProjectDocsModel } from '../../models/ProjectDocs/ProjectDocsModel';
 import type { ProjectModel } from '../../models/projectmodel';
+import { upgradeProjectAgentConfigForDocs } from '../../models/template/installAgentConfig';
 import { getAllPresets, setPendingPresetId } from '../../models/StylePresets';
 import { IRouteProps } from '../../pages/AppRoute';
 // Relative, not the `@noodl-store` alias: this file is inside noodl-core-ui's
@@ -820,6 +821,30 @@ export function ProjectsPage(props: ProjectsPageProps) {
       // nothing here was inferred to fill the gaps.
       abandoned: !scope.agreed
     });
+
+    /**
+     * FIX-021 slice 0 — the `CLAUDE.md` written during creation predates everything above.
+     *
+     * `newProject` writes it before this function runs, so it went out with `hasDocs: false`
+     * and no summary: no "Where the decisions are" section, no sentence saying what the app
+     * is. The `create_project` twin gets both, and BST-005's acceptance asks for *"the same
+     * two files, same content shape"* from either path. Re-rendered here rather than
+     * reordered because the ordering is deliberate — a docs failure must never cost the
+     * project — and the re-render is guarded so it can only replace a file we authored.
+     *
+     * Only when at least one doc actually landed: `hasDocs` would otherwise point the reader
+     * at a `docs/` that is not there.
+     */
+    if (result.written.length > 0) {
+      const projectDirectory = project._retainedProjectDirectory;
+      if (projectDirectory) {
+        await upgradeProjectAgentConfigForDocs({
+          projectDirectory,
+          projectName: project.name || 'Untitled',
+          summary: scope.summary
+        });
+      }
+    }
 
     if (plan.operations.length > 0) {
       setPendingScopePlan({ projectId: project.id, plan, recordPath: DOC_INITIAL_SCOPE });

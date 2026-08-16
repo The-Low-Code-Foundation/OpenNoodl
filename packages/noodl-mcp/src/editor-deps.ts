@@ -419,7 +419,8 @@ export {
   backfillAgentConfig,
   installAgentConfig,
   renderClaudeMd,
-  renderMcpJson
+  renderMcpJson,
+  upgradeAgentConfigForDocs
 } from '../../noodl-editor/src/editor/src/models/template/agentConfig';
 export type {
   AgentConfigFileResult,

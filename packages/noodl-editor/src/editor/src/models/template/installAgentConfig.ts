@@ -31,8 +31,8 @@ import { ipcInvoke } from '@noodl-utils/ipc';
 
 import type { McpFrontDoor } from '../../views/panels/SettingsPanel/sections/mcpCommands';
 import { buildProjectRegistration } from '../../views/panels/SettingsPanel/sections/mcpCommands';
-import type { AgentConfigHost, AgentConfigReport } from './agentConfig';
-import { backfillAgentConfig, installAgentConfig } from './agentConfig';
+import type { AgentConfigFileResult, AgentConfigHost, AgentConfigReport } from './agentConfig';
+import { backfillAgentConfig, installAgentConfig, upgradeAgentConfigForDocs } from './agentConfig';
 
 /** The shared installer's three primitives over `@noodl/platform`, rooted at one project. */
 export function platformHost(projectDirectory: string): AgentConfigHost {
@@ -82,6 +82,36 @@ export async function installProjectAgentConfig(
       hasDocs: options.hasDocs ?? false
     });
   });
+}
+
+/**
+ * FIX-021 slice 0 — re-render this project's `CLAUDE.md` now that `docs/` exists.
+ *
+ * Called by the launcher's AI wizard after `writeScopeDocs`, because the project was created —
+ * and its `CLAUDE.md` written — before either the docs or the summary existed. See
+ * {@link upgradeAgentConfigForDocs} for why this is a guarded re-render and not an overwrite.
+ *
+ * ⚠️ **Never throws.** The docs are already on disk and the project is already usable; a
+ * `CLAUDE.md` that could not be improved is not worth failing the creation flow over.
+ */
+export async function upgradeProjectAgentConfigForDocs(
+  options: InstallAgentConfigOptions & { summary?: string }
+): Promise<AgentConfigFileResult | null> {
+  const { projectDirectory, projectName, summary } = options;
+
+  try {
+    const { serverName, registration } = await resolveRegistration(options);
+    return await upgradeAgentConfigForDocs(platformHost(projectDirectory), {
+      projectName,
+      serverName,
+      registration,
+      summary,
+      hasDocs: true
+    });
+  } catch (error) {
+    console.warn('Could not refresh the project’s CLAUDE.md after writing docs/', error);
+    return null;
+  }
 }
 
 /**

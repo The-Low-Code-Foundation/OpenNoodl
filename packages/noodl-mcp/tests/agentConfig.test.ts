@@ -23,7 +23,8 @@ import {
   authoringServerName,
   backfillAgentConfig,
   installAgentConfig,
-  renderClaudeMd
+  renderClaudeMd,
+  upgradeAgentConfigForDocs
 } from '../src/editor-deps';
 import { BOOTSTRAP_INSTRUCTIONS, projectInstructions } from '../src/instructions';
 import { nodeHost, selfRegistration, writeAgentConfig } from '../src/project/agentConfig';
@@ -346,5 +347,102 @@ describe('BST-005 on a real filesystem', () => {
     expect(fs.readFileSync(path.join(dir, 'CLAUDE.md'), 'utf8')).toBe('# hi\n');
     expect(host.exists('CLAUDE.md')).toBe(true);
     expect(host.exists('.mcp.json')).toBe(false);
+  });
+});
+
+/**
+ * FIX-021 slice 0 — the launcher wizard's `CLAUDE.md` was written before its `docs/` existed.
+ *
+ * The AI scoping wizard creates the project through the ordinary path and writes `docs/`
+ * afterwards, on purpose: *"a failure here costs the docs, never the project."* The cost was that
+ * `installAgentConfig` had already run with `hasDocs: false` and no summary, so the launcher's
+ * projects shipped a `CLAUDE.md` with no summary and no "Where the decisions are" section while
+ * the `create_project` twin shipped both — against BST-005's own acceptance criterion.
+ *
+ * ⚠️ **The interesting half is what it refuses to touch.** `CLAUDE.md` is the user's to own, so
+ * the upgrade may only replace bytes it can prove it wrote itself.
+ */
+describe('FIX-021 slice 0 — re-rendering CLAUDE.md once docs/ has landed', () => {
+  /** What creation writes for a launcher project: no docs on disk yet, no summary captured. */
+  const AS_CREATED = { ...OPTIONS, summary: undefined, hasDocs: false };
+
+  it('adds the summary and the docs section the created file could not have had', async () => {
+    const host = memoryHost();
+    await installAgentConfig(host, AS_CREATED);
+    const before = host.files[AGENT_CONFIG_PATHS.claude];
+    expect(before).not.toContain('Where the decisions are');
+    expect(before).not.toContain(OPTIONS.summary);
+
+    const result = await upgradeAgentConfigForDocs(host, OPTIONS);
+
+    expect(result.outcome).toBe('written');
+    expect(host.files[AGENT_CONFIG_PATHS.claude]).toContain('Where the decisions are');
+    expect(host.files[AGENT_CONFIG_PATHS.claude]).toContain(OPTIONS.summary);
+  });
+
+  it('produces exactly what the create_project path would have produced', async () => {
+    // The acceptance criterion, stated as an equality rather than as two spot checks: after the
+    // upgrade the launcher's file and the MCP twin's file are the same bytes.
+    const launcher = memoryHost();
+    await installAgentConfig(launcher, AS_CREATED);
+    await upgradeAgentConfigForDocs(launcher, OPTIONS);
+
+    const viaCreateProject = memoryHost();
+    await installAgentConfig(viaCreateProject, OPTIONS);
+
+    expect(launcher.files[AGENT_CONFIG_PATHS.claude]).toBe(viaCreateProject.files[AGENT_CONFIG_PATHS.claude]);
+  });
+
+  it('leaves a CLAUDE.md it did not write alone, because that file is the user’s', async () => {
+    const host = memoryHost({ [AGENT_CONFIG_PATHS.claude]: '# My own notes\n\nHands off.\n' });
+
+    const result = await upgradeAgentConfigForDocs(host, OPTIONS);
+
+    expect(result.outcome).toBe('kept-existing');
+    expect(host.files[AGENT_CONFIG_PATHS.claude]).toBe('# My own notes\n\nHands off.\n');
+  });
+
+  it('leaves a file the user edited alone, even one edited by a single character', async () => {
+    // The negative control that matters: "we wrote it" is decided by bytes, not by presence.
+    const host = memoryHost();
+    await installAgentConfig(host, AS_CREATED);
+    host.files[AGENT_CONFIG_PATHS.claude] += '\nMy own note.\n';
+    const edited = host.files[AGENT_CONFIG_PATHS.claude];
+
+    const result = await upgradeAgentConfigForDocs(host, OPTIONS);
+
+    expect(result.outcome).toBe('kept-existing');
+    expect(host.files[AGENT_CONFIG_PATHS.claude]).toBe(edited);
+  });
+
+  it('writes the file when creation left none, rather than assuming one is there', async () => {
+    const host = memoryHost();
+
+    const result = await upgradeAgentConfigForDocs(host, OPTIONS);
+
+    expect(result.outcome).toBe('written');
+    expect(host.files[AGENT_CONFIG_PATHS.claude]).toContain('Where the decisions are');
+  });
+
+  it('is idempotent — a second pass has nothing to say', async () => {
+    const host = memoryHost();
+    await installAgentConfig(host, AS_CREATED);
+    await upgradeAgentConfigForDocs(host, OPTIONS);
+    const once = host.files[AGENT_CONFIG_PATHS.claude];
+
+    const result = await upgradeAgentConfigForDocs(host, OPTIONS);
+
+    expect(result.outcome).toBe('kept-existing');
+    expect(host.files[AGENT_CONFIG_PATHS.claude]).toBe(once);
+  });
+
+  it('does not reconsider .mcp.json, which never depended on docs/', async () => {
+    const host = memoryHost();
+    await installAgentConfig(host, AS_CREATED);
+    const mcpBefore = host.files[AGENT_CONFIG_PATHS.mcp];
+
+    await upgradeAgentConfigForDocs(host, OPTIONS);
+
+    expect(host.files[AGENT_CONFIG_PATHS.mcp]).toBe(mcpBefore);
   });
 });
