@@ -6,6 +6,7 @@
 <style>.code-a { color: red; }</style>
 <link href="https://cdn.example.com/theme.css" rel="stylesheet"><link href="/styles/local.css" rel="stylesheet"><link href="https://fonts.example.com/css?family=Icons+B" rel="stylesheet">
 </head><body>
+<script type="text/javascript">window.__noodl_module_name = "code-a";</script>
 <script type="text/javascript" src="/noodl_modules/code-a/index.js"></script>
 
 </body></html>
@@ -18,6 +19,7 @@
 <style>.code-a { color: red; }</style>
 <link href="https://cdn.example.com/theme.css" rel="stylesheet"><link href="styles/local.css" rel="stylesheet"><link href="https://fonts.example.com/css?family=Icons+B" rel="stylesheet">
 </head><body>
+<script type="text/javascript">window.__noodl_module_name = "code-a";</script>
 <script type="text/javascript" src="noodl_modules/code-a/index.js"></script>
 
 </body></html>
