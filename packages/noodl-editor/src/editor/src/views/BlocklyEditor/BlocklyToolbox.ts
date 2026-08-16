@@ -165,25 +165,39 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
       ]),
       category(labels.noodlVariables, HUE.variables, ['noodl_get_variable', 'noodl_set_variable']),
       /**
-       * ⚠️ **FIX-004 §C deliberately adds nothing here, and the reason is worth keeping.**
+       * FIX-004 §C — the four object-shaped blocks are listed **here as well as under `Data`**.
        *
-       * The four object-shaped blocks it adds (the computed-key get/set twins, `the property
-       * names of`, `has property`) would be findable from two genuinely different starting
-       * points — *"I have an App Object, now what?"* and *"I have some data, now what?"* — and
-       * this toolbox already lists one block in two categories for exactly that reason
-       * (`noodl_convert`, under Math and Text). So dual-listing them is tempting.
+       * They are reached from two genuinely different starting points — *"I have an App Object,
+       * now what?"* and *"I have some data, now what?"* — and findability is the complaint
+       * behind this whole fix. This toolbox already lists one block in two categories for
+       * exactly that reason (`noodl_convert`, under Math and Text).
        *
-       * It is not done, because `tests-unit/vfn-012/browser-blocks.spec.ts` asserts these three
-       * seam categories are **byte-identical** to their VFN-012 contents. That fence's stated
-       * claim is narrower than its assertion — its title is *"changes no existing block type
-       * id"*, which adding a block does not do — but relaxing another phase's guard to admit
-       * one's own change is the wrong way round. The new blocks live under `Data` only, and
-       * whether the seam categories should carry them too is a question for VFN-012's owner.
+       * ⚠️ **Order is the argument.** Each computed-key block sits directly beneath the
+       * literal-key sibling it generalises, so the flyout reads as a pair — *the field I know*,
+       * then *the field I work out* — rather than as four extra rows at the bottom. `the
+       * property names of` and `has property` follow, because both are questions you ask about
+       * an object you already have.
+       *
+       * ⚠️ **This was built and withdrawn once** (session 37) because
+       * `tests-unit/vfn-012/browser-blocks.spec.ts` held these three seam categories
+       * **byte-identical** to their VFN-012 contents. Ruled in session 42: dual-list, and narrow
+       * that fence to the claim its own title makes — *"changes no existing block type id"*,
+       * which an addition does not do. The narrowing is legitimate only because the guard was
+       * stricter than its stated claim; it still rejects a renamed, removed or reordered
+       * existing id.
+       *
+       * 🔴 The three VFN-012 ids below are load-bearing and unchanged. `noodl_get_object_property`
+       * (literal field) is **not** the same block as `noodl_get_object_property_expr` (computed);
+       * every saved project holds the former, and neither may absorb the other.
        */
       category(labels.noodlObjects, HUE.objects, [
         'noodl_get_object',
         'noodl_get_object_property',
-        'noodl_set_object_property'
+        'noodl_get_object_property_expr',
+        'noodl_set_object_property',
+        'noodl_set_object_property_expr',
+        'noodl_object_members',
+        'noodl_object_has_property'
       ]),
       category(labels.noodlArrays, HUE.arrays, ['noodl_get_array', 'noodl_array_length', 'noodl_array_add']),
       /**
@@ -291,6 +305,11 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
        *
        * Order is the order an author meets them: make one, read from it, write to it, ask what
        * is in it, then the JSON boundary.
+       *
+       * ⚠️ Four of these seven are **also** listed under `App Objects` — see the note there.
+       * `noodl_new_object` and the JSON pair are not: making an object out of nothing and
+       * crossing the JSON boundary are not things you reach for *because you have an App
+       * Object*, so they would be noise in that category rather than help.
        */
       category(labels.data, HUE.data, [
         'noodl_new_object',

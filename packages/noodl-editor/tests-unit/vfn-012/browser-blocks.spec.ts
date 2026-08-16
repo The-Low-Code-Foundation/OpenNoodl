@@ -291,22 +291,80 @@ describe('VFN-012 §2/§3 — the toolbox', () => {
     expect(category!.colour).toBe(BROWSER_HUE);
   });
 
-  it('🔴 changes no existing block type id — the seam categories are byte-identical otherwise', () => {
+  /**
+   * 🔴 **This fence was `toEqual` on the whole category and is now narrower — deliberately, and
+   * only as far as its own title.**
+   *
+   * The assertion below is what *"changes no existing block type id"* means: every id VFN-012
+   * put in a seam category is still there, still spelled the same, still in the same relative
+   * order. A **later phase adding a block** to one of these categories does not change an
+   * existing id, and the old `toEqual` rejected it anyway — FIX-004 §C built its `App Objects`
+   * dual-listing, hit this fence, and withdrew the change rather than loosen another phase's
+   * guard (ruled in session 42: dual-list, and narrow the fence to its claim).
+   *
+   * ⚠️ **Narrowing a guard is how guards die**, so the three ways it could have gone slack are
+   * each driven against a synthetic mutant below. What it no longer catches is exactly one
+   * thing: an addition — which is the point, and which the adding phase's own spec pins
+   * (`tests-unit/fix-004/object-data.spec.ts`).
+   */
+  const VFN012_SEAM_CONTENTS: [string, string[]][] = [
+    [DEFAULT_TOOLBOX_LABELS.noodlVariables, ['noodl_get_variable', 'noodl_set_variable']],
+    [
+      DEFAULT_TOOLBOX_LABELS.noodlObjects,
+      ['noodl_get_object', 'noodl_get_object_property', 'noodl_set_object_property']
+    ],
+    [DEFAULT_TOOLBOX_LABELS.noodlArrays, ['noodl_get_array', 'noodl_array_length', 'noodl_array_add']]
+  ];
+
+  /** The ids from `baseline` that `actual` still carries, in the order `actual` carries them. */
+  const survivingIds = (actual: string[], baseline: string[]) => actual.filter((type) => baseline.includes(type));
+
+  it('🔴 changes no existing block type id — every seam id VFN-012 set is still there, in order', () => {
     const contents = (buildToolbox() as unknown as { contents: { name?: string; contents?: { type: string }[] }[] })
       .contents;
     const typesIn = (name: string) => contents.find((c) => c.name === name)?.contents?.map((b) => b.type);
 
-    expect(typesIn(DEFAULT_TOOLBOX_LABELS.noodlVariables)).toEqual(['noodl_get_variable', 'noodl_set_variable']);
-    expect(typesIn(DEFAULT_TOOLBOX_LABELS.noodlObjects)).toEqual([
+    for (const [category, baseline] of VFN012_SEAM_CONTENTS) {
+      const actual = typesIn(category);
+      expect(actual).toBeTruthy();
+      expect(survivingIds(actual!, baseline)).toEqual(baseline);
+    }
+  });
+
+  /**
+   * The controls. `survivingIds(...).toEqual(baseline)` is a *weaker* predicate than the
+   * `toEqual` it replaced, so "it passes on the real toolbox" is no evidence it would fail on a
+   * broken one. Each arm mutates a baseline in one of the three ways a rename/removal/reorder
+   * actually reaches this file, and requires the predicate to reject it.
+   */
+  it('🔴 still rejects a renamed, removed or reordered existing id', () => {
+    const [, objects] = VFN012_SEAM_CONTENTS[1];
+
+    // Renamed: `noodl_get_object_property` → a computed-key twin absorbing it. This is the near
+    // miss FIX-004 §C could plausibly have shipped, and the one that would break saved programs.
+    const renamed = ['noodl_get_object', 'noodl_get_object_property_expr', 'noodl_set_object_property'];
+    expect(survivingIds(renamed, objects)).not.toEqual(objects);
+
+    // Removed.
+    expect(survivingIds(['noodl_get_object', 'noodl_set_object_property'], objects)).not.toEqual(objects);
+
+    // Reordered — same ids, different order. A `Set` comparison would wave this through.
+    const reordered = ['noodl_set_object_property', 'noodl_get_object', 'noodl_get_object_property'];
+    expect([...reordered].sort()).toEqual([...objects].sort());
+    expect(survivingIds(reordered, objects)).not.toEqual(objects);
+
+    // And the one case it is now meant to allow, so the arms above are not just "rejects
+    // everything": the same three ids with a later phase's blocks interleaved.
+    const dualListed = [
       'noodl_get_object',
       'noodl_get_object_property',
-      'noodl_set_object_property'
-    ]);
-    expect(typesIn(DEFAULT_TOOLBOX_LABELS.noodlArrays)).toEqual([
-      'noodl_get_array',
-      'noodl_array_length',
-      'noodl_array_add'
-    ]);
+      'noodl_get_object_property_expr',
+      'noodl_set_object_property',
+      'noodl_set_object_property_expr',
+      'noodl_object_members',
+      'noodl_object_has_property'
+    ];
+    expect(survivingIds(dualListed, objects)).toEqual(objects);
   });
 
   it('takes a hue no other category is using', () => {

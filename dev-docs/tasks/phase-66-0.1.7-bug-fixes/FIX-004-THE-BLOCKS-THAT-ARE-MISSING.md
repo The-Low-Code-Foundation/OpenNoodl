@@ -552,3 +552,98 @@ findability complaint behind the whole fix. And `tests-unit/vfn-012/browser-bloc
 byte-identity assertion is **narrowed to what its own title claims** — *"changes no existing block
 type id"* — which an addition does not do. ⚠️ Narrowing another phase's guard is only legitimate
 because the guard is stricter than its stated claim; say so in the commit.
+
+---
+
+## §C dual-list — BUILT 2026-08-16 (session 46). The ruling above is discharged; not driven.
+
+`App Objects` now carries seven entries. The four §C blocks are **interleaved, not appended**, each
+computed-key block directly beneath the literal-key sibling it generalises:
+
+| # | type | added? |
+|---|---|---|
+| 1 | `noodl_get_object` | VFN-012 |
+| 2 | `noodl_get_object_property` | VFN-012 — literal key |
+| 3 | **`noodl_get_object_property_expr`** | 🆕 computed key |
+| 4 | `noodl_set_object_property` | VFN-012 — literal key |
+| 5 | **`noodl_set_object_property_expr`** | 🆕 computed key |
+| 6 | **`noodl_object_members`** | 🆕 |
+| 7 | **`noodl_object_has_property`** | 🆕 |
+
+**Order is the argument, so order is asserted** (`object-data.spec.ts`), not membership. A
+`toContain` test passes just as happily on four rows appended at the bottom, which is the version
+that does not answer *"I have an App Object, now what?"*.
+
+⚠️ **`noodl_new_object` and the JSON pair are deliberately NOT dual-listed**, and a spec pins the
+asymmetry with its reason so a later session does not read it as an oversight and "finish the job":
+making an object out of nothing and crossing the JSON boundary are not things you reach for
+*because you have an App Object*. All three remain under `Data`.
+
+### 🔴 The fence, narrowed — and the four mutants that say it did not go slack
+
+`browser-blocks.spec.ts:294`'s `toEqual` over each whole seam category became: **every id VFN-012 put
+there is still present, still spelled the same, still in the same relative order** — `actual.filter(
+type => baseline.includes(type))` compared to `baseline`. That is what *"changes no existing block
+type id"* asserts. It permits exactly one new thing: an addition.
+
+🔴 **A narrowed guard passing on the real toolbox is no evidence it would fail on a broken one**, so
+each way it could have gone slack was driven against a mutant — applied, run, restored and `diff`ed
+back inside a single shell call:
+
+| mutant | fence | `object-data` | wanted |
+|---|---|---|---|
+| **M2 — rename `noodl_get_object_property` → the `_expr` twin** | 🔴 **FAILS** (1 of 19) | — | ✅ the rename is still caught |
+| M4 — weaken the predicate to `baseline.filter(...)`, so order stops mattering | 🔴 **FAILS** (1 of 19) | — | ✅ the spec's own controls are load-bearing |
+| M1 — drop the dual-listed `_expr` block from App Objects | ✅ passes | 🔴 FAILS (2 of 24) | ✅ each spec grades its own claim |
+| M3 — append the four at the bottom instead of interleaving | ✅ passes | 🔴 FAILS (1 of 24) | ✅ order is graded, not just membership |
+
+**M2 is the one that matters.** It is the plausible near-miss — a later change letting the computed
+twin absorb the literal-key block — and it is the one that would break every saved program holding
+`noodl_get_object_property`. The narrowed fence still turns red on it. M1 and M3 also confirm the two
+specs are not redundant: the fence is indifferent to additions *by design*, and the adding phase's own
+spec is what pins them.
+
+### Gates
+
+✅ **Taken this session, on the tree as it stood:**
+
+| Gate | Reading |
+|---|---|
+| `noodl-editor` `test:main` (jest, **full**) | ✅ **225 suites / 3492 tests, 0 failed** — 22:21:24 → 22:22:48 |
+| affected suites alone (`fix-004`, `vfn-012`, `lgc-009`) | ✅ 10 suites / 200 tests |
+| `tsc --noEmit -p packages/noodl-editor/tsconfig.json` | ✅ 0 errors |
+| `tsc --noEmit -p packages/noodl-editor/tsconfig.tests.json` | ✅ 0 errors |
+
+⚠️ **Both `tsc` readings are read off empty output, not an exit code.**
+✅ **The two suites s44 recorded as load-flaky** (`bld-004/reasoningChannel`, `aib-009/turnDeadline`)
+**both passed in this full run.**
+
+### 🔴 `test:ci` NOT taken — and the reason is a measurement, not the cost
+
+The handover flagged this item as *"Blockly ⇒ `test:ci`"*. Two findings, and they point opposite ways:
+
+1. ✅ **No jasmine spec reads this module.** `grep` over `packages/noodl-editor/tests/**/*.spec.*` for
+   `BlocklyToolbox` / `buildToolbox` / `BlocklyEditor` returns **zero**; the only hits anywhere under
+   `tests/` are webpack **bundle artifacts** (`index.bundle.js`, the lazy
+   `…BlocklyWorkspace_tsx.index.bundle.js` chunk). So `test:ci` would grade this change only as *"the
+   renderer bundle still builds"* — and this change adds no import and no new symbol, only a string
+   array and comments, which both `tsc` projects already prove parses.
+2. 🔴 **A reading taken now would not be of this change.** A **peer's editor stack was live
+   throughout**: `scripts/start.ts` (pid 4024), **three** `webpack` processes, and an Electron editor
+   (pid 6031, renderer on 9222) — attributed by PPID, not by the 26 `electron/dist` matches, which
+   are mostly MCP servers. And peer source edits landed at **22:12:34 / 22:12:16 / 22:13:02**
+   (`noodl-core-ui` code-editor files, `CodeFileDocument.tsx`) — uncommitted, and inside the ~40s
+   webpack window a `test:ci` run would compile.
+
+So a green `test:ci` here would have been a reading of **a peer's working tree**, which is the exact
+mechanism §2 of the s45 handover describes. **The floor stays inherited: 2843 / 6 @ seed 39393,
+witnessed 2026-08-16 21:53:37 — not re-measured this session.**
+
+### 🔴 Not driven
+
+Nobody has opened the flyout and seen seven rows under `App Objects`. The headless read is off
+`buildToolbox()`, which is the **toolbox definition** — and §C's own drive (session 38) records why
+that is the weaker instrument: *"a block whose definition failed to register would still be named in
+the toolbox and simply not draw."* These four are registered and drew under `Data` at s38, so the
+risk is low, but **"drew under App Objects" is unmeasured.** The drive is cheap and shares a rig with
+FIX-005's rename (item 2), which touches the label of this very category.

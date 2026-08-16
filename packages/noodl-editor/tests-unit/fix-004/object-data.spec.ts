@@ -112,22 +112,66 @@ describe('FIX-004 §C — the toolbox offers every new block, in the right place
   });
 
   /**
-   * ⚠️ **And adds nothing to the three seam categories**, which is a decision rather than an
-   * omission — see the note above `noodlObjects` in `BlocklyToolbox.ts`.
+   * 🔴 **Dual-listed under `App Objects` too — ruled in session 42, after being built and
+   * withdrawn in session 37.**
    *
-   * `tests-unit/vfn-012/browser-blocks.spec.ts` holds those three byte-identical to their
-   * VFN-012 contents. That fence is stricter than the claim in its own title (*"changes no
-   * existing block type id"* — which an addition does not do), but relaxing another phase's
-   * guard so one's own change fits through it is the wrong way round. This asserts the same
-   * thing from this side, so if that fence is ever deliberately loosened, the decision recorded
-   * here is loosened with it rather than drifting quietly.
+   * Findability is the complaint behind this whole fix, and these four are reached from two
+   * different questions: *"I have an App Object, now what?"* and *"I have some data, now
+   * what?"*. `noodl_convert` is already listed under both Math and Text for the same reason.
+   *
+   * ⚠️ **The order is the argument, so the order is asserted**, not just membership: each
+   * computed-key block sits directly beneath the literal-key sibling it generalises. A test
+   * that only checked `toContain` would pass on four rows appended at the bottom, which is the
+   * version that does not help anybody.
+   *
+   * ⚠️ **This is the second half of the withdrawal.** The first half is the narrowed fence in
+   * `tests-unit/vfn-012/browser-blocks.spec.ts`, which now asserts what its title always
+   * claimed — *"changes no existing block type id"* — instead of byte-identity. The three
+   * VFN-012 ids are still exactly where they were, and that spec's own controls prove it would
+   * still notice if they were not.
    */
-  it('leaves App Objects exactly as VFN-012 left it', () => {
+  it('dual-lists the four object-shaped blocks under App Objects, each beside its literal-key sibling', () => {
     expect(categoryBlocks('App Objects')).toEqual([
       'noodl_get_object',
       'noodl_get_object_property',
-      'noodl_set_object_property'
+      'noodl_get_object_property_expr',
+      'noodl_set_object_property',
+      'noodl_set_object_property_expr',
+      'noodl_object_members',
+      'noodl_object_has_property'
     ]);
+  });
+
+  /**
+   * The three that are **not** dual-listed, and the reason, so a later session does not read the
+   * asymmetry as an oversight and "finish the job". Making an object out of nothing and crossing
+   * the JSON boundary are not things reached for *because you have an App Object*.
+   */
+  it('leaves the empty-object and JSON blocks under Data alone', () => {
+    const appObjects = categoryBlocks('App Objects');
+    for (const type of ['noodl_new_object', 'noodl_json_parse', 'noodl_json_stringify']) {
+      expect(appObjects).not.toContain(type);
+      expect(categoryBlocks('Data')).toContain(type);
+    }
+  });
+
+  /**
+   * 🔴 A dual-listing is two toolbox entries for **one** registered block type, not a copy. If a
+   * later change ever split them, saved programs would hold one of the two ids and the other
+   * would be dead. `noodl_convert` is the precedent this follows, so it is checked beside them.
+   */
+  it('dual-listed entries name one registered type, not a duplicate of it', () => {
+    for (const type of [
+      'noodl_get_object_property_expr',
+      'noodl_set_object_property_expr',
+      'noodl_object_members',
+      'noodl_object_has_property',
+      'noodl_convert'
+    ]) {
+      expect(Blockly.Blocks[type]).toBeDefined();
+      const homes = ['App Objects', 'Data', 'Math', 'Text'].filter((name) => categoryBlocks(name).includes(type));
+      expect(homes.length).toBe(2);
+    }
   });
 
   /**
