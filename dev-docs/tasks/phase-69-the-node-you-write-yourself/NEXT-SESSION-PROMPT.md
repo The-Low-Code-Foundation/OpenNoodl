@@ -1,11 +1,11 @@
 # Phase 69 — next session
 
-**Written 2026-08-16, session 8.** 🔴 **This file is a REWRITE, not an amendment.** It is overwritten
+**Written 2026-08-16, session 9.** 🔴 **This file is a REWRITE, not an amendment.** It is overwritten
 every session; if you find yourself prepending, rewrite it instead. Everything that outlives the
 phase goes to memory, not here.
 
 Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first — all eight rulings are made and the
-queue is empty. **CN-006 is next and nothing blocks it.**
+queue is empty. **CN-006's editor half is next, and its ground is already surveyed.**
 
 ---
 
@@ -13,141 +13,153 @@ queue is empty. **CN-006 is next and nothing blocks it.**
 
 | Task | Built | Verified | Note |
 |---|---|---|---|
-| **CN-001** | ✅ `ed28a03c` | ✅ | Render harness sees kits |
-| **CN-002** | ✅ `378793bc` | ✅ | A skipped check says it was skipped |
-| **CN-003** | ✅ | ✅ | All five items. Slices 1–4 |
-| **CN-004** | ✅ `4df8c5bd` | ✅ | Items 1–3 were already done; item 4 was broken both ways |
-| **CN-005** | ✅ `f251695c` + `14c948b3` | ✅ | **Closed this session.** `@nodegx/node-kit-types` — §2 |
-| **CN-006** | 📋 | — | **Next.** The scaffold. ✅ D1, ✅ D8. Consumes CN-005 — §3 |
+| **CN-001** … **CN-005** | ✅ | ✅ | Closed in sessions 4–8 |
+| **CN-006** | ⚠️ **HALF** | ✅ for that half | `a5427aa7`. MCP + generator done and proven end-to-end. **The editor command is not built** — §3 |
 | CN-006b … CN-017 | 📋 | — | CN-007 is the other half of the authoring arc |
 
 ---
 
 ## 1. Gate readings
 
-All taken this session at HEAD. Nothing in the editor was touched, so nothing here should have moved
-— and it didn't.
+All taken this session at HEAD.
 
 | Gate | Reading |
 |---|---|
-| `test:main` (editor jest) | ✅ **217 suites / 3369** — unchanged from s7, as expected |
-| `@nodegx/node-kit-types` jest | ✅ **3 suites / 62** (new) |
-| `@nodegx/kit-catalog` jest | ✅ 2 / 38 |
-| `@nodegx/module-inject` jest | ✅ 15 |
-| `@nodegx/render-measure` jest | ✅ 5 |
-| `npx lerna run test --scope @nodegx/node-kit-types` | ✅ runs — the gate reaches the new package |
+| `packages/noodl-editor` jest (`test:main`) | ✅ **217 suites / 3369** — unchanged from s7/s8, as expected: no editor source was touched |
+| `@noodl/mcp` jest | ✅ **50 suites / 585** — including the provisioning suites, which did **not** flake this run |
+| `@noodl/noodl-viewer-react` jest | ✅ **71 suites / 910** |
+| `@nodegx/kit-scaffold` jest | ✅ **4 suites / 58** (new) |
+| `npx lerna run test --scope @nodegx/kit-scaffold` | ✅ runs — the gate reaches the new package |
+| `noodl-mcp` `npx tsc --noEmit` | 🔴 **8 errors, unchanged.** Mine was one of nine briefly; fixed. Still in no CI job |
 
-⚠️ **`test:packages` was not run in full** and neither was `test:ci`. Nothing this session touches
-the editor, the viewer or the MCP server: the commits are a new isolated package, one `--scope` flag
-on the `test:packages` script, and the lockfile. The four no-build package suites were run
-individually instead. 🔴 **`@noodl/mcp`'s provisioning suites are still intermittently red under
-load** (2 of 6 on a quiet baseline, interleaved — s7's finding, still wants a task number).
+🔴 **A methodology mistake worth carrying, because it produced a false red.** `test:main` was first
+run **in the background beside the 60-second viewer-react suite** and exited 1 with no jest summary
+at all — an interrupted process, not a failure. Run sequentially it is exit 0, 217/3369. *A
+concurrent run on a shared machine measures the machine.* Do not background one suite beside
+another and read the exit code.
 
-⚠️ **Baselines move under you.** Re-measure; never subtract from this table.
+⚠️ **`test:packages` and `test:ci` were not run in full.** The editor was not touched and no editor
+was launched, so no peer's suite was at risk; the four affected package suites were run individually
+instead. ⚠️ **Baselines move. Re-measure; never subtract from this table.**
 
 ---
 
 ## 2. What this session settled
 
-`@nodegx/node-kit-types` — one self-contained `src/index.d.ts` (no imports, nothing to compile),
-62 tests, registered in all four places a new workspace package needs. Full write-up in
-[CN-005](CN-005-THE-DEFINITION-TYPED.md); the three things that will bite someone else:
+`@nodegx/kit-scaffold` + `create_node_kit`. Full write-up in
+[CN-006](CN-006-SCAFFOLD-A-KIT.md); the four things that will bite someone else:
 
-### 🔴 AC1 could not be met as written, and the measurement came first
+### 🔴 D8 landed on the one path that was still broken
 
-The criterion asks for autocomplete via `import('@nodegx/node-kit-types')` in a project with **no
-`node_modules`**. Driving the TypeScript language service — the process VS Code runs — a bare
-specifier resolves *only* when the package is physically installed above the file. With none, the
-annotation is dead and the completion list is ~1,200 DOM globals.
+AIB-001 guarded `var(--token)` on a units-typed port in `input.set` — the path a **set parameter**
+takes. A port's declared **`default`** never goes through `set`. It was unit-fitted at definition
+time and at instance time, so `default: 'var(--space-3)'` became `var(--space-3)px`: invalid CSS,
+dropped by the browser with no error, while the property panel still read back the correct token.
 
-**Delivery is therefore a copy of the `.d.ts` inside the kit** (`types/node-kit.d.ts`), reached by a
-relative path. Same zero configuration, identical completions. Both arms are asserted in
-`tests/resolution.test.js`, the failing one deliberately.
-🔴 The assertion that makes it mean anything is **`not.toContain('document')`** — a list that merely
-*contains* `inputCss` would pass in both worlds.
+D8 says the scaffold emits token defaults, so the ruling landed squarely on the broken half, and
+**this task's own spec records the opposite premise as fact.**
 
-### 🔴 Two holes, both found by building the caller, both in the deliverable
+⚠️ **What hid it: a colour port has no units.** The colour arm always worked. A scaffold reviewed by
+eye, or a test asserting the *parameter value* rather than the style, reports "tokens working".
 
-Neither was in a kit. Annotating something real is what exposed them.
+Two guards in `react-component-node.ts`, each mutation-proven against its own test, plus a third
+mutation (dropping unit-fitting entirely) proving the controls bite rather than decorating.
 
-1. **The globals a kit runs against were undeclared** — every annotated kit reported `Cannot find
-   name 'Noodl'`. Now published, and the three bootstraps disagree in a way worth knowing:
-   **the SSR bootstrap alone does not set `Noodl.Env`**, so reading it unguarded throws server-side.
-2. **The index signature silently disabled the whole point.** Mirroring the runtime's
-   `[extra: string]: unknown` on `ReactNodeDefinition` means `dispayNodeName` matches it and draws
-   **no diagnostic** — while `createNodeFromReactComponent` forwards fields by naming them one at a
-   time, so the runtime drops it silently too. *Silent at both ends*, on the commonest authoring
-   mistake. The published type **omits it**; that cannot produce a false error, because a field the
-   interface does not list is a field the bridge does not forward.
-   ⚠️ **An index signature is not a property, so the property-set drift check is blind to it** — it
-   is asserted separately, in both directions.
+### 🔴 A kit scaffolded mid-session was invisible to the server that scaffolded it
 
-### 🔴 A gate that skipped the files it existed to grade
+`installProjectOverlay` is idempotent per directory and runs **once at bind**. `create_node_kit`
+writes into the bound project after that, so the tool reported four files written and the agent's
+next `get_node_type` said **"Unknown node type"** — with an accurate success payload, because the
+kit really was on disk. `refreshProjectOverlay` is now called from the one door that knows the kit
+set changed. ✅ D3 is preserved: same process, no poll, no disk cache.
 
-`skipLibCheck: true` skips type checking of **every `.d.ts`**, not just lib files. The standalone
-compile gate — and a hand-run `npx tsc --noEmit --strict --skipLibCheck` already written into the
-task file as a tick — both passed **with `NoSuchTypeAtAll` substituted into the published types**.
-Corrected and mutation-proven, which then surfaced a real conflict it had been hiding: the file's
-global `React: any` collides with React's UMD global wherever `@types/react` is in scope (this repo;
-**CN-007's examples**). Clean in a kit project; exactly one diagnostic otherwise, pinned by a test.
+⚠️ **Expect the editor twin.** `ProjectModel.modules` is populated once by `readProjectModules`.
+**Measure it, do not assume it** — the MCP side looked fine too.
 
-⚠️ **Also worth carrying:** the spec's item 4 asked for `frame` to be published as dead. Traced
-instead — `useFrame = !!def.frame`, and each sub-field registers real shared ports. For a kit, both
-halves are live. **Publishing it as dead would have been the lie in the other direction.**
+### ✅ The MCP tool cost **zero** tokens, and CN-009 keeps all 57
+
+| placement | surface | cost |
+|---|---|---|
+| baseline (re-measured, matches s8) | 8,223 | — |
+| **`project` group** | **8,223** | **0** |
+| a new `kit` group | 8,249 | 26 |
+| resident | 8,464 | **184 over the bar on its own** |
+
+🔴 **What it costs instead, stated rather than argued away:** `project`'s `purpose` line does not
+mention kits, and that line is the only description a model reads before choosing a group.
+`find_tools`' `query` matches tool **names**, so `query: "kit"` reveals it — asserted, **with a
+control asserting that a subject query (`"custom node"`) finds nothing**. That control fails the day
+somebody widens the purpose line, which is the point.
+
+✅ The surface test now prints `[surface] N tokens … M under budget` **on a passing run** — its own
+header had asked for exactly that in writing, and its absence is how 56 of LEG-001's 58 banked
+tokens were spent by work that never knew it was spending them.
+
+### 🔴 AC4 was a false pass, and the copy check caught a real staleness inside a day
+
+- **AC4** ("the generated kit validates clean") passed while `create_node_kit` was **deferred** and
+  every call returned *"Tool create_node_kit disabled"*. "The same validator summary before and
+  after" is trivially true when nothing happened. It now asserts the kit landed **before** grading
+  its effect. *A failure indistinguishable from a missing mechanism measures nothing.*
+- **`typesCopyStatus`** answers "is this kit's `.d.ts` the one we publish today" by comparing the
+  **body**, not the stamp. It immediately found the cashflow kit's copy **not current** — it
+  predated CN-005's own React-collision warning by one session. Refreshed and stamped; that kit
+  still reports **0 diagnostics** through the language service.
 
 ---
 
-## 3. Starting CN-006
+## 3. Starting CN-006's editor half
 
-CN-006 is the scaffold, and CN-005 decided one thing for it:
+Nothing is open. This is unbuilt work with its ground surveyed.
 
-- ✅ **The scaffold must write `types/node-kit.d.ts` into the kit** — a copy of
-  `packages/nodegx-node-kit-types/src/index.d.ts` — and emit the annotation as
-  `/** @type {import('./types/node-kit').ReactNodeDefinition} */`. A bare specifier does not resolve
-  and there is no build step to make it. `packages/nodegx-node-kit-types/README.md` states the
-  layout; `tests/fixtures/kit-annotated/index.js` is a working model of the output.
-- ⚠️ **How the copy stays current is an open question CN-006 owns.** Copying at scaffold time freezes
-  it at that version, and this repo's most expensive recurring failure is a stale copy that reads
-  exactly like a correct answer. Consider stamping the version in a header comment.
-- ✅ D8: the scaffold emits `var(--token)` colour and spacing ports by default.
-- ⚠️ CN-006 competes with CN-009 for the **57 free MCP tool-surface tokens** (bar 8,280, measured
-  8,223), and the test forbids a third renegotiation.
+- ✅ **The generator is done and shared.** `writeKitScaffold(projectDir, { name })` from
+  `@nodegx/kit-scaffold`. Its editor home is `shared/utils/projectmodules.ts`, beside ERG-002's
+  `registerLibrary`; the UI home is `ProjectSettingsTab.tsx` beside `LibrariesSection`.
+- 🔴 **D1's "writes the scaffold and opens `index.js` in the code editor" cannot mean the in-app
+  editor without new work.** The editor's CodeMirror is bound to Function-node **parameters**, not to
+  files on disk, and there is no file editor anywhere in the app. The only precedent for reaching a
+  file is `shell.showItemInFolder` (3 uses). So the clause resolves to `shell.openPath` or
+  `showItemInFolder` — **worth naming out loud rather than picking quietly**, since D1 is a ruling.
+- ⚠️ The kits **list** is CN-006b, not this task.
+- ⚠️ AC1 and AC3 are the two criteria the editor half closes: *placeable in the picker with no
+  further edits*, and *the rendered result actually picks up the token — computed style, not the
+  parameter value*. The style layer is asserted; a browser has not been asked.
 
 ---
 
 ## 4. Owed, and small
 
-- ⚠️ **The cashflow kit is annotated on disk and is not under version control.** It gained
-  `// @ts-check`, five `@type` annotations and `noodl_modules/cashflow-kit/types/node-kit.d.ts`. It
-  reports **0 diagnostics** and its module scan is unchanged (one module, zero warnings) — the
-  `types/` folder is invisible to the scanner, which enumerates only directories directly under
-  `noodl_modules/` and reads only `manifest.json`. A backup of the pre-annotation kit is in this
-  session's scratchpad only, so **it will not survive**; the annotated form is the one on disk.
-- ⚠️ **The `.d.ts` copy in the cashflow kit is a second copy and can drift.** Nothing checks it.
-  CN-006's answer to the staleness question above should cover this one too.
+- ⚠️ **The cashflow kit's `types/node-kit.d.ts` was rewritten on disk** (refreshed + stamped). That
+  kit is not under version control and its annotations are s8's; it reports 0 diagnostics.
 - ⚠️ **Still owed from s7, untouched:** re-record
   `packages/noodl-editor/tests-unit/cn-003/fixtures/kit-app.editor-nodelibrary.json` (needs a viewer
   build and a drive; `kitAgreement.test.ts` is a fossil in place until then), and the packaged
-  `dist/noodl-mcp.cjs` still carries CN-004's pre-fix mapping. **18+ peer sessions have a server
-  running out of that path**, so a rebuild was again deliberately not done.
+  `dist/noodl-mcp.cjs` still carries CN-004's pre-fix mapping **and now also lacks
+  `create_node_kit`**. **18+ peer sessions have a server running out of that path**, so a rebuild was
+  again deliberately not done.
 
 ---
 
 ## 5. Owed by Richard
 
-Unchanged from s7, both still open:
+Unchanged from s7/s8, both still open:
 
 1. **Widen the project gate to check parameter values?** `checkParameterValues` has exactly one
    production caller, so `validate:project` / `validate_project` check parameter values for **no node
-   of any provenance**. Not kit-specific, so D4's parity holds either way. `cn004.test.ts`'s last
-   block asserts the silence deliberately — **replace it when the call is taken, do not delete it.**
+   of any provenance**. `cn004.test.ts`'s last block asserts the silence deliberately — **replace it
+   when the call is taken, do not delete it.**
 2. **The ungated typechecks.** `packages/noodl-mcp`'s `npx tsc --noEmit` is red (8, unchanged, none
    in files touched here) and runs in no CI job; seven of eleven `typecheck:*` scripts run nowhere,
    and `scripts/` is in none of them.
 
+New, and small: **should `project`'s `find_tools` purpose line name kits?** It costs resident tokens
+out of the same 57 CN-009 wants, so it is a budget decision rather than a wording one. §2 has the
+numbers and `tests/kitTools.test.ts` has the control that will fail when it changes.
+
 Also open, not caused here, both wanting task numbers:
 🔴 **`render-from-disk.js` answers `/` and `/index.html` and 404s everything else**, including the
-start page's own `urlPath`. 🔴 **The `@noodl/mcp` provisioning flake.**
+start page's own `urlPath`. 🔴 **The `@noodl/mcp` provisioning flake** (did not reproduce this run —
+absence of a flake is not its absence).
 
 ---
 
@@ -156,18 +168,18 @@ start page's own `urlPath`. 🔴 **The `@noodl/mcp` provisioning flake.**
 Several sessions share this checkout. At session start the tree carried three peer paths —
 `dev-docs/tasks/phase-50-legibility/notes/leg-001-lane-notes.md`,
 `dev-docs/tasks/phase-68-learnbook/README.md`, `scripts/library/check.ts` — plus untracked
-`dev-docs/tasks/phase-65-the-library/`. **It carries exactly those four at handover.** None was
-touched, and no peer commit landed during the session.
+`dev-docs/tasks/phase-65-the-library/`. **It carries exactly those four at handover**, byte-for-byte
+unchanged, and no peer commit landed during the session.
 
-- ✅ **`git commit -F <file> -- <pathspecs>`, always. Never `git add -A`, never `git stash`.** The
-  untracked package was added and committed in one chain with the message already in a file.
+- ✅ **`git commit -F <file> -- <pathspecs>`, always. Never `git add -A`, never `git stash`.**
 - ✅ **No editor was launched** — everything is plain Node, so no drive negotiation was needed and no
-  peer's `test:ci` was at risk.
-- ⚠️ **`packages/noodl-viewer-react/src/react-component-node.ts` was edited twice, briefly, to
-  mutation-prove the drift check**, after checking `ps` for a running `test:ci` or webpack (none).
-  Both times restored and verified byte-identical against HEAD before anything else ran.
+  peer's `test:ci` was at risk. `ps` was walked at session start: 19 MCP servers, zero editors, zero
+  webpack, zero `test:ci`.
+- ⚠️ **`packages/noodl-viewer-react/src/react-component-node.ts` and
+  `packages/noodl-mcp/src/{toolGroups.ts,tools/kitTools.ts}` were each edited briefly to
+  mutation-prove a guard or measure a placement**, after checking `ps`. Every one was restored and
+  verified byte-identical before anything else ran.
 - ✅ **The lockfile was updated with `npm install --package-lock-only`** — it does not touch
-  `node_modules`, so it cannot land under a sibling's running suite. The diff is 13 lines and
-  contains nothing but this package; read and confirmed, unlike CN-003's run which folded in an
-  unrelated version correction.
+  `node_modules`, so it cannot land under a sibling's running suite. The diff is **17 lines and
+  contains nothing but this package**; read and confirmed.
 - Whoever you tell you are starting, tell you have stopped.
