@@ -106,8 +106,9 @@ candidates, and this drive separated none of them:**
 1. their fixture never declared `scriptOutputs`;
 2. **the runtime axis I withdrew in C1** — declared-but-no-live-preview is untested, and s24's null
    sits in exactly that cell;
-3. a **fixture artefact** — `fromJSON` + `addRoot` writes the *editor's* model, while
-   `_managePortsForNode` is registered on a **runtime's** graphModel.
+3. ~~a **fixture artefact** — `fromJSON` + `addRoot` writes the *editor's* model~~ 🔴 **DEAD (s27):
+   `fromJSON` + `addRoot` IS the product's own creation path** (`NodePicker.utils.ts:15-41`), so
+   this candidate never existed. Candidate 2 is also dead — see §5 item 1.
 
 ✅ What is settled is only that **declaration is necessary**, which is the ruling-relevant fact and
 enough to unblock §1. (Peer's catch, `c6ce10fd`.)
@@ -144,10 +145,16 @@ is one row:
 | `Outputs.Done()` | signal | none | silent | ✅ **works — silence is correct** |
 | **`Outputs.Done_1()`** / `Outputs.Done.send()` | **value** | none | **silent** | 🔴 throws — ⚠️ **NOT** "no surface": `Last run` fires (s27) |
 
-✅ **What survives is still worth a ruling:** row 2's author has **no route at all** — no panel
-control to discover *and* no diagnostic to read. That re-prices the **parser-asymmetry** ruling from
-a nicety with migration risk to **the only case with no surface**. (A peer committed the two-row
-table at `e62cc77f` precisely so the correct-and-silent case cannot be misread as the broken one.)
+🔴 **SUPERSEDED (s27) — row 2's author is NOT without a route, and this paragraph was the severity
+argument.** Both value-shaped calls throw **and** warn, measured beside a known-firing control:
+`Outputs.Done.send()` → *"Cannot read properties of undefined (reading 'send')"*, `Outputs.Done_1()`
+→ *"Outputs.Done_1 is not a function"*, each naming line 1. ✅ **The throw is now driven rather than
+reasoned** — but *"the only case with no surface"* is **false**.
+
+⚠️ **So the parser-asymmetry ruling loses its severity argument and shrinks back toward §1's copy
+question**: what remains is that there is no **Type row** to fix it from, not that the author is
+unwarned. (The two-row table at `e62cc77f` still stands for its original purpose — keeping the
+correct-and-silent case distinct from the broken one.)
 
 ### 3c. The dropdown, finally opened — and AC1
 
