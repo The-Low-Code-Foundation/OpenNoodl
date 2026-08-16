@@ -74,6 +74,13 @@ export interface ProjectCreationWizardProps {
   onConfirm: (name: string, location: string, presetId: string, mode: WizardMode) => void;
   /** Open a native folder picker; returns the chosen path or null if cancelled */
   onChooseLocation?: () => Promise<string | null>;
+  /**
+   * FIX-021 — the folder the Location field starts on, read fresh each time the
+   * wizard opens. Omitted (or empty) keeps the original behaviour: an empty
+   * field, and `Browse…` the only way past the basics step. The host decides
+   * what this is — the wizard never guesses a path of its own.
+   */
+  initialLocation?: string;
   /** Style presets to show in the preset picker step */
   presets?: PresetDisplayInfo[];
   /**
@@ -269,14 +276,26 @@ export function ProjectCreationWizard({
   onChooseLocation,
   presets,
   aiAvailability,
-  scoping
+  scoping,
+  initialLocation
 }: ProjectCreationWizardProps) {
   if (!isVisible) return null;
 
   // Key the provider on `isVisible` so state fully resets each time the
   // modal opens — no stale name/location from the previous session.
+  //
+  // FIX-021 — which is also why the seed is a prop rather than something the
+  // provider remembers: the reset is deliberate, and the one field that should
+  // survive it comes back in from the host, freshly read.
+  //
+  // Passed conditionally: spreading `{ location: undefined }` over the defaults
+  // would make `location` undefined rather than `''`, and `isStepValid` reads
+  // `state.location.length`.
   return (
-    <WizardProvider key="project-creation-wizard">
+    <WizardProvider
+      key="project-creation-wizard"
+      initialState={initialLocation ? { location: initialLocation } : undefined}
+    >
       <WizardInner
         onClose={onClose}
         onConfirm={onConfirm}

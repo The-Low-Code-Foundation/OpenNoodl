@@ -183,3 +183,76 @@ split that makes the doc defensible).
 ⚠️ **Note the coupling, because it decides where a rule lives.** Richard's own example —
 *"prefer inbuilt nodes"* — is **FIX-006's ruling**. A preference like that belongs in the profile,
 where this user can change it, rather than hard-coded into the system prompt for everybody.
+
+## ✅ BUILT 2026-08-16 (session 44) — the wizard's default location
+
+Ruling (B) built. Three files, one of them new:
+
+| file | what changed |
+|---|---|
+| `pages/ProjectsPage/projectLocationMemory.ts` | **new.** `LAST_PROJECT_LOCATION_KEY` (`projects.lastCreateLocation`) and `pickProjectLocation` — the whole rule, and nothing else |
+| `ProjectsPage.tsx` | writes the key in `handleChooseLocation`; reads it into `initialWizardLocation`, re-derived every time the modal opens |
+| `ProjectCreationWizard.tsx` | new `initialLocation` prop → `WizardProvider`'s `initialState` |
+
+**The rule module imports nothing.** That is what makes it gradeable: `tests-unit` is a plain-Node
+runner and can reach neither `EditorSettings` nor `@noodl/platform`, so the three things the reader
+needs — the remembered value, `platform.getDocumentsPath()`, and `filesystem.exists` — are passed in
+by `ProjectsPage`, which already imports all three.
+
+🔴 **The guard is the part worth keeping: a remembered folder that no longer exists must not be
+seeded.** `isStepValid('basics')` checks only `location.length > 0`, so a path on a volume that has
+since been unmounted would **enable `Next`** and then fail at creation — later, and naming a folder
+the user never typed. The invariant the module holds is **"either the empty string, or a folder that
+exists"**, and empty is exactly the field the wizard had before.
+
+⚠️ **Recorded on Browse, not on Create.** That is the moment the user chose a folder; abandoning the
+wizard afterwards does not make the choice less real, and a creation that failed is precisely when
+they will be back.
+
+### Gates, taken at session 44 on a checkout carrying peers' uncommitted work
+
+| gate | reading |
+|---|---|
+| `noodl-editor` `test:main` | ✅ **221 suites / 3403 tests, 0 failed** (s43: 220 / 3396 — the delta is exactly this task's one suite and seven tests) |
+| `noodl-core-ui` jest | ✅ 25 suites / 444 tests |
+| `typecheck:core-ui` | 44 errors, **none in any file this task touches**, and `--listFiles` confirms all three *are* in the compile |
+| `lint:ci` ratchet | ✅ exit 0 — 876 errors against a 3916 baseline |
+
+**`test:ci` not run, as a claim rather than an omission:** two `.ts`/`.tsx` files under `src/`, one
+new `.ts`, one `tests-unit` spec. No `.jsx`, nothing under `packages/noodl-editor/tests/`. The
+jasmine suite's `ProjectCreationWizard.test.ts` imports `WizardContext` only — `getStepSequence` and
+`isStepValid` are untouched, and the component file is not in that bundle. ⚠️ A peer was launching an
+editor throughout, which reaps a running `test:ci` anyway.
+
+### ✅ The spec was checked against two mutants, because green is not a measurement
+
+`tests-unit/fix-021/projectLocationMemory.spec.ts` — 7 tests. Each mutant was applied to the real
+module and reverted inside a single shell call; the file was diffed back to byte-identical after.
+
+| mutant | what it models | result |
+|---|---|---|
+| drop the `remembered` branch | the seed that ignores the memory — always documents | **1 failed, 6 passed** — only *"prefers the remembered folder"* dies |
+| drop `&& exists(remembered)` | the seed with no guard, i.e. the version I would have written without thinking about unmounted volumes | **3 failed, 4 passed** — the gone-folder row, the empty-result row **and the matrix invariant** |
+
+The second is the one that matters: the guard is not merely asserted somewhere, it is asserted by a
+row that fails when it is removed. The matrix test walks 7 × 3 × 4 combinations rather than the cases
+that happened to occur to me, and it is what catches the guard being removed *somewhere I did not
+write a named row for*.
+
+### ⚠️ Not driven
+
+The editor was held by a peer's drive for the whole session. **`initialLocation` reaching the field,
+and Browse overriding it, are spec-and-typecheck only.** The drive is cheap when the editor frees up:
+open the launcher, *New project* → any mode, and read the Location field before touching `Browse…`.
+✅ **The control that makes it a measurement:** the field must show **Documents** on a profile that has
+never chosen a folder, and the *previously chosen* folder after one Browse — if both readings are the
+same path, the drive has measured nothing.
+
+### ⚠️ Incidental — a dead fallback that would be wrong if it ever woke up
+
+`LocalProjectsModel.ts:300` builds its no-`path` fallback as `platform.getDocumentsPath() + name` —
+**string concatenation, no separator**, and unlike `getTempPath`/`getAppPath` the electron platform
+does **not** put a trailing slash on `_documentsPath` (`platform-electron.ts:29-31`). So that branch
+would produce `…/Documentsmyproject`. It is unreachable: `ProjectsPage` is the only caller and it
+always passes `path`. **Left alone** — but this task now makes the documents folder the *usual*
+answer, so anyone who deletes the wizard's `path` argument as redundant will land straight on it.

@@ -77,6 +77,7 @@ import { MigrationWizard } from '../../views/migration/MigrationWizard';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 import { UpdateManager } from '../../views/UpdateManager';
 import { LauncherSettingsDialog, LauncherSettingsSection } from './LauncherSettingsDialog';
+import { LAST_PROJECT_LOCATION_KEY, pickProjectLocation } from './projectLocationMemory';
 import { useConnectAgent } from './useConnectAgent';
 
 export interface ProjectsPageProps extends IRouteProps {
@@ -775,12 +776,38 @@ export function ProjectsPage(props: ProjectsPageProps) {
       const direntry = await filesystem.openDialog({
         allowCreateDirectory: true
       });
+      if (direntry) {
+        // FIX-021 — the write half of the seeded Location. Recorded here rather
+        // than on Create, because this is the moment the user chose a folder:
+        // abandoning the wizard afterwards does not make the choice less real,
+        // and a creation that fails is exactly when they will be back.
+        EditorSettings.instance.set(LAST_PROJECT_LOCATION_KEY, direntry);
+      }
       return direntry || null;
     } catch (error) {
       console.error('Failed to choose location:', error);
       return null;
     }
   }, []);
+
+  /**
+   * FIX-021 — the folder the wizard's Location field opens on.
+   *
+   * Re-read every time the modal opens, which is what `isCreateModalVisible` is
+   * doing in the dependency list: the wizard is unmounted while closed, so this
+   * is the value it mounts with, and a folder chosen in one pass is the seed for
+   * the next without any of it living in wizard state.
+   */
+  const initialWizardLocation = useMemo(
+    () =>
+      pickProjectLocation({
+        remembered: EditorSettings.instance.get(LAST_PROJECT_LOCATION_KEY),
+        documentsPath: platform.getDocumentsPath(),
+        exists: (path) => filesystem.exists(path)
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isCreateModalVisible is the re-read trigger
+    [isCreateModalVisible]
+  );
 
   /**
    * AIX-012 — everything that happens to an AI-scoped project *after* it has
@@ -1283,6 +1310,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
         presets={STYLE_PRESETS}
         aiAvailability={aiAvailability}
         scoping={scopingState}
+        initialLocation={initialWizardLocation}
       />
 
       {/* The launcher had no update surface at all: `BaseWindow`, which owned
