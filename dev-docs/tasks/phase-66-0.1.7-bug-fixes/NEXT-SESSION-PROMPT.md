@@ -155,7 +155,9 @@ is one row:
 | written, undeclared | port type | Type row | message 5 | outcome |
 |---|---|---|---|---|
 | `Outputs.Done()` | signal | none | silent | ✅ **works — silence is correct** |
-| **`Outputs.Done_1()`** / `Outputs.Done.send()` | **value** | none | **silent** | 🔴 throws — ⚠️ **NOT** "no surface": `Last run` fires (s27) |
+| **`Outputs.Done_1()`** / `Outputs.Done.send()` | **value** | none | **silent** | 🔴 throws — ⚠️ **NOT** "no surface" (see note) |
+
+⚠️ **Attribution on that last column, kept straight deliberately — it is TWO measurements by TWO sessions, not one.** s27 measured **`WarningsModel` entries** for those nodes (`Outputs.Done.send()` → *"Cannot read properties of undefined (reading 'send')"*; `Outputs.Done_1()` → *"Outputs.Done_1 is not a function"*). That they **render as a `Last run` gutter diagnostic** is s24's measurement, from `6de1ae25`'s drive — a `WarningsModel` warning carrying a `line` appears in the gutter and clears when the warning clears, with the pre-fix path reproduced as a control. **The conjunction holds; neither session measured both halves.** 🔴 I first wrote *"`Last run` fires (measured s27)"*, which attached one session's name to a surface the other had established — the exact slip this row exists to correct, since the whole point was that *"throws"* had been asserted as measured when it was only reasoned.
 
 🔴 **SUPERSEDED (s27) — row 2's author is NOT without a route, and this paragraph was the severity
 argument.** Both value-shaped calls throw **and** warn, measured beside a known-firing control:
