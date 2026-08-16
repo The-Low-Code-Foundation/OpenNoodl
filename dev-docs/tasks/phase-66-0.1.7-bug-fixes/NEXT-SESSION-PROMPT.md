@@ -689,7 +689,18 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   `nodegx-backend.js serve --data-dir <path>` and is safe. ⚠️ **The decision is unchanged and still
   yours** — s32 also declined to edit a closed phase's directory — **but it is now a one-line
   change with a measurement behind it**, not a suspicion.
-- 🟢 **The memory index still has no owner — and s28 measured it properly for the first time.**
+- ✅ **THE MEMORY-INDEX BUDGET ITEM IS STRUCK (s34) — somebody collapsed it.** s34 opened the index
+  at **17,399 / 17,486, UNDER on both measures** for the first time in this whole thread, having
+  been 111 / 201 over at s32's close. **No P66 session did this**, so a peer acted on it — which is
+  exactly the cross-phase rule s32 said any fix would need.
+  ⚠️ **The headroom was 111 code points but only 24 UTF-16 units**, and UTF-16 is the binding
+  constraint because emoji cost two units each. s34 added one clause to the `BUILD THE CALLER`
+  pointer, went **over**, and cut it back three times to land at **17,418 / 17,505 — 92 / 5 free.**
+  🔴 **Five UTF-16 units of headroom is not headroom.** The next pointer added here goes over again,
+  so the next session should treat this as *still* needing a collapse, just not an urgent one.
+  ✅ **And measure BOTH counts before and after every edit** — the code-point figure said there was
+  room when there was not.
+- ~~🟢 **The memory index still has no owner — and s28 measured it properly for the first time.**~~
   Budget is **17,510** and both counts must be under. Before s28's edit: **17,466 code points but
   17,553 UTF-16** — 🔴 **already 43 over on the UTF-16 measure, silently**, because emoji cost 2
   UTF-16 units each and only the code-point count was ever being checked. s28 added one pointer
