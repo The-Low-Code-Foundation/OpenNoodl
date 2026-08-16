@@ -337,14 +337,32 @@ these modules, and a **peer's editor stack was live throughout** (`start.ts`, th
 editor on 9222) with uncommitted `noodl-core-ui` edits, so a run would have compiled their working
 tree. Floor stays inherited: **2843 / 6 @ 39393**.
 
-### 🔴 Not driven — and this one genuinely wants a drive
+### ✅ DRIVEN 2026-08-16 (session 48) — both halves, on one rig
 
-Criterion 5 is a copy claim and the specs close it, but **nobody has seen the flyout say `App
-Variables`, and nobody has opened Settings → Project and seen `App Config`.** The settings-panel half
-is graded by **reading source text** for the `title` prop — stated as a limitation in the spec
-itself: it cannot prove the section renders or that `CollapsableSection` draws its title at all.
-✅ **It shares a rig with FIX-004 §C's owed drive** — same toolbox, and the `App Objects` category
-this session also changed.
+Real editor, `fix004c-s48-drive`, shared with FIX-004 §C's drive as predicted.
+
+**Half 1 — the toolbox label.** The Logic Builder flyout's rendered category list reads
+`Inputs / Outputs · Signals · **App Variables** · App Objects · App Arrays · **App Config** ·
+Libraries & Browser · …`. ✅ **`App Variables` draws**; **`Runtime Variables` appears nowhere.**
+Read from `.blocklyToolboxCategoryLabel` in the live DOM, not from `BlocklyToolbox.ts`.
+
+**Half 2 — the settings panel, and this is the half the specs could not reach.** Settings → Project
+renders a collapsable section headed **`App Config`** — chevron and all, so `CollapsableSection`
+does draw its title — above the copy *"Define custom config variables accessible via
+Noodl.Config.get('key')"*. ✅ **The string `Custom Variables` does not occur anywhere in the rendered
+document.** ⚠️ The `MeasuringContainer` twin was filtered out of the heading query, per the
+`BaseDialog` double-render trap.
+
+🔴 **This upgrades the grade, it does not merely repeat it.** The spec asserted the `title` prop by
+**reading source text** and said so; it could not prove the section renders. It does.
+
+✅ **And it closes the route, not just the string.** `APP_CONFIG_SETTINGS_PATH` tells a builder to go
+to *"Settings → Project → App Config"* — a path a human follows with their eyes. Settings opens on a
+**Project** tab, and `App Config` is a section on it. Every segment of that sentence was walked.
+
+⚠️ **The six locales remain spec-graded only.** Switching the editor's language was not part of this
+drive, so `toolbox-vocabulary.spec.ts` is still the only thing standing behind them — which is a real
+improvement on VFN-012, when nothing could grade them at all.
 
 ## 🔴 A much larger idea the rename exposed — NOT this task
 

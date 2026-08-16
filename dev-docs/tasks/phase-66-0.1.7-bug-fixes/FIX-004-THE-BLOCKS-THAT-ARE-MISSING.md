@@ -639,11 +639,37 @@ So a green `test:ci` here would have been a reading of **a peer's working tree**
 mechanism §2 of the s45 handover describes. **The floor stays inherited: 2843 / 6 @ seed 39393,
 witnessed 2026-08-16 21:53:37 — not re-measured this session.**
 
-### 🔴 Not driven
+### ✅ DRIVEN 2026-08-16 (session 48) — seven rows, in order, drawn
 
-Nobody has opened the flyout and seen seven rows under `App Objects`. The headless read is off
-`buildToolbox()`, which is the **toolbox definition** — and §C's own drive (session 38) records why
-that is the weaker instrument: *"a block whose definition failed to register would still be named in
-the toolbox and simply not draw."* These four are registered and drew under `Data` at s38, so the
-risk is low, but **"drew under App Objects" is unmeasured.** The drive is cheap and shares a rig with
-FIX-005's rename (item 2), which touches the label of this very category.
+Real editor, `fix004c-s48-drive` (a copy of `vfn64-drive`), Visual Function node `c6` in `/ErgCodes`,
+`App Objects` clicked in the Logic Builder flyout.
+
+✅ **Read from the FLYOUT WORKSPACE, which is the whole point** — `.blocklyToolboxFlyout
+.blocklyBlock`, each block's type taken from its own class and its position from
+`getBoundingClientRect()`, then **sorted by drawn `y`**. Every one of the seven has a non-zero height,
+so this is *drawn*, not *declared* — the distinction s38 warned about (*"a block whose definition
+failed to register would still be named in the toolbox and simply not draw"*).
+
+| drawn order | type | y | height |
+|---|---|---|---|
+| 1 | `noodl_get_object` | 293 | 28 |
+| 2 | `noodl_get_object_property` | 345 | 28 |
+| 3 | **`noodl_get_object_property_expr`** | 397 | 36 |
+| 4 | `noodl_set_object_property` | 457 | 60 |
+| 5 | **`noodl_set_object_property_expr`** | 541 | 88 |
+| 6 | **`noodl_object_members`** | 653 | 28 |
+| 7 | **`noodl_object_has_property`** | 705 | 36 |
+
+**Exactly the interleaving the build claimed** — each computed-key block directly beneath the
+literal-key sibling it generalises. `object-data.spec.ts` asserts this order; the flyout draws it.
+
+✅ **The `Data` / `App Objects` collision the toolbox comment worried about did not materialise**, as
+s38 predicted from geometry: the rendered category list is `Inputs / Outputs · Signals · App
+Variables · App Objects · App Arrays · App Config · Libraries & Browser · Logic · Loops · Math · Text
+· Lists · Data · Debug · Variables · Functions · My Blocks` — `Data` is nine rows below `App
+Objects`, in a different visual group.
+
+⚠️ **`window.Blockly` exposes no `getMainWorkspace` in this build**, so the Blockly API route
+returns nothing and reads have to go through the DOM. The class names are the modern ones —
+`blocklyToolboxCategoryLabel`, `blocklyToolboxFlyout` — **not** `blocklyTreeLabel`, which matches
+zero elements and reads as an empty toolbox.
