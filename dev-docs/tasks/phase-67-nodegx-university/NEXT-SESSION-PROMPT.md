@@ -6,229 +6,159 @@ Paste the block below into a fresh session.
 
 Continue phase 67 (NodeGX Community), `dev-docs/tasks/phase-67-nodegx-university/`.
 
-**Read first, in this order:** `RULINGS.md` — the register, **D15/D16/D17 open**, and the
-tool-surface entry's **two** corrections (the second corrects the first). Then §"THE SHAPE OF WHAT IS
-LEFT" below, then `TASKS.md`'s task table, then whichever task file you pick.
+**Read first, in this order:** `RULINGS.md` — ⚠️ **the queue is EMPTY; D15/D16/D17 were ruled
+2026-08-16** and the note at the end of D17 explains what to re-check if a *parent* ruling is ever
+amended. Then §"WHERE THE PHASE ACTUALLY IS" below, then `TASKS.md`'s table, then your task file.
 `PRIOR-ART-RECONCILIATION.md` if you have not read it before.
+
+🔴 **Two repos now.** Editor work is this checkout. Platform work is
+`/Users/richardosborne/vscode_projects/nodegx-community` — a **sibling directory, never nested** —
+pushing to `The-Low-Code-Foundation/nodegx-community`. None of this checkout's gates, peers or traps
+apply there.
 
 ---
 
-# 🔴 THE SHAPE OF WHAT IS LEFT — read this before choosing a task
-
-**Measured 2026-08-16, not remembered.** Phase 67 is twelve tasks. They are not twelve equal tasks,
-and the phase's real bottleneck is not where the last six sessions have been working.
+# WHERE THE PHASE ACTUALLY IS — measured 2026-08-16, not remembered
 
 | Track | Tasks | State |
 |---|---|---|
-| **Editor / MCP** | UNI-007, UNI-010, UNI-012 | **Nearly done.** UNI-007 slices 1–5 + the tutor overlay; UNI-010 all five slices, criterion 3 run, **KEEP**; UNI-012 scoped |
-| **Platform** | UNI-001, 002, 003, 004, 005, 006, 008, 009 | 🔴 **Eight tasks. ZERO commits.** |
-| **Editor + bridge, needs platform** | UNI-011 | Buildable now, ships after D15/D16 |
+| **Editor / MCP** | UNI-007, UNI-010, UNI-012 | **Nearly done.** UNI-007 slices 1–5 + tutor overlay; UNI-010 all five slices, criterion 3 run, **KEEP**; UNI-012 scoped, not built |
+| **Platform** | UNI-001, 009 | 🟡 **Spine built** — `bb3ff8d7`, first commit ever in that repo |
+| **Platform** | UNI-002, 003, 004, 005, 006, 008 | 📋 **Six tasks, not started** — but they now land on a schema and a test harness that exist |
+| **Editor + bridge** | UNI-011 | ✅ **Fully unblocked to build AND to ship** — D15 and D16 are ruled |
 
-🔴 **`The-Low-Code-Foundation/nodegx-community` has `size: 0` and no commits since it was created on
-2026-08-14.** Checked with `gh api` today, not assumed. Two thirds of this phase is in a repo that
-does not yet contain a single file, and **every session so far has been in the editor**, because the
-editor is where the tooling and the muscle memory are.
+**The fourteenth session's job was the bottleneck: the platform repo had `size: 0`, no branches, and
+`/commits` returning 409.** It now has a schema, 57 specs and four served pages. The phase is no
+longer one-third buildable.
 
-**That is the honest read of the phase, and it is the thing to decide about.** Either the platform
-track starts, or phase 67 finishes the third of itself that lives in this repo and stalls.
+## What is in `nodegx-community` after one sitting
 
-## ✅ Three cheap things, all measured, none of them a sitting's work
+D1's stack — Next.js App Router, Postgres, Drizzle, Docker on port **55432**.
 
-1. ✅ **The D2 repo rename DID happen** — the repo is `nodegx-community`, and **`has_pages: false`**,
-   so the time-critical window (GitHub Pages does not follow a rename) is **still open and still
-   safe**. Two handovers carried this as an outstanding action; it is done.
-2. 🔴 **…but only half of it.** The repo **description still reads *"NodeGX University — the community
-   platform…"***. D2 ruled the site is **NodeGX Community** and University is one wing of it. This is
-   the phase's own recurring failure — the name moved, the sentence about the name did not — sitting
-   in the one place every future contributor reads first. **One `gh repo edit` fixes it.**
-3. ⚠️ **`community.nodegx.dev` is still not registered.** D2 records it as *a choice this ruling
-   makes, not a fact it records*. It blocks nothing today and it blocks **UNI-001's OAuth callback
-   URLs** the moment that starts. Richard's, not a session's.
+🔴 **The schema is the deliverable, and the rulings are database constraints rather than
+conventions.** The reason is D14: the API has two clients, and a rule enforced *in a client* is a
+rule the other client can disagree with, one release later, silently.
 
-## The rulings that need Richard, and they are one sitting for three
+| Ruling | How it is enforced |
+|---|---|
+| **D3** | `points_ledger_append_only()` trigger |
+| **D4** | the **absence** of a `badge_id` column — asserted by a spec, because an absence has no other witness |
+| **D6** | `org_members.source`, one roster |
+| **D10** | `account_org_ownership` + `org_minor_holds_no_pii` CHECK constraints |
+| **D11** | `consents_d11_org_minor` trigger |
+| **D15** | `src/lib/community-visibility.ts` |
+| **D16** | `src/lib/community-threshold.ts` |
 
-- **D15** — is the community surface shown at all to org-owned minor accounts? Recommendation on
-  file: default **off**, org admin may enable **read-only**. Blocks UNI-011 shipping to an org tenant.
-- **D16** — the never-empty threshold before the editor surfaces the community. Recommendation on
-  file: **30 threads, three consecutive weeks with a call held, median first reply < 24h**.
-- **D17** — curriculum hosting (new 2026-08-16). Recommendation on file: **part of the platform API
-  under D14, GitHub Pages as v0**. Blocks distribution, not authoring.
+### 🔴 D3 versus UNI-001's AC3 was a real contradiction, and it is resolved rather than papered over
 
-🔴 **None of the three blocks building.** Do not wait on them to start work; do put them in front of
-Richard, because D15 and D16 decide what UNI-011 is allowed to *ship*, and finding that out after
-building it is the expensive order.
+D3 wants a ledger you can always recount. AC3 wants account deletion to cascade to ledger rows. Both
+cannot be literally true. The resolution: **UPDATE is refused outright — including inside a declared
+erasure, because a licence to delete is not a licence to rewrite** — and DELETE is refused unless
+the transaction has set `app.gdpr_erasure`. So the ledger cannot be tidied, cannot be rewritten, and
+cannot be emptied by a stray cascade, while erasure stays something the system can actually do and
+has to *say* it is doing. There is a spec proving the permission does not leak onto the pooled
+connection afterwards.
+
+### ✅ Every mechanism has a control run — the suite was not trusted because it was green
+
+| Control | Result |
+|---|---|
+| D15 write leak | **2 fail** — and it caught that the *anonymous* viewer shares that code path, so a leak reaches signed-out users too |
+| D15 capability added to the list | **16 → 18 tests, no spec edited** — coverage extends the day a capability is added |
+| D15 capability list emptied | suite collapses **16 → 4** and the mirror spec fails on *"expected 0 to be greater than 0"* |
+| D3 trigger removed | **4 fail**, the 3 erasure-*success* specs still pass |
+| D10 constraint neutered | exactly the **2** PII specs |
+| D11 trigger removed | exactly the **1** spec |
+
+`grep -c CONTROL` returns **0** in both touched files.
+
+### 🔴 A footgun found while committing, and removed rather than documented
+
+`package.json` had `db:push` / `db:generate`. **`drizzle-kit push` generates DDL from
+`src/db/schema.ts`, which has no representation for a CHECK constraint or a trigger** — so it would
+have built a database with **D3, D10 and D11 silently switched off**, and the column-level drift
+check would still have passed, because every *column* would be right. drizzle-kit is no longer a
+dependency. **This is the phase's own recurring shape: the check that passes on the broken artifact.**
+
+## 🔴 What is NOT built, stated plainly
+
+Because *"we did not build it"* and *"we built it and it works"* must never read the same way:
+
+- **No OAuth, no sessions issued, no consent screen UI.** The sign-in button renders D2's string and
+  is **inert**. UNI-001's AC1, AC2 and AC4 are editor-side and untouched; **AC3 is met and proven.**
+- **No Discourse, no SSO, no webhook receiver.** UNI-009's AC1 and AC3 are untouched — the forum is
+  a purchase nobody has made.
+- **No editor bridge.**
+- `forum_threads` has no producer. D16's threshold reads it; nothing fills it.
 
 ---
 
 # What to do next — pick a lane and say which
 
-**LANE A — start the platform.** The biggest lever in the phase, and the one nothing else can
-substitute for. `TASKS.md`'s suggested order is already ruled: **UNI-001 + UNI-009 (minimal cut) land
-together**, because *"a login with nothing behind it is a broken promise"* — the account must open
-onto replays, a tutorials index, and a forum on day one, and Discourse-with-SSO is **bought, not
-built**. D1 fixes the stack: **Next.js + Postgres + Drizzle, Docker on Hetzner**. ⚠️ Different repo,
-so none of this checkout's gates or traps apply — and the two binding principles are acceptance
-criteria in every task: **the login gates nothing in the editor, ever**; **monetisation is
-services/convenience/matchmaking, never features**.
+**LANE A — keep the platform moving. Recommended.** The order `TASKS.md` already rules:
+**UNI-002 → UNI-003**, the contribution engine before the profile, because the profile is mostly a
+*view* of the engine. Both land on a ledger that exists and a suite that runs. ⚠️ D4's binding
+constraint is already structural — **a challenge awards into a `(family, tier)`, never a
+`badgeId`** — so the challenge registry can launch long (R2) without a drawing per challenge.
 
-**LANE B — finish the editor track.** Three items, all in this repo:
+**LANE B — make the login real.** Finish UNI-001: OAuth, sessions, the consent screen, the editor
+half. 🔴 **Blocked on Richard, not on work** — callback URLs need `community.nodegx.dev` and the
+domain **is not registered**. Everything else in UNI-001 can be built against a stub provider, but
+shipping it cannot.
 
-1. **UNI-012**, with a packaged build budgeted. Skipped twice now for a stated reason: its own §5
-   wants a checkout nobody is mid-drive on, and **2026-08-16 had 18 live peer sessions** plus a
-   running `noodl-preview`. ✅ Two packaged apps exist to read the `extraResources` layout from —
-   `/Applications/NodeGX.app` and `packages/noodl-editor/dist/mac-arm64/NodeGX.app` — 🔴 **both dated
-   Aug 13, so both predate CN-001 and CN-003**: they show the pattern, never today's code.
-2. **TUTOR-BOUNDARY §5's adversarial run** — the acceptance the tutor overlay does not have. Six
-   attacks, all needing a **live provider**. §6 also asks for AIX-004's deferred register/accuracy
-   tuning to be done *with the overlay in place*, so the two are one sitting.
-3. **UNI-011's build** — unblocked, ships after D15/D16. 🔴 The renderer is `nodeIntegration: true`
-   **and so is the launcher** (same `BrowserWindow`): **no post body may render as HTML in it**. Pick
-   the `<webview>` island or raw-markdown-plus-sanitiser and **prove the boundary with a known-BAD
-   corpus**, not a clean one.
+**LANE C — UNI-011, now fully unblocked.** D15 and D16 are ruled, so it can be built *and* shipped.
+🔴 The renderer is `nodeIntegration: true` **and so is the launcher** (same `BrowserWindow`): **no
+post body may render as HTML in it.** Pick the `<webview>` island or raw-markdown-plus-sanitiser and
+**prove the boundary with a known-BAD corpus, not a clean one.** ⚠️ D15 says the visibility rule
+lives **behind the API** — do not reimplement it in the editor client.
 
-**My recommendation: A, and put D15/D16/D17 in front of Richard in the same message.** Lane B is
-three sittings of real work that leaves the phase exactly as blocked as it is now. The empty repo is
-the phase.
+**LANE D — the editor remainder.** UNI-012 with a packaged build budgeted; TUTOR-BOUNDARY §5's six
+adversarial attacks (needs a live provider, and §6's AIX-004 tuning is the same sitting); the D5
+recents measurement, still spoiled.
 
----
+**My recommendation: A.** The platform now has somewhere to put things, and UNI-002 is the task the
+most others hang off.
 
-## What happened on 2026-08-16 (thirteenth session)
+## ⚠️ For Richard, and only one of them is urgent
 
-Three commits: **`bc261f75`** (the disclosure hole), **`51cff411`** (UNI-007's tutor overlay + D17 +
-the CURRICULUM-DESIGN correction), **`afc29513`** (this handover's first version).
+1. 🔴 **`community.nodegx.dev` is still not registered.** It blocked nothing while the repo was
+   empty. It now blocks UNI-001's OAuth callback URLs, which is the next real step on the platform.
+   **This is the one thing a session cannot do for itself.**
+2. ✅ **The D2 description was fixed 2026-08-16** — it had named University as the platform for two
+   days after D2 ruled Community is. Both halves of D2 are now done.
+3. ⚠️ **GitHub Pages is still unattached** (`has_pages: false`, re-verified today), so D17's v0
+   remains free to set up. It stops being free after the first deploy.
 
-### ✅ The disclosure hole — the previous handover's item 1, closed in an hour
+## Gates (2026-08-16, fourteenth session)
 
-`toolDisclosure.test.ts` now carries **"no deferred group reaches `tools/list`, derived from the
-manifest"**: every non-resident group's tools asserted absent in both write modes, plus the mirror
-(every resident tool that *exists* in that mode is advertised) so it cannot pass by the surface
-collapsing.
-
-🔴 **The control bit — and corrected the premise it was written from.** Moving `registerLessonTools`
-after `applyPolicy` fails the new spec naming all four lesson tools, while **the hand-listed test
-still passes** (which is what makes the gap one of *class*, not coverage). But **the budget test
-fails too, at 9,256 tokens** — and so does one escaped `get_import_report`, at **8,487**.
-
-⚠️ **The arithmetic, measured:** the bar has **57 tokens** of headroom and the **smallest of the 75
-deferred tools is `seed_project_docs` at 86**. Nothing is under 57. **So today every escapee breaches
-the budget**, and the old *"unless it is big enough to breach the bar on its own"* is true in form and
-empty in fact. The new assertion still earns its place: the budget catches it **anonymously**
-(`{tokens: 8487, tools: 21}` names nothing), and the sanctioned `$ref` fix frees far more than 86
-tokens and ends the incidental catch.
-
-⚠️ **A third control was discarded rather than counted** — escaping the `theme` group also fails the
-hand-listed test, because `set_project_tokens` is one of the five names it already lists. **A probe
-has to be outside the thing whose reach it is testing.**
-
-### ✅ UNI-007's tutor lesson-context overlay — owed since 2026-07-25, built
-
-CURRICULUM-DESIGN §9.1, *"required before L2 testing"*, specified in TUTOR-BOUNDARY §4 the whole time
-and mentioned nowhere in phase 67. When the open project is a lesson, `ExplainSession` appends the
-overlay to the explain system prompt. New **import-free** `explain/tutor.ts`, added to
-`tsconfig.tests-main.json` beside `portCopy.ts`, so the *pedagogy* is graded in the plain-Node runner
-rather than by starting Electron and reading it. **25 specs.**
-
-🔴 **Three decisions not obvious from the diff:**
-
-1. **A lesson being OPEN arms the boundary — not knowing the step.** With unreadable step text (a
-   legacy `<!-- # -->` lesson) the overlay is still appended and still forbids completion; only the
-   task line degrades. The other way round drops the boundary for exactly the lessons whose text is
-   hardest to read.
-2. **`CompiledLesson` carries the authored step title/body** beside the compiled HTML. Un-rendering
-   the HTML to recover them would be a second reader of a format `LessonModel`'s own header says must
-   have exactly one.
-3. **`deep` is clamped in the session, not just hidden in the menu.** Its own instruction is *"walk
-   the data flow step by step"*, which over a half-built lesson graph is §5.4's oracle extraction from
-   a dropdown. A hidden menu item protects the panel; a clamp protects every caller.
-
-🔴 **What it does NOT close, and it is the acceptance:** §5's six adversarial attacks need a live
-provider and were not run. What is graded is that the overlay *says* the right things and *reaches*
-the prompt. **Whether a model obeys it is unmeasured. Built ≠ verified.** ⚠️ The `ExplainSession` and
-`ExplainPanel` wiring is not spec-covered either — both reach the AI client and `ProjectModel`. **A
-drive is owed**, with the §5 run.
-
-### 🔴 The D7 spec that could not fail, and only measuring found it
-
-`SIGNAL_SENTENCE` is now exported and the tutor glossary **derives** its Signal line from it, making
-CURRICULUM-DESIGN §6's prose obligation (*"if `portCopy.ts` changes, this line changes with it"*)
-mechanical. My spec asserting that derivation was commented *"reword the lead and this fails"*.
-
-**It does not.** Rewording it to *"Signal — a pulse, not a number."* left **all 25 specs green** —
-both sides of the comparison move together. ✅ The same reword **fails two specs in
-`tests-unit/connection-popup/portCopy.test.ts`**, which pin the sentence verbatim. So the system is
-sound and the wording is guarded once where phase 60 owns it — but the comment claimed the wrong
-thing and now says so.
-
-🔴 **The general rule: a constraint discharged BY CONSTRUCTION needs no check, and any check you write
-for it will be vacuous — so go and find where the VALUE is pinned.** If the answer is "nowhere", the
-derivation has propagated an unguarded value everywhere.
-
-## Gates (2026-08-16, this session)
-
-- **`noodl-mcp` — 45 suites / 530 specs, all pass.** Baseline 45/529 re-measured at HEAD: **+1 spec.**
-- **`test:main` — 212 suites / 3312 tests, 3 FAILING.** 🔴 **All three are a peer's in-flight work** —
-  `fix-004/fe.spec.ts`, `fix-004/object-data.spec.ts`, `vfn-012/browser-blocks.spec.ts`, all Blockly —
-  and none imports anything this session touched. ⚠️ `fe.spec.ts` **vanished between two runs ten
-  minutes apart**. **Re-measure before quoting this.**
-- **`tests-unit/uni-007` + `tests-unit/connection-popup` — 275 pass.**
-- **`typecheck:editor` clean; `eslint` clean on all changed files.**
-- ⚠️ **`tsc -p tsconfig.tests-main.json`: 31 errors, all pre-existing** — measured **both with and
-  without** this session's `include` additions, identical count. None in a file touched here.
-- ⚠️ **`packages/noodl-mcp` `tsc --noEmit`: 8 pre-existing errors, not the 9 the last handover
-  quoted.**
-- **`test:ci` NOT run.** Floor if you do: **6 failures by NAME** (4 × `AIX-006 style vocabulary`,
-  2 × `AI model registry`) — never by count. 🔴 Delete `packages/noodl-editor/tests/test-results.json`
-  before a run and `stat` it after.
-
-## ⚠️ Owed, small, and honest about it
-
-- 🔴 **The D5 recents measurement is STILL spoiled and still owed.** A session restored
-  `recently_opened_project.json` before diffing the entry ids. **Next drive: diff the ids before
-  restoring.** Untouched this session — everything was headless.
-- ⚠️ **The five lesson bundles are still in a dead session's scratchpad.** Reproducible from
-  `UNI-010-CRITERION-3-RUN.md` §2 and §7.
-- ⚠️ `dev-docs/tasks/phase-65-the-library/` is **still untracked** and `MEMORY.md` links into it. One
-  `git clean` from gone. Unchanged for a third session.
-- ⚠️ A **`stash@{0}`** exists (`WIP on cline-dev: ff74bcc9`) belonging to no known session. 🔴 Never
-  `git stash`/`pop` here. Identify it with Richard before assuming it is droppable.
+- **`nodegx-community`: 57 specs / 5 files, all pass. `tsc --noEmit` clean.** Run with
+  `npm run db:up && npm test` from the sibling checkout.
+- **UNI-009 verified by SERVING it**: `/`, `/replays`, `/tutorials`, `/university` all **200 with no
+  cookie**; replays newest-first (08-12, 08-05, 07-29); all three articles; D2's string on all four.
+- **This checkout: nothing touched but `dev-docs/`.** No editor gate was run and none was needed —
+  ⚠️ so do **not** quote a `test:ci` or `test:main` figure from this handover. There isn't one.
+- ⚠️ A peer (s38/P66) launched and tore down the editor during this session. Unrelated; no collision.
 
 ## Standing constraints
 
 - Editor work on `cline-dev`. 🔴 **Never `git stash`**; `cd` to the repo root in every git call.
-  ✅ **Commit with `git commit <pathspecs>` and never stage.** ⚠️ **An untracked file is the one case
-  that needs `git add`** — put the add and the commit in **one chain** with the message **already
-  written to a file**. Both code commits this session did that; neither was swept.
-- ⚠️ **`cd` persists between tool calls and will bite you.** A `cd` to the repo root left a later
-  `npx jest` running the *root* config against `packages/noodl-editor/tests-unit/…`, failing 14 suites
-  with "Cannot use import statement outside a module" — which looks exactly like a real break.
-  **Put the `cd` in the same command as the run.**
-- 🔴 **This checkout is SHARED and was busy** — 18 peer sessions, with active edits to
-  `packages/noodl-mcp/src/server.ts` and the whole `BlocklyEditor/` directory *during* this session.
-  Peer messages are for **blocking or hazardous** things only — Richard's *"curb its enthusiasm"*.
-  Findings go in the task file. `test:main` and `npx jest` are plain Node and collide only with each
-  other; an **editor launch** or `test:ci` still wants the announcement.
-- 🔴 **`pkill -f "OpenNoodl/node_modules/electron/dist"` is NOT a way to clear a stale editor** — it
-  matches MCP servers, not editors, and bypasses `sweep()`. Long-lived `noodl-mcp.cjs` Electron
-  processes are **Richard's MCP servers** — never kill. Measured **39** this session.
+  ✅ **`git commit <pathspecs>`, never stage.** ⚠️ Untracked files are the one case needing
+  `git add` — put add and commit in **one chain** with the message **already in a file**.
+- 🔴 **`cd` does not persist between tool calls here, and a `cd` inside one does not leak out.** Put
+  the `cd` in the same command as the run.
+- 🔴 **Port 55432 for the platform's Postgres, never 5432** — this machine already runs one on 5432,
+  and both `db:seed` and the test suite **drop and rebuild `public`**.
+- 🔴 **This checkout is SHARED.** Peer messages are for **blocking or hazardous** things only.
+  Findings go in the task file.
 
 ## Things the next person will otherwise re-derive
 
-- 🔴 **A tool registered after `disclosure.applyPolicy()` is silently resident** — now asserted, but
-  registration order inside `registerLessonTools` is still load-bearing.
-- 🔴 **`portCopy.ts` is import-free and now EXPORTS `SIGNAL_SENTENCE`.** Phase 60 owns that wording;
-  the tutor glossary derives from it. Reword it and `portCopy.test.ts` fails — correct, and where the
-  guard belongs.
-- 🔴 **`tsconfig.tests-main.json`'s `include` list is the gate for the plain-Node runner.** A pure
-  module not named there is not typechecked by it. Three were added this session at **zero** cost to
-  its 31 pre-existing errors.
+- 🔴 **Never generate DDL from `src/db/schema.ts`.** It is a query mirror; the rulings live in
+  `src/db/sql/0001_init.sql`.
+- 🔴 **The drift spec checks tables and columns ONLY** — and says so, because an unstated limit
+  reads as coverage. Constraints and triggers are covered by their own suites.
 - 🔴 **`ports`, not `dynamicports`, is how a `Component Inputs` node declares its interface.**
-- 🔴 **A path segment matches only at *its* level**, and the first segment is the component's **legacy
-  name** (`components/__page__/Home` is named `/#__page__/Home`).
-- 🔴 **`routerLists` is the ONE verb whose value is not a node path.**
 - 🔴 **`forEachNode` STOPS on a truthy return.** Use a block body.
 - 🔴 **`/usr/bin/grep -a`, always.** Plain `grep` here is ugrep and silently skips `.ts` as binary.
-- 🔴 **The `lesson` group is DEFERRED** — first `tools/list` returns 20 tools and reveals four. A
-  server spawned from the checkout
-  (`node packages/noodl-mcp/dist/noodl-mcp.cjs <project> --allow-writes`) is peer-safe.
-- 🔴 **A peer's source edit triggers HMR, which WIPES everything you injected over CDP.**
+- 🔴 **The `lesson` MCP group is DEFERRED** — `find_tools({group:"lesson"})` first.
 - `suggestedNodes` is still **dead** — no callers.
