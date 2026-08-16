@@ -74,7 +74,13 @@ function makeRuntime() {
 }
 
 async function main() {
-  const projectDirectory = process.argv[2];
+  // 🔴 Resolved, not taken as given. `require()` reads a relative-looking path
+  // as a *module id* — `require('noodl_modules/demo-kit/index.js')` searches
+  // node_modules and fails — so a relative project directory made every kit
+  // report as "cannot find module" while the extraction itself said it had
+  // succeeded. Found by CN-003 slice 2b the first time something other than a
+  // hand-typed absolute path called this.
+  const projectDirectory = process.argv[2] && path.resolve(process.argv[2]);
   if (!projectDirectory) throw new Error('usage: kit-extract <projectDirectory>');
 
   const runtime = makeRuntime();

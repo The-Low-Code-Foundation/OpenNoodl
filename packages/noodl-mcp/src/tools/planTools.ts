@@ -62,7 +62,7 @@ import {
   SemanticValidator
 } from '../editor-deps';
 import type { ConnectionV2 } from '../editor-deps';
-import { catalogIndex } from '../catalog';
+import { catalogGeneration, catalogIndex } from '../catalog';
 import { ToolError } from '../errors';
 import { automaticRenderDisabled, runRenderReport } from '../render';
 import type { ComponentFiles } from '../graph';
@@ -183,8 +183,15 @@ function applyDocOperation(store: ProjectStore, op: PlanOperation, content: stri
 }
 
 let semanticValidator: SemanticValidator | undefined;
+let validatorGeneration = -1;
 function validator(): SemanticValidator {
-  if (!semanticValidator) semanticValidator = new SemanticValidator(catalogIndex());
+  // 🔴 CN-003 — see the twin in `validate.ts`: memoised against the catalog's
+  // generation, not forever, because the project overlay is installed after this
+  // module loads and a validator that predates it silently knows no kit types.
+  if (!semanticValidator || validatorGeneration !== catalogGeneration()) {
+    semanticValidator = new SemanticValidator(catalogIndex());
+    validatorGeneration = catalogGeneration();
+  }
   return semanticValidator;
 }
 

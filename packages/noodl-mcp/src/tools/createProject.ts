@@ -66,6 +66,7 @@ import type { AgentConfigReport } from '../editor-deps';
 import { SCHEMA_IDS, SchemaValidator, formatValidationErrors } from '../editor-deps';
 import { ToolError } from '../errors';
 import { projectInstructions } from '../instructions';
+import { installProjectOverlay } from '../kitOverlay';
 import { writeAgentConfig } from '../project/agentConfig';
 import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ToolDisclosure } from './disclosure';
@@ -516,6 +517,13 @@ function bindTo(bind: CreateProjectBinding, projectDir: string): BindResult {
         '.mcp.json is already written, so an agent opened in that folder is offered it.'
     };
   }
+
+  // CN-003 — a bind is a bind: the catalog gets this project's overlay the same
+  // way `createServer` gives it one for a directory passed on the command line.
+  // A just-created project has no `noodl_modules`, so this is an `existsSync`
+  // and no child process; wiring it anyway is what stops the two bind paths
+  // from drifting the day a template ships with a kit in it.
+  installProjectOverlay(projectDir);
 
   const toolsRevealed = bind.disclosure.bindProject();
 

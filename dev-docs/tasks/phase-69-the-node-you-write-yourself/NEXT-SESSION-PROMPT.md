@@ -1,12 +1,12 @@
 # Phase 69 — next session
 
-**Written 2026-08-16, session 3.** 🔴 **This file is a REWRITE, not an amendment.** It is overwritten
+**Written 2026-08-16, session 4.** 🔴 **This file is a REWRITE, not an amendment.** It is overwritten
 every session; if you find yourself prepending, rewrite it instead. Everything that outlives the
 phase goes to memory, not here.
 
 Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first — all eight rulings are made and the
 queue is empty, so nothing below is blocked on a decision. Then read
-[CN-003](CN-003-THE-PROJECT-CATALOG-OVERLAY.md), which now carries the corrected build plan.
+[CN-003](CN-003-THE-PROJECT-CATALOG-OVERLAY.md), whose slice log now carries the measurements.
 
 ---
 
@@ -17,168 +17,142 @@ queue is empty, so nothing below is blocked on a decision. Then read
 | **CN-001** | ✅ `ed28a03c` | ✅ | Render harness sees kits. `@nodegx/module-inject` extracted |
 | **CN-002** | ✅ `378793bc` | ✅ | A skipped check says it was skipped. Baseline **0/5/8** |
 | **CN-003** slice 1 | ✅ `f1663600` | ✅ | `@nodegx/kit-catalog` — the shared mapping, 26/26 |
-| **CN-003** slice 2a | ✅ `d9346cc9` | ✅ | Headless extractor → `noodl-mcp/dist/kit-extract.cjs` |
-| **CN-003** slice 2b | 📋 | — | **Next.** Wire the payload into `CatalogIndex` as the overlay |
-| **CN-003** slice 3 | 📋 | — | Editor caller off `NodeLibrary.instance` + the agreement test |
+| **CN-003** slice 2a | ✅ `d9346cc9` | ✅ | Headless extractor → `dist/kit-extract.cjs` |
+| **CN-003** slice 2b | ✅ this session | ✅ | MCP + CLI callers. **Criterion 3 closed: 0/5/8 → 0/0/0** |
+| **CN-003** slice 3 | 📋 | — | **Next.** Editor caller + the `compareOverlays` agreement test |
 | **CN-003** slice 4 | 📋 | — | Lesson-vocabulary routing. ⚠️ **HOT FILES — see §4** |
 | CN-004 … CN-017 | 📋 | — | All blocked on CN-003 except CN-005/CN-007 |
 
 ---
 
-## 1. Gate readings — with the tree, not just a commit
+## 1. Gate readings
 
-All taken at **HEAD `d9346cc9`, tree `32717de9`**, 2026-08-16.
+All taken this session, at HEAD with slice 2b applied.
 
 | Gate | Reading |
 |---|---|
-| `@nodegx/kit-catalog` jest | ✅ **26 / 26** |
-| `test:packages` | ✅ **14 projects**, all green (kit-catalog added to the scope) |
-| `@noodl/mcp` jest | ✅ **45 suites / 529** |
-| `catalog:check` | ✅ committed catalog up to date, **175 node types** |
-| `validate:project` on cashflow | **0 error / 5 warning / 8 info** — the CN-003 acceptance number |
-| `npx tsc --noEmit` in noodl-mcp | 🔴 **8 errors — PRE-EXISTING**, see §3 |
+| `@noodl/mcp` jest | ✅ **46 suites / 551** — 21 of them new here |
+| `test:packages` | ✅ **14 projects**, all green |
+| `catalog:check` | ✅ committed catalog up to date, **175 node types** (criterion 4) |
+| `npx tsc --noEmit` in noodl-mcp | 🔴 **8 errors — byte-identical to the pre-existing set**, `diff`ed |
+| `npx tsc -p scripts/tsconfig.json --noEmit` | ✅ **0 errors** |
+| `validate:project` on cashflow | ✅ **0 / 0 / 0**, 28 of 28 endpoints (was 0/5/8, 18) |
 
-⚠️ **`test:ci` was not run this session and did not need to be.** Everything above is plain Node and
-safe beside a live editor, which mattered: a P66 session had a `dev:debug` stack on 9222 for ~40
-minutes of it. If you do run `test:ci`, the floor is **2843 / 6 @ seed 39393**, and an editor launch
-*or* teardown reaps it while npm still exits 0.
+⚠️ **The mcp suite baseline moved by one test that is not mine.** The handover said 45 / 529; it is
+46 / 551 now and I added exactly 21. A peer landed one. Re-measure; do not subtract.
 
-🔴 **`cmd | tail; echo $?` reports the pipeline's exit code, not the command's.** That is how the 8
-tsc errors above nearly got recorded as a pass this session. Redirect to a file and read `$?` on the
-bare command.
+⚠️ **`test:ci` was not run and did not need to be.** Everything above is plain Node and safe beside a
+live editor. If you do run it, the floor is **2843 / 6 @ seed 39393**, and an editor launch *or*
+teardown reaps it while npm still exits 0.
 
 ---
 
-## 2. What CN-003 settled, so you do not re-derive it
+## 2. What slice 2b settled
 
-### 🔴 The spec asked for two mappings and one will do
+### 🔴 The acceptance number and the MCP route were never joinable
 
-The written spec had the MCP server shape kit nodes through `buildCatalog` while the editor mapped
-from what the viewer sent. That is **two mappings for one set of facts** — the duplication this phase
-exists to end, and a permanent generator of the very divergence D3 accepted as a risk.
+CN-003's criterion 3 is quoted against `cashflow-command-centre`. That project is a **legacy
+monolithic `project.json`**, and the MCP server refuses those at startup — so the number could never
+have moved by wiring the MCP server, and the previous handover's "take the reading first, then wire
+slice 2b" was measuring one pipeline with the other's instrument.
 
-Both routes produce the *same* input instead. `generateNodeLibrary` is what the viewer sends over
-`sendNodeLibrary`, and a headless extractor calls the identical function on its own register. Editor
-reads the payload it already holds; MCP produces one by spawning; **both hand it to
-`catalogNodesFromNodeLibrary`**. `buildCatalog` is never touched, so acceptance criterion 4
-(`catalog:check` is byte-for-byte) holds by construction.
+Both are wired now, sharing the extractor and the mapping and differing only in which catalog
+document they merge into. `src/kitExtract/extract.ts` knows about **no catalog at all** for exactly
+that reason; `src/kitOverlay.ts` is the MCP server's install half, and
+`scripts/validate-project.ts` merges into `defaultCatalog()`.
 
-⚠️ **What a green `compareOverlays` does NOT say.** It says the two *registers* agree. It does not
-verify the mapping — the fixture tests do that. Do not quote a passing agreement check as evidence
-the overlay is correct. The one run so far is weaker still: both paths share the runtime, the viewer
-and `generateNodeLibrary`, so it says *the shipped bundle behaves like the dev spike*.
+**The measurement, with the control beside it:**
 
-### 🔴 Where extraction code may live is decided by packaging
+| `validate:project` on cashflow | errors | warnings | infos | endpoints checked |
+|---|---|---|---|---|
+| `--no-kits` (control) | 0 | 5 | 8 | **18** |
+| default | 0 | 0 | 0 | **28** |
 
-`scripts/` is outside every shipped package's `files`/`build.files` — P67's open F4 hole. An
-extractor there works in a checkout and is **absent from the packaged app**. Runtime bundling is not
-a way out either: a packaged app has no esbuild and no `packages/noodl-viewer-react/src`.
+🔴 **Do not quote the infos going to zero on their own.** Suppressing them produces the same number
+and would be a regression. The load-bearing figure is **18 → 28 endpoints**, which is exactly the "10
+of 28 never reached" CN-002 measured from the other side, and on `tests/fixtures/kit-app` the
+replacement is a real diagnostic: `error [nonexistent-port] … did you mean 'progress'?`.
 
-✅ The move, already made: a second entry point in `packages/noodl-mcp/build.mjs` emitting
-`dist/kit-extract.cjs`, which `files: ["bin","dist"]` already ships.
+### 🔴 Slice 2a shipped a defect that only a caller could find
 
-✅ **Build-time imports from `scripts/` are fine** and are used — esbuild inlines them. It is
-*runtime resolution* that does not ship. Those two are easy to conflate and the distinction is what
-let `extractorBuildOptions` be shared instead of copied.
+`entry.js` handed `process.argv[2]` to `path.join` untouched, and `require()` treats a
+relative-looking path as a **module id**. A relative project directory made every kit report `Cannot
+find module …` while extraction reported success. Seventh instance of *build the caller*, and the
+same shape as CN-001's: **the failure presented as a success**.
 
-### Measured, with the instrument on every row
+### The MCP surface got kit nodes for free
 
-Headless extraction of the cashflow kit, this session, against the editor's own recorded reading:
+Not asked for by slice 2b and worth knowing before CN-008/CN-009 are scoped: because the merge is in
+`catalog.ts`, `list_node_types`, `get_node_type` and `visualRoots` are kit-aware now. Driven against
+the **built** `dist/noodl-mcp.cjs` over real stdio on `cn001-kit-drive`: all five cashflow types
+listed, `nodegx.cashflow.Pill` returned with its full port list. **No tool was added; the
+tool-surface budget is untouched.**
 
-| type | headless (08-16, measured here) | editor `NodeLibrary` (08-15, recorded elsewhere) |
-|---|---|---|
-| `Lane` | 9 in / 11 out | 9 / 11 |
-| `Pill` | 23 / 14 | 23 / 14 |
-| `BalanceStrip` | 16 / 10 | 16 / 10 |
-| `DayAxis` | 12 / 8 | 12 / 8 |
-| `DangerBanner` | 19 / 9 | 19 / 9 |
+### Knowingly not done
 
-⚠️ The right column is a **recorded** reading from another session on another day — corroboration,
-not a control. Slice 3 is what turns it into one.
-
-**Timing: esbuild bundle 74ms, extraction run 104ms.** D3's no-on-disk-cache rule therefore costs
-nothing, and the escalate-to-an-in-memory-cache clause is not a live concern.
-
-**Both arms measured.** `cashflow-command-centre` → 5 types, 0 failures, 0 collisions against the 159
-built-ins. `fix003-drive` (no kits) → 0 types, 0 failures — an empty answer, **not an error**.
-
-### Knowingly absent, with owners
-
-- **`parameterEncoding`** — derived by *driving* the node's hook; the payload cannot express it.
-  Overlay entries carry `{ known: false, reason }`, never null-by-omission. → **CN-010**.
-- **`ssr`** — in the register metadata, not exported by `generateNodeLibrary`. Left **absent**, which
-  for an overlay node means *not assessed*, never *safe*. → **CN-013**.
+- **No cache.** The overlay is built once per session, at bind. A kit edited mid-session is not
+  re-read. → **CN-014**, where the preview watcher and the editor's node library go stale the same
+  way; fixing one alone would read as a whole answer.
+- `packages/noodl-mcp` uses **hoisted `esbuild`** in its build *and* now in one test, without
+  declaring it. Pre-existing (`build.mjs` does the same); not changed during a shared-checkout
+  session, but it is a real undeclared dependency.
 
 ---
 
-## 3. Two findings this session did not cause and did not fix
+## 3. Still open, not caused here
 
-### 🔴 `npm ci` could not install this tree — fixed, and worth knowing why nobody saw it
-
-`noodl-editor/package.json` has declared `"@nodegx/module-inject": "*"` since CN-001, and
-`package-lock.json` had **no entry for it at all**. package.json and the lockfile were out of sync,
-which `npm ci` rejects by design. Fixed in `875af23f` with `npm install --package-lock-only` — the
-lockfile without the node_modules churn, because several sessions are working in this checkout.
-
-⚠️ **The fix folded in one change this session never wrote**: `packages/noodl-editor` 0.1.6 → 0.1.7
-in the lockfile. Correct, long overdue, and now gated by being in a diff rather than by nobody
-looking. **Add the lockfile entry in the same commit as any new workspace package.**
-
-### 🔴 noodl-mcp's typecheck is red and runs in NO gate
-
-`npx tsc --noEmit` in `packages/noodl-mcp` reports **8 errors** (`src/tools/disclosure.ts`, three
-test files). **Pre-existing** — verified, not assumed: `'core'` was already in `ToolGroupId` at
-`1332e0d1~1`, and the failing test files were last touched by an old canvas commit. The first
-hypothesis blamed a peer's fresh commit and was **wrong**; checking took two minutes and saved a
-misattributed peer message.
-
-Why it sat unnoticed: the repo has **eleven** `typecheck:*` scripts and `.github/workflows/pr.yml`
-runs **four**. `noodl-mcp` has its own `typecheck` script that no gate invokes, and `test:packages`
-runs `test`, not `typecheck`. Same family as *a package in no gate runs no tests*, one level up.
-**Wants a task number; it is not CN-003's.**
+- 🔴 **noodl-mcp's typecheck is red (8 errors) and runs in NO gate.** Verified pre-existing again
+  this session by `diff` against the reading taken before any edit. Eleven `typecheck:*` scripts
+  exist; `.github/workflows/pr.yml` runs four. **`scripts/` is in none of them either** — the root
+  program's `include` does not list it — so `validate-project.ts` is typechecked by nothing. It is
+  clean today because I checked it by hand. **Wants a task number.**
+- 🔴 **`render-from-disk.js` answers `/` and `/index.html` and 404s everything else**, including the
+  start page's own `urlPath`. Anything driven by `urlPath` is unmeasurable on every page. **Wants a
+  task number before tier 4.**
+- 🔴 **`checkParameterValues` has exactly one caller** (`authoredPreconditionDiagnostics`), so
+  neither `validate:project` nor MCP `validate_project` checks parameter values for *any* node, kit
+  or built-in. Unchanged by this session. **CN-004 is written as though there is one pipeline; there
+  are two.** This is item 1 in §5.
 
 ---
 
 ## 4. What to do next
 
-### Slice 2b — the MCP caller. Start here.
-
-Spawn `dist/kit-extract.cjs`, feed the payload to `catalogNodesFromNodeLibrary`, merge with
-`mergeOverlay`, hand the result to `CatalogIndex`. Then:
-
-- **Acceptance criterion 3 is the cleanest number in the phase.** Take the reading first —
-  `npm run validate:project -- ".../cashflow-command-centre"` is **0 error / 5 warning / 8 info**
-  today. The 8 `unknown-type-check-skipped` lines should go to **zero** and be replaced by real
-  results. `tests-unit/cn-002/` is what notices if they vanish for any other reason.
-- ⚠️ **Do NOT route it through the project validator alone.** `checkParameterValues` has exactly one
-  caller, `authoredPreconditionDiagnostics`, so `validate:project` and MCP `validate_project` never
-  check parameter values for *any* node. Two pipelines; CN-004 is written as though there is one.
-- 🔴 **Verify against the packaged app, not the checkout.** "driven ≠ shipped" has already cost
-  phase 66 a round. Also: a *registered* MCP server loads from `/Applications/…`, so a locally-built
-  `dist/` is not what an agent is talking to.
-- `Overlay.collisions` already carries a kit shadowing a built-in; CN-015 turns it into something a
-  user sees. Do not let it become a silent override.
-
-### Slice 3 — the editor caller
+### Slice 3 — the editor caller. Start here.
 
 Build the overlay from `NodeLibrary.instance` (a read of state the editor already has — it extracts
-nothing, per D3), then `compareOverlays` against the MCP route **in a test**. That is what upgrades
-the corroboration table in §2 into a control, and it is the specific obligation D3 attached.
+nothing, per D3), then `compareOverlays` against the MCP route **in a test**. That is the specific
+obligation D3 attached, and it is what turns slice 1's corroboration table into a control.
+
+⚠️ **What a green `compareOverlays` will and will not say.** It says the two *registers* agree. It
+does not verify the mapping — the fixture tests do that. Both routes also share the runtime, the
+viewer and `generateNodeLibrary`, so a pass says *the editor's live register matches the headless
+one*, not *two independent derivations agree*.
+
+✅ **You have a real kit fixture now**: `packages/noodl-mcp/tests/fixtures/kit-app` — two nodes,
+`var(--token)` colour defaults per D8, a correctly-wired component and a deliberately broken one.
+`kit-hazards` beside it carries a kit that throws, a kit that shadows `Text`, and a healthy kit that
+must survive both. Use them rather than building a third.
 
 ### Slice 4 — lesson vocabulary. ⚠️ Coordinate before you open these.
 
 Routing the project-scoped catalog to `learningfolder.ts`, `lessonbundleverify.ts` and
-`lessongrading.ts` (the verifier itself needs no change — `VerifyLessonOptions.vocabulary` is the
-injection point).
+`lessongrading.ts` (the verifier needs no change — `VerifyLessonOptions.vocabulary` is the injection
+point).
 
-🔴 **These are the hottest files in the repo.** P66's `43b2e521` touched `lessonverify.ts`,
-`lessonformat.ts`, `lessonevalconditions.ts` and `noodl-mcp/src/lessons/authoringBrief.ts` *today*,
-carrying P67 slice-4 work inside a P66 commit. **Ping the P67 session before you open them**, and
-keep slice 4 in its own commit.
+🔴 **These are the hottest files in the repo**, shared with P66 and P67. **Ping the P67 session before
+you open them**, and keep slice 4 in its own commit.
 
 ⚠️ **A lesson bundle is graded before its project exists.** `verifyLessonManifest` runs at *install*,
 against a manifest and no project. The overlay must be built from **the bundle's own project files**,
 or the check answers about the wrong kit.
+
+### Then CN-004
+
+🔴 **Expect real breakage, and do not soften it.** D4 was ruled against the softer rollout knowingly.
+Note that the cashflow kit came out of slice 2b **completely clean** (0/0/0) — that is a fact about
+its 28 connection endpoints, and says nothing about its **26 parameter values**, which are still
+checked by nothing anywhere. Do not read the clean run as the kit being verified.
 
 ---
 
@@ -187,47 +161,21 @@ or the check answers about the wrong kit.
 1. **Widen the project gate to check parameter values?** The 26 unverified parameters on the cashflow
    kit nodes are unverified at project level *for everyone*, kit or built-in. CN-004 assumes turning
    the checks on in one place turns them on everywhere. It does not. **Scope call, not a fix.**
-2. ~~**P67's F4 hole**~~ — ✅ **ALREADY RULED 2026-08-16: ship it, as UNI-012.** Do not re-raise it.
-   Caught because a peer had updated the memory index while this session ran; the earlier draft of
-   this file listed it as owed. Slice 2a's `dist/` entry point is a worked example of the shape
-   UNI-012 needs, so **offer it to whoever picks UNI-012** rather than to Richard.
-3. **The ungated typechecks** (§3). Seven of eleven `typecheck:*` scripts run in no CI job.
+2. **The ungated typechecks** (§3). Seven of eleven `typecheck:*` scripts run in no CI job, and
+   `scripts/` is in none of them.
 
 ---
 
 ## 6. Checkout conditions
 
-Several sessions share this checkout — P66 (session 35) and P67 were both live throughout.
+Several sessions share this checkout; P66 and P67 were both live throughout, and a P67 commit
+(`51cff411`) landed mid-session.
 
-- ✅ **`git commit -m … -- <pathspecs>`, always. Never `git add -A`, never `git stash`.** Four commits
-  landed this session with nothing of a peer's swept, and a peer's commits interleaved cleanly.
-- ⚠️ **`packages/noodl-mcp/tests/toolDisclosure.test.ts` was being edited by a peer as this file was
-  written.** That is the MCP **token-budget** gate. 🔴 **And the budget is now understood as THREE
-  budgets, not one**: the 8,280 / 57-free figure is the **RESIDENT** surface, so a tool added to an
-  existing **deferred** group costs **0** — but anything reached by `applyPolicy()` becomes resident
-  silently. **Re-read the test before planning CN-006 or CN-009's surface**; the framing this phase
-  inherited ("57 tokens, three-way competition") is the wrong shape.
-- A peer teardown notice arrived mid-session and was answered on the socket it came in on, with
-  standing status. Do the same: whoever you tell you are starting, tell you have stopped.
-
----
-
-## 7. Still live from the previous session
-
-- 🔴 **`render-from-disk.js` answers `/` and `/index.html` and 404s everything else** — including the
-  start page's own `urlPath` (`GET /home` → 404, measured twice, two sessions). So *anything* driven
-  by `urlPath` is unmeasurable on every page, and a kit on a non-start page silently measures
-  nothing. **Not fixed, wants a task number before tier 4.**
-- 🔴 **The defect is rarely the one the spec describes, and it reads as a pass.** CN-001 predicted a
-  blank; what happened was a page rendering everything *except* the kit node with `findings: []` and
-  "Rendered clean". When a task says "X is unsupported", check whether X is reported as *fine*.
-- ⚠️ **Run a spec's named fixture once before trusting it.** Two specs in this phase named controls
-  that had never been run. Use **`cn001-kit-drive`** for kit render checks; `cashflow-command-centre`
-  is v1 and `render-from-disk.js` exits 2 on it (though `validate:project` reads it fine).
-- ⚠️ **For CN-010 and CN-014:** `node.dynamicports` is a **cache of what a runtime last pushed** — its
-  presence implies nothing about rendering and its absence implies nothing either. The rendered
-  property panel is the reliable readout of what is *declared*. An always-on `<webview>` runtime
-  exists with no preview taken, and `cdp targets` does not list it — `curl :9222/json/list` does, so
-  "nothing is running" can be an artefact of the tool.
-- ⚠️ **A new package runs in no gate until you add it.** `test:packages` scopes **by name**. Both
-  `@nodegx/module-inject` and now `@nodegx/kit-catalog` had to be added by hand.
+- ✅ **`git commit -m … -- <pathspecs>`, always. Never `git add -A`, never `git stash`.** Peer
+  working-tree changes were present in `BlocklyEditor/`, `scripts/library/check.ts`,
+  `dev-docs/tasks/phase-65-*` and `phase-68-*` throughout, and none was touched.
+- ⚠️ `packages/noodl-mcp/dist/` is **gitignored**. The suite therefore builds its own extractor from
+  source per run rather than reading `dist/` — a suite that read `dist/` would be skipped in a fresh
+  checkout and would silently grade a stale artifact in a working one. `dist/` was rebuilt by hand
+  for the stdio drive; nothing depends on it staying built.
+- Whoever you tell you are starting, tell you have stopped.

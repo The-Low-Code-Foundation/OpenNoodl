@@ -23,9 +23,11 @@ import type {
   GetComponentResponse,
   ListComponentsResponse,
   ProjectInfoResponse,
+  ProjectKitsReport,
   SearchMatch,
   SearchProjectResponse
 } from './responses';
+import { currentKitOverlay } from '../kitOverlay';
 import { guarded, jsonResult } from './util';
 import { projectVisualPredicate } from './author';
 import { readVisualRoots } from '../visualRoots';
@@ -68,6 +70,43 @@ export function truncateRowDescription(description: string): string {
   return description.slice(0, LIST_COMPONENTS_DESCRIPTION_CHARS - 1).trimEnd() + '…';
 }
 
+/**
+ * CN-003 — the session's kit overlay, as `get_project_info` reports it, or
+ * `undefined` when there is nothing to say.
+ *
+ * "Nothing to say" is exactly one case: the project has no `noodl_modules`
+ * directory, so no kit could have contributed anything and none failed. A
+ * project that *has* the directory always gets a report, even an empty one —
+ * `noodl_modules` present with zero node types is a fact worth seeing, and it is
+ * the shape a broken kit produces.
+ */
+export function kitsReport(): ProjectKitsReport | undefined {
+  const overlay = currentKitOverlay();
+  if (!overlay) return undefined;
+  if (overlay.skipped === 'no-modules-directory') return undefined;
+
+  const typesByModule = new Map<string, string[]>();
+  for (const node of overlay.nodes) {
+    const list = typesByModule.get(node.kitModule) ?? [];
+    list.push(node.typeName);
+    typesByModule.set(node.kitModule, list);
+  }
+
+  return {
+    modules: overlay.kits.map((k) => ({
+      name: k.kitModule,
+      dirPath: k.dirPath,
+      nodeTypes: typesByModule.get(k.kitModule) ?? []
+    })),
+    ...(overlay.collisions.length > 0 ? { collisions: overlay.collisions } : {}),
+    ...(overlay.failures.length > 0
+      ? { failures: overlay.failures.map((f) => ({ kitModule: f.kitModule, message: f.message })) }
+      : {}),
+    ...(overlay.warnings.length > 0 ? { warnings: overlay.warnings } : {}),
+    ...(overlay.unavailable ? { unavailable: overlay.unavailable.reason } : {})
+  };
+}
+
 export function registerReadTools(server: McpServer, binding: ProjectBinding, options: { allowWrites: boolean }): void {
   server.registerTool(
     'get_project_info',
@@ -87,6 +126,7 @@ export function registerReadTools(server: McpServer, binding: ProjectBinding, op
       const routes = store.readRoutes();
       const styles = store.readStyles();
       const rootEntry = Object.entries(registry.components).find(([, e]) => e.type === 'root');
+      const kits = kitsReport();
       const payload: ProjectInfoResponse = {
         name: project?.name,
         // FIX-008 E — from the store the other tools use, not from the binding, so this is the
@@ -124,7 +164,9 @@ export function registerReadTools(server: McpServer, binding: ProjectBinding, op
               authoringDoctrine: DECOMPOSITION_DOCTRINE_MD,
               designDoctrine: DESIGN_DOCTRINE_MD
             }
-          : {})
+          : {}),
+        // CN-003 — absent unless there is something to report; see `kitsReport`.
+        ...(kits ? { kits } : {})
       };
       return jsonResult(payload);
     })

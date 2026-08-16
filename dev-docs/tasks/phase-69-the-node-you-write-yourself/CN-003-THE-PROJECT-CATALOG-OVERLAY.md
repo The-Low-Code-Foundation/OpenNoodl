@@ -114,11 +114,70 @@ than guessed, the same reasoning as `DynamicPortSkipped` and CN-002's `unknown-t
   `generateNodeLibrary` does not export it. Left **absent**, which for an overlay node means *not
   assessed*, never *safe*. → **CN-013**.
 
+## ✅ Slice 2b landed 2026-08-16 — the MCP caller, and the number
+
+`src/kitExtract/extract.ts` spawns the extractor, maps with `@nodegx/kit-catalog` and returns an
+overlay; `src/kitOverlay.ts` installs it into `catalog.ts` when a project binds. `catalogIndex()`,
+and therefore validation, `visualRoots`, `get_node_type`, `list_node_types` and the write gate, now
+know the bound project's own node types. 21 tests, mutation-proven (commenting out the one
+`setCatalogOverlay` call fails 7 of them).
+
+### 🔴 Acceptance criterion 3, measured — and the instrument the spec's number belongs to
+
+`npm run validate:project` on `NodeGX test projects/cashflow-command-centre`:
+
+| | errors | warnings | infos | nodes | **endpoints checked** |
+|---|---|---|---|---|---|
+| before (and `--no-kits` today, as a control) | 0 | 5 | **8** | 19 | **18** |
+| after | 0 | **0** | **0** | 19 | **28** |
+
+The infos going to zero is the weak half. **The endpoints went 18 → 28**, which is exactly the "10 of
+28 connection endpoints never reached" CN-002 measured on this project before it could be fixed — an
+independent corroboration of that reading, from the other side. On
+`packages/noodl-mcp/tests/fixtures/kit-app` the replacement is visible as a diagnostic: a connection
+to `progres` on a kit node, invisible to everything until today, is now
+`error [nonexistent-port] … did you mean 'progress'?` with the node's twelve real inputs listed.
+
+🔴 **The cashflow number can only ever be read by the CLI.** `cashflow-command-centre` is a **legacy
+monolithic project** and the MCP server refuses those at startup, so the acceptance number and the
+MCP route were never joinable — the handover that quoted one as the test of the other had not noticed.
+`scripts/validate-project.ts` therefore builds the overlay too, from the same extractor and the same
+mapping, differing only in which catalog document it merges into (`defaultCatalog()`, not the
+enriched one). That is why `kitExtract/extract.ts` knows about no catalog at all. `--no-kits` turns it
+off and is the control in the table above.
+
+### Verified against the bundle, not the checkout
+
+The suite overrides the extractor path, so it never exercises `dist/`. Driven separately: the built
+`dist/noodl-mcp.cjs` over real stdio against `cn001-kit-drive` resolved `dist/kit-extract.cjs` from
+`__dirname`, and `get_project_info` reported the Cashflow Kit with all five type names,
+`get_node_type` returned `nodegx.cashflow.Pill`'s full port list, and `list_node_types query=cashflow`
+listed all five beside the built-ins.
+
+### 🔴 A defect slice 2a shipped, found by building the caller
+
+`entry.js` passed `process.argv[2]` to `path.join` untouched, and `require()` reads a
+relative-looking path as a **module id**. A relative project directory therefore made every kit report
+`Cannot find module …` while extraction itself reported success — the failure shape this phase keeps
+meeting. Fixed with `path.resolve`, and the suite runs the extractor from a shell with a relative
+path so it stays fixed.
+
+### What is knowingly not done here
+
+- **No cache of any kind.** The overlay is built once per server session, at bind. A kit edited
+  mid-session is not re-read — recorded, and handed to **CN-014**, which owns the dev loop and where
+  the preview watcher and the editor's node library go stale in the same way.
+- **The lesson-vocabulary routing** (item 5 below) is slice 4 and untouched.
+- `get_project_info` grew a `kits` field — modules, their node types, collisions, failures, and
+  `unavailable`. **Omitted entirely** for a project with no `noodl_modules`. No tool was added, so the
+  tool-surface budget is untouched.
+
 ## What to build
 
 1. ✅ **The shared mapping** — done, `@nodegx/kit-catalog` (see above). Reuses CN-001's
    `scanModuleManifests` for the `runtimes` filter rather than adding a fourth scan.
-2. **The headless extractor + MCP caller** — runs the kit under the dom-shim, calls
+2. ✅ **The headless extractor + MCP caller** — done, slices 2a and 2b (see above). Original text:
+   runs the kit under the dom-shim, calls
    `generateNodeLibrary`, feeds `catalogNodesFromNodeLibrary`, merges into `CatalogIndex` as a
    **project-scoped overlay**. Built-ins keep priority on a name collision; the shadow is reported
    (`Overlay.collisions` already carries it) for CN-015 to surface.

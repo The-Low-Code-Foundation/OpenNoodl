@@ -11,6 +11,13 @@
 import { CatalogIndex } from './editor-deps';
 import type { CatalogNode, CatalogPort, NodeCatalog } from './editor-deps';
 
+// CN-003 — the shared mapping, called by this server *and* by the editor over
+// the payload the viewer already sent it. See `@nodegx/kit-catalog`'s header for
+// why there is one mapping and not two.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { mergeOverlay } = require('@nodegx/kit-catalog');
+import type { NodeCatalogLike, OverlayCatalogNode } from '@nodegx/kit-catalog';
+
 // require() instead of import: keeps TypeScript from inferring a 1.45 MB
 // literal type, while esbuild still inlines the JSON into the bundle.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -64,28 +71,92 @@ interface EnrichedCatalogFile {
 
 // ─── Loading ──────────────────────────────────────────────────────────────────
 
-const catalogFile = enrichedJson as EnrichedCatalogFile;
+const shippedCatalog = enrichedJson as EnrichedCatalogFile;
+
+// ─── CN-003 — the project overlay ─────────────────────────────────────────────
+
+/**
+ * The bound project's own kit node types, merged over the shipped catalog.
+ *
+ * ✅ **D3 / CN-003.** `node-catalog-enriched.json` is generated from the live
+ * register of **built-ins only**, at repo-build time; a project's kits exist per
+ * project and per machine, so they cannot be in it. Everything downstream —
+ * validation, `visualRoots`, `get_node_type`, the write gate — reads this module,
+ * which is why one merge here is the whole of "custom nodes stop being
+ * second-class" for this server. `src/kitOverlay.ts` produces the list; this
+ * file only knows it has one.
+ *
+ * ⚠️ **Every derived structure below is a cache and must be dropped with it.**
+ * `catalogIndex()`, `byType()` and the merged document are all memoised, and a
+ * `SemanticValidator` built over a stale index is a validator that has never
+ * heard of the project's nodes — silently, and only for the checks it skips. See
+ * {@link catalogGeneration}.
+ */
+let overlayNodes: OverlayCatalogNode[] = [];
+let generation = 0;
 
 let cachedIndex: CatalogIndex | undefined;
 let cachedByType: Map<string, EnrichedCatalogNode> | undefined;
+let cachedMerged: EnrichedCatalogFile | undefined;
+
+/**
+ * Install (or clear, with `[]`) the project overlay.
+ *
+ * 🔴 Never mutates the shipped document — `mergeOverlay` returns a new one. The
+ * shipped `nodes` array is a module singleton and one project's kits leaking
+ * into it is exactly what CN-003's acceptance criterion 1 tests for with its
+ * "and false for a project without the kit" half.
+ */
+export function setCatalogOverlay(nodes: OverlayCatalogNode[]): void {
+  overlayNodes = nodes ?? [];
+  cachedIndex = undefined;
+  cachedByType = undefined;
+  cachedMerged = undefined;
+  generation++;
+}
+
+/**
+ * Bumped whenever the overlay changes.
+ *
+ * Callers that build something *over* the index — `SemanticValidator`, of which
+ * there are two cached instances in this package — memoise it against this
+ * number rather than forever. Without it the overlay would be installed
+ * correctly and then read by a validator constructed before it existed, and
+ * nothing about that failure is visible: it looks exactly like a project whose
+ * kits are unknown, which is the state we are trying to leave.
+ */
+export function catalogGeneration(): number {
+  return generation;
+}
+
+/** The shipped catalog, with the bound project's kit entries merged in. */
+function catalog(): EnrichedCatalogFile {
+  if (!cachedMerged) {
+    cachedMerged =
+      overlayNodes.length === 0
+        ? shippedCatalog
+        : (mergeOverlay(shippedCatalog as unknown as NodeCatalogLike, overlayNodes) as unknown as EnrichedCatalogFile);
+  }
+  return cachedMerged;
+}
 
 /** CatalogIndex over the *enriched* catalog — used for validation too, so the
  * validator and the documentation tools can never disagree about a type. */
 export function catalogIndex(): CatalogIndex {
-  if (!cachedIndex) cachedIndex = new CatalogIndex(catalogFile as unknown as NodeCatalog);
+  if (!cachedIndex) cachedIndex = new CatalogIndex(catalog() as unknown as NodeCatalog);
   return cachedIndex;
 }
 
 function byType(): Map<string, EnrichedCatalogNode> {
   if (!cachedByType) {
     cachedByType = new Map();
-    for (const n of catalogFile.nodes) cachedByType.set(n.typeName, n);
+    for (const n of catalog().nodes) cachedByType.set(n.typeName, n);
   }
   return cachedByType;
 }
 
 export function allExamples(): CatalogExample[] {
-  return catalogFile.examples ?? [];
+  return shippedCatalog.examples ?? [];
 }
 
 // ─── Compact listing ──────────────────────────────────────────────────────────
@@ -113,7 +184,11 @@ export interface ListNodeTypesFilter {
 export function listNodeTypes(filter: ListNodeTypesFilter = {}): NodeTypeRow[] {
   const q = filter.query?.toLowerCase();
   const rows: NodeTypeRow[] = [];
-  for (const n of catalogFile.nodes) {
+  // CN-003 — the merged document, so a project's own node types are listed
+  // beside the built-ins. ✅ **P1**: there is no capability difference between a
+  // kit node and a shipped one, and a picker an author's own node is missing
+  // from is a capability difference.
+  for (const n of catalog().nodes) {
     if (!filter.includeHidden && (n.isDeprecated || n.inNodePicker === false)) continue;
     if (filter.category && (n.category ?? '').toLowerCase() !== filter.category.toLowerCase()) continue;
     if (filter.visualOnly && !n.isVisual) continue;
@@ -157,7 +232,7 @@ export function isVisualNodeType(typeName: string): boolean {
 
 export function listCategories(): string[] {
   const set = new Set<string>();
-  for (const n of catalogFile.nodes) if (n.category) set.add(n.category);
+  for (const n of catalog().nodes) if (n.category) set.add(n.category);
   return [...set].sort();
 }
 

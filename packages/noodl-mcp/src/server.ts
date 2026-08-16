@@ -17,6 +17,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { BOOTSTRAP_INSTRUCTIONS, projectInstructions } from './instructions';
 import { ToolError } from './errors';
+import { installProjectOverlay } from './kitOverlay';
 import { ProjectBinding } from './project/ProjectBinding';
 import { createExampleBudget } from './tools/attachments';
 import { registerAuthorTools } from './tools/author';
@@ -85,6 +86,22 @@ export function createServer(options: ServerOptions): CreatedServer {
   const binding = new ProjectBinding(options.projectDir); // throws early on non-v2 targets
   const deferTools = options.deferTools !== false;
   const store = binding.peek();
+
+  // ✅ CN-003 — the project catalog overlay, installed once, here, before any
+  // tool can be called.
+  //
+  // It is done eagerly rather than on first catalog access for two reasons. A
+  // lazy build would run inside whichever tool happened to ask first and charge
+  // that call ~135 ms for a reason its caller cannot see; and a kit that fails
+  // to load would surface as an oddity inside an unrelated tool result instead
+  // of at the one moment a person is looking at the server starting.
+  //
+  // 🔴 It never throws. `extractProjectOverlay` converts every failure into an
+  // `unavailable` reason on an empty overlay, and `get_project_info` reports it
+  // — because a server that answers "this project has no custom node types"
+  // when it simply could not read them is the CN-002 defect one layer down.
+  if (store !== null) installProjectOverlay(store.projectDir);
+
   const server = new McpServer(
     { name: 'noodl-mcp', version: PKG_VERSION },
     {

@@ -1,0 +1,6 @@
+{
+  "name": "Working Kit",
+  "main": "index.js",
+  "runtimes": ["browser", "cloud"],
+  "dependencies": []
+}

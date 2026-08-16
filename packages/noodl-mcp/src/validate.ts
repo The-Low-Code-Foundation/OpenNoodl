@@ -41,15 +41,25 @@ import {
   sortDiagnostics
 } from './editor-deps';
 import type { ComponentNodesView } from './editor-deps';
-import { catalogIndex } from './catalog';
+import { catalogGeneration, catalogIndex } from './catalog';
 import type { ComponentFiles } from './graph';
 import type { ProjectStore } from './project/ProjectStore';
 
 let semanticValidator: SemanticValidator | undefined;
+let validatorGeneration = -1;
 function validator(): SemanticValidator {
   // Built over the *enriched* catalog index so validation and the catalog
   // tools can never disagree about a type.
-  if (!semanticValidator) semanticValidator = new SemanticValidator(catalogIndex());
+  //
+  // 🔴 CN-003 — re-built when the catalog changes. The project overlay is
+  // installed at bind, which is *after* this module is loaded; a validator
+  // memoised for the life of the process would be one built over built-ins
+  // only, and its failure mode is invisible — it looks exactly like a project
+  // whose kit types are unknown, which is the state the overlay exists to end.
+  if (!semanticValidator || validatorGeneration !== catalogGeneration()) {
+    semanticValidator = new SemanticValidator(catalogIndex());
+    validatorGeneration = catalogGeneration();
+  }
   return semanticValidator;
 }
 

@@ -107,6 +107,39 @@ export interface ProjectInfoResponse {
    * orientation an external agent gets before it draws anything.
    */
   designDoctrine?: string;
+  /**
+   * CN-003 — the project's own node kits, and what reading them produced.
+   *
+   * **Omitted entirely for a project with no `noodl_modules` directory**, which
+   * is nearly all of them: this is per-response cost on the one tool an agent is
+   * told to call first, and a field saying "no kits" on a project that was never
+   * going to have any is noise. Present the moment there is a kit — or a reason
+   * we cannot say.
+   *
+   * 🔴 `unavailable` is the field that matters. Empty `modules` means the
+   * project declares no kit node types; `unavailable` means we could not find
+   * out, and the two must never be read as the same answer. That distinction is
+   * CN-002's whole subject, applied one layer down to the mechanism CN-002's
+   * diagnostics measure.
+   */
+  kits?: ProjectKitsReport;
+}
+
+export interface ProjectKitsReport {
+  /** Kits that loaded, with the node types each contributed to the catalog. */
+  modules: Array<{ name: string; dirPath: string; nodeTypes: string[] }>;
+  /**
+   * Kit types whose name is already a shipped type. **The built-in wins** — the
+   * kit's node is not in the catalog and this is where that is said. CN-015 owns
+   * turning it into a failure an author meets at the right moment.
+   */
+  collisions?: Array<{ typeName: string; kitModule: string }>;
+  /** Kits that threw at import or failed to register. Their nodes are absent. */
+  failures?: Array<{ kitModule: string; message: string }>;
+  /** Malformed or unreadable `manifest.json` files, from the shared scanner. */
+  warnings?: string[];
+  /** 🔴 Set when extraction could not run. Not the same as "there are none". */
+  unavailable?: string;
 }
 
 export interface ListComponentsResponse {

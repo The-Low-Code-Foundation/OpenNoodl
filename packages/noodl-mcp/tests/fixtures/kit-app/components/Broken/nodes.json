@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_kitbroken",
+  "version": 1,
+  "nodes": [
+    { "id": "broken_meter", "type": "demo.kit.Meter", "label": "Meter", "children": ["broken_badge"] },
+    { "id": "broken_badge", "type": "demo.kit.Badge", "label": "Badge", "parent": "broken_meter" }
+  ],
+  "visualRoots": ["broken_meter"]
+}

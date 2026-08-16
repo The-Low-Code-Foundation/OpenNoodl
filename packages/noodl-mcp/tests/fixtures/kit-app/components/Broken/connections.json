@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "c_kitbroken",
+  "version": 1,
+  "connections": [
+    { "fromId": "broken_meter", "fromProperty": "percent", "toId": "broken_badge", "toProperty": "progres" }
+  ]
+}

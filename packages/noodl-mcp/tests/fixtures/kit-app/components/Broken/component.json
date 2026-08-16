@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c_kitbroken",
+  "name": "Broken",
+  "path": "/Broken",
+  "type": "visual",
+  "description": "The known-broken arm: a connection to a port the kit node does not declare. Nothing can see it until the overlay exists."
+}
