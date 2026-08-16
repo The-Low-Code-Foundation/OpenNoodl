@@ -21,6 +21,13 @@ import { appConfigReadExpression, APP_CONFIG_BLOCK_TYPE } from './appConfig';
 import { libraryReadExpression, LIBRARY_GLOBAL_BLOCK_TYPE } from './appLibraries';
 import { initBlockProbes } from './BlockProbes';
 import { convertModeExpression } from './convertModes';
+import {
+  jsonParseExpression,
+  jsonStringifyExpression,
+  objectHasPropertyExpression,
+  objectMembersExpression,
+  NEW_OBJECT_EXPRESSION
+} from './objectData';
 import { windowPathExpression, WINDOW_BLOCK_TYPE } from './windowAccess';
 
 /**
@@ -57,6 +64,9 @@ export function initNoodlGenerators() {
 
   // Convert and log (FIX-004 §A)
   initUtilityGenerators();
+
+  // Objects as data (FIX-004 §C)
+  initObjectDataGenerators();
 }
 
 /**
@@ -204,6 +214,69 @@ function initObjectGenerators() {
     const object = javascriptGenerator.valueToCode(block, 'OBJECT', Order.MEMBER) || '{}';
     const value = javascriptGenerator.valueToCode(block, 'VALUE', Order.ASSIGNMENT) || 'null';
     return `${object}["${property}"] = ${value};\n`;
+  };
+}
+
+/**
+ * Objects-as-data Generators (FIX-004 §C)
+ *
+ * ## The empty-socket default is `undefined`, and it differs from the two blocks above on purpose
+ *
+ * `noodl_get_object_property` defaults its unplugged object socket to `'{}'`, so a half-built
+ * program reads a property off a fresh empty object and quietly answers `undefined` — a
+ * plausible answer that hides the mistake. These blocks default to `undefined` instead, for the
+ * reason `noodl_convert` does: `undefined[key]` throws, `logic-builder.ts` catches it into
+ * `_fail('logic-builder/blocks-threw', …)`, and the node then says on its `error` output and
+ * its `Failure` signal that a socket is empty. An unfinished program should read as one.
+ *
+ * The existing pair is left alone — changing what a saved program generates is not this task.
+ */
+function initObjectDataGenerators() {
+  javascriptGenerator.forBlock['noodl_new_object'] = function () {
+    // Already parenthesised, so it is atomic in every context. See `NEW_OBJECT_EXPRESSION`
+    // for why a bare `{}` cannot be used.
+    return [NEW_OBJECT_EXPRESSION, Order.ATOMIC];
+  };
+
+  // Get property by expression - generates: object[key]
+  javascriptGenerator.forBlock['noodl_get_object_property_expr'] = function (block) {
+    const object = javascriptGenerator.valueToCode(block, 'OBJECT', Order.MEMBER) || 'undefined';
+    const key = javascriptGenerator.valueToCode(block, 'KEY', Order.NONE) || 'undefined';
+    return [`${object}[${key}]`, Order.MEMBER];
+  };
+
+  // Set property by expression - generates: object[key] = value;
+  javascriptGenerator.forBlock['noodl_set_object_property_expr'] = function (block) {
+    const object = javascriptGenerator.valueToCode(block, 'OBJECT', Order.MEMBER) || 'undefined';
+    const key = javascriptGenerator.valueToCode(block, 'KEY', Order.NONE) || 'undefined';
+    const value = javascriptGenerator.valueToCode(block, 'VALUE', Order.ASSIGNMENT) || 'null';
+    return `${object}[${key}] = ${value};\n`;
+  };
+
+  // Object members - generates: Object.keys(object) / Object.values(object)
+  javascriptGenerator.forBlock['noodl_object_members'] = function (block) {
+    const object = javascriptGenerator.valueToCode(block, 'OBJECT', Order.NONE) || 'undefined';
+    return [objectMembersExpression(block.getFieldValue('MODE'), object), Order.FUNCTION_CALL];
+  };
+
+  // Has property - generates: Object.prototype.hasOwnProperty.call(object, key)
+  // 🔴 Not `key in object`, which is inverted on a Noodl Object. See `objectData.ts`.
+  javascriptGenerator.forBlock['noodl_object_has_property'] = function (block) {
+    const object = javascriptGenerator.valueToCode(block, 'OBJECT', Order.NONE) || 'undefined';
+    const key = javascriptGenerator.valueToCode(block, 'KEY', Order.NONE) || 'undefined';
+    return [objectHasPropertyExpression(object, key), Order.FUNCTION_CALL];
+  };
+
+  // Read JSON - generates: JSON.parse(text). Throws on malformed text, deliberately.
+  javascriptGenerator.forBlock['noodl_json_parse'] = function (block) {
+    const text = javascriptGenerator.valueToCode(block, 'TEXT', Order.NONE) || 'undefined';
+    return [jsonParseExpression(text), Order.FUNCTION_CALL];
+  };
+
+  // JSON text of - generates: JSON.stringify(value)
+  javascriptGenerator.forBlock['noodl_json_stringify'] = function (block) {
+    const value = javascriptGenerator.valueToCode(block, 'VALUE', Order.NONE) || 'undefined';
+    return [jsonStringifyExpression(value), Order.FUNCTION_CALL];
   };
 }
 

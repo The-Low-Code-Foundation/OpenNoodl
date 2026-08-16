@@ -200,3 +200,95 @@ toolbox XML, which is the gap `hat-migration.spec.ts`'s `try/catch` leaves open.
 holds the 4 real workspaces; `req.c['../../node_modules/blockly/blockly_compressed.js']` reports
 `Workspace.getAll()` of **0** and `getMainWorkspace()` false. Reaching for the compressed one reads
 as "the bench isn't open".
+
+---
+
+## §C — what shipped (2026-08-16, session 37)
+
+**Slice C is built and gated; nothing is driven.** Seven blocks, one new category, 22 specs.
+
+| block | shape | generates |
+|---|---|---|
+| `noodl_new_object` | value → `Object` | `({})` |
+| `noodl_get_object_property_expr` | value | `object[key]` |
+| `noodl_set_object_property_expr` | **statement** | `object[key] = value;` |
+| `noodl_object_members` | value → `Array`, dropdown | `Object.keys(o)` / `Object.values(o)` |
+| `noodl_object_has_property` | value → `Boolean` | `Object.prototype.hasOwnProperty.call(o, k)` |
+| `noodl_json_parse` | value → *(no check)* | `JSON.parse(t)` |
+| `noodl_json_stringify` | value → `String` | `JSON.stringify(v)` |
+
+Homes: a new **Data** category, placed after Lists — it is to `App Objects` what `Lists` is to
+`App Arrays`, and shares hue `20` for the same reason those two share `260`. Expressions and
+tooltips live in `objectData.ts`, import-free, so `tests-unit` grades them directly
+(`convertModes.ts`'s pattern). 🔴 `noodl_set_object_property_expr` is on
+`hatMigration.ts`'s `HATTABLE_BLOCK_TYPES` — the §A trap, paid once already by `noodl_log`.
+
+### 🔴 The measurement that decided a generator: `in` is inverted on a Noodl Object
+
+`Noodl.Objects[id]` is **not** a plain object in either runtime — both hand back a Model proxy
+(`model.ts` `_modelProxyHandler`; browser `noodl-js-api.ts:67`, cloud `noodl-js-api.js:27`). That
+handler implements `get`, `set`, `ownKeys` and `getOwnPropertyDescriptor` — **but no `has` trap**.
+Measured on a real Model carrying `{title, count}`:
+
+| expression | answer |
+|---|---|
+| `Object.keys(o)` / `Object.values(o)` | `['title','count']` / `['hello',3]` ✅ |
+| `o['title']` | `'hello'` ✅ |
+| `hasOwnProperty.call(o,'title')` | `true`; missing key → `false` ✅ |
+| **`'title' in o`** | **`false`** 🔴 |
+| **`'data' in o`** | **`true`** 🔴 |
+
+Exactly inverted — false for every key the author put there, true for the plumbing. A `has
+property` block generating `key in object` would report that **no App Object has any property**.
+The spec asserts `in`'s wrong answers beside `hasOwnProperty`'s right ones, so the shorter
+operator cannot later look like a safe simplification.
+
+⚠️ `JSON.stringify` of an App Object **adds an `id` key** (`Model.prototype.toJSON`), so a JSON
+round trip does not return what went in. Stated in the tooltip and asserted, not worked around.
+
+### Two other things checked rather than assumed
+
+🔴 **A bare `{}` at the start of a statement is a *block*, not an object literal.** The setter
+generates `<object>[<key>] = …` at column 0, so `noodl_new_object` emits `({})` always. The spec
+compiles both forms and requires `new Function('{}["a"] = 1;')` to throw — the parentheses are
+load-bearing, not cosmetic.
+
+🔴 **`Connection.connect` is not an oracle, and it lies in two different ways.** On an *empty*
+socket it returns `false` for a refused pairing; on an **occupied** socket it returns **`true`
+while refusing**. It never throws. So `expect(…).toThrow()` fails on correct behaviour and
+`expect(connect(wrong)).toBe(false)` fails after a successful connect. `isConnected()` is the
+only honest readout. All three readings were measured; a spec records them.
+
+**JSON parse throws on bad text, deliberately** — `logic-builder.ts` catches it into
+`_fail('logic-builder/blocks-threw', …)`, which lights `error`, fires `Failure` and raises a
+runtime error. Swallowing it into `null` would replace three visible failures with a silent
+empty value.
+
+### ⚠️ What was deliberately NOT done
+
+The four object-shaped blocks would be worth listing under **App Objects** as well as Data —
+this toolbox already dual-lists `noodl_convert` under Math and Text for exactly that
+findability reason, and findability *is* the complaint behind this whole fix. It was built that
+way and then withdrawn: `tests-unit/vfn-012/browser-blocks.spec.ts` holds the three seam
+categories **byte-identical**. That fence is stricter than the claim in its own title
+(*"changes no existing block type id"* — which an addition does not do), but relaxing another
+phase's guard so one's own change fits through it is the wrong way round.
+**Ruling owed:** should the seam categories carry the computed-key twins, and should that fence
+be narrowed to what it says? Both are cheap; neither is mine to decide.
+
+🔴 **Not driven.** Everything here is headless Blockly plus a real `Model`. Nobody has dragged
+one of these blocks in the app.
+
+### Gates
+
+`test:main` **212 suites / 3313 tests, 0 failed** (of which §C is +1 suite / +22 tests; the
+other +1/+25 since s36 is a peer's). `tsc -p tsconfig.json` and `tsc -p tsconfig.tests.json`
+both **0 errors**. Six mutation controls, each killing 1–2 specs and no more: `in` for
+`hasOwnProperty`, bare `{}`, the statement dropped from `HATTABLE_BLOCK_TYPES`, `keys` emitting
+values, a block dropped from the toolbox, and the computed key hard-coded.
+
+⚠️ **`tsc -p tsconfig.tests-main.json` reports 31 errors and is not a gate anybody runs** — it
+is only ts-jest's config source in `jest.config.js`, and jest never compiles the files that
+error (`erg-005/componentContract.pending.ts`, `nodegrapheditor.ts`, `NodeGraphContext.tsx`,
+`UseCanvasView.ts`, `Icon.tsx`). Identical error set with and without this change, and with and
+without the peer's in-flight edit to that file's `include`. **Pre-existing; not FIX-004's.**

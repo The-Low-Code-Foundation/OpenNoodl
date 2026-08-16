@@ -40,6 +40,13 @@ import {
   DEFAULT_CONVERT_MODE
 } from './convertModes';
 import { blocklyCheckForNoodlType, connectionCheckForDeclaredPort, PERMISSIVE_NOODL_TYPE } from './NoodlTypes';
+import {
+  objectMembersOptions,
+  objectMembersTooltip,
+  DEFAULT_OBJECT_MEMBERS_MODE,
+  JSON_PARSE_TOOLTIP,
+  JSON_STRINGIFY_TOOLTIP
+} from './objectData';
 import { windowTooltip, DEFAULT_WINDOW_PATH, WINDOW_BLOCK_TYPE } from './windowAccess';
 
 /**
@@ -161,6 +168,9 @@ export function initNoodlBlocks() {
 
   // FIX-004 §A — convert and log
   defineUtilityBlocks();
+
+  // FIX-004 §C — objects as data
+  defineObjectDataBlocks();
 }
 
 /**
@@ -504,6 +514,152 @@ function defineObjectBlocks() {
       this.setNextStatement(true, null);
       this.setColour(20);
       this.setTooltip('Sets a property value on an object');
+      this.setHelpUrl('');
+    }
+  };
+}
+
+/**
+ * Objects as data (FIX-004 §C)
+ *
+ * The blocks above reach into a Noodl Object at a name typed into the block. These are the
+ * rest of the vocabulary the Function node has and the block language did not: making an
+ * object, computing a key, asking what keys there are, and crossing the JSON boundary. See
+ * `objectData.ts` for every expression they generate and for the `in`-is-inverted measurement
+ * that decides one of them.
+ *
+ * ## Two shared decisions, made once here
+ *
+ * **The object socket takes anything (`null`).** It could plausibly demand `Object`, which
+ * would refuse `get property of ( "hello" )`. It does not, because the blocks in this toolbox
+ * that *produce* object-shaped values mostly declare no check at all — `get input`, `app
+ * config`, `library`, `window`, `read JSON` — so an `Object` check would refuse real programs
+ * far more often than it would catch a mistake, while `Array` is a legitimate target for every
+ * operation here. It also matches the existing `noodl_get_object_property` pair, which is what
+ * an author will read these as twins of.
+ *
+ * **The key socket takes `String` or `Number`.** Those are the two things JavaScript accepts
+ * as a property key without surprising anybody, and stating both is what lets a key come out
+ * of `the property names of ( )` (strings) or out of a counted loop (numbers).
+ */
+function defineObjectDataBlocks() {
+  /** `{}` — a new, empty object to fill in. Generated parenthesised; see `NEW_OBJECT_EXPRESSION`. */
+  Blockly.Blocks['noodl_new_object'] = {
+    init: function (this: Blockly.Block) {
+      this.appendDummyInput().appendField('🆕 empty object');
+      this.setOutput(true, check('object'));
+      this.setColour(20);
+      this.setTooltip('A new, empty object. Add properties to it with "set property".');
+      this.setHelpUrl('');
+    }
+  };
+
+  /**
+   * `get property ( ) of object ( )` — the computed-key twin of `noodl_get_object_property`.
+   *
+   * A separate block rather than a socket added to the existing one: the existing block holds
+   * its key in a `FieldTextInput`, and turning that field into a value input would change the
+   * shape of every saved program that uses it. Two blocks cost a toolbox row; a shape change
+   * costs a migration.
+   */
+  Blockly.Blocks['noodl_get_object_property_expr'] = {
+    init: function (this: Blockly.Block) {
+      this.appendValueInput('KEY').setCheck(['String', 'Number']).appendField('📖 get property');
+      this.appendValueInput('OBJECT').setCheck(null).appendField('of object');
+      this.setInputsInline(true);
+      this.setOutput(true, null);
+      this.setColour(20);
+      this.setTooltip('Reads a property whose name is worked out while the program runs.');
+      this.setHelpUrl('');
+    }
+  };
+
+  /**
+   * `set property ( ) of object ( ) to ( )` — the computed-key twin of
+   * `noodl_set_object_property`.
+   *
+   * 🔴 A statement, so it is on `hatMigration.ts`'s `HATTABLE_BLOCK_TYPES`. A statement block
+   * missing from that list is never wrapped by migration or seeding and sits orphaned under no
+   * hat — the trap FIX-004 §A already paid for once with `noodl_log`.
+   */
+  Blockly.Blocks['noodl_set_object_property_expr'] = {
+    init: function (this: Blockly.Block) {
+      this.appendValueInput('KEY').setCheck(['String', 'Number']).appendField('✏️ set property');
+      this.appendValueInput('OBJECT').setCheck(null).appendField('of object');
+      this.appendValueInput('VALUE').setCheck(null).appendField('to');
+      this.setInputsInline(false);
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(20);
+      this.setTooltip('Writes a property whose name is worked out while the program runs.');
+      this.setHelpUrl('');
+    }
+  };
+
+  /**
+   * `[the property names ▾] of object ( )` — `Object.keys` / `Object.values`.
+   *
+   * The output check is `Array` in both modes, which is the point of the block: `controls_forEach`
+   * requires `Array`, so this is the piece that makes an object iterable at all. The mode only
+   * changes what is in the list, never its type, so unlike `noodl_convert` there is nothing to
+   * re-check when the dropdown moves.
+   */
+  Blockly.Blocks['noodl_object_members'] = {
+    init: function (this: Blockly.Block) {
+      this.appendValueInput('OBJECT')
+        .setCheck(null)
+        .appendField('🗝️')
+        .appendField(new Blockly.FieldDropdown(objectMembersOptions()), 'MODE')
+        .appendField('of object');
+      this.setOutput(true, check('array'));
+      this.setColour(20);
+      this.setTooltip(objectMembersTooltip(DEFAULT_OBJECT_MEMBERS_MODE));
+      this.setOnChange(function (this: Blockly.Block) {
+        if (!this.workspace || this.isInFlyout || this.disposed) return;
+        this.setTooltip(objectMembersTooltip(this.getFieldValue('MODE')));
+      });
+      this.setHelpUrl('');
+    }
+  };
+
+  /** `object ( ) has property ( )` — 🔴 `hasOwnProperty.call`, not `in`. See `objectData.ts`. */
+  Blockly.Blocks['noodl_object_has_property'] = {
+    init: function (this: Blockly.Block) {
+      this.appendValueInput('OBJECT').setCheck(null).appendField('❓ object');
+      this.appendValueInput('KEY').setCheck(['String', 'Number']).appendField('has property');
+      this.setInputsInline(true);
+      this.setOutput(true, check('boolean'));
+      this.setColour(20);
+      this.setTooltip('True if the object carries a property with that name.');
+      this.setHelpUrl('');
+    }
+  };
+
+  /**
+   * `read JSON ( )` — the output check is **`null`**, and that is the honest value.
+   *
+   * Every other block in this file whose result type is knowable declares it. This one's is
+   * not: `JSON.parse` returns an object, a list, a number, a string, a boolean or null
+   * depending on the text it is handed, and picking `Object` would refuse the perfectly
+   * ordinary case of a JSON array.
+   */
+  Blockly.Blocks['noodl_json_parse'] = {
+    init: function (this: Blockly.Block) {
+      this.appendValueInput('TEXT').setCheck(check('string')).appendField('📥 read JSON');
+      this.setOutput(true, null);
+      this.setColour(20);
+      this.setTooltip(JSON_PARSE_TOOLTIP);
+      this.setHelpUrl('');
+    }
+  };
+
+  /** `JSON text of ( )`. ⚠️ An App Object carries its `id` into the text — `Model.toJSON`. */
+  Blockly.Blocks['noodl_json_stringify'] = {
+    init: function (this: Blockly.Block) {
+      this.appendValueInput('VALUE').setCheck(null).appendField('📤 JSON text of');
+      this.setOutput(true, check('string'));
+      this.setColour(20);
+      this.setTooltip(JSON_STRINGIFY_TOOLTIP);
       this.setHelpUrl('');
     }
   };

@@ -45,6 +45,14 @@ const HUE = {
   math: '230',
   text: '160',
   lists: '260',
+  /**
+   * FIX-004 §C — the same hue as {@link HUE.objects}, deliberately.
+   *
+   * `Data` is to `App Objects` what `Lists` is to `App Arrays`: the generic half of a pair
+   * whose other half is the seam to Noodl's own registry. Those two already share hue `260`,
+   * so sharing `20` here states the same relationship the same way.
+   */
+  data: '20',
   // FIX-004 §A — red, and unused by any other category. A diagnostic block should not be
   // mistakable at a glance for a block that does the app's work.
   debug: '0',
@@ -80,6 +88,15 @@ export interface ToolboxLabels {
   math: string;
   text: string;
   lists: string;
+  /**
+   * FIX-004 §C — objects as data: making one, computing a key, listing its keys, JSON.
+   *
+   * ⚠️ **Named `Data`, not `Objects`.** The obvious name collides with `App Objects` two
+   * categories up, and two similarly-named categories in one toolbox is the discovery problem
+   * this fix exists to solve, not a cosmetic one. `Data` also covers the JSON pair, which is
+   * about crossing a boundary rather than about objects as such.
+   */
+  data: string;
   /** FIX-004 §A — `console.log`, given a findable home of its own. */
   debug: string;
   variables: string;
@@ -101,6 +118,7 @@ export const DEFAULT_TOOLBOX_LABELS: ToolboxLabels = {
   math: 'Math',
   text: 'Text',
   lists: 'Lists',
+  data: 'Data',
   debug: 'Debug',
   variables: 'Variables',
   functions: 'Functions',
@@ -146,6 +164,22 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
         'noodl_send_signal'
       ]),
       category(labels.noodlVariables, HUE.variables, ['noodl_get_variable', 'noodl_set_variable']),
+      /**
+       * ⚠️ **FIX-004 §C deliberately adds nothing here, and the reason is worth keeping.**
+       *
+       * The four object-shaped blocks it adds (the computed-key get/set twins, `the property
+       * names of`, `has property`) would be findable from two genuinely different starting
+       * points — *"I have an App Object, now what?"* and *"I have some data, now what?"* — and
+       * this toolbox already lists one block in two categories for exactly that reason
+       * (`noodl_convert`, under Math and Text). So dual-listing them is tempting.
+       *
+       * It is not done, because `tests-unit/vfn-012/browser-blocks.spec.ts` asserts these three
+       * seam categories are **byte-identical** to their VFN-012 contents. That fence's stated
+       * claim is narrower than its assertion — its title is *"changes no existing block type
+       * id"*, which adding a block does not do — but relaxing another phase's guard to admit
+       * one's own change is the wrong way round. The new blocks live under `Data` only, and
+       * whether the seam categories should carry them too is a question for VFN-012's owner.
+       */
       category(labels.noodlObjects, HUE.objects, [
         'noodl_get_object',
         'noodl_get_object_property',
@@ -249,6 +283,23 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
         'lists_sort',
         // FIX-004 §B
         'lists_reverse'
+      ]),
+      /**
+       * FIX-004 §C — Data, immediately after Lists and for the same reason it is next to it:
+       * Blockly ships a full vocabulary for lists and **none at all** for objects, so this is
+       * the missing counterpart to the category above rather than a new idea.
+       *
+       * Order is the order an author meets them: make one, read from it, write to it, ask what
+       * is in it, then the JSON boundary.
+       */
+      category(labels.data, HUE.data, [
+        'noodl_new_object',
+        'noodl_get_object_property_expr',
+        'noodl_set_object_property_expr',
+        'noodl_object_members',
+        'noodl_object_has_property',
+        'noodl_json_parse',
+        'noodl_json_stringify'
       ]),
       /**
        * FIX-004 §A — Debug.
