@@ -1,8 +1,10 @@
 # UNI-011 — the community, mirrored in the editor
 
 **Surface:** editor + bridge · **Tier 2** (needs UNI-001's account and UNI-009's forum to exist
-first) · **Effort:** M/L · 🟡 **SLICE 1 BUILT 2026-08-16 — the transport and the boundary.**
-D14, D15 and D16 all ruled; nothing is waiting on a decision.
+first) · **Effort:** M/L · 🟡 **SLICES 1, 2a AND 2b BUILT 2026-08-16 — the transport, the boundary,
+and both editor-only criteria.** ✅ **AC2 and AC3 are MET and driven.** 🔴 **Everything still open in
+this task needs a forum or an issuer that does not exist**, so the remaining work is UNI-009's and
+UNI-001's, not this task's. D14, D15 and D16 all ruled; nothing is waiting on a decision.
 
 > ## Slice 1 — what was built, and the thing it found first
 >
@@ -114,6 +116,106 @@ D14, D15 and D16 all ruled; nothing is waiting on a decision.
 > build. When there is a forum and UNI-001 has an issuer, copy-and-open becomes a `POST` through
 > `communityapi.ts` and nothing above it changes.
 
+> ## Slice 2b — AC3 is BUILT and DRIVEN (2026-08-16, twenty-second session), editor `f72799b7`
+>
+> ✅ **AC3 closes.** A capture of the running preview attaches with a **toggle per port**, the
+> default is **off** for anything record-shaped, and nothing leaves the machine before the button.
+> **23 new specs** (`portshare`, plus four on the join), `test:main` **227 suites / 3527 specs**,
+> eslint clean, `tsc` still at its 31 pre-existing errors.
+>
+> ### 🔴 The finding: AC3 cannot use AC2's instrument, and the reason generalises
+>
+> [`nodeexcerpt.ts`](../../../packages/noodl-editor/src/editor/src/models/community/nodeexcerpt.ts)
+> can state its safety as *"every string it emits is chosen from a set the editor owns"*, and that
+> claim is strong precisely because a graph's **structure** has an editor-owned form. A live port
+> value has none. It **is** the user's data — that is the entire reason anyone would attach it — so
+> a closed vocabulary here would either publish nothing or be a vocabulary of one entry per value,
+> which is not a vocabulary. ⚠️ **Reaching for one anyway would have produced a control that looks
+> like AC2's and checks nothing.**
+>
+> So the instrument changes shape, from **vocabulary** to **provenance under consent**:
+>
+> | | AC2, the excerpt | AC3, the values |
+> |---|---|---|
+> | published | structure the editor names | data the user owns |
+> | decisions | **one** tick for the whole excerpt | **one tick per port** |
+> | what makes it safe | a closed vocabulary | the tick, and what the ticker was shown |
+> | what a test asserts | every string is in a set we own | every string traces to a port whose toggle was **on**, in the displayed form |
+>
+> 🔴 **The corollary is a deliberate divergence from AC2: port names are not bucketed here.** The
+> excerpt rewrites a user-authored port name to `<port>` because nothing asked the user about that
+> port. Here they are looking at the name and the value side by side when they decide, and a consent
+> screen that hides the thing being consented to is worse than no consent screen. What AC2's rule
+> becomes instead is **the default** — one of two independent grounds for starting off.
+>
+> ✅ **`isLibraryPort` is exported from `nodeexcerpt.ts` and imported**, not reimplemented: one
+> predicate, two consumers, the same argument that made `bucketTypeName` an import in slice 2a.
+>
+> ### 🔴 Two grounds, recorded as a list rather than as the first one found
+>
+> A row starts off for its **value** (record-shaped, or free text) or for its **name** (a dynamic
+> port or a component input). Independent: a dynamic port holding `1200` leaks a name, a library
+> port holding `{…}` leaks a record. `offBecause` is a **list**, because collapsing it would let a
+> fix that addressed one ground read as though it had cleared the row — the flattening this phase
+> has already paid for once.
+>
+> ### Three smaller things that are load-bearing
+>
+> 1. 🔴 **An unrecognised preview shape is `text`, never `scalar`.** `previewValue()`'s grammar can
+>    grow, and a classifier whose fallback is the permissive class publishes every shape it fails to
+>    recognise on the day the runtime adds one. Flipping the fallback fails **6** specs.
+> 2. ✅ **The runtime's 200-character cap is a privacy property as well as a memory one.** What is
+>    published is the preview string, so what the user reviewed is byte-for-byte what ships.
+> 3. **Every published value is redacted whatever its shape** — the shape decides the *default*,
+>    `redact()` decides the *content* — and **exactly once**, so a second pass cannot damage `<path>`.
+>
+> ### 🔴 What the drive found: the app preview was never in the capture registry
+>
+> This task's own scope note says *"✅ Both halves already exist:*
+> [`livePreviewCapture.ts`](../../../packages/noodl-editor/src/editor/src/views/SandboxSurface/livePreviewCapture.ts)
+> *calls `capturePage()` on the preview `<webview>`"*. **True of a different preview.** That
+> registry is BLD-014's, and its only registrants were the two AI sandbox surfaces —
+> `ComponentBench` and `AuthoringPreviewDocument` — so `hasLivePreview()` answered **false** with a
+> preview running in front of the user, on the very surface whose port values the other half reads.
+> `VisualCanvas` now registers its webview. *Build the caller*, again, and the first time the missing
+> caller was asserted as already present **in this task's own scope section**.
+>
+> ### The drive — 10 consequences written first, 10 observed
+>
+> Against a copy of ALPHA-007's hostile fixture with a `Component Inputs` interface added, so an
+> instance carries a port name the library does not declare. The payload, as posted:
+>
+> ```
+> **Screen capture attached** — 1976 × 626, 18 KB.
+>
+> opacity (input)              = 1
+> transformScale (input)       = 1
+> mounted (input)              = true
+> childIndex (output)          = 0
+> ```
+>
+> **Off by default and absent from it:** `sizeMode = "contentHeight"` (free text),
+> `width = {unit:"%",value:100}` (a record), and `clientMatterRef = "AC-2291 Acme Legal retainer"`
+> citing **both** grounds. A ticked row survived **6 poll cycles** unticked.
+>
+> ⚠️ **Two instrument defects, both from this repo's own trap list, both corrected mid-drive.**
+> `BaseDialog` renders every dialog **twice** and `querySelector` took the **measuring** copy, so
+> clicks landed on the real dialog's differently-scrolled list and toggled other rows — `textAlignX`
+> was found **ON** having never been touched. 🔴 The control that separated *a failing tick* from *a
+> failing click* was the excerpt checkbox, which is not poll-driven: it toggled with the identical
+> technique, so the fault was located in the instrument rather than in the feature. Without it the
+> honest reading would have been "AC3's toggles do not work".
+>
+> ⚠️ **The capture is written to the user's Documents folder, not uploaded**, because there is
+> nowhere to upload to. `saveCaptureNextTo` is the one function that becomes an upload when there is
+> a forum. 🔴 **The saved path is shown in the dialog and appears nowhere in the payload** — it names
+> the machine and usually the project.
+>
+> ⚠️ **An enum reads as free text.** `sizeMode = "contentHeight"` is drawn from a set the editor
+> owns, but the classifier reads the *preview string*, which cannot tell an enum from a free string.
+> It therefore starts off. Deliberate over-redaction, in the redactor's own stated spirit, and
+> recorded here so it is not read later as a defect.
+
 > **D14** ([RULINGS.md](RULINGS.md)): the public web platform is the **canonical** community; the
 > editor is a **second client of the same API**, showing the same content. Editor-only features are
 > the reason to transition, not a different feature set.
@@ -172,7 +274,13 @@ a browser, it does not belong here.**
    post is that writing a good question is work; this does most of it, and answers improve because
    the context is right.
 2. **Share what you're seeing.** A capture of the running preview plus the **live port values**
-   behind it, both redactable before anything sends. ✅ Both halves already exist:
+   behind it, both redactable before anything sends. 🔴 **"Both halves already exist" was HALF
+   WRONG, and slice 2b's drive is what found it** — the sentence below names
+   `livePreviewCapture.ts`, whose registry only ever held the two *AI sandbox* previews, so
+   `hasLivePreview()` returned false while the **app** preview was running. The port-values half
+   was correct as written. ⚠️ Left standing rather than rewritten, because the shape of the mistake
+   is the value: *a scope note that names a mechanism is a claim about a place, and the place is not
+   checked by naming it.* Original text: ✅ Both halves already exist:
    [`livePreviewCapture.ts`](../../../packages/noodl-editor/src/editor/src/views/SandboxSurface/livePreviewCapture.ts)
    calls `capturePage()` on the preview `<webview>` and the bytes never leave the machine; live port
    values come off the same observe relay that feeds the Provenance panel. This is the single
@@ -260,7 +368,11 @@ a particular order, and that property can be removed by an edit while every test
 > half, which this task's own sequencing note puts second.
 >
 > **Updated 2026-08-16 (slice 2a).** ✅ **AC2 is MET and driven** — see the slice 2a block above.
-> 📋 AC3 remains the one untouched criterion.
+>
+> **Updated 2026-08-16 (slice 2b).** ✅ **AC3 is MET and driven** — see the slice 2b block above.
+> 🔴 **Every editor-only criterion is now met. What is left is the mirror**, and D16's gate on it
+> cannot be met until UNI-009 buys a forum: AC1's first half, AC4's sign-in half, and AC6's surface.
+> AC5 remains met in shape. 📋 **Nothing in this task is buildable without a forum or an issuer.**
 
 1. A thread visible on the web is visible in the editor, from the same API, with the same content —
    and **no post body is ever rendered as HTML in the editor's own renderer** (proved by the chosen
@@ -277,6 +389,11 @@ a particular order, and that property can be removed by an edit while every test
    **shown before it sends**.
 3. A capture from the running preview can be attached with per-port share toggles, defaulting to
    **off** for anything record-shaped. Nothing leaves the machine before the user posts.
+   - ✅ **MET and driven 2026-08-16** (slice 2b, `f72799b7`). Ten consequences written first, ten
+     observed. 🔴 **The capture half needed a fix before it could be met at all**: the app preview
+     was never in `livePreviewCapture`'s registry, so `hasLivePreview()` was false with a preview on
+     screen. 🔴 **The disclosure rule is provenance-under-consent, not a closed vocabulary** — see
+     the slice 2b block for why AC2's instrument is unavailable here.
 4. Reading works **signed out**. Signing in adds posting, points and the unanswered queue; signing
    out kills both sessions (UNI-009 AC1).
 5. The unread count is produced by an **editor-outbound poll**. No inbound connection, no socket, no
