@@ -47,10 +47,18 @@ UNI-010 verifier question ruled, D12 struck.
 D9 and D11 all ruled**, and the three curriculum blockers fact-checked against source and git.
 **The queue is empty and nothing is waiting on a decision.** The next sitting is code.
 
-🔴 **One action falls out of D2 and is time-critical:** rename the platform repo
-`nodegx-university` → **`nodegx-community`**. It is private, empty, and has no Pages site, so the
-rename is free today and breaks links after the first deploy — **GitHub Pages does not follow a repo
-rename.**
+✅ **The D2 rename is DONE — checked against GitHub 2026-08-16, not against this table.** The repo is
+`The-Low-Code-Foundation/nodegx-community` and **`has_pages: false`**, so the time-critical window
+(GitHub Pages does not follow a repo rename) is still open and still safe. Two handovers carried this
+as an outstanding action after it had already been done.
+
+🔴 **But only half of it, and the missing half is the D2 failure mode itself.** The repo
+**description still reads *"NodeGX University — the community platform…"***. D2 ruled the site is
+**NodeGX Community** and University is one wing of it — so the name moved and the sentence about the
+name did not, in the one place every future contributor reads first. **One `gh repo edit` fixes it.**
+
+🔴 **And the number that should decide what the next sitting does: the repo has `size: 0` and no
+commits since it was created on 2026-08-14.** Eight of this phase's twelve tasks live in it.
 
 **UNI-001 + UNI-009 (minimal cut) land together.** A login with nothing behind it is a broken
 promise — the account must open onto *something* on day one: replays, tutorials index, the
