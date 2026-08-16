@@ -13,16 +13,25 @@ const esbuild = require('esbuild');
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 
 /**
- * Bundle an extractor entry point into `workDir`.
+ * The esbuild options every headless-extractor bundle needs.
+ *
+ * Split out from {@link bundleEntry} for CN-003: `packages/noodl-mcp/build.mjs`
+ * builds a kit extractor into the MCP server's `dist/` and needs these exact
+ * options — the same aliases, the same asset loaders, the same type-only stub.
+ * It cannot call `bundleEntry`, because that writes a `*.bundle.js` into a work
+ * directory and the shipped artifact needs its own name and destination.
+ *
+ * ⚠️ Shared rather than copied on purpose. Two extractors bundled two different
+ * ways would be observing two different node libraries, which is the failure
+ * this file's header already warns about — CN-003 just adds a third caller to
+ * the set that must not drift.
  *
  * @param {string} entryPoint absolute path to the entry module
- * @param {string} workDir    a temporary directory to write the bundle into
- * @param {string} [name]     bundle basename, for callers that build more than one
- * @returns {Promise<string>} absolute path to the bundle
+ * @param {string} outfile    absolute path to write the bundle to
+ * @returns {import('esbuild').BuildOptions}
  */
-async function bundleEntry(entryPoint, workDir, name = 'extractor') {
-  const outfile = path.join(workDir, `${name}.bundle.js`);
-  await esbuild.build({
+function extractorBuildOptions(entryPoint, outfile) {
+  return {
     entryPoints: [entryPoint],
     bundle: true,
     platform: 'node',
@@ -65,8 +74,21 @@ async function bundleEntry(entryPoint, workDir, name = 'extractor') {
       }
     ],
     logLevel: 'warning'
-  });
+  };
+}
+
+/**
+ * Bundle an extractor entry point into `workDir`.
+ *
+ * @param {string} entryPoint absolute path to the entry module
+ * @param {string} workDir    a temporary directory to write the bundle into
+ * @param {string} [name]     bundle basename, for callers that build more than one
+ * @returns {Promise<string>} absolute path to the bundle
+ */
+async function bundleEntry(entryPoint, workDir, name = 'extractor') {
+  const outfile = path.join(workDir, `${name}.bundle.js`);
+  await esbuild.build(extractorBuildOptions(entryPoint, outfile));
   return outfile;
 }
 
-module.exports = { bundleEntry, REPO_ROOT };
+module.exports = { bundleEntry, extractorBuildOptions, REPO_ROOT };
