@@ -52,8 +52,14 @@ import { readLessonBundle } from './lessonbundleread';
 import { decideInstall, resolveProvenance } from './lessoninstallpolicy';
 import { buildLessonEvalContext } from './lessonprojectcontext';
 import type { LessonProjectSource } from './lessonprojectcontext';
-import type { LessonVerificationReport } from './lessonverify';
+import { bundleLessonVocabulary } from './lessonverify';
+import type { LessonVerificationReport, LessonVocabulary } from './lessonverify';
+import { shippedCatalogIndex } from '../validation/catalog';
+import type { CatalogIndex } from '../validation/CatalogIndex';
 import type { LessonEvalContext } from '../views/lessons/lessonevalconditions';
+
+/** The directory a project's node kits live in. */
+const MODULES_DIR = 'noodl_modules';
 
 // ─── What a Learning-section entry is ───────────────────────────────────────
 
@@ -348,12 +354,19 @@ export class LearningFolderModel extends Model {
     // The manifest may make the gate stricter and may never make it looser.
     const provenance = resolveProvenance(options.provenance, manifest.authoredBy);
 
-    const starter = contextFor(bundle.starter);
-    const solution = contextFor(bundle.solution);
+    // 🔴 CN-003 slice 4. Everything below answers about **this bundle**, so
+    // everything below is handed the bundle's vocabulary explicitly — never the
+    // module default, which after slice 3 carries the *open project's* kits.
+    // Measured before it was fixed: with a kit project open, a bundle's nodes
+    // were given that project's ports. See {@link bundleVocabularyFor}.
+    const vocabulary = this.bundleVocabularyFor(bundleDir);
+    const starter = contextFor(bundle.starter, shippedCatalogIndex());
+    const solution = contextFor(bundle.solution, shippedCatalogIndex());
     const scorecard = await verifyLessonBundle(manifest, {
       ...(starter ? { starter } : {}),
       ...(solution ? { solution } : {}),
-      ...(options.wholeSolution ? { wholeSolution: options.wholeSolution } : {})
+      ...(options.wholeSolution ? { wholeSolution: options.wholeSolution } : {}),
+      verify: { vocabulary }
     });
     const verification = scorecard.verification;
 
@@ -403,6 +416,47 @@ export class LearningFolderModel extends Model {
     this.write(entries);
 
     return { result: 'installed', entry, verification, scorecard };
+  }
+
+  /**
+   * The vocabulary a bundle at `bundleDir` is checked against.
+   *
+   * 🔴 **The editor cannot read a bundle's kits, and both rulings that say so
+   * point the same way.** ✅ **D3** puts extraction in exactly one process — the
+   * MCP server, which is headless and has the extractor — and the editor's own
+   * kit knowledge comes from the viewer, which has not loaded this bundle and
+   * will not until someone opens it. ✅ **D6** is the sharper half: resolving a
+   * downloaded bundle's kit types means *executing* its JavaScript, and consent
+   * to run third-party kit code is precisely what D6 requires first. A gate that
+   * runs the code in order to decide whether the code may run has no gate in it.
+   *
+   * So this returns the shipped vocabulary, and — when the bundle carries a
+   * `noodl_modules/` — one that **says it is incomplete**. The verdict on an
+   * unresolvable type is unchanged (still an error, still blocks; ✅ D4 was ruled
+   * against quiet downgrades). What changes is that the refusal stops asserting
+   * "there is no such node type", which is a claim this path cannot support and
+   * which is false for every bundle that ships the kit it teaches.
+   *
+   * ⚠️ **The same gap costs F2 a second way, and it predates slice 4.** A kit
+   * node reconstructed from a bundle's files carries only its stored ports —
+   * the catalog supplies the declared ones and this catalog has never heard of
+   * the kit — so a `hasPort` condition over a kit node reads false against the
+   * lesson's own correct solution. That is a *manufactured* failure of the kind
+   * `lessonprojectcontext`'s header refuses to produce, and it is why "should
+   * this block at all" is an open scope question rather than a fix.
+   */
+  private bundleVocabularyFor(bundleDir: string): LessonVocabulary {
+    const { fs } = this.deps;
+    const carriesKits = fs.exists(fs.join(bundleDir, MODULES_DIR));
+    return bundleLessonVocabulary(
+      [],
+      carriesKits
+        ? {
+            where: 'This bundle',
+            reason: 'the editor does not run a bundle’s kit code before you have opened it'
+          }
+        : undefined
+    );
   }
 
   /**
@@ -513,11 +567,17 @@ function errorText(e: unknown): string {
  * class that could not be built then reports `not-checked`, which for a
  * `local-ai` bundle refuses the install anyway — the safe direction, arrived at
  * without pretending we know what was wrong with the file.
+ *
+ * 🔴 **`catalog` is passed, never defaulted (CN-003 slice 4).**
+ * `buildLessonEvalContext` falls back to `loadDefaultCatalog()`, which carries
+ * the *open project's* kit types — so between slices 3 and 4 a bundle installed
+ * while a kit project was open had its nodes' ports answered by that project.
+ * Measured, not theorised. The answer must not depend on what is on screen.
  */
-function contextFor(source: LessonProjectSource | undefined): LessonEvalContext | undefined {
+function contextFor(source: LessonProjectSource | undefined, catalog: CatalogIndex): LessonEvalContext | undefined {
   if (!source) return undefined;
   try {
-    return buildLessonEvalContext(source);
+    return buildLessonEvalContext(source, { catalog });
   } catch {
     return undefined;
   }

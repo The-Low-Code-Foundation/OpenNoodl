@@ -24,7 +24,15 @@
  *   before its project exists** — its vocabulary has to be built from the
  *   bundle's own project files, not from whatever is open. Silently routing the
  *   open project's kits into it would answer about the wrong kit and look right.
- *   That routing is CN-003 slice 4, and it is a caller change, not this one.
+ *   ✅ Slice 4 landed that routing; {@link catalogWithOverlay} is the pair a
+ *   caller holding *a directory other than the open project* builds from, and
+ *   `projectLessonVocabulary()` is the one for callers whose subject really is
+ *   the open project.
+ * - 🔴 **Slice 4 measured the leak this warning predicted, and it was live.**
+ *   `lessonprojectcontext.ts` defaults its `catalog` to `loadDefaultCatalog()`,
+ *   so between slices 3 and 4 a bundle installed while a kit project was open
+ *   had its nodes' ports answered by *that project's* kit. The trap named three
+ *   files to route; the leak was in a fourth, on the seam nobody listed.
  * - `renderCapture` / `livePreviewCapture` / `lessonwholesolution.live` read
  *   `defaultCatalog()` for the shipped vocabulary and are unaffected.
  *
@@ -121,15 +129,44 @@ export function loadDefaultCatalog(): CatalogIndex {
 /**
  * A `CatalogIndex` over the **shipped** catalog, never the project's.
  *
- * For the one caller that pairs an index with `defaultCatalog()`'s *data* —
- * `defaultLessonVocabulary()`. Handing it `loadDefaultCatalog()` would give it
- * two halves that disagree (an index that resolves kit types over a display-name
- * map built without them), and memoised, so which halves it got would depend on
- * whether a project happened to be open the first time a lesson was verified.
- * Slice 4 routes a *project* vocabulary in deliberately, through
- * `VerifyLessonOptions.vocabulary`, built from the bundle's own project files.
+ * For callers that pair an index with `defaultCatalog()`'s *data* —
+ * `defaultLessonVocabulary()`, and slice 4's install path. Handing either
+ * `loadDefaultCatalog()` would give it two halves that disagree (an index that
+ * resolves kit types over a display-name map built without them), and memoised,
+ * so which halves it got would depend on whether a project happened to be open
+ * the first time a lesson was verified.
  */
 export function shippedCatalogIndex(): CatalogIndex {
   if (!cachedShippedIndex) cachedShippedIndex = new CatalogIndex(defaultCatalog());
   return cachedShippedIndex;
+}
+
+/**
+ * CN-003 slice 4 — a catalog + index pair for a project that is **not the open
+ * one**: a lesson bundle, verified before anyone opens it.
+ *
+ * 🔴 **Deliberately not memoised and deliberately not the module singleton.**
+ * The overlay installed above answers "what does the project on screen provide";
+ * this answers "what does *that* directory provide", and the two must never be
+ * the same object. Routing the open project's kits into a bundle's check is the
+ * hazard CN-003's trap names — it answers about the wrong kit and looks right,
+ * and it does so only when a project happens to be open, which is the worst kind
+ * of intermittent.
+ *
+ * Both halves are built from the same document, so a caller cannot end up with
+ * an index that resolves a kit type over a display-name map that never heard of
+ * it. Pass `[]` for "shipped only, and I mean it" — which is what the editor's
+ * install path must use, because it cannot execute a bundle's kits (✅ D3) and
+ * must not run third-party kit code before consent (✅ D6).
+ */
+export function catalogWithOverlay(overlayNodes: readonly OverlayCatalogNode[]): {
+  catalog: NodeCatalog;
+  index: CatalogIndex;
+} {
+  if (overlayNodes.length === 0) return { catalog: defaultCatalog(), index: shippedCatalogIndex() };
+  const catalog = mergeOverlay(
+    defaultCatalog() as unknown as NodeCatalogLike,
+    overlayNodes as OverlayCatalogNode[]
+  ) as unknown as NodeCatalog;
+  return { catalog, index: new CatalogIndex(catalog) };
 }

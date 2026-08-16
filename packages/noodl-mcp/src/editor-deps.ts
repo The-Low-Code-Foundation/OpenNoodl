@@ -529,8 +529,17 @@ export type {
   RetractionKind,
   StarterRetraction
 } from '../../noodl-editor/src/editor/src/models/lessonstarter';
-export { verifyLessonManifest } from '../../noodl-editor/src/editor/src/models/lessonverify';
-export type { LessonVerificationReport } from '../../noodl-editor/src/editor/src/models/lessonverify';
+// CN-003 slice 4 — the bundle vocabulary. Nothing new is dragged in: this
+// module's `lessonverify` export already pulls the catalog and `@nodegx/kit-catalog`
+// is already on this path via `kitExtract`. ✅ Re-measured after adding these,
+// by the rule the note above sets: build it and see.
+export { bundleLessonVocabulary, verifyLessonManifest } from '../../noodl-editor/src/editor/src/models/lessonverify';
+export type {
+  LessonVerificationReport,
+  LessonVocabulary,
+  UnresolvedKits
+} from '../../noodl-editor/src/editor/src/models/lessonverify';
+export { catalogWithOverlay } from '../../noodl-editor/src/editor/src/validation/catalog';
 export { buildLessonEvalContext } from '../../noodl-editor/src/editor/src/models/lessonprojectcontext';
 export type { LessonProjectSource } from '../../noodl-editor/src/editor/src/models/lessonprojectcontext';
 export {

@@ -49,7 +49,7 @@ import type { LessonEvalContext } from '../views/lessons/lessonevalconditions';
 import { evalConditionsWithContext } from '../views/lessons/lessonevalconditions';
 import { compileConditions, LessonFormatError } from './lessonformat';
 import type { LessonManifest, LessonStepDef } from './lessonformat';
-import { verifyLessonManifest } from './lessonverify';
+import { projectLessonVocabulary, verifyLessonManifest } from './lessonverify';
 import type { LessonVerificationReport, VerifyLessonOptions } from './lessonverify';
 
 // ─── Engine 1: per-step completion ──────────────────────────────────────────
@@ -242,6 +242,14 @@ export interface GradeLessonOptions {
    * Also run the static verifier over the lesson itself. Off by default when a
    * learner is being graded (their lesson was verified at install), on for
    * UNI-010, where the bundle being graded was written minutes ago.
+   *
+   * 🔴 **CN-003 slice 4: `true` means "against the open project".** Bare `true`
+   * now resolves the lesson's type names through `projectLessonVocabulary()`, so
+   * a lesson about a node the open project's own kit declares is no longer
+   * refused as a typo. A caller whose subject is **not** the open project — a
+   * bundle on disk — must pass `{ vocabulary }` built from that bundle instead;
+   * `bundleLessonVocabulary` is the constructor for it. Defaulting the other way
+   * would have made every caller correct only by accident.
    */
   verify?: boolean | VerifyLessonOptions;
 }
@@ -272,7 +280,7 @@ export async function gradeLesson(
   if (options.verify) {
     grade.verification = verifyLessonManifest(
       manifest,
-      typeof options.verify === 'object' ? options.verify : undefined
+      typeof options.verify === 'object' ? options.verify : { vocabulary: projectLessonVocabulary() }
     );
   }
 

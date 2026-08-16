@@ -54,6 +54,7 @@ import type {
   WholeSolutionResult
 } from '../editor-deps';
 import { ToolError } from '../errors';
+import { bundleVocabularyFor } from './bundleVocabulary';
 import { createWholeSolutionGrader } from './wholeSolutionGrader';
 
 /** The real filesystem, in the three methods the bundle reader asks for. */
@@ -123,10 +124,18 @@ export async function scoreLesson(manifest: LessonManifest, options: ScoreLesson
       ? { check: () => grade(options.solutionDir) }
       : createWholeSolutionGrader(options.solutionDir);
 
+  // 🔴 CN-003 slice 4 — the lesson is checked against **the starter's** kits, not
+  // against the shipped catalog and not against whatever project this server is
+  // bound to. The starter is the project the learner opens, so its node types are
+  // the ones a condition may name. Without this, `create_lesson` refuses every
+  // lesson that teaches a node the project's own kit provides — as a typo.
+  const kits = bundleVocabularyFor(options.starterDir);
+
   const scorecard = await verifyLessonBundle(manifest, {
-    starter: buildLessonEvalContext(starterSource),
-    solution: buildLessonEvalContext(solutionSource),
-    ...(wholeSolution ? { wholeSolution } : {})
+    starter: buildLessonEvalContext(starterSource, { catalog: kits.catalog }),
+    solution: buildLessonEvalContext(solutionSource, { catalog: kits.catalog }),
+    ...(wholeSolution ? { wholeSolution } : {}),
+    verify: { vocabulary: kits.vocabulary }
   });
 
   // The producer holds itself to the same table the installer will apply. A

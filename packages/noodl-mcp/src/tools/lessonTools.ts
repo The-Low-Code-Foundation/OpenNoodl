@@ -46,6 +46,7 @@ import { createWholeSolutionGrader } from '../lessons/wholeSolutionGrader';
 import { formatBundleScorecard, readLessonBundle, SOLUTION_DIR, verifyLessonBundle } from '../editor-deps';
 import type { LessonManifest } from '../editor-deps';
 import { buildLessonEvalContext } from '../editor-deps';
+import { bundleVocabularyFor } from '../lessons/bundleVocabulary';
 import { ToolError } from '../errors';
 import { guarded, jsonResult, type ToolResult } from './util';
 
@@ -238,18 +239,42 @@ export function registerLessonTools(server: McpServer): void {
         // projects because its caller is *producing* one; this path is
         // diagnosing, and refusing to report on a bundle because it is
         // incomplete would withhold the one answer the caller wants.
+        // 🔴 CN-003 slice 4 — read the bundle's *own* kits, from the directory
+        // being diagnosed. Nothing here may fall back to the bound project's:
+        // this tool is pointed at an arbitrary bundle_dir, and answering about
+        // the wrong kit is the failure CN-003 records as its standing trap.
+        const kits = bundleVocabularyFor(args.bundle_dir);
+
         const scorecard = await verifyLessonBundle(bundle.manifest, {
-          ...(bundle.starter ? { starter: buildLessonEvalContext(bundle.starter) } : {}),
-          ...(bundle.solution ? { solution: buildLessonEvalContext(bundle.solution) } : {}),
+          ...(bundle.starter ? { starter: buildLessonEvalContext(bundle.starter, { catalog: kits.catalog }) } : {}),
+          ...(bundle.solution ? { solution: buildLessonEvalContext(bundle.solution, { catalog: kits.catalog }) } : {}),
           ...(bundle.solution && args.render !== false
             ? { wholeSolution: createWholeSolutionGrader(nodeBundleFs.join(args.bundle_dir, SOLUTION_DIR)) }
-            : {})
+            : {}),
+          verify: { vocabulary: kits.vocabulary }
         });
+
+        // Reported, never folded into the scorecard: "this bundle declares five
+        // node types of its own" and "its kit would not load" are facts about the
+        // *bundle*, and a caller that cannot see the difference between them will
+        // read an empty answer as a clean one.
+        const kitNote = kits.overlay.unavailable
+          ? { kits_unavailable: kits.overlay.unavailable.reason }
+          : kits.overlay.kits.length > 0
+            ? {
+                kits: kits.overlay.kits.map((k) => k.kitModule),
+                kit_node_types: kits.overlay.nodes.map((n) => n.typeName),
+                ...(kits.overlay.failures.length
+                  ? { kit_failures: kits.overlay.failures.map((f) => `${f.kitModule}: ${f.message}`) }
+                  : {})
+              }
+            : {};
 
         return jsonResult({
           classes: scorecard.classes,
           graded_steps: scorecard.gradedSteps,
           scorecard: formatBundleScorecard(scorecard),
+          ...kitNote,
           ...(bundle.problems.length ? { bundle_problems: bundle.problems } : {})
         });
       }

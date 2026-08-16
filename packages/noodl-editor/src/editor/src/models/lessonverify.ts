@@ -67,7 +67,15 @@
 
 import type { NodeCatalog, CatalogNode } from '../validation/CatalogIndex';
 import { CatalogIndex } from '../validation/CatalogIndex';
-import { defaultCatalog, shippedCatalogIndex } from '../validation/catalog';
+import {
+  catalogGeneration,
+  catalogWithOverlay,
+  defaultCatalog,
+  loadDefaultCatalog,
+  projectCatalog,
+  shippedCatalogIndex
+} from '../validation/catalog';
+import type { OverlayCatalogNode } from '@nodegx/kit-catalog';
 import { compileLessonManifest, LessonFormatError, safeLessonUrl } from './lessonformat';
 import type { LessonConditionDef, LessonManifest, LessonStepDef } from './lessonformat';
 
@@ -133,13 +141,37 @@ export interface TypeNameVerdict {
  * not carry (it is a *validator* index and validation never sees display
  * names). Built over the same `NodeCatalog` data so the two cannot drift.
  */
+/**
+ * CN-003 slice 4 — what this vocabulary knows it *cannot* answer.
+ *
+ * 🔴 The point is CN-002's, one layer up: a check that was skipped must not read
+ * as a check that passed, and — the half that bites here — a check that could
+ * not run must not read as a check that *failed with a known reason*. Without
+ * this, a bundle carrying a kit that declares `demo.kit.Badge` is refused with
+ * the sentence *"demo.kit.Badge is not a node type or a display name in the
+ * catalog"*, which is simply false about that bundle. The verdict does not
+ * change (✅ D4: no quiet downgrades); the **claim** does.
+ */
+export interface UnresolvedKits {
+  /** Whose kits, as a sentence subject: `'This bundle'`, `'The project'`. */
+  where: string;
+  /** Why they could not be read, when there is something more specific to say. */
+  reason?: string;
+}
+
 export class LessonVocabulary {
   private readonly byDisplayName = new Map<string, CatalogNode[]>();
 
   constructor(
     catalog: NodeCatalog,
     /** Reuse the memoised index when there is one; it supplies `hasType`/`suggestType`. */
-    private readonly index: CatalogIndex = new CatalogIndex(catalog)
+    private readonly index: CatalogIndex = new CatalogIndex(catalog),
+    /**
+     * Set when this vocabulary is known to be *incomplete* — kits are present
+     * whose node types could not be resolved. Absent means complete, and a
+     * caller that cannot tell must say so rather than leave it absent.
+     */
+    private readonly unresolvedKits?: UnresolvedKits
   ) {
     for (const node of catalog.nodes) {
       if (!node.displayName) continue;
@@ -152,6 +184,28 @@ export class LessonVocabulary {
   /** Every catalog entry whose *display* name is `name`. */
   nodesWithDisplayName(name: string): CatalogNode[] {
     return this.byDisplayName.get(name) ?? [];
+  }
+
+  /** True when this vocabulary is known to be missing some project's kit types. */
+  get isIncomplete(): boolean {
+    return this.unresolvedKits !== undefined;
+  }
+
+  /**
+   * The sentence appended to an "I have never heard of this" verdict when we
+   * know we have not heard of everything. Empty — not a hedge — when the
+   * vocabulary is complete, so a lesson naming a genuine typo still gets the
+   * flat answer it deserves.
+   */
+  private unresolvedKitsCaveat(): string {
+    if (!this.unresolvedKits) return '';
+    const { where, reason } = this.unresolvedKits;
+    return (
+      ` ⚠️ ${where} carries at least one node kit whose node types could not be read here` +
+      (reason ? ` (${reason})` : '') +
+      ', so a type that kit declares is indistinguishable from a typo at this point. ' +
+      'Check the spelling against the kit before assuming it is wrong.'
+    );
   }
 
   /**
@@ -216,7 +270,8 @@ export class LessonVocabulary {
         suggestion,
         message:
           `"${name}" is not a node type or a display name in the catalog.` +
-          (suggestion ? ` Did you mean "${suggestion}"?` : '')
+          (suggestion ? ` Did you mean "${suggestion}"?` : '') +
+          this.unresolvedKitsCaveat()
       };
     }
 
@@ -260,14 +315,61 @@ let cachedVocabulary: LessonVocabulary | undefined;
  * it. Memoised, so which halves it got would have depended on whether a project
  * was open the first time a lesson was verified.
  *
- * A lesson *should* eventually know a project's kit types — but built from **the
- * bundle's own project files**, not from whatever is open, because
- * `verifyLessonManifest` runs at install, before the project exists. That is
- * slice 4, and the seam it uses is `VerifyLessonOptions.vocabulary`.
+ * ✅ **Slice 4 landed the other two vocabularies rather than changing this one.**
+ * {@link projectLessonVocabulary} is for a caller whose subject really is the
+ * open project; {@link bundleLessonVocabulary} is for one holding a directory
+ * that is not it. This remains the answer for a caller with no project at all.
  */
 export function defaultLessonVocabulary(): LessonVocabulary {
   if (!cachedVocabulary) cachedVocabulary = new LessonVocabulary(defaultCatalog(), shippedCatalogIndex());
   return cachedVocabulary;
+}
+
+let cachedProjectVocabulary: { generation: number; vocabulary: LessonVocabulary } | undefined;
+
+/**
+ * The vocabulary over **the open project**: shipped catalog plus its own kits.
+ *
+ * For callers whose subject is the project on screen — grading the learner's
+ * work, or verifying a lesson being authored against the project it is about.
+ * 🔴 **Never for a bundle.** A bundle is a different project, and answering
+ * about it with this vocabulary is the wrong-kit failure CN-003 records as its
+ * standing trap.
+ *
+ * Memoised against {@link catalogGeneration}, not forever: both halves move when
+ * a project opens, closes or reloads its library, and a vocabulary cached across
+ * that boundary is a validator that has never heard of the project it is
+ * validating — the exact failure the generation counter exists to prevent one
+ * layer down.
+ */
+export function projectLessonVocabulary(): LessonVocabulary {
+  const generation = catalogGeneration();
+  if (!cachedProjectVocabulary || cachedProjectVocabulary.generation !== generation) {
+    cachedProjectVocabulary = {
+      generation,
+      vocabulary: new LessonVocabulary(projectCatalog(), loadDefaultCatalog())
+    };
+  }
+  return cachedProjectVocabulary.vocabulary;
+}
+
+/**
+ * The vocabulary for **a bundle**, built from that bundle's own kit entries.
+ *
+ * `overlayNodes` is what the caller managed to read from the bundle's directory
+ * — `[]` when it has no kits *and* `[]` when it could not tell, which is why
+ * `unresolved` is a separate argument rather than something inferred from an
+ * empty list. ✅ **D3 decides who can fill it**: the MCP server extracts (it has
+ * the headless extractor and the bundle is a project directory like any other),
+ * the editor cannot, so the editor's install path passes `[]` with `unresolved`
+ * set whenever the bundle carries a `noodl_modules/` it could not read.
+ */
+export function bundleLessonVocabulary(
+  overlayNodes: readonly OverlayCatalogNode[],
+  unresolved?: UnresolvedKits
+): LessonVocabulary {
+  const { catalog, index } = catalogWithOverlay(overlayNodes);
+  return new LessonVocabulary(catalog, index, unresolved);
 }
 
 // ─── Where type names appear in a manifest ──────────────────────────────────
