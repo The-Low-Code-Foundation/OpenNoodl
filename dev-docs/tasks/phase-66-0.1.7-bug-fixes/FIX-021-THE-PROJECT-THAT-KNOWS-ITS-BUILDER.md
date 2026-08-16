@@ -239,14 +239,36 @@ row that fails when it is removed. The matrix test walks 7 × 3 × 4 combination
 that happened to occur to me, and it is what catches the guard being removed *somewhere I did not
 write a named row for*.
 
-### ⚠️ Not driven
+### ✅ DRIVEN 3/3 (session 44, `npm run dev:debug`, launcher only)
 
-The editor was held by a peer's drive for the whole session. **`initialLocation` reaching the field,
-and Browse overriding it, are spec-and-typecheck only.** The drive is cheap when the editor frees up:
-open the launcher, *New project* → any mode, and read the Location field before touching `Browse…`.
-✅ **The control that makes it a measurement:** the field must show **Documents** on a profile that has
-never chosen a folder, and the *previously chosen* folder after one Browse — if both readings are the
-same path, the drive has measured nothing.
+Predictions written before the drive; all three read out of the **rendered panel**, from
+`[class*=ProjectBasicsStep-module]`, on *New project → Quick Start*.
+
+| arm | `projects.lastCreateLocation` | Location field | |
+|---|---|---|---|
+| **A** first run | **absent** (the real state of this profile) | `/Users/richardosborne/Documents` | ✅ the fallback reaches the field |
+| **B** remembered | `/Users/richardosborne/vscode_projects` | `/Users/richardosborne/vscode_projects` | ✅ and it **differs from A**, so the pair separates |
+| **C** control | `/Volumes/an-ejected-disk/projects` (verified absent) | `/Users/richardosborne/Documents` | 🔴 **the guard, driven** |
+
+🔴 **Arm C is the row worth having.** The existence check is the half `pickProjectLocation`'s spec can
+only assert against an injected `exists`; here it ran against the real `filesystem.exists` in the real
+renderer, and the dead path was refused. ✅ **And A vs B is what makes A meaningful** — had both shown
+Documents, the drive would have proved only that *something* fills the field.
+
+⚠️ **The write half is still undriven.** `handleChooseLocation` records the folder, and reaching it
+needs the native folder dialog, which CDP cannot drive (the trap this task recorded at s42). Each arm
+was set by writing the key into `editorSettings.json` and reloading — the same value by the same key,
+but **not** the same code path. So *"Browse records what you chose"* remains spec-level.
+
+⚠️ **Instrument note, and it would have produced a confident false negative.** A readonly `TextInput`
+renders as a **`<div>`**, not an `<input>` — `TextInput-module__is-div`. My first reading queried
+`document.querySelectorAll('input')`, found only the launcher's search box, and looked exactly like a
+Location field that had not rendered at all. **Read the rendered text of the row, never the input
+list.**
+
+⚠️ `~/Library/Application Support/NodeGX/editorSettings.json` is Richard's live settings file. It was
+backed up before the first write and restored **byte-identical** afterwards, verified with `diff`;
+the key is absent again, which is where it started.
 
 ### ⚠️ Incidental — a dead fallback that would be wrong if it ever woke up
 
