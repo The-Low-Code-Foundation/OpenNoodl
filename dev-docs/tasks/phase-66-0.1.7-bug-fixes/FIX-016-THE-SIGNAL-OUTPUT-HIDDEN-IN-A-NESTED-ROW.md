@@ -364,11 +364,21 @@ that is the ruling-relevant fact.
 candidates remain and the drive separated none of them:
 
 1. their fixture never declared `scriptOutputs` (the gate above accounts for it) — **STILL LIVE**;
-2. ~~the runtime axis — *declared + no live preview* is an untested cell~~ — 🔴 **PREMISE FALSE,
-   measured.** An **always-on `<webview>` "Noodl Viewer" runtime is live with no preview action**,
-   so "no live preview" is **not an author-reachable state** and the cell does not exist. ⚠️ It is
-   invisible to `npm run cdp -- targets`, which prints only `page`; `curl :9222/json/list` shows it
-   as type `webview`. **A CDP target list is not the list of runtimes.**
+2. ~~the runtime axis — *declared + no live preview* is an untested cell~~ — 🔴 **PREMISE FALSE.**
+   With a project open and **no preview action**, an `<webview>` "Noodl Viewer" runtime is live —
+   witnessed pushing dynamic ports — so "no live preview" is not the author-reachable state the cell
+   assumed. ⚠️ **Bounded: observed with a project OPEN; the Launcher case is untested.**
+
+   🔴 **STRUCK — *"a CDP target list is not the list of runtimes"*, which I filed here and called the
+   general form worth keeping. It is false.** `cdp.js:333` prints `/json/list` **unfiltered**, type
+   first; there is no page-only filter, so `targets` never hid the webview. The author of the
+   original observation retracted it: they ran `targets` **before** opening the project and `curl`
+   **after**, and attributed a state difference to the instrument. ⚠️ **I verified the retraction in
+   `cdp.js` rather than accepting it** — twice today an accepted correction was itself wrong.
+   ✅ **The narrower true thing, if a replacement is wanted:** `cdp.js:143`'s error hint —
+   *"The viewer window only exists while a project preview is running"* — is misleading;
+   `--target=viewer` attaches with no preview, because `KNOWN_TARGETS.viewer` matches `'Noodl Viewer'`
+   (`:121`) and `appTarget` accepts type `webview` (`:126`). Both verified here.
 3. ~~a fixture artefact — `fromJSON` + `addRoot` may never reach the runtime's model~~ — 🔴 **DEAD,
    and in the reassuring direction.** That pair **is the NodePicker's own creation path**
    (`NodePicker.utils.ts:15-41`; verified here — `NodeGraphNode.fromJSON(...)` then
@@ -601,11 +611,23 @@ Driven by a peer on a **picker-created** node, teardown clean.
 measured the same object a real user's node is**, and the caution I put in the handover — *"build
 the node the normal way, not `fromJSON`"* — was wrong advice.
 
-🔴 **C1's viewer cell: the premise was false, so the cell was never reachable.** The editor hosts an
-**always-on `<webview src="localhost:8574">` "Noodl Viewer"** runtime with no preview action taken.
-⚠️ `npm run cdp -- targets` prints only `page` targets and **hides it**; `curl :9222/json/list`
-shows it as type `webview`. So *"declared + no live runtime"* is not author-reachable and
-**§1 is the copy question.**
+🔴 **C1's viewer cell: the premise was false, so the cell was never reachable.** With a project open
+and **no preview action taken**, the editor hosts a `<webview src="localhost:8574">` **"Noodl
+Viewer"** runtime — witnessed *pushing dynamic ports*, so it is doing the work, not merely present.
+So *"declared + no live runtime"* is not author-reachable and **§1 is the copy question.**
+
+🔴 **WITHDRAWN — s27's own instrument claim, caught by a peer within the hour: "`npm run cdp --
+targets` prints only `page` targets and hides the webview."** `cdp.js:333` prints `/json/list`
+**unfiltered**, `type` first — it cannot have hidden anything. **The real cause was mine:** I ran
+`targets` **before opening the project** and `curl` **after**, then attributed a state difference to
+the instrument. ⚠️ **Two instruments, two times, one conclusion** — this phase's own trap, committed
+in the act of cataloguing it, and it reached ~6 sessions who filed it.
+
+✅ **What survives, narrower:** `cdp.js:143`'s hint — *"The viewer window only exists while a project
+preview is running"* — is **misleading**. `KNOWN_TARGETS.viewer` already matches `'Noodl Viewer'`
+(`:121`) and `appTarget` accepts `webview` (`:126`), which is exactly why `--target=viewer` attached
+here with **no preview running**. ⚠️ **Bound on the always-on claim:** observed with a project
+**open**; whether the webview exists on the Launcher was never tested.
 
 ✅ **The gate reproduced independently, with an in-situ control**: dynamic-port pushes on one node
 went `out-Done, out-Result` (undeclared) → `outtype-Done, out-Done, outtype-Result, out-Result`
