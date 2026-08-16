@@ -191,7 +191,28 @@ export function summariseGrade(grade: LessonGrade, evidence: LessonEvidence): st
       // opted out of the empty-page check; inventing a number for it here would
       // hide exactly that.
       const drawn = typeof whole.drawnElementCount === 'number' ? ` — ${whole.drawnElementCount} elements drawn` : '';
-      parts.push(`Your app renders${drawn}, with no blocking problems.`);
+      if (whole.renderDefects?.length) {
+        /*
+         * 🔴 UNI-010 §8.1 at the learner's surface, and it is a *sentence*
+         * change and not a verdict change. The gate that grades a finished
+         * lesson now fails on these codes; a learner is halfway through
+         * building one, and a page carrying the placeholder of a Text node they
+         * dropped ten seconds ago is what progress looks like. Failing them for
+         * it would be the "gate that rejects the correct answer" pointed at the
+         * one person who cannot argue with it.
+         *
+         * What is not defensible is the old sentence: "with no blocking
+         * problems" was printed over a render whose own report said elements on
+         * the page are dead. Say what was seen, complete the lesson exactly as
+         * before.
+         */
+        parts.push(
+          `Your app renders${drawn}, and some of what it draws looks wrong ` +
+            `(${whole.renderDefects.join(', ')}) — worth a look before you move on.`
+        );
+      } else {
+        parts.push(`Your app renders${drawn}, with no blocking problems.`);
+      }
     }
   }
 

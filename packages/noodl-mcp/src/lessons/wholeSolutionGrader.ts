@@ -54,6 +54,7 @@
 import {
   countDrawnElements as countDrawnFromViewports,
   formatDiagnosticLine,
+  renderDefectCodes as codesOfRenderDefects,
   reportsBlankRender as findingsReportBlankRender
 } from '../editor-deps';
 import type { Diagnostic, ValidationReport, WholeSolutionGrader, WholeSolutionResult } from '../editor-deps';
@@ -93,6 +94,20 @@ export function countDrawnElements(report: RenderReportPayload): number | undefi
 /** True when the harness itself concluded the page drew nothing. */
 export function reportsBlankRender(report: RenderReportPayload): boolean {
   return findingsReportBlankRender(report?.findings);
+}
+
+/**
+ * The codes by which the harness said the picture is broken — everything in its
+ * `error` class bar `blank-render`, which `rendered` already answers.
+ *
+ * 🔴 Same argument as {@link countDrawnElements}: the rule is shared, this is
+ * the payload adaptation. UNI-010 §8.1 is what it is for — a solution drawing
+ * one real heading and three `dead-placeholder-text` rows is not an empty page,
+ * so nothing in the drawn count can see it, and the sentence that *did* see it
+ * was already being carried past the verdict as prose.
+ */
+export function renderDefectCodes(report: RenderReportPayload): string[] {
+  return codesOfRenderDefects(report?.findings);
 }
 
 /**
@@ -223,9 +238,13 @@ export function createWholeSolutionGrader(
       // ── Does it draw? ─────────────────────────────────────────────────────
       let rendered = false;
       let drawnElementCount: number | undefined;
+      let renderDefects: string[] | undefined;
       try {
         const report = await probeRender(projectDir);
         drawnElementCount = countDrawnElements(report);
+        // Reported whenever the render *ran*, empty page included — absent means
+        // no render happened, never "the harness found nothing wrong".
+        renderDefects = renderDefectCodes(report);
         findings.push(...renderFindingLines(report));
 
         if (drawnElementCount === undefined) {
@@ -252,6 +271,7 @@ export function createWholeSolutionGrader(
         valid,
         rendered,
         ...(drawnElementCount !== undefined ? { drawnElementCount } : {}),
+        ...(renderDefects !== undefined ? { renderDefects } : {}),
         findings: capFindingLines([...unavailable, ...findings]),
         ...(unavailable.length > 0 ? { unavailable: unavailable.join(' ') } : {})
       };

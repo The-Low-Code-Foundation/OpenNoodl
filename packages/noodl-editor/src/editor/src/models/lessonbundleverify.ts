@@ -25,7 +25,7 @@
  * | **F2** | Dead on solution — conditions never fire against the lesson's own answer | replay against the solution context |
  * | **F2′** | Ghostwritten — conditions *already* hold against the starter | replay against the starter context |
  * | **F3** | Ambiguous address — resolves to the wrong node when a second candidate exists | decoy injection |
- * | **F4** | Empty preview — the solution validates and draws nothing | engine 2, injected |
+ * | **F4** | Empty preview — the solution validates, and draws nothing or draws it broken | engine 2, injected |
  *
  * F5 (variant-blind) and F6 (text–graph divergence) are human classes by
  * definition and are deliberately absent. A harness that quietly scored them
@@ -66,6 +66,30 @@
  * instructs the learner to add a second Text has two Texts in its own solution.
  * That is the case F3 was predicted to appear in, and it is caught by comparing
  * the address against the lesson's own end state rather than by guessing.
+ *
+ * 🔴 F4 READS THE RENDER'S FINDINGS, NOT ONLY ITS TWO NUMBERS
+ * -----------------------------------------------------------
+ * Added after UNI-010's criterion-3 run, whose §8.1 is the case that demanded
+ * it. A lesson's solution declared its row component's interface as
+ * `dynamicports` where the editor reads `ports`, so the component had no
+ * interface, and the Repeater stamped three rows of the literal word `"Text"`.
+ * The page also carried one real heading. F4 therefore saw `valid: true`,
+ * `rendered: true`, `drawnElementCount: 4` — and passed.
+ *
+ * The render harness had said the opposite in the same payload:
+ * `dead-placeholder-text — 3 elements render a node-type default instead of
+ * content`. It arrived as a **string** in `WholeSolutionResult.findings`, and
+ * `findings` did not participate in the verdict. The control pair is the sharp
+ * end of it: the broken bundle and the fixed one differ by **one JSON key in
+ * one node**, one shows a learner three blank rows and the other does not, and
+ * their scorecards were **character-for-character identical**.
+ *
+ * ⚠️ This is one level above the "clean can mean EMPTY" trap. F4 already
+ * refuses to accept "no errors" as evidence and insists on a drawn count — and
+ * then a **project-level** count lets an unrelated heading vouch for a broken
+ * mechanism. The fix is not a bigger number; it is that the evidence was in the
+ * payload and the rule could not reach it. `renderDefects` is the field it
+ * reaches it through.
  *
  * 🔴 A CHECK THAT COULD NOT RUN IS NEVER A FAILURE
  * ------------------------------------------------
@@ -110,6 +134,8 @@ export type LessonBundleFindingCode =
   | 'fragile-type-address'
   /** F4 — the solution validates but draws nothing. */
   | 'solution-renders-nothing'
+  /** F4 — the solution draws, and the render says what it drew is broken. */
+  | 'solution-renders-broken'
   /** F4 — the solution does not validate. */
   | 'solution-invalid'
   /** A condition threw while being evaluated — malformed past what the compiler catches. */
@@ -466,6 +492,31 @@ export async function verifyLessonBundle(
           message:
             'The solution draws nothing. A learner who follows every step correctly ends up looking at an ' +
             'empty page — usually because the sample data keys do not match what the nodes are bound to.'
+        });
+      } else if (wholeSolution.renderDefects?.length) {
+        // 🔴 UNI-010 criterion 3, §8.1. `rendered` is a project-level "did
+        // anything appear", so one working heading vouches for three dead
+        // placeholders beside it — and the render had already said so, in a
+        // sentence sitting unread in `findings`. The verdict now reads it.
+        //
+        // Not folded into the branch above: "it drew nothing" and "what it drew
+        // is broken" are different repairs, and telling an author their page is
+        // empty when three rows of the word "Text" are on it aims them at the
+        // wrong subsystem.
+        f4 = 'fail';
+        findings.push({
+          code: 'solution-renders-broken',
+          severity: 'error',
+          failureClass: 'F4',
+          where: 'Solution',
+          message:
+            `The solution draws${
+              wholeSolution.drawnElementCount !== undefined ? ` ${wholeSolution.drawnElementCount} elements` : ''
+            }, and the render reports what it drew is broken: ` +
+            `${wholeSolution.renderDefects.join(', ')}. A page is not passing because something appeared on ` +
+            'it — a learner who follows every step correctly ends up looking at this. The render’s own lines ' +
+            'below say which elements and why; fix the solution until they are gone, or the lesson teaches a ' +
+            'graph that does not work.'
         });
       }
     }

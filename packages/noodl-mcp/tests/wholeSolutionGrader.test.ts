@@ -204,6 +204,41 @@ describe('createWholeSolutionGrader', () => {
     expect(result.findings.length).toBeGreaterThan(0);
   });
 
+  it('🔴 reports the badness as CODES too, because a verdict cannot branch on prose', async () => {
+    /*
+     * UNI-010 §8.1. The spec above is right and was not enough: the findings
+     * carried the badness as **strings**, F4 read `valid` and `rendered`, and a
+     * lesson whose rows were three copies of the word "Text" scored four
+     * passes. The recorded haiku build is that page — it draws 68 things and
+     * the harness calls two classes of them broken.
+     */
+    const result = await grader({ render: recordedReport('phase55-replay-haiku') }).check();
+    expect(result.renderDefects).toEqual(['dead-placeholder-text', 'broken-image']);
+    // And it is still `rendered`. The count is not the thing that changed.
+    expect(result.rendered).toBe(true);
+  });
+
+  it('reports an empty defect list for the build phase 55 calls correct', async () => {
+    // The other half of the control pair, and the half that matters most: this
+    // must stay a pass, or the gate has started rejecting the right answer.
+    const result = await grader({ render: recordedReport('phase55-replay-sonnet') }).check();
+    expect(result.renderDefects).toEqual([]);
+    expect(result.rendered).toBe(true);
+  });
+
+  it('does not report the blank page’s own error a second time under a new name', async () => {
+    // `blank-render` is `rendered`'s to report. One defect, one accusation.
+    const result = await grader({ render: recordedReport('phase55-s8-deepseek-v4-pro') }).check();
+    expect(result.renderDefects).toEqual([]);
+    expect(result.rendered).toBe(false);
+  });
+
+  it('does not report warnings as defects — ecommerce-example is a working page', async () => {
+    const result = await grader({ render: recordedReport('ecommerce-example') }).check();
+    expect(result.renderDefects).toEqual([]);
+    expect(result.findings.some((f) => f.includes('minimum-layout-width'))).toBe(true);
+  });
+
   it('marks a project invalid when the validator found errors, without touching the render', async () => {
     const invalid = {
       diagnostics: [
@@ -246,6 +281,9 @@ describe('when engine 2 cannot run at all', () => {
     // reported as half an answer.
     expect(result.valid).toBe(true);
     expect(result).not.toHaveProperty('drawnElementCount');
+    // Same rule for the defect list: a render that did not happen found no
+    // defects and must not say it found none.
+    expect(result).not.toHaveProperty('renderDefects');
     expect(result.findings[0]).toContain('The render could not run');
   });
 

@@ -131,6 +131,30 @@ export interface WholeSolutionResult {
   rendered: boolean;
   /** How many elements the render actually drew. Absent means "not counted". */
   drawnElementCount?: number;
+  /**
+   * 🔴 The codes of the findings by which the render said the picture is
+   * **broken** — `dead-placeholder-text`, `empty-list`, `broken-image` and the
+   * rest of the harness's `error` class. `lessondrawncount.ts`'s
+   * `renderDefectCodes()` is the one rule that derives them, shared by both
+   * adapters for the reason the drawn count is.
+   *
+   * It exists because {@link findings} is prose. A render that drew one real
+   * heading and three dead placeholders reports `rendered: true`,
+   * `drawnElementCount: 4`, and its own error sentence — as a **string**, in a
+   * list nothing downstream can branch on. UNI-010's F4 read the two numbers,
+   * could not read the sentence, and passed the broken bundle; §8.1 of the
+   * criterion-3 run is that case with its control pair. The evidence was in the
+   * payload and the verdict could not reach it, so this is the field it reaches
+   * it through.
+   *
+   * ⚠️ **Absent means "not reported", never "none found"** — the same
+   * distinction {@link drawnElementCount} draws, and it has the same
+   * consequence: an adapter that stays silent opts itself out of the check.
+   * `normaliseWholeSolutionResult` will not invent it, because inventing an
+   * empty list here would turn every silent adapter into a clean bill of
+   * health, which is the failure mode this whole engine is built against.
+   */
+  renderDefects?: string[];
   /** Human-readable problems, in the reporting tool's own words. */
   findings: string[];
   /**

@@ -306,6 +306,48 @@ describe('summariseGrade — what the learner reads', () => {
     expect(summariseGrade(notDone, evidence(notDone))).not.toContain('This lesson is complete.');
   });
 
+  it('🔴 does not claim "no blocking problems" over a render the harness called broken', () => {
+    // UNI-010 §8.1 at the learner's surface. Four elements drew, three of them
+    // are the word "Text", and the old sentence congratulated them for it.
+    const grade = gradeOf([step(0, true, 'One')], {
+      valid: true,
+      rendered: true,
+      drawnElementCount: 4,
+      renderDefects: ['dead-placeholder-text'],
+      findings: ['[error] desktop: dead-placeholder-text — 3 elements render a node-type default.']
+    });
+    const summary = summariseGrade(grade, evidence(grade));
+
+    expect(summary).not.toContain('no blocking problems');
+    expect(summary).toContain('dead-placeholder-text');
+    expect(summary).toContain('4 elements drawn');
+  });
+
+  it('🔴 does not FAIL the learner for it — the verdict is unchanged, only the sentence', () => {
+    /*
+     * The asymmetry that keeps this out of the gate: the authoring harness
+     * grades a finished solution and now refuses one with these codes, while a
+     * learner is mid-build and a placeholder they have not filled in yet is
+     * what progress looks like. Completion must be exactly as it was.
+     */
+    const withDefects = gradeOf([step(0, true, 'One')], {
+      valid: true,
+      rendered: true,
+      drawnElementCount: 4,
+      renderDefects: ['dead-placeholder-text'],
+      findings: []
+    });
+    const without = gradeOf([step(0, true, 'One')], {
+      valid: true,
+      rendered: true,
+      drawnElementCount: 4,
+      findings: []
+    });
+
+    expect(evidence(withDefects).complete).toBe(evidence(without).complete);
+    expect(summariseGrade(withDefects, evidence(withDefects))).toContain('This lesson is complete.');
+  });
+
   it('omits the drawn count when an adapter did not report one', () => {
     // `rendered: true` with no count is only reachable from an adapter that
     // opted out of the empty-page check; inventing a number would hide it.

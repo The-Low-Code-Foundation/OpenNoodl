@@ -39,6 +39,11 @@
  * `lessondrawncount.ts` and is shared with the sidecar's adapter, because two
  * copies of a safety property is one copy plus a future defect.
  *
+ * The same paragraph applies word for word to `renderDefects`, added for
+ * UNI-010 §8.1: the count says *something* appeared, the defect codes say the
+ * harness thought what appeared was broken, and a result carrying the first
+ * without the second is how a page of dead placeholders passed a gate.
+ *
  * ⚠️ NO IMPORT OF `electron` OR `ProjectModel` IN THIS FILE
  * --------------------------------------------------------
  * Both probes arrive injected, the same split `renderCaptureModel.ts` keeps from
@@ -50,7 +55,7 @@
  * @module noodl-editor/models/lessonwholesolution
  */
 
-import { countDrawnElements, reportsBlankRender } from './lessondrawncount';
+import { countDrawnElements, renderDefectCodes, reportsBlankRender } from './lessondrawncount';
 import type { MeasuredViewportLike, RenderFindingLike } from './lessondrawncount';
 import type { WholeSolutionGrader, WholeSolutionResult } from './lessongrading';
 
@@ -154,12 +159,17 @@ export function createEditorWholeSolutionGrader(deps: EditorWholeSolutionDeps): 
       // ── Does it draw? ─────────────────────────────────────────────────────
       let rendered = false;
       let drawnElementCount: number | undefined;
+      let renderDefects: string[] | undefined;
       try {
         const result = await deps.probeRender();
         if (result.error) {
           unavailable.push(`The render could not run: ${result.error}`);
         } else {
           drawnElementCount = countDrawnElements(result.viewports);
+          // 🔴 Reported whenever a render *ran*, including when it is empty —
+          // the same rule as the count beside it, and for the same reason.
+          // Absent means the render did not happen, never "the picture is fine".
+          renderDefects = renderDefectCodes(result.findings);
           findings.push(...result.lines);
 
           if (drawnElementCount === undefined) {
@@ -179,6 +189,7 @@ export function createEditorWholeSolutionGrader(deps: EditorWholeSolutionDeps): 
         valid,
         rendered,
         ...(drawnElementCount !== undefined ? { drawnElementCount } : {}),
+        ...(renderDefects !== undefined ? { renderDefects } : {}),
         findings: capFindingLines([...unavailable, ...findings]),
         ...(unavailable.length > 0 ? { unavailable: unavailable.join(' ') } : {})
       };

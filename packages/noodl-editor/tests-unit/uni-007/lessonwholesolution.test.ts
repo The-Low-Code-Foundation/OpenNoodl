@@ -14,7 +14,11 @@
  * property of each adapter and has to be graded once per adapter.
  */
 
-import { countDrawnElements, reportsBlankRender } from '../../src/editor/src/models/lessondrawncount';
+import {
+  countDrawnElements,
+  renderDefectCodes,
+  reportsBlankRender
+} from '../../src/editor/src/models/lessondrawncount';
 import {
   capFindingLines,
   createEditorWholeSolutionGrader,
@@ -74,6 +78,62 @@ describe('countDrawnElements — the rule both adapters apply', () => {
   });
 });
 
+describe('renderDefectCodes — the second rule both adapters apply', () => {
+  // 🔴 UNI-010 §8.1. The count answers "did anything appear"; this answers
+  // "did the harness think what appeared was broken". A page of one heading
+  // and three dead placeholders passes the first and fails the second, and
+  // before this the second was carried past the verdict as prose.
+
+  it('reports the harness’s error findings, by the harness’s own severity', () => {
+    expect(
+      renderDefectCodes([
+        { code: 'dead-placeholder-text', severity: 'error' },
+        { code: 'clipped-page', severity: 'warning' },
+        { code: 'single-column-grid', severity: 'info' }
+      ])
+    ).toEqual(['dead-placeholder-text']);
+  });
+
+  it('is not a list of one code — every error the harness raises is in scope', () => {
+    // Naming `dead-placeholder-text` alone would leave the other four errors in
+    // exactly the hole this closes, and would exclude whatever the harness
+    // grows next.
+    expect(
+      renderDefectCodes([
+        { code: 'empty-list', severity: 'error' },
+        { code: 'broken-image', severity: 'error' },
+        { code: 'content-not-visible', severity: 'error' }
+      ])
+    ).toEqual(['empty-list', 'broken-image', 'content-not-visible']);
+  });
+
+  it('excludes blank-render, which `rendered` already answers', () => {
+    // One defect, one accusation. `reportsBlankRender` owns this code.
+    expect(renderDefectCodes([{ code: 'blank-render', severity: 'error' }])).toEqual([]);
+  });
+
+  it('deduplicates — three viewports raising one defect is one defect', () => {
+    expect(
+      renderDefectCodes([
+        { code: 'dead-placeholder-text', severity: 'error' },
+        { code: 'dead-placeholder-text', severity: 'error' }
+      ])
+    ).toEqual(['dead-placeholder-text']);
+  });
+
+  it('ignores a finding with no severity rather than guessing at one', () => {
+    // ⚠️ Stated as the lenient choice it is, not dressed up as the safe one: a
+    // severity-less finding is dropped, so the direction of the error is the
+    // same direction §8.1 was. It is chosen because the alternative — reading
+    // an absent severity as `error` — fails a sound lesson on a `clipped-page`
+    // warning from an old recording, and a gate that rejects the correct answer
+    // is the worse of the two. Both real producers come from one `summarise`,
+    // which always sets it.
+    expect(renderDefectCodes([{ code: 'dead-placeholder-text' }])).toEqual([]);
+    expect(renderDefectCodes(undefined)).toEqual([]);
+  });
+});
+
 // ─── The adapter ────────────────────────────────────────────────────────────
 
 describe('createEditorWholeSolutionGrader', () => {
@@ -120,6 +180,42 @@ describe('createEditorWholeSolutionGrader', () => {
 
     expect(result).toMatchObject({ valid: true, rendered: true, drawnElementCount: 12 });
     expect(result.unavailable).toBeUndefined();
+  });
+
+  it('always reports renderDefects when a render ran, including the empty list', async () => {
+    // Same property as the count beside it, graded once per adapter for the
+    // same reason: absent means "not reported", so an adapter that stays silent
+    // opts itself out of F4's defect check entirely.
+    const clean = await grader(
+      () => healthy,
+      async () => render({ viewports: { desktop: viewport(12, 1) } })
+    ).check();
+    expect(clean.renderDefects).toEqual([]);
+
+    const broken = await grader(
+      () => healthy,
+      async () =>
+        render({
+          viewports: { desktop: viewport(4, 0) },
+          findings: [{ code: 'dead-placeholder-text', severity: 'error' }]
+        })
+    ).check();
+
+    // 🔴 §8.1's shape at this layer: it drew four things, and three of them are
+    // the word "Text". `rendered` is true and must stay true — the defect is
+    // not that the page is empty.
+    expect(broken.renderDefects).toEqual(['dead-placeholder-text']);
+    expect(broken.rendered).toBe(true);
+    expect(broken.drawnElementCount).toBe(4);
+  });
+
+  it('omits renderDefects when no render happened, rather than reporting none', async () => {
+    const result = await grader(
+      () => healthy,
+      async () => render({ error: 'the capture did not finish within 60s' })
+    ).check();
+
+    expect(result).not.toHaveProperty('renderDefects');
   });
 
   it('reports a capture that could not run as unavailable, never as an empty page', async () => {

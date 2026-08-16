@@ -418,6 +418,99 @@ describe('F4 — the solution that draws nothing', () => {
   });
 });
 
+// ─── F4 — the solution that draws, and draws broken ─────────────────────────
+//
+// 🔴 UNI-010 criterion 3 §8.1, as a spec. The run's own control pair is the
+// shape of it: two bundles differing by one JSON key in one node, one showing
+// the learner three blank rows, and — before this — two identical scorecards.
+// The pair is what the block asserts, because a single broken case would pass
+// just as well against a gate that had started failing everything.
+
+describe('F4 — the solution that draws, and what it drew is broken', () => {
+  /** The §8.1 solution: one real heading, and three rows of the literal word "Text". */
+  const BROKEN_ROWS = {
+    drawnElementCount: 4,
+    renderDefects: ['dead-placeholder-text'],
+    findings: [
+      '[error] desktop: dead-placeholder-text — 3 elements render a node-type default instead of ' +
+        'content: 3× "Text". Nothing set those ports.'
+    ]
+  };
+
+  /** The same lesson with `ports` instead of `dynamicports`: the rows carry their data. */
+  const WORKING_ROWS = { drawnElementCount: 4, renderDefects: [], findings: [] };
+
+  it('is refused, where before it passed on the strength of the heading beside it', async () => {
+    const card = await verifyLessonBundle(GOOD_LESSON, {
+      starter: starter(),
+      solution: solution(),
+      wholeSolution: grader(BROKEN_ROWS)
+    });
+
+    expect(card.classes.F4).toBe('fail');
+    expect(card.installable).toBe(false);
+    expect(messages(card.findings)).toMatch(/dead-placeholder-text/);
+  });
+
+  it('names the defect rather than calling a four-element page empty', async () => {
+    const card = await verifyLessonBundle(GOOD_LESSON, {
+      starter: starter(),
+      solution: solution(),
+      wholeSolution: grader(BROKEN_ROWS)
+    });
+
+    const f4 = card.findings.filter((f) => f.failureClass === 'F4' && f.severity === 'error');
+    expect(f4.map((f) => f.code)).toEqual(['solution-renders-broken']);
+    // The repair the author needs is "fix what is on the page", not "put
+    // something on the page" — phase 64's rule that a refusal is graded by what
+    // it wrote, applied to the one sentence the authoring model acts on.
+    expect(f4[0].message).not.toMatch(/empty page|draws nothing/);
+    expect(f4[0].message).toMatch(/4 elements/);
+  });
+
+  it('🔴 tells the control pair apart — the assertion the run could not make', async () => {
+    const options = { starter: starter(), solution: solution() };
+    const broken = await verifyLessonBundle(GOOD_LESSON, { ...options, wholeSolution: grader(BROKEN_ROWS) });
+    const working = await verifyLessonBundle(GOOD_LESSON, { ...options, wholeSolution: grader(WORKING_ROWS) });
+
+    expect(working.classes.F4).toBe('pass');
+    expect(working.installable).toBe(true);
+    expect(broken.classes.F4).toBe('fail');
+    // Character-for-character identical scorecards were the finding. They must
+    // now differ, and this is the one assertion that would have caught it.
+    expect(formatBundleScorecard(broken)).not.toEqual(formatBundleScorecard(working));
+  });
+
+  it('does not invent a verdict for an adapter that reported no defect list', async () => {
+    // 🔴 Absent is "not reported", not "none found" — the same distinction
+    // `drawnElementCount` draws. An adapter that stays silent opts itself out,
+    // and this harness must not turn that silence into either verdict.
+    const card = await verifyLessonBundle(GOOD_LESSON, {
+      starter: starter(),
+      solution: solution(),
+      wholeSolution: grader({ drawnElementCount: 4 })
+    });
+
+    expect(card.classes.F4).toBe('pass');
+    expect(card.findings.map((f) => f.code)).not.toContain('solution-renders-broken');
+  });
+
+  it('says the page is empty, not broken, when the page is empty', async () => {
+    // Both branches are reachable and they must not collapse into each other: a
+    // blank render carries `blank-render`, which `renderDefectCodes` excludes
+    // precisely so one defect is not reported twice under two names.
+    const card = await verifyLessonBundle(GOOD_LESSON, {
+      starter: starter(),
+      solution: solution(),
+      wholeSolution: grader({ rendered: false, drawnElementCount: 0, renderDefects: [] })
+    });
+
+    expect(card.findings.filter((f) => f.failureClass === 'F4').map((f) => f.code)).toEqual([
+      'solution-renders-nothing'
+    ]);
+  });
+});
+
 // ─── Not checked is not passed ──────────────────────────────────────────────
 
 describe('a bundle with no solution', () => {

@@ -58,7 +58,8 @@ export interface MeasuredViewportLike {
 }
 
 /**
- * One finding, in the render's own vocabulary. Only the code is read here.
+ * One finding, in the render's own vocabulary. Only the code and the severity
+ * are read here.
  *
  * ⚠️ No index signature, unlike {@link MeasuredViewportLike}. Both producers'
  * finding types are plain interfaces without one, and TypeScript will not assign
@@ -68,6 +69,8 @@ export interface MeasuredViewportLike {
  */
 export interface RenderFindingLike {
   code?: string;
+  /** `'error' | 'warning' | 'info'` as both producers spell it. Typed wide so neither has to be imported. */
+  severity?: string;
 }
 
 /** The finding that says the page drew nothing. Its own code, not a guess at one. */
@@ -101,4 +104,54 @@ export function countDrawnElements(viewports: Record<string, MeasuredViewportLik
  */
 export function reportsBlankRender(findings: readonly RenderFindingLike[] | undefined): boolean {
   return (findings ?? []).some((finding) => finding?.code === BLANK_RENDER);
+}
+
+/**
+ * The codes of every finding by which the render itself said the picture is
+ * **broken**, deduplicated and in the harness's own order.
+ *
+ * 🔴 WHY THIS EXISTS — UNI-010 criterion 3, §8.1
+ * ----------------------------------------------
+ * A drawn count answers *"did anything appear?"* and nothing else. The
+ * five-lesson run produced the case where that is not enough: a lesson whose
+ * Repeater stamped three rows of the literal word `"Text"` — because its row
+ * component declared `dynamicports` instead of `ports`, so it had no interface
+ * and the items reached nothing — drew **four** elements, one real heading and
+ * three dead placeholders. `drawnElementCount > 0` was true, the harness's own
+ * `dead-placeholder-text` error was collected into the result's human-readable
+ * `findings` and read by nobody, and the broken bundle's scorecard came back
+ * **character-for-character identical** to the fixed one's.
+ *
+ * That is one level above the "clean can mean EMPTY" trap this module was built
+ * against: the drawn count is a **project-level** number, so one working
+ * element vouches for every broken one beside it.
+ *
+ * ⚠️ **Severity, not a list of codes.** Naming `dead-placeholder-text` alone
+ * would leave `empty-list`, `broken-image` and `content-not-visible` — all
+ * `error` in the harness today — in exactly the hole this closes, and would
+ * silently exclude any error the harness grows next. The harness's severity is
+ * its own verdict on its own finding; this reads it rather than re-deriving it,
+ * for the same reason {@link countDrawnElements} counts the two numbers
+ * `summarise` counts.
+ *
+ * ⚠️ **`blank-render` is deliberately excluded.** It is the one error already
+ * answered — by `rendered`, via {@link reportsBlankRender} — and a caller that
+ * reported it here too would accuse the same page twice for one defect.
+ *
+ * ⚠️ **A finding with no severity is dropped**, and that errs in the *lenient*
+ * direction — the same direction §8.1 did. It is still the right call: reading
+ * an absent severity as `error` would fail a sound lesson on a `clipped-page`
+ * warning from a recording made before severities existed, and a gate that
+ * rejects the correct answer is worse than one that misses a case no live
+ * producer can reach. Both producers derive their findings from one
+ * `summarise`, which always sets it.
+ */
+export function renderDefectCodes(findings: readonly RenderFindingLike[] | undefined): string[] {
+  const codes: string[] = [];
+  for (const finding of findings ?? []) {
+    if (!finding || finding.severity !== 'error') continue;
+    if (typeof finding.code !== 'string' || finding.code === BLANK_RENDER) continue;
+    if (!codes.includes(finding.code)) codes.push(finding.code);
+  }
+  return codes;
 }

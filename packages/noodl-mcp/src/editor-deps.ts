@@ -468,6 +468,7 @@ export type {
 export {
   BLANK_RENDER,
   countDrawnElements,
+  renderDefectCodes,
   reportsBlankRender
 } from '../../noodl-editor/src/editor/src/models/lessondrawncount';
 export type {
