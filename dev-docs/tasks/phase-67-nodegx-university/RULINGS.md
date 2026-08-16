@@ -580,6 +580,31 @@ parent ruling still say what this was derived from".** If one of D9, D10, D14 is
 three are downstream of it and must be re-read — that is the specific thing this note exists to make
 possible.
 
+### 🔴 A postscript the same day: all three were ruled into a place that did not exist
+
+**2026-08-16, twentieth session.** D15 says the visibility rule lives *behind the API*. D16 says the
+threshold is *computed* with its `n` visible. D17 says the curriculum index is *part of the platform
+API under D14*. All three name **the API** as the thing that holds the rule.
+
+**There was no API.** `nodegx-community` had exactly one route under `src/app/api` — the Discourse
+webhook receiver — and every other surface was a Next.js page calling `src/lib` in-process. D14's
+own second consequence had already said this out loud (*"the API is a deliverable, not an
+implementation detail"*) and **no task owned it**: UNI-011's surface is *"editor + bridge"*, and the
+eight platform tasks each built pages.
+
+So `communityVisibility()` and `readThreshold()` shipped as careful, controlled, well-specced pure
+functions **whose only callers were their own test files** — which is the seventh instance of *build
+the caller*, and the first where the missing caller was named in the ruling itself.
+
+> ⚠️ **The generalisable half, because this register is full of rulings that name a mechanism:**
+> *a ruling that names where a rule must live is a claim about a place, and the place is not
+> checked by ruling it.* D15 was implemented correctly, tested thoroughly, and enforced nowhere.
+> The three rulings above read as *made and implemented* for a day.
+
+✅ **Closed by UNI-011 slice 1** (`nodegx-community` `7193f92`): five `/api/v1` routes, D15 enforced
+per route by a sweep whose route list is **read off disk**, and D16's reading served with its `n`.
+🔴 **D17's half is still open** — nothing serves a curriculum index, on Pages or otherwise.
+
 **Where each was strengthened past its recommendation** — so the sitting is not recorded as pure
 assent: **D15** turned "default off, admin may enable read-only" into a **capability ceiling** (no
 write path exists to be switched on) and moved the rule behind the **API** rather than each client;

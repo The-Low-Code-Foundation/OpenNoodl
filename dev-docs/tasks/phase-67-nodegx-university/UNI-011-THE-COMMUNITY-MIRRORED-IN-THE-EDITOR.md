@@ -1,8 +1,38 @@
 # UNI-011 — the community, mirrored in the editor
 
 **Surface:** editor + bridge · **Tier 2** (needs UNI-001's account and UNI-009's forum to exist
-first) · **Effort:** M/L · ✅ **UNBLOCKED for build — D14 ruled 2026-08-15** · 🟡 **BLOCKED for ship
-on D15 and D16**
+first) · **Effort:** M/L · 🟡 **SLICE 1 BUILT 2026-08-16 — the transport and the boundary.**
+D14, D15 and D16 all ruled; nothing is waiting on a decision.
+
+> ## Slice 1 — what was built, and the thing it found first
+>
+> 🔴 **D14's API did not exist, and no task owned it.** D14's second consequence is explicit —
+> *"the API is a deliverable, not an implementation detail"* — and until 2026-08-16 the platform
+> had **one** route under `src/app/api`, the Discourse webhook receiver. Every other surface was
+> a Next.js page calling `src/lib` in-process. **There was nothing for a second client to be a
+> client of**, so this task's AC1 (*"from the same API"*) was unbuildable as written.
+>
+> The consequence is the shape this phase keeps finding by other routes: `communityVisibility()`
+> (D15) and `readThreshold()` (D16) are careful, controlled, well-specced pure functions whose
+> **only callers were their own test files** — and D15's own header says the rule must live
+> *behind the API* or the two clients drift. It lived behind nothing. *Build the caller*,
+> seventh instance.
+>
+> **Platform** (`nodegx-community` `7193f92`): five routes under `/api/v1` — `me`,
+> `me/assignments`, `community/home`, `community/threads`, `community/threshold`. **462 specs /
+> 19 files** (baseline 442/18), `tsc` clean, `next build` **21 routes** (was 16), **four
+> controls**, **14/14 driven consequences written first**.
+>
+> **Editor** (this repo, `f7b0b280`): `models/community/communityapi.ts` and
+> `models/community/postbody.ts`, **55 specs**, `test:main` **223 suites / 3458 specs**
+> (221/3403 without them), eslint clean.
+>
+> ⚠️ **Not built: any view.** No rail entry, no surface, nothing a user can see — deliberately.
+> D16's ship order is the opposite of its build order and this task already said so: *build the
+> mirror first, surface it last.* AC2, AC3 and the four editor-only features are slice 2.
+>
+> ⚠️ **Nothing has talked to a real platform.** `community.nodegx.dev` is unregistered; the
+> drive ran against `next dev` on localhost.
 
 > **D14** ([RULINGS.md](RULINGS.md)): the public web platform is the **canonical** community; the
 > editor is a **second client of the same API**, showing the same content. Editor-only features are
@@ -109,11 +139,56 @@ has now caught six times here. If B is chosen, its tests must include a **known-
 the sanitiser is proved to reject, not only a known-good corpus it is proved to pass. Two
 instruments that never disagree have not been checked.
 
+### ✅ CHOSEN 2026-08-16 — **B's transport, with B's output changed**, and the change is the point
+
+`postbody.ts` requests the unrendered markdown and parses it to a **data model** — `Block[]`, which
+**has no field that could hold markup**. It never emits an HTML string at any stage: not escaped,
+not sanitised, not allow-listed. A view walks the model and builds React elements, whose text
+children the runtime escapes *because they are text*. So there is nothing for a future edit to hand
+to `innerHTML` even by mistake, and AC1's *"proved by the chosen boundary's test, not by
+inspection"* is satisfiable — a sanitiser's safety is always an argument about its own internals.
+
+🔴 **A live finding in the first draft of that file, and it is the reason this section is worth
+reading rather than skipping.** `[x](&#106;avascript:alert(1))` reaches `safeLessonUrl` with **no
+scheme** — `&` fails the scheme test — so it is classified *relative* and passed through verbatim.
+Harmless **only because React sets `href` with `setAttribute` and nothing decodes the entity**. Emit
+the same string into an HTML string and the parser decodes `&#106;` to `j` before the URL is
+resolved, and it is `javascript:alert(1)`. ⚠️ **The boundary's safety rested on a property of its
+consumer — which is the exact class of argument the model design was chosen to eliminate.** Closed
+by `safeCommunityUrl`, which decodes the *probe* to a fixed point and asks the shipped allow-list
+about that, while still emitting the raw text (markdown is not HTML; `&amp;` in a markdown URL is
+literally an ampersand-a-m-p).
+
+⚠️ **Found by the corpus entry that looked most theoretical.** The cheapest-looking case was the one
+carrying the assumption — the third amendment's line, in a new place.
+
+✅ **And what was measured about the other option, so it is not re-litigated from memory:**
+`renderMarkdown` in `lessonformat.ts` — the lesson renderer whose output reaches
+`dangerouslySetInnerHTML`, and the thing option B invites reusing — was run over the **same
+fifteen-payload corpus by the same instrument**, and it **holds on every case**. 🔴 **This is not a
+defect report**, and recording it as one would be the over-claim this phase warns about as loudly as
+the under-claim. The objection is structural: the lesson renderer is safe because two passes run in
+a particular order, and that property can be removed by an edit while every test still passes.
+
 ## Acceptance criteria
+
+> **Where slice 1 leaves these (2026-08-16).** 🟡 AC1 second half **met**; AC1 first half is
+> unmeetable until a forum exists. 🟡 AC4's read-signed-out half **met at the API and proved by a
+> drive**; its sign-in half needs UNI-001's issuer. 🟡 AC5 **met in shape** — `poll()` exists, owns
+> no clock, and the client has no method that writes. 🟡 AC6 **met at the API**, unmet at the
+> surface, because there is no surface. 📋 AC2 and AC3 are untouched: they are the editor-only
+> half, which this task's own sequencing note puts second.
 
 1. A thread visible on the web is visible in the editor, from the same API, with the same content —
    and **no post body is ever rendered as HTML in the editor's own renderer** (proved by the chosen
    boundary's test, not by inspection).
+   - 🔴 **The first half cannot be met by any amount of editor work**: there is no forum. UNI-009
+     AC1 is untouched, Discourse is bought rather than built, and nobody has bought it. What is
+     built is the route that serves threads and — importantly — **reports their absence as a
+     typed state rather than as an empty list**, because *"there is nothing here to mirror yet"*
+     and *"the community is quiet"* want opposite things from a client.
+   - ✅ **The second half is met**: `parsePostBody` cannot produce markup, and a fifteen-payload
+     known-bad corpus proves it, with a known-firing control beside it.
 2. Right-clicking a node offers "Ask about this node"; the composer opens prefilled with type,
    warning, version and OS; the graph excerpt is **off until enabled**, and what it will send is
    **shown before it sends**.

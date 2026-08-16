@@ -6,10 +6,10 @@ Paste the block below into a fresh session.
 
 Continue phase 67 (NodeGX Community), `dev-docs/tasks/phase-67-nodegx-university/`.
 
-**Read first, in this order:** `RULINGS.md` — ⚠️ **the queue is EMPTY; D15/D16/D17 were ruled
-2026-08-16** and the note at the end of D17 explains what to re-check if a *parent* ruling is ever
-amended. Then §"WHERE THE PHASE ACTUALLY IS" below, then `TASKS.md`'s table, then your task file.
-`PRIOR-ART-RECONCILIATION.md` if you have not read it before.
+**Read first, in this order:** `RULINGS.md` — the queue is EMPTY (D15/D16/D17 ruled 2026-08-16),
+and ⚠️ **read the postscript at the end of the D15/D16/D17 section**, which is the twentieth
+session's finding and is about all three at once. Then §"WHERE THE PHASE ACTUALLY IS" below, then
+`TASKS.md`'s table, then your task file. `PRIOR-ART-RECONCILIATION.md` if you have not read it.
 
 🔴 **Two repos.** Editor work is this checkout. Platform work is
 `/Users/richardosborne/vscode_projects/nodegx-community` — a **sibling directory, never nested** —
@@ -22,166 +22,162 @@ apply there.
 
 | Track | Tasks | State |
 |---|---|---|
-| **Platform** | UNI-001 (AC3), 002, 003, 004, 005, **006**, 009 (content cut) | 🟢 **SIX BUILT.** `178ddff`, sixth commit, **pushed** |
-| **Platform** | UNI-008 | 📋 **One task, not started** — Tier 3, deliberately last, and D9 raised its effort |
+| **Platform** | UNI-001 (AC3), 002, 003, 004, 005, 006, 009 (content cut), **011 slice 1** | 🟢 **SEVEN COMMITS.** `7193f92`, **pushed** |
+| **Platform** | UNI-008 | 📋 **One task, not started** — Tier 3, deliberately last, D9 raised its effort |
 | **Platform** | UNI-001 (the rest) | 🔴 **Blocked on Richard**: OAuth callback URLs need `community.nodegx.dev`, still unregistered |
+| **Editor** | UNI-011 slice 1 | 🟡 **BUILT** — `f7b0b280`. The client and the post-body boundary. **No view** |
 | **Editor / MCP** | UNI-007, UNI-010, UNI-012 | UNI-007 slices 1–5 + tutor overlay; UNI-010 five slices, **KEEP**; UNI-012 scoped, not built |
-| **Editor + bridge** | UNI-011 | ✅ **Fully unblocked to build AND to ship** — D15 and D16 are ruled |
 
-**The nineteenth session built UNI-006 — assign, grade, review.** Ten of the phase's twelve tasks
-now have a surface, and **phase 68's state machine exists**: D13 asked that the grader be a runner
-*or* a person from day one, and it is one enum value rather than a second path.
+**The twentieth session built UNI-011 slice 1 — and the first thing it found is why the slice is
+shaped the way it is.**
 
-## What UNI-006 added
+## 🔴 D14's API did not exist, and no task owned it
 
-**Gates:** `442 specs / 18 files` in `nodegx-community` (baseline **363 / 16**), `tsc --noEmit`
-clean, `next build` **16 routes** (was 14), **16/16 drive consequences** met over HTTP.
-⚠️ **`npm run lint` is STILL not a gate there** — no ESLint config, so the script drops into an
-interactive setup prompt. It has never run.
+D15 rules that the visibility rule lives *behind the API*. D16 rules that the threshold is
+*computed*. D17 rules that the curriculum index is *part of the platform API*. All three name the
+API as the place that holds the rule — and **the platform had exactly one route under
+`src/app/api`**, the Discourse webhook receiver. Everything else was a Next.js page calling
+`src/lib` in-process.
 
-**All four ACs met platform-side.** ⚠️ The one limit worth carrying: AC1 says *"the member's editor
-pulls it"*, and **no editor has ever talked to this platform**. What is built is the reader
-(`assignmentsForMember`) such an endpoint would serve; the round trip is proven in the suite and
-over `curl` with the editor's real `LessonEvidence` shape as input.
+D14's own second consequence had already said it (*"the API is a deliverable, not an implementation
+detail"*), and it fell in a gap: UNI-011's surface is *"editor + bridge"*, and the eight platform
+tasks each built pages. So `communityVisibility()` and `readThreshold()` shipped as careful,
+controlled, well-specced pure functions **whose only callers were their own test files**.
 
-### 🔴 Four findings, and three of them generalise well past this task
+⚠️ **The line worth carrying**: *a ruling that names where a rule must live is a claim about a
+place, and the place is not checked by ruling it.* D15 was implemented correctly, tested
+thoroughly, and enforced nowhere — and it read as done for a day.
 
-**1. UNI-005's AC3 sweep advertised a surface and enumerated a hand-list of two modules.** Its
-criterion is *"…through **any** org endpoint"*; its call list was genuinely derived, from
-`Object.entries(orgsModule)` — which is exactly what made it look like the strong kind of check.
-But **the list it derived from was itself a list somebody wrote**, so `assignments.ts` — the module
-that stores graded results about minors — was covered by nothing at all while the suite stayed
-green. ⚠️ **Everything downstream of a derivation passes whether the thing you derived from is
-complete or not**, which is why nothing pointed at it. Now `ORG_MODULES` is checked against every
-`src/lib/` file that consults org membership.
+## What slice 1 added
 
-**2. `org_is_admin()` returned NULL for a non-member, so `if not org_is_admin(...)` never fired.**
-`not NULL` is NULL and `if NULL then` does not run — so every gate in `0006`, all written the
-obvious way, let through **precisely the person they existed to stop**. A member with the wrong
-role was refused correctly, which is why the first draft of the suite passed. Found by adding a
-**third** candidate — a total stranger — to a test that already had two. 🔴 **A guard tested only
-against the near-miss case is not proven against the far one, and the far one is usually why the
-guard is there.** ⚠️ Harmless in a `where` clause, where NULL and false both drop the row — which
-is why it survived UNI-005 undetected.
+**Platform** (`7193f92`): `/api/v1/me`, `/api/v1/me/assignments`, `/api/v1/community/home`,
+`/api/v1/community/threads`, `/api/v1/community/threshold`.
+**462 specs / 19 files** (baseline 442/18), `tsc` clean, `next build` **21 routes** (was 16).
+**Four controls**, each precisely scoped. **14/14 driven consequences written before the drive.**
 
-**3. `lessongrading.ts` restates D10 more widely than D10 says.** Its comment reads *"D10 rules
-that org-minor accounts' project content never leaves the machine."* Obligation 3
-(PRIOR-ART §F4) is a **network-level claim about minors' work reaching third-party MODEL APIs**.
-Taken literally the comment forbids the evidence bundle and with it the whole school offer — the
-thing D10 exists to permit. What actually forbids a raw project is the **free-text** argument
-UNI-003 made about a bio, and that argument permits a bundle of booleans and integers.
-⚠️ **A relayed conclusion that GAINS scope is as wrong as one that loses it, and it is harder to
-notice because it reads as caution.**
+**Editor** (`f7b0b280`): `models/community/communityapi.ts` + `models/community/postbody.ts`,
+**55 specs**. `test:main` **223 suites / 3458 specs** — 221/3403 without these two files. eslint
+clean. `tsc -p tsconfig.tests-main` reports **31 errors, all pre-existing, none in these files**.
 
-**4. AC4's own headline assertion passed with the mechanism entirely disabled.** The control
-replaced `submission_evidence_violation()` with `return null` and 15 of 71 specs failed — **the
-census was not among them.** It walks every string stored in every bundle; but its only writer was
-`submitWork`, which narrows the bundle in TypeScript before the database sees it. It was measuring
-`pickEvidence` and reporting the result as a property of the schema. 🔴 **A spec whose only writer
-already enforces the rule cannot detect the rule's removal — and it will look like the most
-thorough spec in the file.** Repaired; the control now fails **16 of 71**.
+### Four things decided, each one line to reverse
 
-### The shape worth reusing
+1. **A bearer token is accepted as well as the cookie** — same `sessions` row, same `token_hash`,
+   same expiry. The editor is not a browser. Nothing here mints anything; UNI-001's missing half is
+   still the **issuer**.
+2. **D15's absence is a 404 whose body does not explain itself.** A 403 saying *"your school
+   disabled the community"* is the greyed-out Post button in JSON.
+3. 🔴 **An absent forum is not an empty forum.** `forum_threads` is written only by the webhook
+   receiver, so with it unconfigured the table's emptiness is a fact about our deployment. The
+   endpoint returns `{forum: 'absent'}`, never `{threads: []}`.
+4. 🔴 **`/api/v1/me/assignments` is NOT gated on D15**, and the recipe carries the reason. Gating it
+   would switch UNI-006 off for **every org that took D15's default** — which is every org — and it
+   would read as caution the whole way. UNI-006 made exactly this mistake with D10 two days earlier.
 
-🔴 **The evidence bundle holds no string at all except `provenance`, a closed set of four.** Every
-other leaf is a boolean or a non-negative integer and the database refuses anything else — keys
-allow-listed, each leaf's type pinned, nested objects too. That is what lets `submissions.evidence`
-— **the first column in the whole schema an org-minor account can write to** — be classified in
-UNI-005's AC4 census without a `minor-free-text` class, which that suite says would falsify its
-criterion outright. A sixth classification, `machine-derived`, was added and is probed.
+### 🔴 Findings that generalise past this task
 
-🔴 **The platform's allow-list is deliberately NARROWER than the editor's bundle.** `lessonTitle`
-and `gradedAt` are not stored: `lessonTitle` is the bundle's one free-text field and it is read off
-the *submitting* machine, so a pupil who edits `lesson.json` has a route into our database.
-⚠️ **The third copy of that list is in this checkout** (`LessonEvidence` in
-`packages/noodl-editor/src/editor/src/models/lessongrading.ts`) **and no test in either repo can
-see both.** Named rather than papered over — see Lane D.
+**1. A new HTTP surface is outside every guard this phase has built.** UNI-005's AC3 sweep says so
+about itself: *"it proves nothing about a route handler that queries the database directly instead
+of going through these modules."* Every sweep so far quantifies over **module exports**. So the new
+suite is built one level out: **the route list is read off disk**, every route needs a D15 verdict
+**with a written reason**, a recipe naming a route that no longer exists also fails, and there are
+**two known-firing controls** — a route that forgot the gate, and one that 404s while explaining why.
 
-**AC2's "notifies the member" could not be an email.** An org-minor account has no address, by a
-constraint 0001 already enforces, so an email notification would work for every user except the
-ones D10 was ruled for. The notice is a row the member reads.
+**2. The boundary's safety rested on a property of its consumer, which is the class of argument the
+design was chosen to eliminate.** `postbody.ts` parses markdown to a data model (`Block[]` has no
+field that could hold markup) rather than to an HTML string. Its first draft passed
+`[x](&#106;avascript:alert(1))` straight through: `&` fails the scheme test, so `safeLessonUrl`
+classifies it *relative*. Harmless **only because React sets `href` with `setAttribute`** — put the
+same string in an HTML string and the parser decodes `&#106;` to `j` first. ⚠️ **Found by the
+corpus entry that looked most theoretical.** Closed by decoding the probe to a fixed point.
 
-### 🔴 A drive trap this repo will hit again
+**3. The instrument was wrong twice, in opposite directions, in one file.** Its strip regex
+contained a **literal NUL byte** — which makes git call a `.ts` file binary and grep skip it — and
+it changed no verdict, which is exactly why it would have survived. And its criterion was a
+**substring match**, which flagged an escaped href that could not execute: *a gate that rejects the
+correct answer is worse than no gate*, walked into while writing the gate. It now decodes **once**,
+the way an HTML parser does, which is the property that decides execution.
 
-**A `curl | grep` for a literal string spanning two adjacent JSX expressions never matches** —
-server-rendered React inserts `<!-- -->` between them. Two consequences read as FAILED until the
-HTML was actually looked at; both were fine. It fails in the **dangerous direction**: a false
-negative that invites you to "fix" working code. Strip `<!-- -->` before grepping.
+**4. `renderMarkdown` was measured, and it HOLDS.** The lesson renderer whose output reaches
+`dangerouslySetInnerHTML` — the thing UNI-011's option B invites reusing — was run over the same
+fifteen-payload corpus by the same instrument and passed every case. 🔴 **Recording it as a defect
+would be the over-claim this phase warns about as loudly as the under-claim.** The objection is
+structural: it is safe because two passes run in a particular order, and that can be removed by an
+edit while every test still passes.
+
+**5. A client that agrees with the API is indistinguishable from one that reads it** — from every
+test you would naturally write. So the client's fixtures **contradict themselves**: a threshold
+whose `entryPoint` says `in-editor-mirror` while every component is unmet, and a `present` surface
+with no capabilities. A client that recomputed produces the sensible answer; this one produces the
+one it was given. The control confirms it.
 
 ---
 
 # What to do next — pick a lane and say which
 
-**LANE A — UNI-011, the editor mirror. Recommended.** D15 and D16 are ruled, so it can be built
-*and* shipped, and it is now the task that unlocks the most: **UNI-006's reader is waiting for a
-client**, and D14 makes the editor a mirror of exactly the surfaces UNI-002…006 built.
-🔴 The renderer is `nodeIntegration: true` **and so is the launcher** (same `BrowserWindow`): **no
-post body may render as HTML in it.** ⚠️ The stranger-authored corpus is wider again — UNI-006 adds
-assignment titles, instructions and grader feedback to UNI-005's shelf payloads, UNI-004's RFP text
-and UNI-003's bios. Prove the boundary with a known-**BAD** corpus, not a clean one. D15 says the
-visibility rule lives **behind the API** — do not reimplement it in the editor client.
+**LANE A — UNI-011 slice 2, the surface.** The transport is built and proved; what does not exist is
+anything a user can see. 🔴 **D16's ship order is the opposite of its build order** — *build the
+mirror first, surface it last* — so read D16 before wiring an entry point, and note the entry point
+must open the **browser** until the threshold is met, which today it is not and cannot be (no
+forum). ⚠️ The honest v1 surface is therefore the **composition**: replays, articles, standing,
+assignments. AC2 (*ask about this node*) and AC3 (*share a capture*) are the editor-only half and
+are where the value is; `livePreviewCapture.ts` already exists.
 
 **LANE B — make the login real.** Finish UNI-001: OAuth, sessions, the consent screen, the editor
 half. 🔴 **Blocked on Richard, not on work** — callback URLs need `community.nodegx.dev` and the
-domain **is not registered**. ⚠️ It now blocks **six** things: the admin routes UNI-002/003/004 did
-not build, UNI-003's account page, every write path in UNI-005, and **every write path in UNI-006**
-— setting an assignment, submitting and grading are all specced, driven, and reachable only from a
-test. 🆕 `src/lib/viewer.ts` is a working session reader; what is missing is the **issuer**.
+domain **is not registered**. It now blocks **seven** things: the admin routes UNI-002/003/004 did
+not build, UNI-003's account page, every write path in UNI-005 and UNI-006, and now **every
+authenticated read of the new API in a deployed build** — `src/lib/viewer.ts` reads a session and
+`scripts/seed.mjs` is the only thing that mints one.
 
 **LANE C — UNI-008, hosted publishing.** The last unbuilt platform task. 🔴 D9 made it a
-**data-holding** problem rather than a file-serving one, and recorded five obligations including a
-DPA and a retention policy. Deliberately Tier 3 and deliberately last; do not pull it forward
-because the wow is tempting.
+**data-holding** problem, with five obligations including a DPA and a retention policy. Deliberately
+Tier 3 and deliberately last.
 
-**LANE D — the editor remainder, and one small cross-repo debt.** UNI-012 with a packaged build
-budgeted; TUTOR-BOUNDARY §5's six adversarial attacks (needs a live provider); the D5 recents
-measurement, still spoiled. 🆕 **And one cheap, genuinely useful thing:** pin `LessonEvidence`'s
-field list in a spec in *this* checkout, so a field added to the editor's bundle fails a gate here
-rather than being silently narrowed by the platform. It is the third copy of a list whose other two
-copies are kept agreeing by a test.
+**LANE D — D17's half, and the editor remainder.** 🆕 **D17 is ruled and nothing serves a curriculum
+index** — the ruling's v0 is GitHub Pages on `nodegx-community`, and ⚠️ `has_pages: false` as of
+2026-08-16, so attaching it is still free. Plus UNI-012 with a packaged build budgeted;
+TUTOR-BOUNDARY §5's six adversarial attacks (needs a live provider); the D5 recents measurement,
+still spoiled; and the `LessonEvidence` field-list pin in *this* checkout (its third copy, kept
+agreeing with the other two by nothing).
 
-**My recommendation: A.** UNI-006 built a reader with no client, and UNI-011 is the client — with
-both of its blocking rulings already made.
+**My recommendation: A.** Slice 1 deliberately built no surface, and a mirror nobody can open is the
+one state this task can be left in that helps no one. Its two remaining ACs are also the two
+features D14 says are *the reason to transition*.
 
-## ⚠️ For Richard — item 1 is unchanged and now blocks six things
+## ⚠️ For Richard — item 1 is unchanged and now blocks seven things
 
 1. 🔴 **`community.nodegx.dev` is still not registered.** It blocks UNI-001's OAuth callback URLs.
-   **This is the one thing a session cannot do for itself.** Six built-but-unroutable things now
-   sit behind it — two marketplaces nobody can post to, an org workspace nobody can be invited to,
-   and now a teaching surface where **no teacher can set an assignment in a browser**.
-2. 🔴 **A Paddle account (D7) is still the thing standing between coaching and revenue.**
-   `recordPayment` still has no caller. Not urgent in the way item 1 is.
+   **This is the one thing a session cannot do for itself.** There is now an API as well as a set of
+   pages behind it, and in a deployed build **nobody can be signed in to either**.
+2. 🔴 **A Paddle account (D7)** is still what stands between coaching and revenue. `recordPayment`
+   still has no caller.
 3. **The twelve badge artworks still need drawing.** D4 ruled ~12 flat SVGs in the editor's idiom.
-4. ⚠️ **GitHub Pages is still unattached** (`has_pages: false` as of 2026-08-16), so D17's v0
-   remains free to set up. It stops being free after the first deploy.
+4. ⚠️ **GitHub Pages is still unattached** (`has_pages: false`, 2026-08-16), so D17's v0 remains
+   free to set up. It stops being free after the first deploy.
 5. ⚠️ **The F4 packaged-install scope call** (UNI-012) is still yours and still open.
-6. 🆕 **Three judgement calls in UNI-006, all reversible, all one line:**
-   - **An org-minor account CAN submit** — the evidence bundle only, and it cannot carry a string.
-     This is the answer to the question UNI-005 flagged and could not settle. ⚠️ It does **not**
-     reopen shelf publishing: a shelf item is free text and an evidence bundle is not.
-   - **A full project cannot be requested from an org-minor seat**, and the refusal is at the
-     *request* rather than at the upload — a teacher who can ask and a pupil who cannot answer is a
-     dead end that reads as a bug.
-   - **A whole-roster assignment includes staff**, so a teacher can pull and try the lesson they
-     set. The cost is that they appear in their own results table; the page groups them separately
-     rather than the audience rule knowing about teaching.
-7. ⚠️ **Carried and still open:** UNI-005's two calls (a minor reads but does not publish to the
-   shelf; a minor belongs to exactly one org), UNI-004's *"responding to an RFP requires clearing
-   D8's bar"*, and UNI-003's change to UNI-002's catalogue.
+6. 🆕 **One judgement call in UNI-011 slice 1, reversible, one line:** the assignments endpoint is
+   **not** subject to D15, so a pupil whose school switched the community off still pulls the
+   lessons that school set them. The alternative reading switches UNI-006 off for every school.
+7. ⚠️ **Carried and still open:** UNI-006's three calls (an org-minor may submit an evidence bundle;
+   a full project cannot be requested from an org-minor seat; a whole-roster assignment includes
+   staff), UNI-005's two, UNI-004's *"responding to an RFP requires clearing D8's bar"*, and
+   UNI-003's change to UNI-002's catalogue.
 
-## Gates (2026-08-16, nineteenth session)
+## Gates (2026-08-16, twentieth session)
 
-- **`nodegx-community`: 442 specs / 18 files, all pass. `tsc --noEmit` clean. `next build` succeeds**
-  (16 routes). Run with `npm run db:up && npm test` from the sibling checkout.
-- **The two new routes were driven with `curl` against a seeded database**, four personas, 16
-  consequences written before the drive. `npm run db:seed` now also seeds two assignments (one
-  runner-graded, one human-graded — D13's two modes from one schema), a submission graded twice so
-  AC2's trail is visible in a browser, and a **fifth dev session token** for the teacher, because
-  the results view is admin-only and would otherwise have exactly one reachable branch.
-- **This checkout: nothing touched but `dev-docs/`.** No editor gate was run and none was needed —
-  ⚠️ so do **not** quote a `test:ci` or `test:main` figure from this handover. There isn't one.
-  ⚠️ A peer (s38/P66) reported `test:ci` **2843 / 6 @ seed 39393** on **their** tree during the
-  fifteenth session. Relayed, not measured here — re-measure before quoting it as a floor.
+- **`nodegx-community`: 462 specs / 19 files, all pass. `tsc --noEmit` clean. `next build` 21
+  routes.** Run with `npm run db:up && npm test` from the sibling checkout.
+  ⚠️ **`npm run lint` is STILL not a gate there** — no ESLint config, so the script drops into an
+  interactive setup prompt. It has never run.
+- **This checkout: `test:main` 223 suites / 3458 specs, all pass** — measured this session, on a
+  tree that includes other sessions' work. 🔴 **Do not quote the handover's previous 209/3248; it
+  had already moved before this session started.** eslint clean on the four new files.
+  ⚠️ **No `test:ci` was run.** Do not quote one from this handover — there isn't one.
+- **The drive** ran against `next dev` on localhost with a seeded database, 14 consequences written
+  first. `npm run db:seed` now also seeds a **second school on D15's default** (`blackthorn`) with a
+  pupil and a **sixth dev session token**, because St Swithin's is `read_only` and the whole
+  `absent` branch was otherwise unreachable outside the suite — plus one assignment at that school,
+  since a 200 with an empty list is also what a broken route returns.
 
 ## Standing constraints
 
@@ -195,26 +191,26 @@ both of its blocking rulings already made.
 
 ## Things the next person will otherwise re-derive
 
+- 🆕 🔴 **A route handler is outside every sweep this phase has built.** They all quantify over
+  module exports; `tests/uni011-mirror-api.test.ts` is the one that quantifies over routes, and it
+  reads them **off disk**. Add a route, and it fails until you give it a verdict.
+- 🆕 🔴 **A literal NUL byte in a `.ts` file makes git call it binary and makes grep skip it**, and
+  it can be typed into a regex character class without any tool complaining.
+- 🆕 ⚠️ **`expect(value, message)` is vitest, not jest.** The platform suite takes the second
+  argument; this checkout's `test:main` does not, and it fails at compile rather than at runtime.
 - 🔴 **Never generate DDL from `src/db/schema.ts`.** It is a query mirror; the rulings live in
-  `src/db/sql/`. It cannot express CHECK constraints, triggers, or the string type postgres.js
-  actually returns for a `bigserial`.
+  `src/db/sql/`.
 - 🔴 **The drift spec checks tables and columns ONLY — including NOT enum names.** Its non-vacuity
-  floor is now **32**; the free-text census's is **80**; the AC3 sweep's export floor is **40**.
-- 🆕 🔴 **`created_at` is not an ordering key.** Two rows written in one transaction share `now()`
-  to the microsecond, so "the latest grading" was decided by whichever the planner reached first.
-  `submission_gradings.seq` is a `bigserial` for exactly this, and a five-write spec is the control.
-- 🆕 🔴 **PostgreSQL does not guarantee short-circuit `or`, and reading `OLD` during an INSERT is a
-  runtime error rather than a null.** `if a and (tg_op = 'INSERT' or old.x is null)` fails on the
-  ordinary path. Nested branches, not one clever condition.
+  floor is **32**; the free-text census's is **80**; the AC3 sweep's export floor is **40**; the new
+  route sweep's floor is **6 routes**.
+- 🔴 **`created_at` is not an ordering key** — `submission_gradings.seq` is a `bigserial` for
+  exactly this.
+- 🔴 **PostgreSQL does not guarantee short-circuit `or`, and reading `OLD` during an INSERT is a
+  runtime error rather than a null.**
 - 🔴 **A backtick inside a SQL comment nested in a tagged template literal opens a new template.**
-  Long notes go **above** the query, never inside it. (Not an issue in a `.sql` file, which is read
-  from disk.)
-- 🔴 **postgres.js has no nested `begin`.**
-- 🔴 **`gen_random_bytes` needs pgcrypto; `gen_random_uuid` does not.**
-- 🔴 **A shared SQL fragment must not have a hole a value gets pushed into.** The first draft of
-  `assignmentsForMember` did `FRAGMENT.replace('$VIEWER$', id)` inside `sql.unsafe` — an injection
-  site, even though the value came from a session lookup. The viewer now arrives as `v.id` from a
-  CTE both callers declare with a bound parameter.
+- 🔴 **postgres.js has no nested `begin`.** 🔴 **`gen_random_bytes` needs pgcrypto;
+  `gen_random_uuid` does not.**
+- 🔴 **A shared SQL fragment must not have a hole a value gets pushed into.**
 - 🔴 **`ports`, not `dynamicports`, is how a `Component Inputs` node declares its interface.**
 - 🔴 **`forEachNode` STOPS on a truthy return.** Use a block body.
 - 🔴 **`/usr/bin/grep -a`, always.** Plain `grep` here is ugrep and silently skips `.ts` as binary.
