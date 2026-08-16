@@ -256,6 +256,12 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   **first**; s28 declined to do it inside **P67**, a phase it is not working in. 🔴 **The index can
   no longer absorb a new pointer without a collapse. This needs a decision from you, not another
   session's restraint.**
+  ⚠️ **s29 filed its finding INTO an existing memory rather than adding a pointer, precisely because
+  of this** — and rewrote that pointer to carry the stronger trap in **fewer** characters, leaving the
+  index **net −6 code points / −5 UTF-16** on the session. 🔴 **The decision is unchanged: still over
+  on both measures.** ✅ **Do not copy a figure from this bullet — re-measure**, since a frozen budget
+  number under a standing item is the exact shape §3d is about:
+  `node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log([...s].length,s.length)' ~/.claude/projects/-Users-richardosborne-vscode-projects-OpenNoodl/memory/MEMORY.md`
 - 🟢 **A lockfile written by `start.ts` at *intent*** — the ~75s window in which no process check can
   be correct is a hole no filter can close.
 
