@@ -64,7 +64,7 @@ saving source throughout.
 | **`typecheck:core-ui`** | 44 errors, **none in any file touched**; `--listFiles` confirms the changed files are in the compile | ✅ **s44** |
 | **`lint:ci` ratchet** | ✅ exit 0, 876 against a 3916 baseline | ✅ **s44** |
 | `nodegx-backend` jest | ✅ 100 suites / 1085 | s40 — inherited |
-| `test:ci` (jasmine) | 🔴 **UNWITNESSED on the committed tree** — see below | — |
+| `test:ci` (jasmine) | ✅ **2843 / 6 @ 39393**, six by name — **WITNESSED on HEAD** (post-`3d3cbb22`) | run **2026-08-16 21:53:37**, results file fresh + agreeing with stdout |
 | `library:check` | ✅ 58/58 | s30 — inherited |
 
 ### 🔴 `test:main` has two load-flaky suites, and they are not yours
@@ -103,8 +103,30 @@ that the 20:37 run *"saw in-flight uncommitted work"*. **That was wrong.**
 🔴 **So the 7th is a genuine regression on committed code, not contamination and not CN-006's.**
 `9e76bae4` (20:43) is a red herring — it landed *after* the run that already showed 7.
 
-⚠️ **The attribution is solid; the COUNT is not witnessed. Record them separately, and do not quote
-2843/7 until a completed run says so.**
+### ✅ SETTLED — both numbers are right, about different trees
+
+| tree | reading |
+|---|---|
+| pre-`3d3cbb22` (golden 23 lines, 0 tags) | **2843 / 7** — the 7th real, and `f7da52d1`'s |
+| **HEAD**, post-`3d3cbb22` *"the golden was two lines short"* (25 lines, 2 tags), committed **21:52:24** | ✅ **2843 / 6**, run **21:53:37** |
+
+🔴 **A `2843 / 6` run at 21:53 was briefly published as REFUTING the attribution. It was measuring the
+fix** — the corrected golden was in the working tree from **21:32:56**, 21 minutes earlier.
+
+⚠️ **The mechanism, because it defeated three separate "is the checkout clean?" checks:** the spec
+reads its fixture with `fs.readFileSync` **from the WORKING TREE, never from a git object.** So
+*"the floor on the committed tree"* names **git state**, which is not what the spec read. A clean
+check covering processes and *your own* files still misses **a peer's uncommitted fix living in the
+tree** — on this checkout that is the normal case.
+
+✅ **So record two facts, not one: `git rev-parse HEAD` AND the mtimes of the fixtures the spec
+reads.** Only the second is what ran. ✅ **The golden's mtime alone settles this in one command** —
+`merge-base`, the commit graph and the spec's imports were all checked, and it was not.
+
+✅ **The one unambiguous positive: the prediction was written down as a NUMBER AND A NAME** — *2843/7,
+the `projectmodules` golden* — so it could be wrongly refuted and correctly reinstated inside an hour
+by people who had each already been wrong twice. ⚠️ **A prediction that is only a direction ("I expect
+it to fail") cannot be reinstated, because there is nothing to re-check.**
 
 ⚠️ **The miss worth more than the fix:** `git log -S"injectIntoHtml"` did **not** return `f7da52d1`,
 and that null nearly cleared it. The commit changes the *inputs* the spec compares, never the symbol's
@@ -112,7 +134,9 @@ name. **A symbol-scoped search cannot answer a behavioural question** — same f
 sweep and a dateless mtime: filter, then read the null as absence.
 
 🔴 **That golden is the ONLY cross-package check that the editor's injector still agrees with
-`nodegx-module-inject`** (`projectmodules.test.ts:14`). It has been red on the branch since 16:39.
+`nodegx-module-inject`** (`projectmodules.test.ts:14`). It was red on the branch from **16:39** until
+`3d3cbb22` at **21:52:24** — ✅ **green now, and it did its job: the producer's own package tests
+stayed green throughout while only the consumer's golden noticed.**
 
 **s44 did not run `test:ci`, as a claim rather than an omission:** `.ts`/`.tsx` under `src/`, two new
 specs, no `.jsx`, nothing under `packages/noodl-editor/tests/`. 🔴 **That reasoning does not transfer
