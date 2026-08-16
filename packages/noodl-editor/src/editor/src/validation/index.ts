@@ -56,10 +56,16 @@ export {
   mineFunctionScriptPorts,
   FUNCTION_NODE_TYPE,
   FUNCTION_INPUT_PREFIX,
-  FUNCTION_OUTPUT_PREFIX
+  FUNCTION_OUTPUT_PREFIX,
+  // FIX-006 §3 — the Script node that runs once at load and can never be re-entered.
+  checkScriptNodeRunnable,
+  scriptDeclaresRunnableSurface,
+  SCRIPT_NODE_TYPE,
+  SCRIPT_NODE_API_MEMBERS
 } from './functionPorts';
 export type {
   CheckFunctionNodePortsOptions,
+  CheckScriptNodeRunnableOptions,
   FunctionWireLike,
   MinedFunctionPorts,
   ScriptCarryingNode

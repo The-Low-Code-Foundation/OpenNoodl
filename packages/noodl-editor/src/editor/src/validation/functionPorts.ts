@@ -73,6 +73,108 @@ import { DiagnosticCode, type Diagnostic, type Severity } from './diagnostics';
 /** The Function node. `Javascript2` (Script) declares its ports and does not prefix them. */
 export const FUNCTION_NODE_TYPE = 'JavaScriptFunction';
 
+/** The Script node, whose ports are runtime-discovered by parsing its `code`. */
+export const SCRIPT_NODE_TYPE = 'Javascript2';
+
+/**
+ * The members of the injected `Node` object the parser actually reads back.
+ *
+ * ⚠️ **Hand-kept against `javascriptnodeparser.js`, like the regexes above**, and
+ * the line references are there so drift is checkable rather than assumed:
+ * `Inputs`/`Outputs` `:165-166`, `setOutputs` `:171`, `OnInit` `:178`,
+ * `OnDestroy` `:181`, `Setters` `:184`, `OnInputsChanged` `:189`,
+ * `Signals` `:203`. Touching one of those lines should bring you here.
+ */
+export const SCRIPT_NODE_API_MEMBERS = [
+  'Inputs',
+  'Outputs',
+  'Signals',
+  'Setters',
+  'OnInputsChanged',
+  'OnInit',
+  'OnDestroy',
+  'setOutputs'
+] as const;
+
+/**
+ * Does this body declare anything the runtime can call after load?
+ *
+ * Three generations, all live, and the third is the one the shipped library
+ * actually uses — see {@link DiagnosticCode.UnrunnableScriptNode} for the census
+ * that made counting all three non-optional. `Script` is the parser's own alias
+ * for `Node` (`getCodePrefix`), so both spellings count; the lowercase `script(`
+ * is the unrelated 2nd-generation call, and the distinction is case-sensitive.
+ */
+const SCRIPT_DECLARATION = new RegExp(
+  ['\\bdefine\\s*\\(', '\\bscript\\s*\\(', `\\b(?:Node|Script)\\s*\\.\\s*(?:${SCRIPT_NODE_API_MEMBERS.join('|')})\\b`].join(
+    '|'
+  )
+);
+
+/**
+ * Whether a Script node's body declares a surface the runtime can re-enter.
+ *
+ * Exported for the specs and for anything else that needs the question without
+ * the diagnostic — the predicate is the interesting half of this rule.
+ */
+export function scriptDeclaresRunnableSurface(code: unknown): boolean {
+  if (typeof code !== 'string' || code.trim().length === 0) return false;
+  return SCRIPT_DECLARATION.test(code);
+}
+
+export interface CheckScriptNodeRunnableOptions {
+  /** Component identifier for the diagnostic's location. */
+  component: string;
+  /** Severity for these findings. Defaults to `warning` — see the code's note. */
+  severity?: Severity;
+}
+
+/**
+ * FIX-006 §3 — a Script node whose body runs once and can never be triggered.
+ *
+ * The shape the report described: Function-shaped code in a `Javascript2` node.
+ * It mints ports from its `Inputs.`/`Outputs.` mentions, so the graph looks
+ * wired, and it has no `run` signal to wire, so nothing can ever re-enter it.
+ */
+export function checkScriptNodeRunnable(
+  nodes: readonly ScriptCarryingNode[],
+  options: CheckScriptNodeRunnableOptions
+): Diagnostic[] {
+  const { component, severity = 'warning' } = options;
+  const diagnostics: Diagnostic[] = [];
+
+  for (const node of nodes) {
+    if (node.type !== SCRIPT_NODE_TYPE) continue;
+    const parameters = node.parameters ?? {};
+    // The body is elsewhere, so `code` is not evidence of anything.
+    if (parameters['useExternalFile'] === 'yes') continue;
+    const code = parameters['code'];
+    // Unfinished, not wrong.
+    if (typeof code !== 'string' || code.trim().length === 0) continue;
+    if (scriptDeclaresRunnableSurface(code)) continue;
+
+    const label = node.label ? `"${node.label}"` : node.type;
+    diagnostics.push({
+      code: DiagnosticCode.UnrunnableScriptNode,
+      severity,
+      message:
+        `The Script node ${label} declares nothing the runtime can call. Its body runs once, when ` +
+        'the project loads, and never again — a Script node has no `run` signal and no static ' +
+        'outputs, so there is no port that could re-enter it. Any ports it appears to have were ' +
+        'mined from its `Inputs.`/`Outputs.` mentions, which is what makes the graph look wired.',
+      location: { component, nodeId: node.id, nodeType: SCRIPT_NODE_TYPE },
+      suggestion:
+        'If this is one-off code that should run on a signal, use a Function node ' +
+        `(\`${FUNCTION_NODE_TYPE}\`) instead — it has a \`run\` input and declares outputs you can ` +
+        'wire. If it belongs in a Script node, declare a surface the runtime can re-enter: ' +
+        '`Node.Signals.Go = function () { … }` for a signal input, `Node.Inputs` / `Node.Outputs` ' +
+        'for typed ports, or `Node.OnInit` for load-time setup you meant to be load-time.'
+    });
+  }
+
+  return diagnostics;
+}
+
 /** `simplejavascript.ts:736-739`. */
 export const FUNCTION_INPUT_PREFIX = 'in-';
 export const FUNCTION_OUTPUT_PREFIX = 'out-';

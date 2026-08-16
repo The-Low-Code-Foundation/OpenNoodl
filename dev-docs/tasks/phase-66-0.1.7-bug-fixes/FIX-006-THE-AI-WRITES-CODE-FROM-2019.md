@@ -91,6 +91,63 @@ the reporter was working in the editor. Both blocks are therefore exported and w
 `prompts/authoring.ts`'s system prompt as well. The prompt stays byte-identical across calls (the
 block is computed once from a frozen array), which `tests/ai/project-docs.test.ts` asserts.
 
-🔴 **Fix 3 (the validator rule) is NOT built** — a `Javascript2` node with no `define(`/`script(`
-call should be a warning, and that shape still escapes every gate. **Nothing here is driven**: both
-fixes are prompt changes, and the honest grade is a re-run of the authoring measurements.
+## Fix 3 — what shipped (2026-08-16, session 36)
+
+**`DiagnosticCode.UnrunnableScriptNode`** (`unrunnable-script-node`), a **warning**, deliberately
+**not** in `AUTHORED_BLOCKING_WARNINGS`: it advises and never rejects a write. `checkScriptNodeRunnable`
+lives in `functionPorts.ts` beside the FIX-007 check that already owns the code-node domain, and is
+wired into `authoredPreconditionDiagnostics` — the composition **both** clients call, which is what
+makes it true of the editor and the MCP server rather than of one file.
+
+### 🔴 This task's proposed predicate was wrong, and the corpus is what said so
+
+§3 above asks for *"a `Javascript2` node whose `code` contains no `define(`/`script(` call"*.
+**Measured against the repo's 88 Script nodes, that predicate fires on 13 — every one a working
+library prefab or module.** The parser injects four parameters (`javascriptnodeparser.js:22`) and
+aliases a fifth (`getCodePrefix`: `const Script = Node`), so there are **three** generations of
+declaration API, and the third is the one the shipped library actually uses:
+
+| Generation | Surface | Parser |
+|---|---|---|
+| 1st | `define({…})` | `:44` |
+| 2nd | `script({…})` | `:57` |
+| 3rd | `Node.*` / `Script.*` — `Inputs`/`Outputs` `:165-166`, `OnInit` `:178`, `OnDestroy` `:181`, `Setters` `:184`, `OnInputsChanged` `:189`, `Signals` `:203` | — |
+
+Counting all three: **0 of 88**. The narrowing went 13 → 1 → 0, and the last one to fall was
+`library/prefabs/media-query`, which declares *only* `Node.OnInit` + `Node.OnDestroy` — no ports at
+all. ⚠️ **Two skips are decisions, not oversights:** `useExternalFile: "yes"` (the body is a file
+this check cannot read, so `code` is not evidence) and an absent/blank `code` (unfinished ≠ wrong).
+
+### The instrument was checked in both directions
+
+🔴 **0 of 88 is also what a dead predicate scores.** So: the four known-bad shapes (the reported
+node, a bare expression, a console-only body, an IIFE) all fire, and the seven known-good ones all
+stay silent — the two arms **disagree**, which is the only thing that makes the silence mean
+anything. Mutating the predicate to always-true and to always-false each kills **5 of 18** specs;
+removing the one wiring line kills **exactly 1**, the wiring spec.
+
+⚠️ **`SCRIPT_NODE_API_MEMBERS` is a hand-kept copy of runtime internals**, the same copy-not-import
+constraint (and drift risk) as the regexes beside it. So the spec **loads and runs the real parser**
+and requires every member on the list to produce an observable effect in it — plus a control that an
+invented member produces none, because a list graded only by "the bodies work" would pass with
+anything on it.
+
+## Acceptance criteria — status
+
+| AC | Status | Evidence |
+|---|---|---|
+| **1** — the request produces a Function/Expression, not a Script-in-a-component | 🔴 **not driven** | Needs a live authoring run; prompt-only change, no spec can grade it |
+| **2** — generated code uses `const`/`let` and `slice` | 🔴 **not driven** | Same run as AC1 |
+| **3** — bad Script warns, `define({…})` Script does not | ✅ **DRIVEN** | Over real MCP stdio into a scratch copy: bad ⇒ `warnings: 1`, `unrunnable-script-node`; `define({…})` ⇒ `warnings: 0`. Both `errors: 0` and `"created"`, so it advises without blocking |
+| **4** — the block renders in both clients' context, on the wire | ◐ **MCP half DRIVEN** | `get_project_info` over real stdio: read-write carries `THREE WAYS TO COMPUTE` + `CODE STYLE` (16,213 chars), read-only omits them (667). Control pair on one variable. **Editor half still source-only** |
+
+✅ **AC4's leading type names were checked against `list_node_types`, not assumed**: `Expression`,
+`Logic Builder`, `JavaScriptFunction` and `Javascript2` are all real `typeName`s (displayName
+"Visual Function", "Function", "Script"), so the block really does name the ids an agent must write.
+
+⚠️ **`authoringTraps` is gated on `--allow-writes`** (`read.ts:116`). A read-only probe omits it *by
+design* — a first pass here read that absence as a defect. Measure the read-write arm.
+
+🔴 **AC1 and AC2 remain the undriven half**, and they are the reason fixes 1+2 are still ungraded:
+both are prompt changes, so the honest grade is a re-run of the authoring measurements on the live
+build loop.

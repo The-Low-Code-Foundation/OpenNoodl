@@ -59,7 +59,7 @@ import {
   type ComponentInterfaceView
 } from './componentInterface';
 import { DiagnosticCode, type Diagnostic } from './diagnostics';
-import { checkFunctionNodePorts, type FunctionWireLike } from './functionPorts';
+import { checkFunctionNodePorts, checkScriptNodeRunnable, type FunctionWireLike } from './functionPorts';
 import { checkInstancePorts, type AuthoredPortLike } from './instancePorts';
 import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
 import { checkParameterValues } from './parameterValues';
@@ -395,7 +395,9 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     // DSG-004 §2.3 — doctrine §3, as an info that never blocks.
     ...checkTypographyHierarchy(nodes, { component, connectedInputs: connections }),
     // FIX-007 §2 — the wire the port rule is right to skip and nothing else could see.
-    ...checkFunctionNodePorts(nodes, { component, wires, catalog })
+    ...checkFunctionNodePorts(nodes, { component, wires, catalog }),
+    // FIX-006 §3 — a Script node that runs once at load and can never be re-entered.
+    ...checkScriptNodeRunnable(nodes, { component })
   ];
 }
 

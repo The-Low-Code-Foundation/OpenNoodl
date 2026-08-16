@@ -605,7 +605,53 @@ export enum DiagnosticCode {
    * Error severity: a wire to a port that provably does not exist, on a node
    * that provably has the prefixed one, is not something anyone means to write.
    */
-  UnprefixedFunctionPort = 'unprefixed-function-port'
+  UnprefixedFunctionPort = 'unprefixed-function-port',
+  /**
+   * FIX-006 §3: a `Javascript2` (Script) node whose body declares nothing the
+   * runtime can call again. Its code runs **once**, at parse time, and never
+   * again — while still minting ports from `Inputs.`/`Outputs.` mentions, which
+   * is precisely what makes the graph look correctly wired.
+   *
+   * This is the reported defect: the AI wrote Function-shaped code into a Script
+   * node, and the user's note — *"it also didn't add any input or output signals,
+   * which means the Script can't be run"* — understates it. There is no `run`
+   * signal to add: `Javascript2` has none, and only a declared surface brings one.
+   *
+   * ## The predicate is "declares no surface", not "has no define("
+   *
+   * ⚠️ The task file proposed `define(`/`script(`. **Measured against the repo's
+   * 88 Script nodes, that fires on 13 of them — every one a working library
+   * prefab or module.** The parser injects four parameters
+   * (`javascriptnodeparser.js:22`) and aliases a fifth
+   * (`getCodePrefix`: `const Script = Node`), so there are three generations of
+   * declaration API, not one, and the third is the one the library actually uses:
+   *
+   *  - 1st gen `define({…})` — `:44`
+   *  - 2nd gen `script({…})` — `:57`
+   *  - 3rd gen `Node.*` / `Script.*` — `Inputs` and `Outputs` at `:165-166`,
+   *    `OnInit` `:178`, `OnDestroy` `:181`, `Setters` `:184`,
+   *    `OnInputsChanged` `:189`, `Signals` `:203`
+   *
+   * With all three counted the rule fires on **0 of 88** — and the four known-bad
+   * shapes (the reported node, a bare expression, a console-only body, an IIFE)
+   * all still fire, so the silence is discrimination rather than a dead predicate.
+   *
+   * ## What it deliberately does not do
+   *
+   * `useExternalFile: "yes"` is skipped: the body lives in a downloaded file this
+   * check cannot read, so its `code` says nothing about what the node declares.
+   * An absent or blank `code` is skipped too — an empty node is unfinished, not
+   * wrong, and the report is about a node that looks complete.
+   *
+   * A commented-out `define(` suppresses the warning. That is a false *negative*,
+   * the safe direction, and it matches the parser's own decision not to strip
+   * comments before mining ports (see this module's note).
+   *
+   * Warning, not error, and **not** in `AUTHORED_BLOCKING_WARNINGS`: a one-shot
+   * setup script with no declared surface is unusual but legal, so this advises
+   * and never rejects a write.
+   */
+  UnrunnableScriptNode = 'unrunnable-script-node'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────
