@@ -255,10 +255,13 @@ beside a live stack**, like `test:main`.
 
 **`node`, never `python`.** Budget **17,510 UTF-16**.
 
-🔴 **AT s39 CLOSE IT IS 17,753 UTF-16 (17,660 code points) — 243 OVER, and s39 did not put it
-there.** It was already over on arrival; peers grew it. s39 added **no index line**, filing both its
-findings *into* memories that already have pointers. **Whoever next has slack should trim it**, and
-should do so knowing peers edit this file concurrently — read it immediately before writing.
+🔴 **It is OVER, and it is moving while you read this.** s39 measured **17,753** UTF-16 at its start
+and **18,133** ninety minutes later — already over on arrival, and +380 during one session without
+s39 touching it. **Do not quote either figure: take your own.** s39 added **no index line**, filing
+both its findings *into* memories that already have pointers, which costs zero budget.
+
+⚠️ **Whoever trims it must read it immediately before writing** — several peers append to this file
+concurrently, so a trim computed from a five-minute-old read silently discards their lines.
 
 ```
 node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log([...s].length,s.length)' \
