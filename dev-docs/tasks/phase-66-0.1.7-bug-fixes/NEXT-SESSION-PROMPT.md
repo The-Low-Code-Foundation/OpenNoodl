@@ -102,11 +102,36 @@ dates, which is the whole point**:
 | **2026-08-15** 21:21:42 | 2843 / 6 | 39393 |
 | ✅ **2026-08-16** 16:01:26 — **the most recent** | **2843 / 6** | 39393 |
 
-**Anchors:** `9e76bae4` (CN-006, touches projectmodules) committed **2026-08-16 20:43:04**.
-The results file that read **7** was written **2026-08-16 20:37**, on the in-flight uncommitted tree.
+🔴 **THE COMMITTED TREE IS UNWITNESSED**, and the newest complete `test:ci` is 16:01 on 08-16.
 
-🔴 **THEREFORE THE COMMITTED TREE IS UNWITNESSED.** The newest `test:ci` is 16:01 on 08-16, which is
-**four and a half hours BEFORE** `9e76bae4`. Nothing has graded the projectmodules work as committed.
+### 🔴 The 7th failure is on COMMITTED code — `f7da52d1`, mechanism verified
+
+⚠️ **s30 wrote that the 20:37 run "saw in-flight uncommitted work". That was wrong.** Attribution
+raised by `uds:/tmp/cc-socks/9204.sock` from the timing straddle; **mechanism** then verified here:
+
+| fact | evidence |
+|---|---|
+| the spec compares the editor's injector output to a committed snapshot | `projectmodules.test.ts:87-92`, golden at `tests/testfs/module-inject/expected-inject.snapshot.txt` |
+| **the injector changed** `2026-08-16 16:39:50` | `f7da52d1` *"fix(cn-003): a kit can say its own name"* → `packages/nodegx-module-inject/src/index.js` (+45) |
+| **the golden was NOT regenerated** | last touched **2026-07-25** by `19ecdff7`; `f7da52d1` does not contain it |
+| `f7da52d1` is an **ancestor of HEAD** | `git merge-base --is-ancestor` → yes |
+| the runs straddle it | 16:01 → **6** · `f7da52d1` 16:39:50 · 20:37 → **7** |
+
+🔴 **So the floor on the committed tree is almost certainly 2843 / 7, and the 7th is a genuine
+regression, not contamination and not CN-006's.** `9e76bae4` (20:43) is a red herring — it landed
+*after* the 20:37 run that already showed 7.
+
+⚠️ **"Almost certainly" is doing real work: no completed run has graded the committed tree.** The
+attribution is solid; the count is not witnessed. Record them separately.
+
+⚠️ **s30's own miss, worth the line:** `git log -S"injectIntoHtml"` did **not** return `f7da52d1`, and
+that null nearly cleared it. The commit changes the *inputs* the spec compares, never the symbol's
+name. **A symbol-scoped search cannot answer a behavioural question** — same family as the seed-scoped
+sweep and the dateless mtimes: filter, then read the null as absence.
+
+🔴 **The spec's own header says this golden is the ONLY cross-package check that the editor's injector
+still agrees with `nodegx-module-inject`** (`projectmodules.test.ts:14`). It is doing exactly its job
+and has been red on `main` since 16:39.
 
 🔴 **s30 first wrote "four runs exist" and that was false — the trap is worth more than the count.**
 The sweep grepped `"Randomized with seed 39393"`, so the 10:58 run at **seed 58032 was invisible to
