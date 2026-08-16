@@ -587,3 +587,36 @@ saw what they saw.** (Peer's catch, `c6ce10fd`.)
 🔴 **Candidate (3) is the cheapest and highest-value next probe, and it reaches past this task:** if
 `fromJSON` + `addRoot` never reaches the runtime's graphModel, **every phase-66 drive built that way
 has been measuring a slightly different object than a real user's node.**
+
+### ✅ s27 — C1 CLOSED, and both of my remaining caveats were wrong
+
+Driven by a peer on a **picker-created** node, teardown clean.
+
+🔴 **C1's "fixture artefact" candidate is DEAD — `fromJSON` + `addRoot` IS the product's path.**
+`NodePicker.utils.ts:15-41` builds every picked node with `NodeGraphNode.fromJSON({…})` then
+`model.addRoot(node, {undo:true, label:'create'})` (verified independently here). **So my drive
+measured the same object a real user's node is**, and the caution I put in the handover — *"build
+the node the normal way, not `fromJSON`"* — was wrong advice.
+
+🔴 **C1's viewer cell: the premise was false, so the cell was never reachable.** The editor hosts an
+**always-on `<webview src="localhost:8574">` "Noodl Viewer"** runtime with no preview action taken.
+⚠️ `npm run cdp -- targets` prints only `page` targets and **hides it**; `curl :9222/json/list`
+shows it as type `webview`. So *"declared + no live runtime"* is not author-reachable and
+**§1 is the copy question.**
+
+✅ **The gate reproduced independently, with an in-situ control**: dynamic-port pushes on one node
+went `out-Done, out-Result` (undeclared) → `outtype-Done, out-Done, outtype-Result, out-Result`
+(declared). Same script, declaration the only variable.
+
+🔴 **C2's table is wrong in its SILENCE column — measured beside a known-firing control.** Both
+value-shaped calls throw **and warn**:
+
+| written, undeclared | throws | diagnostic |
+|---|---|---|
+| `Outputs.Done.send()` | ✅ *"Cannot read properties of undefined (reading 'send')"* | ✅ **fires**, names line 1 |
+| `Outputs.Done_1()` | ✅ *"Outputs.Done_1 is not a function"* | ✅ **fires**, names line 1 |
+
+✅ So the throw I recorded as a **source read** is now **driven** — but *"no diagnostic / no surface
+at all"* is **false**. ⚠️ **The parser-asymmetry ruling loses its severity argument**: the author
+gets a runtime error naming the line. What remains is only that there is **no Type row** to fix it
+from, which is the same copy/discoverability question as §1 rather than a separate coverage gap.
