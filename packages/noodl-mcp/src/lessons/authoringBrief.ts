@@ -62,6 +62,14 @@ export const CONDITION_EXAMPLES: ReadonlyArray<{ readonly def: LessonConditionDe
   {
     def: { activeComponentEquals: '/#__page__/Home' },
     note: '⚠️ same — which component is open on the canvas is not a property of the files'
+  },
+  {
+    def: { routerLists: '/#__page__/About' },
+    note: '🔴 the page is REACHABLE — some Router lists it. A page component nobody routed to is unreachable'
+  },
+  {
+    def: { node: '/#__page__/Home:%Page:%Router', routerLists: '/#__page__/About' },
+    note: 'the same question aimed at one router, for a lesson that teaches nested routing or a Page Stack'
   }
 ];
 
@@ -181,6 +189,41 @@ must hold at once.
 
 ${conditionLines()}
 
+⚠️ **\`routerLists\` is the one verb whose value is not a node path.** It takes a
+component's **legacy name** — the same string the router stores in \`routes\` and a
+RouterNavigate aims at, e.g. \`/#__page__/About\` — never a URL like \`/about\` and
+never a \`Component:%Type\` address. Its \`node\` is optional: leave it off and any
+Router or Page Stack in the project may answer, which is the question a learner's
+app actually cares about.
+
+## 🔴 Check what your prose actually asked for
+
+Read every step's \`body\` back beside its \`completeWhen\` and ask one question:
+**if the learner does only what the conditions check, does the app work?**
+
+This is the failure that gets shipped, and there is a reason it is *always* in the
+same direction. **A condition that is too strong is a hard refusal** — it will not
+hold against your own solution, and the gate names the step and stops. **A
+condition that is too weak passes every class silently.** So the pressure on you
+points one way, and nothing pushes back. Five steps in the last five lessons
+written through this brief checked less than their prose asked; two of them left a
+learner able to finish the lesson with an app that does not work.
+
+The two shapes to look for, both real:
+
+- **You told them a value; you checked only that something is set.** "Set Type to
+  \`json\`" graded with \`hasParams: ["type"]\` passes with Type left on \`csv\` —
+  and the list three steps later is empty. If the body names the value, the
+  condition is \`paramsEqual\`. If it genuinely does not matter, \`hasParams\` is
+  right — but say so on purpose.
+- **You told them a route; you checked the destination.** "Create the page from
+  the Router's Pages list, then add a Text" graded with the Text's contents passes
+  for a component created any other way — which is unreachable, so the next step's
+  navigation silently does nothing. That is what \`routerLists\` is for.
+
+⚠️ A step whose prose asks for two things needs two conditions. They all have to
+hold at once, so adding one costs nothing but the line.
+
 ## 🔴 The starter must NOT already satisfy any step
 
 Whatever a step's \`completeWhen\` checks for has to be **absent from the starter**.
@@ -228,7 +271,16 @@ one of them passes**:
   already holds against your starter.
 - **F3** — an address that would resolve to the wrong node if a second node of
   that type existed.
-- **F4** — a solution that validates and draws nothing on screen.
+- **F4** — a solution that does not validate, draws nothing on screen, or draws
+  something the render reports as broken: placeholder text where content should
+  be, an empty list, a missing image. ⚠️ **It renders the router's start page.**
+  A defect on any *other* page is not seen by F4, so a lesson that teaches a
+  second page has its own subject unscored — check that one yourself.
+
+🔴 **None of these four scores whether the lesson is any good.** They cannot see a
+step whose condition is weaker than its prose, and they cannot see a step that
+grades one correct answer and rejects another equally correct one. Those are
+yours.
 
 The refusal names the step, the class and what to change. Fix and call it again.
 `;

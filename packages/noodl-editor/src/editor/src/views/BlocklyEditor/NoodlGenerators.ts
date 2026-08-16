@@ -20,6 +20,7 @@ import { HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-build
 import { appConfigReadExpression, APP_CONFIG_BLOCK_TYPE } from './appConfig';
 import { libraryReadExpression, LIBRARY_GLOBAL_BLOCK_TYPE } from './appLibraries';
 import { initBlockProbes } from './BlockProbes';
+import { convertModeExpression } from './convertModes';
 import { windowPathExpression, WINDOW_BLOCK_TYPE } from './windowAccess';
 
 /**
@@ -53,6 +54,38 @@ export function initNoodlGenerators() {
 
   // Registered libraries and `window` (VFN-012 §2/§3)
   initBrowserGenerators();
+
+  // Convert and log (FIX-004 §A)
+  initUtilityGenerators();
+}
+
+/**
+ * Utility Generators (FIX-004 §A)
+ */
+function initUtilityGenerators() {
+  /**
+   * Convert — generates `Number(x)` / `String(x)` / `Boolean(x)` / `parseInt(x, 10)` /
+   * `parseFloat(x)` from the mode table.
+   *
+   * `Order.NONE` on the argument so `valueToCode` parenthesises whatever it returns, and
+   * `Order.FUNCTION_CALL` on the result because that is what a call expression binds as —
+   * without it, `convert of (a) ** 2` would generate the wrong precedence.
+   *
+   * The empty-socket default is `''` rather than `'null'`: `Number(null)` is `0` and
+   * `Boolean(null)` is `false`, both of which are *plausible* answers that hide the mistake,
+   * whereas `Number(undefined)` is `NaN` and shows up immediately. An unplugged socket is an
+   * unfinished program and should read as one.
+   */
+  javascriptGenerator.forBlock['noodl_convert'] = function (block) {
+    const value = javascriptGenerator.valueToCode(block, 'VALUE', Order.NONE) || 'undefined';
+    return [convertModeExpression(block.getFieldValue('MODE'), value), Order.FUNCTION_CALL];
+  };
+
+  // Log - generates: console.log(value);
+  javascriptGenerator.forBlock['noodl_log'] = function (block) {
+    const value = javascriptGenerator.valueToCode(block, 'VALUE', Order.NONE) || "''";
+    return `console.log(${value});\n`;
+  };
 }
 
 /**

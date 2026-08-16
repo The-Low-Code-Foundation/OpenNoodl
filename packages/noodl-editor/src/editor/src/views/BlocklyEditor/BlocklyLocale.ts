@@ -119,6 +119,7 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     math: 'Maths',
     text: 'Texte',
     lists: 'Listes',
+    debug: 'Débogage',
     variables: 'Variables',
     functions: 'Fonctions',
     myBlocks: 'Mes blocs'
@@ -136,6 +137,7 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     math: 'Matemáticas',
     text: 'Texto',
     lists: 'Listas',
+    debug: 'Depuración',
     variables: 'Variables',
     functions: 'Funciones',
     myBlocks: 'Mis bloques'
@@ -153,6 +155,7 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     math: 'Mathematik',
     text: 'Text',
     lists: 'Listen',
+    debug: 'Debug',
     variables: 'Variablen',
     functions: 'Funktionen',
     myBlocks: 'Meine Blöcke'
@@ -170,6 +173,7 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     math: 'Matematica',
     text: 'Testo',
     lists: 'Liste',
+    debug: 'Debug',
     variables: 'Variabili',
     functions: 'Funzioni',
     myBlocks: 'I miei blocchi'
@@ -187,6 +191,7 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     math: 'Wiskunde',
     text: 'Tekst',
     lists: 'Lijsten',
+    debug: 'Debug',
     variables: 'Variabelen',
     functions: 'Functies',
     myBlocks: 'Mijn blokken'
@@ -204,6 +209,7 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     math: 'Matemática',
     text: 'Texto',
     lists: 'Listas',
+    debug: 'Depuração',
     variables: 'Variáveis',
     functions: 'Funções',
     myBlocks: 'Meus blocos'

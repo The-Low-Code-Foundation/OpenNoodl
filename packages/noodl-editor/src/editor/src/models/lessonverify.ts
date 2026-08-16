@@ -345,6 +345,30 @@ export function nodePathsInCondition(def: LessonConditionDef): Array<{ field: st
   return paths;
 }
 
+/**
+ * Problems with the `routerLists` value, which is a **component legacy name**
+ * and not a node path — the one place in the vocabulary where those two live
+ * side by side in the same object.
+ *
+ * 🔴 That adjacency is the whole reason this check exists. `{ node: "…",
+ * routerLists: "…" }` puts a node path and a component name one line apart, and
+ * the mistake it invites is writing the second in the grammar of the first. A
+ * value with a `:` in it is a node path; unscoped it would then be compared
+ * against `routes` entries and never match, which is the silent never-completes
+ * class F1 exists for.
+ *
+ * ⚠️ Only the unarguable shape is reported. Whether `/About` names a real
+ * component is not checkable here — this verifier has no project, by design.
+ */
+export function routerListsProblems(value: string): string[] {
+  if (!value.includes(':')) return [];
+  return [
+    `"${value}" looks like a node path. "routerLists" takes a component's legacy name — the same string ` +
+      `the router stores in its routes and a RouterNavigate aims at, e.g. "/#__page__/About" — not a ` +
+      `"Component:%Type:#Label" address. As written it will never match.`
+  ];
+}
+
 /** Every string in one authored condition that is matched against `node.type.name`. */
 export function typeNamesInCondition(def: LessonConditionDef): string[] {
   const d = def as Record<string, unknown>;
@@ -486,6 +510,20 @@ export function verifyLessonManifest(
             where: `${where} ("${field}")`,
             step: stepIndex,
             value: path,
+            message
+          });
+        }
+      }
+
+      const routerLists = (def as Record<string, unknown>).routerLists;
+      if (typeof routerLists === 'string') {
+        for (const message of routerListsProblems(routerLists)) {
+          findings.push({
+            code: 'unmatchable-node-path',
+            severity: 'error',
+            where: `${where} ("routerLists")`,
+            step: stepIndex,
+            value: routerLists,
             message
           });
         }

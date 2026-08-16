@@ -372,6 +372,11 @@ say it — `paramsEqual` on a nested object with an array in it is the only rout
 enough that no author would reach for it. This is the one place in the run where I could not have
 written a better condition with the verbs available.
 
+> ✅ **CLOSED 2026-08-16 (slice 4) — `routerLists`.** The gap is now a verb; §12.4 has the design, the
+> control pair and what it cost. 🔴 **The rest of this table is untouched**, and deliberately: the
+> other four rows are authoring choices that better authoring *could* have made, and no verb fixes
+> the gradient that produced them.
+
 **F5 (variant-blind):** thin. L3 step 5 demands the direct `currentCount → text` wire and would
 reject an equally correct route through an Expression or String node; L1 step 3's exact-string
 `paramsEqual` would reject `Hello, NodeGX ` with a trailing space and say nothing useful. Neither is
@@ -455,9 +460,65 @@ reader can disagree with individually rather than as a verdict.
    still invisible — including to this new check, which can only see what the render rendered.
 2. 🔴 **Take §8.2 to phase 69 / CN-001**, which is rewriting the same file. Rendering every routed
    page, not just `startPage`, fixes `render_report` and F4 together.
-3. ⚠️ **Consider a "weaker than the prose" pass in the brief.** Not a gate — F6 is human by
-   definition — but the brief could name the gradient in §9 out loud: *"F2 punishes a condition that
-   is too strong and nothing punishes one that is too weak, so check what your prose asked for."*
-4. ⚠️ **A verb for router registration** would close the one hole in the run that better authoring
-   could not.
+3. ✅ **§12.3 DONE 2026-08-16 (slice 4).** The brief now carries *"🔴 Check what your prose actually
+   asked for"* — the gradient named out loud, with the one question to ask (*if the learner does only
+   what the conditions check, does the app work?*) and the two shapes it took in this run: **you told
+   them a value and checked only that something is set**, and **you told them a route and checked the
+   destination**. Two specs pin it; a brief that quietly dropped the sentence would leave §9's
+   finding with nothing acting on it.
+
+   ⚠️ **The brief's F4 paragraph was also stale and is corrected in the same change.** It read *"a
+   solution that validates and draws nothing on screen"* — true before slice 3, and since then F4
+   also fails on what the render says about what it *did* draw. It now says so, **and says out loud
+   that F4 renders the start page only** (§8.2), so an author of a multi-page lesson is told their
+   subject is unscored rather than left to infer it. A model authoring against the older sentence
+   would have read a rendered page as a scored one.
+4. ✅ **§12.4 DONE 2026-08-16 (slice 4) — `routerLists`.** The one hole in the run that better
+   authoring could not have closed now has a verb:
+
+   ```json
+   { "routerLists": "/#__page__/About" }                          // any router lists it
+   { "node": "App:%Router", "routerLists": "/#__page__/About" }   // that one does
+   ```
+
+   ✅ **Graded as the control pair the finding actually was**, because the finding was never "a
+   lesson was wrong" — it was *"two projects that differ in whether the learner's app works score
+   identically."* Both arms are in the spec: the same About page, the same heading, differing only in
+   the router's `routes` array. The old condition **passes both** (asserted, as the finding rather
+   than as a regression guard); the verb separates them. Re-run with the evaluation branch disabled:
+   **14 of the 25 new specs fail and all 251 pre-existing pass**, so the branch is the only thing
+   that moved.
+
+   🔴 **Three judgements inside it worth not re-deriving:**
+
+   - **`node` is optional, and that is the design, not a convenience.** Unscoped it asks the question
+     the learner's app cares about — *is this page reachable from anywhere* — without making the
+     author address a Router node whose location they may not know, and without handing them a
+     `%Router` type-only path that F3 would then have to argue about. Scoped, it names one router,
+     which a lesson teaching a Page Stack or nested routing needs. It compiles to **no `path` key at
+     all** rather than `path: ''`, which would resolve to no component and make the condition
+     permanently false — a silent never-completes, the class F1 exists for.
+   - **The semantics are borrowed, not restated.** `ROUTER_NODE_TYPES`, `readRouterPagesValue` and
+     `isSamePage` come from `pageRegistration.ts` — the module the editor's own apply path writes
+     `routes` with. 🔴 **The purity claim was measured rather than asserted**, because the fifth
+     amendment in [RULINGS.md](RULINGS.md) is precisely about a module-header claim nobody could
+     falsify: two sidecar builds back to back, with and without the import, are **5,911,294 and
+     5,911,848 bytes**, and `readRouterPagesValue` is already present in the *control*. The edge
+     costs **554 bytes of my own code and no new dependency**.
+   - **It cost zero MCP tool surface**, which was the ⚠️ this item carried. `create_lesson` takes the
+     manifest as an **opaque passthrough envelope** on purpose, so a new condition verb never reaches
+     a tool schema. Argued from the diff rather than re-measured: `git diff --stat` over
+     `noodl-mcp/src/tools/` and `instructions.ts` is empty, so no input to the budget changed. **The
+     57 free tokens are still free, and phase 69's CN-006/CN-009 are not competing with this.**
+
+   ⚠️ **One thing the control run found in my own spec, and it is the more useful half.** Two of the
+   F2 tests asserted only `F2: 'fail'` — and *passed with the verb disabled*, because a condition
+   that is false everywhere fails F2 too, for a reason that has nothing to do with the lesson. **A
+   failure that would look identical if the mechanism were missing measures nothing.** Both now
+   assert the finding **code** (`dead-on-solution`, `already-satisfied-in-starter`), which is why the
+   control's failure count went from 12 to 14.
+
+   ⚠️ **What it does not close: the authoring gradient is still one-directional.** The verb gives an
+   author a way to say the thing; nothing makes them. That is F6, and F6 is human by definition —
+   item 3 is the whole of the lever.
 

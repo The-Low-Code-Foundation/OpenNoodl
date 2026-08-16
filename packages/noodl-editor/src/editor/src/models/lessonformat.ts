@@ -56,7 +56,14 @@ export type LessonConditionDef =
   | { connection: { from: string; to: string; fromPort: string; toPort: string } }
   | { metadata: string; equals: unknown }
   | { previewRouteEquals: string }
-  | { activeComponentEquals: string };
+  | { activeComponentEquals: string }
+  /**
+   * UNI-010 criterion 3 §12.4 — "a router lists this page", the one thing the
+   * run found that better authoring could not have written with the verbs that
+   * existed. `node` is optional: omitted, any Router or Page Stack in the
+   * project may answer; given, only that one. See {@link RouterListsCondition}.
+   */
+  | { node?: string; routerLists: string };
 
 /** An editor side-effect performed when a step becomes active. */
 export type LessonActionDef =
@@ -179,11 +186,20 @@ function compileCondition(def: LessonConditionDef, where: string): LessonConditi
   if ('previewRouteEquals' in d) return { viewerpatheq: str(d.previewRouteEquals, where, 'previewRouteEquals') };
   if ('activeComponentEquals' in d)
     return { activecomponentnameeq: str(d.activeComponentEquals, where, 'activeComponentEquals') };
+  if ('routerLists' in d) {
+    // `node` is the only optional path in the vocabulary, so it is validated
+    // when present and simply absent otherwise — never coerced to '' , which
+    // would resolve to no component and make the condition permanently false.
+    return {
+      ...(d.node !== undefined ? { path: str(d.node, where, 'node') } : {}),
+      routerlists: str(d.routerLists, where, 'routerLists')
+    };
+  }
 
   throw new LessonFormatError(
     `${where}: unrecognised condition ${JSON.stringify(def)}. ` +
       `Expected one of: hasType, hasLabel, hasPort, exists, isVisualRoot, hasParams, ` +
-      `paramsEqual, connection, metadata, previewRouteEquals, activeComponentEquals.`
+      `paramsEqual, connection, metadata, previewRouteEquals, activeComponentEquals, routerLists.`
   );
 }
 

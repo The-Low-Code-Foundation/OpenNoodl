@@ -33,6 +33,12 @@ import {
   BROWSER_HUE,
   LIBRARY_GLOBAL_BLOCK_TYPE
 } from './appLibraries';
+import {
+  convertModeCheck,
+  convertModeOptions,
+  convertModeTooltip,
+  DEFAULT_CONVERT_MODE
+} from './convertModes';
 import { blocklyCheckForNoodlType, connectionCheckForDeclaredPort, PERMISSIVE_NOODL_TYPE } from './NoodlTypes';
 import { windowTooltip, DEFAULT_WINDOW_PATH, WINDOW_BLOCK_TYPE } from './windowAccess';
 
@@ -152,6 +158,81 @@ export function initNoodlBlocks() {
 
   // VFN-012 §2/§3 — the libraries this app registered, and `window`
   defineBrowserBlocks();
+
+  // FIX-004 §A — convert and log
+  defineUtilityBlocks();
+}
+
+/**
+ * Utility Blocks (FIX-004 §A)
+ *
+ * The two holes the user test found by walking into them: there is no way to turn text into a
+ * number, and no way to see a value. Both are genuine absences in core Blockly rather than
+ * discovery failures — the block registry ships no conversion block at all, and its only print
+ * block generates `window.alert`, which is why this toolbox has always excluded it.
+ */
+function defineUtilityBlocks() {
+  /**
+   * `convert [number ▾] of ( )` — the missing `Number()`.
+   *
+   * The output check follows the mode, which is what makes the block worth having over a
+   * coercion trick: wired into a maths socket in `text` mode, Blockly refuses the connection
+   * and says so, instead of silently producing `"50"` from `"5" + 0`.
+   */
+  Blockly.Blocks['noodl_convert'] = {
+    init: function (this: Blockly.Block) {
+      const dropdown = new Blockly.FieldDropdown(convertModeOptions());
+      this.appendValueInput('VALUE')
+        .setCheck(null)
+        .appendField('🔢 convert')
+        .appendField(dropdown, 'MODE')
+        .appendField('of');
+      this.setOutput(true, convertModeCheck(DEFAULT_CONVERT_MODE));
+      this.setColour(230);
+      this.setTooltip(convertModeTooltip(DEFAULT_CONVERT_MODE));
+      this.setHelpUrl('');
+
+      /**
+       * Keep the output check and the tooltip in step with the mode.
+       *
+       * `setOnChange` rather than a field validator, for the reason `trackDeclaredType` uses it:
+       * `BlocklyWorkspace` deserialises inside `Blockly.Events.disable()`, so a saved program is
+       * rebuilt with the check `init` gave it and nothing is re-typed underneath the author.
+       * `setCheckWithoutBreakingWires` then refuses any change that would sever a live wire.
+       */
+      this.setOnChange(function (this: Blockly.Block) {
+        if (!this.workspace || this.isInFlyout || this.disposed) return;
+        const mode = this.getFieldValue('MODE');
+        setCheckWithoutBreakingWires(this.outputConnection, convertModeCheck(mode));
+        this.setTooltip(convertModeTooltip(mode));
+      });
+    }
+  };
+
+  /**
+   * `log ( )` — a statement, and therefore hattable.
+   *
+   * 🔴 Registered in `hatMigration.ts`'s `HATTABLE_BLOCK_TYPES`. A statement block missing from
+   * that list is never wrapped by migration or seeding and sits orphaned under no hat, which
+   * `tests-unit/lgc-009/hat-migration.spec.ts` catches by instantiating every toolbox block in
+   * real Blockly and comparing `previousConnection` against the list.
+   *
+   * `console` needs no runtime work: the browser runtime compiles logic with a plain
+   * `new Function` in global scope, and the cloud sandbox installs `global.console`
+   * (`sandbox.isolate.js:26`) — so this prints in a preview and in a cloud function alike.
+   */
+  Blockly.Blocks['noodl_log'] = {
+    init: function (this: Blockly.Block) {
+      this.appendValueInput('VALUE').setCheck(null).appendField('🖨️ log');
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      // Matches the Debug category's hue in `BlocklyToolbox.ts`, as every other block here
+      // matches the category it is reached from.
+      this.setColour(0);
+      this.setTooltip('Prints a value to the console — in the preview, and in a cloud function.');
+      this.setHelpUrl('');
+    }
+  };
 }
 
 /**

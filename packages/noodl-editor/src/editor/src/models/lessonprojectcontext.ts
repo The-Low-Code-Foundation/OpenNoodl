@@ -60,6 +60,7 @@ import type { ComponentV2File, ConnectionsV2File, NodesV2File } from '../schemas
 import type { LegacyComponent, LegacyConnection, LegacyNode } from '../io/ProjectExporter';
 import { CatalogIndex } from '../validation/CatalogIndex';
 import { loadDefaultCatalog } from '../validation/catalog';
+import { everyNode } from '../views/lessons/lessonevalconditions';
 import type {
   LessonComponent,
   LessonCondition,
@@ -213,18 +214,15 @@ function toLessonComponent(legacy: LegacyComponent, catalog: CatalogIndex): Less
   };
 }
 
-/** Depth-first walk of a component's nodes. */
-export function walkNodes(components: LessonComponent[]): LessonNode[] {
-  const out: LessonNode[] = [];
-  const visit = (nodes: LessonNode[]) => {
-    for (const n of nodes) {
-      out.push(n);
-      visit(n.children ?? []);
-    }
-  };
-  for (const c of components) visit(c.graph.roots);
-  return out;
-}
+/**
+ * Depth-first walk of a component's nodes.
+ *
+ * The implementation moved to the evaluator when the `routerLists` verb needed
+ * the same walk (UNI-010 criterion 3 §12.4). Kept exported here because callers
+ * and a spec name it, and because a walk in two places is a walk that will
+ * disagree with itself the first time a node shape changes.
+ */
+export const walkNodes = everyNode;
 
 // ─── The builder ────────────────────────────────────────────────────────────
 

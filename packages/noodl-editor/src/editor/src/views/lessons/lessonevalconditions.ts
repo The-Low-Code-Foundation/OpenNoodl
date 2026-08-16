@@ -48,6 +48,21 @@
 // is now in a `.live.ts` sibling — the same convention `lessonwholesolution.live.ts`
 // already uses for exactly this reason.
 
+// 🔴 THE ONE IMPORT, AND WHY IT DOES NOT BREAK THE RULE ABOVE.
+//
+// `pageRegistration.ts` is the module that already owns "what does a Router's
+// `pages` parameter mean" — it is pure by construction and is *already* in the
+// sidecar's bundle, re-exported through `noodl-mcp/src/editor-deps.ts`. So this
+// edge costs the bundle nothing it was not already paying, and the alternative
+// costs something real: a second statement of `routes` / `startPage` /
+// "is this the same page", drifting from the one the editor's apply path writes.
+// That is exactly the divergence `editor-deps` exists to prevent.
+//
+// ⚠️ Verified by BUILDING the sidecar, not by reading this comment. The fifth
+// amendment in phase 67's RULINGS.md is about a purity claim in a module header
+// that nobody could falsify until something depended on it.
+import { isSamePage, readRouterPagesValue, ROUTER_NODE_TYPES } from '../../models/AiAssistant/authoring/pageRegistration';
+
 // ─── Structural views of the editor graph ──────────────────────────────────
 // The evaluator only needs a narrow, stable subset of NodeGraphNode/ProjectModel.
 // Typing against these structural interfaces (rather than the concrete classes)
@@ -147,6 +162,31 @@ export interface ViewerPathEqCondition {
 export interface ActiveComponentNameEqCondition {
   activecomponentnameeq: string;
 }
+/**
+ * UNI-010 criterion 3 §12.4 — "a router lists this page".
+ *
+ * 🔴 **This verb exists because a run found a hole no better authoring could
+ * close.** The criterion-3 lesson that teaches building a second page asked the
+ * learner to create it *through the Router's Pages list*, and the condition that
+ * shipped checked only that the page's Text existed — because there was no way to
+ * say the other thing. A component created outside the router is unreachable, so
+ * the next step's navigation silently does nothing while the step ticks green.
+ * `paramsEqual` on `pages` was the only route and it is not one: it would have to
+ * restate the whole `{ startPage, routes: [...] }` value, so it breaks the moment
+ * the learner adds any *other* page, and it cannot express "contains".
+ *
+ * `path` is optional and that is the point. Unscoped, this asks the question the
+ * learner's app actually cares about — *is this page reachable from anywhere* —
+ * without making the author address a Router node they may not know the location
+ * of. Scoped, it names one router, which is what a lesson teaching nested
+ * routing or a Page Stack needs.
+ */
+export interface RouterListsCondition {
+  /** Optional node-path of a specific Router / Page Stack. Omitted = any of them. */
+  path?: string;
+  /** The component's legacy name, e.g. `/#__page__/About`. */
+  routerlists: string;
+}
 
 export type LessonCondition =
   | HasTypeCondition
@@ -159,7 +199,8 @@ export type LessonCondition =
   | HasConnectionCondition
   | MetadataCondition
   | ViewerPathEqCondition
-  | ActiveComponentNameEqCondition;
+  | ActiveComponentNameEqCondition
+  | RouterListsCondition;
 
 // ─── Small helpers (replacing underscore / eval / assert) ───────────────────
 
@@ -275,6 +316,43 @@ export function findNodeWithPath(path: string, components: LessonComponent[]): L
   }
 
   return findNodeThatMatches(component.graph.roots, 1);
+}
+
+/**
+ * Every node in every component, depth-first.
+ *
+ * Lives here rather than in `lessonprojectcontext.ts` (which had it first, and
+ * now delegates) because the evaluator is the lower layer and needs it: the
+ * unscoped `routerlists` verb has to look at *all* routers, and a router is
+ * rarely a graph root.
+ */
+export function everyNode(components: LessonComponent[]): LessonNode[] {
+  const out: LessonNode[] = [];
+  const visit = (nodes: LessonNode[]) => {
+    for (const n of nodes) {
+      out.push(n);
+      visit(n.children ?? []);
+    }
+  };
+  for (const c of components) visit(c.graph?.roots ?? []);
+  return out;
+}
+
+/**
+ * Does this node route to `page`?
+ *
+ * Both halves are borrowed from `pageRegistration.ts`: which node types mount
+ * pages, and how its `pages` parameter is read defensively — a hand-edited or
+ * half-understood value must never throw here, because the answer for a
+ * malformed router is simply "no, it does not list that page", which is true and
+ * is what the learner will experience.
+ *
+ * `isSamePage` supplies the tolerance: routes are stored as legacy names, and
+ * `/#__page__/About` and `#__page__/About` are the same page written two ways.
+ */
+function routerListsPage(node: LessonNode, page: string): boolean {
+  if (!node.type || !ROUTER_NODE_TYPES.has(node.type.name)) return false;
+  return readRouterPagesValue(node.parameters).routes.some((route) => isSamePage(route, page));
 }
 
 // ─── Per-condition evaluation (pure) ────────────────────────────────────────
@@ -394,6 +472,20 @@ export function evaluateSingleCondition(condition: LessonCondition, ctx: LessonE
 
   if ('activecomponentnameeq' in cond) {
     return cond.activecomponentnameeq === ctx.activeComponentName;
+  }
+
+  if ('routerlists' in cond) {
+    const page = cond.routerlists as string;
+    // Scoped: the author named one router, so only that one may answer. A path
+    // that resolves to something which is not a router is `false`, not an
+    // error — the same shape every other node-path verb has when the node is
+    // missing, and the F2 replay is what tells the author about it.
+    if (typeof cond.path === 'string') {
+      const node = findNodeWithPath(cond.path, ctx.components);
+      return !!node && routerListsPage(node, page);
+    }
+    // Unscoped: any Router or Page Stack anywhere in the project.
+    return everyNode(ctx.components).some((n) => routerListsPage(n, page));
   }
 
   throw new Error(`Unknown lesson condition: ${JSON.stringify(condition)}`);

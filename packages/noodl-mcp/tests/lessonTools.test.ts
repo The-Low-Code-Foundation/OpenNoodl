@@ -138,6 +138,34 @@ describe('the authoring brief', () => {
     expect(brief).toMatch(/absent from the starter/i);
     expect(brief).toMatch(/bare URL is never a link/);
   });
+
+  it('🔴 names the one-directional gradient, which is the only lever on it', () => {
+    // UNI-010 criterion 3 §9/§12.3. Five steps across four lessons written
+    // through this brief checked LESS than their prose asked, always leniently,
+    // and the cause is structural: F2 refuses a condition that is too strong
+    // and nothing anywhere refuses one that is too weak. F6 is the class that
+    // would catch it and F6 is human by definition — so saying it out loud is
+    // the whole of the mitigation available, and a brief that quietly dropped
+    // the sentence would leave the finding with nothing acting on it.
+    const brief = lessonAuthoringBrief();
+
+    expect(brief).toMatch(/too strong/);
+    expect(brief).toMatch(/too weak/);
+    // The two shapes, both taken from steps that actually shipped.
+    expect(brief).toMatch(/paramsEqual/);
+    expect(brief).toMatch(/routerLists/);
+  });
+
+  it('does not describe F4 as the check it stopped being', () => {
+    // The brief said "validates and draws nothing". Since slice 3 it also fails
+    // on what the render reports about what it DID draw, and it still only
+    // renders the start page. A model authoring against the older sentence
+    // would think a rendered page was a scored one.
+    const brief = lessonAuthoringBrief();
+
+    expect(brief).toMatch(/start page/);
+    expect(brief).not.toMatch(/F4\*\* — a solution that validates and draws nothing/);
+  });
 });
 
 // ─── Scoring ────────────────────────────────────────────────────────────────

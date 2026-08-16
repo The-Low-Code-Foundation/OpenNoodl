@@ -45,6 +45,9 @@ const HUE = {
   math: '230',
   text: '160',
   lists: '260',
+  // FIX-004 §A — red, and unused by any other category. A diagnostic block should not be
+  // mistakable at a glance for a block that does the app's work.
+  debug: '0',
   blocklyVariables: '330',
   functions: '290',
   myBlocks: '55'
@@ -77,6 +80,8 @@ export interface ToolboxLabels {
   math: string;
   text: string;
   lists: string;
+  /** FIX-004 §A — `console.log`, given a findable home of its own. */
+  debug: string;
   variables: string;
   functions: string;
   myBlocks: string;
@@ -96,6 +101,7 @@ export const DEFAULT_TOOLBOX_LABELS: ToolboxLabels = {
   math: 'Math',
   text: 'Text',
   lists: 'Lists',
+  debug: 'Debug',
   variables: 'Variables',
   functions: 'Functions',
   // LGC-007 §1: Scratch's own term for custom blocks, tested on millions of
@@ -191,6 +197,10 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
       category(labels.math, HUE.math, [
         'math_number',
         'math_arithmetic',
+        // FIX-004 §A — first after the literal, because "I wasn't able to use a Number()
+        // operator to turn a string into a number" is a question asked *in* this category.
+        // It also appears under Text, which is the other place an author goes looking.
+        'noodl_convert',
         'math_single',
         'math_trig',
         'math_constant',
@@ -198,6 +208,9 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
         'math_round',
         'math_modulo',
         'math_constrain',
+        // FIX-004 §B — already registered by Blockly; one toolbox line each.
+        'math_change',
+        'math_on_list',
         'math_random_int',
         'math_random_float'
       ]),
@@ -211,9 +224,19 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
         'text_charAt',
         'text_getSubstring',
         'text_changeCase',
-        'text_trim'
+        'text_trim',
+        // FIX-004 §B
+        'text_replace',
+        'text_reverse',
+        'text_count',
+        // FIX-004 §A — the same block as under Math. A conversion is reached for from
+        // whichever side the author is standing on, and Blockly is happy to list one block
+        // type in two flyouts.
+        'noodl_convert'
       ]),
       category(labels.lists, HUE.lists, [
+        // FIX-004 §B
+        'lists_create_empty',
         'lists_create_with',
         'lists_repeat',
         'lists_length',
@@ -223,8 +246,19 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
         'lists_setIndex',
         'lists_getSublist',
         'lists_split',
-        'lists_sort'
+        'lists_sort',
+        // FIX-004 §B
+        'lists_reverse'
       ]),
+      /**
+       * FIX-004 §A — Debug.
+       *
+       * A category of one, which is the right size for it: *"there's no log block"* was a
+       * complaint about **finding** one, and a log block filed under Logic or Inputs/Outputs is
+       * a log block nobody finds. Block languages this node's audience have met put it in its
+       * own place for the same reason.
+       */
+      category(labels.debug, HUE.debug, ['noodl_log']),
 
       { kind: 'sep' },
 

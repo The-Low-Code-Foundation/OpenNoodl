@@ -66,6 +66,8 @@ export const HATTABLE_BLOCK_TYPES: readonly string[] = [
   'noodl_set_variable',
   'noodl_set_object_property',
   'noodl_array_add',
+  // FIX-004 §A — log is a statement; convert is a value block and deliberately absent.
+  'noodl_log',
   // My Blocks (LGC-007) — the statement-shaped call.
   MY_BLOCKS_CALL_STATEMENT,
   // Stock Blockly, from the toolbox's imperative half.
