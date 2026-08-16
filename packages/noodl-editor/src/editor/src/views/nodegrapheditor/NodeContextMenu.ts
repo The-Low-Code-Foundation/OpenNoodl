@@ -12,6 +12,7 @@ import { WarningsModel } from '@noodl-models/warningsmodel';
 
 import { requestProvenanceWalk } from '../../utils/provenance/provenanceRequest';
 import { CreateNewNodePanel } from '../createnewnodepanel';
+import { openAskAboutNodeDialog } from '../DialogLayer/components/AskAboutNodeDialog';
 import { ExplainPanel_ID } from '../panels/ExplainPanel';
 import { rememberTarget } from '../panels/ExplainPanel/explainTarget';
 import PopupLayer from '../popuplayer';
@@ -292,6 +293,40 @@ export class NodeContextMenu {
         },
         isDisabled: selectedNodes.length === 0,
         tooltip: 'Ask what this does. Read-only — it never changes your project.',
+        tooltipShowAfterMs: 300
+      });
+
+      items.push('divider');
+    }
+
+    // UNI-011 AC2 — "Ask about this node". Single-select only: the composer is written about one
+    // node, and there is nothing sensible for "these four nodes" to be a question about.
+    //
+    // ⚠️ Everything is read **inside** the handler. The Explain entry above carries the harder
+    // version of this note (opening a panel deselects every node), and the general form applies:
+    // the click is the last moment at which "the node the user right-clicked" is unambiguous.
+    //
+    // The warning is passed as text rather than as the model, because the composer's half is
+    // pure and graded in `tests-unit/` — `shortMessage` is joined with `<br>`, which
+    // `tidyWarning` strips before it redacts, in that order and for a recorded reason.
+    if (selectedNodes.length === 1) {
+      const node = selectedNodes[0];
+      items.push({
+        label: 'Ask about this node',
+        icon: IconName.Chat,
+        onClick: () => {
+          const component = editor.activeComponent;
+          const warnings = component
+            ? WarningsModel.instance.getWarnings({ component, node: node.model })
+            : undefined;
+          openAskAboutNodeDialog({
+            nodeId: node.model.id,
+            typename: node.model.typename,
+            graph: editor.model,
+            warning: warnings?.shortMessage || null
+          });
+        },
+        tooltip: 'Write a question for the community, with the context filled in. Nothing sends until you say so.',
         tooltipShowAfterMs: 300
       });
 

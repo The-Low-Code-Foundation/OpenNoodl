@@ -88,7 +88,15 @@ export interface SummariseOptions {
   format?: string;
 }
 
-function bucketTypeName(typename: string | undefined, knownTypes?: Set<string> | null): string {
+/**
+ * Which name a node type may be published under.
+ *
+ * ⚠️ **Exported for UNI-011's graph excerpt**, which needed exactly this vocabulary and would
+ * otherwise have carried a second copy of it. The rule is a privacy control, and two
+ * implementations of one privacy control is the arrangement where a fix lands on one of them.
+ * Nothing about the behaviour changed when the keyword was added.
+ */
+export function bucketTypeName(typename: string | undefined, knownTypes?: Set<string> | null): string {
   if (!typename) return TYPE_UNKNOWN;
   // Component instances carry the component's full path as their type name —
   // `/Form/Text Input`. That is the user's own naming, verbatim.

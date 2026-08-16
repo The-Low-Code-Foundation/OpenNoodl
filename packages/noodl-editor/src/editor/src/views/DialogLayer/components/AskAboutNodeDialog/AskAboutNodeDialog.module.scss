@@ -1,0 +1,24 @@
+.Root {
+  width: 620px;
+  max-width: 90vw;
+}
+
+/**
+ * The payload preview. It scrolls rather than growing, because a graph excerpt on a busy node is
+ * taller than the dialog and a composer that pushes its own buttons off the screen cannot be used.
+ */
+.Payload {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: 3px;
+  background: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  font-family: var(--theme-font-family-mono, monospace);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  /* A long unbroken token — a URL in a warning — must not widen the dialog. */
+  word-break: break-word;
+}
