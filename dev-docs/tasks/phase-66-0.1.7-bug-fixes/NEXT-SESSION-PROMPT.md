@@ -142,7 +142,7 @@ is one row:
 | written, undeclared | port type | Type row | message 5 | outcome |
 |---|---|---|---|---|
 | `Outputs.Done()` | signal | none | silent | ✅ **works — silence is correct** |
-| **`Outputs.Done_1()`** / `Outputs.Done.send()` | **value** | none | **silent** | 🔴 **throws, no surface anywhere** |
+| **`Outputs.Done_1()`** / `Outputs.Done.send()` | **value** | none | **silent** | 🔴 throws — ⚠️ **NOT** "no surface": `Last run` fires (s27) |
 
 ✅ **What survives is still worth a ruling:** row 2's author has **no route at all** — no panel
 control to discover *and* no diagnostic to read. That re-prices the **parser-asymmetry** ruling from
@@ -200,13 +200,20 @@ commit produces a DOM identical to a broken panel.
 
 ## 5. What to do next and why
 
-1. 🔴 **Close C1's empty cell — it is one eval and it decides how big FIX-016 §1 is.** For a node
-   created the **normal** way (not `fromJSON` + `addRoot`), check whether `editorImportComplete` has
-   fired and whether the runtime's `graphModel` holds it. **Rows present with no preview ⇒ the
-   viewer is irrelevant and §1 is the copy question. Rows absent ⇒ an author who has never hit
-   Preview has no Type control on any Function output**, which is materially larger than the wording
-   and would change the ruling again. ⚠️ **Build the node the normal way** — otherwise you reproduce
-   the fixture artefact rather than the product.
+1. ✅ **DONE — C1's empty cell is CLOSED by a peer (s27), and both of my caveats were wrong.**
+   🔴 **Do not follow the instruction that used to be here** (*"build the node the normal way, not
+   `fromJSON` + `addRoot`"*) — **`fromJSON` + `addRoot` IS the product's own creation path**:
+   `NodePicker.utils.ts:15-41` builds every picked node with `NodeGraphNode.fromJSON({…})` then
+   `model.addRoot(node, {undo:true, label:'create'})` (verified here). **So my drive measured exactly
+   the object a real user's node is, and the "fixture artefact" candidate is dead.**
+   🔴 **The viewer cell's premise was also false.** The editor hosts an **always-on
+   `<webview src="localhost:8574">` "Noodl Viewer"** runtime with no preview action taken — so
+   *"declared + no live runtime"* is **not author-reachable**. ⚠️ `npm run cdp -- targets` prints
+   only `page` targets and **hides it**; `curl :9222/json/list` shows it as type `webview`.
+   ✅ **Therefore §1 is the copy question.** The peer also reproduced the gate independently on a
+   picker-created node with an in-situ control: dynamic-port pushes went `out-Done, out-Result`
+   (undeclared) → `outtype-Done, out-Done, outtype-Result, out-Result` (declared), same script,
+   declaration the only variable.
 2. **FIX-016 §1's ruling — now TWO questions** (§6). Do not build until Richard sizes them.
 3. 🔴 **FIX-017's remaining half needs Richard** — AC1 is now driven false, AC3's premise is still
    false. **Do not build §D speculatively.**
@@ -228,11 +235,19 @@ commit produces a DOM identical to a broken panel.
   whether or not anything is stored, so it looks already answered. Options: offer Type at add time in
   `AddNameField`; a one-line hint under `scriptOutputs`; or nothing, since the new diagnostic names
   the fix at the moment the author gets it wrong.
-  **(b) 🔴 The parser-asymmetry question, re-priced by this session**: an author who writes
+  **(b) 🔴 The parser-asymmetry question, re-priced twice**: an author who writes
   `Outputs.Done_1()` or `Outputs.Done.send()` without declaring gets a **value** port, **no Type
-  row**, and **no diagnostic** — the only case in this feature with **no surface at all**. Fix by
-  mining into the panel, by the diagnostic covering it, or at the parser. ⚠️ **Do not conflate with
-  the plain `Outputs.Done()` case, which works correctly.**
+  row**, and **no message 5**.
+  🔴 **CORRECTED (s27, measured beside a known-firing control) — it is NOT "no surface at all", and
+  that phrasing was mine.** Both forms **do** surface, via FUN-007 §2's runtime diagnostic:
+  `Outputs.Done.send()` → *"Line 1: Cannot read properties of undefined (reading 'send')"*;
+  `Outputs.Done_1()` → *"Outputs.Done_1 is not a function"*. ⚠️ **The "they throw" half was only
+  reasoned before and is now measured** — so the case is *worse-served*, not *unserved*.
+  ✅ **Price it accordingly:** the author gets an engine-worded runtime error and no author-worded
+  guidance, which is a different and cheaper problem than silence. Fix by mining into the panel, by
+  extending the diagnostic with its own wording, or at the parser.
+  ⚠️ **Do not conflate with the plain `Outputs.Done()` case, which works correctly** — and **do not
+  build a diagnostic for a case that already has one.**
 - 🔴 **FIX-017 AC1** — a trigger exists and fires but is invisible, and **the add affordance offers
   no type at creation** (driven, §3c). ⚠️ **One keystroke settles the copy half**: press Ctrl-Space
   in a Function popout — `com.apple.symbolichotkeys` key 60 is **enabled** on your machine and binds

@@ -91,17 +91,29 @@ Three design calls, each pinned by a spec that fails without it:
   **declared in `scriptOutputs`** — a mined-only output gets **no row at all** (driven: the SCRIPT
   OUTPUTS section is empty). So for an author who never opened the panel:
 
-  | what they wrote | port type | Type row | message 5 | outcome |
-  |---|---|---|---|---|
-  | `Outputs.Done()` | signal | ✗ none | silent | ✅ works — nothing owed |
-  | **`Outputs.Done_1()`** / `Outputs.Done.send()` | **value** | ✗ none | **silent** | 🔴 **throws, with no surface anywhere** |
+  | what they wrote | port type | Type row | message 5 (static) | runtime, after a Run | outcome |
+  |---|---|---|---|---|---|
+  | `Outputs.Done()` | signal | ✗ none | silent | — | ✅ works — nothing owed |
+  | **`Outputs.Done_1()`** / `Outputs.Done.send()` | **value** | ✗ none | **silent** | 🔴 **reports it** | 🔴 **throws — but only tells you once you run it** |
 
   ⚠️ **State the scope precisely — the second row only.** A peer summarised this as *"the author who
   most needs 'set its Type to Signal' has no Type control and no warning"*, which reads as message 5
-  under-firing in general. It does not: row 1 is silent because the code is **correct**. The gap is
-  exactly the pinned-out case, and what §1's drive adds is that those authors have **no route at
-  all** — no panel control to discover, and no diagnostic to read. That is an argument for taking the
-  parser fix (or extending message 5 to it with its own wording), not for loosening `declared`.
+  under-firing in general. It does not: row 1 is silent because the code is **correct**.
+
+  🔴 **CORRECTED — I wrote "no surface anywhere" and that is false, measured.** A later drive put the
+  runtime diagnostics beside a known-firing control: `Outputs.Done.send()` → *"Line 1: Cannot read
+  properties of undefined (reading 'send')"*, `Outputs.Done_1()` → *"Outputs.Done_1 is not a
+  function"*. Both throw — that half was right, and was previously only reasoned — but **neither is
+  silent.** ⚠️ **I had this evidence in my own session and did not connect it**: the `Last run` row I
+  recorded beside message 5 (§"the runtime corroborated the premise") is the *same mechanism*, and it
+  was always going to fire here too.
+
+  ✅ **The accurate claim, and it still supports a ruling:** row 2 has **no *static* surface** — no
+  Type row to discover, no lint warning while authoring — and is reported **only after the node
+  runs**. That is materially worse than a declared port, which warns before you run anything, and
+  materially better than nothing. It argues for the parser fix or a message-5 variant, **not** for
+  loosening `declared`. ⚠️ **The same "no surface anywhere" claim appears in §3b below and is equally
+  false there.**
 - **No fix-it, alone among the five messages.** The repair the author wants is a panel change the
   editor cannot make; the one it could make — rewriting the call as an assignment — keeps the port
   and abandons the trigger. Two different programs, not two spellings of one.
@@ -348,20 +360,25 @@ that is the ruling-relevant fact.
 ⚠️ **But do NOT record session 24's particular null as "explained" — it still is not.** Three
 candidates remain and the drive separated none of them:
 
-1. their fixture never declared `scriptOutputs` (the gate above accounts for it);
-2. **the runtime axis, which that drive could not test** — its preview was live in *both* arms, so
-   the viewer never varied. `_managePortsForNode` is registered only inside
-   `graphModel.on('editorImportComplete', …)` on a **runtime's** graphModel
-   (`simplejavascript.ts:890-904`), so *declared + no live preview* is an untested cell and s24's
-   null sits in it;
-3. a **fixture artefact** — `fromJSON` + `addRoot` writes the *editor's* model and may never reach
-   the runtime's.
+1. their fixture never declared `scriptOutputs` (the gate above accounts for it) — **STILL LIVE**;
+2. ~~the runtime axis — *declared + no live preview* is an untested cell~~ — 🔴 **PREMISE FALSE,
+   measured.** An **always-on `<webview>` "Noodl Viewer" runtime is live with no preview action**,
+   so "no live preview" is **not an author-reachable state** and the cell does not exist. ⚠️ It is
+   invisible to `npm run cdp -- targets`, which prints only `page`; `curl :9222/json/list` shows it
+   as type `webview`. **A CDP target list is not the list of runtimes.**
+3. ~~a fixture artefact — `fromJSON` + `addRoot` may never reach the runtime's model~~ — 🔴 **DEAD,
+   and in the reassuring direction.** That pair **is the NodePicker's own creation path**
+   (`NodePicker.utils.ts:15-41`; verified here — `NodeGraphNode.fromJSON(...)` then
+   `model.addRoot(node, { undo: true, label: 'create' })`). Witnessed: **4 `setDynamicPorts` pushes
+   arrived from the runtime** for a normally-created node. ✅ **So no phase-66 drive built that way
+   was measuring a different object than a user's node** — a worry I raised across two files, now
+   retired.
 
-🔴 **The drive's author flagged (1) as the explanation and then withdrew the supporting half
-themselves (correction C1).** A control pair proves what you *varied* and nothing about what you
-*held constant*; the viewer was held constant. Keep the gate — it is measured — and keep s24's null
-open, because attributing it to (1) by elimination would be exactly the move this task has now
-punished three times.
+✅ **So (1) is the last candidate standing — but it stands by ELIMINATION, and the eliminations are
+measured while (1) never was.** Nobody has looked at s24's fixture for a `scriptOutputs` entry.
+⚠️ **And the list was mine, not exhaustive** — *"the only survivor of the three I thought of"* is
+[[absence-derived-from-a-partial-request-is-a-lie]] in miniature. Two dead candidates raise (1) from
+*a story* to *the leading explanation*; they do not make it measured. One look at that fixture would.
 
 ⚠️ Remaining hypothesis for their DOM negative, untested: *when* the editor-side
 `_managePortsForNode` / `_updatePorts` hook runs relative to `addRoot`. **The rendered-DOM
@@ -536,7 +553,7 @@ real gap is one row, not the whole mined case:
 | written, undeclared | port type | Type row | message 5 | outcome |
 |---|---|---|---|---|
 | `Outputs.Done()` | signal | none | silent | ✅ **works — silence is correct** |
-| **`Outputs.Done_1()`** / `Outputs.Done.send()` | **value** | none | **silent** | 🔴 **throws, no surface anywhere** |
+| **`Outputs.Done_1()`** / `Outputs.Done.send()` | **value** | none | **silent** | 🔴 throws — ⚠️ **NOT** "no surface": `Last run` fires (s27) |
 
 ✅ **What survives, and it is still the finding:** row 2's author has **no route at all** — no panel
 control to discover *and* no diagnostic to read. That re-prices the parser-asymmetry ruling from a
