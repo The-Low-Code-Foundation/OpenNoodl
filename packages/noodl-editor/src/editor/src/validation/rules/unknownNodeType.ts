@@ -34,6 +34,11 @@ export const unknownNodeType: Rule = {
     const severity = ctx.options.strict ? 'error' : 'warning';
     for (const { component } of ctx.components) {
       for (const node of component.nodes) {
+        // FIX-023 — a node with no `type` at all is owned by `malformedNode`,
+        // which says the stronger thing at error severity. Without this the
+        // reader meets `Unknown node type ""` — the placeholder the normaliser
+        // substituted, reported as if the author had written it.
+        if (node.malformed?.includes('missing-type')) continue;
         if (isComponentRef(node.type)) continue; // handled elsewhere
         if (ctx.catalog.hasType(node.type)) continue;
         // A node a legacy import marked as unconvertible is owned by

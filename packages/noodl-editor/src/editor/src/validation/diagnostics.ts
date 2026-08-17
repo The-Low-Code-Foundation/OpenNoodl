@@ -48,6 +48,25 @@ export const SEVERITY_ORDER: Record<Severity, number> = {
 export enum DiagnosticCode {
   /** Two nodes share one id — the substrate's primary key is not unique. */
   DuplicateNodeId = 'duplicate-node-id',
+  /**
+   * FIX-023: a node object in the graph is missing a field the format requires
+   * of every node — currently `type`.
+   *
+   * This is not "we don't recognise the type" (that is `unknown-node-type`, a
+   * warning, and correctly so). It is that the field is *absent*, so there is
+   * nothing to recognise. Before this code existed such a node reached
+   * `isComponentRef(node.type)` as `undefined` and threw
+   * `Cannot read properties of undefined (reading 'startsWith')` out of the
+   * walk — which the MCP server surfaced as `io-error: Unexpected failure: …`,
+   * naming neither the node nor the component. One malformed node in one
+   * component took down every write and every validation for the whole project,
+   * with nothing in the message to search for.
+   *
+   * `error` severity: unlike an unknown type, there is no benign reading. A node
+   * with no type cannot mount, render, or be checked, and no module can supply
+   * one later.
+   */
+  MalformedNode = 'malformed-node',
   UnknownNodeType = 'unknown-node-type',
   NonexistentPort = 'nonexistent-port',
   DanglingConnection = 'dangling-connection',

@@ -12,7 +12,15 @@
  */
 
 import type { ConnectionsV2File, NodesV2File } from '../schemas';
-import { NormComponent, NormConnection, NormNode, NormProject, buildComponentRefs } from './model';
+import {
+  MALFORMED_NODE_TYPE,
+  MalformedNodeReason,
+  NormComponent,
+  NormConnection,
+  NormNode,
+  NormProject,
+  buildComponentRefs
+} from './model';
 
 // A structural subset of the legacy project shape we depend on. Kept local so
 // this module has no hard dependency on the editor's model classes.
@@ -59,6 +67,25 @@ function instancePortNames(node: { ports?: LegacyPortLike[]; dynamicports?: Lega
   return names;
 }
 
+/**
+ * FIX-023 — the one place a node's `type` crosses from "whatever was on disk"
+ * into the normalized model's `type: string` promise.
+ *
+ * The guard belongs here, at the boundary, rather than at the call sites: there
+ * are twenty `isComponentRef(node.type)` calls across the editor and the MCP
+ * server and exactly two of them were guarded, because whoever hit this before
+ * patched the line they were standing on. Every rule downstream of this
+ * function now gets a real string, and the substitution is *recorded* rather
+ * than silent — `malformed-node` reports it, naming the node and the component.
+ *
+ * Returns the reasons alongside the value so a caller writes one spread rather
+ * than branching twice.
+ */
+function normalizedType(raw: unknown): { type: string; malformed?: MalformedNodeReason[] } {
+  if (typeof raw === 'string' && raw.length > 0) return { type: raw };
+  return { type: MALFORMED_NODE_TYPE, malformed: ['missing-type'] };
+}
+
 /** Flatten a legacy component's nested root tree into flat NormNodes. */
 function flatten(roots: LegacyNodeLike[]): NormNode[] {
   const out: NormNode[] = [];
@@ -66,7 +93,7 @@ function flatten(roots: LegacyNodeLike[]): NormNode[] {
     const childIds = (node.children ?? []).map((c) => c.id);
     out.push({
       id: node.id,
-      type: node.type,
+      ...normalizedType(node.type),
       label: node.label,
       parent: parentId,
       children: childIds,
@@ -93,7 +120,7 @@ export function normalizeV2Component(
 ): NormComponent {
   const nodes: NormNode[] = (nodesFile?.nodes ?? []).map((n) => ({
     id: n.id,
-    type: n.type,
+    ...normalizedType(n.type),
     label: n.label,
     parent: n.parent,
     children: Array.isArray(n.children) ? n.children : [],

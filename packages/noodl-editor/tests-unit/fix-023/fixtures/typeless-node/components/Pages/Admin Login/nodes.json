@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_admin_login",
+  "version": 1,
+  "nodes": [
+    { "id": "login_root", "type": "Group", "children": ["login_title", "login_field"] },
+    { "id": "login_title", "type": "Text", "parent": "login_root" },
+    { "id": "6d5ec795-be88-fdd9-b555-1bb2f6bba281", "x": 300, "y": 400 },
+    { "id": "login_field", "type": "Buttonn", "parent": "login_root" }
+  ]
+}

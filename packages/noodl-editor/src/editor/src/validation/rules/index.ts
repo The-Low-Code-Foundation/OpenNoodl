@@ -20,6 +20,7 @@
 
 import { Rule } from './types';
 import { duplicateNodeId } from './duplicateNodeId';
+import { malformedNode } from './malformedNode';
 import { legacyImportPlaceholder } from './legacyImportPlaceholder';
 import { unknownNodeType } from './unknownNodeType';
 import { nonexistentPort } from './nonexistentPort';
@@ -36,6 +37,12 @@ import { unlabelledNode } from './unlabelledNode';
 
 export const ALL_RULES: Rule[] = [
   duplicateNodeId,
+  // FIX-023 — second, for the same reason `legacyImportPlaceholder` is third:
+  // it makes the most definite statement about the nodes it covers ("this
+  // object is not a node") and it supersedes the unknown-type warning on them.
+  // It cannot lead, because it reports *by id* and a colliding id would send
+  // the reader to the wrong node.
+  malformedNode,
   legacyImportPlaceholder,
   unknownNodeType,
   nonexistentPort,
@@ -56,6 +63,7 @@ export const ALL_RULES: Rule[] = [
 
 export {
   duplicateNodeId,
+  malformedNode,
   legacyImportPlaceholder,
   unknownNodeType,
   nonexistentPort,

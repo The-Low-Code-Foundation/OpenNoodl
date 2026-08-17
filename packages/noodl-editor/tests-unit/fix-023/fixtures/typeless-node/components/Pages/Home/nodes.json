@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_home",
+  "version": 1,
+  "nodes": [
+    { "id": "home_root", "type": "Group", "children": ["home_greeting"] },
+    { "id": "home_greeting", "type": "Textt", "parent": "home_root" }
+  ]
+}
