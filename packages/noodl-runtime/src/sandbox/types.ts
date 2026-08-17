@@ -63,6 +63,27 @@ export interface SandboxDataset {
    * `unknownShapeNotice` in the editor's `sandboxData`.
    */
   unknownShape?: string[];
+  /**
+   * FIX-013 ruling 1(c) — whether a class the dataset did not describe gets
+   * records invented for it. Defaults to `true`, which is every dataset built
+   * before this existed.
+   *
+   * 🔴 **An empty dataset is not an empty sandbox.** `SandboxStore.list()`
+   * synthesizes `DEFAULT_RECORD_COUNT` records for any class it has never
+   * heard of — deliberately, so a preview never strands a graph — which means
+   * shipping `{ classes: {} }` serves *five invented rows per class queried*,
+   * not zero. Both of this task's earlier readings assumed otherwise and
+   * reached for `useSampleData: false` instead; that flag does something else
+   * entirely (it uninstalls the shim and lets the preview reach the project's
+   * real backend), so it cannot express this at all.
+   *
+   * Set `false` and the store serves what the dataset holds and nothing more:
+   * the component renders its real empty state, and the network is still
+   * intercepted, so nothing leaves the machine. Writes still work — creating a
+   * record pushes into the empty list, which is what makes a form previewable
+   * with no rows behind it.
+   */
+  synthesizeMissing?: boolean;
 }
 
 export const SANDBOX_METADATA_KEY = 'sandbox';

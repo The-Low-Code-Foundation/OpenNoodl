@@ -149,12 +149,19 @@ export class SandboxStore {
   /** The signed-in user. Mutable — Set User Properties has to work. */
   readonly user: SandboxRecord;
 
+  /**
+   * FIX-013 ruling 1(c) — whether {@link list} invents records for a class the
+   * dataset never described. Defaults to `true`; see `SandboxDataset`.
+   */
+  private readonly synthesizeMissing: boolean;
+
   constructor(dataset: SandboxDataset | undefined) {
     for (const [name, klass] of Object.entries(dataset?.classes ?? {})) {
       this.fields.set(name, klass.fields ?? []);
       this.records.set(name, (klass.records ?? []).map((r) => ({ ...r })));
     }
     this.user = { ...(dataset?.user ?? ({} as SandboxRecord)) };
+    this.synthesizeMissing = dataset?.synthesizeMissing !== false;
   }
 
   /** Records for a class, inventing the class when the editor did not predict it. */
@@ -162,8 +169,13 @@ export class SandboxStore {
     const existing = this.records.get(className);
     if (existing) return existing;
 
-    const fields = this.fields.get(className) ?? FALLBACK_FIELDS;
-    const generated = synthesizeRecords(fields, DEFAULT_RECORD_COUNT);
+    // ⚠️ Cached either way, and that is the point rather than an optimisation:
+    // the list a `create` pushes into has to be the same list the next `query`
+    // reads, or a form that saves shows nothing afterwards. An empty-state
+    // sandbox is still a *writable* one.
+    const generated = this.synthesizeMissing
+      ? synthesizeRecords(this.fields.get(className) ?? FALLBACK_FIELDS, DEFAULT_RECORD_COUNT)
+      : [];
     this.records.set(className, generated);
     return generated;
   }

@@ -88,3 +88,58 @@ describe('AIX-008 sandbox store', () => {
     expect(matchesWhere(record, { anything: { $exists: false } })).toBe(true);
   });
 });
+
+/**
+ * FIX-013 ruling 1(c) — the empty-state sandbox.
+ *
+ * 🔴 **The control is the first spec here, and it is the whole reason this
+ * mode had to be built.** An empty dataset does not serve zero rows: it serves
+ * five invented ones per class queried, because that is what `list()` is for.
+ * Ruling 1(c) asks for a state nothing in the shim could express, and the two
+ * earlier readings of this task both reached for `useSampleData: false` to get
+ * it — which uninstalls the shim and points the preview at the project's real
+ * backend, the opposite of what was ruled.
+ */
+describe('FIX-013 sandbox store — empty state', () => {
+  const user: SandboxRecord = { objectId: 'sandbox-user', id: 'sandbox-user' };
+
+  it('CONTROL: an empty dataset still invents records, which is why the flag exists', () => {
+    const store = new SandboxStore({ classes: {}, user });
+    expect(store.query('Books').results.length).toBe(5);
+  });
+
+  it('serves zero rows for a class nobody described', () => {
+    const store = new SandboxStore({ classes: {}, user, synthesizeMissing: false });
+    const { results, count } = store.query('Books');
+    expect(results).toEqual([]);
+    expect(count).toBe(0);
+  });
+
+  it('still serves the records the dataset does hold', () => {
+    const store = new SandboxStore({
+      classes: { Books: { fields: ['title'], records: [{ objectId: 'a', id: 'a', title: 'Piranesi' }] } },
+      user,
+      synthesizeMissing: false
+    });
+    expect(store.query('Books').results.map((r) => r.title)).toEqual(['Piranesi']);
+  });
+
+  it('stays writable, so a form with no rows behind it is still previewable', () => {
+    const store = new SandboxStore({ classes: {}, user, synthesizeMissing: false });
+
+    const created = store.create('Books', { title: 'First' });
+    expect(store.query('Books').results.map((r) => r.title)).toEqual(['First']);
+    expect(store.get('Books', created.objectId)?.title).toBe('First');
+
+    expect(store.remove('Books', created.objectId)).toBe(true);
+    expect(store.query('Books').count).toBe(0);
+  });
+
+  it('leaves every dataset built before this existed untouched', () => {
+    // `undefined` and `true` must both mean "invent", or the flag is a silent
+    // behaviour change for every caller that has never heard of it.
+    expect(new SandboxStore({ classes: {}, user }).query('X').results.length).toBe(5);
+    expect(new SandboxStore({ classes: {}, user, synthesizeMissing: true }).query('X').results.length).toBe(5);
+    expect(new SandboxStore(undefined).query('X').results.length).toBe(5);
+  });
+});

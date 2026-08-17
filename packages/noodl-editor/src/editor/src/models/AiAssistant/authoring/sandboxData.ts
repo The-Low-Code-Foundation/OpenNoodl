@@ -446,6 +446,23 @@ export interface BuildSandboxDatasetOptions {
    * work with no clicks, and signed-out is the branch you go and ask for.
    */
   signedIn?: boolean;
+  /**
+   * FIX-013 ruling 1(c) — serve **no rows at all**, so the component shows its
+   * real empty state and the user feeds it through its inputs instead.
+   *
+   * The graph walk still runs and the class list is still shipped: a class the
+   * dataset *names* is served empty, which is what the store does with an empty
+   * `records` array anyway. What changes is that nothing is synthesized, here or
+   * in the runtime — hence `synthesizeMissing: false`, without which a class the
+   * walk missed would come back with five invented rows and the empty state
+   * would be a lie on exactly the components most likely to want one.
+   *
+   * ⚠️ **This is not "no sample data mode".** The network shim stays installed
+   * and the sandbox user is still seeded; only the rows go. Turning the shim
+   * *off* is `useSampleData: false`, which is a different thing entirely — it
+   * lets the preview reach the project's real backend.
+   */
+  emptyState?: boolean;
 }
 
 /**
@@ -458,7 +475,8 @@ export function buildSandboxDataset({
   components,
   sampleData,
   userData,
-  signedIn = true
+  signedIn = true,
+  emptyState = false
 }: BuildSandboxDatasetOptions): SandboxDataset {
   const discovery = discoverDataShape(components);
 
@@ -496,7 +514,11 @@ export function buildSandboxDataset({
     );
     const fields = [...new Set([...inferred, ...suppliedFields])].filter((field) => !NOT_A_FIELD.has(field));
 
-    if (fields.length === 0) unknownShape.push(className);
+    // FIX-013 1(c): the notice exists because fieldless records render as blank
+    // rows under a heading claiming results. With no rows there is nothing to
+    // misread, so saying it anyway would be a caveat about data that is not
+    // there — noise on precisely the components an empty state is built for.
+    if (fields.length === 0 && !emptyState) unknownShape.push(className);
 
     // BEN-006 risk row: a user's records will not carry every field the graph
     // reads, and `completeRecord` fills the rest in — which is right, or the row
@@ -504,14 +526,17 @@ export function buildSandboxDataset({
     // lying about whose data it is showing, so name them and let the panel say
     // so. Only for a class the user actually wrote: for the agent's own data
     // this would be noise on every class, every time.
-    const completed = fromUser
-      ? fields.filter((field) => !fromUser.every((record) => record[field] !== undefined))
-      : [];
+    const completed =
+      fromUser && !emptyState
+        ? fields.filter((field) => !fromUser.every((record) => record[field] !== undefined))
+        : [];
 
     classes[className] = {
       fields,
       inferred,
-      records: recordsFor(fields, supplied, fromUser !== undefined),
+      // FIX-013 1(c) — named, so the store serves the class empty rather than
+      // inventing it, and so the field list survives for anything that reads it.
+      records: emptyState ? [] : recordsFor(fields, supplied, fromUser !== undefined),
       ...(completed.length > 0 ? { completed } : {})
     };
   }
@@ -541,6 +566,24 @@ export function buildSandboxDataset({
     ([name, klass]) => `${klass.records.length} ${name}${yours.has(name) ? ' (yours)' : ''}`
   );
   const who = signedIn ? 'signed in as a sample user' : 'signed out';
+
+  // FIX-013 1(c) — (b)'s one-line caption, taken where the ruling said to take
+  // it: an empty frame that says nothing reads as a broken bench, and this is
+  // the only place the bench gets to say the emptiness is the point.
+  if (emptyState) {
+    const names = Object.keys(classes);
+    return {
+      classes,
+      user,
+      summary:
+        names.length > 0
+          ? `No sample data — ${names.join(', ')} served empty, ${who}`
+          : `No sample data — ${who}`,
+      unknownShape,
+      synthesizeMissing: false
+    };
+  }
+
   const summary = counts.length > 0 ? `Sample data — ${counts.join(', ')}, ${who}` : `Sample data — ${who}`;
 
   return { classes, user, summary, unknownShape };

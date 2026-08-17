@@ -129,3 +129,102 @@ direction must **stop hard-coding `useSampleData: true`**, which it currently do
 
 🔴 **Rulings 2, 3 and 4 remain open**, and 2 is now smaller than the file originally claimed: its
 payoff is **three** files (toolbar, editor, `sandboxDataDraft`), not five.
+
+---
+
+## 🔴 1(c) named a state that did not exist (measured 2026-08-17, session 54)
+
+**The ruling is answerable. It was not *buildable*.** Both earlier readings of this task — s33's
+import-graph table and s42's ruling note — say the same thing about how to reach 1(c): stop shipping
+sample data, i.e. `useSampleData: false`. 🔴 **That flag does the opposite of what 1(c) asks for**,
+and the third state the ruling actually names could not be expressed at all.
+
+### What `useSampleData: false` really does
+
+`noodl-viewer-react.js:66`, in full:
+
+```js
+const sandbox = readSandboxSession();
+if (sandbox) {
+  runtimeArgs.editorClientId = sandbox.clientId;
+  if (sandbox.useSampleData) startSandbox();      // ← the shim install
+}
+```
+
+🔴 **`useSampleData: false` uninstalls the network shim.** The preview then reaches the project's
+**real backend** — which is the whole point of the "Real backend" button, and is exactly what
+`buildBenchExport` already says out loud: *"Real backend — this bench uses your project's live
+data."* (`componentBench.ts:456`). It is **AC3's violation**, not its implementation.
+
+### And an empty dataset is not an empty sandbox
+
+The other half, and the one that is genuinely surprising. `SandboxStore.list()`
+(`store.ts:168-181`) **invents `DEFAULT_RECORD_COUNT` = 5 records for any class it has never heard
+of** — deliberately, so a preview never strands a graph. `install.ts:43` constructs
+`{ classes: {}, user: … }` when there is no dataset at all. So **both** routes to "no data" serve
+*five synthesized rows per class queried*, not zero.
+
+✅ **This is not an inference — it was already pinned by a spec**, which is how it was found:
+`sandbox-store.test.ts:34-39`, *"invents records for a class the editor did not predict"*,
+`expect(results.length).toBe(5)`. The behaviour 1(c) rules against is the one the suite defends.
+
+| route to "serve zero rows" | what actually happens | AC3 |
+|---|---|---|
+| `useSampleData: false` | shim uninstalled → **real backend** | 🔴 violated |
+| ship `{ classes: {} }` | shim installed → **5 invented rows per class** | ✅ held, but not 1(c) |
+| ship a class with `records: []` | that class serves 0 rows; **any class the walk missed still gets 5** | ✅ held, partial |
+
+### ✅ Built s54 — the third state, and nothing switched on
+
+The missing capability, with no behaviour change to any existing caller:
+
+- **`SandboxDataset.synthesizeMissing?: boolean`** 🆕 (`noodl-runtime/src/sandbox/types.ts`).
+  Defaults to `true` — `dataset?.synthesizeMissing !== false` — so `undefined`, `true` and *no
+  dataset at all* are all the behaviour that shipped before it existed.
+- **`SandboxStore.list()`** honours it: serves `[]` instead of synthesizing, and **still caches**,
+  so `create` pushes into the same list a later `query` reads. 🔴 **An empty-state sandbox is still
+  a writable one** — a form with no rows behind it has to stay previewable.
+- **`buildSandboxDataset({ emptyState: true })`** 🆕 (`sandboxData.ts`). The graph walk still runs
+  and the class list is still shipped — **named, and empty** — because a named class is what stops
+  the store inventing it. `synthesizeMissing: false` closes the gap for a class the walk missed.
+  Drops `unknownShape`: a caveat about blank rows is noise when there are no rows.
+- **The summary says the emptiness is the point** — `No sample data — Books served empty, signed in
+  as a sample user`. That is ruling 1's *"take (b)'s one-line caption anyway wherever an empty frame
+  would otherwise read as a broken bench"*, taken.
+
+**Specs: 5 runtime + 6 editor, both suites led by the CONTROL that made the mode necessary.**
+✅ **Mutant-verified**: forcing `list()` back to always-synthesize fails 2 of the new runtime specs
+while the CONTROL keeps passing — which is the right shape, since the mutant restores exactly what
+the control pins. The mutation was diffed against a saved copy and the changed line printed
+(`store.ts:176`), not `git diff`.
+
+⚠️ **`buildBenchExport` is unchanged and nothing calls `emptyState` yet, on purpose.** Flipping the
+bench without removing the toolbar in the same commit would make the reported bug *universal*: the
+Data button is gated on `Boolean(result?.dataset)`, so every benched component — not just
+`CategoryCard` — would offer a Data panel with nothing in it. That is the screenshot, spread.
+
+### 🔴 What the flip costs, so the next session is not surprised
+
+Two specs in `component-bench.test.ts` pin the behaviour ruling 1(c) reverses, and both must be
+rewritten by the commit that flips the bench — neither is a defect:
+
+- `:253` *"serves the bench sample data, and none against a real backend"* — asserts
+  `toContain('Sample data')`. Becomes `No sample data`. ⚠️ Its **second half is ruling 4's** and is
+  the `useSampleData: false` assertion that ruling asks about.
+- `:265` *"takes the user's own records (BEN-006)"* — asserts a user record is served. Under 1(c)
+  the bench serves none, so `userData` on `BenchMount` becomes dead weight and should go with the
+  data editor. ⚠️ **The AI preview keeps both** — this is a bench-only subtraction, which is ruling 2
+  answered as "the two surfaces diverge".
+
+### ⚠️ Rulings 3 and 4 both have a branch that deletes nothing
+
+Stated because the remaining build is otherwise blocked on Richard, and it need not be:
+
+- **Ruling 3** — AC1 as written (*"No Sign out"*) already requires `signedIn` hard-coded in the bench
+  UI. Keeping `signedIn` as a **programmatic option with no UI** loses no capability at the API
+  level and is reversible.
+- **Ruling 4** — the same shape: keep `useSampleData` programmatic, no UI, and
+  `component-bench.test.ts:259-262` needs no edit at all.
+
+🔴 **Both are still Richard's to answer** — this only records that neither branch is destructive, so
+the answer does not have to arrive before the UI work is scoped.

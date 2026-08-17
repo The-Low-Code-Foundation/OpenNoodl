@@ -304,6 +304,65 @@ describe('AIX-008 sandbox data discovery', () => {
     expect(dataset.summary).toBeTruthy();
   });
 
+  /**
+   * FIX-013 ruling 1(c) — the empty state.
+   *
+   * 🔴 **The control above (`never leaves a queried class without records`) is
+   * what this mode had to be built against.** "Serve zero rows" is not the
+   * absence of a dataset: leave the dataset out and the runtime store invents
+   * five records for every class the graph queries, deliberately. So the class
+   * list is still shipped — named, and empty — and `synthesizeMissing` closes
+   * the gap for any class the walk did not find.
+   */
+  describe('FIX-013 the empty state', () => {
+    const component = () => candidateComponent(files(bookListPayload())).component;
+
+    it('names the queried class and serves it no rows', () => {
+      const dataset = buildSandboxDataset({ components: [component()], emptyState: true });
+
+      expect(Object.keys(dataset.classes)).toContain('Books');
+      expect(dataset.classes.Books.records).toEqual([]);
+      // The field list survives — it is what tells the store the class exists.
+      expect(dataset.classes.Books.fields).toContain('title');
+    });
+
+    it('forbids the runtime from inventing a class the walk missed', () => {
+      expect(buildSandboxDataset({ components: [component()], emptyState: true }).synthesizeMissing).toBe(false);
+    });
+
+    it('still signs the preview in, because only the rows go', () => {
+      const dataset = buildSandboxDataset({ components: [component()], emptyState: true });
+      expect(String(dataset.user.email)).toContain('@example.com');
+    });
+
+    it('says the emptiness is the point, so the frame does not read as broken', () => {
+      const dataset = buildSandboxDataset({ components: [component()], emptyState: true });
+      expect(String(dataset.summary)).toContain('No sample data');
+      expect(String(dataset.summary)).toContain('Books');
+    });
+
+    it('drops the unknown-shape caveat, which is a claim about rows there are none of', () => {
+      // A class the graph names but nothing describes: fieldless, and exactly
+      // what `unknownShape` exists to warn about — when it is serving records.
+      const { component: bare } = candidateComponent(
+        files({
+          nodes: [{ id: 'q', type: 'DbCollection2', parameters: { collectionName: 'Mysteries' } }],
+          visualRoots: []
+        })
+      );
+
+      expect(buildSandboxDataset({ components: [bare] }).unknownShape).toContain('Mysteries');
+      expect(buildSandboxDataset({ components: [bare], emptyState: true }).unknownShape).toEqual([]);
+    });
+
+    it('leaves every existing caller on the old behaviour', () => {
+      const dataset = buildSandboxDataset({ components: [component()] });
+      expect(dataset.classes.Books.records.length).toBe(5);
+      expect(dataset.synthesizeMissing).toBeUndefined();
+      expect(String(dataset.summary)).toContain('Sample data');
+    });
+  });
+
   it('follows component instances when collecting what to sample', () => {
     const project = loadProject();
     const existing = project.getComponents()[0];
