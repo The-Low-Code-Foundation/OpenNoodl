@@ -78,11 +78,20 @@ import css from './AskAboutNodeDialog.module.scss';
 /**
  * Where the entry point goes while the mirror is gated.
  *
- * 🔴 `community.nodegx.dev` is **not registered** (UNI-001, and it is item 1 on every handover's
- * list for Richard). This constant is the one place that has to change when it is, and it is
- * deliberately not spread across the composer.
+ * ✅ **`community.nodegx.io` resolves as of 2026-08-17** — an A record to nexus-1
+ * (`49.12.102.195`), added by Richard. ⚠️ **The domain is `.io`, not `.dev`**: every phase-67
+ * document said `community.nodegx.dev` for four days, including this constant, and it was never
+ * checked against the registrar. It is a subdomain of the domain the landing page already uses.
+ *
+ * ⚠️ **Resolving is not being served.** nexus-1 runs the static `nodegx.io` landing page and two
+ * other sites; the platform (`nodegx-community`) is deployed nowhere and Caddy has no site block
+ * for this host. So the button opens a hostname that answers — which is still the right behaviour
+ * under D16, because the alternative is a button that opens nothing.
+ *
+ * This constant remains the one place that changes, and it is deliberately not spread across the
+ * composer: AC2 and AC3 both hand off through it.
  */
-export const COMMUNITY_URL = 'https://community.nodegx.dev';
+export const COMMUNITY_URL = 'https://community.nodegx.io';
 
 export interface AskAboutNodeDialogProps {
   focus: { typename?: string };

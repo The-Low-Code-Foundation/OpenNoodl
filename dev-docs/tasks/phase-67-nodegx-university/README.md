@@ -93,10 +93,11 @@ and opens *everything* on the platform.
   because 🔴 **GitHub Pages does not follow a repo rename.** ⚠️ The phase's *directory* here is still
   `phase-67-nodegx-university`; that is a local path and is deliberately not renamed.
 - ✅ **D2 — RULED 2026-08-14: "NodeGX Community"**, with **NodeGX University as its learning wing**.
-  Subdomain `community.nodegx.dev`; the editor button says **"Sign in to NodeGX"**. 🔴 **The repo
-  renames to `nodegx-community`** — do it before anything is attached. ⚠️ No domain is committed
-  anywhere in this repo today; `community.nodegx.dev` is a choice, not a fact, and still has to be
-  registered. [RULINGS.md](RULINGS.md) D2.
+  Subdomain `community.nodegx.io`; the editor button says **"Sign in to NodeGX"**. 🔴 **The repo
+  renames to `nodegx-community`** — do it before anything is attached. ✅ **AMENDED 2026-08-17: the
+  subdomain is `.io`, not the `.dev` this ruling first chose, and it RESOLVES** (A → nexus-1
+  `49.12.102.195`). ⚠️ **Resolving is not being served** — nothing is deployed there.
+  [RULINGS.md](RULINGS.md) D2.
 - ✅ **D3 — RULED 2026-08-14: earn-only at launch.** Leaderboard + profile display; no redemption.
   Merch and coaching discounts are a later tranche once there are earners. 🔴 The event ledger is
   still **append-only and auditable from day one** — that is the part v1 must not skimp. The

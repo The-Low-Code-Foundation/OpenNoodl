@@ -33,8 +33,9 @@ UNI-001's, not this task's. D14, D15 and D16 all ruled; nothing is waiting on a 
 > D16's ship order is the opposite of its build order and this task already said so: *build the
 > mirror first, surface it last.* AC2, AC3 and the four editor-only features are slice 2.
 >
-> ⚠️ **Nothing has talked to a real platform.** `community.nodegx.dev` is unregistered; the
-> drive ran against `next dev` on localhost.
+> ⚠️ **Nothing has talked to a real platform.** The drive ran against `next dev` on localhost.
+> *(As written on 2026-08-16 this said the host was unregistered. It resolves as of 2026-08-17 —
+> `community.nodegx.io`, A → nexus-1 — but **nothing serves it**, so the sentence's point stands.)*
 
 > ## Slice 2a — AC2 is BUILT and DRIVEN (2026-08-16, twenty-first session), editor `f73b1bd6`
 >

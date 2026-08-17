@@ -78,7 +78,7 @@ describe('UNI-011 — the editor client', () => {
       const { impl } = fakeFetch({
         '/api/v1/community/threshold': { status: 200, body: CONTRADICTORY_THRESHOLD }
       });
-      const client = new CommunityApiClient({ baseUrl: 'https://community.nodegx.dev', fetchImpl: impl });
+      const client = new CommunityApiClient({ baseUrl: 'https://community.nodegx.io', fetchImpl: impl });
 
       expect(entryPointFor(await client.threshold())).toBe('in-editor-mirror');
     });
@@ -93,7 +93,7 @@ describe('UNI-011 — the editor client', () => {
           body: { ...CONTRADICTORY_THRESHOLD, met: true, entryPoint: 'browser' }
         }
       });
-      const client = new CommunityApiClient({ baseUrl: 'https://community.nodegx.dev', fetchImpl: impl });
+      const client = new CommunityApiClient({ baseUrl: 'https://community.nodegx.io', fetchImpl: impl });
 
       expect(entryPointFor(await client.threshold())).toBe('browser');
     });
@@ -141,9 +141,9 @@ describe('UNI-011 — the editor client', () => {
 
     it('a network failure is `unreachable`, not a throw', async () => {
       const impl = (async () => {
-        throw new Error('ENOTFOUND community.nodegx.dev');
+        throw new Error('ENOTFOUND community.nodegx.io');
       }) as unknown as typeof fetch;
-      const client = new CommunityApiClient({ baseUrl: 'https://community.nodegx.dev', fetchImpl: impl });
+      const client = new CommunityApiClient({ baseUrl: 'https://community.nodegx.io', fetchImpl: impl });
       const read = await client.home();
 
       // ⚠️ The domain is genuinely unregistered today (UNI-001), so this is the ordinary case

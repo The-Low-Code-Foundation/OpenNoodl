@@ -369,7 +369,7 @@ describe('resetting a lesson', () => {
     await model.install({
       bundleDir: '/bundles/groups',
       provenance: 'curated',
-      source: { kind: 'platform', url: 'https://community.nodegx.dev/lessons/groups' }
+      source: { kind: 'platform', url: 'https://community.nodegx.io/lessons/groups' }
     });
 
     const outcome = model.reset('make-a-group');

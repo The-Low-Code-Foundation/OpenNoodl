@@ -24,7 +24,7 @@ traps apply there.
 |---|---|---|
 | **Platform** | UNI-001 (AC3), 002–006, 009, **011 slice 1** | 🟢 **SEVEN COMMITS.** `7193f92`, **pushed** |
 | **Platform** | UNI-008 | 📋 **One task, not started** — Tier 3, deliberately last |
-| **Platform** | UNI-001 (the rest) | 🔴 **Blocked on Richard**: OAuth callbacks need `community.nodegx.dev`, still unregistered |
+| **Platform** | UNI-001 (the rest) | 🟢 **UNBLOCKED 2026-08-17** — `community.nodegx.io` resolves (A → nexus-1 `49.12.102.195`). OAuth callbacks can be registered. ⚠️ **Nothing serves that host yet** |
 | **Editor** | UNI-011 slice 1 | 🟢 `f7b0b280` — the client and the post-body boundary |
 | **Editor** | UNI-011 slice 2a — **AC2** | 🟢 **BUILT AND DRIVEN**, `f73b1bd6` |
 | **Editor** | UNI-011 slice 2b — **AC3** | 🟢 **BUILT AND DRIVEN**, `f72799b7`. 🆕 |
@@ -122,9 +122,17 @@ be met — no forum ⇒ no `weeksWithCallHeld`, no `medianFirstReply` — and it
 
 ## ⚠️ For Richard — item 1 is unchanged and still blocks seven things
 
-1. 🔴 **`community.nodegx.dev` is still not registered.** Blocks UNI-001's OAuth callbacks. **The
-   one thing a session cannot do for itself.** It is also `COMMUNITY_URL` in
-   `AskAboutNodeDialog.tsx` — the composer's button points at a domain that does not resolve.
+1. ✅ **DONE 2026-08-17 — and it was the wrong ask for four days.** The host is
+   **`community.nodegx.io`**, not `.dev`, and it now resolves (A → nexus-1 `49.12.102.195`).
+   🔴 **The blocker was mis-stated the whole time**: it was never *"a domain needs registering"* —
+   `nodegx.io` was already registered and serving the landing page — it was *"a subdomain needs an
+   A record"*, which is a much smaller ask. D2 flagged its own subdomain as *"a choice, not a fact"*
+   and six handovers turned it into a fact anyway. **The check was one `dig`.**
+   ⚠️ **Resolving is not being served.** nexus-1 runs the static landing page and two of Richard's
+   sites; Caddy has no site block for this host and the platform is deployed nowhere. 🔴 **A response
+   from it proves nothing** — Caddy 308s every Host, including invented ones; read
+   `127.0.0.1:2019/config/`. **Next question for Richard: does the platform go on nexus-1 at all?**
+   That box is all-or-nothing on Caddy config, and it is a bigger call than a DNS record.
 2. 🔴 **A Paddle account (D7)** still stands between coaching and revenue. `recordPayment` has no
    caller.
 3. **The twelve badge artworks still need drawing.** D4 ruled ~12 flat SVGs in the editor's idiom.

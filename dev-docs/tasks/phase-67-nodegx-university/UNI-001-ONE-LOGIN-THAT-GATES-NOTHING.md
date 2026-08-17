@@ -3,7 +3,7 @@
 **Surface:** platform + editor · **Tier 1** · **Effort:** M/L · ✅ **UNBLOCKED — D1, D2 and D11 all ruled 2026-08-14**
 
 > **What the rulings fix here** ([RULINGS.md](RULINGS.md)):
-> - **D2** — the site is **NodeGX Community** at `community.nodegx.dev`; the editor's button reads
+> - **D2** — the site is **NodeGX Community** at `community.nodegx.io`; the editor's button reads
 >   **"Sign in to NodeGX"**. 🔴 One string, one owner — the FUN-001 shape applies: four surfaces
 >   disagreeing about one piece of copy is worse than blank. Do not reinvent it per surface.
 > - **D11** — the consent screen carries **"Share anonymous usage data", unchecked by default**,

@@ -40,7 +40,10 @@ asserts it on a £120 offer rather than a free one.
 ### 🔴 What is deliberately NOT built, so the absence reads as chosen
 
 - **Nothing is sent.** No SMTP, no provider, no delivery attempt; `relay_policy.relay_domain` is
-  unregistered exactly as `community.nodegx.dev` is. `outbound_emails` is a rendered queue — which
+  unregistered. ⚠️ **This line used to read *"exactly as `community.nodegx.dev` is"*; that comparison
+  died on 2026-08-17** — the community host is `community.nodegx.io` and it now resolves (RULINGS D2
+  amendment). The relay domain is still unregistered on its own account, which is the claim that
+  matters here. `outbound_emails` is a rendered queue — which
   makes AC1 a **stronger** claim than watching an inbox would, because every field of every message
   is checked rather than the two a human would have looked at.
 - **No Paddle.** A receipt has a shape and a constraint that refuses half of one, and `recordPayment`

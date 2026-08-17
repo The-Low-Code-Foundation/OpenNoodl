@@ -113,7 +113,13 @@ export type Read<T> =
   | { outcome: 'unreachable'; status: number | null; detail: string };
 
 export type ClientOptions = {
-  /** Where the platform lives. ⚠️ `community.nodegx.dev` is UNREGISTERED — see UNI-001. */
+  /**
+   * Where the platform lives — `community.nodegx.io`.
+   *
+   * ⚠️ **`.io`, not `.dev`**: the whole phase said `.dev` until 2026-08-17 and nobody checked it
+   * against the registrar. It **resolves** (A → nexus-1, `49.12.102.195`) and **nothing serves it
+   * yet** — the platform is deployed nowhere. See UNI-001.
+   */
   baseUrl: string;
   /** The session token, when there is one. Reading works without it (D14 consequence 4). */
   token?: string | null;

@@ -64,7 +64,7 @@ beside the forum, RFP board, prefab shelf and replay library.
 |---|---|
 | Site name | **NodeGX Community** |
 | Learning wing | **NodeGX University** (a section, not a product) |
-| Subdomain | `community.nodegx.dev` |
+| Subdomain | ~~`community.nodegx.dev`~~ → **`community.nodegx.io`** (amended 2026-08-17, see below) |
 | Editor sign-in button | **"Sign in to NodeGX"** |
 | Repo | `nodegx-university` → **`nodegx-community`** |
 
@@ -81,6 +81,31 @@ expensive after the first deploy. **Rename before anything is attached.**
 as aspirational JSON-Schema `$id`s in phase 10's drafts, and the `signal./sync./notify.nodegx.com`
 hosts are from a 2024 collaboration draft that was never built. `community.nodegx.dev` is a choice
 this ruling makes, not a fact it records — **the domain still has to be registered.**
+
+### ✅ AMENDED 2026-08-17 by Richard — it is `community.nodegx.io`, and it resolves
+
+**A record → nexus-1, `49.12.102.195`**, confirmed at the authoritative nameserver and at 8.8.8.8.
+`nodegx.io` and `www.nodegx.io` already pointed there (the landing page), so this is a subdomain of
+a domain that was **already registered**, on Namecheap's nameservers.
+
+🔴 **The correction worth keeping is not the TLD, it is how long it survived.** This ruling
+correctly flagged its own subdomain as *"a choice this ruling makes, not a fact it records"* — and
+then **four days of handovers turned it into a fact**, carrying *"`community.nodegx.dev` is not
+registered"* as item 1 for Richard through six sessions. Nobody checked it against a registrar, and
+the check was one `dig`. ⚠️ **The blocker was mis-stated the whole time**: it was never *"a domain
+needs registering"*, it was *"a subdomain of a domain we already own needs an A record"* — a much
+smaller ask, and one that might have been done days earlier had it been described accurately.
+*A caveat travels worse than the claim it qualifies; the claim gets copied forward and the caveat
+does not.*
+
+⚠️ **Resolving is not being served, and the two must not be collapsed.** nexus-1 runs the static
+`nodegx.io` landing page plus two of Richard's live sites, and Caddy has **no site block** for
+`community.nodegx.io`; the platform (`nodegx-community`) is deployed nowhere. 🔴 **A response from
+that host is therefore not evidence of anything** — Caddy 308s http→https for *every* Host including
+invented ones. Read the loaded config from the admin API at `127.0.0.1:2019` instead.
+
+✅ **What it does unblock:** OAuth callback URLs can now be registered against a hostname that
+resolves, which is exactly what UNI-001's remainder was waiting on.
 
 **Consequences:** UNI-009 is "the community home" in the literal sense — it *is* the site, and the
 tutorials index is one card on it. UNI-001's button copy is fixed and must not be reinvented per
@@ -530,8 +555,12 @@ the threshold ships a surface that passes the gate and then decays.
 ## D17 — curriculum hosting · ✅ RULED 2026-08-16
 
 **Ruled: the curriculum index is part of the platform API under D14 — one content path, the same one
-the web reads — with GitHub Pages as the v0 while `community.nodegx.dev` and the platform do not
+the web reads — with GitHub Pages as the v0 while `community.nodegx.io` and the platform do not
 exist.**
+
+> ⚠️ **Half of that condition lapsed on 2026-08-17**: the host now resolves (see D2's amendment).
+> **The platform is still deployed nowhere**, so the v0 stands — but the ruling's trigger is now one
+> condition, not two, and a later reader should not treat "the domain does not exist" as still true.
 
 This is the posture D7 already took for UNI-004: *build it so the thing that does not exist yet can be
 absent.* The v0 is not a different design, it is the same fetch against a different origin.
@@ -630,8 +659,10 @@ a follow-ons list.
 
 **Why it therefore intersects three existing rulings rather than standing alone:**
 
-1. **D2** — the site is NodeGX Community at `community.nodegx.dev`, and ⚠️ that domain **is not
-   registered**. Hosting the curriculum "on the site" is not free while that is true.
+1. **D2** — the site is NodeGX Community at `community.nodegx.io` (⚠️ **amended 2026-08-17 from
+   `.dev`** — see D2). At the time of ruling that host did not resolve; it **now does** (A → nexus-1,
+   `49.12.102.195`), but **nothing serves it**, so *"hosting the curriculum on the site"* is still
+   not free and this input to D17 stands as reasoned.
 2. **D9** — the hosted tier serves an exported frontend *and* a record-capped backend. A curriculum
    served from the same place inherits that ops posture; served from GitHub Pages it does not.
 3. **D14** — the web is canonical and the editor mirrors it via **one API**. A curriculum fetched by

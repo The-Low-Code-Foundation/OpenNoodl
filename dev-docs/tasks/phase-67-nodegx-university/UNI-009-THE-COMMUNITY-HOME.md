@@ -3,11 +3,14 @@
 **Surface:** platform · **Tier 1 (minimal cut — lands WITH UNI-001)** · **Effort:** S/M · ✅ **UNBLOCKED — D2 ruled 2026-08-14**
 
 > **D2** ([RULINGS.md](RULINGS.md)): this task **is** the site. The platform is called **NodeGX
-> Community**, served at `community.nodegx.dev`, and **NodeGX University is one wing of it** —
+> Community**, served at `community.nodegx.io`, and **NodeGX University is one wing of it** —
 > the learning section beside the forum, the RFP board, the prefab shelf and the replay library.
 > The tutorials index is a card on this page, not the point of it.
-> ⚠️ The domain is a choice this ruling makes, not a fact it records — **`nodegx.dev` is not
-> registered anywhere in this repo** and still has to be acquired.
+> ✅ **AMENDED 2026-08-17.** This note used to read *"the domain is a choice this ruling makes, not a
+> fact it records — `nodegx.dev` is not registered and still has to be acquired."* The host is
+> **`community.nodegx.io`** and it **resolves** (A → nexus-1 `49.12.102.195`); `nodegx.io` was
+> already registered and serving the landing page, so the ask was a subdomain record, not a
+> purchase. ⚠️ **Nothing serves the host yet** — no Caddy site block, platform deployed nowhere.
 
 ## Premise
 
