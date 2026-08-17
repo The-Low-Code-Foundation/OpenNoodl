@@ -12,7 +12,6 @@ import {
   LauncherButtonVariant
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherButton';
 import { LauncherPage } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherPage';
-import { LearningSection } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
 import {
   LauncherProjectCard,
   LauncherProjectData
@@ -58,11 +57,7 @@ export function Projects({}: ProjectsViewProps) {
     onDeleteProject,
     onMigrateProject,
     onOpenReadOnly,
-    connectAgent,
-    learning,
-    onOpenLearningLesson,
-    onResetLearningLesson,
-    onInstallLearningLesson
+    connectAgent
   } = useLauncherContext();
 
   const { getProjectMeta, getProjectsInFolder, folders, moveProjectToFolder } = useProjectOrganization();
@@ -205,18 +200,12 @@ export function Projects({}: ProjectsViewProps) {
             </>
           }
         >
-          {/* D5 — "a Learning section in the launcher, beside recent projects".
-              It sits above the grid because visible progress is the reason the
-              ruling chose the visible option, and below the page head because a
-              lesson is not what the launcher is *for*. Empty, it explains what
-              the folder is and offers the install route; with no install handler
-              at all it renders nothing. */}
-          <LearningSection
-            lessons={learning ?? []}
-            onOpen={onOpenLearningLesson}
-            onReset={onResetLearningLesson}
-            onInstall={onInstallLearningLesson}
-          />
+          {/* D5's Learning section used to render here, above the grid. Moved
+              to its own tab (`views/Learning.tsx`) — it filled the top of the
+              launcher, and the first thing you should see on opening it is your
+              projects. D5's "visible, because visible progress motivates" is
+              still met by a permanent tab in the header; what it does not
+              survive is being the launcher's opening screen. */}
 
           {allProjects.length === 0 ? (
             /* First-launch welcome — the actual first impression. */

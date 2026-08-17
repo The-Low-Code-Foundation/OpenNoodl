@@ -56,9 +56,21 @@ export function usePersistentTab(defaultTab: LauncherPageId): [LauncherPageId, (
  * POL-002 dropped `'learn'`: the tab is gone, and anyone whose last session
  * ended on it has `'learn'` sitting in localStorage. Rejecting it here is what
  * lands them on the default tab rather than on a page with no way back to it.
+ *
+ * 🔴 `'learning'` is accepted and `'learn'` is still rejected. They are two
+ * different pages (see `LauncherPageId`) and this is the one place a *stored*
+ * string decides which you land on, so getting the near-identical names the
+ * wrong way round here would silently park people on the retired catalogue.
+ *
+ * The list is spelled out rather than derived from the tab table because a
+ * derived guard would accept whatever the header happens to render, and the
+ * whole point of POL-002's entry is a page id the header does *not* render.
+ *
+ * Exported for the editor's suite: noodl-core-ui has no test runner of its own,
+ * the same reason `shouldWriteDeepLinkUrl` and `isMacPlatform` are exported.
  */
-function isValidPageId(value: string): value is LauncherPageId {
-  return value === 'projects' || value === 'templates' || value === 'github';
+export function isValidPageId(value: string): value is LauncherPageId {
+  return value === 'projects' || value === 'learning' || value === 'templates' || value === 'github';
 }
 
 /**

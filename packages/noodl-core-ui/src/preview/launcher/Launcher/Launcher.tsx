@@ -26,6 +26,7 @@ import {
   LauncherProvider
 } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 import { GitHubRepos } from '@noodl-core-ui/preview/launcher/Launcher/views/GitHubRepos';
+import { Learning } from '@noodl-core-ui/preview/launcher/Launcher/views/Learning';
 import { LearningCenter } from '@noodl-core-ui/preview/launcher/Launcher/views/LearningCenter';
 import { Projects } from '@noodl-core-ui/preview/launcher/Launcher/views/Projects';
 import { Templates } from '@noodl-core-ui/preview/launcher/Launcher/views/Templates';
@@ -204,8 +205,9 @@ function parseDeepLink(): LauncherPageId | null {
     const pathParts = url.pathname.split('/');
     const tabPart = pathParts[pathParts.length - 1];
 
-    // POL-002: `'learn'` is no longer reachable — see HEADER_TABS.
-    if (tabPart === 'projects' || tabPart === 'templates' || tabPart === 'github') {
+    // POL-002: `'learn'` is no longer reachable — see HEADER_TABS. `'learning'`
+    // is a different page and is.
+    if (tabPart === 'projects' || tabPart === 'learning' || tabPart === 'templates' || tabPart === 'github') {
       return tabPart as LauncherPageId;
     }
   } catch (error) {
@@ -342,6 +344,10 @@ export function Launcher({
       // back when the learn phase rebuilds the content.
       case 'learn':
         return <LearningCenter />;
+      // UNI-007 / D5's Learning section, which used to render above the project
+      // grid. A different page from `'learn'` above — see `LauncherPageId`.
+      case 'learning':
+        return <Learning />;
       case 'templates':
         return <Templates />;
       default:

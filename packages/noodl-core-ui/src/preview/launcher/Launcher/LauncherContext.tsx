@@ -13,7 +13,18 @@ import type { LauncherLearningData } from './components/LearningSection';
 import { LauncherProjectData } from './components/LauncherProjectCard';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from './hooks/useGitHubRepos';
 
-export type LauncherPageId = 'projects' | 'learn' | 'templates' | 'github';
+// ⚠️ `'learn'` and `'learning'` are two different pages and the near-identical
+// names are load-bearing, not sloppiness:
+//
+//  - `'learn'`  — POL-002's retired catalogue of hosted lessons (`LearningCenter`).
+//                 Unreachable: no tab, no deep link, rejected by `isValidPageId`.
+//  - `'learning'` — UNI-007 / D5's Learning section, the lessons actually
+//                 installed on this machine (`LearningSection`). This is the tab.
+//
+// Renaming `'learn'` out of existence would delete the retired catalogue, which
+// POL-002 deliberately kept compiled; reusing it would put the dead catalogue
+// behind the live tab. So both ids stay, and only one of them is reachable.
+export type LauncherPageId = 'projects' | 'learn' | 'learning' | 'templates' | 'github';
 
 export type LauncherLessonState = 'not-started' | 'in-progress' | 'completed';
 

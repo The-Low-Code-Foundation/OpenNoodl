@@ -29,8 +29,14 @@ interface HeaderTab {
 // switch. `LearningCenter` and the whole lesson pipeline are left in place and
 // compiling (the same convention `router.setup.ts` uses for the shelved
 // Topology and retired Data Lineage panels); only this entry is gone.
+//
+// The `Learning` entry is *not* that tab coming back. It is page id
+// `'learning'` — UNI-007 / D5's installed-lessons section, which used to sit
+// above the project grid and now has its own tab so the launcher opens on your
+// projects (Richard, 2026-08-17). `'learn'` is still unreachable.
 const HEADER_TABS: HeaderTab[] = [
   { id: 'projects', label: 'Projects' },
+  { id: 'learning', label: 'Learning' },
   { id: 'templates', label: 'Templates' },
   { id: 'github', label: 'GitHub' }
 ];
