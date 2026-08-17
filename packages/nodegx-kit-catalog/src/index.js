@@ -328,11 +328,18 @@ function catalogNodesFromNodeLibrary(payload, options = {}) {
     const kitModule = nodeType.module;
     if (!kitModule) continue; // a built-in; the shipped catalog already has it
 
-    // 🔴 Built-ins keep priority. A kit shadowing a shipped type name is a
-    // *diagnostic*, not a silent override — a silent one would let a kit change
-    // what `Text` means for every check in the editor, and the author would
-    // never be told. CN-015 owns turning this into a user-visible failure that
-    // names the kit; recording it here is what gives it something to report.
+    // 🔴 Built-ins keep priority **here, in the catalog**. A kit shadowing a
+    // shipped type name is a *diagnostic*, not a silent override — a silent one
+    // would let a kit change what `Text` means for every check in the editor,
+    // and the author would never be told.
+    //
+    // ⚠️ **The runtime resolves this the other way and that is not a typo.**
+    // `NodeRegister.register` is an unguarded assignment and `viewer.jsx`
+    // registers built-ins before module nodes, so at runtime the *kit* wins.
+    // Measured in CN-015 (`notes/cn-015-premise-census.md`). The consequence is
+    // that validation describes the built-in while the app runs the kit's node,
+    // which is why the collision is an **error** and not a note. Do not "fix"
+    // this comment by deleting one half — both halves are true.
     if (builtins.has(nodeType.name)) {
       collisions.push({ typeName: nodeType.name, kitModule });
       continue;
@@ -518,11 +525,18 @@ function describeComparison(comparison) {
   ].join('\n');
 }
 
+// CN-015. Re-exported from here so there is one import site for consumers, and
+// so the collision recorded by `catalogNodesFromNodeLibrary` above and the
+// message that reports it cannot be picked up independently of each other.
+const { kitDiagnostics, formatKitDiagnostic } = require('./health');
+
 module.exports = {
   KIT_PROVENANCE,
   normalizePortType,
   catalogNodesFromNodeLibrary,
   mergeOverlay,
   compareOverlays,
-  describeComparison
+  describeComparison,
+  kitDiagnostics,
+  formatKitDiagnostic
 };

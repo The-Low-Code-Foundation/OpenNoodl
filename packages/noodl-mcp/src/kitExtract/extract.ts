@@ -73,7 +73,10 @@ export interface ProjectKitOverlay {
   projectDir: string;
   /** Catalog-shaped entries for the project's kit node types. */
   nodes: OverlayCatalogNode[];
-  /** Kit types that shadow a shipped type name. Built-ins keep priority. */
+  /**
+   * Kit types that shadow a shipped type name. Built-ins keep priority in the
+   * catalog; ⚠️ **at runtime the kit wins instead** — see `kitDiagnostics`.
+   */
   collisions: OverlayCollision[];
   kits: KitSummary[];
   /** Malformed or unreadable `manifest.json` files, from the shared scanner. */

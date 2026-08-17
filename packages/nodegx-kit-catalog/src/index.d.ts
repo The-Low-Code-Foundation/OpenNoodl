@@ -200,3 +200,40 @@ export declare function compareOverlays(
 ): OverlayComparison;
 
 export declare function describeComparison(comparison: OverlayComparison): string;
+
+/** CN-015. What went wrong with one kit, in words that name it. */
+export interface KitHealthDiagnostic {
+  code: 'kit-load-failed' | 'kit-shadows-builtin' | 'kit-registered-nothing';
+  /** `diagnostics.ts`' scale, not a new one. */
+  severity: 'error' | 'warning' | 'info';
+  kitModule: string;
+  dirPath?: string;
+  /** Set when the diagnostic is about one node type rather than the whole kit. */
+  typeName?: string;
+  /**
+   * `kit-load-failed` only. True when the kit got some nodes registered before
+   * it threw — it looks present while being silently incomplete, which is the
+   * more alarming case and gets its own wording.
+   */
+  partial?: boolean;
+  message: string;
+}
+
+export declare function kitDiagnostics(
+  overlay: {
+    kits?: Array<{ kitModule: string; dirPath?: string }>;
+    nodes?: Array<{ typeName?: string; kitModule?: string }>;
+    collisions?: Array<{ typeName: string; kitModule: string }>;
+    failures?: Array<{ kitModule: string; dirPath?: string; message: string }>;
+  },
+  options?: {
+    /**
+     * Whether the caller actually loaded the kits. `false` skips the
+     * zero-node check — the editor reads a payload a viewer sent (✅ D3) and
+     * cannot tell "registered nothing" from "not yet loaded".
+     */
+    assumeLoaded?: boolean;
+  }
+): KitHealthDiagnostic[];
+
+export declare function formatKitDiagnostic(diagnostic: KitHealthDiagnostic): string;

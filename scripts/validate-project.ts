@@ -42,7 +42,7 @@ import { loadProject } from '../packages/noodl-editor/src/editor/src/validation/
 import { extractProjectOverlay } from '../packages/noodl-mcp/src/kitExtract/extract';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { mergeOverlay } = require('@nodegx/kit-catalog');
+const { mergeOverlay, kitDiagnostics, formatKitDiagnostic } = require('@nodegx/kit-catalog');
 
 interface CliArgs {
   targets: string[];
@@ -148,14 +148,15 @@ function validatorFor(target: string, args: CliArgs): SemanticValidator {
     console.error(`WARN kit node types for ${target} could not be read: ${overlay.unavailable.reason}`);
     console.error('     Nodes from this project\'s kits are validated as unknown types below.');
   }
-  for (const failure of overlay.failures) {
-    console.error(`WARN kit "${failure.kitModule}" (${failure.dirPath}) failed to load: ${failure.message}`);
-  }
-  for (const collision of overlay.collisions) {
-    console.error(
-      `WARN kit "${collision.kitModule}" declares "${collision.typeName}", which is a built-in type name. ` +
-        'The built-in wins; the kit\'s node is not available.'
-    );
+  // CN-015. One classifier, shared with every other consumer, so the CLI and the
+  // editor cannot end up describing the same failure differently — the drift this
+  // phase has now found in four consecutive tasks.
+  //
+  // `assumeLoaded` is true here and that is load-bearing: this route just ran the
+  // kits headlessly, so "registered no nodes" is a fact rather than a guess. The
+  // editor, reading a payload a viewer sent, must pass false.
+  for (const diagnostic of kitDiagnostics(overlay, { assumeLoaded: true })) {
+    console.error(formatKitDiagnostic(diagnostic));
   }
   if (overlay.nodes.length === 0) return new SemanticValidator();
 

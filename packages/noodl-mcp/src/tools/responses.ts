@@ -129,9 +129,14 @@ export interface ProjectKitsReport {
   /** Kits that loaded, with the node types each contributed to the catalog. */
   modules: Array<{ name: string; dirPath: string; nodeTypes: string[] }>;
   /**
-   * Kit types whose name is already a shipped type. **The built-in wins** — the
-   * kit's node is not in the catalog and this is where that is said. CN-015 owns
-   * turning it into a failure an author meets at the right moment.
+   * Kit types whose name is already a shipped type.
+   *
+   * ⚠️ **The built-in wins *in the catalog* only** — the kit's node is not in it,
+   * and this is where that is said. 🔴 **At runtime the kit wins instead**
+   * (`NodeRegister.register` overwrites, and module nodes register after
+   * built-ins), so a collision means validation and the running app disagree
+   * about what the type is. Measured in CN-015; `kitDiagnostics` in
+   * `@nodegx/kit-catalog` is the wording that states both halves.
    */
   collisions?: Array<{ typeName: string; kitModule: string }>;
   /** Kits that threw at import or failed to register. Their nodes are absent. */
