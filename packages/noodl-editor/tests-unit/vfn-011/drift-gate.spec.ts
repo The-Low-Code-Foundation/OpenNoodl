@@ -397,7 +397,17 @@ function programFor(fixture: Fixture): { code: string; workspaceJson: string } {
 }
 
 describe('VFN-011 — the drift gate: the bench and the runtime agree about every fixture', () => {
-  it('compiles against the runtime\'s ten parameters, in the runtime\'s order', () => {
+  /**
+   * ✅ **This row has now caught a real drift, which is the whole argument for it.**
+   *
+   * FIX-004's redaction ruling added an eleventh parameter, `console`, to the runtime's
+   * `_compileFunction` and to nothing else. This assertion failed on the **arity** — because it
+   * reads `compiled.length` off the runtime's own compile rather than off its source — and that is
+   * what surfaced the bench and `evaluateFragment` as the two other places the list is spelled.
+   * A version of this test that only compared its literal against `LOGIC_BUILDER_PARAMETERS` would
+   * have stayed green while the bench ran block programs against a different contract.
+   */
+  it('compiles against the runtime\'s eleven parameters, in the runtime\'s order', () => {
     // Read off the runtime's own compile rather than off its source: this is the arity the
     // generated code is actually resolved against.
     const compiled = runtimeMethods._compileFunction.call({ _internal: { generatedCode: 'return 1;' } });
@@ -412,7 +422,10 @@ describe('VFN-011 — the drift gate: the bench and the runtime agree about ever
       'sendSignalOnOutput',
       '__triggerSignal__',
       '__p',
-      '__s'
+      '__s',
+      // 🔴 Last on purpose. Appending is what keeps every earlier position — and so every saved
+      // `generatedCode` string — reading the argument it has always read.
+      'console'
     ]);
   });
 
@@ -456,7 +469,8 @@ describe('VFN-011 — 🔴 NEGATIVE CONTROLS: the differential catches a runner 
    *
    * These are not hypothetical shapes. Every one of them has happened to this node or to something
    * beside it: `__triggerSignal__` was built and not passed; the probe pair was added as the ninth
-   * and tenth parameters after the other eight existed; and the whole reason `__p` is documented as
+   * and tenth parameters after the other eight existed; `console` was added as the eleventh and
+   * landed on the runtime side only, which this file caught; and the whole reason `__p` is documented as
    * an identity function is that a probe which is not one changes what the program computes.
    */
   function driftedObservation(
@@ -470,6 +484,8 @@ describe('VFN-011 — 🔴 NEGATIVE CONTROLS: the differential catches a runner 
       trigger: string;
       probeValue: (id: string, value: unknown) => unknown;
       probeStatement: (id: string) => void;
+      /** Eleventh (FIX-004 redaction b). A drift row supplies it so its ONLY drift is the intended one. */
+      blockConsole: Console;
     }) => unknown[]
   ): { outputs: Record<string, unknown>; values: Record<string, { n: number; v: string[] }>; threw: boolean } {
     const outputs: Record<string, unknown> = {};
@@ -488,7 +504,8 @@ describe('VFN-011 — 🔴 NEGATIVE CONTROLS: the differential catches a runner 
           send: (name) => signals.push(name),
           trigger: 'recalculate',
           probeValue: recorder.probeValue,
-          probeStatement: recorder.probeStatement
+          probeStatement: recorder.probeStatement,
+          blockConsole: console
         })
       );
     } catch {
@@ -502,7 +519,7 @@ describe('VFN-011 — 🔴 NEGATIVE CONTROLS: the differential catches a runner 
   const ARITHMETIC = FIXTURES[0];
   const TRIGGER = FIXTURES[6];
 
-  it('catches a rotated parameter list — the same ten names in the wrong order', () => {
+  it('catches a rotated parameter list — the same eleven names in the wrong order', () => {
     const { code } = programFor(ARITHMETIC);
     const rotated = [...LOGIC_BUILDER_PARAMETERS.slice(1), LOGIC_BUILDER_PARAMETERS[0]];
 
@@ -516,7 +533,8 @@ describe('VFN-011 — 🔴 NEGATIVE CONTROLS: the differential catches a runner 
       c.send,
       c.trigger,
       c.probeValue,
-      c.probeStatement
+      c.probeStatement,
+      c.blockConsole
     ]);
 
     // `Outputs` is now bound to whatever the first argument was, so the program's write lands
@@ -539,7 +557,8 @@ describe('VFN-011 — 🔴 NEGATIVE CONTROLS: the differential catches a runner 
       c.sandbox.Arrays,
       c.send,
       c.probeValue,
-      c.probeStatement
+      c.probeStatement,
+      c.blockConsole
     ]);
 
     // Not a crash — a `ReferenceError` on a name the program was promised. Either way the
@@ -566,7 +585,8 @@ describe('VFN-011 — 🔴 NEGATIVE CONTROLS: the differential catches a runner 
       // `__p` hands back what it was given. A probe that records and returns `undefined` is the
       // shape that breaks it, and it breaks it silently for any program whose answer is falsy.
       (_id: string, _value: unknown) => undefined,
-      c.probeStatement
+      c.probeStatement,
+      c.blockConsole
     ]);
 
     const honest = observeOnBench(code, { a: 1, b: 2, c: 3 }, 'run', {});

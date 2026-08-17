@@ -2,6 +2,7 @@
 
 import { IDENTITY_VALUE_PROBE, NOOP_STATEMENT_PROBE } from '../../blockrun';
 import { DEFAULT_VALUE_CAP, previewValue } from '../../tracebuffer';
+import { createBlockConsole } from './logic-builder-console';
 
 /**
  * LGC-003's probe pair, re-exported so `logic-builder.ts` keeps one import for "everything the
@@ -140,6 +141,11 @@ export function evaluateFragment(
       // thing, because the identity probe is what it gets.
       '__p',
       '__s',
+      // FIX-004 redaction (b) — the eleventh, and "the same eleven" is now the claim. A fragment
+      // is evaluated for the editor and has no run sink, so this resolves to the real console;
+      // `createBlockConsole` is used rather than naming `console` directly so there is one
+      // definition of what a block program's console is, not a second one that happens to agree.
+      'console',
       code
     ) as (...args: unknown[]) => unknown;
   } catch (error) {
@@ -167,7 +173,9 @@ export function evaluateFragment(
       },
       context.__triggerSignal__,
       IDENTITY_VALUE_PROBE,
-      NOOP_STATEMENT_PROBE
+      NOOP_STATEMENT_PROBE,
+      // Eleventh, matching the parameter list above. No sink here, so this IS the real console.
+      createBlockConsole(undefined)
     );
 
     const result: ProbeResult = { ok: true, value: previewValue(value, valueCap) };

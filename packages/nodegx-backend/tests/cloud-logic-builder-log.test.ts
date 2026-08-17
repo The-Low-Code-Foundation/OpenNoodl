@@ -71,6 +71,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { logger } from '../src/ops/logger';
+import { REDACTED } from '../src/ops/redact';
 import { BackendService } from '../src/service';
 
 import { httpClient } from './helpers/http';
@@ -348,10 +349,28 @@ describe('a noodl_log block inside a real cloud function (FIX-004 acceptance 2)'
       mode: 0o600
     });
 
-    // `setup-logging.js` silences the structured logger for the whole suite. That is deliberately
-    // left alone here: a `console.log` from generated code does not go through the logger, and
-    // leaving it silent means anything this suite sees on stdout came from the block program.
+    /**
+     * 🔴 **This suite used to leave the logger silent, and that premise EXPIRED.**
+     *
+     * The sentence that was here read: *"a `console.log` from generated code does not go through
+     * the logger, and leaving it silent means anything this suite sees on stdout came from the
+     * block program."* Both halves were true when it was written and the first half is now false —
+     * FIX-004's redaction ruling (b) routes a block program's `console` through the run's log sink,
+     * which is the structured logger's door (`noodl-runtime/nodes/std-library/logic-builder-console.ts`).
+     *
+     * ⚠️ Left silent, every presence assertion below fails — and fails for a reason that has
+     * nothing to do with whether the block printed. That is the shape of a suite that would have
+     * reported a working feature as broken, so the level is opened deliberately rather than the
+     * assertions being weakened.
+     *
+     * 🔴 **`NODEGX_LOG_LEVEL` beats the `configure` option** — `ops/logger.ts:78` reads
+     * `envLogLevel() || options.level`, so `configure({ level: 'info' })` alone is a no-op while
+     * `setup-logging.js`'s `silent` is still in the environment. The env var goes first. Getting
+     * this backwards produces a green-looking call and a silent logger.
+     */
     previousLevel = process.env.NODEGX_LOG_LEVEL;
+    delete process.env.NODEGX_LOG_LEVEL;
+    logger.configure({ level: 'info' });
 
     /**
      * 🔴 Both doors are captured, and the reason is a trap this suite walked into.
@@ -457,22 +476,35 @@ describe('a noodl_log block inside a real cloud function (FIX-004 acceptance 2)'
   });
 
   /**
-   * 🔴 The one that is not a pass/fail about FIX-004 but about what FIX-004 made reachable.
+   * ✅ **CLOSED by FIX-004's redaction ruling (b).** This row used to record a leak.
    *
-   * `net.noodl.Log` value-redacts a provisioned secret out of its message (CWF-013). The scrubber
-   * lives on the structured logger's door. A block's `console.log` does not use that door.
+   * `net.noodl.Log` value-redacts a provisioned secret out of its message (CWF-013), and the
+   * scrubber lives on the structured logger's door. A block's `console.log` did not use that door
+   * — so this assertion read `…in the clear: true` and was the measurement the ruling was made on.
+   * The block program's `console` is now the run's sink, so it uses the same door and gets the same
+   * value-based pass.
+   *
+   * ✅ **The expected string is still the full sentence rather than `toBe(false)`**, for the reason
+   * the original gave: a change of answer should show the answer. If this ever flips back it says
+   * so in words.
    */
-  it('records what happens to a PROVISIONED SECRET logged from a block program', async () => {
+  it('scrubs a PROVISIONED SECRET logged from a block program, as the Log node already did', async () => {
     const res = await client.request<{ result: { ok?: string } }>('POST', '/functions/lbSecret', {
       body: { note: 'go' }
     });
     expect(res.status).toBe(200);
 
     const leaked = everything().includes(STORED_SECRET);
-    // Written as a value comparison rather than a bare boolean so a change of answer shows the
-    // answer, not just "expected true to be false".
     expect(`a block-logged secret reaches stdout in the clear: ${leaked}`).toBe(
-      'a block-logged secret reaches stdout in the clear: true'
+      'a block-logged secret reaches stdout in the clear: false'
     );
+
+    /**
+     * 🔴 The absence above needs a firing signal beside it, or it also passes when the block
+     * printed nothing at all — which is precisely how a broken `console` would look. `REDACTED` is
+     * the scrubber's replacement text, so its presence proves the line was written, reached the
+     * sink, and was scrubbed there rather than never having been emitted.
+     */
+    expect(everything()).toContain(REDACTED);
   });
 });

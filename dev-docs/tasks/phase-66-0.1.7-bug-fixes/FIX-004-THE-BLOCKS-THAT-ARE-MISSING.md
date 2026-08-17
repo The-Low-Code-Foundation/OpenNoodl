@@ -684,3 +684,180 @@ as an empty toolbox rather than as a wrong selector.
 Node-graph nodes are painted on a canvas, so `cdp.js click` (selector-only) cannot reach them —
 `cdp.js drag "x,y" "x,y"` can, and the property panel's **"Edit Logic Blocks"** button is a third
 route.
+
+---
+
+## ✅ Redaction (b) — BUILT + MEASURED 2026-08-17 (session 51). The last FIX-004 build is closed.
+
+**One new module, three call sites, four spellings of one list, and a gate that had never fired
+before catching this.**
+
+### The seam, and why it is not the one the ruling named
+
+The ruling (s42) said *"route the block's generator at `console.log` through the same scrubbed
+sink"*, which reads as an instruction to make `noodl_log` emit something other than `console.log`.
+**That was rejected on population, not on mechanism.**
+
+🔴 **`generatedCode` is a string saved in every existing project, and every one of those strings
+already says `console.log`.** A new emission fixes programs saved from tomorrow and leaves every
+program already on disk leaking until somebody happens to reopen it and nudge a block. The
+census measured the alternative instead: `_compileFunction` builds the program with
+`new Function(...)`, so **a parameter named `console` shadows the global inside the body** — and
+both populations are fixed by one edit.
+
+✅ **It also leaves the editor↔runtime contract alone.** `noodl_log` still generates
+`console.log(value);`. Three specs pin that string
+(`tests-unit/fix-004/blocks.spec.ts` ×3, `cloud-logic-builder-log.test.ts`) and **all of them stay
+true rather than being rewritten to match a new build** — which is the difference between a change
+that is compatible and a change that merely passes.
+
+| file | what changed |
+|---|---|
+| **`noodl-runtime/.../logic-builder-console.ts`** 🆕 | `createBlockConsole(sink, nodeId)`. Returns the **real global `console`** when there is no sink. |
+| `logic-builder.ts` | `console` as the **11th** compile parameter; sink read per run from `nodeScope.runContext`, the same two lines `log.ts:166` uses. |
+| `logic-builder-probe.ts` | `evaluateFragment` — the second runtime spelling of the list. Its own comment required it: *"the same ten has to stay true."* |
+| `BenchRunner.ts` | `LOGIC_BUILDER_PARAMETERS` — the bench is a **third** executor of block programs. |
+| `vfn-011/drift-gate.spec.ts` | the **fourth** spelling: the gate's own literal. |
+
+### 🔴 The finding: that parameter list has FOUR spellings, and the census found ONE
+
+The census read `_compileFunction` and stopped. **The other three were found by a gate failing**, in
+a package the change did not touch:
+
+```
+VFN-011 — the drift gate › compiles against the runtime's ten parameters, in the runtime's order
+```
+
+✅ **It caught it because it reads the arity off the runtime's own compile
+(`compiled.length`), not off its source.** A gate that only compared its literal against the bench's
+constant would have stayed green while the bench went on running block programs against a
+ten-parameter contract. The bench is *"a second truth about what a program does"* in its own
+module note; this is the first time that gate has been paid, and it paid.
+
+⚠️ **The bench change fixes no user-visible bug** — a bench run has no sink, so a block's
+`console.log` reached the real console either way. It keeps the two compile paths identical, which is
+the property the gate exists to hold. Said plainly so a later session does not go looking for the
+behaviour it fixed.
+
+### ✅ The browser is not merely unchanged — it is the same object
+
+`createBlockConsole` returns **`console` itself** when there is no sink, not a shim that forwards to
+it. So there is no wrapper, no stringification, and objects still land in devtools inspectable rather
+than as text. A spec asserts **identity** (`toBe(console)`), because a forwarding shim would pass
+every behavioural test and still change what a developer sees. The browser half needed no drive for
+the same reason: it is the same call it always was.
+
+### ⚠️ What routing through the sink DOES change, stated because it is not nothing
+
+On the cloud a block's line stops being a bare stdout write and becomes a `function.log` event —
+levelled, timestamped, carrying `requestId` and the node id, scrubbed, recorded as a step in the
+execution history. That is the point; the original finding was that the probe *"appears in NO JSON
+line."* Two consequences follow that are **not** bugs:
+
+- block lines now count against `MAX_LOG_LINES_PER_RUN`, as a `Log` node in a loop does;
+- 🔴 **a block's `console.log` is now subject to the service log level.** At `NODEGX_LOG_LEVEL=silent`
+  it produces nothing, where before it always printed. Consistent with the `Log` node and with the
+  ruling's *"the same sink"*, and the production default is `info` (`ops/logger.ts:54`), so a real
+  deployment prints it.
+
+### The measurement: the row that recorded the leak now records its absence
+
+`cloud-logic-builder-log.test.ts`'s secret row was deliberately written as a value comparison *"so a
+change of answer shows the answer"*. It did exactly that, **through a real `BackendService` over real
+HTTP with a real `secrets.json`**:
+
+| | before | after |
+|---|---|---|
+| `a block-logged secret reaches stdout in the clear:` | **`true`** | ✅ **`false`** |
+
+🔴 **The absence has a firing signal beside it.** `expect(everything()).toContain(REDACTED)` was added,
+because "the secret is absent" also passes when the block printed nothing at all — which is precisely
+what a broken `console` looks like. And the pre-existing control (log the secret's *length*, 29) still
+passes, so the change is attributable to the routing rather than to the wire dying.
+
+### 🔴 The instrument that had to be repaired, and it was the suite's own stated premise
+
+The suite carried this sentence: *"a `console.log` from generated code does not go through the logger,
+and leaving it silent means anything this suite sees on stdout came from the block program."* True
+when written; **false the moment this change landed.** Left as it was, **all four presence assertions
+failed** — for a reason with nothing to do with whether the block printed. A suite in that state
+reports a working feature as broken.
+
+⚠️ **And the obvious repair is a no-op.** `logger.configure({ level: 'info' })` does nothing while
+`setup-logging.js`'s `silent` is in the environment, because `ops/logger.ts:78` reads
+`envLogLevel() || options.level` — **the env var beats the option.** The env var is deleted first.
+Getting that backwards yields a green-looking call, a silent logger, and the conclusion that the
+feature is broken.
+
+### The specs, and the four mutants
+
+`noodl-runtime/test/fix-004-block-console.test.ts`, **13 tests** — destination selection, argument
+folding, and three rows through the **real node**. Scrubbing is graded in the backend, where the
+scrubber lives; nothing in `noodl-runtime` can see a secret value.
+
+| mutant | result | what it proves |
+|---|---|---|
+| **M1 — drop the `console` parameter** (revert the fix) | 🔴 runtime **3 of 13**; backend **`…in the clear: true`** | the fix is what closes the leak, by name |
+| **M2 — `console` inserted BEFORE `__p`**: the positional near-miss | 🔴 **4 of 13**, incl. *"neither list has drifted"* | order is graded, not just membership |
+| M3 — no-sink returns a forwarding shim | 🔴 **1 of 13** | the identity claim is load-bearing |
+| M4 — `describeArgument` uses `String()` not JSON | 🔴 **1 of 13** | object folding is graded |
+
+✅ **Every mutant run reported a real test count** (13, 6) — no `Tests: 0 total`, so none of them
+compiled-but-graded-nothing. ⚠️ **M1's and M2's first `APPLIED?` echo was broken by zsh globbing and
+printed `0`**; both were re-run with the check fixed and the parameter list printed, because *"the
+edit changed the results"* is not evidence it was **the** edit intended.
+
+🔴 **M1's control matters as much as M1.** Under M1 the backend's *derived-value* row still passes, so
+the failure is attributable to the reverted routing and not to the service having broken.
+
+### One test bug worth recording, because it looked exactly like a product bug
+
+The `Inputs["secret"]` row first read `message: "undefined"`. **An input port on this node exists
+because something asked for it** — in a real graph a *connection*, via `registerInputIfNeeded`. A
+test that only calls `setInputValue` on an undeclared port has its value **dropped silently**, and the
+symptom is indistinguishable from a console that lost its argument. Setting the workspace is *not*
+enough; the port has to be registered.
+
+### Gates
+
+✅ **Taken this session, on the tree as it stood:**
+
+| Gate | Reading |
+|---|---|
+| `noodl-runtime` jest (**full**) | ✅ **137 suites / 2510 passed**, 1 suite + 13 tests skipped |
+| `nodegx-backend` jest (**full**) | ✅ **100 suites / 1085 passed** |
+| `noodl-editor` `test:main` (**full**) | ✅ **229 of 230 suites / 3557 tests**; the one failure is `bld-004/reasoningChannel`, **8/8 passing alone** — the load flake s44 recorded |
+| `noodl-viewer-react` jest | ✅ **71 suites / 910 tests**, exit 0 |
+| `cloud-runtime` jest | ✅ 7 suites / 172 tests |
+| root `npm run typecheck` (the PR gate) | ✅ exit **0**, zero `error TS` |
+| `lint:ci` ratchet | ✅ exit 0, **876** against a 3916 baseline — s50's exact count, no new debt |
+
+⚠️ **`vfn-011/drift-gate.spec.ts` FAILED first and passes now** (13/13, including its three negative
+controls). That failure is the load-bearing gate reading of this session, not a nuisance.
+
+🔴 **Two exit codes were read wrong before being read right, both the documented way.** `TYPECHECK_EXIT=0`
+after a pipe reports `tail`; and a later `npm run typecheck` exited **1 with zero `error TS`** purely
+because the shell's cwd had persisted into a package directory two calls earlier. **Third session
+running for the cwd trap.**
+
+### 🔴 `test:ci` NOT taken — the reason is a measurement, and it changed while being taken
+
+First check: a peer's **full editor stack was live** — `scripts/start.ts` (pid 17319), **three**
+webpack processes, an Electron editor (pid 20580) on 9222. Six minutes later **all of it was gone**,
+which would have looked like a clear run.
+
+🔴 **But the tree was the real answer, not the process table.** A second `git status` immediately
+before the run showed peers had landed **uncommitted source edits in `noodl-core-ui`** — six modified
+files plus two new (`Launcher/*`, `views/Learning.*`, a new FIX-024) — and `noodl-mcp/src/catalog.ts`
+at **20:39:24**, *35 seconds* before the run would have started. `noodl-core-ui` is bundled into the
+renderer, so the reading would have been of a peer's working tree.
+
+⚠️ **The one thing no gate taken here can see** is that the editor's **webpack** resolves
+`BenchRunner.ts`'s new import of `@noodl/runtime/src/nodes/std-library/logic-builder-console`. The
+argument it is safe is an existing working case rather than a guess: that file **already** statically
+imports `@noodl/runtime/src/blockrun` and `@noodl/runtime/src/nodes/std-library/logic-builder-io` —
+same specifier prefix, and the second from the same directory. It is a static ES import, not a
+`require.resolve`. **Still the honest gap: a bundled build was not run.**
+
+⚠️ **`packages/noodl-editor/tests/test-results.json` was deleted** in preparation for the run that was
+then declined. It was stale; it is a build artifact and regenerates. Nobody's reading was consumed.

@@ -49,13 +49,14 @@
  */
 
 import { createBlockRunRecorder } from '@noodl/runtime/src/blockrun';
+import { createBlockConsole } from '@noodl/runtime/src/nodes/std-library/logic-builder-console';
 import { RESERVED_OUTPUTS } from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
 import { previewValue } from '@noodl/runtime/src/tracebuffer';
 
 import type { BlockRunFrame } from './BlockValueTrace';
 
 /**
- * The ten parameters the runtime compiles `generatedCode` against, in its order.
+ * The eleven parameters the runtime compiles `generatedCode` against, in its order.
  *
  * 🔴 **A copy, and knowingly so.** The runtime spells them inline in `_compileFunction` and again
  * in `evaluateFragment`; a third spelling here is not an improvement, and moving the list into a
@@ -63,6 +64,12 @@ import type { BlockRunFrame } from './BlockValueTrace';
  * What removes the risk is not a shared constant but the gate: the differential fails the day the
  * two lists stop matching, which a shared constant could not detect at all if the *runtime* were
  * the side that changed.
+ *
+ * ✅ **The gate has now been paid once, which is the argument for it.** FIX-004's redaction ruling
+ * added `console` on the runtime side only, and `vfn-011/drift-gate.spec.ts` failed on the arity —
+ * having read it off the runtime's own compile rather than off its source. Four spellings exist
+ * (`_compileFunction`, `evaluateFragment`, here, and the gate's own literal) and nothing but that
+ * differential connects them.
  */
 export const LOGIC_BUILDER_PARAMETERS = [
   'Inputs',
@@ -74,7 +81,8 @@ export const LOGIC_BUILDER_PARAMETERS = [
   'sendSignalOnOutput',
   '__triggerSignal__',
   '__p',
-  '__s'
+  '__s',
+  'console'
 ] as const;
 
 /** The stubbed globals a bench run sees. Seeded, in-memory, thrown away afterwards. */
@@ -272,7 +280,17 @@ export function runOnBench(request: BenchRunRequest): BenchRunResult {
       sendSignalOnOutput,
       request.triggerSignal,
       recorder.probeValue,
-      probeStatement
+      probeStatement,
+      /**
+       * Eleventh (FIX-004 redaction b). A bench run has no run sink — there is no request and no
+       * backend here — so this resolves to the real console, exactly as a browser program's does.
+       *
+       * ⚠️ **The runtime's own factory, not `console` spelled again.** The distinction matters for
+       * the same reason the recorder is the runtime's: a bench that named `console` directly would
+       * agree with the runtime today and stop agreeing the moment the no-sink case changes, and the
+       * drift gate compares arity and behaviour, not the identity of what is passed.
+       */
+      createBlockConsole(undefined)
     );
   } catch (thrown) {
     error = messageOf(thrown);

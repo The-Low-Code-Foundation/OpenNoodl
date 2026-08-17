@@ -12,6 +12,7 @@ import type {
   OutcomeToken
 } from '@noodl/types';
 
+import { BlockLogSink, createBlockConsole } from './logic-builder-console';
 import { DetectedIO, RESERVED_INPUTS, RESERVED_OUTPUTS, detectIO, typeOfPort } from './logic-builder-io';
 import {
   BlockRunRecorder,
@@ -82,6 +83,14 @@ interface LogicBuilderExecutionContext {
   Arrays: unknown;
   sendSignalOnOutput(name: string): void;
   __triggerSignal__: string;
+  /**
+   * FIX-004 redaction ruling (b). Named `console` on purpose — a parameter shadows the global
+   * inside a `new Function` body, so the `console.log(…)` that `noodl_log` already generates lands
+   * here without the generator changing and **without every `generatedCode` string already saved
+   * in a project having to be regenerated**. In the browser this IS the global console. See
+   * `logic-builder-console.ts`.
+   */
+  console: Console;
 }
 
 /**
@@ -354,7 +363,9 @@ const LogicBuilderNode: NodeDefinitionOptions = {
           context.sendSignalOnOutput,
           context.__triggerSignal__,
           recorder ? recorder.probeValue : IDENTITY_VALUE_PROBE,
-          recorder ? recorder.probeStatement : NOOP_STATEMENT_PROBE
+          recorder ? recorder.probeStatement : NOOP_STATEMENT_PROBE,
+          // Eleventh, matching `_compileFunction`'s parameter list. See the note there on order.
+          context.console
         );
 
         // Update outputs. Registration comes first because `flagOutputDirty` throws on an
@@ -478,7 +489,21 @@ const LogicBuilderNode: NodeDefinitionOptions = {
         // `new Function` body is sloppy-mode and is called with no receiver, so `this` is the
         // global object, not this context. `NoodlGenerators.ts:73-82` emits the bare call and
         // `logic-builder-node.test.ts` pins that the qualified form throws.
-        __triggerSignal__: triggerSignal
+        __triggerSignal__: triggerSignal,
+
+        /**
+         * FIX-004 redaction ruling (b) — a `noodl_log` block could print a provisioned secret to
+         * stdout in the clear, where the `Log` node could not.
+         *
+         * ⚠️ The sink is read through `nodeScope.runContext` **per run, here**, not cached on the
+         * instance: it is per-run state and a node outlives the run. This is the same two-line
+         * lookup the `Log` node does (`log.ts:166-167`) and deliberately so — one seam, one
+         * meaning, and the browser falls through to the real console in both.
+         */
+        console: createBlockConsole(
+          (this.nodeScope as { runContext?: { log?: BlockLogSink } } | undefined)?.runContext?.log,
+          this.id
+        )
       };
     },
 
@@ -528,6 +553,21 @@ const LogicBuilderNode: NodeDefinitionOptions = {
            */
           '__p',
           '__s',
+          /**
+           * The eleventh parameter, and the only one that shadows a global rather than adding a
+           * name (FIX-004 redaction ruling b).
+           *
+           * ⚠️ **Order is the contract.** This list and the argument list in `_executeLogic` are
+           * positional, so a parameter added here and not there — or added in a different place —
+           * silently shifts every argument after it. `__triggerSignal__` was already once built
+           * and then not passed, which read as `undefined` inside every block program ever run.
+           * A spec asserts this node's parameter names in order for that reason.
+           *
+           * Declared unconditionally, exactly as `__p`/`__s` are: code generated before this
+           * existed says `console.log`, which is the whole point, and code that never mentions
+           * `console` pays one unused parameter.
+           */
+          'console',
           code
         );
         return fn;
