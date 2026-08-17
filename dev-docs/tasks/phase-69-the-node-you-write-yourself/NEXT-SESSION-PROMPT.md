@@ -1,13 +1,13 @@
 # Phase 69 — next session
 
-**Written 2026-08-17, session 21.** 🔴 **This file is a REWRITE, not an amendment.** It is
+**Written 2026-08-18, session 22.** 🔴 **This file is a REWRITE, not an amendment.** It is
 overwritten every session; if you find yourself prepending, rewrite it instead. Everything that
 outlives the phase goes to memory, not here.
 
-Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first. **s21 built and drove CN-006b** — the
-kits surface. The build is small; what is worth reading is §1, because **three of the task's own
-acceptance criteria were written against premises that turned out to be false**, and two of them
-would have shipped something wrong.
+Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first. **s22 built CN-015's headless/CLI
+half** (`3ec68b32`). The build is modest; §1 is the part worth reading, because the task's
+collision premise was **backwards**, one of its acceptance criteria needed **no code at all**, and
+finding that out cost a probe that measured the wrong layer.
 
 ---
 
@@ -21,101 +21,83 @@ would have shipped something wrong.
 | **CN-009** | ✅ s17 | ⚠️ **AC5's consequence needs a live model** | §4 |
 | **CN-010** | ✅ s18 | ✅ AC1 s19 | **AC4 not started** |
 | **CN-014** | ✅ AC1's library half, s20 | ✅ s20 | AC1's 2nd clause + AC2/AC3 open |
-| **CN-006b** | ✅ **s21** | ✅ **s21** | **AC1–AC4 all met.** §1 |
-| CN-011 … CN-013, CN-015 … CN-017 | 📋 | — | §3 |
+| **CN-006b** | ✅ s21 | ✅ s21 | AC1–AC4 all met |
+| **CN-015** | ✅ **CLI/headless half, s22** | ✅ **s22** | **AC2–AC5 met; AC1 editor half OPEN.** §1, §2 |
+| CN-011, CN-012, CN-013, CN-016, CN-017 | 📋 | — | §3 |
 
 🔴 **The drive debt is unchanged and is still exactly one item: CN-008 AC1 + CN-009 AC5 are one
 drive, not two.** Both want a live model authoring in a project that has a kit. ⚠️ **Read §4 first**
 — there is a stale-build trap that would make the whole run grade the wrong code.
 
-**Nothing is blocked on a decision.**
+**One new decision is owed** (§5, item 1). Nothing else is blocked.
 
-## 1. What s21 did, and the lesson
+## 1. 🔴 The finding that outlives CN-015: precedence is two rules that disagree
 
-CN-006b's four acceptance criteria are met and driven. The surface is a kits list in `KitsSection`
-(with node counts, expandable node names, and remove), and a provenance row in the property panel
-header. ⚠️ **Item 2 of the spec — "a create entry point" — was already built by CN-006.** Reading
-the file before writing is what established that; the section even carried a note reserving the list
-for this task.
+**The catalog gives the built-in priority. The runtime gives the KIT priority.**
 
-### 🔴 The lesson: three false premises, in one short spec
+`catalogNodesFromNodeLibrary` drops a kit node whose name collides and records a `collision`, so
+every check in the editor goes on describing the shipped type. But `NodeRegister.register` is an
+unguarded assignment (`this._constructors[name] = nodeDefinition`) and `viewer.jsx` registers
+built-ins **before** module nodes on both its paths — so the last writer, the kit, is what
+`createNode` returns. **Measured**, with a probe that asserted the *built-in* so its failure message
+would print the truth:
 
-**This is the sixth consecutive session in which the handover's or the task's stated premise did not
-survive contact with the data.** The practice that catches it every time is the same one: *run the
-thing the task describes, over real data, and count what comes back, before writing anything.*
+```
+AFTER KIT REGISTER, metadata.tag = KIT
+createNode returns tag = KIT
+```
 
-| The spec said | What a census found |
-|---|---|
-| list each kit "with the right node count and **version**" | **No manifest in any of the 29 real projects has a `version` field.** The scaffold writes none, and `MANIFEST_SCHEMA` in `@nodegx/module-inject` has no `version` property at all. The row now reads one **when present** and omits it otherwise — `v0.0.0` would be a number nothing on disk ever said |
-| "**a link to its docs** — the `docs` field already exists and is already carried through `nodelibraryexport.ts`" | It is carried, and **it is prose**. Measured on the payload a real viewer sent: both kit types carry the author's sentence, and **not one of the 175 built-ins carries the field at all**. An `href` would have opened nothing |
-| provenance is "already carried" | ✅ True — and the useful correction is the *direction*: `module` was already on the exported type and needed **a reader, not plumbing**. `NodeLibraryDataNodeType` declared neither it nor most of the payload, exactly as s20 found |
+**The consequence is the worst of both halves: validation checks the built-in's ports while the
+runtime runs the kit's code.** A project can pass its own gate and behave differently.
 
-🔴 **`docs` is now the fourth field in four consecutive tasks to bite a second consumer** —
-CN-008's `docs`, CN-009's `summary`, CN-010's `dp.note`, and this. **One field, two vocabularies, and
-the consumer that reads it decides which one it thinks it has.**
+🔴 **And the shipped message said the opposite** — *"The built-in wins; the kit's node is not
+available."* Anyone who trusted that sentence debugged the wrong node. Corrected in
+`validate-project.ts`, and the same half-truth corrected in `responses.ts` and `extract.ts`; a
+regression test forbids the old wording drifting back.
 
-### ✅ A P1 capability gap, found and closed in passing
+⚠️ **Making the runtime agree is a ruling, not a tidy-up** — see §5 item 1.
 
-`getNodeDocs` reads the enriched catalog — keyed by type name, generated at repo-build time — so **a
-kit type can never be in it**. The header's help button was gated on that lookup, so **a kit node had
-2 action buttons and a built-in 3**. That is precisely the capability difference P1 forbids, and
-AC4 exists to catch it. The kit's own `docs` prose fills the button now, with **no "Read more"** fine
-type because there is no page behind the click.
+## 2. What else CN-015 cost, and the two lessons
 
-### The rule for "is this a kit" had to be built from a census
+**AC2 needed no code, and a probe told me otherwise.** The spec is right that
+`createNodeFromReactComponent` has no `name` guard, and a probe calling `NodeRegister.register`
+**directly** did register a nameless definition under the literal key `'undefined'`.
+🔴 **That probe skipped a layer.** A kit always goes `registerModule` → `registerNode` →
+`NodeDefinition.defineNode`, which **throws `'Node must have a name'`**
+(`nodedefinition.ts:252-254`). The diagnostic was written and then **deleted** when a real fixture
+proved it could never fire — this task's own trap list forbids a guard nobody has seen fail.
 
-🔴 **There is no `kind: 'node-kit'` marker.** The 29 projects contain exactly four manifest shapes —
-iconset (`type`), asset module (`browser`, no `main`), ERG-002 library (`kind`), and kit (`main`, no
-marker of its own) — and only the first three are positively identifiable. So kit-ness is
-**subtractive**, and ⚠️ **a fixture containing only a kit passes against a `listNodeKits` that
-returns every module it finds.** The central test writes all four shapes for that reason.
+⚠️ **What the fixture found instead is worse and is now reported.** The throw is *mid-module*, so
+`registerModule`'s loop leaves the kit **half-registered** — nodes before the bad definition live,
+everything after silently gone. Seen live: one kit produced **both** a load failure **and** a
+collision, which is only possible if a node had already registered. My own first-draft message said
+*"none of its nodes are available"*, **which was an over-claim of exactly the kind this task exists
+to remove**; `kit-load-failed` now carries `partial`.
 
-⚠️ **`joinKitNodes` keeps apart two states disk cannot distinguish.** ✅ D3 puts node lists in the
-running viewer's gift, so a kit with no nodes is **"installed, not yet loaded"** — never "0 nodes",
-which reads as a broken kit. Groups with no kit on disk surface as **orphans** rather than being
-dropped, which is exactly AC3's aftermath.
-
-**29 tests, 15/15 mutations killed** — ⚠️ **and two of those mutations exposed tests that could not
-fail, rather than code that was wrong**: an iconset control the `main` requirement already excluded,
-and a path-traversal test whose target was refused by the *manifest* check and then by the kernel,
-twice, before the guard under test was ever consulted. `test:main` **3,630 / 236** (re-measured),
-`typecheck:editor` **0**.
-
-## 2. Instrument notes from s21's drive, all reusable
-
-- 🔴 **`window.confirm` is a NATIVE modal in Electron** — it blocks the renderer and takes CDP with
-  it. Stub it (`window.confirm = () => true`) before clicking anything that confirms. The hang reads
-  exactly like a broken handler.
-- 🔴 **CDP hover does not open the `Tooltip`.** A real `Input.dispatchMouseEvent` `mouseMoved` onto
-  the measured centre, twice, with a neutral move between, left the tooltip layer empty; so did
-  synthetic `mouseover`/`mouseenter`. Fall back to reading the `content`/`fineType` props React
-  passes — and **say that is what you did**, it is one step short of the rendered text.
-- 🔴 **The naive React fiber walk reports the LAST button in the rail for every button.** Following
-  `sibling` from the root escapes the element's own subtree. Descend only: start at `root.child` and
-  never follow the root's sibling.
-- ⚠️ **`npm run cdp -- click <selector>` clicks the FIRST match.** The launcher has ~400 elements
-  matching `[class*=LauncherProjectCard]` and three projects named `Cashflow Command Centre`; the
-  first click opened **a peer's scratchpad project** and the reading would have been about the wrong
-  tree. ✅ Tag the element you mean (`setAttribute('data-drive-target','1')`) and click that.
-- ⚠️ **`LocalProjectsModel.loadProject()` loads but does not BIND** — `ProjectModel.instance` stays
-  on the previous project and there is no error. The launcher card click is still the only route
-  found, and **there is no route back to the launcher** from an open project: getting the wrong one
-  open costs a stack restart.
-- ⚠️ **Selecting a node switches the sidebar away from Settings**, so a settings element measured
-  after an AC2 selection is **0×0** and the click is refused. Re-open and re-measure.
+🔴 **AC4's "three known-zero shipped modules" is a list that does not exist.** LBR-006 asserts it and
+names none. A census of all 29 was run instead
+([notes/cn-015-premise-census.md](notes/cn-015-premise-census.md)): **15 register ≥1 node, 1
+registers zero** (`form-validation/noodl-validation-module` — AC4's real known-broken input), **5
+unmeasured** (they need a browser the harness lacks), 7 have no `main` and register zero by design.
+⚠️ **The census lied twice before it was right**: without `window.React` **9 healthy modules read as
+broken**, and collecting only `defineModule` missed **`defineNode`** entirely. **`asked − answered =
+absent` — the other two LBR-006 counted are NOT disproven.**
 
 ## 3. Picking the next build
 
-With CN-006b done, the tier-2 authoring arc is complete. The remaining unbuilt tasks are
-**CN-011 … CN-013, CN-015 … CN-017**, and two of them say outright to **measure before specifying**:
+- **CN-015's editor half (AC1)** — the natural continuation and small. The editor cannot tell *"this
+  kit threw"* from *"this kit is not installed"*: it reads the payload a viewer sent (✅ D3), and a
+  thrown kit is simply absent from it. `kitDiagnostics` already takes **`assumeLoaded: false`** for
+  exactly that caller, so the zero-node check is **skipped rather than guessed** — ⚠️ do not
+  collapse CN-006b's deliberate "installed, not yet loaded" state into "0 nodes". The failure facts
+  have to reach the editor from somewhere first; that is the real work, not the rendering.
+- **CN-012 (logic nodes)** — `module.nodes` via `defineNode` is the non-visual half and is still
+  untested here. ⚠️ **s22 found `defineNode` is a live registration path a census had to be taught
+  about**, so it is not hypothetical. **Build the caller before specifying anything.**
+- **CN-011 / CN-013 / CN-016 / CN-017** — unchanged.
 
-- **CN-012 (logic nodes)** — `module.nodes` via `defineNode` is the non-visual half and is
-  **untested here**; the phase's proof covered `reactNodes` only. **Establish current behaviour by
-  building the caller before specifying anything.**
-- **CN-015 (failures name the kit)** — S/M, and the one with the least unknown in front of it.
-
-⚠️ **Confirm rather than inherit — six sessions running now**, and this session was the worst of
-them for it: **three false premises in one spec**, two of which would have shipped a wrong surface.
+⚠️ **Confirm rather than inherit — seven sessions running now.** s22's spec was wrong about
+collision precedence, wrong that AC2 needed building, and cited a list that does not exist.
 
 ## 4. ⚠️ Before attempting CN-008 AC1 / CN-009 AC5
 
@@ -132,83 +114,84 @@ an agent **places** a kit node it was not told about.
 
 ## 5. Owed by Richard
 
-1. 🆕 **What should a kit's `docs` be able to say?** Today it is prose only, and CN-006b's spec
-   assumed a URL. A kit author who wants to link a real docs page **has no way to express one** —
-   `ReactNodeDefinition.docs` is a single string and the property panel now renders it as text.
-   **(a)** leave it prose-only; **(b)** add a separate `docsUrl`; **(c)** sniff `http` and render a
-   link. ⚠️ (c) is the cheap one and it is a **guess about the author's intent encoded in a regex**.
-2. **The open-panel refresh (from s20).** An open property panel does not re-render on
-   `libraryUpdated` — it recovers on any re-selection. Fold into CN-014's remaining scope, or leave
+1. 🆕 **Should the runtime refuse a kit that shadows a built-in?** Today the kit silently wins at
+   runtime while validation describes the built-in (§1). **(a)** leave it and report, which is what
+   s22 built; **(b)** make built-ins win at registration too, so the layers agree; **(c)** refuse the
+   kit's node and error at load. ⚠️ (b) and (c) are behaviour changes — an existing module may
+   override deliberately, and **0 of 29 shipped modules have ever been run** (LBR-004), so the blast
+   radius is genuinely unknown. (a) is the current state and is at least now honest.
+2. **What should a kit's `docs` be able to say?** Unchanged from s21. Today prose only; CN-006b's
+   spec assumed a URL and a kit author cannot express one. **(a)** leave it prose-only; **(b)** add a
+   separate `docsUrl`; **(c)** sniff `http` and render a link. ⚠️ (c) is cheap and is **a guess about
+   the author's intent encoded in a regex**.
+3. **The open-panel refresh (from s20).** An open property panel does not re-render on
+   `libraryUpdated`; it recovers on any re-selection. Fold into CN-014's remaining scope, or leave
    as a known rough edge?
-3. **What should `channelPort` do?** Unchanged from s19. **(a)** revive the editor-side manager;
+4. **What should `channelPort` do?** Unchanged from s19. **(a)** revive the editor-side manager;
    **(b)** have the exporter stop stripping the port; **(c)** reject it at kit-load with a
-   diagnostic. ⚠️ **Doing nothing is the current state and it is the worst of the three** — the
-   author gets no port and no message.
-4. **Widen the project gate to check parameter values?** `checkParameterValues` has one production
+   diagnostic. ⚠️ **Doing nothing is the current state and it is the worst of the three.**
+5. **Widen the project gate to check parameter values?** `checkParameterValues` has one production
    caller, so `validate:project` / `validate_project` check parameter values for **no node of any
    provenance**. `cn004.test.ts`'s last block asserts the silence deliberately — **replace it when
    the call is taken, do not delete it.**
-5. **The ungated typechecks.** `packages/noodl-mcp`'s `tsc --noEmit` was red (8, s18) and runs in no
-   CI job; seven of eleven `typecheck:*` scripts run nowhere, and `scripts/` is in none.
-   ⚠️ `typecheck:runtime` red at 2, pre-existing. ⚠️ `typecheck:core-ui` reports **44 `TS2307`s**.
-   ✅ `typecheck:editor` is **0** (re-measured s21).
-6. **Should `project`'s `find_tools` purpose line name kits?** Costs resident tokens.
+6. **The ungated typechecks.** Seven of eleven `typecheck:*` scripts run nowhere and `scripts/` is in
+   none. ⚠️ `typecheck:runtime` red at 2, pre-existing; `typecheck:core-ui` reports **44 `TS2307`s**.
+   ⚠️ **s22 did not re-measure these** — a peer was committing in `noodl-mcp` throughout, so any
+   reading would have been misattributable.
+7. **Should `project`'s `find_tools` purpose line name kits?** Costs resident tokens.
    `tests/kitTools.test.ts` has the control that fails when it changes. Narrowed by s17, unanswered.
-7. **"Clean" is no longer "an empty diagnostics array" for any page** (s18's AC2). `Page` declares
-   neither `title` nor `urlPath` statically, so **96 of 947 measured skips are `Page`**. `warnings`
-   stays **0** and nothing blocks; same trade CN-002 made and you ruled for.
+8. **"Clean" is no longer "an empty diagnostics array" for any page** (s18's AC2). `Page` declares
+   neither `title` nor `urlPath` statically, so **96 of 947 measured skips are `Page`**.
 
 Open, not caused here, still wanting task numbers: 🔴 `render-from-disk.js` answers `/` and
 `/index.html` and 404s everything else, **including the start page's own `urlPath`** · 🔴 the
-`@noodl/mcp` provisioning flake (`provision.test.ts` red in a full run, green in isolation) · 🔴
-`ViewerConnection.sendRefresh()` dead at both ends.
+`@noodl/mcp` provisioning flake · 🔴 `ViewerConnection.sendRefresh()` dead at both ends · 🆕 **the
+half-registered kit** (§2) — a kit truncated mid-module is reported as a load failure but **nothing
+says which node broke it**, and nothing lists what did survive.
 
 ## 6. ⚠️ Carried, unresolved
 
 🔴 **The cashflow kit is OUTSIDE the repo and the copies differ.** It lives in
-`NodeGX test projects/cashflow-command-centre` — unversioned, covered by no gate. ⚠️ **s20's
-handover said `cn069-s15-drive` carries the pre-D8 kit; it does not** — s21 drove it and the panel
-showed `var(--green-600)` / `var(--amber-600)` / `var(--red-600)`. The standing note is about
-`cn001-kit-drive` and `cn019-drive` **only**, and had been over-generalised. D5 makes CN-007 depend
-on this kit staying working and nothing enforces it. **Still wants a task number.** ⚠️ Read it via a
-`cp -R` into a scratchpad; never write to it.
+`NodeGX test projects/cashflow-command-centre` — unversioned, covered by no gate. ⚠️ s20's handover
+said `cn069-s15-drive` carries the pre-D8 kit; **it does not** (s21 checked). The standing note is
+about `cn001-kit-drive` and `cn019-drive` **only**. D5 makes CN-007 depend on this kit staying
+working and nothing enforces it. **Still wants a task number.** ⚠️ Read it via a `cp -R` into a
+scratchpad; never write to it.
 
 ⚠️ **The token vocabulary gap (s14):** the semantic set has `--destructive` but **no `--success` and
 no `--warning`**, so any kit with three status bands reaches into the palette scale for two of them.
 
-⚠️ **Free and still unchecked:** whether the editor's colour picker paints a swatch for a `color`
-port whose value is a `var(--token)` string.
-
-⚠️ **From s13, still free:** `CodeFileDocument` renders **two toolbars** — its own `css.Topbar` above
-`JavaScriptEditor`'s, with two separate Save buttons (`notes/cn019-driven.png`).
-
-⚠️ **From s18:** `find_tools`' `query` matches tool *names* only while its `describe` text says
-"names and descriptions" (noticed s17, still untouched — changing it costs resident tokens).
-
-⚠️ **`NodeLibraryDataNodeType` is not a census of the payload.** s21 added `module` to it; `ports`,
+⚠️ **`NodeLibraryDataNodeType` is not a census of the payload.** s21 added `module`; `ports`,
 `dynamicports` and most other fields the viewer sends are still undeclared, and `BasicNodeType`'s
 constructor copies **every** field regardless. **A field's absence from that interface says nothing
-about whether it arrives** — check the recorded payload
-(`tests-unit/cn-003/fixtures/kit-app.editor-nodelibrary.json`), not the type.
+about whether it arrives** — check the recorded payload, not the type.
+
+⚠️ Also carried: `CodeFileDocument` renders **two toolbars** (s13) · `find_tools`' `query` matches
+tool *names* only while its `describe` says "names and descriptions" (s17/s18) · whether the colour
+picker paints a swatch for a `color` port whose value is `var(--token)`.
 
 ## 7. Checkout conditions
 
-- 🔴 **An editor stack WAS launched (twice) and HAS been torn down.** `dev:debug --quiet` on 9222.
-  Before launch: `dev:stop --list` clean, **paired with a `ps` walk showing 28 Electron matches that
-  were all peers' MCP servers by PPID**, so the zero was attributable rather than a broken query.
-  Both teardowns reported **26 processes stopped**, and peer MCP servers went **41 → 43** across
-  them — `NEVER_SWEEP` working as documented. **Nothing of mine is running.**
-- ⚠️ **Seven repo source files were edited and committed** (`7ea15c49`) — `projectmodules.ts`,
-  `KitsSection.tsx`, `NodeLabel.tsx`, `provenance.ts` (new), `BasicNodeType.ts`,
-  `NodeLibraryData.ts`, `propertyeditor.css`. There was therefore a `test:ci` contamination window.
-  `ListAgents` showed 23 peer sessions but **all started 1–3 days ago**, so no broadcast was sent —
-  the same call s20 made. `test:main` (plain Node, safe beside a live stack) was used, not `test:ci`.
-- ✅ **No fixture or test project was written to.** The drive ran on a `cp -R` in the session
-  scratchpad; the kit deleted in AC3 was deleted from that copy.
-- 🔴 **`test:ci` still stands where s12 left it** (`2843 / 6 @ 39393`); s13–s21's commits are not in
-  it. **Re-measure before quoting.** Do not inherit s18's `noodl-mcp` numbers either.
+- ✅ **No editor stack was launched.** Nothing of mine ran. The only `npm run start` on the box is a
+  **`next-server`** (pid 62793, started 23:44 the previous night) — the nodegx-community web app,
+  **not** an OpenNoodl editor; every OpenNoodl Electron match in `ps` is a peer MCP server by its
+  command line. No CDP, no teardown, nothing to announce.
+- ⚠️ **Seven repo source files were edited and committed** (`3ec68b32`): `health.js` (new),
+  `health.test.js` (new), `kit-catalog`'s `index.js` / `index.d.ts`, `noodl-mcp`'s `extract.ts` and
+  `responses.ts` (**comments only**), and `scripts/validate-project.ts`. There was therefore a
+  `test:ci` contamination window. **No broadcast was sent** — 21 peer sessions were listed and all
+  but two started 1–3 days ago; the two fresh ones were committing in `noodl-mcp`, not running gates.
+- ⚠️ **A probe test file existed briefly** in `packages/noodl-runtime/test/` (a package inside
+  `test:packages`) and was deleted within the same minute. If a peer's `test:packages` run from
+  ~this window shows an unexplained extra suite, that was it.
+- ✅ **No fixture or real test project was written to.** Everything ran on `cp -R` copies in the
+  session scratchpad; the fault kits were created inside a copy.
+- 🔴 **`test:ci` still stands where s12 left it** (`2843 / 6 @ 39393`); s13–s22's commits are not in
+  it. **Re-measure before quoting.** `@nodegx/kit-catalog` is **55 / 3 suites** (re-measured).
+  ⚠️ **`noodl-mcp`'s suite and the `typecheck:*` set were deliberately NOT run** — a peer committed
+  in that package twice during the session (`5754a168`, `e0452b3c`), so any red would have been
+  misattributable to me or to them.
 - ⚠️ **Peer work live in the tree and not touched**: `dev-docs/tasks/phase-50-legibility/notes/`,
   `dev-docs/tasks/phase-65-the-library/` (untracked), `dev-docs/tasks/phase-68-learnbook/README.md`,
-  `scripts/library/check.ts`. ⚠️ A peer committed `b101a635` (phase-66 s56) mid-session; the
-  `componentBench`/`ComponentBench` edits present at session start are in it, not in mine.
+  `scripts/library/check.ts`.
 - Whoever you tell you are starting, tell you have stopped.
