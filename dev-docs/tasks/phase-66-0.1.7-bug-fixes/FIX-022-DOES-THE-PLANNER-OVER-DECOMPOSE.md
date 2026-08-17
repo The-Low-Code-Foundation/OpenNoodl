@@ -405,3 +405,110 @@ for (const f of process.argv.slice(1)) for (const l of fs.readFileSync(f,"utf8")
 }' dev-docs/tasks/phase-66-0.1.7-bug-fixes/measurements/*15-12-23*.jsonl \
    dev-docs/tasks/phase-66-0.1.7-bug-fixes/measurements/*15-13-21*.jsonl
 ```
+
+## ✅ THE REUSE CELL — BUILT + MEASURED 2026-08-17 (session 53)
+
+The cell session 43 named as missing, and said was *"the one that prices the fix"*. It is a **guard**,
+not a finding: before any rule is written against single-use factoring, there has to be a cell that
+would notice the rule damaging the case Richard builds on purpose.
+
+### 1. What was built
+
+- **`reuse-available`** in `plan-prompts.ts` — the one corpus request where creating a component is
+  **correct**. The same "Verified" badge is wanted at three sites that already exist: the article
+  byline, a comment, and the profile card. ⚠️ It names three *places* and still names no component,
+  no node type and no count of components — the same line `multi-section` draws.
+- **`expect.minPlacementSites`** — the reuse half of the oracle. Set only on requests where reuse is
+  genuinely available; on every other request reuse is impossible by construction, and demanding it
+  would grade the request rather than the planner.
+- **`plan-grade.ts`** 🆕 — the grader, extracted from `plan-harness.ts` for the reason the arm
+  transform was: **`plan-harness.ts` calls `main()` at import, so nothing in it can be held by a
+  spec.** It adds the placement metrics — `placements`, `singleUseCreates`, `reusedCreates`,
+  `unplacedCreates`.
+- **`tests-unit/phase-66/planGrade.test.ts`** 🆕 — **15 specs in `test:main`.**
+
+### 2. 🔴 The placement metric is part prose, and the split is 5 / 6
+
+Session 43's bound 1 said the instrument is *"the plan's prose, not a graph"*. That is right in
+effect but not in cause, and the cause matters. LAS-006 (`cad33e6c`, **eight days before** s41's
+run) gave `PlanOperation.instantiates` — *"component targets this one will place"*. Placement **can**
+be structural. It usually is not filled: across s41's 20 saved `small-logic` plans, 11 created a
+component, every one placed by exactly one update, and `instantiates` was present on **5 of those
+11**.
+
+🔴 **A structural-only grader would have scored the other 6 real placements as "created and never
+placed" — an instrument blind spot arriving as a finding.** So a site counts on **either** signal and
+the grade reports `structuralSites` / `proseOnlySites` separately, so a reader who distrusts prose can
+read the structural number alone and see what rests on words.
+
+✅ **Known-answer control: the mechanical grade reproduces s43's hand re-grade exactly.** Same
+creating runs (ON 1,3,7,8,9; OFF 1,3,6,8,9,10), **11 creates, 11 single-use, 0 reused, 0 unplaced**,
+evidence **5 structural / 6 prose-only**. The hand reading is now re-runnable.
+
+✅ **Checked in both directions.** Three mutants, each applied with its diff printed back from the
+file and the file restored byte-identical afterwards:
+
+| mutant | result |
+|---|---|
+| prose evidence dropped (structural field only) | **3 specs red** |
+| `unplacedCreates` merged into `singleUseCreates` | **1 spec red** |
+| reuse oracle demands *every* create is reused | **1 spec red** |
+
+### 3. What was measured
+
+n=10 per arm, **arms interleaved pair by pair**, `claude-sonnet-5`, effort `low`, same corpus.
+
+| `reuse-available` | doctrine ON | doctrine OFF |
+|---|---|---|
+| sessions that planned | **9 / 10** | **8 / 10** |
+| created a component | **9 / 9** | **8 / 8** |
+| …placed at all **3** sites | **9 / 9** | **8 / 8** |
+| placed once (single-use) | **0** | **0** |
+| within the oracle | **9 / 9** | **8 / 8** |
+
+**Every one of the 17 planned sessions factored exactly one shared badge component and placed it at
+all three sites.** Not one duplicated the markup into three components. The name is `Verified Badge`
+in every session (three spellings, one of them `VerifiedBadge`). The doctrine moves nothing here
+either: the arms are 9/9 and 8/8.
+
+**Cost: $0.22** across 18 charged sessions — twice s43's estimate, because this request is bigger
+than `small-logic`. ✅ Both arms archived in
+`measurements/2026-08-17-fix022-reuse-{on,off}-claude-sonnet-5-n10.jsonl`.
+
+### 4. 🔴 Three sessions failed on BILLING, and they would have read as the defect
+
+The last pair of the grid, and one before it, returned
+`Anthropic request failed: Your credit balance is too low`. **A session that never planned grades as
+0 creates and fails `withinExpectation`** — which on this prompt is indistinguishable from *"the
+planner refused to factor"*, the exact failure the cell exists to detect. Three instrument deaths
+would have been reported as three findings.
+
+✅ **Fixed in `summarise()`**: the oracle is now computed over `status === 'planned'` only, and the
+excluded count is printed **with the provider's own note beside it**. ✅ **Exercised, not merely
+written** — with the balance exhausted, a fresh run prints
+`⚠️ 1 of 1 session(s) never planned — excluded from the grades below. First note: …` and no grade,
+where before it printed `creates [0] … within 0/1`.
+
+### 5. ⚠️ What this cell does and does not establish
+
+- ✅ **It establishes a guard with a clean baseline.** 17/17 at the ceiling means any future prompt
+  edit that makes the planner stop factoring for reuse shows up here immediately.
+- 🔴 **It cannot show improvement, only regression.** 17/17 is the ceiling — the same shape as
+  `multi-section`, and for the same reason. A rule that improved reuse behaviour would be invisible
+  in this cell.
+- 🔴 **It does NOT license "the planner is sensitive to reuse".** That would compare `small-logic`
+  (~50% single-use factoring) against `reuse-available` (100% correct factoring) — two **different
+  requests** differing in far more than whether reuse is available. Nothing here varied reuse
+  availability while holding the request constant, so the tempting cross-cell conclusion is
+  unmeasured.
+- ⚠️ **One model, one project, one request.** Same bounds as §6.
+
+### 6. 🟢 Still owed by Richard — the §7 ruling is unchanged and now safe to answer
+
+The build queue for FIX-022 is empty. The evidence now says: single-use factoring runs at **5/10 and
+6/10** where reuse is impossible (s41/s43), and **0/17** where it is available (s53). **Option (b)'s
+successor — a rule stated on the reuse axis — can now be written and measured against a cell that
+would catch it overshooting.** §7's (a) / (b) / (c) is still the open question.
+
+⚠️ **And the account has no credit.** Any further measurement in this phase is blocked until that is
+topped up.

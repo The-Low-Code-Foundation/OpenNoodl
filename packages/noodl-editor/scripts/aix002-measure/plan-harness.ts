@@ -51,6 +51,8 @@ import type { PlanningOutcome } from '../../src/editor/src/models/AiAssistant/au
 import type { PlanOperation } from '../../src/editor/src/models/AiAssistant/authoring/plan';
 import { planningSystemPrompt } from '../../src/editor/src/models/AiAssistant/authoring/prompts/planning';
 import { assertDoctrinePresent, revertToPreDoctrine } from './plan-doctrine-arm';
+import type { PlanGrade } from './plan-grade';
+import { gradePlan } from './plan-grade';
 import { fromSerialisedProject } from '../../src/editor/src/models/AiAssistant/explain/graph';
 import type { AiChatRequest, AiEffort, AiProvider, AiProviderId } from '../../src/editor/src/models/AiAssistant/client/types';
 import { AI_EFFORT_LEVELS, AI_PROVIDER_IDS } from '../../src/editor/src/models/AiAssistant/client/types';
@@ -94,43 +96,11 @@ function withDoctrine(request: AiChatRequest): number {
 }
 
 // ── Grading ──────────────────────────────────────────────────────────────────
-
-/**
- * What a plan did, reduced to numbers a disagreeing reader can re-derive.
- *
- * `creates` is the metric the doctrine moves. Everything beside it is recorded
- * so the number can be argued with: the targets by name, so "was this component
- * warranted" is answerable from the record without re-running anything.
- */
-interface PlanGrade {
-  creates: number;
-  updates: number;
-  docs: number;
-  createTargets: string[];
-  updateTargets: string[];
-  /** Creates whose target sits under a Logic folder — the reported defect's shape. */
-  logicCreates: string[];
-  /** Whether `/App` (the Page Router holder) is updated — page registration. */
-  registersPages: boolean;
-  /** Against the prompt's stated oracle. */
-  withinExpectation: boolean;
-}
-
-function grade(operations: PlanOperation[], expect: PlanPrompt['expect']): PlanGrade {
-  const creates = operations.filter((o) => o.kind === 'create');
-  const updates = operations.filter((o) => o.kind === 'update');
-  const createTargets = creates.map((o) => o.target);
-  return {
-    creates: creates.length,
-    updates: updates.length,
-    docs: operations.filter((o) => o.kind === 'doc').length,
-    createTargets,
-    updateTargets: updates.map((o) => o.target),
-    logicCreates: createTargets.filter((t) => /logic/i.test(t)),
-    registersPages: updates.some((o) => /(^|\/)app$/i.test(o.target.replace(/^\//, ''))),
-    withinExpectation: creates.length >= expect.createsMin && creates.length <= expect.createsMax
-  };
-}
+//
+// The grader lives in `plan-grade.ts` for the same reason the arm transform
+// lives in `plan-doctrine-arm.ts`: this file calls `main()` at import time, so
+// nothing in it can be held by a spec. `tests-unit/phase-66/planGrade.test.ts`
+// holds it in `test:main`.
 
 interface PlanRecord {
   slug: string;
@@ -213,7 +183,7 @@ async function measureOne(
     turns: outcome.turns,
     costUsd: outcome.costUsd,
     expect: prompt.expect,
-    grade: grade(operations, prompt.expect),
+    grade: gradePlan(operations, prompt.expect),
     operations,
     advisories: outcome.advisories
   };
@@ -236,7 +206,22 @@ function summarise(records: PlanRecord[]): void {
   const slugs = [...new Set(records.map((r) => r.slug))];
   console.log('\nper prompt (creates — the metric the doctrine moves):');
   for (const slug of slugs) {
-    const rows = records.filter((r) => r.slug === slug);
+    // 🔴 The oracle is graded over PLANNED sessions only. A session that never
+    // got a plan — a provider timeout, an exhausted credit balance — grades as
+    // 0 creates and fails `withinExpectation`, which is correct for the record
+    // and a lie in a summary: it reads as "the planner created nothing", the
+    // exact failure `reuse-available` exists to detect. Session 53 lost three
+    // sessions to a billing error mid-grid and would have reported them as
+    // three plans that refused to factor.
+    const allRows = records.filter((r) => r.slug === slug);
+    const rows = allRows.filter((r) => r.status === 'planned');
+    if (allRows.length !== rows.length) {
+      console.log(
+        `  ${slug.padEnd(14)} ⚠️  ${allRows.length - rows.length} of ${allRows.length} session(s) never planned — ` +
+          `excluded from the grades below. First note: ${allRows.find((r) => r.status !== 'planned')?.note ?? '(none)'}`
+      );
+    }
+    if (rows.length === 0) continue;
     const counts = rows.map((r) => r.grade.creates);
     const mean = counts.reduce((a, b) => a + b, 0) / (counts.length || 1);
     const ok = rows.filter((r) => r.grade.withinExpectation).length;
@@ -245,13 +230,40 @@ function summarise(records: PlanRecord[]): void {
       `  ${slug.padEnd(14)} creates [${counts.join(',')}]  mean ${mean.toFixed(1)}  ` +
         `expect ${e.createsMin}-${e.createsMax}  within ${ok}/${rows.length}`
     );
+    // The reuse axis. Reported for every prompt, not only the ones that ask for
+    // reuse: on `small-logic` a single-use count IS the defect rate (s43), and
+    // on `reuse-available` a single-use count is the instrument disagreeing
+    // with the request. Same number, opposite meaning — so it is always shown
+    // with the oracle beside it.
+    const created = rows.filter((r) => r.grade.creates > 0);
+    if (created.length) {
+      const single = rows.reduce((n, r) => n + r.grade.singleUseCreates.length, 0);
+      const reused = rows.reduce((n, r) => n + r.grade.reusedCreates.length, 0);
+      const unplaced = rows.reduce((n, r) => n + r.grade.unplacedCreates.length, 0);
+      console.log(
+        `      reuse: ${reused} component(s) placed 2+ sites, ${single} placed once` +
+          `${unplaced ? `, ${unplaced} with no placement detected ⚠️` : ''}` +
+          `${e.minPlacementSites ? `  (this prompt expects ≥${e.minPlacementSites} sites)` : ''}`
+      );
+    }
+
     for (const r of rows) {
       const logic = r.grade.logicCreates.length ? `  🔴 logic: ${r.grade.logicCreates.join(', ')}` : '';
       console.log(
         `      run ${r.run}: ${r.status}  ${r.grade.creates}c/${r.grade.updates}u  ` +
           `app-update ${r.grade.registersPages ? 'yes' : 'no'}${logic}`
       );
-      for (const t of r.grade.createTargets) console.log(`          + ${t}`);
+      for (const p of r.grade.placements) {
+        // The evidence split is printed rather than summarised away: a site
+        // seen only in prose is a weaker claim than one named in
+        // `instantiates`, and the reader should not have to open the JSONL to
+        // find out which they are looking at.
+        console.log(
+          `          + ${p.target}  → ${p.sites} site(s) ` +
+            `[${p.structuralSites} structural, ${p.proseOnlySites} prose]` +
+            `${p.siteTargets.length ? `: ${p.siteTargets.join(', ')}` : ''}`
+        );
+      }
     }
   }
 }

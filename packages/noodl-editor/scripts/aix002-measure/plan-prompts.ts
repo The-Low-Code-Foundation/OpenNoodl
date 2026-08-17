@@ -58,6 +58,16 @@ export interface PlanPrompt {
     createsMin: number;
     createsMax: number;
     note: string;
+    /**
+     * The REUSE axis (session 42's ruling, session 53's cell).
+     *
+     * When set, a correct plan must not merely create the right NUMBER of
+     * components — it must create one that is then placed at this many distinct
+     * sites. Only requests where reuse is genuinely available set this; on
+     * every other request in the corpus reuse is impossible by construction,
+     * and demanding it would grade the request rather than the planner.
+     */
+    minPlacementSites?: number;
   };
 }
 
@@ -126,6 +136,63 @@ export const PLAN_PROMPTS: PlanPrompt[] = [
       note:
         'A new page plus three sections a review would name out loud (profile, notifications, danger ' +
         'zone). Fewer than 4 creates is under-decomposition — the defect AAQ-008 was written to fix.'
+    }
+  },
+
+  /**
+   * 🔴 The reuse control (session 53). The cell session 43 said was missing,
+   * and the one that prices any fix.
+   *
+   * Session 42's ruling moved the axis from size to REUSE: a one-node component
+   * is right when it is placed more than once. Session 43's re-grade then found
+   * the defect survives on that axis — 11 of 11 created components placed
+   * exactly once — but flagged the bound that makes the finding unusable on its
+   * own:
+   *
+   * > "One request, and it is a request with nowhere to reuse anything …
+   * > `small-logic` asks for a reading time beside the author name — a single
+   * > site by construction. It says nothing about whether the planner
+   * > recognises GENUINE reuse, because no arm contains any. ⚠️ That is the
+   * > missing control, and it is the one that prices the fix: a rule pushing
+   * > 'don't factor for a single use' could damage exactly the case Richard
+   * > builds on purpose, and there is currently no cell that would notice."
+   *
+   * This is that cell. It is the guard, not the finding: a prompt edit aimed at
+   * single-use over-decomposition must leave this one factoring and reusing. If
+   * it starts duplicating the same element into three components instead, the
+   * edit bought a reduced create count by breaking the thing the count was a
+   * proxy for.
+   *
+   * ⚠️ **It names three places, and that is deliberate.** The oracle has to be
+   * derivable, exactly as `multi-section` names three sections out loud. What it
+   * still does not name is a component, a node type, or how many to build — the
+   * user says where the badge shows up; the planner decides whether that is one
+   * component placed three times or three copies of the same markup, and that
+   * decision is the whole measurement.
+   *
+   * The three sites all exist in the corpus: the article byline
+   * (`/Visual Components/Article/Article`), a comment
+   * (`/Visual Components/Article/Comments/Comment Item`) and the profile card
+   * (`/Visual Components/Profile/Public Profile Card`).
+   */
+  {
+    slug: 'reuse-available',
+    request:
+      'Show which people are verified authors. Wherever a person’s name appears — on the article ' +
+      'byline, on each comment, and on the profile card — put a small badge with a tick and the word ' +
+      '“Verified” after their name when that person is verified. It should look and behave exactly ' +
+      'the same in all three places.',
+    expect: {
+      createsMin: 1,
+      createsMax: 3,
+      minPlacementSites: 2,
+      note:
+        'The one request in the corpus where creating a component is CORRECT: the same element is ' +
+        'wanted at three existing sites, so factoring it is reuse, not over-decomposition. 0 creates ' +
+        'means the same badge was duplicated into three components — the failure a "factor less" ' +
+        'edit would cause. `minPlacementSites: 2` is the threshold that separates factored-for-reuse ' +
+        'from single-use (the axis of the s42 ruling); 3 is the ideal, but 2 is what the claim needs ' +
+        'and it does not depend on all three placements being separately detectable.'
     }
   }
 ];
