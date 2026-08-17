@@ -35,6 +35,20 @@ and re-open D5. This is written into RULINGS.md; it is not a preference.
 hex throughout today — it was a proof, not a model. Citing it as-is teaches the opposite of D8 and
 P2 simultaneously.
 
+> ✅ **DONE (s14) and DRIVEN (s15, 2026-08-17).** The kit is on tokens and the rendered result is
+> measured, not inferred: positive pills paint **`rgb(22, 163, 74)`** (`--green-600`) with no colour
+> parameter set anywhere — not the old `#1F8A4C`, and not `rgba(0,0,0,0)`. 🔴 **That last exclusion is
+> the one that mattered:** s14 also removed the in-JSX `props.positiveColor || '#1F8A4C'` fallbacks on
+> the reasoning that a declared `default` is assigned to props at initialize, and if that reasoning
+> had been wrong every pill, band and banner would have rendered with no background. It was right.
+> Both banner arms measured by flipping the driving value (`--green-50`/`--green-600` safe,
+> `--red-50`/`--red-600` danger). Full readings: [notes/cn-007-d8-token-drive.md](notes/cn-007-d8-token-drive.md).
+>
+> 🔴 **The kit that was driven is `cashflow-command-centre`'s copy — the ONLY tokenised one.** The
+> copies in `cn001-kit-drive` and `cn019-drive` are still pre-D8 (0 × `var(--`, 6 × live `#1F8A4C`).
+> Driving either would have measured the old kit and read as "the change did not land". This is the
+> unversioned-kit risk in §Carried made concrete.
+
 ## What the page must contain
 
 1. **The 21-line node, first.** "It is this small" is the thesis; anything before it is throat-clearing.

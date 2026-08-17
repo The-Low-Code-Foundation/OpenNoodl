@@ -7,7 +7,7 @@
 | **Surface** | `runtime` / `editor` |
 | **Rulings** | ✅ **D1** — provenance *display* is wanted; ✅ **P1** — it must not demote a kit node |
 | **Depends on** | CN-003 (which is what made the kit's name correct in the first place) |
-| **Status** | ✅ **Producer side landed 2026-08-16 (s12).** ⚠️ Not driven — needs a viewer build |
+| **Status** | ✅ **CLOSED 2026-08-17 (s15).** Producer side landed s12; AC4 + AC5 driven, both re-records done |
 
 ## Why this exists
 
@@ -86,22 +86,32 @@ No editor-side test was added: `NodePickerSearch.test.ts` already carries a cate
 named** subcategories (`Basic Elements` / `UI Controls`) and asserts the group titles, so the
 renderer's handling of this shape is already graded. The change is entirely on the producer side.
 
-## Owed
+## ✅ Owed — ALL CLEARED 2026-08-17 (s15)
 
-🔴 **Not driven, and the reason is the recurring one.** The editor loads its viewer from
-`packages/noodl-editor/src/external/viewer`, which is **gitignored build output**
-(`.gitignore:197`); `src/frames/viewer-frame/index.bundle.js` is untracked too. So the source is
-fixed and a *running* editor still shows the old grouping until a viewer build. **Do not report this
-as visibly fixed without one.**
+🔴 **The blocker was stale, and that is the transferable part.** Three handovers (s12, s13, s14)
+recorded this as blocked on a viewer build, because the editor loads
+`packages/noodl-editor/src/external/viewer`, which is gitignored build output (`.gitignore:197`).
+**A build carrying the fix had existed since 2026-08-16 21:57** — five minutes after the fix
+committed at 21:52 (`2d8f8e02`). Nobody checked. Content, not just timing, confirmed it before
+driving: `moduleNodesByKit` appears in `noodl.viewer.js` as compiled code at 5 sites (line 66784,
+`const moduleNodesByKit = new Map();`), not in a comment and not in a sourcemap.
 
-Two things want re-recording after that build, and they are the same build:
+⚠️ **"Blocked on a build" is a claim about an artefact, and an artefact has an mtime and contents.**
+Neither was checked for three sessions; the blocker was inherited by relay. See
+[the drive note](notes/cn-018-picker-drive.md).
 
-1. `packages/noodl-editor/tests-unit/cn-003/fixtures/kit-app.editor-nodelibrary.json` — CN-003's
-   owed re-record. (It carries only `nodetypes`, no `nodeIndex`, so **this task does not change it**
-   — but it is the same drive.)
-2. `packages/noodl-mcp/tests/kitAgreement.test.ts:182-185` — its editor expectation is a dated
-   `['Unknown Module', 'Unknown Module']` and its comment says so at length. Becomes
-   `['Demo Kit', 'Demo Kit']`.
+Both re-records are done:
+
+1. ✅ `packages/noodl-editor/tests-unit/cn-003/fixtures/kit-app.editor-nodelibrary.json` — re-recorded
+   from a running editor. Compared **by name**, the new and old captures have an identical 177-name
+   set and exactly **two** content differences: `demo.kit.Badge` and `demo.kit.Meter` went
+   `module: 'Unknown Module'` → `'Demo Kit'`. Ports byte-identical. ⚠️ The *line* diff is ~400 lines
+   because entry order changed (kit entries now sort last); the JSON header records this so the diff
+   is not mistaken for a rewrite.
+2. ✅ `packages/noodl-mcp/tests/kitAgreement.test.ts` — the editor expectation is now
+   `['Demo Kit', 'Demo Kit']`, the describe block is renamed off "the one thing the two routes do not
+   agree about", and the fossil comment is rewritten to record why it was a fossil. **9 tests pass**;
+   `tests-unit/cn-003` **22 pass**.
 
 ## Acceptance criteria
 
@@ -110,11 +120,17 @@ Two things want re-recording after that build, and they are the same build:
 2. ✅ A kit's several nodes stay together under its one name. *(Graded — a per-node group would also
    satisfy AC1.)*
 3. ✅ A project with no kits grows no "External libraries" section. *(Control.)*
-4. ⚠️ **Driven in a running editor with two kits installed**, after a viewer build: the two
-   `Stat Tile` cards are distinguishable **without reading `data-test`**. Open.
-5. **The P1 check:** the kit heading must read as attribution, not as a warning label — same type
-   scale, same weight, same colour as any other group heading. It is one, today, because it goes
-   through the identical component.
+4. ✅ **DRIVEN 2026-08-17 with three kits installed** (`cn069-s15-drive`: `Cashflow Kit` +
+   two scaffolded kits both shipping a `Stat Tile`). The picker draws three separately-named headings
+   with their own counts (5 / 1 / 1), and the two `Stat Tile` cards are distinguishable **without
+   reading `data-test`**. 🔴 **The two modes carry the name on different elements** — browsing puts
+   it in the group heading (card meta reads the *category*), searching puts it on the card's second
+   line (heading reads the *category*). Checking only one mode reads as a half-broken fix; it is not.
+   Preview chip confirms too: `EXTERNAL LIBRARIES · HARBOUR METRICS`.
+5. ✅ **The P1 check, measured rather than argued.** Kit heading vs the built-in `Logic` heading in
+   the same DOM: identical tag (`H3`), identical class, and identical `font-size` 11px, `font-weight`
+   700, `color` `rgb(166,176,187)`, `text-transform` uppercase, `letter-spacing` 0.77px. Attribution,
+   not a warning label.
 
 ## Traps
 

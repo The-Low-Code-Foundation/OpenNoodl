@@ -68,27 +68,79 @@ off the node's ports and confirm both arms' tokens resolve.
 
 # THE RESULTS — written after the drive
 
-🔴 **NOT DRIVEN IN s14. The observations above stand unmeasured.**
+✅ **DRIVEN 2026-08-17, session 15. O1, O2 and O4 MET. O3 turned out to be unmeasurable by
+construction — see below, it is the most useful thing here.** Screenshot:
+[cn007-d8-tokens-driven.png](cn007-d8-tokens-driven.png).
 
-A peer's editor stack held port 9222 for the whole session (`dev-debug.js` pid `24529`, Electron
-`. --dev` pid `27909`, launched ~1 minute before I first checked and still live 16 minutes later).
-Two editors cannot coexist on this checkout even on a different port, so driving would have meant
-evicting a peer mid-session. It was not worth that.
+Driven on `NodeGX test projects/cn069-s15-drive`, a `cp -R` of `cashflow-command-centre` — ⚠️ the
+**only** copy of the cashflow kit carrying the D8 change. The copies in `cn001-kit-drive` and
+`cn019-drive` are pre-D8 (0 × `var(--`, 6 × live `#1F8A4C`); driving either would have measured the
+old kit and reported a clean failure to see the change.
 
-**What IS measured, and what is therefore still open:**
+## O1 ✅ — `rgb(22, 163, 74)`, the discriminating value
 
-| claim | status |
+Positive pills, no colour parameter set anywhere in the project, read in the running viewer:
+
+| element | `backgroundColor` |
 |---|---|
-| all 10 token names resolve in the shipped map | ✅ measured, mutation-proven (`--green-6000` ⇒ exit 1) |
-| `color` ports carry no units, so a token default passes through | ✅ read in source, `react-component-node.ts:914-918` |
-| every token is emitted to `:root` | ✅ read in source, `TokenResolver.generateCss` emits the whole map |
-| **the pill actually renders `rgb(22,163,74)` in a browser** | 🔴 **UNMEASURED — this is the drive** |
-| **removing the `\|\|` fallbacks did not blank every node** | 🔴 **UNMEASURED — this is the risk** |
+| `+£2,400` | **`rgb(22, 163, 74)`** |
+| `+£1,800` | **`rgb(22, 163, 74)`** |
+| distinct values across both | exactly one |
 
-⚠️ **The last two rows are the ones that matter**, and the reason is CN-006's O2: source-level
-readings of exactly this kind were true while the rendered result was broken. Three green source
-facts do not add up to a rendered pixel. **Do not report D8 as visibly closed without this drive.**
+Not `rgb(31, 138, 76)` (the old `#1F8A4C`), so the edit reached the viewer. Not `rgba(0, 0, 0, 0)`,
+which is the reading that would have meant claim 2 was wrong.
 
-⚠️ **Free to check on the same drive:** whether the editor's colour picker renders sensibly for a
-`color`-typed port whose value is a `var(--token)` string. The parameter panel shows a swatch; a
-`var()` may not paint one. Nothing depends on it, but it is one eval away once the editor is open.
+🔴 **So claim 2 is CONFIRMED, and that was the real risk of this change.** Removing
+`props.positiveColor || '#1F8A4C'` did **not** blank the node: a plain (non-CSS) input's declared
+`default` really is assigned to props at initialize. Negative pills corroborate on the other token —
+`rgb(220, 38, 38)` = `--red-600`.
+
+## O2 ✅ — the token is delivered, not merely referenced
+
+`getComputedStyle(document.documentElement)` in the same viewer: `--green-600` = `#16a34a`,
+`--red-600` = `#dc2626`, `--green-50` = `#f0fdf4`, `--red-50` = `#fef2f2`. So the `rgb(22,163,74)`
+above is a delivered token resolving, not a coincidence — the row that separates "missing token" from
+"missing default", both of which paint `rgba(0,0,0,0)`.
+
+## 🔴 O3 — RETIRED. The sweep cannot fire, so its 0 was never evidence
+
+O3 asked for `var(--` to appear **0** times in computed colour values, with a non-zero count of
+`var(--` in the document's CSS text as its liveness control. Measured: **0 leaks, 2 CSS rules
+containing `var(--`** — i.e. it "passed", control and all.
+
+**It cannot fail.** Planting a deliberately unresolvable token proves it:
+
+```js
+probe.style.backgroundColor = 'var(--definitely-not-a-real-token)';
+getComputedStyle(probe).backgroundColor  // → "rgba(0, 0, 0, 0)", NOT the literal string
+```
+
+CSS `var()` is substituted at computed-value time; a standard colour property never retains the
+literal text, whether the token resolves or not. So *"0 `var(` in computed colour values"* is equally
+true of a perfect page and of a page where **every** token is broken.
+
+⚠️ **The liveness control I was told to use did not save it.** "The document's CSS text contains
+`var(--` somewhere" is true of any tokenised stylesheet and says nothing about whether *this sweep*
+could detect *this fault*. A control has to be a **known-broken input fed to the instrument itself**,
+not a sign of life taken from somewhere nearby. This is the phase's "probe that silently exonerates"
+in its purest form, and it was written into the observations *by* the practice meant to prevent it.
+
+**O3's intent is already fully covered by O1 + O2**, which read the resolved triple and compare it
+against the token's own value — a broken token shows up there as `rgba(0,0,0,0)`.
+
+## O4 ✅ — both arms, by flipping the driving value
+
+`dangerDay` is driven by a connection from the JS function's `out-DangerDay`, so a parameter set
+alone does nothing. The connection was removed (passing the connection **object**, not a literal),
+`dangerDay` set to 12, both arms read, then the connection restored and the safe arm confirmed back.
+
+| arm | text | background | colour |
+|---|---|---|---|
+| safe | `✓ Nothing unaffordable this month.` | `rgb(240,253,244)` = `--green-50` | `rgb(22,163,74)` = `--green-600` |
+| danger | `⚠ Short by +£0 on Wed 12 — move something.` | `rgb(254,242,242)` = `--red-50` | `rgb(220,38,38)` = `--red-600` |
+
+Restored: 7 connections in, 6 during, 7 out, and the banner reads the safe arm again.
+
+⚠️ **Still not checked, and still one eval away:** whether the editor's colour picker paints a swatch
+for a `color` port whose value is a `var(--token)` string. I switched projects to re-record the
+CN-003 fixture before getting to it. Nothing depends on it.
