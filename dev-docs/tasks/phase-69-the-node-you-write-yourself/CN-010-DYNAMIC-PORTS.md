@@ -114,17 +114,83 @@ checked. **96 of the 947 skips are `Page`.** The notice is a true positive; the 
 **"clean" is no longer "an empty diagnostics array" for any page**. `warnings` stays 0 and nothing
 blocks.
 
+---
+
+## ✅ Session 19 (2026-08-17) — AC1 driven. Half met, half a hole, plus two findings.
+
+Full write-up with every reading: **[notes/cn-010-ac1-drive.md](notes/cn-010-ac1-drive.md)**.
+Observations were written down **before** the editor was launched, and are in Part 0 of that file.
+
+**AC1 splits cleanly by mechanism.**
+
+✅ **The conditional-group form works end to end, and needed nothing kit-aware.** The author's
+`inputs: ['itemCount']` shorthand arrives in the editor's own format with the condition intact;
+`Item Count` appears at `mode = list` and disappears at `mode = grid`, reversibly; it is connectable
+through the real connection popup; the wire is drawn, saved to `connections.json`, and **carries a
+value at runtime** — the preview renders `Lanes (0)` with the `0` arriving from `Child Index`.
+
+🔴 **The `channelPort` form is erased in every surface, in every state.** Not in the static `ports`
+list (the exporter removes it, `nodelibraryexport.ts:487-492`), not in the Properties tab, not in the
+Ports tab — whose header promises *"every port on this node"* — not in the connection popup, and not
+in `getPorts()` **with the runtime live and the node mounted**. `node.dynamicports` is `[]`. So the
+fixture's stored `channelName: "ticks"` names nothing the editor can see.
+
+🔴 **Census: `channelPort` occurs once in 177 library types, and it is this fixture's own kit node.**
+`conditionalports/basic` 136 · `conditionalports/extended` 21 · `port` 7 · `template` 2 ·
+**`channelPort` 1**. Zero shipped built-ins use it — which is *why* nothing went red: the exporter
+strips the port expecting an editor-side manager to re-add it, and `DynamicPortChannel` is one of the
+four managers commented out at `nodelibrary.ts:94-106`. ⚠️ **Not a P1 violation** — a built-in
+declaring one would be erased identically. Generic in code, kit-only in consequence.
+
+### 🔴 The finding that outlives the criterion: a kit node's definition is frozen after first delivery
+
+One write to `index.js` made two changes — flipped `Panel`'s condition **and** added a new
+`dynports.kit.Badge`. One viewer reload:
+
+| | delivered? |
+|---|---|
+| the **new** type | ✅ immediately, types 177 → 178 |
+| the **changed** condition on the existing type | 🔴 never — 5 polls over 30s |
+| after a full editor reload + re-open | ✅ |
+
+✅ **Same file, same write, same reload.** The only variable is whether the editor already knew the
+name, which rules out the file, the watcher, the transport and the reload in one move.
+
+**The cause is a `TODO` on the exact line.** `NodeLibraryImporter.mergeUpdates` takes the `else`
+branch for a known name and does nothing with the new data (`// TODO: Update the node data?`), and
+`updateIndex` only calls `NodeLibrary.instance.reload()` when `forceUpdate || removedNodes.length > 0`.
+⚠️ `mergeInByName` (`:366-388`) has the mirror-image bug for the picker index — **s12 flagged that
+function as wanting a look, and it wanted a look.**
+
+⚠️ **What the author experiences is worse than either bug alone:** dynamic ports work first time,
+then every subsequent tuning edit is silently ignored — so the natural conclusion is *"dynamic ports
+don't work in kits"*, which is false.
+
+### ⚠️ And a consequence for conditional ports generally
+
+With the condition changed under an open project, the property panel **hides the `Item Count` row and
+with it `Bound to App Root · Child Index`**, while the canvas still draws the port and the wire, the
+connection is still on disk, and the runtime still delivers the value. **The one surface that answers
+"what is driving this value?" is the one that stops mentioning it.**
+([screenshot](notes/cn010-ac1-condition-changed-panel-hides-live-wire.png))
+
+### ⚠️ Two instrument traps recorded, both of which nearly produced false findings
+
+1. **`node.setParameter()` does not re-render the property panel.** The first attempt at AC1 read an
+   unchanged panel and would have been filed as *"the condition is not evaluated"* — about working
+   code. The tell was free: the `Mode` row I was *driving* also failed to update. **Drive the UI.**
+2. **`WarningsModel` returned 0 beside a deliberately bogus node type on the same canvas.** The
+   instrument did not fire on a known-bad input, so whether the editor warns about the orphaned
+   `channelName` parameter is recorded as **unmeasured**, not as silence.
+
 ### ⚠️ What is NOT done
 
-- **AC1 — the property panel.** A kit node's `dynamicports` surviving `sendNodeLibrary` into the
-  panel, and being connectable, is **unmeasured**; it needs a running editor. Also unmeasured:
-  what the editor does when a kit's dynamic ports change while nodes using them exist on canvas.
 - **AC4 — the CN-007 worked example.** Not started. ⚠️ The trap section's warning stands and now has
   a second instance: any doc must use **real** port names (`in-`/`out-` prefixes) *and* real type
   names (`Javascript2`, not `Function`).
 - **`parameterEncoding` is still `{known: false}` on every overlay node**, which
-  `@nodegx/kit-catalog`'s header names CN-010 as the owner of. Untouched — the key formulas are
-  derived by *driving* the node, which is AC1's missing editor session.
+  `@nodegx/kit-catalog`'s header names CN-010 as the owner of. Untouched — s19's session drove the
+  panel but not the encoding formulas.
 
 ---
 
