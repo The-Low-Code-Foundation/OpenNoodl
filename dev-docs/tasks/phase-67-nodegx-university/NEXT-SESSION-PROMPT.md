@@ -29,6 +29,8 @@ traps apply there.
 | **Editor** | UNI-011 slice 2a — **AC2** | 🟢 **BUILT AND DRIVEN**, `f73b1bd6` |
 | **Editor** | UNI-011 slice 2b — **AC3** | 🟢 **BUILT AND DRIVEN**, `f72799b7`. 🆕 |
 | **Editor / MCP** | UNI-007, UNI-010, UNI-012 | UNI-007 slices 1–5 + tutor overlay; UNI-010 five slices **KEEP**; UNI-012 scoped, not built |
+| **Platform** | **UNI-013** — the site's look | 🆕 **SCOPED 2026-08-17, D18 ruled (azure). Ready to build, blocked on nobody** |
+| **Platform** | **deployment** | 🔴 **Owned by NO TASK.** Measured 08-17: no Dockerfile, no CI, no `ops/`, zero mentions across twelve task files |
 
 🔴 **UNI-011's editor-only half is COMPLETE.** AC2 and AC3 are the two criteria D14 calls *"the
 reason to transition"*, and both are met and driven. **Everything still open in that task needs a
@@ -95,30 +97,63 @@ only the target shows is the feature's.
 
 ---
 
-# What to do next — pick a lane and say which
+# 🔴 START HERE — a small editor tweak Richard asked for, before anything else
 
-**LANE A — D17's half: something that serves a curriculum index.** The ruling's v0 is GitHub Pages
+**Move the Learning section out of the launcher's main view and into its own tab.** Richard,
+2026-08-17: *"I think you should see your projects first when you open the launcher, not the
+learning bit which takes up the whole top of the launcher when you open it. Put that into its own
+tab in the launcher please."*
+
+⚠️ **This is NOT phase 67 work** — it is a launcher change and it belongs to whichever phase owns the
+launcher; file it there rather than inventing a UNI number for it. It is queued here only because he
+asked for it at the end of the twenty-second session and asked that it be done **at the start of the
+next one**.
+
+- The section is rendered by `LearningSection` (the launcher card grid — grep
+  `LearningSection-module__Card`); the surrounding page is `pages/ProjectsPage`.
+- ⚠️ **Phase 37 (project tabs) is scoped and NOT built** — check whether a tab affordance already
+  exists in the launcher before building one, and if it does not, this is the smaller "tabs in the
+  launcher" question arriving early. **Say which you found before you build.**
+- 🔴 **Drive it**, do not just compile it: open the launcher and confirm the project list is the
+  first thing on screen. [[verify-the-consequence-not-just-the-mechanism]] — "the component moved"
+  and "you see your projects first" are different claims.
+
+---
+
+# Then: what to do next — pick a lane and say which
+
+**LANE A — UNI-013, the community site in NodeGX clothes.** 🆕 **Scoped 2026-08-17, and D18 is
+ruled, so it is ready to build.** The site has **no design system** — seven custom properties, all
+fourteen pages built on them, accent `#4b9fff` against the editor's `#4da3ff`. Slice 1 (token
+substrate + sync script + drift test) is most of the win and touches no markup.
+🔴 **Read the task file's "load-bearing question" section before writing any CSS** — a hand-made copy
+is what produced the near-miss accent, so the drift test is the deliverable, not the paint.
+
+**LANE B — D17's half: something that serves a curriculum index.** The ruling's v0 is GitHub Pages
 on `nodegx-community`, and ⚠️ **`has_pages: false` as of 2026-08-16** (re-measure; it stops being
-free after the first deploy). This is the one piece of *ruled, unblocked, unbuilt* work left in the
-phase that needs neither a forum nor a domain. 🔴 A lesson must stay installable from a **local
-directory with no origin**, whatever else changes.
+free after the first deploy). 🔴 A lesson must stay installable from a **local directory with no
+origin**, whatever else changes.
 
-**LANE B — UNI-012, F4 on a packaged install.** Ruled by Richard (*ship the harness*), scoped, not
-built. ⚠️ **Verifiable only against a packaged build** — and a shipping claim nobody exercised is
-the artifact this phase has found wrong four times. The F4 packaged-install **scope call is still
-Richard's** and still open.
+**LANE C — deployment, which no task owns.** 🆕 **Measured 2026-08-17 and it is the phase's real
+gap**: `nodegx-community` has **no Dockerfile, no CI workflow, no `ops/`, no `fly.toml`** — the only
+scripts are seed, wait-for-db and provision-org — and a grep across **all twelve task files** for
+deploying the platform returns **zero hits**. UNI-008 is about hosting *users'* apps, not this.
+🔴 **This is the same shape as slice 1's finding** — D14 said the API was a deliverable, no task
+owned it, so it did not exist. ⚠️ **Needs a decision from Richard first** (does it go on nexus-1?),
+so scope it, do not build it.
 
-**LANE C — UNI-008, hosted publishing.** Last unbuilt platform task. 🔴 D9 made it a
-**data-holding** problem, five obligations including a DPA and a retention policy. Deliberately last.
+**LANE D — UNI-012, F4 on a packaged install.** Ruled (*ship the harness*), scoped, not built.
+⚠️ **Verifiable only against a packaged build.** The F4 scope call is still Richard's.
 
-**LANE D — the smaller editor remainder.** TUTOR-BOUNDARY §5's six adversarial attacks (needs a
-live provider); the D5 recents measurement, still spoiled; the `LessonEvidence` field-list pin.
+**LANE E — UNI-008, hosted publishing.** Last unbuilt platform task. 🔴 D9 made it a **data-holding**
+problem, five obligations including a DPA and a retention policy. Deliberately last.
 
-**LANE E — the mirror surface (UNI-011 AC1/AC6).** ⚠️ **Still NOT recommended.** D16's gate cannot
+**LANE F — the mirror surface (UNI-011 AC1/AC6).** ⚠️ **Still NOT recommended.** D16's gate cannot
 be met — no forum ⇒ no `weeksWithCallHeld`, no `medianFirstReply` — and its ship order says last.
 
-**My recommendation: A.** It is the only ruled work left that is blocked on nobody, and its window
-(Pages unattached) is the one thing in this phase that gets *more* expensive by waiting.
+**My recommendation: the launcher tweak, then A.** UNI-013 is blocked on nobody, its ruling is
+fresh, and it is the cheapest it will ever be — nobody has seen the site, because it is deployed
+nowhere. ⚠️ **Do not let A quietly become C.** They are adjacent and C is bigger and needs Richard.
 
 ## ⚠️ For Richard — item 1 is unchanged and still blocks seven things
 

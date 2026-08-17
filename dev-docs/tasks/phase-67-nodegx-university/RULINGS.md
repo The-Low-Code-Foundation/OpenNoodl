@@ -4,7 +4,7 @@
 future phase re-litigates one. Supersedes the "rulings queue" in [README.md](README.md), which now
 points here.
 
-**Status: the queue is EMPTY again — D15, D16 and D17 all ruled 2026-08-16 (fourteenth session).** It
+**Status: the queue is EMPTY — D18 ruled 2026-08-17; D15, D16 and D17 ruled 2026-08-16.** It
 reopened 2026-08-15 with D14; all three successors are now closed and every one was ruled **as
 recommended**, which is recorded because a queue emptied by agreement is weaker evidence than one
 emptied by argument — see the note under D17. D1 and
@@ -52,6 +52,41 @@ and is **amended 2026-08-15** by D14 (an editor *client*; the build does not mov
 | **D15** | Community for org-minor accounts | **Default OFF; org admin may enable READ-ONLY.** Never write, never post, in either client | **08-16** |
 | **D16** | The never-empty launch threshold | **30 threads · 3 consecutive weeks with a call held · median first reply < 24h.** Until met, the entry point opens the browser | **08-16** |
 | **D17** | Curriculum hosting — where lessons are served from | **Part of the platform API under D14; GitHub Pages as v0.** 🔴 A lesson must stay installable from a **local directory with no origin**, whatever else changes | **08-16** |
+| **D18** | One accent hue across the products | 🔵 **AZURE** (`#4da3ff`) — the community site adopts the editor's, against the recommendation. ⚠️ The **landing page keeps teal** and becomes the odd one out; that is chosen, not inherited | **08-17** |
+
+---
+
+## D18 — azure, and the recommendation it went against · ✅ RULED 2026-08-17
+
+**Asked** because UNI-013 could not be scoped without it: the two shipping systems disagree.
+The editor is **azure** `#4da3ff` (`--base-color-azure-500`); the landing page is **teal** `#0b8f81`
+light / `#2dd4bf` dark (`--signal`). The community site is neither — it is `#4b9fff`, a hand-made
+near-miss of the editor's azure, which is the evidence that nothing was ever imported.
+
+**Ruled: azure.** One hue across the two *products* — the editor and the community site — which is
+the pair a user moves between, and the pair D14/UNI-011 puts inside a single window.
+
+> 🔴 **Recorded as a ruling that went AGAINST the recommendation, because that is the useful half.**
+> The pitch argued **teal**, reasoning that the landing page is what a stranger meets first and the
+> community site sits directly behind it, so those two should agree. Azure accepts the opposite
+> trade: **the landing page becomes the odd one out.**
+>
+> This register carries a standing note that *"a recommendation adopted wholesale is weaker evidence
+> of a good decision than one argued down"* (see the note under D15–D17). **D18 is the first ruling
+> in this phase that was argued down**, and it is worth one line saying so.
+
+**Consequences.**
+
+1. **UNI-013** adopts the editor's `--base-color-azure-*` ramp; `#4b9fff` disappears.
+2. 🔴 **`nodegx-web` is NOT in scope and keeps teal.** If it is ever brought into line, **this ruling
+   is the reason it moves rather than the community site** — that direction is now decided in
+   advance, which is the thing a register is for.
+3. **UNI-011's mirror** renders community content inside an azure editor, and no longer has a hue
+   seam at the boundary.
+
+⚠️ **What would reopen it:** a decision that the landing page and the community site are one
+*brand surface* and the editor is the outlier. That is a marketing call rather than a product one,
+and nobody has made it.
 
 ---
 
