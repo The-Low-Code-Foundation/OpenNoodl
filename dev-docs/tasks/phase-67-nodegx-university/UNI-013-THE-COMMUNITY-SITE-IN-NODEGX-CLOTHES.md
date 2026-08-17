@@ -1,5 +1,21 @@
 # UNI-013 — the community site, in NodeGX clothes
 
+> 🔴 **THE DESIGN IS AN ARTIFACT, AND THIS FILE IS NOT IT.**
+> **["Seven Tokens"](https://claude.ai/code/artifact/2fc23a65-cf0a-47aa-b4b8-962b8e4a5323)** —
+> the pitch this task was scoped from, with a **NOW / PROPOSED specimen of Tom Reilly's profile
+> rendered in full CSS**. ⚠️ **Read it before touching a stylesheet.**
+>
+> **Session 24 built slices 2 and 3 from the prose below and never opened it**, and the prose does
+> not carry four of the five things the artifact's own summary names — the **dot grid**, the **tier
+> colour on the badge's edge rather than a disc**, the **headline points figure**, and the
+> **eyebrow/wire/mono-label** hierarchy. Richard's reaction was *"I don't see the visual changes from
+> the artifact"*, and he was right: what shipped was a reasonable reading of this file and not the
+> design. Fixed in `201a71a`.
+>
+> ⚠️ **The artifact is TEAL throughout and says so itself:** *"Swap `--signal` for
+> `--base-color-azure-500` and every other argument on this page holds unchanged."* **D18 ruled
+> azure.** Take the forms, not the hue.
+
 **Surface:** platform · **Tier 1** (it is cheap, it is unblocked, and it gets dearer after launch) ·
 **Effort:** M · 🟢 **SLICES 1–3 BUILT 2026-08-17 (session 24), pushed `f64f138` + `d205b47`.**
 **Only slice 4 (the badge artworks, Richard's) remains.** D18 ruled: **azure**.
@@ -26,6 +42,46 @@ is about how something looks, ship something that looks different in the same se
   to `bg-2` under the pointer — the editor's elevation ladder rather than a colour change. Profile
   header takes the editor's avatar gradient and a mono handle; badge marks are larger and
   display-face; chips and pills are mono uppercase.
+
+## ✅ `201a71a` — the design that was actually proposed
+
+Slices 2–3 shipped in `d205b47` were built from this file's prose and missed the artifact. What
+`201a71a` added, all of it named in the artifact's own summary line:
+
+- 🔴 **The dot grid.** *"The thing that says this is NodeGX and not a generic dark dashboard."* One
+  `radial-gradient` on the page ground at a 22px pitch, using `--theme-color-primary-bg` so it is
+  the accent at the palette's own alpha and follows the theme. Cards and chrome are opaque and
+  punch through it — that is what makes it read as a canvas rather than wallpaper.
+- 🔴 **The tier moved off a DISC onto the badge's own top edge.** The disc was a coloured circle
+  holding a letter: it spent the component's entire visual budget standing in for artwork that does
+  not exist, and made a row of badges read as a row of buttons. **`FAMILY_MARK` is deleted**, not
+  left unused. ✅ The edge costs no space and survives artwork of any silhouette in slice 4.
+- 🔴 **The points figure got the weight a headline number earns** — it was one dim mono sentence —
+  plus a **meter** for badges held against D4's twelve, because a proportion is what prose renders
+  worst.
+- **The eyebrow, the wire rule, and section headings as mono labels** instead of four competing
+  bold headings.
+
+⚠️ **Two deliberate deviations, both because the artifact is a mock and this is real data:**
+1. The eyebrow is drawn as **"Coach · Acme"**. `PublicProfile` carries **no org** — membership is
+   UNI-005's and is deliberately off the public profile — so an org here would be a page stating
+   something it cannot know. The two flags are the real data of that shape and move **up** into the
+   eyebrow rather than being repeated as chips below the bio.
+2. The bio's **46ch** measure was drawn on a ~300px card; at this page's width it strands a single
+   word on a second line. It inherits the site's prose measure.
+
+### 🔴 Two more defects the contrast test caught, both invisible in the theme being looked at
+
+1. **`amber-300` is the obvious gold and measures 1.55:1 on the light theme's white card.** The tier
+   edge would have been **invisible in light while looking perfect in dark**. `amber-600` clears
+   both (3.49 / 5.21). Silver moved `neutral-700` → `neutral-600` for the same reason — **3.04 was
+   passing by four hundredths**.
+2. 🔴 **INLINE STYLES ARE OUTSIDE THE AC1 SWEEP.** The meter needs a data-driven width, the site's
+   first inline style. The sweep quantifies over *stylesheets*, so `style={{ color: '#fff' }}` in a
+   component never reaches a `.css` file and **AC1 stays green while a component declares a
+   colour**. `check-built-css.mjs` now walks `src/**/*.tsx` too, with its own fires/does-not-
+   over-fire probe on every run. ⚠️ **Same shape as this phase's "a route is outside every sweep"
+   finding** — a sweep is only as wide as the surface it enumerates.
 
 ### 🔴 Two defects AC2's arithmetic caught that rendering could not
 

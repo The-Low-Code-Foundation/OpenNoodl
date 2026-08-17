@@ -43,7 +43,7 @@ moved — check the ask list first, it is one `dig`, one `gh api` and one questi
 |---|---|---|
 | **Platform** | UNI-001 (AC3), 002–006, 009 content cut, **011 slice 1** | 🟢 pushed. `main` == `origin/main` |
 | **Platform** | **UNI-013 slice 1** — the token substrate | 🟢 **BUILT + pushed `f64f138`.** AC1/AC2/AC3/AC5 met |
-| **Platform** | **UNI-013 slices 2–3** — type and rhythm, the six components | ✅ **BUILT `d205b47`** — display face served, mono meta, hover ladder, gradient avatar |
+| **Platform** | **UNI-013 slices 2–3** — type and rhythm, the six components | ✅ **BUILT `d205b47` + `201a71a`** — 🔴 **s24 built s2–s3 from the task file's PROSE and never opened the design ARTIFACT; `201a71a` is the design that was actually proposed.** Dot grid, tier on the badge EDGE (disc deleted), headline figure + meter, eyebrow/wire/mono labels |
 | **Platform** | UNI-007 intake / personalised path | 🟡 The one platform-side piece nobody has looked at. ⚠️ Check whether it needs an issuer *before* opening it |
 | **Platform** | UNI-008 | 📋 Tier 3, deliberately last. D9's obligations include a DPA and a retention policy — **policy text is Richard's** |
 | **Platform** | UNI-009 AC1 + AC3 | 🔴 Discourse, SSO, webhook receiver — **a purchase nobody has made** |
@@ -93,7 +93,36 @@ display face, put `.meta` in mono with `tabular-nums`, made chips and pills uppe
 the card and row onto a `bg-1` → `bg-2` hover ladder, and gave the profile the editor's gradient
 avatar. Full detail in the task file.
 
-**Six findings that generalise past this task:**
+**Then `201a71a`, because slices 2–3 were still not the design.** 🔴 **UNI-013 was scoped from an
+ARTIFACT — ["Seven Tokens"](https://claude.ai/code/artifact/2fc23a65-cf0a-47aa-b4b8-962b8e4a5323),
+a NOW/PROPOSED profile card in full CSS — and I built from the task file's prose without ever
+opening it.** The prose carries one of the five moves (the mono face). It does not carry the **dot
+grid**, the **tier colour on the badge's edge rather than a decorative disc**, the **headline points
+figure + meter**, or the **eyebrow / wire / mono-label hierarchy** — and those four are what make it
+look like the product. Richard: *"I don't see the visual changes from the artifact."*
+
+**Measured this session (all re-run after `201a71a`):** `nodegx-community` HEAD **`201a71a`**,
+**548 specs / 21 files**, `tsc` clean, `next build` clean at 21 routes, `check:css` clean over
+**775 declarations and 15 components**. ⚠️ **The figures in §"Measured this session" above are from
+`d205b47` and are superseded by these.**
+
+**Seven findings that generalise past this task:**
+
+🔴 **A task file's PROSE is not the DESIGN.** A written summary of a visual decision loses the visual
+decisions, and it reads complete because every sentence in it is true. ✅ **When the ask is about how
+something LOOKS, find the artifact before writing CSS** — `WebFetch` on a
+`claude.ai/code/artifact/{uuid}` URL returns the **raw HTML including every CSS rule**, so it is a
+spec and not a picture. ⚠️ **Ask Richard for the link if the task file has none** (UNI-013's had
+none until s24 added it). ⚠️ **Read the artifact's own caveats** — this one is drawn in **teal** and
+says *"swap `--signal` for `--base-color-azure-500`"*; **D18 ruled azure**, so a mock's palette can
+be the one thing in it that was already overruled. ⚠️ **And a mock is loose with data**: its eyebrow
+read "Coach · Acme" and `PublicProfile` has no org. **Deviate on data, follow on form, say which.**
+
+🔴 **A sweep is only as wide as the surface it enumerates.** The AC1 sweep quantifies over
+*stylesheets*, so the site's first inline style (`style={{ width }}` on the meter) was **outside it
+entirely** — `style={{ color: '#fff' }}` would never reach a `.css` file and AC1 would stay green
+while a component declared a colour. `check-built-css.mjs` now walks `src/**/*.tsx` as well.
+⚠️ **Same shape as this phase's "a route is outside every sweep" finding.**
 
 🔴 **A criterion that is a NUMBER catches what a criterion that is a LOOK cannot.** The first draft
 pointed all secondary copy at `--theme-color-fg-muted` — the obvious token by name, and an editor
@@ -141,7 +170,7 @@ file). *"eslint clean on every touched file"* in past handovers was never true o
 
 ## ✅ LANE A IS CLOSED — UNI-013 slices 1–3 all built (`f64f138`, `d205b47`)
 
-**Only slice 4 remains and it is Richard's** (the twelve badge artworks). Do not reopen this task
+**Only slice 4 remains and it is Richard's** (the twelve badge artworks). 🔴 **THE DESIGN IS AN ARTIFACT — ["Seven Tokens"](https://claude.ai/code/artifact/2fc23a65-cf0a-47aa-b4b8-962b8e4a5323), full CSS, read it before any stylesheet work; the task file's prose is NOT the design and s24 lost a round to that.** Do not reopen this task
 looking for work; read its file for the traps before touching any stylesheet.
 
 🔴 **If you DO touch the site's CSS, three cheap gates, and they are not optional:**
