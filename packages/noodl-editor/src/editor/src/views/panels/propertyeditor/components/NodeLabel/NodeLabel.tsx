@@ -15,6 +15,7 @@ import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
 import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
 
 import { NodeGraphNodeDelete, NodeGraphNodeRename } from '../..';
+import { getNodeProvenance } from '../../provenance';
 import { getNodeTypeChipInfo } from '../../utils';
 
 export interface NodeLabelProps {
@@ -119,7 +120,45 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
    * can read without leaving the editor, and without a network), and the
    * external page is demoted to what it now is: a "read more".
    */
-  const nodeDocs = getNodeDocs(model.type?.name);
+  const catalogDocs = getNodeDocs(model.type?.name);
+
+  /**
+   * CN-006b — ✅ **D1's provenance clause**, and ✅ **D6**'s hook: the property
+   * panel is where a user finds out whose code is running.
+   *
+   * `module` is the kit's `manifest.json` name. It arrives on the exported node
+   * type already — `nodelibraryexport.ts:406` copies `metadata.module`, which
+   * `NoodlRuntime.registerModule` stamps onto every definition a kit registers,
+   * and `BasicNodeType`'s constructor copies every field it is handed. Verified
+   * against the recorded payload a real viewer sent (`kit-app.editor-nodelibrary.json`):
+   * **2 of 177 types carry it, and both are the kit's**. Nothing needed plumbing;
+   * it needed a reader.
+   *
+   * ⚠️ **A built-in has no `module`, so it gets no row** — which is AC2's second
+   * half. There is nothing to attribute, and inventing "NodeGX" as a vendor would
+   * make provenance decorative and stop it meaning "somebody else wrote this".
+   */
+  const { kitName, kitDocs } = getNodeProvenance(model);
+
+  /**
+   * 🔴 **P1, and the spec was wrong about this field in a way that would have
+   * shipped a dead link.** CN-006b says to link the node's docs because "the
+   * `docs` field already exists". It exists — but it is **one field over two
+   * vocabularies** (CN-008's finding, measured again here): on a shipped node
+   * `docs` is a URL, and on a kit node it is the sentence the author wrote. On
+   * the payload a real viewer sent, both kit nodes carry prose and **not one of
+   * the 175 built-ins carries a `docs` field at all**. Rendering an author's
+   * sentence as an `href` produces a link that opens nothing.
+   *
+   * So it is read as what it is: help text. That also closes a capability gap P1
+   * forbids — `getNodeDocs` reads the enriched catalog, which is keyed by type
+   * name and generated at repo-build time, so **a kit type can never be in it**
+   * and until now a kit node was the one kind of node whose header had no help
+   * button. Now the author's own sentence fills it, with no "read more" fine
+   * type, because there is no page behind the click.
+   */
+  const nodeDocs: TSFixme =
+    catalogDocs || (kitDocs ? { summary: kitDocs, path: undefined, typeName: model.type?.name } : undefined);
 
   function onOpenDocs() {
     // The catalog stores the page as an absolute legacy URL; `nodeDocs.path` is
@@ -347,6 +386,25 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
         >
           <CategoryGlyph category={chip.category} />
           {chip.label}
+        </span>
+      )}
+
+      {/*
+        CN-006b AC2 — the provenance row.
+        ⚠️ **Attribution, never demotion.** The design test P1 sets for any pixel
+        here is *does this help a user find the author, or does it tell them this
+        node is worth less?* So this is muted body text in the same rail as the
+        type chip — no warning colour, no "custom"/"third-party" badge, no icon
+        that reads as a caveat. It says who wrote the node, in the same voice the
+        chip says what kind of node it is.
+      */}
+      {kitName && (
+        <span
+          className="property-provenance-row"
+          data-test="node-provenance"
+          title={`Provided by the "${kitName}" node kit in this project`}
+        >
+          from {kitName}
         </span>
       )}
     </div>

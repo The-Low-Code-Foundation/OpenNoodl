@@ -1,7 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import { platform } from '@noodl/platform';
 
+import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
@@ -9,7 +10,13 @@ import { DOCS_PAGES } from '@noodl-core-ui/constants/externalLinks';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
 import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
 
-import { createNodeKit } from '../../../../../../shared/utils/projectmodules';
+import {
+  createNodeKit,
+  joinKitNodes,
+  listNodeKits,
+  removeNodeKit,
+  ProjectNodeKit
+} from '../../../../../../shared/utils/projectmodules';
 import { openCodeFile } from '../../../documents/CodeFileDocument';
 import css from './sections.module.scss';
 
@@ -21,9 +28,9 @@ import css from './sections.module.scss';
  * what the folder contains — a library is somebody else's script made reachable
  * as a global; a kit is *your own node*, with ports, that appears in the picker.
  *
- * ⚠️ **The kits list is CN-006b, not this.** This section creates; it does not
- * enumerate, show provenance, or remove. Adding a list here would duplicate the
- * surface that task is scoped to build.
+ * ✅ **CN-006b landed the list here** (2026-08-17), which is where that task said
+ * its natural home was — beside `LibrariesSection`, on the same card patterns.
+ * The note that used to stand here reserving it for CN-006b is discharged.
  *
  * ## The three things this does after writing the files
  *
@@ -47,8 +54,47 @@ export function KitsSection() {
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [kits, setKits] = useState<Array<ProjectNodeKit & { nodes: string[] }>>([]);
+  const [orphans, setOrphans] = useState<Array<{ name: string; nodes: string[] }>>([]);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const projectDirectory = ProjectModel.instance?._retainedProjectDirectory;
+
+  /**
+   * CN-006b AC1. Disk says which kits are installed; the running runtime says
+   * which nodes each one registered — ✅ **D3**, and neither half can answer the
+   * other's question. `joinKitNodes` puts them together and keeps the two states
+   * distinguishable: a kit with no nodes is *not yet loaded*, not empty.
+   *
+   * ⚠️ **Read-only, deliberately.** ["Opening a project already writes three
+   * files"] is a live complaint; listing kits must not become a fourth write, so
+   * nothing here caches to disk, stamps a manifest or touches `toJSON`.
+   */
+  const refresh = useCallback(async () => {
+    const onDisk = await listNodeKits(projectDirectory);
+    const moduleNodes = NodeLibrary.instance?.library?.nodeIndex?.moduleNodes;
+    const joined = joinKitNodes(onDisk, moduleNodes);
+    setKits(joined.kits);
+    setOrphans(joined.orphans);
+  }, [projectDirectory]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  /*
+   * The node counts come from the library, so they have to move when it does.
+   * ✅ **CN-014 (s20)** is what makes this worth listening to: until the frozen
+   * definition was fixed, `libraryUpdated` did not fire when a kit's contents
+   * changed, so a listener here would have been dead half the time.
+   */
+  useEffect(() => {
+    const group = {};
+    NodeLibrary.instance.on('libraryUpdated', () => void refresh(), group);
+    return () => {
+      NodeLibrary.instance.off(group);
+    };
+  }, [refresh]);
 
   const handleCreate = useCallback(async () => {
     setError('');
@@ -89,6 +135,7 @@ export function KitsSection() {
           'runtime has registered.'
       );
       setName('');
+      await refresh();
 
       // D1's other clause. Last, so a failure to open a document can never cost
       // the author the kit that was already written successfully.
@@ -96,7 +143,35 @@ export function KitsSection() {
     } finally {
       setIsBusy(false);
     }
-  }, [projectDirectory, name]);
+  }, [projectDirectory, name, refresh]);
+
+  const handleRemove = useCallback(
+    async (kit: ProjectNodeKit & { nodes: string[] }) => {
+      /*
+       * The confirmation names the consequence that is *not* obvious from the
+       * button: the folder goes now, and its nodes stay in the picker until a
+       * runtime restarts without them. Saying nothing here would make the
+       * leftover nodes read as a failed delete.
+       */
+      const nodeLine = kit.nodes.length
+        ? ` Its ${kit.nodes.length} node${kit.nodes.length === 1 ? '' : 's'} will stay in the picker until you reload the preview.`
+        : '';
+      if (!window.confirm(`Remove "${kit.displayName}"? This deletes noodl_modules/${kit.dirName}.${nodeLine}`)) return;
+
+      setError('');
+      setSuccessMessage('');
+      const result = await removeNodeKit(projectDirectory, kit.dirName);
+      if (!result.ok) setError(result.message);
+      else setSuccessMessage(result.message);
+
+      // The model's module list is populated once at project load (see the
+      // comment in `handleCreate`) — a removal leaves it just as stale as a
+      // creation does, and for the same reason.
+      await new Promise<void>((resolve) => ProjectModel.instance.readModules(() => resolve()));
+      await refresh();
+    },
+    [projectDirectory, refresh]
+  );
 
   return (
     <CollapsableSection title="Node kits" hasGutter hasVisibleOverflow hasTopDivider>
@@ -129,6 +204,113 @@ export function KitsSection() {
           Read: writing your own nodes →
         </button>
       </div>
+
+      {/* ── CN-006b AC1: the list ─────────────────────────────────────────── */}
+
+      {kits.length === 0 && <div className={css.EmptyState}>No node kits in this project yet.</div>}
+
+      {kits.map((kit) => (
+        <div key={kit.dirName} className={css.VariableCard} data-test={`kit-card-${kit.dirName}`}>
+          <div className={css.VariableHeader}>
+            <div className={css.VariableIdentity}>
+              <span className={css.VariableKey} title={kit.displayName}>
+                {kit.displayName}
+              </span>
+              {/*
+                Version only when the kit declares one. 🔴 No kit in any of the 29
+                real projects does, so this is dormant until CN-016 defines what a
+                kit version means — and a hardcoded "v1.0.0" here would be a number
+                nothing on disk ever said.
+              */}
+              <span className={css.VariableType}>{kit.version ? `v${kit.version}` : `noodl_modules/${kit.dirName}`}</span>
+            </div>
+            <button
+              onClick={() => void handleRemove(kit)}
+              title="Remove kit"
+              data-test={`kit-remove-${kit.dirName}`}
+              style={{
+                padding: '4px 10px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                backgroundColor: 'var(--theme-color-danger)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                minWidth: '28px',
+                lineHeight: 1
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/*
+            ✅ **D3 in one sentence of UI.** A kit that has never been executed
+            registers nothing, and the honest report of that is "not loaded yet",
+            not "0 nodes" — the second reads like a broken kit and would send an
+            author looking for a bug in code that is fine.
+          */}
+          {kit.nodes.length === 0 ? (
+            <div style={{ fontSize: '11px', color: 'var(--theme-color-fg-muted)' }} data-test="kit-not-loaded">
+              Installed. Reload the preview to load its nodes — the picker lists what a running runtime has
+              registered.
+            </div>
+          ) : (
+            <button
+              onClick={() => setExpanded((e) => ({ ...e, [kit.dirName]: !e[kit.dirName] }))}
+              data-test={`kit-nodes-${kit.dirName}`}
+              style={{
+                padding: 0,
+                fontSize: '11px',
+                background: 'none',
+                border: 'none',
+                color: 'var(--theme-color-fg-muted)',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              {expanded[kit.dirName] ? '▾' : '▸'} {kit.nodes.length} node{kit.nodes.length === 1 ? '' : 's'}
+            </button>
+          )}
+
+          {expanded[kit.dirName] && kit.nodes.length > 0 && (
+            <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--theme-color-fg-default)' }}>
+              {kit.nodes.map((node) => (
+                <div key={node} style={{ padding: '1px 0' }}>
+                  {node}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {kit.nodeKitTypes && (
+            <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--theme-color-fg-muted)' }}>
+              Types {kit.nodeKitTypes}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/*
+        A kit whose folder is gone while its runtime is still live. Named rather
+        than hidden: its nodes are still in the picker, and an author who has just
+        deleted it is owed the reason they are still there.
+      */}
+      {orphans.map((orphan) => (
+        <div key={orphan.name} className={css.VariableCard} data-test={`kit-orphan-${orphan.name}`}>
+          <div className={css.VariableHeader}>
+            <div className={css.VariableIdentity}>
+              <span className={css.VariableKey}>{orphan.name}</span>
+              <span className={css.VariableType}>not on disk</span>
+            </div>
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--theme-color-fg-muted)' }}>
+            The running preview still has {orphan.nodes.length} node{orphan.nodes.length === 1 ? '' : 's'} from this
+            kit registered. Reload the preview to take them out of the picker.
+          </div>
+        </div>
+      ))}
 
       <PanelRow label="Kit name *" helpText="Becomes the folder name under noodl_modules/. Existing kits are never overwritten.">
         <PropertyPanelTextInput value={name} onChange={setName} />

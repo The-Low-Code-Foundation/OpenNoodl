@@ -498,6 +498,173 @@ export async function createNodeKit(
   };
 }
 
+// ─── CN-006b: the kits surface ───────────────────────────────────────────────
+
+/**
+ * One node kit installed in a project, shaped for the settings list.
+ *
+ * 🔴 **There is no node count here, deliberately.** ✅ **D3** puts node
+ * definitions in the running viewer's gift: what a kit registers is known only
+ * once its `index.js` has executed, and this function reads disk. A count
+ * derived from the manifest would be a guess that reads exactly like a fact —
+ * the caller joins `nodeIndex.moduleNodes` on `displayName` instead, which is
+ * the same name `NoodlRuntime.registerModule` stamps onto every node it
+ * registers.
+ */
+export interface ProjectNodeKit {
+  /** The `noodl_modules/` folder name. The identity — what removal takes. */
+  dirName: string;
+  /**
+   * Manifest `name`, falling back to the folder name.
+   *
+   * ⚠️ Also the **join key into the node library**: `nodelibraryexport.ts`
+   * groups `moduleNodes` by `metadata.module`, which is this string (CN-018).
+   * Two kits sharing a display name would share a group; the folder names still
+   * differ, so this list still shows both rows.
+   */
+  displayName: string;
+  /**
+   * Manifest `version`, when the kit declares one.
+   *
+   * 🔴 **Measured 2026-08-17: not one kit in any of the 29 real projects
+   * declares a version**, the scaffold writes none, and `MANIFEST_SCHEMA` in
+   * `@nodegx/module-inject` has no `version` property (its `additionalProperties`
+   * is open, so one is *allowed*, just never produced). CN-016 owns what a kit
+   * version means for install and compat gating. This reads what is there and
+   * omits the field when it is not — it does not invent one.
+   */
+  version?: string;
+  /** The `@nodegx/node-kit-types` version the scaffold stamped, when present. */
+  nodeKitTypes?: string;
+  /** Manifest `main` — the script the runtime loads. */
+  main: string;
+}
+
+/**
+ * Is this scanned module a node kit?
+ *
+ * 🔴 **There is no `kind: 'node-kit'` marker to test, and this was measured
+ * rather than assumed.** A census of every `manifest.json` in the 29 test
+ * projects finds exactly four shapes: an iconset (`type: 'iconset'`), an asset
+ * module such as the bundled Inter font (`browser`, no `main`), an ERG-002
+ * library (`kind: 'external-library'`), and a kit (`main`, no marker of its
+ * own). So the rule is subtractive: **a module with a `main` that is not one of
+ * the two things we can positively identify as something else.**
+ *
+ * ⚠️ **Deliberately inclusive at the boundary.** A hand-authored module that
+ * runs a `main` and registers no nodes lands in this list showing zero nodes,
+ * rather than being silently hidden. That is `projectmodules`' standing
+ * "loud, never silent" contract: a folder an author put in `noodl_modules/` and
+ * cannot see anywhere in the product is the exact complaint CN-006b exists to
+ * answer, and hiding an unrecognised one would reproduce it.
+ */
+function manifestLooksLikeKit(m: ModuleManifest | null): boolean {
+  if (!m) return false;
+  if (typeof m.main !== 'string' || !m.main) return false;
+  if (m.kind === 'external-library') return false;
+  if (m.type === 'iconset') return false;
+  return true;
+}
+
+/** Every node kit installed in a project, in folder order. */
+export async function listNodeKits(projectDirectory: string | undefined): Promise<ProjectNodeKit[]> {
+  const scanned = await scanModuleManifests(projectDirectory);
+  const kits: ProjectNodeKit[] = [];
+
+  for (const s of scanned) {
+    const m = s.manifest;
+    if (!manifestLooksLikeKit(m)) continue;
+
+    const kit: ProjectNodeKit = {
+      dirName: s.name,
+      displayName: typeof m.name === 'string' && m.name ? m.name : s.name,
+      main: String(m.main)
+    };
+
+    // Present-only, never defaulted: `version: '—'` or `version: '0.0.0'` would
+    // put a number on screen that no kit on disk has ever said.
+    const version = (m as Record<string, unknown>).version;
+    if (typeof version === 'string' && version) kit.version = version;
+
+    const typesVersion = (m as Record<string, unknown>).nodeKitTypes;
+    if (typeof typesVersion === 'string' && typesVersion) kit.nodeKitTypes = typesVersion;
+
+    kits.push(kit);
+  }
+
+  return kits;
+}
+
+/**
+ * Delete a kit's `noodl_modules/` folder.
+ *
+ * Mirrors `removeLibrary`'s refusal exactly, and for the same reason: this is a
+ * recursive delete driven by a name from a list, and the one failure that must
+ * be impossible is removing something the list had no business offering. An
+ * iconset, an ERG-002 library or a module with no `main` is refused **by name**
+ * rather than skipped.
+ */
+export async function removeNodeKit(
+  projectDirectory: string | undefined,
+  dirName: string
+): Promise<{ ok: boolean; message: string }> {
+  if (!projectDirectory) return { ok: false, message: 'No project is open.' };
+  if (!dirName || dirName.includes('/') || dirName.includes('\\') || dirName.includes('..')) {
+    return { ok: false, message: `"${dirName}" is not a module folder name — refusing to delete it.` };
+  }
+
+  const dirPath = projectDirectory + '/noodl_modules/' + dirName;
+  const manifest = await readManifestIfPresent(dirPath + '/manifest.json');
+  if (!manifestLooksLikeKit(manifest)) {
+    return { ok: false, message: `"${dirName}" is not a node kit — refusing to delete it.` };
+  }
+
+  await fs.promises.rm(dirPath, { recursive: true, force: true });
+  return { ok: true, message: `"${dirName}" removed. Reload the preview to take its nodes out of the picker.` };
+}
+
+/**
+ * Join the kits on disk to the nodes a *running* runtime has registered.
+ *
+ * The two halves answer different questions and neither can answer the other's:
+ * disk knows every kit that is installed, including one that has never run; the
+ * library knows every node that exists, and nothing about a kit that registered
+ * none. A kit with `nodes: []` is therefore **installed but not yet loaded**,
+ * not broken, and the surface must say which.
+ *
+ * ⚠️ Groups in `moduleNodes` with no kit on disk are returned as `orphans`
+ * rather than dropped. It is a real state — a kit deleted from disk while its
+ * runtime is still live registers nodes that are still in the picker — and it
+ * is precisely the state AC3 asks about.
+ */
+export function joinKitNodes(
+  kits: ProjectNodeKit[],
+  moduleNodes: Array<{ name: string; items: unknown[] }> | undefined | null
+): { kits: Array<ProjectNodeKit & { nodes: string[] }>; orphans: Array<{ name: string; nodes: string[] }> } {
+  const byName = new Map<string, string[]>();
+  for (const group of moduleNodes || []) {
+    if (!group || typeof group.name !== 'string') continue;
+    const items = (group.items || []).filter((i): i is string => typeof i === 'string');
+    // Two groups with one name would be one kit's nodes split in two — union
+    // them rather than letting the later one replace the earlier.
+    const existing = byName.get(group.name);
+    if (existing) existing.push(...items);
+    else byName.set(group.name, items);
+  }
+
+  const claimed = new Set<string>();
+  const joined = kits.map((kit) => {
+    claimed.add(kit.displayName);
+    return { ...kit, nodes: byName.get(kit.displayName) || [] };
+  });
+
+  const orphans = Array.from(byName.entries())
+    .filter(([name]) => !claimed.has(name))
+    .map(([name, nodes]) => ({ name, nodes }));
+
+  return { kits: joined, orphans };
+}
+
 /**
  * §3's SSR/SSG trap: `globalThis.__noodl_modules` (read by
  * `packages/noodl-viewer-react/static/ssr/index.js:68`) is populated only by

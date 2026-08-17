@@ -299,6 +299,24 @@
   flex: none;
 }
 
+/* CN-006b AC2 — provenance ("from Cashflow Kit"), under the type chip.
+
+   ⚠️ P1 forbids visually demoting a kit node, so this is deliberately the
+   quietest thing in the header: muted foreground, no chip ground, no border, no
+   uppercase. It is a byline, not a badge. Anything that read as a warning here
+   would answer "is this node worth less?" instead of "who wrote it?", which is
+   the one distinction the ruling turns on. */
+.property-provenance-row {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-family);
+  font-size: 10.5px;
+  color: var(--theme-color-fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .property-panel-header-edit-bar {
   padding-right: 0;
   right: 0;

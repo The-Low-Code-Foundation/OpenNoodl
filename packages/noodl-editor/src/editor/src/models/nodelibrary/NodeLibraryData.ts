@@ -90,11 +90,31 @@ export interface NodeLibraryDataConnectionColors {
 export interface NodeLibraryDataNodeType {
   runtimeTypes?: RuntimeType[];
   name: string;
+  /**
+   * ⚠️ **One field, two vocabularies.** On a shipped node this is a URL; on a
+   * kit node it is the sentence the kit author wrote (`ReactNodeDefinition.docs`).
+   * Measured on the payload a real viewer sent: both kit types carry prose and
+   * **none of the 175 built-ins carries this field at all**. A consumer that
+   * renders it as an `href` produces a dead link for every kit node — see
+   * `NodeLabel.tsx`, and CN-008/CN-009 for the same field biting two other
+   * consumers.
+   */
   docs: string;
   color: string;
   allowAsChild: boolean;
   category: string;
   haveComponentChildren: string[];
+  /**
+   * CN-018 / CN-006b — the kit that registered this type, as its `manifest.json`
+   * names it. Absent on every built-in; that absence is what "this is a built-in"
+   * *means* to the provenance row.
+   *
+   * ⚠️ This interface declares only the fields somebody has needed. It is not a
+   * census of the payload — `BasicNodeType`'s constructor copies **every** field
+   * it is handed, so a field being missing here says nothing about whether it
+   * arrives. `module` did arrive, undeclared, for as long as kits have existed.
+   */
+  module?: string;
 }
 
 export interface NodeLibraryData {
