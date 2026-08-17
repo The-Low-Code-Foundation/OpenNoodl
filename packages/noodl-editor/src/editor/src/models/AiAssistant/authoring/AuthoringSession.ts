@@ -750,7 +750,8 @@ export class AuthoringSession {
         this.context.libraryOverview(),
         this.context.importReport(),
         this.context.backendSchema(),
-        this.references
+        this.references,
+        this.context.nodeKitOverview()
       );
     } else {
       opening = initialUserMessage(
@@ -763,7 +764,8 @@ export class AuthoringSession {
         this.context.libraryOverview(),
         this.context.importReport(),
         this.context.backendSchema(),
-        this.references
+        this.references,
+        this.context.nodeKitOverview()
       );
     }
     this.messages.push(

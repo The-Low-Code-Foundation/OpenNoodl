@@ -274,7 +274,8 @@ function referenceBlocks(
   docs?: PromptProjectDocs,
   libraryOverview?: string,
   importReport?: string,
-  backendSchema?: string
+  backendSchema?: string,
+  nodeKitOverview?: string
 ): string[] {
   return [
     'Reference material for this project. Your task is at the END of this message — read these first,',
@@ -287,12 +288,35 @@ function referenceBlocks(
     '--- NODE CATALOG ---',
     catalogOverview,
     '--- END NODE CATALOG ---',
+    ...nodeKitBlock(nodeKitOverview),
     ...backendSchemaBlock(backendSchema),
     ...styleBlock(styleVocabulary),
     ...libraryBlock(libraryOverview),
     ...importReportBlock(importReport),
     ...docBlocks(docs)
   ];
+}
+
+/**
+ * CN-008: the project's own kit node types, or nothing when it has none — the
+ * same absent-means-omitted convention as every block around it, so a project
+ * without kits pays zero prompt bytes and sends a byte-identical turn.
+ *
+ * **Immediately after the catalog, and that placement is the point.** The kit
+ * types are already *in* the catalog block — that was measured before this was
+ * built — but there they are indistinguishable from built-ins, sunk in an
+ * alphabetical run of names on the `- Visual:` line. This block is the one that
+ * says which of those names the user wrote, what they are for, and that they
+ * are worth reaching for; putting it anywhere else separates it from the list
+ * it is annotating.
+ *
+ * In the STABLE half with the other reference blocks: a project's kits describe
+ * the project, are byte-identical across every component authored against it,
+ * and change only when a kit is installed or scaffolded.
+ */
+function nodeKitBlock(nodeKitOverview?: string): string[] {
+  if (!nodeKitOverview) return [];
+  return ['', "--- THIS PROJECT'S NODE KITS ---", nodeKitOverview, "--- END THIS PROJECT'S NODE KITS ---"];
 }
 
 /**
@@ -375,7 +399,8 @@ export function initialUserMessage(
   libraryOverview?: string,
   importReport?: string,
   backendSchema?: string,
-  references?: string
+  references?: string,
+  nodeKitOverview?: string
 ): OpeningTurn {
   return openingTurn(
     referenceBlocks(
@@ -385,7 +410,8 @@ export function initialUserMessage(
       docs,
       libraryOverview,
       importReport,
-      backendSchema
+      backendSchema,
+      nodeKitOverview
     ),
     [
       ...planContextBlock(planContext),
@@ -427,7 +453,8 @@ export function updateUserMessage(
   libraryOverview?: string,
   importReport?: string,
   backendSchema?: string,
-  references?: string
+  references?: string,
+  nodeKitOverview?: string
 ): OpeningTurn {
   return openingTurn(
     referenceBlocks(
@@ -437,7 +464,8 @@ export function updateUserMessage(
       docs,
       libraryOverview,
       importReport,
-      backendSchema
+      backendSchema,
+      nodeKitOverview
     ),
     [
       ...planContextBlock(planContext),

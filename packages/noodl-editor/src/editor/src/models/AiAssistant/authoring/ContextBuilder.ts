@@ -62,6 +62,54 @@ const MAX_PORTS_PER_PLUG = 40;
 const MAX_INTERFACE_PORTS = 12;
 
 /**
+ * CN-008 — the ports the **runtime** puts on every React kit node, which the
+ * kit's author did not write and the model does not need told per node.
+ *
+ * Ground truth is `react-component-node.ts`'s standard `inputs`/`outputs`
+ * blocks (`packages/noodl-viewer-react/src/react-component-node.ts:946-1078`),
+ * plus `mounted` (omitted only by `mountedInput: false`) and `variant`
+ * (`useVariants`). Subtracting them takes the demo kit's `Badge` from 12 inputs
+ * and 9 outputs to the **8 and 1 its author actually declared**.
+ *
+ * 🔴 **Deliberately a named set and not an intersection over the catalog.**
+ * Deriving "the ports every visual node has" from the shipped catalog yields
+ * the **empty set** — `Component Children` is a visual node with zero inputs,
+ * so it empties any intersection (measured). And an intersection over the
+ * *project's* kit nodes is worse than useless: across the two demo-kit nodes it
+ * would also swallow `radius`, which both authors declared and both meant.
+ *
+ * ⚠️ The gate that keeps this honest asserts **containment** — every name here
+ * is present on every kit node in the recorded payload — which catches the
+ * runtime dropping one. It cannot catch the runtime *adding* one; that surfaces
+ * as a stray inherited port in the handout, not as a wrong answer.
+ */
+export const KIT_BASE_INPUT_PORTS = new Set(['cssClassName', 'styleCss', 'mounted', 'variant']);
+export const KIT_BASE_OUTPUT_PORTS = new Set([
+  'childIndex',
+  'this',
+  'screenPositionX',
+  'screenPositionY',
+  'boundingWidth',
+  'boundingHeight',
+  'didMount',
+  'willUnmount'
+]);
+
+/** Ports named on one line of the kit handout before it defers to `get_node_types`. */
+const MAX_KIT_PORTS_PER_PLUG = 14;
+
+/**
+ * How many kit node types the handout will name before it stops and says so.
+ *
+ * The two kits this phase has cost ~2 and ~5 nodes; the cap exists for the
+ * 40-node kit the task asked us to decide about **before a user finds one**.
+ * Overflow is stated in the text rather than dropped — a silently short list of
+ * a project's own nodes is indistinguishable from a project that does not have
+ * them, which is the exact failure this handout exists to fix.
+ */
+const MAX_KIT_NODES = 30;
+
+/**
  * One port, as the agent is shown it.
  *
  * AIB-001 slice 2: the line carries the port's **wire format**, not only its
@@ -89,6 +137,38 @@ function portLine(typeName: string, port: CatalogPort): string {
   return `  - ${port.name} (${type}${format ? ` — ${format}` : ''}${signal})${
     description ? `: ${description}` : ''
   }${defaultValue}`;
+}
+
+/**
+ * CN-008 — a kit author's own sentence about a node, or `undefined`.
+ *
+ * 🔴 **`docs` is one field name over two vocabularies, and the task's spec
+ * assumed the wrong one.** CN-008 asked for "the `docs` string authors already
+ * write". On a **shipped** catalog node `docs` is a *URL*: 158 of 175 built-ins
+ * carry one and **158 of 158 of those are `https://docs.noodl.net/…`** — zero
+ * are prose. On a **kit** node it is prose, because that is what the runtime's
+ * definition shape means by it (`'A labelled badge that can show a
+ * percentage.'`). Reading the field without splitting the two would put a
+ * docs.noodl.net URL where a summary goes on 158 node types, and teach the
+ * model to cite links instead of describing behaviour.
+ *
+ * So callers gate on provenance — and this rejects a URL anyway, so that a
+ * caller which forgets cannot emit one. Both halves are asserted.
+ *
+ * ⚠️ **Nothing produces this string on the path the phase sends authors down.**
+ * `@nodegx/kit-scaffold` emits no `docs` key at all (measured in s15, still
+ * true), so a scaffolded node has no purpose line here and its picker preview
+ * reads "No documentation yet." The cashflow kit has one on all five nodes only
+ * because it was hand-written. Absent is therefore the *common* case and is
+ * rendered as omission, never as an empty sentence — see the note in
+ * [CN-008](../../../../../../../dev-docs/tasks/phase-69-the-node-you-write-yourself/CN-008-THE-AI-CAN-USE-YOUR-NODES.md).
+ */
+function kitDocs(node: CatalogNode): string | undefined {
+  const docs = (node as { docs?: unknown }).docs;
+  if (typeof docs !== 'string') return undefined;
+  const trimmed = docs.trim();
+  if (!trimmed || /^https?:\/\//i.test(trimmed)) return undefined;
+  return trimmed;
 }
 
 function portSection(typeName: string, heading: string, ports: CatalogPort[]): string[] {
@@ -224,6 +304,113 @@ export class AuthoringContextBuilder {
       lines.push(`- ${lib.name} — global \`${lib.global}\``);
     }
     return this.charge('library-overview', lines.join('\n'));
+  }
+
+  /**
+   * CN-008 — the node types **this project's own kits** provide, grouped and
+   * named by kit.
+   *
+   * ## 🔴 What was actually missing, which is not what the task said
+   *
+   * CN-008's problem statement was that "the AI does not know the lane exists".
+   * Measured before building: **it does.** A kit node is `inNodePicker`, so
+   * `catalogOverview()` already names it, and `nodeTypeDetails()` already
+   * renders its full ports, defaults and descriptions. What the loop could not
+   * do was *tell it apart from a built-in*: `demo.kit.Meter` arrives buried in
+   * an alphabetical run of ~30 names on the `- Visual:` line, with no kit named
+   * anywhere in the prompt, no display name, and nothing saying the user wrote
+   * it for this project.
+   *
+   * So this handout is about **salience and attribution, not existence** — and
+   * that is why it names ports rather than describing them. Duplicating what
+   * `get_node_types` already answers correctly for kit types would be paying
+   * twice for the half that was never broken.
+   *
+   * ## The port list, and the clause that would have shipped an empty one
+   *
+   * 🔴 The task said to include "the inputs with no default". **That selector
+   * matches zero ports on either kit in this phase** — a kit author declares a
+   * `default` on essentially every port, and ✅ **D8** pushes them harder that
+   * way by making token defaults the scaffold's norm. Following it literally
+   * would have printed a heading, a kit name and a node name per node with an
+   * empty port list under each, while `charge()` reported a cost and every
+   * mechanical acceptance criterion passed. What discriminates instead is
+   * {@link KIT_BASE_INPUT_PORTS} — the ports the *runtime* adds.
+   *
+   * ✅ **P1**: the text says these are ordinary nodes, because they are — the
+   * one thing the model must not learn here is that a kit node is placed,
+   * wired or parameterised differently. ✅ **P2**: it says to set ports and not
+   * to touch the kit's JavaScript, which is the same rule the docs teach.
+   *
+   * Returns `undefined` (never charged) for a project with no kits, matching
+   * `libraryOverview`'s absent-means-omitted convention — such a project sends
+   * a byte-identical turn to before this existed.
+   */
+  nodeKitOverview(): string | undefined {
+    const typeNames = this.catalog.projectKitTypeNames();
+    if (typeNames.length === 0) return undefined;
+
+    // Grouped by kit so the handout can attribute; a kit whose name the viewer
+    // could not resolve keeps its own group rather than being merged into a
+    // neighbour's, for the same reason CN-018 kept `'Unknown Module'` a real
+    // group in the picker — merging invents an authorship claim.
+    const byKit = new Map<string, string[]>();
+    for (const typeName of typeNames.slice(0, MAX_KIT_NODES)) {
+      const kit = this.catalog.kitModuleOf(typeName) ?? 'Unknown Module';
+      const names = byKit.get(kit) ?? [];
+      names.push(typeName);
+      byKit.set(kit, names);
+    }
+
+    const lines: string[] = [
+      "Node types this project's own kits provide. They are ordinary nodes: place, wire and parameterise " +
+        'them exactly as you would a built-in, and call get_node_types for a full port list with defaults.',
+      'Prefer one of these over rebuilding the same thing out of Group/Text — the user wrote them for this ' +
+        "project. Configure them through their PORTS; never propose editing a kit's JavaScript."
+    ];
+    for (const kit of [...byKit.keys()].sort()) {
+      lines.push('', kit);
+      for (const typeName of byKit.get(kit)!) {
+        lines.push(...this.kitNodeLines(typeName));
+      }
+    }
+    if (typeNames.length > MAX_KIT_NODES) {
+      lines.push(
+        '',
+        `… ${typeNames.length - MAX_KIT_NODES} further kit node types are installed but not listed here. ` +
+          'They are in the node catalog above; call get_node_types for any of them.'
+      );
+    }
+    return this.charge('node-kit-overview', lines.join('\n'));
+  }
+
+  /** One kit node: what it is, what it is for, and the ports its author declared. */
+  private kitNodeLines(typeName: string): string[] {
+    const node = this.catalog.getNode(typeName);
+    if (!node) return [];
+    const display = node.displayName && node.displayName !== typeName ? ` — "${node.displayName}"` : '';
+    const kind = node.isVisual ? 'visual' : 'logic';
+    // The kit author's own sentence about the node. See `kitDocs` for why this
+    // field cannot be read the same way for a built-in.
+    const purpose = kitDocs(node);
+    const lines = [`- ${typeName}${display} (${kind})${purpose ? `. ${purpose}` : ''}`];
+    const inputs = node.inputs.filter((p) => !KIT_BASE_INPUT_PORTS.has(p.name));
+    const outputs = node.outputs.filter((p) => !KIT_BASE_OUTPUT_PORTS.has(p.name));
+    const named = (ports: CatalogPort[]): string => {
+      const shown = ports.slice(0, MAX_KIT_PORTS_PER_PLUG);
+      const rendered = shown
+        .map((p) => {
+          const type = CatalogIndex.portTypeName(p) ?? '*';
+          // A signal port's type name is already `signal`; `(signal, signal)`
+          // is the reading of `portLine`'s rule that this line does not need.
+          return `${p.name} (${type}${p.isSignal && type !== 'signal' ? ', signal' : ''})`;
+        })
+        .join(', ');
+      return ports.length > shown.length ? `${rendered}, … ${ports.length - shown.length} more` : rendered;
+    };
+    if (inputs.length > 0) lines.push(`    inputs: ${named(inputs)}`);
+    if (outputs.length > 0) lines.push(`    outputs: ${named(outputs)}`);
+    return lines;
   }
 
   /**
@@ -393,7 +580,17 @@ export class AuthoringContextBuilder {
         'Logic node — no `parent`; it sits in the logic column to the right of the visual tree, beside the ' +
           'visual node it feeds.'
       );
-    const summary = enriched?.summary;
+    // CN-008 — a kit node can never have enrichment: `enrichedNode` reads a
+    // catalog generated at repo-build time and keyed by type name, and a
+    // project's kit types are by construction not in it. So the one sentence a
+    // kit author *can* write about their node — the definition's `docs` — was
+    // carried all the way into the overlay by `@nodegx/kit-catalog` and then
+    // dropped here, and every kit node reached the model with a heading, a
+    // placement line and no statement of what it is for.
+    //
+    // Gated on provenance because `docs` means something else entirely on a
+    // shipped node; see `kitDocs`. A project with no kits is byte-identical.
+    const summary = enriched?.summary ?? (this.catalog.isProjectKitType(typeName) ? kitDocs(node) : undefined);
     if (summary) lines.push(summary);
     if (enriched?.description && enriched.description !== summary) lines.push(enriched.description);
     if (enriched?.whenToUse) lines.push(`When to use: ${enriched.whenToUse}`);
