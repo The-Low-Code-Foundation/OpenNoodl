@@ -160,7 +160,16 @@ describe('what it deliberately lets through', () => {
 
   it('a parameter naming an unknown port on a DYNAMIC node — the port is very likely real', () => {
     // `States` names its ports from a seed parameter; the catalog cannot see them.
-    expect(check([{ id: 's', type: 'States', parameters: { 'value-on-opacity': 1 } }])).toEqual([]);
+    const out = check([{ id: 's', type: 'States', parameters: { 'value-on-opacity': 1 } }]);
+
+    // CN-010 / AC2 — updated for the same reason, and by the same rule, as the
+    // CN-002 case above: the guarantee this test exists to protect is that a
+    // port the node really creates draws **no accusation**. That still holds and
+    // is what is asserted. What changed is that the skip is announced instead of
+    // returning an empty array that reads as a pass, so `toEqual([])` would now
+    // re-hide exactly what CN-010 set out to surface.
+    expect(out.filter((d) => d.severity !== 'info')).toEqual([]);
+    expect(out.map((d) => d.code)).toEqual([DiagnosticCode.DynamicPortSkipped]);
   });
 
   it('never invents a default for a parameter that is simply absent', () => {
@@ -183,9 +192,19 @@ describe('a parameter that names no port at all', () => {
 
   it('is skipped only when the ports are genuinely runtime-determined', () => {
     // `States` names its ports from a seed parameter: the catalog cannot
-    // enumerate them, so silence is the only honest answer.
+    // enumerate them, so an accusation is not available.
+    //
+    // 🔴 The comment here used to end "so silence is the only honest answer",
+    // and CN-010 / AC2 is the finding that it was not: *not accusing* is honest,
+    // *saying nothing at all* reported an unverified parameter as a checked one.
+    // 947 parameters across 321 nodes in the 29 real test projects landed here.
+    // The distinction this test guards — runtime-determined is exempt from the
+    // **warning**, conditional groups are not — is unchanged and asserted below.
     expect(catalog.hasRuntimeDynamicPorts('States')).toBe(true);
-    expect(check([{ id: 's', type: 'States', parameters: { 'value-on-opacity': 1 } }])).toEqual([]);
+    const out = check([{ id: 's', type: 'States', parameters: { 'value-on-opacity': 1 } }]);
+
+    expect(out.map((d) => [d.code, d.severity])).toEqual([[DiagnosticCode.DynamicPortSkipped, 'info']]);
+    expect(out.map((d) => d.code)).not.toContain(DiagnosticCode.UnknownParameter);
   });
 
   it('checks a node whose only dynamism is conditional port groups', () => {

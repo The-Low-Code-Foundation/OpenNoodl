@@ -337,6 +337,24 @@ export interface PortDetail {
   description?: string;
 }
 
+/**
+ * One conditionally-declared port group, as an agent needs it (CN-010).
+ *
+ * Every member is *also* a statically declared port — checked across the whole
+ * shipped catalog, no type declares a port only conditionally — so these names
+ * are already in `inputs`/`outputs`. What the group adds is the `condition`: the
+ * only place the catalog records that a port is read at all only when a sibling
+ * parameter holds a particular value. Setting `cubicBezierP1X` on an `Animation`
+ * whose `easingCurve` is not `cubicBezier` is well-formed, statically valid, and
+ * silently never read.
+ */
+export interface DeclaredPortGroupDetail {
+  /** e.g. `"mode = list"`, `"idSource = explicit OR idSource NOT SET"`. */
+  condition?: string;
+  inputs?: string[];
+  outputs?: string[];
+}
+
 export interface NodeTypeDetail {
   typeName: string;
   displayName: string;
@@ -359,7 +377,38 @@ export interface NodeTypeDetail {
   outputs: PortDetail[];
   /** Present when the node creates ports at runtime — the validator skips
    * unknown-port errors for such nodes; ports listed here are the static ones. */
-  dynamicPorts?: { mechanisms: string[]; note?: string };
+  dynamicPorts?: {
+    mechanisms: string[];
+    /**
+     * CN-010 — the sentence that says *how* the port list is not exhaustive.
+     *
+     * 🔴 This field was `note` and read `dp.note`, which **exists on no node**:
+     * the catalog's field is `description` on all 88 shipped types that declare
+     * dynamic ports (`DynamicPortInfo.description`, non-optional) and on every
+     * kit node (`OverlayDynamicPortInfo.description`, non-optional). So the
+     * projection compiled, typechecked and shipped `{ mechanisms: [...] }` and
+     * nothing else — an agent was told the list was incomplete and given no
+     * statement of what was missing, for every dynamic type in the product.
+     * The editor's `CatalogIndex.dynamicPortNote()` reads `description` and was
+     * right all along; this was one consumer of two getting the name wrong.
+     */
+    description?: string;
+    /**
+     * CN-010 / AC3 — the enumerable half, which was dropped entirely.
+     *
+     * `declared-port-groups` is not "ports we cannot name": it is a fixed set
+     * switched on by a sibling parameter's value, and the catalog records both
+     * the names and the condition (34 shipped types, 165 groups, 158 of them
+     * with a condition). Withholding it left `mechanisms` as a bare flag on the
+     * one mechanism that could have been answered in full.
+     *
+     * Projected to `{condition, inputs, outputs}` rather than passed through:
+     * the raw entries also carry exporter internals (`name:
+     * "conditionalports/extended"`, `template`, `indexStep`) that mean nothing
+     * outside `nodelibraryexport.ts`.
+     */
+    declaredPortGroups?: DeclaredPortGroupDetail[];
+  };
   /**
    * LAS-007 §2 — validated examples demonstrating this type, with their titles.
    *
@@ -576,6 +625,19 @@ export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeType
     // node has ports the list does not show and gives no way to learn what they
     // are, which is a flag rather than an answer.
     if (full.runtimeBehavior) s.runtimeBehavior = full.runtimeBehavior;
+    // CN-010 — and for a **kit** node there is never a `runtimeBehavior`, so the
+    // sentence above never fires and the flag stays a flag. `runtimeBehavior`
+    // comes from `enrichment`, which is generated at repo-build time and keyed
+    // by type name: a kit type cannot be in it, by construction, on any machine.
+    // Measured on the shipped catalog: 88 of 88 dynamic types carry one, so the
+    // gap is not a coverage hole to be filled later — it is 100% of kits and 0%
+    // of built-ins, permanently. The catalog's own `description` is the fallback,
+    // and it is the same field full detail now carries.
+    //
+    // ⚠️ Same shape as CN-009's `summary`: one field, sourced from a table no kit
+    // can appear in, degrading silently rather than visibly. That was the third
+    // such field found in this phase; when a fourth turns up, look here first.
+    else if (full.dynamicPorts.description) s.runtimeBehavior = full.dynamicPorts.description;
   }
   return s;
 }
@@ -660,10 +722,16 @@ export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLo
   if (e?.runtimeBehavior) detail.runtimeBehavior = e.runtimeBehavior;
   if (e?.relatedNodes?.length) detail.relatedNodes = e.relatedNodes;
   if (n.dynamicPorts) {
-    const dp = n.dynamicPorts as { mechanisms?: string[]; note?: string };
+    const dp = n.dynamicPorts as {
+      mechanisms?: string[];
+      description?: string;
+      declaredPortGroups?: unknown[];
+    };
+    const groups = declaredPortGroupDetails(dp.declaredPortGroups);
     detail.dynamicPorts = {
       mechanisms: dp.mechanisms ?? [],
-      ...(dp.note ? { note: dp.note } : {})
+      ...(dp.description ? { description: dp.description } : {}),
+      ...(groups.length ? { declaredPortGroups: groups } : {})
     };
   }
   const anyN = n as unknown as Record<string, unknown>;
@@ -672,6 +740,32 @@ export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLo
   const capability = capabilityFor(typeName);
   if (capability) detail.capability = capability;
   return detail;
+}
+
+/**
+ * The agent-facing projection of the catalog's declared port groups (CN-010).
+ *
+ * Drops every entry that would say nothing: a group with neither `inputs` nor
+ * `outputs` carries no port names, and a group is only worth its bytes for the
+ * names plus the condition. Returns `[]` — never `undefined` — so the one caller
+ * decides whether the field appears.
+ */
+function declaredPortGroupDetails(raw: unknown[] | undefined): DeclaredPortGroupDetail[] {
+  if (!Array.isArray(raw)) return [];
+  const out: DeclaredPortGroupDetail[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const g = entry as { condition?: unknown; inputs?: unknown; outputs?: unknown };
+    const inputs = Array.isArray(g.inputs) ? g.inputs.filter((n): n is string => typeof n === 'string') : [];
+    const outputs = Array.isArray(g.outputs) ? g.outputs.filter((n): n is string => typeof n === 'string') : [];
+    if (inputs.length === 0 && outputs.length === 0) continue;
+    out.push({
+      ...(typeof g.condition === 'string' && g.condition ? { condition: g.condition } : {}),
+      ...(inputs.length ? { inputs } : {}),
+      ...(outputs.length ? { outputs } : {})
+    });
+  }
+  return out;
 }
 
 /**

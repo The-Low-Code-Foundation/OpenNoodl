@@ -773,6 +773,14 @@ export function checkParameterValues(
     // at weight 400 because no node in the runtime has a `fontWeight` port.
     const dynamic = catalog.hasRuntimeDynamicPorts(node.type);
     const portGroups = catalog.declaredPortGroups(node.type);
+    /**
+     * CN-010 / AC2 — the parameters this node's carve-out is about to skip.
+     *
+     * Collected rather than reported inline so that one node yields one notice
+     * naming all of them, which is CN-002's rule: four unverified parameters on
+     * one node are one fact about that node.
+     */
+    const dynamicSkips: string[] = [];
 
     // LAS-003/F7 — node-level, because the defect is the combination of
     // parameters and no single one of them is wrong on its own.
@@ -797,7 +805,23 @@ export function checkParameterValues(
           diagnostics.push(unitTrap);
           continue;
         }
-        if (!reportUnknownParameters || dynamic) continue;
+        if (!reportUnknownParameters) continue;
+        if (dynamic) {
+          // CN-010 / AC2 — say so. This was a bare `continue`, and it is the
+          // last silent skip of the three CN-002 found: the type resolves, the
+          // node is fine, and the parameter is simply unverified. Measured over
+          // the 29 projects in `NodeGX test projects`: **947 set parameters
+          // across 321 nodes** reach this line, 6% of every parameter in them,
+          // reported as a clean pass.
+          //
+          // ⚠️ The reason differs from `unknownTypeSkip`'s and the wording must
+          // not be borrowed: that one says *"type X is not in the node catalog"*,
+          // which is **false** here — the type is known, and for a kit node
+          // CN-003 worked to make it known. Saying it would teach a kit author
+          // that their node is unrecognised at the exact moment it is not.
+          dynamicSkips.push(name);
+          continue;
+        }
         const suggestion = catalog.suggestPort(node.type, 'input', name);
         diagnostics.push({
           code: DiagnosticCode.UnknownParameter,
@@ -944,6 +968,38 @@ export function checkParameterValues(
         location: locate(component, node, name),
         ...(problem.suggestion !== undefined ? { suggestion: problem.suggestion } : {}),
         ...(problem.alternatives ? { alternatives: problem.alternatives } : {})
+      });
+    }
+
+    // CN-010 / AC2 — one notice per node, after its parameters are known.
+    //
+    // `info`, and that is load-bearing: these parameters are overwhelmingly
+    // correct. A `NavigationShowPopup` really does take the target component's
+    // inputs as ports, and 315 of the 947 measured skips are exactly that. The
+    // statement being made is about the *checker*, not the graph.
+    if (dynamicSkips.length > 0) {
+      const named = dynamicSkips.map((n) => `"${n}"`).join(', ');
+      // All 88 shipped descriptions end in punctuation and so does the kit
+      // wording, but `dynamicPortNote`'s own fallback — `ports are
+      // runtime-determined (...)` — does not, and that is the branch a kit with
+      // an unrecognised entry shape lands on.
+      const rawNote = catalog.dynamicPortNote(node.type) ?? 'this node determines ports at runtime';
+      const note = /[.!?]$/.test(rawNote.trim()) ? rawNote.trim() : `${rawNote.trim()}.`;
+      diagnostics.push({
+        code: DiagnosticCode.DynamicPortSkipped,
+        severity: 'info',
+        message:
+          `${dynamicSkips.length === 1 ? 'Parameter' : 'Parameters'} ${named} on ${node.type} ` +
+          `${dynamicSkips.length === 1 ? 'names' : 'name'} no port the catalog can see, and ` +
+          `${dynamicSkips.length === 1 ? 'it was' : 'they were'} not checked: ` +
+          note +
+          ' So this node is unverified by that check rather than verified as correct.',
+        location: {
+          component,
+          nodeId: node.id,
+          nodeType: node.type,
+          ...(node.label ? { nodeLabel: node.label } : {})
+        }
       });
     }
   }

@@ -231,9 +231,18 @@ describe('item 4 — the dynamic-port carve-out, in both directions', () => {
     // — a warning on a correct kit, and unavoidable, because the exporter keeps
     // a channel port out of the static list on purpose. The population it cried
     // wolf at is kit authors.
-    expect(shape([{ id: 'f', type: 'dynports.kit.Feed', parameters: { heading: 'Live', channelName: 'ticks' } }])).toEqual(
-      []
-    );
+    //
+    // ✅ CN-010 / AC2 updated the expectation and **not** the guarantee. The
+    // thing this test protects is that the kit is not accused; that is asserted
+    // directly on the next line and is stronger than the empty array was. The
+    // `info` is CN-010's: the check did not run, and a report that said nothing
+    // at all could not be told apart from one that checked and approved.
+    const found = shape([
+      { id: 'f', type: 'dynports.kit.Feed', parameters: { heading: 'Live', channelName: 'ticks' } }
+    ]);
+
+    expect(found.map((row) => row[0])).not.toContain('unknown-parameter');
+    expect(found).toEqual([['dynamic-port-skipped', 'info', undefined]]);
   });
 
   it('still checks the static ports of a runtime-dynamic kit node', () => {

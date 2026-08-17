@@ -141,13 +141,40 @@ describe('AWP-005 — the response budget (a ratchet: move the number, say why)'
     expect(over).toEqual([]);
   });
 
-  it('keeps any single full-detail response under 12,500 tokens', async () => {
-    // `Group` is the ceiling case at ~11.2k. This is the assertion that fires
-    // when a port is added to it — growth F44 caught only by measuring the wire.
+  /**
+   * Ratchet moved 12,500 → 13,500 by CN-010 (2026-08-17). The why, in numbers:
+   *
+   * | | before | after |
+   * |---|---|---|
+   * | all 142 types, full detail | 283,483 | **294,894** (+4.0%) |
+   * | worst single (`net.noodl.controls.textinput`) | 12,069 | **12,899** |
+   * | `Group` | 11,242 | 12,282 |
+   *
+   * ⚠️ The ceiling case is **no longer `Group`** — the comment here said so and
+   * had been stale for a while; `net.noodl.controls.textinput` passed it. Do not
+   * re-derive the ceiling case from this note, measure it.
+   *
+   * What was bought: `dynamicPorts.description` (the sentence saying *how* a port
+   * list is incomplete, previously read from `dp.note` — a field that exists on
+   * no node, so it was dropped for all 88 dynamic types) and
+   * `declaredPortGroups` (34 types, 165 groups, 158 conditions — the only place
+   * the catalog records that a port is read only when a sibling parameter holds
+   * a given value).
+   *
+   * The cheaper-looking alternative was measured and is **not** cheaper: moving
+   * the condition onto each port as `activeWhen` costs 29,014 bytes against the
+   * group block's 22,911, because conditions are long and a group shares one
+   * across several ports.
+   *
+   * Headroom is preserved rather than spent: 431 tokens before (12,069 of
+   * 12,500), 601 now (12,899 of 13,500). This ceiling exists to catch growth
+   * nobody noticed; this growth was measured before it was taken.
+   */
+  it('keeps any single full-detail response under 13,500 tokens', async () => {
     const over: Array<{ name: string; cost: number }> = [];
     for (const name of allTypeNames()) {
       const c = await cost([name], 'full');
-      if (c >= 12_500) over.push({ name, cost: c });
+      if (c >= 13_500) over.push({ name, cost: c });
     }
     expect(over).toEqual([]);
   });

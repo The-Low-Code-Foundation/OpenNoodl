@@ -252,7 +252,16 @@ describe('item 4 — a kit whose ports are runtime-determined is not accused of 
     // Both nodes set a parameter the catalog cannot see or must read a condition
     // for. Before the mapping fix this was one `unknown-parameter` warning on a
     // node that is right.
-    expect(authoringDiagnostics(KIT_DYNPORTS, 'App')).toEqual([]);
+    //
+    // ✅ CN-010 / AC2: "completely clean" now means **not accused**, which is
+    // what this test was always for, rather than "returns an empty array",
+    // which is what it happened to assert. `dyn_feed` sets `channelName` — a
+    // port the exporter deliberately keeps out of the static list — so a report
+    // with nothing in it could not be told apart from one that checked it.
+    const found = authoringDiagnostics(KIT_DYNPORTS, 'App');
+
+    expect(found.filter((d) => d.severity !== 'info')).toEqual([]);
+    expect(found.map((d) => [d.code, d.location.nodeId])).toEqual([['dynamic-port-skipped', 'dyn_feed']]);
     expect(catalogIndex().hasRuntimeDynamicPorts('dynports.kit.Feed')).toBe(true);
     expect(catalogIndex().hasRuntimeDynamicPorts('dynports.kit.Panel')).toBe(false);
   });

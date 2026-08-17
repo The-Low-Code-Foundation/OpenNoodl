@@ -168,7 +168,36 @@ describe('LAS-002 — every authoring door returns the warning text', () => {
 
     expect(res.isError).toBe(false);
     expect(res.data.warnings).toBe(0);
-    expect(res.data.validation?.diagnostics ?? []).toEqual([]);
+
+    /**
+     * 🔴 CN-010 / AC2 — and this is the case worth reading before changing it.
+     *
+     * `CLEAN_NODES` is the canonical good page: a `Page` with a `title`, a
+     * `Group`, a `Text`. `Page` is `runtime-discovered` and declares **neither
+     * `title` nor `urlPath`** as a static port — they are registered per
+     * instance — so the two most commonly set parameters on the most commonly
+     * written node in the product were, until CN-010, checked by nothing and
+     * reported as checked. 96 of the 947 measured skips are `Page`.
+     *
+     * So a clean candidate now carries one `info`. **`warnings` stays 0** and
+     * nothing blocks — asserted above, and that is the property this test is
+     * really protecting. ⚠️ It does mean "clean" is no longer "an empty
+     * diagnostics array" for any page, which is a visible change to every
+     * authoring response and is flagged as such in the task notes.
+     */
+    const diagnostics = res.data.validation?.diagnostics ?? [];
+    expect(diagnostics.filter((d) => d.severity !== 'info')).toEqual([]);
+    // ⚠️ `nodeId`, not `nodeType`: the response type declares `location` as
+    // `{ nodeId?: string }`, so reading `nodeType` passes at runtime and adds a
+    // `tsc --noEmit` error — in a package whose typecheck runs in no CI job,
+    // where it would have sat unnoticed.
+    //
+    // ⚠️ And not a literal id either: staging rewrites `page` to `page-2`, so
+    // pinning the string would pin an implementation detail of the writer. What
+    // matters is that the notice is attached to *some* node, because an
+    // unlocated diagnostic is not actionable.
+    expect(diagnostics.map((d) => d.code)).toEqual(['dynamic-port-skipped']);
+    expect(diagnostics[0].location.nodeId).toBeTruthy();
   });
 
   it('apply_plan reports the warnings that survived into the written project', async () => {
