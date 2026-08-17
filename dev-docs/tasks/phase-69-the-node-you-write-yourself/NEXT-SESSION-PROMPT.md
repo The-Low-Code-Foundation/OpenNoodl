@@ -1,12 +1,13 @@
 # Phase 69 — next session
 
-**Written 2026-08-17, session 20.** 🔴 **This file is a REWRITE, not an amendment.** It is
+**Written 2026-08-17, session 21.** 🔴 **This file is a REWRITE, not an amendment.** It is
 overwritten every session; if you find yourself prepending, rewrite it instead. Everything that
 outlives the phase goes to memory, not here.
 
-Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first. **s20 fixed and drove the frozen kit
-definition** — s19's biggest finding. The fix is smaller than the reasoning behind it, and the
-reasoning is the part worth reading: §1.
+Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first. **s21 built and drove CN-006b** — the
+kits surface. The build is small; what is worth reading is §1, because **three of the task's own
+acceptance criteria were written against premises that turned out to be false**, and two of them
+would have shipped something wrong.
 
 ---
 
@@ -19,102 +20,110 @@ reasoning is the part worth reading: §1.
 | **CN-008** | ✅ s16 | ⚠️ **AC1 needs a live model** | §4 |
 | **CN-009** | ✅ s17 | ⚠️ **AC5's consequence needs a live model** | §4 |
 | **CN-010** | ✅ s18 | ✅ AC1 s19 | **AC4 not started** |
-| **CN-014** | ✅ **AC1's library half, s20** | ✅ **s20** | §1. AC1's 2nd clause + AC2/AC3 open |
-| CN-006b, CN-011 … CN-017 | 📋 | — | §3 |
+| **CN-014** | ✅ AC1's library half, s20 | ✅ s20 | AC1's 2nd clause + AC2/AC3 open |
+| **CN-006b** | ✅ **s21** | ✅ **s21** | **AC1–AC4 all met.** §1 |
+| CN-011 … CN-013, CN-015 … CN-017 | 📋 | — | §3 |
 
-🔴 **The drive debt is still exactly one item: CN-008 AC1 + CN-009 AC5 are one drive, not two.**
-Both want a live model authoring in a project that has a kit. ⚠️ **Read §4 before attempting it** —
-there is a stale-build trap that would make the whole run grade the wrong code.
+🔴 **The drive debt is unchanged and is still exactly one item: CN-008 AC1 + CN-009 AC5 are one
+drive, not two.** Both want a live model authoring in a project that has a kit. ⚠️ **Read §4 first**
+— there is a stale-build trap that would make the whole run grade the wrong code.
 
-**Nothing is blocked on a decision.** The owed list is §5 and it got *shorter* this session.
+**Nothing is blocked on a decision.**
 
-## 1. What s20 did, and the one lesson worth carrying
+## 1. What s21 did, and the lesson
 
-**s19's finding — a kit node's definition is frozen after first delivery — was CN-014 AC1 verbatim.**
-Not a new task. AC1 reads *"Rename a port in a kit; without restarting the editor, the property panel
-shows the new name"*, and s19's other half (a new node appears) is **AC2**. Two sessions had already
-done CN-014's mandatory measure-first pass without the task being open. ⚠️ **Before proposing a new
-task for a finding, grep the phase's task files for the behaviour** — the finding arrives phrased in
-the language of the drive that produced it, not of the task that owns it.
+CN-006b's four acceptance criteria are met and driven. The surface is a kits list in `KitsSection`
+(with node counts, expandable node names, and remove), and a provenance row in the property panel
+header. ⚠️ **Item 2 of the spec — "a create entry point" — was already built by CN-006.** Reading
+the file before writing is what established that; the section even carried a note reserving the list
+for this task.
 
-**Two causes, both in `NodeLibraryImporter`:** `mergeUpdates`' known-name branch carried
-`// TODO: Update the node data?` and discarded the new definition; and `mergeInByName` **did**
-replace the picker-index entry but never set `updated`, so nothing was published and
-`NodeLibrary.instance.reload()` never ran.
+### 🔴 The lesson: three false premises, in one short spec
 
-### 🔴 The lesson: the obvious fix would have silently corrupted 84 built-ins
+**This is the sixth consecutive session in which the handover's or the task's stated premise did not
+survive contact with the data.** The practice that catches it every time is the same one: *run the
+thing the task describes, over real data, and count what comes back, before writing anything.*
 
-An unconditional replace looks right and passes any hand-written fixture. But the generated cloud
-library merges once per session, shares **all 84** of its type names with the browser library, and
-**all 84 definitions differ** — so it would capture `Expression`, `REST2`, `Model2` and 81 others and
-invert a precedence that has always been first-writer-wins.
-
-**Three candidate keys, two of them wrong in opposite directions:**
-
-| key | why it fails |
+| The spec said | What a census found |
 |---|---|
-| `runtimeTypes` contains the runtime | it is a **union**; after the cloud merge both runtimes are in it for those 84 ⇒ cloud captures them |
-| `runtimeTypes.length === 1` ("sole owner") | the mirror failure — silently **stops refreshing exactly those 84** |
-| `clientId` | an ordinary viewer mints a fresh `guid()` **per socket open** (`editorconnection.ts:194`); only a sandbox passes a fixed one ⇒ **never fires** |
+| list each kit "with the right node count and **version**" | **No manifest in any of the 29 real projects has a `version` field.** The scaffold writes none, and `MANIFEST_SCHEMA` in `@nodegx/module-inject` has no `version` property at all. The row now reads one **when present** and omits it otherwise — `v0.0.0` would be a number nothing on disk ever said |
+| "**a link to its docs** — the `docs` field already exists and is already carried through `nodelibraryexport.ts`" | It is carried, and **it is prose**. Measured on the payload a real viewer sent: both kit types carry the author's sentence, and **not one of the 175 built-ins carries the field at all**. An `href` would have opened nothing |
+| provenance is "already carried" | ✅ True — and the useful correction is the *direction*: `module` was already on the exported type and needed **a reader, not plumbing**. `NodeLibraryDataNodeType` declared neither it nor most of the payload, exactly as s20 found |
 
-✅ **The answer is a separate `dataOwner: Map<name, RuntimeType>`** — *whose report is this data?*,
-which is a strictly different question from *where can this node run?*. **All three were measured
-before anything was written**; the `clientId` one cost a single grep and would otherwise have cost a
-whole build.
+🔴 **`docs` is now the fourth field in four consecutive tasks to bite a second consumer** —
+CN-008's `docs`, CN-009's `summary`, CN-010's `dp.note`, and this. **One field, two vocabularies, and
+the consumer that reads it decides which one it thinks it has.**
 
-✅ **8 tests, 5/5 mutations killed.** `test:main` **3,601 / 234 suites**, `typecheck:editor` **0**.
-🔴 **The precedence control asserts the two real payloads DISAGREE before asserting the browser's
-survived** — overlap alone would have made it vacuous. That is the third time this phase a control
-could not have failed; this one was built from the two payloads on disk for exactly that reason.
+### ✅ A P1 capability gap, found and closed in passing
 
-### 🚗 Driven, and the panel is a second surface
+`getNodeDocs` reads the enriched catalog — keyed by type name, generated at repo-build time — so **a
+kit type can never be in it**. The header's help button was gated on that lookup, so **a kit node had
+2 action buttons and a built-in 3**. That is precisely the capability difference P1 forbids, and
+AC4 exists to catch it. The kit's own `docs` prose fills the button now, with **no "Read more"** fine
+type because there is no page behind the click.
 
-Observations written before launch: [notes/cn-014-ac1-drive.md](notes/cn-014-ac1-drive.md). One
-write renamed a port **and** added a node; one viewer reload took the library **177 → 178 *and*
-`Title` → `Panel Heading`** — the combination that was impossible before.
+### The rule for "is this a kit" had to be built from a census
 
-⚠️ **Residual: an open property panel does not re-render on `libraryUpdated`.** It showed the old
-label through **six polls over 30 s untouched**, then updated on one re-selection — so the variable
-is the selection change, not elapsed time. **Severity far below the bug behind it** (click any other
-node and back; authoring does that constantly, whereas the frozen definition needed a restart *and*
-mislabelled itself as "dynamic ports don't work"). **Wants a small follow-up, not a reopening.**
+🔴 **There is no `kind: 'node-kit'` marker.** The 29 projects contain exactly four manifest shapes —
+iconset (`type`), asset module (`browser`, no `main`), ERG-002 library (`kind`), and kit (`main`, no
+marker of its own) — and only the first three are positively identifiable. So kit-ness is
+**subtractive**, and ⚠️ **a fixture containing only a kit passes against a `listNodeKits` that
+returns every module it finds.** The central test writes all four shapes for that reason.
 
-⚠️ **AC1's second clause — a connected port that disappears from a kit — is UNMEASURED, not working.**
+⚠️ **`joinKitNodes` keeps apart two states disk cannot distinguish.** ✅ D3 puts node lists in the
+running viewer's gift, so a kit with no nodes is **"installed, not yet loaded"** — never "0 nodes",
+which reads as a broken kit. Groups with no kit on disk surface as **orphans** rather than being
+dropped, which is exactly AC3's aftermath.
 
-## 2. Instrument notes from s20's drive, all reusable
+**29 tests, 15/15 mutations killed** — ⚠️ **and two of those mutations exposed tests that could not
+fail, rather than code that was wrong**: an iconset control the `main` requirement already excluded,
+and a path-traversal test whose target was refused by the *manifest* check and then by the kernel,
+twice, before the guard under test was ever consulted. `test:main` **3,630 / 236** (re-measured),
+`typecheck:editor` **0**.
 
-- ⚠️ **`window.__req` is not present in this build.** Reconstruct it:
-  `window.webpackChunknoodl_editor.push([['probe'], {}, r => { window.__req = r; }])` → 2,466 modules.
-- ⚠️ **`selectNode` is on the NodeGraph, not on `ng.selector`** — `selector` exposes only
-  `select` / `unselect` / `unselectNode` / `isActive`. Reach it via
-  `NodeGraphContextTmp.nodeGraph` (`contexts/NodeGraphContext/NodeGraphContext.tsx`);
-  `ng.getSelectedNodes()` is the read.
-- ⚠️ **The editor opens in preview mode.** The node canvas needs the `ModeSegmentedButton` toggle
-  before any property panel exists to measure at all.
-- ⚠️ Property-panel labels are `[class*=PropertyPanelInput-module__Label]`.
-- ✅ **Opening a project by path**: `LocalProjectsModel.instance.openProjectFromFolder(path)` puts it
-  in the recent list; then click its `LauncherProjectCard` — but **`scrollIntoView` first**, the card
-  was at y=4339 and a trusted click needs it in the viewport.
+## 2. Instrument notes from s21's drive, all reusable
+
+- 🔴 **`window.confirm` is a NATIVE modal in Electron** — it blocks the renderer and takes CDP with
+  it. Stub it (`window.confirm = () => true`) before clicking anything that confirms. The hang reads
+  exactly like a broken handler.
+- 🔴 **CDP hover does not open the `Tooltip`.** A real `Input.dispatchMouseEvent` `mouseMoved` onto
+  the measured centre, twice, with a neutral move between, left the tooltip layer empty; so did
+  synthetic `mouseover`/`mouseenter`. Fall back to reading the `content`/`fineType` props React
+  passes — and **say that is what you did**, it is one step short of the rendered text.
+- 🔴 **The naive React fiber walk reports the LAST button in the rail for every button.** Following
+  `sibling` from the root escapes the element's own subtree. Descend only: start at `root.child` and
+  never follow the root's sibling.
+- ⚠️ **`npm run cdp -- click <selector>` clicks the FIRST match.** The launcher has ~400 elements
+  matching `[class*=LauncherProjectCard]` and three projects named `Cashflow Command Centre`; the
+  first click opened **a peer's scratchpad project** and the reading would have been about the wrong
+  tree. ✅ Tag the element you mean (`setAttribute('data-drive-target','1')`) and click that.
+- ⚠️ **`LocalProjectsModel.loadProject()` loads but does not BIND** — `ProjectModel.instance` stays
+  on the previous project and there is no error. The launcher card click is still the only route
+  found, and **there is no route back to the launcher** from an open project: getting the wrong one
+  open costs a stack restart.
+- ⚠️ **Selecting a node switches the sidebar away from Settings**, so a settings element measured
+  after an AC2 selection is **0×0** and the click is refused. Re-open and re-measure.
 
 ## 3. Picking the next build
 
-**CN-006b (the kits surface)** is still the one with the most behind it and no measurement debt — its
-prerequisite (CN-018's provenance) is done, s19 read the property panels side by side and found no
-difference attributable to kit-ness, and s20 has now made the surface it lists actually refresh.
+With CN-006b done, the tier-2 authoring arc is complete. The remaining unbuilt tasks are
+**CN-011 … CN-013, CN-015 … CN-017**, and two of them say outright to **measure before specifying**:
 
-⚠️ **Confirm rather than inherit — five sessions running now.** CN-008's two clauses, CN-009's
-`find_tools` clause, CN-010's AC3 and AC1, and this session's: the handover called the frozen
-definition *"small, well-located"* and *outside* CN-010's scope. It was neither — it was another
-task's acceptance criterion, and the file carried a comment declaring the broken behaviour
-deliberate. **Run the thing the task describes, over real data, and count what comes back.**
+- **CN-012 (logic nodes)** — `module.nodes` via `defineNode` is the non-visual half and is
+  **untested here**; the phase's proof covered `reactNodes` only. **Establish current behaviour by
+  building the caller before specifying anything.**
+- **CN-015 (failures name the kit)** — S/M, and the one with the least unknown in front of it.
+
+⚠️ **Confirm rather than inherit — six sessions running now**, and this session was the worst of
+them for it: **three false premises in one spec**, two of which would have shipped a wrong surface.
 
 ## 4. ⚠️ Before attempting CN-008 AC1 / CN-009 AC5
 
-🔴 **A registered MCP server loads `/Applications/…`, not this checkout.** Driving the live `nodegx-*`
-tools would grade the **old build**, so s18's and s17's work would not be under test at all. The
-recorded route is to **spawn the bundle directly over stdio** — build to a *scratch* path with
-esbuild (never over `packages/noodl-mcp/dist/`, which is what peers' registered servers load), pass
-`--all-tools`, and read `inputSchema` from `tools/list` before calling.
+🔴 **A registered MCP server loads `/Applications/…`, not this checkout.** Driving the live
+`nodegx-*` tools would grade the **old build**, so s18's and s17's work would not be under test at
+all. The recorded route is to **spawn the bundle directly over stdio** — build to a *scratch* path
+with esbuild (never over `packages/noodl-mcp/dist/`, which is what peers' registered servers load),
+pass `--all-tools`, and read `inputSchema` from `tools/list` before calling.
 
 ⚠️ **Both criteria are about a *consequence*, and both say so.** CN-008 AC1: the graph the model
 produces uses `Cashflow Lane` + `Money Pill` rather than a hand-rolled `Group` — *"the handout
@@ -123,14 +132,18 @@ an agent **places** a kit node it was not told about.
 
 ## 5. Owed by Richard
 
-1. ✅ **RESOLVED, no longer owed** — s19's *"new task or fold into CN-014?"* is answered by evidence:
-   it **was** CN-014 AC1, and it is done.
-2. 🆕 **The open-panel refresh (§1).** Fold into CN-014's remaining scope, or leave as a known rough
-   edge? It is genuinely minor and self-recovering.
-3. 🆕 **What should `channelPort` do?** Unchanged from s19. **(a)** revive the editor-side manager;
+1. 🆕 **What should a kit's `docs` be able to say?** Today it is prose only, and CN-006b's spec
+   assumed a URL. A kit author who wants to link a real docs page **has no way to express one** —
+   `ReactNodeDefinition.docs` is a single string and the property panel now renders it as text.
+   **(a)** leave it prose-only; **(b)** add a separate `docsUrl`; **(c)** sniff `http` and render a
+   link. ⚠️ (c) is the cheap one and it is a **guess about the author's intent encoded in a regex**.
+2. **The open-panel refresh (from s20).** An open property panel does not re-render on
+   `libraryUpdated` — it recovers on any re-selection. Fold into CN-014's remaining scope, or leave
+   as a known rough edge?
+3. **What should `channelPort` do?** Unchanged from s19. **(a)** revive the editor-side manager;
    **(b)** have the exporter stop stripping the port; **(c)** reject it at kit-load with a
-   diagnostic. ⚠️ **Doing nothing is the current state and it is the worst of the three** — the author
-   gets no port and no message.
+   diagnostic. ⚠️ **Doing nothing is the current state and it is the worst of the three** — the
+   author gets no port and no message.
 4. **Widen the project gate to check parameter values?** `checkParameterValues` has one production
    caller, so `validate:project` / `validate_project` check parameter values for **no node of any
    provenance**. `cn004.test.ts`'s last block asserts the silence deliberately — **replace it when
@@ -138,7 +151,7 @@ an agent **places** a kit node it was not told about.
 5. **The ungated typechecks.** `packages/noodl-mcp`'s `tsc --noEmit` was red (8, s18) and runs in no
    CI job; seven of eleven `typecheck:*` scripts run nowhere, and `scripts/` is in none.
    ⚠️ `typecheck:runtime` red at 2, pre-existing. ⚠️ `typecheck:core-ui` reports **44 `TS2307`s**.
-   ✅ `typecheck:editor` is **0** (measured s20).
+   ✅ `typecheck:editor` is **0** (re-measured s21).
 6. **Should `project`'s `find_tools` purpose line name kits?** Costs resident tokens.
    `tests/kitTools.test.ts` has the control that fails when it changes. Narrowed by s17, unanswered.
 7. **"Clean" is no longer "an empty diagnostics array" for any page** (s18's AC2). `Page` declares
@@ -148,25 +161,23 @@ an agent **places** a kit node it was not told about.
 Open, not caused here, still wanting task numbers: 🔴 `render-from-disk.js` answers `/` and
 `/index.html` and 404s everything else, **including the start page's own `urlPath`** · 🔴 the
 `@noodl/mcp` provisioning flake (`provision.test.ts` red in a full run, green in isolation) · 🔴
-`ViewerConnection.sendRefresh()` dead at both ends · ⚠️ `NodeLibraryDataNodeType` declares **seven**
-fields and **neither `ports` nor `dynamicports`** (found s20; the CN-014 fix is field-agnostic by
-construction, so nothing depends on widening it — but the next consumer that reads a declared field
-off it will get the CN-010 `dp.note` treatment).
+`ViewerConnection.sendRefresh()` dead at both ends.
 
 ## 6. ⚠️ Carried, unresolved
 
-🔴 **The cashflow kit is OUTSIDE the repo and only ONE copy is tokenised.** It lives in
-`NodeGX test projects/cashflow-command-centre` — unversioned, covered by no gate — while
-`cn001-kit-drive` and `cn019-drive` still carry the pre-D8 kit (0 × `var(--`, 6 × live `#1F8A4C`).
-**Driving the wrong copy reads as "the change did not land".** D5 makes CN-007 depend on this kit
-staying working and nothing enforces it. **Still wants a task number.** ⚠️ Read it via a `cp -R` into
-a scratchpad; never write to it.
+🔴 **The cashflow kit is OUTSIDE the repo and the copies differ.** It lives in
+`NodeGX test projects/cashflow-command-centre` — unversioned, covered by no gate. ⚠️ **s20's
+handover said `cn069-s15-drive` carries the pre-D8 kit; it does not** — s21 drove it and the panel
+showed `var(--green-600)` / `var(--amber-600)` / `var(--red-600)`. The standing note is about
+`cn001-kit-drive` and `cn019-drive` **only**, and had been over-generalised. D5 makes CN-007 depend
+on this kit staying working and nothing enforces it. **Still wants a task number.** ⚠️ Read it via a
+`cp -R` into a scratchpad; never write to it.
 
 ⚠️ **The token vocabulary gap (s14):** the semantic set has `--destructive` but **no `--success` and
 no `--warning`**, so any kit with three status bands reaches into the palette scale for two of them.
 
 ⚠️ **Free and still unchecked:** whether the editor's colour picker paints a swatch for a `color`
-port whose value is a `var(--token)` string. One eval with a project open.
+port whose value is a `var(--token)` string.
 
 ⚠️ **From s13, still free:** `CodeFileDocument` renders **two toolbars** — its own `css.Topbar` above
 `JavaScriptEditor`'s, with two separate Save buttons (`notes/cn019-driven.png`).
@@ -174,23 +185,30 @@ port whose value is a `var(--token)` string. One eval with a project open.
 ⚠️ **From s18:** `find_tools`' `query` matches tool *names* only while its `describe` text says
 "names and descriptions" (noticed s17, still untouched — changing it costs resident tokens).
 
+⚠️ **`NodeLibraryDataNodeType` is not a census of the payload.** s21 added `module` to it; `ports`,
+`dynamicports` and most other fields the viewer sends are still undeclared, and `BasicNodeType`'s
+constructor copies **every** field regardless. **A field's absence from that interface says nothing
+about whether it arrives** — check the recorded payload
+(`tests-unit/cn-003/fixtures/kit-app.editor-nodelibrary.json`), not the type.
+
 ## 7. Checkout conditions
 
-- 🔴 **An editor stack WAS launched and HAS been torn down.** `dev:debug --quiet` on 9222. Before
-  launch: `dev:stop --list` clean, no `scripts/start.ts` running, **paired with a positive control
-  matching 26 Electrons** so the zeros were attributable. `npm run dev:stop` reported **26 processes
-  stopped**, and **45 peer MCP servers survived** — `NEVER_SWEEP` working as documented.
-  **Nothing of mine is running.**
-- ⚠️ **ONE repo source file was edited**: `NodeLibraryImporter.ts`. There was therefore a `test:ci`
-  contamination window. `ListAgents` showed 22 peer sessions but **all started 1–3 days ago**, so no
-  broadcast was sent; `test:main` (plain Node, safe beside a live stack) was used rather than
-  `test:ci`. ⚠️ **If you are mid-`test:ci` and it went red in this file, that is why — re-run.**
-- ✅ **The fixture is untouched**: the drive ran on a `cp -R` copy in the session scratchpad, and
-  `git status packages/noodl-mcp/tests/fixtures/kit-dynports` was clean at the end.
-- 🔴 **`test:ci` still stands where s12 left it** (`2843 / 6 @ 39393`); s13–s20's commits are not in
+- 🔴 **An editor stack WAS launched (twice) and HAS been torn down.** `dev:debug --quiet` on 9222.
+  Before launch: `dev:stop --list` clean, **paired with a `ps` walk showing 28 Electron matches that
+  were all peers' MCP servers by PPID**, so the zero was attributable rather than a broken query.
+  Both teardowns reported **26 processes stopped**, and peer MCP servers went **41 → 43** across
+  them — `NEVER_SWEEP` working as documented. **Nothing of mine is running.**
+- ⚠️ **Seven repo source files were edited and committed** (`7ea15c49`) — `projectmodules.ts`,
+  `KitsSection.tsx`, `NodeLabel.tsx`, `provenance.ts` (new), `BasicNodeType.ts`,
+  `NodeLibraryData.ts`, `propertyeditor.css`. There was therefore a `test:ci` contamination window.
+  `ListAgents` showed 23 peer sessions but **all started 1–3 days ago**, so no broadcast was sent —
+  the same call s20 made. `test:main` (plain Node, safe beside a live stack) was used, not `test:ci`.
+- ✅ **No fixture or test project was written to.** The drive ran on a `cp -R` in the session
+  scratchpad; the kit deleted in AC3 was deleted from that copy.
+- 🔴 **`test:ci` still stands where s12 left it** (`2843 / 6 @ 39393`); s13–s21's commits are not in
   it. **Re-measure before quoting.** Do not inherit s18's `noodl-mcp` numbers either.
-- ⚠️ **Peer work live in the tree and not touched**: `dev-docs/tasks/phase-50-*`, `phase-65-*`,
-  `phase-66-*` (a new `FIX-013` file appeared mid-session), `phase-68-*`,
-  `packages/noodl-editor/src/.../AiAssistant/authoring/sandboxData.ts`,
-  `packages/noodl-runtime/src/sandbox/*`, `scripts/library/check.ts`.
+- ⚠️ **Peer work live in the tree and not touched**: `dev-docs/tasks/phase-50-legibility/notes/`,
+  `dev-docs/tasks/phase-65-the-library/` (untracked), `dev-docs/tasks/phase-68-learnbook/README.md`,
+  `scripts/library/check.ts`. ⚠️ A peer committed `b101a635` (phase-66 s56) mid-session; the
+  `componentBench`/`ComponentBench` edits present at session start are in it, not in mine.
 - Whoever you tell you are starting, tell you have stopped.
