@@ -250,29 +250,80 @@ describe('BEN-001 the harness export', () => {
     expect(project.getComponentWithName(BENCH_COMPONENT_NAME)).toBeFalsy();
   });
 
-  it('serves the bench sample data, and none against a real backend', () => {
+  it('serves the bench a sandbox with no rows in it, and never the real backend (FIX-013 1(c))', () => {
     const withData = buildBenchExport({ project: loadProject(), target: SHARE_ITEM });
     const shipped = (withData.json!.metadata as Record<string, SandboxDataset>).sandbox;
-    expect(shipped).toBeDefined();
-    expect(String(withData.summary)).toContain('Sample data');
 
+    // 🔴 THE CONTROL, and the whole distinction this ruling turns on: the
+    // dataset is still SHIPPED. `emptyState` empties the sandbox; it does not
+    // remove it. A missing `sandbox` key here would mean the shim was never
+    // installed and the preview is talking to the project's live backend —
+    // AC3's violation wearing the same "no data" description.
+    expect(shipped).toBeDefined();
+
+    // The classes the walk MISSED are served empty, which is the half a
+    // `records: []` cannot express on its own: `SandboxStore.list()` invents
+    // five records for any class it has never heard of, so without this the
+    // empty state would be a lie on exactly the components most likely to want
+    // one.
+    //
+    // ⚠️ This carries the spec alone on purpose. `ShareItem` reads no
+    // collections, so a `for (const k of Object.values(classes))` loop asserting
+    // `records.length === 0` here would iterate **zero times** and pass without
+    // measuring anything. The populated case is pinned in the next spec, which
+    // supplies a class rather than hoping the fixture has one.
+    expect(Object.keys(shipped.classes).length).toBe(0);
+    expect(shipped.synthesizeMissing).toBe(false);
+
+    expect(String(withData.summary)).toContain('No sample data');
+    expect(String(withData.summary)).not.toContain('Sample data —');
+
+    // Ruling 4's non-destructive branch: `useSampleData` survives as a
+    // programmatic option with no UI, so this path is unchanged. It is the one
+    // way to reach a real backend, and nothing the bench renders can now ask
+    // for it.
     const real = buildBenchExport({ project: loadProject(), target: SHARE_ITEM, useSampleData: false });
     expect((real.json!.metadata as Record<string, unknown>).sandbox).toBeUndefined();
     expect(real.dataset).toBeUndefined();
     expect(String(real.summary)).toContain('Real backend');
   });
 
-  it('takes the user’s own records, the same way the AI preview does (BEN-006)', () => {
-    // One substrate, two clients. If this ever needs its own dialect, the
-    // shared module has stopped being shared.
-    const result = buildBenchExport({
+  it('serves a named class empty, and a class it never heard of empty too (FIX-013 1(c))', () => {
+    // 🔴 **`ShareItem` reads no collections at all** — measured, not assumed:
+    // the assertion below fails as `0 to be greater than 0` if that ever
+    // changes. That is not a weak fixture, it is *the reported one*: the bug
+    // report's `CategoryCard` reads no collections either, which is why its
+    // Data panel had literally nothing to edit.
+    //
+    // It also means the class map is EMPTY here, and an empty map is the one
+    // shape that defeats this whole mode on its own: `SandboxStore.list()`
+    // invents five records for a class it has never heard of, so a dataset
+    // naming nothing would serve five rows per class queried — *more* invented
+    // data than before the change meant to remove it. On this component
+    // `synthesizeMissing: false` is the only thing standing in the way.
+    const bare = buildBenchExport({ project: loadProject(), target: SHARE_ITEM });
+    const bareShipped = (bare.json!.metadata as Record<string, SandboxDataset>).sandbox;
+    expect(Object.keys(bareShipped.classes).length).toBe(0);
+    expect(bareShipped.synthesizeMissing).toBe(false);
+
+    // The other half: a class that DOES exist is named, keeps its field list,
+    // and is served empty — being named is what stops the store inventing it,
+    // and the fields survive so anything reading the shape still can. Supplied
+    // through `userData` because the graph walk finds none for this component.
+    //
+    // BEN-006's data editor was deleted with the toolbar, so nothing on the
+    // bench can put records here any more; a caller passing them
+    // programmatically still gets the empty state, because a row the user typed
+    // is still a row.
+    const withUserData = buildBenchExport({
       project: loadProject(),
       target: SHARE_ITEM,
       userData: { Articles: [{ title: 'A title I typed' }] }
     });
-
-    const shipped = (result.json!.metadata as Record<string, SandboxDataset>).sandbox;
-    expect(shipped.classes.Articles.records[0].title).toBe('A title I typed');
+    const withUser = (withUserData.json!.metadata as Record<string, SandboxDataset>).sandbox;
+    expect(Object.keys(withUser.classes)).toContain('Articles');
+    expect(withUser.classes.Articles.records).toEqual([]);
+    expect(withUser.classes.Articles.fields).toContain('title');
   });
 
   it('does not wrap the graph in a frame', () => {

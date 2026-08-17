@@ -44,7 +44,6 @@ import {
   benchInstanceUsage,
   benchInterfaceFor,
   buildBenchExport,
-  type AgentSampleData,
   type BenchExport,
   type BenchInterface
 } from '@noodl-models/AiAssistant/authoring';
@@ -55,8 +54,7 @@ import { useTrackBounds } from '@noodl-core-ui/hooks/useTrackBounds';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { ViewerConnection } from '../../ViewerConnection';
-import { SandboxDataEditor } from '../documents/AuthoringPreviewDocument/SandboxDataEditor';
-import { SandboxToolbar, SANDBOX_PARTITION, SANDBOX_WEBVIEW_ATTRIBUTES, useSandboxViewer } from '../SandboxSurface';
+import { SANDBOX_PARTITION, SANDBOX_WEBVIEW_ATTRIBUTES, useSandboxViewer } from '../SandboxSurface';
 import { benchParameterContent, benchSignalContents } from './benchInputs';
 import { BenchInputsRail } from './BenchInputsRail';
 import { BenchOutputsRail } from './BenchOutputsRail';
@@ -106,12 +104,6 @@ export interface ComponentBenchProps {
 }
 
 export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }: ComponentBenchProps) {
-  const [useSampleData, setUseSampleData] = useState(true);
-  /** POL-008: signed in by default — see `SandboxPreview` for the whole reason. */
-  const [signedIn, setSignedIn] = useState(true);
-  /** BEN-006: the records the user typed. Preview state, never project state (R5). */
-  const [userData, setUserData] = useState<AgentSampleData | undefined>(undefined);
-  const [dataOpen, setDataOpen] = useState(false);
   const [result, setResult] = useState<BenchExport | undefined>(undefined);
   const [revision, setRevision] = useState(0);
   /**
@@ -181,13 +173,10 @@ export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }
       buildBenchExport({
         project: ProjectModel.instance,
         target,
-        inputs: inputsRef.current,
-        userData,
-        useSampleData,
-        signedIn
+        inputs: inputsRef.current
       })
     );
-  }, [target, userData, useSampleData, signedIn, revision]);
+  }, [target, revision]);
 
   /**
    * The mounted component's interface, kept current while its graph is edited.
@@ -259,7 +248,20 @@ export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }
    */
   const [remountKey, setRemountKey] = useState(0);
 
-  const viewer = useSandboxViewer({ json: result?.json, useSampleData, signedIn, remountKey });
+  /**
+   * FIX-013 — both flags are fixed, and the URL is the reason they still exist.
+   *
+   * `useSandboxViewer` writes them into the preview's query string
+   * (`noodl-sandbox-data=sample&noodl-sandbox-auth=in`), and `sample` is what
+   * keeps the network shim **installed**. That is AC3: the bench cannot reach
+   * the project's real backend, because the only thing that would let it is the
+   * literal string `real`, which nothing here can now produce.
+   *
+   * ⚠️ The rows are emptied in the *export* (`buildBenchExport`'s
+   * `emptyState`), never here. Turning the shim off instead would hand the
+   * bench the live backend — the opposite of what ruling 1(c) asked for.
+   */
+  const viewer = useSandboxViewer({ json: result?.json, useSampleData: true, signedIn: true, remountKey });
   const clientId = viewer.clientId;
 
   /**
@@ -704,25 +706,35 @@ export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }
 
   return (
     <div className={css.Root} data-test="component-bench">
-      <SandboxToolbar
-        summary={result?.summary}
-        notice={result?.notice}
-        useSampleData={useSampleData}
-        onUseSampleDataChange={setUseSampleData}
-        signedIn={signedIn}
-        onSignedInChange={setSignedIn}
-        hasDataset={Boolean(result?.dataset)}
-        dataOpen={dataOpen}
-        onDataOpenChange={setDataOpen}
-      />
+      {/*
+        FIX-013 — what is left of the toolbar row, which is the sentence and
+        none of the buttons.
 
-      {useSampleData && dataOpen && result?.dataset && (
-        <SandboxDataEditor
-          dataset={result.dataset}
-          userData={userData}
-          onApply={setUserData}
-          onClose={() => setDataOpen(false)}
-        />
+        The report was *"the 'data' option doesn't seem to work at all, throws
+        weird messages and buttons all over the place"*, and the buttons were
+        the complaint: Sign out, Data, Sample data / Real backend, and an Apply
+        banner over a panel with nothing in it. All four are gone. What could
+        not go is `describe()`'s summary — the backwards-ports sentence in it is
+        the single most valuable thing this surface says, and the toolbar was
+        its only route to the user.
+
+        ⚠️ **It wraps, and that is the point rather than styling.** The bar it
+        replaced was a 30px row with `white-space: nowrap` and an ellipsis, so a
+        diagnostic appended to the *end* of the summary — which is exactly where
+        `describe()` appends the backwards-ports sentence — was clipped before
+        anyone could read it. Kept here rather than lifted into the chrome strip
+        above for the same reason: that strip is a single nowrap line whose
+        caption is the designated shrink zone (`VisualCanvas.module.scss`), and
+        BEN-004 measured it clipping at 640px. A summary relocated into it would
+        be relocated out of sight.
+
+        Not a toolbar: nothing here is clickable, so there is no second control
+        surface to keep in step with the AI preview's (BEN-004 §7).
+      */}
+      {result?.summary && (
+        <div className={css.Summary} data-test="bench-summary">
+          <Text textType={TextType.Secondary}>{result.summary}</Text>
+        </div>
       )}
 
       {/*

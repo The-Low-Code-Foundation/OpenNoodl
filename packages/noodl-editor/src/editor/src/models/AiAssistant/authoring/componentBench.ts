@@ -462,7 +462,24 @@ export function buildBenchExport({
   const dataset: SandboxDataset = buildSandboxDataset({
     components: componentClosure(project, harness),
     userData,
-    signedIn
+    signedIn,
+    // FIX-013 ruling 1(c) — the bench serves **no rows**. The component shows
+    // its real empty state and the user feeds it through the inputs rail,
+    // which is the whole of *"just let the user define the inputs and outputs,
+    // done"*.
+    //
+    // ⚠️ **Hard-coded here rather than offered as an option, and that is the
+    // ruling rather than a shortcut.** A bench that can be switched back to
+    // synthesized rows needs a control to switch it with, and the control is
+    // the reported defect. The AI preview keeps sample data — it goes through
+    // `buildSandboxExport`, not this function — which is ruling 2 answered as
+    // *the two surfaces diverge*.
+    //
+    // 🔴 This is **not** `useSampleData: false`. That uninstalls the network
+    // shim and lets the preview reach the project's live backend (AC3's
+    // violation); this keeps the shim installed and serving, with nothing in
+    // it. See `SandboxMount.emptyState`.
+    emptyState: true
   });
   json.metadata[SANDBOX_METADATA_KEY] = dataset;
 

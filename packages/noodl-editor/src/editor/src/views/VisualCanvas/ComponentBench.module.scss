@@ -7,6 +7,27 @@
   background-color: var(--theme-color-bg-2);
 }
 
+/* FIX-013 — the sentence the toolbar row used to carry, with none of its
+   controls. See the mount in `ComponentBench.tsx` for why it survived the
+   deletion and why it lives here rather than in the chrome strip.
+
+   ⚠️ **Wraps, deliberately.** The `SandboxToolbar` bar this replaced was a
+   fixed 30px row with `white-space: nowrap` and `text-overflow: ellipsis`, and
+   `describe()` appends its diagnostics — the backwards-ports sentence above all
+   — to the *end* of the summary. In a nowrap row the most valuable thing the
+   bench says was the first thing cut. No height cap here, for the same reason:
+   a diagnostic that needs three lines gets three lines. */
+.Summary {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--theme-color-bg-1);
+  /* The bench's own colour, not the stage's — this is chrome, and the stage
+     below it is `bg-0`. */
+  background-color: var(--theme-color-bg-2);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 /* BEN-002 — the stage and the inputs rail, side by side. */
 .Body {
   flex: 1;

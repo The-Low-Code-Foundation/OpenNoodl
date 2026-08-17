@@ -228,3 +228,83 @@ Stated because the remaining build is otherwise blocked on Richard, and it need 
 
 🔴 **Both are still Richard's to answer** — this only records that neither branch is destructive, so
 the answer does not have to arrive before the UI work is scoped.
+
+---
+
+## ✅ Built s55 — the flip, the deletion, and the summary's new home
+
+**One commit, as §3 of s54's handover required**: the bench serves no rows *and* the toolbar that
+would have advertised an empty Data panel is gone, so the reported defect is never made universal.
+
+### What changed
+
+- **`componentBench.ts`** — `buildBenchExport` passes **`emptyState: true`** to
+  `buildSandboxDataset`. Hard-coded rather than offered as an option: a bench that can be switched
+  back needs a control to switch it with, and **the control is the reported defect**.
+- **`ComponentBench.tsx`** — `SandboxToolbar` and `SandboxDataEditor` mounts deleted, with the four
+  pieces of state they owned (`useSampleData`, `signedIn`, `userData`, `dataOpen`). The export call
+  drops three arguments and its effect drops three dependencies.
+- **`useSandboxViewer`** is now called with **literal `true`s**. That is AC3, structurally: the hook
+  is the *only* writer of `noodl-sandbox-data`, the runtime turns the shim off for the literal
+  string `real` alone, and nothing the bench renders can now produce it.
+- **`ComponentBench.module.scss`** — a `.Summary` strip in the slot the toolbar vacated.
+
+### 🔴 The summary did NOT go where the Fix direction said, and the reason is measured
+
+The Fix direction says relocate it *"into the chrome strip beside `BenchCaption`"*. 🔴 **That
+placement would have satisfied the letter of the task and defeated AC2.** Three facts, all in the
+source:
+
+1. `describe()` appends the backwards-ports sentence **last**, after the base sentence and after
+   the no-visual-root and ignored-input sentences.
+2. `VisualCanvas.module.scss`'s `.BenchCaption` is a single `white-space: nowrap` line, and its own
+   comment names it **the shrink zone** — *"the one genuinely redundant thing in the strip"* —
+   because **BEN-004 measured the strip clipping at 640px**.
+3. The strip has gained `BenchFrameControl`, `BenchSize` and FIX-019's chip since that direction was
+   written at s33. It is fuller now than when the placement was chosen.
+
+A sentence that is appended last, dropped into the element designated to be truncated first, is not
+relocated — it is hidden. ✅ **So it lives in the bench, full-width and WRAPPING, with no height
+cap.** ⚠️ **This is strictly better than the toolbar it replaced**, which was a 30px row with
+`white-space: nowrap` and `text-overflow: ellipsis` — meaning the backwards-ports diagnostic
+was *already* being clipped before anyone could read it. AC2 is met for the first time here, not
+merely preserved.
+
+⚠️ **It is not a second toolbar.** Nothing in it is clickable, so BEN-004 §7's *"do not build a
+second toolbar"* is not engaged.
+
+### ✅ Ruling 2, answered as the two surfaces DIVERGE — recorded here as the ruling requires
+
+`SandboxToolbar`, `SandboxDataEditor` and `sandboxDataDraft` all keep their owner in
+`SandboxPreview.tsx`, so **nothing is orphaned and nothing was deleted from disk**. The AI preview
+keeps its toolbar, its data editor and its sample rows. 🔴 **BEN-004 §7's constraint is therefore
+knowingly retired for the bench**, which is what ruling 2 said had to be written down if the answer
+went this way. Ruling 2's remaining payoff — deleting those three files — is **not taken**, and is
+still available if the AI preview is ever swept too.
+
+### ✅ Rulings 3 and 4 taken on their non-destructive branch
+
+Both survive as **programmatic options with no UI**: `signedIn` and `useSampleData` are still
+parameters of `BenchMount` and still honoured by `buildBenchExport`. `component-bench.test.ts`'s
+Real-backend assertions needed **no edit**, exactly as the branch predicted. Nothing is lost at the
+API level and both are reversible. 🔴 **Richard's answers are still owed**; this only means the
+build did not have to wait for them.
+
+### 🔴 The fixture reads no collections — and that is the reported case, not a weak test
+
+The first spec written for this asserted the dataset names at least one class. **It failed:
+`Expected 0 to be greater than 0`.** `ShareItem` reads **no collections at all** — which is the
+identical shape to the bug report's `CategoryCard`, the component whose Data panel *"has literally
+nothing to edit"*.
+
+🔴 **That makes `synthesizeMissing: false` the only thing doing any work on this component**, and it
+promotes s54's addition from a gap-closer to the mechanism itself: with `classes: {}` and
+synthesis left on, the bench would serve **five invented rows per class queried** — more fabricated
+data than before the change meant to remove it.
+
+⚠️ **It also caught a spec that could not fail.** The passing half of the same spec looped
+`for (const klass of Object.values(shipped.classes))` asserting `records.length === 0` — over an
+empty map, so it **iterated zero times and passed without measuring anything**. Both specs were
+rewritten: the empty-map case is now asserted directly (`Object.keys(classes).length` is `0`, and
+`synthesizeMissing` is `false`), and the populated case is pinned in a second spec that **supplies**
+a class through `userData` rather than hoping the fixture has one.
