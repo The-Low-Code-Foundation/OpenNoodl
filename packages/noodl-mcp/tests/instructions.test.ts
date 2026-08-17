@@ -87,7 +87,22 @@ describe('BST-006 — the unbound briefing', () => {
     expect(BOOTSTRAP_INSTRUCTIONS).toContain('NO PROJECT IS BOUND');
     expect(BOOTSTRAP_INSTRUCTIONS).toContain('list_projects');
     expect(BOOTSTRAP_INSTRUCTIONS).toContain('create_project');
-    expect(BOOTSTRAP_INSTRUCTIONS).toContain('AFTER CREATING');
+    // 🔴 FIX-008 D — this read `AFTER CREATING`, and the third job ("the exits")
+    // was one exit and a cul-de-sac: `list_projects` could name the user's real
+    // project and nothing in the briefing could open it. Both exits are now
+    // named, and the fourth job covers both.
+    expect(BOOTSTRAP_INSTRUCTIONS).toContain('open_project');
+    expect(BOOTSTRAP_INSTRUCTIONS).toContain('AFTER OPENING OR CREATING');
+  });
+
+  it('🔴 names open_project as what to do with what list_projects found', () => {
+    // The ordering assertion below is the *mitigation* for an agent defaulting
+    // to creation; this is the thing that makes the alternative actionable. A
+    // briefing that names `list_projects` first and gives it no follow-through
+    // has one completable path in it, and it is the one that builds a second app
+    // beside the user's real one.
+    expect(BOOTSTRAP_INSTRUCTIONS.indexOf('list_projects')).toBeLessThan(BOOTSTRAP_INSTRUCTIONS.indexOf('open_project'));
+    expect(BOOTSTRAP_INSTRUCTIONS.indexOf('open_project')).toBeLessThan(BOOTSTRAP_INSTRUCTIONS.indexOf('create_project'));
   });
 
   it('names list_projects before create_project', () => {
@@ -124,7 +139,12 @@ describe('BST-006 — the unbound briefing', () => {
     // tools that never arrive, which looks like a hang rather than an
     // instruction. The rule is symmetric, which is why the assertion flipped
     // rather than being deleted — the paragraph must always match the build.
-    expect(BOOTSTRAP_INSTRUCTIONS).toContain('this server binds itself to the new project');
+    //
+    // 🔴 FIX-008 D — flipped a second time, and for the same reason in the other
+    // direction: the build now binds an *opened* project too, so a paragraph
+    // that still said "the new project" would be describing half of what the
+    // server does and an agent that opened one would be reading about creation.
+    expect(BOOTSTRAP_INSTRUCTIONS).toContain('this server binds itself to the project');
     expect(BOOTSTRAP_INSTRUCTIONS).not.toContain('this server stays unbound');
   });
 

@@ -42,6 +42,7 @@ import * as path from 'path';
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ListProjectsResponse, ProjectListRow } from './responses';
 import { guarded, jsonResult } from './util';
 
@@ -169,7 +170,16 @@ export function scanRecentProjects(candidates: readonly string[] = userDataCandi
  * missing entry. Throwing here would turn "you are new" into "something is
  * broken".
  */
-function noteFor(result: ProjectScanResult): string {
+/**
+ * ⚠️ **Exported for the suite, and the reason is a defect that was in this file
+ * for one commit.** The end-to-end assertions on this sentence run
+ * `scanRecentProjects()` against the *real* machine, so on a box where NodeGX
+ * has never run — every CI runner — the empty branch is taken and the branch
+ * that carries the interesting sentence is never evaluated. That test passes,
+ * and it passes by asserting nothing. Called directly with a scan result the
+ * test built, both branches are reachable everywhere.
+ */
+export function noteFor(result: ProjectScanResult, isBound: boolean): string {
   const openable = result.projects.filter((p) => p.format === 'v2').length;
   const legacy = result.projects.length - openable;
   if (result.projects.length === 0) {
@@ -185,13 +195,39 @@ function noteFor(result: ProjectScanResult): string {
         'migrate) before a server can be pointed at it'
       : '') +
     (result.missing > 0 ? `. ${result.missing} recorded project(s) are no longer on disk and are not listed` : '') +
-    '. To work in one, start a server with its `directory` as the argument, plus --allow-writes. ' +
+    // 🔴 FIX-008 D — the sentence that used to be here sent the reader to a
+    // terminal. See {@link registerListProjectsTools} for why it is now two
+    // sentences and which server gets which.
+    (isBound
+      ? '. This server is already bound to a project, and a server binds once — to work in a different one, ' +
+        'start a server with its `directory` as the argument, plus --allow-writes. '
+      : '. To work in one, call open_project with its `directory`: this server binds to it and the reading and ' +
+        'authoring tools arrive in this same conversation, with no second registration and no restart. ') +
     'Editing the project the user already has is almost always what they meant — only create a new one when ' +
     'they have asked for something new.'
   );
 }
 
-export function registerListProjectsTools(server: McpServer): void {
+/**
+ * 🔴 FIX-008 D — the binding, and it is read for one reason: what to say next.
+ *
+ * This tool ships in both modes. Unbound, the answer to "what do I do with a row
+ * of this list" is now `open_project` — one call, same conversation. Bound, that
+ * is false, because a server binds once and `open_project` would report where it
+ * already is.
+ *
+ * ⚠️ **One sentence, right for one of the two servers, is the defect this
+ * argument exists to prevent** — and it is the shape of the bug the whole task
+ * is about. The note is the only thing here a model acts on; a note that names
+ * a tool which will refuse teaches it that the tool does not work, and the
+ * fallback it reaches for is `create_project`.
+ *
+ * The binding is read at **request time**, inside the handler, for the reason
+ * `ProjectBinding`'s header gives: a registration that resolved it here would
+ * capture the unbound state and keep advertising `open_project` for the life of
+ * the process — including after `create_project` or `open_project` had bound it.
+ */
+export function registerListProjectsTools(server: McpServer, binding?: ProjectBinding): void {
   server.registerTool(
     'list_projects',
     {
@@ -200,15 +236,16 @@ export function registerListProjectsTools(server: McpServer): void {
         'The NodeGX projects this machine has opened, newest first: name, directory, format and when it was ' +
         'last opened. Read from the launcher\'s own recent-projects list, and never written to. Call this ' +
         'BEFORE create_project when the user talks about their app as something that already exists — building ' +
-        'a second copy beside the real one is not undoable by a tool call. An empty list is a valid answer and ' +
-        'means this is a fresh machine.',
+        'a second copy beside the real one is not undoable by a tool call, and open_project turns a row of this ' +
+        'list into a project this server is serving. An empty list is a valid answer and means this is a fresh ' +
+        'machine.',
       inputSchema: {}
     },
     guarded(() => {
       const result = scanRecentProjects();
       const payload: ListProjectsResponse = {
         projects: result.projects,
-        note: noteFor(result),
+        note: noteFor(result, binding?.isBound ?? false),
         // Only when there is nothing, and then it is the whole diagnosis: a
         // person whose projects are missing needs to know which file was read,
         // and a build under a different product name writes to a different one.

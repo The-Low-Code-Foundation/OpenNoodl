@@ -163,8 +163,17 @@ export const BOOTSTRAP_INSTRUCTIONS =
   `RIGHT NOW NO PROJECT IS BOUND, so only ${spellCount(BOOTSTRAP_ADVERTISED.length)} tools are advertised — ` +
   'the rest of the server (reading ' +
   'components, authoring, validation, rendering, the backend) arrives once there is a project to point it at. ' +
+  // 🔴 FIX-008 D — this said "TWO WAYS ON" and described one and a half. The
+  // `list_projects` half ended at a list: an agent could name the user's real
+  // project and had nothing that would open it, so the only *completable* path
+  // in the paragraph was `create_project` — which builds a second app beside the
+  // one they meant. The ordering above was the mitigation for that and it is
+  // now the smaller half of it; `open_project` is what makes the first way an
+  // actual way on.
   'TWO WAYS ON: if the user has built with NodeGX before, call list_projects — it reports the projects on ' +
-  'this machine, and editing the one they mean is almost always what they want. Only when there is nothing ' +
+  'this machine, and editing the one they mean is almost always what they want. Then call open_project with ' +
+  'that row\'s directory: this server binds to it and the reading and authoring tools arrive in this same ' +
+  'conversation. Only when there is nothing ' +
   'there, or they have asked for something new, call create_project: scope the app with them first (what it ' +
   'is, who uses it, what it stores, the pages, what it deliberately will not do), because that conversation ' +
   'is written into the project as its brief and its build plan. ' +
@@ -174,8 +183,10 @@ export const BOOTSTRAP_INSTRUCTIONS =
   // second one — a configuration errand at the end of the first thing they ever
   // built. It now binds itself, so the sentence says what actually happens and
   // names the one field that carries what `initialize` could not.
-  'AFTER CREATING: this server binds itself to the new project and the authoring tools arrive in the same ' +
-  'conversation — no second registration, no restart. The result carries a `bound.guidance` field: read it ' +
-  'before authoring anything. It is the briefing a server started with a project sends at the beginning of a ' +
-  'session, and this one could not send it because there was no project to describe. Creating a second ' +
-  'project later does NOT repoint this server; it stays bound to the first, and says so.';
+  'AFTER OPENING OR CREATING: this server binds itself to the project and the authoring tools arrive in the ' +
+  'same conversation — no second registration, no restart. The result carries a `guidance` field ' +
+  '(`bound.guidance` from create_project): read it before authoring anything. It is the briefing a server ' +
+  'started with a project sends at the beginning of a ' +
+  'session, and this one could not send it because there was no project to describe. A server binds ONCE: ' +
+  'opening or creating a second project later does NOT repoint this server; it stays bound to the first, ' +
+  'and says so.';

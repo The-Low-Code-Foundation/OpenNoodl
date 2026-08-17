@@ -4,11 +4,17 @@
  * Two properties, and the second one is the one that costs a session if it
  * breaks:
  *
- * 1. **The unbound surface is small and honest.** Four capability tools plus
+ * 1. **The unbound surface is small and honest.** The capability tools plus
  *    `find_tools`, and everything else is *absent from `tools/list`* rather than
  *    present-and-erroring — because a model calls what it is shown, and an
  *    advertised `update_component` on a server with nothing to update buys a
  *    call, a refusal and a turn.
+ *
+ *    ⚠️ **It was four and FIX-008 D made it five** (`open_project`). The count is
+ *    deliberately not written out here any more: every assertion below derives
+ *    it from `BOOTSTRAP_TOOLS`, and a number in a comment is the one copy that
+ *    cannot be checked. The *policy* — small, honest, everything in it works —
+ *    is the invariant, and that module's header argues the fifth against it.
  * 2. **The bound surface is untouched.** This task's real risk is not to the new
  *    mode, which nobody uses yet; it is to the bound path, which is every
  *    existing user. Asserted here against the manifest and, in

@@ -319,7 +319,17 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     // door works rather than assuming it. Widening the purpose is the fix, and
     // it costs resident tokens, so it belongs in the same conversation as
     // CN-009's spend rather than being taken quietly here.
-    tools: ['list_projects', 'create_project', 'get_import_report', 'create_node_kit'],
+    // 🔴 FIX-008 D — `open_project` is here and **not named in `purpose` above**,
+    // which is the same trade `create_node_kit` records and lands the opposite
+    // way round for a reason worth stating. Naming a tool in `purpose` costs
+    // resident tokens against the 57 free, and buys discoverability *on a bound
+    // server* — which is the one server where this tool can do nothing but
+    // report where it is already bound. Where it matters it is not behind
+    // `find_tools` at all: it is in {@link BOOTSTRAP_TOOLS}, advertised
+    // outright, in the mode it exists for. So the group membership is
+    // bookkeeping (the manifest guard requires every tool to have a home) and
+    // the reveal path is not the one anybody uses.
+    tools: ['list_projects', 'open_project', 'create_project', 'get_import_report', 'create_node_kit'],
     resident: false
   },
   {
@@ -395,6 +405,12 @@ export const WRITE_ONLY_TOOLS: ReadonlySet<string> = new Set<string>([
   'write_project_doc',
   'seed_project_docs',
   'create_project',
+  // FIX-008 D. Binding is not a write, and this is still honest rather than
+  // aspirational: it ships inside `server.ts`'s write gate beside
+  // `create_project`, so it is write-only in fact. It costs nothing, because an
+  // unbound server is always `--allow-writes` — and a *bound* read-only server
+  // would refuse the call anyway.
+  'open_project',
   // CN-006 — writes a folder into the project.
   'create_node_kit',
   'set_project_tokens',
@@ -415,9 +431,27 @@ export const WRITE_ONLY_TOOLS: ReadonlySet<string> = new Set<string>([
  * | Tool | Why it is here |
  * |---|---|
  * | `list_projects` | So an agent can find the project the user already has instead of making a second one. First for the same reason it is named first in {@link BOOTSTRAP_INSTRUCTIONS} |
+ * | `open_project` | 🔴 FIX-008 D — so what `list_projects` finds can be *opened*. Second, immediately after it, because the pair is one action |
  * | `create_project` | The point of the mode |
  * | `list_examples` | Scoping a build with no project to read from |
  * | `get_example` | The same, and it is the one thing that shows what a NodeGX graph actually looks like |
+ *
+ * ## 🔴 FIX-008 D — this list was four, and the fifth is a renegotiation
+ *
+ * BST-001's acceptance says "exactly the four bootstrap tools", and that number
+ * is now five (six advertised, with `find_tools`). The reason the original four
+ * were four is stated above and still holds: **a model calls what it is shown**,
+ * so this surface is the set of things that genuinely work here, not everything
+ * erroring. `open_project` passes that bar in the only way that matters — it is
+ * the one tool in the mode whose success *ends* the mode.
+ *
+ * The cost of it being absent was not an unhelpful surface, it was the wrong
+ * project: `list_projects` could find the user's real app and nothing could open
+ * it, so the only advertised way forward was `create_project`, which builds a
+ * second one beside it. Every count and every list in the product is derived
+ * from this constant — the stderr banner, the briefing's spelled-out number,
+ * `find_tools`' unbound description, and three specs — so the arithmetic follows
+ * on its own; the paragraph is here because the *policy* did not.
  *
  * ## ⚠️ `find_tools` is a fifth advertised tool, and this list does not name it
  *
@@ -443,6 +477,7 @@ export const WRITE_ONLY_TOOLS: ReadonlySet<string> = new Set<string>([
  */
 export const BOOTSTRAP_TOOLS: readonly string[] = Object.freeze([
   'list_projects',
+  'open_project',
   'create_project',
   'list_examples',
   'get_example'

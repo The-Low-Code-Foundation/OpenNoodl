@@ -518,11 +518,36 @@ function bindTo(bind: CreateProjectBinding, projectDir: string): BindResult {
     };
   }
 
+  return completeBind(bind, projectDir);
+}
+
+/**
+ * FIX-008 D — everything a *successful* mid-session bind does, in one place.
+ *
+ * 🔴 **There are now two doors into this state** — `create_project`, which binds
+ * a project it just wrote, and `open_project`, which binds one that was already
+ * there — and the thing that must not drift between them is not the wording but
+ * the *side effects*: the catalog overlay, the disclosure flip, and the briefing
+ * `initialize` could not send. A second spelling of this block would produce a
+ * server that is bound by one door and only three-quarters bound by the other,
+ * and every symptom of that lands somewhere else entirely (a kit's node types
+ * missing, `find_tools` still advertising the bootstrap copy, an agent authoring
+ * without the Router paragraph). None of those looks like a bind bug.
+ *
+ * So the two callers own their *refusals* — which genuinely differ, because
+ * `create_project` has already written a project it must not disown and
+ * `open_project` has written nothing — and share this.
+ */
+export function completeBind(bind: CreateProjectBinding, projectDir: string): BindResult {
   // CN-003 — a bind is a bind: the catalog gets this project's overlay the same
   // way `createServer` gives it one for a directory passed on the command line.
   // A just-created project has no `noodl_modules`, so this is an `existsSync`
   // and no child process; wiring it anyway is what stops the two bind paths
   // from drifting the day a template ships with a kit in it.
+  //
+  // 🔴 FIX-008 D — and an *opened* project is exactly the case that comment was
+  // written against: a project on disk since 2024 may well have a kit in it, so
+  // here the call is load-bearing rather than defensive.
   installProjectOverlay(projectDir);
 
   const toolsRevealed = bind.disclosure.bindProject();

@@ -54,13 +54,19 @@ import { ProjectStore } from './ProjectStore';
  * the next correct one. Every unbound-mode error in this server is held to that
  * bar.
  *
+ * 🔴 **FIX-008 D — the exits it names are now both in-session.** This used to end
+ * "then start a server with that directory as its argument", which asked a model
+ * mid-call to have its user edit an MCP configuration and restart the client:
+ * an instruction, technically, and not one anything reading this could act on.
+ * `open_project` is what made the honest version short.
+ *
  * Exported so the suite asserts *from here* — a second copy of this sentence
  * anywhere else is the drift this class exists to prevent.
  */
 export const NO_PROJECT_REFUSAL =
   'This server has no project bound, so there is nothing to read or change. Call list_projects to see the ' +
-  'projects on this machine, or create_project to make a new one — then start a server with that directory ' +
-  'as its argument to author in it.';
+  'projects on this machine and open_project to bind one of them, or create_project to make a new one — ' +
+  'either way this server binds itself and the tools you wanted arrive in this same conversation.';
 
 export class ProjectBinding {
   private store: ProjectStore | null;

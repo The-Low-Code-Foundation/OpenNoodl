@@ -22,12 +22,13 @@ const USAGE = `Usage: noodl-mcp [project-dir] [options]
 Serves a NodeGX (OpenNoodl) v2 project directory over the Model Context Protocol (stdio).
 
 With NO project directory the server starts in bootstrap mode: it advertises
-list_projects, create_project, list_examples, get_example and find_tools, and
-nothing else.
-That is the mode for a machine with no projects yet — the agent finds what is
-already there, or scopes and creates one, and a server is then started against
-that directory. Bootstrap mode requires --allow-writes, because creating a
-project is a write and there is nothing to read.
+list_projects, open_project, create_project, list_examples, get_example and
+find_tools, and nothing else.
+That is the mode for a machine with no projects yet, or for one where the agent
+does not know which project it wants — it finds what is already there and opens
+it, or scopes and creates one, and either way this same server binds itself and
+serves it. Bootstrap mode requires --allow-writes, because creating a project is
+a write and there is nothing to read.
 
 Options:
   --allow-writes   Register the authoring tools (create/update/delete component).
@@ -111,8 +112,8 @@ async function main(): Promise<void> {
         // 🔴 F87 — counted from what is actually advertised, `find_tools`
         // included. It said four and served five.
         `noodl-mcp: no project bound — bootstrap mode (${BOOTSTRAP_ADVERTISED.length} tools: ` +
-          `${BOOTSTRAP_ADVERTISED.join(', ')}). Call list_projects or create_project, or restart with a project ` +
-          'directory as the argument.\n'
+          `${BOOTSTRAP_ADVERTISED.join(', ')}). Call list_projects then open_project to serve a project that ` +
+          'already exists, or create_project to make one — either binds this server without a restart.\n'
       );
     } else {
       const advertised = disclosure.groupStates().filter((g) => g.advertised);

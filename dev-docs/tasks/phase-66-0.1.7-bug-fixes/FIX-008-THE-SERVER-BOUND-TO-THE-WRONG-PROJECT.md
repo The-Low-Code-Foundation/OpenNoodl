@@ -2,8 +2,10 @@
 
 **Report 5** · Tier 1 · Effort **S+S/M** (minimum), **M** (full)
 
-> **Status 2026-08-14 (session 4): A + B + E built and driven.** The minimum that closes the report
-> (A + B) is done, and E with it. **C and D are open** — see § "What is left" at the bottom.
+> **Status 2026-08-18 (session 56): A, B, C, D and E are all built and driven.** A + B closed the
+> report (s4), C stopped it recurring (built s47, driven s48), and **D removes the class** (s56) —
+> see the section at the foot of this file. **No open build.** What is left is not code: the stale
+> user-scope `nodegx-puppy-test-3`, the "registered elsewhere" open question, and **the repackage**.
 
 > *"I clicked the 'Connect MCP' in the launcher, and it threw an error about already being
 > connected … then Claude Code complained constantly about the MCP being bound to a different
@@ -59,7 +61,7 @@ validated and silent.
 | A | **Idempotent, honest Connect.** Pre-read `~/.claude.json`; identical entry → `ok: 'already-registered'` with a "Connected" card state; different entry (stale path) → offer remove + re-add. Never render the CLI's refusal raw. | `connectBootstrapServer.js`, `useConnectAgent.ts`, `ConnectAgentCard.tsx` | S | ✅ **built + driven** |
 | B | **Backfill `.mcp.json` + `CLAUDE.md` on project open.** One call to `installProjectAgentConfig` on the open seam, honouring the existing never-overwrite rule (`agentConfig.ts:243-249`). Fix the false gitignore banner. Closes every pre-BST-005 project. | `LocalProjectsModel` / open seam | S–M | ✅ **built + driven** |
 | C | **Per-project Settings command becomes `--scope project`.** Split `MCP_SCOPE`: bootstrap stays `user` (it has no folder); per-project writes the project's own `.mcp.json`. Update `McpSettingsSection.tsx:163`, copy, `tests-unit/mcp-001`; add a cleanup hint for existing user-scope `nodegx-<slug>` entries. | `mcpCommands.ts` | M | ✅ **built s47, DRIVEN s48 (AC3)** |
-| D | **A door into an existing project for the bootstrap server** — an `open_project(dir)` tool calling `binding.bind()` (the mechanism exists and already re-briefs: `createProject.ts:520-535`, `disclosure.ts:183-206`; it is merely gated to newly-created dirs). Minimum: `NO_PROJECT_REFUSAL` and `list_projects` emit the exact `claude mcp add --scope project …` line for the directory instead of prose. | `noodl-mcp` | M (note-only S) | 📋 open |
+| D | **A door into an existing project for the bootstrap server** — an `open_project(dir)` tool calling `binding.bind()` (the mechanism exists and already re-briefs: `createProject.ts:520-535`, `disclosure.ts:183-206`; it is merely gated to newly-created dirs). Minimum: `NO_PROJECT_REFUSAL` and `list_projects` emit the exact `claude mcp add --scope project …` line for the directory instead of prose. | `noodl-mcp` | M (note-only S) | ✅ **built + DRIVEN s56 (full tool, not the note-only minimum)** |
 | E | **`get_project_info` returns the bound directory** so a mis-bound server is detectable from any tool call. | `tools/read.ts:89-105` | S | ✅ **built + driven** |
 
 **Minimum that closes the report: A + B.** A+B+C stops it recurring. D removes the class.
@@ -193,11 +195,13 @@ coordinates.
 
 ## What is left
 
-- **D** (`open_project` / an emitted registration line) is untouched. A + B close the report; C
-  stops it recurring for users who copy the Settings command, and D removes the class.
+- ✅ **D is built and driven (s56)** — see the section at the foot of this file.
 - The stale user-scope `nodegx-puppy-test-3` is **still registered and still visible in every
   folder** — `claude mcp list` from an unrelated directory shows it. Nothing in A/B/E removes it;
   C's copy now tells the reader how, but **nothing removes it for them**.
+- ⚠️ **The "registered elsewhere" list in Settings** (open question 3) is still unanswered, and D
+  does not touch it. D removes the need to *register* a second server in-session; it removes nothing
+  that is already on disk.
 
 ---
 
@@ -359,3 +363,169 @@ better or worse for the model?"* — is measurable on this machine: register bot
 author against the project, and see which server it reaches for. It no longer blocks C.
 **Measure it, then build C.** This was the oldest open item on the phase's ruling list and it was
 mis-filed as Richard's.
+
+---
+
+## ✅ D — BUILT + DRIVEN 2026-08-18 (session 56)
+
+**The full tool, not the note-only minimum.** `open_project(directory)` binds the live server to a
+project that already exists, and the authoring surface arrives in the same conversation.
+
+### What the class actually was
+
+🔴 **The bug D removes is not an error message — it is a second project.** `list_projects` could
+name the user's real app and *nothing in the mode could open it*, so the only completable path in
+the bootstrap briefing was `create_project`. BST-006 spends a paragraph mitigating that with
+**ordering alone** (`list_projects` named first) because ordering was the only lever available: an
+ordering hint cannot help if the thing it points at is a dead end. That paragraph is now the smaller
+half of the mitigation.
+
+### Files
+
+| File | Change |
+|---|---|
+| `src/tools/openProject.ts` | 🆕 the tool, `registrationCommandFor`, the already-bound notes |
+| `src/tools/createProject.ts` | `bindTo`'s success path extracted to an exported **`completeBind`** |
+| `src/toolGroups.ts` | `open_project` into `BOOTSTRAP_TOOLS`, the `project` group and `WRITE_ONLY_TOOLS` |
+| `src/server.ts` | registered inside the write gate; `registerListProjectsTools` now takes the binding |
+| `src/tools/listProjects.ts` | the note names `open_project` **unbound only**; `noteFor` exported |
+| `src/project/ProjectBinding.ts` | `NO_PROJECT_REFUSAL` names both in-session exits |
+| `src/instructions.ts` | "TWO WAYS ON" completes; "AFTER OPENING OR CREATING" |
+| `src/cli.ts` | `USAGE` and the stderr banner |
+| `tests/openProject.test.ts` | 🆕 **19 specs** |
+| `tests/instructions.test.ts`, `tests/bootstrap.test.ts` | BST-006's fences updated deliberately — below |
+
+### Three decisions the fix direction did not specify
+
+1. 🔴 **`completeBind` is shared; the refusals are not.** There are now two doors into a bound
+   server, and what must not drift between them is the **side effects** — the catalog overlay, the
+   disclosure flip, and the briefing `initialize` already spent — not the wording. A second spelling
+   would give a server that is bound by one door and three-quarters bound by the other, and every
+   symptom lands somewhere else (a kit's node types missing, `find_tools` still advertising the
+   bootstrap copy, an agent authoring without the Router paragraph). **None of those looks like a
+   bind bug.** The *refusals* genuinely differ and stay separate: `create_project` has written a
+   project it must not disown, so a bind failure there is a soft note; `open_project` has written
+   nothing, so a bad directory is a plain typed error.
+2. 🔴 **The same-directory case is answered separately.** `bind()` returns `false` for "already
+   bound" without regard to *what* it is bound to — so an agent calling `open_project` on the project
+   the server already serves (the obvious move after a `list_projects` row, or after a client restart
+   it did not observe) would be told *"this server stays bound to X"* where X is exactly what it
+   asked for. That reads as a refusal, and the recovery from a refusal is a different project.
+3. ⚠️ **No `.mcp.json`, no `CLAUDE.md`, no launcher entry.** Fix B backfills those when the *editor*
+   opens a project, where a human chose it in a UI. Writing into a directory because a model passed
+   its path to a tool is a different act with different consent behind it — and this tool's whole
+   argument is that it needs no files on disk to work.
+
+### 🔴 The registration command is emitted from THIS PROCESS'S OWN LAUNCH
+
+The already-bound-elsewhere branch is the one place left where prose cannot be actioned, so it emits
+a runnable `claude mcp add --scope project …`. It is **derived, not guessed**: `process.execPath` and
+`process.argv[1]` are a runtime and an entry point that are demonstrably working, because they are
+the ones serving the call. The editor's `buildMcpCommands` has to *probe* for a runtime; this needs
+no probe.
+
+✅ **`authoringServerName` and `quoteArg` are imported, not mirrored** — `mcpCommands.ts` has **zero
+imports of its own**, which is what makes it reachable from `noodl-mcp` (the `editor-deps` pattern,
+and `authoringServerName` was already re-exported there before this task). Two spellings of
+`projectSlug` would be two answers to "what is this project's server called", and the interesting
+half of that function is its collision handling.
+
+🔴 **`-e` goes AFTER the server name**, re-stated in this module because it is a *second* assembler
+of that command and `claudeMcpAdd` is private to `mcpCommands.ts`. A spec pins the ordering.
+
+### Gates (s56, 2026-08-18, tree `3cee0a99`)
+
+| Gate | Reading |
+|---|---|
+| `noodl-mcp` jest, **full** | ✅ **53 suites / 633 tests, exit 0** |
+| resident tool-surface budget | ✅ **8,223 / 57 under the 8,280 bar — UNCHANGED** |
+| `tsc -p tsconfig.json` | ⚠️ **8 errors, byte-identical to the HEAD baseline** — see below |
+| `npm run build` (esbuild bundle) | ✅ exit 0, `open_project` present in `dist/noodl-mcp.cjs` |
+| mutation table | ✅ **8/8 killed** |
+
+⚠️ **Two backend suites (`provision`, `projectOwnsBackend`) failed once in an intermediate run and
+passed in isolation and in the runs either side** — real backend processes and ports. Flake, and the
+final run above is clean.
+
+#### 🔴 `noodl-mcp` has 8 pre-existing type errors and NO root typecheck gate
+
+There is **no `typecheck:mcp`** in the root `package.json` — nine `typecheck:*` scripts and this
+package is not among them. The package's own `tsc` reports 8 errors, and they are **not new**:
+measured against a throwaway worktree at `3cee0a99` and **diffed byte-identical**, 8 = 8. One is a
+real `Exclude<ToolGroupId,'core'>`/zod mismatch in `disclosure.ts:381`; the rest are in three test
+files. ⚠️ **Nothing watches this.** Wants a task, or a line in the root gate.
+
+### ✅ Driven — the SHIPPED BUNDLE over real stdio, 20/20
+
+Not the in-process harness: `dist/noodl-mcp.cjs` spawned as a child process, JSON-RPC over stdio,
+exactly as Claude Code launches it. Target a **copy** of `cn019-drive` in the scratchpad.
+
+| | measured |
+|---|---|
+| `initialize` briefing | *"only **six** tools are advertised"*, names `open_project`, orders `list_projects → open_project → create_project` |
+| `tools/list` before | the six, and **nothing project-shaped** |
+| `list_projects` note | names `open_project`; the *"start a server with its `directory`"* prose is **gone** |
+| `open_project` | `bound: true`, **18 tools revealed**, `guidance` carrying the Router paragraph |
+| `tools/list` after | **24 advertised** |
+| `get_project_info` | `projectDirectory` = the drive copy — fix E used in anger |
+| `list_components` | **27 components** read out of the real project |
+| second `open_project`, same dir | reads as success, not conflict |
+| second `open_project`, `/tmp` | refused, still bound to the original, note carries the `claude mcp add` line |
+| **fresh unbound server**, `/tmp` | `not-a-v2-project`, naming `nodegx.project.json` |
+| **fresh unbound server**, missing dir | `not-found`, pointing at `list_projects` |
+
+🔴 **The last two rows needed a second server, and the first version of that check could not fail.**
+On a *bound* server `open_project('/tmp')` takes the already-bound branch — `bind()` never looks at
+its argument once it has a store — so the format refusal is **unreachable there**. The check as
+first written asserted `e === null || true`. It is now asserted properly, and the format branch is
+driven where it is actually reachable.
+
+### 🔴 What the specs found, and the one that could not fail
+
+⚠️ **`list_projects`' note is asserted through `noteFor` directly, not through the tool.** The tool
+reads the *real* launcher store, so on a machine where NodeGX has never run — **every CI runner** —
+the empty-list branch is taken and the branch under test is never evaluated. That test passes, and
+it passes by asserting nothing. This machine happens to have **50 recorded projects** (measured), so
+the end-to-end version *did* exercise the live branch here and would have gone green anywhere while
+proving nothing. `noteFor` is exported for exactly this.
+
+**Mutation table — all eight applied (each announced `[mutant applied]`, each restored and
+sha256-verified byte-identical) and all eight bite:**
+
+| mutant | bites |
+|---|---|
+| M1 — `open_project` dropped from the bootstrap surface | 🔴 12 |
+| M2 — bind forgets to flip the disclosure | 🔴 3 |
+| M3 — bind forgets the briefing `initialize` could not send | 🔴 1 |
+| M4 — a server rebinds instead of binding once | 🔴 3 |
+| M5 — the path check no longer runs before the bind | 🔴 2 |
+| M6 — the `list_projects` note ignores whether a project is bound | 🔴 1 |
+| M7 — the same-directory case answered as a conflict | 🔴 1 |
+| M8 — the emitted command puts `-e` before the server name | 🔴 1 |
+
+⚠️ **The harness crashed mid-run on its own output parser and left M1 applied on disk.** Caught by
+reading the source, restored by hand, and the restore is now in a `finally`. A mutation harness that
+can leave a mutant behind is a harness that hands the next reader a defect nobody introduced.
+
+### 🔴 Two renegotiations, stated rather than slipped in
+
+1. **BST-001's "exactly the four bootstrap tools" is now five** (six advertised). The *policy* the
+   four were chosen by is unchanged and `open_project` passes it: a model calls what it is shown, so
+   this surface is things that genuinely work — and this is the one tool in the mode whose success
+   *ends* the mode. Every count and list in the product derives from `BOOTSTRAP_TOOLS`, so the
+   arithmetic followed on its own; the argument is written into that constant's header.
+2. **BST-006's briefing fences moved.** `instructions.test.ts` pinned `'AFTER CREATING'` and
+   `'this server binds itself to the new project'`, and both are deliberately changed. The rule those
+   fences enforce — *the paragraph must always match the build* — is symmetric and is why the
+   assertions flipped rather than being deleted, which is what BST-002 did to the same lines in the
+   other direction. A third spec now pins the `list_projects → open_project → create_project` order.
+
+### What D does NOT do
+
+- ⚠️ **It does not repoint a bound server.** `ProjectBinding.bind`'s "bind once" boundary is kept
+  exactly; this tool binds a server that has *no* project and never moves one that has. The
+  `use_project` contract the phase refused is still refused.
+- ⚠️ **It does not remove a stale user-scope registration.** `nodegx-puppy-test-3` is still there.
+- ⚠️ **The packaged app is unaffected until it is repackaged.** `dist/` was rebuilt this session
+  (announced), so a *checkout-registered* server has D; every `/Applications/NodeGX.app/…` server
+  does not.

@@ -435,9 +435,16 @@ export type {
 // a second slugger, is exactly the drift TALK-004 decision 4 exists to prevent.
 // 🔴 F94: the per-project name is load-bearing in project scope too — a
 // user-scope `nodegx` shadows a project-scope `nodegx` silently.
+// FIX-008 D — `quoteArg` joins them for the same reason and on the same
+// evidence. `open_project`'s already-bound refusal emits a registration command
+// the user pastes into a terminal, and the default project location on this
+// machine has a space in it: unquoted, the command silently points the runtime
+// at the first word of the path. The Windows-vs-POSIX escaping in there is a
+// rule nobody should discover twice.
 export {
   authoringServerName,
-  projectSlug
+  projectSlug,
+  quoteArg
 } from '../../noodl-editor/src/editor/src/views/panels/SettingsPanel/sections/mcpCommands';
 
 // ─── UNI-007's engine-2 port (phase 67) ──────────────────────────────────────

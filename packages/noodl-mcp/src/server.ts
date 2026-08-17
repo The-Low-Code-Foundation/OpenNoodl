@@ -31,6 +31,7 @@ import { registerRenderTools } from './tools/renderTools';
 import { registerStyleReadTools, registerStyleWriteTools } from './tools/styleTools';
 import { registerValidateTools } from './tools/validateTools';
 import { registerCreateProjectTools } from './tools/createProject';
+import { registerOpenProjectTools } from './tools/openProject';
 import { registerProvisionTools } from './tools/provisionTools';
 import { registerReviewTools } from './tools/review';
 import { registerListProjectsTools } from './tools/listProjects';
@@ -153,7 +154,13 @@ export function createServer(options: ServerOptions): CreatedServer {
   // recent-projects file, which is machine state rather than project state. That
   // is what makes it answerable on a server with nothing bound — and it is the
   // call that stops an agent building a second copy of an app that exists.
-  registerListProjectsTools(rec);
+  //
+  // FIX-008 D — it takes the binding now, and only to decide what to say next.
+  // Its note used to end "start a server with its directory as the argument",
+  // which is true on a bound server and obsolete on an unbound one, where
+  // `open_project` does it in a call. Passing the binding is what stops the
+  // sentence being right for one of the two servers it ships in.
+  registerListProjectsTools(rec, binding);
   // AWP-006 — resident in both modes. A read-only server defers the docs and
   // backend *read* tools too, so the door out of the deferred set cannot be
   // behind the write flag.
@@ -191,6 +198,11 @@ export function createServer(options: ServerOptions): CreatedServer {
     // that can turn an unbound server into a bound one, so it is the only one
     // that needs to be able to write to either.
     registerCreateProjectTools(rec, { binding, disclosure, deferTools });
+    // FIX-008 D — the other door into a bound server, and the one BST-002 left
+    // unbuilt: `create_project` binds a project it wrote, this binds one that
+    // was already there. Same `CreateProjectBinding`, deliberately — they share
+    // `completeBind`, so a bind through either door has the same side effects.
+    registerOpenProjectTools(rec, { binding, disclosure, deferTools });
     // UNI-010. Takes no store, for the same reason `create_project` does not: a
     // lesson bundle is assembled out of two project directories the caller names,
     // and neither of them is the one this server is pointed at. It writes a
