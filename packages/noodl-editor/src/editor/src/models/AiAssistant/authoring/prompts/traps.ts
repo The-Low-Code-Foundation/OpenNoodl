@@ -114,6 +114,52 @@ export const CODE_STYLE = `CODE STYLE — the user reads this code, and often le
    in one go. Write \`Outputs.X = value\` for a value and \`Outputs.X()\` for a signal; a value
    port that is called throws on every run, and a signal port that is assigned never fires.`;
 
+/**
+ * FIX-006 — the built-in-node weighting, ruled 2026-08-16 (session 42).
+ *
+ * Session 39's A/B measured one thing the two blocks above demonstrably *do*: with them in the
+ * prompt the model reached for the dedicated `Substring` node 3 times in 10 and did the string
+ * surgery inline the other 7; with them removed it reached for `Substring` 10 times in 10. So
+ * the shipped guidance moves work OUT of a purpose-built node and INTO code, and that direction
+ * was never chosen — it fell out of a block written about something else.
+ *
+ * Richard's ruling: *"Let's add a heavier weight to the in built nodes, unless the operation
+ * requires more complexity which could be easily rolled into a Function, otherwise you end up with
+ * function nodes connected to substring nodes connected to functions etc."*
+ *
+ * 🔴 **The exception is the load-bearing half, and this is NOT the rule "prefer nodes".** The
+ * failure being ruled against is **alternation** — a calculation chopped into a code node, then a
+ * library node, then more code. A block that only pushed "use the node" would manufacture exactly
+ * that shape, and a criterion that counted `Substring` nodes would score it as a win. So both
+ * halves are stated, the forbidden shape is named in the concrete (`JavaScriptFunction` →
+ * `Substring` → `JavaScriptFunction`), and the closing line makes the unit of the decision
+ * explicit: it is per calculation, not per project.
+ *
+ * ⚠️ **The node names are the catalog's, checked rather than recalled** — `Substring`,
+ * `String Format`, `String Mapper`, `Condition`, `Counter` and `Number Remapper` are all real
+ * `typeName`s in `node-catalog-enriched.json`, and `promptGuidance.test.ts` re-checks them against
+ * that file rather than against a second hand-kept list. A recommendation naming a node that does
+ * not exist is worse than no recommendation: the model writes it, the validator rejects it, and
+ * the repair round blames the user's request.
+ *
+ * ⚠️ **Separate from `THREE_WAYS_TO_COMPUTE` on purpose, in both directions.** That block is about
+ * choosing among the three *code* nodes; this one is about whether to reach for a code node at
+ * all, and it is the wider claim — it is about the whole library. Keeping them apart is also what
+ * lets the harness subtract exactly one of them, which is the only way the A/B can attribute a
+ * change to this ruling rather than to the pair.
+ */
+export const NODES_BEFORE_CODE = `NODES BEFORE CODE, AND NEVER ALTERNATE BETWEEN THEM.
+   Weigh the node library heavier than a line of JavaScript. Where one node already does the whole
+   step — \`Substring\`, \`String Format\`, \`String Mapper\`, \`Condition\`, \`Counter\`,
+   \`Number Remapper\` — place that node rather than writing the same thing into an Expression or a
+   Function. It reads off the canvas, and the user can change it without opening a code editor.
+   The exception is the half that stops this making graphs worse: once a calculation needs code at
+   all, do ALL of it inside that ONE code node. Never split one calculation into a code node, then
+   a library node, then more code — \`JavaScriptFunction\` → \`Substring\` → \`JavaScriptFunction\`
+   is worse than either the single Function or the plain chain of nodes it replaced.
+   Decide it per calculation: covered by one library node ⇒ use the node; needs code at all ⇒ one
+   code node, all of it.`;
+
 export const AUTHORING_TRAPS = `THE TRAPS — read these before anything else. Each one fails SILENTLY.
 
 1. A component's interface is a \`Component Inputs\` node, and its ports must be plugged "output".
@@ -135,5 +181,6 @@ export const AUTHORING_TRAPS = `THE TRAPS — read these before anything else. E
 7. Verify by looking. Call \`render_report\` when you have written anything visual: it renders the
    project headless and returns the numbers and the screenshots. A graph is a claim; a render is
    evidence. An image URL that returns 200 can still be a picture of the wrong thing.
-8. ${THREE_WAYS_TO_COMPUTE}
-9. ${CODE_STYLE}`;
+8. ${NODES_BEFORE_CODE}
+9. ${THREE_WAYS_TO_COMPUTE}
+10. ${CODE_STYLE}`;

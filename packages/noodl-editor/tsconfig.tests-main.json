@@ -211,6 +211,19 @@
     // `BlocklyWorkspace.tsx` (React), which is where the wiring lives and where a drive is owed.
     "src/editor/src/views/BlocklyEditor/BenchRunner.ts",
     "src/editor/src/views/BlocklyEditor/benchModel.ts",
-    "src/editor/src/views/BlocklyEditor/BenchController.ts"
+    "src/editor/src/views/BlocklyEditor/BenchController.ts",
+    // FIX-006: the authoring prompts, which are the whole deliverable of this task — the copy IS
+    // the fix, so the copy is what has to be graded. The directory is pure by the same argument
+    // the entries above make: `traps.ts` imports exactly one module, `NodePicker.chooser.ts`
+    // (already reachable here, and import-free by design so the picker's comparative copy and the
+    // prompt's cannot drift apart); `decomposition.ts` and `design.ts` import nothing at all; and
+    // `authoring.ts` — which assembles the editor's system prompt — imports those three plus a
+    // type-only `../types`, so nothing survives to runtime.
+    //
+    // 🔴 Reachable here is the point. These strings had exactly two graders before this: a jasmine
+    // spec in `tests/ai/` that needs a real Electron renderer to run, and `noodl-mcp`'s
+    // `rejectionExamples.test.ts` over stdio. Neither asserted the node-choice copy, so session
+    // 43's edit to it was, in its own words, caught by nothing.
+    "src/editor/src/models/AiAssistant/authoring/prompts"
   ]
 }

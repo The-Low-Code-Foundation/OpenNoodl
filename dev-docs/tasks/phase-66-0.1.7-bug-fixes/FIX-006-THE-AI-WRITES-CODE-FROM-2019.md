@@ -311,5 +311,123 @@ string is in the source that both clients assemble from (`traps.ts` → `authori
 `noodl-mcp`'s `rejectionExamples.test.ts`, which asserts four other `authoringTraps` substrings.
 An edit that dropped the id again would be caught by nothing.
 
-🔴 **Still open in this task: the Substring weighting**, which is the one most likely to be got
-wrong. Read the ruling above before touching it.
+## ✅ THE SUBSTRING WEIGHTING — BUILT + MEASURED 2026-08-17 (session 52)
+
+**`NODES_BEFORE_CODE`**, a fourth block, carried by both channels alongside the three above.
+Session 42's ruling has two halves and the block states both: weigh the library heavier than a line
+of JavaScript where one node does the whole step, **and** — the half that stops the first one making
+graphs worse — once a calculation needs code at all, do all of it inside that one code node. The
+forbidden shape is named in the concrete, `JavaScriptFunction` → `Substring` → `JavaScriptFunction`,
+and the closing line fixes the unit of the decision: *per calculation*, not per project.
+
+🔴 **Separate from `THREE_WAYS_TO_COMPUTE` in both directions, and that is what made the result
+readable.** Session 39's control removed the two older blocks *together*, so it could say the pair
+moved `Substring` from 10/10 to 3/10 and nothing about which block did it. The harness now has a
+second arm, `--node-weighting=off`, which subtracts this block **alone** and leaves the other two
+exactly as shipped — so every number below is attributable to this ruling rather than to all three.
+
+### The measurement — n=10 per arm, two requests, both axes
+
+`claude-sonnet-5`, effort `low`, the real 44-component `git-repo-utf8` project, arms **interleaved**
+so service drift lands on both. 40 sessions, all 40 authored and valid on first submit. The arms
+differ on the wire: **15,475 chars ON, 14,549 OFF**, recorded per session.
+
+**`fix006-string-math` — the reported request. One simple step, so it grades NODE CHOICE.**
+
+| | weighting **ON** | weighting OFF |
+|---|---|---|
+| reached for `Substring` | ✅ **8/10** | **0/10** |
+| graph | 8× `Substring` → `Expression`, 1× `JavaScriptFunction`, 1× `Expression` | 6× `Expression`, 4× `JavaScriptFunction` |
+| alternates (≥2 crossings) | **0/10** | **0/10** |
+
+A representative ON graph is three nodes and one line: `Substring{start:1}` → `Expression{Number(val)
+* 0.9}` → the output. **The ruling's first half is met, and the block is what meets it.**
+
+**`fix006-price-line` — a new corpus prompt, deliberately complex, so it grades CHAIN SHAPE.**
+Same one calculation, but with a head a node can do (drop a currency symbol) and a body that needs
+real code (thousands separators, two decimals, a composed line). Per the ruling the right answer is
+one code node; the tempting wrong answer is `Substring` → `Function` → `String Format`.
+
+| | weighting **ON** | weighting OFF |
+|---|---|---|
+| graph | **10/10 a single `JavaScriptFunction`** | 10/10 a single `JavaScriptFunction` |
+| alternates | **0/10** | **0/10** |
+
+⚠️ **What that second table does and does not say.** It does **not** show the exception clause
+preventing alternation: the hazard never appeared in the control either, so the clause is
+*unfalsified*, not *proven necessary*. What it does show is the thing the ruling explicitly warned
+about — *"a rule that only pushes 'use the node' will manufacture exactly the alternation this
+ruling exists to prevent"*. It did not. **Zero alternation in all 40 sessions**, including the arm
+that now reaches for `Substring` 8 times in 10, and the complex request stayed a single Function
+under exactly the prompt that pushed the simple one onto a node.
+
+⚠️ **Two columns that are not attributable to anything here.** `regex` fires **10/10 on
+`fix006-price-line` in both arms** — thousands separators are the one job where a regex is the
+idiomatic answer, so on that prompt the counter is descriptive, not a defect detector. And AC2 holds
+throughout: of every session that wrote a JavaScript body, **0 used `var` and every one used
+`const`/`let`** (1/1 ON, 4/4 OFF on the simple request; 10/10 both arms on the complex one).
+
+⚠️ One model, one project, n=10, two requests. **Cost: $0.89 across 42 sessions** (40 grid + 2
+pilot). Both arms are archived in `measurements/2026-08-17-fix006-weighting-{on,off}-…-n10.jsonl`,
+because session 39's files were not and its A/B can no longer be re-read.
+
+### 🔴 The grader punished the behaviour the ruling asks for, and the first reading was wrong
+
+`fix006-grade.mjs` grades both axes and self-tests (`--self-test`) against seven graphs whose right
+answer is known — the two forbidden shapes, the single Function, the plain node chain, the
+one-crossing mix, and the reported 2019 body beside a modern one. Collapsing its two classes into
+one kills **5 of 7**.
+
+Its first run reported `const/let` at **1/10 ON against 4/10 OFF**, which reads as the treatment arm
+writing worse JavaScript. It is an artefact: an `Expression` node holds **one expression**, which can
+contain neither `const` nor `var`, and the ON arm reached for `Substring` → `Expression` eight times.
+Counting an Expression as a "body" scored the desired shape as un-modern. Style is now graded over
+statement bodies only, and a run whose only code is an Expression scores `n/a` — which is what "wrote
+no JavaScript body" means. 🔴 **The denominator moved 10 → 1 and 10 → 4; the rate went from
+misleading to 1/1 and 4/4.**
+
+### 🔴 A control-arm marker had stopped existing, and the check could only pass
+
+The harness's `--code-guidance=off` arm verified its subtraction against four distinctive strings.
+One of them, `Reach for the Script node LAST`, **appears nowhere in the product** — session 43's AC4
+edit reworded that line to `` `Javascript2`, the Script node — reach for it LAST `` (`82b33466`) and
+did not touch the harness. Because the check only ever asked whether a marker **survived** the strip,
+a marker that had stopped existing was silently satisfied. It was live when session 39 ran; it has
+graded nothing since.
+
+✅ **Markers are now asserted present BEFORE the strip as well as absent after**, so a reworded block
+throws on the first request instead of quietly reducing the arm's evidence. It paid for itself
+immediately: `one code node, all of it` was this session's first choice of marker for the new block,
+and it **falls across a line break** in the hard-wrapped copy, so it is not a substring of anything.
+The new spec caught the same phrase failing in the same way one minute earlier.
+
+### What now grades this copy
+
+The task recorded at session 43 that *"nothing grades this string … an edit that dropped the id again
+would be caught by nothing."* That is closed:
+
+- **`tests-unit/fix-006/promptGuidance.test.ts`** — 11 specs in the plain-Node runner. Both halves of
+  the ruling; every backticked name checked against the shipped catalog rather than a second hand-kept
+  list; `THREE_WAYS_TO_COMPUTE`'s own claim that *"the type name leads every line"* checked against all
+  four lines, the Script prohibition included; both assembled channels required to carry all three
+  blocks. This needed one entry in `tsconfig.tests-main.json` — the prompts directory is pure, and
+  `authoring.ts`'s only value import is `traps.ts`.
+- **`noodl-mcp`'s `rejectionExamples.test.ts`** — four more assertions on the wire, over real stdio.
+
+⚠️ **Mutants, each restored and diffed back:** dropping the exception half kills 1; naming a node that
+does not exist kills 1; unwiring the block from `systemPrompt` kills 2. 🔴 **The fake-node mutant
+"passed" on its first attempt** — the `perl` substitution hit the identical phrase in the doc comment
+above the constant, not the constant, and the announce printed a truthful, useless `1`. *An edit
+changed the file* is not evidence it was **the** edit intended.
+
+### Still open in this task
+
+- ⚠️ **The exception clause is unfalsified, not proven.** A request that actually provokes alternation
+  in the control arm would settle it; `fix006-price-line` did not, on this model.
+- ⚠️ **The `Substring` → `Expression` shape is one crossing, and the ruling does not say whether two
+  built-in-ish hops are better than one Function for a request this small.** It is graded as fine here
+  because the ruling forbids ≥2 crossings. If Richard reads the shape above and dislikes it, the
+  weighting is the knob.
+- ⚠️ **Not re-measured on the editor's wire.** Session 38 read `systemPrompt()` live in the renderer;
+  this session read the same pure function in a plain-Node runner, which is the same string but not
+  the same claim about a running editor.

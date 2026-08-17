@@ -208,6 +208,15 @@ describe('LAS-007 §3 — the traps are pushed, not offered', () => {
     expect(info.data.authoringTraps).toContain('plugged "output"');
     expect(info.data.authoringTraps).toContain('Static Data');
     expect(info.data.authoringTraps).toContain('render_report');
+    // FIX-006 — the node-choice half, on the wire rather than in the source. Session 43 shipped
+    // the `Javascript2` id into the Script paragraph and recorded that nothing graded it, and the
+    // built-in-node weighting arrived the same way: a block a session can add to `traps.ts` and
+    // never see leave the process. These four assert that this SERVER, over real stdio, is
+    // handing an external agent all three of them.
+    expect(info.data.authoringTraps).toContain('NODES BEFORE CODE');
+    expect(info.data.authoringTraps).toContain('Never split one calculation');
+    expect(info.data.authoringTraps).toContain('`Javascript2`, the Script node');
+    expect(info.data.authoringTraps).toContain('CODE STYLE');
     await rw.close();
 
     const ro = await connect(dir, false);

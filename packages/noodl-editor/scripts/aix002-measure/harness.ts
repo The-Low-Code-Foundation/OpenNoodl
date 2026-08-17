@@ -27,6 +27,10 @@
  *   --code-guidance=on|off  FIX-006 A/B control arm — `off` subtracts the shipped
  *                           THREE WAYS TO COMPUTE and CODE STYLE blocks from the
  *                           system prompt on the wire, leaving everything else
+ *   --node-weighting=on|off FIX-006's ruling arm — `off` subtracts NODES BEFORE
+ *                           CODE alone, leaving the two blocks above in place, so
+ *                           a change is attributable to the weighting rather than
+ *                           to all three together
  *
  * AIX-007 note: sessions run back-to-back on purpose. The cached prefix is
  * shared across the corpus, so a sequential run measures the traffic shape the
@@ -56,7 +60,11 @@ import type {
 } from '../../src/editor/src/models/AiAssistant/client/types';
 import { buildProvider, findRepoRoot, formatUsd, loadEnv, parseArgs } from './shared';
 import { AI_EFFORT_LEVELS, AI_PROVIDER_IDS } from '../../src/editor/src/models/AiAssistant/client/types';
-import { CODE_STYLE, THREE_WAYS_TO_COMPUTE } from '../../src/editor/src/models/AiAssistant/authoring/prompts/traps';
+import {
+  CODE_STYLE,
+  NODES_BEFORE_CODE,
+  THREE_WAYS_TO_COMPUTE
+} from '../../src/editor/src/models/AiAssistant/authoring/prompts/traps';
 import type { ComponentFiles } from '../../src/editor/src/models/AiAssistant/authoring/types';
 import { AUTHORING_EFFORT } from '../../src/editor/src/models/AiAssistant/authoring/AuthoringSession';
 import { fromSerialisedProject } from '../../src/editor/src/models/AiAssistant/explain/graph';
@@ -67,29 +75,80 @@ const REPO_ROOT = findRepoRoot(__dirname);
 const DEFAULT_PROJECT = path.join(REPO_ROOT, 'packages/noodl-editor/tests/testfs/git-repo-utf8/project.json');
 const DEFAULT_OUT_DIR = path.join(REPO_ROOT, 'dev-docs/tasks/phase-15-ai-collaboration/measurements');
 
-// ── FIX-006 A/B: the code-guidance control arm ───────────────────────────────
+// ── FIX-006 A/B: the guidance control arms ───────────────────────────────────
 
 /**
- * FIX-006 AC1/AC2 — remove the two shipped blocks from the outgoing system prompt.
- *
- * The criteria ask whether `THREE WAYS TO COMPUTE` and `CODE STYLE` change what
- * the model authors. A treatment arm alone cannot answer that: a current model
- * writes `const` and `slice` unprompted often enough that a clean result is
- * equally consistent with the blocks doing nothing. So the control arm sends the
- * same request with exactly those two blocks — and nothing else — removed.
- *
- * ⚠️ **The subtraction happens on the wire, not in the editor sources.** The
- * session injects its chat function, so the arm is a wrapper here; no shipped
- * prompt is edited, and the treatment arm is byte-identical to what the editor
- * sends. The blocks are removed by exact string match on the constants
- * themselves, imported from `traps.ts`, so a reworded block cannot leave a
- * regex quietly matching nothing.
- *
- * 🔴 **Every failure mode here throws.** A control arm that silently failed to
- * subtract would produce two identical arms and read as "the blocks made no
- * difference" — the exact false negative this arm exists to rule out.
+ * One subtractable block set, and the strings that prove the subtraction happened.
  */
-function withoutCodeGuidance(request: AiChatRequest): { request: AiChatRequest; systemChars: number } {
+interface GuidanceArm {
+  /** The exported constants removed, by name, so a failure says which one. */
+  blocks: ReadonlyArray<readonly [string, string]>;
+  /**
+   * Distinctive strings from inside those blocks — checked in BOTH directions:
+   * every one must be present before the strip and absent after it.
+   */
+  markers: readonly string[];
+}
+
+/**
+ * FIX-006 — remove shipped guidance from the outgoing system prompt, one named set at a time.
+ *
+ * `code-guidance` is AC1/AC2's arm: `THREE WAYS TO COMPUTE` + `CODE STYLE`. A treatment arm alone
+ * cannot answer whether they change what the model authors — a current model writes `const` and
+ * `slice` unprompted often enough that a clean result is equally consistent with the blocks doing
+ * nothing.
+ *
+ * `node-weighting` is the ruling's arm, and it is separate precisely so the two questions do not
+ * share an answer. Session 39's control removed both older blocks together, so it could say the
+ * pair moved `Substring` usage from 10/10 to 3/10 and nothing about which block did it. This one
+ * subtracts `NODES_BEFORE_CODE` alone, leaving the other two exactly as shipped.
+ *
+ * ⚠️ **The subtraction happens on the wire, not in the editor sources.** The session injects its
+ * chat function, so an arm is a wrapper here; no shipped prompt is edited, and the treatment arm is
+ * byte-identical to what the editor sends.
+ */
+const GUIDANCE_ARMS: Record<'code-guidance' | 'node-weighting', GuidanceArm> = {
+  'code-guidance': {
+    blocks: [
+      ['THREE_WAYS_TO_COMPUTE', THREE_WAYS_TO_COMPUTE],
+      ['CODE_STYLE', CODE_STYLE]
+    ],
+    // 🔴 `reach for it LAST` was `Reach for the Script node LAST` here until this session, and
+    // FIX-006 AC4 reworded that line in the prompt on 2026-08-16 (`82b33466`) without touching
+    // this list. Because the check only ever asked whether a marker SURVIVED, a marker that had
+    // stopped existing anywhere passed silently — see `assertStripped`, which is why it cannot
+    // any more.
+    markers: ['THREE WAYS TO COMPUTE', 'CODE STYLE', 'never var', 'reach for it LAST']
+  },
+  'node-weighting': {
+    blocks: [['NODES_BEFORE_CODE', NODES_BEFORE_CODE]],
+    // ⚠️ Every marker must sit WITHIN one line of the hard-wrapped block. "one code node, all of
+    // it" reads like the most distinctive phrase in it and was the first choice here — and it
+    // falls across a line break, so it is never a substring of anything. The present-before check
+    // above turns that into a thrown error at the first request; before this session it would have
+    // been a silently satisfied absent-after check.
+    markers: ['NODES BEFORE CODE', 'Weigh the node library heavier', 'Never split one calculation']
+  }
+};
+
+/**
+ * Subtract one arm's blocks from the system message, and refuse to continue unless it worked.
+ *
+ * 🔴 **Every failure mode here throws.** A control arm that silently failed to subtract would
+ * produce two identical arms and read as "the guidance made no difference" — the exact false
+ * negative these arms exist to rule out.
+ *
+ * 🔴 **Markers are asserted present BEFORE the strip as well as absent after.** The absent-after
+ * half alone is satisfied by a marker that no longer appears in the prompt at all, which is a
+ * check that has stopped checking; one of the four had been in that state for a day. A marker is a
+ * claim that a distinctive phrase is in the shipped text, and the instrument has to be able to
+ * fail in both directions to be worth running.
+ */
+function withoutGuidance(
+  request: AiChatRequest,
+  armName: keyof typeof GUIDANCE_ARMS
+): { request: AiChatRequest; systemChars: number } {
+  const arm = GUIDANCE_ARMS[armName];
   let systemsSeen = 0;
   let systemChars = 0;
 
@@ -97,27 +156,35 @@ function withoutCodeGuidance(request: AiChatRequest): { request: AiChatRequest; 
     if (message.role !== 'system') return message;
     systemsSeen += 1;
     if (typeof message.content !== 'string') {
-      throw new Error('control arm: the system message is not a plain string — the strip cannot be verified');
+      throw new Error(`${armName}: the system message is not a plain string — the strip cannot be verified`);
     }
 
     let content = message.content;
-    for (const [name, block] of [
-      ['THREE_WAYS_TO_COMPUTE', THREE_WAYS_TO_COMPUTE],
-      ['CODE_STYLE', CODE_STYLE]
-    ] as const) {
+
+    // Before: every marker must actually be in the shipped prompt. A marker that is not is a
+    // dead check, and a dead check is indistinguishable from a passing one below.
+    for (const marker of arm.markers) {
+      if (!content.includes(marker)) {
+        throw new Error(
+          `${armName}: marker "${marker}" is not in the system prompt — it grades nothing, so the ` +
+            `strip below cannot be verified. The shipped text was reworded; update the marker.`
+        );
+      }
+    }
+
+    for (const [name, block] of arm.blocks) {
       if (!content.includes(block)) {
-        throw new Error(`control arm: ${name} is not present in the system prompt — the strip would be a no-op`);
+        throw new Error(`${armName}: ${name} is not present in the system prompt — the strip would be a no-op`);
       }
       content = content.replace(block, '');
     }
 
-    // Independent of the removal above: distinctive strings from inside each
-    // block. If the constants ever stop being the thing the prompt embeds, the
-    // replace() calls could succeed against a stale copy while the live text
+    // After: independent of the removal above. If the constants ever stop being the thing the
+    // prompt embeds, the replace() calls could succeed against a stale copy while the live text
     // survives, and only this check would notice.
-    for (const marker of ['THREE WAYS TO COMPUTE', 'CODE STYLE', 'never var', 'Reach for the Script node LAST']) {
+    for (const marker of arm.markers) {
       if (content.includes(marker)) {
-        throw new Error(`control arm: "${marker}" survived the strip — the arms would not differ`);
+        throw new Error(`${armName}: "${marker}" survived the strip — the arms would not differ`);
       }
     }
 
@@ -126,7 +193,7 @@ function withoutCodeGuidance(request: AiChatRequest): { request: AiChatRequest; 
   });
 
   if (systemsSeen !== 1) {
-    throw new Error(`control arm: expected exactly one system message, saw ${systemsSeen}`);
+    throw new Error(`${armName}: expected exactly one system message, saw ${systemsSeen}`);
   }
   return { request: { ...request, messages }, systemChars };
 }
@@ -152,6 +219,8 @@ interface SessionRecord {
   effort: AiEffort;
   /** FIX-006 A/B: whether the shipped compute/code-style blocks were sent. */
   codeGuidance: boolean;
+  /** FIX-006 ruling: whether the built-in-node weighting block was sent. */
+  nodeWeighting: boolean;
   /**
    * FIX-006: the length of the system prompt actually put on the wire. The two
    * arms must differ here; equal numbers mean the control did not subtract.
@@ -212,23 +281,27 @@ async function measureOne(
   timeoutMs: number,
   style: { guidance: boolean; vocabulary: StyleVocabulary; tokenRecords: StyleTokenRecord[] },
   effort: AiEffort,
-  codeGuidance: boolean
+  codeGuidance: boolean,
+  nodeWeighting: boolean
 ): Promise<SessionRecord> {
   let servedModel = model ?? '(provider default)';
   let systemPromptChars = 0;
   const chat: AuthoringChatFn = async (request, callbacks) => {
-    // FIX-006 A/B. The treatment arm passes the request through untouched, so it
-    // is byte-identical to what the editor sends; the control arm subtracts the
-    // two blocks and records what it sent.
+    // FIX-006 A/B. With every arm on, the request passes through untouched, so it is
+    // byte-identical to what the editor sends; each arm turned off subtracts its own blocks and
+    // records what it sent. Two arms off compose — the strips are independent, and each verifies
+    // its own markers against whatever the previous one left behind.
     let outbound = request;
-    if (codeGuidance) {
-      const system = request.messages.find((m) => m.role === 'system');
-      systemPromptChars = typeof system?.content === 'string' ? system.content.length : 0;
-    } else {
-      const stripped = withoutCodeGuidance(request);
+    if (!codeGuidance) {
+      const stripped = withoutGuidance(outbound, 'code-guidance');
       outbound = stripped.request;
-      systemPromptChars = stripped.systemChars;
     }
+    if (!nodeWeighting) {
+      const stripped = withoutGuidance(outbound, 'node-weighting');
+      outbound = stripped.request;
+    }
+    const system = outbound.messages.find((m) => m.role === 'system');
+    systemPromptChars = typeof system?.content === 'string' ? system.content.length : 0;
     const response = await provider.chatStream({ ...outbound, ...(model ? { model } : {}) }, callbacks ?? {});
     servedModel = response.model;
     return response;
@@ -294,6 +367,7 @@ async function measureOne(
     styleStats,
     effort,
     codeGuidance,
+    nodeWeighting,
     systemPromptChars,
     cacheStats: cacheStatsFor(outcome.metrics),
     files: outcome.files,
@@ -334,6 +408,7 @@ function summarise(records: SessionRecord[]): void {
     `code guidance:          ${records[0]?.codeGuidance ? 'ON' : 'OFF'}` +
       `   (system prompt ${records[0]?.systemPromptChars ?? 0} chars on the wire)`
   );
+  console.log(`node weighting:         ${records[0]?.nodeWeighting ? 'ON' : 'OFF'}`);
   console.log(`effort:                 ${records[0]?.effort ?? '-'}`);
   console.log(`sessions:               ${done}`);
   console.log(`valid on first attempt: ${firstTry.length}/${done}`);
@@ -379,6 +454,8 @@ async function main(): Promise<void> {
   const styleGuidance = (args.styles ?? 'on').toLowerCase() !== 'off';
   // FIX-006 A/B: --code-guidance=off subtracts THREE WAYS TO COMPUTE + CODE STYLE.
   const codeGuidance = (args['code-guidance'] ?? 'on').toLowerCase() !== 'off';
+  // FIX-006 ruling: --node-weighting=off subtracts NODES BEFORE CODE, and nothing else.
+  const nodeWeighting = (args['node-weighting'] ?? 'on').toLowerCase() !== 'off';
   // AIX-007: sweep reasoning depth. Unset runs whatever the loop ships with.
   const effort = (args.effort ?? AUTHORING_EFFORT) as AiEffort;
   if (!AI_EFFORT_LEVELS.includes(effort)) {
@@ -405,11 +482,12 @@ async function main(): Promise<void> {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const styleTag = styleGuidance ? 'styles-on' : 'styles-off';
   const codeTag = codeGuidance ? 'code-on' : 'code-off';
+  const weightTag = nodeWeighting ? 'weighting-on' : 'weighting-off';
   const outFile =
     args.out ??
     path.join(
       DEFAULT_OUT_DIR,
-      `${stamp}-${providerId}-${model ?? 'default'}-${styleTag}-${codeTag}-effort-${effort}.jsonl`
+      `${stamp}-${providerId}-${model ?? 'default'}-${styleTag}-${codeTag}-${weightTag}-effort-${effort}.jsonl`
     );
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
@@ -433,7 +511,8 @@ async function main(): Promise<void> {
         timeoutMs,
         style,
         effort,
-        codeGuidance
+        codeGuidance,
+        nodeWeighting
       );
       records.push(record);
       fs.appendFileSync(outFile, JSON.stringify(record) + '\n');
