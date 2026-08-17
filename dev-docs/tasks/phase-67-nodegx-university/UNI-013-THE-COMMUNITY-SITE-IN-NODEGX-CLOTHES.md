@@ -1,7 +1,82 @@
 # UNI-013 — the community site, in NodeGX clothes
 
 **Surface:** platform · **Tier 1** (it is cheap, it is unblocked, and it gets dearer after launch) ·
-**Effort:** M · 📋 **SCOPED 2026-08-17, not built.** D18 ruled the same day: **azure**.
+**Effort:** M · 🟢 **SLICE 1 BUILT 2026-08-17 (session 24), pushed `f64f138`.** D18 ruled: **azure**.
+
+## ✅ Slice 1 — DONE. AC1, AC2, AC3 and AC5 met; slices 2–4 open
+
+| | |
+|---|---|
+| **Vendored** | `scripts/sync-tokens.mjs` → `src/styles/tokens/{colors,fonts,spacing}.css`, byte-identical, with a `source-sha256` header. ⚠️ **`spacing.css` was added to slice 1's list** — AC1 covers spacing values, and without it every padding would have been a raw px |
+| **Drift test** | `tests/uni013-token-drift.test.ts`, 22 specs |
+| **Contrast test** | `tests/uni013-contrast.test.ts`, 32 specs — **not in the original scope; see below for why it had to exist** |
+| **AC1 sweep** | `scripts/check-built-css.mjs` (`npm run check:css`) — **713 built declarations**, zero components declaring a colour, zero raw px font sizes |
+| **Gates** | **516 specs / 21 files** (462 unchanged + 54 new), `tsc` clean, `next build` clean at **21 routes**, both themes screenshotted complete |
+| **`globals.css`** | declares **no colour of its own**. Seven hand-made tokens → zero |
+
+### 🔴 AC2 was the criterion that found a real defect, and screenshots could not have
+
+The first draft pointed every piece of secondary copy — the lede, card copy, every `.meta`, the
+footer — at **`--theme-color-fg-muted`**. That is the obvious token by name, it looks entirely
+reasonable in a diff, and it is **a de-emphasised LABEL colour for editor chrome**. Measured against
+the grounds this site actually uses:
+
+| | dark / bg-0 | dark / bg-1 | light / bg-0 | light / bg-1 |
+|---|---|---|---|---|
+| `--theme-color-fg-muted` | 4.18 | 3.93 | **3.19** | 3.62 |
+| `--theme-color-fg-default-shy` | 6.37 | 5.98 | 4.72 | 5.34 |
+
+**Every one of the four is below WCAG AA's 4.5:1 for normal-size text**, on the lede of every page.
+🔴 **Two screenshots of the two themes said the site was fine. The arithmetic said it was not** —
+which is the whole argument for AC2 being a computed criterion rather than a look.
+
+Also: **`--theme-color-primary` is 7.37:1 on the dark ground and 4.03:1 on the light one**, so accent
+*text* — links, `.flag` chips, `.filters a.on` — passes AA in dark and fails in light. The light
+theme takes `primary-highlight` (5.20:1). ⚠️ The chip **border** may stay `primary`; it is a
+non-text element and its bar is 3:1.
+
+**Consequence — the site now owns a thin ROLE layer** (`--site-fg-secondary`, `--site-fg-accent`,
+`--site-fg-accent-hover`). Every value is a `var()`, never a literal, so the site names *which token
+plays a role* and the editor still owns *what colour that token is*. AC1 stays clean.
+🔴 **The two themes are pinned to distinct resolved values in the test**, because every ratio passes
+in dark — a light arm that silently returned the dark palette would have gone green while measuring
+one theme twice.
+
+### 🔴 Three things that were not in the scoping and cost time
+
+1. **The theme stamp is load-bearing, not decoration.** The canonical file gates its light palette on
+   `:root[data-theme='light']`, stamped by the editor's ThemeManager. This site has none, so
+   *vendoring the tokens without stamping anything would have silently deleted the light theme the
+   site already had* — a regression dressed as a refactor. Four lines in `layout.tsx`. ⚠️ The
+   alternative, re-declaring light values under a media query, is both a second hand-made copy and
+   AC2's own named bug.
+2. **A Map-based diff collapses a repeated key silently.** The first rename probe renamed
+   `--theme-color-primary` → `--theme-color-accent`, which turned out to be **a real token thirty
+   lines further down**; the rename became a duplicate, the duplicate collapsed, and one of the two
+   declarations stopped being checked *at all*. Zero duplicates today — now asserted, so tomorrow is
+   loud. ⚠️ **A probe that lands on an occupied name measures the collision, not the mutation.**
+3. **Type sizes are deliberately NOT vendored,** and the file says so. The editor's `--font-size-*`
+   runs 10px → 24px because it is chrome at forearm distance; consuming `--font-size-base: 12.5px`
+   for body copy *looks exactly right in a diff* and is unreadable on a phone. Families, weights,
+   line heights and letter spacings — which carry no implied viewing distance — do come from the
+   vendored `fonts.css`.
+
+⚠️ **`--site-tier-bronze` is the one literal colour left on the site**, allow-listed with a reason in
+the sweep: the editor palette has no bronze, while silver and gold reach for `neutral-700` and
+`amber-300`. It retires with slice 4.
+
+### 🔴 A trap for anyone driving the site
+
+`pkill -f "next start"` **matches nothing** — Next renames the process to `next-server (v15.x)`. A
+stale server keeps port 3111, the new one fails to bind *silently in the background*, and the old
+process serves HTML referencing a **CSS hash that no longer exists on disk** → a 404 stylesheet and a
+completely unstyled page. ⚠️ **Every gate stayed green through this**: build clean, sweep clean, 516
+specs green. ✅ **Kill by port (`lsof -nP -iTCP:<port> -sTCP:LISTEN -t`), and check the served HTML's
+CSS href against `ls .next/static/css/` before believing a screenshot.**
+
+---
+
+📋 **Original scoping below, unchanged.**
 
 > **Added 2026-08-17 out of Richard's own read of the running site:** *"it's a bit simple and sad
 > right now … I don't think it fits our sleek new NodeGX style in the editor."*
@@ -104,8 +179,10 @@ and it goes red, in the same commit that adds it.
 
 ## Slices
 
-1. **The token substrate.** Sync script, vendored `colors.css` + `fonts.css`, drift test with its
-   control, `globals.css` rewritten to consume them. No markup touched. **Most of the win.**
+1. ✅ **DONE — the token substrate.** Sync script, vendored `colors.css` + `fonts.css` **+
+   `spacing.css`**, drift test with its control, `globals.css` rewritten to consume them.
+   ⚠️ **"No markup touched" did not survive**: `layout.tsx` gained the theme stamp, which is what
+   makes the vendored light palette reachable at all. **Most of the win.**
 2. **Type and rhythm.** The mono/sans pairing, a real scale, uppercase mono for labels, handles,
    versions and counts. `font-variant-numeric: tabular-nums` wherever points and counts align.
    ⚠️ **The display face is `Bricolage Grotesque 600`, a bundled woff2** — on the web it needs
