@@ -1,9 +1,51 @@
 # UNI-013 — the community site, in NodeGX clothes
 
 **Surface:** platform · **Tier 1** (it is cheap, it is unblocked, and it gets dearer after launch) ·
-**Effort:** M · 🟢 **SLICE 1 BUILT 2026-08-17 (session 24), pushed `f64f138`.** D18 ruled: **azure**.
+**Effort:** M · 🟢 **SLICES 1–3 BUILT 2026-08-17 (session 24), pushed `f64f138` + `d205b47`.**
+**Only slice 4 (the badge artworks, Richard's) remains.** D18 ruled: **azure**.
 
-## ✅ Slice 1 — DONE. AC1, AC2, AC3 and AC5 met; slices 2–4 open
+## ✅ Slices 2 and 3 — DONE, `d205b47`. The visible half
+
+⚠️ **Sequencing lesson, recorded because it was a real misjudgement.** Slice 1 was scoped as
+*"most of the win"* and is nearly invisible — it swaps the plumbing so colours resolve from real
+tokens. Richard's reaction on seeing it was *"I thought the style was redone??"*, and he was right:
+**the complaint was explicitly about appearance, and the invisible half was landed first.** The
+ordering was defensible on engineering grounds and wrong on the grounds that mattered. **When an ask
+is about how something looks, ship something that looks different in the same session.**
+
+- **Slice 2 — the display face is served.** 🔴 `--font-family-display` named Bricolage Grotesque all
+  along and **silently resolved to the system fallback**, because the editor loads the woff2 from its
+  own assets folder and there is no web equivalent. The OFL 600 weight is vendored to
+  `public/fonts/`. ⚠️ Slice 1 deliberately did not reach for the token for exactly this reason —
+  using it would have looked right in the source and rendered the fallback.
+  `.meta` is now mono + `tabular-nums` (the editor's treatment for values, ports, versions, counts),
+  and that is most of what makes a page read as NodeGX. ⚠️ **Mono but NOT uppercase** — `.meta`
+  carries sentence fragments (*"posted by @nia-new · room for 4 more"*); uppercase is reserved for
+  chips, filter pills and badge tiers. `h3` stays in the UI face: Bricolage at 16px is mannered.
+- **Slice 3 — the card and the row are one component in two shapes**, resting on `bg-1` and lifting
+  to `bg-2` under the pointer — the editor's elevation ladder rather than a colour change. Profile
+  header takes the editor's avatar gradient and a mono handle; badge marks are larger and
+  display-face; chips and pills are mono uppercase.
+
+### 🔴 Two defects AC2's arithmetic caught that rendering could not
+
+1. **`--theme-color-on-primary` FLIPS per theme** (`#071627` dark, `#ffffff` light) **while
+   `--theme-color-avatar-gradient` does not.** Using it as the avatar ink painted **white on azure
+   in the light theme — 2.63:1**, the exact defect the dark value exists to avoid. ✅ **A constant
+   ground needs constant ink**: `--site-avatar-ink` is a *base* token (7.59:1 azure end, 4.59:1
+   violet end). ⚠️ The editor's own `--theme-color-avatar-fg` is white and is **rejected by a test
+   here**, so the divergence is a measurement rather than a preference.
+2. **The sticky header sat on `bg-page` for about ten minutes**, putting nav links at **4.47:1** in
+   light — three hundredths under AA, because light `bg-page` (`#e7ebf1`) is *darker* than the body's
+   `bg-0`. It sits on `bg-1` now.
+
+✅ **Every new foreground/ground pair slice 3 introduced is in `PAIRS`, including the hover
+surfaces** — a hover state nobody listed is a surface nobody graded.
+
+**Gates:** **532 specs / 21 files** (the 462 predating UNI-013 unchanged), `tsc` clean,
+`next build` clean at 21 routes, `check:css` clean over **751** built declarations.
+
+## ✅ Slice 1 — DONE. AC1, AC2, AC3 and AC5 met
 
 | | |
 |---|---|
@@ -183,11 +225,12 @@ and it goes red, in the same commit that adds it.
    `spacing.css`**, drift test with its control, `globals.css` rewritten to consume them.
    ⚠️ **"No markup touched" did not survive**: `layout.tsx` gained the theme stamp, which is what
    makes the vendored light palette reachable at all. **Most of the win.**
-2. **Type and rhythm.** The mono/sans pairing, a real scale, uppercase mono for labels, handles,
-   versions and counts. `font-variant-numeric: tabular-nums` wherever points and counts align.
-   ⚠️ **The display face is `Bricolage Grotesque 600`, a bundled woff2** — on the web it needs
-   serving and a fallback, and it is the one asset that does not travel as a token.
-3. **The six components.** Where the site stops looking generic.
+2. ✅ **DONE — type and rhythm.** Mono `.meta` with `tabular-nums`, uppercase mono for chips, pills
+   and badge tiers, display face on the wordmark and large headings. **The woff2 is served from
+   `public/fonts/`** — it was the one asset that does not travel as a token, and the token had been
+   resolving to its fallback in silence.
+3. ✅ **DONE — the six components.** Card/row unified with a `bg-1` → `bg-2` hover lift, gradient
+   avatar, mono handle, larger display-face badge marks, mono uppercase pills.
 4. **The twelve badges.** 🔴 **Still undrawn** — D4 ruled ~12 flat SVGs in the editor's idiom, and
    the profile currently renders a family mark and a tier colour rather than a broken image, which
    was deliberate. **Richard's to draw or delegate; it is the one slice that is not code.**

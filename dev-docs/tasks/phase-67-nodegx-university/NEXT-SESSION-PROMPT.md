@@ -25,7 +25,7 @@ The remainder splits in two, and the split is the most useful thing in this docu
 
 | | Tasks | Who |
 |---|---|---|
-| **Buildable now, blocked on nobody** | **UNI-013 slices 2–3**, UNI-012, (probably) UNI-007's intake | **a session** |
+| **Buildable now, blocked on nobody** | **UNI-012**, (probably) UNI-007's intake | **a session** |
 | **Blocked on a purchase, an account, an artwork or a decision** | UNI-009 AC1+AC3, UNI-011 AC1+AC6, UNI-001's remainder, UNI-004's revenue, UNI-013 slice 4, UNI-008, deployment | **Richard, and only Richard** |
 
 🔴 **Six of the seven blocked items trace to four asks**, listed in §"FOR RICHARD" at the bottom in
@@ -42,8 +42,8 @@ moved — check the ask list first, it is one `dig`, one `gh api` and one questi
 | Track | Tasks | State |
 |---|---|---|
 | **Platform** | UNI-001 (AC3), 002–006, 009 content cut, **011 slice 1** | 🟢 pushed. `main` == `origin/main` |
-| **Platform** | **UNI-013 slice 1** — the token substrate | 🟢 **BUILT + pushed `f64f138`, session 24.** AC1/AC2/AC3/AC5 met |
-| **Platform** | **UNI-013 slices 2–3** — type and rhythm, the six components | 🆕 **THE LANE. Blocked on nobody.** Substrate is in; this is where the site stops looking generic |
+| **Platform** | **UNI-013 slice 1** — the token substrate | 🟢 **BUILT + pushed `f64f138`.** AC1/AC2/AC3/AC5 met |
+| **Platform** | **UNI-013 slices 2–3** — type and rhythm, the six components | ✅ **BUILT `d205b47`** — display face served, mono meta, hover ladder, gradient avatar |
 | **Platform** | UNI-007 intake / personalised path | 🟡 The one platform-side piece nobody has looked at. ⚠️ Check whether it needs an issuer *before* opening it |
 | **Platform** | UNI-008 | 📋 Tier 3, deliberately last. D9's obligations include a DPA and a retention policy — **policy text is Richard's** |
 | **Platform** | UNI-009 AC1 + AC3 | 🔴 Discourse, SSO, webhook receiver — **a purchase nobody has made** |
@@ -55,10 +55,10 @@ moved — check the ask list first, it is one `dig`, one `gh api` and one questi
 
 ## Measured this session, with the instrument
 
-- **`nodegx-community`: HEAD `f64f138`, `main` == `origin/main`, working tree clean.**
-- **Suite: 516 specs / 21 files** — 462 pre-existing (measured fresh at 21:46 *before* any edit, so
-  AC5's control is a measurement rather than a carried number) + 22 drift + 32 contrast.
-- `tsc --noEmit` clean. `next build` clean, **21 routes**. `npm run check:css` clean over **713
+- **`nodegx-community`: HEAD `d205b47`, `main` == `origin/main`, working tree clean.**
+- **Suite: 532 specs / 21 files** — 462 pre-existing (measured fresh at 21:46 *before* any edit, so
+  AC5's control is a measurement rather than a carried number) + 22 drift + 48 contrast.
+- `tsc --noEmit` clean. `next build` clean, **21 routes**. `npm run check:css` clean over **751
   built declarations**.
 - **Lint on the platform: `package.json` HAS a `lint` script (`next lint`) and there is NO ESLint
   config anywhere in the repo.** The script exists, has never run, and running it starts Next's
@@ -82,10 +82,18 @@ moved — check the ask list first, it is one `dig`, one `gh api` and one questi
 **UNI-013 slice 1** — the community site now consumes the editor's canonical tokens.
 `scripts/sync-tokens.mjs` vendors `colors.css`/`fonts.css`/`spacing.css` byte-identically into
 `src/styles/tokens/` with a `source-sha256` header; `globals.css` declares **no colour of its own**;
-`tests/uni013-token-drift.test.ts` fails when the copy diverges. Full detail, including the AC2
-contrast table, is in the task file — read it before slice 2.
+`tests/uni013-token-drift.test.ts` fails when the copy diverges.
 
-**Four findings that generalise past this task:**
+**Then slices 2 and 3** (`d205b47`), after Richard looked at slice 1 and said *"I thought the style
+was redone??"* — 🔴 **and he was right. Slice 1 is nearly invisible by design, and it was the wrong
+half to land first against a complaint that was explicitly about appearance.** The ordering was
+defensible on engineering grounds and wrong on the grounds that mattered. **When an ask is about how
+something looks, ship something that looks different in the same session.** Slices 2–3 served the
+display face, put `.meta` in mono with `tabular-nums`, made chips and pills uppercase mono, unified
+the card and row onto a `bg-1` → `bg-2` hover ladder, and gave the profile the editor's gradient
+avatar. Full detail in the task file.
+
+**Six findings that generalise past this task:**
 
 🔴 **A criterion that is a NUMBER catches what a criterion that is a LOOK cannot.** The first draft
 pointed all secondary copy at `--theme-color-fg-muted` — the obvious token by name, and an editor
@@ -108,9 +116,20 @@ mutation.** Now asserted empty.
 🔴 **`pkill -f "next start"` matches nothing** — Next renames the process to `next-server (v15.x)`.
 The stale server kept the port, the new one failed to bind *silently in the background*, and the old
 process served HTML pointing at a **CSS hash that no longer existed on disk**: a 404 stylesheet and a
-totally unstyled page. **Every gate stayed green through it** — build clean, sweep clean, 516 specs
+totally unstyled page. **Every gate stayed green through it** — build clean, sweep clean, the whole suite
 green. ✅ **Kill by port (`lsof -nP -iTCP:<port> -sTCP:LISTEN -t`), and diff the served HTML's CSS
 href against `ls .next/static/css/` before believing a screenshot.**
+
+🔴 **A token can name an asset that is not served.** `--font-family-display` named Bricolage
+Grotesque and silently resolved to its **system fallback** on the web for as long as the site
+existed — the editor loads the woff2 from its own assets folder and there is no web equivalent.
+Correct-looking source, wrong render, no error anywhere.
+
+🔴 **A theme-INVARIANT ground given theme-DEPENDENT ink passes in one theme and fails in the other.**
+`--theme-color-on-primary` flips (`#071627` dark, `#ffffff` light); `--theme-color-avatar-gradient`
+does not. The avatar was white-on-azure at **2.63:1** in light only. ⚠️ **And `bg-page` is DARKER
+than `bg-0` in the light theme** — it is the page's floor, not a chrome surface; a sticky header on
+it cost 0.03 of the AA bar.
 
 ⚠️ **Also, unchanged and still unowned:** **noodl-core-ui cannot be eslinted at all** (its
 `eslintConfig` extends `react-app`, which is not installed; confirmed against an untouched control
@@ -120,32 +139,27 @@ file). *"eslint clean on every touched file"* in past handovers was never true o
 
 # THE PLAN — do these in this order
 
-## 🟢 LANE A (do this first) — UNI-013 slices 2 and 3
+## ✅ LANE A IS CLOSED — UNI-013 slices 1–3 all built (`f64f138`, `d205b47`)
 
-**The substrate is in and pushed. This is where the site stops looking like a bootstrap template.**
+**Only slice 4 remains and it is Richard's** (the twelve badge artworks). Do not reopen this task
+looking for work; read its file for the traps before touching any stylesheet.
 
-- **Slice 2 — type and rhythm.** The mono/sans pairing, uppercase mono for labels, handles, versions
-  and counts, `font-variant-numeric: tabular-nums` wherever points and counts align.
-  ⚠️ **`Bricolage Grotesque 600` is a bundled woff2** — on the web it needs *serving* and a fallback,
-  and it is the one asset that does not travel as a token. Slice 1 deliberately did **not** reach for
-  `--font-family-display`, because using it would render the fallback while looking, in the source,
-  as though the display face worked.
-  ✅ **The site type scale is already in place** (`--site-text-*`, rem-based) and is deliberately NOT
-  the editor's — read the header comment in `globals.css` before "fixing" it.
-- **Slice 3 — the six components that carry identity**: profile header, badge, people card, replay
-  row, RFP row, org shelf item.
-
-🔴 **Both slices must keep three gates green, and all three are cheap:**
-`npm run check:css` (AC1 — it will catch a hardcoded colour the moment you write one),
-`npx vitest run tests/uni013-contrast.test.ts` (AC2 — **add a PAIRS entry for any new
-foreground/ground combination you introduce**; the test grades the palette, it does not crawl the
+🔴 **If you DO touch the site's CSS, three cheap gates, and they are not optional:**
+`npm run check:css` (AC1 — catches a hardcoded colour the moment you write one, and carries its own
+known-bad probes), `npx vitest run tests/uni013-contrast.test.ts` (AC2 — 🔴 **add a `PAIRS` entry for
+any new foreground/ground combination you introduce**; it grades the palette, it does not crawl the
 DOM), and the full suite for AC5.
 
-⚠️ **AC5's control is "the 462 pre-existing specs pass unchanged"** — 516 total now. Count by name,
-do not copy a total.
+⚠️ **AC5's control is "the 462 specs that predate UNI-013 pass unchanged"** — **532** total now.
+Count by name, do not copy a total.
 
-🔴 **Do not let A quietly become the deployment lane.** They are adjacent, C is bigger, C needs
-Richard.
+🔴 **Three UNI-013 findings that will bite outside it:**
+1. **`--theme-color-on-primary` FLIPS per theme; `--theme-color-avatar-gradient` does not.** Any
+   theme-invariant ground given theme-dependent ink passes in one theme and fails in the other.
+2. **A token can name an asset that is not served.** `--font-family-display` resolved to its system
+   fallback on the web for as long as the site existed — correct-looking source, wrong render.
+3. **`bg-page` is DARKER than `bg-0` in the light theme.** It is the page's *floor*, not a chrome
+   surface; putting header text on it cost 0.03 of the AA bar.
 
 ## 🟢 LANE B — UNI-012, F4 on a packaged install
 
