@@ -1,12 +1,12 @@
 # Phase 69 — next session
 
-**Written 2026-08-17, session 16.** 🔴 **This file is a REWRITE, not an amendment.** It is
+**Written 2026-08-17, session 17.** 🔴 **This file is a REWRITE, not an amendment.** It is
 overwritten every session; if you find yourself prepending, rewrite it instead. Everything that
 outlives the phase goes to memory, not here.
 
-Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first. **s16 built CN-008** — the authoring
-loop now names a project's own kits. **CN-009 is the natural next build, and s16 measured that two
-of its five acceptance criteria are already met; see §4.**
+Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first. **s17 built CN-009** — the MCP surface
+now says whose node it is and what the author said it does, for **zero tokens**. **CN-006b or CN-010
+is the natural next build; see §4.**
 
 ---
 
@@ -17,101 +17,113 @@ of its five acceptance criteria are already met; see §4.**
 | **CN-001** … **CN-006** | ✅ | ✅ | Closed in sessions 4–11 |
 | **CN-018**, **CN-019** | ✅ | ✅ | Closed s13 / s15 |
 | **CN-007** | ✅ s14 | ✅ s15 (D8) | AC1/3/4/5 met; **AC2 still not started** |
-| **CN-008** | ✅ **s16** | ⚠️ **AC1 needs a live model** | §1, §2 |
-| CN-006b, CN-009 … CN-017 | 📋 | — | **CN-009 next** — §4 |
+| **CN-008** | ✅ s16 | ⚠️ **AC1 needs a live model** | |
+| **CN-009** | ✅ **s17** | ⚠️ **AC5's consequence needs a live model** | §1, §2 |
+| CN-006b, CN-010 … CN-017 | 📋 | — | §4 |
 
 **Nothing in this phase is blocked on a running editor**, and nothing is blocked on a decision.
 
+🔴 **Two tasks now carry the same open remainder — CN-008's AC1 and CN-009's AC5 — and it is the
+same remainder: a live model in a project with a kit.** Neither can be run headlessly. Doing them
+together is one drive, not two, and it would close the consequence half of both. Worth considering
+ahead of a fresh build.
+
 ---
 
-## 1. 🔴 The one lesson from s16
+## 1. 🔴 The one lesson from s17
 
-**A spec clause that selects nothing passes every mechanical acceptance criterion.**
+**A discovery gap is invisible to everyone who already knows the answer.**
 
-CN-008 said to include *"the ports an instance would actually set — the inputs with no default"*.
-**That selector matches zero ports on either kit in this phase**, because a kit author declares a
-`default` on essentially every port and ✅ **D8** pushes them harder that way.
+`list_node_types({query})` searches a node's summary. A kit node had no summary — `summary` was read
+from `enrichment`, which is generated at repo-build time and **keyed by type name, so a kit type can
+never be in it** — and the author's `docs` sentence was carried faithfully into the overlay and then
+dropped. Measured on the cashflow kit before the fix:
 
-Had it been followed literally, the handout would have printed a heading, a kit name and a node name
-per node with an **empty list under each** — and AC2 (byte-identical without kits), AC3 (in the
-cache-stable half) and AC4 (charged through `charge()`) would all still have passed, because none of
-them looks at whether the block *says anything*. Only AC1 — the live-model consequence, the one
-criterion that cannot be run headlessly — would have caught it.
+| query | before | why |
+|---|---|---|
+| `"pill"` | ✅ `nodegx.cashflow.Pill` | matched the **type name** |
+| `"draggable"` | 🔴 **[]** | the word is in `docs` and nowhere else |
+| `"snaps to whole days"` | 🔴 **[]** | same |
 
-✅ **Before implementing a selector a spec hands you, run it over the real data and count what comes
-back.** It cost one `filter` and it is now pinned as a test, so re-introducing the clause fails.
+Every query anybody would type **while already knowing the node existed** worked. Only a query by
+subject — the kind you type when you do *not* know — returned nothing. So the feature looked fine
+from every seat except the one it was for.
 
-⚠️ This is the same shape as CN-007's retired observation O3 (s15) and CN-006's AC4 false pass
-(s9): *the mechanism fired, so the feature looked delivered.*
+✅ **When testing a discovery path, the query has to be written by someone who does not know the
+answer.** Search for the *subject*, never the name. The name-based query is still worth keeping — as
+the known-firing signal beside the absence, so a fix that breaks ordinary search is caught too.
 
-## 2. ✅ What s16 built and measured
+⚠️ Same family as s16's "a selector that matched nothing" and CN-006's AC4 false pass: **the
+mechanism fired, so the feature looked delivered.**
 
-`AuthoringContextBuilder.nodeKitOverview()` + a `THIS PROJECT'S NODE KITS` block in the cache-stable
-half immediately after the catalog, wired at both `AuthoringSession` call sites. **17 tests, 7/7
-mutations killed.** Full editor jest: **3555 passed / 229 suites**.
+## 2. ✅ What s17 built and measured
 
-Three findings worth more than the feature, all in
-[CN-008](CN-008-THE-AI-CAN-USE-YOUR-NODES.md):
+`src/catalog.ts` only. `providedBy` / `kitModule` now survive into the listing row **and both**
+`get_node_type` modes; a kit's `docs` becomes its `summary`, gated on provenance; the query hay
+carries the resolved summary and the kit's name. **14 tests, 8/8 mutations killed**, `noodl-mcp`
+jest **599 passed / 51 suites**. Full write-up in
+[CN-009](CN-009-THE-MCP-SURFACE-INSIDE-THE-BUDGET.md).
 
-1. 🔴 **The task's problem statement was false.** "The AI does not know the lane exists" — **it
-   does.** A kit node is `inNodePicker`, so `catalogOverview()` already named it and
-   `nodeTypeDetails()` already rendered its full ports and defaults. What was missing is
-   **attribution and salience**: it arrived buried in an alphabetical run of ~30 names on the
-   `- Visual:` line, with **no kit named anywhere in the prompt**. That is why the handout names
-   ports rather than describing them — describing them pays twice for the half that was never broken.
-2. 🔴 **`docs` is one field over two vocabularies.** On a **shipped** catalog node it is a **URL**:
-   158 of 175 built-ins carry one and **158 of 158 of those are `https://docs.noodl.net/…`; zero are
-   prose.** On a **kit** node it is prose. Reading the field without splitting the two puts a link
-   where a summary goes on 158 node types.
-3. ✅ **A real defect fixed in passing.** `renderNodeType` sourced its summary from `enrichedNode()`,
-   which is generated at repo-build time and keyed by type name — **a kit type can never be in it**.
-   So the author's `docs` string was carried all the way into the overlay by `@nodegx/kit-catalog`
-   and then **dropped**, and every kit node reached the model with a heading, a placement line and no
-   statement of what it is for.
-
-⚠️ **The inherited-port exclusion is a named set, not a derived one, and that was forced.**
-Intersecting the shipped catalog's visual nodes gives the **empty set** (`Component Children` is a
-visual node with zero inputs); intersecting the project's own kit nodes also swallows `radius`,
-which both demo-kit authors declared and both meant. The gate asserts **containment** against the
-recorded payload — it catches the runtime *dropping* a base port, not *adding* one.
-
-## 3. ⚠️ What CN-008 does NOT close
-
-- 🔴 **AC1 is the consequence and is not met.** It needs a live model in a project with the cashflow
-  kit. Everything asserted so far is mechanism, and AC1's own wording says mechanism *"would be
-  equally true of a broken feature"*. ⚠️ **`cp -R` the project first** — the Build composer authors
-  on a one-character prompt and `ed.undo()` does not undo an AI apply.
-- **A session captures its catalog at construction**, so a kit scaffolded mid-session is not in that
-  session's handout. That is CN-014's measured behaviour, not a new defect — answered rather than
-  left open.
-- **The scaffold still emits no `docs` key**, so absent is the *common* case and is rendered as
-  omission. Making CN-006's scaffold emit one is the P2-shaped fix and is left to that task.
-
-## 4. ✅ CN-009 is next — and s16 measured that two of its ACs are already met
-
-Same shape as CN-004, where items 1–3 turned out to have been done by CN-003. Measured today:
-
-- **`src/catalog.ts` in `noodl-mcp` carries the same overlay mechanism as the editor**, so
-  `list_node_types` and `get_node_type` already answer about kit types. `tests/kitTools.test.ts:97`
-  already asserts exactly that, through CN-003's headless extractor.
-- **`get_project_info` already reports kits** — `kitsReport()` in `src/tools/read.ts:83`, with
-  modules, their node types, collisions and failures.
-
-So **AC1 and AC2 are substantially built**; what is left is **provenance marking on
-`list_node_types`' rows**, **`find_tools` matching kit names and `docs`**, AC4 (a no-kit project
-unchanged) and AC5 (the drive). ⚠️ **Confirm this rather than inherit it** — s16 measured that the
-catalog carries the overlay and that a test asserts the resolution; it did not run `list_node_types`
-and read a provenance field off a row.
-
-✅ **The token margin, re-measured on a passing run today, not relayed:**
+✅ **AC3 cost nothing, and this is the part worth carrying forward:**
 
 ```
-[surface] 8223 tokens / 20 resident tools — 57 under the 8280 budget
+before:  [surface] 8223 tokens / 20 resident tools — 57 under the 8280 budget
+after:   [surface] 8223 tokens / 20 resident tools — 57 under the 8280 budget
 ```
 
-The task file's numbers are still accurate. 🔴 **The renegotiation condition is binding**: the gate's
-own note says there should not be a third, and **CN-009 is the next one** — the sanctioned move is
-the `$ref`ed node schema, not a higher bar.
+**Every fact added travels in a *response*.** The gate measures tool descriptions, schemas and
+instructions — the resident surface — and a response is billed only on the turn it is asked for. So
+enriching a payload is free where enriching a description is not. 🔴 **The renegotiation condition
+is therefore still unspent: there is no third renegotiation, and the `$ref`ed node schema remains
+available to whoever needs it.** Do not let the next task assume it has been used.
+
+Three findings worth more than the feature:
+
+1. 🔴 **The `docs` drop was CN-008 finding 3 in the other consumer — and it was two bugs, not one.**
+   The editor reads the repo-build `enrichedNode()` table; the MCP server reads the merged catalog
+   document. There is **no shared upstream that could have held the rule**, so the duplication is
+   forced. Each side's comment now names the other. ⚠️ If a third consumer appears, it will have the
+   bug too and nothing will report it.
+2. 🔴 **The obvious control could not fail.** `docs` is prose on a kit node and a **URL** on a
+   shipped one (158 of 175, all `docs.noodl.net`) — but all 175 built-ins *also* carry an
+   `enrichment.summary`, so the fallback is never reached for them **whether it is gated or not**.
+   "No built-in shows a URL as its summary" passes against a completely ungated implementation. The
+   real control is a hand-built node shaped so the fallback *would* fire.
+3. ✅ **Mutation testing found a hole an assertion had walked straight past.** An empty `docs`
+   string survived the first suite, because `getNodeTypeDetail` writes the summary behind
+   `if (summary)` while `listNodeTypes` assigns it **unconditionally** — so the *row* was where
+   `summary: ""` would ship, and the test only looked at the detail. ⚠️ **When two call sites consume
+   one helper, assert at the one with the weaker guard.**
+
+## 3. ⚠️ What CN-009 does NOT close
+
+- 🔴 **AC5's consequence is not met.** The caller is built and driven — a real session searches by
+  subject, reads provenance off the row, fetches ports, places the node, validates clean, and a
+  control mistyping the port gets `unknown-parameter … did you mean \`value\`?` (the diagnostic, not
+  just a refusal). But **the choice to search for "percentage" is mine, not a model's**. See §0 —
+  pair it with CN-008's AC1.
+- ⚠️ **Nothing here was verified against a packaged server.** The suite builds CN-003's extractor
+  from source per run; a **registered** MCP server still loads from `/Applications/…` and does not
+  have this change until a repackage. A drive through the live `nodegx-*` tools would grade the old
+  build.
+- ⚠️ **`find_tools`' `query` matches tool *names* only**, while its own `describe` text says "names
+  and descriptions". Noticed in passing, not touched — changing it costs resident tokens out of the
+  57 and is Richard's call (§6.3 already asks a neighbouring question).
+
+## 4. Picking the next build
+
+**CN-006b** (the kits surface) and **CN-010** (dynamic ports) are the two with the most behind them.
+
+- **CN-010** has the sharpest ground truth already measured and in memory: the exporter and the
+  catalog disagree about dynamic ports (`{condition,ports}` out, `{condition,inputs}` read), and
+  `parameterEncoding` is `{known:false}` on **every** overlay node by construction —
+  `@nodegx/kit-catalog`'s header names CN-010 as the owner of closing it. It is the last place a kit
+  node is knowingly second-class.
+- **CN-006b** is the editor surface D1 asked for and has no measurement debt.
+
+⚠️ **Confirm rather than inherit** — that is twice in a row now that a task's stated premise was
+partly false (CN-008's two clauses, CN-009's `find_tools` clause and its two already-met criteria).
+**Run the thing the task describes, over real data, and count what comes back, before building.**
 
 ## 5. ⚠️ Carried, unresolved
 
@@ -119,7 +131,8 @@ the `$ref`ed node schema, not a higher bar.
 `NodeGX test projects/cashflow-command-centre` — unversioned, covered by no gate — while
 `cn001-kit-drive` and `cn019-drive` still carry the pre-D8 kit (0 × `var(--`, 6 × live `#1F8A4C`).
 **Driving the wrong copy reads as "the change did not land".** D5 makes CN-007 depend on this kit
-staying working and nothing enforces it. **Still wants a task number.**
+staying working and nothing enforces it. **Still wants a task number.** ⚠️ s17 read it (never wrote
+to it) via a `cp -R` into the scratchpad, which is the safe way to measure against it.
 
 ⚠️ **The token vocabulary gap (s14):** the semantic set has `--destructive` but **no `--success` and
 no `--warning`**, so any kit with three status bands reaches into the palette scale for two of them.
@@ -136,18 +149,22 @@ by name** (`NodeLibraryImporter.ts:366-388`). Wants a look if CN-013 is picked u
 
 ## 6. Owed by Richard
 
-Unchanged from s7–s15, all still open:
+Unchanged from s7–s16, all still open:
 
 1. **Widen the project gate to check parameter values?** `checkParameterValues` has one production
    caller, so `validate:project` / `validate_project` check parameter values for **no node of any
    provenance**. `cn004.test.ts`'s last block asserts the silence deliberately — **replace it when
    the call is taken, do not delete it.**
-2. **The ungated typechecks.** `packages/noodl-mcp`'s `tsc --noEmit` is red (8) and runs in no CI
-   job; seven of eleven `typecheck:*` scripts run nowhere, and `scripts/` is in none.
-   ⚠️ `typecheck:runtime` is red at 2, proven pre-existing. ⚠️ `typecheck:core-ui` reports **44
-   `TS2307`s**, cause unidentified — s13 guessed and the guess was wrong.
+2. **The ungated typechecks.** `packages/noodl-mcp`'s `tsc --noEmit` is red (**8**, re-measured s17,
+   unchanged — none of them in CN-009's files) and runs in no CI job; seven of eleven `typecheck:*`
+   scripts run nowhere, and `scripts/` is in none. ⚠️ `typecheck:runtime` is red at 2, proven
+   pre-existing. ⚠️ `typecheck:core-ui` reports **44 `TS2307`s**, cause unidentified — s13 guessed
+   and the guess was wrong.
 3. **Should `project`'s `find_tools` purpose line name kits?** Costs resident tokens out of the same
-   57. `tests/kitTools.test.ts` has the control that fails when it changes.
+   57. `tests/kitTools.test.ts` has the control that fails when it changes. ⚠️ **s17 declined to
+   widen it and said so out loud** — CN-009's `find_tools` clause was served by
+   `list_node_types({query})` instead, for zero tokens, because the catalog tools are **resident** and
+   there is no deferred tool for `find_tools` to reveal. The question is now narrower, not answered.
 
 Open, not caused here, still wanting task numbers: 🔴 `render-from-disk.js` answers `/` and
 `/index.html` and 404s everything else, **including the start page's own `urlPath`** · 🔴 the
@@ -155,26 +172,21 @@ Open, not caused here, still wanting task numbers: 🔴 `render-from-disk.js` an
 
 ## 7. Checkout conditions
 
-- ✅ **No editor launched, nothing torn down.** s16 was entirely headless — no CDP, no stack, no
+- ✅ **No editor launched, nothing torn down.** s17 was entirely headless — no CDP, no stack, no
   `dev:stop`. Nothing of mine is running.
-- ⚠️ **s16 edited three editor SOURCE files**, all on the AI authoring path and all inside the
-  editor's webpack entry: `ContextBuilder.ts`, `prompts/authoring.ts`, `AuthoringSession.ts`
-  (plus a new `tests-unit/cn-008/`). **No peer was messaged.** `ps` showed no `test:ci`, no
-  SpecRunner and no `run-electron-tests` in flight at any edit; the only concurrent run was a peer's
-  `jest` in **`noodl-core-ui`**, which no webpack of mine touches. A 22-way broadcast was judged to
-  be the noise Richard has asked to be curbed. **If a peer reports an odd editor bundle between
-  roughly 09:30 and 11:00 on 2026-08-17, this is the candidate.**
-- ⚠️ **One flaky failure, and it was not mine.** A full `npx jest` run showed
-  `tests-unit/bld-004/reasoningChannel.test.ts` failing on a wall-clock stall deadline
-  (*"nothing arrived for 0 seconds"*) while a peer's jest was running. It passed 3/3 in isolation and
-  **green on a second full run (3555 / 229)**; it imports only the AI client and `turnDeadline`, none
-  of the modules s16 touched.
-- ✅ Gates run: `noodl-editor` **full jest 3555 passed / 229 suites**; `noodl-mcp`
-  `toolDisclosure` + `kitTools` + `kitOverlay` green.
+- ✅ **s17 edited ONE source file, and it is not in the editor's webpack entry**:
+  `packages/noodl-mcp/src/catalog.ts` (plus a new `tests/cn009.test.ts`). No peer was messaged; a
+  change confined to the MCP package cannot contaminate an editor bundle or a `test:ci` run, which
+  is the announcement condition.
+- ⚠️ **A peer was committing throughout.** HEAD moved twice during the session (`9e71e76f` →
+  `d60b61cf` → their `64ae6527`). Their `noodl-core-ui/code-editor` work landed in their own commit;
+  **s17 committed only its own four pathspecs** and swept nothing. `git commit -F <file> -- <paths>`,
+  never `git add` for tracked files.
+- ✅ Gates run: `noodl-mcp` **full jest 599 passed / 51 suites**; the token gate re-measured before
+  **and** after at **8,223 / 8,280**; `tsc --noEmit` red at **8**, all pre-existing and none in the
+  changed files.
 - 🔴 **`test:ci` was NOT run.** The floor still stands where s12 left it (`2843 / 6 @ 39393`).
-  **Re-measure before quoting it**; s13–s16's commits are not in it.
-- ⚠️ **Peer work is live in the tree and was not touched**: `noodl-core-ui/src/components/code-editor/*`,
-  `scripts/library/check.ts`, `dev-docs/tasks/phase-50-*`, `phase-65-*`, `phase-68-*`. s16 committed
-  **only its own pathspecs**.
-- ✅ **`git commit -F <file> -- <pathspecs>`, always.**
+  **Re-measure before quoting it**; s13–s17's commits are not in it.
+- ⚠️ **Peer work live in the tree and not touched**: `dev-docs/tasks/phase-50-*`, `phase-65-*`,
+  `phase-68-*`, `scripts/library/check.ts`.
 - Whoever you tell you are starting, tell you have stopped.
