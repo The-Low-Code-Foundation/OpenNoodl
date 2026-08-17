@@ -49,7 +49,12 @@ export type { CodeAuthoringContext, AuthoringLibrary } from './authoringContext'
 // project surface above.
 export { setOpenNodeContext } from './authoringContext';
 export type { OpenNodeFact, PortFact } from './authoringContext';
-export { collectDeclaredPorts, declaredPortsEqual, modeHasDeclaredPorts } from './utils/declaredPorts';
+export {
+  collectDeclaredPorts,
+  declaredPortsEqual,
+  modeHasDeclaredPorts,
+  modeUsesPortNotation
+} from './utils/declaredPorts';
 export type { DeclaredPorts } from './utils/declaredPorts';
 // Phase 61's prelude: the two lists above and `minePorts` composed into one, for
 // the four surfaces that want every port a node has rather than one route's half.

@@ -34,7 +34,7 @@ import { Completion, CompletionContext, CompletionResult } from '@codemirror/aut
 import { getCodeAuthoringContext } from './authoringContext';
 import { apiMembersAtPath, globalsFor, type ApiMember } from './noodl-api-surface';
 import { isDeclarationPosition, isMemberPosition, startsStatement } from './utils/completionPosition';
-import { modeHasDeclaredPorts } from './utils/declaredPorts';
+import { modeUsesPortNotation } from './utils/declaredPorts';
 import { canExpressPort, readExpression, writeExpression } from './utils/notation';
 import { minePorts } from './utils/scriptPorts';
 import type { ValidationType } from './utils/types';
@@ -166,7 +166,19 @@ function memberCompletions(
   const apiMembers = apiMembersAtPath(path, validationType);
   if (apiMembers) return asCompletions(apiMembers);
 
-  if (validationType !== 'expression') return scriptPortCompletions(context, path);
+  /*
+   * FIX-016 — `'expression'` used to be the only mode excluded here, which let
+   * `'script'` through.
+   *
+   * 🔴 `Inputs` and `Outputs` are not bindings a Script node has: it is compiled
+   * `Function('define', 'script', 'Node', 'Component', …)`, and `no-undef`
+   * reports them — that report *is* FIX-016's message 6. Completing members of
+   * an object the editor is simultaneously underlining as undefined is the
+   * editor contradicting itself inside one popout, and the completion is the
+   * half the author is more likely to believe, because it arrives first and
+   * looks like knowledge.
+   */
+  if (modeUsesPortNotation(validationType)) return scriptPortCompletions(context, path);
 
   return null;
 }
@@ -274,10 +286,16 @@ function barePortCompletions(
   word: { from: number; to: number; text: string },
   validationType: ValidationType
 ): Completion[] {
-  // §3, first exclusion — and the same gate as FUN-004 §3. A bare identifier in
-  // an Expression is already correct: it *becomes* the port, so prefixing it
-  // would create a port called `Inputs`.
-  if (!modeHasDeclaredPorts(validationType)) return [];
+  // §3, first exclusion. A bare identifier in an Expression is already correct:
+  // it *becomes* the port, so prefixing it would create a port called `Inputs`.
+  //
+  // 🔴 FIX-016 — this asked `modeHasDeclaredPorts`, which is `true` for a Script
+  // node because a Script node really does have declared ports. What it does not
+  // have is this notation, so every offer here inserted `Inputs.price` /
+  // `Outputs.total = ` into a node where both throw. The question the offer turns
+  // on is *"is this how ports are written here"*, and that is a different
+  // predicate — see `declaredPorts.ts#modeUsesPortNotation`.
+  if (!modeUsesPortNotation(validationType)) return [];
 
   // §3, third exclusion. (The second — not after a dot — is `completesTopLevel`.)
   if (isDeclarationPosition(context, word.to)) return [];

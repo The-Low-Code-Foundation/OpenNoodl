@@ -64,9 +64,24 @@
  * Nothing here knows what kind of editor is open, and the mining half will
  * happily read `Inputs.foo` out of an **Expression** node's text — where it is
  * not a port at all, and where inserting that notation would create a port called
- * `Inputs` (`declaredPorts.ts:126-136`). Call `modeHasDeclaredPorts(validationType)`
- * first, exactly as the other two are gated. An empty result cannot be used as
- * the gate: it is also what a Function node nobody has touched looks like.
+ * `Inputs` (`declaredPorts.ts:126-136`). An empty result cannot be used as the
+ * gate: it is also what a Function node nobody has touched looks like.
+ *
+ * 🔴 **This paragraph used to name `modeHasDeclaredPorts` as the gate, and that
+ * was wrong — FIX-016.** Three consumers followed it, and all three were wrong in
+ * the same way, because a **Script node has declared ports but mines nothing**.
+ * Its `scriptInputs`/`scriptOutputs` proplists are real, so that predicate says
+ * yes; its ports otherwise come from `parser.getPorts()` — `define({ inputs,
+ * outputs })`, `Node.Inputs`, `Node.Signals` — and never from a regex over the
+ * document, so the `mined` half of every row below is fabricated there. The help
+ * bar consequently told a correct Script node to *"Read price with
+ * `Inputs.price`"*, and completion offered to insert that same notation, while
+ * FIX-016's message 6 underlined it as throwing.
+ *
+ * ✅ **The gate is `modeUsesPortNotation(validationType)`** — the question this
+ * module's mining half actually turns on. `modeHasDeclaredPorts` remains the
+ * right gate for anything asking about the *declared* half alone (message 6 is
+ * gated on it and must stay that way).
  *
  * Plain data in, plain data out — no DOM, no node model — so this runs in the
  * package's `testEnvironment: 'node'` runner (CED-001).

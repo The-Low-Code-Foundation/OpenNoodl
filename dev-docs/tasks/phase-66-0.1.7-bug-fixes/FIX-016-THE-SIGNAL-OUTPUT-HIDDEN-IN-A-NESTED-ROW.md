@@ -993,3 +993,161 @@ fourth cell changed its answer under me.
 ⚠️ **The script-mode mining slice is untouched** (`unionPorts` calling `minePorts` in script mode).
 This drive says nothing about FUN-005's rail or FUN-006's bar; it read the code editor's lint state
 only.
+✅ **Superseded — BUILT AND DRIVEN session 50, below.**
+
+## ✅ THE SCRIPT-MODE MINING SLICE — BUILT AND DRIVEN 2026-08-17 (session 50)
+
+**The last open FIX-016 build.** Two surfaces were still mining `Inputs.`/`Outputs.` out of a Script
+node's text. Both are gated now, both driven, in two arms against a live editor.
+
+### 🔴 The handover's "four surfaces" was wrong in both directions — census first
+
+s44 left this as *"four surfaces: FUN-005's rail and FUN-006's bar can show a Script node ports it
+does not have."* Censusing the call sites before building found neither half of that intact:
+
+| claimed surface | reality |
+|---|---|
+| **FUN-005's rail** | 🔴 **Does not exist.** `rail` appears in **four doc comments** and in no component — `unionPorts.ts:5`, `notation.ts:6`, `:215`, `:261`. It was designed and never built. |
+| **FUN-004's diagnostics** | ✅ **Already fixed by s44** and not a surface any more — `portDiagnostics.ts:649-665` returns message 6 alone in script mode, and the `isScriptNode` branch (`:234-243`) never reads `ports` at all. |
+| **FUN-006's bar** | 🔴 Real, `portBar.ts:113`. |
+| **FUN-008's completions** | 🔴 Real, and **two** call sites — `noodl-completions.ts:113` (members after `Inputs.`/`Outputs.`) and `:292` (bare-name insertions). Not mentioned in the scoping at all. |
+
+**Two features, three call sites** — not four surfaces. ✅ The completions half is the one the
+scoping missed, and it is the one that matters most (below).
+
+### 🔴 The root cause: one predicate answering two questions
+
+`modeHasDeclaredPorts` is `['function', 'script']`, and **correctly so** — a Script node's
+`scriptInputs`/`scriptOutputs` proplists are real, read by `_managePortsForNode`
+(`javascript.ts:772-827`) exactly as a Function node's are. Every consumer reached for that predicate
+when the question it was really asking was *"is `Inputs.x` how ports are written here"*. For a Script
+node the two answers differ: it is compiled
+`Function('define', 'script', 'Node', 'Component', …)`, mines nothing from its text, and takes its
+ports from `parser.getPorts()` — `define({ inputs, outputs })`, `Node.Inputs`, `Node.Signals`.
+
+**Shipped:** `modeUsesPortNotation(validationType)` — `['function']` — in `declaredPorts.ts`, beside
+the predicate it must not be confused with. `portBar.ts` and both completion call sites gate on it.
+`unionPorts.ts`'s module doc, which had **named `modeHasDeclaredPorts` as the gate** and so sent all
+three consumers wrong, is corrected in place.
+
+🔴 **The tempting fix was one edit, not four: drop `'script'` from `modeHasDeclaredPorts`.** It would
+have deleted **message 6**, which is gated on that predicate (`portDiagnostics.ts:191`) — s44's whole
+build. There is a spec row and a mutant for exactly this.
+
+### Measured before the fix, in the package's own runner
+
+| surface (Script node) | before |
+|---|---|
+| bar, declared ports + a **correct** `define()` body | *"Read price with `Inputs.price`, write total with `Outputs.total = ….`"* — advice **against working code** |
+| bar, blank node | *"This node has no ports yet. Type `Inputs.` — the name you use becomes an input port."* |
+| bar, body writes `Outputs.Done()` | **silent** — read as success, on a line that throws |
+| completion, after `Inputs.` / `Outputs.` | offers `price` / `total` |
+| completion, bare prefix | offers to **insert `Inputs.price`** and **`Outputs.total = `** |
+
+🔴 **The completion rows are the sharp ones: the editor offered to insert the exact notation message 6
+was underlining as throwing, in the same popout.** A completion arrives first and looks like
+knowledge, so it is the half an author believes.
+
+### 🔴 Why the bar is silenced rather than fed an empty mined list
+
+Mining nothing in script mode makes it **worse**: a correct Script node then falls to `unused-ports`
+and the bar nags every author who did the right thing. Every sentence the bar owns is
+`Inputs.`/`Outputs.` notation, so it has no true sentence for this node and says nothing.
+
+⚠️ **Deliberately NOT built: a bar that teaches `define()`.** Picking a row needs the node's real port
+list, and the editor cannot compute it — the `define({ inputs, outputs })` half lives behind
+`parser.getPorts()`, which means running the author's code. Guessing between *"no ports yet"* and
+*"ports you have not used"* is how the bar was wrong in the first place. **Wants a task; needs a
+syntax-tree parse of `define()`.**
+
+### Gates (session 50's own readings)
+
+| gate | reading |
+|---|---|
+| `noodl-core-ui` jest | ✅ **27 suites / 498 tests**, exit 0 |
+| root `npm run typecheck` (the PR gate) | ✅ exit 0, zero `error TS`, taken **without a pipe** |
+| `typecheck:core-ui` | ✅ **44 errors — s44's exact count**, all `TS2307` module-resolution in `noodl-editor`; **zero in any `code-editor` file** |
+| `lint:ci` ratchet | ✅ exit 0, 876 against a 3916 baseline |
+
+⚠️ `test:ci` **not taken** — the changed surface is `noodl-core-ui`, whose specs are the jest suite
+above; there is no jasmine spec over these files.
+
+### The spec, and the three mutants it was checked against
+
+`tests/code-editor/scriptPortNotation.test.ts` — **21 tests**. Every behavioural row is a **pair**:
+the same input through both modes, so a row asserts a *difference between the nodes*.
+
+| mutant | result |
+|---|---|
+| the bar gate removed | **4 failed / 17 passed** |
+| both completion gates reverted | **5 failed / 16 passed** |
+| 🔴 the tempting one-edit "tidy" — `'script'` dropped from `modeHasDeclaredPorts` | **2 failed**, one of them *"message 6 still fires"* |
+
+All applied and restored in one shell call, each announcing that it applied, restored from scratchpad
+backups and `diff`ed back identical.
+
+⚠️ **The first mutant run reported `Tests: 0 total` — a suite-level failure, not a discriminating
+result.** It was `npx jest --rootDir …` from the repo root breaking resolution, i.e. the instrument,
+not the mutant. Re-run from the package directory it gave the 4/17 above. **A mutant that fails to
+compile grades nothing**, and `0 total` beside `1 failed` is what that looks like.
+
+### 🔴 Two existing specs asserted the OLD behaviour and were changed — stated, not buried
+
+`portBar.test.ts`'s two CN-019 rows used `'script'` as a stand-in for *"a mode with declared ports"*,
+so they pinned the defect:
+
+- *"says nothing over a file opened while another node is still in the ambient slot"* — its **control**
+  arm was `portBarState('script', stale, KIT_INDEX, 'node')` expecting `unused-ports`. Moved to
+  `'function'`, because script mode can no longer show what a wrong subject costs; the row keeps a
+  new assertion that script+node is silent too, so the defence-in-depth fact is not lost.
+- *"still speaks for a real node"* — asserted the bar spoke *"in the mode a Script node uses and the
+  mode a Function node uses"*. Narrowed to the Function node; the other half was the defect.
+
+### ✅ THE DRIVE — 2 arms × 6 rows, live editor, `dev:debug`, teardown clean
+
+Fixture: a `cp -R` of `fix016-msg6-drive` (`diff -rq` empty) opened as **`fix016-s50-drive`**,
+identity confirmed by `ProjectModel.instance._retainedProjectDirectory` — ⚠️ **never by name: the
+copy reports as "FIX003 Drive" and three projects on this machine share that name.**
+`/Components/PriceDiscount` carries both node types, so both arms ran in one component:
+`Javascript2 dc5ef4ce…` declaring `runOnce`/`runTwice`, `JavaScriptFunction js` declaring
+`price`/`discountedPrice`. **Observations written before the editor was launched.**
+
+| # | probe | Script (`Javascript2`) | Function (`JavaScriptFunction`) |
+|---|---|---|---|
+| 1/2 | the bar | ✅ **0 `PortHintText` elements**, across four documents (`zzzUndefinedThing;`, `Outputs.Done();`, `const x = run`, empty); no `Inputs.` anywhere on screen | ✅ **1 element**: *"Read price with `Inputs.price`, write discountedPrice with `Outputs.discountedPrice = ….`"* |
+| 3/4 | bare-name completion at an expression position | ✅ **0 completions, no tooltip** (`const x = run`, `runOnce`/`runTwice` declared and published) | ✅ **`Inputs.price`**, detail `input port`, tooltip *"Read the input port "price" on this node."* (`const total = pri`) |
+| 5 | `def` in the Script popout | ✅ **`define`**, tooltip renders *"Declare this node: `define({ inputs: { … }, outputs: { … }, run: … })`"* | — |
+| 6 | `Outputs.Done();` in the Script popout | ✅ **message 6** — `nodegx:ports`, warning, **0 actions** | — |
+
+✅ **Row 5 is the row that makes the absences mean something.** Everything else asserts a *lack*, and
+the cheapest way to pass all of it is to break completion in script mode outright. `define` arriving
+**with its info text rendered in the tooltip** shows the suppression is of the notation, not of the
+feature. ✅ **Row 6 shows s44's message 6 survived the predicate split** — the thing the tempting
+one-edit fix would have destroyed.
+
+### 🔴 The drive's own correction: my first completion probes could not have failed
+
+Rows 3 and 4 were first run as a **bare prefix at position 0** (`run`, `pri`). The **Function control
+came back empty too** — which is how the fault was caught. A bare word starting a document is an
+`isDeclarationPosition`, where `barePortCompletions` correctly refuses to offer a port name in *both*
+modes, because that is where you are **naming** something.
+
+⚠️ **So the Script arm's empty list was not attributable to this fix at all** — it was the position.
+Re-run at an unambiguous expression position (`const … = <prefix>`), the pair separates cleanly, and
+that is the reading recorded above.
+
+🔴 **The control is the only reason this was caught.** A one-armed probe would have recorded
+*"no `Inputs.runOnce` offered — fixed"*, which was true, measured, and evidence for nothing. This is
+the phase's own rule — *a reading that fits is not one that excludes* — and it cost nothing here only
+because the control was run in the same session rather than assumed.
+
+### ⚠️ Bounds on this drive, stated because they would otherwise be assumed
+
+- **The `define()` half is still invisible to the editor.** Nothing here gives a Script node's real
+  port list; it removes claims that were false, and adds none. A Script node's ports remain
+  unknowable statically until something parses `define()`.
+- **Rows 1–5 are `noodl-core-ui` surfaces read through the live editor.** Row 6 is s44's diagnostic,
+  re-driven here only as a regression control, not as new evidence about message 6.
+- ⚠️ **`localStorage` held `codeeditor_portbar_successes: ["js"]` on arrival**, from an earlier
+  session's drive. It did not affect these readings — the bar rendered when asked — but a session
+  that finds the Function control silent should check that key before concluding anything.

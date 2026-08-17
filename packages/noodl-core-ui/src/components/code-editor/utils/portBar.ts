@@ -49,7 +49,7 @@
  */
 
 import type { OpenNodeFact } from '../authoringContext';
-import { modeHasDeclaredPorts } from './declaredPorts';
+import { modeHasDeclaredPorts, modeUsesPortNotation } from './declaredPorts';
 import { barNoOutputMessage, barNoPortsMessage, barUnusedPortsMessage, type PortKind } from './notation';
 import type { CodeSubject, ValidationType } from './types';
 import { unionPorts, type UnionPort } from './unionPorts';
@@ -109,6 +109,35 @@ export function portBarState(
   if (subject !== 'node') return { kind: 'silent' };
 
   if (!modeHasDeclaredPorts(validationType)) return { kind: 'silent' };
+
+  /*
+   * FIX-016 — the Script node, and the reason this is a second gate rather than
+   * a widening of the one above.
+   *
+   * 🔴 **Every sentence this bar can say is `Inputs.`/`Outputs.` notation, and
+   * all of it is false in a Script node.** `barNoPortsMessage` says *"Type
+   * `Inputs.` — the name you use becomes an input port"*; a Script node mines
+   * nothing from its text, so it becomes no port and throws when it runs.
+   * `barUnusedPortsMessage` says *"Read price with `Inputs.price`"* about ports
+   * the author declared and is already reading correctly through
+   * `define({ inputs })` — advice against working code. And the `silent` row
+   * below is worse than either: `Outputs.Done()` in a Script node mines an
+   * output here, so the bar reads it as **success** and stands down, on a line
+   * that FIX-016's message 6 is simultaneously warning throws.
+   *
+   * 🔴 **Not fixed by mining nothing in script mode — that makes it worse.** With
+   * an empty mined list a correct Script node falls to `unused-ports` and the bar
+   * nags every author who did the right thing. The bar has no true sentence for
+   * this node, so it says nothing.
+   *
+   * ⚠️ **What is deliberately NOT built here: a bar that teaches `define()`.**
+   * That needs the node's real port list, and the editor cannot compute it — the
+   * `define({ inputs, outputs })` half lives behind `parser.getPorts()`, which
+   * means running the author's code. Picking a row without it would be guessing
+   * which of "no ports yet" and "ports you have not used" is true, and getting it
+   * wrong is how this bar was wrong in the first place.
+   */
+  if (!modeUsesPortNotation(validationType)) return { kind: 'silent' };
 
   const ports = unionPorts(node ?? null, code);
 

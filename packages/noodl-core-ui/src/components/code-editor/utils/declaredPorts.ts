@@ -177,3 +177,43 @@ const MODES_WITH_DECLARED_PORTS: readonly ValidationType[] = ['function', 'scrip
 export function modeHasDeclaredPorts(validationType: ValidationType | undefined): boolean {
   return validationType !== undefined && MODES_WITH_DECLARED_PORTS.indexOf(validationType) !== -1;
 }
+
+/**
+ * The modes whose node reads and writes its ports as `Inputs.x` / `Outputs.y`.
+ *
+ * 🔴 **`'script'` is the one that is absent here and present above, and keeping
+ * the two apart is the whole point of this predicate.** A Script node has
+ * declared ports — real `scriptInputs`/`scriptOutputs` proplists, read by
+ * `_managePortsForNode` (`javascript.ts:772-827`) exactly as the Function node's
+ * are — so {@link modeHasDeclaredPorts} is `true` for it and must stay true:
+ * FIX-016's message 6 is gated on it. What a Script node does **not** do is mine
+ * ports out of its text. Its ports come from those proplists and from
+ * `parser.getPorts()` — `define({ inputs, outputs })`, `Node.Inputs`,
+ * `Node.Signals` — and never from a regex over the document. It is compiled
+ * `Function('define', 'script', 'Node', 'Component', …)`
+ * (`javascriptnodeparser.js:22`), so `Inputs` and `Outputs` are not bindings it
+ * has at all.
+ *
+ * The Function node is the opposite on both counts: `parseAndAddPortsFromScript`
+ * (`javascriptnodeparser.js:293-387`, reached from `simplejavascript.ts:568`)
+ * mines its source, and the document genuinely *is* part of the port list.
+ *
+ * 🔴 **Gate any surface that emits or mines that notation on this, not on
+ * {@link modeHasDeclaredPorts}.** One predicate was doing both jobs, and every
+ * consumer that asked the declared-ports question got the mining answer: the
+ * help bar told a correctly-written Script node to *"Read price with
+ * `Inputs.price`"*, and completion offered to insert `Inputs.price` — the exact
+ * notation message 6 warns throws, in the same popout.
+ */
+const MODES_USING_PORT_NOTATION: readonly ValidationType[] = ['function'];
+
+/**
+ * Is `Inputs.x` / `Outputs.y` the way this mode's node names its ports?
+ *
+ * See {@link MODES_USING_PORT_NOTATION} for why this is not the same question as
+ * {@link modeHasDeclaredPorts}, and why answering it with that one is a defect
+ * rather than a shortcut.
+ */
+export function modeUsesPortNotation(validationType: ValidationType | undefined): boolean {
+  return validationType !== undefined && MODES_USING_PORT_NOTATION.indexOf(validationType) !== -1;
+}

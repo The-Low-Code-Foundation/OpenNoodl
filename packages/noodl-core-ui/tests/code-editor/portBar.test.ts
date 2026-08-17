@@ -157,15 +157,34 @@ describe('CN-019 — the subject, and why it is not `node != null`', () => {
     // The control, and the whole point of the case: state the subject wrongly
     // and the file is told to read a port it has never heard of. A guard on
     // emptiness cannot tell these two calls apart — only the subject can.
-    const asNode = portBarState('script', stale, KIT_INDEX, 'node');
+    //
+    // ⚠️ **FIX-016 moved this control from `'script'` to `'function'`, and the
+    // reason is worth keeping.** It used to read `'script'`, matching the file
+    // arm above, because that is the mode a kit's `index.js` opens in. The bar
+    // is now silent for `'script'` in **either** subject — a Script node does not
+    // use `Inputs.`/`Outputs.` notation, so the bar has no true sentence for it
+    // — which means script mode can no longer show what a wrong subject costs.
+    // The subject gate is still the only thing standing in `'function'`, so the
+    // control moves there rather than being deleted.
+    const asNode = portBarState('function', stale, KIT_INDEX, 'node');
     expect(asNode.kind).toBe('unused-ports');
     expect(portBarMessage(asNode)).toContain('Temperature');
+
+    // ✅ And the defence-in-depth fact the move would otherwise hide: in the mode
+    // a file actually opens in, the wrong subject is now harmless twice over.
+    expect(portBarState('script', stale, KIT_INDEX, 'node')).toEqual({ kind: 'silent' });
   });
 
   it('still speaks for a real node, which is the feature this must not retire', () => {
-    // AC3. FUN-006's whole reason to exist, in the mode a Script node uses and
-    // the mode a Function node uses.
-    expect(portBarState('script', node([]), '', 'node')).toEqual({ kind: 'no-ports' });
+    // AC3. FUN-006's whole reason to exist.
+    //
+    // ⚠️ **FIX-016 narrowed this row from two modes to one, deliberately.** It
+    // used to assert the bar spoke *"in the mode a Script node uses and the mode
+    // a Function node uses"*. The first half was the defect: the sentence below
+    // is `Inputs.` notation, and typing `Inputs.` in a Script node creates no
+    // port and throws. The bar not speaking there is now the requirement, pinned
+    // in `scriptPortNotation.test.ts`; this row keeps the half that is real.
+    expect(portBarState('function', node([]), '', 'node')).toEqual({ kind: 'no-ports' });
     expect(messageFor('', node([]))).toBe(
       'This node has no ports yet. Type Inputs. — the name you use becomes an input port.'
     );
