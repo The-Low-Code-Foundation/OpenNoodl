@@ -8,6 +8,70 @@
 | **Rulings** | — |
 | **Depends on** | CN-003 (the node library must refresh, not just the render) |
 
+## ✅ AC1's library half — BUILT 2026-08-17 (s20)
+
+🔴 **The measure-first pass had already happened without the task being open.** s15 measured
+"a kit scaffolded into the open project never appears" (AC2's half — a viewer reload is *necessary
+and sufficient*), and s19, driving CN-010 AC1, measured the other half by accident: **a kit node's
+definition is frozen after its first delivery.** One write to `index.js` flipped an existing node's
+condition *and* added a new node; one viewer reload delivered the new node and never the change.
+
+**Cause, two halves, both in `NodeLibraryImporter`:**
+
+1. `mergeUpdates`' known-name branch carried `// TODO: Update the node data?` and discarded the new
+   definition. Now the owning runtime replaces its own data.
+2. `mergeInByName` **did** replace the picker-index entry but never set `updated`, so `updateIndex`
+   published nothing and `NodeLibrary.instance.reload()` never ran. The fresh group reached the
+   picker only when something else in the same import happened to flip the flag.
+
+🔴 **The obvious fix would have broken 84 built-ins.** An unconditional replace lets the generated
+cloud library — which merges once per session and shares **all 84** of its type names with the
+browser library (`Expression`, `REST2`, `Model2`, …), with **all 84 definitions differing** — capture
+those names and invert a precedence that has always been first-writer-wins. The fix therefore gates
+on a `dataOwner` map: **which runtime's report the data came from**, which is a different question
+from `runtimeTypes` (a union, and both runtimes are in it for those 84).
+
+🔴 **`clientId` cannot be that key.** An ordinary viewer mints a fresh `guid()` on every socket open
+(`editorconnection.ts:194`) and only a sandbox preview passes a fixed one — so "the same client
+re-imported" is unanswerable, and a fix keyed on it would never fire. Measured before building.
+⚠️ A rule keyed on *"`runtimeTypes` has one entry"* is also wrong: it silently stops refreshing
+exactly those 84.
+
+**8 tests, 5/5 mutations killed** (`tests-unit/cn-014/kitDefinitionRefresh.test.ts`); editor
+`test:main` **3,601 / 234 suites**, `typecheck:editor` **0**. The precedence control is built from
+the two **real** payloads on disk and asserts they *disagree* first — overlap alone would have made
+it vacuous.
+
+### 🚗 DRIVEN the same session — and the panel is a second surface, as predicted
+
+Observations written **before** launch; full readings in
+[notes/cn-014-ac1-drive.md](notes/cn-014-ac1-drive.md).
+
+One write renamed a port's `displayName` **and** added a new node; one viewer reload:
+
+| surface | before | after one reload |
+|---|---|---|
+| `NodeLibrary.instance.types.length` | 177 | **178** ✅ |
+| library's `title.displayName` | `Title` | **`Panel Heading`** ✅ |
+| **property panel, node still selected** | `Title` | **`Title`** ⚠️ |
+| property panel, after re-selecting | — | **`Panel Heading`** ✅ |
+
+🔴 **Both library cells moving on one reload is the fix** — that combination was impossible before.
+✅ **O3 held live**: `Expression` / `REST2` / `Model2` still carry `["browser","cloud"]` with full
+port sets, so the cloud library did not capture them.
+
+⚠️ **Residual, reproduced twice: an open property panel does not re-render on `libraryUpdated`.**
+Second cycle polled the panel **six times over 30 s without touching anything** and it never moved,
+then one re-selection updated it — so the variable is the selection change, **not** elapsed time.
+`reload()` does fire the event; the panel is not among the listeners that rebuild from it.
+**Severity is far below the bug behind it**: an author recovers by clicking any other node and back,
+and ordinary authoring does that constantly — whereas the frozen definition needed an editor
+restart and mislabelled itself as *"dynamic ports don't work"*. **It wants a small follow-up, not a
+reopening of this criterion.**
+
+⚠️ **AC1's second clause — a connected port that disappears from a kit — is recorded as UNMEASURED,
+not as working.**
+
 ## 🔴 Measure first — the answer may be "most of it already works"
 
 Editing a kit and seeing the change should not require restarting the editor. **What happens today is

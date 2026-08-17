@@ -29,6 +29,22 @@ const STATIC_CLOUD_CLIENT_ID = '__cloud_node_library__';
 const WORKFLOW_CLIENT_ID = '__workflow_step_kinds__';
 
 /**
+ * CN-014 — has a runtime's report of a node actually changed?
+ *
+ * `runtimeTypes` is excluded because it is the editor's own bookkeeping: it is
+ * written onto the stored node and never present on an incoming one, so a naive
+ * comparison would call every node changed on every import.
+ *
+ * Key order is stable in practice (both sides are parsed from the same
+ * generator's JSON), and the failure direction if it ever were not is a
+ * redundant library reload rather than a missed one.
+ */
+function nodeDataDiffers(existing: NodeLibraryDataNodeType, incoming: NodeLibraryDataNodeType): boolean {
+  const { runtimeTypes: _ignored, ...existingData } = existing;
+  return JSON.stringify(existingData) !== JSON.stringify(incoming);
+}
+
+/**
  * Keep track of all the clients and their nodes.
  *
  * This is so we can make sure we always give the user the correct information
@@ -123,14 +139,35 @@ export class NodeLibraryImporter {
    *
    * Held rather than merged-and-forgotten because a workflow library is
    * *replaced*, not merged: two backends can serve different versions of the
-   * same kind, and `mergeUpdates` deliberately never updates an existing node's
-   * data (it has always been additive). Merging a second backend's catalog on
-   * top of the first would leave the first backend's params in place under the
-   * second backend's name — the exact drift the served registry exists to
-   * prevent. So the names installed last time are remembered and removed first.
+   * same kind. Merging a second backend's catalog on top of the first would
+   * leave the first backend's params in place under the second backend's name —
+   * the exact drift the served registry exists to prevent. So the names
+   * installed last time are remembered and removed first.
+   *
+   * ⚠️ **CN-014 changed the sentence this used to lean on.** `mergeUpdates` is
+   * no longer purely additive — a runtime may now replace the data of a node it
+   * owns. That does *not* make the remove-first dance redundant: a workflow
+   * library never travels through `mergeUpdates` at all (it is pushed straight
+   * into `nodetypes` by {@link applyWorkflowLibrary}), so nothing else would
+   * ever evict the previous backend's kinds.
    */
   private workflowLibrary: NodeLibraryData | null = null;
   private workflowNodeNames = new Set<string>();
+
+  /**
+   * CN-014 — which runtime's report the *data* behind each node name came from.
+   *
+   * `runtimeTypes` on a node is a union: it answers "where can this node run?",
+   * and after the generated cloud library merges, 84 of the browser library's
+   * 177 names carry both Browser and Cloud. It therefore cannot answer the
+   * question a refresh has to ask, which is "whose definition is this?".
+   *
+   * Precedence today is first-writer-wins: the browser client establishes the
+   * library and the cloud merge only ever appends a runtime type. Keeping that
+   * exactly as it is, while letting a runtime replace *its own* previous report,
+   * is what this map is for — see {@link mergeUpdates}.
+   */
+  private dataOwner = new Map<string, RuntimeType>();
 
   constructor() {
     EventDispatcher.instance.on(
@@ -141,6 +178,7 @@ export class NodeLibraryImporter {
         this.hasStaticCloudLibrary = false;
         this.workflowLibrary = null;
         this.workflowNodeNames.clear();
+        this.dataOwner.clear();
       },
       this
     );
@@ -210,6 +248,7 @@ export class NodeLibraryImporter {
     this.clients.clear();
     this.currentNodeLibrary = null;
     this.hasStaticCloudLibrary = false;
+    this.dataOwner.clear();
   }
 
   /**
@@ -323,6 +362,9 @@ export class NodeLibraryImporter {
     // Add what runtime the nodes are from.
     this.currentNodeLibrary.nodetypes.forEach((node) => {
       node.runtimeTypes = [runtimeType];
+      // CN-014: this runtime established the data, so it is the one allowed to
+      // replace it later.
+      this.dataOwner.set(node.name, runtimeType);
     });
 
     // Make sure the data structure is what we expect
@@ -345,18 +387,47 @@ export class NodeLibraryImporter {
         // Add the node, if it doesnt exist with the correct runtime
         node.runtimeTypes = [runtimeType];
         this.currentNodeLibrary.nodetypes.push(node);
+        this.dataOwner.set(node.name, runtimeType);
         updated = true;
       } else {
-        // TODO: Update the node data?
+        const existing = this.currentNodeLibrary.nodetypes[index];
 
         // Create the array if it doesnt exist
-        if (!this.currentNodeLibrary.nodetypes[index].runtimeTypes) {
-          this.currentNodeLibrary.nodetypes[index].runtimeTypes = [];
+        if (!existing.runtimeTypes) {
+          existing.runtimeTypes = [];
         }
 
         // Insert the new runtime if we dont have it.
-        if (!this.currentNodeLibrary.nodetypes[index].runtimeTypes.includes(runtimeType)) {
-          this.currentNodeLibrary.nodetypes[index].runtimeTypes.push(runtimeType);
+        if (!existing.runtimeTypes.includes(runtimeType)) {
+          existing.runtimeTypes.push(runtimeType);
+          updated = true;
+        }
+
+        /**
+         * CN-014 — a re-reporting runtime replaces its own node data.
+         *
+         * This used to be `// TODO: Update the node data?` and the answer was
+         * "never", which is what froze a kit node's definition after its first
+         * delivery: a viewer reload carries the author's edited `index.js`, but
+         * the editor already knew the type name, so it took this branch and
+         * discarded the new ports, dynamic ports and docs. A *new* node in the
+         * same file arrived immediately (the branch above), so the author sees
+         * the kit reload working and their edit ignored — which reads as "kit
+         * dynamic ports are broken" rather than "the library did not refresh".
+         *
+         * Gated on ownership rather than done unconditionally. The generated
+         * cloud library shares **all 84** of its names with the browser library
+         * (`Expression`, `REST2`, `Model2`, …), and it merges on top of the
+         * browser's report once per session — so an unconditional replace here
+         * would silently hand 84 built-ins' definitions to the cloud library and
+         * invert a precedence that has always been first-writer-wins.
+         */
+        if (this.dataOwner.get(node.name) === runtimeType && nodeDataDiffers(existing, node)) {
+          // The union is the accumulated answer to "where can this run?" and is
+          // not this report's to narrow: the cloud merge may already have added
+          // itself to a node this runtime owns.
+          node.runtimeTypes = existing.runtimeTypes;
+          this.currentNodeLibrary.nodetypes[index] = node;
           updated = true;
         }
       }
@@ -367,16 +438,30 @@ export class NodeLibraryImporter {
       inputArray.forEach((inputItem) => {
         const index = outputArray.findIndex((_t) => inputItem.name === _t.name);
         if (index !== -1) {
+          /**
+           * CN-014 — replacing here has always happened; *saying so* has not.
+           *
+           * The replacement is real (this is how a kit's picker group is kept
+           * current) but `updated` stayed false, so `updateIndex` published
+           * nothing and `NodeLibrary.instance.reload()` never ran. The fresh
+           * group sat in `currentNodeLibrary` and reached the picker only if
+           * something else in the same import happened to flip the flag — which
+           * is why adding a node to a kit refreshed its group and editing one
+           * did not.
+           *
+           * The commented-out `if (inputArray.length > 0) updated = true` this
+           * replaces was the right instinct in the wrong place: it fires on
+           * every import, including the ones that change nothing.
+           */
+          if (JSON.stringify(outputArray[index]) !== JSON.stringify(inputItem)) {
+            updated = true;
+          }
           outputArray[index] = inputItem;
         } else {
           outputArray.push(inputItem);
           updated = true;
         }
       });
-
-      // if (inputArray.length > 0) {
-      //   updated = true;
-      // }
     }
 
     if (library.nodeIndex.coreNodes) {
