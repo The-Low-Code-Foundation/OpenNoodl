@@ -91,3 +91,129 @@ Two consequences, both binding:
 
 - Library/shelf discovery and `install_prefab` — ✅ **D7** leaves those with P65's rescoped LBR-008,
   which layers on CN-003 rather than duplicating it.
+
+---
+
+# ✅ BUILT — session 17, 2026-08-17
+
+**4 of 5 acceptance criteria met. AC5's consequence half is not, and says so below.**
+`src/catalog.ts` only; 14 tests in [`tests/cn009.test.ts`](../../../packages/noodl-mcp/tests/cn009.test.ts),
+**8 of 8 mutations killed**, full `noodl-mcp` jest **599 passed / 51 suites**.
+
+## 1. ✅ AC3 first, because the task says to measure before designing
+
+```
+before:  [surface] 8223 tokens / 20 resident tools — 57 under the 8280 budget
+after:   [surface] 8223 tokens / 20 resident tools — 57 under the 8280 budget
+```
+
+**The margin is unchanged, because this task spent nothing.** No tool description, input schema or
+group `purpose` was touched — every fact added travels in a **response**, which the gate does not
+measure and a model does not pay for on turns it does not ask. That is the task's own constraint 2
+("prefer enriching existing tools over adding new ones") taken to its end, and it settles the binding
+renegotiation condition: **there is no third renegotiation, and the `$ref` fix is still unspent and
+still available to whoever needs it next.**
+
+⚠️ So the "what does it displace" answer is *nothing* — but note that is a property of this design,
+not of the problem. A version that explained provenance in `list_node_types`' description would have
+cost ~15–25 of the 57.
+
+## 2. 🔴 Two of the five criteria were already met, and the reasons differ
+
+s16 flagged this and asked for it to be confirmed rather than inherited. Confirmed, by running the
+tools against the **real cashflow project** (`NodeGX test projects/cashflow-command-centre`) through
+CN-003's headless extractor:
+
+| | before any change here |
+|---|---|
+| `list_node_types` → the five `nodegx.cashflow.*` types | ✅ all five |
+| `get_node_type('nodegx.cashflow.Pill')` | ✅ **23 inputs / 14 outputs** — exactly AC2's counts |
+| …with provenance | 🔴 **absent** — row and detail both dropped `providedBy`/`kitModule` |
+| `validate_component` / `validate_project` on a kit node | ✅ inherited from CN-004, confirmed |
+
+**AC2 was met on arrival.** AC1's *"returns the five kit types"* half was too; its *"with
+provenance"* half was not, and that is the half ✅ **D1** exists for.
+
+## 3. 🔴 The finding: a kit reached the agent with no statement of what it was for
+
+Not in the task, and worth more than the provenance it was found beside.
+
+`summary` was read from `enrichment`, which is generated at **repo-build time and keyed by type
+name** — so **a kit type can never be in it**. The author's `docs` sentence was carried faithfully
+into the overlay by `@nodegx/kit-catalog` and then dropped here. A kit node therefore arrived at the
+model as a name, a category and a list of ports, with nothing saying what it does.
+
+**And it cost the kit its only free-text handle.** `list_node_types`' `query` searches the summary,
+so — measured on the cashflow kit before the fix:
+
+| query | before | after |
+|---|---|---|
+| `"draggable"` | **[]** | `nodegx.cashflow.Pill` |
+| `"snaps to whole days"` | **[]** | `nodegx.cashflow.Pill` |
+| `"pill"` | `…Pill` | `…Pill` (matched the *name*, which is why the gap was invisible) |
+
+That third row is why nobody noticed: every query anyone would try while *already knowing the node
+existed* worked. Only a query by subject — the kind you type when you do **not** know — returned
+nothing.
+
+⚠️ **This is CN-008 finding 3 again, in the other consumer.** It was two bugs, not one reachable
+twice: the editor reads the repo-build `enrichedNode()` table and this reads the merged catalog
+document, so there is no shared upstream that could have held the rule. The fix is deliberately the
+same shape as s16's (`kitDocs`), gated the same way, and each side's comment points at the other.
+
+🔴 **The gate is load-bearing and its obvious test cannot fail.** `docs` is one field over two
+vocabularies — prose on a kit node, a **URL** on a shipped one (158 of 175 built-ins carry one; 158
+of 158 are `docs.noodl.net`). But all 175 built-ins *also* have an `enrichment.summary`, so the
+fallback is never reached for them whether it is gated or not: "no built-in shows a URL as its
+summary" passes against a completely ungated implementation. The suite's control is therefore a
+hand-built node shaped so the fallback **would** fire, and it dies when the gate is removed.
+
+## 4. ⚠️ One scope reading, stated rather than taken quietly
+
+The task says *"**`find_tools`** matches kit node names and their `docs` text."* **Built as
+`list_node_types({query})` instead**, for a reason that is structural rather than convenient:
+
+- `find_tools` reveals **deferred tools**. `list_node_types` and `get_node_type` are in the
+  **`core`** group and are **resident** — always advertised. So there is no tool for `find_tools` to
+  reveal in answer to a kit node's name; the clause as literally written is a no-op.
+- Making it match anyway would mean widening the `project` group's `purpose` line, which is re-sent
+  on every turn, costs resident tokens out of the same 57, **and is guarded by a deliberate control**
+  (`kitTools.test.ts`, *"⚠️ CONTROL — a query about what it DOES does not find it"*) written
+  precisely so that trade is re-decided out loud rather than drifted into.
+
+So the capability the clause is after — *find a kit node by what it does, not by knowing its name* —
+is delivered, on the resident tool that already answers node questions, for zero tokens. **The
+`find_tools` control is untouched and still green.**
+
+## 5. ⚠️ AC5 — the caller is built and driven; the consequence is not met
+
+AC5 asks to *"drive a real MCP session that discovers a kit node it was not told about and places
+it"*, and then says the quiet part itself: *"Tool output changing shape is the mechanism; an agent
+successfully using an unfamiliar node is the consequence."*
+
+**Built:** a real server over the real protocol walks the whole chain — search by subject
+(`"percentage"`, a word in the kit's `docs` and in neither the type name nor the display name) →
+read `providedBy: "project-kit"` / `kitModule: "Demo Kit"` off the row → `get_node_type` for the
+ports → `create_component` placing the node with a port learned from that answer → validator clean →
+files on disk. Its control places the same node with `vlaue` for `value` and gets
+`unknown-parameter … did you mean \`value\`?` — the diagnostic, not just a refusal, because "the
+validator agreed" is otherwise indistinguishable from "the validator skipped a type it never knew"
+(CN-002's state).
+
+🔴 **Not met: the choice to search for "percentage" is mine, not a model's.** Like CN-008's AC1 this
+needs a live model, and it cannot be run headlessly. AC5 is the only criterion still open.
+
+## 6. Traps handled
+
+- ✅ **The `dist/` trap.** Nothing here was verified against a packaged server. The suite builds
+  CN-003's extractor from source per run (`buildKitExtractor`); a **registered** MCP server still
+  loads from `/Applications/…` and does **not** have this change until a repackage.
+- ✅ **No leak across projects.** AC4 is asserted over the whole catalog with the overlay cleared:
+  zero rows gain a kit field **and** zero summaries start with `http` — the second half matters
+  because an ungated fallback changes row *content* without adding a key, which no key-counting
+  assertion would see.
+- 🔴 **The cashflow figures above are recorded measurements, not assertions.** That kit lives outside
+  the repo under no gate (§5 of the phase's carried list), so a suite reading it would pass on this
+  machine and fail in every other checkout. Every assertion runs on `tests/fixtures/kit-app` and
+  `tests/fixtures/kit-hazards`, which are versioned — and `kit-hazards` is what makes the two-kit
+  case real, since a bug stamping every row with the *first* kit's name passes a one-kit fixture.

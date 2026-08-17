@@ -15,7 +15,7 @@ import type { CatalogNode, CatalogPort, NodeCatalog } from './editor-deps';
 // the payload the viewer already sent it. See `@nodegx/kit-catalog`'s header for
 // why there is one mapping and not two.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { mergeOverlay } = require('@nodegx/kit-catalog');
+const { KIT_PROVENANCE, mergeOverlay } = require('@nodegx/kit-catalog');
 import type { NodeCatalogLike, OverlayCatalogNode } from '@nodegx/kit-catalog';
 
 // require() instead of import: keeps TypeScript from inferring a 1.45 MB
@@ -159,6 +159,77 @@ export function allExamples(): CatalogExample[] {
   return shippedCatalog.examples ?? [];
 }
 
+// ─── CN-009 — the two facts a kit node carries and a built-in does not ────────
+
+/**
+ * Where this node came from, when the answer is "a kit in the bound project".
+ *
+ * ✅ **D1** makes provenance a first-class fact — *"when a node misbehaves you
+ * need to know who wrote it"* — and an agent needs it for the same reason the
+ * property panel shows it to a human: it is the difference between a bug to file
+ * against NodeGX and one to file against the kit sitting in `noodl_modules/`.
+ *
+ * ⚠️ **Emitted only for kit nodes, and that is a deliberate asymmetry rather
+ * than a reduced-fidelity path.** Every shipped node also carries `providedBy`
+ * (`noodl-runtime` | `noodl-viewer-react` | `noodl-editor` | `noodl-viewer-cloud`
+ * — measured, all 175), but which of the four a built-in came from changes
+ * nothing an agent does, and stamping it on all 147 listing rows costs ~4 KB of
+ * response on every `list_node_types` call to say the same uninformative thing
+ * 147 times. **P1** forbids a kit node reaching *less* than a built-in; these two
+ * fields give it *more*, which is exactly what D1 asked for.
+ *
+ * Presence is therefore self-describing — `providedBy: "project-kit"` in a
+ * payload needs no tool-description sentence to explain it, which is why this
+ * whole change costs **zero** of CN-009's 57 resident tokens.
+ */
+function kitOrigin(n: EnrichedCatalogNode): { providedBy: string; kitModule: string } | undefined {
+  const anyN = n as unknown as { providedBy?: unknown; kitModule?: unknown };
+  if (anyN.providedBy !== KIT_PROVENANCE) return undefined;
+  return {
+    providedBy: KIT_PROVENANCE as string,
+    kitModule: typeof anyN.kitModule === 'string' ? anyN.kitModule : ''
+  };
+}
+
+/**
+ * The one-line statement of what a node is for — from enrichment, or from a kit
+ * author's own `docs` string.
+ *
+ * 🔴 **`docs` is one field name over two vocabularies, and reading it without
+ * splitting them is a defect rather than a nicety.** On a **shipped** catalog
+ * node `docs` is a *URL*: 158 of the 175 built-ins carry one and 158 of 158 of
+ * those are `https://docs.noodl.net/…` — zero are prose (measured against
+ * `node-catalog-enriched.json`, 2026-08-17). On a **kit** node it is the
+ * sentence the author wrote about their node. An ungated `enrichment.summary ??
+ * docs` fallback would therefore put a documentation link where a summary goes,
+ * so the fallback is gated on provenance and **a project with no kits gets a
+ * byte-identical answer**.
+ *
+ * Without this, a kit node reached `get_node_type` with a heading, a port list
+ * and **no statement of what it is for at all** — the author's `docs` was
+ * carried faithfully into the overlay by `@nodegx/kit-catalog` and then dropped
+ * here, because `enrichment` is generated at repo-build time and keyed by type
+ * name, so a kit type can never be in it. It also cost the kit its only
+ * free-text handle: `list_node_types`' `query` searches the summary, so
+ * `query: "draggable"` matched **nothing** on a kit whose `docs` opens with the
+ * word "draggable" (measured before the fix).
+ *
+ * ⚠️ **The same rule exists once more, editor-side**, as `kitDocs` in
+ * `AuthoringContextBuilder` (CN-008). The duplication is forced rather than
+ * sloppy: the two consumers read *different* enrichment sources — this one the
+ * merged catalog document, that one the repo-build `enrichedNode()` table — so
+ * there is no single place upstream that could hold it. Change one, change both.
+ */
+function summaryOf(n: EnrichedCatalogNode): string | undefined {
+  const enriched = n.enrichment?.summary;
+  if (enriched) return enriched;
+  if (!kitOrigin(n)) return undefined;
+  const docs = (n as unknown as { docs?: unknown }).docs;
+  if (typeof docs !== 'string') return undefined;
+  const trimmed = docs.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 // ─── Compact listing ──────────────────────────────────────────────────────────
 
 export interface NodeTypeRow {
@@ -171,6 +242,10 @@ export interface NodeTypeRow {
   deprecated?: boolean;
   /** false ⇒ superseded/specialised type hidden from the editor's picker. */
   inNodePicker?: boolean;
+  /** CN-009 — `"project-kit"` on a node one of this project's kits declares; absent on a built-in. */
+  providedBy?: string;
+  /** CN-009 — the kit that declared it. Present exactly when `providedBy` is. */
+  kitModule?: string;
 }
 
 export interface ListNodeTypesFilter {
@@ -192,12 +267,21 @@ export function listNodeTypes(filter: ListNodeTypesFilter = {}): NodeTypeRow[] {
     if (!filter.includeHidden && (n.isDeprecated || n.inNodePicker === false)) continue;
     if (filter.category && (n.category ?? '').toLowerCase() !== filter.category.toLowerCase()) continue;
     if (filter.visualOnly && !n.isVisual) continue;
+    // CN-009 — the resolved summary, so a kit's own `docs` sentence is
+    // searchable. Computed before the filter rather than after it: searching the
+    // row's summary and *displaying* a different one is the shape where a query
+    // matches a node the caller then cannot see the reason for.
+    const summary = summaryOf(n);
+    const origin = kitOrigin(n);
     if (q) {
       const hay = [
         n.typeName,
         n.displayName,
         n.category ?? '',
-        n.enrichment?.summary ?? '',
+        summary ?? '',
+        // The kit's name is a handle a caller has and the type name may not
+        // carry — `nodegx.cashflow.Pill` does not contain "Cashflow Kit".
+        origin?.kitModule ?? '',
         ...((n as { searchTags?: string[] }).searchTags ?? [])
       ]
         .join(' ')
@@ -208,12 +292,16 @@ export function listNodeTypes(filter: ListNodeTypesFilter = {}): NodeTypeRow[] {
       typeName: n.typeName,
       displayName: n.displayName,
       category: n.category,
-      summary: n.enrichment?.summary,
+      summary,
       isVisual: n.isVisual,
       availableIn: n.availableIn as unknown as string[]
     };
     if (n.isDeprecated) row.deprecated = true;
     if (n.inNodePicker === false) row.inNodePicker = false;
+    if (origin) {
+      row.providedBy = origin.providedBy;
+      row.kitModule = origin.kitModule;
+    }
     rows.push(row);
   }
   rows.sort((a, b) => (a.typeName < b.typeName ? -1 : 1));
@@ -256,6 +344,10 @@ export interface NodeTypeDetail {
   isVisual: boolean;
   deprecated?: boolean;
   availableIn: string[];
+  /** CN-009 — `"project-kit"` on a node one of this project's kits declares; absent on a built-in. */
+  providedBy?: string;
+  /** CN-009 — the kit that declared it. Present exactly when `providedBy` is. */
+  kitModule?: string;
   /** Server-side-rendering compatibility (RUN-002); absent for cloud-only types. */
   ssr?: { compat: 'safe' | 'partial' | 'client-only'; note?: string };
   summary?: string;
@@ -338,6 +430,17 @@ export interface NodeTypeSummary {
   category?: string;
   isVisual: boolean;
   deprecated?: boolean;
+  /**
+   * CN-009 — `"project-kit"` on a node one of this project's kits declares.
+   *
+   * 🔴 Carried here and not only in full detail because `summary` is
+   * `get_node_type`'s **default** (AWP-005 §2). Provenance that only survives
+   * `detail: "full"` is provenance the overwhelming majority of calls never see,
+   * which would make D1 true of a mode nobody uses.
+   */
+  providedBy?: string;
+  /** CN-009 — the kit that declared it. Present exactly when `providedBy` is. */
+  kitModule?: string;
   summary?: string;
   /** `"in name: type"` / `"out name: type (signal)"` one-liners. */
   ports: string[];
@@ -462,6 +565,10 @@ export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeType
   }
   if (full.category) s.category = full.category;
   if (full.deprecated) s.deprecated = true;
+  if (full.providedBy) {
+    s.providedBy = full.providedBy;
+    s.kitModule = full.kitModule;
+  }
   if (full.summary) s.summary = full.summary;
   if (full.dynamicPorts) {
     s.hasDynamicPorts = true;
@@ -537,8 +644,17 @@ export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLo
     examples
   };
   if (n.isDeprecated) detail.deprecated = true;
+  const origin = kitOrigin(n);
+  if (origin) {
+    detail.providedBy = origin.providedBy;
+    detail.kitModule = origin.kitModule;
+  }
   if (n.ssr) detail.ssr = n.ssr;
-  if (e?.summary) detail.summary = e.summary;
+  // CN-009 — `summaryOf`, not `e?.summary`: a kit type is never in the
+  // repo-build enrichment table, so this is the only route its author's own
+  // sentence has into the answer. See `summaryOf` for why it is gated.
+  const summary = summaryOf(n);
+  if (summary) detail.summary = summary;
   if (e?.description) detail.description = e.description;
   if (e?.whenToUse) detail.whenToUse = e.whenToUse;
   if (e?.runtimeBehavior) detail.runtimeBehavior = e.runtimeBehavior;
