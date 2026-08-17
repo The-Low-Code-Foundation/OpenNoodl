@@ -137,52 +137,45 @@ describe('the editor route and the MCP route', () => {
   });
 });
 
-describe('🔴 the one thing the two routes do not agree about: the kit’s name', () => {
+describe('✅ the two routes now agree about the kit’s name as well', () => {
   /**
-   * Found by building this suite, and it is a real defect rather than a test
+   * Found by building this suite, and it was a real defect rather than a test
    * artefact — `compareOverlays` does not compare `kitModule`, so nothing else
    * would have said so.
    *
    * `NoodlRuntime.registerModule` names a module from the object the kit passed
    * to `Noodl.defineModule` (`noodl-runtime.ts:517`:
-   * `wrapped.node.module = module.name || 'Unknown Module'`). **No kit sets that
+   * `wrapped.node.module = module.name || 'Unknown Module'`). **No kit set that
    * name** — not this fixture and not the cashflow reference kit; the name lives
-   * in `manifest.json`, which the *viewer* never reads. The MCP extractor does
-   * read it (`entry.js`: `module.name = module.name || moduleName`), so:
+   * in `manifest.json`, which the *viewer* never read. The MCP extractor did
+   * read it (`entry.js`: `module.name = module.name || moduleName`), so the two
+   * routes disagreed for every node: `'Demo Kit'` headlessly,
+   * `'Unknown Module'` in the editor.
    *
-   * - MCP route → `kitModule: 'Demo Kit'`, from the manifest.
-   * - Editor route → `kitModule: 'Unknown Module'`, for **every kit**.
+   * ## ✅ FIXED 2026-08-16 (slice 4), and RE-RECORDED 2026-08-17 (s15)
    *
-   * Measured in the running editor on 2026-08-16 alongside this fixture's
-   * recording: `nodeIndex.moduleNodes` carried one entry whose `name` was the
-   * **empty string**, so the picker's section for a project's own nodes is
-   * unnamed too.
-   *
-   * ## ✅ FIXED 2026-08-16 (slice 4) — and this assertion is now a **fossil**
-   *
-   * 🔴 **Read this before believing the line below.** The defect is fixed:
-   * `@nodegx/module-inject` now emits `window.__noodl_module_name` immediately
+   * `@nodegx/module-inject` emits `window.__noodl_module_name` immediately
    * before each kit's script tag, and the three runtime bootstraps adopt it in
    * `defineModule` (graded in `@nodegx/module-inject`'s suite and in
    * `noodl-viewer-react/tests/module-name.test.js`, both mutation-proven).
    *
-   * The **recording** on the editor side of this file predates that fix and
-   * still says `'Unknown Module'`, so this test asserts what the editor said on
-   * 2026-08-16 *before* the change — not what it says now. It cannot be
-   * corrected from here: the recording is a capture from a running editor, and
-   * the editor loads its bootstrap from `src/external/viewer` (gitignored build
-   * output of `noodl-viewer-react/static`), so re-recording needs a viewer build
-   * and a drive.
+   * 🔴 **This assertion spent a day as a fossil, and that is the transferable
+   * part.** The fix landed on 2026-08-16 but the *recording* on the editor side
+   * predated it, so the line below read `'Unknown Module'` — a dated measurement
+   * wearing the clothes of a current one, which is exactly the shape this repo
+   * keeps getting caught by, hence the name of the test. Three handovers then
+   * carried "owed: re-record after a viewer build" as if the build were the
+   * blocker; a viewer build carrying the fix had in fact existed since
+   * 2026-08-16 21:57. **A claim that something is blocked on an artefact is a
+   * claim about that artefact's mtime and contents — check both.**
    *
-   * ⚠️ **Owed: re-record after a viewer build, and this expectation becomes
-   * `['Demo Kit', 'Demo Kit']`.** Until then the line below is a dated
-   * measurement wearing the clothes of a current one, which is exactly the shape
-   * this repo keeps getting caught by — hence the name of the test.
+   * Re-recorded from a running editor on 2026-08-17 with the fixture copied to a
+   * scratchpad and opened there; the header inside the JSON records the capture.
    */
-  it('was, at the 2026-08-16 recording, named from the manifest headlessly and unnameable in the editor', () => {
+  it('names the kit from the manifest on both routes', () => {
     expect(mcpNodes.map((n) => n.kitModule)).toEqual(['Demo Kit', 'Demo Kit']);
-    // ⚠️ The recorded editor payload, not a live one. See the note above.
-    expect(editorNodes.map((n) => n.kitModule)).toEqual(['Unknown Module', 'Unknown Module']);
+    // The recorded editor payload, re-recorded 2026-08-17. See the note above.
+    expect(editorNodes.map((n) => n.kitModule)).toEqual(['Demo Kit', 'Demo Kit']);
 
     // …and the agreement check is silent about it, deliberately: it compares
     // what a *validator* needs. Recorded so nobody reads its green as covering
