@@ -115,9 +115,24 @@ costs one minute and closes the last unobserved gap in RUN 1.
 ## 5. RUN 2 — CN-017 Trust. Self-contained. Start here.
 
 **Why before CN-016:** CN-016 lists CN-017 as a gate for anything not first-party, and CN-017 depends
-on nothing outside this repo. `verifyLibrarySource` (ERG-002) and `registerLibrary`'s
-`kind: 'external-library'` marker already exist — this is **wiring an existing mechanism to kits**,
-not inventing one.
+on nothing outside this repo.
+
+🔴 **CORRECTION to this section, measured after it was written.** It said *"this is wiring an existing
+mechanism to kits, not inventing one."* That is **half right and the wrong half is load-bearing** —
+[NEXT-SESSION-PROMPT.md](NEXT-SESSION-PROMPT.md) §2 has the readings:
+
+- The **verify-before-write discipline** is real and live, but on the **library** path
+  (`LibrariesSection.tsx:103` → `registerLibrary` → `verifyLibrarySource`).
+- **A third-party kit does not arrive there.** It arrives through the **Node Picker** —
+  `ModuleCard.tsx:59-60` → `ModuleLibraryModel.installModule` → download, unzip, import — with **no
+  verification, no consent and no provenance**, and a **user-data cache that is never re-verified
+  after the first install**.
+- 🔴 **`verifyLibrarySource` has the wrong contract for a kit.** It hard-requires a `globalName`; a kit
+  declares no global, it calls `Noodl.defineModule`. Two kit-shaped evaluators already exist
+  (`noodl-mcp/src/kitExtract/entry.js`, `static/ssr/kit-modules.js`) — reuse one, do not write a third.
+
+**Read the prompt's §2 before designing anything.** ERG-002 is the right *model*; it is not a socket
+this plugs into.
 
 Five ACs, and the two easiest to get wrong:
 
@@ -132,8 +147,11 @@ invites the reader to conclude local kits were verified. **Make the fields incap
 each other** — §4 above is this phase's second recorded case of exactly two fields made to
 contradict, and the first one shipped to a panel.
 
-⚠️ **Establish what the sandbox responder's `noodl_modules/` pattern (`responder.ts:36`) is for.**
-Vestigial or load-bearing — say which. Do not assume.
+✅ **Item 4 is already answered — do not spend a session on it.** `responder.ts`'s `noodl_modules/`
+entry sits in a `PASSTHROUGH` array whose own comment reads *"Paths the sandbox must not touch: the
+viewer's own origin-relative assets"*, beside `static/` and `favicon`. It is **HTTP routing in a mock
+Parse backend**, not a trust carve-out, and nothing should be built on top of it. Write the sentence
+into CN-017 and close the item.
 
 ⚠️ **Out of scope and must stay out:** signing, a trusted-author registry, runtime sandboxing of kit
 code. All defensible futures; none are D6.
