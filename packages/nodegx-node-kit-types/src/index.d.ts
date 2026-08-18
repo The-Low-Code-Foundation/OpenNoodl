@@ -683,8 +683,20 @@ export interface ReactNodeDefinition {
   displayNodeName?: string;
   /** Fallback for {@link displayNodeName}. */
   displayName?: string;
-  /** URL of the node's documentation page. */
+  /** Prose: the author's own sentence about what the node is for. */
   docs?: string;
+  /**
+   * URL of a documentation page for this node.
+   *
+   * 🔴 **Separate from {@link docs} on purpose (D10).** `docs` is one field over
+   * two vocabularies — a URL on the 158 shipped nodes that carry one, the kit
+   * author's own prose on a kit node — so a kit had no way to offer a link
+   * without its sentence being rendered as an `href` that opens nothing.
+   * Sniffing for `http` was considered and rejected: it encodes a guess about
+   * the author's intent in a regex, and it mislabels a kit whose prose merely
+   * opens with a URL. Two fields, two meanings, no guessing.
+   */
+  docsUrl?: string;
   allowChildren?: boolean;
   allowAsExportRoot?: boolean;
   /** Only one instance of this type may exist per project. */
@@ -789,15 +801,43 @@ export interface ReactNodeDefinition {
  *   answers it. ⚠️ See that method: declaring `runOnValueChange` does **not**
  *   wire itself, and the first kit written against this file got it wrong.
  *
- * 🔴 **The one thing that does NOT work, and it is about the manifest, not this
- * shape: a kit runs in the browser only.** `CloudRunner` calls `registerNodes`
- * and nothing else, and its `load()` has no parameter a module could arrive
- * through — the same cloud function answers `200` with a built-in `Counter` and
- * **times out** with a kit node, then answers `200` again once
- * `registerModule` is called by hand. The runtime is willing; there is no
- * caller. So `manifest.runtimes` has one honest value today, `["browser"]`, and
- * declaring `["cloud"]` takes the kit out of the browser injector and gains
- * nothing — the kit then runs nowhere. Leave the field out; it defaults right.
+ * ## Where a logic node runs — ✅ UPDATED, CN-013 / D18, 2026-08-18
+ *
+ * This paragraph used to read *"a kit runs in the browser only … there is no
+ * caller … `manifest.runtimes` has one honest value today, `["browser"]`"*. That
+ * was measured and true when written (CN-012 M4) and **it is now false**: the
+ * cloud loader landed and this file did not hear about it. It is kept as a
+ * sentence rather than deleted because it is the exact staleness this phase
+ * keeps re-finding — a claim of ABSENCE outlives the absence, and no suite
+ * reddens when it does.
+ *
+ * **There are two loaders, and `manifest.runtimes` has two honest values:**
+ *
+ * - **`browser`** — `@nodegx/module-inject`'s `buildInjectionTags` emits a
+ *   `<script>` tag per kit and the browser runs it.
+ * - **`cloud`** — `@noodl/cloud-runtime`'s `kitModules.ts` evaluates a
+ *   cloud-enabled kit's entry script and registers its **logic** nodes. The
+ *   cloud function that used to time out on a kit node now answers `200` with
+ *   that node's own arithmetic, measured through the esbuild bundle a deploy
+ *   target actually runs.
+ *
+ * 🔴 **The two are a set, not a fallback: `runtimes` is a filter on both sides.**
+ * Declaring `["cloud"]` alone still takes the kit out of the browser injector.
+ * A kit whose nodes are wanted in both places declares
+ * `["browser", "cloud"]`; leaving the field out defaults to browser and is
+ * still right for a visual kit.
+ *
+ * ⚠️ **There is no `"ssr"` value and there should not be.** SSR/SSG are the
+ * *browser* app rendered on a server: `static/ssr/kit-modules.js` loads exactly
+ * the scripts the injector put in the page, so a kit reaches a server render by
+ * declaring **`browser`**. A kit declaring only `ssr` is in no page and runs
+ * nowhere.
+ *
+ * ⚠️ **Cloud carries logic nodes only, and it cannot `require`.** A server-side
+ * SDK dependency is out of scope by D18 — a deployed backend is one prebuilt
+ * bundle with no `node_modules` for a package to land in — so the cloud
+ * loader's `require` shim throws a sentence naming that limit rather than
+ * dying on `require is not defined`.
  */
 export interface NodeDefinitionOptions {
   /** Canonical type string, as it appears in project files. Must be unique. */
@@ -809,8 +849,20 @@ export interface NodeDefinitionOptions {
   displayNodeName?: string;
   /** Fallback for {@link displayNodeName}. */
   displayName?: string;
-  /** URL of the node's documentation page. */
+  /** Prose: the author's own sentence about what the node is for. */
   docs?: string;
+  /**
+   * URL of a documentation page for this node.
+   *
+   * 🔴 **Separate from {@link docs} on purpose (D10).** `docs` is one field over
+   * two vocabularies — a URL on the 158 shipped nodes that carry one, the kit
+   * author's own prose on a kit node — so a kit had no way to offer a link
+   * without its sentence being rendered as an `href` that opens nothing.
+   * Sniffing for `http` was considered and rejected: it encodes a guess about
+   * the author's intent in a regex, and it mislabels a kit whose prose merely
+   * opens with a URL. Two fields, two meanings, no guessing.
+   */
+  docsUrl?: string;
   /** Extra terms the node picker matches on. */
   searchTags?: string[];
   color?: NodeColorName;
@@ -880,7 +932,21 @@ export interface NodeDefinitionOptions {
   /** Seed for the instance's `_internal` scratch space. */
   _internal?: Record<string, unknown>;
 
-  [extra: string]: unknown;
+  // ✅ D14 (2026-08-18): the index signature that stood here is GONE, so a
+  // misspelled optional field is a compile error instead of silence.
+  //
+  // It read `[extra: string]: unknown`, which made every typo assignable:
+  // only *required*-field mistakes were caught, and `displayNodeName` /
+  // `docs` misspellings were measured silent (s24). A logic node's whole
+  // authoring contract is this object, so the field a typo lands on is the
+  // one thing an author cannot check any other way.
+  //
+  // 🔴 This is the SECOND deliberate divergence from the runtime's own
+  // `NodeDefinitionOptions`, which keeps its index signature because it is a
+  // structural type the runtime assigns arbitrary internals onto.
+  // `tests/drift.test.js` names both divergences and their reasons — a
+  // missing index signature is invisible to a property-set comparison, so
+  // that test is the only thing that can see this line's absence.
 }
 
 /** Readable alias for {@link NodeDefinitionOptions}. */

@@ -170,24 +170,38 @@ describe('a correct annotated LOGIC kit', () => {
   });
 
   /**
-   * 🔴 **And the precise limit of the row above, because it is narrower than it
-   * looks.** `categry` is caught for one reason only: `category` is *required*,
-   * so misspelling it makes a required field go missing. Misspell an **optional**
-   * top-level field and nothing is reported — measured on `displayNodeName` and
-   * `docs`, both silent.
+   * ✅ **D14, 2026-08-18 — the call was taken, and this row is the REPLACEMENT
+   * for the silence baseline that stood here** (CN-002's rule: a deliberate
+   * silence is replaced when the call is taken, never deleted).
    *
-   * ⚠️ This is the asymmetry CN-005 closed for `ReactNodeDefinition` and did not
-   * close here: that interface's property set really is closed, so its index
-   * signature was dropped, and `drift.test.js` asserts that it is **the one**
-   * deliberate divergence. Closing `NodeDefinitionOptions` the same way was tried
-   * during CN-012 and is a real improvement — but it makes a *second* divergence
-   * and turns that drift row red, so it is CN-005's decision to take, not a
-   * side-effect of establishing the logic half. Recorded here so the next person
-   * finds the measurement rather than repeating it.
+   * What it used to assert: `categry` is caught for one reason only — `category`
+   * is *required*, so misspelling it makes a required field go missing — while
+   * an **optional** top-level typo was reported by nothing, measured silent on
+   * `displayNodeName` and `docs` (s24). The cause was
+   * `NodeDefinitionOptions`' `[extra: string]: unknown`, which made every
+   * misspelling assignable.
+   *
+   * CN-005 owns the decision and D14 took it: the index signature is gone from
+   * the published `NodeDefinitionOptions`, so the two faults below now fire.
+   * ⚠️ This is the **second** deliberate divergence from the runtime's shape —
+   * `drift.test.js` names both with their reasons.
+   *
+   * 🔴 The two faults are the same two that were measured silent, deliberately:
+   * a new pair would grade a different claim and leave the recorded one
+   * unretested.
    */
-  it('does NOT catch an optional top-level typo — the limit, measured', () => {
-    expect(withFault('kit-logic', "displayNodeName: 'Tally Accumulator',", "dispayNodeName: 'Tally Accumulator',")).toEqual([]);
-    expect(withFault('kit-logic', "docs: 'Adds Step", "dcos: 'Adds Step")).toEqual([]);
+  it('catches an optional top-level typo — D14 closed the index signature', () => {
+    expect(mentioning(withFault('kit-logic', "displayNodeName: 'Tally Accumulator',", "dispayNodeName: 'Tally Accumulator',"), 'dispayNodeName')).not.toEqual([]);
+    expect(mentioning(withFault('kit-logic', "docs: 'Adds Step", "dcos: 'Adds Step"), 'dcos')).not.toEqual([]);
+  });
+
+  /**
+   * The other half of the pair above, and the reason it is not vacuous: the
+   * unfaulted fixture must still be clean. A change that made *everything* an
+   * error would pass the row above and be caught only here.
+   */
+  it('and the correct spellings still typecheck clean', () => {
+    expect(diagnosticsFor('kit-logic')).toEqual([]);
   });
 
   /**

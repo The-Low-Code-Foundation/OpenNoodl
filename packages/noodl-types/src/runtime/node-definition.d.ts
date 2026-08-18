@@ -1172,8 +1172,16 @@ export interface NodeDefinitionOptions {
   displayNodeName?: string;
   /** Fallback for {@link displayNodeName}. */
   displayName?: string;
-  /** URL of the node's documentation page. */
+  /** Prose or URL depending on provenance; see {@link docsUrl}. */
   docs?: string;
+  /**
+   * URL of a documentation page for this node.
+   *
+   * 🔴 **Separate from {@link docs} on purpose (D10).** `docs` is one field over
+   * two vocabularies — a URL on the 158 shipped nodes that carry one, the kit
+   * author's own prose on a kit node. Two fields, two meanings, no sniffing.
+   */
+  docsUrl?: string;
   /** Extra terms the node picker matches on. */
   searchTags?: string[];
   color?: NodeColorName;
@@ -1308,6 +1316,8 @@ export interface NodeMetadata {
 
   displayNodeName?: string;
   docs?: string;
+  /** D10: a kit's separate documentation URL. See `NodeDefinitionOptions.docsUrl`. */
+  docsUrl?: string;
   searchTags?: string[];
   color?: NodeColorName;
   module?: string;

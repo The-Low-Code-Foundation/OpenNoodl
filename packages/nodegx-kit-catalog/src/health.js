@@ -87,7 +87,11 @@
  *
  * @param {{
  *   kits?: Array<{ kitModule: string, dirPath?: string }>,
- *   nodes?: Array<{ typeName?: string, kitModule?: string }>,
+ *   nodes?: Array<{
+ *     typeName?: string,
+ *     kitModule?: string,
+ *     dynamicPorts?: { unsupportedMechanisms?: string[] } | null
+ *   }>,
  *   collisions?: Array<{ typeName: string, kitModule: string }>,
  *   failures?: Array<{ kitModule: string, dirPath?: string, message: string }>
  * }} overlay
@@ -226,6 +230,53 @@ function kitDiagnostics(overlay, options = {}) {
         'runtime to declare. So this kit’s nodes will be missing everywhere and a graph using them ' +
         'will report unknown types. Add "browser" and/or "cloud" to `runtimes`, or remove the field ' +
         '(it defaults to browser).'
+    });
+  }
+
+  // 5. A node whose `dynamicports` name a mechanism this build does not
+  //    implement — ✅ **D12**, and today that means exactly `channelPort`.
+  //
+  // 🔴 **The status quo was the worst of the three options considered and that
+  // is why this exists.** The port is erased in every surface and in every
+  // state: not in the exported `ports` (the exporter strips it deliberately,
+  // `nodelibraryexport.ts:487-492`), not in the Properties tab, not in the Ports
+  // tab — whose header promises *"every port on this node"* — not in the
+  // connection popup, and not in `getPorts()` with the runtime live and the node
+  // mounted. So an author writes a `channelPort` entry, nothing appears, nothing
+  // is said, and there is no surface anywhere that could tell them why. Reviving
+  // the editor-side manager was rejected as real work for zero non-fixture
+  // users: the census found **one occurrence in 177 library types, and it is a
+  // test fixture's own kit node**.
+  //
+  // ⚠️ **`error`, but the node is not dropped.** The rest of the node is fine —
+  // its static ports, its other dynamic entries and its component all work — so
+  // refusing to register it would cost the author more than the mechanism ever
+  // gave them. "Rejected" here means the declaration is refused and said so,
+  // not that the node is withheld.
+  //
+  // ⚠️ Not gated on `assumeLoaded`, for `kit-loads-nowhere`'s reason: this is
+  // read off metadata the payload carries either way, and is as true before
+  // anything runs as after.
+  for (const node of nodes) {
+    if (!node || !node.kitModule) continue;
+    const unsupported = node.dynamicPorts && node.dynamicPorts.unsupportedMechanisms;
+    if (!Array.isArray(unsupported) || unsupported.length === 0) continue;
+
+    out.push({
+      code: 'kit-unsupported-dynamic-port',
+      severity: 'error',
+      kitModule: node.kitModule,
+      typeName: node.typeName,
+      unsupportedMechanisms: unsupported.slice(),
+      message:
+        `kit "${node.kitModule}" node "${node.typeName}" declares a dynamic port using ` +
+        `[${unsupported.join(', ')}], which this build does not implement. The exporter removes ` +
+        'those ports expecting an editor-side manager to re-add them, and that manager is not ' +
+        'enabled — so the ports appear nowhere: not in the property panel, not in the Ports tab, ' +
+        'not in the connection popup, and not in `getPorts()` at runtime. Any parameter or ' +
+        'connection naming one of them refers to a port that does not exist. Use a conditional ' +
+        'port group (`ports`/`inputs`/`outputs` with a `condition`) instead, which is supported ' +
+        'end to end.'
     });
   }
 

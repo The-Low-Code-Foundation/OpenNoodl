@@ -138,7 +138,7 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
    * half. There is nothing to attribute, and inventing "NodeGX" as a vendor would
    * make provenance decorative and stop it meaning "somebody else wrote this".
    */
-  const { kitName, kitDocs } = getNodeProvenance(model);
+  const { kitName, kitDocs, kitDocsUrl } = getNodeProvenance(model);
 
   /**
    * 🔴 **P1, and the spec was wrong about this field in a way that would have
@@ -158,9 +158,34 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
    * type, because there is no page behind the click.
    */
   const nodeDocs: TSFixme =
-    catalogDocs || (kitDocs ? { summary: kitDocs, path: undefined, typeName: model.type?.name } : undefined);
+    catalogDocs ||
+    (kitDocs || kitDocsUrl
+      ? {
+          summary: kitDocs,
+          path: undefined,
+          // ✅ **D10.** The kit author's own page, as an ABSOLUTE url. It is a
+          // separate field from `path` because the two are joined differently:
+          // `path` is site-relative and gets `getDocsEndpoint()` prefixed
+          // (which `useLocalDocs` may repoint at a local build), whereas this
+          // is somebody else's site and must be opened exactly as written.
+          // Putting a kit's URL in `path` would produce
+          // `https://docs.noodl.net/https://…`.
+          externalUrl: kitDocsUrl,
+          typeName: model.type?.name
+        }
+      : undefined);
 
   function onOpenDocs() {
+    // D10: a kit's page first — it is the only one a kit node can have, and a
+    // kit type is never in the enriched catalog that fills `path`, so the two
+    // branches cannot both be populated. Ordered rather than exclusive so a
+    // future type carrying both still opens the author's own page.
+    if (nodeDocs?.externalUrl) {
+      tracker.track('Open Node Docs Clicked', { url: nodeDocs.externalUrl });
+      platform.openExternal(nodeDocs.externalUrl);
+      return;
+    }
+
     // The catalog stores the page as an absolute legacy URL; `nodeDocs.path` is
     // the site-relative rewrite of it, joined here to the configured endpoint
     // (which `useLocalDocs` may point at a local docs build).
@@ -332,7 +357,11 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
                 <Tooltip
                   content={nodeDocs.summary || 'Open Node Docs'}
                   fineType={
-                    nodeDocs.path
+                    // D10: the fine type is the promise that a click goes
+                    // somewhere. A kit's own page counts, so it is offered on
+                    // either source — but still only when one of them exists,
+                    // which is the rule this line was written to hold.
+                    nodeDocs.path || nodeDocs.externalUrl
                       ? `Read more · ${Keybindings.PROPERTY_PANEL_OPEN_DOCS.label}`
                       : undefined
                   }

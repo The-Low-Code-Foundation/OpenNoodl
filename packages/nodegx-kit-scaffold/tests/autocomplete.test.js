@@ -111,10 +111,33 @@ describe('AC2 — the scaffolded kit, opened cold', () => {
     // this list — TypeScript filters members an object literal already has. So
     // the evidence is the ones the scaffold does *not* use: an author who
     // reaches for a capability the example did not need is offered it by name.
+    //
+    // ✅ **`docs` left this list on 2026-08-18 and that is the point.** The
+    // scaffold now sets it (CN-008 measured that a kit node reached both the AI
+    // assistant and the property panel with no statement of what it is for), so
+    // TypeScript filters it exactly as this comment describes. `docsUrl` (D10)
+    // took its place: the scaffold mentions it only in a comment, so it is
+    // still a real completion — which is the whole discoverability claim for a
+    // field an author would otherwise never learn exists.
     const members = askEditor(kitFile).at('    noodlNodeAsProp: true,');
     expect(members).toEqual(
-      expect.arrayContaining(['dynamicports', 'frame', 'getInspectInfo', 'initialize', 'docs', 'methods'])
+      expect.arrayContaining(['dynamicports', 'frame', 'getInspectInfo', 'initialize', 'docsUrl', 'methods'])
     );
+  });
+
+  it('and the two fields the scaffold now SETS are filtered, not missing', () => {
+    // 🔴 The row above proves `docsUrl` is offered. On its own that is also
+    // what a file where `docs` simply failed to resolve would look like. This
+    // one separates the two: `docs` must be absent from the completion list
+    // *and* present in the emitted file. Same for `displayNodeName`, which has
+    // always been set — so a resolution failure cannot pass either row.
+    const members = askEditor(kitFile).at('    noodlNodeAsProp: true,');
+    expect(members).not.toContain('docs');
+    expect(members).not.toContain('displayNodeName');
+
+    const source = fs.readFileSync(kitFile, 'utf8');
+    expect(source).toContain('docs:');
+    expect(source).toContain('displayNodeName:');
   });
 
   it('offers port fields inside a port', () => {

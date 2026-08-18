@@ -24,6 +24,7 @@ import { malformedNode } from './malformedNode';
 import { legacyImportPlaceholder } from './legacyImportPlaceholder';
 import { unknownNodeType } from './unknownNodeType';
 import { nonexistentPort } from './nonexistentPort';
+import { parameterValue } from './parameterValue';
 import { danglingConnection } from './danglingConnection';
 import { unresolvedComponentRef } from './unresolvedComponentRef';
 import { orphanedNode } from './orphanedNode';
@@ -46,6 +47,12 @@ export const ALL_RULES: Rule[] = [
   legacyImportPlaceholder,
   unknownNodeType,
   nonexistentPort,
+  // ✅ D13 — beside `nonexistentPort` because they are the same question asked
+  // of the two halves of a node's surface: that one checks the ports a
+  // *connection* names, this one the ports a *parameter* names, and it also
+  // checks the value. Until this rule existed the second half was unchecked by
+  // the CLI gate entirely.
+  parameterValue,
   danglingConnection,
   unresolvedComponentRef,
   orphanedNode,
@@ -67,6 +74,7 @@ export {
   legacyImportPlaceholder,
   unknownNodeType,
   nonexistentPort,
+  parameterValue,
   danglingConnection,
   unresolvedComponentRef,
   orphanedNode,

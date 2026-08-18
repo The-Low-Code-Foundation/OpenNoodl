@@ -21,8 +21,22 @@ export interface NodeProvenance {
    * both kit types carry prose, and none of the 175 built-ins carries the field
    * at all. This is only ever populated for a kit node, so a caller cannot
    * accidentally put a built-in's URL through a text renderer or the reverse.
+   *
+   * ⚠️ **"Never both" was about this one field, and D10 did not change that.**
+   * A kit may now declare a page as well — it arrives as {@link kitDocsUrl},
+   * a second field. This one stays prose whatever else is set.
    */
   kitDocs?: string;
+  /**
+   * ✅ **D10** — the kit's own documentation page, when the author declared one.
+   *
+   * A separate field rather than a sniff on {@link kitDocs}: the ruling
+   * explicitly rejected `docs.startsWith('http')` because that encodes a guess
+   * about intent in a regex and mislabels a kit whose prose merely opens with a
+   * URL. Absent for every built-in, exactly as {@link kitName} is — a shipped
+   * node's page comes from the enriched catalog and is reached a different way.
+   */
+  kitDocsUrl?: string;
 }
 
 /**
@@ -44,5 +58,12 @@ export function getNodeProvenance(model: TSFixme): NodeProvenance {
   if (!kitName) return {};
 
   const docs = typeof type.docs === 'string' ? type.docs.trim() : '';
-  return docs ? { kitName, kitDocs: docs } : { kitName };
+  // D10. Independent of `docs`: a kit may declare either, both or neither, and
+  // the panel renders the prose as help text and the URL as a "read more".
+  const docsUrl = typeof type.docsUrl === 'string' ? type.docsUrl.trim() : '';
+
+  const provenance: NodeProvenance = { kitName };
+  if (docs) provenance.kitDocs = docs;
+  if (docsUrl) provenance.kitDocsUrl = docsUrl;
+  return provenance;
 }

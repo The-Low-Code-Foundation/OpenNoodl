@@ -170,34 +170,66 @@ describe('LAS-002 — every authoring door returns the warning text', () => {
     expect(res.data.warnings).toBe(0);
 
     /**
-     * 🔴 CN-010 / AC2 — and this is the case worth reading before changing it.
+     * ✅ **D16, 2026-08-18 — REPLACED, not deleted** (CN-002's rule).
      *
-     * `CLEAN_NODES` is the canonical good page: a `Page` with a `title`, a
-     * `Group`, a `Text`. `Page` is `runtime-discovered` and declares **neither
-     * `title` nor `urlPath`** as a static port — they are registered per
-     * instance — so the two most commonly set parameters on the most commonly
-     * written node in the product were, until CN-010, checked by nothing and
-     * reported as checked. 96 of the 947 measured skips are `Page`.
+     * What this block asserted between CN-010 and D16: `CLEAN_NODES` is the
+     * canonical good page — a `Page` with a `title`, a `Group`, a `Text` — and
+     * `Page` is `runtime-discovered` declaring **neither `title` nor `urlPath`**
+     * as a static port, so CN-010's new notice fired on it and a clean candidate
+     * carried exactly one `info` (`['dynamic-port-skipped']`). **96 of the 947
+     * measured skips were `Page`.**
      *
-     * So a clean candidate now carries one `info`. **`warnings` stays 0** and
-     * nothing blocks — asserted above, and that is the property this test is
-     * really protecting. ⚠️ It does mean "clean" is no longer "an empty
-     * diagnostics array" for any page, which is a visible change to every
-     * authoring response and is flagged as such in the task notes.
+     * Richard ruled that suppressed: it describes one shipped type's missing
+     * port declaration rather than anything about the graph, and it fired on
+     * every page anybody has ever written. So a clean candidate is **silent
+     * again**, which is what this row now asserts.
+     *
+     * 🔴 **The ruling's binding half is the NARROWNESS, and it is graded in the
+     * next test rather than here.** Richard's recorded worry was the effect on
+     * LLM page authoring — suppressing the node type wholesale would hide a real
+     * parameter error on a page, which is the effect he was asking about. A
+     * silence assertion cannot tell "narrowly suppressed" from "suppressed
+     * wholesale"; the row below is the one that can.
      */
     const diagnostics = res.data.validation?.diagnostics ?? [];
     expect(diagnostics.filter((d) => d.severity !== 'info')).toEqual([]);
-    // ⚠️ `nodeId`, not `nodeType`: the response type declares `location` as
-    // `{ nodeId?: string }`, so reading `nodeType` passes at runtime and adds a
-    // `tsc --noEmit` error — in a package whose typecheck runs in no CI job,
-    // where it would have sat unnoticed.
-    //
-    // ⚠️ And not a literal id either: staging rewrites `page` to `page-2`, so
-    // pinning the string would pin an implementation detail of the writer. What
-    // matters is that the notice is attached to *some* node, because an
-    // unlocated diagnostic is not actionable.
-    expect(diagnostics.map((d) => d.code)).toEqual(['dynamic-port-skipped']);
-    expect(diagnostics[0].location.nodeId).toBeTruthy();
+    expect(diagnostics.map((d) => d.code)).toEqual([]);
+  });
+
+  /**
+   * ✅ **D16's other arm, and the reason the row above is not enough.**
+   *
+   * The suppression is two names on one type. A `Page` carrying a parameter the
+   * router does *not* register — the shape a model produces when it invents
+   * `pageTitle` or `path` — must still be reported, or the ruling has become
+   * "stop checking pages".
+   */
+  it('but a Page parameter that is NOT one of the two undeclared fields still reports', async () => {
+    const plan = await planFor('Pages/Invented');
+    const res = await call<StageResponse>(session, 'stage_plan_operation', {
+      plan_id: plan.planId,
+      operation_id: plan.operations[0].id,
+      nodes: [
+        // `title` is suppressed; `pageTitle` is the invention and must not be.
+        { id: 'page', type: 'Page', parameters: { title: 'Clean', pageTitle: 'Invented' } }
+      ],
+      visual_roots: ['page']
+    });
+
+    expect(res.isError).toBe(false);
+
+    const diagnostics = res.data.validation?.diagnostics ?? [];
+    const skipped = diagnostics.filter((d) => d.code === 'dynamic-port-skipped');
+
+    expect(skipped).toHaveLength(1);
+    // Names the invented one and NOT the suppressed one — the whole ruling in
+    // one assertion. ⚠️ `nodeId`, not `nodeType`: the response type declares
+    // `location` as `{ nodeId?: string }`, so reading `nodeType` passes at
+    // runtime and adds a `tsc --noEmit` error, in a package whose typecheck runs
+    // in no CI job.
+    expect(skipped[0].message).toContain('pageTitle');
+    expect(skipped[0].message).not.toContain('"title"');
+    expect(skipped[0].location.nodeId).toBeTruthy();
   });
 
   it('apply_plan reports the warnings that survived into the written project', async () => {

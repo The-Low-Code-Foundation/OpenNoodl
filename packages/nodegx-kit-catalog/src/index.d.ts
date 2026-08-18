@@ -37,6 +37,8 @@ export interface ExportedNodeType {
    */
   module?: string;
   docs?: string;
+  /** D10: a kit's own documentation page, when its author declared one. */
+  docsUrl?: string;
   shortDocs?: string;
   searchTags?: unknown;
   deprecated?: boolean;
@@ -101,6 +103,14 @@ export interface OverlayDynamicPortInfo {
   description: string;
   /** Absent — never `[]` — when the node declares no enumerable group. */
   declaredPortGroups?: OverlayDeclaredPortGroup[];
+  /**
+   * ✅ **D12.** Dynamic-port mechanisms this build recognises in a kit's metadata
+   * but does not implement, so the ports they name will never appear anywhere.
+   * Today the list has one member, `channelPort`.
+   *
+   * Absent — never `[]` — when there are none.
+   */
+  unsupportedMechanisms?: string[];
 }
 
 /**
@@ -135,6 +145,8 @@ export interface OverlayCatalogNode {
   /** The `noodl_modules` directory / module name that declared this node. */
   kitModule: string;
   docs?: string;
+  /** D10: a kit's own documentation page, when its author declared one. */
+  docsUrl?: string;
   searchTags?: unknown;
   module?: string;
   shortDesc?: string;
@@ -225,7 +237,12 @@ export declare function describeComparison(comparison: OverlayComparison): strin
 
 /** CN-015. What went wrong with one kit, in words that name it. */
 export interface KitHealthDiagnostic {
-  code: 'kit-load-failed' | 'kit-shadows-builtin' | 'kit-registered-nothing' | 'kit-loads-nowhere';
+  code:
+    | 'kit-load-failed'
+    | 'kit-shadows-builtin'
+    | 'kit-registered-nothing'
+    | 'kit-loads-nowhere'
+    | 'kit-unsupported-dynamic-port';
   /** `diagnostics.ts`' scale, not a new one. */
   severity: 'error' | 'warning' | 'info';
   kitModule: string;
@@ -240,6 +257,8 @@ export interface KitHealthDiagnostic {
   partial?: boolean;
   /** `kit-loads-nowhere` only. The manifest `runtimes` that reach no loader. */
   declaredRuntimes?: string[];
+  /** `kit-unsupported-dynamic-port` only. The mechanisms named but not implemented. */
+  unsupportedMechanisms?: string[];
   message: string;
 }
 

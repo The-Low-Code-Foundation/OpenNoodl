@@ -374,10 +374,17 @@ export interface AuthoredPreconditionOptions {
  *
  * The ninth and tenth are DSG-004's, and they are the first two *design* gates
  * in the set. They are here for the same reason as all the others — a
- * `flexDirection` and a `fontWeight` are parameter values, which `NormNode` does
- * not carry — and it is worth being explicit about what that costs: neither can
- * ever appear in `validate:project`, so both are calibrated against the corpus
- * (see their headers) and reported only on graphs an agent just wrote.
+ * `flexDirection` and a `fontWeight` are parameter values, which `NormNode` did
+ * not carry.
+ *
+ * 🔴 **"Neither can ever appear in `validate:project`" was the sentence here and
+ * it expired on 2026-08-18**, when D13 gave `NormNode` its `parameters` and
+ * registered `rules/parameterValue`. The mechanical barrier is gone. What has
+ * not changed is the *reason to be careful*: both are calibrated against the
+ * corpus (see their headers) and were deliberately scoped to graphs an agent
+ * just wrote, so putting them on the CLI gate is a call about false-positive
+ * tolerance on hand-authored projects — with its own evidence — rather than a
+ * consequence of this one.
  */
 export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOptions): Diagnostic[] {
   const { component, nodes, components, urlPaths, catalog, backend, interfaces, connections, wires } = options;

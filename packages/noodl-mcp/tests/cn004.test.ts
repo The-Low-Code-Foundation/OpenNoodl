@@ -267,8 +267,30 @@ describe('item 4 — a kit whose ports are runtime-determined is not accused of 
   });
 });
 
-describe('what CN-004 does NOT close — the second pipeline', () => {
-  it('checks parameter values for no node on the project path, kit or built-in', () => {
+describe('✅ D13 — the second pipeline now checks parameter values too', () => {
+  /**
+   * ✅ **REPLACED 2026-08-18, not deleted** — this block's own instruction, and
+   * CN-002's rule.
+   *
+   * What it asserted, and why: `checkParameterValues` had exactly one caller,
+   * the authoring precondition path, so the **project** path — `validate:project`
+   * and everything built on `validateOnDisk` — checked parameter values for **no
+   * node of any provenance**. The test planted a wrong value on a kit node and
+   * on the built-in `Group` beside it, showed the project path reported neither
+   * while the authoring gate reported both, and said: *"this assertion is what
+   * will fail, loudly and by name, on the day it is taken: replace it, do not
+   * delete it."*
+   *
+   * The call was taken. The same two mistakes are now reported on both paths,
+   * which is what this asserts instead.
+   *
+   * 🔴 **The parity claim survives the change and is still the point.** D4 asks
+   * that a kit node be treated exactly as a built-in is; before, what was missing
+   * was missing for everyone, and now what is checked is checked for everyone.
+   * A fix that lit up only the kit node would satisfy "the call was taken" and
+   * break the ruling, so both node types are named in the expectation.
+   */
+  it('checks parameter values on the project path, for kit and built-in alike', () => {
     useOverlay(KIT_APP);
     const store = new ProjectStore(KIT_APP);
     const stored = store.readComponent('App');
@@ -286,18 +308,31 @@ describe('what CN-004 does NOT close — the second pipeline', () => {
     useOverlay(KIT_APP); // the copy carries the same kit
     const report = validateOnDisk(new ProjectStore(dir), { component: 'App', strict: false }).report;
 
-    // ⚠️ Both mistakes are real and neither is reported. The parity D4 asks for
-    // holds — a kit node is treated exactly as a built-in is — and what is
-    // missing is missing for everyone. Widening this is the open scope call, and
-    // this assertion is what will fail, loudly and by name, on the day it is
-    // taken: replace it, do not delete it.
-    expect(report.diagnostics.filter((d) => d.code === 'invalid-parameter-value')).toEqual([]);
+    // ✅ Both mistakes are real and both are now reported, by node type, on the
+    // path that tells a human their project is clean.
+    const onDisk = report.diagnostics.filter((d) => d.code === 'invalid-parameter-value');
+    expect(onDisk.map((d) => d.location.nodeType).sort()).toEqual(['Group', 'demo.kit.Badge']);
 
-    // …while the same two files through the authoring gate report both.
+    // …and the authoring gate still reports the same two. 🔴 Kept as the second
+    // arm rather than dropped as redundant: the two pipelines agreeing is the
+    // property, and a change that moved the check from one to the other instead
+    // of adding it to both would pass the first expectation alone.
     const views = authoredProjectViews(new ProjectStore(dir), new Map());
     const authored = preconditionDiagnostics('/App', files, views).filter(
       (d) => d.code === 'invalid-parameter-value'
     );
     expect(authored.map((d) => d.location.nodeType).sort()).toEqual(['Group', 'demo.kit.Badge']);
+  });
+
+  /**
+   * 🔴 **The control the row above needs.** "Both are reported" is also what a
+   * check that accused every parameter would produce. This is the same project
+   * with the mistakes NOT planted: it must be silent.
+   */
+  it('and says nothing about the same project when the values are correct', () => {
+    useOverlay(KIT_APP);
+    const report = validateOnDisk(new ProjectStore(KIT_APP), { component: 'App', strict: false }).report;
+
+    expect(report.diagnostics.filter((d) => d.code === 'invalid-parameter-value')).toEqual([]);
   });
 });

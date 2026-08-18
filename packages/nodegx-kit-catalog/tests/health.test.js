@@ -8,6 +8,7 @@
  * to produce exactly zero diagnostics.
  */
 const { kitDiagnostics, formatKitDiagnostic } = require('../src/health');
+const { catalogNodesFromNodeLibrary } = require('../src/index');
 
 /** A kit that loaded and registered two nodes. The known-good input. */
 function healthyOverlay() {
@@ -391,5 +392,76 @@ describe('formatKitDiagnostic', () => {
   test('prefixes the severity so a CLI line is greppable', () => {
     const [diagnostic] = kitDiagnostics({ kits: [{ kitModule: 'K' }], nodes: [], collisions: [], failures: [] });
     expect(formatKitDiagnostic(diagnostic)).toBe(`WARNING ${diagnostic.message}`);
+  });
+});
+
+/**
+ * ✅ **D12, 2026-08-18 — `channelPort` is rejected at kit-load with a diagnostic.**
+ *
+ * 🔴 **The overlay here is BUILT BY THE PRODUCER, not hand-written, and that is
+ * deliberate.** The lesson is one file up: `nowhereOverlay()` above used to
+ * declare `['cloud']` and went on passing after CN-013 made that shape
+ * unbuildable — a suite grading a state the code cannot reach. So this fixture
+ * runs the real `catalogNodesFromNodeLibrary` over the same recorded payload
+ * `dynamicPorts.test.js` uses, and a change that stopped the producer emitting
+ * `unsupportedMechanisms` reddens here instead of passing quietly.
+ */
+describe('D12 — kit-unsupported-dynamic-port', () => {
+  const payload = require('./fixtures/dynports-kit-nodelibrary.json');
+
+  function realOverlay() {
+    const overlay = catalogNodesFromNodeLibrary(payload);
+    return { kits: [], nodes: overlay.nodes, collisions: overlay.collisions || [], failures: [] };
+  }
+
+  test('the producer really does put a channelPort node in this payload', () => {
+    // The precondition, asserted rather than assumed: if the fixture stopped
+    // containing one, every row below would pass vacuously.
+    const feed = realOverlay().nodes.find((n) => n.typeName === 'dynports.kit.Feed');
+
+    expect(feed).toBeDefined();
+    expect(feed.dynamicPorts.unsupportedMechanisms).toEqual(['channelPort']);
+  });
+
+  test('names the kit, the node, the mechanism, and what to do instead', () => {
+    const found = kitDiagnostics(realOverlay()).filter((d) => d.code === 'kit-unsupported-dynamic-port');
+
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('error');
+    expect(found[0].typeName).toBe('dynports.kit.Feed');
+    expect(found[0].unsupportedMechanisms).toEqual(['channelPort']);
+    // The author's actual question is "why is my port not there", so the message
+    // has to name the surfaces it is not in — listing the mechanism alone
+    // restates the code they already wrote.
+    expect(found[0].message).toContain('channelPort');
+    expect(found[0].message).toContain('property panel');
+    expect(found[0].message).toContain('condition');
+  });
+
+  test('🔴 the other nodes in the same kit are NOT accused', () => {
+    // The control that has to stay green. Every node in this payload carries
+    // `dynamicports`; only one uses the unimplemented mechanism. A rule keyed on
+    // "has dynamic ports" rather than on the entry shape would fire on all of
+    // them, and this fixture is the population that would show it.
+    const overlay = realOverlay();
+    const withDynamic = overlay.nodes.filter((n) => n.dynamicPorts);
+    const accused = kitDiagnostics(overlay).filter((d) => d.code === 'kit-unsupported-dynamic-port');
+
+    expect(withDynamic.length).toBeGreaterThan(1);
+    expect(accused.map((d) => d.typeName)).toEqual(['dynports.kit.Feed']);
+  });
+
+  test('a project with no kits at all says nothing', () => {
+    expect(kitDiagnostics({ kits: [], nodes: [], collisions: [], failures: [] })).toEqual([]);
+  });
+
+  test('fires on an unloaded route too, because it is read off metadata', () => {
+    // Same reasoning `kit-loads-nowhere` records: this is as true before
+    // anything runs as after, so `assumeLoaded: false` must not silence it.
+    const found = kitDiagnostics(realOverlay(), { assumeLoaded: false }).filter(
+      (d) => d.code === 'kit-unsupported-dynamic-port'
+    );
+
+    expect(found).toHaveLength(1);
   });
 });

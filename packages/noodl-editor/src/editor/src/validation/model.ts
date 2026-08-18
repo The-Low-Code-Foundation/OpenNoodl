@@ -61,6 +61,22 @@ export interface NormNode {
    */
   instancePorts: string[];
   /**
+   * Parameter values set on the node, carried verbatim from the source.
+   *
+   * ✅ **Added by D13, 2026-08-18, and its absence was the whole reason
+   * `validate:project` checked parameter values for no node of any
+   * provenance.** `checkParameterValues` existed and was good; it had exactly
+   * one caller, the authoring precondition path, so the CLI gate — the thing
+   * that says a project is clean — never ran it. On `cashflow-command-centre`
+   * that was 26 unverified parameters read as a pass.
+   *
+   * ⚠️ Two source comments used to state this field's absence as a fact
+   * (`componentInterface.ts`, `authoredCandidate.ts`); both were corrected in
+   * the same slice. Absent when the node sets none — never `{}` — so "set
+   * nothing" and "carried nothing" stay distinguishable.
+   */
+  parameters?: Record<string, unknown>;
+  /**
    * Node metadata, carried verbatim from the source.
    *
    * Added by LIB-006, and deliberately narrow in purpose: a legacy import writes

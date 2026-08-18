@@ -149,9 +149,33 @@ describe('CN-007 — the custom-nodes docs page', () => {
    * The fragment budget. Not a style rule — a guard against the checked set
    * being quietly emptied. If the page legitimately grows a fragment, raise
    * this number in the same commit that adds it.
+   *
+   * **4 → 7 on 2026-08-18**, in the commit that added the four sections CN-007
+   * still owed. The three new fragments, named so the next reader can tell a
+   * deliberate rise from a drift:
+   *
+   * 1. the conditional-port-group declaration (CN-010 AC4) — a `dynamicports`
+   *    entry beside the two ports it switches, with no module registration;
+   * 2. the `docs` / `docsUrl` pair (D10) — two fields on a definition literal;
+   * 3. the `runOnValueChange` setter (CN-012) — the three lines inside one
+   *    `set`, which is the whole point of that caution and cannot be a file.
+   *
+   * ✅ **The complete count rose too, and that is the number that matters:** the
+   * logic-node sample (`noodl_modules/tally-kit/index.js`) is compiled in full
+   * against `LogicNodeDefinition`. A section added as fragments only would have
+   * raised this budget while grading nothing new.
    */
   it('declares how many blocks it does not compile', () => {
-    expect(fragments.length).toBe(4);
+    expect(fragments.length).toBe(7);
+  });
+
+  /**
+   * 🔴 The other half of the budget above, and the reason raising it is safe.
+   * A page could satisfy the fragment budget by turning complete samples into
+   * fragments one at a time. This floor moves in the opposite direction.
+   */
+  it('and how many it does compile, so the checked set cannot shrink', () => {
+    expect(complete.length).toBeGreaterThanOrEqual(3);
   });
 
   /**

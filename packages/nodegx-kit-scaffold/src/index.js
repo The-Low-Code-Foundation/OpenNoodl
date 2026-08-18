@@ -432,6 +432,19 @@ function indexJs(kit) {
     name: '${type}',
     displayNodeName: '${EXAMPLE_NODE.displayName}',
 
+    // One sentence saying what this node is FOR. It is not decoration: it is
+    // the node's help text in the property panel, and it is what the AI
+    // assistant and an MCP agent are told the node does. Without it a kit node
+    // reaches both with a name and nothing else.
+    docs: 'Shows one number with a label, and highlights it when the graph says to.',
+
+    // A page of your own, if the kit has one. Kept apart from \`docs\` above
+    // because that field is prose and this one is a link — the panel renders
+    // the sentence as help text and this as "read more". Delete the line rather
+    // than pointing it somewhere that does not exist yet: an absent field shows
+    // no button, a wrong one shows a button that opens a 404.
+    // docsUrl: 'https://example.com/docs/${kit.dirName}',
+
     getReactComponent: function () {
       return function ${EXAMPLE_NODE.id}Component(props) {
         // The DOM handoff every visual kit node needs: it is what lets the

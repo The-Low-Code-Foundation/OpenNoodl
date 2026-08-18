@@ -458,6 +458,18 @@ export interface ReactNodeDefinition {
   displayName?: string;
   displayNodeName?: string;
   docs?: string;
+  /**
+   * URL of a documentation page for this node.
+   *
+   * 🔴 **Separate from {@link docs} on purpose (D10).** `docs` is one field over
+   * two vocabularies — a URL on the 158 shipped nodes that carry one, the kit
+   * author's own prose on a kit node — so a kit had no way to offer a link
+   * without its sentence being rendered as an `href` that opens nothing.
+   * Sniffing for `http` was considered and rejected: it encodes a guess about
+   * the author's intent in a regex, and it mislabels a kit whose prose merely
+   * opens with a URL. Two fields, two meanings, no guessing.
+   */
+  docsUrl?: string;
   allowChildren?: boolean;
   allowAsExportRoot?: boolean;
   singleton?: boolean;
@@ -853,6 +865,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
   const ReactComponentNode: CompiledReactNodeDefinition = {
     name: def.name,
     docs: def.docs,
+    docsUrl: def.docsUrl,
     displayNodeName: def.displayNodeName || def.displayName,
     category: 'Visual',
     deprecated: def.deprecated,

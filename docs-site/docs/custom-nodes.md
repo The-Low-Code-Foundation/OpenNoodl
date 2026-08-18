@@ -19,11 +19,13 @@ They are not, and there is no toolchain. A custom node in NodeGX is **one hand-w
 a folder in your project**. No SDK, no bundler, no `npm install`, no build step. What follows is the
 whole mechanism.
 
-:::note What this page does not claim
-Everything here describes **visual** nodes — the ones that draw something. NodeGX's runtime also has
-a non-visual half (`Noodl.defineModule({ nodes: [...] })` for logic nodes). That half is inherited
-from Noodl and is not covered here, because we have not yet run it end to end and this page does not
-document things we have not measured.
+:::note Two kinds of node, and both are covered
+Most of this page describes **visual** nodes — the ones that draw something. NodeGX also has a
+non-visual half: **logic nodes**, which take values in, do something, and send values out without
+rendering anything. They are covered in [Logic nodes](#logic-nodes-no-react-no-dom) near the end.
+
+Everything on this page has been run end to end. Where something is known not to work, it is named
+in [The rough edges](#the-rough-edges) rather than left for you to discover.
 :::
 
 ## The smallest node that works
@@ -263,6 +265,156 @@ three status bands is better off reading all three from the palette scale — `-
 palette ones.
 :::
 
+## Ports that appear only when they are relevant
+
+A node with a fixed port list is a widget. A node whose ports depend on its own settings is a
+building block. Declare a **conditional port group** and the editor shows or hides those ports as
+the condition changes:
+
+```js title="a port that appears only in list mode"
+var Panel = {
+  name: 'mykit.Panel',
+
+  inputProps: {
+    mode: {
+      type: { name: 'enum', enums: [{ label: 'List', value: 'list' }, { label: 'Grid', value: 'grid' }] },
+      displayName: 'Mode',
+      group: 'Layout',
+      default: 'list'
+    },
+    itemCount: { type: 'number', displayName: 'Item Count', group: 'Layout', default: 3 }
+  },
+
+  // `condition` is read by the editor. `inputs` names ports you declared above.
+  dynamicports: [{ condition: 'mode = list', inputs: ['itemCount'] }]
+};
+```
+
+`Item Count` now appears when **Mode** is *List* and disappears when it is *Grid*, reversibly. It is
+a real port throughout: connectable through the connection popup, saved to the project, and it
+carries its value at runtime.
+
+:::caution `channelPort` is refused, and the editor will tell you
+`dynamicports` inherits a second form from Noodl — `channelPort` — that this build **does not
+implement**. The ports it names appear nowhere: not in the property panel, not in the Ports tab, not
+in the connection popup, and not at runtime. Rather than let them vanish silently, a kit declaring
+one is reported with an error naming the kit, the node and the mechanism. Use a conditional group
+like the one above instead; it works end to end.
+:::
+
+## Telling people what your node is for
+
+Two fields, and they are not interchangeable:
+
+```js title="both are optional, and both are read"
+var Chip = {
+  name: 'mykit.Chip',
+
+  // Prose. One sentence. This is the node's help text in the property panel, and
+  // it is what the AI assistant and an MCP agent are told the node does.
+  docs: 'Shows a short status label with a coloured background.',
+
+  // A link, if your kit has a page. Rendered as "read more", not as the help text.
+  docsUrl: 'https://example.com/docs/mykit/chip'
+};
+```
+
+Write `docs` even if you write nothing else. Without it your node reaches the property panel — and
+every agent authoring against your project — with a name and no statement of what it is for.
+
+:::tip
+Do not put a URL in `docs`. On NodeGX's own built-in nodes that field happens to hold a
+documentation link, which is why the two are separate here: your sentence is rendered as text, and
+putting a URL there produces a paragraph that reads like a broken link rather than a working one.
+:::
+
+## Logic nodes: no React, no DOM
+
+A kit does not have to draw anything. Put definitions in `nodes` instead of `reactNodes` and you get
+a node that takes values in, does something, and sends values out:
+
+```js title="noodl_modules/tally-kit/index.js"
+/** @type {import('./types/nodegx-node-kit').LogicNodeDefinition} */
+var Accumulator = {
+  name: 'tally.kit.Accumulator',
+  category: 'Math',
+  displayNodeName: 'Tally Accumulator',
+  docs: 'Adds Step to a running total each time Add fires.',
+
+  initialize: function () {
+    this._internal.total = 0;
+  },
+
+  inputs: {
+    step: { type: 'number', displayName: 'Step', default: 1, set: function (v) { this._internal.step = Number(v); } },
+    add: {
+      type: 'signal',
+      displayName: 'Add',
+      valueChangedToTrue: function () {
+        this._internal.total += this._internal.step;
+        // Tell the graph the output changed. Without this nothing downstream runs.
+        this.flagOutputDirty('total');
+      }
+    }
+  },
+
+  outputs: {
+    total: { type: 'number', displayName: 'Total', getter: function () { return this._internal.total; } }
+  }
+};
+
+Noodl.defineModule({ nodes: [Accumulator] });
+```
+
+This is measured, not assumed: a built-in node's signal reaches a kit logic node's signal input, the
+node holds state across the call and publishes through `flagOutputDirty`, and a kit node's own
+`sendSignalOnOutput` reaches **another kit node's** signal input — so kit-to-kit signal edges work.
+
+:::caution `runOnValueChange` declares ports; it does not wire them
+If you declare `runOnValueChange`, the runtime synthesises a `Run On Change` checkbox per named
+input for you. It does **not** make your setters respect it. Each governed input's own `set` has to
+ask first:
+
+```js
+set: function (value) {
+  this._internal.reading = Number(value);
+  if (!this.shouldRunOnValueChange('reading')) return;
+  this.doTheWork();
+}
+```
+
+Forget it and the checkbox is drawn, is togglable, and changes nothing. The first kit written against
+these types got this wrong.
+:::
+
+## Where your kit runs
+
+A kit is a `<script>` tag, so the browser is the default and needs no declaration. `manifest.json`'s
+`runtimes` field controls the rest:
+
+| `runtimes` | What loads your kit |
+|---|---|
+| *omitted* | the browser. Right for any visual kit |
+| `["browser"]` | the same thing, said out loud |
+| `["browser", "cloud"]` | the browser **and** cloud functions |
+| `["cloud"]` | cloud functions **only** — the browser injector skips it |
+
+Two things worth knowing before you reach for `cloud`:
+
+- **It carries logic nodes only.** A cloud function has no DOM to render into.
+- **It cannot `require`.** A deployed backend is a single prebuilt bundle with no `node_modules`, so
+  there is nowhere for an npm package to land. Reaching for one fails with a message saying so
+  rather than a bare `require is not defined`.
+
+:::note There is no `"ssr"`, and you do not need one
+Server-side rendering is the *browser* app rendered on a server, so a kit reaches a server render by
+declaring **`browser`**. A kit declaring only `"ssr"` is in no page and runs nowhere.
+
+One real limit: a kit whose `manifest.dependencies` points at an `http(s)` URL cannot be fetched
+during a server render, so that kit is skipped there and its nodes appear only after the page
+hydrates in the browser. Vendor the dependency into your kit folder to avoid it.
+:::
+
 ## Autocomplete, without a build step
 
 NodeGX publishes the definition shape as a TypeScript declaration file, and you can have full
@@ -331,20 +483,25 @@ specifically to demonstrate the rule above — the node draws the highlight, the
 You will hit these within an hour. Having them written down is worth more than a page that looks
 clean.
 
-- **The preview does not always pick up a new kit by itself.** After scaffolding or after editing a
-  kit's files, reload the preview by hand. There is a refresh path in the runtime that is currently
-  dead at both ends, which is why the editor tells you to reload rather than doing it for you.
-- **Editing a kit file does not hot-reload.** Save, then reload the preview.
+- **Editing a kit file does not hot-reload.** Save, then reload the preview by hand — there is a
+  refresh path in the runtime that is dead at both ends, which is why the editor tells you to reload
+  rather than doing it for you. What *does* work after that reload is the editor catching up: a node
+  you added appears in the picker and a port you renamed shows its new name, without restarting.
 - **A kit is arbitrary JavaScript with full access to the page.** A kit you wrote in your own project
   runs freely, and that is deliberate — gating your own code would make the scaffold useless. Kits
   from other people are a different question, and install-time verification for them is not finished
   yet. Read a third-party kit before you run it.
 - **`name` collisions across kits are last-wins.** Two kits registering the same node type name will
   not warn you loudly today. Prefix with your kit's folder name.
-- **The node picker's detail pane says "No documentation yet"** for kit nodes. Port `description`
-  fields do show up in the property panel, so put your explanation there.
 - **Nothing validates your token names.** A typo in `var(--surace-raised)` resolves to nothing and
   the style silently does not apply.
+- **The design system has no `--success` or `--warning` token.** There is a `--destructive`, but a
+  node with three status bands has to reach into the palette scale (`--green-600`, `--amber-600`) for
+  two of them. That is what the cashflow kit does, and it is a gap in the token set rather than a
+  mistake in the kit.
+- **An open property panel does not refresh itself** when you edit a kit. The node library does — the
+  picker and the ports update on one preview reload — but a panel that was already open keeps showing
+  the previous version until you click another node and back.
 
 ## Where to go next
 

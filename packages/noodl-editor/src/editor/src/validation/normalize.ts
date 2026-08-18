@@ -36,6 +36,8 @@ interface LegacyNodeLike {
   dynamicports?: LegacyPortLike[];
   /** Carried through for LIB-006's `legacyImport` marker; see NormNode.metadata. */
   metadata?: Record<string, unknown>;
+  /** D13 — carried so the CLI gate can check parameter values. */
+  parameters?: Record<string, unknown> | null;
 }
 interface LegacyConnectionLike {
   fromId: string;
@@ -65,6 +67,27 @@ function instancePortNames(node: { ports?: LegacyPortLike[]; dynamicports?: Lega
   for (const p of node.ports ?? []) if (p && typeof p.name === 'string') names.push(p.name);
   for (const p of node.dynamicports ?? []) if (p && typeof p.name === 'string') names.push(p.name);
   return names;
+}
+
+/**
+ * D13 — parameters cross into the normalized model here, on both node shapes.
+ *
+ * Returns a spread-able object rather than a value so a node that sets nothing
+ * carries **no `parameters` key at all**, not an empty one. `checkParameterValues`
+ * reads `if (!parameters) continue` and treats "nothing set" as "nothing to
+ * check and nothing skipped" — an `{}` would take the same branch today, but the
+ * distinction is the one the whole check is built on and it should not depend on
+ * a falsy-empty-object accident.
+ *
+ * ⚠️ A non-object (a string, an array, `null`) is dropped rather than passed on:
+ * the checker iterates `Object.entries`, and handing it an array would produce
+ * diagnostics named `"0"`, `"1"`. `malformed-node` owns reporting a node whose
+ * shape is wrong.
+ */
+function normalizedParameters(raw: unknown): { parameters?: Record<string, unknown> } {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const parameters = raw as Record<string, unknown>;
+  return Object.keys(parameters).length > 0 ? { parameters } : {};
 }
 
 /**
@@ -98,6 +121,7 @@ function flatten(roots: LegacyNodeLike[]): NormNode[] {
       parent: parentId,
       children: childIds,
       instancePorts: instancePortNames(node),
+      ...normalizedParameters(node.parameters),
       metadata: node.metadata
     });
     for (const child of node.children ?? []) visit(child, node.id);
@@ -125,6 +149,7 @@ export function normalizeV2Component(
     parent: n.parent,
     children: Array.isArray(n.children) ? n.children : [],
     instancePorts: instancePortNames(n),
+    ...normalizedParameters((n as { parameters?: Record<string, unknown> | null }).parameters),
     metadata: (n as { metadata?: Record<string, unknown> }).metadata
   }));
   const connections: NormConnection[] = (connectionsFile?.connections ?? []).map((c) => ({

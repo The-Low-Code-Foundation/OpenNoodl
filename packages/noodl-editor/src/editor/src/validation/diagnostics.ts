@@ -491,8 +491,10 @@ export enum DiagnosticCode {
    *
    * Matched on structure and on the node's own size parameters — never on the
    * children's values. See `rules`-vs-precondition in
-   * `responsiveArrangement.ts`: `NormNode` carries no parameters, so this cannot
-   * be a `rules/` rule at all.
+   * `responsiveArrangement.ts`. ⚠️ That header's reason — `NormNode` carries no
+   * parameters — **expired on 2026-08-18 (D13)**, which removes the hard
+   * blocker; it does not by itself make this a rule, since the calibration
+   * argument in that header is separate and still stands.
    *
    * A **warning**, not an error: the graph renders, and at desktop width it
    * renders correctly. Not authored-blocking on first ship — the promotion

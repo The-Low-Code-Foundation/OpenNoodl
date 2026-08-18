@@ -123,35 +123,68 @@ describe('partially mirrored types', () => {
   }
 });
 
-describe('the one deliberate divergence: index signatures', () => {
-  /**
-   * A string index signature is not a property, so every check above is blind to
-   * it — and it is the only thing this package changes on purpose. Left
-   * unasserted, it is drift that the drift check cannot see.
-   */
+/**
+ * ✅ **UPDATED for D14, 2026-08-18 — this block used to be titled "the ONE
+ * deliberate divergence" and there are now TWO.** The title moved with the
+ * assertion deliberately: a row named for what it used to assert is how a suite
+ * comes to assert the opposite of what it says.
+ *
+ * A string index signature is not a property, so every check above is blind to
+ * it — and it is the only kind of thing this package changes on purpose. Left
+ * unasserted, it is drift that the drift check cannot see.
+ *
+ * | type | why the signature is dropped here |
+ * |---|---|
+ * | `ReactNodeDefinition` (CN-005) | the property set really **is** closed for a visual node, so a typo is a mistake rather than an unlisted-but-legal member |
+ * | `NodeDefinitionOptions` (D14) | same reason, taken later: only *required*-field typos were caught, and `displayNodeName` / `docs` misspellings were measured **silent** (s24). A logic node's whole authoring contract is this object |
+ *
+ * 🔴 **Both runtime shapes keep their signature and that is correct** — they are
+ * structural types the runtime assigns arbitrary internals onto. The divergence
+ * is the published file being stricter than the thing it mirrors, on purpose,
+ * in exactly these two places and nowhere else.
+ */
+const DELIBERATELY_CLOSED = {
+  // type name -> the source it is answerable to, for the runtime-side half
+  ReactNodeDefinition: 'viewer',
+  NodeDefinitionOptions: 'types'
+};
 
-  it('the runtime still declares the index signature this package drops', () => {
-    // If this ever goes false the divergence has become moot and the long
-    // comment in src/index.d.ts should be deleted rather than left misleading.
-    expect(viewer.ReactNodeDefinition.hasStringIndex).toBe(true);
-  });
+describe('the two deliberate divergences: index signatures', () => {
+  for (const name of Object.keys(DELIBERATELY_CLOSED)) {
+    const source = DELIBERATELY_CLOSED[name];
 
-  it('the published ReactNodeDefinition drops it, so typos are reported', () => {
-    // `fixtures/kit-broken` is the other half of this: it proves the omission
-    // actually produces the diagnostic, rather than merely being absent here.
-    expect(published.ReactNodeDefinition.hasStringIndex).toBe(false);
-  });
+    it(`the runtime still declares the index signature this package drops (${name})`, () => {
+      // If this ever goes false the divergence has become moot and the long
+      // comment in src/index.d.ts should be deleted rather than left misleading.
+      expect(runtimeFor(source)[name].hasStringIndex).toBe(true);
+    });
+
+    it(`the published ${name} drops it, so typos are reported`, () => {
+      // `fixtures.test.js` is the other half of both of these: it proves the
+      // omission actually produces the diagnostic, rather than merely being
+      // absent here. `kit-broken` covers ReactNodeDefinition; the planted
+      // `dispayNodeName` / `dcos` faults on `kit-logic` cover this one.
+      expect(published[name].hasStringIndex).toBe(false);
+    });
+  }
 
   it('every other exactly-mirrored type keeps whatever the runtime has', () => {
     const divergent = [];
     for (const source of Object.keys(MIRRORED_EXACTLY)) {
       for (const name of MIRRORED_EXACTLY[source]) {
-        if (name === 'ReactNodeDefinition') continue;
+        if (name in DELIBERATELY_CLOSED) continue;
         const runtime = runtimeFor(source)[name].hasStringIndex;
         const mine = published[name].hasStringIndex;
         if (runtime !== mine) divergent.push(`${name}: runtime ${runtime}, published ${mine}`);
       }
     }
     expect(divergent).toEqual([]);
+  });
+
+  it('the closed list is exactly the two that were ruled, not a growing hole', () => {
+    // 🔴 The loop above SKIPS whatever is in DELIBERATELY_CLOSED, so adding a
+    // name to that map silences a real drift finding. This row is what stops
+    // the exemption list becoming the place divergence hides.
+    expect(Object.keys(DELIBERATELY_CLOSED).sort()).toEqual(['NodeDefinitionOptions', 'ReactNodeDefinition']);
   });
 });

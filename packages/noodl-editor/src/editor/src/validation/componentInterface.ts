@@ -18,11 +18,19 @@
  *    type), so the parameter-value layer never sees one;
  *  - `nonexistentPort` skips component refs outright and only reasons about
  *    *connections* in any case;
- *  - `NormNode` carries no `parameters`, so no `rules/` rule could see them.
+ *  - `NormNode` carried no `parameters`, so no `rules/` rule could see them.
  *
- * That last point is why this is a precondition check rather than a rule, the
- * same reason the other five are. The task file proposed `validation/rules/`;
- * the type system settled it.
+ * ⚠️ **That third bullet stopped being true on 2026-08-18 (D13)** and is kept in
+ * the past tense rather than deleted, because it is the recorded reason this
+ * check is shaped the way it is. `NormNode` now carries `parameters` and
+ * `rules/parameterValue` reads them.
+ *
+ * 🔴 **The first two bullets are untouched and they are still why this check
+ * exists.** `checkParameterValues` returns on its first line for a
+ * component-instance node whatever calls it, so routing it through the CLI gate
+ * did **not** give component-ref parameters a checker. Moving this check into
+ * `rules/` is now merely possible rather than impossible — it is a decision with
+ * its own evidence, not a tidy-up, and nothing here depends on it.
  *
  * ## Where a component's inputs actually come from
  *

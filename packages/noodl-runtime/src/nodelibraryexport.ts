@@ -58,6 +58,7 @@ interface NodeExportMetadata {
   singleton?: unknown;
   allowAsChild?: unknown;
   docs?: string;
+  docsUrl?: string;
   shortDocs?: string;
   panels?: unknown;
   usePortAsLabel?: unknown;
@@ -89,6 +90,7 @@ interface ExportedNodeType {
   allowChildrenWithCategory?: unknown;
   singleton?: boolean;
   docs?: string;
+  docsUrl?: string;
   shortDocs?: string;
   category?: string;
   panels?: unknown;
@@ -437,6 +439,14 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
     }
     if (nodeMetadata.docs) {
       nodeObj.docs = nodeMetadata.docs;
+    }
+    // D10. Carried separately from `docs` and deliberately NOT fed into the
+    // `shortDocs` derivation below: that branch turns a `docs.noodl.net` URL
+    // into a companion `-short.md` path on the docs site, which exists for
+    // shipped nodes only. A kit's `docsUrl` points at the author's own page and
+    // has no such companion.
+    if (nodeMetadata.docsUrl) {
+      nodeObj.docsUrl = nodeMetadata.docsUrl;
     }
     if (nodeMetadata.shortDocs) {
       nodeObj.shortDocs = nodeMetadata.shortDocs;

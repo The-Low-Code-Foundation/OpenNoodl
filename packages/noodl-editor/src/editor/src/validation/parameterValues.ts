@@ -686,9 +686,14 @@ function parameterIsSet(parameters: Record<string, unknown>, name: string): bool
  *
  * A node-level check rather than a per-parameter one — the defect is the
  * *combination*, and no single parameter is wrong on its own. It lives here
- * rather than in `rules/` for a reason the type system enforces: `NormNode`
- * carries no `parameters` at all, because the normalized model is structural.
- * Values are this module's business.
+ * rather than in `rules/` because values are this module's business.
+ *
+ * ⚠️ The reason recorded here used to be stronger — *"for a reason the type
+ * system enforces: `NormNode` carries no `parameters` at all, because the
+ * normalized model is structural"* — and **D13 ended that on 2026-08-18**: the
+ * normalized model carries parameters and `rules/parameterValue` runs this whole
+ * module from the CLI gate, this check included. The placement is now a
+ * preference, not a constraint.
  */
 function unsizedAbsoluteBox(
   component: string,
@@ -819,7 +824,7 @@ export function checkParameterValues(
           // which is **false** here — the type is known, and for a kit node
           // CN-003 worked to make it known. Saying it would teach a kit author
           // that their node is unrecognised at the exact moment it is not.
-          dynamicSkips.push(name);
+          if (!isPageDeclarationGap(node.type, name)) dynamicSkips.push(name);
           continue;
         }
         const suggestion = catalog.suggestPort(node.type, 'input', name);
@@ -1005,6 +1010,36 @@ export function checkParameterValues(
   }
 
   return diagnostics;
+}
+
+/**
+ * ✅ **D16 — the two fields on `Page` that are a declaration gap, not a finding.**
+ *
+ * `Page` is `runtime-discovered`, and it declares **neither `title` nor
+ * `urlPath`** as a static port: they are registered per instance by the router.
+ * So the two most commonly set parameters on the most commonly written node in
+ * the product reach the carve-out, and **96 of the 947 measured skips are
+ * `Page`** — every page in every project carries at least one.
+ *
+ * The notice is a true statement about the checker, but here it describes one
+ * shipped type's missing declaration rather than anything about the graph, and
+ * it fires on work that is completely correct.
+ *
+ * 🔴 **Narrow to these two names on purpose, and this is the binding half of the
+ * ruling.** Richard's recorded worry is the effect on LLM page authoring, and
+ * suppressing the *node type* wholesale is exactly what would cause it: a model
+ * that invents `pageTitle` or `path` on a `Page` would get silence where it
+ * needs the notice. Everything except these two names still reports.
+ *
+ * ⚠️ **The honest fix is to declare the ports on `Page`**, at which point this
+ * function has no population and should be deleted rather than left. It is here
+ * because that is a runtime change to a shipped type and this is a validation
+ * ruling.
+ */
+const PAGE_UNDECLARED_PORTS = new Set(['title', 'urlPath']);
+
+function isPageDeclarationGap(nodeType: string, parameterName: string): boolean {
+  return nodeType === 'Page' && PAGE_UNDECLARED_PORTS.has(parameterName);
 }
 
 function locate(component: string, node: ParameterizedNode, port: string) {

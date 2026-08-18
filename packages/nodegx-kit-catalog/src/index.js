@@ -214,6 +214,16 @@ function toDynamicPorts(nodeType) {
 
   const declaredPortGroups = [];
   let runtime = false;
+  // ✅ **D12.** The one place in the repo that recognises `channelPort`, which is
+  // why the ruling put the detection here. Recorded rather than silently folded
+  // into `runtime` because the two mean opposite things to an author: a
+  // `template`/`port` entry produces ports the editor will show once the node
+  // runs, and a `channelPort` entry produces **none, ever** — the exporter
+  // strips it (`nodelibraryexport.ts:487-492`) expecting an editor-side manager
+  // to re-add it, and `DynamicPortChannel` is one of the four managers commented
+  // out at `nodelibrary.ts:94-106`. `kitDiagnostics` turns this into the
+  // sentence the author needs.
+  const unsupportedMechanisms = [];
 
   for (const entry of declared) {
     if (!entry || typeof entry !== 'object') continue;
@@ -221,6 +231,9 @@ function toDynamicPorts(nodeType) {
     // Checked first and independently of the group shape: an entry may carry
     // both, and the runtime half is the one that must not be under-claimed.
     if (e.template !== undefined || e.port !== undefined || e.channelPort !== undefined) runtime = true;
+    if (e.channelPort !== undefined && unsupportedMechanisms.indexOf('channelPort') === -1) {
+      unsupportedMechanisms.push('channelPort');
+    }
     if (e.ports !== undefined || e.inputs !== undefined || e.outputs !== undefined) {
       const group = toDeclaredPortGroup(e);
       if (group.inputs || group.outputs) declaredPortGroups.push(group);
@@ -241,7 +254,10 @@ function toDynamicPorts(nodeType) {
     description:
       'This node declares dynamic port groups. The names were read from the kit’s own ' +
       '`dynamicports` metadata; unlike built-in types they were not observed by driving the node.',
-    ...(declaredPortGroups.length ? { declaredPortGroups } : {})
+    ...(declaredPortGroups.length ? { declaredPortGroups } : {}),
+    // Absent — never `[]` — so "nothing unsupported" and "nobody looked" stay
+    // distinguishable, the same rule `declaredPortGroups` above follows.
+    ...(unsupportedMechanisms.length ? { unsupportedMechanisms } : {})
   };
 }
 
@@ -363,6 +379,12 @@ function toOverlayNode(nodeType, origin) {
   if (!sameRuntimeList(declared, node.availableIn)) node.declaredRuntimes = declared;
 
   if (nodeType.docs !== undefined) node.docs = nodeType.docs;
+  // ✅ D10. Carried rather than dropped, deliberately: "the author's field was
+  // carried all the way into the overlay and then dropped by the consumer" is
+  // the defect CN-008, CN-009 and CN-010 each found in a different reader
+  // (`docs`, `summary`, `dp.note`). A field added on the producing side and not
+  // here would be the fourth.
+  if (nodeType.docsUrl !== undefined) node.docsUrl = nodeType.docsUrl;
   if (nodeType.searchTags !== undefined) node.searchTags = nodeType.searchTags;
   if (nodeType.module !== undefined) node.module = nodeType.module;
   if (nodeType.shortDocs !== undefined) node.shortDesc = nodeType.shortDocs;

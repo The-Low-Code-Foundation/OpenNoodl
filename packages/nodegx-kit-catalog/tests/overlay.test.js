@@ -47,6 +47,42 @@ describe('catalogNodesFromNodeLibrary', () => {
     }
   );
 
+  /**
+   * ✅ **D10, 2026-08-18.** `docs` is prose on a kit node and a URL on a shipped
+   * one, so a kit that also has a real page got a second field.
+   *
+   * 🔴 **The reason it is tested HERE and not only at the producer:** three
+   * consecutive tasks in this phase found the same defect — the author's field
+   * was carried all the way into the overlay and then dropped (`docs` in
+   * CN-008, `summary` in CN-009, `dp.note` in CN-010). This mapping is the
+   * place that drop happens, so a new field gets a row on the way in.
+   */
+  it('carries a kit node’s docsUrl, and leaves it absent when there is none', () => {
+    const withUrl = {
+      nodetypes: [
+        {
+          name: 'k.WithPage',
+          category: 'Visual',
+          module: 'K',
+          ports: [],
+          docs: 'Prose about the node.',
+          docsUrl: 'https://example.com/k'
+        },
+        { name: 'k.NoPage', category: 'Visual', module: 'K', ports: [], docs: 'Prose only.' }
+      ]
+    };
+    const { nodes } = catalogNodesFromNodeLibrary(withUrl);
+    const page = nodes.find((n) => n.typeName === 'k.WithPage');
+    const noPage = nodes.find((n) => n.typeName === 'k.NoPage');
+
+    expect(page.docsUrl).toBe('https://example.com/k');
+    // Both survive independently — the panel renders one as help text and the
+    // other as a link, so collapsing them would break whichever it kept.
+    expect(page.docs).toBe('Prose about the node.');
+    expect('docsUrl' in noPage).toBe(false);
+    expect(noPage.docs).toBe('Prose only.');
+  });
+
   it('marks provenance so a consumer can tell a kit node from a shipped one', () => {
     const { nodes } = catalogNodesFromNodeLibrary(payload);
     for (const node of nodes) {

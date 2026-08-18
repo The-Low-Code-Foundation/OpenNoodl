@@ -277,6 +277,9 @@ function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
     version: opts.version,
     module: opts.module,
     docs: opts.docs,
+    // D10: a kit's documentation URL, kept apart from `docs` because that field
+    // is prose on a kit node and a URL on a shipped one.
+    docsUrl: opts.docsUrl,
     allowAsExportRoot: opts.allowAsExportRoot,
     nodeDoubleClickAction: opts.nodeDoubleClickAction,
     searchTags: opts.searchTags,

@@ -74,6 +74,45 @@ describe('the recorded payload really carries both shapes', () => {
   });
 });
 
+/**
+ * ✅ **D12, 2026-08-18.** `channelPort` is recognised here and implemented
+ * nowhere, so the ports it names appear in no surface and in no state. The
+ * ruling is to say so rather than to revive the editor-side manager (one
+ * occurrence in 177 library types, and it is this fixture's own node) or to go
+ * on saying nothing (the status quo, and the worst of the three).
+ */
+describe('D12 — an unimplemented dynamic-port mechanism is recorded', () => {
+  it('names channelPort as unsupported, from the real exported payload', () => {
+    // Read off the recording rather than a hand-written overlay: this is the
+    // shape `formatDynamicPorts` actually emits, which is the thing in doubt.
+    expect(nodeNamed('dynports.kit.Feed').dynamicPorts.unsupportedMechanisms).toEqual(['channelPort']);
+  });
+
+  it('still calls it runtime-discovered, because under-claiming costs a false accusation', () => {
+    // 🔴 The two facts are independent and both must hold. Dropping
+    // `runtime-discovered` would make `hasRuntimeDynamicPorts` false and turn
+    // every parameter on this node into `unknown-parameter` — a warning on a
+    // kit whose only crime is a mechanism we do not implement.
+    expect(nodeNamed('dynports.kit.Feed').dynamicPorts.mechanisms).toContain('runtime-discovered');
+  });
+
+  it('a supported runtime mechanism is NOT reported unsupported', () => {
+    // The control. `template`/`port` entries also set `runtime-discovered`, so a
+    // rule that keyed on the mechanism list rather than on the entry shape would
+    // accuse them too — and they work.
+    const supported = nodeNamed('dynports.kit.Panel');
+
+    expect(supported.dynamicPorts.mechanisms).toEqual(['declared-port-groups']);
+    expect(supported.dynamicPorts.unsupportedMechanisms).toBeUndefined();
+  });
+
+  it('is absent rather than empty, so "none" and "nobody looked" stay apart', () => {
+    const withGroups = nodeNamed('dynports.kit.Panel').dynamicPorts;
+
+    expect('unsupportedMechanisms' in withGroups).toBe(false);
+  });
+});
+
 describe('a conditional group', () => {
   it('is declared-port-groups, and only that', () => {
     expect(nodeNamed('dynports.kit.Panel').dynamicPorts.mechanisms).toEqual(['declared-port-groups']);

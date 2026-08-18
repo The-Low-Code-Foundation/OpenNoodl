@@ -81,11 +81,77 @@ describe('getNodeProvenance', () => {
   });
 
   test('a kit node with no docs still gets its kit named', () => {
-    // ⚠️ The common case, not an edge one: `@nodegx/kit-scaffold` emits no `docs`
-    // at all (CN-008), so the first kit anybody makes lands here. Provenance must
-    // not be conditional on the author having written a sentence.
+    // ⚠️ **This comment used to say the scaffold emits no `docs` at all, so
+    // "the first kit anybody makes lands here". That stopped being true on
+    // 2026-08-18** — D10's slice made `@nodegx/kit-scaffold` emit a real `docs`
+    // sentence, which is what CN-008 asked for. The case is now the
+    // hand-written kit and the kit whose author deleted the line, which is why
+    // it still matters: provenance must not be conditional on the author having
+    // written a sentence.
     expect(getNodeProvenance({ type: { name: 'x.Y', module: 'Harbour Metrics' } })).toEqual({
       kitName: 'Harbour Metrics'
+    });
+  });
+
+  /**
+   * ✅ **D10, 2026-08-18.** `docs` is prose on a kit node, so a kit that also has
+   * a real page had nowhere to put it — rendering the sentence as an `href`
+   * opens nothing. The ruling rejected sniffing for `http` because that encodes
+   * a guess about intent in a regex; these rows grade the two-field answer.
+   */
+  describe('D10 — kitDocsUrl', () => {
+    test('a kit may declare a page as well as a sentence, and both survive', () => {
+      expect(
+        getNodeProvenance({
+          type: { name: 'x.Y', module: 'Harbour Metrics', docs: 'Shows one number.', docsUrl: 'https://example.com/y' }
+        })
+      ).toEqual({ kitName: 'Harbour Metrics', kitDocs: 'Shows one number.', kitDocsUrl: 'https://example.com/y' });
+    });
+
+    test('either one alone is enough, and neither implies the other', () => {
+      // 🔴 The pair that matters. The old code returned `{kitName, kitDocs}` or
+      // `{kitName}` — two shapes — so a reader could have been written assuming
+      // a URL only ever accompanies prose. It does not.
+      expect(getNodeProvenance({ type: { name: 'x.Y', module: 'K', docsUrl: 'https://example.com/y' } })).toEqual({
+        kitName: 'K',
+        kitDocsUrl: 'https://example.com/y'
+      });
+      expect(getNodeProvenance({ type: { name: 'x.Y', module: 'K', docs: 'Prose.' } })).toEqual({
+        kitName: 'K',
+        kitDocs: 'Prose.'
+      });
+    });
+
+    test('a built-in gets no docsUrl, even shaped so the rejected sniff WOULD fire', () => {
+      // 🔴 **Hand-built, and it has to be.** The obvious control — take a real
+      // built-in out of the recorded payload — cannot fail: this file's own
+      // first test measures that **no built-in in that payload carries `docs`
+      // at all**, so a URL-sniffing reader would never reach one and the
+      // control would pass against a completely broken implementation. That is
+      // the "the obvious control cannot fail" shape CN-009 and CN-010 each hit.
+      //
+      // So the node below is built to be the input the rejected design was
+      // rejected for: no `module`, and a `docs` that is a docs.noodl.net URL —
+      // exactly what a shipped node carries in the MCP catalog, where 158 of
+      // them do. Provenance stays empty because it gates on provenance, not on
+      // what the string looks like.
+      const builtinShaped = { name: 'Group', docs: 'https://docs.noodl.net/nodes/basic-elements/group' };
+
+      expect(getNodeProvenance({ type: builtinShaped })).toEqual({});
+    });
+
+    test('and the same string on a KIT node is a page, which is the other arm', () => {
+      // Without this the row above passes for a function that returns {} always.
+      expect(
+        getNodeProvenance({ type: { name: 'k.Group', module: 'K', docsUrl: 'https://docs.noodl.net/x' } })
+      ).toEqual({ kitName: 'K', kitDocsUrl: 'https://docs.noodl.net/x' });
+    });
+
+    test('whitespace-only docsUrl is treated as absent, like its sibling', () => {
+      const p = getNodeProvenance({ type: { name: 'x.Y', module: 'K', docsUrl: '  \n ' } });
+
+      expect(p.kitName).toBe('K');
+      expect(p.kitDocsUrl).toBeUndefined();
     });
   });
 
