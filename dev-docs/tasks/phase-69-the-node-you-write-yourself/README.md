@@ -97,16 +97,36 @@ this phase burned a session on that specific mistake.
 | `library:check` | ✅ **59/59 clean** (183 warnings, not gated) |
 | `library:build` + `library:verify-dist` | ✅ **29 prefabs + 30 modules, 0 problems** |
 | `library:verify-origin` | ✅ **matches the baseline** — prefabs 29/29, modules 26/30 |
-| `test:ci` @ `NOODL_SPEC_SEED=39393` | see the closing handover — measured separately, alone |
+| `test:ci` @ `NOODL_SPEC_SEED=39393` | 🔴 **NOT MEASURED — two runs timed out. See below.** |
 
-🔴 **`test:ci` must be run with nothing else on this checkout.** s32 first ran it beside `test:main`
-and three typechecks and it **timed out at 900s without reporting results** — which exits 1 and looks
-exactly like the clean floor, since a clean floor also exits 1. **A run with no summary line is not a
-measurement.** Delete `packages/noodl-editor/tests/test-results.json` first and require the summary,
-not the exit code.
+## 🔴 `test:ci` was not measured in s32, and this says so rather than quoting a number
 
-⚠️ **Compare the failures BY NAME, not by count.** The count moves as tests land; a new *name* is the
-finding.
+**Two attempts, both timed out at 900s "without reporting results", both exiting 1.**
+
+- **Attempt 1** ran beside `test:main` and three typechecks — self-inflicted contention.
+- **Attempt 2** ran with nothing else on this checkout and **timed out anyway**, at **1,910 of
+  ~2,850 specs**.
+
+**Why, measured rather than guessed:** the machine is **swapping** — `vm.swapusage` showed
+**20,527 MB of 21,504 MB in use**, 33% memory free, load average ~7, a `Virtualization.framework` VM
+at 115% CPU and five peer Claude sessions live. *"Alone on this checkout"* is not *"alone on this
+machine"*.
+
+`packages/noodl-editor/test.js` exposes **`NOODL_TEST_TIMEOUT_MINUTES`** and says in its own
+docstring: *"Raise it only after checking the machine is not swapping; a timeout is far more often a
+symptom than a limit."* It is swapping, so the override was **not** used. Raising it would have
+produced a number bought by degrading four other sessions.
+
+🔴 **A run with no summary line is not a measurement, and a timeout exits 1 exactly like the clean
+floor** — so the exit code cannot tell them apart, and `test-results.json` is never written at all.
+Delete it first, then require the **summary line**, never `$?`.
+
+⚠️ **What this leaves genuinely unverified for s32's changes:** `test:ci` is the only gate that sees
+an untyped caller of a type-level change. This session made `module` **required** on
+`installModule`/`installPrefab`. That was mitigated by grepping `.js`/`.jsx` callers — there are
+**none**, `ModuleCard.tsx` is the only caller — but **a grep is not a gate.** Re-run `test:ci` alone
+on an idle machine before treating the phase's gate row as complete, and compare failures **BY
+NAME**, not by count.
 
 ## 6. The map
 
