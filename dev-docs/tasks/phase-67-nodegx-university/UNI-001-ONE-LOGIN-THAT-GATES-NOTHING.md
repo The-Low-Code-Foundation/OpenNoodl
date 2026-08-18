@@ -54,8 +54,13 @@ editor is fully functional signed out, forever.** The sign-in adds surfaces; it 
    an editor restart; sign-out wipes it.
 3. Account deletion on the platform cascades (sessions, ledger rows, profile) — proven by a spec,
    not a promise.
-4. `grep` the editor for reads of the session outside the launcher/account module comes back
-   empty — the "gates nothing" principle is structurally visible.
+4. ✅ **AMENDED 2026-08-18 (session 34) — see the verdict section below, which quotes the
+   original in full and argues the change rather than assuming it.** No module may read the
+   session that is not on a **recorded list with a reason**, and **no editor capability may sit
+   inside a session branch** — the "gates nothing" principle is structurally visible, and is now
+   a gate (`tests-unit/uni-001/session-readers.test.ts`) rather than a grep somebody re-runs.
+   ~~`grep` the editor for reads of the session outside the launcher/account module comes back
+   empty.~~
 
 ---
 
@@ -119,10 +124,10 @@ human being alive and nothing UNI-015/016 built was reachable by a real person.
   a plain sentence** rather than redirecting into a provider error page. Creating the OAuth App
   is Richard's — see the ask added to the phase README. It is free and takes a minute; it is a
   **credential**, not a design question.
-- ⚠️ **AC4's grep is not re-run.** *"Reads of the session outside the launcher/account module
-  come back empty"* — the composer now reads it, which was already true before this session
-  (UNI-016 put it there) and is arguably what the criterion means to permit. **The criterion
-  needs re-wording or a verdict**, and pretending it passed would be worse than saying so.
+- ✅ **AC4 — SETTLED 2026-08-18 (session 34), and it was a wording defect, not a code one.**
+  The verdict and its evidence are in their own section below; the short version is that a
+  *location* test never expressed "gates nothing" and the one reader outside the named modules
+  withholds nothing. It is now enforced by a spec instead of re-argued every session.
 - **AC1's regression gate** — the full `test:main`/`test:ci` baseline — is the standing claim
   that signing in *gates nothing*. `test:main` was re-run this session; **`test:ci` was not**.
 
@@ -236,12 +241,95 @@ that is a design decision, not a placement.
 
 ## What AC2 still does not close
 
-- **AC4's grep still needs a verdict rather than a run** — unchanged from session 29, and now
-  there is a second legitimate reader (the launcher hook) inside *"the launcher/account module"*
-  the criterion names, which arguably makes the wording easier to settle rather than harder.
+- ~~**AC4's grep still needs a verdict rather than a run**~~ ✅ **SETTLED in session 34** — the
+  section below. AC2's own launcher hook was the third reader, and it is what made the wording
+  easy to settle rather than harder: the criterion had to name a *property*, not a *place*.
 - **The happy path is unproven end to end.** E10 (no OAuth App) then E2 (nothing deployed), in
   that order. The device flow's own half is specced in `communitysignin.test.ts`; what nothing in
   either repository can substitute for is E9's smoke drive on the deployed box.
+
+# ✅ AC4 — THE VERDICT. 2026-08-18, session 34.
+
+**Two sessions recorded AC4 as *"needs a verdict rather than a run"* and neither one gave it.**
+This is it, with the measurement it rests on, because a criterion nobody will settle is a
+criterion that quietly becomes optional.
+
+## What the grep actually returns — measured before anything was argued
+
+Every file under `packages/*/src` that reaches the store, by import path or by any exported name:
+
+| File | Is it "the launcher/account module"? |
+|---|---|
+| `models/community/communitysession.ts` | it **is** the module |
+| `models/community/communitysignin.ts` | the account module — the device flow writes, sign-out clears |
+| `pages/ProjectsPage/useCommunityAccount.ts` | the launcher (AC2's own hook, added session 33) |
+| `views/…/AskAboutNodeDialog/AskAboutNodeDialog.tsx` | 🔴 **no** |
+
+**So the literal grep returns exactly one file, and it has since UNI-016 — before this task had an
+issuer at all.** Reporting AC4 as passing would have been false; deleting it would have thrown
+away the only structural expression of principle 1 this repo has.
+
+## 🔴 THE RULING: THE CRITERION WAS WRONG, THE CODE IS RIGHT
+
+**A location test never expressed "gates nothing".** It is a proxy that fails in both directions:
+a read *inside* the launcher can withhold a feature and the grep stays empty, while the read that
+exists in the composer withholds nothing and the grep goes red. The criterion's second clause —
+*"the 'gates nothing' principle is structurally visible"* — is the requirement; the first clause
+was a guess at how to see it.
+
+**What the composer's read does, in the source:** it chooses a **transport** and adds an
+**offer**. Signed in, a *Post to the community* button appears. Signed out, the sign-in offer
+appears — and *Copy and open the community*, which needs no account, is the **CTA**. The
+capability is available either way. That is the opposite of a gate, and UNI-016 AC5 already
+warned in as many words against deleting the hand-off.
+
+⚠️ **The third reader is what made this easy rather than harder.** When the composer was the only
+reader, "move it or re-word it" looked like a coin toss. AC2's launcher hook made the pattern
+plain: **every reader is a surface that draws the account, and none of them is a feature that
+checks for one.** That is a property, and a property can be asserted.
+
+## What replaced it — `tests-unit/uni-001/session-readers.test.ts`, 10 tests
+
+1. **A recorded reader set.** The population is walked **from disk** (`packages/*/src`, 2548
+   files) rather than listed, so a reader in a directory that did not exist when the spec was
+   written is still caught. Each of the four entries carries **a reason**, and the reason has to
+   answer *"what does this read withhold?"* — the only acceptable answer being *nothing*.
+2. **No capability inside a session branch**, by balanced-brace scanning of the composer's JSX.
+   🔴 **The control pair is real code, not a fixture:** the signed-in post button *is* inside
+   `{session && (…)}` and the checker must report it **gated**; the hand-off and Cancel must
+   report **ungated**. A checker that cannot see a gate that is there cannot be trusted to report
+   its absence — the phase has recorded that failure five ways.
+3. **Non-vacuity first.** The sweep asserts it saw a real population, found a known reader, and
+   that an absent token reads absent — because a misconfigured root returns zero files and then
+   every absence below it passes for the worst possible reason.
+
+✅ **The gate was proven to fail before it was believed.** An unlisted reader planted in a
+*different package* (`noodl-types/src`) turned exactly one test red and **named the file**;
+removing it returned green. A gate that has only ever been green has not been tested.
+
+## ⚠️ What this does NOT close, and it is deliberate
+
+- **AC1 remains the regression gate for "gates nothing".** This spec proves the *structure*; only
+  the full baseline proves the *behaviour*. Do not let a green run here stand in for it.
+- 🔴 **`test:ci` is still unmeasured for this claim.** `test:main` is not the whole of AC1.
+
+**Gates, measured 2026-08-18 (session 34), both sides of the edit:**
+
+| | Before any edit | After |
+|---|---|---|
+| `test:main` | **0 failed / 3816 passed / 3816, 249 suites** | ✅ **0 failed / 3826 passed / 3826, 250 suites** |
+| `npx tsc -p tsconfig.json --noEmit` | — | ✅ **exit 0** |
+
+✅ **The delta reconciles: +1 suite and +10 tests, all of them this file's; nothing existing
+moved.** 🔴 **The floor was CLEANER than session 33's after-state** (which was 1 failed / 3808 /
+3809 across 248) — a peer fixed phase 69's `cn-002` red and added a suite in between. That is
+exactly why the floor gets re-measured rather than quoted. ⚠️ **`test:ci` was NOT run** — four
+peer sessions were live on this checkout.
+- ⚠️ **The list is only as good as the question asked when a row is added.** The failure mode this
+  cannot prevent is somebody adding a row to turn the suite green. The spec says so in the
+  assertion's own comment, which is where the person doing it will be looking.
+
+---
 
 ## Not in v1
 
