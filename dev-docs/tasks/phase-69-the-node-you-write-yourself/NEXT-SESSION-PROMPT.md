@@ -30,8 +30,9 @@ promises a runtime nobody wrote a loader for.
 drive, not two.** Both want a live model authoring in a project that has a kit. ⚠️ **Read §4 first**
 — the stale-build trap would make the whole run grade the wrong code.
 
-🔴 **CN-013's CLOUD half is BLOCKED on a ruling** ([RULINGS-OPEN-QUEUE.md](RULINGS-OPEN-QUEUE.md) #1);
-**its SSR half is not** and is in Bundle A. Everything else is unblocked.
+✅ **NOTHING IS BLOCKED. THE RULING QUEUE IS EMPTY** — Richard cleared all ten on 2026-08-18
+(**D9–D18** in [RULINGS.md](RULINGS.md)). **CN-013's cloud half is now ruled IN**, scoped to pure-JS
+logic nodes (D18).
 
 🔴 **§3 is now a BUNDLE PLAN, not a menu** — Richard's call on 2026-08-18 is to close tiers 0–5 in
 bundles and defer tier 6. Read §3 before choosing anything.
@@ -110,7 +111,8 @@ each), four teardowns and four peer-attribution passes. Do them in one stack.
 | **CN-014 AC1** | rename a port in a kit → panel shows the new name; the old connection is **dropped with a diagnostic**, not silently retained |
 | **CN-014 AC2** | add a node to a kit → appears in the picker with no restart |
 | **CN-014 AC3** | a kit with a **syntax error** reports it (CN-015) rather than leaving the previous version silently running |
-| **CN-013 (SSR half only)** | does a kit node render under SSR? The globals are set (`static/ssr/runtime-globals.js`), so it plausibly does — **confirm, don't infer** |
+| **CN-013 (SSR)** | does a kit node render under SSR? The globals are set (`static/ssr/runtime-globals.js`), so it plausibly does — **confirm, don't infer** |
+| **CN-013 (CLOUD — new, ✅ D18)** | a **pure-JS logic** kit node runs in a cloud function. 🔴 **Verify in the editor's preview AND in the deployed path** — the isolate stubs `require` to an error, the service process does not, and D18 exists because they disagree |
 
 ✅ **Build ONE fixture project carrying every case before launching**, with a healthy kit, a kit to
 rename a port in, a kit to add a node to, and a kit to break. ⚠️ **Write every observation down
@@ -136,21 +138,23 @@ false premise. Measure all five, **then stop and read** before building anything
 
 **CN-016, CN-017.** Not this phase's remaining sessions. See above.
 
-## 3b. 🔴 The ruling queue is now ONE DOCUMENT — check it before planning
+## 3b. ✅ The queue is EMPTY — and D9–D18 created work. Read this before planning
 
-**[RULINGS-OPEN-QUEUE.md](RULINGS-OPEN-QUEUE.md)** — all ten, each with what is measured today, the
-options and a recommendation, written to be answered in a single pass. Richard asked for it this way
-on 2026-08-18.
+**All ten ruled 2026-08-18** ([RULINGS.md](RULINGS.md) D9–D18; the reasoning is in
+[RULINGS-OPEN-QUEUE.md](RULINGS-OPEN-QUEUE.md)). ⚠️ **Six of them are BUILD instructions, not just
+permissions** — fold them into the bundles rather than treating the queue as closed admin:
 
-⚠️ **Read it first.** Answers land in [RULINGS.md](RULINGS.md) as D9+, and several change what the
-bundles above should do:
-- **#1 (cloud kits) gates CN-013's cloud half** — Bundle A only covers the **SSR** half for that
-  reason.
-- **#4** decides whether the open-panel refresh is inside CN-014's scope or a noted rough edge.
-- **#3** (kit `docs` as a URL) shapes CN-007's page.
-- **#7** is CN-005's index signature and is independent of everything else.
-
-⚠️ **If the queue is still unanswered, do Bundle A anyway** — none of the drives depend on a ruling.
+| Ruling | What it obliges, and where it goes |
+|---|---|
+| **D18** | 🔴 **CN-013's cloud half is IN** — build the loader for **pure-JS logic nodes only**. ⚠️ It must **say what it does not cover** rather than hang, and be **verified in preview AND production**: the editor's isolate stubs `require` to an error, the deployed backend runs in-process where it works. **Bundle A gains a case.** |
+| **D10** | A kit gets a separate **`docsUrl`** — touches `ReactNodeDefinition`, `NodeDefinitionOptions`, the scaffold and CN-006b's panel. ⚠️ It also **unblocks CN-007's docs link**. **Bundle B.** |
+| **D12** | `channelPort` is **rejected at kit-load with a diagnostic**. Small, self-contained. **Bundle B.** |
+| **D13** | `validate:project` **will** check parameter values. 🔴 **REPLACE `cn004.test.ts`'s last block, do not delete it.** Expect it to go red on real projects — that is the point. |
+| **D14** | Close `NodeDefinitionOptions`' index signature. ⚠️ **Update `drift.test.js`' "one deliberate divergence" row to name TWO**, with reasons. **CN-005's surface.** |
+| **D16** | Suppress the `Page` parameter-skip `info`. ⚠️ **Narrow to `Page`'s two undeclared fields** — Richard's recorded worry is the effect on LLM page authoring, and a wholesale suppression would hide a real parameter error on a page, which is exactly that effect. |
+| **D17** | Gate `typecheck:editor` + `typecheck:mcp` (both **0**). ⚠️ Do **not** gate `typecheck:runtime` (red at 2) or `core-ui` (44, unmeasured since s23) — raise those separately. |
+| **D9, D15** | No work: shadowing stays reported-not-refused; `find_tools` does not name kits. |
+| **D11** | ⚠️ **A deferral WITH AN OWNER, not a wontfix** — Richard asked that the open-panel refresh be fixed in a **later phase**. It needs a task number there. **Not CN-014's scope.** |
 
 ## 4. ⚠️ Before attempting CN-008 AC1 / CN-009 AC5
 
@@ -164,18 +168,25 @@ exactly this route for the kit extractor and it works.
 `Cashflow Lane` + `Money Pill` rather than a hand-rolled `Group`. CN-009 AC5: an agent **places** a
 kit node it was not told about.
 
-## 5. Owed by Richard — now in ONE document
+## 5. ✅ Owed by Richard — NOTHING. The queue is empty
 
-🔴 **All ten moved to [RULINGS-OPEN-QUEUE.md](RULINGS-OPEN-QUEUE.md)** on 2026-08-18, each with the
-measured state, the options and a recommendation. **Do not re-list them here** — one copy, or they
-drift. Only #1 (cloud kits) blocks a build; it gates CN-013's cloud half.
+**All ten ruled 2026-08-18 as D9–D18.** The obligations they created are in **§3b**, not here — one
+copy, or they drift. 🔴 **Do not re-open a ruled item to "check"** — three of them were re-litigated
+across earlier sessions and it cost time each round.
+
+⚠️ **One thing to put back to him eventually, but not as a blocker:** the SDK story behind D18
+(below) is the feature he actually asked for, and it is out of this phase deliberately.
 
 Open, not caused here, still wanting task numbers: 🔴 `render-from-disk.js` answers `/` and
 `/index.html` and 404s everything else, **including the start page's own `urlPath`** · 🔴 the
 `@noodl/mcp` provisioning flake · 🔴 `ViewerConnection.sendRefresh()` dead at both ends · **the
 half-registered kit** (s22) · 🆕 ⚠️ **`kitDiagnostics` output prints outside `validate:project`'s
 summary**, so an `ERROR` line appears above `0 error(s)` and does not move the exit code —
-pre-existing CN-015 behaviour, noticed by s24, not changed.
+pre-existing CN-015 behaviour, noticed by s24, not changed · 🆕 🔴 **SERVER-SIDE SDK DEPENDENCIES
+for cloud functions** (Stripe/AWS/Anthropic — Richard's actual ask behind D18). **Wants its own task
+and probably its own phase**: it reopens the deployed backend's single-prebuilt-`cli.js` packaging,
+the preview isolate's stubbed `require`, and the trust boundary together · 🆕 **the open-panel
+refresh (D11)** — deferred to a later phase *by decision*, so it needs a number there.
 
 ## 6. ⚠️ Carried, unresolved
 

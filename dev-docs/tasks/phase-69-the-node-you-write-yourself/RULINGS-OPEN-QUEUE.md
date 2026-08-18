@@ -6,7 +6,10 @@ Each carries **what is true today (measured, not assumed)**, the options, and a 
 because a neutral ten-item menu is slower to answer than ten opinions you can overrule. ✅ **Ruled
 decisions go into [RULINGS.md](RULINGS.md) as D9+**; this file is the queue, and it empties.
 
-🔴 **Only #1 blocks a build.** The rest shape work or close honesty gaps.
+✅ **QUEUE CLEARED 2026-08-18.** All ten are ruled: #2–#10 as **D9–D17**, and #1 as **D18** after a
+measurement pass showed the question was the wrong one. **Nothing in this phase is blocked on a
+decision.** This file is now the record of how each was decided; the rulings themselves live in
+[RULINGS.md](RULINGS.md).
 
 ---
 
@@ -32,6 +35,45 @@ browser**, where the blast radius is one page.
 code beside the database before CN-017 exists to reason about it. ⚠️ (b) is the tempting one and is
 the weakest: "locally-authored" is a claim about provenance that nothing currently records.
 
+**RICHARD ANSWER:** I think we kind of need this though. If someone wants to add the AWS SDK or Stripe SDK, or even the Anthropic SDK, why wouldn't we let them? I'd say as long as it's adding like a known npm package or something 'officially recognised', it's fine. But then again if you have a user and their Cloud Code says "I'd love to code that custom cloud function node for you to make your project sing, but I can't because NodeGX says no" that's a bit shit too.
+
+
+### 🔴 MEASURED AFTER RICHARD'S ANSWER (s24) — the question was the wrong one
+
+Richard's need is real. **The mechanism he is picturing does not exist in a kit**, and four
+measurements say the SDK case is a much bigger feature than this ruling:
+
+1. **`manifest.dependencies` is a list of SCRIPT PATHS/URLS, not npm packages.** Census of every
+   manifest in the repo: only **test fixtures** use it, and the values are
+   `https://cdn.example.com/vendor.min.js` / `vendor/local-lib.js`. Every real module **vendors its
+   library inline as a UMD browser build**. So "add the Stripe SDK to a kit" today means vendoring a
+   browser UMD build — which is not what the Node builds of Stripe/AWS/Anthropic are.
+2. 🔴 **The editor's cloud-function preview runs in an ISOLATE where `require` is deliberately
+   stubbed to an error** (`sandbox.isolate.js:23` — `"Error, require not supported: "`).
+3. 🔴 **The deployed backend runs cloud functions IN THE SERVICE PROCESS** (`WorkflowRunner`,
+   `@cloud-runtime` statically bundled), where `require` *would* work. **So preview and production
+   disagree about the one API the SDK case needs** — a kit using an SDK would behave differently in
+   the two, which is the exact failure class this phase keeps fixing.
+4. 🔴 **A deployed backend is a single prebuilt `cli.js` copied into the image** — no `npm install`,
+   no `node_modules`, and the Dockerfile says this is deliberate (so the image is not "whatever npm
+   resolved that morning"). **There is nowhere for a user's npm package to land.**
+
+⚠️ **So the message conflates two different features**, and they should not be decided together:
+
+- **Pure-JS logic nodes server-side** — date maths, validation, transforms, formatting, pricing
+  rules. These need **no `require`** and would work with a loader alone. Small, and inside phase 69.
+- **Server-side SDK dependencies** — Stripe, AWS, Anthropic. These need a dependency story the
+  product does not have (points 1–4). **Not a phase 69 ruling.**
+
+⚠️ **And on *"NodeGX says no" is a bit shit too*** — agreed, but note what happens **today**: a kit
+node in a cloud function **hangs the request** until a timeout, saying nothing. s24 replaced that
+with an error naming the kit. So the near-term state is *"it says no clearly"*, which is strictly
+better than the current silence and **forecloses nothing**.
+
+✅ **RULED (b) — D18.** Build the loader for pure-JS logic nodes in CN-013; the SDK story becomes its
+own task outside this phase. Recommendation as it stood: It gives real capability now, it is honest about what it does not cover, and it
+does not pretend a dependency mechanism exists.
+
 ---
 
 ## 2. Should the runtime refuse a kit that shadows a built-in?
@@ -49,6 +91,8 @@ agree. **(c)** refuse the kit's node and error at load.
 deliberately — and **0 of 29 shipped modules have ever been run** (LBR-004), so the blast radius is
 genuinely unknown rather than small.
 
+**RICHARD ANSWER:** a sounds fine
+
 ---
 
 ## 3. What should a kit's `docs` field be able to say?
@@ -63,6 +107,8 @@ express one.
 **Recommendation: (b).** ⚠️ (c) is cheap and is **a guess about the author's intent encoded in a
 regex** — a kit whose prose happens to start with a URL gets a link nobody asked for.
 
+**RICHARD ANSWER:** Yep b is good
+
 ---
 
 ## 4. The open-panel refresh — fold into CN-014, or accept as a rough edge?
@@ -74,6 +120,8 @@ the variable is the selection change, not elapsed time.
 **Recommendation: accept as a rough edge, note it in CN-014.** Clicking any other node and back
 recovers it, and authoring does that constantly. Severity is far below the bug behind it (the frozen
 definition needed a restart and mislabelled itself as *"dynamic ports don't work"*).
+
+**RICHARD ANSWER:** Fine but to be fixed in a later phase please
 
 ---
 
@@ -93,6 +141,8 @@ it at kit-load with a diagnostic.
 the port silently vanishes and the author has no way to learn why. (c) is cheap and honest; (a) is
 real work for a feature with one non-fixture user, which is none.
 
+**RICHARD ANSWER:** c sounds fine
+
 ---
 
 ## 6. Widen the project gate to check parameter VALUES?
@@ -105,6 +155,8 @@ read as a pass.
 **Recommendation: yes, take the call.** ⚠️ **`cn004.test.ts`'s last block asserts the silence
 deliberately — replace it when the call is taken, do not delete it** (CN-002's rule: a silence
 baseline is replaced, never removed).
+
+**RICHARD ANSWER:** yes sounds fine
 
 ---
 
@@ -122,6 +174,8 @@ precisely this.
 **Recommendation: do it, and update the drift row to name two divergences with their reasons.** The
 typo class it catches is the commonest authoring error there is.
 
+**RICHARD ANSWER:** ok sounds good
+
 ---
 
 ## 8. Should `project`'s `find_tools` purpose line name kits?
@@ -133,6 +187,8 @@ carries the control that fails if the line changes. Narrowed by s17, unanswered 
 not be a third renegotiation"*, and s17 showed the discovery gap was really `summary`, which is now
 fixed for free in responses.
 
+**RICHARD ANSWER:** no then
+
 ---
 
 ## 9. "Clean" is no longer "an empty diagnostics array" for any page
@@ -143,6 +199,8 @@ that no author can act on. `warnings` stays 0.
 
 **Recommendation: suppress the `Page` case specifically and say why in the code.** It is not a check
 finding something; it is a declaration gap in one shipped type.
+
+**RICHARD ANSWER:** Ok I guess, hope it doesn't have any negative effect on page authoring by the LLM
 
 ---
 
@@ -156,3 +214,5 @@ and `typecheck:core-ui`'s reported 44 `TS2307`s have **not** been re-measured si
 **Recommendation: gate the green ones now** (`editor`, `mcp`) so they cannot rot, and raise the
 red ones as their own task rather than blocking on them. ⚠️ Gating a script that is already red just
 turns the gate off again.
+
+**RICHARD ANSWER:** Sounds good

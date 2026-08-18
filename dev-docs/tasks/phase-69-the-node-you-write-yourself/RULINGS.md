@@ -195,3 +195,115 @@ still unmeasured**; a peer held the editor for the whole session.
 🔴 **The cashflow kit lives OUTSIDE this repo** (`NodeGX test projects/cashflow-command-centre`), so
 this change is **not under version control and not covered by any gate**. D5 says it must stay
 working because CN-007 depends on it; nothing enforces that. Worth a task number.
+
+---
+
+# D9–D17 — the queue, cleared in one pass (2026-08-18)
+
+**Richard answered nine of ten together** from [RULINGS-OPEN-QUEUE.md](RULINGS-OPEN-QUEUE.md), which
+carried the measured state and a recommendation for each. **#1 (cloud kits) is NOT ruled** — it came
+back with a use case rather than a choice, and the measurement that followed changed the options;
+see the queue doc. The nine below are settled.
+
+## D9 — A kit that shadows a built-in is **reported, not refused** ✅
+
+Ruled (a). Precedence stays as it is: the catalog gives the built-in priority, the **runtime gives
+the kit priority**, and `kitDiagnostics` says so in the words CN-015 corrected. ⚠️ **Binding
+consequence:** an existing module may override deliberately, and **0 of 29 shipped modules have ever
+been run** (LBR-004) — so the blast radius of changing this is unknown, not small. Do not "tidy" the
+two-rules-disagree comment in `health.js` by deleting one half; both halves are true.
+
+## D10 — A kit gets a separate `docsUrl`; `docs` stays prose ✅
+
+Ruled (b). `docs` is **one field over two vocabularies** — a URL on all 158 shipped nodes that carry
+one, prose on a kit — and CN-006b's property panel wants a link it cannot get. A new `docsUrl` field
+carries it. ⚠️ **Sniffing `http` was rejected**: it is a guess about the author's intent encoded in a
+regex, and it mislabels a kit whose prose merely opens with a URL. **Owner: CN-006b's surface, plus
+the scaffold and `ReactNodeDefinition`/`NodeDefinitionOptions`.**
+
+## D11 — The open-panel refresh is a rough edge, fixed in a LATER PHASE ⚠️
+
+Ruled: accept, **but Richard asked explicitly that it be fixed later rather than dropped.** An open
+property panel does not re-render on `libraryUpdated`; it recovers on any re-selection (measured
+twice, six polls over 30 s untouched). 🔴 **This is a deferral with an owner, not a wontfix — it
+needs a task number in the next phase.** Not in CN-014's scope.
+
+## D12 — `channelPort` is **rejected at kit-load with a diagnostic** ✅
+
+Ruled (c). The port is erased in every surface and every state, `DynamicPortChannel` is commented out
+(`nodelibrary.ts:94-106`), and the census found **one occurrence in 177 types — a test fixture's own
+kit node**. ⚠️ Doing nothing was the status quo and the worst of the three: the port silently
+vanishes and the author cannot learn why. Reviving the editor-side manager was rejected as real work
+for zero non-fixture users.
+
+## D13 — `validate:project` **will** check parameter values ✅
+
+Ruled: take the call. `checkParameterValues` has one production caller, so parameter values are
+checked for **no node of any provenance** — 26 unverified on `cashflow-command-centre` alone, read as
+a pass. 🔴 **`cn004.test.ts`'s last block asserts that silence deliberately: REPLACE it when the call
+is taken, do not delete it** (CN-002's rule — a silence baseline is replaced, never removed).
+
+## D14 — Close `NodeDefinitionOptions`' index signature ✅
+
+Ruled: do it. On a logic node only *required*-field typos are caught today; `displayNodeName` and
+`docs` misspellings are **silent** (measured s24). ⚠️ **Binding consequence: this makes a SECOND
+deliberate divergence**, and `drift.test.js`' *"the one deliberate divergence"* row exists to catch
+exactly that — **update that row to name both divergences with their reasons**; do not delete it.
+**Owner: CN-005.**
+
+## D15 — `find_tools`' purpose line does **not** name kits ✅
+
+Ruled: no. The surface sits at **8,223 of 8,280** tokens with a written *"there should not be a third
+renegotiation"*, and the real discovery gap was `summary`, now fixed for free in responses.
+`tests/kitTools.test.ts`' control stays as it is.
+
+## D16 — Suppress the `Page` parameter-skip `info` specifically ✅
+
+Ruled: suppress, and say why in the code. `Page` declares neither `title` nor `urlPath` statically,
+so **96 of 947 measured skips are `Page`** — a declaration gap in one shipped type, not a check
+finding something. ⚠️ **Richard's caveat, recorded because it is a testable worry, not a mood:**
+*"hope it doesn't have any negative effect on page authoring by the LLM."* So the suppression must be
+**narrow to `Page`'s two undeclared fields** — suppressing the node type wholesale would hide a real
+parameter error on a page and is exactly the effect he is asking about.
+
+## D17 — Gate the GREEN typechecks now; the red ones get their own task ✅
+
+Ruled. `typecheck:editor` and `typecheck:mcp` are **0 errors** (re-measured s24) and go into a gate so
+they cannot rot. `typecheck:runtime` is red at 2 (pre-existing `TS2451` in `test/editorconnection.*`)
+and `typecheck:core-ui`'s reported 44 `TS2307`s are **unmeasured since s23** — both raised separately.
+⚠️ **Gating a script that is already red just turns the gate off again.**
+
+## D18 — A cloud loader for **pure-JS** logic kit nodes; SDKs are a separate task ✅
+
+**Ruled 2026-08-18, after the measurement reframed the question.** Richard's first answer asked for
+the Stripe / AWS / Anthropic SDK case; measuring the mechanism showed that is **not what this ruling
+can deliver**, and the two halves are now split.
+
+**What is ruled IN (CN-013):** build the loader so a kit's **logic** nodes register in the cloud
+runtime. The runtime already accepts them — `registerModule` works there and a hand-registered kit
+node answers `200` (s24). What is missing is any caller: `CloudRunner`'s constructor calls
+`registerNodes` and nothing else, and `load(exportData, projectSettings)` has no parameter a module
+could arrive through. This serves date maths, validation, transforms, formatting, pricing rules —
+**everything that needs no `require`**, which is why it behaves the same in preview and production.
+
+**What is ruled OUT of phase 69:** server-side **SDK dependencies**. Four measurements say why:
+
+1. `manifest.dependencies` is **script paths/URLs, not npm** — only test fixtures use it at all, and
+   every real module vendors a UMD browser build inline.
+2. The editor's cloud preview runs in an **isolate where `require` is stubbed to an error**
+   (`sandbox.isolate.js:23`).
+3. The deployed backend runs cloud functions **in the service process**, where `require` *would*
+   work — so **preview and production disagree about the one API the SDK case needs**.
+4. A deployed backend is **a single prebuilt `cli.js`** copied into the image, with no `npm install`
+   and no `node_modules`, deliberately. **There is nowhere for a user's package to land.**
+
+🔴 **Binding consequences for whoever builds CN-013's cloud half:**
+
+- ⚠️ **Say what it does not cover, in the diagnostic and in the docs.** A logic kit node that reaches
+  for an SDK must fail with a sentence naming the limit, not with the hang that s24 just removed.
+- ⚠️ **Verify preview AND production, not one of them.** The isolate and the service process are
+  different execution contexts and this ruling exists because they disagree.
+- 🔴 **This does not re-open D6.** A pure-JS kit node in the service process is still third-party
+  code beside the database; CN-017 still owns the trust story for anything not first-party.
+- **The SDK story wants its own task and probably its own phase** — it reopens the deployed-backend
+  packaging decision, the isolate's `require`, and the trust boundary together.
