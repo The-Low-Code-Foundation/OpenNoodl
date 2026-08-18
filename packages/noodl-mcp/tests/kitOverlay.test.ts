@@ -107,9 +107,16 @@ describe('extraction', () => {
     expect(badge?.outputs.map((p) => p.name)).toEqual(expect.arrayContaining(['clicked']));
     expect(badge?.outputs.find((p) => p.name === 'clicked')?.isSignal).toBe(true);
 
-    // Knowingly absent, never null-by-omission. CN-010 owns closing it, and a
-    // silent `undefined` here is what would let it be forgotten.
-    expect(badge?.parameterEncoding).toEqual({ known: false, reason: expect.stringContaining('CN-010') });
+    // ✅ **CN-010, s27.** `null`, and that is the positive statement — not a gap.
+    // `node-catalog.d.ts` makes `parameterEncoding` non-null for *exactly* the nodes
+    // with a `dynamicPorts` block, and `demo.kit.Badge` declares no `dynamicports`,
+    // so there are no key formulas to describe. It previously read
+    // `{ known: false, … }`, which claimed the names could not be determined about a
+    // node that computes none — a pairing that occurs on no shipped type.
+    // The `known: false` arm is still asserted, on a node that DOES declare
+    // dynamic ports, in `nodegx-kit-catalog/tests/overlay.test.js`.
+    expect(badge?.dynamicPorts).toBeNull();
+    expect(badge?.parameterEncoding).toBeNull();
   });
 
   it('survives a throwing kit, names it, and keeps its neighbours', () => {

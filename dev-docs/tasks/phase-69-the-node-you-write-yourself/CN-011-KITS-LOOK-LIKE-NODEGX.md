@@ -110,3 +110,26 @@ deliverable most at risk of being forgotten.
   package builds while verifying.
 - ⚠️ Design tokens live in two border namespaces and `--border-control` is a recorded trap; see the
   older-phase pointers before inventing token names for the scaffold.
+
+---
+
+## 🚗 s27 (2026-08-18) — AC3 met; AC2 half met and half unmeasurable
+
+Full readings: [notes/s27-drive-observations.md](notes/s27-drive-observations.md).
+
+- ✅ **AC2, token resolution (T1).** A `var(--token)` colour resolves: pill background
+  **`rgb(22, 163, 74)`** = `--green-600` = `#16a34a`, with `el.style.background` holding the literal
+  `var(--green-600)` — the token string reaches the style object untouched.
+- ✅ **AC2, live propagation (T3).** `setToken('--green-600', …)` in the editor moved the viewer's
+  root property **and** the kit node's rendered colour with **no reload**. This is the half s15
+  never measured.
+- 🔴 **AC2's "in both themes" clause cannot be met or failed — there is no second theme.**
+  `StyleTokenRecord` is `{name, value, category, isCustom, description?}`: one value per token, no
+  theme dimension. 182 flat tokens in `DefaultTokens.ts`; no `data-theme`, `prefers-color-scheme`,
+  `setTheme` or `themeName` anywhere in `noodl-viewer-react/src`. **The clause should be struck or
+  re-scoped, not recorded as a failure.**
+- ✅ **AC3 met, on the reader path.** A variant created on a kit node
+  (`nodegx.grow.Gamma`, `useVariants: true`) saved to `nodegx.styles.json`, survived a full project
+  close and reopen, and came back as a real `VariantModel` with `tone: var(--green-600)` intact.
+  ⚠️ Variants live in `nodegx.styles.json`, **not** `nodegx.project.json` — reading the latter shows
+  no `variants` key and would read as "variants do not persist".

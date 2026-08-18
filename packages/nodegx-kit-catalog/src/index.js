@@ -51,8 +51,15 @@
  *
  * - **`parameterEncoding`** — the built-in generator derives it by *driving* the
  *   node's dynamic-port hook with seed parameters (`derive-encoding.js`), which
- *   needs the raw definition and a running node. Overlay entries carry
- *   `{ known: false, reason }`. **CN-010 owns closing this.**
+ *   needs the raw definition and a running node. An overlay node that *declares*
+ *   `dynamicports` therefore carries `{ known: false, reason }`.
+ *   ✅ **CN-010, s27.** This used to be set on **every** overlay node, including
+ *   the static majority that declare no dynamic ports at all. That broke the
+ *   invariant `node-catalog.d.ts` states for the field — non-null for *exactly*
+ *   the nodes with a `dynamicPorts` block — and produced a pairing (no
+ *   `dynamicPorts` + `known: false`) that occurs on **none** of the 175 shipped
+ *   types. A static node has no key formulas to fail to derive, so it now reads
+ *   `null`, the same as the 87 built-ins in that position.
  * - **`ssr`** — `createNodeFromReactComponent` puts an `ssr` key in the register
  *   metadata but `generateNodeLibrary` does not export it, so the payload cannot
  *   say. Left absent, which for an overlay node means *not assessed*, never
@@ -401,14 +408,33 @@ function toOverlayNode(nodeType, origin) {
   node.inputs = inputs;
   node.outputs = outputs;
   node.dynamicPorts = toDynamicPorts(nodeType);
-  // Knowingly not derived — see the module header. Never null-by-omission: a
-  // gap must not be able to pass for "nothing to say".
-  node.parameterEncoding = {
-    known: false,
-    reason:
-      'Kit node. Parameter-key formulas are derived by driving the node’s dynamic-port hook, ' +
-      'which the node-library payload cannot express (CN-010).'
-  };
+  // ✅ **CN-010.** `node-catalog.d.ts` states the invariant this field answers to:
+  // `parameterEncoding` is "non-null for exactly the nodes with a `dynamicPorts`
+  // block — `dynamicPorts` says the ports exist, this says what they are called."
+  // The built-in generator honours it at its first line (`deriveEncoding` returns
+  // `null` when there are no dynamic ports), and it holds without exception in the
+  // shipped catalog: all 87 types with no `dynamicPorts` read `null`, and no type
+  // anywhere pairs an absent `dynamicPorts` with `known: false`.
+  //
+  // 🔴 This used to be set unconditionally, which put every *static* kit node into
+  // that nonexistent state. The reasoning behind it — "a gap must not pass for
+  // nothing to say" — is right for a node WITH dynamic ports and wrong for one
+  // without: `known: false` claims the names could not be determined, when a node
+  // whose every port is declared computes no names to determine. It was an honest
+  // statement applied to the wrong population, and it overstated the gap on the
+  // majority of kit nodes.
+  //
+  // A node that DOES declare `dynamicports` keeps `known: false`, which stays true
+  // for the reason the module header gives: the formulas come from driving the
+  // hook, and a node-library payload cannot express that.
+  node.parameterEncoding = node.dynamicPorts
+    ? {
+        known: false,
+        reason:
+          'Kit node. Parameter-key formulas are derived by driving the node’s dynamic-port hook, ' +
+          'which the node-library payload cannot express (CN-010).'
+      }
+    : null;
 
   return node;
 }

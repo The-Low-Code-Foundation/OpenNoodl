@@ -118,14 +118,64 @@ describe('catalogNodesFromNodeLibrary', () => {
     for (const p of signals) expect(p.type.name).toBe('signal');
   });
 
-  it('states that parameter encodings were not derived instead of leaving a gap', () => {
+  /**
+   * ✅ **CN-010, s27.** `node-catalog.d.ts` states the invariant: `parameterEncoding`
+   * is non-null for **exactly** the nodes with a `dynamicPorts` block. It holds
+   * without exception across the 175 shipped types — all 87 with no `dynamicPorts`
+   * read `null`, and none anywhere pairs an absent `dynamicPorts` with `known: false`.
+   *
+   * 🔴 **What this row used to assert, and why it locked in the defect.** It ran
+   * `expect(known).toBe(false)` over every node in `payload` — and all five of them
+   * declare no `dynamicports` whatsoever. So the assertion covered exactly the
+   * population the claim is wrong for, and there was no node in it that could have
+   * distinguished the two cases. The reasoning in its comment ("a gap must not pass
+   * for nothing to say") is sound for a node WITH dynamic ports and false for one
+   * without: `known: false` says the names could not be determined, and a node whose
+   * every port is declared computes no names to determine.
+   *
+   * Both arms below fire against real data, so neither can pass vacuously.
+   */
+  it('leaves parameterEncoding null on a static kit node — there are no key formulas to derive', () => {
     const { nodes } = catalogNodesFromNodeLibrary(payload);
-    for (const node of nodes) {
-      // Never absent, never null: a gap must not pass for "nothing to say".
-      expect(node.parameterEncoding).not.toBeNull();
-      expect(node.parameterEncoding.known).toBe(false);
-      expect(node.parameterEncoding.reason).toMatch(/CN-010/);
-    }
+    // Control FIRST: the arm is only meaningful because these nodes really do
+    // declare no dynamic ports. If that ever changes this row is measuring nothing.
+    expect(nodes.length).toBe(5);
+    expect(nodes.every((n) => n.dynamicPorts === null)).toBe(true);
+
+    for (const node of nodes) expect(node.parameterEncoding).toBeNull();
+  });
+
+  it('still states known:false on a kit node that DOES declare dynamic ports', () => {
+    // The other arm, and the one that keeps the module header honest: the formulas
+    // come from driving the hook, which a node-library payload cannot express.
+    const withDynamic = {
+      nodetypes: [
+        { name: 'k.Panel', module: 'K', category: 'Visual', ports: [], dynamicports: [{ name: 'g', inputs: ['itemCount'] }] }
+      ]
+    };
+    const node = catalogNodesFromNodeLibrary(withDynamic).nodes[0];
+    expect(node.dynamicPorts).not.toBeNull();
+    expect(node.parameterEncoding.known).toBe(false);
+    expect(node.parameterEncoding.reason).toMatch(/CN-010/);
+  });
+
+  it('the invariant itself: parameterEncoding is non-null for exactly the nodes with dynamicPorts', () => {
+    const mixed = {
+      nodetypes: [
+        { name: 'k.Static', module: 'K', category: 'Visual', ports: [] },
+        { name: 'k.Dynamic', module: 'K', category: 'Visual', ports: [], dynamicports: [{ name: 'g', inputs: ['a'] }] }
+      ]
+    };
+    const { nodes } = catalogNodesFromNodeLibrary(mixed);
+    // Both states present in one run, so the pairing is asserted rather than assumed.
+    // Sorted because the overlay orders its output; this row is about the pairing.
+    const pairing = nodes
+      .map((n) => [n.typeName, n.dynamicPorts !== null, n.parameterEncoding !== null])
+      .sort((a, b) => a[0].localeCompare(b[0]));
+    expect(pairing).toEqual([
+      ['k.Dynamic', true, true],
+      ['k.Static', false, false]
+    ]);
   });
 
   it('ignores built-in entries — they are already in the shipped catalog', () => {

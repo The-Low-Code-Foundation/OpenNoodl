@@ -122,3 +122,28 @@ broken implementation that never refreshed the library.
   which window actually reloaded before concluding anything about refresh behaviour.
 - ⚠️ **A quiet dev stack does not mean a quiet checkout**, and a live stack contaminates a concurrent
   `test:ci`. This task involves a lot of editor restarts — coordinate.
+
+---
+
+## 🚗 s27 (2026-08-18) — AC2 met, AC1 nuanced, AC3 NOT met
+
+Full readings: [notes/s27-drive-observations.md](notes/s27-drive-observations.md).
+
+- ✅ **AC2 met.** A node added to a live kit reached the editor library after **one viewer reload,
+  no restart** (`nodegx.grow.Beta`; 185 types).
+- ⚠️ **AC1 second clause — flagged, but not dropped.** Removing a port a live connection used:
+  the value stops flowing at runtime, and a diagnostic **is raised and rendered** —
+  `nodegx.rename.Badge · #probe-badge · input: caption`, code `con-no-target-port`. But the wire is
+  **retained** in `connections.json`. So "silently retained" is false; "dropped" is also false.
+  ✅ `WarningsModel` proven firing first (11 warnings, ten unrelated) — the zero-trap did not bite.
+- 🔴 **AC3 NOT met.** A syntax error is *reported* and the old version does **not** keep running
+  (so not the worst outcome), and the other three kits survive with the viewer still mounted — but
+  the message is `SyntaxError: Unexpected identifier 'Noodl'`, naming **neither the kit nor the
+  file**. The editor surfaces only `nodelibrary-unknown-node` on the node; "Broken Kit" appears
+  nowhere in the UI. With four kits installed the author cannot tell which file to open.
+  ✅ The kit **recovers** once the error is fixed.
+
+🔴 **A second, worse failure mode found by hitting it:** a logic node missing `category` throws
+`Node must have a category` out of `registerModule` and the **whole viewer renders nothing**
+(`reactMounted:false`). `nodedefinition.ts:248` has `opts.name` on the next line and does not use
+it. Same authoring-mistake class as AC3, opposite blast radius. Belongs with CN-015.

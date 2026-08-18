@@ -111,3 +111,30 @@ the user will see missing.
 - ⚠️ `useLayoutEffect` warns under SSR in React and is a common source of hydration mismatch — the
   cashflow kit's `Cashflow Lane` uses it, deliberately, to measure. Expect this to be the first
   thing that breaks and treat it as the interesting case rather than an obstacle.
+
+---
+
+## 🔴 s27 (2026-08-18) — AC1 DRIVEN and NOT MET, for two independent reasons
+
+Full readings: [notes/s27-drive-observations.md](notes/s27-drive-observations.md).
+
+**1. The SSR deploy never ships `kit-modules.js`, so the output cannot build — for ANY project.**
+`deployToFolder` copies an explicit manifest (`external/ssr/index.json`), not the directory. That
+manifest lists ten files and `kit-modules.js` is not among them — in the built copy **or** in the
+source `static/ssr/index.json`. Not a stale artefact: the manifest was never updated when this task
+added the loader (`5d956ae2`). `index.js` requires it at top level, so `npm run build` dies with
+`Could not resolve "./kit-modules"`. ✅ **Control: adding that one file and re-running the same
+command builds cleanly.** ⚠️ `index.js` claims three lines above the failing require that "All of
+static/ssr is copied into the deploy runtime by webpack" — false, and it hides the gap.
+
+**2. Even patched, every kit fails server-side.** All four kits in the fixture threw
+`window is not defined` at import, because each begins `var React = window.React;` — **the pattern
+this phase documents and ships as the worked example**. The loader's diagnostic is excellent (names
+kit, cause, consequence, fix); the outcome is that no kit node reaches the server render.
+
+**S1 = 0** kit markers in the served HTML. **S2 control = present**, with 110,653 bytes of
+server-rendered markup — so this is *"kits are missing"*, not *"SSR rendered nothing"*. S3: 7
+`useLayoutEffect` warnings.
+
+🔴 **The seam had a unit test (`ssr-kit-modules.test.js`); nothing had ever built the deploy or
+rendered a page.** Build the caller.

@@ -267,3 +267,26 @@ is leaving it implicit. If they stay exempt, CN-002's `info` diagnostic must say
 - ⚠️ **Function-node ports are `in-`/`out-` prefixed and the catalog does not say so.** Any doc or
   scaffold this task produces must use the real port names, or it joins the list of docs whose
   examples lie.
+
+---
+
+## ✅ s27 (2026-08-18) — `parameterEncoding` closed
+
+The last open non-drive item in the phase. `node-catalog.d.ts` states the invariant:
+`parameterEncoding` is *"non-null for exactly the nodes with a `dynamicPorts` block"*. The built-in
+generator honours it at `deriveEncoding`'s first line, and it holds without exception across the 175
+shipped types — all 87 with no `dynamicPorts` read `null`, and **no type anywhere pairs an absent
+`dynamicPorts` with `known: false`**.
+
+The overlay set `{known: false}` **unconditionally**, putting every *static* kit node into a state
+that occurs nowhere in the catalog. The reasoning behind it — "a gap must not pass for nothing to
+say" — is right for a node WITH dynamic ports and wrong for one without: `known: false` claims the
+names could not be determined, and a node whose every port is declared computes none to determine.
+
+🔴 **The test was asserting it over exactly the wrong population.** `overlay.test.js` ran
+`expect(known).toBe(false)` across all five fixture nodes — every one of which declares no
+`dynamicports` — so nothing in it could distinguish the two cases. Replaced with three rows: static
+⇒ `null` (with the control that the fixture really is all-static), dynamic ⇒ `known: false`, and the
+invariant itself asserted over a payload carrying **both** kinds, so neither arm can pass vacuously.
+
+**78/78 kit-catalog · 644/644 noodl-mcp (54 suites) · `typecheck:mcp` 0.**

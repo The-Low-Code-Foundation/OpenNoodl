@@ -216,3 +216,64 @@ red ones as their own task rather than blocking on them. ⚠️ Gating a script 
 turns the gate off again.
 
 **RICHARD ANSWER:** Sounds good
+
+---
+
+# 🔴 REOPENED — two more, raised s26, measured s27
+
+The ten above are all ruled. These two are **new**, and both were raised by s26 without a
+measurement; s27 measured them before writing them down. Neither blocks closing the phase.
+
+## 11. The semantic token set has no `--success`, `--warning` or `--info`
+
+**Today, measured (s27)** in `packages/noodl-editor/src/editor/src/models/StyleTokensModel/DefaultTokens.ts`:
+the semantic set carries **`--destructive`, `--destructive-hover`, `--destructive-foreground`** —
+and there is **no `--success`, no `--warning`, no `--info`**. The palette scale does carry the raw
+colours (30 `--green-*` / `--amber-*` / `--red-*` entries).
+
+So a node with three status bands has no on-system way to say "good" or "caution". The cashflow kit
+hit this and left a note in its own header explaining the compromise it chose: read **all three**
+bands from the palette scale (`--green-600` / `--amber-600` / `--red-600`) so the node stays one
+system, rather than mixing one semantic token with two palette ones. That is the best available
+answer and it is still a kit reaching past the semantic layer for two thirds of a common pattern.
+
+| | Option |
+|---|---|
+| **(a)** | **Add `--success` / `--warning` / `--info`**, each with `-foreground` and `-hover` to match `--destructive`'s shape. |
+| **(b)** | Leave it; document "use the palette scale for status bands" as the intended pattern. |
+| **(c)** | Add `--success` only — the one with a true semantic opposite in `--destructive`. |
+
+**Recommendation: (a).** `--destructive` alone is a set with one member of a four-member family, and
+every kit that needs the other three will independently invent the same workaround. ⚠️ **The cost is
+real and is why this is a ruling, not a fix:** `DefaultTokens.ts` is the vocabulary **every** project
+sees, so this widens the token surface for all of them, and existing projects would gain tokens their
+themes have no values for. ⚠️ Worth pairing with a contrast check per theme — a palette token failing
+AA has been found five times in this repo, and adding three semantic colours is exactly where a sixth
+would come from.
+
+## 12. `kitDiagnostics` prints outside `validate:project`'s summary, so an ERROR does not fail the run
+
+**Today, measured (s27)** in `scripts/validate-project.ts`: kit diagnostics are printed at line 158
+by `console.error(formatKitDiagnostic(diagnostic))` inside `validatorFor()`, which runs **before**
+the report. The gate at line 219 is `totalErrors > 0 || (warningsAsErrors && totalWarnings > 0)`, and
+`totalErrors` only ever accumulates `report.summary.errors` (line 204). **Kit diagnostics never reach
+it.** A kit-level `ERROR` therefore prints above a summary that says `0 error(s)` and the process
+exits `0`.
+
+**This got more visible, not less:** D12 added `kit-unsupported-dynamic-port` as a fifth code to that
+surface, and it is an **error** — the one an author most needs the CI run to stop on.
+
+| | Option |
+|---|---|
+| **(a)** | **Fold kit diagnostics into the report**, so they count toward `summary.errors` and the exit code. |
+| **(b)** | Keep them separate but add their severity to the gate expression only. |
+| **(c)** | Leave it; treat kit diagnostics as advisory output. |
+
+**Recommendation: (a).** The author's question is "did my project validate", and a surface that
+answers `0 error(s)` immediately below an `ERROR` line answers it wrongly. ⚠️ **(b) is the cheap one
+and is worse than it looks**: it fixes the exit code while leaving the printed summary still saying
+`0 error(s)`, i.e. it makes the human-readable output and the gate disagree. ⚠️ Whichever is chosen,
+the `--json` path needs the same treatment — it builds `jsonResults` from `toJSON(report, …)` only,
+so kit diagnostics are absent from it entirely.
+
+**RICHARD ANSWER:**
