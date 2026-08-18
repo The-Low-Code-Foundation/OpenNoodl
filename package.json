@@ -81,6 +81,7 @@
     "starter-iconset:generate": "node scripts/library/make-starter-iconset.js",
     "starter-iconset:check": "node scripts/library/make-starter-iconset.js --check",
     "library:verify-dist": "ts-node -P ./scripts/tsconfig.json ./scripts/library/verify-dist.ts",
+    "library:verify-origin": "ts-node -P ./scripts/tsconfig.json ./scripts/library/verify-origin.ts",
     "preview": "node packages/noodl-preview/build.mjs && node packages/noodl-preview/bin/noodl-preview.js",
     "typecheck": "tsc --noEmit",
     "typecheck:preview": "tsc -p packages/noodl-preview --noEmit",

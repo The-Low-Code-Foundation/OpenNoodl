@@ -230,6 +230,24 @@ jobs:
       # gate's first job is to keep this script honest about itself.
       - run: npm run library:build
       - run: npm run library:verify-dist
+      # ✅ CN-016 / D21, the load-bearing half. `library:check` grades the
+      # sources and `library:verify-dist` grades the artefact; NEITHER looks at
+      # what users actually receive. This fetches the two indexes from the live
+      # content origin — via getContentEndpoint() itself, so a repoint is
+      # followed with no edit here — and fails when the origin and library/
+      # diverge differently than scripts/library/origin-baseline.json records.
+      #
+      # 🔴 It compares COVERAGE BY LABEL, not content: nothing publishes
+      # library/ yet (phase 65 LBR-001), so there is no published payload
+      # derived from these sources to hash against, and label is the only field
+      # the legacy published names and library/'s slugs share. The script says
+      # so in its own output — a gate that implies more than it checks is worse
+      # than no gate.
+      #
+      # ⚠️ It needs egress by construction. An unreachable origin exits 2 as
+      # UNAVAILABLE and never as a pass; "could not check" reading as "checked
+      # and fine" is the exact silence D21 exists to end.
+      - run: npm run library:verify-origin
       # POL-006: the icon set every new project starts with is generated from the
       # library module above, so it goes stale the moment that one is updated —
       # and the only symptom would be a picker quietly showing the old glyph list.
