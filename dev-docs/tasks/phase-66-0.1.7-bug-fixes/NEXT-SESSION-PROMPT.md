@@ -1,23 +1,32 @@
 # Phase 66 — next session
 
-**Written 2026-08-18, session 59's brief, by session 58.** A rewrite, per §0. s58 took **item 1 —
-FIX-021 slices A/B — and slice B is BUILT** (one commit), plus item 4, the one-line fixture rename.
+**Written 2026-08-18, session 59's brief, by session 58.** A rewrite, per §0. s58 took s57's item 1 —
+**FIX-021 slices A/B — and slice B is BUILT** (`912b89b2`) — plus s57's item 4, the fixture rename.
 
-🔴 **s58's headline: the phase has a built-but-undriven task again, and it is FIX-021 slice B.**
-s57 closed the last one. This is a new build, not a regression, but it is now the phase's only
-open drive and it needs **no API credit** — the panel half is pure UI and the prompt half is
-already graded by specs.
+## 🔴 How much of phase 66 is left: TWO SESSIONS OF ENGINEERING, and a pile of rulings
 
-✅ **The most transferable finding is again about an instrument, for the third session running —
-and this time TWO specs were green while measuring nothing.** One row named a branch it never
-exercised. The other, worse: *"absent means omitted"* compared a turn built without the argument
-against one built with `''`, asserted byte equality — and **could not see a block emitted
-unconditionally, because both arms are built by the same code.** 🔴 **An equality between two arms
-is blind to any mutant that shifts both arms equally.** A differential assertion needs an absolute
-one beside it.
+**Twenty-four tasks. Eighteen closed outright. FIX-015 left the phase** (its own, green-lit).
+Of the remaining five, **four have no open build at all** — what they have is a *ruling owed by
+Richard* — and the fifth is FIX-021, whose slice B is built and undriven.
 
-⚠️ **And the mutant GUARD lied, twice, in the safe-looking direction.** Two prompt-side mutants
-first reported `MUTANT DID NOT APPLY`; both had applied, and both killed rows on the retry. See §4.
+✅ **So the engineering that remains fits in two sessions, and s58 has bundled it that way.** §4 is
+no longer a list of four items; it is **two bundles**, ordered, each of which pays one set of gates
+instead of two. 🔴 **The bundling is not cosmetic: in both bundles the second half depends on the
+first**, so taking them apart costs a launch or re-runs a gate for nothing.
+
+🔴 **The phase's real remaining risk is not code, it is the eight-session-old REPACKAGE.** Three
+finished tasks — FIX-008 D, FIX-013 and now slice B — are all *"driven in the checkout, absent from
+the packaged app"*. They clear together, in one build, in bundle 1.
+
+🔴 **s58's headline finding: TWO specs were green while measuring nothing.** One row named a branch
+it never exercised. The other, worse: *"absent means omitted"* compared a turn built without the
+argument against one built with `''`, asserted byte equality — and **could not see a block emitted
+unconditionally, because both arms are built by the same code.** 🔴 **An equality between two arms is
+blind to any mutant that shifts both arms equally.** A differential assertion needs an absolute one
+beside it.
+
+⚠️ **And the mutant GUARD lied, twice, in the safe-looking direction.** Two prompt-side mutants first
+reported `MUTANT DID NOT APPLY`; both had applied, and both killed rows on the retry. See §4.
 
 🔴 **Every ruling and measurement is in its own task file.** §4 here is a work order. Slice B's full
 write-up — the empty-file rule, the three assumed answers with their rejected options, the mutant
@@ -46,7 +55,7 @@ amendment, rewrite the file instead.**
 | **FIX-001 / 002 / 003 / 005 / 007 / 009 / 010 / 011 / 012 / 013 / 014 / 017 / 018 / 019 / 020 / 023 / 024** | ✅ | ✅ | **CLOSED** — seventeen tasks |
 | **FIX-008** A, B, C, D, E | ✅ | ✅ | **CLOSED** (s56) |
 | **FIX-021** slice 0 + wizard location | ✅ | ✅ s42/s44 | Closed halves |
-| **FIX-021 slice B** — the global user profile | ✅ 🆕 s58 | ❌ | 🔴 **THE PHASE'S ONLY OPEN DRIVE.** Needs no credit — item 1 |
+| **FIX-021 slice B** — the global user profile | ✅ 🆕 s58 | ❌ | 🔴 **THE PHASE'S ONLY OPEN DRIVE.** Needs no credit — bundle 1 |
 | **FIX-021 slice A** | ⛔ | — | 🔴 **DELIBERATELY NOT BUILT** — see §5. This is a decision, not an omission |
 | **FIX-004** §A+§B, §C, §C dual-list, + redaction (b) | ✅ | ✅ / ⚠️ | **No open build.** Browser half needs no drive — s51's note, kept in §5 |
 | **FIX-016** §2, §3, §3c, ruling 1, + the mining slice | ✅ | ✅ s50 | **No open build.** ⚠️ **AC1 still false as built** — §5 |
@@ -54,7 +63,10 @@ amendment, rewrite the file instead.**
 | **FIX-022** — re-grade + the reuse cell | ✅ | ✅ | **No open build** (s53). ⚠️ The §7 ruling is the only thing owed |
 | **FIX-015** | 📋 | — | **Green-lit as its own phase.** Not a P66 build |
 
-**Nineteen tasks closed outright.** ⚠️ **Count the names, don't copy a total.**
+🔴 **EIGHTEEN tasks closed outright** — the seventeen named in row 1, plus FIX-008.
+⚠️ **s58 inherited "nineteen" here and it was wrong**: the number had been copied forward across a
+table whose rows changed under it. **Count the names, never copy a total** — and the arithmetic that
+has to balance is **18 closed + FIX-015 (left the phase) + 5 still open = 24**.
 
 ---
 
@@ -89,10 +101,12 @@ every editor gate was genuinely owed.
   **2849 — the same integer as s55**. A total that had moved would have meant a bundle change nobody
   intended. ⚠️ **The exit code lied as documented:** npm reported 1, and the backgrounded
   `… | tail` reported **0**. **Read `tests/test-results.json`, having deleted it first.**
-- 🔴 **`noodl-mcp` has NO root typecheck gate.** Ten `typecheck:*` scripts in the root
-  `package.json`, and **`typecheck:mcp` is not one of them**. The package's own `tsc` reports **8**
-  errors, pre-existing. One is a real `Exclude<ToolGroupId,'core'>`/zod mismatch at
-  `disclosure.ts:381`; the rest are three test files. **Nothing watches this** — item 4.
+- 🔴 **`noodl-mcp` has NO root typecheck gate.** ✅ **Re-measured 2026-08-18, not inherited:**
+  **nine** `typecheck:*` scripts in the root `package.json` plus a plain `typecheck`, and
+  **`typecheck:mcp` is not among them**. The package's own `tsc` reports **8** errors — **1 real**
+  (`disclosure.ts:381`, `Exclude<ToolGroupId,'core'>` vs zod) and **7 across three test files**.
+  ⚠️ **s58's own earlier draft said "ten `typecheck:*`" and that was wrong** — counted before it was
+  measured. **Nothing watches this package** — bundle 2, step 1.
 - 🔴 **A tool added to an existing DEFERRED MCP group costs ZERO surface budget** — measured twice.
 - 🔴 **`provision.test.ts` and `projectOwnsBackend.test.ts` flake** on real ports. **Do not report
   them as a regression without an isolation re-run.**
@@ -155,32 +169,86 @@ conventions, above the model's defaults.
 
 ---
 
-## 4. What to do next and why
+## 4. What to do next and why — TWO BUNDLES, in this order
 
-**Ordered by value, not cost.**
+⚠️ **Both bundles were sized at s58 against a re-measured tree, not recalled.** Where a cost is
+unknown it says so.
 
-1. 🔴 **DRIVE FIX-021 slice B.** The phase's only open drive, and it **needs no API credit**. The
-   half the specs cannot reach is `install.ts` — `platform.getUserDataPath()`, the seeding write and
-   the poll — and it is exactly the half a user meets first. **Pre-register these before launching:**
-   - Settings → **Editor** tab → **"About you"** section is present, below the AI keys.
-   - With no file: the caption says *"You have no preferences file yet"* and the button reads
-     **"Create and open preferences"**.
-   - Click it → the file appears at `<userData>/PREFERENCES.md` → the caption changes to
-     *"…you have not written in it yet, so nothing is being sent."* 🔴 **This is the empty-file rule
-     end to end, and it is the one row worth having** — a seeded file that reported a non-zero count
-     would mean the comment-stripping never ran on the real template.
-   - Write one line into the file from outside the editor → within ~2s the count becomes non-zero
-     **without reopening the panel**. That is the poll, and it is the whole *"the document is the
-     UI"* promise.
-   ⚠️ **It writes into Richard's live `~/Library/Application Support/NodeGX/`.** Back it up if a
-   file is already there; a seeded one is the product's own behaviour and can be left.
-2. ⚠️ **A bundled/packaged editor build**, in passing — §2. Eight sessions old, and it is the item
-   with a live user impact (§5).
-3. 🆕 ⚠️ **FIX-021's MCP half** — `.mcp.json` `env` carrying the profile path, so **Claude Code** can
-   read it too. Slice B specified it and s58 deliberately did not build it: it breaks the server's
-   every-path-inside-`projectDir` invariant and **needs its own read-only containment note**. It is a
-   task, not a paragraph. **Today the editor's AI reads the profile and Claude Code does not.**
-4. ⚠️ **A root `typecheck:mcp`**, and the 8 errors behind it — §2. Small; closes a gate hole.
+### 🔴 Bundle 1 — "everything that runs the app" (drive slice B, then repackage)
+
+**Why these are one session and not two: the drive must precede the package anyway.** You would
+launch the dev editor, verify slice B, tear down, and then build — and the package verification
+re-checks the same feature in the shipped bundle. Split across two sessions you pay two launches and
+verify slice B twice for one answer.
+
+**Step 1 — drive FIX-021 slice B in the dev stack. No API credit needed.** The half the specs cannot
+reach is `install.ts` — `platform.getUserDataPath()`, the seeding write, and the poll — and it is
+exactly the half a user meets first. **Pre-register these four before launching:**
+
+- Settings → **Editor** tab → **"About you"** section is present, below the AI keys.
+- With no file: caption reads *"You have no preferences file yet"*, button reads
+  **"Create and open preferences"**.
+- Click it → the file appears at `<userData>/PREFERENCES.md` → the caption becomes *"…you have not
+  written in it yet, so nothing is being sent."* 🔴 **This is the empty-file rule end to end and it
+  is the one row worth having** — a seeded file reporting a NON-zero count would mean the
+  comment-stripping never ran against the real template.
+- Write one line into the file from outside the editor → within ~2s the count goes non-zero
+  **without reopening the panel**. That is the poll, and the whole *"the document is the UI"* promise.
+
+⚠️ **It writes into Richard's live `~/Library/Application Support/NodeGX/`.** Back it up if a file is
+already there; a seeded one is the product's own behaviour and can be left.
+
+**Step 2 — `npm run build:sidecars` then `npm run build:editor:pack`, and verify THREE tasks at
+once.** `/Applications/NodeGX.app` is dated **2026-08-13** — measured at s58, not recalled. Three
+finished features exist only in the checkout:
+
+| task | what to look for in the packaged app |
+|---|---|
+| **FIX-008 D** | `open_project` exists as a tool |
+| **FIX-013** | the bench has no Data / sample / real-backend controls |
+| 🆕 **FIX-021 slice B** | Settings → Editor → **About you** is there at all |
+
+🔴 **This is the item with a live user impact**, and it is the only thing in the phase that is
+*shipped-vs-built* rather than built-vs-driven. ⚠️ **Its cost is UNMEASURED** — eight sessions have
+gone past it, which may mean it is bigger than it looks. **If the pack turns out to be a project,
+stop and write down why**; the drive in step 1 still stands on its own.
+
+### 🔴 Bundle 2 — "everything inside noodl-mcp" (the gate first, then the code under it)
+
+**Why these are one session: same package, same gates.** `noodl-mcp`'s jest suite (53 suites / 633),
+its surface-budget line and its esbuild build all get run once instead of twice. 🔴 **And the order
+is causal, not cosmetic — step 1 is the gate that would catch step 2's mistakes.**
+
+**Step 1 — add a root `typecheck:mcp` and deal with the 8 errors.** ✅ **Re-measured 2026-08-18, not
+inherited: still exactly 8, and still absent from the root.** The root has **nine** `typecheck:*`
+scripts plus a plain `typecheck`, and **`typecheck:mcp` is not among them** — so this package's types
+are watched by nothing.
+
+- **1 is real:** `disclosure.ts:381`, an `Exclude<ToolGroupId,'core'>` vs zod `ZodEnum` mismatch —
+  the handler's parameter type excludes `'core'` and the schema does not.
+- **7 are in three test files:** `connectionPresentation.test.ts` (a dead `../src/types` import) and
+  six `Property 'text' does not exist on type 'ToolCallResult<…>'` in `interfaceGate.test.ts` /
+  `stagingDiagnostics.test.ts`.
+
+⚠️ **Decide out loud whether the new gate covers `tests/`.** Seven of the eight errors are there, so
+a gate scoped to `src/` is green on day one and a gate scoped to both is red — and shipping a red
+gate is how a ratchet gets ignored. Either is defensible; silently picking the green one is not.
+
+**Step 2 — build FIX-021's MCP half, under the gate you just added.** Slice B specified it and s58
+deliberately did not build it: the profile path goes into `.mcp.json` `env` at registration (the
+BST-004 *"front door, never guess"* pattern), and **it breaks the server's
+every-path-inside-`projectDir` invariant, so it needs its own read-only containment note.** That
+argument is why it is a task and not a paragraph. **Today the editor's AI reads the profile and
+Claude Code does not.**
+
+### What is NOT a bundle, and why
+
+- 🔴 **The four "no open build" tasks (FIX-004, 006, 016, 022) cannot be bundled into anything,
+  because none of them is waiting on work.** Each is waiting on a sentence from Richard — see §5.
+- ⚠️ **FIX-016 AC1 is the one that could become a build**, and it is already **driven and found
+  false**: clicking `+` beside `SCRIPT OUTPUTS` opens *a name field and nothing else*, so
+  *"offers Signal at creation time"* is false as built. **Do not re-measure it.** It is retire-or-build,
+  and only Richard can say which.
 
 **Do not start** FIX-015 here — it is its own phase.
 
@@ -281,7 +349,7 @@ is empty in zsh** (it is `$pipestatus`). 🔴 **macOS has no `timeout`.**
 ### Still owed by Richard
 
 - 🔴 **THE ANTHROPIC CREDIT BALANCE IS EXHAUSTED.** ⚠️ **s54–s58 all needed none of it, and neither
-  does item 1.**
+  does bundle 1.**
 - 🔴 **THE REPACKAGE — still the item with a live user impact.** `nodegx-puppy-test-3` resolves to
   `/Applications/NodeGX.app/…`, the **Aug-13** bundle. FIX-008 D's `open_project` and FIX-013's fix
   exist in the checkout bundle and in no packaged app. 🆕 **Slice B joins them.**
@@ -291,7 +359,9 @@ is empty in zsh** (it is `$pipestatus`). 🔴 **macOS has no `timeout`.**
   someone has to authorise.
 - 🔴 **FIX-022 §7 — (a) accept, (b) a rule on the reuse axis, or (c) `planAdvisories`?**
 - 🔴 **FIX-006 — is `Substring` → `Expression` the shape you want?**
-- 🔴 **FIX-015's eight** · 🔴 **FIX-016 AC1 — retired or still owed?**
+- 🔴 **FIX-015's eight** · 🔴 **FIX-016 AC1 — RETIRE IT, or build a type control at creation time?**
+  ⚠️ **Already driven and found false at s50** — clicking `+` beside `SCRIPT OUTPUTS` opens a name
+  field and nothing else. **This is the only owed ruling that would create a new build.**
 - 🔴 **`scripts/library/check.ts` — LAND IT.** Attributed (LBR-002), verified, gate passes 58/58.
   **Phase 65's work. Still uncommitted at s58 — twenty-six sessions.**
 - 🔴 **`dev-docs/tasks/phase-23-visual-refresh/corpus/run.sh:17`** — an **executable** script whose
@@ -299,7 +369,7 @@ is empty in zsh** (it is `$pipestatus`). 🔴 **macOS has no `timeout`.**
   sessions have declined.**
 - ⚠️ `fix021-drive-ai` / `fix021-drive-plain` still point at a scratchpad path that will be cleaned.
 - ⚠️ **Fixtures kept on purpose:** `puppy-test-3-fix008c`, `fix016-msg6-drive`, `fix004c-s48-drive`.
-  ✅ 🆕 **`fix013-drive`'s `project.json` `name` is fixed** — item 4, done.
+  ✅ 🆕 **`fix013-drive`'s `project.json` `name` is fixed** — s57's item 4, done at s58.
   ⚠️ **`fix016-s50-drive` is a scratch copy, deletable.**
 
 ---
