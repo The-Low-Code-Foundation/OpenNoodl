@@ -18,7 +18,7 @@ traps apply there.
 
 # ✅ THE BENCH IS BUILT. D19's tranche is now three-quarters landed.
 
-**Platform `cdc7b17`. Editor `eeb64051`.**
+**Platform `cdc7b17`. Editor `eeb64051` (code) + `bf7dcbba` (this handover).**
 
 **UNI-015 — all five ACs met.** **UNI-016 — platform half built, AC1–AC4 met.**
 
@@ -52,7 +52,8 @@ next task.**
 removed, the challenge registry re-pointed).
 
 **Editor `eeb64051`** — the shared golden corpus and the spec that pins its hash. Nothing else in
-the editor changed.
+the editor changed. ⚠️ **This checkout's HEAD has moved on since**: a peer committed `7947d193`
+(FIX-021 slice B) afterwards, which is normal here and touches nothing of this phase's.
 
 ---
 
@@ -188,10 +189,13 @@ tree, this session:** vitest **692 / 692 across 24 files, zero failures, zero sk
 `next build` clean at **24 routes**; `check:css` clean over **971 declarations / 19 components**.
 🔴 **Re-measure; never quote a handover's number.** The floor this replaced was 579 / 22.
 
-**This checkout:** HEAD **`eeb64051`** on `cline-dev`. `tests-unit/uni-015` **39/39**. ⚠️ **No
-`test:main`, no `test:ci`, no `tsc` run this session** — the editor change is one JSON file and one
-new spec directory, and nothing else in the editor was touched. 🔴 **Do not quote session 23's
-numbers as current either.**
+**This checkout:** phase-67's work is `eeb64051` + `bf7dcbba` on `cline-dev`. 🔴 **Do NOT read
+those as HEAD** — this checkout is shared and peers commit to it constantly (`7947d193` landed
+within the hour). `tests-unit/uni-015` **39/39**. ⚠️ **No `test:main`, no `test:ci`, no `tsc` run
+this session** — the editor change is one JSON file and one new spec directory, and nothing else in
+the editor was touched, so the suites were not re-measured and **this session's evidence says
+nothing about the editor's overall state**. 🔴 **Do not quote session 23's numbers as current
+either.**
 
 ⚠️ **`npm run lint` is still not a gate on the platform** — the script exists, there is no ESLint
 config, and running it starts Next's interactive setup.
