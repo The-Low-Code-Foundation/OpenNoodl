@@ -110,11 +110,10 @@ human being alive and nothing UNI-015/016 built was reachable by a real person.
 
 ## ⚠️ WHAT E1 DOES NOT CLOSE
 
-- 🔴 **AC2's LAUNCHER affordance is not built.** The sign-in lives in the composer, because the
-  alpha bar's sentence is *"ask a question about a node from inside the editor"* and sending
-  somebody off to find a launcher card mid-question is asking them to abandon what they were
-  doing. **The launcher card and the signed-in chip are still owed**, and AC2 does not close
-  until they exist.
+- ✅ **AC2's LAUNCHER affordance — BUILT 2026-08-18 (session 33). See the section below.** The
+  sign-in also lives in the composer, because the alpha bar's sentence is *"ask a question about
+  a node from inside the editor"* and sending somebody off to find a launcher card mid-question
+  is asking them to abandon what they were doing. Neither surface substitutes for the other.
 - 🔴 **NOBODY CAN ACTUALLY SIGN IN YET, and it is one form away.** `githubOAuthConfig()` returns
   `null` without `GITHUB_OAUTH_CLIENT_ID`/`_SECRET`, and the start route then answers **503 with
   a plain sentence** rather than redirecting into a provider error page. Creating the OAuth App
@@ -126,6 +125,105 @@ human being alive and nothing UNI-015/016 built was reachable by a real person.
   needs re-wording or a verdict**, and pretending it passed would be worse than saying so.
 - **AC1's regression gate** — the full `test:main`/`test:ci` baseline — is the standing claim
   that signing in *gates nothing*. `test:main` was re-run this session; **`test:ci` was not**.
+
+---
+
+# ✅ AC2 — THE LAUNCHER CARD AND THE CHIP. 2026-08-18, session 33.
+
+**Driven, not just specced:** the card was rendered in a real editor, a session was written and
+read back, sign-out was clicked, and the store file was watched disappear. What could *not* be
+driven is the happy path — E2 serves nothing at `community.nodegx.io` and E10 has no OAuth App —
+so what a click produces today is the failure branch, verbatim: *"The community could not be
+reached (TypeError: Failed to fetch)."* 🔴 **That is the correct behaviour of a launcher pointed at
+an undeployed platform, and it is E2/E10's line item, not this task's.**
+
+## What is built, and where
+
+| File | What |
+|---|---|
+| `noodl-core-ui/src/constants/communityCopy.ts` | 🔴 **D2's string, once.** `COMMUNITY_SIGN_IN_LABEL`, the sign-out label, and the sentence below. `constants/externalLinks.ts` is the precedent for a dependency-free constants module both packages can reach |
+| `…/Launcher/components/CommunityAccountCard/` | the card: signed-out offer, the eight-character code while waiting, the chip + **Sign out** when signed in, an error line that never becomes a dead end |
+| `…/Launcher/LauncherContext.tsx` · `Launcher.tsx` · `views/Projects.tsx` | `community?: CommunityAccountHostState` threaded through, and the card rendered beside `ConnectAgentCard` in both the welcome and the with-projects arms |
+| `noodl-editor/…/ProjectsPage/useCommunityAccount.ts` | the host half — reads the store, runs the device flow through `platform.openExternal`, cancels on unmount, signs out |
+| `ProjectsPage.tsx` | one hook call, one prop |
+| `tests-unit/uni-001/launcher-offers-signin.test.ts` | 20 assertions, source-analysis with negative controls, in the shape `composer-offers-signin.test.ts` set |
+
+## 🔴 THE PRINCIPLE IS RENDERED, NOT ASSUMED
+
+`COMMUNITY_GATES_NOTHING` — *"Everything in the editor works without an account, and always
+will."* — is **on the card**. The launcher is the single most likely place in the whole editor for
+a new user to conclude that the thing they downloaded is gated, and the phase's first principle is
+worth nothing if the one surface that implies the opposite does not say it out loud. The spec
+asserts the constant is *rendered*, not merely defined: a constant nobody places says nothing to
+anybody.
+
+## What the drive showed
+
+| Step | Observed |
+|---|---|
+| Launcher, signed out | `[data-test=community-account-card]` present, button reads **Sign in to NodeGX**, the gates-nothing sentence renders |
+| A session written to the store, renderer reloaded | chip renders `NB / @nia-builds / Signed in to the NodeGX community`; the sign-in button is gone |
+| **Sign out** clicked | chip gone, offer back, **and the store file deleted** — AC2's *"sign-out wipes it"*, end to end |
+| **Sign in** clicked | the real device flow ran and reported the unreachable platform in the card's error line, button still live |
+
+⚠️ **"Survives a restart" was driven as a renderer RELOAD, not a process restart.** The read path is
+the same one and the store is a file on disk, so it survives by construction — but the stronger
+claim is not what was measured, and is written down that way rather than rounded up.
+
+## 🔴 FINDING A — THE STORE IS A FILE IN `userData`, NOT `localStorage`, AND THE MODULE SAID OTHERWISE
+
+`communitysession.ts` carried a long, careful security note whose first sentence was **wrong**:
+*"THE STORE IS `JSONStorage`, WHICH IS `localStorage` IN THE RENDERER."* It is not.
+`@noodl/platform-electron` calls `setStorage(new StorageNode())` at import, and `StorageNode`
+writes `<userData>/<key>.json`. Measured, not reasoned: the session lands in
+`~/Library/Application Support/NodeGX/nodegx.community.session.json`, and sign-out removes that
+file.
+
+✅ The conclusion survived the correction — a plaintext file readable by any process running as
+this user is still the wrong home for a credential of value — **but the reasoning had to be redone
+to know that**, which is the whole reason a wrong premise in a right-sounding note is expensive.
+
+⚠️ **And the scope's `0600` is not true.** UNI-001 says the token is stored *"in `<userData>`
+(0600, the relay-token precedent from OBS-004)"*. `StorageNode` writes with the process umask like
+every other file it writes. Recorded as a gap rather than fixed inside a launcher task: narrowing
+it means changing `StorageNode` for all of its callers, which is a decision about the platform
+layer.
+
+## 🔴 FINDING B — E1's OWN RENAME LEFT `test:main` RED FOR A DAY, AND THE HANDOVER SAID IT WAS RUN
+
+The baseline taken **before any edit this session** was **3 failed / 3786 passed / 3789 total across
+247 suites**, not green. Two of the three were `uni-016/composer-sends-what-it-shows.test.ts`
+asserting `platform.openExternal(COMMUNITY_URL)` — and session 29, moving the constant into
+`communityorigin.ts`, had imported it as `COMMUNITY_URL as COMMUNITY_ORIGIN`. The call site
+still opens the community; the **instrument** could no longer see it, and its negative control
+threw on a `replace` that matched nothing.
+
+🔴 **The handover said *"`test:main` was re-run this session"* and quoted no number.** A suite
+reported by name rather than by count is a suite nobody can check, and this one had been red since
+the moment it was written about. ✅ **Quote the count or do not claim the run.**
+
+✅ Fixed by dropping the alias — one name for one thing in that file — rather than by teaching the
+spec the alias, which would have left the next rename to break it again. The third failure,
+`cn-002/unknown-type-check-skipped.test.ts`, is phase 69's and is untouched: it was red in the
+before-measurement too.
+
+## ⚠️ FINDING C — THE HEADER AVATAR BELONGS TO GITHUB, AND THE CHIP DELIBERATELY DOES NOT GO THERE
+
+The launcher header already draws an avatar, and it is the **GitHub OAuth** identity used for repo
+cloning. There are now two identities in this editor with no relationship to each other, and one
+round avatar in the top-right. Putting the community handle there would make *"whose face is
+that?"* an unanswerable question, so the chip lives on the card with the sign-out beside it. 🔴 If
+a later task wants identity in the header, it has to decide which identity the header is about —
+that is a design decision, not a placement.
+
+## What AC2 still does not close
+
+- **AC4's grep still needs a verdict rather than a run** — unchanged from session 29, and now
+  there is a second legitimate reader (the launcher hook) inside *"the launcher/account module"*
+  the criterion names, which arguably makes the wording easier to settle rather than harder.
+- **The happy path is unproven end to end.** E10 (no OAuth App) then E2 (nothing deployed), in
+  that order. The device flow's own half is specced in `communitysignin.test.ts`; what nothing in
+  either repository can substitute for is E9's smoke drive on the deployed box.
 
 ## Not in v1
 
