@@ -304,6 +304,88 @@ and it goes red, in the same commit that adds it.
    the profile currently renders a family mark and a tier colour rather than a broken image, which
    was deliberate. **Richard's to draw or delegate; it is the one slice that is not code.**
 
+## ✅ Slice 5 — BUILT 2026-08-18 (session 32). The three archetypes exist and every page is one
+
+**`nodegx-community`, on `main`.** Session 31 landed the **index** archetype (the home) and three
+of the four kit components. Session 32 landed **the other two archetypes and the fourth component**:
+
+| Piece | Where | State |
+|---|---|---|
+| **The kit** | `src/components/Kit.tsx` | ✅ `Chip` · `Figure` · `EmptyState` · `CardView` · **`FacetBar`** · `PageHead` · `ListView` · `DetailHead`. Moved out of `Home.tsx`, which is now the index archetype and nothing else |
+| **The LIST archetype** | six pages | ✅ `/tutorials` `/replays` `/people` `/rfps` `/coaching` `/bench` are **three lines of glue each**; the composition is a value in `src/lib/lists.ts` |
+| **The DETAIL archetype** | three pages | ✅ `/u/[handle]` (where it came from), `/bench/[threadId]`, `/rfps/[id]` all render one `DetailHead` |
+| **The facet bar** | `FacetBar` | 🟡 **DRAWN, with real counts.** ⚠️ **No search box and no sort control** — there is no query behind either, and a search field that does nothing is the same defect as a card that links nowhere. **[UNI-023](UNI-023-ONE-FACET-BAR-SIX-LISTS.md) wires those** |
+
+🔴 **The counts are the part that needed an instrument.** A number on a pill is a promise about
+what the click returns, so `tests/uni013-slice5.test.tsx` **runs every facet's own href back
+through the builder and compares row counts** — the cardinality assertion where two producers meet
+(the counting query and the filtering query). *"Is a count rendered?"* cannot see a count that is
+wrong.
+
+### What else this slice fixed, from the review's own list
+
+1. ✅ **`/people` has avatars** (observation 2) — same gradient, same measured ink. **A card with a
+   person in it is a ROW; a card with a poster in it is a COLUMN**, and the shape follows the
+   figure rather than the page, which is what stops the seventh page inventing an eighth card.
+2. ✅ **The Bench's two link styles are one** (observation 3), the **stray azure rule is gone**
+   (observation 5), and the queue **says out loud that it is a lens on the list below** rather than
+   a second list (observation 4) — it is also hidden when a section filter is on.
+3. ✅ **The replay link opened in place at a dead host** (the review's third verified bug). The
+   kit's card action now carries `target`/`rel` **for any href that leaves the site**, in one place
+   rather than per page.
+4. ✅ **Two empty states, chosen rather than typed.** *"Nobody has posted yet"* keeps the dashed
+   placeholder edge; *"no rows matched these filters"* is solid and its action **clears the
+   filter** — and the suite asserts the cleared state actually has rows, so "show everything" cannot
+   be a second empty page.
+
+### 🔴 Three findings worth more than the pages
+
+1. **`--theme-color-primary-bg` IS TRANSLUCENT, and the active filter pill has been ungraded since
+   slice 1.** `rgba(21, 112, 239, 0.09)` cannot be scored by `relativeLuminance` at all — it threw.
+   What a reader sees is the wash **composited over whatever is beneath it**, which is a fact about
+   the layout that a colour token cannot carry. `tests/uni013-contrast.test.ts` grew a `flatten()`
+   and an `over:` field; a row whose ground is translucent and names no underlay now **fails
+   loudly** rather than being skipped. ⚠️ Slice 5 did not introduce that pairing — it introduced
+   the row. **The trigger for a new contrast row is a new PAIRING, never a new colour role**, which
+   is the sixth instance of that defect on this phase.
+2. **The accent chip's label was graded only as a SHAPE.** `.chip-accent` is `--site-fg-accent` on
+   `bg-3`; the only row for that pair was the poster play mark at **3:1**, because a triangle is not
+   words. The chip carries a section name and a node type. Now graded at 4.5 in both themes.
+3. **A link sweep that follows a page into a SHARED module must scope by FUNCTION, not by module.**
+   Slice 5 moved every list page's hrefs into `lists.ts`, so `linksInPage` had to follow — and the
+   first version read the whole module, which would have reported `/coaching` as *"linked from
+   /tutorials"*. **An instrument that launders a dark branch into a lit one.** It now reads only the
+   bodies of the functions the page's own import names.
+
+### What slice 5 deliberately did NOT do
+
+- **`/tutorials` rows still do not link**, and it is the only page on the site where that is true.
+  `articles.body` is written and `/tutorials/[slug]` does not exist — **UNI-020's**. 🔴 The row type
+  makes that state **impossible to reach without recording the reason**, and the suite asserts the
+  set of unlinked rows is exactly the set with a reason, and that it is one page. One line becomes
+  an href the day UNI-020 lands.
+- **No search, no sort, no price bands** — UNI-023's, and the reason is written into `lists.ts`
+  rather than left as an omission.
+- **`/university` and the five org pages were not restyled.** They are on a written exception list
+  in the suite with a reason each, so a page added later is not waved through by silence.
+- **Slice 4 — the twelve badge artworks — is still Richard's**, and is the one slice that is not code.
+
+⚠️ **STILL TRUE AND STILL UNMEASURED: nobody has looked at any page in the LIGHT theme.** Light is
+graded by the contrast arithmetic only, which is the stronger instrument and is not a look.
+
+**Gates, session 32:** vitest **805 / 28 files / exit 0** (from a measured **773 / 27**; **+21** slice 5,
+**+11** contrast — nothing existing moved) · `tsc --noEmit` clean · `next build` exit 0 · `check:css`
+clean over **1107 declarations / 23 components** · a drive over real HTTP on the seeded database:
+**28 internal hrefs, every one 200**, the only non-200 being `/api/auth/github/start` → **503**,
+which is E1 correct and E10 outstanding.
+
+🔴 **A third finding, found by writing the drive rather than by reading:** a **same-page FRAGMENT
+href is invisible to every route check in the repository**, because they all strip the fragment
+before comparing — `/replays#nothing` and `/replays` are the same route. `/replays` links its rows
+that way (a replay has no page of its own until UNI-021). The rows now carry the `id`, and the suite
+asserts every same-page fragment **lands on an element**, with a control that renders the same card
+without one.
+
 ## 🔴 Slice 5 — the pages. Reviewed on the running site, 2026-08-18
 
 **Driven, not inspected**: `next start` on a fresh build with the DB seeded to four people, four
