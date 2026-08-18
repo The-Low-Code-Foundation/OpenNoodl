@@ -1,36 +1,27 @@
 # Phase 66 — next session
 
-**Written 2026-08-18, session 62's brief, by session 61.** A rewrite, per §0.
+**Written 2026-08-18, session 63's brief, by session 62.** A rewrite, per §0.
 
-## 🔴 EVERY RULING IN THIS PHASE IS ANSWERED. ONE DRIVE STANDS BETWEEN P66 AND DONE.
+## 🔴 THE PHASE IS THREE OBSERVATIONS FROM DONE. ALL OF THEM NEED ONE THING: AN EDITOR THAT RENDERS.
 
-Richard answered the whole outstanding queue at s61. **Eight rulings, none of which created a build.**
-Phase 66's remaining work is therefore exactly one item:
+s62 drove **the MCP server half of FIX-021, 4/4**, against the real bundle over real stdio.
+What is left is the **editor** half of the same drive:
 
-> 🔴 **Drive FIX-021's MCP half.** Built at s60, spec-covered and mutation-checked, **never seen in a
-> running editor.** ⚠️ It clicks Connect, which writes Richard's **real `~/.claude.json`** — back it
-> up first and put it back. **Needs no API credit.** The pre-registered observations are in §4.
+> 🔴 **Click `Connect Claude Code` in a running editor and read `~/.claude.json`.**
+> Observations **1, 2 and 3** below. **No API credit. No new code.** The build has been ready
+> since s60 and is now half-measured.
 
-**When that drive passes, phase 66 closes.**
+⚠️ **s62 did not fail to drive it — s62 never got a renderer.** Two full launches, ~1h40m, and the
+editor's webpack never served its bundle. **That is the thing to plan around, and §4 tells you how.**
 
-### 🔴 s61's other finding: a question was asked that had been answered two months of sessions ago
+### 🔴 The one-line reason the editor never rendered, because it will happen to you
 
-s61 told Richard that FIX-004's §C seam-category ruling was owed and had been **missing from the
-handover's list**. **It was not owed.** It was **ruled in session 42** and **built in session 46** —
-the four object-shaped blocks are dual-listed under `App Objects` in the live toolbox
-(`BlocklyToolbox.ts:354-358` and `:474-477`), and the VFN-012 fence was narrowed with four mutants
-behind it.
-
-🔴 **How it happened, because it will happen again to somebody:** FIX-004's file is an **append-only
-narrative**. Three sections — *"What was deliberately NOT done"*, *"Still owed on §C"*, *"Still owed
-after this drive"* — describe a gap that a **later** section closes. Grepping for `owed` finds all
-three and none of the closure. **The handover's original list was correct; the "correction" was the
-error.** All three are now stamped `STALE` in place, with a pointer to the section that discharged
-them.
-
-✅ **The lesson, generalised: in these task files, a sentence saying something is open is evidence
-about the moment it was written and nothing else. Read forward to the end of the file, or check the
-code, before believing it.**
+`start.ts` calls **`reapPreviousSession()`**, and the stack runs **`hot: true`**. So on this shared
+checkout: **a peer's `npm run dev` kills your stack**, and **any peer edit under
+`packages/noodl-editor/src` restarts a compile that took 16–40 minutes** at the load this machine
+was carrying (**average 23–53**, 53 resident MCP servers, a VM at ~50% CPU).
+🔴 **And once the renderer's bundle request lands mid-compile, `webpack-dev-middleware` holds it
+forever — `reload` does NOT recover it. Only a full relaunch does.**
 
 ---
 
@@ -54,172 +45,205 @@ amendment, rewrite the file instead.**
 |---|---|---|---|
 | **FIX-001 / 002 / 003 / 005 / 007 / 009 / 010 / 011 / 012 / 013 / 014 / 017 / 018 / 019 / 020 / 023 / 024** | ✅ | ✅ | **CLOSED** — seventeen tasks |
 | **FIX-008** A, B, C, D, E | ✅ | ✅ | **CLOSED** (s56) |
-| **FIX-004** — §A+§B, §C, §C dual-list, redaction (b) | ✅ | ✅ | 🆕 **CLOSED.** Its §C ruling was discharged at s42/s46; s61 confirmed. Nothing owed |
-| **FIX-006** | ✅ | ✅ | 🆕 **CLOSED s61** — the `Substring` → `Expression` shape accepted |
-| **FIX-013** | ✅ | ✅ | 🆕 **CLOSED s61** — rulings 3 + 4 took the non-destructive branch |
-| **FIX-016** | ✅ | ✅ | 🆕 **CLOSED s61** — AC1 **RETIRED** by Richard |
-| **FIX-022** | ✅ | ✅ | 🆕 **CLOSED s61** — §7 ruled **(a) accept** |
+| **FIX-004** | ✅ | ✅ | **CLOSED.** §C ruled s42, built s46; s61 confirmed |
+| **FIX-006** | ✅ | ✅ | **CLOSED s61** |
+| **FIX-013** | ✅ | ✅ | **CLOSED s61** |
+| **FIX-016** | ✅ | ✅ | **CLOSED s61** — AC1 **RETIRED** |
+| **FIX-022** | ✅ | ✅ | **CLOSED s61** — §7 ruled **(a) accept** |
 | **FIX-021** slice 0 + wizard location | ✅ | ✅ s42/s44 | Closed halves |
-| **FIX-021 slice B** — the global user profile | ✅ s58 | ✅ s59 | Q2/Q5/Q6 **confirmed s61** |
-| **FIX-021 — the MCP half** | ✅ s60 | ⛔ | 🔴 **THE PHASE'S ONE REMAINING ITEM.** §4 |
-| **FIX-021 slice A** | ⛔ | — | ✅ **RULED OUT at s61 (Q2), not deferred.** Proposing it is proposing to overturn a ruling |
+| **FIX-021 slice B** — global user profile | ✅ s58 | ✅ s59 | Q2/Q5/Q6 confirmed s61 |
+| **FIX-021 — MCP half, the SERVER end** | ✅ s60 | 🆕 ✅ **s62, 4/4** | `get_project_info` over real stdio. §3 |
+| **FIX-021 — MCP half, the EDITOR end** | ✅ s60 | ⛔ | 🔴 **THE PHASE'S ONE REMAINING ITEM.** §4 |
+| **FIX-021 slice A** | ⛔ | — | ✅ **RULED OUT at s61 (Q2), not deferred** |
 | **FIX-015** | 📋 | — | **Green-lit as its own phase.** Not a P66 build |
 
 🔴 **TWENTY-THREE tasks closed.** ⚠️ **Count the names, never copy a total.** The arithmetic:
-**23 closed + FIX-015 (left the phase) = 24**, with **FIX-021 alone still open**, on a drive.
+**23 closed + FIX-015 (left the phase) = 24**, with **FIX-021 alone still open**, on three observations.
 
 ---
 
 ## 2. Gate readings
 
-⚠️ **s61 took NO suite readings and owed none** — it changed no source. Its work was eight rulings
-and the documents that record them. **Everything below is s60's or older; re-measure before quoting.**
-🔴 **Quote a TREE, not a commit.**
+⚠️ **s62 took NO suite readings and owed none.** It changed **no tracked file** — its only build
+artefact was `packages/noodl-mcp/dist/`, which is **gitignored and untracked**.
+**Everything below is s60's or older; re-measure before quoting.** 🔴 **Quote a TREE, not a commit.**
 
 | Gate | Reading | When |
 |---|---|---|
-| **`typecheck:mcp`** (added s60) | ✅ **exit 0** — was 8 errors, in no gate at all | s60 |
+| **`typecheck:mcp`** | ✅ exit 0 | s60 |
 | `typecheck:editor` / `-tests` | ✅ exit 0 | s60 |
-| `noodl-mcp` jest, FULL | ✅ **54 suites / 641 tests** | s60 |
-| `noodl-editor` `test:main` (jest) | ✅ **242 suites / 3723 tests, 0 failed** | s60 |
-| resident tool-surface budget | ✅ **8,223 / 57 under the 8,280 bar** | s60 |
-| `lint:ci` ratchet | ✅ **877** / 3916 baseline | s60 |
-| `test:ci` (jasmine) | ✅ **2849 / 6 @ seed 39393** — the floor, both known families | s58 |
+| `noodl-mcp` jest, FULL | ✅ 54 suites / 641 tests | s60 |
+| `noodl-editor` `test:main` (jest) | ✅ 242 suites / 3723 tests | s60 |
+| resident tool-surface budget | ✅ 8,223 / 57 under the 8,280 bar | s60 |
+| `lint:ci` ratchet | ✅ 877 / 3916 baseline | s60 |
+| `test:ci` (jasmine) | ✅ 2849 / 6 @ seed 39393 | s58 |
 | `tests-unit/fix-021/` | ✅ 4 suites / 32 tests | s58 |
 | `noodl-runtime` jest | ✅ 137 suites / 2515 | s54 |
-| `nodegx-backend` / `viewer-react` / `cloud-runtime` | ✅ | s51 |
 | `library:check` | ✅ 58/58 | s30 |
-| electron-builder package | ✅ exit 0, ~6 min, `NodeGX-0.1.7-mac-arm64.dmg` | s59 |
+| electron-builder package | ✅ exit 0, `NodeGX-0.1.7-mac-arm64.dmg` | s59 |
 
-⚠️ **`test:main`'s baseline moves under you** — s58 read 239/3658, s60 read 242/3723 having added
-seven tests. **Peers land suites mid-session.** Re-measure; never diff against a remembered number.
+⚠️ **`test:main`'s baseline moves under you** — peers land suites mid-session. Re-measure.
 
 ### 🔴 Readings that will mislead you
 
 - 🔴 **`test:ci`'s exit code lies BOTH ways**; a clean floor run exits **1**, and `… | tail` reports
-  the pipe's last command ⇒ **0** regardless. **Delete `tests/test-results.json` first and prove
+  the pipe's last command ⇒ **0** regardless. **Delete `tests/test-results.json` and prove
   completion from its mtime.**
-- 🔴 **A tool added to an existing DEFERRED MCP group costs ZERO surface budget**, and **so does a
-  FIELD added to a tool's RESULT** — the budget measures the advertised surface plus `instructions`
-  and nothing else. That is what made FIX-021's MCP half fit against 57 tokens of headroom.
-- 🔴 **`provision.test.ts` and `projectOwnsBackend.test.ts` flake** on real ports.
-- 🔴 **A jest run of `tests/` is NOT what a client runs** — in-process vs `dist/noodl-mcp.cjs` over stdio.
+- 🔴 **A tool added to a DEFERRED MCP group costs ZERO surface budget**, and so does a **field added
+  to a tool's RESULT**. That is what made FIX-021's MCP half fit against 57 tokens of headroom.
+- 🔴 **`provision.test.ts` / `projectOwnsBackend.test.ts` flake** on real ports.
+- 🔴 **A jest run of `tests/` is NOT what a client runs.** ✅ **s62 built the client-shaped
+  instrument** — see §3; reuse it rather than rebuilding it.
 
 ---
 
-## 3. What s61 did
+## 3. What s62 measured — the server half, 4/4
 
-**No code.** Eight rulings answered by Richard and recorded in their task files:
+**Instrument:** `node packages/noodl-mcp/dist/noodl-mcp.cjs <dir> [--allow-writes]`, real stdio,
+real JSON-RPC, `tools/call get_project_info`. Full detail in the task file's s62 section.
 
-| # | Task | Answer |
-|---|---|---|
-| 1 | **FIX-016 AC1** | 🔴 **RETIRE.** A type control at creation is a new UI affordance, not this task's defect |
-| 2 | **FIX-022 §7** | **(a) ACCEPT.** Rejected: a numeric floor, `planAdvisories` |
-| 3 | **FIX-006** | **Accept** the `Substring` → `Expression` shape; the weighting stays |
-| 4 | **FIX-004 §C** | ✅ **Already ruled s42, built s46** — the question was stale, not open |
-| 5 | **FIX-021 Q2** | **Confirm:** one file, no project twin. 🔴 **Slice A is ruled OUT** |
-| 6 | **FIX-021 Q5** | **Confirm:** `always`, 2,000-char cap, free when empty |
-| 7 | **FIX-021 Q6** | **Confirm:** prose only |
-| 8 | **FIX-021 `allowWrites`** | **Confirm as built:** the profile reaches read-only servers too |
-| 9 | **FIX-013 rulings 3 + 4** | **The non-destructive branch, both** — programmatic, no UI, no spec edits |
+| # | `NODEGX_USER_PREFERENCES` | profile file | writes | `userPreferences` |
+|---|---|---|---|---|
+| 1 | **unset** | — | yes | ⛔ absent |
+| 2 | set | **pristine seeded template** | yes | ⛔ absent |
+| 3 | set | **two headings answered** | yes | ✅ **present** |
+| 4 | set | two headings answered | **read-only** | ✅ **present** |
 
-🔴 **Not one of the eight created a build.** #1 retires a criterion, #2 and #3 accept measured
-behaviour, #5–#9 confirm what shipped, and #9's chosen branch is explicitly the one that deletes
-nothing (`component-bench.test.ts:259-262` needs no edit).
+- ✅ **Row 3 licenses rows 1 and 2** — same run, same instrument. Two *different* absences were
+  taken deliberately: "older registration" and "user never wrote anything".
+- ✅ **The `note` travels with the text**, in full, including the CONVENTIONS.md precedence sentence.
+- 🆕 ✅ **Only ANSWERED headings arrive** — the comment-only ones are dropped, not sent empty.
+- 🆕 ✅ **Row 4 confirms Richard's `allowWrites` ruling by drive:** 13 tools, no `authoringTraps` /
+  `authoringDoctrine` / `designDoctrine`, **and `userPreferences` still present.**
+
+### 🔴 Step zero was real and is now DONE — but check it anyway
+
+`dist/noodl-mcp.cjs` was s59's build with **0** occurrences of `NODEGX_USER_PREFERENCES`. s62
+rebuilt it (**13:17:37, count 1**). It persists on disk, so it should still be current — **but it is
+gitignored, so nothing guarantees it.** ✅ **Re-check in one command before driving:**
+
+```
+grep -c NODEGX_USER_PREFERENCES /Users/richardosborne/vscode_projects/OpenNoodl/packages/noodl-mcp/dist/noodl-mcp.cjs   # expect ≥1
+npm --prefix packages/noodl-mcp run build   # only if it reads 0
+```
+
+### 🔴 One carried item shrank
+
+**`claudeMcpAdd`'s unquoted `-e` pairs cannot break the write.** `connectBootstrapServer` uses
+`spawnSync(exec, cliArgs(registration))` — an **argv array, no shell**. Richard's own profile path
+contains a space and is the worst case; it is safe on both routes. **The defect is confined to the
+DISPLAYED copy-pasteable string.** Still its own task, now a cosmetic one.
 
 ---
 
-## 4. What to do next — the drive, and nothing else
+## 4. What to do next — the editor half, and nothing else
 
-### 🔴 STEP ZERO, AND THE DRIVE FAILS WITHOUT IT: REBUILD THE MCP BUNDLE
-
-🔴 **`packages/noodl-mcp/dist/noodl-mcp.cjs` is s59's build (Aug 18 10:33) and contains ZERO
-occurrences of `NODEGX_USER_PREFERENCES`.** s60 changed `src/` and never rebuilt it. **Measured at
-s61**, and it is the single thing most likely to burn the next session: a drive against that bundle
-gets a `get_project_info` with no `userPreferences`, which is **indistinguishable from the feature
-being broken**.
+### 🔴 FIRST, AND IT DECIDES WHETHER TO EVEN TRY: MEASURE THE MACHINE
 
 ```
-npm --prefix packages/noodl-mcp run build     # esbuild, seconds — NOT build:sidecars, which builds three
+uptime                                          # load average
+ps -Ao command | grep -c '[n]oodl-mcp.cjs'      # resident MCP servers
+find packages/noodl-editor/src packages/noodl-core-ui/src -type f -not -path '*/node_modules/*' \
+  -newermt '30 minutes ago' | wc -l             # are peers editing editor source RIGHT NOW?
 ```
 
-✅ **Verify it took, before driving anything:**
-```
-grep -c NODEGX_USER_PREFERENCES packages/noodl-mcp/dist/noodl-mcp.cjs   # expect ≥1, was 0
-```
+🔴 **If load is above ~20 or peers are actively editing editor source, the compile will take 16–40
+minutes and a peer edit will wedge it.** s62 measured load **23–53** and lost both attempts.
+✅ **Consider asking Richard for a quiet window**, or drive when the checkout is idle.
 
-⚠️ **This is a SHARED checkout and 25 live MCP servers run from that exact file** (measured s61).
-A rebuild does not disturb a running server — the module is already loaded — but it changes what
-every one of them loads **on next spawn**. **Announce it.**
+### 🔴 The launch, with the facts s62 paid for
 
-✅ **The editor's main process needs NO manual step.** `main.bundle.js` is untracked and equally
-stale, but `scripts/start.ts:190-191` rebuilds it on every `npm run dev` — so the `mcpFrontDoor.js`
-half of this feature arrives automatically. **Only the MCP bundle is manual.** 🔴 **Do not conclude
-from "the editor half worked" that the server half is current — they are built by different things.**
+- ✅ **The launch marker is `launching Electron`** — but it is emitted by
+  **`packages/noodl-editor/webpackconfigs/webpack.renderer.dev.js:56`**, on the compiler's `done`
+  hook. 🔴 **It is NOT in `scripts/start.ts`** — grepping `start.ts` for it finds nothing and reads
+  like the marker is gone. It isn't.
+- 🔴 **Electron launches only after the FIRST successful renderer compile.** Line **51** of that
+  config is the other branch: *"Webpack compilation has errors - not starting Electron"*.
+  **Watch for both strings**, or a failed compile looks identical to a slow one.
+- 🔴 **After Electron launches you are still in danger.** If a peer edits editor source before the
+  renderer has fetched its bundle, `webpack-dev-middleware` logs
+  **`wait until bundle finished: /src/editor/index.bundle.js`** and never releases.
+  ✅ **`curl -s -o /dev/null -w '%{http_code}' --max-time 20 http://localhost:8080/src/editor/index.bundle.js`
+  — `200` means you are safe; `000` means wedged.** ⚠️ **`cdp reload` does NOT recover this.**
+- ⚠️ `npm run cdp -- health` reporting `reactMounted: false` with **no console output at all** is the
+  wedge's signature — the bundle never executed, so there is no exception to find.
 
-### 🔴 Drive FIX-021's MCP half
+### 🔴 The three observations, pre-registered — write them down BEFORE launching
 
-**Write the observations down BEFORE launching.** These five are pre-registered here so the next
-session does not invent them after seeing the result:
+The card is on the **launcher**, not the settings panel. 🔴 **s62's correction, and the handover it
+inherited was wrong about this:** §6's "settings panel route" reaches `McpSettingsSection`, which
+**only displays copy-pasteable commands and has no Connect button.** The button that writes
+`~/.claude.json` is `ConnectAgentCard`, rendered on `ProjectsPage` via `useConnectAgent`.
 
-1. **Connect, then read `~/.claude.json`.** The `nodegx` entry's `env` carries
+✅ **Selectors, already found:**
+- `[data-test=connect-agent-card]` — the card, on the launcher, **no project needed**
+- the button's label is **`Connect Claude Code`** (`Connecting…` while busy)
+- `[data-test=connect-agent-success]` / `[data-test=connect-agent-failure]` — the outcome rows
+
+**The observations:**
+
+1. **Click Connect, then read `~/.claude.json`.** The `nodegx` entry's `env` carries
    **`NODEGX_USER_PREFERENCES`**, pointing at the real `<userData>/PREFERENCES.md`.
+   ✅ **The pre-state is recorded:** it is currently **`{"ELECTRON_RUN_AS_NODE":"1"}`** and nothing else.
 2. 🔴 **The known-firing control, and the row that matters most:** `ELECTRON_RUN_AS_NODE` is **still
    there beside it**. A registration that *replaced* the env record instead of extending it looks
    like a pass to any probe that only checks the new key — and leaves a server that boots a GUI app
    with a dock icon (BST-004/F80).
 3. **Open or create a project; read its `.mcp.json`.** Same variable, same value.
-4. **With something written in the profile**, have a Claude Code session on that project call
-   `get_project_info` and confirm `userPreferences` arrives **with its `note`** — the precedence
-   sentence travels with the text, and its absence is the failure worth catching.
-5. ⚠️ **The absence row, which needs row 4 above it to mean anything:** restore the seeded template
-   (all HTML comments) and confirm the field is **gone**, not empty.
+   ✅ **The chain, so you can tell a real failure from a missing precondition:** `.mcp.json` is
+   written by `agentConfig.ts`, which **inherits `process.env[USER_PROFILE_ENV]`** from the server
+   it runs in. So it only carries the variable if that server was spawned from a registration
+   written **after** Connect. 🔴 **A server registered before the Connect click will correctly show
+   nothing — that is not the bug.**
+   ✅ **s62 left a driver that removes the guesswork:**
+   `scratchpad/drive-bootstrap.js` spawns **exactly the `nodegx` registration as written in
+   `~/.claude.json`** and calls `open_project`. ⚠️ The scratchpad is session-scoped and will be
+   cleaned — the file is 55 lines and trivially rewritten from this description.
 
-🔴 **`Connect` writes Richard's REAL `~/.claude.json`.** Back it up, and put it back.
-⚠️ **The registered `nodegx-puppy-test-3` still resolves to the Aug-13 bundle** (§5) — so a
-registered agent runs *older* server code than this checkout builds. **Drive the dev stack, or say
-which bundle you measured.**
+### 🔴 Richard's real files — what s62 learned the hard way
+
+🔴 **`Connect` writes Richard's REAL `~/.claude.json`.** Back it up.
+🔴 **But do NOT restore that backup wholesale.** ~25 live Claude Code sessions rewrite that file
+continuously; s62's copy went stale within minutes (`cachedGrowthBookFeatures`, `skillUsage`,
+`cachedExperimentData`). **Restoring it would clobber every one of them.**
+✅ **Compare and repair the `mcpServers.nodegx` SECTION only** — a whole-file hash tells you nothing.
+✅ **`PREFERENCES.md` is currently the pristine seeded template** (`c3c8425…`, 1193 bytes). To take
+observation 1 you do not need to change it; to see a non-empty profile in the editor you do — put it
+back afterwards.
 
 ### Then: close the phase
 
-Once the drive passes, FIX-021 closes and **all 23 remaining tasks are closed**. Write the phase's
-close-out and hand the two carried items below to whoever owns them.
+Once those three land, FIX-021 closes and **all 24 tasks are accounted for**. Write the phase
+close-out and hand the carried items below to whoever owns them.
 
 ### Carried out of the phase, uncosted — NOT P66 work
 
-- 🔴 **`claudeMcpAdd` does not quote its `-e` pairs.** Pre-existing; it matters more now one carries a
-  path, because on a machine whose user data sits under a directory with a space the **displayed**
-  command needs quoting. The written registration is JSON and unaffected. **Wants its own task.**
+- ⚠️ **`claudeMcpAdd` does not quote its `-e` pairs** — **display only**, proven in §3. Own task.
 - 🔴 **A bar that teaches `define()`** (s50) — needs the node's **real** port list behind
-  `parser.getPorts()`, i.e. a syntax-tree parse. ⚠️ **Explicitly not covered by FIX-016's AC1
-  retirement.**
+  `parser.getPorts()`. ⚠️ **Explicitly not covered by FIX-016's AC1 retirement.**
 - ⚠️ **A Script node's `define()`-declared ports are invisible to every editor surface** (s50).
 - 🔴 **`io-error: Unexpected failure: ${err.message}` names neither the tool nor the project.**
 - ⚠️ **A missing `id` has the identical shape to FIX-023's missing `type` and is unguarded.**
 - ⚠️ **`noodl-core-ui` cannot be eslinted at all**: `eslintConfig` extends an uninstalled `react-app`.
 - ⚠️ **The PLANNING turn does not carry the profile** — only the authoring turn does, as Q5 specified.
-- 🔴 **Blockly should enumerate declared globals as draggable blocks** — App Variables, Objects,
-  Arrays, plus `Function Variables`, in their own drawer. ✅ **Blockly's own native model.**
+- 🔴 **Blockly should enumerate declared globals as draggable blocks.** ✅ Blockly's native model.
 - 🔴 **FIX-015 → its own phase, green-lit.** ⚠️ **Slice 1 is "build and test the panel".**
 
 ### How to start here
 
-🔴 **Read to the END of a task file before believing any sentence in it that says something is open.**
-s61 asked Richard a question that had been ruled two dozen sessions earlier, because three
-`still owed` paragraphs sat above the section that discharged them. **Or check the code — that is
-what settled it in ten seconds.**
+🔴 **Read to the END of a task file before believing any sentence saying something is open.**
+s61 asked Richard a question ruled two dozen sessions earlier because three `still owed` paragraphs
+sat above the section that discharged them. ✅ **s62 stamped its own predecessor line STALE in
+place** rather than leaving that trap for you — do the same.
 
-🔴 **Before believing a "0", find the known-firing signal beside it.** Every absence assertion in
-this phase has a presence row built the same way, in the same file, in the same run.
+🔴 **Before believing a "0", find the known-firing signal beside it.** §3's rows 1 and 2 are only
+worth having because row 3 exists.
 
-🔴 **A gate is not evidence until it has been made to fail.** s60's `typecheck:mcp` was proven on
-`src/` and `tests/` **separately**; the `env` whitelist by a mutant that reddens exactly two rows.
-
-🔴 **Count the pattern before mutating, and require exactly 1.**
+🔴 **A gate is not evidence until it has been made to fail.**
 
 🔴 **Check the exit code before reading the output, never through a pipe** — ⚠️ **`${PIPESTATUS[0]}`
 is empty in zsh** (it is `$pipestatus`). 🔴 **macOS has no `timeout`.** ⚠️ **zsh does not word-split
-unquoted variables** — `set -- $var` silently yields one word.
+unquoted variables**, and **`--include=*.ts` unquoted is a zsh glob error** — quote it.
 
 ---
 
@@ -228,71 +252,56 @@ unquoted variables** — `set -- $var` silently yields one word.
 **All eight of s61's answers are recorded in their own task files with their reasoning.** The
 durable ones:
 
-- 🆕 ✅ **FIX-016 AC1 is RETIRED.** 🔴 **This does NOT retire the mining slice** —
+- ✅ **FIX-016 AC1 is RETIRED.** 🔴 **This does NOT retire the mining slice** —
   `modeHasDeclaredPorts` stays `true` for `'script'`, and the `define()` bar is separate carried work.
-- 🆕 ✅ **FIX-022 §7 → (a) accept.** 🔴 **The reuse cell's rulings survive it:** `minPlacementSites`
+- ✅ **FIX-022 §7 → (a) accept.** 🔴 **The reuse cell's rulings survive it:** `minPlacementSites`
   OFF for `trivial`, `small-logic`, `multi-section`; **both** evidence paths; the regression detector.
-  ⚠️ If ever revisited, **measure against `multi-section` too** — its ceiling is the only guard
-  against a "factor less" edit undoing AAQ-008.
-- 🆕 ✅ **FIX-006 — the shape is accepted.** 🔴 **`NODES_BEFORE_CODE` keeps BOTH halves**, separate
-  from `THREE_WAYS_TO_COMPUTE`; **`Javascript2` keeps leading the Script paragraph** (`traps.ts:61-63`).
-- 🆕 ✅ **FIX-013 rulings 3 + 4 → programmatic, no UI, nothing deleted.**
-  ⚠️ **`component-bench.test.ts:259-262` needs no edit.** Ruling 2 still stands: **the two surfaces
-  diverge and the AI preview keeps its toolbar and data editor** — which is why a `SandboxToolbar`
-  absence check is invalid. 🔴 `useSampleData` is **not** the switch; `emptyState` **predates** the
-  fix; `emptyState` keeps shipping the class list **named**; `list()` caches the empty array; the
-  bench summary keeps **wrapping**.
-- 🆕 ✅ **FIX-021 Q2 → ONE file. 🔴 SLICE A IS RULED OUT, not deferred.** Q5 → `always`, 2,000-char
-  cap, free when empty (**rejected:** `pull`). Q6 → prose only (**rejected:** `ai.role.*` keys).
-  **The MCP half is NOT gated on `allowWrites`** — confirmed.
-- 🆕 ✅ **FIX-004 §C was ruled s42 and built s46.** 🔴 **Its three "still owed" paragraphs are STALE
-  and now stamped as such.** `noodl_new_object` and the JSON pair are **deliberately not**
-  dual-listed; a spec pins that asymmetry so nobody "finishes the job".
-- 🔴 **FIX-021's MCP half — do not "simplify" either half of the security fix back.** The `env`
-  whitelist and main's overwrite of the profile path both exist because the registration is written
-  to the user's real `~/.claude.json` and spawned by their agent. **`NODEGX_USER_PREFERENCES` is a
-  wire contract across four files**; renaming one end turns the feature off silently for every
-  registration already on disk.
-- 🔴 **`typecheck:mcp` covers `src/` AND `tests/`, and is a required check in `pr.yml`.**
-  **Do not narrow it to `src/`** — seven of the eight errors it caught were in `tests/`.
-- ✅ **THE REPACKAGE — ruled s59: BUILT, LEFT IN `dist/`, NOT INSTALLED.** Do not install it without
-  asking again. ⚠️ **So `nodegx-puppy-test-3` still resolves to the Aug-13 bundle**, and FIX-008 D's
-  `open_project` is absent from what a registered agent actually runs. **A deployment choice, not a
-  debt — but do not read s59's table as "shipped".**
-- 🔴 **The build route is `_viewer` → `build:sidecars` → `npx lerna exec --scope noodl-editor --
-  npm run build`.** ⚠️ **Never `npm run build:editor` or `build:editor:_editor` on this checkout** —
-  both delete the root `node_modules`. **`build:editor:pack` copies; it does not build.**
-- ✅ **Slice B must keep doing:** guidance in **HTML comments**; an empty section **dropped**; the
-  block **last** and ahead of `cacheBoundary`; the **precedence sentence in the block**;
-  `globalPreferences()` charging **nothing** when empty; `ensureUserProfileSeeded` writing **only
-  when there is no file**.
-- ✅ **FIX-008 D.** 🔴 `completeBind` stays the single successful-bind path; `ProjectBinding`'s
-  bind-once boundary holds; `list_projects`' note branches on `isBound`; the same-directory case
-  keeps its own answer.
-- ✅ **FIX-004 redaction (b).** 🔴 **`console` stays LAST in all four parameter lists**; do not tidy
-  the four spellings into one constant; `createBlockConsole` returns `console` ITSELF with no sink.
+  ⚠️ If revisited, **measure against `multi-section` too**.
+- ✅ **FIX-006 — the shape is accepted.** 🔴 **`NODES_BEFORE_CODE` keeps BOTH halves**;
+  **`Javascript2` keeps leading the Script paragraph** (`traps.ts:61-63`).
+- ✅ **FIX-013 rulings 3 + 4 → programmatic, no UI, nothing deleted.**
+  ⚠️ **`component-bench.test.ts:259-262` needs no edit.** Ruling 2 stands: **the two surfaces
+  diverge and the AI preview keeps its toolbar and data editor.** 🔴 `useSampleData` is **not** the
+  switch; `emptyState` **predates** the fix; `list()` caches the empty array.
+- ✅ **FIX-021 Q2 → ONE file. 🔴 SLICE A IS RULED OUT, not deferred.** Q5 → `always`, 2,000-char cap,
+  free when empty. Q6 → prose only. 🆕 **The `allowWrites` judgement is now DRIVEN, not just ruled** (§3).
+- ✅ **FIX-004 §C was ruled s42 and built s46.** 🔴 Its three "still owed" paragraphs are **STALE**
+  and stamped. `noodl_new_object` and the JSON pair are **deliberately not** dual-listed.
+- 🔴 **FIX-021's MCP half — do not "simplify" either half of the security fix back.**
+  **`NODEGX_USER_PREFERENCES` is a wire contract across four files** — `noodl-mcp/src/userProfile.ts:62`,
+  `noodl-editor/src/main/src/mcp/mcpFrontDoor.js:36`,
+  `SettingsPanel/sections/mcpCommands.ts:267`, and `noodl-mcp/src/project/agentConfig.ts`.
+  **Renaming one end turns the feature off silently for every registration already on disk.**
+  🔴 **Main OVERWRITES the profile path rather than trusting the renderer's** (`mcpFrontDoor.js:263-270`),
+  and the **`env` whitelist stays a whitelist** (`:215`).
+- 🔴 **`typecheck:mcp` covers `src/` AND `tests/`, and is required in `pr.yml`. Do not narrow it.**
+- ✅ **Slice B must keep doing:** guidance in **HTML comments**; an empty section **dropped**
+  (🆕 **now measured on the wire**, §3); the block **last** and ahead of `cacheBoundary`; the
+  **precedence sentence in the block** (🆕 **measured**, §3); `globalPreferences()` charging
+  **nothing** when empty; `ensureUserProfileSeeded` writing **only when there is no file**.
+- ✅ **FIX-008 D.** 🔴 `completeBind` stays the single successful-bind path.
+- ✅ **FIX-004 redaction (b).** 🔴 **`console` stays LAST in all four parameter lists.**
 - ✅ **FIX-023.** 🔴 `malformedNode` 2nd in `ALL_RULES`; `duplicateNodeId` leads.
-- ✅ **FIX-008 C.** 🔴 Observe stays `user` on purpose; `--scope project` resolves against the shell's
-  cwd and the `scopeNote` names the folder.
-- ✅ **FIX-005** — the rename reversed VFN-012 knowingly. ✅ **FIX-024** — 🔴 `'learn'` and
-  `'learning'` are two different pages.
+- ✅ **FIX-008 C.** 🔴 Observe stays `user` on purpose.
+- ✅ **THE REPACKAGE — ruled s59: BUILT, LEFT IN `dist/`, NOT INSTALLED.** Do not install without
+  asking. ⚠️ **So `nodegx-puppy-test-3` still resolves to the Aug-13 bundle.**
+- 🔴 **The build route is `_viewer` → `build:sidecars` → `npx lerna exec --scope noodl-editor --
+  npm run build`.** ⚠️ **Never `npm run build:editor` or `build:editor:_editor`** — both delete the
+  root `node_modules`.
 
 ### Still owed by Richard
 
-🆕 ✅ **NOTHING IN PHASE 66.** The queue is empty for the first time since the phase opened.
+✅ **NOTHING IN PHASE 66.** The queue has been empty since s61.
 
-Outside it, unchanged and still declined by twenty-nine sessions:
+Outside it, unchanged:
 
 - 🔴 **THE ANTHROPIC CREDIT BALANCE IS EXHAUSTED.** ⚠️ **The remaining drive needs none of it.**
 - 🔴 **`scripts/library/check.ts` — LAND IT.** Attributed (LBR-002), verified, gate passes 58/58.
   **Phase 65's work, still uncommitted.**
 - 🔴 **`dev-docs/tasks/phase-23-visual-refresh/corpus/run.sh:17`** — an **executable** script whose
   `pkill` pattern matches MCP servers, **0 editors**, and never reaches `sweep()`.
-- ⚠️ **`package-lock.json`'s `@nodegx/kit-scaffold` line — phase 69 should confirm it** (a genuine
-  cn-006 desync; **not** verified with `npm ci`, on purpose).
-- ⚠️ `fix021-drive-ai` / `fix021-drive-plain` point at a scratchpad path that will be cleaned.
+- ⚠️ **`package-lock.json`'s `@nodegx/kit-scaffold` line — phase 69 should confirm it.**
 - ⚠️ **Fixtures kept on purpose:** `puppy-test-3-fix008c`, `fix016-msg6-drive`, `fix004c-s48-drive`.
-  ⚠️ **`fix016-s50-drive` is a scratch copy, deletable.**
 
 ---
 
@@ -300,25 +309,26 @@ Outside it, unchanged and still declined by twenty-nine sessions:
 
 Work on `cline-dev`; **never `git stash`**; **absolute paths in every Bash call** — the phase
 directory is `phase-66-0.1.7-bug-fixes`. ⚠️ **The shell's cwd persists between Bash calls** *and is
-reset after some tool results*. 🔴 **s60 was bitten by this twice.**
+reset after some tool results*.
 
 🔴 **`git commit <pathspecs>` — never `git add` at all.** The only exception is a **new** file: `add`
 and commit in the **same** command.
 
-🔴 **This checkout is SHARED and the peer commits mid-session.** ✅ **s60 saw a peer land eleven
-modified and eight new files mid-session** (phase-67/69). **Commit by explicit pathspec and verify
-afterwards.** ⚠️ **`hot: true`**: an edit to `packages/noodl-editor/src` hot-reloads a live editor
-mid-drive — and so does an edit to `packages/noodl-viewer-react/src`. ✅ **Take each measurement in
-ONE uninterrupted chain of `cdp` calls.**
+🔴 **This checkout is SHARED and peers commit mid-session.** ✅ **s62 watched a peer land ~30
+modified files mid-drive**, including `packages/noodl-editor/src/editor/src/validation/*`.
+⚠️ **`hot: true`**: an edit to `packages/noodl-editor/src` or `noodl-viewer-react/src` hot-reloads a
+live editor mid-drive — **and restarts a 16–40 minute compile.**
+✅ **Take each measurement in ONE uninterrupted chain of `cdp` calls.**
 
 ### Driving the settings panel — the exact route
+
+⚠️ **This route is for the settings panel's own sections. It does NOT reach Connect** — see §4.
 
 1. Write an entry into `~/Library/Application Support/NodeGX/recently_opened_project.json`
    (**back it up; remove the entry AFTER `dev:stop`**), `npm run cdp -- reload`, then click
    `[data-test=launcher-project-card]`.
-2. `npm run cdp -- click "[data-test=settings-panel]"` — the rail's gear, `placement: 'bottom'`.
-3. The **Editor** tab is a `[class*=Tabs-module__Button--]` whose `innerText` is `Editor`; tag it
-   with an `id` and click that.
+2. `npm run cdp -- click "[data-test=settings-panel]"` — the rail's gear.
+3. The **Editor** tab is a `[class*=Tabs-module__Button--]` whose `innerText` is `Editor`.
 4. 🔴 **Every section is `isClosed` and its body is MOUNTED at height 0.** Scroll it into view,
    click its `[class*=Header]`, **re-measure**, and only then read or click inside it.
 
@@ -326,6 +336,7 @@ ONE uninterrupted chain of `cdp` calls.**
 
 **Use `dev:stop`.** 🔴 Killing your launcher pid is **not** gentler. 🔴 **`pkill` never reaches
 `sweep()`.** ⚠️ The launcher exiting **144** is `dev:stop` reaping it, not a failure.
+✅ **s62 re-confirmed the shield: a real `dev:stop` killed 25 processes and left 53 MCP servers up.**
 
 ### 🔴 Measuring the memory index
 
@@ -339,6 +350,6 @@ node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log(
 
 ### 🔴 Re-read this file immediately before rewriting it
 
-✅ **s46 through s61 all checked `git log -1 --stat` plus the mtime before rewriting** — seventeen
+✅ **s46 through s62 all checked `git log -1 --stat` plus the mtime before rewriting** — eighteen
 sessions running. A whole-file overwrite is the one edit that cannot conflict: git accepts it
 happily, and the loss is invisible in the diff you are looking at.

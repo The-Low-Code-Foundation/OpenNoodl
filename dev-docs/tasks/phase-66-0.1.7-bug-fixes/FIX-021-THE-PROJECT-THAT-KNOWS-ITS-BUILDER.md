@@ -563,3 +563,110 @@ profile; `ensureUserProfileSeeded` writes only when there is no file. And on the
 whitelist, and main keeps overwriting the profile path rather than trusting the renderer's.
 
 ⚠️ **FIX-021 still owes ONE thing: the drive of the MCP half.** See §4 of the phase handover.
+
+🔴 **STALE as of session 62 — read the section below before believing this sentence.** The MCP
+**server** half is now driven 4/4. What remains is only the **editor** half (observations 1–3).
+
+---
+
+## ✅ DRIVEN 2026-08-18 (session 62) — the MCP server half, 4/4. ⛔ The editor half is BLOCKED
+
+**Instrument:** `node packages/noodl-mcp/dist/noodl-mcp.cjs <projectDir> [--allow-writes]`, spoken to
+over **real stdio with real JSON-RPC** (`initialize` → `notifications/initialized` →
+`tools/call get_project_info`). 🔴 **Deliberately not a jest run of `tests/`** — the handover names
+that distinction, and this is the client-shaped instrument.
+**Tree:** working tree at `159718d2`, plus the step-zero rebuild below. **Project:** a scratch copy of
+`Puppy test 3`.
+
+### 🔴 STEP ZERO WAS REAL, AND IT WOULD HAVE FAKED A FAILURE
+
+`dist/noodl-mcp.cjs` was s59's build (Aug 18 **10:33**) with **0** occurrences of
+`NODEGX_USER_PREFERENCES`, exactly as s61 measured. Rebuilt with
+`npm --prefix packages/noodl-mcp run build` → **13:17:37, count 1**. Every row below is against the
+rebuilt bundle. ✅ **`packages/noodl-mcp/dist/` is gitignored and untracked** — the rebuild produces
+no git noise and nothing a peer's commit can sweep, so it needs no commit and no pathspec care.
+
+### The four rows — absence read FIRST, then the row that makes it mean something
+
+| # | `NODEGX_USER_PREFERENCES` | profile file | `--allow-writes` | `userPreferences` |
+|---|---|---|---|---|
+| 1 | **unset** (an older registration) | — | yes | ⛔ **absent** |
+| 2 | set | the **pristine seeded template**, every heading an HTML comment | yes | ⛔ **absent** |
+| 3 | set | **two of four headings answered** | yes | ✅ **present** |
+| 4 | set | two of four headings answered | **no — read-only** | ✅ **present** |
+
+🔴 **Rows 1 and 2 are two DIFFERENT absences and both had to be taken.** "No variable" is an older
+editor's registration; "variable pointing at an unanswered file" is a user who never opened the
+panel. They have the same shape in the response and different causes, and only row 2 grades the
+empty-file rule.
+
+✅ **Row 3 is the known-firing signal that licenses rows 1 and 2.** Taken in the same run, same
+instrument, same project. Without it the two absences are indistinguishable from a feature that
+never shipped — which is precisely the failure step zero would have produced.
+
+### ✅ What row 3 showed beyond "present"
+
+- **The `note` travels with the text**, in full: *"Standing preferences this user wrote about
+  themselves… This project's own conventions (docs/CONVENTIONS.md) outrank them in turn: where the
+  two disagree, follow the project and say that you did."* 🔴 **Its absence was the failure worth
+  catching** and it did not occur.
+- 🆕 **Only the ANSWERED headings arrived.** The two headings left as HTML comments are **dropped**,
+  not sent empty. That is slice B's "an empty section is dropped" rule, measured on the wire rather
+  than in a spec.
+
+### ✅ Row 4 confirms Richard's `allowWrites` ruling BY DRIVE, not by reading
+
+The read-only server advertised **13 tools** and its payload carried **no** `authoringTraps`,
+`authoringDoctrine` or `designDoctrine` — and **still carried `userPreferences` with its `note`**.
+🔴 **This is the ruling's own reasoning made visible:** the authoring doctrine is correctly withheld
+from a client that cannot author, and the profile is correctly not, because its first heading is
+*"how I like to be talked to"*.
+
+### ⛔ Observations 1, 2 and 3 are NOT driven — the editor never rendered
+
+**Nothing about the feature failed. The dev stack never produced a usable renderer**, across two
+full launches and ~1h40m.
+
+| What | Measured |
+|---|---|
+| Launch 1 | 13:19 start; editor's **first compile took 998,081 ms (16.6 min)**; Electron launched **13:37:32** |
+| The kill | A peer wrote `packages/noodl-editor/src/editor/src/validation/*.ts` at **13:45:47** — mid-drive — retriggering the compile |
+| The wedge | `webpack-dev-middleware` logged **`wait until bundle finished: /src/editor/index.bundle.js`** indefinitely. `curl` of that URL returned **HTTP 000 after 60s** |
+| Not transient | `reactMounted: false` through **14:17**, across **2 reloads** and **2 further successful compiles** (345,226 ms and 154,488 ms) |
+| Launch 2 | 14:18, with **no peer source edits after 13:56:11** — first compile **still unfinished at 14:58 (40 min)**, then all three lerna children were reaped (`exited undefined`) and the stack died |
+| Throughout | **load average 23–53**; `Virtualization.framework` ~50% CPU; **53 resident MCP servers** |
+
+🔴 **The mechanism, and it will bite the next session too:** `start.ts` calls
+`reapPreviousSession()`, so **a peer launching their own dev stack kills yours**. Combined with
+`hot: true` — where any peer edit under `packages/noodl-editor/src` restarts a 16–40 minute
+compile — a shared checkout at this load cannot reliably hold an editor open long enough to drive.
+
+⚠️ **What was NOT concluded from this.** The renderer never mounted, so this says **nothing** about
+whether Connect works. It is an environment measurement, not a verdict on the feature.
+
+### ✅ Richard's files were left exactly as found
+
+- **`Connect` was never clicked**, so it never wrote. Verified after teardown:
+  `~/.claude.json`'s `nodegx.env` is still **`{"ELECTRON_RUN_AS_NODE":"1"}`** — no profile key.
+- 🔴 **`~/.claude.json`'s hash DID change, and restoring the backup would have been the error.**
+  A structural diff shows `mcpServers` **byte-identical** and only
+  `cachedGrowthBookFeatures`, `cachedGrowthBookFeaturesAt`, `skillUsage`, `cachedExperimentData`
+  different — **Claude Code's own cache, rewritten continuously by ~25 live sessions.** Restoring a
+  90-minute-old copy of that file would have clobbered every one of them.
+  ✅ **Compare the SECTION you touched, never the file hash.**
+- `PREFERENCES.md` **unchanged** (`c3c8425…`, identical to the pre-drive copy).
+- Stack down via `dev:stop`; **53 MCP servers survived** the sweep, as the `NEVER_SWEEP` shield promises.
+
+### ✅ A carried item is now bounded rather than suspected
+
+🔴 **`claudeMcpAdd`'s unquoted `-e` pairs cannot break the write.** `connectBootstrapServer`
+registers via `spawnSync(exec, cliArgs(registration))` — an **argv array**, no shell — and
+`cliArgs` (`connectBootstrapServer.js:193-196`) emits `-e` `KEY=value` as separate argv entries.
+Richard's own profile path contains a space (`…/Application Support/NodeGX/…`) and is therefore the
+worst case, and it is safe on both the CLI route and the JSON route. **The defect is confined to the
+DISPLAYED, copy-pasteable string.** Still wants its own task; it is now a cosmetic one.
+
+### Still owed
+
+⚠️ **Observations 1, 2 and 3 only.** They need a running editor and nothing else — no API credit, no
+new code. See the phase handover's §4.
