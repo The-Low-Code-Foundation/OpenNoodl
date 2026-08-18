@@ -53,13 +53,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { catalogNodesFromNodeLibrary } = require('@nodegx/kit-catalog');
+const { catalogNodesFromNodeLibrary, effectiveKitRuntimes, declaredKitRuntimes } = require('@nodegx/kit-catalog');
 import type { NodeLibraryPayload, OverlayCatalogNode, OverlayCollision } from '@nodegx/kit-catalog';
 
 /** A kit the extractor found and loaded. */
 export interface KitSummary {
   kitModule: string;
   dirPath: string;
+  /**
+   * CN-012 — where this kit's nodes are actually loaded. **Empty means nowhere**
+   * (a manifest whose `runtimes` omits `browser`), which `kitDiagnostics` reports
+   * as `kit-loads-nowhere`.
+   */
+  availableIn?: string[];
+  /** The manifest's own `runtimes`, defaulted, for the diagnostic's wording. */
+  declaredRuntimes?: string[];
 }
 
 /** A kit that threw at import time or failed to register. CN-015 owns showing it. */
@@ -243,7 +251,15 @@ export function extractProjectOverlay(projectDir: string): ProjectKitOverlay {
     projectDir,
     nodes: overlay.nodes,
     collisions: overlay.collisions,
-    kits: payload.kits ?? [],
+    // CN-012 — the kit's runtime reachability, resolved here because this is
+    // where `moduleRuntimes` and the kit list are both in hand. Without it the
+    // CLI cannot tell an author that a kit runs nowhere, which is the one kit
+    // fault that leaves the kit's own code blameless.
+    kits: (payload.kits ?? []).map((kit) => ({
+      ...kit,
+      availableIn: effectiveKitRuntimes((payload.moduleRuntimes ?? {})[kit.kitModule]),
+      declaredRuntimes: declaredKitRuntimes((payload.moduleRuntimes ?? {})[kit.kitModule])
+    })),
     warnings: payload.warnings ?? [],
     failures: payload.failures ?? [],
     extractionMs

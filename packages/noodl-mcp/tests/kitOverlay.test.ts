@@ -82,7 +82,17 @@ describe('extraction', () => {
     expect(overlay.skipped).toBeUndefined();
     expect(overlay.failures).toEqual([]);
     expect(overlay.warnings).toEqual([]);
-    expect(overlay.kits).toEqual([{ kitModule: 'Demo Kit', dirPath: 'noodl_modules/demo-kit' }]);
+    // CN-012 added the two runtime fields. `Demo Kit`'s manifest declares no
+    // `runtimes` at all — the ordinary case — so both read as browser, and the
+    // pair being equal is what says "this kit gets what it asked for".
+    expect(overlay.kits).toEqual([
+      {
+        kitModule: 'Demo Kit',
+        dirPath: 'noodl_modules/demo-kit',
+        availableIn: ['browser'],
+        declaredRuntimes: ['browser']
+      }
+    ]);
     expect(overlay.nodes.map((n) => n.typeName)).toEqual(['demo.kit.Badge', 'demo.kit.Meter']);
 
     const badge = overlay.nodes.find((n) => n.typeName === 'demo.kit.Badge');
@@ -116,7 +126,18 @@ describe('extraction', () => {
     // 🔴 The point of the fixture: the working kit is still here. A throwing
     // neighbour costs you its own nodes and nothing else.
     expect(overlay.nodes.map((n) => n.typeName)).toContain('demo.kit.Survivor');
-    expect(overlay.nodes.find((n) => n.typeName === 'demo.kit.Survivor')?.availableIn).toEqual(['browser', 'cloud']);
+    // 🔴 CN-012 changed this line from `['browser', 'cloud']`, and the change is
+    // the point rather than a fixup. `working-kit`'s manifest declares two
+    // runtimes; only one of them loads a kit. Measured: `CloudRunner` calls
+    // `registerNodes` and nothing else, and `load()` has no parameter a module
+    // could arrive through — the same cloud function answers 200 with a built-in
+    // and times out with a kit node. So `availableIn` — the field that states
+    // plain fact for a built-in — now reports only where the node really runs,
+    // and the manifest's claim moves to `declaredRuntimes`, which does not read
+    // as fact. Nothing is lost; the false half is no longer asserted as true.
+    const survivor = overlay.nodes.find((n) => n.typeName === 'demo.kit.Survivor');
+    expect(survivor?.availableIn).toEqual(['browser']);
+    expect(survivor?.declaredRuntimes).toEqual(['browser', 'cloud']);
   });
 
   it('reports a kit that shadows a shipped type instead of letting it win', () => {

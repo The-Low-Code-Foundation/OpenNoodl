@@ -80,6 +80,25 @@ describe('listNodeKits', () => {
     expect(kits[0].nodeKitTypes).toBe('1.0.0');
   });
 
+  /**
+   * CN-012 — the Kits panel is where an author finds out a kit runs nowhere, and
+   * it cannot know without this. `runtimes` is the one manifest field whose
+   * *declaration* removes a kit from the only runtime that loads kits.
+   */
+  test('carries the manifest runtimes, defaulting an absent one to browser', async () => {
+    writeModule('cloud-kit', { name: 'Cloud Kit', main: 'index.js', runtimes: ['cloud'] });
+    writeModule('plain-kit', { name: 'Plain Kit', main: 'index.js' });
+
+    const kits = await listNodeKits(dir);
+    const byName = Object.fromEntries(kits.map((k) => [k.displayName, k.runtimes]));
+
+    expect(byName['Cloud Kit']).toEqual(['cloud']);
+    // 🔴 Defaulted, not left undefined — the scanner, the injector and the
+    // headless extractor all read an absent `runtimes` as browser, and a fourth
+    // reader disagreeing is how a kit ends up described two ways.
+    expect(byName['Plain Kit']).toEqual(['browser']);
+  });
+
   test('a vendored library is excluded by its kind, not by lacking a main', async () => {
     // The discriminating control for the subtractive rule. This module has a
     // `main` on disk — the same field the kit is recognised by — so a rule that

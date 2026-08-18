@@ -179,6 +179,54 @@ function kitDiagnostics(overlay, options = {}) {
     }
   }
 
+  // 4. A kit that runs in no runtime at all (CN-012).
+  //
+  // 🔴 The one case where the kit is fine and the *manifest* is the defect, and
+  // it is silent in every existing surface. `runtimes` has exactly one negative
+  // consumer — `buildInjectionTags` emits a browser script tag only for a module
+  // whose list contains `browser` — and **no positive one anywhere**: nothing
+  // loads a kit server-side, so declaring `["cloud"]` removes the kit from the
+  // one runtime that would have run it. Measured in CN-012 M4b: the page renders
+  // with every kit node missing, the console says "Can't find component model",
+  // and the author is told nothing.
+  //
+  // ⚠️ It is deliberately NOT gated on `assumeLoaded`. The other three checks ask
+  // "what did the register end up with", which a caller reading a viewer's
+  // payload cannot always answer; this one is read off the manifest and is just
+  // as true before anything loads. ⚠️ And it must not fire on a kit that is
+  // *also* broken in a louder way — a kit that threw already has its error, and
+  // two errors for one kit invites fixing the wrong one.
+  const alreadyReported = new Set(failures.map((f) => f.kitModule));
+
+  // 🔴 Read off the KIT, not off its nodes, and that is the whole difficulty of
+  // this check. A kit that runs nowhere contributes **no nodes** to a payload —
+  // so a rule keyed on node entries would be blind in exactly the case it exists
+  // for, and would have to be fed synthetic node rows, which in turn would make
+  // `kit-registered-nothing` above think the kit had registered something.
+  //
+  // ⚠️ Absent `availableIn` is NOT empty: a caller that never built the field
+  // has said nothing, and accusing it would be a guess. Every pre-CN-012 caller
+  // is in that position and must stay silent.
+  for (const kit of kits) {
+    if (!kit || !kit.kitModule || alreadyReported.has(kit.kitModule)) continue;
+    if (!kit.availableIn || kit.availableIn.length !== 0) continue;
+
+    out.push({
+      code: 'kit-loads-nowhere',
+      severity: 'error',
+      kitModule: kit.kitModule,
+      dirPath: kit.dirPath,
+      declaredRuntimes: kit.declaredRuntimes || [],
+      message:
+        `kit "${kit.kitModule}" declares runtimes [${(kit.declaredRuntimes || []).join(', ')}] in its ` +
+        'manifest, and no runtime ' +
+        'loads it. Kits are loaded by the browser injector only, which skips any module whose `runtimes` ' +
+        'omits "browser" — and nothing loads a kit server-side, so its nodes will be missing everywhere ' +
+        'and a graph using them will report unknown types. Add "browser" to `runtimes`, or remove the ' +
+        'field (it defaults to browser).'
+    });
+  }
+
   return out;
 }
 

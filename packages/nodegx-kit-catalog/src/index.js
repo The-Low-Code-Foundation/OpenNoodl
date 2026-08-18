@@ -246,6 +246,57 @@ function toDynamicPorts(nodeType) {
 }
 
 /**
+ * The runtimes a kit's nodes are actually loaded into, from its manifest's
+ * `runtimes` declaration. **CN-012, and this is a correction, not a policy.**
+ *
+ * 🔴 `availableIn` on a *built-in* is a statement of fact — it is `runtimeTypes`,
+ * the runtimes that really did register the type. This field used to copy a
+ * kit's manifest `runtimes` verbatim, which turned the same field, for the same
+ * reader, into a statement of *intent*. Measured (CN-012 M4): a kit declaring
+ * `["cloud"]` is reported to an agent as `availableIn: ["cloud"]` and runs in
+ * **no runtime at all** —
+ *
+ * - the browser is the only loader there is: `buildInjectionTags` emits a script
+ *   tag only for a module whose `runtimes` contains `browser`, so a cloud-only
+ *   kit is removed from the page;
+ * - and nothing loads it server-side. `CloudRunner`'s constructor calls
+ *   `registerNodes` and nothing else, and `load(exportData, projectSettings)`
+ *   has no parameter a module could arrive through. Driven: the same cloud
+ *   function answers `200` with a built-in `Counter` and **times out** with a
+ *   kit node, and answers `200` again the moment `runtime.registerModule` is
+ *   called by hand. The runtime is willing; there is simply no caller.
+ *
+ * ⚠️ So this is not "kits are browser-only by decree". It is: *today, the only
+ * code path that loads a kit is the browser injector.* The day a cloud loader
+ * exists, this function is the one place that has to learn about it — which is
+ * why the fact lives here once rather than in each consumer's head.
+ *
+ * @param {string[] | undefined} declared manifest `runtimes`, if any
+ * @returns {string[]} sorted, possibly empty
+ */
+function effectiveKitRuntimes(declared) {
+  return declaredKitRuntimes(declared).indexOf('browser') !== -1 ? ['browser'] : [];
+}
+
+/**
+ * The manifest's own `runtimes`, defaulted the way every other reader defaults
+ * it — absent means `['browser']` (`module-inject`'s scanner, the extractor and
+ * `projectmodules.ts` all agree on that, and disagreeing here would make an
+ * unstated manifest look deliberate).
+ *
+ * @param {string[] | undefined} declared
+ * @returns {string[]} sorted
+ */
+function declaredKitRuntimes(declared) {
+  return declared && declared.length ? [...declared].sort() : ['browser'];
+}
+
+/** Two sorted runtime lists, same members? */
+function sameRuntimeList(a, b) {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+/**
  * Map one runtime node-library entry to a catalog-shaped overlay node.
  *
  * Derivations mirror `buildCatalog` exactly where the payload allows it —
@@ -272,10 +323,17 @@ function toOverlayNode(nodeType, origin) {
     isVisual,
     isDeprecated,
     inNodePicker: !isDeprecated,
-    availableIn: origin.availableIn && origin.availableIn.length ? [...origin.availableIn].sort() : ['browser'],
+    availableIn: effectiveKitRuntimes(origin.availableIn),
     providedBy: KIT_PROVENANCE,
     kitModule: origin.kitModule
   };
+
+  // 🔴 CN-012. Never lose the manifest's claim, and never restate it as fact.
+  // `availableIn` above says where the node *runs*; this says what the manifest
+  // *asked for*, and it is present only when the two differ — so a reader who
+  // sees an empty `availableIn` can always find out why.
+  const declared = declaredKitRuntimes(origin.availableIn);
+  if (!sameRuntimeList(declared, node.availableIn)) node.declaredRuntimes = declared;
 
   if (nodeType.docs !== undefined) node.docs = nodeType.docs;
   if (nodeType.searchTags !== undefined) node.searchTags = nodeType.searchTags;
@@ -531,6 +589,8 @@ function describeComparison(comparison) {
 const { kitDiagnostics, formatKitDiagnostic } = require('./health');
 
 module.exports = {
+  effectiveKitRuntimes,
+  declaredKitRuntimes,
   KIT_PROVENANCE,
   normalizePortType,
   catalogNodesFromNodeLibrary,

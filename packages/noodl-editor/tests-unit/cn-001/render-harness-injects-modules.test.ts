@@ -98,6 +98,32 @@ describe('CN-001: render-from-disk injects noodl_modules', () => {
     expect(kit).toBeLessThan(viewer);
   });
 
+  /**
+   * 🔴 CN-012. The harness's `defineModule` shim is a fourth hand-written copy of
+   * the product's bootstrap, and it was the only one that did not adopt the
+   * name marker — so `registerModule` stamped `'Unknown Module'` on every kit
+   * node in the harness while the correct name sat in a global one tag away.
+   * That is precisely the defect CN-003 fixed in the product, still live in the
+   * instrument the product is graded with.
+   *
+   * ⚠️ Asserted on the emitted page rather than on a rendered one on purpose:
+   * nothing in `render-report.js` reads the stamp today, so a behavioural check
+   * would have no consequence to hang off, and a check with no consequence is
+   * how this got missed in the first place. The tag order test above proves the
+   * marker is in scope by the time the shim runs.
+   */
+  it('adopts the module-name marker in the defineModule shim, as the product does', () => {
+    expect(html).toContain('window.__noodl_module_name = "Demo Kit"');
+    expect(html).toContain('if(m&&!m.name&&window.__noodl_module_name)m.name=window.__noodl_module_name');
+
+    // Both halves in the right order, or the adoption reads a global that is
+    // not set yet: the shim is defined once, before every marker.
+    const shim = html.indexOf('window.Noodl={defineModule:');
+    const marker = html.indexOf('window.__noodl_module_name = ');
+    expect(shim).toBeGreaterThan(-1);
+    expect(marker).toBeGreaterThan(shim);
+  });
+
   it('emits no module tags for a project with no noodl_modules', () => {
     // The instrument, run against an input where the answer must be "no" —
     // without this, an assertion that always passed would look identical.

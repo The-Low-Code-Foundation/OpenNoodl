@@ -524,6 +524,21 @@ export interface ProjectNodeKit {
    */
   displayName: string;
   /**
+   * Manifest `runtimes`, defaulted to `['browser']` when absent — the same
+   * default the scanner, the injector and the headless extractor all apply.
+   *
+   * 🔴 Present so the Kits panel can say when a kit runs **nowhere**: this is the
+   * one manifest field whose declaration can remove a kit from the only runtime
+   * that loads kits (CN-012).
+   *
+   * ⚠️ **Optional on the type, always set by {@link listNodeKits}.** A row built
+   * by hand — every test helper that fakes one — genuinely has nothing to say
+   * here, and `effectiveKitRuntimes(undefined)` already resolves to the same
+   * `['browser']` default this function writes. Absent therefore means "nobody
+   * said", which `kitDiagnostics` treats as silence rather than as a fault.
+   */
+  runtimes?: string[];
+  /**
    * Manifest `version`, when the kit declares one.
    *
    * 🔴 **Measured 2026-08-17: not one kit in any of the 29 real projects
@@ -588,6 +603,17 @@ export async function listNodeKits(projectDirectory: string | undefined): Promis
 
     const typesVersion = (m as Record<string, unknown>).nodeKitTypes;
     if (typeof typesVersion === 'string' && typesVersion) kit.nodeKitTypes = typesVersion;
+
+    // 🔴 CN-012. Carried because the Kits panel is where an author finds out that
+    // a kit runs nowhere, and without this the panel cannot know: `runtimes` is
+    // the only field on a manifest whose *declaration* removes the kit from the
+    // one runtime that loads kits, and `kitDiagnostics` needs it to say so.
+    //
+    // ⚠️ Defaulted here, unlike `version` above, and the difference is deliberate:
+    // an absent `version` is a number nobody stated, while an absent `runtimes`
+    // has a settled meaning every other reader already applies — the scanner, the
+    // injector and the extractor all read absent as `['browser']`.
+    kit.runtimes = Array.isArray(m.runtimes) ? m.runtimes.map(String) : ['browser'];
 
     kits.push(kit);
   }

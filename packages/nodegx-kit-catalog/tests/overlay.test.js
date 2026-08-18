@@ -118,14 +118,43 @@ describe('catalogNodesFromNodeLibrary', () => {
     expect(catalogNodesFromNodeLibrary(shadowing).nodes).toHaveLength(1);
   });
 
-  it('does not claim browser availability for a cloud-only kit', () => {
+  /**
+   * 🔴 **This assertion was `toEqual(['cloud'])` and it was REPLACED, not
+   * deleted** (CN-002's rule: a silence baseline is replaced when the call is
+   * taken). The row's title has always been right — a cloud-only kit must not
+   * claim the browser — but `['cloud']` was the wrong way to be right. CN-012
+   * measured what a cloud-declared kit actually does: the browser injector
+   * skips it and nothing loads it server-side, so it runs in **no** runtime, and
+   * `availableIn` is the same field that states plain fact for a built-in.
+   * Reporting the manifest's wish there told an agent the node was available on
+   * the one runtime where it provably is not.
+   */
+  it('reports a cloud-only kit as running nowhere, and keeps its declaration', () => {
     const { nodes } = catalogNodesFromNodeLibrary(payload, {
       moduleRuntimes: { 'Cashflow Kit': ['cloud'] }
     });
-    expect(nodes[0].availableIn).toEqual(['cloud']);
+    expect(nodes[0].availableIn).toEqual([]);
+    // The manifest's claim is not lost — it moves to a field that does not read
+    // as fact. An empty `availableIn` with no explanation would be a gap that
+    // could pass for "nothing to say".
+    expect(nodes[0].declaredRuntimes).toEqual(['cloud']);
+
     // Control: the default is browser, so the assertion above is about the
     // option and not about the default happening to match.
     expect(catalogNodesFromNodeLibrary(payload).nodes[0].availableIn).toEqual(['browser']);
+    // ...and the ordinary case carries no `declaredRuntimes` at all, so its
+    // presence always means "this kit asked for something it does not get".
+    expect(catalogNodesFromNodeLibrary(payload).nodes[0].declaredRuntimes).toBeUndefined();
+  });
+
+  it('a kit declaring browser AND cloud is loaded in the browser only', () => {
+    const { nodes } = catalogNodesFromNodeLibrary(payload, {
+      moduleRuntimes: { 'Cashflow Kit': ['browser', 'cloud'] }
+    });
+    // The half that works is reported as working; the half that does not is
+    // reported as asked-for. A kit like this is not broken — it is over-claimed.
+    expect(nodes[0].availableIn).toEqual(['browser']);
+    expect(nodes[0].declaredRuntimes).toEqual(['browser', 'cloud']);
   });
 });
 

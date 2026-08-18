@@ -422,6 +422,42 @@ export interface NodeInstance {
   sendSignalOnOutput(name: string): void;
   sendValue(name: string, value: unknown): void;
 
+  // --- the control-signal class -------------------------------------------
+
+  /**
+   * Should a new value on `inputName` re-run this node?
+   *
+   * 🔴 **Call this from the governed input's `set`.** Declaring
+   * {@link NodeDefinitionOptions.runOnValueChange} synthesises the checkbox
+   * **port** and nothing else — obeying it is the definition's job, exactly as
+   * every built-in in the class does it:
+   *
+   * ```js
+   * set: function (value) {
+   *   this._internal.reading = Number(value);
+   *   if (this.shouldRunOnValueChange('reading')) this.flagOutputDirty('output');
+   * }
+   * ```
+   *
+   * ⚠️ Omitting the guard is silent and looks like a runtime bug rather than an
+   * authoring one: the output keeps the value `connectInput` pushed at boot, so
+   * a consumer reads a confident `0` from a node that has never run. That is
+   * measured, not hypothetical — it is what CN-012's first logic kit did.
+   *
+   * Answers `true` for an input the author has never unticked (absent means
+   * ticked), so a node is auto-running until someone deliberately says not to.
+   */
+  shouldRunOnValueChange(inputName: string): boolean;
+
+  /**
+   * Mint a `runOnChange-<name>` checkbox for an input **discovered at runtime**.
+   * Declared inputs get theirs from `defineNode`; a node whose ports come from
+   * user text or a schema has to register them alongside the port they govern.
+   */
+  registerRunOnValueChangeInput(inputName: string, displayName?: string): void;
+  /** Drop the checkbox for an input that no longer exists, and forget its answer. */
+  deregisterRunOnValueChangeInput(inputName: string): void;
+
   /** Defers work until every input in the current update has been applied. */
   scheduleAfterInputsHaveUpdated(callback: () => void): void;
   /** Reports a runtime error against this node, shown in the editor. */
@@ -734,13 +770,34 @@ export interface ReactNodeDefinition {
  *
  * `name` and `category` are the only required fields.
  *
- * ⚠️ **PROVISIONAL — mirrored from the runtime's declarations, not yet proven
- * from a kit.** The visual half above was established by building kits that
- * run; the logic half has not been through that (phase 69 CN-012 is where it
- * gets established). These names and shapes are what the runtime declares, so
- * they will not send you somewhere that does not exist — but *whether a logic
- * node in a kit reaches this path at all*, and how it behaves in the cloud
- * runtime, is not something this file has earned the right to promise.
+ * ✅ **ESTABLISHED (phase 69 CN-012, 2026-08-18).** The provisional marker that
+ * stood here is gone, and it was lifted by building the caller rather than by
+ * re-reading the runtime. A kit supplying only `nodes` — no `reactNodes`, no
+ * React, no DOM — was registered by the real extractor and run in real
+ * Chromium:
+ *
+ * - it registers exactly as a built-in does (`registerModule` loops `nodes`
+ *   with no visual assumption anywhere, and `viewer.jsx`'s `reactNodes` branch
+ *   is guarded, so a logic-only module takes the same path);
+ * - a **built-in visual** node's signal reached a kit logic node's signal input,
+ *   the node held state across the call and published a value through
+ *   `flagOutputDirty`;
+ * - the kit node's own `sendSignalOnOutput` reached **another kit logic node's**
+ *   signal input, which published in turn — so kit-to-kit signal edges work;
+ * - `runOnValueChange` synthesises its `runOnChange-<input>` checkbox on a kit
+ *   node with the runtime's own wording, and {@link NodeInstance.shouldRunOnValueChange}
+ *   answers it. ⚠️ See that method: declaring `runOnValueChange` does **not**
+ *   wire itself, and the first kit written against this file got it wrong.
+ *
+ * 🔴 **The one thing that does NOT work, and it is about the manifest, not this
+ * shape: a kit runs in the browser only.** `CloudRunner` calls `registerNodes`
+ * and nothing else, and its `load()` has no parameter a module could arrive
+ * through — the same cloud function answers `200` with a built-in `Counter` and
+ * **times out** with a kit node, then answers `200` again once
+ * `registerModule` is called by hand. The runtime is willing; there is no
+ * caller. So `manifest.runtimes` has one honest value today, `["browser"]`, and
+ * declaring `["cloud"]` takes the kit out of the browser injector and gains
+ * nothing — the kit then runs nowhere. Leave the field out; it defaults right.
  */
 export interface NodeDefinitionOptions {
   /** Canonical type string, as it appears in project files. Must be unique. */
@@ -777,6 +834,12 @@ export interface NodeDefinitionOptions {
   /**
    * Declares this node a member of the control-signal class: one
    * `runOnChange-<input>` checkbox port is synthesised per named input.
+   *
+   * 🔴 **This declaration creates the ports. It does not wire them.** Each
+   * governed input's own `set` must ask
+   * {@link NodeInstance.shouldRunOnValueChange} before it does any work — see
+   * that method for the two-line shape and for what silently happens if you
+   * forget.
    */
   runOnValueChange?: {
     /** The control signal that used to make every value setter passive. */
@@ -820,7 +883,7 @@ export interface NodeDefinitionOptions {
   [extra: string]: unknown;
 }
 
-/** Readable alias for {@link NodeDefinitionOptions}. ⚠️ Provisional — see there. */
+/** Readable alias for {@link NodeDefinitionOptions}. */
 export type LogicNodeDefinition = NodeDefinitionOptions;
 
 // ===========================================================================
@@ -834,13 +897,18 @@ export type LogicNodeDefinition = NodeDefinitionOptions;
  * Noodl.defineModule({ reactNodes: [Chip, Badge] });
  * ```
  *
- * ⚠️ `nodes` (the logic half) carries the same provisional caveat as
- * {@link NodeDefinitionOptions}.
+ * ```js
+ * Noodl.defineModule({ nodes: [Accumulator] });   // the logic half
+ * ```
  */
 export interface NodeKitModule {
   /** Visual nodes — the established path. */
   reactNodes?: ReactNodeDefinition[];
-  /** Logic nodes. ⚠️ Provisional; see {@link NodeDefinitionOptions}. */
+  /**
+   * Logic nodes — no React, no DOM. ✅ Established by CN-012; see
+   * {@link NodeDefinitionOptions}. A module may supply `nodes`, `reactNodes`, or
+   * both.
+   */
   nodes?: NodeDefinitionOptions[];
   /**
    * Set by the injector from the kit's `manifest.json` if the module does not

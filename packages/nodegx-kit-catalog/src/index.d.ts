@@ -118,7 +118,19 @@ export interface OverlayCatalogNode {
   isVisual: boolean;
   isDeprecated: boolean;
   inNodePicker: boolean;
+  /**
+   * Where this node is actually loaded — the same statement of fact
+   * `availableIn` makes for a built-in, not the manifest's wish. Can be
+   * **empty**: a kit whose `runtimes` omits `browser` is loaded by nothing.
+   * See `effectiveKitRuntimes` for the measurement behind that (CN-012).
+   */
   availableIn: string[];
+  /**
+   * The manifest's own `runtimes`, present only when it differs from
+   * {@link availableIn} — i.e. only when the kit asked for something it does
+   * not get. Absent is the ordinary case, not a gap.
+   */
+  declaredRuntimes?: string[];
   providedBy: 'project-kit';
   /** The `noodl_modules` directory / module name that declared this node. */
   kitModule: string;
@@ -179,6 +191,16 @@ export interface OverlayComparison {
 
 export declare const KIT_PROVENANCE: 'project-kit';
 
+/**
+ * The runtimes a kit's nodes are actually loaded into, given its manifest's
+ * `runtimes`. Absent/empty defaults to browser; anything without `browser`
+ * returns `[]`, because no loader reaches it. CN-012.
+ */
+export declare function effectiveKitRuntimes(declared: string[] | undefined): string[];
+
+/** The manifest's own `runtimes`, defaulted to `['browser']` and sorted. */
+export declare function declaredKitRuntimes(declared: string[] | undefined): string[];
+
 export declare function normalizePortType(type: unknown): OverlayPortType;
 
 export declare function catalogNodesFromNodeLibrary(
@@ -203,7 +225,7 @@ export declare function describeComparison(comparison: OverlayComparison): strin
 
 /** CN-015. What went wrong with one kit, in words that name it. */
 export interface KitHealthDiagnostic {
-  code: 'kit-load-failed' | 'kit-shadows-builtin' | 'kit-registered-nothing';
+  code: 'kit-load-failed' | 'kit-shadows-builtin' | 'kit-registered-nothing' | 'kit-loads-nowhere';
   /** `diagnostics.ts`' scale, not a new one. */
   severity: 'error' | 'warning' | 'info';
   kitModule: string;
@@ -216,12 +238,25 @@ export interface KitHealthDiagnostic {
    * more alarming case and gets its own wording.
    */
   partial?: boolean;
+  /** `kit-loads-nowhere` only. The manifest `runtimes` that reach no loader. */
+  declaredRuntimes?: string[];
   message: string;
 }
 
 export declare function kitDiagnostics(
   overlay: {
-    kits?: Array<{ kitModule: string; dirPath?: string }>;
+    kits?: Array<{
+      kitModule: string;
+      dirPath?: string;
+      /**
+       * Where this kit's nodes are loaded, from {@link effectiveKitRuntimes}.
+       * **Empty means nowhere** and raises `kit-loads-nowhere`; **absent means
+       * the caller did not say**, and raises nothing.
+       */
+      availableIn?: string[];
+      /** The manifest's own `runtimes`, for the message. */
+      declaredRuntimes?: string[];
+    }>;
     nodes?: Array<{ typeName?: string; kitModule?: string }>;
     collisions?: Array<{ typeName: string; kitModule: string }>;
     failures?: Array<{ kitModule: string; dirPath?: string; message: string }>;

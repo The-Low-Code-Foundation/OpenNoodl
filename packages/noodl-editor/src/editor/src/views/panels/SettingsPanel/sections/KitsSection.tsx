@@ -22,7 +22,7 @@ import { openCodeFile } from '../../../documents/CodeFileDocument';
 import css from './sections.module.scss';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { kitDiagnostics } = require('@nodegx/kit-catalog');
+const { kitDiagnostics, effectiveKitRuntimes, declaredKitRuntimes } = require('@nodegx/kit-catalog');
 import type { KitHealthDiagnostic } from '@nodegx/kit-catalog';
 
 /**
@@ -104,7 +104,15 @@ export function KitsSection() {
     setFailures(
       kitDiagnostics(
         {
-          kits: onDisk.map((kit) => ({ kitModule: kit.displayName, dirPath: `noodl_modules/${kit.dirName}` })),
+          kits: onDisk.map((kit) => ({
+            kitModule: kit.displayName,
+            dirPath: `noodl_modules/${kit.dirName}`,
+            // CN-012 — `kit-loads-nowhere`. Derived from the manifest, not from
+            // what loaded: a kit no runtime loads contributes no nodes, so
+            // reading this off the payload would be blind in exactly that case.
+            availableIn: effectiveKitRuntimes(kit.runtimes),
+            declaredRuntimes: declaredKitRuntimes(kit.runtimes)
+          })),
           // Passed so a half-registered kit is described as such: a kit that
           // threw *after* registering some nodes is the alarming case, and
           // `kitDiagnostics` can only see it if it knows what did register.

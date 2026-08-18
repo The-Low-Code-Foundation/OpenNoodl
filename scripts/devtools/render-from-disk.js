@@ -383,6 +383,23 @@ const MIME = {
  * from not emitting it at all, which is the failure this task exists to end —
  * so this harness places it where the product does rather than somewhere that
  * merely looks tidy.
+ *
+ * 🔴 **The shim's `__noodl_module_name` adoption is load-bearing and was missing
+ * (found by CN-012's measurement pass).** The injector writes a marker tag
+ * naming the kit before each module script — that is CN-003's fix for the editor
+ * saying `'Unknown Module'` for every kit — and `defineModule` is where the name
+ * is adopted, because a module that does not name itself has no other chance to
+ * learn it. All three product bootstraps do it (`static/deploy/index.js`,
+ * `static/ssr/runtime-globals.js`, the editor's viewer `index.html`); this was
+ * the fourth copy of the shim and the only one without it, so in the harness
+ * `registerModule` stamped **`Unknown Module`** on every kit node while the page
+ * had the right name sitting in a global one tag away. Measured on both a logic
+ * kit and a visual one, so it was never about the node type.
+ *
+ * ⚠️ Nothing in `render-report.js` reads the stamp *today*, which is why this
+ * went unnoticed — but the whole worth of this harness is that it is evidence
+ * about the product, and an instrument that disagrees with the product about the
+ * one fact CN-003 exists to fix is not evidence.
  */
 function buildHtml(cb) {
   tokenCss((tokens) => {
@@ -403,7 +420,7 @@ ${tokens}
 <script src="/react19/react.production.min.js"></script>
 <script src="/react19/react-dom.production.min.js"></script>
 ${dependencies}
-<script>window.__noodl_modules=[];window.Noodl={defineModule:function(m){window.__noodl_modules.push(m)},deployed:false,Env:{}};</script>
+<script>window.__noodl_modules=[];window.Noodl={defineModule:function(m){if(m&&!m.name&&window.__noodl_module_name)m.name=window.__noodl_module_name;window.__noodl_modules.push(m)},deployed:false,Env:{}};</script>
 ${modulesMain}
 <script src="/noodl.viewer.js"></script>
 <script>
