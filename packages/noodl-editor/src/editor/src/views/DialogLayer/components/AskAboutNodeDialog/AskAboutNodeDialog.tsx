@@ -13,14 +13,24 @@
  *    for the excerpt lives in `composeNodeQuestion` for the same reason: a default held in a
  *    `useState` here is one refactor from being lost, and what would be lost is silent.
  *
- * 2. ⚠️ **It hands off to the browser; it does not post.** That is not a shortcut, it is D16:
- *    *"until then the entry point opens the browser"*, and the threshold cannot be met today
- *    because UNI-009's forum does not exist to have threads in. What is editor-only here is the
- *    **composition** — the prefill and the redacted excerpt, neither of which a browser can
- *    build — and that is the half D14 calls the reason to transition. When there is a forum and
- *    UNI-001 has an issuer, the copy-and-open becomes a `POST` through
- *    [`communityapi.ts`](../../../../models/community/communityapi.ts) and nothing above it
- *    changes.
+ * 2. 🔴 **TWO ROUTES, AND WHICH ONE RUNS IS DECIDED BY WHETHER THERE IS A CREDENTIAL** —
+ *    amended by UNI-016 (2026-08-18), which is the task that built the other end. Signed in,
+ *    the composer `POST`s through
+ *    [`communityapi.ts`](../../../../models/community/communityapi.ts) and the payload arrives
+ *    **structured**: the node, its ports, the count of the ones held back, the capture's
+ *    dimensions — D19's *"the unit of content is a graph with a question attached"*. Signed
+ *    out, it copies and opens the browser exactly as it always did.
+ *
+ *    ⚠️ **The hand-off is kept deliberately and UNI-016 AC5 says so** — *"the tempting cleanup
+ *    is to delete it"*. It is not a fallback for a feature that half-works: it is D16's entry
+ *    point, and it is **the only route any real user can take today**, because UNI-001 has no
+ *    issuer and `readCommunitySession()` therefore returns `null` for everybody. See
+ *    [`communitysession.ts`](../../../../models/community/communitysession.ts), which says so
+ *    at length rather than pretending otherwise.
+ *
+ *    What is editor-only here remains the **composition** — the prefill and the redacted
+ *    excerpt, neither of which a browser can build — and that is the half D14 calls the reason
+ *    to transition.
  *
  * 3. **Nothing leaves the machine before the user acts**, which is the same promise AC3 makes
  *    about the capture. Composing is local; the clipboard write and the browser open are both on
@@ -49,7 +59,7 @@
  * @module views/DialogLayer/components/AskAboutNodeDialog/AskAboutNodeDialog
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { platform } from '@noodl/platform';
 
@@ -61,6 +71,9 @@ import { Box } from '@noodl-core-ui/components/layout/Box';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { CommunityApiClient, type Write } from '@noodl-models/community/communityapi';
+import { readCommunitySession, type CommunitySession } from '@noodl-models/community/communitysession';
+import { buildNodeArtifacts } from '@noodl-models/community/nodeartifact';
 import { GraphExcerpt } from '@noodl-models/community/nodeexcerpt';
 import { LibraryPorts } from '@noodl-models/community/nodeexcerpt';
 import { SharablePortRef, saveCaptureNextTo } from '@noodl-models/community/nodesharecontext';
@@ -92,6 +105,59 @@ import css from './AskAboutNodeDialog.module.scss';
  * composer: AC2 and AC3 both hand off through it.
  */
 export const COMMUNITY_URL = 'https://community.nodegx.io';
+
+/**
+ * Where a node question lands on the Bench.
+ *
+ * `bench_section` is `help | showcase | meetups`, and a question about a misbehaving node is
+ * `help` every time — 🔴 which is why it is a constant and not a picker. UNI-016's scope is
+ * that *the editor already produces the payload*; asking the user to classify it would be a
+ * decision the composer can make correctly for them, and a section dropdown whose only sensible
+ * answer is preselected is chrome that can only be got wrong.
+ */
+const ASK_SECTION = 'help';
+
+/**
+ * What the composer is doing, as one value.
+ *
+ * ⚠️ Not three booleans. `posting`/`posted`/`failed` held separately have eight states, five
+ * of which are nonsense, and the one that ships is the pair that got out of step — a spinner
+ * over a success message. The union has exactly the states that exist.
+ */
+type PostState =
+  | { phase: 'idle' }
+  | { phase: 'posting' }
+  | { phase: 'posted'; threadId: string; pointsAwarded: number }
+  | { phase: 'failed'; message: string };
+
+/**
+ * The refusal, in words for the person who is about to try again.
+ *
+ * 🔴 `refused` carries the PLATFORM's sentence and this passes it through unedited.
+ * `bench-http.ts` picks those words through one table for a stated reason — a caller learns
+ * *that* it was refused and, for rules about its own input, enough to fix it, while never
+ * learning that D15 exists. Substituting our own wording would either lose the actionable half
+ * or reconstruct the half that was withheld on purpose.
+ *
+ * ⚠️ `absent` is the exception and it must NOT be narrated as a refusal. The platform answers
+ * an org-minor with the same 404 the read gets, deliberately, *so that a pupil is not told a
+ * door exists* — so the composer says the thing that is true for everyone whose post did not
+ * land, and says nothing about why.
+ */
+function describeWriteFailure(result: Write<unknown>): string {
+  switch (result.outcome) {
+    case 'unauthenticated':
+      return 'Your community session has expired. Use the browser button below instead.';
+    case 'refused':
+      return result.detail;
+    case 'absent':
+      return 'That could not be posted from here. Use the browser button below instead.';
+    case 'unreachable':
+      return `The community could not be reached (${result.detail}). Use the browser button below instead.`;
+    default:
+      return 'That could not be posted.';
+  }
+}
 
 export interface AskAboutNodeDialogProps {
   focus: { typename?: string };
@@ -125,6 +191,29 @@ export function AskAboutNodeDialog({
   const [includeExcerpt, setIncludeExcerpt] = useState(false);
   const [handedOff, setHandedOff] = useState(false);
   const [savedTo, setSavedTo] = useState<string | null>(null);
+
+  /**
+   * UNI-016 — the credential, or the absence of one.
+   *
+   * 🔴 `undefined` while the store is being read, and the distinction is load-bearing rather
+   * than tidy: `null` renders the signed-out composer, and rendering that for the frame before
+   * the read resolves would flash the browser hand-off at somebody who is signed in. It is the
+   * same reason `overrides` distinguishes *"has not decided"* from *"off"* two fields above.
+   */
+  const [session, setSession] = useState<CommunitySession | null | undefined>(undefined);
+  const [postState, setPostState] = useState<PostState>({ phase: 'idle' });
+
+  useEffect(() => {
+    let live = true;
+    void readCommunitySession().then((found) => {
+      // ⚠️ The dialog can be dismissed while the read is in flight; setting state on an
+      // unmounted component is the warning nobody reads and the leak nobody finds.
+      if (live) setSession(found);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   /** AC3 — the user's decisions, keyed by port. Absent means *"has not decided"*, never *"off"*. */
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
@@ -181,6 +270,54 @@ export function AskAboutNodeDialog({
       }),
     [focus, library, warning, environment, excerpt, includeExcerpt, attachment, asked, paths]
   );
+
+  /**
+   * UNI-016 — the same decisions, in the shape that survives the door.
+   *
+   * 🔴 Built from `question.nodeType` and `attachment` — the composed, BUCKETED type and the
+   * ticked set — never from `focus.typename` and never from `rows`. `nodeartifact.ts` explains
+   * at length why the structured payload has to be subordinate to the prose rather than
+   * parallel to it, and this is the line where that is either true or not.
+   */
+  const artifacts = useMemo(
+    () => buildNodeArtifacts({ nodeType: question.nodeType, environment, attachment }),
+    [question.nodeType, environment, attachment]
+  );
+
+  /**
+   * UNI-016 — the post.
+   *
+   * ⚠️ The capture is still written to the asker's Documents folder on this path too, and
+   * that is not an oversight: a `capture` attachment carries its dimensions and its consent
+   * record and **no image**, because blob storage is owned by no task. Until it is, the file
+   * on disk is the only copy of the picture there is, and dropping it here would make the
+   * signed-in route lose something the signed-out route keeps.
+   */
+  async function postToBench(token: string) {
+    setPostState({ phase: 'posting' });
+    if (capture && includeCapture) setSavedTo(await saveCaptureNextTo(capture.data));
+
+    const client = new CommunityApiClient({ baseUrl: COMMUNITY_URL, token });
+    const result = await client.askQuestion({
+      section: ASK_SECTION,
+      // 🔴 The same two values the `<pre>` below renders. Not recomposed, not re-derived —
+      // this is UNI-011 AC2's *"the string shown IS the string sent"*, and the artifacts
+      // travel beside it rather than instead of it.
+      title: question.title,
+      body: question.body,
+      attachments: artifacts
+    });
+
+    if (result.outcome === 'ok') {
+      setPostState({
+        phase: 'posted',
+        threadId: result.value.threadId,
+        pointsAwarded: result.value.pointsAwarded
+      });
+      return;
+    }
+    setPostState({ phase: 'failed', message: describeWriteFailure(result) });
+  }
 
   async function grabCapture() {
     setCapturing(true);
@@ -285,9 +422,34 @@ export function AskAboutNodeDialog({
             </pre>
           </VStack>
 
+          {/*
+            🔴 UNI-016 — TWO ROUTES, AND BOTH SHIP.
+
+            Signed in, the primary button POSTs and the payload keeps its structure. Signed
+            out, the hand-off is the whole of it, unchanged — AC5, which warns in as many
+            words that *"the tempting cleanup is to delete it"*. ⚠️ The hand-off stays visible
+            when signed in as well, and that is deliberate rather than clutter: it is what a
+            person reaches for when the post is refused or the platform cannot be reached, and
+            `describeWriteFailure` sends them to it by name.
+          */}
           <HStack hasSpacing={2}>
+            {session && (
+              <PrimaryButton
+                label={
+                  postState.phase === 'posting'
+                    ? 'Posting…'
+                    : postState.phase === 'posted'
+                      ? 'Posted to the community'
+                      : `Post to the community${session.handle ? ` as @${session.handle}` : ''}`
+                }
+                size={PrimaryButtonSize.Small}
+                isDisabled={postState.phase === 'posting' || postState.phase === 'posted'}
+                onClick={() => void postToBench(session.token)}
+              />
+            )}
             <PrimaryButton
               label={handedOff ? 'Copied — opened in your browser' : 'Copy and open the community'}
+              variant={session ? PrimaryButtonVariant.MutedOnLowBg : PrimaryButtonVariant.Cta}
               size={PrimaryButtonSize.Small}
               onClick={() => void handOff()}
             />
@@ -298,6 +460,15 @@ export function AskAboutNodeDialog({
               onClick={onClose}
             />
           </HStack>
+
+          {postState.phase === 'posted' && (
+            <Text textType={TextType.Shy}>
+              {postState.pointsAwarded > 0
+                ? `Posted — ${postState.pointsAwarded} points. Answers will appear on the Bench.`
+                : 'Posted. Answers will appear on the Bench.'}
+            </Text>
+          )}
+          {postState.phase === 'failed' && <Text textType={TextType.Shy}>{postState.message}</Text>}
 
           {/*
             🔴 Shown here and nowhere in the payload. The path names this machine and usually the

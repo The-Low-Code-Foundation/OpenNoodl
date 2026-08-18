@@ -19,6 +19,7 @@
  * from its caller — because a module that starts its own interval is one an editor cannot
  * stop without knowing about it.
  */
+import type { PostAttachment } from './nodeartifact';
 import { parsePostBody, type Block } from './postbody';
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -112,6 +113,26 @@ export type Read<T> =
   | { outcome: 'absent' }
   | { outcome: 'unreachable'; status: number | null; detail: string };
 
+/**
+ * What a write can come back as. 🔴 FIVE outcomes, not three, and see `askQuestion` for why
+ * `unauthenticated` and `refused` are not folded into the read's `unreachable`.
+ */
+export type Write<T> =
+  | { outcome: 'ok'; value: T }
+  /** No credential, or an expired one. The caller's own fix, and an ordinary fact. */
+  | { outcome: 'unauthenticated' }
+  /** D15 says this surface does not exist for you. ⚠️ Not an error, and not narrated. */
+  | { outcome: 'absent' }
+  /** The platform refused the content, in its own words. Safe to show; it chose them. */
+  | { outcome: 'refused'; detail: string }
+  | { outcome: 'unreachable'; status: number | null; detail: string };
+
+/** `POST /api/v1/bench/threads`, 201. */
+export type AskAccepted = { threadId: string; postId: string; pointsAwarded: number };
+
+/** `POST /api/v1/bench/threads/:id/posts`, 201. */
+export type AnswerAccepted = { postId: string; pointsAwarded: number };
+
 export type ClientOptions = {
   /**
    * Where the platform lives — `community.nodegx.io`.
@@ -152,6 +173,90 @@ export class CommunityApiClient {
     }
 
     if (response.status === 404) return { outcome: 'absent' };
+    if (!response.ok) {
+      return { outcome: 'unreachable', status: response.status, detail: `HTTP ${response.status}` };
+    }
+    try {
+      return { outcome: 'ok', value: (await response.json()) as T };
+    } catch (err) {
+      return { outcome: 'unreachable', status: response.status, detail: `bad JSON: ${String(err)}` };
+    }
+  }
+
+  /**
+   * UNI-016 — ask a question, with its structure intact.
+   *
+   * 🔴 THE FIRST WRITE THIS CLIENT HAS EVER MADE, and the header's *"it transports and it
+   * types"* still holds: the decisions — what to bucket, which ports to publish, whether a
+   * capture is attached — were all made before the payload got here. What is new is only
+   * that the payload is a document rather than a string.
+   *
+   * ⚠️ A write is NOT a `Read<T>` with a different name, and the difference is the 401.
+   * `Read`'s three outcomes are `ok | absent | unreachable`, and `absent` means D15 says
+   * this surface does not exist for you — a fact about *permission*. Signed-out is a fact
+   * about *this attempt*, the caller can fix it, and folding it into `unreachable` would
+   * make the composer tell somebody their network was down when they simply are not signed
+   * in. Hence {@link Write}, with `unauthenticated` as its own outcome.
+   *
+   * 🔴 A 404 here stays `absent` and MUST NOT become an error either: `apiviewer.ts` returns
+   * the same 404 the read gets when D15 refuses an org-minor, deliberately, so *"a pupil is
+   * not told a door exists."* A client that reported "posting failed" would narrate the door.
+   */
+  askQuestion(input: {
+    section: string;
+    title: string;
+    body: string;
+    attachments?: PostAttachment[];
+  }): Promise<Write<AskAccepted>> {
+    return this.post<AskAccepted>('/api/v1/bench/threads', input);
+  }
+
+  /** UNI-016 — answer, on the same terms. An answer may carry a graph of its own. */
+  answer(
+    threadId: string,
+    input: { body: string; attachments?: PostAttachment[] }
+  ): Promise<Write<AnswerAccepted>> {
+    return this.post<AnswerAccepted>(`/api/v1/bench/threads/${encodeURIComponent(threadId)}/posts`, input);
+  }
+
+  /**
+   * ⚠️ Not a `get()` with a method parameter. The two differ in more than the verb — a body,
+   * a content type, a distinct outcome union and a 401 branch — and threading four
+   * conditionals through one function to save a dozen lines is how the read path acquires a
+   * bug that only the write path can trigger.
+   */
+  private async post<T>(path: string, body: unknown): Promise<Write<T>> {
+    const headers: Record<string, string> = {
+      accept: 'application/json',
+      'content-type': 'application/json'
+    };
+    if (this.token) headers.authorization = `Bearer ${this.token}`;
+
+    let response: Response;
+    try {
+      response = await this.doFetch(`${this.baseUrl}${path}`, {
+        headers,
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+    } catch (err) {
+      return { outcome: 'unreachable', status: null, detail: String(err) };
+    }
+
+    if (response.status === 401) return { outcome: 'unauthenticated' };
+    if (response.status === 404) return { outcome: 'absent' };
+    if (response.status === 400 || response.status === 403) {
+      // 🔴 The platform's own words, and it chooses them for this. `bench-http.ts` maps every
+      // refusal through one table precisely so that a caller *"learns THAT it was refused,
+      // and for the rules that are about their own input, enough to fix it"* — while never
+      // learning that D15 exists. Substituting our own sentence here would either lose the
+      // actionable half or re-invent the half that was withheld on purpose.
+      const detail = await response
+        .json()
+        .then((payload: { error?: string }) => payload?.error ?? `HTTP ${response.status}`)
+        .catch(() => `HTTP ${response.status}`);
+      return { outcome: 'refused', detail };
+    }
     if (!response.ok) {
       return { outcome: 'unreachable', status: response.status, detail: `HTTP ${response.status}` };
     }
