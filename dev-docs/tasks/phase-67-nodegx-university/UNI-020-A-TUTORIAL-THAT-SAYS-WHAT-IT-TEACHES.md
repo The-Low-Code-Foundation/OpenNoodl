@@ -8,6 +8,106 @@
 **Surface:** platform · **Tier 1** · **Effort:** M · ✅ **Blocked on nothing** for the shipping cut;
 one affordance is blocked and is scoped out below.
 
+# ✅ BUILT 2026-08-18, session 34 — `nodegx-community@767b670`
+
+**The site's one dead-end page is a page.** `/tutorials` was the only list whose rows carried
+`href: null`; the row type made that gap cost a written reason so it could not blend in, and the
+assertion in `tests/uni013-slice5.test.tsx` that named this page as the site's one exception now
+reads `expect(unlinked).toEqual([])`.
+
+## 🔴 THE PREMISE BELOW IS HALF FALSE, AND IT CHANGED WHAT THIS TASK WAS
+
+The Premise section says the cheap half is free because *"the bodies are already written"*. That
+is true of the **column** — `articles.body` is `not null` and populated — and false of the
+**content**: every row the seed wrote had the body `'Placeholder body.'`. A route rendering that
+is a page which says "Placeholder body." to a stranger, **on a phase whose closing bar is *"does
+not look like a placeholder"***. Shipping the route alone would have moved the defect rather than
+removed it.
+
+✅ **So the prose is part of the task.** Five articles, real bodies, every dimension filled — and
+`tests/uni020-tutorials.test.tsx` asserts no seeded body is a placeholder and that each clears a
+length floor, with a control proving the comment-stripper it reads through has not simply
+returned an empty string. ⚠️ **The first version of that assertion went red against this task's
+own comment explaining the history** — a file that MENTIONS a defect in prose is not a file that
+has it, which is why the editor repo's source-analysis specs strip comments first.
+
+## What is built, and where
+
+| File | What |
+|---|---|
+| `src/db/sql/0011_…` | `level`, `category`, `estimated_minutes`, `outcomes text[]`, `project_url`; `article_nodes`, `article_tags` |
+| `src/lib/articles.ts` | the vocabularies, `getArticle`, `paragraphsOf`, the level→tone map |
+| `src/app/tutorials/[slug]/page.tsx` | 🔴 the **fourth** instance of slice 5's detail archetype — and the first built by a task other than the slice that extracted it |
+| `src/lib/lists.ts` | three new dimensions, node chips, outcomes, and **the one line** the composition existed to make cheap |
+| `src/components/Kit.tsx` · `src/lib/cards.ts` | `outcomes` on a card, drawn **above** the action |
+| `scripts/seed.mjs` | five articles, real prose, every dimension |
+
+## Acceptance criteria — 6/6, and two of them are not what they asked for
+
+| AC | State |
+|---|---|
+| 1 | ✅ **Renders published, 404s unknown AND unpublished — all three in one assertion.** The unpublished draft lives in the corpus rather than in one test, so it is the control for every count and every filter at once |
+| 2 | ✅ **The PAGE narrows, not the function.** Asserted through the rendered markup of the real list, addressed the way a browser addresses it, and **driven over real HTTP** |
+| 3 | ✅ Every filter names a row it **does** return, in the same assertion |
+| 4 | ✅ Registered. CHECK constraints, **not enum types** — this repo has already been refused an `alter type … add value` used in the same migration, and a vocabulary that will grow is cheaper to widen |
+| 5 | ✅ The seed grows — and the premise above is why this AC earned its place |
+| 6 | ⚠️ **Presentation: yes, but AC6 asked for three NEW colour roles and got NONE.** `.chip` paints its own `--theme-color-bg-2` ground and the site's three existing tones are all graded against it. Inventing `--site-fg-level-*` would have been three tokens and six ratios to keep right in both themes for a scale the existing tones already read as. **Six rows added to the contrast table naming the surfaces**, per the precedent that file sets for pairings it already covers by value |
+
+## 🔴 THREE FINDINGS THAT OUTLIVE THIS TASK
+
+### A. The free-text census was blind to array-typed columns
+
+`outcomes text[]` reports as `data_type = 'ARRAY'` with the element type in `udt_name`, so
+`tests/uni005-data-inventory.test.ts` did not see it — and reported the classification as **stale**
+rather than grading it. ✅ Widened, floor **94 → 108**. 🔴 **It had caught nothing before only
+because no array column existed anywhere in the schema**: a census that cannot see a whole storage
+shape is a census whose silence means nothing, and the day somebody adds `tags text[]` to a table
+a pupil can write, that silence would have been the answer.
+
+### B. The drive caught what no spec would have
+
+The level printed **twice** on the detail page — in the meta line and again as a chip two lines
+below. Every suite was green. ✅ Fixed by saying it once, in the vocabulary the index filters by.
+🔴 This is UNI-019's lesson again and it keeps being true: **a page's markup is outside every gate
+this repository has.**
+
+### C. `project_url` ships with its renderer proved and no content
+
+Nothing seeds one, because **there is no hosted starter project to point at** — where artefacts
+live is **E7** and is owned by nobody. A link to a file that does not exist is the *"button that
+opens nothing"* this whole review is about, so the column stays null and the spec asserts the
+button appears when it is set and is absent when it is not. ⚠️ **The one piece of this task's
+scope that is built but not shippable content**, and it is blocked on a decision rather than work.
+
+## What this does NOT close
+
+- **The node chips are a filter, not yet a bridge.** UNI-020's own argument is that they compose
+  with the Bench's node facets and with an editor asking *"what is written about this node"*.
+  Neither is wired; both are cheaper now than they were, because the vocabulary is a table.
+- 🔴 **UNI-023 is now cheaper too, and that is the reason to do it next**: its node filter wanted
+  a closed vocabulary and this task built one. ⚠️ **Do not draw a second pill style** — `.facet`
+  is the one component and seven pages now share it.
+- ⚠️ **Still nobody has looked at this page in the LIGHT theme.** Graded by the contrast
+  arithmetic only, which is the stronger instrument and not a look.
+
+## Gates — MEASURED 2026-08-18, session 34
+
+| | Before any edit | After |
+|---|---|---|
+| vitest | **813 passed / 29 files / exit 0** (249s) | ✅ **847 passed / 30 files / exit 0** (298s) |
+| `tsc --noEmit` | — | ✅ exit 0 |
+| `next build` · `check:css` | — | ✅ exit 0 · exit 0 |
+
+✅ **The floor matched session 33's after-state to the test** — verified rather than believed.
+✅ **The delta reconciles per file: +20** (this task's spec), **+12** (six contrast pairings × two
+themes), **+2** (two new tables in the drift check). **Nothing existing moved.**
+
+⚠️ **Driven over real HTTP** on a seeded database, `next start` on 3210: all five rows link, the
+detail page renders body and outcomes, an unknown slug 404s, and `level`/`category`/`node` each
+narrow the real page (5 → 1, 5 → 2, 5 → 2, 5 → 1).
+
+---
+
 ## Premise
 
 This page has the clearest job on the site — move somebody from **installed** to **building** — and

@@ -202,6 +202,13 @@ Everything below is a consequence of that sentence. **Ten items. Nothing else bl
 > **[UNI-023](UNI-023-ONE-FACET-BAR-SIX-LISTS.md)** (the facet bar) were scoped from Richard's read
 > of the running site and are **NOT in this close**. 🔴 **The list stays at ten items.**
 >
+> ✅ **UNI-020 BUILT 2026-08-18 (session 34), `nodegx-community@767b670` — and it is still not in
+> the close.** `/tutorials/[slug]` exists, so **the site has no dead-end page any more**; the
+> content model, the node chips and three working filters came with it. 🔴 **It was built because
+> it was the cheapest remaining thing that makes the site less of a placeholder, not because the
+> close needed it — the close's four code items were already done.** ⚠️ **UNI-023 is the cheapest
+> next one**: its node filter wanted a closed vocabulary and UNI-020 built one.
+>
 > ⚠️ **Where the line falls, and why it is not arbitrary:** the close's bar is *"does not look like
 > a placeholder"*. **UNI-019 is in** because a page whose cards do not click is broken rather than
 > plain, and it is E3's owner. **UNI-013 slice 5 is in** because it is already E4. The other four
