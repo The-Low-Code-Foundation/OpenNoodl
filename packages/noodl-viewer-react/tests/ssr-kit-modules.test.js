@@ -193,11 +193,14 @@ describe('loadKitModules — the kits reach the server render', () => {
     expect(warnings.join('\n')).toContain('hydration mismatch');
   });
 
-  it('names a kit that touches `window` at import time rather than faking a DOM for it', () => {
-    // ⚠️ Deliberate: a faked DOM would let a kit register nodes that cannot render server-side
-    // anyway, trading a named failure for a silent one.
+  it('names a kit that touches the DOM at import time rather than faking one for it', () => {
+    // ⚠️ **This row's premise moved with ✅ D19 and its title moved with it** — the same rule the
+    // header states about the absence assertion. It used to read *"touches `window`"*, and until
+    // s29 `window` itself was what a kit tripped over. `window` is now shimmed with `React` on it,
+    // so the thing still deliberately absent is the DOM: faking one would let a kit register nodes
+    // that cannot render server-side anyway, trading a named failure for a silent one.
     const { root, html } = makeDeploy([
-      { dir: 'dommy-kit', name: 'Dommy Kit', source: `window.setUpTheThing();` }
+      { dir: 'dommy-kit', name: 'Dommy Kit', source: `document.createElement('div');` }
     ]);
     bootstrap();
     const result = loadKitModules({ htmlData: html, rootDir: root, warn: () => {} });
@@ -205,6 +208,128 @@ describe('loadKitModules — the kits reach the server render', () => {
     expect(result.loaded).toEqual([]);
     expect(result.failures[0].module).toBe('Dommy Kit');
     expect(globalThis.__noodl_modules).toEqual([]);
+  });
+
+  describe('✅ D19 — `window` is a React shim for exactly as long as kits are loading', () => {
+    /**
+     * 🔴 **The kit written the way this repository documents it.** Every kit in s27's fixture — and
+     * the scaffold's own output, and the worked example on the docs page — opened
+     * `var React = window.React;`. Under SSR there was no `window`, so all four threw at import and
+     * **no kit node reached a server render**: the client hydrated with them present and the server
+     * had rendered without them. That is the hydration mismatch D19 exists to end.
+     *
+     * ⚠️ Asserted on the React the kit actually captured, not on "it did not throw". A shim
+     * carrying a *different* React would load the kit and then break hooks, which is the failure
+     * this would otherwise wave through.
+     */
+    const legacyKit = (typeName) => `
+      var React = window.React;
+      Noodl.defineModule({ name: undefined, nodes: [{ name: '${typeName}', category: 'Math', capturedReact: React }] });
+    `;
+
+    it('🔴 loads a kit written to the documented `window.React` pattern, with the REAL React', () => {
+      const { root, html } = makeDeploy([
+        { dir: 'legacy-kit', name: 'Legacy Kit', source: legacyKit('legacy.Node') }
+      ]);
+      bootstrap();
+      const result = loadKitModules({ htmlData: html, rootDir: root, warn: () => {} });
+
+      expect(result.failures).toEqual([]);
+      expect(result.loaded).toEqual(['Legacy Kit']);
+      // Identity, not truthiness: two Reacts on one page is the defect the global exists to avoid.
+      expect(globalThis.__noodl_modules[0].nodes[0].capturedReact).toBe(globalThis.React);
+    });
+
+    it('🔴 carries React and NOTHING else — a kit reaching further is still named', () => {
+      // The control on the row above. If the shim grew a `document`, this kit would load and
+      // register a node that cannot render server-side: a named failure traded for a silent one.
+      const { root, html } = makeDeploy([
+        { dir: 'greedy-kit', name: 'Greedy Kit', source: `window.document.createElement('div');` }
+      ]);
+      bootstrap();
+      const result = loadKitModules({ htmlData: html, rootDir: root, warn: () => {} });
+
+      expect(result.loaded).toEqual([]);
+      expect(result.failures[0].module).toBe('Greedy Kit');
+    });
+
+    it('🔴 removes the shim before the render — `window` is undefined on the way out', () => {
+      /*
+       * ⚠️ The failure this pins is one layer down from the shim. `viewer.jsx` guards on
+       * `typeof window !== 'undefined'` and so does the runtime's client-only deferral; a `window`
+       * left standing would flip both to their BROWSER branch on the server, which is a worse
+       * version of the bug the shim fixes.
+       */
+      const { root, html } = makeDeploy([
+        { dir: 'alpha-kit', name: 'Alpha Kit', source: kitSource('alpha.Node') }
+      ]);
+      bootstrap();
+      expect(typeof globalThis.window).toBe('undefined');
+      loadKitModules({ htmlData: html, rootDir: root, warn: () => {} });
+      expect(typeof globalThis.window).toBe('undefined');
+    });
+
+    it('removes it even when a kit throws', () => {
+      const { root, html } = makeDeploy([
+        { dir: 'broken-kit', name: 'Broken Kit', source: `throw new Error('kaboom');` }
+      ]);
+      bootstrap();
+      loadKitModules({ htmlData: html, rootDir: root, warn: () => {} });
+      expect(typeof globalThis.window).toBe('undefined');
+    });
+
+    it('is one object shared by every script, the way a browser shares one', () => {
+      // A kit's `manifest.dependencies` are separate `<script>` tags, and a UMD dependency
+      // publishes onto `window` for the kit that follows to read back. A per-script shim would
+      // break exactly the kits that declare dependencies.
+      const { root, html } = makeDeploy([
+        { dir: 'dep-kit', name: 'Dep Kit', source: `window.__depMarker = 'published';` },
+        {
+          dir: 'reader-kit',
+          name: 'Reader Kit',
+          source: `Noodl.defineModule({ nodes: [{ name: 'reader.Node', category: 'Math', saw: window.__depMarker }] });`
+        }
+      ]);
+      bootstrap();
+      const result = loadKitModules({ htmlData: html, rootDir: root, warn: () => {} });
+
+      expect(result.failures).toEqual([]);
+      const reader = globalThis.__noodl_modules.find((m) => m.nodes[0].name === 'reader.Node');
+      expect(reader.nodes[0].saw).toBe('published');
+    });
+
+    it('refuses to touch a `window` somebody else owns — during the load, not just after it', () => {
+      /*
+       * ⚠️ A jsdom-based host, or a future runtime, may have installed a real one, and a kit run
+       * under it should see THAT window.
+       *
+       * 🔴 **Asserted from inside a kit, because the after-the-fact check cannot see this.** A
+       * shim that clobbers the host window and then restores it on the way out leaves
+       * `globalThis.window === sentinel` at the end and passes an identity check — the mutant that
+       * deletes this guard survived exactly that test. What the host loses is the load itself: its
+       * `document`, and anything it published for kits to read.
+       */
+      const sentinel = { React: { notOurs: true }, document: {}, __hostMarker: 'host' };
+      globalThis.window = sentinel;
+      try {
+        const { root, html } = makeDeploy([
+          {
+            dir: 'host-kit',
+            name: 'Host Kit',
+            source: `Noodl.defineModule({ nodes: [{ name: 'host.Node', category: 'Math', saw: window.__hostMarker, sawDocument: typeof window.document }] });`
+          }
+        ]);
+        bootstrap();
+        const result = loadKitModules({ htmlData: html, rootDir: root, warn: () => {} });
+
+        expect(result.failures).toEqual([]);
+        expect(globalThis.__noodl_modules[0].nodes[0].saw).toBe('host');
+        expect(globalThis.__noodl_modules[0].nodes[0].sawDocument).toBe('object');
+        expect(globalThis.window).toBe(sentinel);
+      } finally {
+        delete globalThis.window;
+      }
+    });
   });
 
   it('finds a kit that exists only under public/, and reports one that exists nowhere', () => {

@@ -152,10 +152,17 @@ function resolveKitScript(src, rootDir) {
  * shape `registerModule` has in the browser, where a definition that throws mid-module leaves the
  * ones before it registered.
  *
- * ⚠️ **`window` does not exist here**, and that is not worked around. A kit guarding on
- * `typeof window !== 'undefined'` takes its `Noodl` branch and loads; a kit that touches `window`
- * or `document` at import time throws and is named. Faking a DOM would let a kit register nodes
- * that cannot render server-side anyway, trading a named failure for a silent one.
+ * ⚠️ **`window` exists here only as a `React` shim, for the duration of this call** — ✅ D19. Every
+ * kit written to the documented pattern begins `var React = window.React;`, so before this shim
+ * *all four* of s27's fixture kits threw at import and no kit node reached a server render. The
+ * shim carries **`React` and nothing else**: no `document`, no DOM. Faking one would let a kit
+ * register nodes that cannot render server-side anyway, trading a named failure for a silent one,
+ * and a kit that needs more than `React` is a new ruling rather than a wider shim.
+ *
+ * 🔴 **It is removed before the render**, so `typeof window === 'undefined'` still holds everywhere
+ * the runtime asks — including `viewer.jsx`'s own guards and `isSSRServer`'s client-only deferral.
+ * A `window` left standing would flip those to their browser branch on the server, which is the
+ * failure this shim exists to prevent, one layer down.
  *
  * @param {object} deps
  * @param {string} deps.htmlData the deploy's `index.html`, already read by the caller
@@ -170,6 +177,53 @@ function loadKitModules({ htmlData, rootDir = process.cwd(), log = () => {}, war
   const scripts = kitScriptsFromHtml(htmlData);
   if (scripts.length === 0) return result;
 
+  const removeWindowShim = installWindowShim();
+  try {
+    loadEach(scripts, { rootDir, log, warn, result });
+  } finally {
+    removeWindowShim();
+    delete globalThis.__noodl_module_name;
+  }
+
+  return result;
+}
+
+/**
+ * ✅ **D19(a)** — `window`, carrying `React` and nothing else, for as long as kits are loading.
+ *
+ * Installed once around the whole loop rather than per script, because that is what a browser
+ * does: a UMD dependency tag publishes onto `window` and the kit's own tag reads it back. A
+ * per-script shim would break exactly the kits whose `manifest.dependencies` list something.
+ *
+ * ⚠️ **Refuses to touch a `window` somebody else owns.** If a host has already installed one
+ * (a jsdom-based test, a future runtime), replacing it and then deleting it would leave that host
+ * worse off than before this ran.
+ *
+ * @returns {() => void} removes the shim, restoring exactly what was there
+ */
+function installWindowShim() {
+  if (globalThis.window) return () => {};
+
+  const had = Object.prototype.hasOwnProperty.call(globalThis, 'window');
+  const previous = globalThis.window;
+
+  // A fresh object per load: a kit that assigns to `window` (every UMD wrapper does) writes here
+  // and nowhere that outlives the load.
+  globalThis.window = { React: globalThis.React };
+
+  return () => {
+    if (had) globalThis.window = previous;
+    else delete globalThis.window;
+  };
+}
+
+/**
+ * The load loop itself, so the shim's `finally` has something to wrap.
+ *
+ * @param {{ src: string, moduleName: string | null }[]} scripts
+ * @param {{ rootDir: string, log: Function, warn: Function, result: object }} ctx
+ */
+function loadEach(scripts, { rootDir, log, warn, result }) {
   for (const script of scripts) {
     const name = script.moduleName || script.src;
     const file = resolveKitScript(script.src, rootDir);
@@ -209,13 +263,11 @@ function loadKitModules({ htmlData, rootDir = process.cwd(), log = () => {}, war
       warn(
         `SSR: kit "${name}" threw while loading server-side (${message}). Its nodes will be missing ` +
           'from the server render and will appear only after hydration, which is a hydration ' +
-          'mismatch. A kit that touches `window` or `document` at import time will do this.'
+          'mismatch. `window` here is a shim carrying React alone (D19), so a kit that touches ' +
+          '`document`, or any other browser API, at import time will do this.'
       );
     }
   }
-
-  delete globalThis.__noodl_module_name;
-  return result;
 }
 
-module.exports = { loadKitModules, kitScriptsFromHtml, resolveKitScript };
+module.exports = { loadKitModules, kitScriptsFromHtml, resolveKitScript, installWindowShim };

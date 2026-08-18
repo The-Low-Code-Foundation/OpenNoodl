@@ -382,6 +382,77 @@ export class NodeLibraryImporter {
       return true;
     });
 
+    /*
+     * 🔴 **s29 — the picker's per-kit groups were never pruned, and the panel said so out loud.**
+     *
+     * `nodetypes` above is filtered against `nodeNames`; `nodeIndex.moduleNodes` was not, and
+     * `mergeInByName` only ever replaces-by-name or pushes. So a kit that stopped registering —
+     * a syntax error, or D20 rolling a kit back — kept its group here forever. Measured live: the
+     * node library reported **no** `nodegx.broken.*` type while this index still listed
+     * `nodegx.broken.Intact`.
+     *
+     * ⚠️ **It is not a cosmetic drift, it inverts a diagnostic.** `KitsSection` feeds these names
+     * to `kitDiagnostics` as *"what this kit registered"*, so `registeredSomething` was true for a
+     * kit that had registered nothing and Settings → Kits told the author the kit was *"only
+     * PARTIALLY registered — nodes defined before the failure are available"*. With D20 the same
+     * row then contradicted itself in one sentence: *"NONE of this kit's nodes register"* followed
+     * by *"It is only PARTIALLY registered"*. The `partial` branch is **kept**, not deleted — a
+     * script that throws after some `defineModule` calls really is half-registered, and that is
+     * the alarming case CN-015 named. What changes is that its input is now true.
+     *
+     * ✅ Pruned against **the same `nodeNames`** the node types use, deliberately: two views of one
+     * fact that *can* disagree eventually will, and this is the pair that did.
+     */
+    const removedModuleNodes: string[] = [];
+    const moduleGroups = this.currentNodeLibrary.nodeIndex && this.currentNodeLibrary.nodeIndex.moduleNodes;
+    if (moduleGroups) {
+      const kept: typeof moduleGroups = [];
+      for (const group of moduleGroups) {
+        /*
+         * ⚠️ **Only the shape the producer actually emits is judged.** `generateNodeLibrary` builds
+         * `moduleNodes` as `{ name, items: string[] }` — flat, one entry per kit, items being
+         * registered type names (`nodelibraryexport.ts`, the `moduleNodesByKit` map). `coreNodes` is
+         * the one that carries `subCategories`, and `NodeLibraryData` types `items` as `TSFixme[]`,
+         * so nothing here is guaranteed by the compiler.
+         *
+         * 🔴 A group whose `items` is not an array is therefore passed through untouched rather
+         * than normalised or dropped. `tests-unit/cn-014` builds exactly such a group — a
+         * `subCategories`-shaped `moduleNodes` entry the producer cannot emit — and a first draft of
+         * this pass crashed on it. Dropping a kit's picker group because this code did not
+         * recognise its shape would be a worse bug than the stale one being fixed.
+         */
+        if (!Array.isArray(group.items)) {
+          kept.push(group);
+          continue;
+        }
+
+        const items = group.items.filter((item) => {
+          // Same reasoning one level down: only a plain type-name string can be checked.
+          if (typeof item !== 'string' || nodeNames.has(item)) return true;
+          removedModuleNodes.push(item);
+          return false;
+        });
+
+        if (items.length === group.items.length) {
+          kept.push(group);
+        } else if (items.length > 0) {
+          kept.push({ ...group, items });
+        }
+        // else: every name this kit registered is gone, so the group goes with them. That is
+        // exactly what a kit the editor has never seen looks like, and `joinKitNodes` already
+        // renders it as "installed, not yet loaded" beside the failure diagnostic saying why.
+      }
+      this.currentNodeLibrary.nodeIndex.moduleNodes = kept;
+    }
+
+    /*
+     * ⚠️ **No extra republish trigger, and that is a measurement rather than an omission.** A group
+     * item can only be pruned when its name has left `nodeNames` — and `nodetypes` is filtered
+     * against the same set two blocks up, from a list the runtime builds from the same register
+     * (`nodelibraryexport.ts`). So a prune here always coincides with `removedNodes.length > 0`.
+     * A `|| removedModuleNodes.length > 0` clause was written first and then removed: no test could
+     * reach it, which makes it a branch that only ever passes.
+     */
     if (forceUpdate || removedNodes.length > 0) {
       // Send the node library to our NodeLibrary
       const exportJSON = JSON.parse(JSON.stringify(this.currentNodeLibrary));
@@ -397,6 +468,7 @@ export class NodeLibraryImporter {
       // another reload here.
       console.debug('[nodelib] Loaded new node library');
       if (removedNodes.length > 0) console.debug('[nodelib] Removed nodes: ', removedNodes);
+      if (removedModuleNodes.length > 0) console.debug('[nodelib] Removed kit nodes: ', removedModuleNodes);
       NodeLibrary.instance.reload();
     }
   }

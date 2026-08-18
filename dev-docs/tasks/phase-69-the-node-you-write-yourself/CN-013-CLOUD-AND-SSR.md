@@ -8,11 +8,42 @@
 | **Rulings** | — |
 | **Depends on** | CN-012 (which establishes whether the cloud path exists at all) |
 
+## ✅ AC1 CLOSED — s29, 2026-08-18, on a real SSR deploy over real HTTP
+
+**AC1 is met. AC3 is met.** ⚠️ **AC2 and AC4 remain open** and both are item 4
+(`kitNeedsSsrWarning`), which s25 unblocked and nobody has built.
+
+✅ **D19 built and proven where the last three sessions could not reach.** The SSR loader now installs
+a `window` shim carrying **`React` and nothing else** before evaluating a kit, and removes it before
+the render. The documented pattern moved with it: the scaffold and the worked example open
+`var h = React.createElement;` — the **bare `React` global**, which the shipped kit types already
+recommended over `window.React` and which the scaffold's own cold-typecheck test enforced when
+`globalThis.React` was tried instead.
+
+| | s27 measured | s29 measured |
+|---|---|---|
+| Deploy builds | 🔴 `Could not resolve "./kit-modules"`, every SSR deploy | ✅ `server.js` 6.0mb |
+| Kits load server-side | 🔴 **all four threw** `window is not defined` | ✅ `SSR: loaded 4 kit script(s)`, **zero** threw |
+| Kit node in the served HTML | 🔴 **S1 = 0** | ✅ `SSRPROBEPILL` in rendered DOM, plus three more kit nodes |
+| Control (built-in, same page) | ✅ present | ✅ present, 120,984 bytes |
+
+🔴 **The presence check was made falsifiable before it was believed.** A parameter value also appears
+in an inlined project export, so a bare `grep` proves nothing; the occurrences are inside
+`nodegx.cashflow.Pill`'s own React output with its computed styles. Full readings, including the
+control-read-first ordering: [notes/s29-drive-observations.md](notes/s29-drive-observations.md).
+
+⚠️ **Residual, newly named:** a **stock** `JavaScript Function` node touching `window`/`document`
+throws under SSR — two of the fixture's own did. Not a kit problem and not this task's, but it had
+never been written down, and it is the same class of surprise as the one D19 just removed for kits.
+
+⚠️ **7 `useLayoutEffect` warnings**, as this task's trap list predicted — now *reachable* because
+`Cashflow Lane` actually runs server-side. Not a regression; the interesting case arriving on time.
+
 ## ✅ CLOUD HALF BUILT AND DRIVEN — s25, 2026-08-18. ⚠️ SSR half MEASURED, not fixed
 
 | Item | State |
 |---|---|
-| 1. Does a kit render under SSR? | ✅ **ESTABLISHED (it did not) and ✅ FIXED.** [notes/cn-013-ssr.md](notes/cn-013-ssr.md) |
+| 1. Does a kit render under SSR? | ✅ **ESTABLISHED, FIXED, and s29 SAW A RENDERED PAGE.** [notes/cn-013-ssr.md](notes/cn-013-ssr.md), [notes/s29-drive-observations.md](notes/s29-drive-observations.md) |
 | 2. A browser-only kit on an SSG build | ✅ answered — it was **silent omission of every kit**; now they load |
 | 3. Cloud runtime | ✅ **BUILT.** [notes/cn-013-cloud-drive.md](notes/cn-013-cloud-drive.md) |
 | 4. `kitNeedsSsrWarning` | 📋 **now buildable, and its shape changed** — see below |
@@ -50,9 +81,8 @@ under SSR, so a `libraryNeedsSsrWarning`-shaped predicate would name the wrong k
 predicate is what that objection implied: **warn about a kit that throws or no-ops server-side**,
 and the loader's own failure list — loaded / threw / skipped-remote-dependency — is the input.
 
-⚠️ **AC3 is met. AC1 is met for both runtimes at the seam;** a **rendered SSR page** is the one
-thing still not observed, and it is now a *confirmation* drive rather than a discovery one. **AC2
-and AC4 are what is left**, and both are item 4.
+✅ **AC3 is met. AC1 is met — including the rendered SSR page, observed in s29** (see the top of this
+file). **AC2 and AC4 are what is left**, and both are item 4.
 
 ## The question
 

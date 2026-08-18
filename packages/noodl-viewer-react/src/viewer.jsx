@@ -50,6 +50,58 @@ if (typeof window !== 'undefined' && window.NoodlEditor) {
   };
 }
 
+/**
+ * ✅ **D20** — register one kit, and if it throws, lose that kit and nothing else.
+ *
+ * 🔴 **The failure this ends, exactly as it was hit.** A kit logic node with no `category` threw
+ * out of `registerModule`, the loop below aborted, and **the whole viewer rendered nothing** —
+ * `reactMounted: false`, `rootChildren: 0`. One missing field in one node of one kit took down the
+ * entire preview, and the editor's node library then read *empty* because the viewer had died,
+ * which looks like a second fault and is not one.
+ *
+ * ⚠️ **`registerModule` still throws, deliberately** — the cloud loader and the MCP kit extractor
+ * both read that throw to report a broken kit, and silencing it would leave both calling a broken
+ * kit healthy. It is atomic now, so what arrives here is a kit that registered *nothing*, never a
+ * half-registered one.
+ *
+ * 🔴 **Skipping silently would be strictly worse than the blank screen**: it replaces a failure the
+ * author cannot miss with a missing node they will blame on a typo. So the caller must do something
+ * with what this returns — the browser path puts it on CN-015's channel to Settings → Kits.
+ *
+ * @returns {null | { module: string, reason: string, message: string }} the failure, or null
+ */
+function registerModuleIsolated(noodlRuntime, module) {
+  if (module.reactNodes) {
+    const reactNodes = [];
+    for (const nodeDefinition of module.reactNodes) {
+      reactNodes.push(createNodeFromReactComponent(nodeDefinition));
+    }
+    const nodes = module.nodes || [];
+    module.nodes = nodes.concat(reactNodes);
+  }
+
+  try {
+    noodlRuntime.registerModule(module);
+    return null;
+  } catch (e) {
+    const message = e && e.message ? e.message : String(e);
+    /*
+     * `registerModule` has already named the kit and the node (CN-015), so the sentence is passed
+     * through rather than rebuilt.
+     *
+     * ⚠️ **The consequence clause is added only when the message does not already carry one.**
+     * `defineNode`'s own hint ends *"The rest of the app still runs."*, and appending unconditionally
+     * printed both — observed on the console during the s29 drive:
+     * *"…The rest of the app still runs. The rest of the app is unaffected."* Same shape as the
+     * "do not say the kit twice" rule one layer down, and it needs the same guard. The clause still
+     * has a population: a throw from a definition's `setup` carries no consequence sentence at all.
+     */
+    const consequence = /rest of the app/i.test(message) ? '' : ' The rest of the app is unaffected.';
+    console.error(`${message}${consequence}`);
+    return { module: module.name || 'Unknown Module', reason: 'registration-failed', message };
+  }
+}
+
 export function ssrSetupRuntime(noodlRuntime, noodlModules, projectData) {
   registerNodes(noodlRuntime);
 
@@ -58,18 +110,12 @@ export function ssrSetupRuntime(noodlRuntime, noodlModules, projectData) {
 
   noodlRuntime.setProjectSettings(projectSettings);
 
-  // Register module nodes
+  // Register module nodes. ✅ D20 — a kit that throws costs its own nodes; the page still renders.
+  // There is no editor to report to on a server render, so the console is the whole surface, and
+  // `kit-modules.js` has already warned about the kits that never got this far.
   if (noodlModules) {
     for (const module of noodlModules) {
-      if (module.reactNodes) {
-        const reactNodes = [];
-        for (const nodeDefinition of module.reactNodes) {
-          reactNodes.push(createNodeFromReactComponent(nodeDefinition));
-        }
-        const nodes = module.nodes || [];
-        module.nodes = nodes.concat(reactNodes);
-      }
-      noodlRuntime.registerModule(module);
+      registerModuleIsolated(noodlRuntime, module);
     }
   }
 
@@ -155,18 +201,12 @@ export default class Viewer extends React.Component {
 
     noodlRuntime.setProjectSettings(projectSettings);
 
-    // Register module nodes
+    // Register module nodes. ✅ D20 — one kit's throw costs that kit and nothing else.
+    const registrationFailures = [];
     if (this.props.noodlModules) {
       for (const module of this.props.noodlModules) {
-        if (module.reactNodes) {
-          const reactNodes = [];
-          for (const nodeDefinition of module.reactNodes) {
-            reactNodes.push(createNodeFromReactComponent(nodeDefinition));
-          }
-          const nodes = module.nodes || [];
-          module.nodes = nodes.concat(reactNodes);
-        }
-        noodlRuntime.registerModule(module);
+        const failure = registerModuleIsolated(noodlRuntime, module);
+        if (failure) registrationFailures.push(failure);
       }
     }
 
@@ -179,8 +219,17 @@ export default class Viewer extends React.Component {
     // was loading (`@nodegx/module-inject`'s capture preamble); this hands that
     // record to the runtime so `sendNodeLibrary` carries it to the editor,
     // which otherwise has no way to learn it (✅ D3).
-    if (typeof window !== 'undefined' && noodlRuntime.setModuleFailures) {
-      noodlRuntime.setModuleFailures(window.__noodl_module_failures);
+    //
+    // ✅ **D20 adds the second half of the same list.** A kit whose script *ran* and then threw in
+    // `registerModule` is the opposite case: it is present in `noodlModules` and absent from the
+    // node register. Both are "this kit is installed and its nodes are not here", both belong on
+    // one channel, and `getModuleFailures` deduplicates by kit name — a kit cannot be in both
+    // halves, because a script that threw never called `Noodl.defineModule` at all.
+    if (noodlRuntime.setModuleFailures) {
+      const loadFailures = (typeof window !== 'undefined' && window.__noodl_module_failures) || [];
+      // ⚠️ `[]` rather than `undefined` is safe: `getNodeLibrary` omits the field entirely when the
+      // list is empty, so a healthy project's payload is byte-identical to what it was.
+      noodlRuntime.setModuleFailures(loadFailures.concat(registrationFailures));
     }
 
     noodlRuntime.eventEmitter.on('rootComponentUpdated', () => {

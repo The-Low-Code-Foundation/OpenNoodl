@@ -1,205 +1,241 @@
-# Phase 69 — The Node You Write Yourself
+# Phase 69 — **18 of 20 done.** Two Tier-6 tasks left, and one of them still needs a ruling from Richard.
 
-**Created:** 2026-08-15, out of a live capability proof (see §1). **Prefix:** `CN`.
-**Surfaces:** `runtime`, `editor`, `mcp`, `catalog`, `library`, `docs`.
+**Written 2026-08-18, end of s29.** 🔴 **This file is a REWRITE, not an amendment.** Overwrite it
+when the campaign ends; anything that outlives the phase goes to memory, not here.
 
-> **The concept, in one sentence.** A NodeGX node is not a thing only NodeGX can make — anyone
-> can write one, in one file, with no toolchain, and it is indistinguishable from a built-in
-> everywhere it matters.
-
-This phase is not "document a trick". It is the promotion of **custom nodes to a core concept**,
-which means every system that currently assumes "a node type is something we shipped" has to stop
-assuming it. That assumption is load-bearing in more places than anyone expected, and §3 is the
-list.
-
----
-
-## 1. What was measured (2026-08-15), and what it cost
-
-Everything below was **built and driven**, not read from source. The proof project is
-`NodeGX test projects/cashflow-command-centre`; the kit is `noodl_modules/cashflow-kit/`.
-
-| Claim | Evidence |
-|---|---|
-| A custom visual node needs **no SDK, no bundler, no npm, no build step** | One hand-written `index.js` + a 2-line `manifest.json` registered 5 nodes |
-| Hooks work | `useState`/`useLayoutEffect`/`ResizeObserver` all live in the kit; drag depends on them |
-| It works on **both** runtimes | Byte-identical module on React 18.3.1 (default) and `runtimeVersion: 'react19'`; same drive, same result |
-| The editor treats it as a real node | Node library reports all 5 as `category: "Visual"` with full port sets (Lane 9/11, Pill 23/14, Strip 16/10, Axis 12/8, Banner 19/9) |
-| It composes with stock nodes | custom Pill → stock `Set Object Properties` → stock `Array Changed` → stock `Function` → custom Strip + Banner |
-| Repeater-scoped writes are correct | Dragging one row moved exactly that record (`MOVED: ["Utilities"]`, 15→18) |
-| It inherits built-in behaviour free | `Width`/`Height`/`screenPosition` outputs, `allowChildren` default true, **style variants**, `Did Mount` |
-
-**Why it works, and why it nearly didn't.** The runtime delivers React as a browser global and maps
-`react` to it through webpack `externals` — the contract every external module compiles against.
-React 19 dropped UMD builds upstream, which would have ended that contract. `RUN-001`
-(`1c6790cb`, 24 Jul) builds the globals from npm with esbuild instead, aliasing `react-dom`'s own
-`require('react')` at the single global, so the one-dispatcher guarantee is enforced at build time.
-The deployed filenames are identical across runtimes, so **a kit written once runs on both with
-nothing to recompile**.
-
-**What is *not* new:** `Noodl.defineModule({ reactNodes })` is inherited from Noodl and always
-worked. What was broken was the only *documented* route to it — the SDK-plus-webpack path that
-bundled a second React and produced `Invalid hook call`. This phase is about making the working
-route real, supported and visible; it is not a claim that we invented the mechanism.
+> ## Read §1 and §2 before touching anything.
+>
+> **§1** is the map, measured from the ledger rather than inherited.
+> **§2 is still the ruling Richard must make**, and s29 did not touch it — CN-016 AC1 cannot be met
+> by any amount of work inside phase 69. Nothing in RUN 1 changed that.
+>
+> **RUN 1 is done.** What is left is RUN 2 (CN-017) and RUN 3 (CN-016), each effort **L**, each
+> its own session. A session that tries both will finish neither.
 
 ---
 
-## 2. The two principles
+## 0. STEP ZERO — every run, and it is not a formality
 
-Every task in this phase is measured against these. They are acceptance criteria, not sentiment.
+```bash
+git status --short packages/noodl-editor/src   # empty ⇒ safe to launch
+ListAgents                                     # then ASK before launching
+```
 
-**P1 — A custom node is a node: no *capability* difference.** Not a plugin, not an escape hatch, not
-a second-class citizen with a warning triangle. Wherever the product knows something about `Group`,
-it should know the same kind of thing about `mykit.Chip`: validation, the picker, the property
-panel, the AI's vocabulary, docs, the catalog, deploy. Any place that special-cases "is this ours?"
-to *withhold a capability* is a bug this phase either fixes or explicitly and permanently exempts
-*in writing*.
+🔴 **s29 checked this at 17:44, got "empty", and by 18:00 a peer had three uncommitted files in
+`packages/noodl-editor/src` and an editor stack mid-compile.** A launching stack is invisible for
+~75s — no Electron, port 9222 still free — so a clean `ps` is not a clean checkout. **Two editors do
+not coexist on this checkout even on different CDP ports**, and an edit to a bundled file between
+your launch and `reactMounted` wedges the renderer permanently. Announce, ask who owns what, and
+announce teardown to everyone you announced the launch to.
 
-> **Narrowed by ruling D1 (2026-08-15).** Provenance *display* is explicitly allowed and wanted — a
-> node saying it came from *Cashflow Kit v1.2* is a feature, because when a node misbehaves you need
-> to know who wrote it. P1 forbids capability gaps, not attribution.
+A peer has `scripts/library/check.ts`, `phase-50`/`phase-68` notes and the untracked
+`phase-65-the-library/` and `phase-70-the-course-is-an-app/` dirs in flight; another has
+`noodl-core-ui/src/preview/launcher/**`, `ProjectsPage.tsx`, `AskAboutNodeDialog.tsx`,
+`useCommunityAccount.ts` and `tests-unit/uni-001/**` — **not yours, do not sweep them.** Commit with
+explicit pathspecs, never `git add -A`. 🔴 **Never `git stash` on this checkout.**
 
-**P2 — Ports are the product; JavaScript is the escape hatch.** A kit that buries thresholds,
-colours, steps and formats in its source is a worse kit however good the source is. Policy belongs
-in the graph (a `Function`/`Expression` node the user can open); presentation belongs on ports.
-Every task that produces authoring guidance, a scaffold, a doc or an AI prompt must teach this, and
-the reference kit must model it.
+## 1. Where phase 69 actually is
 
----
+**Closed: 18 of 20.** CN-001–006b, CN-009, CN-010, CN-011, CN-012, **CN-013** (s29), **CN-014**
+(s29), CN-015, CN-018, CN-019.
 
-## 3. The load-bearing assumption, and everywhere it hides
-
-**`node-catalog.json` is generated from the live register of built-ins only**
-(`scripts/node-catalog/extractor-entry.js` loads `noodl-runtime` + `noodl-viewer-react` +
-`noodl-viewer-cloud` and serialises what registers). A project's own module nodes are not in it and
-cannot be — the catalog is built at repo-build time, the modules exist per project.
-
-That single fact propagates:
-
-- **Validation goes quiet, not loud.** `unknown-node-type` is a **warning by default**, and the
-  comment in `diagnostics.ts` says exactly why: *"real projects legitimately use module-provided or
-  version-specific nodes the catalog cannot enumerate; erroring on those would cry wolf."* The
-  policy is right. The consequence is that **everything downstream is skipped**:
-  `parameterValues.ts` skips unknown-typed nodes entirely, and unknown-port checks are skipped for
-  dynamic-port nodes. So a custom node is *accepted but unverified* — a silent hole, exactly the
-  shape this repo has been burned by before.
-- **Strict mode hard-fails.** `validate_component`'s `strict` flag ("greenfield mode") promotes
-  unknown node types to errors. A greenfield project that uses a kit **cannot pass its own gate**.
-- 🔴 **A lesson cannot teach a kit node** (found 2026-08-15 reconciling with phase 67, which neither
-  phase had recorded). `lessonverify.ts` is a **fifth catalog consumer**, and it is the strictest one:
-  `unknown-node-type` is `severity: 'error'` there
-  ([`lessonverify.ts:214`](../../../packages/noodl-editor/src/editor/src/models/lessonverify.ts)), not
-  the warning `diagnostics.ts` uses. That error is failure class **F1**, and `REQUIRED_CLASSES` in
-  `lessoninstallpolicy.ts` demands F1 of **every** provenance — `curated`, `org`, `local` and
-  `local-ai` alike. So a lesson whose condition names `nodegx.cashflow.Pill` is **refused at install**,
-  by every route, with a message telling the author their own node type does not exist. See §4.
-- **Visual-root detection guesses.** `visualRoots.ts` falls back to `componentIsVisual(typeName)`
-  when `catalogIndex().hasType()` is false — so a custom *visual* node is classified by a heuristic
-  meant for project components, which affects page authoring.
-- **The AI cannot see them.** `list_node_types` / `get_node_type` / `find_tools` are catalog-backed.
-  The built-in authoring loop has a `libraryOverview()` handout (ERG-002) for UMD libraries but
-  nothing for a project's own node types.
-- **The agent's eyes are blind.** `render-from-disk.js:351-357` hand-writes its HTML with **two
-  hardcoded module stylesheets** and never calls `injectIntoHtml`. A project using a custom node
-  renders as an **empty box** through `render_report` — a blank, not an error. Every other HTML path
-  (preview web-server, deploy `HtmlProcessor`, `noodl-preview`, `ViewerConnection`) injects
-  correctly. The verification tool is the only blind one.
-
-**The keystone is therefore a project-scoped catalog extension** (CN-003). The good news is that the
-technique already exists and is proven: the catalog extractor works by loading the **live register**
-rather than parsing sources, and a project's `index.js` registers into that same register. The
-architecture is not new — its input set is.
-
----
-
-## 4. Prior-art reconciliation
-
-> 🔴 **Read this before starting any task.** Two phases already own pieces of this ground.
-
-- **P65 / LBR-008 "The library the AI can see"** already scopes *"0 module node types in the
-  catalog. Give `list_node_types`/`find_tools` the library"*, and already carries the token-budget
-  constraint. **CN-003/CN-009 overlap it directly.** Needs ruling **D7**: does phase 69 absorb
-  LBR-008, depend on it, or supersede it? They must not be built twice — see
-  [[parallel-agents-solve-it-twice]].
-- **P65 / LBR-004** records that **0 of 29 shipped modules have ever been run**, either preview or
-  deploy. Any claim this phase makes about "modules work" is currently proven by *one* kit — mine.
-  CN-016 must not assume the existing fleet is healthy.
-- **P65 / LBR-006** found three shipped "modules" that register **zero nodes**, and `type` drives
-  install routing. The taxonomy is already known to be wrong.
-- **P35 / ERG-002** built `registerLibrary` / `verifyLibrarySource` / `libraryNeedsSsrWarning` and a
-  **Libraries** settings section — for third-party UMD globals, not for node kits. It is the closest
-  existing surface and the obvious thing to extend rather than duplicate. `verifyLibrarySource`'s
-  sandbox-and-check pattern is directly reusable for CN-017.
-- **RUN-001** (phase 16) is the reason any of this works; its assessment doc is the authority on the
-  `window.React` contract. Do not re-derive it.
-- 🔴 **P67 / UNI-007 + UNI-010 — added 2026-08-15, and it was missing in both directions.** Neither
-  phase referenced the other; a grep for `phase-69|CN-0|custom node|kit` across phase 67 and for
-  `phase-67|UNI-0|lesson` across phase 69 returned **zero hits each way**, while the two share three
-  live surfaces:
-  - **`lessonverify.ts` is a catalog consumer** — §3's new bullet. CN-003 must overlay it and CN-004
-    must reason about it; today a lesson teaching a kit node is refused at install.
-  - **The MCP token budget is P67's spend.** UNI-010's `lesson` group consumed 56 of LEG-001's 58
-    banked tokens and renegotiated the bar 8,200 → **8,280**. CN-009's numbers were written against
-    the old bar and have been corrected.
-  - **CN-001 fixes the instrument UNI-010's F4 grades with.** `measure-from-disk.js` →
-    `render-report.js:41` → `render-from-disk.js` is the chain behind `NODEGX_RENDER_CLI`. CN-001
-    carries the ordering consequence.
-
-  ⚠️ Phase 67's own `TASKS.md` and `NEXT-SESSION-PROMPT.md` now carry the mirror of this entry. If you
-  change one of the three surfaces, change both sides — this reconciliation exists because a hole
-  recorded in one phase reads as covered from the other.
-
----
-
-## 5. Rulings — ✅ **all 8 ruled (2026-08-15); the queue is empty**
-
-> The register is **[RULINGS.md](RULINGS.md)**, which carries the reasoning and the binding
-> obligations. This table is the index.
-
-| # | Question | Status |
+| What is left | Owner | Reality |
 |---|---|---|
-| **D1** | First-class concept, or folder convention? | ✅ **First-class, with provenance shown.** P1 narrowed to *no capability difference*; provenance display is explicitly wanted. ⚠️ Does **not** gate CN-003 |
-| **D2** | **JS-only** authoring, or a supported **TypeScript** path? | ✅ **JS is the supported path**, plus a published `.d.ts` reachable from JSDoc with **zero build**. A compile step on the author's side breaks this ruling |
-| **D3** | Where does the catalog overlay run, and is it cached? | ✅ **MCP extracts (headless, via the existing dom-shim); the editor reuses `sendNodeLibrary`.** 🔴 **No on-disk cache** — in-memory per session if speed demands it |
-| **D4** | Strict-mode policy once custom types are knowable | ✅ **Kit-declared ⇒ known and fully checked.** Only the truly unresolvable errors under `--strict`. Expect it to surface real kit bugs |
-| **D5** | A first-party reference kit — and is it the cashflow kit? | ⚠️ **A new, smaller kit** (ruled against the recommendation). **Required mitigation: CN-007's docs must still carry the cashflow kit as the worked example**, or P2 loses its only demonstration |
-| **D6** | **Trust posture** for third-party kits | ✅ **Local kits run freely; third-party verified on install** (reuse `verifyLibrarySource`), provenance recorded, **explicit consent** to run non-first-party |
-| **D7** | Relationship to **P65 LBR-008** | ✅ **P69 owns the spine.** CN-003 = "this project", exact. LBR-008 = "the shelf", cheap, layered on top. P65's row updated |
-| **D8** | Do kits declare **design tokens** and participate in variants? | ✅ **Tokens by default in the scaffold, not enforced.** AIB-001's `var(--token)` passthrough already exists. ⚠️ The cashflow kit hardcodes hex today and must be moved onto tokens before CN-007 uses it |
+| **CN-017** — Trust | **RUN 2, do this first** | 🔴 **Never started.** Tier 6, effort **L**. Self-contained: no external blocker. |
+| **CN-016** — Publish a kit | RUN 3 | 🔴 **Never started.** Tier 6, effort **L**. ⚠️ **AC1 blocked — §2.** |
+| **CN-007** AC2 | not yours | Needs a reader who has **not** read this phase. |
+| **CN-008** AC1 | not yours | Needs a live model. |
+
+✅ **Everything remaining is distribution-and-trust.** This is a clean place to stop if appetite runs
+out — say so plainly rather than leaving it ambiguous.
+
+## 2. 🔴 STILL UNRULED — CN-016 AC1 cannot be met inside this phase
+
+**CN-016 AC1:** *"The reference kit installs from the **real origin** into a fresh project"* —
+explicitly *"not from a local folder that happens to resolve."*
+
+**Measured s28, unchanged since:** the real origin serves **2024 Noodl content**. Nothing publishes
+`library/`. `library:build` writes gitignored `library-dist/`, and "copy it into the docs repo" is a
+documented **manual** step nobody has ever performed. The task that owns fixing this is phase 65's
+**LBR-001**, which is **`Not started`** — and phase 65's own README says *"nothing else in this phase
+matters until the publish path works."*
+
+| | Option |
+|---|---|
+| **(a)** | **Do LBR-001 inside this campaign** as RUN 3a. Closes AC1 honestly. ⚠️ Annexes another phase's work, and phase 65 is being scoped by a peer — coordinate or collide. |
+| **(b)** | **Descope AC1** to *"installs from a built artefact, with a gate that fails the moment the origin and `library/` diverge"*. Phase 69 closes; the origin gap stays phase 65's, with a gate that stops it rotting further. |
+| **(c)** | **Hold CN-016 open** until phase 65 lands LBR-001; close phase 69 at 19/20 with CN-016 explicitly deferred and named. |
+
+**Recommendation is still (b).** It is the only option that closes this phase on its own terms
+without annexing another phase or leaving a task on someone else's schedule, and the divergence gate
+is the durable half. 🔴 **Whichever is chosen, do not let a session "satisfy" AC1 by installing from
+a local folder.** That is the exact move the criterion forbids, it would read as green, and it would
+be false.
 
 ---
 
-## 6. What "extended and flexible" means here
+## 3. What RUN 1 (s29) built, and the two things in it that will bite the next runs
 
-The definition surface is far richer than the minimum viable node suggests, and almost none of it is
-documented for module authors. `ReactNodeDefinition` already supports `dynamicports`, `visualStates`,
-`useVariants`, `methods`, `setup`, `getInspectInfo`, `nodeDoubleClickAction`, `connectionPanel`,
-`ssr` and `deprecated` — plus a `frame` field that nothing in the repo sets and DEBT-006 deliberately
-retained *because a third-party module could legitimately use it*. That decision already treated
-external node authors as real users. This phase finishes the thought.
+✅ **D19** — the SSR loader shims `window` with **`React` and nothing else** for the duration of a kit
+load, and **removes it before the render**. ✅ **D20** — `registerModule` is **atomic** and the blast
+radius moved to the call sites. ✅ **CN-013 AC1** closed on a real deploy; ✅ **CN-014 AC3** closed on a
+re-driven stack. Plus one defect found by reading a panel instead of a model — see §4.
 
-Flexibility axes the tasks must keep open:
+🔴 **`registerModule` still THROWS, on purpose, and a future session will want to "finish" D20 by
+silencing it. Do not.** Two callers read that throw to report a broken kit at all —
+`noodl-viewer-cloud/src/kitModules.ts:286` and `noodl-mcp/src/kitExtract/entry.js:145` each wrap it in
+a `try` and push a failure from the `catch`. Swallowing it leaves both `catch` blocks dead **while
+both surfaces call a broken kit healthy.** Grepping the callers before writing is what caught that.
 
-1. **Visual and logic.** `module.nodes` (via `defineNode`) is the non-visual half and is untested here.
-2. **Browser and cloud.** The manifest's `runtimes` filter and the `ssr` compat field exist; a kit on
-   an SSR/SSG deploy is unproven.
-3. **Static and dynamic ports.** A node whose ports come from data is the difference between a widget
-   and a building block.
-4. **Local and distributed.** The same kit should work as a folder in one project and as a library
-   entry installed into fifty.
-5. **Hand-written and generated.** Claude Code writing a kit is a first-class use, not an afterthought
-   — which is what CN-006/CN-008/CN-009 are for.
+🔴 **The rollback RESTORES what it displaced; it does not delete.** A kit is allowed to shadow a
+built-in (D9, and `nodegx-kit-catalog/src/health.js` states it to authors as fact). A delete-based
+rollback would take the shadowed built-in with it, so one bad node in one kit would silently cost the
+project its `Group`. Unwind is **newest-first**.
 
----
+## 4. 🔴 The defect RUN 1 found, fixed, and could not re-drive
 
-## 7. Definition of done for the phase
+Settings → Kits told the author a kit that had registered **nothing** was *"only PARTIALLY
+registered — nodes defined before the failure are available"*, and after D20 the same row
+**contradicted itself in one sentence**: *"NONE of this kit's nodes register … It is only PARTIALLY
+registered."*
 
-- A person, or an agent, can go from "I want a node that does X" to a working node **without reading
-  runtime source**.
-- A project using custom nodes **passes its own validation** and does not render blank in any
-  verification tool.
-- The AI authoring loop **uses** a project's custom nodes rather than ignoring them.
-- A kit can be **published, installed, versioned and trusted** through the existing library channel.
-- The reference kit teaches **P2** by example.
+**Cause:** `NodeLibraryImporter.updateIndex` filtered `nodetypes` against `clients.getNodeNames()`
+and nothing filtered `nodeIndex.moduleNodes`; `mergeInByName` only ever replaces-by-name or pushes.
+So the picker's per-kit group survived forever, and `KitsSection` feeds those names to
+`kitDiagnostics` as *"what this kit registered"*. ✅ Fixed, pruned against the **same** name set, with
+the `partial` branch **kept** — a script that throws after some `defineModule` calls really is
+half-registered. 7 tests, **5/5 mutants killed**.
 
-See [TASKS.md](TASKS.md).
+⚠️ **Not re-driven.** That fix and a one-line console dedup are proven by unit tests and mutants, not
+by a second stack. The live readings in [notes/s29-drive-observations.md](notes/s29-drive-observations.md)
+are from the **18:00:17** bundle (`e56e8d38…`); the shipped bundle is now **18:33:21**
+(`52d7fa4c…`). **If the next run launches an editor anyway, re-read the two Kits-panel rows** — it
+costs one minute and closes the last unobserved gap in RUN 1.
+
+## 5. RUN 2 — CN-017 Trust. Self-contained. Start here.
+
+**Why before CN-016:** CN-016 lists CN-017 as a gate for anything not first-party, and CN-017 depends
+on nothing outside this repo. `verifyLibrarySource` (ERG-002) and `registerLibrary`'s
+`kind: 'external-library'` marker already exist — this is **wiring an existing mechanism to kits**,
+not inventing one.
+
+Five ACs, and the two easiest to get wrong:
+
+- 🔴 **AC1 — a locally-scaffolded kit runs with NO prompt and NO gate.** D6's promise, and the easiest
+  thing to break while building a consent flow. Test it on a real scaffold output, not in principle.
+- 🔴 **AC5 — verification must be honest about its limits.** `verifyLibrarySource` establishes *what a
+  script defines*, **not that it is safe**. No UI text may call a verified kit "safe".
+
+⚠️ **The trap this task names against itself, and s29 hit its twin:** *"put the guarantee on the
+decision, not the observation."* A record with `verified: true` beside one with `source: local`
+invites the reader to conclude local kits were verified. **Make the fields incapable of contradicting
+each other** — §4 above is this phase's second recorded case of exactly two fields made to
+contradict, and the first one shipped to a panel.
+
+⚠️ **Establish what the sandbox responder's `noodl_modules/` pattern (`responder.ts:36`) is for.**
+Vestigial or load-bearing — say which. Do not assume.
+
+⚠️ **Out of scope and must stay out:** signing, a trusted-author registry, runtime sandboxing of kit
+code. All defensible futures; none are D6.
+
+## 6. RUN 3 — CN-016 Publish a kit. **Do not start before §2 is ruled.**
+
+Everything except AC1 is unblocked: the minimal reference kit (✅ D5 — new and deliberately minimal,
+**not** the cashflow kit), kit-aware `library.json`, compat gating that fires, versioning that does
+not silently replace.
+
+🔴 **Do not build on an assumption that "modules work".** P65's audit is why this is Tier 6: **0 of 29
+shipped modules have ever been run**, 3 register zero nodes, ~9 vendor third-party libraries with no
+licence text, and **mapbox-gl v2+ is proprietary**. Exactly **one** kit has been proven end to end —
+the cashflow kit — and it is not one of the 29.
+
+⚠️ **`scripts/library/check.ts` is a peer's live file.** AC4 says `library:check` passes and the
+schema is strict, so a new field must be added deliberately — **coordinate before editing it.**
+
+⚠️ **The cashflow kit is NOT shipped content** (D5) — no licence sweep, no `library.json` — **but it
+must keep working**, because CN-007's docs depend on it.
+
+## 7. Not yours to close — hand these to Richard
+
+- **CN-007 AC2** — needs someone who has **not** read this phase to follow the docs page and record
+  where they stall. A fresh agent can run this in parallel with any run above. Otherwise close CN-007
+  on its other four criteria and say so.
+- **CN-008 AC1** — needs a live model. ⚠️ **The seam CN-008 §7 names is not a usable check:**
+  `AiConfigStore.getApiKey(provider)` **ignores its argument**, so a bogus provider returns the same
+  16-character value as `anthropic`.
+- ⚠️ **Rulings #11 and #12 are still unanswered.** #11: no `--success`/`--warning`/`--info` semantic
+  tokens. #12: `kitDiagnostics` prints outside `validate:project`'s summary, so an `ERROR` sits above
+  `0 error(s)` and the exit code stays `0` (`--json` omits kit diagnostics entirely). ⚠️ **D12 made
+  #12 worse** by adding a fifth code to that surface, and fixing it changes what the gate's exit code
+  means — **it wants a ruling, not a unilateral wiring-up.**
+
+## 8. Gates — what s29 measured
+
+| Gate | s29 result |
+|---|---|
+| `@noodl/runtime` | **2537** passed, 139 suites (s28: 2532) |
+| `noodl-viewer-react` | **931** passed, 73 suites (s25: 921 / 72) |
+| `noodl-viewer-cloud` | **189** passed, 9 suites |
+| `@nodegx/kit-catalog` | **78** passed |
+| `@nodegx/module-inject` | **27** passed |
+| `noodl-mcp` | **644** passed, 54 suites |
+| `@nodegx/kit-scaffold` | **68** passed, 5 suites |
+| `typecheck:editor` | **0** |
+| **editor `test:main`** | ✅ **3816 / 249 suites, ZERO failures** — a peer measured 3808 with one failure before this session; see below |
+| **`test:ci` @ seed 39393** | **2849 specs / 10 failures**, mtime `18:49:58` |
+| Mutants | **15/15 killed** — 4 D19, 6 D20, 5 the picker prune; each restored and re-run green |
+
+✅ **The ten `test:ci` failures are the recorded floor, matched BY NAME, not by count:** 4 ×
+`AIX-006 style vocabulary`, 2 × `AI model registry`, 1 × `AIX-011`, 3 × `SUB-011 expression
+parameters`. s28 A/B'd that exact set against committed code and found delta 0; s29 re-measured
+rather than quoting it. None of the ten is in a package s29 touched. **Delta introduced by s29:
+zero.**
+
+✅ **`test:main` was red when s29 started and it was phase 69's own fault.**
+`tests-unit/cn-002/unknown-type-check-skipped.test.ts` asserted `unknown.warnings === known.warnings + 1`;
+`c1c0b5b5` added `validation/rules/parameterValue.ts`, which fires on the control's resolvable `Text`
+node and **cannot** fire on an unresolvable one — the very skip that file grades. So the identity was
+false by construction (known = 2, unknown = 1). **Re-baselined, not deleted** — and replaced with a
+*stronger* assertion: the old `.every(...)` beside it passed vacuously on an empty list and said
+nothing about cardinality; the list comparison does.
+
+- ✅ **PIN THE SEED: `NOODL_SPEC_SEED=39393`.**
+- 🔴 **DELETE `packages/noodl-editor/tests/test-results.json` before every run and require a fresh
+  mtime.** A stale file reads as a perfect pass. **Prove completion from the mtime, never from `$?`**
+  — a clean floor run exits 1, and any pipe reports the pipe's last command.
+- 🔴 **Never pipe a suite to `tail`** — it loses the failure list *and* the exit code.
+- ⚠️ **`npx tsc --noEmit -p tsconfig.json` in `noodl-runtime` still reports two PRE-EXISTING errors**
+  (`Cannot redeclare block-scoped variable 'EditorConnection'`, in `editorconnection.replyidentity.test.ts`
+  and `editorconnection.sendqueue.test.ts`). Not a regression; do not "fix" it inside another task.
+
+## 9. Traps that will bite these runs specifically
+
+- 🔴 **`packages/noodl-editor/src/external` is GITIGNORED** (`.gitignore:197`, `git ls-files` → 0
+  tracked). A viewer rebuild leaves **no diff**, so nothing in the tree records which bundle a reading
+  came from — **and a deploy COPIES that directory rather than rebuilding it**, so what a user ships
+  is whatever a local build last wrote. Stamp mtime + md5 in any drive note.
+- 🔴 **The built viewer is not the repaired source.** `npm run ci:build:viewer`, then grep the bundle
+  for a string only the new code contains, **before** launching. ⚠️ `preview renders nothing` is no
+  longer a valid marker — D20 changed that sentence. Use `NONE of this kit` or `registration-failed`.
+- 🔴 **The launcher can list two cards with the same display name**, and s29's copy sorted *last*
+  while the **original** sat at index 0. `openProjectFromFolder` does not move the UI and does not
+  refresh a cached card label. **Verify which project opened from `ProjectModel.instance`, not from
+  the card you clicked.**
+- 🔴 **No editor global is exposed.** Reach models through webpack:
+  `window.webpackChunknoodl_editor.push([[k], {}, r => req = r])`, then
+  `req('./src/editor/src/utils/LocalProjectsModel.ts')`. Module ids are the source paths.
+  ⚠️ It is `models/nodelibrary/nodelibrary.ts` — **lower case**, and `NodeLibrary.ts` does not exist.
+- 🔴 **`cdp reload --target=viewer` reloads the EDITOR.** Use `eval "location.reload()" --target=viewer`.
+- 🔴 **`NodeLibrary.types` reads empty when the VIEWER is dead** — a zero is the instrument, not a
+  finding. D20 makes that much rarer, which makes it easier to forget.
+- 🔴 **`expected-inject.snapshot.txt` is the ONLY cross-package check** that the editor's injector
+  agrees with `@nodegx/module-inject`. **Never regenerate it to make a red run green — the diff is
+  the finding.**
+- ⚠️ **A criterion about a message must name its SURFACE.** s23 and s27 recorded opposite verdicts on
+  one failure and both were right. s29 read every message on **both** the console and the panel for
+  exactly that reason — and the panel is where the §4 defect was hiding.
+- ⚠️ **Opening a project writes three files into it and dirties every component.** Drive a copy.
+- ⚠️ **`DeployOptions.environment` is required** (may be `undefined`, must be present). An SSR deploy
+  needs **two** `deployToFolder` passes — `runtimeType: 'ssr'` to the root and `'deploy'` into
+  `public/` — because `compilation.ts:236` does exactly that and `index.js` reads
+  `public/index.html` at setup. One pass gives you a server with no page.

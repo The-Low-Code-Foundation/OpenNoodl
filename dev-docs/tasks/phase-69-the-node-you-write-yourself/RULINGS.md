@@ -324,7 +324,7 @@ could arrive through. This serves date maths, validation, transforms, formatting
 
 ---
 
-## D19 — SSR gets a `window` shim carrying **`React` and nothing else**; the documented pattern then changes ⚠️ **NOT BUILT**
+## D19 — SSR gets a `window` shim carrying **`React` and nothing else**; the documented pattern then changes ✅ **BUILT s29**
 
 **Settled 2026-08-18 (s28). Queue #13.** Every kit begins `var React = window.React;`. Under SSR
 there is no `window`, so **all four kits in s27's fixture threw** and the loader named each one. That
@@ -351,7 +351,40 @@ may not exist, and the shim silently becomes load-bearing forever.
 ✅ **This is the whole of what is left on CN-013 AC1** — the build half is fixed (`8ea0f6c1`): the
 deploy ships `kit-modules.js` and the manifest gate walks the require graph transitively.
 
-## D20 — A kit that throws during registration loses **the whole kit**, not the whole app ⚠️ **NOT BUILT**
+### ✅ BUILT s29 — and (b) landed as the *bare* `React` global, not `globalThis.React`
+
+**(a)** `installWindowShim()` in `static/ssr/kit-modules.js`: `globalThis.window = { React: globalThis.React }`
+for the duration of `loadKitModules`, removed in a `finally`. Installed **once around the whole
+loop**, because a UMD dependency tag publishes onto `window` for the kit that follows to read back —
+a per-script shim would break exactly the kits that declare `manifest.dependencies`. It **refuses to
+touch a `window` somebody else owns**. 6 tests, **4/4 mutants killed**.
+
+🔴 **Removed before the render, and that is load-bearing.** `viewer.jsx` and the runtime's
+client-only deferral both guard on `typeof window !== 'undefined'`; a `window` left standing flips
+them to their browser branch on the server. ✅ Corroborated on the real deploy by accident — a
+project `JavaScript Function` node doing `window.foo = …` threw `Cannot set properties of undefined`,
+which is the shim's absence measured from outside.
+
+**(b) — the accessor is bare `React`, and `globalThis.React` was WRONG.** Written as
+`var React = globalThis.React;` first; `tests/autocomplete.test.js` rejected it cold —
+*"Property 'React' does not exist on type 'typeof globalThis'"* — because `nodegx-node-kit-types`
+declares `const React: any` in `declare global`, and a `const` adds no property to `typeof
+globalThis`. That d.ts **already recommends bare `React` over `window.React`** and already says the
+SSR bootstrap puts it on `globalThis`. So the sanctioned accessor was in the shipped types the whole
+time; the scaffold and the docs simply had not moved to it. Both now open `var h = React.createElement;`
+with no unpack at all, and `output.test.js` gained a row asserting the emitted file never contains
+`window.React`.
+
+⚠️ **A consequence worth knowing:** the scaffolded component reads `React.useRef` at **render** time,
+not import time, so it needs React to remain a global — which it does in every real host. A kit that
+captured `var React = window.React;` at import keeps its closure and is equally fine. A kit reading
+`window.React` *inside* its component would not be; nothing ships that shape.
+
+✅ **CN-013 AC1 CLOSED on a real deploy** — see [notes/s29-drive-observations.md](notes/s29-drive-observations.md)
+Part C. Four kits loaded server-side (s27: four threw), and four kit nodes' markup is in the served
+HTML with the built-in control beside it.
+
+## D20 — A kit that throws during registration loses **the whole kit**, not the whole app ✅ **BUILT s29**
 
 **Settled 2026-08-18 (s28). Queue #14.** A kit logic node with no `category` throws out of
 `registerModule`, which does not catch: the loop aborts, the kit's remaining nodes never register,
@@ -378,3 +411,43 @@ deleting it — so the next change to this behaviour is also deliberate.
 
 ✅ **s28 already did the naming half** (the message names the node, the kit, and the consequence), so
 this ruling is purely about what survives.
+
+### ✅ BUILT s29 — atomic in `registerModule`, isolated at the call sites, and it still throws
+
+🔴 **`registerModule` was NOT made silent, and that was the design decision.** Two callers read its
+throw to report a broken kit at all — `noodl-viewer-cloud/src/kitModules.ts:286` and
+`noodl-mcp/src/kitExtract/entry.js:145` each wrap it in a `try` and push a failure from the `catch`.
+Swallowing the throw would have left both `catch` blocks dead while both surfaces called a broken kit
+**healthy** — this phase's own recurring failure, shipped into two more places. Grepping those callers
+first is what caught it.
+
+So: `registerModule` becomes **atomic** (it rolls its own registrations back, then throws), and the
+blast radius moves at the **call site** — `viewer.jsx` catches per module, records the failure on
+CN-015's channel, and carries on.
+
+🔴 **The rollback RESTORES, it does not delete.** Registration is last-writer-wins and the viewer
+registers built-ins before kit nodes, so a kit is *allowed* to shadow a built-in and
+`nodegx-kit-catalog`'s health check states that to authors as fact (D9). A delete-based rollback
+would have taken the shadowed built-in with it — one bad node in one kit silently costing the project
+its `Group`. `NodeRegister.peek`/`restore` exist for that, and the unwind is **newest-first** so a kit
+that registers a name twice lands back on what preceded it. Flagged by a peer before it was written.
+
+⚠️ **What it does not undo, stated rather than implied:** `setup` and `setupNumberedInputDynamicPorts`
+run under the same loop and may have attached graph-model listeners or dynamic-port rules. Those are
+left behind, inert — nothing can instantiate a type that is no longer registered.
+
+⚠️ **`definitionFixHint`'s sentence had to change with it.** It ended *"the preview renders nothing at
+all"*, which was true and became a confident wrong answer the moment this shipped — a capability
+turning its own diagnostic into a lie. It now names the kit as the loss.
+
+**17 tests, 6/6 mutants killed** (`registration-failures-name-the-kit.test.ts`, rewritten to the new
+contract as this ruling required, not deleted). ✅ **DRIVEN** — Part B of
+[notes/s29-drive-observations.md](notes/s29-drive-observations.md): viewer mounts, the kit is atomic,
+neighbours untouched, and the failure renders in Settings → Kits.
+
+🔴 **The condition exposed a second defect, and it was in the reporting surface.** Settings → Kits
+called the failed kit *"only PARTIALLY registered"* — and after D20 the same row read *"NONE of this
+kit's nodes register … It is only PARTIALLY registered"*. Cause: the picker's per-kit index was never
+pruned, so `kitDiagnostics` was told the kit had registered nodes it had not. Fixed in
+`NodeLibraryImporter.updateIndex`; the `partial` branch is **kept**, because a script that throws
+after some `defineModule` calls really is half-registered. 7 tests, **5/5 mutants killed**.

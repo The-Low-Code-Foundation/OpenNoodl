@@ -121,15 +121,30 @@ describe('CN-002: a check skipped for an unresolvable type says so', () => {
   });
 
   it('leaves error and warning counts exactly where they were', () => {
-    // The known-type twin is the control. The unknown-type graph is allowed
-    // exactly one extra warning — `unknown-node-type` itself, which predates
-    // this task — and zero extra errors.
+    /*
+     * The known-type twin is the control for **errors**. The unknown-type graph must add no error
+     * and no warning of its own; the only warning it may carry is `unknown-node-type`, which
+     * predates this task.
+     *
+     * 🔴 **The count identity `unknown === known + 1` was here and had to go, re-baselined rather
+     * than deleted.** `c1c0b5b5` added `validation/rules/parameterValue.ts` and registered it, and
+     * that rule fires on the control's resolvable `Text` node and **cannot** fire on an
+     * unresolvable one — the whole point of the skip this file grades. So the two graphs stopped
+     * being comparable by count, in the direction that made the identity read as a regression:
+     * measured 2026-08-18, `known.summary.warnings` is **2** and `unknown.summary.warnings` is
+     * **1**.
+     *
+     * ⚠️ **This is CN-002's deliberate silence baseline, so it is replaced with a STRONGER
+     * assertion, not a looser one.** `.every(...)` passed vacuously on an empty list and said
+     * nothing about how many warnings there were; the list comparison below pins the cardinality
+     * too, which is the half that goes unnoticed. If a future rule makes this graph warn about
+     * something else, this row still fails — which is what the identity was protecting.
+     */
     const known = validateProject(twoNodeGraph('Text'));
     expect(unknown.summary.errors).toBe(known.summary.errors);
-    expect(unknown.summary.warnings).toBe(known.summary.warnings + 1);
-    expect(
-      unknown.diagnostics.filter((d) => d.severity === 'warning').every((d) => d.code === DiagnosticCode.UnknownNodeType)
-    ).toBe(true);
+
+    const unknownWarnings = unknown.diagnostics.filter((d) => d.severity === 'warning');
+    expect(unknownWarnings.map((d) => d.code)).toEqual([DiagnosticCode.UnknownNodeType]);
   });
 
   it('never blocks authored output', () => {

@@ -35,7 +35,6 @@ alongside a `manifest.json`, and it appears in the node picker.
 
 ```js title="noodl_modules/my-kit/index.js"
 (function () {
-  var React = window.React;
   var h = React.createElement;
 
   var Badge = {
@@ -65,7 +64,7 @@ alongside a `manifest.json`, and it appears in the node picker.
 })();
 ```
 
-Twenty-nine lines, and the only one that describes what the node *shows* is the port. That is the
+Twenty-eight lines, and the only one that describes what the node *shows* is the port. That is the
 thesis of this page, so everything below is an elaboration of it rather than a prerequisite for it.
 
 The `manifest.json` beside it is four lines:
@@ -86,12 +85,21 @@ Two details in that file are load-bearing and easy to skip:
 - **`name` must be unique across the whole project.** Prefixing it with your kit's folder name
   (`my-kit.Badge`) is the convention, and it is what makes the node picker able to group your nodes
   under your kit's name.
+- **`React` bare, never `window.React`.** The runtime installs React as a global, so there is
+  nothing to unpack — and the two are not interchangeable. A project deployed with SSR or SSG
+  renders your node in Node first, where there is no `window`: a kit that opens with
+  `var React = window.React;` throws at import, is missing from the server-rendered HTML, and then
+  appears when the browser hydrates. That is a hydration mismatch, and it is silent unless you go
+  looking. Kits already written against `window` still load — the server render puts a shim carrying
+  `React` alone in front of them — but nothing else is on that shim, so `document` and the rest of
+  the browser stay absent by design.
 
 ## Why it works, when the old path did not
 
 The runtime loads React from a plain `<script>` tag **before** any module script runs, and publishes
-it as `window.React`. Your file reads that global. There is exactly one React on the page because
-there is exactly one script tag that installs one.
+it as a global. Your file reads that global by name, which works in a browser and on a server
+render alike. There is exactly one React on the page because there is exactly one script tag that
+installs one.
 
 The part that makes this robust is on our side of the line. React 18 shipped ready-made UMD builds
 for exactly this pattern; React 19 removed them. So NodeGX builds its own global React bundles from
@@ -116,7 +124,7 @@ only thing that changes is which directory is copied
 (`packages/noodl-editor/src/editor/src/utils/compilation/build/deploy-index.ts`).
 
 Because the filenames are identical, **your kit runs on both with nothing to recompile.** You are
-writing against `window.React`, not against a version.
+writing against the global React, not against a version.
 
 :::info Which one am I on?
 Projects **created** in current NodeGX are set to `runtimeVersion: 'react19'`. Projects that predate
@@ -426,7 +434,6 @@ of this page again, with the two lines that turn autocomplete on — `// @ts-che
 ```js title="noodl_modules/my-kit/index.js — the same node, typed"
 // @ts-check
 (function () {
-  var React = window.React;
   var h = React.createElement;
 
   /** @type {import('./types/node-kit').ReactNodeDefinition} */
@@ -499,6 +506,16 @@ clean.
   node with three status bands has to reach into the palette scale (`--green-600`, `--amber-600`) for
   two of them. That is what the cashflow kit does, and it is a gap in the token set rather than a
   mistake in the kit.
+- **A broken kit costs its own nodes, and nothing else.** Whether it fails to parse or throws while
+  registering a node, the whole kit is skipped — none of its nodes appear — and the rest of the app
+  runs normally. The failure is named on the console (kit and file) and in **Settings → Kits**, and
+  the kit recovers on one preview reload once you fix it. ⚠️ It is *all* of the kit, deliberately: a
+  half-registered kit that looks present while missing whatever came after the bad definition is
+  harder to diagnose than one that is plainly absent.
+- **Under SSR/SSG your kit runs in Node before it runs in a browser.** There is no `document` and no
+  DOM there. Touching either at import time throws, and the console names your kit and says what the
+  consequence is — its nodes are missing from the server-rendered HTML and appear only after
+  hydration. Guard browser work behind `React.useEffect`, which does not run on the server.
 - **An open property panel does not refresh itself** when you edit a kit. The node library does — the
   picker and the ports update on one preview reload — but a panel that was already open keeps showing
   the previous version until you click another node and back.

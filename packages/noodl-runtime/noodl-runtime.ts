@@ -532,12 +532,39 @@ NoodlRuntime.prototype.registerModule = function (module: NoodlModule) {
   if (module.nodes) {
     const moduleName = module.name || 'Unknown Module';
 
+    /**
+     * ✅ **D20** — every register this module has performed, newest last, with what it displaced.
+     *
+     * ⚠️ **Reverse order on the way out matters.** A kit may register the same name twice; undoing
+     * newest-first walks back through its own overwrites to whatever was there before the kit ran.
+     *
+     * ⚠️ **What this does NOT undo, stated rather than implied:** `setup` and
+     * `setupNumberedInputDynamicPorts` run under the same loop and may have attached graph-model
+     * listeners or dynamic-port rules. Those are left behind, inert — they key off node types that
+     * are no longer registered, so nothing can instantiate one. The nodes are the thing a kit is
+     * judged by and the nodes all go.
+     */
+    const displaced: { name: string; previous: ReturnType<typeof this.context.nodeRegister.peek> }[] = [];
+    const rollBack = () => {
+      for (let j = displaced.length - 1; j >= 0; j--) {
+        this.context.nodeRegister.restore(displaced[j].name, displaced[j].previous);
+      }
+    };
+
     for (let i = 0; i < module.nodes.length; i++) {
       const entry = module.nodes[i];
       // A module may list bare definitions or `{ node }` wrappers; both are accepted.
       const wrapped: NodeRegistration =
         'node' in entry && entry.node ? (entry as { node: NodeDefinitionOptions }) : { node: entry as NodeDefinitionOptions };
       wrapped.node.module = moduleName;
+
+      // ✅ D20 — what this node is about to displace, so a kit that throws later
+      // can put every one of them back. Recorded BEFORE the register, and only
+      // for a definition that has a name to register under.
+      const typeName = wrapped.node && typeof wrapped.node.name === 'string' ? wrapped.node.name : undefined;
+      if (typeName !== undefined) {
+        displaced.push({ name: typeName, previous: this.context.nodeRegister.peek(typeName) });
+      }
 
       /*
        * 🔴 CN-015 — the kit's name, on the way out of *any* registration throw.
@@ -547,11 +574,19 @@ NoodlRuntime.prototype.registerModule = function (module: NoodlModule) {
        * `setupNumberedInputDynamicPorts` all run under this loop, and a throw
        * from any of them is unattributed the way the `category` throw was.
        *
-       * ⚠️ **Rethrown, not swallowed — the blast radius is deliberately
-       * unchanged.** Today one bad definition aborts the loop, so the nodes
-       * after it never register and the viewer never mounts. Catching here would
-       * turn a loud dead app into a quietly missing node, which is a trade with
-       * an owner: it is queued as a ruling, not decided in a naming fix.
+       * ✅ **D20 — still thrown, but the module is atomic now.** The nodes this
+       * kit had already registered are rolled back first, so a caller sees
+       * either the whole kit or none of it. Half a kit was the state CN-015
+       * named as the alarming one: the nodes before the bad definition live, the
+       * ones after are gone, and the kit looks partly fine.
+       *
+       * 🔴 **The throw stays because two callers depend on it to report at all**
+       * — `noodl-viewer-cloud/src/kitModules.ts` and `noodl-mcp`'s kit
+       * extractor both wrap this in a `try` and push a failure from the `catch`.
+       * Swallowing here would leave those two `catch` blocks dead and both
+       * surfaces would call a broken kit healthy. The blast radius moves at the
+       * *call sites* — `viewer.jsx` catches per module and records the failure
+       * on the CN-015 channel — not by making this function silent.
        *
        * ⚠️ The index is the module's own `nodes` array position, which is what
        * an author scrolls to in their `index.js`. `nodeAt` degrades to the index
@@ -561,6 +596,7 @@ NoodlRuntime.prototype.registerModule = function (module: NoodlModule) {
       try {
         this.registerNode(wrapped);
       } catch (e) {
+        rollBack();
         const message = e && (e as Error).message ? (e as Error).message : String(e);
         const nodeAt = wrapped.node && wrapped.node.name ? `"${wrapped.node.name}"` : `at index ${i}`;
 

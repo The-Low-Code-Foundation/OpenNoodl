@@ -165,7 +165,31 @@ Kit "Rename Kit" failed to load: Unexpected identifier 'Noodl'
   — its nodes will be missing from the app until this is fixed.
 ```
 
-🔴 **AC3 is NOT being claimed as met, and the reason is mechanical.** The editor runs a **built**
+## ✅ s29 — AC3 MET, re-driven on a rebuilt bundle. **CN-014 CLOSES.**
+
+Full readings: [notes/s29-drive-observations.md](notes/s29-drive-observations.md) Part A. Fixture
+`cn029-drive` (a copy; the launcher listed **two cards with the same display name and card 0 was the
+original**, so which project opened was verified from `ProjectModel.instance` rather than assumed).
+
+| # | Result |
+|---|---|
+| Console names the **kit and the file** | ✅ `Kit "Broken Kit" failed to load: Uncaught SyntaxError: Unexpected identifier 'oops3' (in http://localhost:8574/noodl_modules/broken-kit/index.js) — its nodes will be missing from the app until this is fixed.` |
+| Settings → Kits still names it (s23 must not regress) | ✅ named, with the message |
+| The other three kits load, viewer mounted | ✅ 185 types, `reactMounted: true` |
+| Recovers when fixed | ✅ 186 types on one viewer reload |
+
+✅ **s28's diagnosis was right and its refusal to claim the criterion was right.** The built viewer at
+13:36 still carried the old anonymous text; rebuilt at 18:00:17 (`e56e8d382e8cc17d890faf3c8c3eb5ad`)
+it carries the repaired messages, and the drive read them.
+
+🔴 **`packages/noodl-editor/src/external` is gitignored** — `git ls-files` → 0 tracked. So the rebuild
+leaves **no diff**, nothing in the tree records which bundle a reading came from, and **no gate
+reproduces the artefact a deploy copies**. Hashes are stamped in the drive notes for that reason.
+
+⚠️ **The residual from s20 is still open and still small:** an open property panel does not re-render
+on `libraryUpdated`; re-selecting any node fixes it. Not part of any criterion here.
+
+🔴 **AC3 was NOT claimed as met by s28, and the reason was mechanical.** The editor runs a **built**
 viewer (`src/external/viewer/noodl.viewer.js`); the repaired messages are in source. Until that
 artifact is rebuilt and a stack is driven, the criterion is unmeasured — and a drive against a stale
 bundle will read the **old** anonymous text and look like the change never landed. ⚠️ Re-drive with

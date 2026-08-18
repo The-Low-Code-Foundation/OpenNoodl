@@ -20,11 +20,26 @@
  * `node.module` **before** calling `registerNode`, and in the `category` case
  * `opts.name` is the very next check in `defineNode`.
  *
- * ⚠️ **Blast radius is deliberately unchanged and is asserted as such below.**
- * One bad definition still aborts the module and still takes the viewer down.
- * Whether it should instead cost only its own node is a trade with an owner —
- * a quietly missing node against a loud dead app — and it is queued as a
- * ruling, not decided inside a naming fix.
+ * ## ✅ s29 — the blast radius DID move, and this file moved with it (D20)
+ *
+ * s28 left a row here asserting the radius on purpose — *"if a later session
+ * decides a bad node should cost only itself, this is the test that must be
+ * changed on purpose rather than the behaviour drifting under a naming commit."*
+ * D20 is that decision, so the row is **rewritten to the new contract rather
+ * than deleted**, and the guard it provides is inverted with it: what must not
+ * drift now is that a kit is **atomic**.
+ *
+ * 🔴 **Atomic, not silent.** `registerModule` still throws. Two callers depend
+ * on that throw to report a broken kit at all — `noodl-viewer-cloud`'s kit
+ * loader and `noodl-mcp`'s kit extractor each wrap it in a `try` and push a
+ * failure from the `catch` — and a swallowed throw would leave both of those
+ * `catch` blocks dead while both surfaces called the kit healthy. What changed
+ * is that the kit's already-registered nodes are **rolled back** first, so a
+ * caller sees the whole kit or none of it, and `viewer.jsx` catches per module
+ * so one bad kit no longer costs the app.
+ *
+ * ⚠️ Half a kit was the alarming state CN-015 named: the nodes before the bad
+ * definition live, the ones after are gone, and the kit looks partly fine.
  */
 import NodeDefinition = require('../src/nodedefinition');
 import NoodlRuntime = require('../noodl-runtime');
@@ -69,12 +84,26 @@ describe('CN-015 — a rejected definition names the node and the kit', () => {
       );
     });
 
-    it('states the consequence for a kit, so the blank preview is explained', () => {
-      // 🔴 The whole reason this cost an afternoon: nothing connected "one
-      // missing field" to "the entire app renders nothing".
-      expect(() =>
-        NodeDefinition.defineNode({ name: 'B', module: 'Rename Kit' } as NodeDefinitionOptions)
-      ).toThrow(/preview renders nothing/);
+    it('states the consequence for a kit — which is now the KIT, not the app', () => {
+      /*
+       * 🔴 The whole reason this cost an afternoon: nothing connected "one missing field" to what
+       * the author would actually see.
+       *
+       * ⚠️ **The sentence had to change with D20 and this row is why it is checked.** It used to
+       * end *"the preview renders nothing at all"*, which was true while the throw took the viewer
+       * down. Shipping D20 made that clause a confident wrong answer — the exact shape of a
+       * capability turning its own diagnostic into a lie — so the message now names the kit's own
+       * nodes as the loss and says the rest of the app survives.
+       */
+      let message = '';
+      try {
+        NodeDefinition.defineNode({ name: 'B', module: 'Rename Kit' } as NodeDefinitionOptions);
+      } catch (e) {
+        message = (e as Error).message;
+      }
+      expect(message).toContain("NONE of this kit's nodes register");
+      expect(message).toContain('The rest of the app still runs');
+      expect(message).not.toContain('preview renders nothing');
     });
 
     it('gives a built-in no kit and no kit-only advice', () => {
@@ -89,7 +118,7 @@ describe('CN-015 — a rejected definition names the node and the kit', () => {
       }
       expect(message).toContain('node "Group"');
       expect(message).not.toContain('in kit');
-      expect(message).not.toContain('preview renders nothing');
+      expect(message).not.toContain("NONE of this kit's nodes register");
     });
 
     it('names the kit for a definition with no name at all', () => {
@@ -165,10 +194,17 @@ describe('CN-015 — a rejected definition names the node and the kit', () => {
       expect(message).toContain('Rename Kit');
     });
 
-    it('still aborts the module — the blast radius did not move', () => {
-      // ⚠️ A control on the change itself. If a later session decides a bad node
-      // should cost only itself, this is the test that must be changed on
-      // purpose rather than the behaviour drifting under a "naming" commit.
+    it('✅ D20 — the kit is ATOMIC: the nodes BEFORE the bad one go too', () => {
+      /*
+       * 🔴 **This row asserted the opposite until s29, on purpose, and its replacement is the new
+       * guard.** `nodegx.rename.Good` used to survive: the loop aborted where it broke, so the
+       * nodes before the bad definition stayed registered and the ones after never did. That
+       * half-registered kit is the state CN-015 named as the alarming one — the kit looks partly
+       * fine — and D20 rejected fixing it by skipping just the bad node for exactly that reason.
+       *
+       * ⚠️ If a later session wants a bad node to cost only itself, this is again the test that
+       * has to be changed deliberately rather than the behaviour drifting under a refactor.
+       */
       const rt = runtime();
       expect(() =>
         rt.registerModule(
@@ -180,8 +216,108 @@ describe('CN-015 — a rejected definition names the node and the kit', () => {
         )
       ).toThrow();
 
-      expect(rt.context.nodeRegister.hasNode('nodegx.rename.Good')).toBe(true);
+      expect(rt.context.nodeRegister.hasNode('nodegx.rename.Good')).toBe(false);
       expect(rt.context.nodeRegister.hasNode('nodegx.rename.Later')).toBe(false);
+    });
+
+    it('🔴 rolls back to the SHADOWED built-in, not to nothing', () => {
+      /*
+       * 🔴 **The hazard a delete-based rollback would have shipped.** Registration is
+       * last-writer-wins and the viewer registers built-ins before kit nodes, so a kit is allowed
+       * to shadow a built-in — `nodegx-kit-catalog`'s health check states that to authors as a
+       * fact (D9). Undoing a failed kit by *deleting* its names would take the shadowed built-in
+       * with it, and one bad node in one kit would silently cost the project its `Group`.
+       *
+       * ⚠️ The control is the identity of the definition, not `hasNode`: a delete-based rollback
+       * that happened to leave *something* there would pass a presence check.
+       */
+      const rt = runtime();
+      rt.registerNode({ node: { name: 'Group', category: 'Visual', getReactComponent: () => null } } as never);
+      const builtIn = rt.context.nodeRegister.peek('Group');
+      expect(builtIn).toBeDefined();
+
+      expect(() =>
+        rt.registerModule(
+          kit([
+            { name: 'Group', category: 'Visual', getReactComponent: () => null },
+            { name: 'nodegx.rename.Bad', getReactComponent: () => null }
+          ])
+        )
+      ).toThrow();
+
+      expect(rt.context.nodeRegister.peek('Group')).toBe(builtIn);
+    });
+
+    it('unwinds its OWN overwrites in reverse, back to what preceded the kit', () => {
+      /*
+       * ⚠️ A kit may register the same type name twice — a copy-pasted definition, or a generated
+       * one. Undoing forwards would restore the built-in and then immediately put the kit's first
+       * version back on top of it, leaving a failed kit's node registered under a built-in's name.
+       * Only the last write survives a forward unwind; only the first survives a reverse one, and
+       * the first is what preceded the kit.
+       */
+      const rt = runtime();
+      rt.registerNode({ node: { name: 'Group', category: 'Visual', getReactComponent: () => null } } as never);
+      const builtIn = rt.context.nodeRegister.peek('Group');
+
+      expect(() =>
+        rt.registerModule(
+          kit([
+            { name: 'Group', category: 'Visual', getReactComponent: () => null },
+            { name: 'Group', category: 'Visual', getReactComponent: () => null },
+            { name: 'nodegx.rename.Bad', getReactComponent: () => null }
+          ])
+        )
+      ).toThrow();
+
+      expect(rt.context.nodeRegister.peek('Group')).toBe(builtIn);
+    });
+
+    it('rolls back a throw that comes from `setup`, not just from defineNode', () => {
+      // The rollback must hang off the loop, not off `defineNode` — `setup` and
+      // `setupNumberedInputDynamicPorts` run under the same loop and throw just as well.
+      const rt = runtime();
+      expect(() =>
+        rt.registerModule({
+          name: 'Rename Kit',
+          nodes: [
+            { name: 'nodegx.rename.First', category: 'Visual', getReactComponent: () => null },
+            {
+              node: { name: 'nodegx.rename.Second', category: 'Visual', getReactComponent: () => null },
+              setup() {
+                throw new Error('setup blew up');
+              }
+            }
+          ]
+        } as never)
+      ).toThrow();
+
+      expect(rt.context.nodeRegister.hasNode('nodegx.rename.First')).toBe(false);
+      expect(rt.context.nodeRegister.hasNode('nodegx.rename.Second')).toBe(false);
+    });
+
+    it('keeps a failed kit out of `noodlModules`, so nothing downstream counts it as loaded', () => {
+      // `noodlModules` is what `generateProjectSettings` and the kit-grouping export read. A kit
+      // that registered nothing must not be in it, or it reports as installed-and-empty.
+      const rt = runtime();
+      const before = rt.noodlModules.length;
+      expect(() => rt.registerModule(kit([{ name: 'B', getReactComponent: () => null }]))).toThrow();
+      expect(rt.noodlModules.length).toBe(before);
+    });
+
+    it('CONTROL — a healthy kit is left registered, and the rollback never fires', () => {
+      // 🔴 A rollback that ran on the good path would delete a working kit and every row above
+      // would still be green: they all assert on the failing path.
+      const rt = runtime();
+      rt.registerModule(
+        kit([
+          { name: 'nodegx.rename.A', category: 'Visual', getReactComponent: () => null },
+          { name: 'nodegx.rename.B', category: 'Visual', getReactComponent: () => null }
+        ])
+      );
+      expect(rt.context.nodeRegister.hasNode('nodegx.rename.A')).toBe(true);
+      expect(rt.context.nodeRegister.hasNode('nodegx.rename.B')).toBe(true);
+      expect(rt.noodlModules).toHaveLength(1);
     });
 
     it('registers a healthy kit in silence', () => {

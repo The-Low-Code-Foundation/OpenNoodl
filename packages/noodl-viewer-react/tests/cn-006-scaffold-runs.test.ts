@@ -38,15 +38,42 @@ import { createNodeFromReactComponent, type ReactNodeDefinition } from '../src/r
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { scaffoldKitFiles, EXAMPLE_PORTS } = require('@nodegx/kit-scaffold');
 
-/** Run the generated `index.js` the way the runtime does: globals, no module system. */
+/**
+ * Run the generated `index.js` the way the runtime does: **globals**, no module system.
+ *
+ * 🔴 **This used to hand `window` and `Noodl` in as function PARAMETERS, and that was a hole.** A
+ * kit is a `<script>` tag: it runs in global scope and reaches `Noodl` and `React` as globals. A
+ * parameter-passing wrapper makes the file's opening line work no matter what the surrounding
+ * runtime actually provides — which is the same divergence `static/ssr/kit-modules.js` documents
+ * about itself and deliberately avoids (`new Function(source)()`, never a wrapper).
+ *
+ * It was invisible until ✅ D19 changed the scaffold from `var React = window.React;` to the bare
+ * `React` global that the shipped kit types recommend and that works on a server render too. The
+ * emitted file was correct for every real host and this harness was the only thing that rejected
+ * it. Fixed here rather than reverted there, because the harness was the wrong one.
+ */
 function loadGeneratedKit(source: string) {
   const defined: any[] = [];
-  const fakeWindow = { React };
-  const fakeNoodl = { defineModule: (m: unknown) => defined.push(m), deployed: false };
+  const g = globalThis as Record<string, any>;
+  const previousNoodl = g.Noodl;
 
-  // eslint-disable-next-line no-new-func
-  const run = new Function('window', 'Noodl', source);
-  run(fakeWindow, fakeNoodl);
+  /*
+   * ⚠️ **`React` is installed once and LEFT there; only `Noodl` is swapped per load.** That is what
+   * the real bootstrap does — a `<script>` tag installs React before any module script and it stays
+   * for the life of the page — and the difference is observable: the scaffolded component reads
+   * `React.useRef` at RENDER time, not at import time, so a harness that tore the global down after
+   * loading rendered `undefined.useRef`. Two rows below failed on exactly that and they were right
+   * to: a runtime that removed React between load and render would break this kit for real.
+   */
+  g.React = React;
+  g.Noodl = { defineModule: (m: unknown) => defined.push(m), deployed: false };
+
+  try {
+    // eslint-disable-next-line no-new-func
+    new Function(source)();
+  } finally {
+    g.Noodl = previousNoodl;
+  }
 
   return { defined, modules: defined };
 }

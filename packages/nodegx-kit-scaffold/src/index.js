@@ -398,7 +398,7 @@ function indexJs(kit) {
  * ${kit.displayName} — a NodeGX node kit.
  *
  * Hand-written. No SDK, no bundler, no npm install, no build step. The runtime
- * loads React as \`window.React\` before this file runs, so there is exactly one
+ * installs React as a global before this file runs, so there is exactly one
  * React on the page and hooks are safe to use.
  *
  * ── The rule this file is written to follow ─────────────────────────────────
@@ -424,7 +424,11 @@ function indexJs(kit) {
  * TypeScript and the fields, port types and callback signatures are all there.
  */
 (function () {
-  var React = window.React;
+  // ✅ D19 — React is a global the runtime installs before this file runs. Read
+  // it bare; never \`window.React\`. A server render (SSR/SSG) and a cloud
+  // function have no \`window\`, so a kit that reaches for one throws at import,
+  // is missing from the server-rendered HTML, and shows up only after the
+  // browser hydrates — a mismatch that is silent unless you look for it.
   var h = React.createElement;
 
   /** @type {import('${TYPES_SPECIFIER}').ReactNodeDefinition} */
@@ -597,7 +601,8 @@ A NodeGX node kit: custom nodes written in plain JavaScript, living in this
 project, usable exactly like built-in nodes.
 
 There is no build step. No npm install, no bundler, no SDK. \`index.js\` is
-loaded by the runtime as-is, and React arrives as \`window.React\` before it runs.
+loaded by the runtime as-is, and React arrives as a global before it runs — on a
+server render as well as in a browser.
 
 ## Try it
 

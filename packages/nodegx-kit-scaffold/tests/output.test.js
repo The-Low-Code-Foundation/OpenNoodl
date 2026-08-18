@@ -200,9 +200,21 @@ describe('✅ D2 — autocomplete with no build step', () => {
     expect(file('index.js').startsWith('// @ts-check\n')).toBe(true);
   });
 
-  test('the kit uses window.React and a hook', () => {
+  test('the kit reads the bare React global and uses a hook', () => {
     const src = file('index.js');
-    expect(src).toContain('window.React');
+    expect(src).toContain('React.createElement');
     expect(src).toMatch(/React\.use[A-Z]/);
+  });
+
+  test('✅ D19(b) — the scaffold never teaches `var React = window.React`', () => {
+    // 🔴 The pattern this replaced. A kit opening with `window.React` throws at
+    // import under SSR/SSG, so its nodes are missing from the server render and
+    // appear only after hydration. The SSR loader shims `window` for kits that
+    // already ship that line; what the scaffold *writes* must not need the shim.
+    //
+    // ⚠️ Asserted on the emitted file, not on the template source — the template
+    // is allowed to mention `window.React` in the comment that explains why not.
+    const code = file('index.js').replace(/^\s*(\/\/.*|\*.*|\/\*.*)$/gm, '');
+    expect(code).not.toContain('window.React');
   });
 });

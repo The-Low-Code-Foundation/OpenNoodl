@@ -279,16 +279,21 @@ function describeDefinition(opts: NodeDefinitionOptions): string {
 }
 
 /**
- * The consequence, stated only where it is true. A kit definition that throws
- * here aborts `registerModule` mid-loop, so the module's remaining nodes never
- * register and the viewer never mounts. A built-in throwing is a bug in this
- * repository, not something an author can act on, so it gets no advice.
+ * The consequence, stated only where it is true. A built-in throwing is a bug in
+ * this repository, not something an author can act on, so it gets no advice.
+ *
+ * 🔴 **This sentence changed with ✅ D20 and had to.** It used to end *"and the
+ * preview renders nothing at all"*, which was accurate: the throw aborted
+ * `registerModule` mid-loop and the viewer never mounted. D20 made a kit's
+ * failure cost the kit, so that clause became a confident wrong answer — the
+ * exact shape of "shipping a capability turns a diagnostic into a lie". The
+ * blast radius is now the kit, and the message says the kit.
  */
 function definitionFixHint(opts: NodeDefinitionOptions, field: string): string {
   if (!opts.module) return '';
   return (
-    ` Add a \`${field}\` to its definition: without one the kit stops registering at this node` +
-    ' and the preview renders nothing at all.'
+    ` Add a \`${field}\` to its definition: without one NONE of this kit's nodes register,` +
+    ' so every node from it is missing from the app. The rest of the app still runs.'
   );
 }
 

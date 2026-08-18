@@ -22,6 +22,8 @@ interface NodeRegister {
   context: NodeContextLike;
 
   register(nodeDefinition: NodeDefinition): void;
+  peek(name: string): NodeDefinition | undefined;
+  restore(name: string, previous: NodeDefinition | undefined): void;
   createNode(name: string, id: string, nodeScope?: NodeScopeLike): NodeInstance;
   getNodeMetadata(type: string): NodeMetadata;
   hasNode(type: string): boolean;
@@ -42,6 +44,30 @@ NodeRegister.prototype.register = function (nodeDefinition) {
   var name = nodeDefinition.metadata.name;
 
   this._constructors[name] = nodeDefinition;
+};
+
+/**
+ * ✅ **D20** — what a `register` under this name is about to displace.
+ *
+ * Paired with {@link restore} so `registerModule` can register a kit's nodes one at a time and
+ * still undo all of them if the kit throws part-way. `undefined` means the name is free.
+ */
+NodeRegister.prototype.peek = function (name) {
+  return this._constructors[name];
+};
+
+/**
+ * ✅ **D20** — put back exactly what {@link peek} saw, including nothing.
+ *
+ * 🔴 **Restores rather than deletes, and that is the whole point.** Registration is
+ * last-writer-wins and the viewer registers built-ins before kit nodes, so a kit is *allowed* to
+ * shadow a built-in — `nodegx-kit-catalog`'s health check states that to authors as fact (D9).
+ * A rollback that deleted the kit's names would take the shadowed built-in with them, and a
+ * broken kit would silently cost the project a `Group`.
+ */
+NodeRegister.prototype.restore = function (name, previous) {
+  if (previous === undefined) delete this._constructors[name];
+  else this._constructors[name] = previous;
 };
 
 NodeRegister.prototype.createNode = function (name, id, nodeScope) {
