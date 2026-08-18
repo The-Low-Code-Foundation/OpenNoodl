@@ -54,6 +54,48 @@ and is **amended 2026-08-15** by D14 (an editor *client*; the build does not mov
 | **D17** | Curriculum hosting — where lessons are served from | **Part of the platform API under D14; GitHub Pages as v0.** 🔴 A lesson must stay installable from a **local directory with no origin**, whatever else changes | **08-16** |
 | **D18** | One accent hue across the products | 🔵 **AZURE** (`#4da3ff`) — the community site adopts the editor's, against the recommendation. ⚠️ The **landing page keeps teal** and becomes the odd one out; that is chosen, not inherited | **08-17** |
 | **D19** | Forum: bought or built | 🔴 **BUILT — reverses UNI-009's "bought, not built".** Not *a forum*: the **Q&A surface for NodeGX artifacts**, where a post is a graph with a question attached. Discourse's generic 80% is a **chosen absence**. ⚠️ **Conditional on email landing first** | **08-18** |
+| **D20** | The close's four open decisions — where it runs, what sends its mail, where artefacts live, where the remainder goes | **nexus-1** (beside the other three, additively) · **Brevo** · **Hetzner Object Storage** · **a phase 67b**. 🔴 **Amends D1's "Docker on Hetzner"** — see below | **08-18** |
+
+---
+
+## D20 — the close's four decisions · ✅ RULED 2026-08-18
+
+Asked at the close of phase 67, when E5, E6, E7 and the fate of the eight held-out tasks were the
+only things standing between the phase and a deployment. All four answered in one pass.
+
+| | Ruling | What it changed |
+|---|---|---|
+| **E5 — where the platform runs** | **nexus-1**, additively, beside `nodegx.io`, `nexus.digitalbricks.io` and `digitalbricks.io` | 🔴 **Against the recommendation**, which was a separate box. Recorded because D9 and D18 were also ruled against a recommendation and the register is worth more when it shows that |
+| **E6 — the sending account** | **Brevo** | Not a fresh choice: `nodegx.io`'s waitlist has run on that account for months, **from this same host** |
+| **E7 — where artefacts live** | **Hetzner Object Storage** | Unblocks UNI-020's download button by itself; the capture upload path is phase 67b's |
+| **the remainder** | **A phase 67b**, not a fold into phase 68 | Keeps the community work identifiable rather than diluted into a phase about learning |
+
+### 🔴 This amends D1, and the amendment is deliberate
+
+D1 (08-14) chose *"Next.js + Postgres + Drizzle, **Docker** on Hetzner"*. The deployment built on
+08-18 uses **systemd units and an apt Postgres, not Docker**, and that is a consequence of E5 rather
+than a change of mind about containers.
+
+**The argument:** nexus-1 is a shared host where **Caddy loads its whole config or none of it**, and
+it already keeps three live sites up. The proven-safe pattern on that box is the landing page's —
+strictly additive, one Caddy drop-in, a systemd unit, and a refusal to run unless the main Caddyfile
+already imports `conf.d`. Introducing a container runtime to a box in that state adds a second
+process supervisor, a second network path and a second failure mode **to three sites that are not
+ours to break**. Docker remains right on the day the platform gets its own box; on this one, matching
+the neighbour is the lower-risk answer.
+
+⚠️ **The cost of the choice, stated rather than discovered:** this is the **first stateful tenant**
+on nexus-1. `nodegx.io` and the two digitalbricks sites are static files and a small waitlist relay;
+this one owns a Postgres holding real accounts. Backups are therefore in the provisioner rather than
+deferred — and they are **on the same box**, which survives a dropped table and not a lost host.
+Moving them off-host is phase 67b's, and it is named there.
+
+### ⚠️ What E6 did NOT settle
+
+Brevo sends `notification_deliveries`. It does **not** send `outbound_emails` — UNI-004's relay
+queue, which has **no drainer at all**. A notification whose outcome is `'relayed'` therefore records
+that a person was emailed by a queue that never sends. That is phase 67b's first item, and it is the
+one place the database currently asserts something untrue.
 
 ---
 
