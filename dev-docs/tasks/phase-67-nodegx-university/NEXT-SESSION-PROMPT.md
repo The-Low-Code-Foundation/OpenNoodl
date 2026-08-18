@@ -72,7 +72,7 @@ somebody else's load; take the floor yourself, in the same session, before you c
 |---|---|---|
 | ✅ **E1** | **UNI-001's issuer** | ✅ **BUILT (s29).** Sessions minted, GitHub OAuth, device flow for the editor, sign-out revokes. ⚠️ **AC2's launcher affordance still owed; AC4's grep needs a verdict** — that is item 1 above |
 | ✅ **E3** | **UNI-009 AC1** — home shows real threads signed out | ✅ **MET (s31), `nodegx-community@636d488`** |
-| ✅ **E4** | **UNI-013 slice 5 — the pages** | ✅ **BUILT (s32), `nodegx-community@55da18b`.** Three archetypes; six list pages are three lines of glue each; three detail pages share one head; the facet bar is drawn with **real counts** |
+| ✅ **E4** | **UNI-013 slice 5 — the pages** | ✅ **BUILT (s32), `nodegx-community@9df0445`.** Three archetypes; six list pages are three lines of glue each; three detail pages share one head; the facet bar is drawn with **real counts** |
 | 🔴 **E10** | **A GitHub OAuth App** | 🔴 **Richard's, and the first domino.** Without it nobody can make an account, which is the criterion's first verb |
 | 🔴 **E2** | **deployment** | 🔴 **Owned by no task.** Blocked on Richard (E5) |
 | 🔴 **E8** | `NOTIFICATION_LINK_SECRET` | 🔴 **Unclaimed and cheap.** Forgeable unsubscribe links without it |
@@ -165,7 +165,7 @@ Re-measure before quoting one.
 
 | Port | What | Do what with it |
 |---|---|---|
-| 🔴 **3111** | The `next-server` **~18 hours old**, orphaned (**PPID 1**), from session 28 | 🔴 **STILL RUNNING, AND IT SERVES THE PRE-UNI-019 PAGE WITH A 400 STYLESHEET.** Anybody who reviews a look on this port will conclude the last two sessions did nothing. Kill it or ignore it; left because it is not known to be ours |
+| 🔴 **3111** | The `next-server` — **`etime` 17:55:05, i.e. ~18 hours**, pid 62819, measured not inherited (session 32) | 🔴 **STILL RUNNING, AND IT SERVES THE PRE-UNI-019 PAGE WITH A 400 STYLESHEET.** Anybody who reviews a look on this port will conclude the last two sessions did nothing. Kill it or ignore it; left because it is not known to be ours |
 | ✅ 3210 | session 32's own server | **Stopped** (`lsof -nP -iTCP:3210 -sTCP:LISTEN -t` → empty). Start your own |
 
 ✅ **Kill by port, never by name:** `lsof -nP -iTCP:<port> -sTCP:LISTEN -t`. 🔴 **`pkill -f "next
@@ -177,7 +177,7 @@ start"` matches NOTHING** — the process is `next-server`.
 usable as `Cookie: nodegx_session=dev-session-nia`.
 
 ⚠️ **`nodegx-community` `main` is now AHEAD 3 AND UNPUSHED** — `df61abc` (s30), `636d488` (s31),
-`55da18b` (s32). **Three consecutive sessions have not pushed. It is a call, not an oversight.**
+`9df0445` (s32). **Three consecutive sessions have not pushed. It is a call, not an oversight.**
 
 ---
 
