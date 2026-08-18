@@ -121,12 +121,23 @@ produced a number bought by degrading four other sessions.
 floor** — so the exit code cannot tell them apart, and `test-results.json` is never written at all.
 Delete it first, then require the **summary line**, never `$?`.
 
-⚠️ **What this leaves genuinely unverified for s32's changes:** `test:ci` is the only gate that sees
-an untyped caller of a type-level change. This session made `module` **required** on
-`installModule`/`installPrefab`. That was mitigated by grepping `.js`/`.jsx` callers — there are
-**none**, `ModuleCard.tsx` is the only caller — but **a grep is not a gate.** Re-run `test:ci` alone
-on an idle machine before treating the phase's gate row as complete, and compare failures **BY
-NAME**, not by count.
+⚠️ **What this leaves unverified for s32's changes, and how far it was bounded without the gate.**
+`test:ci` is the only gate that sees an **untyped** caller of a type-level change, and this session
+made `module` **required** on `installModule`/`installPrefab`. A peer traced the exposure rather than
+leaving it at "a grep is not a gate":
+
+- **8 references in total, all `.ts`/`.tsx`** — two declarations, four prose comments, two the real
+  call site, which passes `module` as the 4th argument and matches the new signature.
+- **Zero `.js`/`.jsx`/`.mjs`/`.cjs` references** — and that absence is not vacuous, because there are
+  **99 untyped `.js`/`.jsx` files** under `packages/noodl-editor/src` for it to have hit.
+- 🔴 **The alias path a name-grep cannot see was traced and is contained.** `ModuleCard.tsx:64-65`
+  does `.bind(instance)` into `const installFunc`, so a downstream caller would never mention the
+  method name. `installFunc` is a **local const invoked in the same function body** — never returned,
+  never passed as a prop, never stored. The indirection does not escape the `.tsx`.
+
+That is a bounded argument, not a bare grep. ⚠️ **It is still not `test:ci` passing** — it cannot see
+a `.js` file constructing the call in a way nobody imagined. Re-run `test:ci` alone on an idle
+machine before treating this row as complete, and compare failures **BY NAME**, not by count.
 
 ## 6. The map
 
