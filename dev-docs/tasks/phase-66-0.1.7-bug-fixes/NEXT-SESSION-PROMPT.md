@@ -41,10 +41,12 @@ need an owner, not a re-investigation.
   `noodl-mcp`'s `create_project` (inherits the variable from its environment — **this one is
   driven**), and the **editor's** backfill on project open (`utils/LocalProjectsModel.ts:142` →
   `models/template/agentConfig.ts`), which reaches the path via the **front door** instead
-  (`withUserProfile`, `mcpCommands.ts:287,468`). Spec cover exists at
-  `tests-unit/mcp-001/mcpCommands.test.ts:362`. 🔴 **`withUserProfile` returns the runtime unchanged
-  when the front door has no path — the key is dropped silently and nothing grades that branch
-  end-to-end.** One drive for whoever next has an editor open.
+  (`withUserProfile`, `mcpCommands.ts:287,468`). **Both branches are spec-covered** —
+  `tests-unit/mcp-001/mcpCommands.test.ts:362` (key present) and `:376-388` (key correctly absent
+  when main resolved no path, on both builders, over `[undefined, null]`). ⚠️ **What is missing is
+  ONLY the end-to-end drive** of that writer putting a real file on disk. One drive for whoever next
+  has an editor open. 🔴 **An earlier draft of this close-out called it an ungraded branch. That was
+  wrong and is retracted** — a phantom debt in a closed phase is worse than no note at all.
 - ⚠️ **`claudeMcpAdd` does not quote its `-e` pairs — DISPLAY ONLY.** `connectBootstrapServer` uses
   `spawnSync(exec, cliArgs(registration))`, an argv array with no shell
   (`connectBootstrapServer.js:193-196`), and Richard's own path contains a space, which is the worst

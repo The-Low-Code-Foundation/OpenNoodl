@@ -739,7 +739,16 @@ mcpCommands.test.ts:362` asserts `buildProjectRegistration(...).registration.env
 than replacing it."* ⚠️ **So one writer is driven and the other is specced but never driven** — that
 is the honest state, not "both driven".
 ⚠️ **`withUserProfile` returns the runtime UNCHANGED when `userProfilePath` is falsy**, so the editor
-path omits the key silently rather than failing. Nothing grades that branch end-to-end.
+path omits the key silently rather than failing. ✅ **RETRACTION, same session: I first wrote
+*"nothing grades that branch"* — FALSE. It is graded.**
+`tests-unit/mcp-001/mcpCommands.test.ts:376-388` (*"emits no variable at all when main did not
+resolve one"*) loops `[undefined, null]` and asserts the absence on **both** builders —
+`buildBootstrapCommand` **and** `buildProjectRegistration` — and carries its own note that the
+absence is meaningful only because the rows above show the same builders emitting the key when there
+IS a path. 🔴 **A THIRD absence claim published without searching for what would refute it**, in the
+same hour as the other two, this time about a *spec* rather than a caller. ⚠️ **The hedge
+*"end-to-end"* did not save it** — it read as "ungraded" to the peer who checked, which is how a
+phantom debt gets into a closed phase.
 
 ✅ **The MCP tool's silence is DELIBERATE, not a hole** (`openProject.ts:30-42`): *"Writing into a
 directory because a model passed its path to a tool is a different act with a different consent
@@ -798,6 +807,8 @@ end 4/4 (s62), the editor end 3/3 plus a negative control (s63).
 
 ⚠️ **One honest remainder, carried rather than owed:** the **editor's** `.mcp.json` backfill (writer 2
 in the table above) is **specced but never driven**. It reaches the profile path by a different
-mechanism than the one driven here — the front door rather than the environment — and
-`withUserProfile` drops the key silently when the front door has no path. No criterion asks for it;
-it is a one-drive item for whoever next has an editor open, not a reason to hold the phase.
+mechanism than the one driven here — the front door rather than the environment. **Both of its
+branches are spec-covered** (key present; key correctly absent when main resolved no path). What has
+never happened is an **end-to-end drive** of that writer putting a real file on disk. No criterion
+asks for it; it is a one-drive item for whoever next has an editor open, not a reason to hold the
+phase. 🔴 **Do not read this as an ungraded branch — an earlier draft said so and was wrong.**
