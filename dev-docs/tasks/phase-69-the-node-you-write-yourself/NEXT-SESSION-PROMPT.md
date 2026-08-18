@@ -3,9 +3,8 @@
 **Written 2026-08-18, end of s27.** 🔴 **This file is a REWRITE, not an amendment.** Overwrite it
 next session; anything that outlives the phase goes to memory, not here.
 
-> ## The phase can now be closed, but not by driving. s27 drove all six criteria. Three passed,
-> two failed with identifiable one-cause fixes, and one turned out to be unmeasurable because the
-> capability it names does not exist.
+> ## s27 drove all six criteria and then fixed one of the two failures. What is left is **one
+> ruling** (§2b), **one naming job** (§2c), and **one criterion to re-scope** (§2d).
 
 ---
 
@@ -37,20 +36,23 @@ instrument traps that nearly produced wrong readings. Read it before re-measurin
 
 ## 2. 🔴 The work, in the order it is worth doing
 
-### 2a. One line unblocks every SSR deploy
+### 2a. ✅ DONE s27 — the SSR deploy builds again
 
-`static/ssr/index.json` (and the built `packages/noodl-editor/src/external/ssr/index.json`) lists
-ten files. **`kit-modules.js` is not one of them**, so `deployToFolder` never copies it, and
-`index.js` requires it at top level — **every** SSR deploy fails `npm run build` with
-`Could not resolve "./kit-modules"`. Kit or no kit.
+`kit-modules.js` is in `static/ssr/index.json` (`8ea0f6c1`), and
+**`tests/ssr-deploy-manifest.test.js`** now walks the require graph **transitively** from `index.js`
+and `ssg.js`, so a require added inside `server-core.js` is caught the same way. **3/3 mutants
+killed**, each naming the file — including `render-gate.js`, which is reachable only transitively.
+925/925 `noodl-viewer-react` (73 suites).
 
-```json
-{"url":"kit-modules.js"},
-```
+✅ **Verified end to end, not just by the gate:** a fresh unpatched deploy from a live editor now
+ships `kit-modules.js`, `npm install && npm run build` produces `server.js`, and the server answers
+`200` with the built-in control present in the HTML. ⚠️ The misleading comment in `index.js` — *"all
+of static/ssr is copied … so these travel together"* — is rewritten to name the step that actually
+copies.
 
-⚠️ **Add a gate with it, or it comes back.** Nothing builds a deploy in CI; that is exactly why a
-file added in `5d956ae2` sat unshipped. The cheap honest gate: assert every top-level `require('./…')`
-in `static/ssr/index.js` and `ssg.js` has a matching entry in `index.json`.
+🔴 **This did NOT make kits render server-side.** All four kits still throw `window is not defined`;
+the loader runs and names each one. That is §2b, and it is the whole of what is left on CN-013 AC1.
+
 
 ### 2b. 🔴 The documented kit pattern is incompatible with SSR — this is a RULING, not a fix
 
