@@ -270,6 +270,77 @@ function jsString(value) {
     .replace(/\u2029/g, '\\u2029');
 }
 
+/**
+ * 🔴 CN-015 — the capture preamble, and why a kit failure needs one at all.
+ *
+ * A kit's `index.js` is a plain classic script. If it throws at import, or
+ * fails to parse, or 404s, the browser reports it to a console nobody is
+ * watching and the node simply never appears — which reads to the author as
+ * *"I typed the type wrong"*, so they debug the wrong thing. Nothing
+ * downstream can recover the fact afterwards either: a kit that threw is
+ * indistinguishable, in every payload the editor receives, from a kit that
+ * was never installed.
+ *
+ * So the fact has to be caught at the only moment it exists — while the page
+ * is loading the kit scripts — and the marker CN-003 already emits is what
+ * makes it attributable.
+ *
+ * **Measured in Chromium (Electron 24), not assumed** — all three failure
+ * modes fire here with `window.__noodl_module_name` still holding the right
+ * kit, because a classic script blocks the parser and the next marker has not
+ * run yet:
+ *
+ * | Failure | Event | Attributed |
+ * |---|---|---|
+ * | `throw` at import | `error` on window, `ev.error` set | ✅ |
+ * | syntax error | `error` on window, `SyntaxError` | ✅ |
+ * | `index.js` 404s | `error` on the SCRIPT element | ✅ — **capture phase only** |
+ *
+ * 🔴 **The listener is registered with `capture: true` and that is
+ * load-bearing.** A resource error does not bubble, so a bubble-phase listener
+ * sees the first two and silently misses the third — a missing `main` would go
+ * on being the silent failure this task exists to end. The two kinds are told
+ * apart by `ev.target`, which is the element for a resource error and the
+ * window for an exception.
+ *
+ * ⚠️ **`__noodl_module_loading` is a separate flag rather than a clear of
+ * `__noodl_module_name`, deliberately.** Attribution has to stop when the kits
+ * have finished loading, or the *last* kit gets blamed for every runtime error
+ * the app throws afterwards. Clearing the name would have done that too — and
+ * would also have broken CN-003 for a kit that defers its `defineModule` into
+ * a callback, which is exactly the case that comment calls out. A second flag
+ * bounds the window and leaves the name's meaning untouched.
+ *
+ * ⚠️ **Scope: a kit's own `main`, not its dependencies.** Dependency tags are
+ * deduped across kits and carry no marker, so a failing dependency has no one
+ * kit to name. It stays uncaptured rather than being attributed to a guess.
+ */
+const CAPTURE_PREAMBLE =
+  '<script type="text/javascript">' +
+  '(function(){' +
+  'window.__noodl_module_failures = window.__noodl_module_failures || [];' +
+  'window.__noodl_module_loading = true;' +
+  'window.addEventListener("error", function(e){' +
+  'if (!window.__noodl_module_loading) return;' +
+  'var name = window.__noodl_module_name;' +
+  'if (!name) return;' +
+  'var t = e && e.target;' +
+  'var isResource = !!(t && t !== window && t.tagName === "SCRIPT");' +
+  'window.__noodl_module_failures.push({' +
+  'module: name,' +
+  'reason: isResource ? "script-not-loaded" : "threw",' +
+  'message: isResource' +
+  ' ? ("its script could not be loaded (" + ((t && t.src) || "") + ")")' +
+  ' : ((e && e.message) || "it threw while loading")' +
+  '});' +
+  '}, true);' +
+  '})();' +
+  '</script>\n';
+
+/** Closes the window the preamble opened. See {@link CAPTURE_PREAMBLE}. */
+const CAPTURE_EPILOGUE =
+  '<script type="text/javascript">window.__noodl_module_loading = false;</script>\n';
+
 function buildInjectionTags(modules, pathPrefix) {
   let dependencies = '';
   let modulesMain = '';
@@ -279,6 +350,12 @@ function buildInjectionTags(modules, pathPrefix) {
     for (let i = 0; i < browserModules.length; i++) {
       const m = browserModules[i];
       if (m.index) {
+        // CN-015: opened before the first kit script and closed after the last,
+        // so exactly the kit-loading window is attributable. Emitted lazily —
+        // a project whose modules are all stylesheet-only gets no preamble at
+        // all, and the page is byte-identical to what it was before this.
+        if (!modulesMain) modulesMain += CAPTURE_PREAMBLE;
+
         // 🔴 CN-003 — the name marker, and why it is a separate tag rather than
         // an attribute. A kit's `index.js` calls `Noodl.defineModule({...})` and
         // has no idea what its own manifest says; the runtime then names the
@@ -339,6 +416,8 @@ function buildInjectionTags(modules, pathPrefix) {
       }
     }
   }
+
+  if (modulesMain) modulesMain += CAPTURE_EPILOGUE;
 
   return { dependencies, modulesMain };
 }

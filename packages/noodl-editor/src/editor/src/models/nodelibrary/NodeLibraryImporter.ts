@@ -4,6 +4,7 @@ import { NodeLibrary } from '@noodl-models/nodelibrary/nodelibrary';
 import {
   NodeLibraryData,
   NodeLibraryDataNodeType,
+  NodeLibraryModuleFailure,
   RuntimeType,
   RuntimeTypes
 } from '@noodl-models/nodelibrary/NodeLibraryData';
@@ -258,7 +259,11 @@ export class NodeLibraryImporter {
    */
   public onClientDisconnect(clientId: string) {
     this.clients.remove(clientId);
-    this.updateIndex(false);
+    // CN-015: a failure was an observation made by *that page*. With the page
+    // gone there is nothing standing behind the claim, so it goes too.
+    const hadFailures = !!this.moduleFailures[clientId];
+    delete this.moduleFailures[clientId];
+    this.updateIndex(hadFailures);
   }
 
   /**
@@ -302,9 +307,50 @@ export class NodeLibraryImporter {
     if (this.workflowLibrary && !this.workflowNodeNames.size) this.applyWorkflowLibrary();
   }
 
+  /**
+   * CN-015 — kit load failures, **per client and replaced on every import**.
+   *
+   * 🔴 Not merged into `currentNodeLibrary`, and that is the whole point.
+   * `mergeUpdates` only ever walks `nodetypes`; a top-level field on a *second*
+   * import would be silently ignored, so a failure list stamped there would
+   * freeze at whatever the first client happened to report and go on claiming a
+   * kit was broken after the author had fixed it. Keyed by client, it is
+   * replaced when that viewer re-reports and dropped when it disconnects —
+   * which is the honest lifetime, because the fact only exists while the page
+   * that observed it is alive.
+   */
+  private moduleFailures: Record<string, NodeLibraryModuleFailure[]> = {};
+
+  /**
+   * Every connected client's kit load failures, deduplicated by kit name.
+   *
+   * ⚠️ Empty means *no connected viewer reported a failure* — which includes
+   * "no viewer is connected at all". It is not evidence that the kits are
+   * healthy, and the surfaces that render it must not say so.
+   */
+  public getModuleFailures(): NodeLibraryModuleFailure[] {
+    const byModule = new Map<string, NodeLibraryModuleFailure>();
+    for (const failures of Object.values(this.moduleFailures)) {
+      for (const failure of failures) {
+        if (failure && typeof failure.module === 'string') byModule.set(failure.module, failure);
+      }
+    }
+    return Array.from(byModule.values());
+  }
+
   /** The assign-or-merge half of {@link onClientImport}, without the reload. */
   private importLibrary(clientId: string, runtimeType: RuntimeType, library: NodeLibraryData): boolean {
     this.clients.import(clientId, runtimeType, library.nodetypes);
+
+    // CN-015. A changed failure list forces the index update on its own: a kit
+    // that registers no nodes even when healthy can break without any node
+    // appearing or disappearing, and then nothing else here would report a
+    // change and the panel would keep showing the stale answer.
+    const incomingFailures = Array.isArray(library.modulefailures) ? library.modulefailures : [];
+    const failuresChanged =
+      JSON.stringify(this.moduleFailures[clientId] || []) !== JSON.stringify(incomingFailures);
+    if (incomingFailures.length) this.moduleFailures[clientId] = incomingFailures;
+    else delete this.moduleFailures[clientId];
 
     console.debug('[nodelib] Received', runtimeType, ` (nodes: ${library.nodetypes.length})`);
 
@@ -314,7 +360,7 @@ export class NodeLibraryImporter {
       return true;
     }
 
-    return this.mergeUpdates(runtimeType, library);
+    return this.mergeUpdates(runtimeType, library) || failuresChanged;
   }
 
   private updateIndex(forceUpdate: boolean): void {

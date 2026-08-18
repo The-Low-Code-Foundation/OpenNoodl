@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { platform } from '@noodl/platform';
 
 import { NodeLibrary } from '@noodl-models/nodelibrary';
+import { NodeLibraryImporter } from '@noodl-models/nodelibrary/NodeLibraryImporter';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
@@ -19,6 +20,10 @@ import {
 } from '../../../../../../shared/utils/projectmodules';
 import { openCodeFile } from '../../../documents/CodeFileDocument';
 import css from './sections.module.scss';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { kitDiagnostics } = require('@nodegx/kit-catalog');
+import type { KitHealthDiagnostic } from '@nodegx/kit-catalog';
 
 /**
  * CN-006 — ✅ **D1's "New node kit" create command.**
@@ -57,6 +62,7 @@ export function KitsSection() {
   const [kits, setKits] = useState<Array<ProjectNodeKit & { nodes: string[] }>>([]);
   const [orphans, setOrphans] = useState<Array<{ name: string; nodes: string[] }>>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [failures, setFailures] = useState<KitHealthDiagnostic[]>([]);
 
   const projectDirectory = ProjectModel.instance?._retainedProjectDirectory;
 
@@ -76,6 +82,40 @@ export function KitsSection() {
     const joined = joinKitNodes(onDisk, moduleNodes);
     setKits(joined.kits);
     setOrphans(joined.orphans);
+
+    /*
+     * 🔴 **CN-015 AC1 — the state this list could not previously show at all.**
+     *
+     * A kit whose `index.js` throws registers nothing, so it lands in the row
+     * above as *"Installed. Reload the preview to load its nodes"* — which is
+     * the one sentence guaranteed to send its author to reload a preview that
+     * will fail again in exactly the same way. Disk cannot tell the difference
+     * (the folder is perfectly fine) and the node library cannot either (the
+     * kit is simply absent from it). Only the page that ran the script knows,
+     * and CN-015 is the channel that carries what it saw.
+     *
+     * ⚠️ `assumeLoaded: false` because this caller genuinely cannot tell
+     * "registered nothing" from "not loaded yet" — CN-006b keeps those two
+     * apart deliberately and a zero-node warning here would collapse them.
+     * The messages are `kitDiagnostics`' own, not re-worded, so the panel and
+     * `validate:project` cannot drift into describing one failure two ways.
+     */
+    const reported = NodeLibraryImporter.instance.getModuleFailures();
+    setFailures(
+      kitDiagnostics(
+        {
+          kits: onDisk.map((kit) => ({ kitModule: kit.displayName, dirPath: `noodl_modules/${kit.dirName}` })),
+          // Passed so a half-registered kit is described as such: a kit that
+          // threw *after* registering some nodes is the alarming case, and
+          // `kitDiagnostics` can only see it if it knows what did register.
+          nodes: joined.kits.flatMap((kit) =>
+            kit.nodes.map((typeName) => ({ typeName, kitModule: kit.displayName }))
+          ),
+          failures: reported.map((failure) => ({ kitModule: failure.module, message: failure.message }))
+        },
+        { assumeLoaded: false }
+      )
+    );
   }, [projectDirectory]);
 
   useEffect(() => {
@@ -173,6 +213,17 @@ export function KitsSection() {
     [projectDirectory, refresh]
   );
 
+  /** The diagnostics naming this kit. Keyed on the manifest name, which is the
+   *  join key everywhere else in this feature (`displayName`, the injector's
+   *  marker, and `metadata.module` in the node library all carry it). */
+  const failuresFor = (displayName: string) => failures.filter((d) => d.kitModule === displayName);
+
+  /* A failure whose kit is not in the on-disk list. It should not happen — a
+   * script only gets injected because its manifest scanned — but reporting the
+   * message somewhere beats dropping it, which is the failure mode this whole
+   * task exists to end. */
+  const unmatchedFailures = failures.filter((d) => !kits.some((kit) => kit.displayName === d.kitModule));
+
   return (
     <CollapsableSection title="Node kits" hasGutter hasVisibleOverflow hasTopDivider>
       <div className={css.HelpText}>
@@ -251,7 +302,31 @@ export function KitsSection() {
             not "0 nodes" — the second reads like a broken kit and would send an
             author looking for a bug in code that is fine.
           */}
-          {kit.nodes.length === 0 ? (
+          {/*
+            🔴 The failure comes FIRST and displaces the line below it. Showing
+            both would be worse than showing neither: "installed, reload the
+            preview" beside "this kit threw" invites the author to do the one
+            thing that cannot help.
+          */}
+          {failuresFor(kit.displayName).map((diagnostic) => (
+            <div
+              key={diagnostic.code}
+              data-test={`kit-failure-${kit.dirName}`}
+              style={{
+                marginTop: '4px',
+                padding: '6px 8px',
+                fontSize: '11px',
+                color: 'var(--theme-color-error)',
+                backgroundColor: 'var(--theme-color-error-bg)',
+                border: '1px solid var(--theme-color-error)',
+                borderRadius: '4px'
+              }}
+            >
+              {diagnostic.message}
+            </div>
+          ))}
+
+          {failuresFor(kit.displayName).length > 0 ? null : kit.nodes.length === 0 ? (
             <div style={{ fontSize: '11px', color: 'var(--theme-color-fg-muted)' }} data-test="kit-not-loaded">
               Installed. Reload the preview to load its nodes — the picker lists what a running runtime has
               registered.
@@ -309,6 +384,22 @@ export function KitsSection() {
             The running preview still has {orphan.nodes.length} node{orphan.nodes.length === 1 ? '' : 's'} from this
             kit registered. Reload the preview to take them out of the picker.
           </div>
+        </div>
+      ))}
+
+      {unmatchedFailures.map((diagnostic) => (
+        <div
+          key={diagnostic.kitModule}
+          className={css.VariableCard}
+          data-test={`kit-failure-unmatched-${diagnostic.kitModule}`}
+        >
+          <div className={css.VariableHeader}>
+            <div className={css.VariableIdentity}>
+              <span className={css.VariableKey}>{diagnostic.kitModule}</span>
+              <span className={css.VariableType}>failed to load</span>
+            </div>
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--theme-color-error)' }}>{diagnostic.message}</div>
         </div>
       ))}
 

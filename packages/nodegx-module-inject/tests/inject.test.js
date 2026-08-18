@@ -57,6 +57,67 @@ describe('buildInjectionTags', () => {
     expect(tags.modulesMain).toContain('<script type="text/javascript" src="/noodl_modules/demo-kit/index.js"></script>');
   });
 
+  describe('the load-failure capture (CN-015)', () => {
+    // 🔴 Why this exists at all: a kit's `index.js` that throws, fails to parse
+    // or 404s is reported to a console nobody reads, and the node just never
+    // appears — which reads to the author as a typo in the type name. The fact
+    // exists only while the page is loading, so if these tags are not emitted
+    // there is nothing to recover afterwards.
+    //
+    // ⚠️ These assert the *tags*. That they actually catch all three failures in
+    // a browser is measured separately, in Chromium, against the output of this
+    // very function — a string assertion cannot show that an event fires.
+
+    it('opens the capture before the first kit script', () => {
+      // Order is the mechanism, exactly as for the name marker: a listener
+      // installed after the script that threw sees nothing.
+      const preambleAt = tags.modulesMain.indexOf('__noodl_module_loading = true');
+      const firstMarkerAt = tags.modulesMain.indexOf('__noodl_module_name');
+      expect(preambleAt).toBeGreaterThanOrEqual(0);
+      expect(preambleAt).toBeLessThan(firstMarkerAt);
+    });
+
+    it('registers the listener in the capture phase', () => {
+      // 🔴 Load-bearing, and the reason is not stylistic: a script that 404s
+      // fires an error on the ELEMENT, which does not bubble. Bubble-phase and
+      // the missing-file case goes silently unreported — the exact failure this
+      // task exists to end.
+      expect(tags.modulesMain).toContain('}, true);');
+    });
+
+    it('closes the capture after the last kit script', () => {
+      const closeAt = tags.modulesMain.indexOf('__noodl_module_loading = false');
+      const lastScriptAt = tags.modulesMain.lastIndexOf('<script type="text/javascript" src=');
+      expect(closeAt).toBeGreaterThan(lastScriptAt);
+    });
+
+    it('bounds attribution with a flag rather than by clearing the module name', () => {
+      // ⚠️ Clearing `__noodl_module_name` would also have bounded it — and would
+      // have broken CN-003 for a kit that defers its `defineModule` into a
+      // callback, which is the case that mechanism's own comment calls out.
+      expect(tags.modulesMain).not.toContain('__noodl_module_name = undefined');
+      expect(tags.modulesMain).not.toContain('__noodl_module_name = null');
+    });
+
+    it('emits nothing at all for a project whose modules have no scripts', () => {
+      // A stylesheet-only iconset gets no marker (asserted below), so it must
+      // get no capture either: the page has to stay byte-identical to what it
+      // was before this feature for every project that cannot use it.
+      const iconsetOnly = buildInjectionTags(
+        [{ dependencies: [], runtimes: ['browser'], name: 'Icons', browser: { styles: ['.a{}'] } }],
+        '/'
+      );
+      expect(iconsetOnly.modulesMain).toBe('');
+    });
+
+    it('opens the capture once however many kits there are', () => {
+      const opens = tags.modulesMain.split('__noodl_module_loading = true').length - 1;
+      const closes = tags.modulesMain.split('__noodl_module_loading = false').length - 1;
+      expect(opens).toBe(1);
+      expect(closes).toBe(1);
+    });
+  });
+
   describe('the module-name marker (CN-003)', () => {
     // 🔴 Why this needs its own tests: every assertion in this describe block
     // uses `toContain`, so the marker could have been added — or silently

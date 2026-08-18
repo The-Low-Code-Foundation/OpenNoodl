@@ -117,8 +117,33 @@ export interface NodeLibraryDataNodeType {
   module?: string;
 }
 
+/**
+ * CN-015 — one kit that failed to load, as the viewer's page recorded it.
+ *
+ * ⚠️ **This is the only channel the fact has.** The editor learns node types
+ * from what a running viewer registered and sent (✅ D3); a kit that threw
+ * registered nothing, so it is missing from `nodetypes`, missing from
+ * `nodeIndex.moduleNodes`, and indistinguishable there from a kit nobody
+ * installed. `@nodegx/module-inject`'s capture preamble catches the failure in
+ * the page and `NoodlRuntime.getNodeLibrary` stamps it here.
+ */
+export interface NodeLibraryModuleFailure {
+  /** The manifest name — the same string `ProjectNodeKit.displayName` carries. */
+  module: string;
+  /** `threw` or `script-not-loaded`. */
+  reason: string;
+  /** What the browser reported. */
+  message: string;
+}
+
 export interface NodeLibraryData {
   projectsettings: NodeLibraryProjectSettings;
+
+  /**
+   * CN-015 — kits whose scripts failed. **Absent when there are none**, never
+   * `[]`, so a healthy project's payload is unchanged by this feature.
+   */
+  modulefailures?: NodeLibraryModuleFailure[];
 
   typecasts: NodeLibraryTypecast[];
 

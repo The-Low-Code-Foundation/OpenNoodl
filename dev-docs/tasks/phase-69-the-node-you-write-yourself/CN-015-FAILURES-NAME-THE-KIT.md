@@ -1,6 +1,53 @@
 # CN-015 — Failures name the kit
 
-> ## ✅ Built 2026-08-18 (s22) — the headless/CLI half. AC1's editor half is open.
+> ## ✅ COMPLETE 2026-08-18 — s22 built the headless/CLI half, s23 the editor half.
+>
+> ### s23 — AC1's editor half, built and driven
+>
+> **All five acceptance criteria are now met.** The editor can tell *"this kit threw"* from
+> *"this kit is not installed"*, which it could not before: it reads the payload a viewer sent
+> (✅ D3), and a kit that threw was simply absent from it.
+>
+> 🔴 **The fact had to be caught in the page, because nowhere downstream still has it.** A kit whose
+> `index.js` throws never calls `Noodl.defineModule`, so `registerModule` is never called, nothing
+> lands in the register, and no later inspection of any process can distinguish it from a kit nobody
+> installed. `@nodegx/module-inject` now emits a capture preamble before the first kit script and
+> closes it after the last; `NoodlRuntime.getNodeLibrary` stamps what it caught onto the payload
+> (as `projectsettings` already was); `NodeLibraryImporter` holds it per client; `KitsSection`
+> renders `kitDiagnostics`' own words.
+>
+> ✅ **Measured in real Chromium, not assumed** — all three failure modes, attributed by the CN-003
+> marker: a `throw` at import, a syntax error, and an `index.js` that 404s.
+>
+> 🔴 **`capture: true` on the listener is load-bearing, and the A/B proves it.** A resource error
+> does not bubble, so in bubble phase the 404 case vanishes and **only** that case — measured both
+> ways in Chromium against the injector's real output. A missing `main` would otherwise have stayed
+> exactly the silent failure this task exists to end.
+>
+> ⚠️ **Attribution is bounded by a second flag, not by clearing `__noodl_module_name`.** Clearing
+> would also have bounded it — and would have broken CN-003 for a kit that defers its `defineModule`
+> into a callback, the case that mechanism's own comment calls out. Without any bound, the *last*
+> kit is blamed for every runtime error the app throws afterwards.
+>
+> 🔴 **The failures are held per client, NOT merged into `currentNodeLibrary`.** `mergeUpdates` walks
+> `nodetypes` and nothing else, so a top-level field arriving on a *second* import is silently
+> ignored — the list would have frozen at the first client's report and gone on accusing a kit the
+> author had already fixed. **Driven live:** with one kit repaired and one left broken in the same
+> project, the panel showed the repaired kit's node and went on naming the other.
+>
+> ⚠️ **Scope, stated rather than left to be discovered:** a kit's own `main`, not its dependencies.
+> Dependency tags are deduped across kits and carry no marker, so a failing dependency has no one kit
+> to name — it stays uncaptured rather than attributed to a guess.
+>
+> ⚠️ **The `expected-inject.snapshot.txt` golden was re-recorded deliberately.** It matched on
+> committed code and went red only from this change (checked both ways before rewriting); the diff is
+> exactly the preamble and the epilogue. Behaviour that moved: the injected page now opens and closes
+> a kit-load capture window around the module scripts.
+>
+> **Tests: module-inject 15 → 21, runtime +5, editor `tests-unit/cn-015` +7. 6/6 mutations killed,
+> plus the capture-phase A/B in Chromium.**
+>
+> ### s22 — the headless/CLI half
 >
 > `kitDiagnostics` / `formatKitDiagnostic` in `@nodegx/kit-catalog` (`src/health.js`), wired into
 > `scripts/validate-project.ts`. **55 tests in the package (38 → 55), 8/8 mutations killed**, and
@@ -8,7 +55,8 @@
 > shadowing kit — all four diagnostics fire, and **the same project with the faults removed produces
 > zero**, which is AC5 measured rather than argued.
 >
-> **Status: AC3 ✅ · AC4 ✅ · AC5 ✅ · AC2 ✅ (already covered — see below) · AC1 ◐ CLI only.**
+> **Status after s22: AC3 ✅ · AC4 ✅ · AC5 ✅ · AC2 ✅ (already covered — see below) · AC1 ◐ CLI only.**
+> (AC1 closed by s23.)
 >
 > 🔴 **The headline finding, and it is bigger than this task: precedence is two rules that
 > disagree.** The catalog gives the **built-in** priority (the kit's node is dropped, a collision
@@ -47,13 +95,13 @@
 > healthy modules read as broken, and collecting only `defineModule` missed `defineNode` entirely.
 > **`asked − answered = absent`: one zero-node module is confirmed, the other two are NOT disproven.**
 >
-> ⚠️ **AC1's editor half is not built.** The MCP/headless route already captured `failures` before
-> this task (`entry.js:124-152`, with a comment naming CN-015); the CLI now reports them. **The
-> editor still cannot tell "this kit threw" from "this kit is not installed"** — it reads a payload
-> the viewer sent (✅ D3), and a kit that threw is simply absent from it. That is the remaining work,
-> and `kitDiagnostics` takes `assumeLoaded: false` for exactly that caller, so the zero-node check is
-> **skipped rather than guessed** (CN-006b's `joinKitNodes` keeps "installed, not yet loaded" apart
-> from "0 nodes" deliberately, and this must not collapse them).
+> ⚠️ **AC1's editor half was left open by s22 — s23 built it (above).** The MCP/headless route already
+> captured `failures` before this task (`entry.js:124-152`, with a comment naming CN-015) and the CLI
+> reports them. What s22 could not do was tell the *editor*: it reads a payload the viewer sent
+> (✅ D3), and a kit that threw is simply absent from it. `kitDiagnostics` already took
+> `assumeLoaded: false` for exactly that caller, so the zero-node check is **skipped rather than
+> guessed** — CN-006b's `joinKitNodes` keeps "installed, not yet loaded" apart from "0 nodes"
+> deliberately, and s23 did not collapse them.
 
 
 | Field | Value |

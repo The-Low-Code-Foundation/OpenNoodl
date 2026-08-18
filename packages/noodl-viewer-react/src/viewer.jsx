@@ -170,6 +170,19 @@ export default class Viewer extends React.Component {
       }
     }
 
+    // 🔴 CN-015 — the kits that are NOT in the loop above.
+    //
+    // Everything registered here is a kit that loaded. A kit whose `index.js`
+    // threw, failed to parse or 404'd never called `Noodl.defineModule`, so it
+    // is simply absent from `noodlModules` — and absent is exactly what an
+    // uninstalled kit looks like too. The page recorded the difference while it
+    // was loading (`@nodegx/module-inject`'s capture preamble); this hands that
+    // record to the runtime so `sendNodeLibrary` carries it to the editor,
+    // which otherwise has no way to learn it (✅ D3).
+    if (typeof window !== 'undefined' && noodlRuntime.setModuleFailures) {
+      noodlRuntime.setModuleFailures(window.__noodl_module_failures);
+    }
+
     noodlRuntime.eventEmitter.on('rootComponentUpdated', () => {
       //wait until next frame to trigger a react update, so inputs etc have a chance to settle
       //(forceUpdate is synchronous)

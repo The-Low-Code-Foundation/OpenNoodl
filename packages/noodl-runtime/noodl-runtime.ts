@@ -54,6 +54,23 @@ interface NoodlModule {
   setup?(this: NoodlModule): void;
 }
 
+/**
+ * CN-015 — one kit that never made it into the register, as the page recorded it.
+ *
+ * Produced by `@nodegx/module-inject`'s capture preamble, which is the only
+ * place the fact exists: `registerModule` is never called for a kit whose
+ * script threw, so no amount of inspecting this runtime afterwards can tell
+ * *"that kit is broken"* from *"that kit was never installed"*.
+ */
+interface ModuleLoadFailure {
+  /** The manifest name, from the `__noodl_module_name` marker CN-003 emits. */
+  module: string;
+  /** `threw` — an exception or a parse error; `script-not-loaded` — the file did not fetch. */
+  reason: string;
+  /** What the browser reported, passed through rather than summarised. */
+  message: string;
+}
+
 /** What `registerNode` accepts — the same two shapes, one at a time. */
 interface NodeRegistration {
   node?: NodeDefinitionOptions;
@@ -117,6 +134,8 @@ interface NoodlRuntime {
   editorConnection: InstanceType<typeof EditorConnection>;
   context: InstanceType<typeof NodeContext>;
   projectSettings?: HostProjectSettings;
+  /** CN-015 — set by the host viewer; absent on a runtime with no page to capture from. */
+  moduleFailures?: ModuleLoadFailure[];
   lastSentNodeLibrary?: string;
   /** SSR re-loads the graph data; this stops the second load duplicating every node. */
   _disableLoad?: boolean;
@@ -134,6 +153,7 @@ interface NoodlRuntime {
   scheduleUpdate(): void;
   _doUpdate(): void;
   setProjectSettings(settings: HostProjectSettings): void;
+  setModuleFailures(failures: ModuleLoadFailure[] | undefined): void;
   getNodeLibrary(): string;
   sendNodeLibrary(): void;
   connectToEditor(address: string): void;
@@ -650,6 +670,26 @@ NoodlRuntime.prototype.setProjectSettings = function (settings: HostProjectSetti
   this.projectSettings = settings;
 };
 
+/**
+ * CN-015 — the kit load failures the page captured, on their way to the editor.
+ *
+ * A kit whose `index.js` throws, fails to parse or 404s never reaches this
+ * runtime at all: `registerModule` is simply never called for it, so **there is
+ * nothing here that can be inspected after the fact.** The only record is the
+ * one `@nodegx/module-inject`'s capture preamble made while the page was
+ * loading, and this is the hand-off from that record into the payload the
+ * editor already receives (✅ **D3** — the editor extracts nothing; it reads
+ * what the viewer sent).
+ *
+ * ⚠️ The host supplies these, exactly as it does `setProjectSettings`. This
+ * package is platform-neutral and must not reach for `window` — the browser
+ * viewer reads the global and calls this; an SSR or cloud runtime, which has no
+ * such capture, calls nothing and the field is absent rather than empty.
+ */
+NoodlRuntime.prototype.setModuleFailures = function (failures: ModuleLoadFailure[] | undefined) {
+  this.moduleFailures = Array.isArray(failures) ? failures : undefined;
+};
+
 NoodlRuntime.prototype.getNodeLibrary = function () {
   var projectSettings = ProjectSettings.generateProjectSettings(this.graphModel.getSettings(), this.noodlModules);
 
@@ -665,8 +705,22 @@ NoodlRuntime.prototype.getNodeLibrary = function () {
     runtimeType: this.type
   }) as ReturnType<typeof generateNodeLibrary> & {
     projectsettings?: unknown;
+    modulefailures?: ModuleLoadFailure[];
   };
   nodeLibrary.projectsettings = projectSettings;
+
+  // CN-015: stamped here for the same reason `projectsettings` is — the
+  // exporter knows the node register and nothing else, and a kit that failed to
+  // load is by definition *not* in the register.
+  //
+  // ⚠️ Omitted entirely when there are none, rather than sent as `[]`. The
+  // payload for a healthy project is then byte-identical to what it was before
+  // this task, which keeps `sendNodeLibrary`'s "don't send the same export
+  // twice" comparison and every recorded-payload fixture unperturbed.
+  if (this.moduleFailures && this.moduleFailures.length) {
+    nodeLibrary.modulefailures = this.moduleFailures;
+  }
+
   return JSON.stringify(nodeLibrary, null, 3);
 };
 
