@@ -61,6 +61,7 @@ function withTargetCopy(callback) {
  * component name to an {@link ItemPolicy}.
  */
 async function planProfileCard(targetProject, resolutions) {
+  // CN-017: origin is a required plan field; this fixture is a directory on disk.
   const { inventory, project } = await analyzeSource(SOURCE);
   const target = await createTargetProject(targetProject);
   const selection = {
@@ -70,7 +71,7 @@ async function planProfileCard(targetProject, resolutions) {
     variants: [],
     styles: { colors: [{ name: 'Brand' }], text: [{ name: 'Heading' }] }
   };
-  return plan(inventory, project, selection, target, resolutions);
+  return plan(inventory, project, selection, target, { origin: { kind: 'local-project' }, ...resolutions });
 }
 
 /**

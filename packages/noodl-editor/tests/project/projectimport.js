@@ -39,7 +39,13 @@ function selectEverything(inventory) {
 async function planEverythingInto(sourceDir, targetProject) {
   const { inventory, project } = await analyzeSource(sourceDir);
   const target = await createTargetProject(targetProject);
-  return { inventory, plan: plan(inventory, project, selectEverything(inventory), target) };
+  // CN-017: `PlanOptions.origin` is required. These fixtures are directories on
+  // disk, so `local-project` is the honest label — and stating it is what a new
+  // install route must also do to reach `apply()`'s module copy loop.
+  return {
+    inventory,
+    plan: plan(inventory, project, selectEverything(inventory), target, { origin: { kind: 'local-project' } })
+  };
 }
 
 /** The colliding subset of a plan, counted the way the old dialog counted it. */

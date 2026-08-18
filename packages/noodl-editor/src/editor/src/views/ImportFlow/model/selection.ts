@@ -20,7 +20,14 @@
  * @module noodl-editor/views/ImportFlow/model/selection
  */
 
-import type { ImportPlan, ImportSelection, ItemPolicy, PlanOptions, SelectionReason } from '@noodl-utils/import-engine';
+import type {
+  ImportOrigin,
+  ImportPlan,
+  ImportSelection,
+  ItemPolicy,
+  PlanOptions,
+  SelectionReason
+} from '@noodl-utils/import-engine';
 
 import { deriveInventory } from './dependencyLinks';
 import { FlowItem, ItemCategory, itemKey } from './items';
@@ -164,8 +171,15 @@ export const SKIP: Resolution = { kind: 'skip' };
 
 export type ResolutionMap = Readonly<Record<string, Resolution>>;
 
-/** Turn per-item resolutions into the `PlanOptions` the engine understands. */
-export function toPlanOptions(items: FlowItem[], resolutions: ResolutionMap): PlanOptions {
+/**
+ * Turn per-item resolutions into the `PlanOptions` the engine understands.
+ *
+ * ⚠️ CN-017: `origin` is passed straight through rather than defaulted here. The
+ * flow does not know where its source came from — its caller does — and a
+ * default in this function would be the "safe-looking omission" the required
+ * field exists to prevent.
+ */
+export function toPlanOptions(items: FlowItem[], resolutions: ResolutionMap, origin: ImportOrigin): PlanOptions {
   const byKey = new Map(items.map((i) => [i.key, i] as const));
   const renames: Record<string, string> = {};
   const skip: NonNullable<PlanOptions['skip']> = {
@@ -213,7 +227,7 @@ export function toPlanOptions(items: FlowItem[], resolutions: ResolutionMap): Pl
     }
   }
 
-  return { renames, skip };
+  return { origin, renames, skip };
 }
 
 /**

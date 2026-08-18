@@ -32,7 +32,7 @@ import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { installSidePanel, installDocuments } from '../../router.setup';
 import { ViewerConnection } from '../../ViewerConnection';
 import { Frame } from '../../views/common/Frame';
-import { ImportFlowCancelled, openImportFlow } from '../../views/ImportFlow';
+import { ImportFlowCancelled, openImportFlow, requireDownloadConsent } from '../../views/ImportFlow';
 import { LessonLayer } from '../../views/lessonlayer2';
 import PopupLayer from '../../views/popuplayer';
 import { AiAuthoringPanel_ID } from '../../views/panels/AiAuthoringPanel';
@@ -281,7 +281,7 @@ function importFromUrl(url) {
           return;
         }
 
-        _importProject(tmp);
+        _importProject(tmp, url);
       },
       { skipLoad: true, noAuth: true }
     );
@@ -293,24 +293,37 @@ function importFromUrl(url) {
  * collision resolution and the result summary — including, at last, actually
  * honouring what the user unticked (the legacy URL path built a collision
  * dialog and then threw its answer away).
+ *
+ * 🔴 **CN-017 measured this route as the one the previous scoping missed.** An
+ * archive fetched from a URL and unpacked into user data is, by any honest
+ * reading, at least as third-party as the curated module library — so it asks for
+ * consent to whatever executable modules it carries, on the same dialog and with
+ * the same words as a module install.
  */
-function _importProject(dirEntry: string) {
-  openImportFlow({
-    title: 'Import project',
-    subtitle: 'From the downloaded archive',
-    sourceDir: dirEntry,
-    // Historic behaviour: components and files start ticked, everything else
-    // arrives through the dependency closure.
-    initialSelection: ['component', 'resource']
-  }).then(
-    (result) => {
-      if (result.result !== 'success') ToastLayer.showError(result.message ?? 'Import failed');
-    },
-    (err: unknown) => {
-      if (err instanceof ImportFlowCancelled) return;
-      ToastLayer.showError(err instanceof Error ? err.message : 'Import failed');
-    }
-  );
+function _importProject(dirEntry: string, url: string) {
+  requireDownloadConsent({ title: 'Import project', url, sourceDir: dirEntry })
+    .then((origin) =>
+      openImportFlow({
+        title: 'Import project',
+        subtitle: 'From the downloaded archive',
+        sourceDir: dirEntry,
+        origin,
+        // Historic behaviour: components and files start ticked, everything else
+        // arrives through the dependency closure.
+        initialSelection: ['component', 'resource']
+      })
+    )
+    .then(
+      (result) => {
+        if (result.result !== 'success') ToastLayer.showError(result.message ?? 'Import failed');
+      },
+      (err: unknown) => {
+        // Declining the consent step raises the same cancellation the flow does:
+        // backing out of an install is an ordinary answer, not an error.
+        if (err instanceof ImportFlowCancelled) return;
+        ToastLayer.showError(err instanceof Error ? err.message : 'Import failed');
+      }
+    );
 }
 
 function reloadProjectFromDisk() {

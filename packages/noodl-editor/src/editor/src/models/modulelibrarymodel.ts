@@ -4,6 +4,8 @@ import { addHashToUrl } from '@noodl-utils/addHashToUrl';
 import FileSystem from '@noodl-utils/filesystem';
 import getContentEndpoint from '@noodl-utils/getContentEndpoint';
 
+import type { ImportOrigin } from '@noodl-utils/import-engine';
+
 import Model from '../../../shared/model';
 import {
   applyToProject,
@@ -11,7 +13,8 @@ import {
   ImportFlowCancelled,
   loadSource,
   openImportFlow,
-  planSelection
+  planSelection,
+  requireDownloadConsent
 } from '../views/ImportFlow';
 import type { SelectionState } from '../views/ImportFlow/model/selection';
 import { ProjectModel } from './projectmodel';
@@ -166,6 +169,7 @@ export class ModuleLibraryModel extends Model {
     await this._install(await this.getModuleTemplateRoot(modulePath), {
       label: module?.label ?? 'module',
       kind: 'module',
+      url: modulePath,
       onBeforePopup,
       onAfterPopup
     });
@@ -179,6 +183,7 @@ export class ModuleLibraryModel extends Model {
     await this._install(await this.getModuleTemplateRoot(modulePath), {
       label: module?.label ?? 'prefab',
       kind: 'prefab',
+      url: modulePath,
       onBeforePopup,
       onAfterPopup
     });
@@ -199,37 +204,95 @@ export class ModuleLibraryModel extends Model {
    */
   private async _install(
     moduleRootPath: string,
-    options: { label: string; kind: 'prefab' | 'module'; onBeforePopup?: () => void; onAfterPopup?: () => void }
+    options: {
+      label: string;
+      kind: 'prefab' | 'module';
+      /** The library URL this was downloaded from — CN-017's provenance, verbatim. */
+      url: string;
+      onBeforePopup?: () => void;
+      onAfterPopup?: () => void;
+    }
   ) {
     const project = ProjectModel.instance;
     if (!project) throw { message: 'No project loaded, cannot import.' };
 
-    const source = await loadSource(moduleRootPath);
-    const target = await createTargetProject(project);
-    const everything: SelectionState = {
-      requested: new Set(source.items.map((item) => item.key)),
-      droppedLinks: new Set()
-    };
-
-    const dryRun = planSelection(source, target, everything);
-
-    if (!dryRun.hasCollisions) {
-      const result = await applyToProject(dryRun, project);
-      if (result.result !== 'success') throw { message: result.message };
-      return;
-    }
-
+    /*
+     * ── ✅ CN-017 D6 part 3: consent, BEFORE either branch below ────────────
+     *
+     * 🔴 **Above the `hasCollisions` fork on purpose.** LIB-005's one-click case
+     * skips the import flow entirely, so a consent step hosted inside the flow
+     * would be absent on the most common install — present in the code, absent in
+     * practice, and passing any test that only asked whether a dialog can appear.
+     *
+     * ⚠️ Silent when the download carries no executable module: `requireDownloadConsent`
+     * returns an empty consent list without a dialog, so a prefab of plain
+     * components still installs in one click. A prompt for an icon set would train
+     * people to click through the one that matters.
+     *
+     * ⚠️ **The cache means this is not "on download".** `getModuleTemplateRoot`
+     * reuses a non-empty `getUserDataPath()/library/<name>` directory without
+     * re-fetching, so a check inside the download branch would run on the first
+     * install of a module and never again. This runs on the resolved root path,
+     * every install.
+     */
+    // ⚠️ Held across the WHOLE install — see `_consentFor`. Two modals each
+    // taking and releasing this would unblock the picker in the gap between them.
+    options.onBeforePopup?.();
     try {
-      const result = await openImportFlow({
+      const origin = await this._consentFor(moduleRootPath, options);
+
+      const source = await loadSource(moduleRootPath);
+      const target = await createTargetProject(project);
+      const everything: SelectionState = {
+        requested: new Set(source.items.map((item) => item.key)),
+        droppedLinks: new Set()
+      };
+
+      const dryRun = planSelection(source, target, everything, origin);
+
+      if (!dryRun.hasCollisions) {
+        const result = await applyToProject(dryRun, project);
+        if (result.result !== 'success') throw { message: result.message };
+        return;
+      }
+
+      try {
+        const result = await openImportFlow({
+          title: `Install ${options.label}`,
+          subtitle: options.kind === 'prefab' ? 'Prefab' : 'Module',
+          sourceDir: moduleRootPath,
+          origin,
+          initialSelection: 'all',
+          keepExistingNonComponents: options.kind === 'prefab'
+        });
+        if (result.result !== 'success') throw { message: result.message };
+      } catch (err) {
+        if (err instanceof ImportFlowCancelled) throw { message: 'Import cancelled' };
+        throw err;
+      }
+    } finally {
+      options.onAfterPopup?.();
+    }
+  }
+
+  /**
+   * Ask for consent, translating a decline into this class's own cancellation
+   * message so the two install branches report it identically.
+   *
+   * ⚠️ **No `onBeforePopup`/`onAfterPopup` here.** Those hooks block the node
+   * picker behind a modal, and `_install` now holds them across the *whole*
+   * install — consent and flow — rather than each modal taking and releasing
+   * them. Per-modal hooks would unblock the picker in the gap between the
+   * consent dialog closing and the flow opening, which is exactly the moment a
+   * second click could start a second install.
+   */
+  private async _consentFor(moduleRootPath: string, options: { label: string; url: string }): Promise<ImportOrigin> {
+    try {
+      return await requireDownloadConsent({
         title: `Install ${options.label}`,
-        subtitle: options.kind === 'prefab' ? 'Prefab' : 'Module',
-        sourceDir: moduleRootPath,
-        initialSelection: 'all',
-        keepExistingNonComponents: options.kind === 'prefab',
-        onBeforePopup: options.onBeforePopup,
-        onAfterPopup: options.onAfterPopup
+        url: options.url,
+        sourceDir: moduleRootPath
       });
-      if (result.result !== 'success') throw { message: result.message };
     } catch (err) {
       if (err instanceof ImportFlowCancelled) throw { message: 'Import cancelled' };
       throw err;

@@ -11,7 +11,7 @@
  */
 
 import { analyzeSource, plan as planImport } from '@noodl-utils/import-engine';
-import type { ImportPlan, ProjectData, SourceInventory } from '@noodl-utils/import-engine';
+import type { ImportOrigin, ImportPlan, ProjectData, SourceInventory } from '@noodl-utils/import-engine';
 
 import { collectLinks, DependencyLink, deriveInventory, linksBySource } from './dependencyLinks';
 import { buildItems, FlowItem } from './items';
@@ -51,6 +51,8 @@ export function planSelection(
   source: LoadedSource,
   target: TargetSnapshot,
   state: SelectionState,
+  /** CN-017: where `source` came from. Required — see {@link ImportOrigin}. */
+  origin: ImportOrigin,
   resolutions: ResolutionMap = {}
 ): ImportPlan {
   const inventory = deriveInventory(source.inventory, state.droppedLinks);
@@ -59,7 +61,7 @@ export function planSelection(
     source.project,
     toImportSelection(source.items, state.requested),
     target,
-    toPlanOptions(source.items, resolutions)
+    toPlanOptions(source.items, resolutions, origin)
   );
 }
 

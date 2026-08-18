@@ -1,4 +1,7 @@
-# Phase 69 — **18 of 20 done.** Two Tier-6 tasks left, and one of them still needs a ruling from Richard.
+# Phase 69 — **19 of 20 done.** One Tier-6 task left, and it still needs a ruling from Richard.
+
+**Amended 2026-08-18, end of s31: CN-017 is BUILT and closed.** Only CN-016 remains, and §2 below is
+still the ruling it is blocked on. The rest of this file is s29's.
 
 **Written 2026-08-18, end of s29.** 🔴 **This file is a REWRITE, not an amendment.** Overwrite it
 when the campaign ends; anything that outlives the phase goes to memory, not here.
@@ -36,12 +39,12 @@ explicit pathspecs, never `git add -A`. 🔴 **Never `git stash` on this checkou
 
 ## 1. Where phase 69 actually is
 
-**Closed: 18 of 20.** CN-001–006b, CN-009, CN-010, CN-011, CN-012, **CN-013** (s29), **CN-014**
-(s29), CN-015, CN-018, CN-019.
+**Closed: 19 of 20.** CN-001–006b, CN-009, CN-010, CN-011, CN-012, **CN-013** (s29), **CN-014**
+(s29), CN-015, **CN-017** (s31), CN-018, CN-019.
 
 | What is left | Owner | Reality |
 |---|---|---|
-| **CN-017** — Trust | **RUN 2, do this first** | 🔴 **Never started.** Tier 6, effort **L**. Self-contained: no external blocker. |
+| ~~**CN-017** — Trust~~ | ~~RUN 2~~ | ✅ **CLOSED s31, all five AC met.** See [CN-017-TRUST.md](CN-017-TRUST.md) — four of its own premises were wrong and are corrected there. |
 | **CN-016** — Publish a kit | RUN 3 | 🔴 **Never started.** Tier 6, effort **L**. ⚠️ **AC1 blocked — §2.** |
 | **CN-007** AC2 | not yours | Needs a reader who has **not** read this phase. |
 | **CN-008** AC1 | not yours | Needs a live model. |

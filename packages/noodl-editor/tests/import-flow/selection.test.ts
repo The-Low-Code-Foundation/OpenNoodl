@@ -16,7 +16,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { buildInventory, catalogPortType } from '../../src/editor/src/utils/import-engine/inventory';
-import { plan, TargetProject } from '../../src/editor/src/utils/import-engine/plan';
+import { plan, PlanOptions, TargetProject } from '../../src/editor/src/utils/import-engine/plan';
 import { loadDefaultCatalog } from '../../src/editor/src/validation/catalog';
 import {
   collectLinks,
@@ -69,6 +69,9 @@ function targetFrom(project: {
 }
 
 const EMPTY_TARGET = targetFrom({ components: [] });
+
+/** CN-017: `PlanOptions.origin` is required — these fixtures are all on disk here. */
+const LOCAL: PlanOptions = { origin: { kind: 'local-project' } };
 
 describe('LIB-005 import flow — items and folder tree', () => {
   it('splits names into folder and label, normalizing the leading slash', () => {
@@ -136,7 +139,7 @@ describe('LIB-005 import flow — closure is derived, never stored', () => {
     const items = buildItems(inventory, source);
 
     const state = toggleRequested(EMPTY_SELECTION, ['component:/Main'], true);
-    const p = plan(inventory, source, toImportSelection(items, state.requested), EMPTY_TARGET);
+    const p = plan(inventory, source, toImportSelection(items, state.requested), EMPTY_TARGET, LOCAL);
     const index = planIndex(p);
 
     expect(rowState('component:/Main', state, index)).toBe('requested');
@@ -152,7 +155,7 @@ describe('LIB-005 import flow — closure is derived, never stored', () => {
     const withMain = toggleRequested(EMPTY_SELECTION, ['component:/Main'], true);
     const withoutMain = toggleRequested(withMain, ['component:/Main'], false);
 
-    const index = planIndex(plan(inventory, source, toImportSelection(items, withoutMain.requested), EMPTY_TARGET));
+    const index = planIndex(plan(inventory, source, toImportSelection(items, withoutMain.requested), EMPTY_TARGET, LOCAL));
     expect(rowState('component:/comp1', withoutMain, index)).toBe('available');
   });
 
@@ -169,11 +172,11 @@ describe('LIB-005 import flow — closure is derived, never stored', () => {
     const items = buildItems(inventory, project as never);
 
     const both = toggleRequested(EMPTY_SELECTION, ['component:/A', 'component:/B'], true);
-    let index = planIndex(plan(inventory, project as never, toImportSelection(items, both.requested), EMPTY_TARGET));
+    let index = planIndex(plan(inventory, project as never, toImportSelection(items, both.requested), EMPTY_TARGET, LOCAL));
     expect(index.get('component:/Shared')!.requiredBy.sort()).toEqual(['/A', '/B']);
 
     const onlyA = toggleRequested(both, ['component:/B'], false);
-    index = planIndex(plan(inventory, project as never, toImportSelection(items, onlyA.requested), EMPTY_TARGET));
+    index = planIndex(plan(inventory, project as never, toImportSelection(items, onlyA.requested), EMPTY_TARGET, LOCAL));
     expect(rowState('component:/Shared', onlyA, index)).toBe('required');
   });
 
@@ -186,15 +189,15 @@ describe('LIB-005 import flow — closure is derived, never stored', () => {
     const items = buildItems(inventory, project as never);
     const keys = items.map((i) => i.key);
 
-    const none = planIndex(plan(inventory, project as never, toImportSelection(items, new Set()), EMPTY_TARGET));
+    const none = planIndex(plan(inventory, project as never, toImportSelection(items, new Set()), EMPTY_TARGET, LOCAL));
     expect(folderState(keys, none)).toBe('none');
 
     const one = toggleRequested(EMPTY_SELECTION, ['component:/F/A'], true);
-    const someIndex = planIndex(plan(inventory, project as never, toImportSelection(items, one.requested), EMPTY_TARGET));
+    const someIndex = planIndex(plan(inventory, project as never, toImportSelection(items, one.requested), EMPTY_TARGET, LOCAL));
     expect(folderState(keys, someIndex)).toBe('some');
 
     const all = toggleRequested(one, ['component:/F/B'], true);
-    const allIndex = planIndex(plan(inventory, project as never, toImportSelection(items, all.requested), EMPTY_TARGET));
+    const allIndex = planIndex(plan(inventory, project as never, toImportSelection(items, all.requested), EMPTY_TARGET, LOCAL));
     expect(folderState(keys, allIndex)).toBe('all');
   });
 });
@@ -230,7 +233,7 @@ describe('LIB-005 import flow — heuristic links are droppable, facts are not',
     const guess = links.find((l) => l.to.name === 'icons/arrow.svg')!;
 
     const selected = toggleRequested(EMPTY_SELECTION, ['component:/Guessy'], true);
-    const before = plan(inventory, project as never, toImportSelection(items, selected.requested), EMPTY_TARGET);
+    const before = plan(inventory, project as never, toImportSelection(items, selected.requested), EMPTY_TARGET, LOCAL);
     expect(before.resources.map((r) => r.name)).toContain('icons/arrow.svg');
 
     const dropped = toggleDroppedLink(selected, guess.key);
@@ -238,7 +241,8 @@ describe('LIB-005 import flow — heuristic links are droppable, facts are not',
       deriveInventory(inventory, dropped.droppedLinks),
       project as never,
       toImportSelection(items, dropped.requested),
-      EMPTY_TARGET
+      EMPTY_TARGET,
+      LOCAL
     );
     expect(after.resources.map((r) => r.name)).not.toContain('icons/arrow.svg');
   });
@@ -295,7 +299,7 @@ describe('LIB-005 import flow — a text style brings its font', () => {
     const items = buildItems(inventory, project as never);
     const state = toggleRequested(EMPTY_SELECTION, ['textStyle:Heading'], true);
 
-    const p = plan(inventory, project as never, toImportSelection(items, state.requested), EMPTY_TARGET);
+    const p = plan(inventory, project as never, toImportSelection(items, state.requested), EMPTY_TARGET, LOCAL);
     const font = p.resources.find((r) => r.name === 'fonts/Inter.ttf')!;
     expect(font).toBeDefined();
     expect(font.reason).toBe('dependency');
@@ -312,7 +316,8 @@ describe('LIB-005 import flow — a text style brings its font', () => {
       deriveInventory(inventory, state.droppedLinks),
       project as never,
       toImportSelection(items, state.requested),
-      EMPTY_TARGET
+      EMPTY_TARGET,
+      LOCAL
     );
     expect(p.resources.map((r) => r.name)).not.toContain('fonts/Inter.ttf');
     expect(p.styles.text.map((t) => t.name)).toContain('Heading');
@@ -323,11 +328,15 @@ describe('LIB-005 import flow — collision resolutions', () => {
   it('translates resolutions into engine plan options', () => {
     const source = load('import_proj1');
     const items = buildItems(inventoryOf(source, ['icons/arrow.svg']), source);
-    const options = toPlanOptions(items, {
-      'component:/Main': { kind: 'rename', newName: '/Main imported' },
-      'component:/comp1': { kind: 'skip' },
-      'resource:icons/arrow.svg': { kind: 'skip' }
-    });
+    const options = toPlanOptions(
+      items,
+      {
+        'component:/Main': { kind: 'rename', newName: '/Main imported' },
+        'component:/comp1': { kind: 'skip' },
+        'resource:icons/arrow.svg': { kind: 'skip' }
+      },
+      LOCAL.origin
+    );
 
     expect(options.renames).toEqual({ '/Main': '/Main imported' });
     expect(options.skip!.components).toEqual(['/comp1']);
@@ -336,14 +345,14 @@ describe('LIB-005 import flow — collision resolutions', () => {
 
   it('refuses to rename anything but a component — the engine only re-points component refs', () => {
     const items = buildItems(inventoryOf({ components: [], metadata: { styles: { colors: { Primary: {} } } } }), undefined);
-    const options = toPlanOptions(items, { 'colorStyle:Primary': { kind: 'rename', newName: 'Primary 2' } });
+    const options = toPlanOptions(items, { 'colorStyle:Primary': { kind: 'rename', newName: 'Primary 2' } }, LOCAL.origin);
     expect(options.renames).toEqual({});
   });
 
   it('ignores a blank rename rather than planning an empty name', () => {
     const source = load('import_proj1');
     const items = buildItems(inventoryOf(source), source);
-    expect(toPlanOptions(items, { 'component:/Main': { kind: 'rename', newName: '   ' } }).renames).toEqual({});
+    expect(toPlanOptions(items, { 'component:/Main': { kind: 'rename', newName: '   ' } }, LOCAL.origin).renames).toEqual({});
   });
 
   it('suggests a free name, skipping ones already taken here or in the target', () => {
@@ -363,6 +372,7 @@ describe('LIB-005 import flow — plan summary', () => {
     const state = toggleRequested(EMPTY_SELECTION, ['component:/Main'], true);
 
     const p = plan(inventory, source, toImportSelection(items, state.requested), targetFrom(load('import_proj2')), {
+      ...LOCAL,
       skip: { components: ['/comp1'] }
     });
     const summary = summarizePlan(p, planIndex(p));

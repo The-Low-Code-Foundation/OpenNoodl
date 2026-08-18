@@ -36,6 +36,10 @@ export class ProjectLibraryModel extends Model {
         title: `Import from ${projectEntry.name ?? 'project'}`,
         subtitle: dirEntry,
         sourceDir: dirEntry,
+        // ✅ CN-017: a project already on this machine. Local code — copied with
+        // no verification step and no consent prompt, which is D6's first part
+        // applied to the route that has always been local.
+        origin: { kind: 'local-project' },
         onBeforePopup,
         onAfterPopup
       });

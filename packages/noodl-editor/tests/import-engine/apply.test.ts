@@ -105,6 +105,9 @@ function componentPlan(entries: { name: string; policy: ItemPolicy }[]): ImportP
   }));
   return {
     sourceDir: '/src',
+    // CN-017: these specs exercise the pure model graft, which never reaches the
+    // module copy loop. Local is the honest label for a fixture on disk.
+    origin: { kind: 'local-project' },
     components,
     resources: [],
     modules: [],
@@ -200,6 +203,7 @@ describe('LIB-004 import engine — applyModelChanges', () => {
 
     const plan: ImportPlan = {
       sourceDir: '/src',
+      origin: { kind: 'local-project' },
       components: [],
       resources: [],
       modules: [],

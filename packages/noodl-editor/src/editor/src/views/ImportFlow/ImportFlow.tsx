@@ -23,7 +23,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 
-import type { ImportPlan, ImportResult } from '@noodl-utils/import-engine';
+import type { ImportOrigin, ImportPlan, ImportResult } from '@noodl-utils/import-engine';
 
 import { ClosurePane } from './components/ClosurePane';
 import { ResultStage } from './components/ResultStage';
@@ -65,6 +65,12 @@ export interface ImportFlowProps {
    * rest; omitted for import-from-project, which opens on a blank slate.
    */
   initialSelection?: 'all' | ItemCategory[];
+  /**
+   * CN-017: where `sourceDir` came from. Threaded onto every plan this flow
+   * builds, because `apply()`'s module copy loop reads it — see
+   * {@link ImportOrigin}.
+   */
+  origin: ImportOrigin;
   /**
    * Prefab semantics: a colliding non-component item defaults to "keep yours"
    * rather than overwrite. It is still SHOWN — the old silent drop becomes a
@@ -137,6 +143,7 @@ export function ImportFlow({
   targetName,
   target,
   initialSelection,
+  origin,
   keepExistingNonComponents,
   onApply,
   onDone,
@@ -184,8 +191,8 @@ export function ImportFlow({
 
   // Pass 1: what collides, with nothing resolved. Seeds the defaults.
   const basePlan = useMemo(
-    () => (source ? planSelection(source, target, selection) : null),
-    [source, target, selection]
+    () => (source ? planSelection(source, target, selection, origin) : null),
+    [source, target, selection, origin]
   );
   const baseIndex = useMemo(() => (basePlan ? planIndex(basePlan) : new Map<string, PlannedStatus>()), [basePlan]);
 
@@ -196,8 +203,8 @@ export function ImportFlow({
 
   // Pass 2: the plan as it will actually be applied.
   const plan = useMemo(
-    () => (source ? planSelection(source, target, selection, effective) : null),
-    [source, target, selection, effective]
+    () => (source ? planSelection(source, target, selection, origin, effective) : null),
+    [source, target, selection, origin, effective]
   );
   const index = useMemo(() => (plan ? planIndex(plan) : new Map<string, PlannedStatus>()), [plan]);
   const summary = useMemo(() => (plan ? summarizePlan(plan, index) : null), [plan, index]);

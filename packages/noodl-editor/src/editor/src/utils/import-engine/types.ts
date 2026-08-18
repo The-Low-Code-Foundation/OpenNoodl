@@ -20,6 +20,7 @@
  * @module noodl-editor/utils/import-engine/types
  */
 
+import type { KitVerifyResult } from '../../../../shared/utils/projectmodules';
 import type { ComponentDiff } from '../../versioning';
 import type { ImportReport } from './legacy/types';
 
@@ -185,8 +186,72 @@ export interface PlannedItem {
   policy: ItemPolicy;
 }
 
+/**
+ * CN-017 — one user's consent to one executable module arriving from a URL.
+ *
+ * The verification result is carried, not just a boolean: what the user agreed
+ * to is *this script defining these nodes*, and a record that kept only "yes"
+ * could not say what the yes was about.
+ */
+export interface KitConsent {
+  /** The `noodl_modules/<dirName>` folder name — the join key for the copy. */
+  module: string;
+  verification: KitVerifyResult;
+  /** ISO timestamp. */
+  consentedAt: string;
+}
+
+/**
+ * ✅ **CN-017 AC2. Where this import's code came from, carried as data on the
+ * plan rather than remembered by each installer.**
+ *
+ * 🔴 **Measured: four routes put code into a project's `noodl_modules/`, and
+ * three of them converge on one line** — `apply()`'s module copy loop. A module
+ * install (`ModuleLibraryModel.installModule`/`installPrefab`), a project import
+ * from a downloaded archive (`EditorPage._importProject`) and a project import
+ * from a local folder (`ProjectLibraryModel`) all end there. Putting the check
+ * in the two URL-sourced *installers* would have left the copy loop itself
+ * ungated, so a third installer added later would be unprotected by default;
+ * putting the *distinction* on the plan means the loop can tell the cases apart
+ * and a new caller must state which one it is to compile at all.
+ *
+ * 🔴 **A discriminated union, not `{trusted: boolean, url?: string}`.** A local
+ * origin has no `consents` field to misread as "the local kits were checked",
+ * and a downloaded origin **cannot be constructed without one** — the same shape
+ * as {@link KitProvenance}, and for the same reason.
+ */
+export type ImportOrigin =
+  /** A project directory on this machine. Local code: copied without a gate. */
+  | { kind: 'local-project' }
+  /**
+   * The throwaway project an **export** stages into before zipping it.
+   *
+   * 🔴 **Its own arm rather than `local-project`, and the difference is a real
+   * one that was found by following the export path rather than assumed.** An
+   * export writes its staging directory into a zip somebody else will download,
+   * so a provenance record written there would **travel with the artefact** —
+   * claiming, inside a stranger's download, that these kits came from a project
+   * on *their* computer. Provenance belongs to the project that installed a kit,
+   * never to the kit; this arm copies freely and records nothing.
+   */
+  | { kind: 'export-staging' }
+  /**
+   * An archive unpacked from a URL. `consents` is what the user actually agreed
+   * to; an executable module absent from it is **not copied**. An empty list is
+   * a legitimate value and means exactly that: nothing was consented to.
+   */
+  | { kind: 'downloaded'; url: string; consents: KitConsent[] };
+
 export interface ImportPlan {
   sourceDir: string;
+  /**
+   * 🔴 **Required, and that is the enforcement.** An optional field defaulting
+   * to "trusted" would make forgetting it safe-looking and silent; an optional
+   * field defaulting to "untrusted" would fail closed but still let a caller
+   * omit the one fact `apply()` needs to say *why* it refused. Required means a
+   * new install route cannot reach the copy loop without stating what it is.
+   */
+  origin: ImportOrigin;
   components: PlannedComponent[];
   resources: PlannedItem[];
   modules: PlannedItem[];

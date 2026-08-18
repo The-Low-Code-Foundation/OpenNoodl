@@ -13,6 +13,7 @@ import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
 
 import {
   createNodeKit,
+  describeKitOrigin,
   joinKitNodes,
   listNodeKits,
   removeNodeKit,
@@ -302,6 +303,24 @@ export function KitsSection() {
             >
               ✕
             </button>
+          </div>
+
+          {/*
+            ✅ **CN-017 AC3 — where this kit came from, on the list that decides
+            whether to remove it.**
+
+            🔴 Rendered from `describeKitOrigin`, the same function the property
+            panel byline uses, so the two surfaces cannot describe one kit two
+            ways. ⚠️ A kit with no record says so; it is NOT drawn as locally
+            authored, because "we have no record" and "you wrote it" are different
+            facts, and only one of them is evidence.
+          */}
+          <div
+            style={{ marginTop: '2px', fontSize: '11px', color: 'var(--theme-color-fg-muted)' }}
+            data-test={`kit-origin-${kit.dirName}`}
+            title={describeKitOrigin(kit.provenance).title}
+          >
+            {describeKitOrigin(kit.provenance).label}
           </div>
 
           {/*

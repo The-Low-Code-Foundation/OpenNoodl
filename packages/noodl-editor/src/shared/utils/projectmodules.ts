@@ -113,6 +113,55 @@ export interface LibraryVerifyResult {
 }
 
 /**
+ * The browser-shaped `vm` sandbox both source checks run in.
+ *
+ * 🔴 **Extracted, not copied.** `verifyLibrarySource` (ERG-002) and
+ * `verifyKitSource` (CN-017) ask *different questions* of the same context, and
+ * two hand-maintained copies of this object would drift exactly the way the two
+ * `noodl_modules` scanners drifted before LIB-003 merged them — the second copy
+ * would quietly lack whatever stub the first one grew.
+ *
+ * ⚠️ **This is a shape smoke test, not a security boundary.** A `vm` context is
+ * not a sandbox in the security sense: `vm`'s own documentation says so, the
+ * timeout is escapable, and nothing here stops a script that reaches the host
+ * through a passed-in primordial. It exists to turn a *silent* `undefined` an
+ * hour later into a named diagnosis at add time. No caller may describe a script
+ * that survives it as safe.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function createBrowserSandbox(): Record<string, any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sandbox: Record<string, any> = {
+    console,
+    // A UMD wrapper typically probes `typeof module`, `typeof exports`,
+    // `typeof define`, then falls through to `window.X = factory()` — leaving
+    // these undefined (not defined-as-empty-objects) is what makes that
+    // fall-through happen instead of the CommonJS/AMD branch.
+    navigator: { userAgent: 'node' },
+    document: {
+      createElement: () => ({ setAttribute() {}, appendChild() {}, style: {} }),
+      createElementNS: () => ({ setAttribute() {}, appendChild() {}, style: {} }),
+      getElementsByTagName: () => [],
+      head: { appendChild() {} },
+      currentScript: null,
+      addEventListener() {},
+      removeEventListener() {}
+    },
+    location: { href: '', protocol: 'https:', host: '' },
+    addEventListener() {},
+    removeEventListener() {},
+    setTimeout,
+    clearTimeout,
+    setInterval,
+    clearInterval
+  };
+  sandbox.window = sandbox;
+  sandbox.self = sandbox;
+  sandbox.globalThis = sandbox;
+  return sandbox;
+}
+
+/**
  * The check spec §2 calls "the whole of Richard's pain": run the fetched
  * source in a sandbox shaped like a browser tab (`window`/`self`/`globalThis`
  * all aliased to the sandbox object, since a plain `<script>` tag is exactly
@@ -144,34 +193,7 @@ export function verifyLibrarySource(code: string, globalName: string): LibraryVe
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sandbox: Record<string, any> = {
-    console,
-    // A UMD wrapper typically probes `typeof module`, `typeof exports`,
-    // `typeof define`, then falls through to `window.X = factory()` — leaving
-    // these undefined (not defined-as-empty-objects) is what makes that
-    // fall-through happen instead of the CommonJS/AMD branch.
-    navigator: { userAgent: 'node' },
-    document: {
-      createElement: () => ({ setAttribute() {}, appendChild() {}, style: {} }),
-      createElementNS: () => ({ setAttribute() {}, appendChild() {}, style: {} }),
-      getElementsByTagName: () => [],
-      head: { appendChild() {} },
-      currentScript: null,
-      addEventListener() {},
-      removeEventListener() {}
-    },
-    location: { href: '', protocol: 'https:', host: '' },
-    addEventListener() {},
-    removeEventListener() {},
-    setTimeout,
-    clearTimeout,
-    setInterval,
-    clearInterval
-  };
-  sandbox.window = sandbox;
-  sandbox.self = sandbox;
-  sandbox.globalThis = sandbox;
+  const sandbox = createBrowserSandbox();
   const before = new Set(Object.keys(sandbox));
 
   const context = vm.createContext(sandbox);
@@ -231,6 +253,425 @@ function slugify(s: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+
+// ─── CN-017: verifying a kit, and recording where it came from ───────────────
+
+/**
+ * What a kit source turned out to be. Distinguished shapes, not a boolean — the
+ * same model as {@link LibraryVerifyResult}, and for the same reason: the useful
+ * output of a check is *what went wrong and what to do*, and a caller that has
+ * to regex a message string to find out is a caller that will get it wrong.
+ */
+export type KitVerifyOutcome =
+  /** Ran, called `Noodl.defineModule`, and defined at least one node. */
+  | 'defines-nodes'
+  /** Ran cleanly and never called `Noodl.defineModule` — not a kit. */
+  | 'no-define-module'
+  /** Called `defineModule` with no `nodes` and no `reactNodes`. */
+  | 'defines-no-nodes'
+  /**
+   * Never run. The module declares no local file to read — its code arrives from
+   * a URL at runtime. 🔴 **Not a pass and not a failure**, and it has its own
+   * name so that no surface can render it as either.
+   */
+  | 'not-checked'
+  /** An ES-module build; a `<script>` tag cannot load it. */
+  | 'es-module'
+  /** A CommonJS (Node) build; a `<script>` tag cannot load it. */
+  | 'commonjs'
+  /** Threw while running. */
+  | 'threw';
+
+export interface KitVerifyResult {
+  ok: boolean;
+  outcome: KitVerifyOutcome;
+  /** Human-facing, and on failure it names the likely cause. Never a bare "false". */
+  message: string;
+  /** Node type names the script defined, in definition order. Empty on every failure. */
+  nodes: string[];
+}
+
+/**
+ * ✅ **D6 part 2, the kit-shaped half.** Run a kit's `index.js` in the browser
+ * shaped sandbox and report what it actually defines.
+ *
+ * 🔴 **`verifyLibrarySource` cannot answer this question**, which was measured
+ * rather than assumed: it requires a `globalName` (`'A global variable name is
+ * required to verify a library.'`) and grades the script on whether that global
+ * appeared. A kit declares no global at all — it calls `Noodl.defineModule` —
+ * so every kit on earth fails that check for a reason that is not about the kit.
+ *
+ * 🔴 **The two evaluators that already run kit code cannot be called from here**,
+ * also measured. `noodl-mcp/src/kitExtract/entry.js` is an esbuild *entry point*
+ * for a child process (it `require`s `@noodl/runtime`, the viewer's node
+ * register and a DOM shim, and bundles to `dist/kit-extract.cjs`) — there is no
+ * function to import. `noodl-viewer-react/static/ssr/kit-modules.js` takes a
+ * *deploy's `index.html`* and reads script tags out of it, which does not exist
+ * at install time, and evaluates with a bare `new Function(source)()` in the
+ * caller's own global scope — correct for a server render it controls, wrong for
+ * a stranger's script inside the editor renderer.
+ *
+ * So what is reused is the *sandbox* ({@link createBrowserSandbox}, shared with
+ * ERG-002 rather than copied) and the *question* — the `defineModule`-collecting
+ * shim is `kitExtract/entry.js`'s, down to the recursive-noop `Proxy` base,
+ * because kit code touches other members of the `Noodl` global at module scope.
+ *
+ * ⚠️ **`React` is a recursive noop here.** ✅ D19 put React in the runtime's gift
+ * as a bare global, and the scaffold's own template opens with
+ * `var h = React.createElement` — so without a stub every scaffolded kit would
+ * fail verification with a `ReferenceError` that says nothing about the kit. The
+ * cost is honest and worth stating: a kit that *calls* React at module scope and
+ * depends on the result gets a noop, so this check grades **declaration shape,
+ * not behaviour**.
+ *
+ * ⚠️ **This does not establish that a kit is safe, and no caller may say it
+ * does.** A kit is arbitrary JavaScript with full page access; that is what makes
+ * a custom node as capable as a built-in. What this buys is that the file is a
+ * kit at all, in a browser build, and that its nodes can be named before the
+ * user is asked to consent to any of it.
+ */
+export function verifyKitSource(code: string): KitVerifyResult {
+  const sandbox = createBrowserSandbox();
+
+  // The `kitExtract/entry.js` shim: everything on `Noodl` answers with a
+  // recursive noop, except `defineModule`, which collects.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const collected: any[] = [];
+  const noop: unknown = new Proxy(function () {}, { get: () => noop, apply: () => noop });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const base: Record<string, any> = { deployed: false, defineModule: (m: unknown) => collected.push(m) };
+  sandbox.Noodl = new Proxy(base, { get: (t, k) => (k in t ? t[k as string] : noop) });
+  sandbox.React = noop;
+
+  const context = vm.createContext(sandbox);
+  try {
+    new vm.Script(code, { filename: 'kit-index.js' }).runInContext(context, { timeout: 5000 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    const looksLikeEsm =
+      /Unexpected token ['"`]?export['"`]?/i.test(message) ||
+      /Cannot use import statement outside a module/i.test(message) ||
+      /Unexpected token ['"`]?import['"`]?/i.test(message);
+    const looksLikeCjs = /(module|exports) is not defined/i.test(message);
+
+    if (looksLikeEsm) {
+      return {
+        ok: false,
+        outcome: 'es-module',
+        message: `This kit could not be loaded (${message}). It looks like an ES-module build — a kit is loaded by a plain <script> tag, so it needs a browser (UMD/IIFE) build.`,
+        nodes: []
+      };
+    }
+    if (looksLikeCjs) {
+      return {
+        ok: false,
+        outcome: 'commonjs',
+        message: `This kit could not be loaded (${message}). It looks like a CommonJS (Node) build — a plain <script> tag has no "module"/"exports".`,
+        nodes: []
+      };
+    }
+    return {
+      ok: false,
+      outcome: 'threw',
+      message: `This kit threw while loading: ${message}. It would register no nodes.`,
+      nodes: []
+    };
+  }
+
+  if (collected.length === 0) {
+    return {
+      ok: false,
+      outcome: 'no-define-module',
+      message:
+        'This script ran but never called Noodl.defineModule, so it defines no nodes. It may be a plain library rather than a node kit.',
+      nodes: []
+    };
+  }
+
+  const nodes: string[] = [];
+  for (const module of collected) {
+    if (!module || typeof module !== 'object') continue;
+    for (const list of [module.nodes, module.reactNodes]) {
+      if (!Array.isArray(list)) continue;
+      for (const definition of list) {
+        const name = definition && typeof definition.name === 'string' ? definition.name : null;
+        // Named, never counted: a definition with no `name` cannot be registered
+        // and a count would report it as though it could.
+        if (name) nodes.push(name);
+      }
+    }
+  }
+
+  if (nodes.length === 0) {
+    return {
+      ok: false,
+      outcome: 'defines-no-nodes',
+      message:
+        'This kit called Noodl.defineModule but defined no named nodes, so nothing would appear in the picker.',
+      nodes: []
+    };
+  }
+
+  return {
+    ok: true,
+    outcome: 'defines-nodes',
+    message: `Defines ${nodes.length} node${nodes.length === 1 ? '' : 's'}: ${nodes.join(', ')}.`,
+    nodes
+  };
+}
+
+/**
+ * Does this module contribute JavaScript that a page will execute?
+ *
+ * 🔴 **Wider than "is it a kit", deliberately.** {@link manifestLooksLikeKit} is
+ * subtractive and excludes an ERG-002 library — but a library module injects a
+ * `<script>` tag into the same page with the same reach, so a consent gate that
+ * covered kits and waved libraries through would be a hole in the shape of its
+ * own definition. An iconset or a font module declares no `main` and no
+ * dependencies and is not gated: it contributes no code.
+ */
+export function moduleDeclaresExecutableCode(m: ModuleManifest | null): m is ModuleManifest {
+  if (!m) return false;
+  if (typeof m.main === 'string' && m.main) return true;
+  if (Array.isArray(m.dependencies) && m.dependencies.length > 0) return true;
+  return false;
+}
+
+/** One executable module found in a directory, with what verification made of it. */
+export interface ScannedExecutableModule {
+  /** The `noodl_modules/<dirName>` folder name — the join key for a copy. */
+  dirName: string;
+  /** The manifest's own name, which is what every surface displays. */
+  displayName: string;
+  /**
+   * ⚠️ **Always present, and `outcome: 'not-checked'` is a value rather than an
+   * absence.** An optional field would leave "we did not look" and "there was
+   * nothing to look at" indistinguishable from a missing assignment, and a
+   * renderer would show the same blank for all three.
+   */
+  verification: KitVerifyResult;
+}
+
+/**
+ * Every module in a project directory that would execute code, verified.
+ *
+ * ⚠️ **A module with no local `main` comes back `'not-checked'`, which is not
+ * the same as passing.** An ERG-002 library whose source stays at a remote URL
+ * has nothing on disk to run; fetching it here would turn an install into a
+ * network call and would still only grade whatever the URL served *at that
+ * moment*. The consent surface must render that outcome as "not checked" rather
+ * than as silence — see {@link ScannedExecutableModule.verification}.
+ */
+export async function scanExecutableModules(sourceDirectory: string): Promise<ScannedExecutableModule[]> {
+  const scanned = await scanModuleManifests(sourceDirectory);
+  const found: ScannedExecutableModule[] = [];
+
+  for (const entry of scanned) {
+    const m = entry.manifest;
+    if (!moduleDeclaresExecutableCode(m)) continue;
+
+    const displayName = typeof m.name === 'string' && m.name ? m.name : entry.name;
+    const mainFile = typeof m.main === 'string' && m.main ? m.main : null;
+    if (!mainFile) {
+      found.push({
+        dirName: entry.name,
+        displayName,
+        verification: {
+          ok: false,
+          outcome: 'not-checked',
+          message: 'Not checked: this module loads its code from a URL at runtime, so there is no file here to read.',
+          nodes: []
+        }
+      });
+      continue;
+    }
+
+    let code: string;
+    try {
+      code = await fs.promises.readFile(sourceDirectory + '/noodl_modules/' + entry.name + '/' + mainFile, 'utf8');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      found.push({
+        dirName: entry.name,
+        displayName,
+        verification: {
+          ok: false,
+          outcome: 'threw',
+          message: `The manifest names "${mainFile}", which could not be read: ${message}`,
+          nodes: []
+        }
+      });
+      continue;
+    }
+
+    found.push({ dirName: entry.name, displayName, verification: verifyKitSource(code) });
+  }
+
+  return found;
+}
+
+// ─── CN-017: the provenance record ───────────────────────────────────────────
+
+/**
+ * Where a kit came from.
+ *
+ * 🔴 **A discriminated union, not a record with a `verified` flag beside a
+ * `source` field.** CN-017's own trap: `{source: 'local', verified: false}` reads
+ * as *suspicious* and `{source: 'local', verified: true}` reads as a *lie*, and
+ * both are wrong about the same kit. Here a local kit has no verification field
+ * to misread, and an installed one **cannot be constructed without one**. This is
+ * the third surface in this repo to reach the same shape independently —
+ * `AskAboutNodeDialog`'s `postState` and `CommunityAccountState` are the others.
+ *
+ * 🔴 **This does not live in the kit's own `manifest.json`.** That file arrives
+ * inside the archive, authored by the party being vouched for, so a kit could
+ * ship `origin: 'local'` and be believed. Phase 67 closed a defect of exactly
+ * that shape (a forgeable link, E8). The record is the *installing project's*,
+ * written by the editor, and it is deliberately not carried by an export.
+ */
+export type KitProvenance =
+  /** Scaffolded in this project. There is no verification field on this arm. */
+  | { module: string; origin: 'local'; createdAt: string }
+  /** Copied in from another project on this machine. Local code, no gate, no consent. */
+  | { module: string; origin: 'imported'; fromProject: string; importedAt: string }
+  /** Unpacked from a URL. Cannot exist without a verification result and a consent stamp. */
+  | {
+      module: string;
+      origin: 'installed';
+      url: string;
+      installedAt: string;
+      verification: KitVerifyResult;
+      consentedAt: string;
+    };
+
+/**
+ * The provenance file's path inside a project.
+ *
+ * ⚠️ **A plain file under `noodl_modules/`, and that placement is load-bearing**
+ * — measured, not assumed. The one scanner enumerates `readdir` entries and keeps
+ * only `isDirectory() || isSymbolicLink()` (`module-inject/src/index.js:126-133`),
+ * and the import engine's `listModules` keeps only entries carrying a
+ * `manifest.json`, so this file is invisible to every existing reader and cannot
+ * turn into a phantom module in a list or an import. It sits beside the kits it
+ * describes, inside the project, and is therefore in the project's own git
+ * history — LIB-006's `writeImportReport` reasoning, at a stable overwritten path
+ * for the same reason.
+ *
+ * 🔴 **Nothing here writes outside the project.** CN-017's trap list names
+ * `Connect` writing the real `~/.claude.json`; the module installer already
+ * writes to `getUserDataPath()/library/`, which is a fact about the installer and
+ * not about this record.
+ */
+export const KIT_PROVENANCE_FILE = 'noodl_modules/kit-provenance.json';
+
+/**
+ * Does this parsed object match one of {@link KitProvenance}'s arms *completely*?
+ *
+ * ⚠️ Written as three explicit shapes rather than a discriminator check plus
+ * optional fields, because the whole point of the union is that an `installed`
+ * record without a verification result **is not a record** — accepting a partial
+ * one would put the contradiction back that the union exists to prevent.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isKitProvenance(r: any): r is KitProvenance {
+  if (!r || typeof r.module !== 'string' || !r.module) return false;
+  if (r.origin === 'local') return typeof r.createdAt === 'string';
+  if (r.origin === 'imported') return typeof r.fromProject === 'string' && typeof r.importedAt === 'string';
+  if (r.origin === 'installed') {
+    return (
+      typeof r.url === 'string' &&
+      typeof r.installedAt === 'string' &&
+      typeof r.consentedAt === 'string' &&
+      !!r.verification &&
+      typeof r.verification.outcome === 'string' &&
+      typeof r.verification.message === 'string'
+    );
+  }
+  return false;
+}
+
+/** Every provenance record in a project. Missing, unreadable or malformed all read as none. */
+export async function readKitProvenance(projectDirectory: string | undefined): Promise<KitProvenance[]> {
+  if (!projectDirectory) return [];
+  let raw: string;
+  try {
+    raw = await fs.promises.readFile(projectDirectory + '/' + KIT_PROVENANCE_FILE, 'utf8');
+  } catch {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      console.warn(`[projectmodules] ${KIT_PROVENANCE_FILE} is not a list of records — ignoring it.`);
+      return [];
+    }
+    // 🔴 Validated per ARM, not just "has a module and an origin". This file is
+    // in the project's git history, so it goes through merges and hand-edits: an
+    // `installed` record that lost its `verification` would crash
+    // `describeKitOrigin` at render time, in a panel, on somebody else's machine.
+    // A record that does not match its own arm is dropped with its name said.
+    const kept: KitProvenance[] = [];
+    for (const r of parsed) {
+      if (isKitProvenance(r)) kept.push(r);
+      else if (r && typeof r.module === 'string') {
+        console.warn(`[projectmodules] ${KIT_PROVENANCE_FILE}: the record for "${r.module}" is malformed — ignoring it.`);
+      }
+    }
+    return kept;
+  } catch (error) {
+    // Loud, never silent — this file's own contract, and the one shared by every
+    // other reader in this module.
+    console.warn(
+      `[projectmodules] ${KIT_PROVENANCE_FILE} could not be parsed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+    return [];
+  }
+}
+
+/**
+ * Record provenance for one or more modules, replacing any record they already had.
+ *
+ * ⚠️ **Last write wins per module, and never per file.** Reinstalling a kit from
+ * a different URL must not leave the old origin standing beside the new one; and
+ * a write that dropped the records of *other* kits would silently un-record them.
+ */
+export async function recordKitProvenance(
+  projectDirectory: string | undefined,
+  records: KitProvenance[]
+): Promise<{ ok: boolean; message?: string }> {
+  if (!projectDirectory) return { ok: false, message: 'No project is open.' };
+  if (records.length === 0) return { ok: true };
+
+  const existing = await readKitProvenance(projectDirectory);
+  const replaced = new Set(records.map((r) => r.module));
+  const next = [...existing.filter((r) => !replaced.has(r.module)), ...records];
+
+  try {
+    await fs.promises.mkdir(projectDirectory + '/noodl_modules', { recursive: true });
+    await fs.promises.writeFile(
+      projectDirectory + '/' + KIT_PROVENANCE_FILE,
+      JSON.stringify(next, null, 2),
+      'utf8'
+    );
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Drop the records for modules that are no longer on disk, and return what is left.
+ *
+ * ⚠️ Called by the surface that lists kits, so a kit removed and re-scaffolded
+ * under the same name cannot inherit the origin of the kit it replaced.
+ */
+export function pruneKitProvenance(records: KitProvenance[], dirNamesOnDisk: string[]): KitProvenance[] {
+  const onDisk = new Set(dirNamesOnDisk);
+  return records.filter((r) => onDisk.has(r.module));
 }
 
 /**
@@ -498,6 +939,23 @@ export async function createNodeKit(
 
   if (!result.ok) return { ok: false, message: result.message };
 
+  /*
+   * ✅ **CN-017 AC1, and the reason this line is a write and not a check.**
+   * D6's first part is that a kit you scaffolded here runs with no prompt and no
+   * gate, so nothing about this call may block, ask or verify. What it does do is
+   * *say where the kit came from*, once, so the Kits panel can distinguish
+   * "authored here" from "no record" instead of assuming the first.
+   *
+   * ⚠️ Best-effort on purpose: the kit is already on disk and correct, and a
+   * failed record must never turn a successful scaffold into a reported failure.
+   */
+  const recorded = await recordKitProvenance(projectDirectory, [
+    { module: result.kit.dirName, origin: 'local', createdAt: new Date().toISOString() }
+  ]);
+  if (!recorded.ok) {
+    console.warn(`[projectmodules] could not record provenance for "${result.kit.dirName}": ${recorded.message}`);
+  }
+
   return {
     ok: true,
     message: `Created "${result.kit.displayName}" with an example node, a README and a copy of the kit types.`,
@@ -523,6 +981,18 @@ export async function createNodeKit(
 export interface ProjectNodeKit {
   /** The `noodl_modules/` folder name. The identity — what removal takes. */
   dirName: string;
+  /**
+   * ✅ **CN-017 AC3.** Where this kit came from, when the project has a record of
+   * it. Joined on {@link dirName}, which is what {@link KIT_PROVENANCE_FILE}
+   * keys on — never on the display name, which two kits can share.
+   *
+   * ⚠️ **Absent is its own state and is not "local".** A kit that predates the
+   * record, or one whose record was deleted, has no provenance; describing it as
+   * locally authored would be a claim nothing on disk supports. See
+   * {@link describeKitOrigin}, which is the only sanctioned way to put this on a
+   * screen.
+   */
+  provenance?: KitProvenance;
   /**
    * Manifest `name`, falling back to the folder name.
    *
@@ -582,7 +1052,7 @@ export interface ProjectNodeKit {
  * cannot see anywhere in the product is the exact complaint CN-006b exists to
  * answer, and hiding an unrecognised one would reproduce it.
  */
-function manifestLooksLikeKit(m: ModuleManifest | null): boolean {
+function manifestLooksLikeKit(m: ModuleManifest | null): m is ModuleManifest {
   if (!m) return false;
   if (typeof m.main !== 'string' || !m.main) return false;
   if (m.kind === 'external-library') return false;
@@ -593,6 +1063,8 @@ function manifestLooksLikeKit(m: ModuleManifest | null): boolean {
 /** Every node kit installed in a project, in folder order. */
 export async function listNodeKits(projectDirectory: string | undefined): Promise<ProjectNodeKit[]> {
   const scanned = await scanModuleManifests(projectDirectory);
+  // CN-017 AC3. One read per listing, joined by folder name below.
+  const provenanceByModule = new Map((await readKitProvenance(projectDirectory)).map((r) => [r.module, r]));
   const kits: ProjectNodeKit[] = [];
 
   for (const s of scanned) {
@@ -604,6 +1076,9 @@ export async function listNodeKits(projectDirectory: string | undefined): Promis
       displayName: typeof m.name === 'string' && m.name ? m.name : s.name,
       main: String(m.main)
     };
+
+    const provenance = provenanceByModule.get(s.name);
+    if (provenance) kit.provenance = provenance;
 
     // Present-only, never defaulted: `version: '—'` or `version: '0.0.0'` would
     // put a number on screen that no kit on disk has ever said.
@@ -628,6 +1103,65 @@ export async function listNodeKits(projectDirectory: string | undefined): Promis
   }
 
   return kits;
+}
+
+
+/**
+ * How one screen should describe a kit's origin. **The only sanctioned renderer.**
+ *
+ * 🔴 **Shared because two surfaces showing the same kit two ways is the defect
+ * CN-017 names against itself.** The property panel header and the Kits section
+ * both put this on screen; if each phrased it, one of them would eventually say
+ * something the record does not support.
+ *
+ * ⚠️ **Four states, all distinguishable, and none of them says "safe".** An
+ * absent record renders as *"where this came from was not recorded"* rather than
+ * as a locally-authored kit — collapsing those two is how a downloaded kit ends
+ * up reading as one you wrote.
+ *
+ * ⚠️ **Attribution, never demotion** (P1, and CN-006b AC2's standing rule for
+ * this row): nothing here is a warning, a badge or a caveat. It says where the
+ * code came from, in the same voice as the rest of the byline.
+ */
+export function describeKitOrigin(provenance: KitProvenance | undefined): { label: string; title: string } {
+  if (!provenance) {
+    return {
+      label: 'origin not recorded',
+      title: 'This project has no record of where this kit came from. Kits installed before provenance was recorded, and kits added by hand, have none.'
+    };
+  }
+
+  if (provenance.origin === 'local') {
+    return { label: 'written here', title: `Scaffolded in this project on ${provenance.createdAt.slice(0, 10)}.` };
+  }
+
+  if (provenance.origin === 'imported') {
+    return {
+      label: 'imported from another project',
+      title: `Copied in from ${provenance.fromProject} on ${provenance.importedAt.slice(0, 10)}.`
+    };
+  }
+
+  // ⚠️ The verification line states what the check established and stops there.
+  // "Verified" alone would be read as an assurance the check cannot give.
+  const checked =
+    provenance.verification.outcome === 'not-checked'
+      ? 'Its code was not read before installing — it loads from a URL at runtime.'
+      : `When installed, its code declared: ${provenance.verification.message}`;
+
+  return {
+    label: `installed from ${describeHost(provenance.url)}`,
+    title: `Installed from ${provenance.url} on ${provenance.installedAt.slice(0, 10)}, with your agreement to run its code in this app. ${checked}`
+  };
+}
+
+/** The host of a URL, for a byline that must fit on one line. Falls back to the whole string. */
+function describeHost(url: string): string {
+  try {
+    return new URL(url).host || url;
+  } catch {
+    return url;
+  }
 }
 
 /**

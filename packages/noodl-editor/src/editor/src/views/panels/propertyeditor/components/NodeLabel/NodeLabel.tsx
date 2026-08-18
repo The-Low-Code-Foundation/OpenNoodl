@@ -4,6 +4,7 @@ import { platform } from '@noodl/platform';
 
 import { Keybindings } from '@noodl-constants/Keybindings';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
+import { ProjectModel } from '@noodl-models/projectmodel';
 import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
 import { getNodeDocs } from '@noodl-utils/nodeDocs';
 import { ParameterValueResolver } from '@noodl-utils/ParameterValueResolver';
@@ -14,6 +15,7 @@ import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/
 import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
 import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
 
+import { describeKitOrigin, listNodeKits } from '../../../../../../../shared/utils/projectmodules';
 import { NodeGraphNodeDelete, NodeGraphNodeRename } from '../..';
 import { getNodeProvenance } from '../../provenance';
 import { getNodeTypeChipInfo } from '../../utils';
@@ -139,6 +141,44 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
    * make provenance decorative and stop it meaning "somebody else wrote this".
    */
   const { kitName, kitDocs, kitDocsUrl } = getNodeProvenance(model);
+
+  /**
+   * ✅ **CN-017 AC3 — the property panel is where a user finds out *whose* code
+   * is running, and until now it said only that a kit provided the node.**
+   *
+   * 🔴 **Read only for a kit node.** `kitName` is absent on every built-in
+   * (`getNodeProvenance` returns `{}`), so selecting an ordinary node performs no
+   * read at all — the guard is what keeps a per-selection disk read off the path
+   * that 175 of 177 node types take.
+   *
+   * ⚠️ **Joined on the manifest name, which is what this panel has.** The record
+   * is keyed by folder name, so the join goes through `listNodeKits`, which
+   * carries both — never by assuming the two strings are the same.
+   */
+  const [kitOrigin, setKitOrigin] = React.useState<{ label: string; title: string } | null>(null);
+  React.useEffect(() => {
+    if (!kitName) {
+      setKitOrigin(null);
+      return;
+    }
+    let cancelled = false;
+    listNodeKits(ProjectModel.instance?._retainedProjectDirectory).then(
+      (kits) => {
+        if (cancelled) return;
+        const kit = kits.find((k) => k.displayName === kitName);
+        // ⚠️ A kit the list does not know is left BLANK rather than described as
+        // unrecorded: "no provenance file" and "no such kit on disk" are different
+        // facts, and this row can only speak to the first.
+        setKitOrigin(kit ? describeKitOrigin(kit.provenance) : null);
+      },
+      () => {
+        if (!cancelled) setKitOrigin(null);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [kitName]);
 
   /**
    * 🔴 **P1, and the spec was wrong about this field in a way that would have
@@ -431,9 +471,16 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
         <span
           className="property-provenance-row"
           data-test="node-provenance"
-          title={`Provided by the "${kitName}" node kit in this project`}
+          title={
+            kitOrigin
+              ? `Provided by the "${kitName}" node kit in this project. ${kitOrigin.title}`
+              : `Provided by the "${kitName}" node kit in this project`
+          }
         >
           from {kitName}
+          {kitOrigin && (
+            <span data-test="node-provenance-origin"> · {kitOrigin.label}</span>
+          )}
         </span>
       )}
     </div>

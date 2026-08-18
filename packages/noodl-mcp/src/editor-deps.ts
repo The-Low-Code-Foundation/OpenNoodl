@@ -590,3 +590,12 @@ export {
   REQUIRED_CLASSES,
   resolveProvenance
 } from '../../noodl-editor/src/editor/src/models/lessoninstallpolicy';
+
+// ── CN-017: the kit provenance store ─────────────────────────────────────────
+// 🔴 Shared rather than twinned, because there are TWO scaffold routes — the
+// editor's Kits section and this server's `create_node_kit` — and a kit written
+// by one of them showing "origin not recorded" while the other says "written
+// here" would be a difference in the record with no difference in the fact.
+// `projectmodules` is fs/vm/http only; no Electron reaches this file.
+export { recordKitProvenance } from '../../noodl-editor/src/shared/utils/projectmodules';
+export type { KitProvenance } from '../../noodl-editor/src/shared/utils/projectmodules';

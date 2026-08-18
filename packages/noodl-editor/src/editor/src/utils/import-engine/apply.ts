@@ -19,11 +19,13 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 import { projectFromDirectory } from '@noodl-models/projectmodel.editor';
 import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 
+import { recordKitProvenance } from '../../../../shared/utils/projectmodules';
 import FileSystem from '../filesystem';
 import { applyModelChanges, ImportSource, ImportTarget, PreparedComponent } from './applyModel';
 import { assessImport, writeImportReport } from './legacy/importAssessment';
 import { applyLegacyTransforms } from './legacy/transforms';
 import type { ImportReport } from './legacy/types';
+import { copyPlannedModules } from './moduleGate';
 import type { ImportPlan, ImportResult, ItemPolicy } from './types';
 
 /** The subset of a project component the apply adapters touch. */
@@ -207,17 +209,48 @@ export function apply(plan: ImportPlan, targetProject: ProjectModel): Promise<Im
           else warnings.push(`Failed to copy file "${r.name}".`);
         }
 
+        /*
+         * ── ✅ CN-017 AC2: the one line every import converges on ───────────
+         *
+         * 🔴 **The gate is here, not in the installers.** A module install, a
+         * project import from a downloaded archive and a project import from a
+         * local folder all reach this loop (and so does an export, staging into a
+         * throwaway project); the two URL-sourced ones would each have had to
+         * remember to call a checker, and a fourth route added later would have
+         * been unprotected by default. `plan.origin` is required, so a route that
+         * has not said what it is cannot reach this line at all.
+         *
+         * ⚠️ **Fails closed and says so.** An executable module from a
+         * downloaded origin with no consent record is NOT copied, and the reason
+         * names the module. Silence here would be the CN-015 failure again — a
+         * kit that is simply absent, with nothing anywhere saying why.
+         */
         const modules = plan.modules.filter((m) => active(m.policy));
-        for (const m of modules) {
-          try {
+        const moduleCopy = await copyPlannedModules({
+          // 🔴 The SAME directory the copy reads from, not `plan.sourceDir` —
+          // `projectFromDirectory` may resolve a nested project root, and grading
+          // one folder while copying another would gate the wrong manifests.
+          sourceDir: source._retainedProjectDirectory,
+          moduleNames: modules.map((m) => m.name),
+          origin: plan.origin,
+          at: new Date().toISOString(),
+          copy: (name) =>
             FileSystem.instance.copyRecursiveSync(
-              source._retainedProjectDirectory + '/noodl_modules/' + m.name,
-              target._retainedProjectDirectory + '/noodl_modules/' + m.name
-            );
-            modulesCopied.push(m.name);
-          } catch (err) {
-            warnings.push(`Failed to copy module "${m.name}": ${err instanceof Error ? err.message : String(err)}`);
-          }
+              source._retainedProjectDirectory + '/noodl_modules/' + name,
+              target._retainedProjectDirectory + '/noodl_modules/' + name
+            )
+        });
+        modulesCopied.push(...moduleCopy.copied);
+        warnings.push(...moduleCopy.warnings);
+
+        /*
+         * ⚠️ **After the copies, and only for what actually landed.** Best-effort
+         * for the same reason `writeImportReport` is: the modules are already on
+         * disk and correct, and a failed record must not fail the import.
+         */
+        if (moduleCopy.provenance.length > 0) {
+          const recorded = await recordKitProvenance(target._retainedProjectDirectory, moduleCopy.provenance);
+          if (!recorded.ok) warnings.push(`Could not record where the imported modules came from: ${recorded.message}`);
         }
 
         // ── LIB-006: the report goes into the TARGET project, last ─────────

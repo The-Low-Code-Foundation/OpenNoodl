@@ -44,6 +44,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
+import { recordKitProvenance } from '../editor-deps';
 import { ToolError } from '../errors';
 import { refreshProjectOverlay } from '../kitOverlay';
 import type { ProjectBinding } from '../project/ProjectBinding';
@@ -96,6 +97,24 @@ export function registerKitTools(server: McpServer, binding: ProjectBinding): vo
         // arrive as `invalid-argument` with the generator's own message, which
         // is written to be acted on rather than merely reported.
         throw new ToolError('invalid-argument', result.message);
+      }
+
+      /*
+       * ✅ **CN-017 AC3, on the second scaffold route.** The editor's Kits
+       * section records a `local` provenance for a kit it scaffolds; this is the
+       * other producer of exactly the same thing, and a kit written here would
+       * otherwise read as *"origin not recorded"* in the panel — a difference in
+       * the record with no difference in the fact.
+       *
+       * ⚠️ Best-effort, deliberately, and identical to the editor's handling: the
+       * kit is already on disk and correct, and a failed record must never turn a
+       * successful scaffold into a reported failure.
+       */
+      const recorded = await recordKitProvenance(store.projectDir, [
+        { module: result.kit.dirName, origin: 'local', createdAt: new Date().toISOString() }
+      ]);
+      if (!recorded.ok) {
+        console.error(`[create_node_kit] could not record provenance for "${result.kit.dirName}": ${recorded.message}`);
       }
 
       // 🔴 The kit set of the bound project just changed, and the catalog this
