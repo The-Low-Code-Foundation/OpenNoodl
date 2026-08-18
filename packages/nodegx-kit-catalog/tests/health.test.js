@@ -246,11 +246,26 @@ describe('AC4 — a kit that registers zero nodes', () => {
  * where the other node-availability facts are already worded.
  */
 describe('CN-012 — kit-loads-nowhere', () => {
-  /** An overlay as `catalogNodesFromNodeLibrary` really builds it for a cloud-only kit. */
-  function cloudOnlyOverlay() {
+  /**
+   * An overlay as `catalogNodesFromNodeLibrary` really builds it for a kit that runs nowhere.
+   *
+   * 🔴 **This fixture used to declare `['cloud']`, and CN-013 made that shape unbuildable.**
+   * With the cloud loader built (D18), `effectiveKitRuntimes` returns `['cloud']` for that
+   * manifest, so the producer can no longer emit `availableIn: []` beside it — the fixture
+   * described a state the code cannot reach, while still passing, which is a suite quietly
+   * grading fiction.
+   *
+   * `ssr` replaces it because it is the live counter-example: `runtimes` accepts the value and
+   * **no loader in this repo honours it**, measured this session — nothing in
+   * `noodl-viewer-react/static/ssr/` evaluates a kit
+   * (`noodl-viewer-react/tests/ssr-kit-modules.test.js`, absence asserted beside a known-firing
+   * control). So the diagnostic keeps a real population to fire on, and the row below asserts
+   * that a cloud kit is no longer accused.
+   */
+  function nowhereOverlay() {
     return {
       kits: [
-        { kitModule: 'Tally Kit', dirPath: 'noodl_modules/tally-kit', availableIn: [], declaredRuntimes: ['cloud'] }
+        { kitModule: 'Tally Kit', dirPath: 'noodl_modules/tally-kit', availableIn: [], declaredRuntimes: ['ssr'] }
       ],
       // 🔴 Empty, and that is the case being graded rather than a shortcut: a kit
       // no runtime loads registers nothing, so there are no node entries to hang
@@ -264,13 +279,32 @@ describe('CN-012 — kit-loads-nowhere', () => {
   test('names the kit, its declaration, and what will happen', () => {
     // Selected by code rather than by index: on a loaded route this kit is also
     // a `kit-registered-nothing`, and that pairing is asserted separately below.
-    const found = kitDiagnostics(cloudOnlyOverlay()).filter((d) => d.code === 'kit-loads-nowhere');
+    const found = kitDiagnostics(nowhereOverlay()).filter((d) => d.code === 'kit-loads-nowhere');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('error');
     expect(found[0].kitModule).toBe('Tally Kit');
     expect(found[0].dirPath).toBe('noodl_modules/tally-kit');
-    expect(found[0].declaredRuntimes).toEqual(['cloud']);
+    expect(found[0].declaredRuntimes).toEqual(['ssr']);
+    // The message names both loaders, because "add browser" alone stopped being the whole
+    // remedy the moment the cloud became one.
     expect(found[0].message).toContain('"browser"');
+    expect(found[0].message).toContain('"cloud"');
+  });
+
+  /**
+   * ✅ CN-013 / D18 — the row that stops this diagnostic outliving its own premise.
+   *
+   * A kit declaring `["cloud"]` has a loader now, so accusing it would send an author to
+   * "fix" a manifest that is correct. This is the absence half, and it is asserted beside the
+   * firing rows above rather than on its own: an overlay that produced no diagnostics at all
+   * would satisfy it equally, so the pair is what carries the meaning.
+   */
+  test('🔴 a cloud kit is NOT accused, now that the cloud is a loader', () => {
+    const overlay = nowhereOverlay();
+    // Exactly what `catalogNodesFromNodeLibrary` builds today for `runtimes: ["cloud"]`:
+    // asked-for and got, so `availableIn` is fact and there is nothing to explain.
+    overlay.kits = [{ kitModule: 'Tally Kit', dirPath: 'noodl_modules/tally-kit', availableIn: ['cloud'] }];
+    expect(kitDiagnostics(overlay).filter((d) => d.code === 'kit-loads-nowhere')).toEqual([]);
   });
 
   /**
@@ -279,7 +313,7 @@ describe('CN-012 — kit-loads-nowhere', () => {
    * multiplied by them.
    */
   test('a kit is named once however many nodes are on the overlay', () => {
-    const overlay = cloudOnlyOverlay();
+    const overlay = nowhereOverlay();
     for (let i = 0; i < 8; i++) {
       overlay.nodes.push({ typeName: `tally.kit.N${i}`, kitModule: 'Tally Kit' });
     }
@@ -293,7 +327,7 @@ describe('CN-012 — kit-loads-nowhere', () => {
    * disabling `kit-registered-nothing` for it. Both must be able to fire.
    */
   test('still reports registering nothing, on a loaded route', () => {
-    const codes = kitDiagnostics(cloudOnlyOverlay(), { assumeLoaded: true }).map((d) => d.code).sort();
+    const codes = kitDiagnostics(nowhereOverlay(), { assumeLoaded: true }).map((d) => d.code).sort();
     expect(codes).toEqual(['kit-loads-nowhere', 'kit-registered-nothing']);
   });
 
@@ -304,7 +338,7 @@ describe('CN-012 — kit-loads-nowhere', () => {
    * light up every project in the repo.
    */
   test('a browser kit beside it stays silent, and only the cloud one is named', () => {
-    const overlay = cloudOnlyOverlay();
+    const overlay = nowhereOverlay();
     overlay.kits.push({
       kitModule: 'Cashflow Kit',
       dirPath: 'noodl_modules/cashflow',
@@ -323,7 +357,7 @@ describe('CN-012 — kit-loads-nowhere', () => {
    * empty: one means "nobody said", the other means "measured, and it is none".
    */
   test('a kit with no availableIn at all is not accused', () => {
-    const overlay = cloudOnlyOverlay();
+    const overlay = nowhereOverlay();
     delete overlay.kits[0].availableIn;
     delete overlay.kits[0].declaredRuntimes;
     overlay.nodes = [{ typeName: 'tally.kit.Accumulator', kitModule: 'Tally Kit' }];
@@ -336,7 +370,7 @@ describe('CN-012 — kit-loads-nowhere', () => {
    * why the nodes are missing when the module never ran.
    */
   test('a kit that also FAILED to load is reported once, as the failure', () => {
-    const overlay = cloudOnlyOverlay();
+    const overlay = nowhereOverlay();
     overlay.failures = [{ kitModule: 'Tally Kit', dirPath: 'noodl_modules/tally-kit', message: 'boom' }];
     const codes = kitDiagnostics(overlay).map((d) => d.code);
     expect(codes).toEqual(['kit-load-failed']);
@@ -347,7 +381,7 @@ describe('CN-012 — kit-loads-nowhere', () => {
    * just as true before anything has loaded — so the editor gets it too.
    */
   test('assumeLoaded:false still reports it', () => {
-    const found = kitDiagnostics(cloudOnlyOverlay(), { assumeLoaded: false });
+    const found = kitDiagnostics(nowhereOverlay(), { assumeLoaded: false });
     expect(found.map((d) => d.code)).toEqual(['kit-loads-nowhere']);
   });
 });

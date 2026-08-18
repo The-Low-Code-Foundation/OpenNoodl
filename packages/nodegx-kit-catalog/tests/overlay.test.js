@@ -119,42 +119,76 @@ describe('catalogNodesFromNodeLibrary', () => {
   });
 
   /**
-   * 🔴 **This assertion was `toEqual(['cloud'])` and it was REPLACED, not
-   * deleted** (CN-002's rule: a silence baseline is replaced when the call is
-   * taken). The row's title has always been right — a cloud-only kit must not
-   * claim the browser — but `['cloud']` was the wrong way to be right. CN-012
-   * measured what a cloud-declared kit actually does: the browser injector
-   * skips it and nothing loads it server-side, so it runs in **no** runtime, and
-   * `availableIn` is the same field that states plain fact for a built-in.
-   * Reporting the manifest's wish there told an agent the node was available on
-   * the one runtime where it provably is not.
+   * 🔴 **This row has now been REPLACED TWICE, never deleted** (CN-002's rule),
+   * and the two replacements are worth reading together because they point in
+   * opposite directions.
+   *
+   * 1. It began as `toEqual(['cloud'])` — the manifest's wish restated as fact.
+   *    CN-012 measured what a cloud-declared kit actually did: the browser
+   *    injector skipped it and nothing loaded it server-side, so it ran in **no**
+   *    runtime. The assertion became `[]`, and the title with it.
+   * 2. ✅ **CN-013 / D18 built the cloud loader**, so `['cloud']` is now a
+   *    statement of fact again — for a different reason than the original one.
+   *    `noodl-viewer-cloud/src/kitModules.ts` registers a cloud-enabled kit's
+   *    logic nodes, and the same cloud function that timed out with a kit node
+   *    now answers `200` with its arithmetic, measured through the esbuild
+   *    bundle over real HTTP.
+   *
+   * ⚠️ **The title changed with the fact, and that is the point.** A row whose
+   * name outlives its assertion is how a suite comes to assert the opposite of
+   * what it says — the failure class this phase keeps finding. `ssr` is the row
+   * that still reads `[]`, and it is measured, not assumed: nothing in
+   * `static/ssr/` evaluates a kit (`noodl-viewer-react/tests/ssr-kit-modules.test.js`).
    */
-  it('reports a cloud-only kit as running nowhere, and keeps its declaration', () => {
+  it('reports a cloud-only kit as running in the cloud, now that a loader exists', () => {
     const { nodes } = catalogNodesFromNodeLibrary(payload, {
       moduleRuntimes: { 'Cashflow Kit': ['cloud'] }
     });
-    expect(nodes[0].availableIn).toEqual([]);
-    // The manifest's claim is not lost — it moves to a field that does not read
-    // as fact. An empty `availableIn` with no explanation would be a gap that
-    // could pass for "nothing to say".
-    expect(nodes[0].declaredRuntimes).toEqual(['cloud']);
+    expect(nodes[0].availableIn).toEqual(['cloud']);
+    // Asked-for and got: nothing to explain, so no `declaredRuntimes`. Its
+    // presence has always meant "this kit asked for something it does not get".
+    expect(nodes[0].declaredRuntimes).toBeUndefined();
 
     // Control: the default is browser, so the assertion above is about the
     // option and not about the default happening to match.
     expect(catalogNodesFromNodeLibrary(payload).nodes[0].availableIn).toEqual(['browser']);
-    // ...and the ordinary case carries no `declaredRuntimes` at all, so its
-    // presence always means "this kit asked for something it does not get".
     expect(catalogNodesFromNodeLibrary(payload).nodes[0].declaredRuntimes).toBeUndefined();
   });
 
-  it('a kit declaring browser AND cloud is loaded in the browser only', () => {
+  it('a kit declaring browser AND cloud is now loaded in both', () => {
     const { nodes } = catalogNodesFromNodeLibrary(payload, {
       moduleRuntimes: { 'Cashflow Kit': ['browser', 'cloud'] }
     });
-    // The half that works is reported as working; the half that does not is
-    // reported as asked-for. A kit like this is not broken — it is over-claimed.
-    expect(nodes[0].availableIn).toEqual(['browser']);
-    expect(nodes[0].declaredRuntimes).toEqual(['browser', 'cloud']);
+    // No longer over-claimed: both halves have a loader, so both are fact.
+    expect(nodes[0].availableIn).toEqual(['browser', 'cloud']);
+    expect(nodes[0].declaredRuntimes).toBeUndefined();
+  });
+
+  /**
+   * 🔴 The row that keeps `availableIn` a statement of fact rather than a copy.
+   *
+   * Without it, the two rows above would be equally satisfied by a function that
+   * simply echoed the manifest — which is precisely what this field used to do
+   * and what CN-012 corrected. `ssr` is a value `runtimes` accepts and **no
+   * loader in this repo honours**, measured this session, so it is the live
+   * counter-example that separates "reports what loads it" from "repeats what it
+   * asked for".
+   */
+  it('🔴 a kit declaring a runtime with no loader still runs nowhere', () => {
+    const { nodes } = catalogNodesFromNodeLibrary(payload, {
+      moduleRuntimes: { 'Cashflow Kit': ['ssr'] }
+    });
+    expect(nodes[0].availableIn).toEqual([]);
+    // The claim is not lost — it moves to the field that does not read as fact.
+    expect(nodes[0].declaredRuntimes).toEqual(['ssr']);
+  });
+
+  it('keeps the loaders it knows and drops the ones it does not, in the same manifest', () => {
+    const { nodes } = catalogNodesFromNodeLibrary(payload, {
+      moduleRuntimes: { 'Cashflow Kit': ['cloud', 'ssr'] }
+    });
+    expect(nodes[0].availableIn).toEqual(['cloud']);
+    expect(nodes[0].declaredRuntimes).toEqual(['cloud', 'ssr']);
   });
 });
 

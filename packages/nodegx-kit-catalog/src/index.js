@@ -271,11 +271,35 @@ function toDynamicPorts(nodeType) {
  * exists, this function is the one place that has to learn about it — which is
  * why the fact lives here once rather than in each consumer's head.
  *
+ * ## ✅ That day came: CN-013 / D18, 2026-08-18
+ *
+ * **The cloud is now a loader.** `noodl-viewer-cloud/src/kitModules.ts` evaluates a
+ * cloud-enabled kit's entry script and registers its logic nodes, the editor's
+ * cloud-function bundle carries the sources, and the same graph that timed out
+ * above now answers `200` with the kit node's own arithmetic — measured through
+ * the esbuild bundle over real HTTP, which is what a deploy target runs. So
+ * `["cloud"]` is no longer a manifest that runs nowhere, and this function had to
+ * learn about it exactly as the paragraph above said it would.
+ *
+ * 🔴 **`ssr` is still not a loader, and that is measured too, not assumed.** No
+ * file in `noodl-viewer-react/static/ssr/` evaluates a kit: the bootstrap creates
+ * `globalThis.__noodl_modules = []`, installs a working `defineModule`, and
+ * nothing ever calls it, so the server render is handed an empty module list
+ * every time (`tests/ssr-kit-modules.test.js`, with a known-firing control beside
+ * the absence). A kit declaring only `ssr` therefore still runs nowhere.
+ *
+ * ⚠️ The list below is **loaders, not runtimes**. `runtimes` accepts values this
+ * repo has no loader for; naming them here would restate the manifest's intent as
+ * fact, which is the exact defect CN-012 corrected.
+ *
  * @param {string[] | undefined} declared manifest `runtimes`, if any
  * @returns {string[]} sorted, possibly empty
  */
+const KIT_LOADERS = ['browser', 'cloud'];
+
 function effectiveKitRuntimes(declared) {
-  return declaredKitRuntimes(declared).indexOf('browser') !== -1 ? ['browser'] : [];
+  const asked = declaredKitRuntimes(declared);
+  return KIT_LOADERS.filter((r) => asked.indexOf(r) !== -1);
 }
 
 /**

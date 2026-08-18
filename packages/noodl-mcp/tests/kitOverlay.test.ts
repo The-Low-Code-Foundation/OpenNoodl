@@ -126,18 +126,27 @@ describe('extraction', () => {
     // 🔴 The point of the fixture: the working kit is still here. A throwing
     // neighbour costs you its own nodes and nothing else.
     expect(overlay.nodes.map((n) => n.typeName)).toContain('demo.kit.Survivor');
-    // 🔴 CN-012 changed this line from `['browser', 'cloud']`, and the change is
-    // the point rather than a fixup. `working-kit`'s manifest declares two
-    // runtimes; only one of them loads a kit. Measured: `CloudRunner` calls
-    // `registerNodes` and nothing else, and `load()` has no parameter a module
-    // could arrive through — the same cloud function answers 200 with a built-in
-    // and times out with a kit node. So `availableIn` — the field that states
-    // plain fact for a built-in — now reports only where the node really runs,
-    // and the manifest's claim moves to `declaredRuntimes`, which does not read
-    // as fact. Nothing is lost; the false half is no longer asserted as true.
+    // 🔴 This line has moved twice and both moves are the point, not a fixup.
+    //
+    // CN-012 changed it FROM `['browser', 'cloud']` TO `['browser']`: `working-kit`'s manifest
+    // declared two runtimes and only one of them loaded a kit. Measured then — `CloudRunner`
+    // called `registerNodes` and nothing else, and `load()` had no parameter a module could
+    // arrive through, so the same cloud function answered 200 with a built-in and timed out
+    // with a kit node.
+    //
+    // ✅ CN-013 / D18 built that missing caller, so it moves BACK — for a different reason
+    // than it originally held. `kitModules.ts` registers a cloud-enabled kit's logic nodes and
+    // the timing-out function now answers 200 with the kit node's own arithmetic, measured
+    // through the esbuild bundle over real HTTP. Both halves of this manifest are now fact,
+    // which is why `declaredRuntimes` is gone: it is present only when a kit asked for
+    // something it does not get.
+    //
+    // ⚠️ `availableIn` is still not a copy of the manifest. `ssr` remains a value `runtimes`
+    // accepts and nothing honours (`noodl-viewer-react/tests/ssr-kit-modules.test.js`), and
+    // `nodegx-kit-catalog`'s own suite keeps a row on it.
     const survivor = overlay.nodes.find((n) => n.typeName === 'demo.kit.Survivor');
-    expect(survivor?.availableIn).toEqual(['browser']);
-    expect(survivor?.declaredRuntimes).toEqual(['browser', 'cloud']);
+    expect(survivor?.availableIn).toEqual(['browser', 'cloud']);
+    expect(survivor?.declaredRuntimes).toBeUndefined();
   });
 
   it('reports a kit that shadows a shipped type instead of letting it win', () => {

@@ -49,6 +49,23 @@ jobs:
       # in it) — the specs are how the server's wire contract is stated, so a type
       # written in one has to mean something, the same argument as the two lines above.
       - run: npm run typecheck:mcp
+      # ✅ D17 (phase 69). The editor's own program, not the root one.
+      #
+      # ⚠️ It overlaps `npm run typecheck` above heavily and deliberately: the root
+      # program's `include` covers `packages/noodl-editor/src/**/*`, which is a
+      # SUPERSET of this config's `src/editor` + `src/shared` + `src/main`. What
+      # differs is resolution, not coverage — `packages/noodl-editor/tsconfig.json`
+      # maps `@noodl/git` to that package's TypeScript source while the root program
+      # resolves it through `node_modules` to built declarations, and it excludes
+      # `src/external` (vendored bundles) which the root program does not. So the two
+      # can disagree in both directions, and the editor is the surface where a
+      # disagreement costs the most.
+      #
+      # 🔴 It is a gate at ZERO, measured 0 on 2026-08-18 (s24 and s25 independently).
+      # `typecheck:runtime` (red at 2) and `typecheck:core-ui` (44) are deliberately
+      # NOT here — D17 rules them out until they are burnt down, and adding them now
+      # would make this job permanently red and therefore ignored.
+      - run: npm run typecheck:editor
       # The bundle budget is a gate, not a report: the companion library's whole
       # proposition is that an exported project carries a small dependency, and a
       # library that grows into a second runtime would quietly retract it.
