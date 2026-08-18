@@ -52,6 +52,15 @@ import * as path from 'path';
 import JSZip from 'jszip';
 
 import { loadProject } from '../../packages/noodl-editor/src/editor/src/validation/loadV2Project';
+// ✅ CN-016 item 2. The editor's OWN kit lister and manifest scanner, called
+// over each unpacked entry — not a twin of `manifestLooksLikeKit`, which is the
+// mistake this repo has made before with fetch/parse contracts. Both import
+// cleanly under plain Node (`projectmodules.ts` reaches only
+// `@nodegx/module-inject`, `fs`, `http`, `https`, `vm` — no Electron, no
+// webpack aliases), so what is reported below is literally what the Kits list
+// will show after the entry is installed.
+import { listNodeKits } from '../../packages/noodl-editor/src/shared/utils/projectmodules';
+import { scanModuleManifests } from '@nodegx/module-inject';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const MODEL_SRC = path.join(REPO_ROOT, 'packages/noodl-editor/src/editor/src/models/modulelibrarymodel.ts');
@@ -291,6 +300,18 @@ interface EntryResult {
   type: LibraryType;
   label: string;
   problems: string[];
+  /**
+   * ✅ CN-016 item 2, and deliberately NOT `problems`. These are observations
+   * about what an entry's payload turns out to be; none of them is grounds to
+   * fail a build. CN-017 §9b is the cautionary case in this same area — a check
+   * whose verdict blocked installs and false-negatived four working kits — and
+   * the rule taken from it is that a check informs unless being wrong costs
+   * less than being silent. Retyping library content is phase 65's LBR-006, not
+   * this script's call to force.
+   */
+  notes: string[];
+  /** What the payload actually contains, per the editor's own scanners. */
+  payload?: { kits: number; iconsets: number; libraries: number; otherModules: number; components: number };
 }
 
 /** Mirrors `ModuleCard.handleDownload` / the icon style rule. */
@@ -310,6 +331,68 @@ function findProjectRoot(root: string): string | undefined {
   return undefined;
 }
 
+/**
+ * ✅ CN-016 item 2 — what an entry's payload actually IS, measured by calling
+ * the editor's own scanners over the unpacked zip.
+ *
+ * `listNodeKits` is the function that populates Settings → Kits, so its answer
+ * here is the answer the user will see after installing. `scanModuleManifests`
+ * is `@nodegx/module-inject`'s own reader, so the iconset and ERG-002-library
+ * counts come from the same manifests the editor reads rather than from a
+ * second reading of the same files.
+ */
+async function describePayload(root: string, components: number): Promise<NonNullable<EntryResult['payload']>> {
+  const kits = await listNodeKits(root);
+  const scanned = await scanModuleManifests(root);
+  let iconsets = 0;
+  let libraries = 0;
+  const kitDirs = new Set(kits.map((k) => k.dirName));
+  let otherModules = 0;
+  for (const s of scanned) {
+    const m = s.manifest as { type?: string; kind?: string } | null;
+    if (m?.type === 'iconset') iconsets++;
+    else if (m?.kind === 'external-library') libraries++;
+    else if (!kitDirs.has(s.name)) otherModules++;
+  }
+  return { kits: kits.length, iconsets, libraries, otherModules, components };
+}
+
+/**
+ * 🔴 The one thing entry-level `type` actually decides, and why a `kit` value
+ * would not belong in it.
+ *
+ * `type` in `library.json` is read in exactly one place — `ModuleCard`'s
+ * `isPrefab` — and its sole behavioural consequence is
+ * `keepExistingNonComponents` (`modulelibrarymodel.ts`), which is the DEFAULT
+ * CONFLICT RESOLUTION for non-component collisions: a prefab install defaults
+ * them to "keep yours", a module install defaults them to "overwrite". It is a
+ * routing field, not a taxonomy field, and kit-ness is derived from the
+ * payload's own manifests instead — see CN-016 item 2 for the full ruling.
+ *
+ * So the mistyping worth naming is not "a kit called a module". It is an entry
+ * whose payload is components-only sitting in the modules tab, because that
+ * entry installs with the overwrite default rather than the keep-yours one.
+ */
+function taxonomyNotes(entry: IModuleLike, payload: NonNullable<EntryResult['payload']>): string[] {
+  const notes: string[] = [];
+  const modules = payload.kits + payload.iconsets + payload.libraries + payload.otherModules;
+  if (entry.type === 'module' && modules === 0 && payload.components > 0) {
+    notes.push(
+      `ships no noodl_modules/ at all — ${payload.components} component(s) and nothing else, which is ` +
+        `prefab-shaped content in the modules tab. Its install therefore defaults non-component ` +
+        `collisions to OVERWRITE rather than keep-yours (keepExistingNonComponents). ` +
+        `Retyping library content is phase 65 LBR-006's call, not this gate's.`
+    );
+  }
+  if (entry.type === 'prefab' && payload.kits > 0) {
+    notes.push(
+      `is typed "prefab" but its payload declares ${payload.kits} node kit(s) — installing it adds node ` +
+        `types, which the "Clone" affordance does not suggest.`
+    );
+  }
+  return notes;
+}
+
 async function checkEntry(
   endpoint: string,
   type: LibraryType,
@@ -317,6 +400,8 @@ async function checkEntry(
   model: ReturnType<typeof loadEditorModel>
 ): Promise<EntryResult> {
   const problems: string[] = [];
+  const notes: string[] = [];
+  let payload: EntryResult['payload'];
   const label = entry.label || '(no label)';
 
   // 2. The fields the cards destructure unguarded.
@@ -398,6 +483,8 @@ async function checkEntry(
                 'project loaded but has neither components nor noodl_modules/ — installing it adds nothing'
               );
             }
+            payload = await describePayload(root, project.components.length);
+            notes.push(...taxonomyNotes(entry, payload));
           } catch (err) {
             problems.push(`project failed to load: ${(err as Error).message}`);
           }
@@ -410,7 +497,7 @@ async function checkEntry(
     }
   }
 
-  return { type, label, problems };
+  return { type, label, problems, notes, payload };
 }
 
 async function main() {
@@ -495,6 +582,30 @@ async function main() {
     }
     for (const p of indexProblems) console.log(`  INDEX  ${p}`);
     for (const r of failed) for (const p of r.problems) console.log(`  FAIL   [${r.type}] ${r.label}: ${p}`);
+    // ✅ CN-016 item 2. Observations, not verdicts — they never touch the exit
+    // code, and the census below is the whole population rather than a sample.
+    for (const r of results) for (const n of r.notes) console.log(`  NOTE   [${r.type}] ${r.label}: ${n}`);
+    const withPayload = results.filter((r) => r.payload);
+    const census = {
+      'declare node kits': withPayload.filter((r) => (r.payload as NonNullable<EntryResult['payload']>).kits > 0).length,
+      'ship an iconset': withPayload.filter((r) => (r.payload as NonNullable<EntryResult['payload']>).iconsets > 0)
+        .length,
+      'ship both': withPayload.filter(
+        (r) =>
+          (r.payload as NonNullable<EntryResult['payload']>).kits > 0 &&
+          (r.payload as NonNullable<EntryResult['payload']>).iconsets > 0
+      ).length,
+      'ship no modules at all': withPayload.filter(
+        (r) =>
+          (r.payload as NonNullable<EntryResult['payload']>).kits +
+            (r.payload as NonNullable<EntryResult['payload']>).iconsets +
+            (r.payload as NonNullable<EntryResult['payload']>).libraries +
+            (r.payload as NonNullable<EntryResult['payload']>).otherModules ===
+          0
+      ).length
+    };
+    console.log(`\npayload census over all ${withPayload.length} entries (CN-016 item 2, by the editor's own scanners):`);
+    for (const [what, n] of Object.entries(census)) console.log(`  ${String(n).padStart(3)}  ${what}`);
     console.log(
       indexProblems.length || failed.length
         ? `\nlibrary-dist is NOT installable-shaped.`
