@@ -30,8 +30,11 @@ promises a runtime nobody wrote a loader for.
 drive, not two.** Both want a live model authoring in a project that has a kit. ⚠️ **Read §4 first**
 — the stale-build trap would make the whole run grade the wrong code.
 
-🔴 **CN-013 is now BLOCKED on a ruling that did not exist yesterday** (§5 item 1). Everything else is
-unblocked.
+🔴 **CN-013's CLOUD half is BLOCKED on a ruling** ([RULINGS-OPEN-QUEUE.md](RULINGS-OPEN-QUEUE.md) #1);
+**its SSR half is not** and is in Bundle A. Everything else is unblocked.
+
+🔴 **§3 is now a BUNDLE PLAN, not a menu** — Richard's call on 2026-08-18 is to close tiers 0–5 in
+bundles and defer tier 6. Read §3 before choosing anything.
 
 ## 1. What CN-012 found, and the three things that outlive it
 
@@ -85,16 +88,69 @@ the case it exists for. An earlier cut fed the fact in as a synthetic node row a
 - ⚠️ **A ninth mutation could not fail** and the guard it targeted was **deleted** rather than
   re-tested — a `Map` already deduped by kit, so a `!has` check was unkillable by construction.
 
-## 3. Picking the next build
+## 3. 🔴 THE PLAN CHANGED: bundle, and close tier 0–5
 
-- **CN-014's remainder** (AC1's 2nd clause, AC2, AC3) — and §5 item 4 belongs to it.
-- **CN-011 (kits look like NodeGX)** — untouched, and the token-vocabulary gap in §6 bites it.
-- **CN-013 is blocked** — see §5 item 1. Do not start it without the ruling.
-- **CN-016 / CN-017** — unchanged.
+**Richard's call, 2026-08-18: close tiers 0–5 and defer tier 6.** Stop picking one task per session.
 
-⚠️ **Confirm rather than inherit — nine sessions running now.** s24's premises largely held, but the
-*shape* did not: the handover implied CN-012 would be about making logic nodes work, and they
-already worked. The work was one field in a manifest.
+⚠️ **Why tier 6 is deferred, so nobody re-opens it by accident:** CN-016 and CN-017 are both **L**,
+which this phase's own key defines as *"a week+"*, and **CN-017 gates CN-016** for anything not
+first-party. CN-016 also sits on P65's audit — **0 of 29 shipped modules have ever been run**, 3
+register zero nodes, ~9 vendor third-party libraries with **no licence text**, and **mapbox-gl v2+ is
+proprietary**. That is a licensing and fleet-health problem wearing a packaging problem's clothes,
+and it wants its own scoping conversation, not a slot at the end of this phase.
+
+### 🔴 BUNDLE A — ONE stack, ONE fixture, EVERY remaining drive
+
+**This is the whole speed-up.** Four separate drives currently cost four launches (~90 s compile
+each), four teardowns and four peer-attribution passes. Do them in one stack.
+
+| Drive | Wants |
+|---|---|
+| **CN-008 AC1 + CN-009 AC5** | a live model authoring in a project that has a kit — §4 |
+| **CN-014 AC1** | rename a port in a kit → panel shows the new name; the old connection is **dropped with a diagnostic**, not silently retained |
+| **CN-014 AC2** | add a node to a kit → appears in the picker with no restart |
+| **CN-014 AC3** | a kit with a **syntax error** reports it (CN-015) rather than leaving the previous version silently running |
+| **CN-013 (SSR half only)** | does a kit node render under SSR? The globals are set (`static/ssr/runtime-globals.js`), so it plausibly does — **confirm, don't infer** |
+
+✅ **Build ONE fixture project carrying every case before launching**, with a healthy kit, a kit to
+rename a port in, a kit to add a node to, and a kit to break. ⚠️ **Write every observation down
+first** — that is what made s24's readings usable, and a bundled drive is exactly where "it looked
+fine" creeps in.
+
+🔴 **Bundle the drives; do NOT bundle the conclusions.** Eight consecutive sessions have found a
+false premise. Measure all five, **then stop and read** before building anything on top.
+
+### BUNDLE B — the build/docs group, one surface, one suite run
+
+- **CN-011** — mostly making the existing capability the default, not building capability. ⚠️ It
+  carries **D8's concrete obligation: tokenise the cashflow kit**, which **gates CN-007's worked
+  example** — the phase's flagship docs currently plan to cite a kit that teaches the opposite of
+  its own ruling. ⚠️ The token vocabulary gap in §6 bites here.
+- **CN-007 AC2** — following the page from scratch produces a working node. 🔴 **AC5 is now STALE:**
+  it says *"do not claim the logic half works — CN-012 has not run"*. **CN-012 has run** (s24) and
+  the logic half works, so the page must gain a logic-node section and that clause must be rewritten.
+  The material is [notes/cn-012-measurement.md](notes/cn-012-measurement.md).
+- **CN-010 AC4** — not started.
+
+### BUNDLE C — deferred
+
+**CN-016, CN-017.** Not this phase's remaining sessions. See above.
+
+## 3b. 🔴 The ruling queue is now ONE DOCUMENT — check it before planning
+
+**[RULINGS-OPEN-QUEUE.md](RULINGS-OPEN-QUEUE.md)** — all ten, each with what is measured today, the
+options and a recommendation, written to be answered in a single pass. Richard asked for it this way
+on 2026-08-18.
+
+⚠️ **Read it first.** Answers land in [RULINGS.md](RULINGS.md) as D9+, and several change what the
+bundles above should do:
+- **#1 (cloud kits) gates CN-013's cloud half** — Bundle A only covers the **SSR** half for that
+  reason.
+- **#4** decides whether the open-panel refresh is inside CN-014's scope or a noted rough edge.
+- **#3** (kit `docs` as a URL) shapes CN-007's page.
+- **#7** is CN-005's index signature and is independent of everything else.
+
+⚠️ **If the queue is still unanswered, do Bundle A anyway** — none of the drives depend on a ruling.
 
 ## 4. ⚠️ Before attempting CN-008 AC1 / CN-009 AC5
 
@@ -108,40 +164,11 @@ exactly this route for the kit extractor and it works.
 `Cashflow Lane` + `Money Pill` rather than a hand-rolled `Group`. CN-009 AC5: an agent **places** a
 kit node it was not told about.
 
-## 5. Owed by Richard
+## 5. Owed by Richard — now in ONE document
 
-1. 🆕 **Should a kit be able to run in the cloud runtime at all?** New from s24, and **it gates
-   CN-013.** The runtime already accepts kits — `registerModule` works there and a hand-registered
-   kit node answers `200`. What is missing is a loader, and writing one means **executing a kit's
-   arbitrary JavaScript inside the backend process**. ✅ **D6 ruled only on locally-authored kits in
-   the browser.** **(a)** leave the cloud unsupported, which is what s24 made honest and loud;
-   **(b)** load kits server-side for locally-authored projects only; **(c)** load them behind
-   CN-017's verify-on-install consent. ⚠️ (b) and (c) both put third-party code next to the database.
-2. **Should the runtime refuse a kit that shadows a built-in?** Unchanged from s22. Today the kit
-   silently wins at runtime while validation describes the built-in. **(a)** leave it and report
-   (what s22 built); **(b)** built-ins win at registration too; **(c)** refuse the kit's node.
-   ⚠️ (b) and (c) are behaviour changes and **0 of 29 shipped modules have ever been run** (LBR-004).
-3. **What should a kit's `docs` be able to say?** Unchanged from s21. Prose only today; CN-006b's
-   spec assumed a URL. **(a)** leave it; **(b)** add `docsUrl`; **(c)** sniff `http`. ⚠️ (c) is a
-   guess about intent encoded in a regex.
-4. **The open-panel refresh (from s20).** An open property panel does not re-render on
-   `libraryUpdated`; it recovers on any re-selection. Fold into CN-014, or leave as a rough edge?
-5. **What should `channelPort` do?** Unchanged from s19. **(a)** revive the editor-side manager;
-   **(b)** stop the exporter stripping the port; **(c)** reject it at kit-load. ⚠️ **Doing nothing is
-   the current state and is the worst of the three.**
-6. **Widen the project gate to check parameter values?** `checkParameterValues` has one production
-   caller. `cn004.test.ts`'s last block asserts the silence deliberately — **replace it when the call
-   is taken, do not delete it.**
-7. 🆕 **Close `NodeDefinitionOptions`' index signature?** **CN-005's call, measured by s24.** Doing it
-   catches optional top-level typos on a logic node (`displayNodeName`, `docs` are silent today) —
-   but it makes a **second** deliberate divergence and turns `drift.test.js`' "the one divergence"
-   row red. That row exists to catch exactly this, so it is a decision, not a fix.
-8. **Should `project`'s `find_tools` purpose line name kits?** Costs resident tokens.
-   `tests/kitTools.test.ts` has the control that fails when it changes.
-9. **"Clean" is no longer "an empty diagnostics array" for any page** (s18's AC2). `Page` declares
-   neither `title` nor `urlPath` statically, so **96 of 947 measured skips are `Page`**.
-10. **The ungated typechecks.** Seven of eleven `typecheck:*` scripts run nowhere and `scripts/` is in
-    none. ✅ s24 re-measured two: **`typecheck:editor` 0, `typecheck:mcp` 0**.
+🔴 **All ten moved to [RULINGS-OPEN-QUEUE.md](RULINGS-OPEN-QUEUE.md)** on 2026-08-18, each with the
+measured state, the options and a recommendation. **Do not re-list them here** — one copy, or they
+drift. Only #1 (cloud kits) blocks a build; it gates CN-013's cloud half.
 
 Open, not caused here, still wanting task numbers: 🔴 `render-from-disk.js` answers `/` and
 `/index.html` and 404s everything else, **including the start page's own `urlPath`** · 🔴 the
