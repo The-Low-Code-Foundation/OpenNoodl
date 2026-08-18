@@ -535,3 +535,31 @@ command needs the user to quote it. The written registration is JSON and is unaf
 ⚠️ **Nothing here has been seen in a running editor.** The specs grade the chain at both ends and
 the mutation grades the security check, but no session has clicked Connect and read a real
 `~/.claude.json`. **That is the drive this task still owes.**
+
+---
+
+## ✅ Q2, Q5, Q6 AND THE `allowWrites` JUDGEMENT — CONFIRMED by Richard, 2026-08-18 (session 61)
+
+All four were built on assumptions and are now ruled. **Every one is confirmed as built**, so
+nothing changes in the code — what changes is that a later session may stop treating them as open.
+
+- ✅ **Q2 → ONE file, and NO second project-level document.** 🔴 **This is the one that decided what
+  got built: slice A stays deliberately unbuilt.** Confirming it means slice A is not deferred work —
+  it is work that was ruled out. A future session proposing it is proposing to overturn a ruling.
+- ✅ **Q5 → `always`, capped at 2,000 characters, free when the file is empty.** **Rejected:** `pull`.
+  The empty-file rule is what makes a global always-doc affordable, and it is now driven at both
+  ends — the editor's panel (s59) and the MCP server's `get_project_info` (s60).
+- ✅ **Q6 → prose only.** **Rejected in this slice:** `ai.role.*`-style structured keys.
+- ✅ 🆕 **The MCP half is NOT gated on `allowWrites`** — confirmed as built. Unlike `authoringDoctrine`
+  and `designDoctrine` beside it, which are authoring instructions a read-only client cannot apply,
+  this file's first heading is *"how I like to be talked to"*. A read-only server still has that
+  conversation.
+
+🔴 **Everything slice B must keep doing is unchanged by these confirmations** — guidance stays in
+HTML comments; an empty section stays dropped; the block stays last and ahead of `cacheBoundary`;
+the precedence sentence stays *in* the block; `globalPreferences()` charges nothing for an empty
+profile; `ensureUserProfileSeeded` writes only when there is no file. And on the MCP side:
+`NODEGX_USER_PREFERENCES` is a wire contract across four files, the `env` whitelist stays a
+whitelist, and main keeps overwriting the profile path rather than trusting the renderer's.
+
+⚠️ **FIX-021 still owes ONE thing: the drive of the MCP half.** See §4 of the phase handover.

@@ -402,3 +402,28 @@ rendered but holds no ref; the preview surface mounted and stayed up across the 
    an **output**, and the outputs rail lists it beside `oStr`, `oNum`, `oAB`, `oNone`. The count and
    the sentence are consistent with each other; a reader predicting "4 outputs" from the
    `Component Outputs` node alone will mis-predict. Worth knowing before writing an assertion on it.
+
+---
+
+## ✅ RULINGS 3 AND 4 — Richard, 2026-08-18 (session 61): **the non-destructive branch, both.**
+
+Both rulings had a branch that deletes nothing, and that is the branch taken:
+
+- ✅ **Ruling 3 → keep `signedIn` as a programmatic option with NO UI.** AC1 as written (*"No Sign
+  out"*) already requires it hard-coded in the bench UI; keeping the option at the API level loses no
+  capability and is reversible.
+- ✅ **Ruling 4 → keep `useSampleData` programmatic, no UI.** ⚠️ **`component-bench.test.ts:259-262`
+  needs no edit at all** — which is the practical content of this answer.
+
+🔴 **Neither branch deletes anything, so there is no build and no spec rewrite.** These were the two
+rulings whose *other* branch would have been a deletion someone had to authorise; that authorisation
+was not given and is not needed.
+
+🔴 **What was already closed at s57 is untouched:** `useSampleData` is **not** the switch;
+`emptyState` **predates** the fix (11 occurrences in the Aug-13 app); `emptyState` must keep shipping
+the class list **named**; `synthesizeMissing` defaults `true` and the bench sends `false`; `list()`
+caches the empty array; the bench summary must keep **wrapping**; `ComponentBench` imports neither
+`SandboxToolbar` nor `SandboxDataEditor`; and ruling 2's answer stands — **the two surfaces diverge,
+and the AI preview keeps its toolbar and data editor.**
+
+✅ **FIX-013 remains CLOSED.** These answers close the last two open questions attached to it.

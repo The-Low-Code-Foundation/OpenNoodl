@@ -512,3 +512,31 @@ would catch it overshooting.** §7's (a) / (b) / (c) is still the open question.
 
 ⚠️ **And the account has no credit.** Any further measurement in this phase is blocked until that is
 topped up.
+
+---
+
+## ✅ §7 RULED — Richard, 2026-08-18 (session 61): **(a) ACCEPT. FIX-022 is closed.**
+
+**The question:** the counter-rule does not bind — ~50% of plans for a single derived value create a
+component for it, the doctrine's §"WHEN NOT TO FACTOR" already forbids it in prose, and removing the
+doctrine does not fix it. Accept, strengthen with a numeric floor, or move to `planAdvisories`?
+
+**Ruled: (a) accept.** **Rejected:** (b) a numeric floor on the reuse axis, (c) `planAdvisories`.
+
+The reasoning on the record, so a later session does not reopen it as an oversight:
+
+- 🔴 **The complaint in the original user report was arguably the Script node INSIDE the component,
+  and FIX-006 fixed that.** A `Reading Time` component is nameable and defensible; what made it
+  objectionable was what it contained.
+- **The s42 ruling already sharpened the axis** from size to reuse, and the s43 re-grade found
+  **11/11 single-use** — which bounds the finding rather than dissolving it. Accepting is accepting
+  a *measured* rate, not an unexamined one.
+- ⚠️ **(b) remains cheap if this is ever revisited**: the arm plumbing built at s53 measures any
+  prompt edit in ~10 minutes for ~$0.10, and is reusable beyond AAQ-008. 🔴 **Whatever is tried must
+  be measured against `multi-section` too** — its ceiling is the only guard against a "factor less"
+  edit quietly undoing AAQ-008.
+- 🔴 **The reuse cell's rulings stand** and are not retired by accepting: `minPlacementSites` stays
+  OFF for `trivial`, `small-logic` and `multi-section`; **both** evidence paths stay; the regression
+  detector stays.
+
+✅ **No build. No gate to re-run.**

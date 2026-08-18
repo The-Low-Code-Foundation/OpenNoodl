@@ -431,3 +431,30 @@ changed the file* is not evidence it was **the** edit intended.
 - ⚠️ **Not re-measured on the editor's wire.** Session 38 read `systemPrompt()` live in the renderer;
   this session read the same pure function in a plain-Node runner, which is the same string but not
   the same claim about a running editor.
+
+---
+
+## ✅ THE SHAPE RULED — Richard, 2026-08-18 (session 61): **accepted. FIX-006 is closed.**
+
+**The question:** `Substring` → `Expression` is **one** crossing for a small computed line. The s42
+ruling forbids **two or more**, and says nothing about whether two built-in-ish hops beat one
+Function node for a request this small.
+
+**Ruled: the shape is accepted.** The library weighting stays as built.
+
+🔴 **What stays, and must not be tidied:**
+
+- **`NODES_BEFORE_CODE` keeps BOTH halves**, a separate export from `THREE_WAYS_TO_COMPUTE`.
+- **`Javascript2` must keep leading the Script paragraph** (`traps.ts:61-63`).
+- The s42 ruling's own warning stands: *"use the node"* phrasing manufactures the alternation the
+  ruling exists to prevent. **Zero alternation was measured across all 40 sessions**, including the
+  control arm.
+
+⚠️ **Two caveats carried, and neither reopens the task:**
+
+- **The exception clause is unfalsified, not proven.** `fix006-price-line` did not provoke
+  alternation in the control arm on this model; a request that does would settle it.
+- **Not re-measured on the editor's wire.** s52 read the same pure function in a plain-Node runner,
+  which is the same string but not the same claim about a running editor.
+
+✅ **No build. No gate to re-run.**

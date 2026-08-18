@@ -1151,3 +1151,25 @@ because the control was run in the same session rather than assumed.
 - ⚠️ **`localStorage` held `codeeditor_portbar_successes: ["js"]` on arrival**, from an earlier
   session's drive. It did not affect these readings — the bar rendered when asked — but a session
   that finds the Function control silent should check that key before concluding anything.
+
+---
+
+## ✅ AC1 RETIRED — Richard, 2026-08-18 (session 61). **FIX-016 is closed.**
+
+**The question:** AC1 asked that creating a Script output *offers Signal at creation time*. Driven
+at s50 and found **false**: clicking `+` beside `SCRIPT OUTPUTS` opens **a name field and nothing
+else**. Retire the criterion, or build a type control at creation?
+
+**Ruled: RETIRE.** A type picker at creation is a new UI affordance, not a defect in what this task
+set out to fix. The reachability half — which is what the bug report was actually about — shipped
+and drove in the script-mode mining slice at s50.
+
+🔴 **What this does NOT retire, so nobody reads the retirement too broadly:**
+
+- `modeHasDeclaredPorts` stays `true` for `'script'`. That is the mining slice, not AC1.
+- The signal output remains reachable; a Script node's `define()`-declared ports still land.
+- ⚠️ **A Script node's `define()`-declared ports are still invisible to every editor surface**, and
+  **a bar that teaches `define()`** is still uncosted. Both are carried as separate work and are
+  **not** covered by this retirement — see the phase handover's "Carried, uncosted".
+
+✅ **The retirement is the ruling; there is no build and no gate to re-run.**

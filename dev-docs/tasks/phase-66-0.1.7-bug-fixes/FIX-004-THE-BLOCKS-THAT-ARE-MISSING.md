@@ -276,6 +276,13 @@ phase's guard so one's own change fits through it is the wrong way round.
 **Ruling owed:** should the seam categories carry the computed-key twins, and should that fence
 be narrowed to what it says? Both are cheap; neither is mine to decide.
 
+> ✅ **DISCHARGED. Ruled session 42 (dual-list, and narrow the fence), BUILT session 46** — see
+> *"§C dual-list — BUILT 2026-08-16"* below, and `BlocklyToolbox.ts:341-345`. **Richard re-confirmed
+> both halves at s61 when this paragraph was mistakenly re-asked as an open question.**
+> 🔴 **This paragraph and the two "still owed" notes below were written BEFORE that ruling and are
+> stale.** This file is an append-only narrative: a sentence describing a gap stays here forever,
+> and s61 read three such sentences as current. **Check for a later section before believing one.**
+
 🔴 **Not driven.** Everything here is headless Blockly plus a real `Model`. Nobody has dragged
 one of these blocks in the app.
 
@@ -389,6 +396,9 @@ handover. `git status` at teardown showed a dozen dirty files, **all peers'** (v
 noodl-mcp tests) — untouched by me.
 
 ### Still owed on §C
+
+> ✅ **STALE — written before session 42's ruling. Discharged; built session 46.** Kept because
+> deleting the record would hide the sequence.
 
 🔴 The seam-category ruling at line 276 is **unchanged** by this drive. Findability is the open
 question; the blocks themselves work.
@@ -538,6 +548,7 @@ process's output. The spec is the gated regression; the CLI run is the measureme
   the `Log` node uses; (c) leave the behaviour and say so in the block's tooltip. ⚠️ (b) is not free:
   the sink is per-run `runContext`, which generated code has no handle on today.
 - 🔴 The §C seam-category ruling at line 276 is **still** unchanged.
+  > ✅ **STALE — ruled session 42, built session 46.** See the note at line 276.
 
 ## ✅ RULED 2026-08-16 (session 42)
 
