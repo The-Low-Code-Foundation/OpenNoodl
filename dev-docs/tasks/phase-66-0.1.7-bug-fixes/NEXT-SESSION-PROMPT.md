@@ -306,6 +306,12 @@ is empty in zsh** (it is `$pipestatus`). 🔴 **macOS has no `timeout`.**
   changed what got built.
 - 🔴 **FIX-013 rulings 3 and 4 — confirm or overturn.** Not blocking; overturning is a deletion
   someone has to authorise.
+- 🆕 🔴 **FIX-004 §C — the seam-category ruling (its line 276), never answered and MISSING from this
+  list until now.** Should the four object-shaped blocks dual-list under **App Objects** as well as
+  Data, and should `tests-unit/vfn-012/browser-blocks.spec.ts`' byte-identity fence be narrowed to
+  what its own title claims? ⚠️ **It was built that way and withdrawn** — relaxing another phase's
+  guard so your own change fits is the wrong way round. **Both cheap; neither is ours to decide.**
+  ⚠️ **s60 wrote "FIX-004 waits on a sentence from Richard" in §4 and then left it out of this list.**
 - 🔴 **FIX-022 §7 — (a) accept, (b) a rule on the reuse axis, or (c) `planAdvisories`?**
 - 🔴 **FIX-006 — is `Substring` → `Expression` the shape you want?**
 - 🔴 **FIX-015's eight** · 🔴 **FIX-016 AC1 — RETIRE IT, or build a type control at creation time?**
