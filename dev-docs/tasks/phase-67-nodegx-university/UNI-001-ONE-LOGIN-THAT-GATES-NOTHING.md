@@ -57,6 +57,76 @@ editor is fully functional signed out, forever.** The sign-in adds surfaces; it 
 4. `grep` the editor for reads of the session outside the launcher/account module comes back
    empty — the "gates nothing" principle is structurally visible.
 
+---
+
+# ✅ E1 — THE ISSUER IS BUILT. 2026-08-19, session 29.
+
+**The bottleneck the alpha bar named as item one is gone.** Before this session the only
+`insert into sessions` statements in the whole platform repository were **in test files**
+(measured twice, sessions 28 and 29), so `readCommunitySession()` returned `null` for every
+human being alive and nothing UNI-015/016 built was reachable by a real person.
+
+## What is built, and where
+
+**Platform (`nodegx-community`):**
+
+| File | What |
+|---|---|
+| `src/lib/session.ts` | 🔴 **the mint.** `createSession` / `revokeSession` / `revokeAllSessions`, the cookie builders, a 30-day TTL. Composable inside a caller's transaction (no nested `begin`) |
+| `src/lib/site.ts` | `SITE_ORIGIN`, `originIsSecure()` (derived from the SCHEME, never `NODE_ENV`), and `safeReturnPath()` |
+| `src/lib/githuboauth.ts` | the GitHub client — authorize URL, and a code exchange that is an **injected function type** |
+| `src/lib/signin.ts` | an OAuth identity → an account. Handle derivation and collision walk; the email rule |
+| `src/lib/signin-http.ts` | start / callback / sign-out as plain functions, so a spec drives the same code the route runs |
+| `src/lib/devicepairing.ts` | the device flow — begin / approve / redeem |
+| `src/db/sql/0010_…` | `device_authorizations`, two CHECK constraints, and the argument for the shape |
+| 6 routes | `/api/auth/github/{start,callback}`, `/api/auth/signout`, `/api/v1/auth/device{,/approve,/token}` |
+| `src/app/auth/device/` | the page a person types the eight characters into |
+| `src/app/layout.tsx` | 🔴 the header's sign-in button **is no longer inert**, and the signed-in chip is real |
+
+**Editor (this repo):**
+
+| File | What |
+|---|---|
+| `models/community/communityorigin.ts` | 🔴 `COMMUNITY_URL` **moved out of the dialog**. A constant exported from a *view* is one a *model* cannot import |
+| `models/community/communitysession.ts` | gained `writeCommunitySession` / `clearCommunitySession`. Still the ONLY place that key is touched |
+| `models/community/communitysignin.ts` | the device dance and `signOutOfCommunity`. Everything external injected |
+| `AskAboutNodeDialog.tsx` | a **Sign in to NodeGX** affordance on the signed-out branch, the code shown while waiting, and cancellation on unmount |
+
+## 🔴 THREE DECISIONS THAT WERE FORCED, NOT CHOSEN — do not re-litigate them cheaply
+
+1. **The device flow, not a loopback listener and not a `nodegx://` handler.** Two sentences in
+   this task's own scope eliminate both: *"no listener is opened"* kills the loopback redirect,
+   and a protocol handler is one an OS registration makes ambiguous between a dev build, a
+   portable build and a second install — handing a live credential to whichever copy won.
+   ⚠️ **This is NOT D19's struck "browser handoff ticket" returning.** That one handed an editor
+   session to *Discourse*; there is no Discourse and no second system. This is the first
+   hand-off, from a browser to the editor, and it is the only way the editor gets a token.
+2. **GitHub only. No email/password.** The scope asks for *"email + OAuth"* and *"password
+   reset"* — and **nothing on this platform sends mail** (E6, and D19 was ruled *on the condition*
+   that this changes). A password flow whose reset arm cannot be delivered locks people out, so
+   it waits for E6 rather than shipping half. `accounts` grew no `password_hash` column.
+3. **No OIDC provider face.** D19 struck it and this task's own amendment says *"do not build a
+   provider face speculatively."* What is built is the opposite direction: we are the client.
+
+## ⚠️ WHAT E1 DOES NOT CLOSE
+
+- 🔴 **AC2's LAUNCHER affordance is not built.** The sign-in lives in the composer, because the
+  alpha bar's sentence is *"ask a question about a node from inside the editor"* and sending
+  somebody off to find a launcher card mid-question is asking them to abandon what they were
+  doing. **The launcher card and the signed-in chip are still owed**, and AC2 does not close
+  until they exist.
+- 🔴 **NOBODY CAN ACTUALLY SIGN IN YET, and it is one form away.** `githubOAuthConfig()` returns
+  `null` without `GITHUB_OAUTH_CLIENT_ID`/`_SECRET`, and the start route then answers **503 with
+  a plain sentence** rather than redirecting into a provider error page. Creating the OAuth App
+  is Richard's — see the ask added to the phase README. It is free and takes a minute; it is a
+  **credential**, not a design question.
+- ⚠️ **AC4's grep is not re-run.** *"Reads of the session outside the launcher/account module
+  come back empty"* — the composer now reads it, which was already true before this session
+  (UNI-016 put it there) and is arguably what the criterion means to permit. **The criterion
+  needs re-wording or a verdict**, and pretending it passed would be worse than saying so.
+- **AC1's regression gate** — the full `test:main`/`test:ci` baseline — is the standing claim
+  that signing in *gates nothing*. `test:main` was re-run this session; **`test:ci` was not**.
+
 ## Not in v1
 
 Org SSO (UNI-005), the analytics pipeline (only the toggle, if D11 says so), profile editing

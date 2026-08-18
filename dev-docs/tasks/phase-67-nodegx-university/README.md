@@ -162,24 +162,29 @@ across four tiers will never all be done, and waiting for that is how a phase ne
 > question about a node from inside the editor, and get an answer — and when that site does not
 > look like a placeholder.**
 
-Everything below is a consequence of that sentence. **Nine items. Nothing else blocks the close.**
+Everything below is a consequence of that sentence. **Ten items. Nothing else blocks the close.**
+
+> 🔴 **Amended 2026-08-19:** nine became ten. **E10 — a GitHub OAuth App** — was invisible while E1
+> was unbuilt, because a missing issuer hides the fact that an issuer needs a credential. It is the
+> cheapest item here and it blocks the criterion's first verb.
 
 ### The four that are code, and they are the whole critical path
 
 | # | What | Owner | Why it is on this list |
 |---|---|---|---|
-| **E1** | 🔴 **UNI-001's issuer** — OAuth, sessions, consent screen, editor sign-in | task | **Nothing else here can be exercised without it.** The only `insert into sessions` in the whole platform repo are in **test files** (measured, session 28), so no human can post, claim a profile, or answer an RFP. D19 struck the OIDC provider face — this is plain session auth now, not federation |
+| **E1** | ✅ **UNI-001's issuer — BUILT 2026-08-19 (session 29).** Sessions are minted; GitHub OAuth in the browser; a device flow for the editor; sign-out revokes | task | ⚠️ **Code-complete, and NOBODY CAN SIGN IN YET** — the start route answers 503 without `GITHUB_OAUTH_CLIENT_ID`. **That is E10, and it is Richard's.** The remaining task work is AC2's launcher affordance, which is outside the loop the bar names |
 | **E2** | 🔴 **Deployment** — the platform served at `community.nodegx.io` | 🔴 **NO TASK OWNS IT** | It resolves (A → nexus-1) and nothing serves it. ⚠️ Shares the box with two live sites and Caddy is all-or-nothing — **curl the neighbours before and after** |
 | **E3** | **UNI-009 AC1** — the home shows real threads signed out | task | D19 rewrote it; `/bench` exists and **the home page does not link to it** (observed, session 28) |
 | **E4** | **UNI-013 slice 5** — the page archetypes | task | Richard, twice: *"simple and sad"*. The close is *"does not look like a placeholder"*, so this is in scope rather than polish |
 
-### The three that are Richard's, and two of them gate E1/E2
+### The four that are Richard's, and three of them gate E1/E2
 
 | # | What | Blocks |
 |---|---|---|
 | **E5** | 🔴 **The nexus-1 decision** — does the platform go there? | **E2**, and it is the first domino |
 | **E6** | **A transactional sending account + domain** (Postmark / SES / Resend) | **D19's own condition.** The ruling was made *on* email landing: *"a forum where 'someone answered you' never reaches an inbox is a forum nobody returns to."* `log` delivery covers dev and **cannot ship** |
 | **E7** | **Where capture images live** | Nothing hard — a `capture` stores dimensions and consent and no image, so **nothing migrates** when it is decided. ⚠️ Intersects E2 |
+| **E10** | 🔴 **A GitHub OAuth App** — client id + secret | 🆕 **Added 2026-08-19, and it is now the cheapest item on this list to clear and one of the most blocking.** E1's code is built and specced end to end; without these two strings `/api/auth/github/start` answers **503** and *nobody on earth can make an account*, which is the first verb in the exit criterion. Homepage `https://community.nodegx.io`, callback **`https://community.nodegx.io/api/auth/github/callback`** — ⚠️ byte for byte, GitHub reports a mismatch without saying which side is wrong. Free, one form. ⚠️ Intersects **E5/E2**: the callback URL has to be where the platform is actually served |
 
 ### The two that are hygiene
 

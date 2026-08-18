@@ -7,8 +7,8 @@ Paste the block below into a fresh session.
 Continue phase 67 (NodeGX Community), `dev-docs/tasks/phase-67-nodegx-university/`.
 
 **Read first, in this order:** **[README.md](README.md) §"What closes this phase"** — the alpha
-bar, and it decides which task you pick — then **[D19](RULINGS.md)**, then §"WHERE THE PHASE IS"
-below, then `TASKS.md`'s table, then your task file.
+bar, now **ten items**, and it decides which task you pick — then §"WHERE THE PHASE IS" below,
+then `TASKS.md`'s table, then your task file.
 
 🔴 **Two repos.** Editor work is this checkout. Platform work is
 `/Users/richardosborne/vscode_projects/nodegx-community` — a **sibling directory, never nested** —
@@ -17,515 +17,255 @@ traps apply there.
 
 ---
 
-# 🎯 THE PHASE NOW HAS AN EXIT CRITERION. IT IS THE ALPHA, AND IT IS NINE ITEMS.
+# ✅ E1 IS BUILT. THE BOTTLENECK MOVED, AND IT MOVED TO RICHARD.
 
-**Set 2026-08-18 (session 28), in [README.md](README.md) §"What closes this phase".** The phase ran
-five days without one, which is why *"are we nearly done"* had no answer.
+**Session 29 built UNI-001's issuer, both halves.** Before it, the only `insert into sessions`
+statements in the whole platform repository were **in test files** — so `readCommunitySession()`
+returned `null` for every human alive and *nothing UNI-015 or UNI-016 built was reachable by a
+real person*. That is no longer true.
 
-> **Phase 67 closes when a stranger can reach `community.nodegx.io`, make an account, ask a
-> question about a node from inside the editor, and get an answer — and when that site does not
-> look like a placeholder.**
+🔴 **And it still is not reachable, for a completely different and much smaller reason: there is
+no GitHub OAuth App.** `githubOAuthConfig()` reads two environment variables; without them
+`/api/auth/github/start` answers **503 with a plain sentence** — deliberately, because a button
+that redirects into a provider error page is a failure nobody can report. **That is E10, it is
+Richard's, it is free, and it is one form.** It is now the first domino in the whole phase.
 
-🔴 **Read that section before choosing a task.** It names four code items (E1–E4), three of
-Richard's (E5–E7), two hygiene (E8–E9), and — as importantly — **what is explicitly NOT in the
-close**, so UNI-017 and UNI-018 stop reading as unfinished business.
+> ⚠️ **Do not "work around" it.** A dev-only issuer, a paste-your-token box, a seeded session in
+> production — each is a back door, and `communitysession.ts` warns against exactly that shape in
+> its own header. The correct state of a deployment with no credential is **503**.
 
-## 🟢 THE ORDER, AND IT IS NOT THE TASK NUMBERS
+## 🟢 THE ORDER FOR THE NEXT SESSION
 
-1. 🔴 **E1 — UNI-001's issuer.** Everything the last three sessions built is **unreachable
-   without it**: the only `insert into sessions` in the whole platform repo are in **test files**.
-   D19 struck the OIDC provider face, so this is plain session auth — issue a token, store it under
-   `nodegx.community.session` (the seam is built and specced), sign in from the editor.
-   ⚠️ **Do not build the OIDC provider speculatively.**
-2. 🔴 **E4 — UNI-013 slice 5, the page archetypes.** Newly scoped from a driven review, below.
-3. **E3 — UNI-009 AC1**, which is small: the home does not link the Bench.
+1. 🔴 **E4 — UNI-013 slice 5, the page archetypes.** **Now the largest remaining code item, and
+   it is the one to start.** Scoped session 28 from a driven review; findings table in
+   [UNI-013](UNI-013-THE-COMMUNITY-SITE-IN-NODEGX-CLOTHES.md) §"Slice 5". **Three archetypes —
+   index, list, detail — not eight restyles.** The profile is already the detail one.
+2. **E3 — UNI-009 AC1**, the home shows real threads signed out. ⚠️ **Do it inside E4**, not
+   before: it is a composition change to the page E4 redesigns, and doing it twice is doing it
+   twice.
+3. **UNI-001 AC2's launcher affordance** — small, and see the honest gap below.
 4. **E2 — deployment**, once Richard answers E5.
 
-⚠️ **UNI-017 and UNI-018 are NOT next**, despite being the obvious next task numbers. They are
-outside the close.
+---
+
+# 🔴 CHECK THIS HANDOVER'S PREMISES. Session 28's was right; session 27's was wrong in three places.
+
+Session 29 verified session 28's three central claims before writing code — *"no issuer"*, *"the
+composer branches on the session"*, *"the seam is one function"* — and **all three held**. That is
+worth recording, because the session before it had three false premises and the habit that caught
+them is the same one: **grep for the callers of every function a handover says is ready.** Two
+greps, before any code.
+
+⚠️ **The one thing session 28's handover got wrong was small and is fixed here:** it said the
+editor's sign-in button *"renders D2's string and is inert"*. There is **no button in the editor at
+all** — the inert one was in the *site's* header (`src/app/layout.tsx`), and it is live now.
 
 ---
 
-# 🎨 SLICE 5 — THE LOOK. DRIVEN 2026-08-18, AND RICHARD IS RIGHT FOR THE SECOND TIME
+# WHERE THE PHASE IS — 2026-08-19 (session 29)
 
-**Richard, 08-18:** *"we updated the 'people' detail page but the rest of the app still looks sad,
-dark and simple."* He said a version of this on 08-17 too, and slices 1–3 answered the 08-17
-version. **The remaining problem is the scope, not the execution.**
-
-**Reviewed properly**: `next start` on a fresh build, DB seeded with four people, four threads and
-an answer, screenshotted at 1440×1000. ⚠️ **The served CSS hash was checked against
-`ls .next/static/css/` first** — this task's own trap, and an unstyled page is exactly what a "sad"
-review misreads. ⚠️ **Content was seeded before looking**, because an empty page looks sad for a
-reason that is not design.
-
-**The finding: AC4 named the wrong unit.** It restyled **six components**, and the premise says
-*"the other pages inherit from the tokens."* 🔴 **They inherit tokens; they do not inherit a
-design.** Eight pages are the same page — `<h1>`, grey two-line sub, filter pills, one stack of
-identical `bg-1` rectangles. **The profile page is the proof rather than the exception:** it looks
-designed because it is the one page the pitch artifact drew a specimen of.
-
-**Worst first:** the home has **no accent colour anywhere** and shows **none of the four threads
-that exist** (which is E3 as well as a design fault) · `/people` has **no avatars** while the
-profile does · the Bench renders **two different link styles on one page**, the queue's being raw
-underlined browser links · the queue **repeats the list beneath it** · `/replays` is **~90% empty
-viewport** under one dashed box.
-
-🔴 **The rule it generalises to:** every surface built *after* slice 3 — the Bench, the attachment
-renderers, the notification surfaces — reaches for `bg-1` and a bordered rectangle. **A design
-system with no worked example of its page shapes gets read as a colour palette.**
-
-✅ **So slice 5 is not "restyle eight pages".** It is **draw three archetypes — index, list, detail
-— and make every page an instance of one.** The profile is already the detail archetype. Full
-findings table in [UNI-013](UNI-013-THE-COMMUNITY-SITE-IN-NODEGX-CLOTHES.md) §"Slice 5".
-
-⚠️ **AC1, AC3 and AC5 still bind**: no hardcoded colour, contrast rows split per theme, and the
-suites must pass unchanged.
-
----
-
-# 🔴 CHECK THIS HANDOVER'S PREMISES. THE ONE IT REPLACED WAS WRONG IN THREE PLACES.
-
-Session 27's handover said UNI-016 had *"one thing left — the editor's POST"*, that *"the platform
-can receive artifact posts and nothing sends them"*, and that *"the bearer token the dialog
-already holds is the credential."* **All three were false**, and twenty minutes of grepping before
-writing any code is what found it:
-
-| Claimed | Measured |
-|---|---|
-| the platform can receive artifact posts | 🔴 `POST /api/v1/bench/threads` took `{section, title, body}`. **`attachToPost` had NO caller in `src/`** — only its own spec |
-| the dialog already holds a bearer token | 🔴 No token, no store anywhere in the editor, and **`CommunityApiClient` had no caller outside its own spec** — and was GET-only |
-| …so the credential exists | 🔴 **No issuer.** The only `insert into sessions` in the whole platform repo are **in TEST FILES** |
-
-*Build the caller*, **ninth and tenth** instances in this phase — and the tenth is the one where
-the missing caller **was the reason the task existed**. ✅ **The habit that worked: grep for the
-callers of every function a handover says is ready, before believing the handover.** Two greps.
-
----
-
-# WHERE THE PHASE IS — 2026-08-18 (session 28)
-
-✅ **UNI-016 is built. D19's tranche is four-fifths landed** (014, 015, 016 done; 017 half
-pre-built; 018 not started). 🔴 **But four-fifths of a tranche is not the phase** — read the alpha
-bar above, which puts UNI-017 and UNI-018 *outside* the close.
-
-| In the close? | Task | State |
+| In the close? | Item | State |
 |---|---|---|
-| 🎯 **E1** | **UNI-001's issuer** | 🔴 **NOT BUILT, and it is the critical path.** Resolution is built; only *minting* is missing. **LANE A** |
-| 🎯 **E4** | **UNI-013 slice 5 — the pages** | 🔴 **SCOPED session 28** from a driven review. The largest remaining piece. **LANE B** |
-| 🎯 **E3** | **UNI-009 AC1** — home shows real threads | 🔴 **NOT MET** — observed: the home links neither `/bench` nor any thread. Small. **LANE C** |
-| 🎯 **E2** | **deployment** | 🔴 **Owned by no task.** Blocked on Richard (E5). **LANE D** |
-| ✅ done | UNI-001 (AC3), 002–006, 009 cut, 011 s1–s2b, 013 s1–s3, **014**, **015**, **016** | 🟢 pushed |
-| ⛔ **out** | UNI-017 — the queue and *same here* | 🟡 Half pre-built (`unansweredQueue()` + the clock). ⚠️ **NOT the next task**, despite the number |
-| ⛔ **out** | UNI-018 — pull a graph | 🔴 Not built. 🔴 **Read its §"THE HAZARD" before scoping** — arbitrary JS on the puller's machine |
-| ⛔ **out** | UNI-007 intake · UNI-006 bridge · UNI-011 views · UNI-008 · UNI-010 · UNI-012 · UNI-013 s4 | See the README's *"explicitly NOT in the close"*. ⚠️ UNI-011's views are unbuilt **deliberately** — D16's ship order is the reverse of its build order |
+| ✅ **E1** | **UNI-001's issuer** | ✅ **BUILT.** Sessions minted, GitHub OAuth, device flow for the editor, sign-out revokes. ⚠️ **AC2's launcher affordance still owed; AC4's grep needs a verdict** |
+| 🔴 **E10** | **A GitHub OAuth App** | 🆕 **NEW, and now the first domino.** Richard's. Without it nobody can make an account, which is the criterion's first verb |
+| 🎯 **E4** | **UNI-013 slice 5 — the pages** | 🔴 **NOT STARTED. The largest remaining code item. START HERE** |
+| 🎯 **E3** | **UNI-009 AC1** — home shows real threads | 🔴 **NOT MET.** Small; fold into E4 |
+| 🎯 **E2** | **deployment** | 🔴 **Owned by no task.** Blocked on Richard (E5) |
+| ✅ done | UNI-001 E1, 002–006, 009 cut, 011 s1–s2b, 013 s1–s3, 014, 015, 016 | |
+| ⛔ **out** | UNI-017 · UNI-018 · UNI-007 intake · UNI-006 bridge · UNI-011 views · UNI-008 · UNI-010 · UNI-012 · UNI-013 s4 | See the README's *"explicitly NOT in the close"* |
 
-⛔ = outside the alpha bar. **Not abandoned** — a 67b or folded into phase 68, and that is Richard's
-call at the close rather than something to decide by drift.
+## What session 29 built
 
-## 🔴 THE ONE THING THAT CHANGED SHAPE: UNI-001's ISSUER IS NOW THE BOTTLENECK
+**Platform** (`nodegx-community`) — `session.ts` (mint / revoke / cookie), `site.ts` (`SITE_ORIGIN`,
+`safeReturnPath`), `githuboauth.ts` (an **injected** code exchange), `signin.ts` (identity → account),
+`signin-http.ts` (start / callback / sign-out as plain functions), `devicepairing.ts`, migration
+**`0010`** (`device_authorizations`), **six routes**, the `/auth/device` approval page, and a header
+that is signed-in-aware. Plus README environment documentation.
 
-UNI-016's POST path is built, specced and typed end to end — **and no human being can reach it**,
-because `readCommunitySession()` returns `null` for everybody and nothing mints a session. The
-browser hand-off is the only route a real user has. That is AC5 working exactly as written, and it
-means **the next unit of user-visible value in this tranche is not UNI-017 or UNI-018 — it is
-plain session auth on the platform plus a sign-in in the editor.** D19 struck the OIDC provider
-face (there is no second system to federate with), so what is left is small: issue a token, store
-it under `nodegx.community.session`, done.
+**Editor** — `communityorigin.ts` (`COMMUNITY_URL` **moved out of the dialog**),
+`writeCommunitySession` / `clearCommunitySession`, `communitysignin.ts` (the device dance and
+`signOutOfCommunity`), and a **Sign in to NodeGX** affordance on the composer's signed-out branch
+with cancellation on unmount.
 
-✅ **That weighing is now DONE rather than left to the reader** — it is why the exit criterion puts
-the issuer at E1 and UNI-017 outside the close. **Do not re-litigate it; build LANE A.**
-
-## What session 28 did
-
-**Platform** — `parseAttachments` (the boundary), an `attachments` field on both write routes,
-`attachAll` **inside `askQuestion`/`answerThread`'s own transaction**, and three 0009 constraint
-names mapped to 400s in `bench-http.ts`. Plus `resetApiSql()` — see the harness trap below.
-
-**Editor** — `nodeartifact.ts` (the structured payload), `communitysession.ts` (the token seam),
-`CommunityApiClient.askQuestion`/`.answer` with a five-outcome `Write` union, and the composer's
-two routes. 🔴 **The browser hand-off is kept and now asserted**, with a negative control.
-
-**Documents** — 🎯 **the phase's first written exit criterion** ([README.md](README.md)), and
-🎨 **UNI-013 slice 5**, scoped from a driven review of the running site. Both are above.
-
-⚠️ **What session 28 did NOT do: a drive.** The composer's button was never clicked — there is no
-DOM in this checkout's jest runner, and a real drive needs a token no issuer can mint. **LANE A is
-what makes that drive possible**, which is most of why it is first.
+⚠️ **What session 29 did NOT do: a drive.** Same reason as session 28 and one step further along —
+there is still no credential to sign in *with*. **E10 is what makes the first real drive possible**,
+and that drive is E9 in miniature: right-click a node → sign in → ask → post → read it on `/bench`
+signed out.
 
 ---
 
-# 🔴 SESSION 28's FINDINGS — three, and two are about instruments that lied
+# 🔴 SESSION 29's FINDINGS
 
-### A. AC2's assertion was on a population where it could not fail
+### A. `signOut` read the COOKIE only, and the editor sends a BEARER — *build the caller*, 11th
 
-Session 27 asserted AC2 — *"a withheld port's name and value appear nowhere"* — against the
-served page. **But the withheld name is never in the request**: the editor buckets it away before
-sending, so **no implementation of that route could have emitted it**. True by construction, and
-an absence check that cannot fail is not evidence.
+`signOut(sql, request)` revoked `cookieValue(request, SESSION_COOKIE)`. That audits clean on the
+page: it is a sign-out route, it revokes the session cookie. 🔴 **But an editor has no cookie jar
+scoped to our origin** — which is the whole of `apiviewer.ts`'s bearer note, one file away — so
+`signOutOfCommunity` would have received **`200 {ok:true}` while revoking nothing**, leaving a live
+session behind on *every* editor sign-out.
 
-✅ It now lives in `tests-unit/uni-016/nodeartifact.test.ts`, where the withheld port **is** an
-input row the user left unticked, so dropping it is work the code does. The platform's copy is
-**kept and relabelled as the weak form** — it still proves the renderer does not *invent* a name
-out of `withheldPorts`. 🔴 **The general rule: an absence assertion is only worth its ink if the
-string could have been present. Ask which side of the wire the fixture puts it on.**
+✅ Fixed by routing it through the same `tokenFromRequest` the `/api/v1` surface already uses, with
+a spec that presents a bearer and asserts the token stops resolving. 🔴 **It surfaced in the minute
+the editor caller was written, not while writing or reviewing the route.** The general move: when
+a module has **two transports for one credential, write the second transport's caller** — and check
+whether a shared helper already handles both. This one did; the handler ignored it.
 
-### B. 🔴 `apiSql()`'s CACHED POOL DOES NOT SURVIVE `resetSchema`, AND THE SYMPTOM IS A GREEN SUITE
+⚠️ It is also an [assert-an-absence] shape from the other side: *revoked nothing* and *revoked
+successfully* were the **same 200**.
 
-postgres.js resolves user-defined type OIDs — every enum — when a connection is established.
-`freshDb()` does `drop schema public cascade`, so those OIDs stop existing while the pooled
-connection stays open, and **every route-handler call after the first in a file** fails with
-`XX000: cache lookup failed for type <oid>`. `refusalResponse` maps an unrecognised message to a
-**400 with no detail, by design** — so a spec asserting *"this input is refused"* goes green
-**without the route ever running**.
+### B. Two decisions were FORCED by this task's own scope, and reading them as choices will waste a session
 
-✅ Fixed with `resetApiSql()`, called by `freshDb()` so no spec has to remember. ⚠️ **It flipped
-no existing test** (692 → 706 = exactly the 14 new ones), so it had bitten only the new file —
-but it was one route-handler refusal spec away from being permanently invisible.
-🔴 **It was found by a known-firing control**: the refusal specs were green and the control
-asserting the *same* request SUCCEEDS was red.
+1. **The device flow, not a loopback listener and not a `nodegx://` handler.** UNI-001's scope says
+   *"no listener is opened"* — that kills the loopback redirect outright — and a protocol handler is
+   an OS registration a dev build, a portable build and a second install all fight over, with the
+   winner receiving a URL containing a live credential. ⚠️ **This is NOT D19's struck "browser
+   handoff ticket" returning**; that one handed an editor session to *Discourse*, and there is no
+   Discourse. The argument is written into `0010`'s header where it cannot be lost.
+2. **GitHub only; no email/password.** The scope asks for both and for *password reset* — and
+   **nothing on this platform sends mail** (E6, the condition D19 was ruled under). A password flow
+   whose reset arm cannot be delivered locks people out. `accounts` grew no `password_hash`.
 
-### C. An escaped quote made an absence assertion pass trivially
+### C. The site is now entirely server-rendered, and that is a deliberate cost
 
-A text preview value carries literal double quotes (`previewValue()` renders `"Invoice for Acme"`
-that way). Asserted against `JSON.stringify(payload)`, JSON escapes them to `\"` — so
-`expect(serialised).not.toContain('"ACME-1183-INVOICE"')` **passes whether or not the value is
-in there.** ✅ **Compare values via an enumeration (`artifactStrings`), never against serialised
-text.** Found by the same shape of control as B: the positive arm asserting the string IS present
-once the row is ticked.
+`cookies()` in the **root layout** opts the whole app out of static generation: `next build` reports
+**every route as `ƒ`**, where most were prerendered before. A signed-in header cannot be a static
+file, and the alternative — rendering the chip client-side from `/api/v1/me` — trades it for a flash
+of the wrong state on every navigation. ⚠️ **Recorded so it is not read as a regression.** If a page
+ever genuinely needs static delivery, move the read into a client island; do not stop reading it.
 
-⚠️ **B and C are the same lesson twice in one session.** An absence assertion needs a positive
-arm that fails when the mechanism is broken — and in both cases the positive arm was the only
-thing that spoke.
+### D. An honest gap: AC4's grep now needs a verdict rather than a run
 
----
-
-# 🔴 SESSION 27's FINDINGS — still current, read before touching any of it
-
-### 1. `recordEvent` could not be called inside a transaction, and the symptom was a lost QUESTION
-
-`tryAward` catches a refusal and reports it as an outcome, which is correct **standalone**. Inside
-a caller's transaction a `raise exception` has **already aborted Postgres**, and catching it in
-TypeScript does not un-abort it. `bench.thread.created` has two listeners — `first-thread` (capped
-at 1) and `thread-started` (repeatable) — so **the second question anybody asked failed outright**
-with `[cap-reached]`.
-
-✅ Fixed with a **savepoint per award** in `contribution.ts` (`isolated()`). **Per challenge**,
-because a savepoint around the whole of `recordEvent` would forfeit the sibling awards and
-`thread-started` would never pay out again after a person's first thread — a quieter version of
-the same bug. 🔴 **UNI-002's 38 specs pass with those files byte-unchanged in git**, which is
-exactly the proof UNI-015 AC2 asks for that this is a new caller and not a new mechanism.
-
-⚠️ **`savepoint` exists only on a `TransactionSql`, never on a pool** — that is what makes the
-branch a reliable discriminator rather than a guess.
-
-### 2. `alter type … add value` is unusable in a migration here
-
-Measured on **PG 16.14**: adding an enum value and naming it in a CHECK constraint in the same
-migration is refused (*"unsafe use of new value"*), and `applySchema` runs each migration as one
-implicit transaction. 🔴 **The `subject_kind::text = 'x'` workaround parses fine and is worse than
-the problem** — a mistyped literal is not an error, it is a clause that silently never matches,
-which is the *check that cannot fail* this phase has now found five times. **Recreate the enum**
-(drop the constraint, rename, create, alter the columns, drop the old type, re-add the constraint).
-
-### 3. AC4's `grep -ril discourse` instrument is TOO STRONG and was not implemented literally
-
-Taken at its word it forbids a comment **saying what was removed**: `0001` still creates
-`forum_threads` because a migration is history, and `0008` must name `discourse.post.created` to
-migrate away from it. ✅ What is asserted instead is sharper — **no live CODE anywhere in `src/`,
-comments stripped first** (with a control proving the stripper does not strip code), plus the
-named files are gone and the **live database** has no `forum_threads` and no `discourse.*` event
-key. **Prose keeps the record; code keeps nothing.**
-
-### 4. Two shipping palette tokens fail WCAG AA in the LIGHT theme — fifth instance
-
-`--theme-color-danger` scores **4.26** and `--theme-color-success` **3.55** on `bg-0` in light —
-and they are exactly the tokens the queue clock and the accepted-answer mark would reach for. The
-pitch artifact hand-mixed its own colours (`#a33228`, `#1f6d52`) for those two roles, which is
-what a designer does when the system token looks wrong — **and it looked wrong because it IS
-wrong** at that size on that ground. ✅ `--site-fg-alert` and `--site-fg-good` are **split by
-theme**; `--site-fg-warn` needed no split (10.51 / 4.79). All three are now rows in
-`tests/uni013-contrast.test.ts`. 🔴 **A role with no pair in that table is a colour nobody
-measured.**
-
-### 5. The SQL re-point of the challenge registry matches ZERO ROWS
-
-`challenges` is empty in a fresh schema — the registry loads from `challenge-catalogue.json` via
-`syncCatalogue()` — and **nothing is deployed anywhere**, so no database holds a `discourse.*` row.
-The JSON is the half that binds. Written into `0008`'s comment out loud so the block is never read
-as evidence that anything was migrated.
+UNI-001 AC4 asks that *"reads of the session outside the launcher/account module come back empty"*.
+The composer reads it — which **UNI-016 made true before this session** — and is arguably exactly
+what the criterion means to permit. 🔴 **It needs re-wording or a ruling. Do not report it as
+passing**, and do not delete it: the principle it protects (*the editor is fully functional signed
+out, forever*) is one of the phase's two.
 
 ---
 
-# 🔴 THREE HARNESS TRAPS. The first is session 28's and is the worst of them.
+# ⚠️ FOR RICHARD — the asks, and one is new and now first
 
-1. 🔴 **`freshDb()` + a ROUTE HANDLER = a suite that PASSES WITHOUT RUNNING THE ROUTE.** Described
-   in full as finding B above; repeated here because the next person to write a route-handler spec
-   will hit it and will not have read a findings section first. ✅ **Already fixed** — `freshDb()`
-   calls `resetApiSql()`. ⚠️ **A second cached pool anywhere needs the same treatment**, and the
-   failure will look like a passing test.
+1. 🔴 **E10 — a GitHub OAuth App. NEW, cheapest, and now the first domino.** Homepage
+   `https://community.nodegx.io`, callback **`https://community.nodegx.io/api/auth/github/callback`**.
+   ⚠️ **Byte for byte** — GitHub reports a mismatch as `redirect_uri_mismatch` *without saying which
+   side is wrong*. Set `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET`. Without them
+   **nobody can make an account**, which is the exit criterion's first verb. ⚠️ Intersects E5/E2 —
+   the callback has to point at wherever the platform is actually served.
+2. 🔴 **E5 — does the platform go on nexus-1?** Still the domino behind deployment (E2) → the smoke
+   drive (E9). **E10 needs its answer too**, so this now has two things queued behind it.
+3. 🔴 **E6 — a transactional sending account + domain.** **D19 was ruled *on the condition* that
+   email lands.** `log` delivery covers dev and cannot ship.
+4. **E7 — where capture images live.** Cheap, genuinely deferrable; nothing migrates whenever it is
+   decided.
 
-The other two are in `tests/uni015-bench-http.test.ts`, and both bite anyone who spawns a server
-in a spec:
+**Not in the close, still open:** the twelve badge artworks (UNI-013 slice 4) · a Paddle account
+(D7) · GitHub Pages unattached · the F4 packaged-install scope call (UNI-012) · UNI-006's three
+calls, UNI-005's two, UNI-004's D8-bar question, UNI-003's catalogue change.
 
-2. **`next start` SURVIVES `child.kill()`.** We spawn `npx`; the real listener is a **grandchild**
-   (`next-server`). A survivor holds a pool against the database every other suite drops, and the
-   symptom is **51 failures in five unrelated files** reading `type "badge_family" does not exist`.
-   ⚠️ **`pkill -f "next start"` matches NOTHING.** Kill by port.
-3. 🔴 **`lsof -ti :3987` MATCHES CLIENTS TOO** — including the vitest worker that just ran the
-   fetches. Killing that PID **SIGKILLs the process running the tests**: the file vanishes from the
-   report with an *"unhandled error"* from tinypool, the summary reads **`23 passed (24)`**, and
-   **nothing names the file that did not run.** ✅ **`lsof -ti tcp:<port> -sTCP:LISTEN`.**
-   **A suite that was killed looks almost exactly like a suite that passed — always reconcile the
-   file count.**
-
----
-
-# THE PLAN — the four code items in the alpha bar, in order
-
-⚠️ **This section was rewritten in session 28.** It previously said *"LANE A — finish UNI-016,
-start here"* and described a credential that does not exist. UNI-016 is built; that lane is gone.
-
-## 🟢 LANE A — E1: UNI-001's issuer. 🔴 **CHECK IF IT IS ALREADY DONE BEFORE YOU START.**
-
-> 🔴 **A PEER WAS BUILDING THIS AT 13:56 ON 2026-08-18, UNCOMMITTED, IN BOTH REPOS.** Observed
-> **five minutes** after this handover was written — which is the shared-checkout hazard landing
-> on the very section that warns about it.
->
-> **Uncommitted files seen, by mtime (13:27–13:54):**
-> - platform: `src/lib/{session,devicepairing,githuboauth,signin,signin-http,site}.ts`,
->   `src/db/sql/0010_uni001_device_authorizations.sql`, `src/app/api/auth/`, `src/app/api/v1/auth/`,
->   `src/app/auth/`, `tests/uni001-issuer.test.ts`, plus edits to `globals.css`, `layout.tsx`,
->   `migrate.ts`, `schema.ts` and two suites
-> - editor: `communitysignin.ts`, `communityorigin.ts`, and `communitysession.ts` extended with
->   `writeCommunitySession` / `clearCommunitySession`
->
-> ⚠️ **That is an inventory of FILES, not a claim that it works** — none of it was committed, none
-> of it was run by this session, and a half-finished issuer looks exactly like a finished one from
-> a directory listing. 🔴 **`git log` and `git status` in BOTH repos before writing a line of
-> LANE A**, and if it has landed, LANE B is your start instead.
->
-> ⚠️ **Do not run the platform suite while that work is uncommitted and moving** — `freshDb()`
-> drops the schema, and interleaving with someone else's live run is the *51-failures-in-five-
-> unrelated-files* trap this handover documents two sections down.
-
-**If it is genuinely not done**, the below is the scoping. It unblocks everything else.
-
-Plain session auth. **Not** the OIDC provider face — D19 struck it, because there is no second
-system to federate with, and building it speculatively is explicitly warned against in UNI-001.
-
-What exists already, measured session 28:
-- `sessions` rows, `hashSessionToken()`, and `viewerFromToken()` — the *resolution* half is built
-  and every route uses it. **Only minting is missing.**
-- `apiviewer.ts` accepts a **bearer token** as well as a cookie, against the same rows, with no
-  second issuer — the desktop-client story D14 asked for.
-- Editor side: `readCommunitySession()` reads `nodegx.community.session` from `JSONStorage`, is
-  specced (9 cases incl. a throwing store), and **returns `null` for everybody today**. It is the
-  one place to write to.
-- The composer already branches on it: signed in → POST, signed out → the browser hand-off.
-
-So the work is: an OAuth callback (or whatever D-ruling you land on), a row insert, and a sign-in
-affordance in the editor that writes that key. ⚠️ **Callback URLs need the domain**, which is why
-UNI-001 stalled in the first place — `community.nodegx.io` resolves now, so that blocker is gone.
-
-🔴 **The moment it lands, drive the whole loop end to end**: right-click a node → ask → post →
-read it on `/bench` signed out. **That is the drive session 28 could not do**, and it is E9 in
-miniature.
-
-## 🟢 LANE B — E4: UNI-013 slice 5, the page archetypes
-
-Scoped from the driven review above. **Three archetypes — index, list, detail — not eight
-restyles.** The profile is the detail one already. ⚠️ AC1/AC3/AC5 still bind: no hardcoded colour,
-contrast rows split per theme, suites unchanged.
-
-## 🟢 LANE C — E3: the home shows real threads signed out
-
-UNI-009's D19-rewritten AC1, and it is small: `listThreads()` exists, `/bench` exists, and
-`src/app/page.tsx` links to neither. ⚠️ **Do it as part of LANE B, not before it** — it is a
-composition change on the page LANE B is redesigning, and doing it twice is doing it twice.
-
-## 🔴 LANE D — E2: deployment. **Blocked on Richard (E5).**
-
-Still owned by no task. **Write the task file** — and read
-[the nexus-1 memory](../../../.claude/projects) first if you have it: the box runs two other live
-sites and Caddy is all-or-nothing, so it is a drop-in site block only, and you **curl the
-neighbours before and after**. ⚠️ **A 308 proves nothing** — read `:2019/config/`.
-
-🔴 **E8 belongs to this lane and is a launch blocker, not hygiene**:
-`NOTIFICATION_LINK_SECRET` has a dev default, and a deployment that does not set it has
-**forgeable unsubscribe links**.
+🔴 **And the decision that arrives at the close:** UNI-017, UNI-018, UNI-007's intake, UNI-006's
+bridge, UNI-011's views, UNI-008, UNI-010 and UNI-012 become **a phase 67b or fold into phase 68**.
+Richard's call, made deliberately rather than by drift.
 
 ---
 
-# ⚠️ FOR RICHARD — three of these are now IN THE EXIT CRITERION, so they gate the alpha
+# Gates — measured 2026-08-18/19, session 29
 
-🔴 **The asks are no longer a wishlist.** E5, E6 and E7 are items in
-[README.md](README.md) §"What closes this phase", which means **the phase cannot close until they
-are answered** — they are not deferrable the way they were last session.
+**`nodegx-community`:** vitest **745 passed across 26 files, zero failures, zero skips**;
+`tsc --noEmit` clean; `next build` **exit 0**; `check:css` clean over **1008 declarations /
+21 components** (was 971 / 19).
 
-1. 🔴 **E5 — does the platform go on nexus-1?** **The first domino**: it blocks deployment (E2),
-   which blocks the smoke drive (E9), which is the last item in the close. Everything else in the
-   bar can proceed in parallel; this one has a queue behind it.
-2. 🔴 **E6 — a transactional sending account** (Postmark / SES / Resend) + a sending domain.
-   ⚠️ **Sharper than it reads, and sharper than last session.** **D19 was ruled *on the condition*
-   that email lands** — *"a forum where 'someone answered you' never reaches an inbox is a forum
-   nobody returns to"* — so this is not a nice-to-have attached to UNI-014, it is **the condition
-   the build-don't-buy decision was made under.** `log` delivery covers dev and cannot ship.
-3. **E7 — where do capture images live?** **Cheap, and genuinely deferrable within the bar.** A
-   `capture` stores dimensions and a consent record and **no image**, which is exactly what the
-   editor publishes today, so **nothing has to be migrated** whenever you decide — an `image_url`
-   column and a writer are the whole change. ⚠️ Intersects E5.
+🔴 **READ HOW THAT 745 WAS MEASURED BEFORE QUOTING IT — it is the UNION OF TWO RUNS, and that is
+stated rather than smoothed over.** The first full run was **SIGKILLed at 50 minutes with only
+9 of 26 files done** (`EXIT=137`, and **no summary line at all** — which is the honest version of
+the trap: a killed run can otherwise look like a passing one). The second run took **the 17 files
+that never ran, plus the one that had failed**, and reported **18/18 files, 494/494**. The tree
+did not change between them.
 
-**Not in the close, still open:** the twelve badge artworks (UNI-013 slice 4 — degrades rather
-than blocks; the profile renders a family mark and a tier colour, not a broken image) · **a Paddle
-account (D7)**, still between coaching and revenue · GitHub Pages unattached (`has_pages: false`
-as of 08-17) · the F4 packaged-install scope call (UNI-012) · UNI-006's three calls, UNI-005's two,
-UNI-004's *"responding to an RFP requires clearing D8's bar"*, UNI-003's change to UNI-002's
-catalogue.
+✅ **The reconciliation, so the next person does not redo it:** 9 + 18 − 1 shared file = **26**,
+which is exactly the number of `tests/*.test.ts` on disk. **251** tests from the first run's eight
+clean files + **494** = **745**. And **745 = 708 (the prior baseline) + 36 (`uni001-issuer`) + 1** —
+that last one is `db-schema-drift`'s `it.each(tableNames)` gaining a case for
+`device_authorizations`. **Every test in the delta is accounted for.**
 
-🔴 **And one decision that only arrives at the close:** UNI-017, UNI-018, UNI-007's intake,
-UNI-006's bridge, UNI-011's views, UNI-008, UNI-010 and UNI-012 are **explicitly outside the
-alpha**. At the close they become **a phase 67b, or they fold into phase 68** — your call, and
-worth making deliberately rather than by drift.
+⚠️ **A clean single full run is still owed**, and it is cheap to want and expensive to get (~50
+minutes). Do one before treating 745 as the floor.
 
----
+⚠️ **`grep -cE "[○ƒ] /"` now reports 34 route entries** (session 28 reported 26 by the same method,
+session 27 reported 24). **Six routes and one page were genuinely added this session**; the rest of
+the delta is the counting method, which the last handover already flagged. 🔴 **Count it the same
+way twice before treating a change in this number as a surface change.**
 
-# Gates
+**This checkout:** `tsc -p packages/noodl-editor` **clean**; `tsc -p
+packages/noodl-editor/tsconfig.tests.json` **clean** (both run unpiped — ⚠️ `tsc | head; echo $?`
+reports *head's* status). `tests-unit/uni-001` **24 passed across 2 files**, file count reconciled.
 
-**`nodegx-community`:** HEAD **`a10ad9b`**, clean, `main` == `origin/main`. **Measured on that
-tree, this session:** vitest **708 / 708 across 25 files, zero failures, zero skips** — ✅ **file
-count reconciled (25 listed = 25 reported)** and `uni015-bench-http` **ran rather than skipped**;
-`tsc` clean; `next build` clean; `check:css` clean over **971 declarations / 19 components**.
-The floor this replaced was 692 / 24, and 708 = 692 + 14 (the intake suite) + 2 (the HTTP
-consequences). 🔴 **Re-measure; never quote a handover's number.**
+⚠️ **NO `test:main` full run and NO `test:ci` this session.** The editor changes are three model
+modules and one dialog; **that means this session's evidence says nothing about either baseline**,
+and UNI-001 **AC1 names the full baseline as its regression gate**. 🔴 **Run both before believing
+"gates nothing".**
 
-⚠️ **The build reports 26 route entries by `grep -cE "[○ƒ] /"`; session 27's handover said 24.**
-**No route was added this session** — only a field on two existing POST handlers — so the delta is
-a counting method, not a surface change. Flagged rather than smoothed over: if it matters, count
-it the same way twice.
+🔴 **THE THREE FAILURES IN THE FIRST RUN WERE MINE, AND THEY WERE NOT ASSERTIONS.** All three were
+`Hook timed out in 30000ms` in `uni015-bench.test.ts` — the `beforeEach(freshDb)` hook, under load
+**I created** by running `next build` and two jest suites against the same database and the same
+`.next` while the suite was in flight. ⚠️ **`uni015-bench-http.test.ts` spawns `next start` against
+`.next`**, so rebuilding mid-run is not merely slow, it swaps the artefact under a running spec.
+The same file passed **63/63** on the quiet re-run, and per-test times went from ~8s to ~400ms.
+**Do not start a build or a second suite while this one runs.**
 
-**This checkout:** phase-67's session-28 work is `179c6432` (code) + `4c23f869`, `3482c1da`,
-`44411ff3` (docs — the handover, the gates, and the exit criterion + slice 5) on `cline-dev`. 🔴 **Do NOT read those as HEAD** — this checkout is shared and peers commit
-constantly (`c6dcb3a2`, CN-013, landed immediately before). **Measured this session:** `test:main`
-**3752 / 3752 across 244 suites**, `tsc -p packages/noodl-editor` clean, `tsc -p
-packages/noodl-editor/tsconfig.tests.json` clean. `tests-unit/uni-016` **42 across 3 files**.
-⚠️ **No `test:ci` this session** — no `.jsx` and no renderer-only surface changed, but that means
-**this session's evidence says nothing about the Electron suite.**
-
-⚠️ **Peers had uncommitted work all session** in `nodegx-backend`, `nodegx-module-inject`,
-`CloudFunctionDeployer.ts`, `cloudFunctions.ts`, `projectmodules.ts`, `noodl-viewer-cloud`,
-`scripts/library/check.ts` and four phase directories. **All left untouched** — every commit here
-used explicit pathspecs and nothing was staged broadly.
-
-🔴 **ONE SIDE EFFECT TO KNOW ABOUT: the local dev database is SEEDED with fake content.** The
-slice-5 review needed it — four people (`nia-builds`, `tom-reilly`, `sam-vega`, `priya-r`), four
-bench threads and an answer — because an empty page looks sad for a reason that is not design.
-⚠️ **It is on `localhost:55432`, and the first `freshDb()` any spec runs will drop it.** That is
-harmless; it is recorded so nobody mistakes it for real data, and so the next person reviewing the
-look knows they must **re-seed before believing a screenshot of an empty page**. The seed script
-was deliberately **not committed** — it is throwaway, and a committed one becomes a fixture nobody
-maintains.
-
-⚠️ **`npm run lint` is still not a gate on the platform** — the script exists, there is no ESLint
-config, and running it starts Next's interactive setup.
+⚠️ **One warning, attributed rather than waved away:** running the two `uni-001` spec files together
+prints *"a worker process has failed to exit gracefully"*. **Each file alone is clean**, two
+pre-existing suites in the same family are clean, and `--detectOpenHandles` on the suspect file
+reports **no handles**. Both files pass either way. **Not chased further; recorded so the next
+person does not re-derive it.**
 
 ---
 
 # Standing constraints
 
-- Editor work on `cline-dev`. 🔴 **Never `git stash`** — ⚠️ **there is a stash that is not yours**
-  (`stash@{0}`, WIP on `ff74bcc9`). Leave it alone. ✅ **`git commit <pathspecs>`, never stage
-  broadly.** ⚠️ Untracked files need `git add` — put add and commit in **one chain**.
-  ⚠️ **Peers always have uncommitted work here** — session 28's set is listed in §Gates, and it
-  was left untouched. **Do not read the list; re-read `git status` — it changes hourly.**
-- 🔴 **`cd` does not persist between tool calls** — except it DOES persist in this harness's Bash
-  tool. ⚠️ A failed `cd` in a chain leaves you where the last successful one put you.
+- Editor work on `cline-dev`. 🔴 **Never `git stash`** — ⚠️ there is a stash that is not yours.
+  ✅ **`git commit <pathspecs>`, never stage broadly.** Untracked files need `git add` — put add and
+  commit in **one chain**. ⚠️ **Peers always have uncommitted work here** — re-read `git status`,
+  never a handover's list.
 - ✅ **`npm --prefix packages/noodl-editor run test:main -- <path>`** — jest from the repo root
   silently picks the wrong config.
 - 🔴 **Port 55432 for the platform's Postgres, never 5432.**
-- 🔴 **BSD `xargs` has no `-r`** — `lsof -ti :p | xargs -r kill` errors out and the rest of the
-  chain silently does not run. Cost one lost suite run.
-
----
+- 🔴 **BSD `xargs` has no `-r`.**
+- ⚠️ **The platform suite is SLOW** — roughly **8 seconds per test**, because almost every one calls
+  `freshDb()` and that reapplies ten migrations. A full run is **the better part of an hour**, and
+  more under load. Budget for it; do not start one and then start two other heavy jobs.
+- 🔴 **Do not edit sources while a suite is in flight.** Session 29 did once and **discarded the
+  run** — vitest imports a module when it reaches the file, so a mid-run edit gives you results you
+  cannot attribute to either version.
 
 # Things the next person will otherwise re-derive
 
-**The editor repo (session 28):**
+**Platform:**
 
-- 🔴 **`expect(value, message)` is VITEST. This checkout is JEST**, and the second argument is a
-  hard compile error in a `.test.ts` that `tsc -p tsconfig.tests.json` will catch — but only if
-  you run it. Put the failing value **inside** the assertion (`expect({value, ok}).toEqual({value,
-  ok: true})`) or the report says `false !== true` and names nothing.
-- 🔴 **There is NO DOM and NO React in this checkout's jest runner.** A rendered component test is
-  not available. The established response is source analysis with negative controls derived from
-  the **real current source** — `base-dialog/measuring-copy.test.ts` is the precedent and
-  `uni-016/composer-sends-what-it-shows.test.ts` follows it. ⚠️ **Say in the file what that does
-  not prove**, or a source read gets counted as a drive.
-- ⚠️ **`test:main` collects its file list at start.** A spec written while it is running is not in
-  the run, and the summary looks complete. **Reconcile the suite count**, exactly as the
-  `lsof` trap requires for vitest.
+- 🔴 **A new route under `src/app/api` needs a RECIPE** in `tests/uni011-mirror-api.test.ts` or that
+  suite fails — it derives the route list from disk. E1's six all carry `gatedByD15: false` with a
+  reason: **signing in is not the community surface**, and gating it would mean an org-minor could
+  not sign in at all, which is a different ruling from the one D15 made.
+- 🔴 **A new free-text column needs a CLASSIFICATION** in `tests/uni005-data-inventory.test.ts`, and
+  the non-vacuity floor moves with it (**92 → 94** this session).
+- 🔴 **Never generate DDL from `src/db/schema.ts`** — but a new table must still be declared there,
+  because the drift spec compares columns.
+- ⚠️ `originIsSecure()` reads the **scheme**, never `NODE_ENV`. `next start` on a laptop runs with
+  `NODE_ENV=production`, so a `NODE_ENV` test would put `Secure` on a cookie served over plain HTTP
+  — browsers drop it silently, and the symptom is a sign-in that appears to work and does not.
+- ⚠️ **Two `set-cookie` headers need `Headers.append`, not `set`.** `set` overwrites, and the
+  survivor is whichever was written last — leaving either no session or a live state nonce.
 
+**Editor:**
 
-- 🔴 **HOW TO REVIEW THE LOOK, because LANE B is a design task and all three steps are traps.**
-  1. **Seed content first.** An empty page looks sad for a reason that is not design, and a review
-     of empty states produces a list of fixes that change nothing. Four people, four threads and
-     an answer was enough. ⚠️ The seed script was **not committed** deliberately — throwaway, and
-     a committed one becomes a fixture nobody maintains. Write a fresh one; the helpers in
-     `tests/helpers/db.ts` show the column names (⚠️ `challenges` has **no `repeatable` column** —
-     it is `mechanism` + `max_awards` + `min_interval_seconds`).
-  2. 🔴 **Check the served CSS hash against `ls .next/static/css/` BEFORE believing a screenshot.**
-     A stale `next start` serves HTML pointing at a hash that no longer exists → 404 stylesheet →
-     a completely unstyled page. **Every gate stays green through it**, and it is indistinguishable
-     from "the design is bad". `curl -s localhost:PORT/ | grep -oE '/_next/static/css/[a-z0-9]+\.css'`.
-  3. **Kill by port, `lsof -nP -iTCP:<port> -sTCP:LISTEN -t`.** `pkill -f "next start"` matches
-     **nothing** — the process is `next-server`.
-  ✅ System Chrome screenshots headlessly with no extra dependency:
-  `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu
-  --hide-scrollbars --virtual-time-budget=4000 --window-size=1440,1000 --screenshot=out.png URL`.
-  ⚠️ Use a port nobody else uses and **do not** open a CDP port — a stray Chrome steals 9222.
-
-**The platform repo:**
-
-- 🔴 **Never generate DDL from `src/db/schema.ts`.** It is a query mirror; rulings live in
-  `src/db/sql/`. ⚠️ **But the drift spec compares COLUMNS**, so a generated column must still be
-  declared in the mirror — with a comment saying it must never be written.
-- 🔴 **A GENERATED column is the strongest form of "derived, not typed"**: `insert` and `update`
-  are both refused, and **their error messages DIFFER** (*"cannot insert a non-DEFAULT value"* vs
-  *"can only be updated to DEFAULT"*). Match them separately; one loose alternation matches far
-  too much.
-- 🔴 **`board_actor_is_eligible()` is where D15 and D8's ban live**, in the database. The bench
-  calls it from a trigger on both tables. ⚠️ **Both tables** — a probe that only exercises the
-  parent proves nothing about the child, and UNI-005's census caught exactly that.
-- 🔴 **UNI-005's census classes are not interchangeable.** `machine-derived` means *a minor CAN
-  write here*; `minor-refused` means they cannot. Claiming the former where the latter holds
-  claims a **weaker** guarantee, and the census catches it by demanding a probe the class cannot
-  supply.
-- 🔴 **A route handler is outside every module sweep.** `tests/uni011-mirror-api.test.ts` reads
-  routes **off disk**, and now handles **dynamic segments**: a recipe declares its `params`, and a
-  real thread is seeded so the "gate opens" half of the assertion can be true. ⚠️ **A dynamic
-  route imported via `pathToFileURL` fails** — it percent-encodes `[` and `]`. Decode those two.
-- 🔴 **Drive routes over real HTTP** for anything a criterion says is driven — `npx next start -p
-  <port>`, and read the two traps above about killing it.
-- 🔴 **`points_ledger.id` is a `bigserial`** — the one non-uuid key in the schema.
-- ⚠️ **Nulls are DISTINCT in a Postgres unique constraint** — use two partial unique indexes.
-- 🔴 **`created_at` is not an ordering key**; `bench_threads.seq` / `bench_posts.seq` are.
-- 🔴 **postgres.js has no nested `begin`** — a function that opens its own transaction cannot be
-  composed. ✅ **It DOES have `tx.savepoint()`**, which is how `contribution.ts` was fixed.
-- ⚠️ **`expect(value, message)` is vitest, not jest.**
-- ✅ **Node 22 strips types natively** — `node --experimental-strip-types script.ts` imports a
-  `.ts` directly, which is how the corpus is generated. ⚠️ Extensionless imports still fail; a
-  scratchpad file still cannot resolve the repo's `node_modules` (put it in the repo root).
+- 🔴 **`expect(value, message)` is VITEST. This checkout is JEST.** Put the failing value *inside*
+  the assertion.
+- 🔴 **No DOM and no React in this checkout's jest runner.** Source analysis with negative controls
+  derived from the real current source is the established response —
+  `uni-001/composer-offers-signin.test.ts` follows `uni-016`'s precedent. ⚠️ **Say in the file what
+  it does not prove**, or a source read gets counted as a drive.
+- ⚠️ **`test:main` collects its file list at start.** Reconcile the suite count.
 
 **Both:**
 
 - 🔴 **`/usr/bin/grep -a`, always.** Plain `grep` here is ugrep and silently skips `.ts` as binary.
-- 🔴 **The corpus contract:** `postbody-corpus.json` is **byte-identical** in both checkouts and
-  **both** specs pin the same sha256 (`d59d6095…`). To change it: regenerate with
-  `scripts/gen-postbody-corpus.mjs` in the platform repo, copy it here, and update **both**
-  constants in the same commit. ⚠️ It catches **divergence**, not a bug in both parsers — the
-  safety property is asserted separately in each repo.
-- 🔴 **A corpus of only hostile payloads witnesses only the refusals.** Two parsers can agree
-  perfectly about what to REJECT and disagree about everything they accept, which is all a reader
-  sees. 15 hostile + 20 grammar.
 - 🔴 **`forEachNode` STOPS on a truthy return.** Use a block body.
-- 🔴 **The `lesson` MCP group is DEFERRED** — `find_tools({group:"lesson"})` first.
-- `suggestedNodes` is still **dead** — no callers.
