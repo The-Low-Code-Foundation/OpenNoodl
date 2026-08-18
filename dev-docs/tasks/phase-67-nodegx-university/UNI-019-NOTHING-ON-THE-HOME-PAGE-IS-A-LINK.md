@@ -108,3 +108,74 @@ and reviewing one produces a list of fixes that change nothing (UNI-013 slice 5'
 stale `next start` serves a stylesheet hash that no longer exists — the page renders **unstyled**,
 every gate stays green, and an unstyled page is exactly what a *"looks sad"* review misreads. This
 has bitten this repo already; `npm run check:css` exists for it.
+
+---
+
+# ✅ BUILT — 2026-08-18 (session 31) · `nodegx-community@636d488`
+
+**All five acceptance criteria met.** The premise held exactly as written: `src/app/page.tsx` was
+six `<section class="card">` with zero anchors, for signed-in readers too.
+
+## What shipped
+
+| Piece | Where |
+|---|---|
+| The composition, as a **value** | `src/lib/home.ts` — `homeRails(sql, {asOf})`, four rails, `HomeCard.href` **required** |
+| The kit + the page | `src/components/Home.tsx` — `CardView`, `EmptyState`, `Chip`, `Figure`, `Rail`, `Home` |
+| The page | `src/app/page.tsx`, now three lines of glue |
+| **`/bench` in the nav** | `src/app/layout.tsx`, first item |
+| The sweep | `tests/uni019-home.test.tsx` — **20 specs** |
+| Contrast rows | `tests/uni013-contrast.test.ts` — 4 new pairs × 2 themes |
+| Bench threads in the seed | `scripts/seed.mjs` — 3 threads, one accepted, node attachments |
+
+🔴 **The queue clock moved out of `bench/page.tsx` into `lib/bench.ts`** (`threadClock`). The home
+needed the same three states, and two escalation ladders is the site disagreeing with itself about
+who has been left waiting — D16's one software-movable component.
+
+## AC by AC
+
+1. ✅ **Every card region contains an anchor; every href resolves.** Both halves asserted: each card
+   rendered through the real `CardView` must emit its own href, **and** the page's card count must
+   equal the composition's (cardinality, because "is it rendered?" cannot see a card drawn twice).
+   Route list read off disk. ⚠️ Control: `/shelf` — the deleted *Prefab shelf* card's destination —
+   must come back unresolved, and does.
+2. ✅ **UNI-009 AC1, both arms.** Seeded threads' titles appear signed out; and with `bench_threads`
+   empty every rail still renders with its empty state. There is **no viewer argument anywhere on
+   this path**, which is the strongest form of "signed out works".
+3. ✅ **Reachability, computed, 17 pages, no UNREACHABLE.** Verdict + reason per route.
+4. ✅ **Instance of the index archetype**, no colour literal, `check:css` clean.
+5. ✅ **Control: 773 specs / 27 files, from a measured floor of 745 / 26.** +20 new, +8 contrast
+   rows, **nothing existing moved**.
+
+## 🔴 TWO DEFECTS THE INSTRUMENT FOUND THAT WERE NOT IN THIS TASK'S SCOPE
+
+1. **`/orgs/[slug]/assignments` was reachable from nowhere in the whole application.** UNI-006 built
+   assign, grade and review; the only way in was typing the URL. **This is the Bench's defect, one
+   surface over, and nobody had noticed it either.** Fixed with one anchor on the org page.
+   ⚠️ **This is what AC3 is for** — not `/bench`, which was already known.
+2. **The first `reachability()` inferred a detail page's index from its PATH PREFIX and was wrong.**
+   `/u/[handle]`'s index is `/people` — not its parent directory, and never will be. It now derives
+   the link graph from page **source** (templated hrefs included, so reachability is a property of
+   the app rather than of today's rows). Recorded because the path-prefix version *passed* on
+   sixteen of seventeen routes, which is exactly how a plausible instrument survives.
+
+## Driven, over real HTTP, on the seeded database
+
+`next build` → `next start` → curl. **8 card regions, 23 anchors, all four rails, every internal
+href 200.** The one non-200 is `/api/auth/github/start` → **503**, which is **E10** and Richard's.
+Stylesheet served 200 / 40,475 bytes — the stale-CSS trap checked, not assumed.
+
+⚠️ **The light theme was NOT visually captured.** `--force-prefers-color-scheme=light` does not move
+the `matchMedia` read in the theme stamp, so both screenshots are dark. Light is graded by the
+contrast arithmetic in `uni013-contrast.test.ts`, which is the stronger instrument — but nobody has
+*looked* at this page in light, and that is a gap, not a pass.
+
+## What this deliberately did NOT do
+
+- **No `/tutorials/[slug]`.** It is **UNI-020's**, by name. The *Start here* card therefore points
+  at `/tutorials` — honest, and one href for UNI-020 to re-point.
+- **No facet bar.** **UNI-023's**; five pages wait on it and the home has nothing to filter.
+- **No events table.** The call date is *projected* from the cadence of the calls that happened and
+  is labelled **"next expected"**. 🔴 There is no schema that knows a future date, and printing one
+  as fact would be the page asserting something the database does not know.
+- **No public prefab shelf.** The card is deleted, per this task's own rule.

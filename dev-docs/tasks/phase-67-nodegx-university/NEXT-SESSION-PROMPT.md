@@ -42,15 +42,23 @@ scoping instead. **The design is an artifact:
 ["Every page is the same page"](https://claude.ai/code/artifact/5cc390dd-a8dc-48c9-b960-b74ed89010e6)
 — open it before writing markup.** Five new task files came out of it.
 
-1. 🔴 **[UNI-019](UNI-019-NOTHING-ON-THE-HOME-PAGE-IS-A-LINK.md) — the home has no links at all.**
-   **START HERE, and it is E3's owner.** Six `<section class="card">`, **zero anchors**, for every
-   viewer. Two of the six name surfaces with no public route. **`/bench` is reachable from nowhere
-   in the app** — not in the nav, and its only inbound link is its own filter pill. ⚠️ **Cheap, and
-   it is the difference between a plain site and a broken one.**
-2. 🔴 **E4 — UNI-013 slice 5, the page archetypes.** Unchanged as the largest remaining code item,
-   ✅ **now with the four components its archetypes are made of named** (facet bar, card-with-a-
-   figure, two empty states, the chip). **Do it with UNI-019, not after** — 1 is a composition
-   change to the page 2 redesigns.
+1. ✅ **[UNI-019](UNI-019-NOTHING-ON-THE-HOME-PAGE-IS-A-LINK.md) — DONE, session 31,
+   `nodegx-community@636d488`.** All five ACs met; **E3 IS CLOSED**. The home is the index
+   archetype, `/bench` is first in the nav, the lying *Prefab shelf* card is deleted, and
+   `tests/uni019-home.test.tsx` renders the real markup and computes a reachability verdict for
+   all 17 pages. 🔴 **It found a second surface with the Bench's exact defect:**
+   `/orgs/[slug]/assignments` was reachable from nowhere — UNI-006 built assign/grade/review and
+   the only way in was typing the URL. Fixed. **See the task file's built section before touching
+   the home again.**
+2. 🔴 **E4 — UNI-013 slice 5, the page archetypes. NOW THE LARGEST REMAINING CODE ITEM, AND
+   PARTLY BUILT.** UNI-019 landed **the index archetype and three of the four components** —
+   `CardView` (with the figure slot), `EmptyState`, `Chip`, plus `Rail` — in
+   `src/components/Home.tsx`, and they are written to be re-cut for the other pages.
+   🔴 **WHAT REMAINS IS THE BIGGER HALF:** the **list** archetype applied to `/tutorials`,
+   `/replays`, `/people`, `/rfps`, `/coaching` and `/bench`, the **detail** archetype
+   (`/u/[handle]` already is one — copy it), and the **facet bar**, which is UNI-023's.
+   ⚠️ **Do not build a fourth card component.** The kit exists now; a page that declares its own
+   rectangle is the failure slice 5 is for.
 3. ⚠️ **[UNI-023](UNI-023-ONE-FACET-BAR-SIX-LISTS.md) is the one to do next if the look work
    continues**, because five other pages are waiting on the same bar and two pill styles already
    exist on `/bench`.
@@ -101,6 +109,33 @@ wholesale that somebody else had edited in the meantime.
 
 ---
 
+# 🟢 SESSION 31 — UNI-019 BUILT, E3 CLOSED, AND A SECOND UNREACHABLE SURFACE FOUND
+
+`nodegx-community@636d488` (**not pushed** — `main` is ahead 2, and the other one is session 30's
+UNI-001 commit, so pushing is not this workflow's habit; it is Richard's call).
+
+**773 specs / 27 files**, from a **measured** floor of 745 / 26 taken in the same session before
+any edit — +20 new, +8 contrast rows, **nothing existing moved**. tsc clean, `next build` clean,
+`check:css` clean. Driven over real HTTP on the seeded database: **every internal href 200**.
+
+🔴 **THE SWEEP FOUND A DEFECT NOBODY HAD LOOKED FOR.** `/orgs/[slug]/assignments` — UNI-006's
+assign, grade and review — **was reachable from nowhere in the entire application**, exactly like
+`/bench`, and unlike `/bench` nobody had noticed. **That is what a computed reachability table buys
+over a fixed list**, and it is now a standing gate: a page added later fails
+`tests/uni019-home.test.tsx` until somebody gives it a way in.
+
+⚠️ **THE SEED HAD NO BENCH THREADS AT ALL** until this session added three. Any prior visual review
+of a "community site" was of a site with an empty forum. **`npm run db:seed` before you look at
+anything.**
+
+⚠️ **Two carried gaps, stated rather than buried.** (1) **Nobody has looked at any page in the
+LIGHT theme** — `--force-prefers-color-scheme=light` does not move the theme stamp's `matchMedia`
+read, so headless screenshots are always dark; light is graded by contrast arithmetic only.
+(2) The **weekly call date is projected**, not stored — there is no events table, and the card says
+*"next expected"* for that reason. An events table is the design's wave 2.
+
+---
+
 # WHERE THE PHASE IS — 2026-08-19 (session 29)
 
 | In the close? | Item | State |
@@ -108,7 +143,7 @@ wholesale that somebody else had edited in the meantime.
 | ✅ **E1** | **UNI-001's issuer** | ✅ **BUILT.** Sessions minted, GitHub OAuth, device flow for the editor, sign-out revokes. ⚠️ **AC2's launcher affordance still owed; AC4's grep needs a verdict** |
 | 🔴 **E10** | **A GitHub OAuth App** | 🆕 **NEW, and now the first domino.** Richard's. Without it nobody can make an account, which is the criterion's first verb |
 | 🎯 **E4** | **UNI-013 slice 5 — the pages** | 🔴 **NOT STARTED. Still the largest remaining code item.** 🆕 s30 named its **four components**; Richard has now said *"sad"* a **third** time |
-| 🎯 **E3** | **UNI-009 AC1** — home shows real threads | 🔴 **NOT MET.** 🆕 **Owned by [UNI-019](UNI-019-NOTHING-ON-THE-HOME-PAGE-IS-A-LINK.md) as of s30**, and it is worse than "the rail is missing": **the home page has no anchors at all** |
+| ✅ **E3** | **UNI-009 AC1** — home shows real threads | ✅ **MET — session 31, UNI-019.** Both arms: real threads signed out, and every rail still renders with `bench_threads` empty. ~~🔴 **NOT MET.**~~ 🆕 **Owned by [UNI-019](UNI-019-NOTHING-ON-THE-HOME-PAGE-IS-A-LINK.md) as of s30**, and it is worse than "the rail is missing": **the home page has no anchors at all** |
 | 🆕 **out** | UNI-020 · UNI-021 · UNI-022 · UNI-023 | 🆕 **SCOPED s30, explicitly NOT in the close.** The content half — routes, schema, filters. 🔴 **Slice 5 alone will not answer Richard's complaint**, because its own scope forbids exactly this half |
 | 🎯 **E2** | **deployment** | 🔴 **Owned by no task.** Blocked on Richard (E5) |
 | ✅ done | UNI-001 E1, 002–006, 009 cut, 011 s1–s2b, 013 s1–s3, 014, 015, 016 | |
