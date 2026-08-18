@@ -77,10 +77,16 @@ first now.
 
 ## What session 25 did — scoping only, no code
 
+**Editor `3bfa5741`** — 13 files, +728/−232, `dev-docs/` only, on `cline-dev`.
+
 D19 ruled and written up. **Five new task files** (UNI-014 … UNI-018). **UNI-009's AC1 and AC3
 struck and rewritten.** Amendment banners added to **UNI-001, UNI-002, UNI-011** — each carried the
 Discourse premise in its body, and *a premise surviving in a file nobody re-opened is this phase's
 most-repeated failure*. `TASKS.md` gained five rows and four amended ones; `README.md` fixed.
+
+⚠️ **A peer edited `MEMORY.md` mid-session** (the P69 line changed under me). It is now at
+**17,504 / 17,510 on both code points and UTF-16** — there is ~6 characters of headroom, so if you
+add an index line you **must** remove one. Size-check at the END, not when you write it.
 
 🔴 **Nothing was built and no gate was run.** The platform tree is untouched at `201a71a`.
 
@@ -103,6 +109,12 @@ most-repeated failure*. `TASKS.md` gained five rows and four amended ones; `READ
 # THE PLAN — do these in this order
 
 ## 🟢 LANE A — UNI-014, the mail room. **Start here.**
+
+**The literal first move**, so you do not spend the first hour deciding: bring the sibling checkout
+up (`npm run db:up && npm run db:seed && npm run dev`, **port 55432**), **re-measure the spec floor
+before touching anything** (session 24 left it at 548/21 and UNI-015 AC5 grades against it), then
+read `0004`'s `outbound_emails` and `src/lib/relay.ts` — the queue and its only writer. The
+`notifications` table is the first migration.
 
 D19 is conditional on it, and it is owed to UNI-004 and UNI-006 anyway. 🔴 **Build the ROW first,
 not the provider** — a notification is a row, email is one delivery of a row, and an org-minor
