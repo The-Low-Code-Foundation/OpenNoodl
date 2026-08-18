@@ -398,3 +398,65 @@ firing when there *is* a profile.
 - ⚠️ **Undriven.** Nothing here has been seen in the running app. The panel half needs no API credit
   and is drivable; the prompt half is graded by the specs above precisely because its failure mode is
   an invoice and not a symptom.
+
+---
+
+## ✅ DRIVEN 2026-08-18 (session 59) — slice B in the running editor
+
+Dev stack, `fix021b-drive` (a scratch copy of `fix013-drive`, opened via the recents store).
+All four pre-registered observations were written down **before** launching, and are in
+`s59-predictions.md`. Three passed as written; one was corrected **before** measuring, from source.
+
+| # | observation | result |
+|---|---|---|
+| R1 | "About you" present in Settings → **Editor**, below the AI keys | ✅ between `AI docs` and `Connect an AI agent`, exactly where `EditorSettingsTab.tsx:79` puts it |
+| R2 | no file ⇒ *"You have no preferences file yet. Nothing about you is being sent."* + **"Create and open preferences"** | ✅ **verbatim**, and the panel prints the real path |
+| R3 | click ⇒ file seeded, caption ⇒ *"…you have not written in it yet, so nothing is being sent."* | ✅ **1,193 bytes on disk, ZERO characters charged** |
+| R4 | one line written from **outside** ⇒ count goes non-zero without reopening the panel | ✅ **55 characters**, within ≤7s |
+
+### 🔴 R1 was WRONG as inherited, and the correction is the transferable part
+
+The handover said only *"the section is present"*. The source says
+`<CollapsableSection title="About you" isClosed>` — and `Collapsible` unmounts children **only**
+when `disableTransition && isCollapsed`, which `CollapsableSection` never passes. So the body is
+**mounted at height 0** while collapsed.
+
+Measured: `collapsibleHeight: 0`, `bodyMounted: true`, `bodyTextLen: 471`.
+
+🔴 **A `textContent` read would therefore have found the caption, in full, on a section no user can
+see.** The obvious instrument passes on a section that is unreachable, invisible and — because
+`overflow:hidden` clips hit-testing — unclickable. **The reading that proves reachability is the
+HEIGHT, not the text.** Corrected before measuring, not after; the drive expanded the section by
+clicking its header and re-measured (`212`) before believing anything below it.
+
+### 🔴 R3 is the row worth having, and R4 is the one that grades the stripping
+
+R3: a **1,193-byte** file that is byte-identical to `PROFILE_TEMPLATE` (checked against the source
+literal, not by eye) charges **nothing** — the branch prints no number at all. A seeded file
+reporting a non-zero count would have meant the comment-stripping never ran against the real
+template. It ran.
+
+R4 is stronger than "the number moved", because the number was **predicted before the write**:
+one line under the first heading should render `## How I like to be talked to\nPlain English, no
+jargon.` = **55 characters**. The panel read **55**. So the file went 1,193 → 1,220 bytes on disk
+while the charge went 0 → 55: comments stripped, three empty headings dropped, the title dropped.
+✅ **A count that merely became non-zero would not have distinguished "stripping works" from
+"stripping is skipped and the whole 1,220 bytes went out".**
+
+✅ **Bonus, unplanned: the poll is bidirectional.** Restoring the template returned the caption to
+*"…nothing is being sent."* — so it is a genuine content-comparing re-read, not a one-shot latch.
+
+### ⚠️ What this drive did NOT show
+
+- **Nothing here proves the model receives the block.** That is the specs' job (`userProfilePrompt.spec.ts`),
+  and deliberately so — its failure mode is an invoice, not a symptom.
+- **The MCP half remains unbuilt**, so Claude Code still does not read the profile.
+- ⚠️ **`shell.openPath` fires on the button** and opens the file in the user's markdown editor. It
+  was not driven by keystroke, so focus loss could not invalidate any reading above.
+
+### ⚠️ Housekeeping
+
+`~/Library/Application Support/NodeGX/PREFERENCES.md` is **left seeded and pristine** (1,193 bytes,
+byte-identical to the template, charging nothing) — that is the product's own behaviour. The test
+line was removed: a preference Richard did not write must not ride on every turn. The recents store
+was backed up, and the drive entry removed after `dev:stop` (46 → 47 → 46).
