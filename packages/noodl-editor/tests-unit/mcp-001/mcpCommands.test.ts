@@ -337,3 +337,52 @@ describe('BST-005 the registration written into a project’s .mcp.json', () => 
     expect(buildProjectRegistration(door, DIR).registration).toBeNull();
   });
 });
+
+/**
+ * FIX-021 slice B — the profile path reaching the registration, in both renderings.
+ *
+ * The value is resolved by main (only it can ask Electron for `userData`) and handed
+ * to this module, which has to put it in two places at once: the `claude mcp add`
+ * line a user pastes, and the registration NodeGX writes for them. Those two are
+ * built from one `ChosenRuntime`, which is what makes "carries it or omits it
+ * together" a property rather than a hope — and these rows are what would notice if
+ * somebody added it to only one of them.
+ */
+describe('FIX-021 slice B — the user profile variable', () => {
+  const PROFILE = '/Users/me/Library/Application Support/NodeGX/PREFERENCES.md';
+
+  it('puts the path in the pasted command and in the written registration alike', () => {
+    const door = frontDoor({ userProfilePath: PROFILE });
+
+    const bootstrap = buildBootstrapCommand(door);
+    expect(bootstrap.command).toContain(`-e NODEGX_USER_PREFERENCES=${PROFILE}`);
+    expect(bootstrap.registration?.env.NODEGX_USER_PREFERENCES).toBe(PROFILE);
+
+    const project = buildProjectRegistration(door, '/Users/me/Documents/My App');
+    expect(project.registration?.env.NODEGX_USER_PREFERENCES).toBe(PROFILE);
+  });
+
+  it('keeps the Electron flag beside it rather than replacing it', () => {
+    // 🔴 The launcher card is always-Electron, and `ELECTRON_RUN_AS_NODE` is
+    // load-bearing there (BST-004/F80). A profile variable that overwrote the env
+    // record instead of extending it would leave a registration that boots a GUI
+    // app with a dock icon — and would still look like a pass to a row that only
+    // asserted the profile arrived.
+    const bootstrap = buildBootstrapCommand(frontDoor({ userProfilePath: PROFILE }));
+    expect(bootstrap.registration?.env.ELECTRON_RUN_AS_NODE).toBe('1');
+    expect(bootstrap.registration?.env.NODEGX_USER_PREFERENCES).toBe(PROFILE);
+  });
+
+  it('emits no variable at all when main did not resolve one', () => {
+    // ⚠️ Asserted as an absence, which is only meaningful because the rows above
+    // show the same builders emitting the key when there IS a path. An older main
+    // process sends nothing, and the server reads absent-variable as absent-feature.
+    for (const absent of [undefined, null]) {
+      const door = frontDoor({ userProfilePath: absent });
+      const bootstrap = buildBootstrapCommand(door);
+      expect(bootstrap.command).not.toContain('NODEGX_USER_PREFERENCES');
+      expect(bootstrap.registration?.env.NODEGX_USER_PREFERENCES).toBeUndefined();
+      expect(buildProjectRegistration(door, '/p').registration?.env.NODEGX_USER_PREFERENCES).toBeUndefined();
+    }
+  });
+});

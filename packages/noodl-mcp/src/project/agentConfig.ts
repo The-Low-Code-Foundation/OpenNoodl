@@ -28,6 +28,7 @@ import * as path from 'path';
 
 import type { AgentConfigHost, AgentConfigReport, AgentServerRegistration } from '../editor-deps';
 import { authoringServerName, installAgentConfig } from '../editor-deps';
+import { USER_PROFILE_ENV } from '../userProfile';
 
 /**
  * How this process was started, as a registration for the project at `projectDir`.
@@ -48,11 +49,25 @@ export function selfRegistration(projectDir: string): AgentServerRegistration | 
 
   const isElectron = Boolean((process.versions as Record<string, string | undefined>).electron);
 
+  // FIX-021 slice B — the profile path is PROPAGATED, not resolved.
+  //
+  // Exactly the principle at the top of this file, applied to a second fact: this
+  // process does not know where `userData` is (it may not be an Electron process
+  // at all), but if it is serving a project then the editor launched it and put
+  // the path in its environment. Copying what is already working is correct by
+  // construction; deriving it here would be the guess BST-004 forbids. Absent
+  // upstream means absent downstream, which is the right answer for a server
+  // registered by an older editor.
+  const inherited = process.env[USER_PROFILE_ENV];
+
   return {
     type: 'stdio',
     command: process.execPath,
     args: [path.resolve(entry), projectDir, '--allow-writes'],
-    env: isElectron ? { ELECTRON_RUN_AS_NODE: '1' } : {}
+    env: {
+      ...(isElectron ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
+      ...(inherited ? { [USER_PROFILE_ENV]: inherited } : {})
+    }
   };
 }
 

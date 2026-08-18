@@ -85,6 +85,16 @@ export interface McpFrontDoor {
   runtime: McpRuntime;
   /** A shipped app, or a checkout. Only the advice for a missing bundle depends on it. */
   isPackaged: boolean;
+  /**
+   * FIX-021 slice B — absolute path of `<userData>/PREFERENCES.md`, resolved by main.
+   *
+   * Optional because it is not this module's to derive and not always present: a
+   * front door described by an older main process does not carry it, and neither
+   * does a test that does not care. Absent simply means the emitted registration
+   * has no profile variable, which is exactly the right outcome — the server treats
+   * an absent variable as an absent feature.
+   */
+  userProfilePath?: string | null;
 }
 
 /**
@@ -253,6 +263,32 @@ export function quoteArg(value: string): string {
  */
 const ELECTRON_AS_NODE_ENV = 'ELECTRON_RUN_AS_NODE=1';
 
+/** FIX-021 slice B — the variable `noodl-mcp`'s `userProfile.ts` reads the profile from. */
+const USER_PROFILE_ENV = 'NODEGX_USER_PREFERENCES';
+
+/**
+ * The same runtime, plus the user-profile variable when there is a path for it.
+ *
+ * 🔴 **Applied to the `ChosenRuntime`, not to the registration** — which is the only
+ * way the two renderings stay equal. `claudeMcpAdd` builds the displayed `-e` flags
+ * from `runtime.env` and every caller builds the registration's `env` record from
+ * that same list, so adding the pair here means the command a user pastes and the
+ * config NodeGX writes carry it or omit it together. Adding it to one of the two
+ * outputs is how they would silently disagree, which is the failure the "two
+ * renderings of one registration" note in `buildBootstrapCommand` exists about.
+ *
+ * ⚠️ The value is passed through verbatim and never quoted here. `claudeMcpAdd`
+ * quotes the executable and the arguments but not `-e` pairs, which is pre-existing
+ * and matters more now that one carries a path: on a machine whose user data lives
+ * under a directory with a space, the *displayed* line needs the user to quote it.
+ * The written registration is unaffected, being JSON. Worth its own fix; noted
+ * rather than smuggled in here.
+ */
+function withUserProfile(chosen: ChosenRuntime, userProfilePath?: string | null): ChosenRuntime {
+  if (!userProfilePath) return chosen;
+  return { ...chosen, env: [...chosen.env, `${USER_PROFILE_ENV}=${userProfilePath}`] };
+}
+
 /** One runtime, resolved to the words that go in the command. */
 interface ChosenRuntime {
   /** The executable — the bare word `node`, or an absolute path to the app binary. */
@@ -386,7 +422,7 @@ export function buildBootstrapCommand(frontDoor: McpFrontDoor): BootstrapConnect
 
   // Always Electron: this card's audience is *defined* by not having Node, and we register this
   // for them rather than showing it, so correctness by construction beats legibility.
-  const chosen = chooseRuntime(frontDoor.runtime, 'always-electron');
+  const chosen = withUserProfile(chooseRuntime(frontDoor.runtime, 'always-electron'), frontDoor.userProfilePath);
   const args = [authoring.entry, '--allow-writes'];
 
   return {
@@ -429,7 +465,7 @@ export function buildProjectRegistration(
   const authoring = frontDoor.servers['noodl-mcp'];
   if (!authoring?.entry) return { serverName, registration: null };
 
-  const chosen = chooseRuntime(frontDoor.runtime, 'prefer-node');
+  const chosen = withUserProfile(chooseRuntime(frontDoor.runtime, 'prefer-node'), frontDoor.userProfilePath);
   return {
     serverName,
     registration: {

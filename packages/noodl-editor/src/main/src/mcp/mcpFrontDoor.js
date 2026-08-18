@@ -27,6 +27,45 @@ const { warmClaudeCli } = require('./resolveClaudeCli');
 const { claudeConfigPath, connectBootstrapServer } = require('./connectBootstrapServer');
 
 /**
+ * FIX-021 slice B — the environment variable carrying the user profile's path.
+ *
+ * 🔴 A wire contract with `packages/noodl-mcp/src/userProfile.ts`, which reads it.
+ * Renaming either end silently turns the feature off for every registration
+ * already written to disk.
+ */
+const USER_PROFILE_ENV = 'NODEGX_USER_PREFERENCES';
+
+/** The Electron-as-Node flag — the only variable NodeGX emitted before the profile. */
+const ELECTRON_AS_NODE_KEY = 'ELECTRON_RUN_AS_NODE';
+
+/** The profile's filename under `userData`. Mirrors `UserProfile/profileText`'s `PROFILE_FILE`. */
+const USER_PROFILE_FILE = 'PREFERENCES.md';
+
+/**
+ * Absolute path of `<userData>/PREFERENCES.md`, or `null` outside Electron.
+ *
+ * 🔴 **Resolved here and nowhere else.** This is the whole of BST-004's "front door,
+ * never guess" for this fact: the renderer cannot ask Electron for `userData`, and
+ * the MCP server must not derive it from `HOME`. One process knows, and it is this
+ * one — so it answers, and both of the others are handed the answer.
+ *
+ * ⚠️ Deliberately does NOT check that the file exists. It is created lazily by the
+ * editor the first time the user opens the preferences section, and a registration
+ * is written once and read for months; gating on existence would bake "the user had
+ * not opened settings yet" permanently into their config.
+ */
+function userProfilePath() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { app } = require('electron');
+    if (!app) return null;
+    return path.join(app.getPath('userData'), USER_PROFILE_FILE);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
  * The verdict on a project directory, in `noodl-mcp`'s own words.
  *
  * ⚠️ **Two copies of these strings, deliberately named at both ends.** The originals are
@@ -89,6 +128,11 @@ function describeMcpFrontDoor(projectDir, options) {
     servers: resolveMcpServers(options),
     project: describeProject(projectDir),
     runtime: resolveNodeRuntime(options),
+    // FIX-021 slice B. Reported so the renderer can render the *displayed* `claude
+    // mcp add -e …` line and write it into a project's `.mcp.json`. 🔴 What the
+    // renderer sends back is NOT trusted for the one route that spawns — see
+    // `rejectUntrustedRegistration` and the connect handler below.
+    userProfilePath: (options && 'userProfilePath' in options ? options.userProfilePath : userProfilePath()),
     isPackaged: (options && typeof options.isPackaged === 'boolean' ? options.isPackaged : isPackagedApp())
   };
 }
@@ -153,6 +197,27 @@ function rejectUntrustedRegistration(registration, options) {
     return 'The registration carried arguments NodeGX does not emit.';
   }
 
+  // 🔴 FIX-021 slice B — `env` is checked for the first time here, and it had to be.
+  //
+  // Until this feature there was exactly one variable NodeGX ever emitted, so an
+  // unchecked `env` was a hole nothing could reach through. It is not any more:
+  // this registration is written into the user's real `~/.claude.json` and later
+  // spawned by their agent, so a key that arrived from the renderer is a key that
+  // ends up in a process's environment. `NODE_OPTIONS=--require /tmp/x.js` is the
+  // shape of the thing this refuses.
+  //
+  // Whitelist, not a denylist — the same rule the command and args above follow:
+  // nothing here consults the incoming value to decide what is allowed.
+  const env = registration.env;
+  if (env !== undefined && (typeof env !== 'object' || env === null || Array.isArray(env))) {
+    return 'The registration carried a malformed environment.';
+  }
+  const allowedEnv = new Set([ELECTRON_AS_NODE_KEY, USER_PROFILE_ENV]);
+  const unknown = Object.keys(env || {}).find((key) => !allowedEnv.has(key));
+  if (unknown) {
+    return `The registration carried an environment variable NodeGX does not emit (${unknown}).`;
+  }
+
   return null;
 }
 
@@ -186,7 +251,25 @@ function setupMcpIPC(ipcMain) {
       };
     }
 
-    return connectBootstrapServer(registration, typeof command === 'string' ? command : null);
+    // 🔴 FIX-021 slice B — main OVERWRITES the profile path rather than accepting it.
+    //
+    // The renderer needs the value to render the copy-pasteable command, so it has
+    // it and sends it back inside the registration; that is convenience, not
+    // authority. What actually gets written to `~/.claude.json` and spawned is the
+    // path THIS process resolved from `app.getPath('userData')`, so a renderer that
+    // sent a different one changes the displayed string and nothing else. The
+    // whitelist above already refused unknown keys; this decides the value of the
+    // one key whose value is a filesystem path.
+    const profilePath = userProfilePath();
+    const trusted = {
+      ...registration,
+      env: {
+        ...Object.fromEntries(Object.entries(registration.env || {}).filter(([key]) => key !== USER_PROFILE_ENV)),
+        ...(profilePath ? { [USER_PROFILE_ENV]: profilePath } : {})
+      }
+    };
+
+    return connectBootstrapServer(trusted, typeof command === 'string' ? command : null);
   });
 
   // ⚠️ BST-004: get the login-shell PATH probe out of the way before anyone opens the panel. On a
@@ -201,6 +284,8 @@ function setupMcpIPC(ipcMain) {
 }
 
 module.exports = {
+  USER_PROFILE_ENV,
+  userProfilePath,
   MCP_FRONT_DOOR_CHANNEL,
   MCP_CONNECT_BOOTSTRAP_CHANNEL,
   describeProject,

@@ -28,6 +28,7 @@ import type {
   SearchProjectResponse
 } from './responses';
 import { currentKitOverlay } from '../kitOverlay';
+import { userProfileForPrompt } from '../userProfile';
 import { guarded, jsonResult } from './util';
 import { projectVisualPredicate } from './author';
 import { readVisualRoots } from '../visualRoots';
@@ -127,6 +128,7 @@ export function registerReadTools(server: McpServer, binding: ProjectBinding, op
       const styles = store.readStyles();
       const rootEntry = Object.entries(registry.components).find(([, e]) => e.type === 'root');
       const kits = kitsReport();
+      const userPreferences = userProfileForPrompt();
       const payload: ProjectInfoResponse = {
         name: project?.name,
         // FIX-008 E — from the store the other tools use, not from the binding, so this is the
@@ -166,7 +168,23 @@ export function registerReadTools(server: McpServer, binding: ProjectBinding, op
             }
           : {}),
         // CN-003 — absent unless there is something to report; see `kitsReport`.
-        ...(kits ? { kits } : {})
+        ...(kits ? { kits } : {}),
+        // FIX-021 slice B — absent unless the user has actually written something.
+        // The precedence sentence travels WITH the text: this response is the
+        // only place an external agent meets these preferences, so a field that
+        // arrived without its ranking would read as outranking the project docs
+        // by virtue of being about the user. It does not.
+        ...(userPreferences
+          ? {
+              userPreferences: {
+                note:
+                  "Standing preferences this user wrote about themselves. They hold in every project, and they " +
+                  "outrank your own habits and defaults. This project's own conventions (docs/CONVENTIONS.md) " +
+                  "outrank them in turn: where the two disagree, follow the project and say that you did.",
+                preferences: userPreferences
+              }
+            }
+          : {})
       };
       return jsonResult(payload);
     })

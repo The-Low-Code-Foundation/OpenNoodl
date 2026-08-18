@@ -317,6 +317,26 @@ export type {
 } from '../../noodl-editor/src/editor/src/models/ProjectDocs/docsText';
 export { DOC_TEMPLATES } from '../../noodl-editor/src/editor/src/models/ProjectDocs/templates';
 
+// ─── The user profile (FIX-021 slice B) ───────────────────────────────────────
+// The pure `profileText` submodule only — never `UserProfile/index`, which pulls
+// `install` and with it `@noodl/platform`. `profileText` imports exactly one
+// thing, `docsText`'s truncator, which is already vetted above as importing
+// nothing at all.
+//
+// Same argument as the doctrine blocks: the profile an external agent is handed
+// and the profile the in-editor authoring turn is given are rendered by the SAME
+// function, so the empty-file rule, the comment stripping, the dropped-heading
+// rule and the 2,000-character cap cannot become two dialects. A second renderer
+// here is how "NodeGX read my preferences" would start meaning two things.
+export {
+  PROFILE_CAP,
+  PROFILE_FILE,
+  PROFILE_TEMPLATE,
+  profileSections,
+  renderProfileForPrompt
+} from '../../noodl-editor/src/editor/src/models/UserProfile/profileText';
+export type { ProfileSection } from '../../noodl-editor/src/editor/src/models/UserProfile/profileText';
+
 // ─── Decomposition doctrine (AAQ-008) ─────────────────────────────────────────
 // `prompts/decomposition` imports NOTHING, same containment rule as docsText —
 // so the doctrine an external agent reads out of `get_project_info` and the one

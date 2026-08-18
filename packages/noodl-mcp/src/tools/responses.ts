@@ -123,6 +123,29 @@ export interface ProjectInfoResponse {
    * diagnostics measure.
    */
   kits?: ProjectKitsReport;
+  /**
+   * FIX-021 slice B — the person this is being built for, when they have written
+   * it down. `<userData>/PREFERENCES.md`, rendered by the same function the
+   * editor's own authoring turn uses (see `../userProfile`).
+   *
+   * **Omitted whenever the user has written nothing** — no registration variable,
+   * no file, or a file still holding only its seeded prompts. The empty case is
+   * the common one and it costs nothing, which is the entire reason a global
+   * always-doc is affordable at all.
+   *
+   * ⚠️ Not gated on `allowWrites`, unlike the two doctrines above. Those are
+   * instructions for authoring and a read-only client has nothing to apply them
+   * to; this file's first heading is *"how I like to be talked to"*, which is
+   * about the conversation rather than the build. A read-only server still has
+   * that conversation.
+   *
+   * 🔴 The precedence is stated in the value, not assumed from the field name:
+   * these rank below the project's own `docs/CONVENTIONS.md` and above the
+   * model's defaults. The in-editor prompt says the same sentence beside the
+   * same block, and for the same reason — position is a caching decision and
+   * reads as priority if nobody says otherwise.
+   */
+  userPreferences?: { note: string; preferences: string };
 }
 
 export interface ProjectKitsReport {
