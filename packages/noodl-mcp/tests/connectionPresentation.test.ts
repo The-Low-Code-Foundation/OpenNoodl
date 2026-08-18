@@ -15,7 +15,7 @@
 import type { ComponentFiles } from '../src/graph';
 import { assembleSetFiles } from '../src/tools/author';
 import { carryConnectionPresentation } from '../src/tools/author';
-import type { ConnectionV2 } from '../src/types';
+import type { ConnectionV2 } from '../src/editor-deps';
 
 function wire(over: Partial<ConnectionV2> = {}): ConnectionV2 {
   return { fromId: 'a', fromProperty: 'out', toId: 'b', toProperty: 'in', ...over } as ConnectionV2;

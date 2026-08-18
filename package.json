@@ -92,6 +92,7 @@
     "typecheck:cloud": "tsc -p packages/noodl-viewer-cloud --noEmit",
     "typecheck:backend-tests": "tsc -p packages/nodegx-backend/tsconfig.tests.json --noEmit",
     "typecheck:nodegx-core": "tsc -p packages/nodegx-core --noEmit",
+    "typecheck:mcp": "tsc -p packages/noodl-mcp --noEmit",
     "size:nodegx-core": "npm --prefix packages/nodegx-core run size",
     "build:types": "lerna exec --scope @noodl/runtime -- npm run build:types",
     "pretypecheck": "npm run build:types",

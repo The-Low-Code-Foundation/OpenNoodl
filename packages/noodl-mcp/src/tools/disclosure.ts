@@ -44,6 +44,7 @@ import {
   BOOTSTRAP_TOOLS,
   TOOL_GROUPS,
   deferredGroups,
+  type DeferredGroupId,
   type ToolGroupId
 } from '../toolGroups';
 import type { FindToolsResponse } from './responses';
@@ -372,13 +373,13 @@ export function registerFindTools(server: McpServer, disclosure: ToolDisclosure)
         // cannot see is a capability the product does not have") reached from the
         // inside. The manifest is the one place the set is decided.
         group: z
-          .enum(deferredGroups().map((g) => g.id) as [ToolGroupId, ...ToolGroupId[]])
+          .enum(deferredGroups().map((g) => g.id) as [DeferredGroupId, ...DeferredGroupId[]])
           .optional()
           .describe('Reveal every tool in this group'),
         query: z.string().optional().describe('Free-text over tool names and titles, e.g. "roles" or "workflow"')
       }
     },
-    guarded((args: { group?: Exclude<ToolGroupId, 'core'>; query?: string }) => {
+    guarded((args: { group?: DeferredGroupId; query?: string }) => {
       // Unbound, both arguments are answered the same way, and the answer is not
       // an error: the call was reasonable, there is simply nothing behind it.
       // `groups` is empty rather than a list of groups reported `advertised:

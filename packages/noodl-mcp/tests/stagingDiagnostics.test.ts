@@ -125,7 +125,7 @@ describe('LAS-002 — every authoring door returns the warning text', () => {
     // Blocking since LAS-004. The rule fired correctly on all three measured
     // builds and stopped none of them; a gate that only whispers is advice.
     expect(res.isError).toBe(true);
-    const text = JSON.stringify(res.data ?? res.text);
+    const text = JSON.stringify(res.data);
     expect(text).toContain('repeated-sibling-subtree');
     expect(text).toContain('structurally identical');
     // Both exits, in the rejection: the message is the repair instruction.
@@ -236,6 +236,6 @@ describe('LAS-002 — every authoring door returns the warning text', () => {
       visual_roots: ['page']
     });
     expect(rejected.isError).toBe(true);
-    expect(JSON.stringify(rejected.data ?? rejected.text)).toContain('structurally identical');
+    expect(JSON.stringify(rejected.data)).toContain('structurally identical');
   });
 });

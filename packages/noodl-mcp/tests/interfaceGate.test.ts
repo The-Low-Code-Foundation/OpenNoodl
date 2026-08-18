@@ -109,7 +109,7 @@ describe('LAS-001 — instance parameters against the component interface', () =
 
     // Blocking: this is the whole point. It used to be accepted with 0 errors.
     expect(res.isError).toBe(true);
-    const text = JSON.stringify(res.data ?? res.text);
+    const text = JSON.stringify(res.data);
     expect(text).toContain('interfaceless-instance');
     expect(text).toContain('/Components/ProductCard');
     expect(text).toContain('4 instances');
@@ -159,7 +159,7 @@ describe('LAS-001 — instance parameters against the component interface', () =
     });
 
     expect(res.isError).toBe(true);
-    const text = JSON.stringify(res.data ?? res.text);
+    const text = JSON.stringify(res.data);
     expect(text).toContain('instance-unknown-parameter');
     expect(text).toContain('"image"');
     expect(text).toContain('width');
@@ -176,7 +176,7 @@ describe('LAS-001 — instance parameters against the component interface', () =
     });
 
     expect(res.isError).toBe(true);
-    const text = JSON.stringify(res.data ?? res.text);
+    const text = JSON.stringify(res.data);
     expect(text).toContain('component-port-direction');
     expect(text).toContain('backwards');
   });
@@ -237,7 +237,7 @@ describe('LAS-001 — instance parameters against the component interface', () =
       visual_roots: ['section']
     });
     expect(res.isError).toBe(true);
-    expect(JSON.stringify(res.data ?? res.text)).toContain('interfaceless-instance');
+    expect(JSON.stringify(res.data)).toContain('interfaceless-instance');
   });
 
   it('leaves a component that already violates the gate editable', async () => {

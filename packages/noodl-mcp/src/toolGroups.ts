@@ -55,6 +55,14 @@
 /** Group ids. `core` is the resident set; everything else is revealed on demand. */
 export type ToolGroupId = 'core' | 'backend' | 'docs' | 'explore' | 'lesson' | 'project' | 'theme';
 
+/**
+ * The ids a caller can actually hand to `find_tools`. `core` is advertised from
+ * the first `tools/list`, so "reveal core" is not a request that means anything —
+ * and the handler has always been typed to say so. `deferredGroups()` is the one
+ * producer of these ids, and it is what enforces the exclusion.
+ */
+export type DeferredGroupId = Exclude<ToolGroupId, 'core'>;
+
 export interface ToolGroup {
   id: ToolGroupId;
   title: string;
@@ -512,6 +520,13 @@ export function groupOfTool(name: string): ToolGroupId | undefined {
 }
 
 /** Deferred groups, in manifest order. */
-export function deferredGroups(): readonly ToolGroup[] {
-  return TOOL_GROUPS.filter((g) => !g.resident);
+export function deferredGroups(): readonly (ToolGroup & { id: DeferredGroupId })[] {
+  // 🔴 The `id` test is redundant against the manifest as it stands: `core` is the
+  // single `resident: true` entry, so `!g.resident` already excludes it and both
+  // filters return the same six ids (measured). It is written anyway so the
+  // narrowed return type is enforced by the code rather than asserted by a
+  // comment — were `core` ever marked deferred, `find_tools` would advertise an
+  // argument its handler is typed never to receive, which is exactly the
+  // schema-vs-handler drift this signature exists to close.
+  return TOOL_GROUPS.filter((g): g is ToolGroup & { id: DeferredGroupId } => !g.resident && g.id !== 'core');
 }

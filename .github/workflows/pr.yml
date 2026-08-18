@@ -42,6 +42,13 @@ jobs:
       # legacy `noImplicitAny: false` (EXP-001). Its types are the API surface every
       # exported project sees, so they get their own gate.
       - run: npm run typecheck:nodegx-core
+      # `noodl-mcp` is not in the root program either, and unlike the others it
+      # had no gate at all: the package carried a `typecheck` script no CI job ever
+      # called, so its types drifted unobserved and eight errors accumulated there.
+      # Its tsconfig covers `src/` AND `tests/` deliberately (see the AAQ-011 note
+      # in it) — the specs are how the server's wire contract is stated, so a type
+      # written in one has to mean something, the same argument as the two lines above.
+      - run: npm run typecheck:mcp
       # The bundle budget is a gate, not a report: the companion library's whole
       # proposition is that an exported project carries a small dependency, and a
       # library that grows into a second runtime would quietly retract it.
