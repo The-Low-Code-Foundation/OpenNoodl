@@ -36,6 +36,15 @@ a points value, an optional badge, and an award mechanism.
 - **Three award mechanisms**, in cost order:
   1. **Manual** — an admin grants it (meetup attendance, "helped a newcomer"). This is the v1
      workhorse: Richard granting points by hand after each meetup is a fine ledger writer.
+> 🔴 **AMENDED 2026-08-18 by D19.** Every *"via Discourse"* / *"Discourse webhook"* below is
+> historical. The accepted-answer award becomes a call **in the same transaction as the accept**
+> (UNI-015 AC2), and `src/lib/discourse-webhook.ts` + its route + its specs are **deleted, not
+> re-pointed**. ✅ **The ENGINE does not change** — `event_key` selection, the integrity trigger,
+> the price/cap/rate-limit read by the database, and AC4's *challenge invented at runtime* all
+> stand, and **their specs must pass unchanged**, which is exactly what proves UNI-015 is a new
+> caller rather than a new mechanism. ⚠️ The evidence table's row 1 records a webhook drive that
+> really happened; it stays as a record of what was proved, not as a description of the system.
+
   2. **Platform-event** — the platform observes it itself (forum answer accepted via Discourse
      webhook, prefab published, profile completed, RFP fulfilled).
   3. **Bridge-event** — the signed-in editor reports it (lesson graded, first component built).

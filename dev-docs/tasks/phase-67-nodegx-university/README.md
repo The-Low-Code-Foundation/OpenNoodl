@@ -43,7 +43,7 @@ and opens *everything* on the platform.
 ## The architecture, in three surfaces
 
 1. **The platform** (new repo — ruling D1): identity, points/badges/challenges, profiles, RFP
-   board, org workspaces, lesson pathing, content (replays, tutorials), Discourse SSO, hosting
+   board, org workspaces, lesson pathing, content (replays, tutorials), the Bench (our own Q&A surface, D19), hosting
    control plane. Loom's *patterns* (spine + projection, generate-once-cache, model tiering) are
    proven and reusable as ideas; its code is not imported.
 2. **The editor hooks** (this repo): the sign-in (a card in the launcher / a menu item — nothing

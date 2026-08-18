@@ -25,6 +25,13 @@ editor is fully functional signed out, forever.** The sign-in adds surfaces; it 
 **Platform:**
 - Account model: email + OAuth (GitHub at minimum — it doubles as the org hookup's identity
   rail later, R5). Sessions, password reset, account deletion (GDPR baseline from day one).
+> 🔴 **AMENDED 2026-08-18 by D19 — the OIDC face lost its only consumer.** The bullet below
+> justifies it with *"Discourse SSO in UNI-009"*, and there is no Discourse. **Do not build a
+> provider face speculatively**: plain sessions are the whole requirement now, and the *issuer* is
+> what is still missing. ⚠️ **Two pieces of the SSO design are gone with it, not deferred** — a
+> browser handoff ticket (so the editor did not force a second login) and an admin log-out call
+> (so sign-out killed both sessions). Neither has a referent any more.
+
 - An OAuth2/OIDC provider face of our own, so *other* surfaces (Discourse SSO in UNI-009, the
   editor itself) authenticate against the NodeGX account rather than each growing a login.
 - The consent screen: what signing in from the editor shares (account identity; nothing else by

@@ -12,12 +12,21 @@
 > already registered and serving the landing page, so the ask was a subdomain record, not a
 > purchase. ⚠️ **Nothing serves the host yet** — no Caddy site block, platform deployed nowhere.
 
+
+> 🔴 **AMENDED 2026-08-18 — D19 REVERSES THIS TASK'S FORUM DECISION.** The scope line below said
+> *"the forum: Discourse, hosted, with SSO — bought, not built"*, and **AC1 and AC3 were written
+> against it**. Both are **STRUCK** and rewritten below. The forum is now **built**, as the Q&A
+> surface for NodeGX artifacts — see [D19](RULINGS.md) and **UNI-015** / **UNI-016**.
+> ⚠️ **UNI-009 keeps everything else it always had** (the home, replays, tutorials index); it simply
+> stops owning the forum, which is now five tasks of its own.
+
 ## Premise
 
 A login has to open onto something. The community home is the something: tutorials and tips,
 the weekly meetup replay library, and a forum that isn't Discord ("Discord seems pretty dead
-these days"). It is deliberately the least clever task in the phase — content pages and a
-bought forum — and that's why its minimal cut ships first, alongside UNI-001.
+these days"). It is deliberately the least clever task in the phase — content pages and an entry
+point — and that's why its minimal cut ships first, alongside UNI-001. ⚠️ *(It was "content pages
+and a bought forum" until D19; the forum left, the modesty stayed.)*
 
 ## Scope (v1 — the minimal cut)
 
@@ -27,21 +36,32 @@ bought forum — and that's why its minimal cut ships first, alongside UNI-001.
   list is the v1.)
 - **Tutorials & tips index**: the existing written material, organised. This is a content
   surface, not the UNI-007 lesson system — static articles until the lesson bridge exists.
-- **The forum: Discourse, hosted, with SSO** against the NodeGX account (UNI-001's OIDC face).
-  🔴 Bought, not built — building forum software is how solo founders die. Categories seeded
-  (help, showcase, meetups, RFP chatter until UNI-004 exists), Richard + volunteers as mods.
-  Discourse's webhooks later feed UNI-002 (accepted answer → points).
+- ~~**The forum: Discourse, hosted, with SSO.** Bought, not built.~~ 🔴 **STRUCK 2026-08-18 by
+  D19 — built, not bought.** The forum is **UNI-015** (ask/read/answer/accept) and **UNI-016**
+  (artifact posts), with **UNI-014** as its condition. What survives from this line: the seeded
+  sections (**help, showcase, meetups**), Richard + volunteers as mods, and the accepted-answer →
+  points hook — which is now a call in the same transaction rather than a webhook, and is **simpler**
+  for it. ⚠️ **This task keeps the entry point**: the home links to the Bench and lists recent
+  threads. It no longer owns the forum itself.
 - **Q&A as an asset**: from day one, forum content is licensed/structured so answered questions
   can later feed the in-editor AI's retrieval (the flywheel from the 2026-08-14 brainstorm) —
   a licensing footnote now saves a migration later.
 
 ## Acceptance criteria
 
-1. Sign in once (NodeGX account) → the forum session follows via SSO; sign-out kills both.
+1. ~~Sign in once → the forum session follows via SSO; sign-out kills both.~~ 🔴 **STRUCK by
+   D19 — there is no second session to follow.** Replaced by: **the home's forum entry point shows
+   real recent threads to a signed-out reader**, and shows the composer only to a viewer who may
+   post (D15). ⚠️ Weaker-looking and strictly harder to fake: the old criterion could be met by two
+   systems agreeing about a cookie, this one requires the forum to exist and have content.
 2. Replays and tutorials render and are reachable logged-out — the *content* gates nothing
-   either; the account adds posting, progress, and (later) points.
-3. A forum answer marked accepted fires a webhook we successfully receive (even if v1 only
-   logs it — the UNI-002 hook is proven live).
+   either; the account adds posting, progress, and (later) points. *(Unchanged.)*
+3. ~~A forum answer marked accepted fires a webhook we successfully receive.~~ 🔴 **STRUCK by D19
+   — the webhook was the seam between two systems and there is now one system.** The criterion it
+   existed to prove (*"the UNI-002 hook is live"*) moves to **UNI-015 AC2**, where it is stronger:
+   the award happens **in the same transaction as the accept**, so a control can prove the accept
+   rolls back with it. ⚠️ **Do not read this as a criterion being dropped** — it moved and got
+   sharper.
 
 ## Not in v1
 

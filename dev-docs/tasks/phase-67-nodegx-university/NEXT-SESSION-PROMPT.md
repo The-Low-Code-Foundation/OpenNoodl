@@ -6,11 +6,9 @@ Paste the block below into a fresh session.
 
 Continue phase 67 (NodeGX Community), `dev-docs/tasks/phase-67-nodegx-university/`.
 
-**Read first, in this order:** §"THE HONEST READ" below — it is the reason this prompt is shaped the
-way it is and it changes what you should pick. Then `RULINGS.md` (the queue is **EMPTY**; D15/D16/D17
-ruled 2026-08-16, D18 2026-08-17 — ⚠️ **read the postscript at the end of the D15/D16/D17 section**),
-then §"WHERE THE PHASE IS", then `TASKS.md`'s table, then your task file.
-`PRIOR-ART-RECONCILIATION.md` if you have not read it.
+**Read first, in this order:** **[D19](RULINGS.md)** — ruled 2026-08-18, it reverses a prior ruling
+and re-shapes the back half of the phase. Then §"THE HONEST READ" below, then §"WHERE THE PHASE IS",
+then `TASKS.md`'s table, then your task file. `PRIOR-ART-RECONCILIATION.md` if you have not read it.
 
 🔴 **Two repos.** Editor work is this checkout. Platform work is
 `/Users/richardosborne/vscode_projects/nodegx-community` — a **sibling directory, never nested** —
@@ -19,261 +17,171 @@ apply there.
 
 ---
 
-# 🔴 THE HONEST READ — the phase cannot be "knocked out" by sessions alone
+# 🔴 D19 — READ THIS BEFORE ANYTHING ELSE
 
-The remainder splits in two, and the split is the most useful thing in this document:
+**The forum is BUILT, not bought.** Discourse is out. Ruled 2026-08-18, reversing UNI-009's
+*"bought, not built"*.
+
+🔴 **The ruling is not "build a forum" — that framing is what makes this kind of project fail.**
+It is: **the unit of content is not a post, it is a graph with a question attached.** Everything in
+the tranche follows from the payload staying structured. Discourse's generic 80% (trust levels,
+reply-by-email, digests, RSS, DMs, polls, wiki posts, revisions, user tags, plugins, themes) is a
+**chosen absence**, listed in D19 so it cannot arrive later as a bug report.
+
+**The pitch is an artifact and it is the design:**
+**["Questions Made of Nodes"](https://claude.ai/code/artifact/7ac9fdff-757c-4cd0-8a94-879ba5fa1509)**
+— thread and queue specimens in full CSS. 🔴 **Read it before writing markup.** UNI-013 lost a
+session to building from a task file's prose when the design was an artifact.
+
+⚠️ **D19 is CONDITIONAL on email landing first** (UNI-014). Every other gap in the tranche degrades
+gracefully; that one does not.
+
+---
+
+# 🔴 THE HONEST READ — it changed, and mostly in the good direction
+
+D19 moved four items **out of the "blocked on Richard" column** — not by buying anything, but by
+making them ours to build. The buildable set is now large enough to fill many sessions.
 
 | | Tasks | Who |
 |---|---|---|
-| **Buildable now, blocked on nobody** | **UNI-012**, (probably) UNI-007's intake | **a session** |
-| **Blocked on a purchase, an account, an artwork or a decision** | UNI-009 AC1+AC3, UNI-011 AC1+AC6, UNI-001's remainder, UNI-004's revenue, UNI-013 slice 4, UNI-008, deployment | **Richard, and only Richard** |
+| **Buildable now, blocked on nobody** | **UNI-014** → **UNI-015** → **UNI-016** → UNI-017 → UNI-018 · **UNI-012** · (probably) UNI-007's intake | **a session** |
+| **Was blocked on a purchase, now blocked on US** | UNI-009 AC1+AC3 (rewritten), UNI-011 AC1+AC6, D16's whole gate | **a session, in sequence** |
+| **Still blocked on Richard** | deployment · UNI-013 slice 4 (artworks) · UNI-001's remainder · UNI-004's revenue · UNI-008 | **Richard** |
 
-🔴 **Six of the seven blocked items trace to four asks**, listed in §"FOR RICHARD" at the bottom in
-the order of how much each unblocks. **A forum is the big one — it alone gates three tasks.**
+🔴 **The ask list went from four items to three, and the biggest one is gone.** A forum purchase
+gated three things; it no longer exists. See §"FOR RICHARD".
 
-⚠️ **The useful shape of the next few sessions: finish the buildable set, and shrink the ask list to
-something Richard can act on in an afternoon.** Do not open a blocked task hoping the block has
-moved — check the ask list first, it is one `dig`, one `gh api` and one question each.
+⚠️ **The one that got sharper: deployment.** It is owned by no task, it needs a decision before it
+can be scoped, and **a forum has to be somewhere**. It was the second ask before D19; it is the
+first now.
 
 ---
 
-# WHERE THE PHASE IS — re-measured 2026-08-17 (session 24), not remembered
+# WHERE THE PHASE IS — 2026-08-18 (session 25)
 
 | Track | Tasks | State |
 |---|---|---|
-| **Platform** | UNI-001 (AC3), 002–006, 009 content cut, **011 slice 1** | 🟢 pushed. `main` == `origin/main` |
-| **Platform** | **UNI-013 slice 1** — the token substrate | 🟢 **BUILT + pushed `f64f138`.** AC1/AC2/AC3/AC5 met |
-| **Platform** | **UNI-013 slices 2–3** — type and rhythm, the six components | ✅ **BUILT `d205b47` + `201a71a`** — 🔴 **s24 built s2–s3 from the task file's PROSE and never opened the design ARTIFACT; `201a71a` is the design that was actually proposed.** Dot grid, tier on the badge EDGE (disc deleted), headline figure + meter, eyebrow/wire/mono labels |
-| **Platform** | UNI-007 intake / personalised path | 🟡 The one platform-side piece nobody has looked at. ⚠️ Check whether it needs an issuer *before* opening it |
-| **Platform** | UNI-008 | 📋 Tier 3, deliberately last. D9's obligations include a DPA and a retention policy — **policy text is Richard's** |
-| **Platform** | UNI-009 AC1 + AC3 | 🔴 Discourse, SSO, webhook receiver — **a purchase nobody has made** |
-| **Platform** | **deployment** | 🔴 **Owned by NO TASK, and needs a decision before it can be scoped** |
-| **Editor** | UNI-011 slice 1, AC2, AC3 | 🟢 `f7b0b280`, `f73b1bd6`, `f72799b7` — **the editor-only half is COMPLETE** |
-| **Editor** | UNI-011 AC1 + AC6 | 🔴 Needs a forum. D16's gate cannot be met without one |
-| **Editor / MCP** | UNI-007 slices 1–4, UNI-010 slices 1–2 | 🟢 Built and driven. UNI-010's five slices **KEEP** |
-| **Editor / MCP** | **UNI-012** | ✅ Ruled (ship the harness), scoped, **NOT built. Buildable now** |
+| **Platform** | UNI-001 (AC3), 002–006, 009 content cut, 011 slice 1, **013 s1–s3** | 🟢 pushed, `201a71a` |
+| **Platform** | **UNI-014** — the mail room | 🔴 **NOT BUILT. D19's condition. Start here.** |
+| **Platform** | **UNI-015** — the Bench (ask/read/answer/accept) | 🔴 **NOT BUILT.** ⚠️ **Must not ship alone** — see its file |
+| **Platform + editor** | **UNI-016** — artifact posts | 🔴 **NOT BUILT. This is the task D19 exists for** |
+| **Platform** | UNI-017 — the queue and the signal | 🔴 NOT BUILT. Needs a backlog first |
+| **Editor** | UNI-018 — pull a graph | 🔴 NOT BUILT. 🔴 **Read its §"THE HAZARD" before scoping** |
+| **Platform** | UNI-007 intake / personalised path | 🟡 Still the one platform piece nobody has looked at |
+| **Platform** | UNI-008 | 📋 Tier 3. D9's obligations include a DPA and a retention policy — **Richard's** |
+| **Platform** | **deployment** | 🔴 **Owned by NO TASK. Now the top ask** |
+| **Editor** | UNI-011 slice 1, AC2, AC3 | 🟢 met and driven. ⚠️ AC2/AC3 gain a posting path under UNI-016 |
+| **Editor / MCP** | UNI-012 | ✅ Ruled, scoped, **NOT built. Buildable now** |
+| **Platform** | UNI-013 slice 4 (12 badge SVGs) | 🔴 Richard's. Degrades rather than blocks |
 
-## Measured this session, with the instrument
+## What session 25 did — scoping only, no code
 
-- **`nodegx-community`: HEAD `d205b47`, `main` == `origin/main`, working tree clean.**
-- **Suite: 532 specs / 21 files** — 462 pre-existing (measured fresh at 21:46 *before* any edit, so
-  AC5's control is a measurement rather than a carried number) + 22 drift + 48 contrast.
-- `tsc --noEmit` clean. `next build` clean, **21 routes**. `npm run check:css` clean over **751
-  built declarations**.
-- **Lint on the platform: `package.json` HAS a `lint` script (`next lint`) and there is NO ESLint
-  config anywhere in the repo.** The script exists, has never run, and running it starts Next's
-  interactive setup. ⚠️ **"There is a lint script" is not "there is a lint gate".**
-- 🔴 **Deployment artefacts: still none.** No `Dockerfile`, no `.github/`, no `ops/`, no `fly.toml`.
-  There IS a `docker-compose.yml` — **dev/test Postgres only** (port 55432, one `db` service). A
-  session skimming for "is there a compose file" will find one and mis-read it.
+D19 ruled and written up. **Five new task files** (UNI-014 … UNI-018). **UNI-009's AC1 and AC3
+struck and rewritten.** Amendment banners added to **UNI-001, UNI-002, UNI-011** — each carried the
+Discourse premise in its body, and *a premise surviving in a file nobody re-opened is this phase's
+most-repeated failure*. `TASKS.md` gained five rows and four amended ones; `README.md` fixed.
 
-## NOT re-measured — do not quote these as current
+🔴 **Nothing was built and no gate was run.** The platform tree is untouched at `201a71a`.
 
-- `dig +short community.nodegx.io` and `gh api …/nodegx-community` were **not** re-run this session.
-  As of 08-17 they were `49.12.102.195` (nexus-1) and `has_pages: false`. ⚠️ **Resolving is not being
-  served**, and 🔴 **a Caddy response proves nothing** — it 308s every Host, including invented ones.
-  Read `127.0.0.1:2019/config/`.
-- **No `test:ci` was run this session or last.** Do not quote one from a handover — there isn't one.
+**Two things measured while scoping, both worth carrying:**
 
----
-
-# What the twenty-fourth session did
-
-**UNI-013 slice 1** — the community site now consumes the editor's canonical tokens.
-`scripts/sync-tokens.mjs` vendors `colors.css`/`fonts.css`/`spacing.css` byte-identically into
-`src/styles/tokens/` with a `source-sha256` header; `globals.css` declares **no colour of its own**;
-`tests/uni013-token-drift.test.ts` fails when the copy diverges.
-
-**Then slices 2 and 3** (`d205b47`), after Richard looked at slice 1 and said *"I thought the style
-was redone??"* — 🔴 **and he was right. Slice 1 is nearly invisible by design, and it was the wrong
-half to land first against a complaint that was explicitly about appearance.** The ordering was
-defensible on engineering grounds and wrong on the grounds that mattered. **When an ask is about how
-something looks, ship something that looks different in the same session.** Slices 2–3 served the
-display face, put `.meta` in mono with `tabular-nums`, made chips and pills uppercase mono, unified
-the card and row onto a `bg-1` → `bg-2` hover ladder, and gave the profile the editor's gradient
-avatar. Full detail in the task file.
-
-**Then `201a71a`, because slices 2–3 were still not the design.** 🔴 **UNI-013 was scoped from an
-ARTIFACT — ["Seven Tokens"](https://claude.ai/code/artifact/2fc23a65-cf0a-47aa-b4b8-962b8e4a5323),
-a NOW/PROPOSED profile card in full CSS — and I built from the task file's prose without ever
-opening it.** The prose carries one of the five moves (the mono face). It does not carry the **dot
-grid**, the **tier colour on the badge's edge rather than a decorative disc**, the **headline points
-figure + meter**, or the **eyebrow / wire / mono-label hierarchy** — and those four are what make it
-look like the product. Richard: *"I don't see the visual changes from the artifact."*
-
-**Measured this session (all re-run after `201a71a`):** `nodegx-community` HEAD **`201a71a`**,
-**548 specs / 21 files**, `tsc` clean, `next build` clean at 21 routes, `check:css` clean over
-**775 declarations and 15 components**. ⚠️ **The figures in §"Measured this session" above are from
-`d205b47` and are superseded by these.**
-
-**Seven findings that generalise past this task:**
-
-🔴 **A task file's PROSE is not the DESIGN.** A written summary of a visual decision loses the visual
-decisions, and it reads complete because every sentence in it is true. ✅ **When the ask is about how
-something LOOKS, find the artifact before writing CSS** — `WebFetch` on a
-`claude.ai/code/artifact/{uuid}` URL returns the **raw HTML including every CSS rule**, so it is a
-spec and not a picture. ⚠️ **Ask Richard for the link if the task file has none** (UNI-013's had
-none until s24 added it). ⚠️ **Read the artifact's own caveats** — this one is drawn in **teal** and
-says *"swap `--signal` for `--base-color-azure-500`"*; **D18 ruled azure**, so a mock's palette can
-be the one thing in it that was already overruled. ⚠️ **And a mock is loose with data**: its eyebrow
-read "Coach · Acme" and `PublicProfile` has no org. **Deviate on data, follow on form, say which.**
-
-🔴 **A sweep is only as wide as the surface it enumerates.** The AC1 sweep quantifies over
-*stylesheets*, so the site's first inline style (`style={{ width }}` on the meter) was **outside it
-entirely** — `style={{ color: '#fff' }}` would never reach a `.css` file and AC1 would stay green
-while a component declared a colour. `check-built-css.mjs` now walks `src/**/*.tsx` as well.
-⚠️ **Same shape as this phase's "a route is outside every sweep" finding.**
-
-🔴 **A criterion that is a NUMBER catches what a criterion that is a LOOK cannot.** The first draft
-pointed all secondary copy at `--theme-color-fg-muted` — the obvious token by name, and an editor
-*chrome label* colour that scores **3.19:1** on the light page ground, below AA, on the lede of every
-page. **Two screenshots of the two themes said the site was fine.** The fix was a stronger token, not
-a new colour; the durable output is `tests/uni013-contrast.test.ts`, which resolves the site's role
-layer against the vendored palette and asserts the ratios in both themes.
-
-🔴 **A control pair needs its arms pinned, not merely required to differ.** Every contrast ratio
-passes in the dark theme. A `tokensFor('light')` that silently returned the dark palette would have
-gone green while measuring one theme twice — so the test pins six tokens to their distinct resolved
-values in each theme.
-
-🔴 **A Map-based diff collapses a duplicate key silently.** The first rename probe renamed
-`--theme-color-primary` → `--theme-color-accent`, which is **a real token thirty lines further
-down**; the rename became a duplicate, the duplicate collapsed, and one declaration stopped being
-compared *at all*. ⚠️ **A probe that lands on an occupied name measures the collision, not the
-mutation.** Now asserted empty.
-
-🔴 **`pkill -f "next start"` matches nothing** — Next renames the process to `next-server (v15.x)`.
-The stale server kept the port, the new one failed to bind *silently in the background*, and the old
-process served HTML pointing at a **CSS hash that no longer existed on disk**: a 404 stylesheet and a
-totally unstyled page. **Every gate stayed green through it** — build clean, sweep clean, the whole suite
-green. ✅ **Kill by port (`lsof -nP -iTCP:<port> -sTCP:LISTEN -t`), and diff the served HTML's CSS
-href against `ls .next/static/css/` before believing a screenshot.**
-
-🔴 **A token can name an asset that is not served.** `--font-family-display` named Bricolage
-Grotesque and silently resolved to its **system fallback** on the web for as long as the site
-existed — the editor loads the woff2 from its own assets folder and there is no web equivalent.
-Correct-looking source, wrong render, no error anywhere.
-
-🔴 **A theme-INVARIANT ground given theme-DEPENDENT ink passes in one theme and fails in the other.**
-`--theme-color-on-primary` flips (`#071627` dark, `#ffffff` light); `--theme-color-avatar-gradient`
-does not. The avatar was white-on-azure at **2.63:1** in light only. ⚠️ **And `bg-page` is DARKER
-than `bg-0` in the light theme** — it is the page's floor, not a chrome surface; a sticky header on
-it cost 0.03 of the AA bar.
-
-⚠️ **Also, unchanged and still unowned:** **noodl-core-ui cannot be eslinted at all** (its
-`eslintConfig` extends `react-app`, which is not installed; confirmed against an untouched control
-file). *"eslint clean on every touched file"* in past handovers was never true of core-ui files.
+1. 🔴 **A pulled graph fragment is executable code from a stranger.** `simplejavascript.ts`: the
+   node displayed as **`Function`** is `JavaScriptFunction` and carries **`functionScript`, a string
+   that becomes executable JavaScript**; `Script` carries the same under `code`. The editor is
+   Electron, so that is not a sandbox — and the delivery is perfectly disguised, arriving as *the
+   answer to a question the victim asked*. This is why UNI-018 refuses code-bearing nodes at **two**
+   enforcement points and derives its allow-list from parameter schemas rather than a deny-list.
+2. 🔴 **`{forum: 'absent'}` loses its referent.** UNI-011 slice 1 shipped it as a 200 distinct from
+   `{threads: []}`, because an unconfigured webhook made emptiness a fact about *our deployment*.
+   Once we own the forum, an empty Bench is just empty. **Remove the branch; do not leave it
+   unreachable** — a branch nothing can produce is a check that cannot fail, which this phase has
+   now found four times.
 
 ---
 
 # THE PLAN — do these in this order
 
-## ✅ LANE A IS CLOSED — UNI-013 slices 1–3 all built (`f64f138`, `d205b47`)
+## 🟢 LANE A — UNI-014, the mail room. **Start here.**
 
-**Only slice 4 remains and it is Richard's** (the twelve badge artworks). 🔴 **THE DESIGN IS AN ARTIFACT — ["Seven Tokens"](https://claude.ai/code/artifact/2fc23a65-cf0a-47aa-b4b8-962b8e4a5323), full CSS, read it before any stylesheet work; the task file's prose is NOT the design and s24 lost a round to that.** Do not reopen this task
-looking for work; read its file for the traps before touching any stylesheet.
+D19 is conditional on it, and it is owed to UNI-004 and UNI-006 anyway. 🔴 **Build the ROW first,
+not the provider** — a notification is a row, email is one delivery of a row, and an org-minor
+account *cannot hold an address* (`org_minor_holds_no_pii`), so notification-as-email is broken for
+exactly the users D10 exists to protect. ✅ **Richard's sending account does not block it**: the
+`log` transport is the default and the real one is a file behind an interface.
 
-🔴 **If you DO touch the site's CSS, three cheap gates, and they are not optional:**
-`npm run check:css` (AC1 — catches a hardcoded colour the moment you write one, and carries its own
-known-bad probes), `npx vitest run tests/uni013-contrast.test.ts` (AC2 — 🔴 **add a `PAIRS` entry for
-any new foreground/ground combination you introduce**; it grades the palette, it does not crawl the
-DOM), and the full suite for AC5.
+## 🟢 LANE B — UNI-015 then UNI-016, back to back
 
-⚠️ **AC5's control is "the 462 specs that predate UNI-013 pass unchanged"** — **532** total now.
-Count by name, do not copy a total.
+⚠️ **Do not ship UNI-015 alone.** Plain-text Q&A on our own stack is strictly worse than what we
+chose not to buy; shipping it by itself is the one outcome that proves the buy case right. UNI-016
+is the reason to build.
 
-🔴 **Three UNI-013 findings that will bite outside it:**
-1. **`--theme-color-on-primary` FLIPS per theme; `--theme-color-avatar-gradient` does not.** Any
-   theme-invariant ground given theme-dependent ink passes in one theme and fails in the other.
-2. **A token can name an asset that is not served.** `--font-family-display` resolved to its system
-   fallback on the web for as long as the site existed — correct-looking source, wrong render.
-3. **`bg-page` is DARKER than `bg-0` in the light theme.** It is the page's *floor*, not a chrome
-   surface; putting header text on it cost 0.03 of the AA bar.
+🔴 **UNI-015 carries the Discourse decommission — 11 files inventoried by path in its file.**
+`forum_threads` is a six-column stub that existed only so D16 had something to read: **drop it, do
+not migrate it.**
 
-## 🟢 LANE B — UNI-012, F4 on a packaged install
+🔴 **The three-copy trap is the sharpest reuse question in the tranche** — `parsePostBody` →
+`Block[]` lives in the **editor** checkout. Ruled: platform-side canonical, plus a shared golden
+corpus whose hash is asserted in *both* repos. This pattern has bitten twice already
+(`LessonEvidence`, `renderMarkdown`).
 
-**Ruled (ship the harness), scoped, not built, blocked on nobody to build.**
+## 🟡 LANE C — UNI-012 (unchanged), UNI-007's intake (unchanged)
 
-⚠️ **Verifiable only against a packaged build, and *"a shipping claim nobody exercised"* is the
-artifact this phase has found wrong four times** — the packaged verification is the task, not a
-formality. 🔴 **Two measured facts qualify the ruling**: the harness probes for a **system Chrome**
-and refuses without one, so shipping it makes `allow_unrendered` *rare* rather than unnecessary
-(**both halves of the either/or are probably wanted**); and rendering through the sidecar's own
-Electron is closed by `ELECTRON_RUN_AS_NODE=1`, which is load-bearing and measured.
-✅ CN-001 already did the structural half (`@nodegx/render-measure`).
-⚠️ The **F4 scope call** is still Richard's — but it does not block the build.
-
-## 🟡 LANE C — UNI-007's intake and personalised path
-
-⚠️ **First question, before anything else: does intake need an issuer?** If a path can be produced
-for an anonymous visitor it is buildable now; if it hangs off an account it joins the blocked pile
-and you should say so and stop. **Ten minutes to answer, and the answer decides whether this is a
-lane at all.**
+Both still buildable, both unaffected by D19. UNI-007's intake still wants its ten-minute question
+answered first: **does it need an issuer?**
 
 ## 🔴 LANE D — deployment: scope it, do not build it
 
-**Still the phase's real gap.** No task owns it, and a grep across all twelve task files for
-deploying the platform returns **zero hits**. UNI-008 is about hosting *users'* apps, not this.
-
-🔴 **Same shape as UNI-011 slice 1's finding** — D14 said the API was a deliverable, no task owned
-it, so it did not exist. ⚠️ **Needs a decision from Richard first** (does it go on nexus-1?), so
-**write the task file and stop**. That box is all-or-nothing on Caddy config and it is a bigger call
-than a DNS record.
-
-## ⛔ LANES THAT ARE BLOCKED — check the ask list, do not open these
-
-- **UNI-009 AC1/AC3** — Discourse, SSO, webhook receiver. A purchase.
-- **UNI-011 AC1/AC6** — needs a forum. D16's gate cannot be met (no forum ⇒ no `weeksWithCallHeld`,
-  no `medianFirstReply`), and its ship order says last.
-- **UNI-001's remainder** — DNS resolves, so callbacks *can* be registered, but the OAuth app and its
-  secrets are Richard's.
-- **UNI-004's revenue path** — `recordPayment` has no caller and needs a Paddle account (D7).
-- **UNI-008** — Tier 3; D9's five obligations include a DPA and a retention policy.
+**Now the phase's top gap.** Needs Richard's nexus-1 decision first, so **write the task file and
+stop.** That box is all-or-nothing on Caddy config and already serves the landing page plus two of
+his sites.
 
 ---
 
-# ⚠️ FOR RICHARD — four asks, ordered by how much each unblocks
+# ⚠️ FOR RICHARD — three asks now, down from four
 
-1. 🔴 **A forum (Discourse). The big one — it alone gates three things:** UNI-009 AC1+AC3, UNI-011's
-   mirror surface (AC1+AC6), and D16's whole gate, which cannot be evaluated without
-   `weeksWithCallHeld` and `medianFirstReply`. Everything else here unblocks one task each.
-2. 🔴 **Does the platform go on nexus-1 at all?** Deployment is owned by no task and cannot be scoped
-   without this. ⚠️ nexus-1 is **all-or-nothing on Caddy config** and already serves the landing page
-   plus two of your sites — a bigger call than the DNS record was, and the one that decides whether
-   anyone ever sees any of this.
-3. **The twelve badge artworks.** D4 ruled ~12 flat SVGs in the editor's idiom. **UNI-013 slice 4,
-   and the one slice that is not code.** ⚠️ It degrades rather than blocks — the profile draws a
-   family mark and a tier colour. 🆕 **Now also the last literal colour on the site**:
-   `--site-tier-bronze` is allow-listed in the AC1 sweep because the editor palette has no bronze,
-   and it retires when the artworks land.
-4. **A Paddle account (D7)**, which still stands between coaching and revenue.
+1. 🔴 **Does the platform go on nexus-1?** Deployment is owned by no task and cannot be scoped
+   without it. **A forum has to be somewhere**, which is what promoted this to first.
+2. **The twelve badge artworks** (UNI-013 slice 4). Degrades rather than blocks — the profile draws
+   a family mark and a tier colour. `--site-tier-bronze` is the last literal colour on the site and
+   retires when they land.
+3. **A Paddle account (D7)**, still between coaching and revenue.
 
-**Smaller, still open, carried:**
+**Small, and none of them block a build:**
 
+- **A transactional sending account** (Postmark / SES / Resend) + sending domain, for UNI-014. The
+  `log` transport covers everything until it exists.
+- **Where do capture images live?** UNI-016 turns `saveCaptureNextTo` into an upload. Blob column,
+  object storage, or the deployment box — **it intersects ask 1**.
 - ⚠️ **GitHub Pages still unattached** (`has_pages: false` as of 08-17). D17's v0 is free to set up
-  **until the first deploy**.
+  until the first deploy.
 - ⚠️ **The F4 packaged-install scope call** (UNI-012) — does not block the build, does shape it.
-- **UNI-011 slice 1's judgement call**, reversible, one line: the assignments endpoint is **not**
-  subject to D15.
-- ⚠️ **UNI-011 AC2 and AC3 both hand off to the browser rather than posting**, because there is no
-  forum and no issuer. **AC3 additionally writes the capture PNG to your Documents folder.**
-  `saveCaptureNextTo` is the single function that becomes an upload when there is somewhere to
-  upload to.
 - **Carried and still open:** UNI-006's three calls, UNI-005's two, UNI-004's *"responding to an RFP
-  requires clearing D8's bar"*, and UNI-003's change to UNI-002's catalogue.
+  requires clearing D8's bar"*, UNI-003's change to UNI-002's catalogue, and UNI-011 slice 1's
+  *"assignments is not subject to D15"*.
+
+⚠️ **Gone from this list, and worth saying so: the forum purchase.** It gated UNI-009 AC1+AC3,
+UNI-011's mirror surface and D16's whole gate. D19 did not defer it — it removed it.
 
 ---
 
 # Gates
 
-**`nodegx-community` (session 24, all re-measured):** 516 specs / 21 files, `tsc` clean,
-`next build` clean at 21 routes, `check:css` clean over 713 declarations. Working tree clean,
-`main` == `origin/main`, HEAD `f64f138`.
+🔴 **SESSION 25 RAN NOTHING — it was scoping only, in `dev-docs/` alone. Every number below is
+inherited. Re-measure before you quote one.**
 
-**This checkout (session 24):** ⚠️ **nothing was run** — session 24 touched only
-`dev-docs/tasks/phase-67-nodegx-university/`. The last measured numbers are session 23's:
+**`nodegx-community`:** HEAD **`201a71a`**, working tree clean, `main` == `origin/main`. Session
+24's last measured figures were **548 specs / 21 files**, `tsc` clean, `next build` clean at **21
+routes**, `check:css` clean over **775 declarations / 15 components**. ⚠️ **UNI-015 AC5 says count
+by name against that floor and re-measure it first** — do not copy 548 forward.
+
+**This checkout:** ⚠️ nothing run in sessions 24 or 25. The last measured numbers are session 23's:
 `tsc --noEmit -p tsconfig.tests-main` **31 errors** (pre-existing, none in touched files); no full
 `test:main`; **no `test:ci`**. 🔴 **Do not quote any of these as current.**
+
+⚠️ **`npm run lint` is still not a gate on the platform** — `package.json` has the script, the repo
+has no ESLint config, and running it starts Next's interactive setup. **State which artefact you
+looked at.**
 
 ---
 

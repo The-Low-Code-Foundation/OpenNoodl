@@ -221,6 +221,21 @@ UNI-001's, not this task's. D14, D15 and D16 all ruled; nothing is waiting on a 
 > editor is a **second client of the same API**, showing the same content. Editor-only features are
 > the reason to transition, not a different feature set.
 >
+> 🔴 **AMENDED 2026-08-18 by D19 — THE FORUM IS BUILT, NOT BOUGHT, AND SIX LINES IN THIS FILE
+> ARE NOW HISTORY.** The note below, the comparison table's *"Discourse's own composer / mod UI"*
+> column, the AC1 paragraph reasoning that *"Discourse is bought rather than built, and nobody has
+> bought it"*, and the two "not in v1" entries deferring to Discourse's chat and mod UI all rest on
+> a system that will not exist. The forum is **UNI-015** + **UNI-016**.
+>
+> ✅ **What is UNCHANGED, and it is most of the task:** AC2 and AC3 stay **met and driven**; the
+> mirror still consumes `/api/v1`, which this task's own slice 1 built; D14's outbound-only rule
+> still binds. 🔴 **What changes:** AC2/AC3 gain a **posting** path (UNI-016) while the browser
+> hand-off **stays** as the signed-out route, and `saveCaptureNextTo` — described here as *"the
+> single function that becomes an upload when there is somewhere to upload to"* — becomes exactly
+> that. ⚠️ **In-editor moderation was deferred to "Discourse's own UI" and now has nowhere to go**:
+> it is not in scope here either, but the reason it was out of scope has evaporated and somebody
+> should say so out loud rather than let it sit deferred to a thing that does not exist.
+
 > 🔴 **This task does not build a forum.** UNI-009 buys one (Discourse, hosted, SSO). This is a
 > client for it. Anything here that starts to look like forum software is a defect — see UNI-009's
 > "bought, not built".

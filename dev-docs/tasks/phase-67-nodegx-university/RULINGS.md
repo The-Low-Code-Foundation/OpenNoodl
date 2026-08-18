@@ -4,7 +4,7 @@
 future phase re-litigates one. Supersedes the "rulings queue" in [README.md](README.md), which now
 points here.
 
-**Status: the queue is EMPTY — D18 ruled 2026-08-17; D15, D16 and D17 ruled 2026-08-16.** It
+**Status: the queue is EMPTY — D19 ruled 2026-08-18; D18 ruled 2026-08-17; D15, D16 and D17 ruled 2026-08-16.** 🔴 **D19 REVERSES A PRIOR RULING** (UNI-009's *"bought, not built"*) and **amends D14 consequence 5**, which was derived from it — read both before scoping anything that touches the forum. It
 reopened 2026-08-15 with D14; all three successors are now closed and every one was ruled **as
 recommended**, which is recorded because a queue emptied by agreement is weaker evidence than one
 emptied by argument — see the note under D17. D1 and
@@ -53,6 +53,84 @@ and is **amended 2026-08-15** by D14 (an editor *client*; the build does not mov
 | **D16** | The never-empty launch threshold | **30 threads · 3 consecutive weeks with a call held · median first reply < 24h.** Until met, the entry point opens the browser | **08-16** |
 | **D17** | Curriculum hosting — where lessons are served from | **Part of the platform API under D14; GitHub Pages as v0.** 🔴 A lesson must stay installable from a **local directory with no origin**, whatever else changes | **08-16** |
 | **D18** | One accent hue across the products | 🔵 **AZURE** (`#4da3ff`) — the community site adopts the editor's, against the recommendation. ⚠️ The **landing page keeps teal** and becomes the odd one out; that is chosen, not inherited | **08-17** |
+| **D19** | Forum: bought or built | 🔴 **BUILT — reverses UNI-009's "bought, not built".** Not *a forum*: the **Q&A surface for NodeGX artifacts**, where a post is a graph with a question attached. Discourse's generic 80% is a **chosen absence**. ⚠️ **Conditional on email landing first** | **08-18** |
+
+---
+
+## D19 — the forum is built, not bought · ✅ RULED 2026-08-18
+
+**Asked** because the SSO design work produced the argument against itself. Scoping DiscourseConnect
+turned up a provider endpoint, `external_id` stability, `sync_sso` pushes, an admin log-out for
+sign-out, a paid hosting tier, a browser handoff ticket so the editor would not force a second
+login, and — sharpest — **an org-minor account that cannot be provisioned at all**, because
+Discourse requires an email and `accounts.org_minor_holds_no_pii` (0001) refuses to store one. That
+is a lot of machinery bought to make a bought thing fit.
+
+Richard's read: *"there's stuff about Discourse I find oldschool and annoying — we could make
+something fresh and modern."*
+
+**Ruled: built.** 🔴 **And the ruling is not "build a forum" — that framing is what makes this
+kind of project fail.** It is:
+
+> **The unit of content is not a post. It is a graph with a question attached.**
+
+Everything follows from that. UNI-011 already sends a node question with its type, warning, version
+and OS (AC2), and a preview capture with live port values under per-port consent (AC3). Posted into
+Discourse, that payload is a fenced code block and a PNG — **the structure is thrown away at the
+door**. Posted into a surface we own, it stays structured, and the facets, the queue, the "same
+here" signal and the graph pull are all consequences of it still being structured.
+
+**The scope boundary, which is the load-bearing half of this ruling.** Discourse's generic 80% is a
+**chosen absence**, written down here so it cannot later arrive as a bug report: trust levels,
+reply-by-email, digest emails, RSS, private messages, polls, wiki posts, post revisions,
+user-created tags, categories beyond a small fixed set, plugins, themes. ⚠️ **Private messages are
+the one worth arguing about** — and UNI-004's RFP relay already covers the case that matters,
+with anonymised addresses and a moderation trail.
+
+### 🔴 The condition: email lands first, or this ruling is wrong
+
+Nothing on the platform sends email. `outbound_emails` is a rendered queue with no drainer, no
+provider and no domain. **Every other gap in this tranche degrades gracefully; this one does not**
+— a forum where "someone answered you" never reaches an inbox is a forum nobody returns to, and
+D16's threshold is precisely about people coming back. **UNI-014 is therefore not a supporting task,
+it is the condition on which this ruling was made**, and it is owed to UNI-004 and UNI-006 anyway.
+
+### The counter-argument, kept on the record
+
+**A forum's value is the people in it; the code is the cheap part.** That is the strongest case for
+buying and it does not go away because a specimen looks good. It was overridden on **scale**: this
+community will be dozens of active people for a long time, and most of Discourse's decade of
+machinery — the anti-spam heuristics especially — is built for open registration at a size
+we will not see for years. Posting here requires a NodeGX account, and D8's evidence bar already
+exists as a rate limit we did not build for this purpose.
+
+⚠️ **If that scale assumption breaks, this is the ruling to reopen** — not the individual
+features.
+
+**Consequences.**
+
+1. **Five new tasks**: UNI-014 (the mail room) · UNI-015 (the Bench: ask/read/answer/accept)
+   · UNI-016 (artifact posts) · UNI-017 (the queue and the signal) · UNI-018 (pull a
+   graph into your editor).
+2. 🔴 **UNI-009's AC1 and AC3 are struck and rewritten** — they specify SSO against Discourse and
+   a webhook we receive. Its §"Scope" line *"the forum: Discourse, hosted, with SSO — bought, not
+   built"* is the sentence this ruling reverses.
+3. 🔴 **D14 consequence 5 is amended** — it says Discourse's choice is *"load-bearing for the
+   editor too"* and that *"Discourse's API is what the mirror consumes"*. Both halves are now false.
+   See the amendment in D14's own section; **a reversal that leaves its derived consequence standing
+   is how this register ends up contradicting itself**, which it has done four times.
+4. **Eleven platform files carry the premise** — inventoried by path in UNI-015, so nobody has to
+   find them again.
+5. 🔴 **`{forum: 'absent'}` loses its referent.** UNI-011 slice 1 shipped it as a 200 distinct from
+   `{threads: []}`, because an unconfigured webhook made emptiness a fact about our deployment. Once
+   we own the forum, an empty Bench is empty. **The branch is removed, not left unreachable.**
+6. ⚠️ **Two gaps get sharper, both already unowned**: blob storage (UNI-011's capture stops being
+   written to Documents and becomes an upload) and **deployment**, which no task owns and which a
+   forum makes unavoidable.
+7. **UNI-011 AC2/AC3 gain a posting path** and keep the browser hand-off as the signed-out route.
+
+⚠️ **What would reopen it:** the scale assumption above breaking; or email proving genuinely
+un-shippable, in which case the whole tranche is wrong rather than late.
 
 ---
 
@@ -489,6 +567,14 @@ editor.
 5. **UNI-009 is now the canonical surface being mirrored**, not merely "the site". Its Discourse
    choice becomes load-bearing for the editor too: the SEO'd public forum is the half the editor
    cannot supply, and Discourse's API is what the mirror consumes.
+
+   > 🔴 **AMENDED 2026-08-18 by D19 — both halves of this consequence are now false.** There is
+   > no Discourse and no Discourse API; the mirror consumes **our own** `/api/v1`, which UNI-011
+   > slice 1 already built. ⚠️ **The surviving half is the one that still binds:** the *public,
+   > indexable* forum is the half the editor cannot supply, and that is a property of being served
+   > on the web — not a property of Discourse. The community site is Next.js with 21 SSR routes
+   > and indexes fine. **This consequence over-attributed a capability to the bought thing**, which
+   > is worth recording because it is how a derived consequence outlives the ruling it came from.
 6. ⚠️ **Phase 37 (project tabs) is the enabler Richard named, and it is scoped, NOT built** — six TAB
    tasks, tiered, unstarted. Its design makes the launcher **tab 0 that never goes away**, which is
    what would allow reading the community without leaving a project. 🔴 **UNI-011 must not assume
