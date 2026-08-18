@@ -116,6 +116,15 @@ UNI-001's, not this task's. D14, D15 and D16 all ruled; nothing is waiting on a 
 > have threads in. The editor-only half is the **composition**, which is what a browser cannot
 > build. When there is a forum and UNI-001 has an issuer, copy-and-open becomes a `POST` through
 > `communityapi.ts` and nothing above it changes.
+>
+> 🔴 **AMENDED 2026-08-18 (session 27) — HALF OF THAT SENTENCE IS NOW OUT OF DATE, AND HALF IS
+> NOT.** *"The forum does not exist"* is **false**: UNI-015 and UNI-016 are built on the
+> platform, `POST /api/v1/bench/threads` accepts a thread, and `post_attachments` accepts the
+> node excerpt AC2 composes and the capture AC3 composes — structured, with facets derived from
+> the payload by the database. ⚠️ *"It hands off to the browser; it does not post"* is **still
+> true of this editor**: the composer's POST is **NOT BUILT**. AC2 and AC3 remain met — their
+> verb was *attached*, not *posted* — and the browser hand-off remains the signed-out route by
+> design. **What is missing is the editor-side POST, and it is the last piece of UNI-016.**
 
 > ## Slice 2b — AC3 is BUILT and DRIVEN (2026-08-16, twenty-second session), editor `f72799b7`
 >
@@ -235,6 +244,15 @@ UNI-001's, not this task's. D14, D15 and D16 all ruled; nothing is waiting on a 
 > that. ⚠️ **In-editor moderation was deferred to "Discourse's own UI" and now has nowhere to go**:
 > it is not in scope here either, but the reason it was out of scope has evaporated and somebody
 > should say so out loud rather than let it sit deferred to a thing that does not exist.
+>
+> ✅ **STATUS 2026-08-18 (session 27):** the platform half landed. `post_attachments` (0009)
+> stores the four kinds, facets are **generated columns** so no caller can type one,
+> and a withheld port renders as a redaction chip with its name and value absent from
+> everything served. 🔴 **`saveCaptureNextTo` is STILL a write to Documents** — blob storage is
+> owned by no task and intersects deployment, so a `capture` attachment carries its DIMENSIONS
+> and its consent record and **no image**. That is exactly what `CaptureAttachment`
+> (`{width, height, bytes}`) publishes today, so nothing has to be migrated when the answer
+> arrives: an `image_url` column and a writer are the whole change.
 
 > 🔴 **This task does not build a forum.** UNI-009 buys one (Discourse, hosted, SSO). This is a
 > client for it. Anything here that starts to look like forum software is a defect — see UNI-009's

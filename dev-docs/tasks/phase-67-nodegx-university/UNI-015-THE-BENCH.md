@@ -1,7 +1,56 @@
 # UNI-015 — the Bench: ask, read, answer, accept
 
-**Surface:** platform · **Tier 1** · **Effort:** L · 🔴 **NOT BUILT.** Blocked on **UNI-014**
-(delivery) for its notification half; the rest is unblocked.
+**Surface:** platform · **Tier 1** · **Effort:** L · ✅ **BUILT 2026-08-18 (session 27).**
+All five acceptance criteria met. `tests/uni015-bench.test.ts` (63) + `tests/uni015-bench-http.test.ts`
+(6, over real HTTP) + `tests-unit/uni-015/postbody-corpus.test.ts` in the EDITOR repo (39).
+
+> ## ✅ WHAT LANDED, AND THE FOUR THINGS THE TASK FILE HAD WRONG OR DID NOT KNOW
+>
+> **`0008_uni015_bench.sql`**, `src/lib/bench.ts`, `src/lib/postbody.ts` (canonical parser),
+> `src/lib/bench-http.ts`, four API routes, `/bench` + `/bench/[threadId]`, `PostBody.tsx`,
+> and the Bench section of `globals.css`.
+>
+> 1. 🔴 **`recordEvent` COULD NOT BE CALLED INSIDE A TRANSACTION, and the symptom was not a
+>    lost point — it was a lost question.** `tryAward` catches a refusal and reports it, which
+>    is correct on its own; inside a caller's transaction a `raise exception` has already
+>    ABORTED the transaction, and catching it in TypeScript does not un-abort it.
+>    `bench.thread.created` has two listeners (`first-thread`, capped at one; `thread-started`,
+>    repeatable), so **the second question anybody asked failed outright** with `[cap-reached]`.
+>    Fixed with a **savepoint per award** in `contribution.ts` — per challenge, because a wider
+>    one would forfeit the sibling awards and `thread-started` would never pay out again.
+>    ✅ **UNI-002's specs pass UNCHANGED (38, files byte-identical in git)**, which is the proof
+>    AC2 asks for that this is a new caller and not a new mechanism.
+> 2. 🔴 **`alter type … add value` CANNOT be used here.** Measured on PG 16.14: a new enum value
+>    named in a CHECK constraint in the same migration is refused (*"unsafe use of new value"*),
+>    and `applySchema` runs each migration as one implicit transaction. The `::text` workaround
+>    parses fine and is **worse than the problem** — a mistyped literal becomes a clause that
+>    silently never matches. The three enums are RECREATED instead.
+> 3. 🔴 **AC4's `grep -ril discourse` instrument is TOO STRONG and was not implemented
+>    literally.** Taken at its word it forbids a comment saying what was removed — `0001` still
+>    creates `forum_threads` because a migration is history, and `0008` must name
+>    `discourse.post.created` to migrate away from it. ✅ What is asserted instead is sharper:
+>    **no live CODE anywhere in `src/` mentions it, comments stripped first**, plus the named
+>    files are gone and the **live database** has no `forum_threads` and no `discourse.*` event
+>    key. Prose keeps the record; code keeps nothing.
+> 4. ⚠️ **The SQL re-point of the challenge registry matches ZERO ROWS today.** `challenges` is
+>    empty in a fresh schema — the registry loads from `challenge-catalogue.json` — and nothing
+>    is deployed anywhere, so no database holds a `discourse.*` row. The JSON is the half that
+>    binds and is changed in the same commit. Said out loud so the block is not read as evidence
+>    that anything was migrated.
+>
+> ✅ **Also found and fixed:** two shipping palette tokens fail WCAG AA in the LIGHT theme —
+> `--theme-color-danger` (4.26) and `--theme-color-success` (3.55) on `bg-0`, which are exactly
+> the tokens the queue clock and the accepted mark would reach for. The pitch artifact hand-mixed
+> its own colours for those two roles, which is what a designer does when the system token looks
+> wrong — and it looked wrong because it IS wrong at that size on that ground. The site roles are
+> **split by theme** and all three are now in `tests/uni013-contrast.test.ts`. **Fifth instance**
+> of the `fg-muted` family.
+>
+> 🔴 **A trap that cost a debugging pass and will cost the next person one too:** the HTTP suite
+> spawns `next start`, and `child.kill()` signals `npx` — the real listener is a GRANDCHILD
+> (`next-server`) and SURVIVES. A surviving server holds a pool against the database every other
+> suite drops, and the symptom is **51 failures in five unrelated files** reading
+> `type "badge_family" does not exist`. **Kill by PORT.**
 
 > **D19** ([RULINGS.md](RULINGS.md)): built, not bought. **The pitch this was scoped from is an
 > artifact — ["Questions Made of Nodes"](https://claude.ai/code/artifact/7ac9fdff-757c-4cd0-8a94-879ba5fa1509),

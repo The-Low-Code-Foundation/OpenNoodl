@@ -1,7 +1,45 @@
 # UNI-016 — artifact posts: a question renders as the thing it is about
 
-**Surface:** platform + editor · **Tier 1** · **Effort:** M/L · 🔴 **NOT BUILT.** Blocked on
-**UNI-015** (there must be a thread to put one in). Nothing else blocks it.
+**Surface:** platform + editor · **Tier 1** · **Effort:** M/L · 🟡 **PLATFORM HALF BUILT
+2026-08-18 (session 27). THE EDITOR'S POST IS NOT BUILT.**
+
+> ## 🟡 WHERE THIS ACTUALLY STANDS — read the second list as carefully as the first
+>
+> ✅ **Built:** `0009_uni016_attachments.sql` (`post_attachments`, four kinds), `src/lib/
+> attachments.ts`, `src/components/Attachment.tsx` (the node figure, the capture panel, the
+> graph-fragment chips), the node-figure CSS, and `tests/uni016-attachments.test.ts` — **24
+> specs**. Attachments are served on every post by `threadById`.
+>
+> | AC | State |
+> |---|---|
+> | **AC1** a node excerpt renders as a node; the same payload renders the same way | ✅ **MET** — asserted structurally, and the two posts' ids are asserted DIFFERENT so it is not comparing a row to itself |
+> | **AC2** a withheld port is visible as withheld, name and value nowhere | ✅ **MET** — beside the known-firing control AC2 asks for by name (a shared port that DOES appear) |
+> | **AC3** facets derived, not typed | ✅ **MET, and stronger than asked** — they are GENERATED columns, so the control is not a grep for a missing setter but an attempted write that Postgres refuses. Asserted on both INSERT and UPDATE, whose messages differ |
+> | **AC4** filtering by (node type, version) over a set with a near miss on each axis | ✅ **MET** — four-thread matrix, each axis varied independently, plus the empty-filter and hidden-thread cases |
+> | **AC5** the signed-out browser hand-off still works, unchanged | ✅ **TRUE, and trivially so — because nothing in the editor was touched.** ⚠️ It is NOT the assertion AC5 wanted, which presumes the POST exists beside it |
+>
+> 🔴 **NOT BUILT — the whole editor half.** `AskAboutNodeDialog` does not POST; it still hands
+> off to the browser with a prefilled composer. **This is the last piece of the task**, and
+> until it lands the platform can receive artifact posts that nothing sends. The route is
+> ready (`POST /api/v1/bench/threads`), the payload shapes are `NodeExcerptPayload` /
+> `CapturePayload` in `src/lib/attachments.ts`, and the bearer token the dialog already holds
+> is the credential.
+>
+> 🔴 **`lesson_step` HAS NO RENDERER, deliberately** — the scope permits it: *"ship the other
+> three and say so"*. UNI-007's format is still moving.
+>
+> 🔴 **BLOB STORAGE IS STILL OWNED BY NO TASK, and the decision is deferred rather than
+> dodged.** A `capture` attachment carries its DIMENSIONS and its consent record and **no
+> image**; `saveCaptureNextTo` still writes to the asker's Documents folder. That is exactly
+> what `CaptureAttachment` (`{width, height, bytes}`) publishes today, so **nothing will have
+> to be migrated** when the answer arrives — an `image_url` column and a writer are the whole
+> change. ⚠️ It intersects deployment. Still Richard's call.
+>
+> ⚠️ **UNI-005 AC4's census moved and was fed.** `post_attachments.payload` and `.note` are
+> **`minor-refused`**, not `machine-derived` — the first draft claimed the latter and the
+> census caught it by demanding a probe the class could not supply. A pupil cannot reach the
+> table at all: an attachment hangs off a `bench_post`, which `board_actor_is_eligible()`
+> refuses them.
 
 > **This is the task D19 exists for.** UNI-015 on its own is plain-text Q&A on our own stack, which
 > is strictly worse than what we chose not to buy. **The specimens are in the pitch artifact —
