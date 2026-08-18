@@ -34,17 +34,32 @@ Richard's, it is free, and it is one form.** It is now the first domino in the w
 > production — each is a back door, and `communitysession.ts` warns against exactly that shape in
 > its own header. The correct state of a deployment with no credential is **503**.
 
-## 🟢 THE ORDER FOR THE NEXT SESSION
+## 🟢 THE ORDER FOR THE NEXT SESSION — REWRITTEN 2026-08-18 (session 30)
 
-1. 🔴 **E4 — UNI-013 slice 5, the page archetypes.** **Now the largest remaining code item, and
-   it is the one to start.** Scoped session 28 from a driven review; findings table in
-   [UNI-013](UNI-013-THE-COMMUNITY-SITE-IN-NODEGX-CLOTHES.md) §"Slice 5". **Three archetypes —
-   index, list, detail — not eight restyles.** The profile is already the detail one.
-2. **E3 — UNI-009 AC1**, the home shows real threads signed out. ⚠️ **Do it inside E4**, not
-   before: it is a composition change to the page E4 redesigns, and doing it twice is doing it
-   twice.
-3. **UNI-001 AC2's launcher affordance** — small, and see the honest gap below.
-4. **E2 — deployment**, once Richard answers E5.
+🔴 **Session 30 wrote NO CODE.** Richard reviewed the running site from screenshots, was *"really
+disappointed visually"* for the **third** time, and this session did the archaeology and the
+scoping instead. **The design is an artifact:
+["Every page is the same page"](https://claude.ai/code/artifact/5cc390dd-a8dc-48c9-b960-b74ed89010e6)
+— open it before writing markup.** Five new task files came out of it.
+
+1. 🔴 **[UNI-019](UNI-019-NOTHING-ON-THE-HOME-PAGE-IS-A-LINK.md) — the home has no links at all.**
+   **START HERE, and it is E3's owner.** Six `<section class="card">`, **zero anchors**, for every
+   viewer. Two of the six name surfaces with no public route. **`/bench` is reachable from nowhere
+   in the app** — not in the nav, and its only inbound link is its own filter pill. ⚠️ **Cheap, and
+   it is the difference between a plain site and a broken one.**
+2. 🔴 **E4 — UNI-013 slice 5, the page archetypes.** Unchanged as the largest remaining code item,
+   ✅ **now with the four components its archetypes are made of named** (facet bar, card-with-a-
+   figure, two empty states, the chip). **Do it with UNI-019, not after** — 1 is a composition
+   change to the page 2 redesigns.
+3. ⚠️ **[UNI-023](UNI-023-ONE-FACET-BAR-SIX-LISTS.md) is the one to do next if the look work
+   continues**, because five other pages are waiting on the same bar and two pill styles already
+   exist on `/bench`.
+4. **UNI-001 AC2's launcher affordance** — small, and see the honest gap below.
+5. **E2 — deployment**, once Richard answers E5.
+
+⚠️ **[UNI-020](UNI-020-A-TUTORIAL-THAT-SAYS-WHAT-IT-TEACHES.md), [UNI-021](UNI-021-REPLAYS-YOU-CAN-ACTUALLY-WATCH.md)
+and [UNI-022](UNI-022-THE-SYLLABUS-PUBLISHED.md) are deliberately OUTSIDE the close** — see the
+README's amended *"explicitly NOT in the close"*. **The close list is still ten items.**
 
 ---
 
@@ -92,8 +107,9 @@ wholesale that somebody else had edited in the meantime.
 |---|---|---|
 | ✅ **E1** | **UNI-001's issuer** | ✅ **BUILT.** Sessions minted, GitHub OAuth, device flow for the editor, sign-out revokes. ⚠️ **AC2's launcher affordance still owed; AC4's grep needs a verdict** |
 | 🔴 **E10** | **A GitHub OAuth App** | 🆕 **NEW, and now the first domino.** Richard's. Without it nobody can make an account, which is the criterion's first verb |
-| 🎯 **E4** | **UNI-013 slice 5 — the pages** | 🔴 **NOT STARTED. The largest remaining code item. START HERE** |
-| 🎯 **E3** | **UNI-009 AC1** — home shows real threads | 🔴 **NOT MET.** Small; fold into E4 |
+| 🎯 **E4** | **UNI-013 slice 5 — the pages** | 🔴 **NOT STARTED. Still the largest remaining code item.** 🆕 s30 named its **four components**; Richard has now said *"sad"* a **third** time |
+| 🎯 **E3** | **UNI-009 AC1** — home shows real threads | 🔴 **NOT MET.** 🆕 **Owned by [UNI-019](UNI-019-NOTHING-ON-THE-HOME-PAGE-IS-A-LINK.md) as of s30**, and it is worse than "the rail is missing": **the home page has no anchors at all** |
+| 🆕 **out** | UNI-020 · UNI-021 · UNI-022 · UNI-023 | 🆕 **SCOPED s30, explicitly NOT in the close.** The content half — routes, schema, filters. 🔴 **Slice 5 alone will not answer Richard's complaint**, because its own scope forbids exactly this half |
 | 🎯 **E2** | **deployment** | 🔴 **Owned by no task.** Blocked on Richard (E5) |
 | ✅ done | UNI-001 E1, 002–006, 009 cut, 011 s1–s2b, 013 s1–s3, 014, 015, 016 | |
 | ⛔ **out** | UNI-017 · UNI-018 · UNI-007 intake · UNI-006 bridge · UNI-011 views · UNI-008 · UNI-010 · UNI-012 · UNI-013 s4 | See the README's *"explicitly NOT in the close"* |
@@ -164,6 +180,46 @@ The composer reads it — which **UNI-016 made true before this session** — an
 what the criterion means to permit. 🔴 **It needs re-wording or a ruling. Do not report it as
 passing**, and do not delete it: the principle it protects (*the editor is fully functional signed
 out, forever*) is one of the phase's two.
+
+---
+
+# 🔴 SESSION 30's FINDINGS — a review, not a build
+
+### A. The pages inherited the tokens and never inherited a design, and the second half has no owner
+
+Session 28 already recorded this and scoped slice 5 for it. What session 30 adds is **why slice 5
+on its own will not satisfy the person who asked for it**: 🔴 **slice 5's own scope says *"no new
+pages, routes, or schema"***, and every one of Richard's asks — tags, levels, embeds, downloads,
+rate filters, search — **is** schema and routes. Restyling nine pages that have nothing on them
+produces nine well-dressed empty pages. **That half was owned by no task**; it is UNI-020…023 now.
+
+### B. Four things that read as design problems and are not
+
+Verified in the source, not inferred from the screenshots:
+
+1. 🔴 **The home cards are not links.** `src/app/page.tsx` — six `<section>`, **zero anchors**.
+   ⚠️ **Not a signed-out artifact**: there is no session branch on that path to get wrong, so the
+   first thing anyone will assume is wrong.
+2. 🔴 **`/bench` is unreachable.** The only internal `href="/bench"` in `src/app` is the Bench's own
+   "All" pill. The nav has seven links and none is it.
+3. 🔴 **`articles.body` is populated and there is no `/tutorials/[slug]`.** The prose is written and
+   there is nowhere to read it.
+4. 🔴 **`replays` cannot be embedded because the table is a bare URL** — no provider, no id, no
+   duration. ⚠️ **And the seeded URLs are `example.invalid`**, so the link has never worked for
+   anybody, which is how a missing `target`/`rel` survived review.
+
+### C. The answer to *"is there a dummy account?"* — yes, and it changes almost nothing
+
+`npm run db:seed` mints **`dev-session-ada` / `-tom` / `-nia` / `-teacher` / `-pupil`**, used as
+`Cookie: nodegx_session=<token>`. ⚠️ **Worth saying out loud because it was the natural first
+hypothesis and it is wrong**: signing in adds a handle to the header and unlocks the org pages.
+**Every complaint above is identical signed in.**
+
+### D. ⚠️ This session ran NO gates and touched NO source
+
+Docs only, in this checkout. **No `test:main`, no `test:ci`, no platform suite, no build.** The
+gate numbers below are session 29's and are quoted, not re-measured — 🔴 **re-measure before
+treating any of them as a floor.**
 
 ---
 
@@ -252,7 +308,7 @@ and one of these two servers will fail it.
 
 | Port | What | Do what with it |
 |---|---|---|
-| **3222** | `next start`, session 29's build. **Served hash `37460e78f1988423.css`, verified against disk, 200.** | Yours to use or kill |
+| ~~**3222**~~ | ~~`next start`, session 29's build~~ | 🔴 **GONE — measured 2026-08-18, session 30: nothing is listening on 3222.** ⚠️ **The good server died and the landmine below did not.** Start your own; do not assume this row |
 | 🔴 **3111** | A `next-server` **~15 hours old**, from session 28's slice-5 review. It predates two rebuilds | ⚠️ **DO NOT REVIEW THE LOOK ON THIS ONE.** Its HTML points at a CSS hash that no longer exists ⇒ **404 stylesheet ⇒ completely unstyled page**, which is indistinguishable from "the design is bad" — the exact misread LANE B exists to fix. It is not known to be mine; leave it or attribute it by PPID first |
 
 ✅ **Kill by port, never by name:** `lsof -nP -iTCP:<port> -sTCP:LISTEN -t`. **`pkill -f "next start"`
