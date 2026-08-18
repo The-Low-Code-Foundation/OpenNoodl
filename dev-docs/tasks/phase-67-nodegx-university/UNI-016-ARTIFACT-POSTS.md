@@ -1,45 +1,118 @@
 # UNI-016 — artifact posts: a question renders as the thing it is about
 
-**Surface:** platform + editor · **Tier 1** · **Effort:** M/L · 🟡 **PLATFORM HALF BUILT
-2026-08-18 (session 27). THE EDITOR'S POST IS NOT BUILT.**
+**Surface:** platform + editor · **Tier 1** · **Effort:** M/L · ✅ **BUILT 2026-08-18
+(session 28) — all five ACs met. Platform half session 27; the editor's POST, and the route
+field it needed, session 28.**
 
-> ## 🟡 WHERE THIS ACTUALLY STANDS — read the second list as carefully as the first
+> ## ✅ WHERE THIS ACTUALLY STANDS — BUILT 2026-08-18 (session 28). All five ACs met.
 >
-> ✅ **Built:** `0009_uni016_attachments.sql` (`post_attachments`, four kinds), `src/lib/
-> attachments.ts`, `src/components/Attachment.tsx` (the node figure, the capture panel, the
-> graph-fragment chips), the node-figure CSS, and `tests/uni016-attachments.test.ts` — **24
-> specs**. Attachments are served on every post by `threadById`.
+> 🔴 **THE HANDOVER'S PREMISE WAS FALSE IN BOTH HALVES, AND MEASURING IT FIRST IS WHAT MADE
+> THE SESSION POSSIBLE.** It said *"the platform can receive artifact posts and nothing sends
+> them"*, and that *"the bearer token the dialog already holds is the credential."* Measured:
+>
+> | Claimed | Measured |
+> |---|---|
+> | the platform can receive artifact posts | 🔴 **No.** `POST /api/v1/bench/threads` took `{section, title, body}`. **`attachToPost` had NO caller in `src/`** — only its own spec. The platform could receive *plain text* |
+> | the dialog already holds a bearer token | 🔴 **No.** `AskAboutNodeDialog` had no token, no token store existed anywhere in the editor, and **`CommunityApiClient` had no caller outside its own spec** — it was also GET-only |
+> | …and the credential could be obtained | 🔴 **No issuer exists.** The only `insert into sessions` statements in the whole platform repo are **in test files**. UNI-001's OAuth is recorded NOT BUILT |
+>
+> So the task was three pieces, not one — *build the caller* for the **ninth and tenth**
+> times, and the tenth is the one where the missing caller was the reason the task existed.
+>
+> ### What was built
+>
+> **Platform** — `parseAttachments` (the boundary), `attachments` on both write routes,
+> `attachAll` inside `askQuestion`/`answerThread`'s **own transaction**, three 0009 constraint
+> names mapped in `bench-http.ts`. `tests/uni016-attachment-intake.test.ts` **14**, plus **2**
+> real-HTTP consequences in `uni015-bench-http.test.ts`.
+>
+> **Editor** — `nodeartifact.ts` (the structured payload), `communitysession.ts` (the token
+> seam), `CommunityApiClient.askQuestion`/`.answer` + the `Write` union, and the composer's
+> two routes. `tests-unit/uni-016/` **42 across 3 files**.
 >
 > | AC | State |
 > |---|---|
-> | **AC1** a node excerpt renders as a node; the same payload renders the same way | ✅ **MET** — asserted structurally, and the two posts' ids are asserted DIFFERENT so it is not comparing a row to itself |
-> | **AC2** a withheld port is visible as withheld, name and value nowhere | ✅ **MET** — beside the known-firing control AC2 asks for by name (a shared port that DOES appear) |
-> | **AC3** facets derived, not typed | ✅ **MET, and stronger than asked** — they are GENERATED columns, so the control is not a grep for a missing setter but an attempted write that Postgres refuses. Asserted on both INSERT and UPDATE, whose messages differ |
-> | **AC4** filtering by (node type, version) over a set with a near miss on each axis | ✅ **MET** — four-thread matrix, each axis varied independently, plus the empty-filter and hidden-thread cases |
-> | **AC5** the signed-out browser hand-off still works, unchanged | ✅ **TRUE, and trivially so — because nothing in the editor was touched.** ⚠️ It is NOT the assertion AC5 wanted, which presumes the POST exists beside it |
+> | **AC1** a node excerpt posted **from the editor** renders as a node | ✅ **MET** — and only now: the route it names could not take an attachment until this session. Driven over real HTTP |
+> | **AC2** a withheld port is visible as withheld, name and value nowhere | ✅ **MET — and the assertion MOVED to where it can fail.** See the finding below |
+> | **AC3** facets derived, not typed | ✅ **MET** — generated columns, now also proved end-to-end through the wire |
+> | **AC4** filtering by (node type, version) | ✅ **MET** (unchanged, session 27) |
+> | **AC5** the signed-out browser hand-off still works | ✅ **MET, AND NO LONGER TRIVIALLY.** It was true only because nothing in the editor had been touched. This is the commit that adds the thing it would be deleted in favour of, and the hand-off is asserted rendered *outside* the signed-in branch, with a negative control |
 >
-> 🔴 **NOT BUILT — the whole editor half.** `AskAboutNodeDialog` does not POST; it still hands
-> off to the browser with a prefilled composer. **This is the last piece of the task**, and
-> until it lands the platform can receive artifact posts that nothing sends. The route is
-> ready (`POST /api/v1/bench/threads`), the payload shapes are `NodeExcerptPayload` /
-> `CapturePayload` in `src/lib/attachments.ts`, and the bearer token the dialog already holds
-> is the credential.
+> ### 🔴 THE FINDING: AC2's ASSERTION WAS ON A POPULATION WHERE IT COULD NOT FAIL
+>
+> Session 27 asserted AC2 platform-side: a withheld port's name and value appear nowhere in
+> the served page. **But the withheld name was never in the request** — the editor buckets it
+> away before sending — so no implementation of that route could have emitted it. The
+> assertion was true by construction, and an absence check that cannot fail is not evidence.
+>
+> ✅ **It now lives in `tests-unit/uni-016/nodeartifact.test.ts`, where the withheld port IS in
+> the input** as a row the composer offered and the user left unticked. Dropping it is work the
+> code does, and the spec fails if it stops. The platform's version is **kept and relabelled**
+> as the weak form — it proves the renderer does not *invent* a name from `withheldPorts`.
+>
+> ### 🔴 TWO SECOND-ORDER FINDINGS, BOTH CAUGHT BY A KNOWN-FIRING CONTROL
+>
+> 1. **`apiSql()`'s cached pool does not survive `resetSchema`, and the symptom is a suite that
+>    PASSES.** postgres.js resolves enum OIDs at connect time; `drop schema public cascade`
+>    invalidates them; every route-handler call after the first in a file then fails with
+>    `XX000: cache lookup failed for type <oid>` — which `refusalResponse` maps, **by design**,
+>    to an indistinguishable 400. So a spec asserting *"this is refused"* went green **without
+>    ever reaching the route**. Fixed with `resetApiSql()`, called by `freshDb()`.
+>    ⚠️ **It flipped no existing test** (692→706 = exactly the 14 new ones), so it had bitten
+>    only the new file — but it was one route-handler refusal spec away from being invisible.
+> 2. **An escaped quote made an absence assertion pass trivially.** `WITHHELD_VALUE` contains
+>    literal double quotes, as a real text preview value does. Asserted against
+>    `JSON.stringify(payload)`, the quotes are escaped to `\"`, so `not.toContain('"ACME-…"')`
+>    **passes whether or not the value is there**. ✅ Compare *values*, via `artifactStrings`,
+>    never serialised text. In both cases the thing that spoke was the control asserting the
+>    same string is PRESENT in the positive arm.
+>
+> ### ⚠️ WHAT IS NOT PROVED, STATED PLAINLY
+>
+> 🔴 **The dialog's button was never clicked.** The payload is graded, the transport is graded,
+> the platform's end is driven over real HTTP — but the wire between the button and the client
+> is **read as source, not run**. There is no DOM and no React in this checkout's jest runner
+> (`base-dialog/measuring-copy.test.ts` establishes both the limit and this response to it), so
+> `composer-sends-what-it-shows.test.ts` holds the properties by source analysis with negative
+> controls. **A real drive needs a session token no issuer can mint and a platform deployed
+> nowhere.** Counted as a gap, not as met.
+>
+> 🔴 **No real user can post.** `readCommunitySession()` returns `null` for everybody until
+> UNI-001 has an issuer, so **the browser hand-off is the only reachable route today**. That is
+> AC5 working rather than a shortfall — but it means the POST path's *end-to-end* behaviour is
+> evidenced by specs and not by a person.
+>
+> ### Scope calls made here, recorded so they are decisions rather than drift
+>
+> - 🔴 **The graph excerpt stays in the body; it is NOT posted as a `graph_fragment`.** That
+>   kind is **UNI-018's pull unit** — the shape a reader pulls into their editor *and runs*.
+>   UNI-011's excerpt is bucketed types and wiring, deliberately not executable and not
+>   reconstructible. Filing it under the kind that means *"this can be pulled"* would hand
+>   UNI-018 a population it cannot honour. Asserted.
+> - 🔴 **No `warningCode` is sent.** This editor has no warning *code* — `WarningsModel` yields
+>   a free-text sentence with the user's own content in it. Slicing a facet out of that would
+>   put project content into an indexed column that renders as a public filter chip, which is
+>   the opposite of what UNI-011's redactor is for. The facet is null, and null is correct.
+> - **`parseAttachments` does NOT restate 0009's payload-shape rules.** The migration is the one
+>   copy; the constraint names map to 400s. What the boundary *does* own is what the database
+>   cannot say: **how many** (`MAX_ATTACHMENTS_PER_POST = 4`) and **how big**
+>   (`MAX_PAYLOAD_BYTES = 32 KB`) — a signed-in stranger posting a 40 MB document is a resource
+>   decision, not a constraint violation, and until now the only writer was a spec.
+> - **`localStorage` is the session store** (`JSONStorage`), and the renderer is
+>   `nodeIntegration: true`. Acceptable for a community session; 🔴 **recorded as a condition**:
+>   if UNI-001 ever issues a token reaching payment, an org roster or a pupil's record, this is
+>   the wrong store and the keychain is the right one.
 >
 > 🔴 **`lesson_step` HAS NO RENDERER, deliberately** — the scope permits it: *"ship the other
 > three and say so"*. UNI-007's format is still moving.
 >
-> 🔴 **BLOB STORAGE IS STILL OWNED BY NO TASK, and the decision is deferred rather than
-> dodged.** A `capture` attachment carries its DIMENSIONS and its consent record and **no
-> image**; `saveCaptureNextTo` still writes to the asker's Documents folder. That is exactly
-> what `CaptureAttachment` (`{width, height, bytes}`) publishes today, so **nothing will have
-> to be migrated** when the answer arrives — an `image_url` column and a writer are the whole
-> change. ⚠️ It intersects deployment. Still Richard's call.
+> 🔴 **BLOB STORAGE IS STILL OWNED BY NO TASK.** A `capture` carries dimensions and consent and
+> **no image**; `saveCaptureNextTo` still writes to the asker's Documents folder — **on both
+> routes**, asserted, because that file is the only copy of the picture there is. An
+> `image_url` column and a writer remain the whole change. Still Richard's call.
 >
 > ⚠️ **UNI-005 AC4's census moved and was fed.** `post_attachments.payload` and `.note` are
-> **`minor-refused`**, not `machine-derived` — the first draft claimed the latter and the
-> census caught it by demanding a probe the class could not supply. A pupil cannot reach the
-> table at all: an attachment hangs off a `bench_post`, which `board_actor_is_eligible()`
-> refuses them.
+> **`minor-refused`**, not `machine-derived`.
 
 > **This is the task D19 exists for.** UNI-015 on its own is plain-text Q&A on our own stack, which
 > is strictly worse than what we chose not to buy. **The specimens are in the pitch artifact —

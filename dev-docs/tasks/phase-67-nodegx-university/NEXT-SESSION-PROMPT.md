@@ -16,48 +16,113 @@ traps apply there.
 
 ---
 
-# ✅ THE BENCH IS BUILT. D19's tranche is now three-quarters landed.
+# ✅ UNI-016 IS BUILT. D19's tranche is four-fifths landed.
 
-**Platform `cdc7b17`. Editor `eeb64051` (code) + `bf7dcbba` (this handover).**
-
-**UNI-015 — all five ACs met.** **UNI-016 — platform half built, AC1–AC4 met.**
-
-🔴 **The one thing left in UNI-016 is the editor's POST, and it is the whole reason the tranche
-exists.** The platform can receive artifact posts and **nothing sends them**:
-`AskAboutNodeDialog` still hands off to the browser with a prefilled composer. **That is the
-next task.**
+**UNI-014, UNI-015, UNI-016 done. UNI-017 half pre-built. UNI-018 not started.**
 
 ---
 
-# WHERE THE PHASE IS — 2026-08-18 (session 27)
+# 🔴 START HERE: THE HANDOVER YOU ARE READING REPLACED ONE THAT WAS WRONG. CHECK THIS ONE TOO.
+
+Session 27's handover said UNI-016 had *"one thing left — the editor's POST"*, that *"the platform
+can receive artifact posts and nothing sends them"*, and that *"the bearer token the dialog
+already holds is the credential."* **All three were false**, and twenty minutes of grepping before
+writing any code is what found it:
+
+| Claimed | Measured |
+|---|---|
+| the platform can receive artifact posts | 🔴 `POST /api/v1/bench/threads` took `{section, title, body}`. **`attachToPost` had NO caller in `src/`** — only its own spec |
+| the dialog already holds a bearer token | 🔴 No token, no store anywhere in the editor, and **`CommunityApiClient` had no caller outside its own spec** — and was GET-only |
+| …so the credential exists | 🔴 **No issuer.** The only `insert into sessions` in the whole platform repo are **in TEST FILES** |
+
+*Build the caller*, **ninth and tenth** instances in this phase — and the tenth is the one where
+the missing caller **was the reason the task existed**. ✅ **The habit that worked: grep for the
+callers of every function a handover says is ready, before believing the handover.** Two greps.
+
+---
+
+# WHERE THE PHASE IS — 2026-08-18 (session 28)
 
 | Track | Tasks | State |
 |---|---|---|
-| **Platform** | UNI-001 (AC3), 002–006, 009 cut, 011 s1, 013 s1–s3, **014** | 🟢 pushed |
-| **Platform** | **UNI-015 — the Bench** | ✅ **BUILT. 5/5 ACs.** `cdc7b17` |
-| **Platform** | **UNI-016 — artifact posts** | 🟡 **PLATFORM HALF BUILT (AC1–AC4).** 🔴 **Editor POST NOT built — START HERE** |
-| **Platform** | UNI-017 — the queue and the signal | 🟡 **Partly pre-built by UNI-015**: `unansweredQueue()` exists and `/bench` renders it with the clock. *Same here* is untouched |
+| **Platform** | UNI-001 (AC3), 002–006, 009 cut, 011 s1, 013 s1–s3, **014**, **015** | 🟢 pushed |
+| **Both** | **UNI-016 — artifact posts** | ✅ **BUILT. 5/5 ACs.** The editor POSTs; the platform's routes take attachments |
+| **Platform** | UNI-017 — the queue and the signal | 🟡 **Half pre-built by UNI-015**: `unansweredQueue()` exists and `/bench` renders it with the clock. ***Same here* is untouched. 🟢 THE NEXT TASK** |
 | **Editor** | UNI-018 — pull a graph | 🔴 NOT BUILT. 🔴 **Read its §"THE HAZARD" before scoping** |
+| **Platform** | **UNI-001's issuer** | 🔴 **NOW LOAD-BEARING.** Everything UNI-016 built is unreachable without it — see below |
 | **Platform** | UNI-007 intake / personalised path | 🟡 Still the one platform piece nobody has looked at |
 | **Platform** | **deployment** | 🔴 **Owned by NO TASK. Still the top ask.** |
 | **Editor / MCP** | UNI-012 | ✅ Ruled, scoped, **NOT built. Buildable now** |
 | **Platform** | UNI-013 slice 4 (12 badge SVGs) | 🔴 Richard's. Degrades rather than blocks |
 
-## What session 27 did
+## 🔴 THE ONE THING THAT CHANGED SHAPE: UNI-001's ISSUER IS NOW THE BOTTLENECK
 
-**Platform `cdc7b17`** — `0008_uni015_bench.sql`, `0009_uni016_attachments.sql`,
-`src/lib/{bench,postbody,attachments,bench-http}.ts`, four `/api/v1/bench` routes, `/bench` and
-`/bench/[threadId]`, `PostBody.tsx` + `Attachment.tsx`, the Bench and node-figure CSS, and the
-**Discourse decommission** (three files deleted, `forum_threads` dropped, `{forum:'absent'}`
-removed, the challenge registry re-pointed).
+UNI-016's POST path is built, specced and typed end to end — **and no human being can reach it**,
+because `readCommunitySession()` returns `null` for everybody and nothing mints a session. The
+browser hand-off is the only route a real user has. That is AC5 working exactly as written, and it
+means **the next unit of user-visible value in this tranche is not UNI-017 or UNI-018 — it is
+plain session auth on the platform plus a sign-in in the editor.** D19 struck the OIDC provider
+face (there is no second system to federate with), so what is left is small: issue a token, store
+it under `nodegx.community.session`, done. ⚠️ **Weigh that against UNI-017 before choosing.**
 
-**Editor `eeb64051`** — the shared golden corpus and the spec that pins its hash. Nothing else in
-the editor changed. ⚠️ **This checkout's HEAD has moved on since**: a peer committed `7947d193`
-(FIX-021 slice B) afterwards, which is normal here and touches nothing of this phase's.
+## What session 28 did
+
+**Platform** — `parseAttachments` (the boundary), an `attachments` field on both write routes,
+`attachAll` **inside `askQuestion`/`answerThread`'s own transaction**, and three 0009 constraint
+names mapped to 400s in `bench-http.ts`. Plus `resetApiSql()` — see the harness trap below.
+
+**Editor** — `nodeartifact.ts` (the structured payload), `communitysession.ts` (the token seam),
+`CommunityApiClient.askQuestion`/`.answer` with a five-outcome `Write` union, and the composer's
+two routes. 🔴 **The browser hand-off is kept and now asserted**, with a negative control.
 
 ---
 
-# 🔴 FIVE THINGS MEASURED THAT THE TASK FILES HAD WRONG — read before touching any of it
+# 🔴 SESSION 28's FINDINGS — three, and two are about instruments that lied
+
+### A. AC2's assertion was on a population where it could not fail
+
+Session 27 asserted AC2 — *"a withheld port's name and value appear nowhere"* — against the
+served page. **But the withheld name is never in the request**: the editor buckets it away before
+sending, so **no implementation of that route could have emitted it**. True by construction, and
+an absence check that cannot fail is not evidence.
+
+✅ It now lives in `tests-unit/uni-016/nodeartifact.test.ts`, where the withheld port **is** an
+input row the user left unticked, so dropping it is work the code does. The platform's copy is
+**kept and relabelled as the weak form** — it still proves the renderer does not *invent* a name
+out of `withheldPorts`. 🔴 **The general rule: an absence assertion is only worth its ink if the
+string could have been present. Ask which side of the wire the fixture puts it on.**
+
+### B. 🔴 `apiSql()`'s CACHED POOL DOES NOT SURVIVE `resetSchema`, AND THE SYMPTOM IS A GREEN SUITE
+
+postgres.js resolves user-defined type OIDs — every enum — when a connection is established.
+`freshDb()` does `drop schema public cascade`, so those OIDs stop existing while the pooled
+connection stays open, and **every route-handler call after the first in a file** fails with
+`XX000: cache lookup failed for type <oid>`. `refusalResponse` maps an unrecognised message to a
+**400 with no detail, by design** — so a spec asserting *"this input is refused"* goes green
+**without the route ever running**.
+
+✅ Fixed with `resetApiSql()`, called by `freshDb()` so no spec has to remember. ⚠️ **It flipped
+no existing test** (692 → 706 = exactly the 14 new ones), so it had bitten only the new file —
+but it was one route-handler refusal spec away from being permanently invisible.
+🔴 **It was found by a known-firing control**: the refusal specs were green and the control
+asserting the *same* request SUCCEEDS was red.
+
+### C. An escaped quote made an absence assertion pass trivially
+
+A text preview value carries literal double quotes (`previewValue()` renders `"Invoice for Acme"`
+that way). Asserted against `JSON.stringify(payload)`, JSON escapes them to `\"` — so
+`expect(serialised).not.toContain('"ACME-1183-INVOICE"')` **passes whether or not the value is
+in there.** ✅ **Compare values via an enumeration (`artifactStrings`), never against serialised
+text.** Found by the same shape of control as B: the positive arm asserting the string IS present
+once the row is ticked.
+
+⚠️ **B and C are the same lesson twice in one session.** An absence assertion needs a positive
+arm that fails when the mechanism is broken — and in both cases the positive arm was the only
+thing that spoke.
+
+---
+
+# 🔴 SESSION 27's FINDINGS — still current, read before touching any of it
 
 ### 1. `recordEvent` could not be called inside a transaction, and the symptom was a lost QUESTION
 
@@ -113,6 +178,14 @@ The JSON is the half that binds. Written into `0008`'s comment out loud so the b
 as evidence that anything was migrated.
 
 ---
+
+# 🔴 THREE HARNESS TRAPS. The third is session 28's and is the worst of them.
+
+0. 🔴 **`freshDb()` + a ROUTE HANDLER = a suite that passes without running the route.** Fully
+   described as finding B above. It is listed here as well because the next person to write a
+   route-handler spec will hit it and will not read a findings section first. ✅ **Already fixed**
+   — `freshDb()` calls `resetApiSql()`. ⚠️ **If you add a second cached pool anywhere, it needs
+   the same treatment**, and the failure will look like a passing test.
 
 # 🔴 TWO HARNESS TRAPS THAT COST TWO DEBUGGING PASSES
 
@@ -220,6 +293,23 @@ config, and running it starts Next's interactive setup.
 ---
 
 # Things the next person will otherwise re-derive
+
+**The editor repo (session 28):**
+
+- 🔴 **`expect(value, message)` is VITEST. This checkout is JEST**, and the second argument is a
+  hard compile error in a `.test.ts` that `tsc -p tsconfig.tests.json` will catch — but only if
+  you run it. Put the failing value **inside** the assertion (`expect({value, ok}).toEqual({value,
+  ok: true})`) or the report says `false !== true` and names nothing.
+- 🔴 **There is NO DOM and NO React in this checkout's jest runner.** A rendered component test is
+  not available. The established response is source analysis with negative controls derived from
+  the **real current source** — `base-dialog/measuring-copy.test.ts` is the precedent and
+  `uni-016/composer-sends-what-it-shows.test.ts` follows it. ⚠️ **Say in the file what that does
+  not prove**, or a source read gets counted as a drive.
+- ⚠️ **`test:main` collects its file list at start.** A spec written while it is running is not in
+  the run, and the summary looks complete. **Reconcile the suite count**, exactly as the
+  `lsof` trap requires for vitest.
+
+
 
 **The platform repo:**
 
