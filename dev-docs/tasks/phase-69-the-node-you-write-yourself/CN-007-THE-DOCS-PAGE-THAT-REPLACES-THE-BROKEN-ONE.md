@@ -8,6 +8,34 @@
 | **Rulings** | ⚠️ **D5** — carries a **required mitigation** · ✅ **D2**, ✅ **D8** |
 | **Depends on** | CN-005 (types the examples must typecheck against), CN-006 (the scaffold it documents) |
 
+## ✅ s26 (2026-08-18) — AC5's stale clause rewritten, and four sections the page still owed
+
+🔴 **AC5 said: *"do not claim the logic half works — CN-012 has not run."* CN-012 has run and it
+works**, so the page was carrying a disclaimer about its own product. The note now reads *"Two kinds
+of node, and both are covered"* and points at a real section.
+
+Added to `docs-site/docs/custom-nodes.md`:
+
+| Section | Owner |
+|---|---|
+| **Logic nodes: no React, no DOM** | CN-012 — a complete `Accumulator` sample, compiled by the gate against `LogicNodeDefinition`, plus the `runOnValueChange` caution (it declares the checkbox and **does not wire it**) |
+| **Where your kit runs** | CN-013 — the `runtimes` table, cloud carrying logic nodes only and unable to `require`, and why there is no `"ssr"` value |
+| **Ports that appear only when they are relevant** | ✅ **CN-010 AC4** — a worked conditional port group, and D12's `channelPort` refusal |
+| **Telling people what your node is for** | ✅ **D10** — the `docs` / `docsUrl` pair, and why a URL in `docs` is the wrong field |
+
+⚠️ **The rough edges were re-measured, not copied.** *"The preview does not always pick up a new
+kit"* is corrected — CN-014 AC1 (s20) fixed the library half, so a reload now does deliver a new
+node and a renamed port. Two new edges added: the missing `--success`/`--warning` tokens, and the
+open property panel that does not refresh itself (D11).
+
+✅ **AC1 holds.** The sample gate's fragment budget rose **4 → 7**, each new fragment named in the
+test so a deliberate rise is distinguishable from drift, and it gained a **floor on the compiled
+count** — otherwise the budget could be satisfied by turning complete samples into fragments.
+
+⚠️ **AC2 is still open and is the one thing left**: *"following the page from scratch produces a
+working node in the picker"*, done by someone who has not read this phase, recording where they
+stall. It cannot be self-graded by the person who wrote the page.
+
 ## The reader
 
 Someone who tried the Noodl 2.7 `create-react-lib` guide and gave up — the single most-cited dead end

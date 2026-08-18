@@ -33,7 +33,7 @@ import * as path from 'node:path';
 import { catalogIndex, setCatalogOverlay } from '../src/catalog';
 import { clearProjectOverlay, extractProjectOverlay } from '../src/kitOverlay';
 import { ProjectStore } from '../src/project/ProjectStore';
-import { preconditionDiagnostics, authoredProjectViews, validateOnDisk } from '../src/validate';
+import { preconditionDiagnostics, authoredProjectViews, validateCandidate, validateOnDisk } from '../src/validate';
 import { buildKitExtractor } from './helpers';
 
 const FIXTURES = path.join(__dirname, 'fixtures');
@@ -322,6 +322,41 @@ describe('✅ D13 — the second pipeline now checks parameter values too', () =
       (d) => d.code === 'invalid-parameter-value'
     );
     expect(authored.map((d) => d.location.nodeType).sort()).toEqual(['Group', 'demo.kit.Badge']);
+  });
+
+  /**
+   * 🔴 **The regression D13 caused, found by driving CN-009 AC5 rather than by
+   * any suite, and fixed in the same session.**
+   *
+   * `validateCandidate` merges the semantic validator's report with
+   * `preconditionDiagnostics`. Both now run `checkParameterValues` — the rules
+   * pipeline because D13 registered `parameterValue`, the preconditions because
+   * they always did. So every parameter-value finding appeared **twice**: in
+   * `diagnostics`, in the `readable` list an agent is shown, and in the
+   * `summary` counts. A rejection naming one mistake twice reads as two.
+   *
+   * ⚠️ Nothing went red. `cn004.test.ts` above compares the two pipelines by
+   * calling them **separately**, and the staging tests assert codes rather than
+   * cardinality — so the overlap was invisible to every existing assertion.
+   * This row is the one that would have caught it.
+   */
+  it('reports one mistake once, though two pipelines now find it', () => {
+    useOverlay(KIT_APP);
+    const store = new ProjectStore(KIT_APP);
+    const stored = store.readComponent('App');
+    const candidate = JSON.parse(JSON.stringify(stored.files));
+    candidate.nodes.nodes.find((n: { id: string }) => n.id === 'app_group').parameters = { opacity: 'lots' };
+
+    const result = validateCandidate(store, 'App', candidate, stored.files);
+    const opacity = result.diagnostics.filter((d) => d.location.port === 'opacity');
+
+    // Exactly one, not two. The finding itself is asserted by the rows above;
+    // what this grades is cardinality.
+    expect(opacity).toHaveLength(1);
+    // And the summary an agent reads is counted off the same deduped list.
+    expect(result.summary.errors + result.summary.warnings).toBe(
+      result.diagnostics.filter((d) => d.severity !== 'info').length
+    );
   });
 
   /**

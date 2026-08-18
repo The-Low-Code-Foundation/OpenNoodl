@@ -1,174 +1,183 @@
-# Phase 69 — next session (s26). **The closing run.**
+# Phase 69 — next session (s27). **Everything left is one stack.**
 
-**Written 2026-08-18, end of session 25.** 🔴 **This file is a REWRITE, not an amendment.** It is
+**Written 2026-08-18, end of session 26.** 🔴 **This file is a REWRITE, not an amendment.** It is
 overwritten every session; if you find yourself prepending, rewrite it instead. Everything that
 outlives the phase goes to memory, not here.
 
 Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first.
 
-> ## 🔴 Richard's instruction, 2026-08-18: **close this phase as fast as possible.**
+> ## 🔴 Richard's standing instruction: **close this phase as fast as possible.**
 >
-> Tiers 0–5 only. **CN-016 and CN-017 are Bundle C and stay deferred** — they are tier 6, both **L**,
-> and they want their own scoping conversation, not a slot at the end.
+> Tiers 0–5 only. **CN-016 and CN-017 are Bundle C and stay deferred.**
 >
-> **CN-013 is CLOSED but for one confirmation drive.** Its cloud half and its SSR half were both
-> built in s25. §2 is the order to work in. **§3 is the one thing that will waste your session if
-> you skip it.**
+> ## ✅ s26: ALL FIVE OUTSTANDING RULINGS ARE BUILT. CN-009 IS CLOSED.
+>
+> **D10, D12, D13, D14, D16** — every ruling in the queue is now code with tests and mutants.
+> **CN-009 AC5 is driven and the task is closed.** **CN-010 AC4 is written.**
+>
+> 🔴 **What is left is now ONE THING: a stack.** Every remaining criterion in this phase is a drive.
+> There is no more coding to do first. **§2 is that stack. §3 is why s25 and s26 both refused to
+> launch it, and it is the first thing to check.**
 
 ---
 
-## 1. What is left — nine items, and nothing is blocked
+## 1. What is left — and it is all one session's work if the tree is clean
 
-| Task | Left | Where |
+| Task | Left | Needs |
 |---|---|---|
-| **CN-013** | a rendered SSR page, confirmed | **Step 1** — 20 min, in Bundle A's stack |
-| **CN-008** | AC1 — a live model places a kit node | **Step 2 (Bundle A)** |
-| **CN-009** | AC5's consequence — same drive | **Step 2 (Bundle A)** |
-| **CN-014** | AC1's 2nd clause, AC2, AC3 | **Step 2 (Bundle A)** |
-| **CN-011** | all of it, incl. D8's cashflow tokenisation | **Step 3** — 🔴 **gates CN-007** |
-| **CN-007** | AC2, and rewrite the stale AC5 | **Step 4** |
-| **CN-010** | AC4 | **Step 5** |
-| **D10, D12, D13, D14, D16** | the five outstanding rulings | **Step 5** |
+| **CN-013** | AC1's last clause — a **rendered** SSR page | the stack |
+| **CN-008** | AC1 — a live model places a kit node | the stack **+ a real API key** |
+| **CN-014** | AC1's 2nd clause, AC2, AC3 | the stack |
+| **CN-011** | AC2 (both themes, token change without reload), AC3 (variant round-trip, **reader** path) | the stack |
+| **CN-007** | AC2 — a fresh reader follows the page | a person/agent who has not read this phase |
+| **CN-010** | `parameterEncoding` is still `{known:false}` on every overlay node | no stack; small |
 
-✅ **Done and not to be revisited: D17, D18.** **D9, D11, D15** need no work. **CN-001**…**CN-006**,
-**CN-006b**, **CN-012**, **CN-015**, **CN-018**, **CN-019** are closed.
+✅ **Closed and not to be revisited:** CN-001…CN-006, CN-006b, **CN-009**, CN-012, CN-015, CN-018,
+CN-019, and **every ruling D1–D18**. **D9, D11, D15** need no work; **D11 is a deferral WITH AN
+OWNER** and still wants a task number in a later phase.
 
-## 2. 🔴 The order, and why it is this order
+## 2. 🔴 The stack, and the order to run it in
 
-**Step 1 — CN-013's last drive (do it inside Bundle A's stack, not on its own).**
-Deploy a project with a kit at `deployRenderingMode: 'ssr'`, serve it, `curl` the HTML, and look for
-the kit node's output **in the server response before any JavaScript runs**. ⚠️ **A built-in node in
-the same page is the control** — without it, "the kit node is there" cannot be told from "SSR
-rendered the whole page fine anyway", and "it is missing" cannot be told from "SSR rendered
-nothing". This is now a **confirmation** drive: the seam is already measured on both sides of the
-fix. **CN-013 closes on it.**
-
-**Step 2 — BUNDLE A: one stack, one fixture, every remaining drive.** This is the whole speed-up;
-the overhead has always been the launch/teardown cycle, not the coding.
+**Build ONE fixture before launching.** Start from a `cp -R` of `NodeGX test projects/cn012-drive`
+(carries `tally-kit`). It needs: a healthy kit · a kit to rename a port in · a kit to add a node to ·
+a kit to break · a kit for the SSR deploy. ⚠️ **Write every observation down before launching.** A
+bundled drive is exactly where *"it looked fine"* gets in. 🔴 **Bundle the drives; do NOT bundle the
+conclusions** — ten consecutive sessions have found a false premise, s26 included (see §4).
 
 | Drive | What it wants |
 |---|---|
-| **CN-008 AC1 + CN-009 AC5** | a live model authoring in a project with a kit — the graph must use the kit's nodes rather than a hand-rolled `Group`. 🔴 **A registered MCP server loads `/Applications/…`, not this checkout** — build the bundle to a **scratch** esbuild path (never over `packages/noodl-mcp/dist/`, which peers' registered servers load), pass `--all-tools`, read `inputSchema` from `tools/list` before calling |
+| **CN-013** | Deploy with `deployRenderingMode: 'ssr'`, serve, `curl`, and find the kit node's output **before any JS runs**. ⚠️ **A built-in node in the same page is the control** — without it, "the kit node is there" cannot be told from "SSR rendered the page fine anyway", and "it is missing" cannot be told from "SSR rendered nothing". **Confirmation, not discovery**: the seam is measured on both sides of the fix |
 | **CN-014 AC1** | rename a port in a kit → the panel shows the new name and the old connection is **dropped with a diagnostic**, not silently retained |
 | **CN-014 AC2** | add a node to a kit → it appears in the picker, no restart |
-| **CN-014 AC3** | a kit with a **syntax error** reports it rather than leaving the previous version silently running. 🔴 **A stale module that still works is the worst outcome** |
+| **CN-014 AC3** | a kit with a **syntax error** reports it. 🔴 **A stale module that still works is the worst outcome** |
+| **CN-011 AC2** | a `var(--token)` colour resolving in **both** themes, and a token change propagating **without a reload**. ⚠️ s15 read ONE theme. 🔴 **Read the rgb triple, never a screenshot** — `#1F8A4C` and `#16a34a` are both "green" |
+| **CN-011 AC3** | create a variant on a kit node, save, reload, still there. 🔴 **Test the READER path** — a spec containing a save cannot catch this |
+| **CN-008 AC1** | a live model authoring in a project with a kit — the graph must use the kit's nodes, not a hand-rolled `Group` |
 
-✅ **Build ONE fixture before launching:** a healthy kit, a kit to rename a port in, a kit to add a
-node to, a kit to break, and a kit for the SSR deploy. ✅ **Start from
-`NodeGX test projects/cn012-drive`** — s24's `cp -R`, already carrying `tally-kit`.
-⚠️ **Write every observation down first.** A bundled drive is exactly where *"it looked fine"* gets
-in. 🔴 **Bundle the drives; do NOT bundle the conclusions** — nine consecutive sessions have found a
-false premise. Measure everything, then stop and read.
+### 🔴 There is no headless deploy path — CN-013 must go through the editor
 
-**Step 3 — CN-011, and it must come before CN-007.** Mostly making an existing capability the
-default rather than building capability. ⚠️ It carries **D8's concrete obligation: tokenise the
-cashflow kit**, and that **gates CN-007's worked example** — the flagship docs currently plan to
-cite a kit that teaches the opposite of its own ruling. ⚠️ **The token vocabulary gap bites here:**
-the semantic set has `--destructive` but **no `--success` and no `--warning`**, so a kit with three
-status bands reaches into the palette scale for two of them.
+`deployRenderingMode` is written **only** by `DeployToFolderTab.tsx`, and there is no CLI. The drive
+is: launch, open the project, and in the renderer call
+`createEditorCompilation(ProjectModel.instance).addProjectBuildScripts().deployToFolder(dir, { environment, runtimeType: 'ssr' })`
+— that is exactly what the button does, minus the file dialog. Then `npm install && npm run build &&
+npm start` in the output folder per `static/ssr/README.md`.
 
-**Step 4 — CN-007.** AC2 (following the page from scratch produces a working node) and 🔴 **AC5 is
-STALE**: it says *"do not claim the logic half works — CN-012 has not run."* **CN-012 has run and it
-works**, so the page needs a logic-node section and that clause rewritten. Material:
-[notes/cn-012-measurement.md](notes/cn-012-measurement.md). ⚠️ **D10 lands here too** — a kit's
-separate `docsUrl` is what unblocks CN-007's docs link, so do D10 before writing the page, not after.
+### ⚠️ CN-008 AC1 is the one criterion that needs something this repo cannot provide
 
-**Step 5 — CN-010 AC4 and the four remaining rulings.** All small, all independent, no stack needed.
-Do **D13 last**: it turns on `validate:project`'s parameter-value check and is **expected to go red
-on real projects — that is the point, do not soften it.**
+It needs a **real model call** through the editor's `AuthoringSession`, i.e. an API key and real
+spend. Everything else in §2 is free. If no key is available, **say AC1 is unmet and why** — do not
+substitute "the handout appears in the prompt", which CN-008's own AC1 names as the mechanism that
+would be equally true of a broken feature.
 
-| Ruling | What it obliges |
-|---|---|
-| **D10** | a kit gets a separate `docsUrl`; touches `ReactNodeDefinition`, `NodeDefinitionOptions`, the scaffold, CN-006b's panel |
-| **D12** | `channelPort` **rejected at kit-load with a diagnostic**. Seam: `kitDiagnostics` in `nodegx-kit-catalog/src/health.js`, fed by `toDynamicPorts` (`src/index.js:213`), the one place `channelPort` is recognised. Census stands: **1 occurrence in 177 types, a test fixture's own node** |
-| **D14** | close `NodeDefinitionOptions`' index signature. ⚠️ **Update `drift.test.js`' "one deliberate divergence" row to name TWO**, with reasons — do not delete it. **CN-005's surface** |
-| **D16** | suppress the `Page` parameter-skip `info` — ⚠️ **narrowed to `Page`'s two undeclared fields**. Richard's recorded worry is the effect on **LLM page authoring**, and a wholesale suppression would hide a real parameter error on a page |
-| **D13** | `validate:project` checks parameter values. 🔴 **REPLACE `cn004.test.ts`'s last block, do not delete it** (CN-002's rule) |
+## 3. 🔴 CHECK THIS BEFORE ANYTHING ELSE. It cost s25 and s26 their drives.
 
-## 3. 🔴 Read this before you touch anything. It cost s25 a second commit
+**A peer has had uncommitted editor source in this shared checkout for two sessions.** At s26's end:
 
-**Shipping a capability turns working diagnostics into lies, and every suite stays green.**
+```
+ M packages/noodl-editor/src/editor/src/models/community/communitysession.ts
+ M .../views/DialogLayer/components/AskAboutNodeDialog/AskAboutNodeDialog.tsx
+?? .../models/community/communityorigin.ts        ?? .../models/community/communitysignin.ts
+?? packages/noodl-editor/tests-unit/uni-001/
+```
 
-s25 built the cloud kit loader. `effectiveKitRuntimes` then reported every cloud-enabled kit as
-running **nowhere** and `kit-loads-nowhere` still told authors to *"add browser"* — both correct the
-day before, both false the moment the loader landed, **all suites passing**. The function had even
-predicted it in a comment (*"the day a cloud loader exists, this function is the one place that has
-to learn about it"*) and **that did not fire either. A comment naming its own staleness is not a
-gate.**
+Two of those are **new files**. A stack launched over them compiles *their* half-finished feature,
+and **every observation becomes unattributable** — which is the whole reason to refuse. ⚠️ `AskAboutNodeDialog`
+is AI-assistant-adjacent, so it bears directly on CN-008's drive.
 
-✅ **So after building anything in Steps 1–5, grep for the sentences that assert its ABSENCE** —
-`runs nowhere`, `nothing loads`, `not supported`, `is not available`, `no caller`, `does not`. The
-SSR loader in s25 invalidated claims in **twelve** places across four packages, the task files and
-memory; all twelve were fixed in the same slice, and none of them would have been caught by a test.
+✅ **`git status --short packages/noodl-editor/src` and `stat` the mtimes. A clean `ps` is not a
+clean tree.** If it is still dirty, **ask** — silence is not release, and liveness is measurable
+while intent is not. This is phase 67 work (NodeGX Community sign-in); its session is the one to ask.
 
-🔴 **The sharpest case was a hand-built TEST FIXTURE.** `health.test.js` built an overlay the
-producer **can no longer emit** — it went on passing while grading a state the code cannot reach.
-✅ **Re-derive a fixture from its producer, or keep a live counter-example in it.**
-✅ **And move a baseline's TITLE with its assertion** — a row named for what it used to assert is how
-a suite comes to assert the opposite of what it says. **Replace, never delete** (CN-002's rule).
+## 4. 🔴 What s26 found, and the two lessons that generalise
 
-⚠️ **Before launching a stack: `git status --short` for uncommitted editor source, and `stat` the
-mtime of anything that shows up.** s25 could not run Bundle A because a peer had half-finished
-editor changes in the tree — a stack would have compiled *their* code and made every observation
-unattributable. **A clean-looking `ps` is not a clean tree.**
+### A check registered in a second pipeline is a DUPLICATE before it is a feature
 
-## 4. What CN-013 left behind — none of it blocking, all of it wanting a number
+D13 registered `rules/parameterValue`. `validateCandidate` merges the rules report with
+`preconditionDiagnostics`, and **both** run `checkParameterValues` — so every parameter finding was
+reported **twice**, in the list an agent is shown and in the counts. **Nothing went red**, because
+`cn004.test.ts` calls the two pipelines *separately* and the staging tests assert *codes*. Every
+assertion in the area is shaped like *"is this reported?"*, and that question cannot detect *twice*.
 
-- 🔴 **A remote `http(s)` kit dependency cannot be loaded server-side.** `manifest.dependencies`
-  accepts URLs and there is no synchronous fetch in the SSR loader, so it is **skipped with a
-  warning** and a kit relying on one is still missing from the server render. Named, not hidden.
-- 🔴 **The deploy-time kit warning.** The editor could name, *before* pushing, a cloud function whose
-  graph uses a node type from a kit that has not opted into `cloud` — the node library already
-  stamps `module` on every kit node (CN-003). Turns a 504 into a warning in the editor.
-- **Server-side SDK dependencies** — Richard's actual ask behind D18. Its own task and probably its
-  own phase: it reopens backend packaging, the isolate's `require` and the trust boundary together.
-- 🔴 **The cashflow kit is OUTSIDE the repo and the copies differ.**
-  `NodeGX test projects/cashflow-command-centre` — unversioned, covered by no gate, and **D5 makes
-  CN-007 depend on it staying working.** ⚠️ Read it via a `cp -R`; never write to it.
-- **The open-panel refresh** (D11, deferred *by decision* to a later phase — it needs a number there)
-  · `render-from-disk.js` answers only `/` and `/index.html` · the `@noodl/mcp` provisioning flake ·
-  `ViewerConnection.sendRefresh()` dead at both ends · the half-registered kit (s22) ·
-  ⚠️ `kitDiagnostics` prints outside `validate:project`'s summary, so an `ERROR` appears above
-  `0 error(s)` and does not move the exit code.
+✅ Deduped on `diagnosticKey`; regression test reddens when reverted. ✅ **It was found by DRIVING**
+(CN-009 AC5), not by any suite. **Assert cardinality, not presence, wherever two producers meet.**
+
+### A task's own premise decays, and the handover repeats it
+
+s26's handover carried CN-011 as *"all of it, incl. D8's cashflow tokenisation, and that gates
+CN-007"*. Measured: **the kit has 0 live hex and 16 token references**, AC1 was **driven in s15**,
+and D8 has not gated CN-007 since. Two of CN-011's four criteria were already met and three
+consecutive documents said otherwise. ✅ **Measure the artefact before believing the task file about
+it** — `grep`, don't infer. That is the tenth false premise in this phase.
+
+### And the absence sweep found a 13th site
+
+s25 fixed twelve places claiming a kit "runs nowhere" in the cloud. The one it missed was
+`nodegx-node-kit-types/src/index.d.ts` — **the file kit authors actually read**, whose header told
+them `["cloud"]` "gains nothing". ✅ **After building anything, grep for the sentences asserting its
+absence**: `runs nowhere`, `no caller`, `nothing loads`, `does not`, `cannot`, `never`.
 
 ## 5. Instrument traps that will bite these specific drives
 
 - 🔴 **`WarningsModel` reads `0` beside a deliberately bogus node type on the same canvas** — third
   confirmation. A zero from it is **unmeasured, not healthy**.
 - 🔴 **`openProjectFromFolder` returns the model but does not move the UI**, and the editor reads
-  `recently_opened_project.json` **at launch** — editing it afterwards does nothing. Open through
-  the launcher card.
-- ⚠️ **`window.__req` is not present by default**; reconstruct with
+  `recently_opened_project.json` **at launch**. Open through the launcher card.
+- 🔴 **A React write is invisible in the SAME eval** — measure in a second call or record a false
+  negative. Bites CN-011 AC2's theme flip directly.
+- ⚠️ **`window.__req` is absent by default**: rebuild with
   `window.webpackChunknoodl_editor.push([['probe'], {}, r => { window.__req = r; }])`.
-- ⚠️ **This build exposes no `NodeGraphEditor` singleton**, so selecting a node to read the property
-  panel may not be possible — s24 recorded the panel as **unmeasured** rather than guessing.
+- ⚠️ **No `NodeGraphEditor` singleton is exposed**, so reading the property panel by selecting a node
+  may not be possible — s24 recorded the panel **unmeasured** rather than guessing.
 - ⚠️ **`BaseDialog` renders every dialog twice** — filter `:not([class*=MeasuringContainer])`.
   **`ed.selection` does not exist** — it is `ed.selector._selected`.
 - ⚠️ **Opening a project WRITES three files into it.** Drive a `cp -R`, never a real project.
+- 🔴 **The cashflow kit copies DIFFER.** `cashflow-command-centre` and `cn069-s15-drive` are
+  tokenised (0 live hex); `cn001-kit-drive`, `cn019-drive`, `cn015-editor-drive` are **pre-D8 (25
+  hex)**. Driving one of the latter measures the old kit and reads as *"the change did not land"*.
+- ⚠️ **`cashflow-command-centre` is a legacy monolithic `project.json`** — the MCP server refuses it
+  by design, and `validate:project` reads it fine. Know which tool you are pointing at it.
 
-## 6. Checkout conditions as s25 left them
+## 6. Checkout conditions as s26 left them
 
-- ✅ **NO editor stack was launched.** The only processes started were two `nodegx-backend` servers
-  built to a **scratch** path (ports 8611 / 8612), both confirmed dead. 🔴 **Never build over
-  `packages/nodegx-backend/dist/cli.js`** — the editor spawns it and a peer's backend can start
-  from it at any moment.
-- ⚠️ **A peer worked phase 67 throughout**, committing `179c6432`, `4c23f869`, `3482c1da` between my
-  commits. **Same git user, so the author field cannot separate us** — attribute by content and time.
-- **My commits:** `c6dcb3a2` (cloud loader) · `112fbb50` (catalog correction + D17) · `fc50f387`
-  (docs) · plus the SSR loader slice. 🔴 **A `test:ci` contamination window covers all of them**:
-  `noodl-viewer-cloud`, `noodl-viewer-react`, `nodegx-module-inject`, `nodegx-kit-catalog`,
-  `nodegx-backend`, `noodl-editor`, `noodl-mcp` and `.github/workflows/pr.yml`.
-- ✅ **Suites:** `@noodl/cloud-runtime` **189 / 9** · `nodegx-backend` **1090 / 101** ·
-  `@nodegx/module-inject` **21** · `@nodegx/kit-catalog` **66 / 3** · `noodl-mcp` **641 / 54** ·
-  `noodl-viewer-react` **921 / 72** · editor `test:main` **3752 / 244**. `typecheck:cloud` **0**,
-  `typecheck:editor` **0**, `typecheck:mcp` **0**.
-- 🔴 **`test:main` FLAKED once** — first run 3 failed in 2 suites (one was
-  `tests-unit/bld-004/reasoningChannel.test.ts:238`), immediate re-run on the same tree **green**.
-  ⚠️ **That run was piped to `tail`, which destroyed the failure list AND the exit code** (the pipe's
-  last command reports 0). **Redirect a suite to a file; never pipe it.**
-- 🔴 **`test:ci` still stands where s12 left it** (`2843 / 6 @ 39393`); s13–s25's commits are not in
-  it. **Re-measure before quoting; never quote a handover's number.**
-- ⚠️ **Peer work live in the tree, untouched:** `phase-50-legibility/notes/`,
-  `phase-65-the-library/` (untracked), `phase-68-learnbook/README.md`, `scripts/library/check.ts`,
-  `phase-70-the-course-is-an-app/` (untracked).
+- ✅ **NO editor stack was launched.** The only processes started were short-lived `node` MCP servers
+  built to a **scratch** esbuild path, all exited. 🔴 **Never build over
+  `packages/noodl-mcp/dist/`** — four peer-registered servers were loading it during this session.
+- **My commits:** `c1c0b5b5` (the five rulings + the docs page), plus the CN-009/CN-011 slice.
+- ⚠️ **A peer worked phase 67 throughout.** Same git user, so the author field cannot separate us —
+  attribute by content and time.
+- ✅ **Suites, measured this session:** `@nodegx/node-kit-types` **80 / 4** (on a
+  verified-clean fixture — see below) · `@nodegx/kit-catalog` **76 / 3** · `@nodegx/kit-scaffold`
+  **67 / 5** · `noodl-runtime` **2520 / 138** · `noodl-viewer-react` **921 / 72** ·
+  editor `tests-unit/cn-006b` **35**, `tests-unit/d-13` **8** · `typecheck:editor` **0**.
+- 🔴 **`noodl-viewer-react` FLAKED once** — `erg-001-repeater-outcomes` timed out at 5 s while a
+  second suite ran concurrently; **14/14 alone**. CPU contention, not a regression.
+- 🔴 **`noodl-mcp`'s `projectOwnsBackend.test.ts` failed on `provision_backend`** — the known
+  provisioning flake already in the residuals list, not new.
+- 🔴 **`test:ci` still stands where s12 left it** (`2843 / 6 @ 39393`). **Re-measure before quoting.**
+- 🔴 **A killed jest run LEAVES `tests/fixtures/kit-logic/index.js` FAULTED on disk.**
+  `fixtures.test.js` mutates it and restores in a `finally`; the suite takes **~220 s**, so a
+  2-minute foreground timeout kills it mid-fault and the next run grades a corrupted fixture.
+  ✅ **Run that package's suite BACKGROUNDED**, and `git status` the fixtures directory after.
+- ⚠️ **Peer work live in the tree, untouched:** phase 67's editor source (§3), `phase-50-legibility/notes/`,
+  `phase-65-the-library/`, `phase-68-learnbook/README.md`, `scripts/library/check.ts`,
+  `phase-70-the-course-is-an-app/`.
 - Whoever you tell you are starting, tell you have stopped.
+
+## 7. Residuals — none blocking, all wanting a number
+
+- 🔴 **A remote `http(s)` kit dependency cannot be loaded server-side** — no synchronous fetch in the
+  SSR loader, so it is skipped with a warning and that kit is missing from the server render.
+- 🔴 **The deploy-time kit warning** — the editor could name, *before* pushing, a cloud function
+  whose graph uses a node from a kit that has not opted into `cloud`. Turns a 504 into a warning.
+- 🔴 **`--success` / `--warning` / `--info` do not exist** in the semantic token set (`--destructive`
+  does, with `-foreground` and `-hover`). A kit with three status bands reaches into the palette
+  scale for two — which is what the cashflow kit does. **Wants a ruling**: `DefaultTokens.ts` changes
+  the vocabulary every project sees.
+- **Server-side SDK dependencies** — Richard's actual ask behind D18. Its own phase.
+- 🔴 **The cashflow kit is OUTSIDE the repo, unversioned, covered by no gate**, and D5 makes CN-007
+  depend on it staying working.
+- **`parameterEncoding {known:false}`** (CN-010's) · **the open-panel refresh** (D11, deferred *by
+  decision*) · `render-from-disk.js` answers only `/` and `/index.html` · the `@noodl/mcp`
+  provisioning flake · `ViewerConnection.sendRefresh()` dead at both ends · the half-registered kit
+  (s22) · ⚠️ `kitDiagnostics` prints outside `validate:project`'s summary, so an `ERROR` appears above
+  `0 error(s)` and does not move the exit code — **D12 just added a fifth code to that surface**.

@@ -194,6 +194,24 @@ connection is still on disk, and the runtime still delivers the value. **The one
 
 ---
 
+---
+
+## ✅ s26 (2026-08-18) — AC4 landed, and D12 answered the `channelPort` half
+
+**AC4** — the CN-007 worked example — is written: *"Ports that appear only when they are relevant"*
+in `docs-site/docs/custom-nodes.md`, a conditional port group with the `mode = list` condition, the
+two ports it switches, and the statement that the port stays real throughout (connectable, saved,
+carrying its value at runtime). The trap section's warning was honoured: the sample uses real port
+names and real type names, and the docs-sample gate compiles the page's complete samples.
+
+✅ **D12 closes the `channelPort` finding this task raised.** It is now rejected at kit-load with an
+error naming the kit, the node, the surfaces the port is missing from, and the conditional-group form
+to use instead — so the author who writes one learns why nothing appeared. Documented in the same
+section as a caution.
+
+⚠️ **Still open, and untouched by this session:** `parameterEncoding` is `{known: false}` on every
+overlay node, which `@nodegx/kit-catalog`'s header names this task as the owner of.
+
 ## Why this is the flexibility task
 
 A node with fixed ports is a widget. A node whose **ports come from its data** is a building block —

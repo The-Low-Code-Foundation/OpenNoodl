@@ -213,7 +213,7 @@ consequence:** an existing module may override deliberately, and **0 of 29 shipp
 been run** (LBR-004) — so the blast radius of changing this is unknown, not small. Do not "tidy" the
 two-rules-disagree comment in `health.js` by deleting one half; both halves are true.
 
-## D10 — A kit gets a separate `docsUrl`; `docs` stays prose ✅
+## D10 — A kit gets a separate `docsUrl`; `docs` stays prose ✅ **BUILT s26**
 
 Ruled (b). `docs` is **one field over two vocabularies** — a URL on all 158 shipped nodes that carry
 one, prose on a kit — and CN-006b's property panel wants a link it cannot get. A new `docsUrl` field
@@ -228,7 +228,7 @@ property panel does not re-render on `libraryUpdated`; it recovers on any re-sel
 twice, six polls over 30 s untouched). 🔴 **This is a deferral with an owner, not a wontfix — it
 needs a task number in the next phase.** Not in CN-014's scope.
 
-## D12 — `channelPort` is **rejected at kit-load with a diagnostic** ✅
+## D12 — `channelPort` is **rejected at kit-load with a diagnostic** ✅ **BUILT s26**
 
 Ruled (c). The port is erased in every surface and every state, `DynamicPortChannel` is commented out
 (`nodelibrary.ts:94-106`), and the census found **one occurrence in 177 types — a test fixture's own
@@ -236,14 +236,14 @@ kit node**. ⚠️ Doing nothing was the status quo and the worst of the three: 
 vanishes and the author cannot learn why. Reviving the editor-side manager was rejected as real work
 for zero non-fixture users.
 
-## D13 — `validate:project` **will** check parameter values ✅
+## D13 — `validate:project` **will** check parameter values ✅ **BUILT s26**
 
 Ruled: take the call. `checkParameterValues` has one production caller, so parameter values are
 checked for **no node of any provenance** — 26 unverified on `cashflow-command-centre` alone, read as
 a pass. 🔴 **`cn004.test.ts`'s last block asserts that silence deliberately: REPLACE it when the call
 is taken, do not delete it** (CN-002's rule — a silence baseline is replaced, never removed).
 
-## D14 — Close `NodeDefinitionOptions`' index signature ✅
+## D14 — Close `NodeDefinitionOptions`' index signature ✅ **BUILT s26**
 
 Ruled: do it. On a logic node only *required*-field typos are caught today; `displayNodeName` and
 `docs` misspellings are **silent** (measured s24). ⚠️ **Binding consequence: this makes a SECOND
@@ -251,13 +251,20 @@ deliberate divergence**, and `drift.test.js`' *"the one deliberate divergence"* 
 exactly that — **update that row to name both divergences with their reasons**; do not delete it.
 **Owner: CN-005.**
 
+✅ **BUILT 2026-08-18 (s26).** The signature is gone; `drift.test.js`'s describe is now *"the two
+deliberate divergences"* driven off a `DELIBERATELY_CLOSED` map, with both reasons in a table and a
+row asserting that map holds exactly those two — the exemption list is where divergence would
+otherwise hide. `fixtures.test.js`' *"does NOT catch an optional top-level typo"* is **replaced** by
+the same two faults (`dispayNodeName`, `dcos`) now required to fire, plus a clean-fixture arm so a
+change that made everything an error cannot pass. 2/2 mutants.
+
 ## D15 — `find_tools`' purpose line does **not** name kits ✅
 
 Ruled: no. The surface sits at **8,223 of 8,280** tokens with a written *"there should not be a third
 renegotiation"*, and the real discovery gap was `summary`, now fixed for free in responses.
 `tests/kitTools.test.ts`' control stays as it is.
 
-## D16 — Suppress the `Page` parameter-skip `info` specifically ✅
+## D16 — Suppress the `Page` parameter-skip `info` specifically ✅ **BUILT s26**
 
 Ruled: suppress, and say why in the code. `Page` declares neither `title` nor `urlPath` statically,
 so **96 of 947 measured skips are `Page`** — a declaration gap in one shipped type, not a check
@@ -265,6 +272,13 @@ finding something. ⚠️ **Richard's caveat, recorded because it is a testable 
 *"hope it doesn't have any negative effect on page authoring by the LLM."* So the suppression must be
 **narrow to `Page`'s two undeclared fields** — suppressing the node type wholesale would hide a real
 parameter error on a page and is exactly the effect he is asking about.
+
+✅ **BUILT 2026-08-18 (s26).** `isPageDeclarationGap` in `parameterValues.ts`, keyed on
+`{'title','urlPath'}` and nothing else. 🔴 **The narrowness is graded by its own test**, not inferred:
+a `Page` carrying an invented `pageTitle` beside a suppressed `title` still reports, and mutating the
+predicate to a wholesale `nodeType === 'Page'` kills **exactly that row**. So Richard's worry is
+answered by a measurement rather than by an assurance. ⚠️ The honest fix is to declare the two ports
+on `Page`, at which point this function has no population and should be deleted — noted in the code.
 
 ## D17 — Gate the GREEN typechecks now; the red ones get their own task ✅
 

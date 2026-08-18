@@ -8,6 +8,31 @@
 | **Rulings** | ✅ **D7** — this task serves "this project"; **the shelf stays P65 / LBR-008's** |
 | **Depends on** | CN-003 |
 
+## ✅ AC5 MET — DRIVEN 2026-08-18 (s26). The task is CLOSED.
+
+A real MCP session against a scratch-built bundle discovered the kit's nodes and **placed one**.
+Full readings: [notes/cn-009-ac5-mcp-drive.md](notes/cn-009-ac5-mcp-drive.md).
+
+| | |
+|---|---|
+| **A1** provenance | 5 kit types of 147, each `providedBy: project-kit` + `kitModule: "Cashflow Kit"` |
+| **A2** detail | **23 in / 14 out** exactly, and a `summary` from the author's own `docs` |
+| **A3** discovery | 🔴 **`query:"draggable"` now returns the Pill.** It returned `[]` when CN-009 measured it — and so did `"unaffordable"` and `"day track"`, which now find the Banner and the Lane |
+| **A4** ✅ **the consequence** | a component placing `Lane` + `Pill`, written from A1/A2 output only, accepted at **0/0/0** and on disk |
+| **A4 control** | the same placement with two invented port names is **rejected, nothing written** — so the acceptance is about real ports |
+| **A5/A6** controls | `Group` unchanged and unattributed; a kitless project leaks **0** kit types |
+
+⚠️ **`cashflow-command-centre` cannot serve this drive**: it is legacy monolithic `project.json` and
+the server refuses it by design. `cn001-kit-drive` (v2) with the tokenised kit copied in is the
+substitute, and the next person should expect the same refusal.
+
+🔴 **The drive found a regression D13 caused the same session, which no suite could see:**
+`validateCandidate` merges the rules report with the preconditions, and both now run
+`checkParameterValues`, so every parameter finding was reported **twice** — including in the counts
+an agent reads. Deduped on `diagnosticKey`; regression test in `cn004.test.ts`. The general form is
+worth carrying: **a check registered in a second pipeline is a duplicate before it is a feature**,
+and every test shaped like *"is this reported?"* is blind to it.
+
 ## The job
 
 `list_node_types`, `get_node_type` and `find_tools` answer from the catalog, so they answer about

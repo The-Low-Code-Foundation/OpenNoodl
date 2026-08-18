@@ -182,6 +182,39 @@ function structuralCheck(files: ComponentFiles): StructuralFailure[] {
 }
 
 /**
+ * The two diagnostic sources overlap, and since D13 they overlap on purpose.
+ *
+ * 🔴 **Measured 2026-08-18, driving CN-009 AC5.** `validateCandidate` merges the
+ * semantic validator's report with `preconditionDiagnostics`. D13 registered
+ * `rules/parameterValue`, which runs `checkParameterValues` — the same function
+ * the precondition set has always run. The result was every parameter-value
+ * finding appearing **twice** in `diagnostics`, in the `readable` list an agent
+ * is shown, and in `summary.errors`/`warnings`. A rejection naming one mistake
+ * twice reads as two mistakes.
+ *
+ * ⚠️ **Deduped rather than un-overlapped, deliberately.** Removing
+ * `checkParameterValues` from the precondition set would silently drop it for
+ * any caller that runs the preconditions alone — the editor's authoring loop
+ * does exactly that — and that is a bigger change made for a cosmetic reason.
+ * The overlap is now harmless and each source stays independently complete.
+ *
+ * `diagnosticKey` is the identity this file already trusts for baseline
+ * exemption (code + node + port + plug + connection + message), so two entries
+ * sharing it are the same finding by the definition already in use here.
+ */
+function dedupeDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
+  const seen = new Set<string>();
+  const out: Diagnostic[] = [];
+  for (const diagnostic of diagnostics) {
+    const key = diagnosticKey(diagnostic);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(diagnostic);
+  }
+  return out;
+}
+
+/**
  * Validate a candidate create/update for `key`. `baseline` is the on-disk
  * files before the change (undefined for creates).
  */
@@ -210,7 +243,7 @@ export function validateCandidate(
   const report = validator().validateComponent(candidateProject, name, validatorOptions);
 
   const views = authoredProjectViews(store, new Map([[name, candidate]]));
-  const diagnostics = [...report.diagnostics, ...preconditionDiagnostics(name, candidate, views)];
+  const diagnostics = dedupeDiagnostics([...report.diagnostics, ...preconditionDiagnostics(name, candidate, views)]);
 
   let preexistingKeys = new Set<string>();
   if (baseline) {
@@ -230,10 +263,10 @@ export function validateCandidate(
     // deletion is already in this set and forgiven, while one the candidate
     // breaks itself is not and still blocks.
     const baselineViews = authoredProjectViews(store, new Map([[baselineName, baseline]]));
-    const baselineDiagnostics = [
+    const baselineDiagnostics = dedupeDiagnostics([
       ...baselineReport.diagnostics,
       ...preconditionDiagnostics(baselineName, baseline, baselineViews)
-    ];
+    ]);
     preexistingKeys = new Set(baselineDiagnostics.filter(isBlockingForAuthoredOutput).map(diagnosticKey));
   }
 

@@ -8,6 +8,49 @@
 | **Rulings** | ✅ **D8** — tokens by default in the scaffold, **not enforced** |
 | **Depends on** | CN-006 (the scaffold that carries the default) |
 
+## 🔴 MEASURED 2026-08-18 (s26): AC1 and AC4 were ALREADY MET. The task's premise is false.
+
+The spec below says *"The cashflow kit hardcodes hex throughout"* and the s26 handover carried
+CN-011 as **all of it left, including D8's cashflow tokenisation, gating CN-007**. Measured:
+
+| | |
+|---|---|
+| live (non-comment) hex in the kit | **0** |
+| `var(--token)` references | **16**, over 10 distinct tokens |
+| the 2 `#1F8A4C` strings a grep finds | both inside the **comment** explaining the change |
+
+✅ **AC4 is met.** ✅ **AC1 is met and was DRIVEN in s15** — positive pills paint
+`rgb(22, 163, 74)` = `--green-600` with no colour parameter set, asserted on the **computed style**
+and against the discriminating triple, not on the parameter
+([notes/cn-007-d8-token-drive.md](notes/cn-007-d8-token-drive.md)). So **D8's obligation does not
+gate CN-007** — CN-007 was already free to cite the kit, and does.
+
+⚠️ **The copies still differ and that is the live hazard.** `cashflow-command-centre` and
+`cn069-s15-drive` carry the tokenised kit (0 live hex); `cn001-kit-drive`, `cn019-drive` and
+`cn015-editor-drive` carry the **pre-D8** one (**25** hex). Driving one of the latter measures the
+old kit and reads as *"the change did not land"*.
+
+### What is genuinely left
+
+- **AC2** — both themes, and a token change propagating without a reload. The s15 drive read **one**
+  theme. **Not measured.**
+- **AC3** — a variant created on a kit node surviving a save/reload, testing the **reader** path.
+  **Not measured.**
+
+Both want a stack. Neither is blocked on anything else.
+
+### 🔴 A finding for Richard: the semantic token set has no `--success` and no `--warning`
+
+Measured against `DefaultTokens.ts`: `--destructive`, `--destructive-foreground` and
+`--destructive-hover` exist; **`--success`, `--warning` and `--info` do not.** So a kit with three
+status bands reaches into the palette scale for two of them — which is exactly what the cashflow kit
+does (`--green-600`, `--amber-600` beside the semantic `--muted`, `--primary-foreground`,
+`--border-subtle`). The phase's flagship worked example demonstrates the gap.
+
+⚠️ **Not fixed here, deliberately.** Adding tokens to `DefaultTokens.ts` changes the vocabulary every
+project sees and is a design-system decision, not a kit one. Recorded in CN-007's rough edges so a
+reader is not left thinking the kit chose badly. **Wants a ruling.**
+
 ## The job
 
 Make a kit node participate in the design system the same way a built-in does: design tokens,
