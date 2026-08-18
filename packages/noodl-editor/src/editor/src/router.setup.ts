@@ -3,6 +3,7 @@ import { installThreadPersistence } from '@noodl-models/AiAssistant/thread/insta
 import { AppRegistry } from '@noodl-models/app_registry';
 import { installCodeAuthoringContext } from '@noodl-models/CodeAuthoringContext';
 import { installProjectDocs } from '@noodl-models/ProjectDocs';
+import { installUserProfile } from '@noodl-models/UserProfile';
 import { installImportReport } from '@noodl-utils/import-engine/legacy/loadReport';
 import { SidebarModel } from '@noodl-models/sidebar';
 import { Keybinding } from '@noodl-utils/keyboard/Keybinding';
@@ -216,6 +217,11 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // provider is installed at boot, like the explain-target tracking above, not
   // at panel mount.
   installProjectDocs();
+
+  // FIX-021 slice B: and the user's own standing preferences, which are read at
+  // the same moment and are not tied to a project at all — the profile outlives
+  // every open and close, so nothing about a project can be its trigger.
+  installUserProfile();
 
   // LIB-006: same reasoning, same seam. A session authoring against a legacy
   // import needs to know what the importer could not convert, and it is

@@ -35,6 +35,9 @@ import {
   type DiscoveredDoc,
   type ProjectDocsContent
 } from '../../ProjectDocs/docsText';
+// Pure UserProfile submodule, same rule again — the barrel pulls
+// `@noodl/platform`, which the headless bundle cannot have.
+import { renderProfileForPrompt } from '../../UserProfile/profileText';
 // Pure StyleVocabulary submodule (never the StyleTokensModel barrel — it would
 // pull ProjectModel/Electron into the headless harness bundle).
 import {
@@ -201,6 +204,9 @@ export class AuthoringContextBuilder {
   /** AAQ-002 slice 4: the collections the agent may write against. */
   private readonly collections: SchemaCollectionInfo[];
 
+  /** FIX-021 slice B: the raw text of the user profile — see `globalPreferences`. */
+  private readonly userProfile: string;
+
   constructor(
     private readonly graph: ExplainGraph,
     budget: Partial<ContextBudget> = {},
@@ -209,7 +215,8 @@ export class AuthoringContextBuilder {
     docs: ProjectDocsContent = {},
     libraries: RegisteredLibraryInfo[] = [],
     report?: ImportReport,
-    collections: SchemaCollectionInfo[] = []
+    collections: SchemaCollectionInfo[] = [],
+    userProfile = ''
   ) {
     this.budget = { ...DEFAULT_BUDGET, ...budget };
     // Defaults-only when no project-aware vocabulary is injected: the token
@@ -220,6 +227,7 @@ export class AuthoringContextBuilder {
     this.libraries = libraries;
     this.report = report;
     this.collections = collections;
+    this.userProfile = userProfile;
   }
 
   get log(): readonly ContextLogEntry[] {
@@ -541,6 +549,27 @@ export class AuthoringContextBuilder {
       out.push({ path: doc.path, title: doc.title, text });
     }
     return out;
+  }
+
+  /**
+   * FIX-021 slice B — the user's own standing preferences, when they wrote any.
+   *
+   * Charged like every other handout, and under its own source (`user-profile`)
+   * rather than folded into a doc bucket, so the per-turn context log answers
+   * "what is this costing me on every project, forever" — the question the
+   * brainstorm's Q5 asks and the one a global always-doc has to be able to
+   * answer out loud.
+   *
+   * `undefined` for a user who has written nothing, including one whose file
+   * exists and still holds only the seeded prompts: `renderProfileForPrompt`
+   * strips the comments and drops the empty headings, so seeding costs nobody a
+   * byte. Nothing is charged in that case either — an entry of zero chars would
+   * put a line in every log for a feature nobody is using.
+   */
+  globalPreferences(): string | undefined {
+    const rendered = renderProfileForPrompt(this.userProfile);
+    if (!rendered) return undefined;
+    return this.charge('user-profile', rendered);
   }
 
   /** Cap, render and charge one known doc. */

@@ -35,6 +35,7 @@ import type { ProjectBackendFacts } from '../../../validation';
 import type { SchemaCollectionInfo } from './backendSchema';
 import { formatDiagnosticLine } from '../../../validation';
 import { currentProjectDocs } from '../../ProjectDocs/currentDocs';
+import { currentUserProfile } from '../../UserProfile/currentProfile';
 import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
 import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
@@ -138,6 +139,13 @@ export interface AuthoringSessionOptions {
    * A/B control arm, and every headless spec that does not care).
    */
   projectDocs?: ProjectDocsContent;
+  /**
+   * FIX-021 slice B: the raw text of `<userData>/PREFERENCES.md`. Defaults to
+   * whatever the editor's installed profile provider holds, so the panel needs
+   * no wiring; pass `''` explicitly to author as if the user had written
+   * nothing (the A/B control arm, and every headless spec that does not care).
+   */
+  userProfile?: string;
   /**
    * ERG-002 §2: libraries registered via the Libraries settings section
    * (Settings → Libraries → `registerLibrary`), handed to the agent so "use
@@ -530,6 +538,9 @@ export class AuthoringSession {
     this.styleGuidance = options.styleGuidance ?? true;
     this.styleTokenRecords = options.styleTokenRecords;
     const projectDocs = options.projectDocs ?? currentProjectDocs();
+    // FIX-021 slice B: same seam as the docs above — resolved once, here, so a
+    // session constructed in the headless harness simply has no profile.
+    const userProfile = options.userProfile ?? currentUserProfile();
     // `null` means "deliberately without"; `undefined` means "use the project's".
     const importReport = options.importReport === null ? undefined : options.importReport ?? currentImportReport();
     this.context = new AuthoringContextBuilder(
@@ -540,7 +551,8 @@ export class AuthoringSession {
       projectDocs,
       options.libraries,
       importReport,
-      options.collections
+      options.collections,
+      userProfile
     );
     // BLD-007: one docs snapshot, taken once and held for the session — the
     // context keeps it as `context.docs`, which is what `dispatchProjectDocTool`
@@ -751,7 +763,8 @@ export class AuthoringSession {
         this.context.importReport(),
         this.context.backendSchema(),
         this.references,
-        this.context.nodeKitOverview()
+        this.context.nodeKitOverview(),
+        this.context.globalPreferences()
       );
     } else {
       opening = initialUserMessage(
@@ -765,7 +778,8 @@ export class AuthoringSession {
         this.context.importReport(),
         this.context.backendSchema(),
         this.references,
-        this.context.nodeKitOverview()
+        this.context.nodeKitOverview(),
+        this.context.globalPreferences()
       );
     }
     this.messages.push(

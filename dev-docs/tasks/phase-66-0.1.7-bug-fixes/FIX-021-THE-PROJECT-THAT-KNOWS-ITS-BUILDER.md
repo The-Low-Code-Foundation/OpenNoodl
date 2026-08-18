@@ -278,3 +278,123 @@ does **not** put a trailing slash on `_documentsPath` (`platform-electron.ts:29-
 would produce `…/Documentsmyproject`. It is unreachable: `ProjectsPage` is the only caller and it
 always passes `path`. **Left alone** — but this task now makes the documents folder the *usual*
 answer, so anyone who deletes the wizard's `path` argument as redundant will land straight on it.
+
+## ✅ BUILT 2026-08-18 (session 58) — slice B, the global user profile
+
+`<userData>/PREFERENCES.md`: one markdown file per person, per machine, read before the AI builds
+anything, in every project. Richard's s42 ruling is the whole shape — *"a NodeGX user profile for the
+AI to use"* — and the three questions that ruling settled (Q1 human-authored, Q3 `CLAUDE.md` stays
+the signpost, Q4 per-user and outside git) are the three this build leans on.
+
+| file | what it is |
+|---|---|
+| `models/UserProfile/profileText.ts` | **new.** The format: template, cap, section parsing, rendering. Imports **one** function |
+| `models/UserProfile/currentProfile.ts` | **new.** The synchronous provider seam — a carbon copy of `ProjectDocs/currentDocs`, for the identical reason |
+| `models/UserProfile/install.ts` | **new.** The only part that touches a disk: path, seeding, and the poll |
+| `models/UserProfile/index.ts` | **new.** Barrel, carrying the same "headless consumers import the submodule" warning as `ProjectDocs` |
+| `SettingsPanel/sections/UserProfileSection.tsx` | **new.** "About you" — where the file is, what it is costing, and a button that opens it |
+| `prompts/authoring.ts` | `globalPreferencesBlock`, appended **last** in `referenceBlocks`, carrying the precedence sentence |
+| `ContextBuilder.ts` | `globalPreferences()`, charged under its own `user-profile` source |
+| `AuthoringSession.ts` | resolves the provider once per session, exactly as it resolves `projectDocs` |
+| `EditorSettingsTab.tsx` / `router.setup.ts` | the section, and the boot install beside `installProjectDocs()` |
+
+### 🔴 The empty-file rule is the build, and it is what makes the feature defensible
+
+A global always-doc is a charge on **every turn of every project, forever** — the objection Q5 raises
+and the one thing that could make this feature a tax rather than a convenience. The answer built here
+is mechanical rather than a policy:
+
+- **Guidance lives in HTML comments,** which are stripped before anything is sent. They render as
+  nothing in a markdown preview and they are unambiguously *not* the user's answer, so no heuristic
+  has to guess which lines are the form and which are the reply.
+- **A heading with nothing under it is dropped.** You pay for the words you wrote and for no others.
+- **A file that says nothing renders `undefined`,** and the block is omitted entirely.
+
+So a freshly seeded `PREFERENCES.md` — headings, prompts and all — costs **zero prompt bytes**, and a
+user who never opens the settings section sends turns byte-identical to before this shipped. The
+settings panel prints the number that goes out, beside the button that changes it: a user who cannot
+see the cost cannot consent to it.
+
+⚠️ **Prose written above the first heading is kept, unheaded.** Somebody who ignores the four prompts
+and writes a paragraph must not have it silently discarded; that is the one failure a format like
+this cannot have.
+
+### The three open brainstorm questions — answered as assumptions, and overturnable
+
+🔴 **Richard has not ruled Q2, Q5 or Q6.** Slice B is built on the reading below, and each is a
+sentence to overturn rather than a rewrite.
+
+- **Q5 (`always` vs `pull`, and the cost) → `always`, capped at 2,000 characters, and free when
+  empty.** `when:` hints are unwritable for preferences (there is no request-shaped trigger for
+  *"I speak casually"*), so `pull` would mean the profile arrives only when the model thinks to ask,
+  which is the same as not having one. The cost objection is answered by the empty-file rule above
+  instead. Cap is deliberately a third of `DEFAULT_DOC_CAP`: a project doc is about a body of work
+  and earns its bytes; this rides along on everything.
+- **Q6 (structured settings vs prose) → prose only, for now.** Richard's own examples are both
+  interpretation, not action — *"speaks casually but avoids swear words"*, *"isn't comfortable with
+  pure javascript"*. **Rejected:** splitting deploy-target and go-to-backend into `ai.role.*`-style
+  keys *in this slice*. That split is right eventually and it shrinks the doc, but it needs a second
+  UI and a second precedence story, and building it before anyone has written a profile is guessing
+  at which fields matter.
+- **Q2 (one file or a set) → ONE file, and NO second project-level document.** This is the one that
+  changed what got built: **slice A is deliberately NOT built.** A per-project `.nodegx/preferences.md`
+  alongside `docs/CONVENTIONS.md` is two overlapping taxonomies and two sources of truth — the exact
+  failure the docs tooling warns about — and nothing in the s42 ruling asks for it. A per-project
+  rule already has a home; what had no home was the person.
+
+### Gates, taken at session 58
+
+| gate | reading |
+|---|---|
+| `noodl-editor` `test:main` (jest) | ✅ **239 suites / 3658 tests, 0 failed** |
+| `tests-unit/fix-021/` | ✅ **3 suites / 28 tests** (7 inherited + 21 new) |
+| `typecheck:editor` | ✅ exit 0 — and `--listFiles` confirms all five new files **are** in the compile |
+| `typecheck:editor-tests` | ✅ exit 0 |
+| root `npm run typecheck` | ✅ exit 0 |
+| `lint:ci` ratchet | ✅ **877** against a 3916 baseline — the same figure as s55, so this task adds **zero** lint debt |
+
+### 🔴 Two specs that were green and measured nothing, both caught by a mutant
+
+Every mutant was applied to the real module and reverted in a single shell call, with an
+apply-guard (`grep` for the mutated text before running) and a `diff` back to byte-identical after.
+**One mutant run had to be thrown away** — its `perl` failed on a delimiter clash, and the "13
+passed" it printed was against unmutated source, which looks exactly like a spec that catches
+nothing. The guard is what turned that into a re-run instead of a conclusion.
+
+| mutant | result |
+|---|---|
+| comments no longer stripped | **5 failed** — the seeded-file row, the comments-only row, and the matrix |
+| an empty section no longer dropped | **6 failed** — including the matrix |
+| the cap ignored | **1 failed** — the cap row, and only it |
+| the block placed first instead of last | **1 failed** — *"lands AFTER the project docs"* |
+| the precedence sentence dropped | **1 failed** — and only it |
+
+🔴 **`isFileTitle` — a row that named a branch it never exercised.** *"Treats only the FIRST level-1
+heading as the file's title"* passed against a mutant that deleted the branch outright, because both
+arms of the example had **empty** sections, which are dropped either way. Rewritten with prose under
+both headings; it now dies on that mutant alone.
+
+🔴 **"Absent means omitted" could not see a block emitted unconditionally, and this is the more
+transferable of the two.** The row compared a turn built *without* the argument against one built
+*with* `''` — but **both arms are built by the same code**, so a mutant that ignores the argument
+puts the block in both and the equality holds perfectly. It is a control pair that varies the
+argument when the claim is about the feature. Fixed by asserting the absence outright
+(`not.toContain(MARKER)`), which is only meaningful because the rows below it show that same marker
+firing when there *is* a profile.
+
+### ⚠️ What slice B does NOT include, named rather than implied
+
+- 🔴 **The MCP half is not built.** Slice B specified `.mcp.json` `env` carrying the path, and said in
+  the same sentence that it *"deliberately breaks the server's every-path-inside-`projectDir`
+  invariant and needs its own read-only containment note"*. That is a second package, a second
+  security argument and a registration change; it is a task, not a paragraph. **The editor's own AI
+  reads the profile today; Claude Code does not.**
+- ⚠️ **The planning turn does not carry the profile** — only the authoring turn does, which is what
+  slice B specified (*"appended last in the reference blocks"*). It is arguably the wrong line to
+  draw: *"prefer built-in nodes"* is a decision a **planner** makes, and a plan that ignores it costs
+  the author a fight later. Cheap to add (`planningUserMessage` takes a 5th parameter), but a
+  planning turn has no `cacheBoundary` and is not cached, so it is a real per-plan cost and belongs
+  with Q5 rather than under it.
+- ⚠️ **Undriven.** Nothing here has been seen in the running app. The panel half needs no API credit
+  and is drivable; the prompt half is graded by the specs above precisely because its failure mode is
+  an invoice and not a symptom.

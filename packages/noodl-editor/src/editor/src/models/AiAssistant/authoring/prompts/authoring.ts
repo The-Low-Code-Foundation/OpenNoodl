@@ -265,6 +265,36 @@ function docBlocks(docs?: PromptProjectDocs): string[] {
 }
 
 /**
+ * FIX-021 slice B — who you are building for, when they have said.
+ *
+ * The one block here that is about the *person* rather than the project. It is
+ * stable per user, so it belongs in the cache-stable half with the other
+ * reference material, and it is **last** for the same reason the doc blocks are
+ * last: a user who writes their first preference invalidates only the tail of
+ * the prefix, and a user who never writes one produces turns byte-identical to
+ * before this existed. `undefined` when the file says nothing — the
+ * absent-means-omitted convention every optional block here keeps.
+ *
+ * ⚠️ Being last is a **caching** argument and not a priority one, which is
+ * exactly why the precedence has to be said out loud rather than implied by
+ * position: recency would otherwise read as "this outranks the project", and it
+ * does not. Global preferences rank *below* the project's own conventions and
+ * *above* the model's defaults — the ladder FIX-021 slice B specified.
+ */
+function globalPreferencesBlock(globalPreferences?: string): string[] {
+  if (!globalPreferences) return [];
+  return [
+    '',
+    '--- ABOUT THE PERSON YOU ARE BUILDING FOR ---',
+    'Standing preferences this user wrote about themselves. They hold in every project, and they',
+    "outrank your own habits and defaults. This project's own conventions outrank them in turn: where",
+    'the two disagree, follow the project and say that you did.',
+    globalPreferences,
+    '--- END ABOUT THE PERSON YOU ARE BUILDING FOR ---'
+  ];
+}
+
+/**
  * The reference blocks handed to every authoring turn, most-stable-first.
  * Byte-identical across every component authored against one project — which
  * is the whole reason they lead.
@@ -277,7 +307,8 @@ function referenceBlocks(
   libraryOverview?: string,
   importReport?: string,
   backendSchema?: string,
-  nodeKitOverview?: string
+  nodeKitOverview?: string,
+  globalPreferences?: string
 ): string[] {
   return [
     'Reference material for this project. Your task is at the END of this message — read these first,',
@@ -295,7 +326,8 @@ function referenceBlocks(
     ...styleBlock(styleVocabulary),
     ...libraryBlock(libraryOverview),
     ...importReportBlock(importReport),
-    ...docBlocks(docs)
+    ...docBlocks(docs),
+    ...globalPreferencesBlock(globalPreferences)
   ];
 }
 
@@ -402,7 +434,8 @@ export function initialUserMessage(
   importReport?: string,
   backendSchema?: string,
   references?: string,
-  nodeKitOverview?: string
+  nodeKitOverview?: string,
+  globalPreferences?: string
 ): OpeningTurn {
   return openingTurn(
     referenceBlocks(
@@ -413,7 +446,8 @@ export function initialUserMessage(
       libraryOverview,
       importReport,
       backendSchema,
-      nodeKitOverview
+      nodeKitOverview,
+      globalPreferences
     ),
     [
       ...planContextBlock(planContext),
@@ -456,7 +490,8 @@ export function updateUserMessage(
   importReport?: string,
   backendSchema?: string,
   references?: string,
-  nodeKitOverview?: string
+  nodeKitOverview?: string,
+  globalPreferences?: string
 ): OpeningTurn {
   return openingTurn(
     referenceBlocks(
@@ -467,7 +502,8 @@ export function updateUserMessage(
       libraryOverview,
       importReport,
       backendSchema,
-      nodeKitOverview
+      nodeKitOverview,
+      globalPreferences
     ),
     [
       ...planContextBlock(planContext),
