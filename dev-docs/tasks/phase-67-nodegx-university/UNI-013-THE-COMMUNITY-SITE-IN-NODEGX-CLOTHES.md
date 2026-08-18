@@ -12,6 +12,14 @@
 > the artifact"*, and he was right: what shipped was a reasonable reading of this file and not the
 > design. Fixed in `201a71a`.
 >
+> 🆕 **A SECOND ARTIFACT, 2026-08-18 — and it is the one slice 5 is built from.**
+> **["Every page is the same page"](https://claude.ai/code/artifact/5cc390dd-a8dc-48c9-b960-b74ed89010e6)**
+> reviews all nine pages against the running site and **draws proposed specimens of the home,
+> tutorials, replays, university and the directories**. It is where the three archetypes below are
+> actually pictured. ⚠️ **It also scopes the half slice 5 explicitly excludes** — the content model
+> — as **UNI-019…023**, because restyling nine pages that have nothing on them is the failure this
+> slice would otherwise ship.
+>
 > ⚠️ **The artifact is TEAL throughout and says so itself:** *"Swap `--signal` for
 > `--base-color-azure-500` and every other argument on this page holds unchanged."* **D18 ruled
 > azure.** Take the forms, not the hue.
@@ -348,10 +356,44 @@ for the other two.
 still bind**: no hardcoded colour, and the contrast rows are per-theme (see the `--site-fg-alert` /
 `--site-fg-good` split, which is the fifth instance of that same defect).
 
+### 🆕 The four components the archetypes are made of — added 2026-08-18
+
+The second artifact draws the archetypes rather than describing them, and drawing them named the
+parts. **An archetype that is not made of components is a fourth bespoke page**, so slice 5's
+deliverable is these:
+
+1. 🔴 **The facet bar** — the head of the *list* archetype. Search box, multi-select facets with
+   counts, sort. ⚠️ **Slice 5 draws it; [UNI-023](UNI-023-ONE-FACET-BAR-SIX-LISTS.md) wires it to
+   six lists and owns the queries behind it.** Whoever is second consumes the other's half — what
+   must not happen is two pill styles, which is already the state `/bench` is in (session 28
+   observation 3).
+2. 🔴 **A card that carries a figure** — a poster, an avatar or a row of node chips. A card with a
+   picture in it is a different animal from a card without one, and it is why `/people` reads as
+   dead: the profile page has a gradient avatar and **the list of people has none**.
+3. **The empty state, as a component** — and 🔴 **two of them**, because *"nobody has posted yet"*
+   and *"no rows matched these filters"* are different facts with opposite fixes. Collapsing them is
+   how a working filter reads as a broken page.
+4. **The chip** — level, topic, state, and the **node chip**, which is the cheapest identity the
+   site has and the one thing no other community can render.
+
+⚠️ **This is not a component library and the Not-in-v1 line below stands** — see its amendment.
+Four components that four pages share is the opposite of a library: it is the minimum that stops
+the fifth page being improvised.
+
 ## Not in v1
 
 - **No new pages, routes, or schema.** Presentation only — AC5 is the guard.
 - **No component library.** Fourteen pages do not need one, and building one here outlives its use.
+  ✅ **Amended 2026-08-18, and the line survives the amendment.** Slice 5 ships **four** shared
+  components (above) because an archetype has to be made of something. 🔴 The rule that replaces the
+  count: **a component earns its place by being used on three pages or more.** Everything else stays
+  in the page that needs it.
+- ⚠️ **Amended 2026-08-18 — the first bullet is a boundary, not a verdict on the work.** "No new
+  pages, routes, or schema" keeps *this slice* presentation-only and keeps AC5 meaningful. It is
+  **not** a claim that the pages need no new content, and reading it that way is what would ship
+  nine beautifully restyled pages with nothing on them. That half is
+  **[UNI-019](UNI-019-NOTHING-ON-THE-HOME-PAGE-IS-A-LINK.md)…[UNI-023](UNI-023-ONE-FACET-BAR-SIX-LISTS.md)**,
+  scoped 2026-08-18 out of the second artifact.
 - **Not the editor.** Its tokens are already systematic and are not the problem.
 - **Not `nodegx-web`.** The landing page keeps teal until somebody rules otherwise (D18).
 - **No logo or wordmark work.**

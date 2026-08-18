@@ -174,8 +174,8 @@ Everything below is a consequence of that sentence. **Ten items. Nothing else bl
 |---|---|---|---|
 | **E1** | ✅ **UNI-001's issuer — BUILT 2026-08-19 (session 29).** Sessions are minted; GitHub OAuth in the browser; a device flow for the editor; sign-out revokes | task | ⚠️ **Code-complete, and NOBODY CAN SIGN IN YET** — the start route answers 503 without `GITHUB_OAUTH_CLIENT_ID`. **That is E10, and it is Richard's.** The remaining task work is AC2's launcher affordance, which is outside the loop the bar names |
 | **E2** | 🔴 **Deployment** — the platform served at `community.nodegx.io` | 🔴 **NO TASK OWNS IT** | It resolves (A → nexus-1) and nothing serves it. ⚠️ Shares the box with two live sites and Caddy is all-or-nothing — **curl the neighbours before and after** |
-| **E3** | **UNI-009 AC1** — the home shows real threads signed out | task | D19 rewrote it; `/bench` exists and **the home page does not link to it** (observed, session 28) |
-| **E4** | **UNI-013 slice 5** — the page archetypes | task | Richard, twice: *"simple and sad"*. The close is *"does not look like a placeholder"*, so this is in scope rather than polish |
+| **E3** | **UNI-009 AC1** — the home shows real threads signed out | task → 🆕 **[UNI-019](UNI-019-NOTHING-ON-THE-HOME-PAGE-IS-A-LINK.md)** | D19 rewrote it; `/bench` exists and **the home page does not link to it** (observed, session 28). 🆕 **OWNED 2026-08-18 (s30), and it is worse than session 28 recorded: the home page has NO links at all** — six `<section class="card">`, **zero anchors**, for every viewer. **The only internal link to `/bench` in the whole app is the Bench's own filter pill.** ⚠️ This is an owner, **not an eleventh item** |
+| **E4** | **UNI-013 slice 5** — the page archetypes | task | Richard, twice: *"simple and sad"*. The close is *"does not look like a placeholder"*, so this is in scope rather than polish. 🆕 **Amended 2026-08-18 (s30): a THIRD time, on screenshots** — *"really disappointed visually… I'm confused how it could have got so bad."* ✅ Slice 5 now names **four components** the archetypes are made of, drawn in **["Every page is the same page"](https://claude.ai/code/artifact/5cc390dd-a8dc-48c9-b960-b74ed89010e6)**. 🔴 **Slice 5 alone will not answer the complaint** and its own scope says why — *"no new pages, routes, or schema"* — so it restyles nine pages that still have nothing on them. **The content half is UNI-020…023 and is deliberately OUTSIDE this close** |
 
 ### The four that are Richard's, and three of them gate E1/E2
 
@@ -194,6 +194,21 @@ Everything below is a consequence of that sentence. **Ten items. Nothing else bl
 | **E9** | A smoke drive of the whole loop **on the deployed box**, signed in, over real HTTPS — because every gate in both repos runs against localhost |
 
 ### 🔴 Explicitly NOT in the close — written down so they stop reading as unfinished
+
+> 🆕 **Added 2026-08-18 (s30) — the four content tasks, and the line is deliberate.**
+> **[UNI-020](UNI-020-A-TUTORIAL-THAT-SAYS-WHAT-IT-TEACHES.md)** (tutorial detail route + content
+> model), **[UNI-021](UNI-021-REPLAYS-YOU-CAN-ACTUALLY-WATCH.md)** (posters, chapters, in-place
+> player), **[UNI-022](UNI-022-THE-SYLLABUS-PUBLISHED.md)** (University becomes the curriculum) and
+> **[UNI-023](UNI-023-ONE-FACET-BAR-SIX-LISTS.md)** (the facet bar) were scoped from Richard's read
+> of the running site and are **NOT in this close**. 🔴 **The list stays at ten items.**
+>
+> ⚠️ **Where the line falls, and why it is not arbitrary:** the close's bar is *"does not look like
+> a placeholder"*. **UNI-019 is in** because a page whose cards do not click is broken rather than
+> plain, and it is E3's owner. **UNI-013 slice 5 is in** because it is already E4. The other four
+> add *content* — schema, routes, filters — and a phase closing on *"somebody can sign up and use
+> it"* does not need them to be true. 🔴 **What must not happen is the reverse reading:** these are
+> not polish deferred forever. They are the reason slice 5 on its own will not satisfy the person
+> who asked for it, and that argument is in the artifact rather than buried here.
 
 **UNI-017** (queue + *same here*), **UNI-018** (pull a graph — and it carries an arbitrary-code
 hazard that deserves its own care, not a deadline), **UNI-007**'s intake, **UNI-006**'s bridge

@@ -54,6 +54,12 @@ and a bought forum" until D19; the forum left, the modesty stayed.)*
    real recent threads to a signed-out reader**, and shows the composer only to a viewer who may
    post (D15). ⚠️ Weaker-looking and strictly harder to fake: the old criterion could be met by two
    systems agreeing about a cookie, this one requires the forum to exist and have content.
+   🆕 **OWNED 2026-08-18 by [UNI-019](UNI-019-NOTHING-ON-THE-HOME-PAGE-IS-A-LINK.md).** This
+   criterion is the phase's close item **E3** and has been open since session 28 with no task
+   behind it. 🔴 **The reason it is still unmet is worse than "the rail was not built": the home
+   page has no links at all** — six `<section class="card">` with zero anchors — so the entry point
+   this criterion is about does not exist as a clickable thing, and `/bench` is reachable from
+   nowhere in the app.
 2. Replays and tutorials render and are reachable logged-out — the *content* gates nothing
    either; the account adds posting, progress, and (later) points. *(Unchanged.)*
 3. ~~A forum answer marked accepted fires a webhook we successfully receive.~~ 🔴 **STRUCK by D19
@@ -68,3 +74,16 @@ and a bought forum" until D19; the forum left, the modesty stayed.)*
 Chaptered replays with per-node deep links, the showcase gallery, search across all surfaces,
 newsletter, the education-programme landing page (waits for UNI-005/006 to have something to
 sell).
+
+> 🆕 **AMENDED 2026-08-18 — two of these deferrals now have owners, and one deliberately does not.**
+> A deferral with no owner is indistinguishable from an oversight, and both of these were being read
+> as oversights by the time somebody looked at the running site.
+>
+> - **Chaptering** → **[UNI-021](UNI-021-REPLAYS-YOU-CAN-ACTUALLY-WATCH.md)**. ⚠️ Only the web half:
+>   chapters are one table and a timestamp. **The per-node deep link from the editor stays deferred.**
+> - **Search** → **[UNI-023](UNI-023-ONE-FACET-BAR-SIX-LISTS.md)**, and 🔴 **only the per-list half.**
+>   *"Search across all surfaces"* — one box over threads, tutorials, replays and people — **remains
+>   deferred here**, because it needs an index rather than a `where`. ⚠️ Per-list search is not a
+>   down-payment on it.
+> - **Showcase gallery, newsletter, education landing page** — unchanged, still deferred, still
+>   unowned by choice.
