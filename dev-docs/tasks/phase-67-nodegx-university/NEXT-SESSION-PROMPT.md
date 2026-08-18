@@ -1,150 +1,151 @@
-# Phase 67 — next session prompt
+# Next session — phase 67 (NodeGX Community)
 
-Paste the block below into a fresh session.
-
----
-
-Continue phase 67 (NodeGX Community), `dev-docs/tasks/phase-67-nodegx-university/`.
-
-**Read first, in this order:** **[README.md](README.md) §"What closes this phase"** — the alpha
-bar, **ten items** — then §"WHERE THE PHASE IS" below, then `TASKS.md`'s table, then your task file.
-
-🔴 **Two repos.** Editor work is this checkout. Platform work is
-`/Users/richardosborne/vscode_projects/nodegx-community` — a **sibling directory, never nested** —
-pushing to `The-Low-Code-Foundation/nodegx-community`. None of this checkout's gates, peers or
-traps apply there.
+**Written 2026-08-18 (session 36).** The visual tranche is done: **UNI-023, UNI-021, UNI-022 and
+the twelve badge artworks all landed.** What is left of the phase is the close, and none of it is
+code.
 
 ---
 
-# 🟢 SESSION 35 ANSWERED THE FOUR DECISIONS AND BUILT THREE OF THEM
+# Paste this
 
-Richard ruled **E5 = nexus-1**, **E6 = Brevo**, **E7 = Hetzner Object Storage**, and **the
-remainder = a phase 67b** (recorded as **D20**, which amends D1's *"Docker on Hetzner"*).
-
-**E6 is built. E2 is built and NOT RUN. E7 needs no code for the thing it was blocking.**
-
-## 🔴 WHAT IS ACTUALLY LEFT — three things from Richard, then one command
-
-1. **E10 — the GitHub OAuth App.** Unchanged, still the first domino, still one form.
-2. 🆕 **Verify `mail.nodegx.io` as a sending domain in Brevo.** Small, and E6 cannot do it itself.
-3. **`openssl rand -base64 32`** for `NOTIFICATION_LINK_SECRET`.
-
-Then `ops/deploy.sh <host>`, then **E9**, then the phase closes.
-
-> ⚠️ **The deploy has NOT been run.** It is outward-facing, it touches a box serving three live
-> sites, and it was built and left unrun deliberately. **Do not run it without Richard saying so
-> in this session.**
-
----
-
-# 🔴 CHECK THIS HANDOVER'S PREMISES — BEFORE ANY CODE, EVERY TIME
-
-✅ **Quote the count or do not claim the run.** Session 35's own floor, taken before any edit:
-**`nodegx-community` — 30 files, 848 tests, 0 failures, exit 0** (2026-08-18 20:55→21:00, 274s).
-A number quoted from a handover is a number measured under somebody else's load. **Re-measure.**
-
-⚠️ **The dev database was wiped twice this session** (the suite drops and rebuilds `public`) and
-reseeded at the end. 🔴 **ORDER: `npm test` → `db:seed` → `start`.** Two of Richard's `next start`
-servers (ports 3000 and 3210) were running throughout and **need a restart** — they hold pools
-against a schema that was dropped underneath them.
+> Continue phase 67 (NodeGX Community), `dev-docs/tasks/phase-67-nodegx-university/`. **The visual
+> tranche is finished — do not re-do it.** Read `README.md` §"the close" and
+> `CLOSING-THE-PHASE-RICHARDS-LIST.md`; what remains is **E10 (the GitHub OAuth app — ten minutes,
+> Richard's), a Brevo sending domain, and actually running the deploy in `ops/`.**
+>
+> 🔴 **Platform work is `/Users/richardosborne/vscode_projects/nodegx-community`** — a sibling
+> directory, never nested. None of the OpenNoodl checkout's gates or traps apply there.
+>
+> **Before any code: take your own floor.** `npm test` in the platform repo and **quote the
+> summary line**. Session 36 measured **32 files / 873 tests / exit 0** before its work and
+> **35 files / 976 tests / exit 0** after (321s on a quiet machine) — but a number quoted from a handover is a number measured
+> under somebody else's load.
+>
+> 🔴 **ONE VITEST PROCESS AT A TIME, and do not edit a file while a run is in flight.** Both cost
+> session 36 real time: two overlapping runs give `type "profile_visibility" does not exist` and
+> `duplicate key … pg_type_typname_nsp_index` bursts across unrelated files (every DB spec drops
+> and rebuilds `public`, and `fileParallelism: false` does not help — it serialises files *within*
+> one run). A mid-run edit produces a failure that does not reproduce.
+>
+> ⚠️ **Order is `npm test` → `npm run db:seed` → `npm start`.** The suite wipes the dev database,
+> and a server left running across the wipe holds a pool against a dropped schema.
 
 ---
 
-# WHERE THE PHASE IS — 2026-08-18 (session 35)
+# 1. What landed, in one line each
 
-| In the close? | Item | State |
-|---|---|---|
-| ✅ **E1** | UNI-001 — issuer + launcher | ✅ COMPLETE. AC4 settled s34. **No editor code item left** |
-| ✅ **E2** | **Deployment** | ✅ **BUILT s35, NOT RUN.** `nodegx-community/ops/{provision,deploy}.sh` |
-| ✅ **E3** | UNI-009 AC1 | ✅ MET (s31) |
-| ✅ **E4** | UNI-013 slice 5 | ✅ BUILT (s32) |
-| ✅ **E5** | Where it runs | ✅ **nexus-1** (D20) |
-| ✅ **E6** | Sending account | ✅ **Brevo — BUILT s35.** ⚠️ Richard owes the domain verification |
-| ✅ **E7** | Artefact storage | ✅ **Hetzner Object Storage.** Download button needs no code |
-| ✅ **E8** | `NOTIFICATION_LINK_SECRET` | ✅ CLOSED (s33). ⚠️ Richard must still set it |
-| 🔴 **E10** | **A GitHub OAuth App** | 🔴 **Richard's, and still the first domino** |
-| 🔴 **E9** | Smoke drive on the box | 🔴 Blocked on the deploy being run |
-| 🆕 **out** | UNI-021 · UNI-022 · UNI-023 | **NOT in the close** |
+| | |
+|---|---|
+| **UNI-023** | One facet engine (`src/lib/facets.ts`) serving six lists. Search is a `<form method="get">`, sorts are links, facets are multi-select — and **the rows and every pill's count come out of one function**, so a count cannot drift from what clicking returns. `0013` added `profiles.rate_band` and `profile_skills`. |
+| **UNI-021** | `0014` splits the video URL into `provider`/`provider_id`, adds `duration_seconds`, `replay_topics`, `replay_speakers`, `replay_chapters`. **`/replays/[slug]` is new** and the player lives there: pressing a poster navigates to `?play=1`, and the iframe is server-rendered on that request and no other. |
+| **UNI-022** | `/university` is the curriculum. `src/lib/curriculum.json` holds fifteen lessons in three paths; per-lesson state, node chips, derived progress. |
+| **UNI-013 slice 4** | Twelve badge SVGs, generated from **four family marks and one tier rule** by `scripts/draw-badges.mjs`. |
 
 ---
 
-# 🔴 SESSION 35's FINDINGS — five, and four of them outlive their tasks
+# 2. 🔴 One thing needs Richard, and it is not blocking
 
-### A. 🔴 THE MIGRATIONS COULD NOT BE RUN TWICE, AND THE SAFE-LOOKING FUNCTION WAS THE DESTRUCTIVE ONE
+**The four family marks.**
+📐 **[The Twelve Marks](https://claude.ai/code/artifact/359b212c-b97d-4ee0-9b46-655a29d3a604)** —
+the four marks at 92px, the tier rule, all twelve at the size a profile draws them, and a
+light/dark pair. **Three questions at the end**, and none is about the twelve:
 
-`src/db/sql/` holds **155 `create` statements and zero `if not exists`** — every migration is
-written as a first run. So a deploy's database step had two functions available and **both were
-wrong**:
+1. Do the four marks land? *Learning* is the one to argue about — a book is a different visual
+   world from nodes and wires.
+2. Is the tier rule quiet enough, or too quiet?
+3. Anything to add to the vocabulary? A fifth family is a path definition and a re-run.
 
-- `applySchema` re-runs 0001 and errors on `create type account_kind` — a half-applied deploy,
-  reported as a message about an enum.
-- 🔴 **`resetSchema` SUCCEEDS.** It drops `public` first, so it returns cleanly — **and takes every
-  account on the box with it**.
-
-⚠️ **The second is the one that matters, because it is the one a deploy script reaches for: the
-function that does not error.** Now `migrateToLatest` — a `schema_migrations` ledger, one
-transaction per migration paired with its own ledger row, and a **checksum comparison** that
-refuses to continue if an already-applied migration has since been edited (that edit is applied on
-your laptop, absent on the box, and **every drift check passes on both**).
-
-✅ `tests/e2-migration-ledger.test.ts`, 9 specs, **both controls** — one asserting `applySchema`
-throws, and one asserting **`resetSchema` does NOT throw and empties the table**, so nobody reads
-the file and concludes a mistake would be caught.
-
-### B. 🔴 THE SENDING DOMAIN IN THE DATABASE WAS ONE NOBODY OWNS
-
-`notification_policy` still defaulted to `sending_domain = 'mail.nodegx.dev'` and
-`site_origin = 'https://community.nodegx.dev'`. **D2 was amended to `.io` on 2026-08-17 and these
-two rows never moved**, because nothing had ever sent mail and so nothing ever read them in anger.
-
-Deployed as it stood: every envelope stamped `notifications@mail.nodegx.dev`, refused by Brevo as
-an unverified sender, and **every unsubscribe link pointing into a domain that does not exist**.
-
-✅ Migration `0012` changes the **defaults** as well as the row — a deploy step would have been
-forgotten. ⚠️ It guards the `update` on the old values, so it cannot stamp on an operator's fix.
-
-### C. 🔴 `outbound_emails` HAS NO DRAINER — AND THE DATABASE SAYS OTHERWISE
-
-`relay.ts` inserts into it and reads it back. **Nothing sends it.** And `notify()` has a
-`'relayed'` outcome meaning *"the relay is already mailing this, do not queue a second email"* — so
-for an RFP response or a coaching booking, **the row records that a person was emailed by a queue
-that never sends**.
-
-⚠️ Its envelope is pinned by trigger to `relay_policy.relay_domain`, still `relay.nodegx.dev`,
-**unregistered**. `0012` deliberately does NOT fix it: pointing it at a domain we own would make it
-*look* shippable while changing nothing about whether a relayed message reaches anybody.
-**Phase 67b, item A.**
-
-### D. E7 was blocking less than four sessions of notes claimed
-
-The old list said UNI-020's *"Download the starter project"* button was blocked *"until artefacts
-have a home"*. **`articles.project_url` already exists.** The button needs a URL, not a build — a
-public object URL written into that column makes it render. 🔴 **A premise inside a task file is
-still a premise**, and this one had been relayed three times.
-
-### E. Two of my own instruments were wrong before the code was
-
-- The payload-completeness check compared against `JSON.stringify(payload)` and reported `body`
-  **missing from a payload that carried it perfectly** — JSON escapes the newlines the body
-  contains. ✅ Rewritten to compare **values**. 🔴 *An instrument that fails on a correct answer is
-  worse than no instrument.*
-- `deploy.sh`'s first draft used `declare -A`. **macOS ships bash 3.2**, where that is a syntax
-  error — and the script runs from the laptop. ✅ Caught by `bash -n` before it ever ran.
+⚠️ **They are already shipped and rendering.** A change is four edits and
+`node scripts/draw-badges.mjs`; nothing waits on the answer.
 
 ---
 
-# ⚠️ TRAPS FOR WHOEVER RUNS THE DEPLOY
+# 3. 🔴 What session 36 found that outlives its tasks
 
-- 🔴 **A 308 proves nothing.** Caddy redirects http→https for **every** host, known or not, so an
-  unknown `Host` returns the same 308 this site does. Read `:2019/config/` and curl over real TLS.
-- 🔴 **Caddy is all-or-nothing on that box.** `provision.sh` validates the whole config with the new
-  drop-in and **removes the drop-in** if it does not validate. Do not bypass that.
-- 🔴 **Brevo answers an unauthorised source IP with 401**, which reads exactly like a bad key.
-  `api.brevo.com` publishes AAAA records and Node prefers v6. `BrevoTransport`'s constructor calls
-  `preferIpv4()` — **both** `dns.setDefaultResultOrder('ipv4first')` and
-  `net.setDefaultAutoSelectFamily(false)`, because Happy Eyeballs beats ordering alone.
-- ⚠️ **`SITE_ORIGIN` unset defaults to `http://localhost:3000`** — cookies without `Secure`,
-  callbacks pointing at a laptop, and a site that comes up and half-works. The deploy refuses
-  anything that is not `https://`.
-- ⚠️ **The backups are on the same box as the database.** Survives a dropped table, not a lost
-  host. Phase 67b, item B.
+**A `max(timestamptz)` comes back as a STRING.** A plain `timestamptz` column comes back as a
+`Date`. `lastActivity()` typed the aggregate as `Date` and a sort comparator died with
+`b.lastActiveAt?.getTime is not a function` — **a page-level crash from a value that typechecked.**
+Coerce at the boundary whenever the select is an aggregate.
+
+**The ledger says A lesson was finished, not WHICH.** UNI-022's scope assumed per-lesson ticks were
+derivable from `points_ledger`. `challenge_id`, `family`, `tier`, `delta` and a free-text `reason`
+that defaults to the challenge title — **no lesson identity anywhere.** The count is derivable; the
+ticks are not. ⚠️ **The fix is not a `lessons_completed` column**, it is a lesson identity on the
+event — and **nothing calls `recordEvent` with `lesson.completed` at all** today, so the gap is in
+front of the syllabus rather than behind it. The absence is asserted so nobody adds ticks they
+cannot justify.
+
+**A prose sweep cannot tell a prohibition from an offer.** D17's *"nothing here is a route a lesson
+arrives through"* was first asserted by grepping the page for `download` — which found the page's
+own comment saying there is none, then the **visible sentence** saying so. Twice. 🔴 **The natural
+fix is to delete the sentence, which is the test editing the product.** A route is a link: sweep
+`linksInPage` and the data's field names.
+
+**A multi-select pill's ACTIVE href turns it off.** The natural round-trip assertion measures the
+toggle, not the filter.
+
+**A deferred scope row written as an ASSERTION fired the same day.** UNI-023 shipped `/replays`
+with no topic legend and wrote `expect(replays.facets).toEqual([])`; UNI-021 added the column an
+hour later and it turned red, naming exactly where the row had been waiting. Better than a TODO.
+
+**The `⚠️` marker leaked into user-facing copy.** `/university` shipped *"Every lesson above is
+being written. ⚠️ Nothing here is a download…"* — the marker is the house convention for a caution
+in a **task file and a code comment**, and in JSX it is just text. Every suite green, `check:css`
+clean, `tsc` clean. 🔴 **A page's copy is outside every gate here** — third catch of this class in
+four sessions.
+
+**🔴 The light-theme instrument lied three times before it worked, and the theme was fine.** Any
+one of the three alone would have been written up as "the light theme is broken":
+
+| attempt | why it was wrong |
+|---|---|
+| `--blink-settings=preferredColorScheme=1` | `--dump-dom` said light, the **screenshot said dark** |
+| hard-code `data-theme="light"` into a saved copy | **the stamp runs on load and overwrites it** |
+| delete the stamp from the copy | React hydration replaced `<html>`; *"Application error"* |
+
+✅ **What works** (script in session 36's scratchpad as `shoot.mjs`): CDP on a **private port — not
+9222**, `Page.addScriptToEvaluateOnNewDocument` seeding `localStorage['nodegx-theme']`, navigate
+**twice** (localStorage is per-origin and `about:blank` is not it), and read
+`getComputedStyle(document.body).backgroundColor` back **in the same call as the screenshot**, so
+the image and the theme it claims are one measurement. Node 22 has a global `WebSocket`, so this
+needs no dependency. Light is `rgb(238,241,245)`; dark is `rgb(11,14,18)`.
+
+**A 120s tool timeout promotes a run to the background and reports exit 0 with an EMPTY log.** The
+same command re-run gave **2 failed**. Never accept a pass from a run whose summary line you have
+not read.
+
+---
+
+# 4. ⚠️ Two gates that will bite the next person
+
+**New text columns need a data-inventory row AND a probe.** `tests/uni005-data-inventory.test.ts`
+censuses every free-text column in the live schema and fails on anything unclassified — seven of
+session 36's columns. A `minor-refused` row additionally needs an executed probe.
+
+**New exports in an event module need a notification verdict.**
+`tests/uni014-notifications.test.ts` reads the exports out of `contribution.ts`, `rfps.ts`,
+`coaching.ts` and `assignments.ts` and fails on any that carry none.
+
+---
+
+# 5. What the close still needs
+
+Unchanged from session 35, and none of it is in this tranche:
+
+1. **E10 — the GitHub OAuth app.** Ten minutes, Richard's. Nobody on earth can make an account
+   until it exists.
+2. **A Brevo sending domain**, and the `openssl` command for the link secret.
+3. **Run the deploy.** 🔴 **`ops/` EXISTS and has never been run** — nexus-1, systemd rather than
+   Docker, and it curls three neighbouring sites and exits non-zero if any of them moves.
+
+⚠️ **The close list stays at ten items.** UNI-020/021/022/023 and slice 4 are all built and **none
+of them joined it** — they were the cheapest remaining things that make the site less of a
+placeholder, not things the close needed.
+
+---
+
+# 6. ⚠️ Housekeeping
+
+**`MEMORY.md` is over its 17,510-char budget** (~20k at the end of session 36, and it was ~19.5k at
+the start). Session 36 added ~770 chars net and compressed one line rather than deleting anybody
+else's traps. It needs a real pass by somebody willing to move detail down into the pointer files.

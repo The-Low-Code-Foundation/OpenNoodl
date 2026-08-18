@@ -7,6 +7,99 @@
 
 **Surface:** platform · **Tier 1** · **Effort:** S/M · ✅ **Blocked on nothing.**
 
+# ✅ BUILT 2026-08-18, session 36
+
+**The video library shows video, and a visitor who only scrolled past has asked nobody for
+anything.** `0014` splits the URL into `provider`/`provider_id`, adds `duration_seconds`, and adds
+`replay_topics`, `replay_speakers` and `replay_chapters`. `/replays` is a poster grid with duration
+badges; **`/replays/[slug]` is new** and is where the player lives.
+
+## 🔴 The activation is a NAVIGATION, and that is the whole mechanism
+
+Pressing a poster goes to `/replays/<slug>?play=1`, and the iframe is rendered by the server on
+that request and on no other. AC2 is therefore not a promise about a script's behaviour — it is a
+fact about which HTML exists: **without `play`, there is no `<iframe>` in the document.**
+
+⚠️ **The three alternatives were considered and are worse, and the first is the trap:**
+
+- **a `<details>` facade** — browsers load an iframe inside a **closed** `<details>`, so the
+  absence would be false while looking exactly like this;
+- **a client component that swaps the frame in** — this site has one `"use client"` component and
+  its one promise is that reading never asks for anything;
+- **the provider's own thumbnail behind the play mark** — *"a thumbnail URL looks like an image and
+  behaves like a tracker"*, which undoes the criterion without changing a word of it. There is a
+  sweep asserting no source file mentions a thumbnail host.
+
+✅ **And `?play=1` on a row with no provider renders nothing.** The page decides from the ROW, not
+from the query.
+
+## What each criterion cost
+
+| AC | Result |
+|---|---|
+| 1 · both arms | ✅ in **one test**: a YouTube row embeds on `youtube-nocookie.com`; the `example.invalid` row renders `target="_blank" rel="noopener noreferrer ugc"` and no frame |
+| 2 · no request on load | ✅ a sweep for `iframe`/`script`/`img`/`source`/`video`/`embed` with an off-site `src`, **plus two known-firing controls** — the same sweep over the playing page must come back non-empty, and over a hand-written embed |
+| 3 · the columns render, the filter narrows | ✅ duration, topics, speakers and chapters on the page; the topic pill's count is true and the PAGE reads the whole query string |
+| 4 · the bare row | ✅ `call-3` has no chapters, no speakers, no duration — asserted to draw with **no empty duration badge**, with the row that HAS one as the control |
+| 5 · registered + seeded | ✅ in `MIGRATIONS`; the seed carries one row per branch and derives the provider with **the app's own recogniser** |
+| 6 · presentation | ✅ the list archetype, no colour literal, four new contrast rows in both themes |
+
+## 🔴 Three things worth carrying forward
+
+**1 · `npm run db:seed` runs under `tsx` now.** The seed derives `provider`/`provider_id` by
+calling `splitVideoUrl` — the same function the app reads with. A seed that parsed watch URLs
+itself would be a **second recogniser**, and the copy living in a seed script is the one nobody
+notices going stale. ⚠️ `scripts/provision-org.mjs` records the same cost and still pays it.
+
+**2 · The replay block had to move down the seed file**, after the accounts: a speaker may *be*
+somebody with an account here, so it reads `accounts` and cannot run before they exist. The
+constraint caught it — `replay_speaker_is_an_account_or_a_name` refused two nulls — and the seed
+now fails loudly on an unresolved handle rather than letting the CHECK explain a typo.
+
+**3 · A replay has a page of its own, so the site now has NO same-page fragment links at all.**
+`/replays#slug` was the only one. `tests/uni013-slice5.test.tsx` had a floor asserting at least one
+fragment was checked; the **rule** survives (a fragment must land on an element) and the **floor**
+is retired with the reason written in, because it could only ever fail from here.
+
+**What the drive confirmed for this task:** `/replays` and a cold `/replays/<slug>` each contain
+**zero** `<iframe>`; `?play=1` contains **exactly one**, on `youtube-nocookie.com`. The two
+embeddable calls carry duration badges (52:08, 47:31) and posters linking to `?play=1`; the
+`example.invalid` one carries **no badge** and links to its plain page. With the player on, the
+embed plays a real video, the chapters render as `0:00 / 11:40 / 28:15` deep links, and the two
+speaker branches both render — `@tom-teaches` as a link, *Richard Osborne* as plain text.
+
+
+## ✅ DRIVEN OVER REAL HTTP, IN BOTH THEMES — and the drive found the one thing no gate could
+
+`next build` + `npm start` on the seeded database, every page read back as **markup** and shot as a
+**picture** in light and dark.
+
+🔴 **THE FINDING: the house `⚠️` marker leaked into USER-FACING COPY.** `/university`'s closing
+line read *"Every lesson above is being written. ⚠️ Nothing here is a download…"* — the marker is
+the convention for a caution in a task file and a code comment, and it rendered as a literal
+warning emoji mid-sentence on a public page. **Every suite was green, `check:css` was clean and
+`tsc` was clean.** A page's copy is outside every gate this repository has; the browser look is the
+only instrument that has ever caught this class, and this is its third catch in four sessions
+(UNI-020's doubled level, UNI-013's unstyled-page trap, this).
+
+⚠️ **AND THE THEME INSTRUMENT LIED THREE TIMES BEFORE IT WORKED**, which is worth more than the
+screenshots:
+
+| attempt | what it did | why it was wrong |
+|---|---|---|
+| `--blink-settings=preferredColorScheme=1` | `--dump-dom` reported `data-theme="light"` | the **screenshot from the same flag came back dark**, so one of the two readings was false and neither said which |
+| hard-code `data-theme="light"` into a saved copy | page still dark | **the stamp script runs on load and overwrites it** — the test measured the stamp, not the CSS |
+| delete the stamp from the saved copy | *"Application error: a client-side exception"* | React hydration replaced `<html>` and the page died — a third thing entirely |
+
+✅ **What worked: CDP, seeding `localStorage['nodegx-theme']` before the document runs** — which is
+exactly what a returning visitor has — **and reading the computed ground back out of the live page
+in the same call as the screenshot**, so the image and the theme it claims are one measurement
+rather than two. Light reports `data-theme=light` + `rgb(238,241,245)`; dark reports
+`data-theme=dark` + `rgb(11,14,18)`. 🔴 **The light theme was fine all along** — the first three
+instruments were the defect, and any one of them alone would have been written up as a bug.
+
+---
+
 ## Premise
 
 A video library that shows no video. Three rows of text, and the title is a bare

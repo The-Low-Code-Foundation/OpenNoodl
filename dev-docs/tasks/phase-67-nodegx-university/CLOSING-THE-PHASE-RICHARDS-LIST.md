@@ -228,7 +228,7 @@ a lost host.
 
 # What you do NOT need to do to close this phase
 
-**Not** a Paddle account (D7), **not** the twelve badge artworks (the profile renders a family mark
+**Not** a Paddle account (D7), ~~**not** the twelve badge artworks~~ (✅ **built 2026-08-18, session 36** — they were reassigned from Richard to us that day; the profile rendered a family mark
 and a tier colour rather than a broken image, which was the point), **not** GitHub Pages, **not**
 hosting (UNI-008), **not** the editor's Learning section, **not** the Hetzner S3 credentials (phase
 67b). None of them is in the closing sentence.

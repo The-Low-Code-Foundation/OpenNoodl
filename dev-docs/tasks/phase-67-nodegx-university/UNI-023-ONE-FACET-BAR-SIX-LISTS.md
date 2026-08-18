@@ -7,6 +7,98 @@
 
 **Surface:** platform · **Tier 1** · **Effort:** M · ✅ **Blocked on nothing.**
 
+# ✅ BUILT 2026-08-18, session 36
+
+**One engine, six lists, and the count is no longer a second producer.** `src/lib/facets.ts` holds
+a `ListSpec` per page and computes the rows and every pill's count with **one function** — a pill's
+number is not *related to* what clicking it returns, it **is** what clicking it returns, from the
+same call. `src/lib/lists.ts` is now six specs and six compositions; `FacetBar` grew a
+`<form method="get">` and a row of sort links; `0013` added `profiles.rate_band` and
+`profile_skills`.
+
+## What each criterion cost
+
+| AC | Result |
+|---|---|
+| 1 · one component | ✅ a **grep** over `src/`: the pill markup is declared once, in `Kit.tsx`, and no page contains `<FacetBar` or `'facet` |
+| 2 · URL round-trip | ✅ a pill's href re-read with **no argument but the URL** returns the same rows |
+| 3 · counts match | ✅ every pill on every page, plus **from an already-filtered page** and **with a search term on** |
+| 4 · positive arms + two empties | ✅ two floors — one for "a pill was checked", one for "a pill returned something" |
+| 5 · search with no JS | ✅ `<form method="get">`, the narrowed rows in the **server-rendered HTML**, and a sweep asserting the site still has exactly ONE `"use client"` component |
+| 6 · the rate band gates nothing | ✅ a listed profile with no band, asserted present in the unfiltered page and under every non-rate facet — with a positive arm beside it |
+| 7 · avatars, points, badge progress | ✅ and the badge count is asserted to **agree with `badgesFor` per account**, because that is two readers of one ledger |
+| 8 · existing suites | ⚠️ **not literally unchanged** — see below |
+
+## 🔴 Four things worth carrying forward
+
+**1 · An active pill's href turns it OFF, and the first test got that backwards.** On a multi-select
+bar the natural assertion — read the href off the filtered page, expect the filtered rows —
+measures the toggle, not the filter. It failed, correctly. Take the link from the **unfiltered**
+page.
+
+**2 · A dimension with nothing to filter by is now omitted, including its "All" pill.** `/replays`
+had a `topic` dimension before `replay_topics` existed, and the "All" pill alone drew a legend
+reading *"Topic · All 3"* over a page where nothing had a topic — a control that does nothing. The
+rule was per-page prose in slice 5; it is one line in the engine now.
+
+**3 · AC8 is not literally met, and pretending otherwise would be worse.** Three call sites in
+`tests/uni013-slice5.test.tsx` changed, because the model genuinely did: `peopleList(sql, {filter})`
+became `peopleList(sql, params)` and `benchList(sql, {section, asOf})` became
+`benchList(sql, {asOf, params})`. ⚠️ **`ListParams` is an index signature over the query string, so
+a `Date` cannot sit beside it** — the clock the Bench renders is not something a reader can put in
+a URL. The **substance** of AC8 holds: no assertion was weakened, and the one floor that was
+retired (*"no fragment link was checked"*) was retired by UNI-021 rather than by this task.
+
+**4 · A `max(timestamptz)` comes back as a STRING.** `lastActivity` typed it as `Date` and the sort
+comparator died with `b.lastActiveAt?.getTime is not a function` — a page-level crash from a value
+that typechecked. The driver parses a plain `timestamptz` column to a `Date` and an aggregate of one
+to a string.
+
+## ⚠️ What was deferred, and where the row is
+
+`/replays | topic` was in the scope table above and `replay_topics` did not exist. The page shipped
+with **search and sort and no legend**, and the deferral was written down as an assertion —
+`expect(replays.facets).toEqual([])` — which **turned red the moment UNI-021 landed the column**,
+in the same session. That is what a deferred row should do.
+
+**What the drive confirmed for this task:** every rate band has a positive arm on the running site
+(1 each) and **`mo-makes` has none**, which is AC6 standing on the page rather than in a fixture;
+`/people?rate=400-700` returns exactly the 1 row its pill promises; `?q=zzzz` renders
+`data-empty="no-match"`; and the search form carries `<input type="hidden" name="for"
+value="coaching"/>` when submitted from a filtered page.
+
+
+## ✅ DRIVEN OVER REAL HTTP, IN BOTH THEMES — and the drive found the one thing no gate could
+
+`next build` + `npm start` on the seeded database, every page read back as **markup** and shot as a
+**picture** in light and dark.
+
+🔴 **THE FINDING: the house `⚠️` marker leaked into USER-FACING COPY.** `/university`'s closing
+line read *"Every lesson above is being written. ⚠️ Nothing here is a download…"* — the marker is
+the convention for a caution in a task file and a code comment, and it rendered as a literal
+warning emoji mid-sentence on a public page. **Every suite was green, `check:css` was clean and
+`tsc` was clean.** A page's copy is outside every gate this repository has; the browser look is the
+only instrument that has ever caught this class, and this is its third catch in four sessions
+(UNI-020's doubled level, UNI-013's unstyled-page trap, this).
+
+⚠️ **AND THE THEME INSTRUMENT LIED THREE TIMES BEFORE IT WORKED**, which is worth more than the
+screenshots:
+
+| attempt | what it did | why it was wrong |
+|---|---|---|
+| `--blink-settings=preferredColorScheme=1` | `--dump-dom` reported `data-theme="light"` | the **screenshot from the same flag came back dark**, so one of the two readings was false and neither said which |
+| hard-code `data-theme="light"` into a saved copy | page still dark | **the stamp script runs on load and overwrites it** — the test measured the stamp, not the CSS |
+| delete the stamp from the saved copy | *"Application error: a client-side exception"* | React hydration replaced `<html>` and the page died — a third thing entirely |
+
+✅ **What worked: CDP, seeding `localStorage['nodegx-theme']` before the document runs** — which is
+exactly what a returning visitor has — **and reading the computed ground back out of the live page
+in the same call as the screenshot**, so the image and the theme it claims are one measurement
+rather than two. Light reports `data-theme=light` + `rgb(238,241,245)`; dark reports
+`data-theme=dark` + `rgb(11,14,18)`. 🔴 **The light theme was fine all along** — the first three
+instruments were the defect, and any one of them alone would have been written up as a bug.
+
+---
+
 ## Premise
 
 Six lists, and between them **one filter dimension each and no search anywhere**. People filters on

@@ -1,3 +1,26 @@
+# ✅ THE WHOLE TRANCHE LANDED — 2026-08-18, session 36
+
+**UNI-023, UNI-021, UNI-022 and the twelve badges are all built.** This file is kept because its
+*reasoning* is what the session followed, and because three of its predictions were right in ways
+worth reading back:
+
+- **The order was right, and UNI-023's deferred row paid off inside one session.** UNI-023 shipped
+  `/replays` with search and sort and **no topic legend**, with the deferral written down as an
+  assertion — which turned red the moment UNI-021 landed `replay_topics`, in the same session.
+- **§4's recommendation held.** The badges are SVG, generated from four family marks and one tier
+  rule, and the *"halves the work"* insight was correct: the artwork only had to carry family.
+  📐 [The Twelve Marks](https://claude.ai/code/artifact/359b212c-b97d-4ee0-9b46-655a29d3a604) —
+  ⚠️ **three questions for Richard at the end of it.**
+- **§5's warning was the right one.** Every page was read back over real HTTP in **both** themes,
+  and the light theme had never been looked at in five sessions.
+
+🔴 **One thing this file got wrong, and it is UNI-022's:** the scope said progress is derived from
+`points_ledger` because *"lesson completion is already an event"* there. It is — and **the ledger
+records that A lesson was finished, not WHICH**. The count is derivable and the design's per-lesson
+ticks are not. See UNI-022's own file.
+
+---
+
 # The visual tranche — UNI-023, UNI-021, UNI-022 and the badges
 
 **Written 2026-08-18 (session 35), for pasting into a fresh session.** These four are what is left

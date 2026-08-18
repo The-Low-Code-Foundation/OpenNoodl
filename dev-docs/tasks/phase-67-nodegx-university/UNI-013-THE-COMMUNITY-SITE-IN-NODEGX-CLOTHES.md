@@ -26,7 +26,9 @@
 
 **Surface:** platform · **Tier 1** (it is cheap, it is unblocked, and it gets dearer after launch) ·
 **Effort:** M · 🟢 **SLICES 1–3 BUILT 2026-08-17 (session 24), pushed `f64f138` + `d205b47`.**
-**Only slice 4 (the badge artworks, Richard's) remains.** D18 ruled: **azure**.
+✅ **ALL FIVE SLICES ARE BUILT.** Slice 4 — the twelve badge artworks — was recorded as *"Richard's,
+and not code"* in four places; **it was reassigned to us on 2026-08-18 and built the same day** by
+`scripts/draw-badges.mjs`. D18 ruled: **azure**.
 
 ## ✅ Slices 2 and 3 — DONE, `d205b47`. The visible half
 
@@ -368,7 +370,13 @@ wrong.
   rather than left as an omission.
 - **`/university` and the five org pages were not restyled.** They are on a written exception list
   in the suite with a reason each, so a page added later is not waved through by silence.
-- **Slice 4 — the twelve badge artworks — is still Richard's**, and is the one slice that is not code.
+- ✅ **Slice 4 — the twelve badge artworks — is BUILT (2026-08-18, session 36), and it turned out to
+  be code after all.** 🔴 **Four family marks and one tier rule, not twelve drawings**:
+  `scripts/draw-badges.mjs` writes `public/badges/*.svg` from four path definitions and a pip row,
+  so *"the badge set is consistent"* is true by construction. ⚠️ **The files carry no colour** — an
+  `<img>`-loaded SVG is its own document and inherits none, so `currentColor` would come out black
+  in **both** themes; the profile paints them through a CSS **mask** instead.
+  📐 [The Twelve Marks](https://claude.ai/code/artifact/359b212c-b97d-4ee0-9b46-655a29d3a604).
 
 ⚠️ **STILL TRUE AND STILL UNMEASURED: nobody has looked at any page in the LIGHT theme.** Light is
 graded by the contrast arithmetic only, which is the stronger instrument and is not a look.

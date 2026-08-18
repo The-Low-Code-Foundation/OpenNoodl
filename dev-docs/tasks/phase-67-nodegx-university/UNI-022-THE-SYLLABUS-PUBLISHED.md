@@ -8,6 +8,99 @@
 **Surface:** platform · **Tier 2** · **Effort:** M · ✅ **D17 is already ruled** — this task honours
 it, it does not wait on it.
 
+# ✅ BUILT 2026-08-18, session 36
+
+**University is the curriculum now.** `src/lib/curriculum.json` holds fifteen lessons in three
+paths — the twelve-lesson spine from `CURRICULUM-DESIGN.md` §5 plus *data & backends* and *custom
+nodes* — and `/university` renders it as a spine with a step column, per-lesson state and node
+chips. Every lesson says **in writing**, which is the state the site is actually in, and the page
+is still a syllabus.
+
+## 🔴 A PREMISE OF THIS TASK IS HALF FALSE, AND IT IS THE HALF THE DESIGN DRAWS
+
+The scope says *"lesson completion is already an event in `points_ledger`"*. **It is — and the
+ledger records that A lesson was finished without recording WHICH.** A row carries `challenge_id`,
+`family`, `tier`, `delta` and a free-text `reason` that defaults to the challenge's own title
+(*"A lesson finished"*). There is no lesson identity anywhere in it.
+
+So:
+
+- ✅ **The count is derivable**, and it is exactly the design's own progress panel (*"2 of 8"*).
+- 🔴 **The per-lesson ticks §08 draws are NOT.** Drawing them would mean matching prose in
+  `reason` — a guess wearing a tick's clothes, right on the seed and wrong the first time a
+  challenge title was reworded, with nothing to notice.
+
+⚠️ **The fix is not a `lessons_completed` column** — that is the second description of a fact the
+ledger already half-has, which this task rules out in as many words. It is **a lesson identity on
+the event**, and it belongs to whoever builds the bridge that reports one. 🔴 **Nothing currently
+calls `recordEvent` with `lesson.completed` at all** — the only rows that exist are seeded — so
+this is a gap in *front* of the syllabus rather than behind it.
+
+**The absence is asserted**, so a later session cannot quietly add ticks it cannot justify, and the
+page says the honest sentence out loud: *"counted from your points ledger, which records that a
+lesson was finished rather than which one."*
+
+## What each criterion cost
+
+| AC | Result |
+|---|---|
+| 1 · from the file, no viewer | ✅ `syllabus.length === 0` — the read function takes nothing, so there is no signed-out branch to get wrong |
+| 2 · per-lesson state, never a banner | ✅ and **the control is the live arm**: every lesson is *in writing* today and the page is still ordered, titled, timed and specific. The blocked state is DERIVED from `needs`, so a lesson cannot be ready while its prerequisite is not |
+| 3 · derived progress, agreeing with the profile | ✅ and it counts a lesson **once** although two challenges listen to the event — counting rows would report two lessons for one. A revocation removes it from **both** readers |
+| 4 · the file is the source of truth | ✅ a sweep asserting no `.ts`/`.tsx` under `src/` names any lesson slug or title |
+| 5 · presentation | ✅ no new colour role; six new contrast rows in both themes |
+
+## 🔴 Two instrument failures worth carrying forward
+
+**1 · A prose sweep cannot tell a prohibition from an offer.** D17's check looked for the word
+*"download"* and found it — first in the page's own header comment saying there is none, then in
+the visible sentence *"nothing here is a download"*. **Twice.** The natural reaction to that
+failure is to delete the sentence, which is the test editing the product. A route is a **link**, so
+the assertion sweeps `linksInPage` and the curriculum file's own **field names** instead.
+
+**2 · A short-word sweep across a whole repo reports coincidence as duplication.** AC4's first
+draft swept `tests/` too and found `uni006` naming *"capstone"* about an assignment and `uni021`
+naming *"the node you write yourself"* about a **meetup replay**. Two files talking about their own
+subjects. The criterion is about the product, so the sweep is `src/` only — **and the bound is
+stated in the test**, because a bounded query reports its bound.
+
+**What the drive confirmed for this task:** fifteen rows, all `data-state="in-writing"`, each with
+its minutes, what it teaches, a blurb and its node chips — and the page reads as a curriculum being
+built rather than as a page that forgot to load, which was AC2's whole claim. 🔴 **It also found
+the `⚠️` in the closing copy** (below).
+
+
+## ✅ DRIVEN OVER REAL HTTP, IN BOTH THEMES — and the drive found the one thing no gate could
+
+`next build` + `npm start` on the seeded database, every page read back as **markup** and shot as a
+**picture** in light and dark.
+
+🔴 **THE FINDING: the house `⚠️` marker leaked into USER-FACING COPY.** `/university`'s closing
+line read *"Every lesson above is being written. ⚠️ Nothing here is a download…"* — the marker is
+the convention for a caution in a task file and a code comment, and it rendered as a literal
+warning emoji mid-sentence on a public page. **Every suite was green, `check:css` was clean and
+`tsc` was clean.** A page's copy is outside every gate this repository has; the browser look is the
+only instrument that has ever caught this class, and this is its third catch in four sessions
+(UNI-020's doubled level, UNI-013's unstyled-page trap, this).
+
+⚠️ **AND THE THEME INSTRUMENT LIED THREE TIMES BEFORE IT WORKED**, which is worth more than the
+screenshots:
+
+| attempt | what it did | why it was wrong |
+|---|---|---|
+| `--blink-settings=preferredColorScheme=1` | `--dump-dom` reported `data-theme="light"` | the **screenshot from the same flag came back dark**, so one of the two readings was false and neither said which |
+| hard-code `data-theme="light"` into a saved copy | page still dark | **the stamp script runs on load and overwrites it** — the test measured the stamp, not the CSS |
+| delete the stamp from the saved copy | *"Application error: a client-side exception"* | React hydration replaced `<html>` and the page died — a third thing entirely |
+
+✅ **What worked: CDP, seeding `localStorage['nodegx-theme']` before the document runs** — which is
+exactly what a returning visitor has — **and reading the computed ground back out of the live page
+in the same call as the screenshot**, so the image and the theme it claims are one measurement
+rather than two. Light reports `data-theme=light` + `rgb(238,241,245)`; dark reports
+`data-theme=dark` + `rgb(11,14,18)`. 🔴 **The light theme was fine all along** — the first three
+instruments were the defect, and any one of them alone would have been written up as a bug.
+
+---
+
 ## Premise
 
 Richard, on being shown the page: *"University — no idea wtf this page is supposed to be doing

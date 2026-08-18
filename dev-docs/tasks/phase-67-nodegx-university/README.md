@@ -202,12 +202,13 @@ Everything below is a consequence of that sentence. **Ten items. Nothing else bl
 > **[UNI-023](UNI-023-ONE-FACET-BAR-SIX-LISTS.md)** (the facet bar) were scoped from Richard's read
 > of the running site and are **NOT in this close**. 🔴 **The list stays at ten items.**
 >
-> ✅ **UNI-020 BUILT 2026-08-18 (session 34), `nodegx-community@767b670` — and it is still not in
-> the close.** `/tutorials/[slug]` exists, so **the site has no dead-end page any more**; the
-> content model, the node chips and three working filters came with it. 🔴 **It was built because
-> it was the cheapest remaining thing that makes the site less of a placeholder, not because the
-> close needed it — the close's four code items were already done.** ⚠️ **UNI-023 is the cheapest
-> next one**: its node filter wanted a closed vocabulary and UNI-020 built one.
+> ✅ **ALL FOUR ARE BUILT NOW — UNI-020 in session 34, UNI-021 / UNI-022 / UNI-023 in session 36 —
+> AND NONE OF THEM IS IN THE CLOSE.** 🔴 **The list stays at ten items, and the reason has not
+> changed:** they were built because they were the cheapest remaining things that make the site
+> less of a placeholder, not because the close needed them. The close's four code items were
+> already done before any of the four started.
+>
+> ✅ **UNI-013 slice 4 is built too** — the twelve badge artworks. See the correction below.
 >
 > ⚠️ **Where the line falls, and why it is not arbitrary:** the close's bar is *"does not look like
 > a placeholder"*. **UNI-019 is in** because a page whose cards do not click is broken rather than
@@ -221,8 +222,28 @@ Everything below is a consequence of that sentence. **Ten items. Nothing else bl
 hazard that deserves its own care, not a deadline), **UNI-007**'s intake, **UNI-006**'s bridge
 endpoint, **UNI-011**'s in-editor views (**deliberately** unbuilt — D16's ship order is the reverse
 of its build order), **UNI-008** hosting, **UNI-010**'s remaining slice, **UNI-012**'s
-packaged-install check, and **UNI-013 slice 4** (the twelve badge artworks — the profile renders a
-family mark and a tier colour rather than a broken image, which was the point of doing it that way).
+packaged-install check.
+
+> ✅ **UNI-013 SLICE 4 IS NO LONGER ON THIS LIST, AND THIS SENTENCE IS THE CORRECTION.** It stood
+> here — and in `NEXT-SESSION-PROMPT.md` and in `phase-67b`'s table — as *"Richard's, and not
+> code"*. **It was reassigned to us on 2026-08-18 and built the same day.** The twelve are
+> generated from **four family marks and one tier rule** by `scripts/draw-badges.mjs` into
+> `public/badges/`, so *"the badge set is consistent"* is true by construction rather than by
+> twelve careful edits — which is the same argument migration `0002` makes for seeding the
+> taxonomy in the schema.
+>
+> 🔴 **SVG rather than a generated image, and it was not close.** D4 ruled it, and four structural
+> reasons hold it: they render at **24–40px** where raster art is mush; twelve marks have to read
+> as ONE SYSTEM and a diffusion model produces twelve unrelated pictures; the site runs light and
+> dark; and a file in `public/badges/` touches no hosting decision (**E7 is owned by nobody**).
+>
+> ⚠️ **The files carry NO COLOUR AT ALL.** An SVG loaded through `<img src>` is its own document
+> and inherits nothing, so a mark drawn in `currentColor` comes out **black in both themes**. The
+> profile paints them through a CSS **mask**, so a badge is whatever colour its own text is.
+>
+> 📐 **The four marks, at real size in both themes:**
+> [The Twelve Marks](https://claude.ai/code/artifact/359b212c-b97d-4ee0-9b46-655a29d3a604) —
+> ⚠️ **three questions for Richard at the end of it**, and none is about the twelve.
 
 ⚠️ **These are a phase 67b or they fold into phase 68.** That is a call for Richard at the close,
 not a thing to decide by drift.
