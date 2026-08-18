@@ -285,7 +285,30 @@ in a spec:
 ⚠️ **This section was rewritten in session 28.** It previously said *"LANE A — finish UNI-016,
 start here"* and described a credential that does not exist. UNI-016 is built; that lane is gone.
 
-## 🟢 LANE A — E1: UNI-001's issuer. **Start here, and it unblocks everything else.**
+## 🟢 LANE A — E1: UNI-001's issuer. 🔴 **CHECK IF IT IS ALREADY DONE BEFORE YOU START.**
+
+> 🔴 **A PEER WAS BUILDING THIS AT 13:56 ON 2026-08-18, UNCOMMITTED, IN BOTH REPOS.** Observed
+> **five minutes** after this handover was written — which is the shared-checkout hazard landing
+> on the very section that warns about it.
+>
+> **Uncommitted files seen, by mtime (13:27–13:54):**
+> - platform: `src/lib/{session,devicepairing,githuboauth,signin,signin-http,site}.ts`,
+>   `src/db/sql/0010_uni001_device_authorizations.sql`, `src/app/api/auth/`, `src/app/api/v1/auth/`,
+>   `src/app/auth/`, `tests/uni001-issuer.test.ts`, plus edits to `globals.css`, `layout.tsx`,
+>   `migrate.ts`, `schema.ts` and two suites
+> - editor: `communitysignin.ts`, `communityorigin.ts`, and `communitysession.ts` extended with
+>   `writeCommunitySession` / `clearCommunitySession`
+>
+> ⚠️ **That is an inventory of FILES, not a claim that it works** — none of it was committed, none
+> of it was run by this session, and a half-finished issuer looks exactly like a finished one from
+> a directory listing. 🔴 **`git log` and `git status` in BOTH repos before writing a line of
+> LANE A**, and if it has landed, LANE B is your start instead.
+>
+> ⚠️ **Do not run the platform suite while that work is uncommitted and moving** — `freshDb()`
+> drops the schema, and interleaving with someone else's live run is the *51-failures-in-five-
+> unrelated-files* trap this handover documents two sections down.
+
+**If it is genuinely not done**, the below is the scoping. It unblocks everything else.
 
 Plain session auth. **Not** the OIDC provider face — D19 struck it, because there is no second
 system to federate with, and building it speculatively is explicitly warned against in UNI-001.
