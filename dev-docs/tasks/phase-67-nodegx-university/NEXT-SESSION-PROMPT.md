@@ -6,8 +6,8 @@ Paste the block below into a fresh session.
 
 Continue phase 67 (NodeGX Community), `dev-docs/tasks/phase-67-nodegx-university/`.
 
-**Read first, in this order:** **[D19](RULINGS.md)** — it reverses a prior ruling and shapes the
-whole back half. Then §"WHERE THE PHASE IS", then `TASKS.md`'s table, then your task file.
+**Read first, in this order:** **[D19](RULINGS.md)**, then §"WHERE THE PHASE IS" below, then
+`TASKS.md`'s table, then your task file.
 
 🔴 **Two repos.** Editor work is this checkout. Platform work is
 `/Users/richardosborne/vscode_projects/nodegx-community` — a **sibling directory, never nested** —
@@ -16,88 +16,143 @@ traps apply there.
 
 ---
 
-# ✅ D19's CONDITION IS DISCHARGED — UNI-014 is built and pushed
+# ✅ THE BENCH IS BUILT. D19's tranche is now three-quarters landed.
 
-**`70d8acc`.** D19 was conditional on email landing first; it has landed. **UNI-015 is now
-unblocked, and it is the next task.**
+**Platform `cdc7b17`. Editor `eeb64051`.**
 
-🔴 **The ruling is still not "build a forum"** — it is: **the unit of content is not a post, it is
-a graph with a question attached.** The pitch artifact
-**["Questions Made of Nodes"](https://claude.ai/code/artifact/7ac9fdff-757c-4cd0-8a94-879ba5fa1509)**
-is the design. **Read it before writing markup** — UNI-013 lost a session building from prose when
-the design was an artifact.
+**UNI-015 — all five ACs met.** **UNI-016 — platform half built, AC1–AC4 met.**
+
+🔴 **The one thing left in UNI-016 is the editor's POST, and it is the whole reason the tranche
+exists.** The platform can receive artifact posts and **nothing sends them**:
+`AskAboutNodeDialog` still hands off to the browser with a prefilled composer. **That is the
+next task.**
 
 ---
 
-# WHERE THE PHASE IS — 2026-08-18 (session 26)
+# WHERE THE PHASE IS — 2026-08-18 (session 27)
 
 | Track | Tasks | State |
 |---|---|---|
-| **Platform** | UNI-001 (AC3), 002–006, 009 content cut, 011 slice 1, 013 s1–s3 | 🟢 pushed |
-| **Platform** | **UNI-014 — the mail room** | ✅ **BUILT + PUSHED `70d8acc`. 5/5 ACs.** |
-| **Platform** | **UNI-015 — the Bench** | 🔴 **NOT BUILT. Unblocked. START HERE.** ⚠️ **Must not ship alone** |
-| **Platform + editor** | **UNI-016 — artifact posts** | 🔴 **NOT BUILT. The task D19 exists for.** Do it back-to-back with 015 |
-| **Platform** | UNI-017 — the queue and the signal | 🔴 NOT BUILT. Needs a backlog first |
+| **Platform** | UNI-001 (AC3), 002–006, 009 cut, 011 s1, 013 s1–s3, **014** | 🟢 pushed |
+| **Platform** | **UNI-015 — the Bench** | ✅ **BUILT. 5/5 ACs.** `cdc7b17` |
+| **Platform** | **UNI-016 — artifact posts** | 🟡 **PLATFORM HALF BUILT (AC1–AC4).** 🔴 **Editor POST NOT built — START HERE** |
+| **Platform** | UNI-017 — the queue and the signal | 🟡 **Partly pre-built by UNI-015**: `unansweredQueue()` exists and `/bench` renders it with the clock. *Same here* is untouched |
 | **Editor** | UNI-018 — pull a graph | 🔴 NOT BUILT. 🔴 **Read its §"THE HAZARD" before scoping** |
 | **Platform** | UNI-007 intake / personalised path | 🟡 Still the one platform piece nobody has looked at |
-| **Platform** | **deployment** | 🔴 **Owned by NO TASK. The top ask.** |
+| **Platform** | **deployment** | 🔴 **Owned by NO TASK. Still the top ask.** |
 | **Editor / MCP** | UNI-012 | ✅ Ruled, scoped, **NOT built. Buildable now** |
 | **Platform** | UNI-013 slice 4 (12 badge SVGs) | 🔴 Richard's. Degrades rather than blocks |
 
-## What session 26 did — UNI-014, built
+## What session 27 did
 
-**Platform `70d8acc`:** `0007_uni014_notifications.sql` (four tables + the delivery guard),
-`src/lib/notifications.ts`, `src/lib/mail/transport.ts`, `/unsubscribe/[token]`, wiring into five
-event modules, and `tests/uni014-notifications.test.ts`.
+**Platform `cdc7b17`** — `0008_uni015_bench.sql`, `0009_uni016_attachments.sql`,
+`src/lib/{bench,postbody,attachments,bench-http}.ts`, four `/api/v1/bench` routes, `/bench` and
+`/bench/[threadId]`, `PostBody.tsx` + `Attachment.tsx`, the Bench and node-figure CSS, and the
+**Discourse decommission** (three files deleted, `forum_threads` dropped, `{forum:'absent'}`
+removed, the challenge registry re-pointed).
 
-🔴 **Two things measured that the task file had wrong — both written up in
-[UNI-014's file](UNI-014-THE-MAIL-ROOM.md), read it before touching notifications:**
+**Editor `eeb64051`** — the shared golden corpus and the spec that pins its hash. Nothing else in
+the editor changed.
 
-1. **`outbound_emails` could NOT become the notification channel.** Its guard is an
-   **unconditional per-row trigger that IS UNI-004 AC1's proof**, and it hard-requires a relay
-   thread. Widening it converts a total guarantee into a skippable branch. The unification lives
-   **one level up: one transport interface, two queues.**
-2. **The assumption about which events needed email was backwards.** Every pre-existing
-   notification-worthy event is relay-backed and **already mailed**; those write the row with
-   `via: 'relay'` and queue nothing. **The events with no email path today are exactly the ones
-   reaching org-minor accounts** — assignments, grading, project requests, badges.
+---
 
-✅ **Two live gaps found and fixed en route:** `declineBooking`/`cancelBooking` told **nobody**
-anything; and the **runner's** grading is a second `submission_gradings` insert that
-`gradeManually` readers miss.
+# 🔴 FIVE THINGS MEASURED THAT THE TASK FILES HAD WRONG — read before touching any of it
+
+### 1. `recordEvent` could not be called inside a transaction, and the symptom was a lost QUESTION
+
+`tryAward` catches a refusal and reports it as an outcome, which is correct **standalone**. Inside
+a caller's transaction a `raise exception` has **already aborted Postgres**, and catching it in
+TypeScript does not un-abort it. `bench.thread.created` has two listeners — `first-thread` (capped
+at 1) and `thread-started` (repeatable) — so **the second question anybody asked failed outright**
+with `[cap-reached]`.
+
+✅ Fixed with a **savepoint per award** in `contribution.ts` (`isolated()`). **Per challenge**,
+because a savepoint around the whole of `recordEvent` would forfeit the sibling awards and
+`thread-started` would never pay out again after a person's first thread — a quieter version of
+the same bug. 🔴 **UNI-002's 38 specs pass with those files byte-unchanged in git**, which is
+exactly the proof UNI-015 AC2 asks for that this is a new caller and not a new mechanism.
+
+⚠️ **`savepoint` exists only on a `TransactionSql`, never on a pool** — that is what makes the
+branch a reliable discriminator rather than a guess.
+
+### 2. `alter type … add value` is unusable in a migration here
+
+Measured on **PG 16.14**: adding an enum value and naming it in a CHECK constraint in the same
+migration is refused (*"unsafe use of new value"*), and `applySchema` runs each migration as one
+implicit transaction. 🔴 **The `subject_kind::text = 'x'` workaround parses fine and is worse than
+the problem** — a mistyped literal is not an error, it is a clause that silently never matches,
+which is the *check that cannot fail* this phase has now found five times. **Recreate the enum**
+(drop the constraint, rename, create, alter the columns, drop the old type, re-add the constraint).
+
+### 3. AC4's `grep -ril discourse` instrument is TOO STRONG and was not implemented literally
+
+Taken at its word it forbids a comment **saying what was removed**: `0001` still creates
+`forum_threads` because a migration is history, and `0008` must name `discourse.post.created` to
+migrate away from it. ✅ What is asserted instead is sharper — **no live CODE anywhere in `src/`,
+comments stripped first** (with a control proving the stripper does not strip code), plus the
+named files are gone and the **live database** has no `forum_threads` and no `discourse.*` event
+key. **Prose keeps the record; code keeps nothing.**
+
+### 4. Two shipping palette tokens fail WCAG AA in the LIGHT theme — fifth instance
+
+`--theme-color-danger` scores **4.26** and `--theme-color-success` **3.55** on `bg-0` in light —
+and they are exactly the tokens the queue clock and the accepted-answer mark would reach for. The
+pitch artifact hand-mixed its own colours (`#a33228`, `#1f6d52`) for those two roles, which is
+what a designer does when the system token looks wrong — **and it looked wrong because it IS
+wrong** at that size on that ground. ✅ `--site-fg-alert` and `--site-fg-good` are **split by
+theme**; `--site-fg-warn` needed no split (10.51 / 4.79). All three are now rows in
+`tests/uni013-contrast.test.ts`. 🔴 **A role with no pair in that table is a colour nobody
+measured.**
+
+### 5. The SQL re-point of the challenge registry matches ZERO ROWS
+
+`challenges` is empty in a fresh schema — the registry loads from `challenge-catalogue.json` via
+`syncCatalogue()` — and **nothing is deployed anywhere**, so no database holds a `discourse.*` row.
+The JSON is the half that binds. Written into `0008`'s comment out loud so the block is never read
+as evidence that anything was migrated.
+
+---
+
+# 🔴 TWO HARNESS TRAPS THAT COST TWO DEBUGGING PASSES
+
+Both are in `tests/uni015-bench-http.test.ts`, both will bite anyone who spawns a server in a spec.
+
+1. **`next start` SURVIVES `child.kill()`.** We spawn `npx`; the real listener is a **grandchild**
+   (`next-server`). A survivor holds a pool against the database every other suite drops, and the
+   symptom is **51 failures in five unrelated files** reading `type "badge_family" does not exist`.
+   ⚠️ **`pkill -f "next start"` matches NOTHING.** Kill by port.
+2. 🔴 **`lsof -ti :3987` MATCHES CLIENTS TOO** — including the vitest worker that just ran the
+   fetches. Killing that PID **SIGKILLs the process running the tests**: the file vanishes from the
+   report with an *"unhandled error"* from tinypool, the summary reads **`23 passed (24)`**, and
+   **nothing names the file that did not run.** ✅ **`lsof -ti tcp:<port> -sTCP:LISTEN`.**
+   **A suite that was killed looks almost exactly like a suite that passed — always reconcile the
+   file count.**
 
 ---
 
 # THE PLAN
 
-## 🟢 LANE A — UNI-015 then UNI-016, back to back. **Start here.**
+## 🟢 LANE A — finish UNI-016: the editor's composer POSTs. **Start here.**
 
-⚠️ **Do not ship UNI-015 alone.** Plain-text Q&A on our own stack is strictly worse than what we
-chose not to buy. **UNI-016 is the reason to build.**
+Everything it needs exists. `POST /api/v1/bench/threads` accepts `{section, title, body}` and
+returns `{threadId, postId, pointsAwarded}`; `POST /api/v1/bench/threads/:id/posts` answers.
+Attach with `attachToPost` — the payload shapes are `NodeExcerptPayload` and `CapturePayload` in
+`src/lib/attachments.ts`. The bearer token `AskAboutNodeDialog` already holds is the credential
+(`apiviewer.ts` resolves it against the same `sessions` rows as the cookie).
 
-**The literal first move:** bring the sibling up (`npm run db:up && npm run db:seed`,
-**port 55432**), **re-measure the floor before touching anything** — it is **579 specs / 22 files**
-as of `70d8acc`; do not copy that number forward, re-run it.
+🔴 **The browser hand-off STAYS as the signed-out route — do not delete it.** UNI-016 AC5 says so,
+and right now AC5 is only *trivially* true because nothing in the editor changed.
 
-🔴 **UNI-015 carries the Discourse decommission — 11 files inventoried by path in its file.**
-`forum_threads` is a six-column stub that existed only so D16 had something to read: **drop it, do
-not migrate it.** And **`{forum: 'absent'}` loses its referent — remove the branch, do not leave it
-unreachable.**
+⚠️ **`withheldPorts` publishes DIRECTION and a count, never a name** — the excerpt already buckets
+the name to `<port>`; the count is what makes the redaction visible. `ports_withheld` is a
+GENERATED column, so the editor cannot understate it and neither can anyone else.
 
-🔴 **The three-copy trap is the sharpest reuse question in the tranche** — `parsePostBody` →
-`Block[]` lives in the **editor** checkout. Ruled: platform-side canonical, plus a shared golden
-corpus whose hash is asserted in *both* repos. This has bitten twice (`LessonEvidence`,
-`renderMarkdown`).
+## 🟡 LANE B — UNI-017, which is now half-built
 
-✅ **Notifications are available now.** `notify()` takes a transaction and composes; add the forum
-kinds to `notification_kind` **and** to `NOTIFICATION_RECIPES` — the census fails on either alone,
-in both directions. New `src/lib/` exports need a verdict in `EVENT_VERDICTS`, and a `notifies`
-verdict is **checked against the source**.
-
-## 🟡 LANE B — UNI-012, UNI-007's intake
-
-Both still buildable, both unaffected by D19. UNI-007's intake still wants its ten-minute question:
-**does it need an issuer?**
+`unansweredQueue()` exists in `src/lib/bench.ts` and `/bench` renders it with the three-state
+clock. What remains is ***same here***, bound to (node type, version) — and the facet columns it
+needs are already on `post_attachments`. 🔴 **Read D8's bar through `profile_meets_bar()` — be the
+FIFTH caller, not a fourth copy.**
 
 ## 🔴 LANE C — deployment: scope it, do not build it
 
@@ -105,56 +160,58 @@ Needs Richard's nexus-1 decision first, so **write the task file and stop.**
 
 ---
 
-# ⚠️ FOR RICHARD — three asks, unchanged
+# ⚠️ FOR RICHARD — the asks, one of them sharper than last session
 
-1. 🔴 **Does the platform go on nexus-1?** Deployment is owned by no task. **A forum has to be
-   somewhere.** ⚠️ **UNI-014 sharpened this**: `NOTIFICATION_LINK_SECRET` has a dev default, and a
-   deployment that does not set it has forgeable unsubscribe links.
-2. **The twelve badge artworks** (UNI-013 slice 4). Degrades rather than blocks.
-3. **A Paddle account (D7)**, still between coaching and revenue.
+1. 🔴 **Does the platform go on nexus-1?** Deployment is owned by no task and **a forum now
+   exists to be somewhere**. ⚠️ `NOTIFICATION_LINK_SECRET` has a dev default; a deployment that
+   does not set it has forgeable unsubscribe links.
+2. 🆕 **Where do capture images live?** — **sharper now, and cheap to defer.** A `capture`
+   attachment stores its **dimensions and its consent record and no image**, which is exactly
+   what the editor publishes today (`{width, height, bytes}`), so **nothing has to be migrated**
+   when you decide: an `image_url` column and a writer are the whole change. Options: a blob
+   column, object storage, or the deployment box's disk. **It intersects ask 1.**
+3. **A transactional sending account** (Postmark / SES / Resend) + sending domain. Still the only
+   thing between us and real email; `log` covers everything until it exists.
+4. **The twelve badge artworks** (UNI-013 slice 4). Degrades rather than blocks.
+5. **A Paddle account (D7)**, still between coaching and revenue.
 
-**Small, none blocking a build:**
-
-- **A transactional sending account** (Postmark / SES / Resend) + sending domain. ✅ **Now the only
-  thing between us and real email** — `log` covers everything until it exists, and the real
-  transport is one file implementing a three-line interface.
-- **Where do capture images live?** UNI-016 turns `saveCaptureNextTo` into an upload —
-  **it intersects ask 1**.
-- ⚠️ **GitHub Pages still unattached** (`has_pages: false` as of 08-17). D17's v0.
-- ⚠️ **The F4 packaged-install scope call** (UNI-012).
-- **Carried and open:** UNI-006's three calls, UNI-005's two, UNI-004's *"responding to an RFP
-  requires clearing D8's bar"*, UNI-003's change to UNI-002's catalogue.
+**Carried and open:** GitHub Pages still unattached (`has_pages: false` as of 08-17); the F4
+packaged-install scope call (UNI-012); UNI-006's three calls, UNI-005's two, UNI-004's *"responding
+to an RFP requires clearing D8's bar"*, UNI-003's change to UNI-002's catalogue.
 
 ---
 
 # Gates
 
-**`nodegx-community`:** HEAD **`70d8acc`**, clean, `main` == `origin/main`. Measured on that tree:
-vitest **579 / 22 files**, `tsc` clean, `next build` clean at **21 → 22 routes**, `check:css` clean
-over **775 declarations / 15 components**. 🔴 **Re-measure; never quote a handover's number.**
+**`nodegx-community`:** HEAD **`cdc7b17`**, clean, `main` == `origin/main`. **Measured on that
+tree, this session:** vitest **692 / 692 across 24 files, zero failures, zero skips**; `tsc` clean;
+`next build` clean at **24 routes**; `check:css` clean over **971 declarations / 19 components**.
+🔴 **Re-measure; never quote a handover's number.** The floor this replaced was 579 / 22.
 
-**This checkout:** ⚠️ nothing run in sessions 24, 25 or 26. Last measured is session 23's:
-`tsc --noEmit -p tsconfig.tests-main` **31 errors** (pre-existing); no `test:main`; **no `test:ci`**.
-🔴 **Do not quote these as current.**
+**This checkout:** HEAD **`eeb64051`** on `cline-dev`. `tests-unit/uni-015` **39/39**. ⚠️ **No
+`test:main`, no `test:ci`, no `tsc` run this session** — the editor change is one JSON file and one
+new spec directory, and nothing else in the editor was touched. 🔴 **Do not quote session 23's
+numbers as current either.**
 
 ⚠️ **`npm run lint` is still not a gate on the platform** — the script exists, there is no ESLint
-config, and running it starts Next's interactive setup. **State which artefact you looked at.**
+config, and running it starts Next's interactive setup.
 
 ---
 
 # Standing constraints
 
 - Editor work on `cline-dev`. 🔴 **Never `git stash`** — ⚠️ **there is a stash that is not yours**
-  (`stash@{0}`, WIP on `ff74bcc9`). Leave it alone. ✅ **`git commit <pathspecs>`, never stage.**
-  ⚠️ Untracked files need `git add` — put add and commit in **one chain**, message in a file.
-- 🔴 **`cd` does not persist between tool calls**, and a `cd` inside one does not leak out.
-  ✅ **`npm --prefix packages/noodl-editor run test:main -- <path>`** — jest from the repo root
+  (`stash@{0}`, WIP on `ff74bcc9`). Leave it alone. ✅ **`git commit <pathspecs>`, never stage
+  broadly.** ⚠️ Untracked files need `git add` — put add and commit in **one chain**.
+  ⚠️ **Peers had uncommitted work in phase-50, phase-65, phase-66, phase-68 and
+  `scripts/library/check.ts` all session; it was left untouched.**
+- 🔴 **`cd` does not persist between tool calls** — except it DOES persist in this harness's Bash
+  tool. ⚠️ A failed `cd` in a chain leaves you where the last successful one put you.
+- ✅ **`npm --prefix packages/noodl-editor run test:main -- <path>`** — jest from the repo root
   silently picks the wrong config.
 - 🔴 **Port 55432 for the platform's Postgres, never 5432.**
-- 🔴 **This checkout is SHARED.** Peer messages for **blocking or hazardous** things only. Announce
-  **source edits**, not just runs. ⚠️ Use explicit pathspecs, always.
-- ✅ **Before launching the editor: `npm run dev:stop -- --list`**, and check nobody is mid-`test:ci`
-  (`ps -Ao pid,ppid,args | grep -a run-electron-tests`). ⚠️ A peer was mid-run at session 26's start.
+- 🔴 **BSD `xargs` has no `-r`** — `lsof -ti :p | xargs -r kill` errors out and the rest of the
+  chain silently does not run. Cost one lost suite run.
 
 ---
 
@@ -163,55 +220,46 @@ config, and running it starts Next's interactive setup. **State which artefact y
 **The platform repo:**
 
 - 🔴 **Never generate DDL from `src/db/schema.ts`.** It is a query mirror; rulings live in
-  `src/db/sql/`.
-- 🔴 **The schema drift spec checks tables and columns ONLY — including NOT enum names.**
-  Non-vacuity floors: drift **36**, free-text census **92**, AC3 sweep exports 40, route sweep
-  6 routes, token drift 390/36/84, built-CSS sweep 200.
-- 🔴 **A route handler is outside every sweep this phase built** — they quantify over module
-  exports. `tests/uni011-mirror-api.test.ts` reads routes **off disk**. 🆕 **So drive routes over
-  real HTTP** — `npx next start -p <port>`, and **kill by port**: `pkill -f "next start"` matches
-  nothing.
-- 🆕 🔴 **`points_ledger.id` is a `bigserial` — the one non-uuid key in the schema.** A `uuid` FK
-  to it is accepted by every reader and refused by Postgres at migration time.
-- 🆕 ⚠️ **Nulls are DISTINCT in a Postgres unique constraint.** `unique (account_id, kind)` with a
-  nullable `kind` lets rows accumulate and `on conflict` never fires — use **two partial unique
-  indexes**.
-- 🔴 **`created_at` is not an ordering key** — `submission_gradings.seq` is a `bigserial`.
-- 🔴 **PostgreSQL does not guarantee short-circuit `or`**; reading `OLD` during an INSERT is a
-  runtime error rather than a null.
-- 🔴 **A backtick inside a SQL comment nested in a tagged template literal opens a new template**,
-  and **a `*/` inside a JSDoc comment closes it early** — the syntax error surfaces forty lines
-  later on an innocent template literal.
+  `src/db/sql/`. ⚠️ **But the drift spec compares COLUMNS**, so a generated column must still be
+  declared in the mirror — with a comment saying it must never be written.
+- 🔴 **A GENERATED column is the strongest form of "derived, not typed"**: `insert` and `update`
+  are both refused, and **their error messages DIFFER** (*"cannot insert a non-DEFAULT value"* vs
+  *"can only be updated to DEFAULT"*). Match them separately; one loose alternation matches far
+  too much.
+- 🔴 **`board_actor_is_eligible()` is where D15 and D8's ban live**, in the database. The bench
+  calls it from a trigger on both tables. ⚠️ **Both tables** — a probe that only exercises the
+  parent proves nothing about the child, and UNI-005's census caught exactly that.
+- 🔴 **UNI-005's census classes are not interchangeable.** `machine-derived` means *a minor CAN
+  write here*; `minor-refused` means they cannot. Claiming the former where the latter holds
+  claims a **weaker** guarantee, and the census catches it by demanding a probe the class cannot
+  supply.
+- 🔴 **A route handler is outside every module sweep.** `tests/uni011-mirror-api.test.ts` reads
+  routes **off disk**, and now handles **dynamic segments**: a recipe declares its `params`, and a
+  real thread is seeded so the "gate opens" half of the assertion can be true. ⚠️ **A dynamic
+  route imported via `pathToFileURL` fails** — it percent-encodes `[` and `]`. Decode those two.
+- 🔴 **Drive routes over real HTTP** for anything a criterion says is driven — `npx next start -p
+  <port>`, and read the two traps above about killing it.
+- 🔴 **`points_ledger.id` is a `bigserial`** — the one non-uuid key in the schema.
+- ⚠️ **Nulls are DISTINCT in a Postgres unique constraint** — use two partial unique indexes.
+- 🔴 **`created_at` is not an ordering key**; `bench_threads.seq` / `bench_posts.seq` are.
 - 🔴 **postgres.js has no nested `begin`** — a function that opens its own transaction cannot be
-  composed. Two entry points, `relayMessageIn`'s precedent. 🔴 **`gen_random_bytes` needs pgcrypto.**
+  composed. ✅ **It DOES have `tx.savepoint()`**, which is how `contribution.ts` was fixed.
 - ⚠️ **`expect(value, message)` is vitest, not jest.**
-- ⚠️ **`npx tsx --eval` cannot use top-level `await`**, and **a scratchpad `.mjs` cannot resolve the
-  repo's `node_modules`** — put the file in the repo root.
-- ✅ **Headless screenshots of both themes:** `--headless=new --blink-settings=preferredColorScheme=0|1`
-  (`0` dark, `1` light). ⚠️ **Two identical output sizes means the flag did nothing OR the page is
-  unstyled — `cmp` them and look at one before concluding.**
-
-**Driving the editor** (all still true, all cost a session each):
-
-- 🔴 **`BaseDialog`'s two copies sit at IDENTICAL coordinates.** Filter properly —
-  `roots[i].closest('[class*=MeasuringContainer]')` must be **falsy**.
-- 🔴 **When a control does not respond, drive something else on the same surface with a DIFFERENT
-  mechanism first.** A failure shared by both is your instrument's.
-- 🔴 **A CDP click into an `overflow: auto` list can hit a different row.** Verify with
-  `document.elementFromPoint(...)` and `row.contains(hit)` **before** clicking.
-- ⚠️ **A poll-driven React list replaces its DOM every tick.** Tag and click **in one shell chain**.
-- 🔴 **`LocalProjectsModel.openProjectFromFolder()` does not route**, and a **reload returns you to
-  the launcher**. Working path: open → reload → click the card → `switchToComponent`.
-- 🔴 **`require('./src/...')` does not work in the renderer.** Push a fake chunk:
-  `window.webpackChunknoodl_editor.push([['probe'],{},r=>{window.__wr=r}])`. Lost on every reload.
-- 🔴 **`forEachNode` STOPS on a truthy return.** Use a **block body**.
+- ✅ **Node 22 strips types natively** — `node --experimental-strip-types script.ts` imports a
+  `.ts` directly, which is how the corpus is generated. ⚠️ Extensionless imports still fail; a
+  scratchpad file still cannot resolve the repo's `node_modules` (put it in the repo root).
 
 **Both:**
 
 - 🔴 **`/usr/bin/grep -a`, always.** Plain `grep` here is ugrep and silently skips `.ts` as binary.
-  ⚠️ Quote your globs. 🆕 ⚠️ **BSD `sed` has no `\b`.**
-- 🔴 **A literal NUL byte (or a stray U+FFFC) in a `.ts` makes git call it binary and grep skip it.**
-- 🔴 **`ports`, not `dynamicports`, is how a `Component Inputs` node declares its interface.**
+- 🔴 **The corpus contract:** `postbody-corpus.json` is **byte-identical** in both checkouts and
+  **both** specs pin the same sha256 (`d59d6095…`). To change it: regenerate with
+  `scripts/gen-postbody-corpus.mjs` in the platform repo, copy it here, and update **both**
+  constants in the same commit. ⚠️ It catches **divergence**, not a bug in both parsers — the
+  safety property is asserted separately in each repo.
+- 🔴 **A corpus of only hostile payloads witnesses only the refusals.** Two parsers can agree
+  perfectly about what to REJECT and disagree about everything they accept, which is all a reader
+  sees. 15 hostile + 20 grammar.
+- 🔴 **`forEachNode` STOPS on a truthy return.** Use a block body.
 - 🔴 **The `lesson` MCP group is DEFERRED** — `find_tools({group:"lesson"})` first.
-- 🔴 **A ruling names a PLACE; ruling it does not CHECK the place.** Derive from **disk**.
 - `suggestedNodes` is still **dead** — no callers.
