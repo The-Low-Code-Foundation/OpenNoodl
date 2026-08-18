@@ -59,9 +59,20 @@
 > | 5 | **One renderer** shared by transport and spec, asserted field by field | a **lossy** transport must FAIL the same three needles the log transport passes |
 >
 > ⚠️ **Unchanged and still stated:** nothing has ever been posted to a real MX. `log` is the default
-> and the only transport. **`NOTIFICATION_LINK_SECRET` has a development default** — a deployment
-> that does not set it has forgeable unsubscribe links (bounded: the worst outcome is unsubscribing
-> somebody else). **Deployment is the task that owns fixing it.**
+> and the only transport.
+>
+> ✅ **E8 CLOSED 2026-08-18 (session 33) — the forgeable-link hazard is gone.** This paragraph used
+> to end *"deployment is the task that owns fixing it"*, and no deployment task existed. The dev
+> default is now scoped to **insecure origins**; over `https://` an unset `NOTIFICATION_LINK_SECRET`
+> makes the no-session path *unconfigured* — `unsubscribeToken` throws, `verifyUnsubscribeToken`
+> returns `null` (so a token forged from the published default is refused rather than detected),
+> and `notify` writes the row and returns `delivery: 'unconfigured'` with no email queued.
+>
+> 🔴 **Two things worth carrying:** the key is read **per call**, because a module-level `const`
+> made *"is this configured?"* a question about import order and unanswerable from a spec; and the
+> unconfigured case is an **outcome rather than a throw**, because `notify` composes into the
+> caller's transaction and a throw would have rolled back the answer or the award that occasioned
+> the notification. AC3's own no-session route is unchanged and still passes.
 
 > **D19** ([RULINGS.md](RULINGS.md)): the forum is **built, not bought**. That ruling makes this
 > task the critical path — see its §"The dependency that decides it". Nothing else in the D19

@@ -190,7 +190,7 @@ Everything below is a consequence of that sentence. **Ten items. Nothing else bl
 
 | # | What |
 |---|---|
-| **E8** | 🔴 **`NOTIFICATION_LINK_SECRET` has a dev default.** A deployment that does not set it has **forgeable unsubscribe links**. This is a launch blocker, not a nice-to-have |
+| **E8** | ✅ **CLOSED 2026-08-18 (session 33), `nodegx-community`.** The dev default is now **scoped to insecure origins**: over `https://` an unset `NOTIFICATION_LINK_SECRET` means the whole no-session path is unconfigured — minting **throws**, verification returns **null** (so a token forged from the published default is refused), and `notify` writes the row and reports `delivery: 'unconfigured'`, queueing no email. 🔴 **An outcome, not an exception**: `notify` runs inside the caller's transaction, so a throw would have rolled back the answer or award that occasioned it — a missing secret must stop the mail, not the application. **8 specs, including the secure-WITH-secret control** that separates *"refuses when unconfigured"* from *"refuses always"*. ⚠️ Richard still has to **set the variable on the deployment** — the code now makes forgetting it loud instead of silent |
 | **E9** | A smoke drive of the whole loop **on the deployed box**, signed in, over real HTTPS — because every gate in both repos runs against localhost |
 
 ### 🔴 Explicitly NOT in the close — written down so they stop reading as unfinished
