@@ -384,11 +384,10 @@ firing when there *is* a profile.
 
 ### ⚠️ What slice B does NOT include, named rather than implied
 
-- 🔴 **The MCP half is not built.** Slice B specified `.mcp.json` `env` carrying the path, and said in
-  the same sentence that it *"deliberately breaks the server's every-path-inside-`projectDir`
-  invariant and needs its own read-only containment note"*. That is a second package, a second
-  security argument and a registration change; it is a task, not a paragraph. **The editor's own AI
-  reads the profile today; Claude Code does not.**
+- ✅ 🆕 **The MCP half is BUILT (s60, `d1a3f6ec`).** See §"The MCP half" at the foot of this file.
+  It was indeed a second package, a second security argument and a registration change — and the
+  security argument turned out to be larger than the sentence predicted. **Claude Code now reads the
+  profile through `get_project_info`.**
 - ⚠️ **The planning turn does not carry the profile** — only the authoring turn does, which is what
   slice B specified (*"appended last in the reference blocks"*). It is arguably the wrong line to
   draw: *"prefer built-in nodes"* is a decision a **planner** makes, and a plan that ignores it costs
@@ -460,3 +459,79 @@ while the charge went 0 → 55: comments stripped, three empty headings dropped,
 byte-identical to the template, charging nothing) — that is the product's own behaviour. The test
 line was removed: a preference Richard did not write must not ride on every turn. The recents store
 was backed up, and the drive entry removed after `dev:stop` (46 → 47 → 46).
+
+
+---
+
+## The MCP half — BUILT s60, commit `d1a3f6ec`
+
+Slice B named this in one sentence: *"MCP reads it via the path baked into `.mcp.json` `env` at
+registration (the BST-004 'front door, never guess' pattern) — ⚠️ this deliberately breaks the
+server's every-path-inside-`projectDir` invariant and needs its own read-only containment note."*
+Every clause of that survived contact. One thing it did not name turned out to be the bigger half.
+
+### The chain, end to end
+
+1. **Main resolves the path** — `mcpFrontDoor.js`'s `userProfilePath()`, from
+   `app.getPath('userData')`. It is the only process that can ask, which is the whole of "front
+   door, never guess" for this fact: the renderer cannot ask Electron, and the server must not
+   derive it from `HOME`.
+2. **The front door reports it**, so the renderer can render it.
+3. **The renderer emits it in BOTH renderings** — `withUserProfile()` applies the pair to the
+   `ChosenRuntime`, not to the registration, because `claudeMcpAdd` builds the displayed `-e` flags
+   and every caller builds the registration's `env` from that same list. Adding it to one output
+   is how the pasted command and the written config would silently disagree.
+4. **The server reads `NODEGX_USER_PREFERENCES`** — `src/userProfile.ts`.
+5. **`get_project_info` carries it**, with its precedence sentence.
+6. **`selfRegistration` propagates it**, so a project created by `create_project` inherits it.
+
+### 🔴 The containment note, which is the module's header
+
+Three narrower rules replace the one it cannot keep:
+**the path is given, never derived** (absent variable ⇒ absent feature, silently — an older
+editor's registration simply has none); **read-only, and reachable by no tool argument**; and
+**the path is never echoed**, only the rendered content — an absolute `userData` path contains a
+home directory, and naming it would put an account name in a transcript for no gain.
+
+### 🔴 What the sentence did not predict: `env` was an unchecked trust boundary
+
+`rejectUntrustedRegistration` validates `command` and `args` against what main independently
+resolves — its own comment calls it *"a trust boundary and not a formality"* — and passed `env`
+straight through. Harmless while NodeGX emitted exactly one variable and the renderer could not add
+another. **Not harmless once a path round-trips through the renderer:** the approved registration is
+written into the user's real `~/.claude.json` and later spawned by their agent, so a surviving key
+is a key in somebody's process. `NODE_OPTIONS=--require …` is the shape.
+
+Fixed in two places, not one: the boundary **whitelists env keys** (whitelist, not denylist — the
+rule `command` and `args` already follow), and the connect handler **overwrites** the profile path
+with main's own, so what the renderer sends is convenience and never authority.
+
+✅ **`rejectUntrustedRegistration` had no tests at all before this.** It has four, and the refusals
+sit beside an acceptance built the same way. **Mutation-verified:** widening the whitelist to admit
+`NODE_OPTIONS`/`LD_PRELOAD` turns exactly the two refusal rows red and leaves the acceptance green.
+
+### Judgements a later session should check rather than inherit
+
+- 🔴 **The profile rides in a tool RESULT, not `instructions`.** Not a preference — arithmetic. The
+  resident surface has **57 tokens** of headroom against 8,280 and the cap on this file is 2,000
+  characters. A new resident tool would not have fitted either. `get_project_info` is the tool the
+  instructions already name as "call this first", and its *result* costs the budget nothing.
+  ✅ **Re-measured after: 8,223 / 57 under, unchanged.**
+- ⚠️ **Not gated on `allowWrites`**, unlike `authoringDoctrine` and `designDoctrine` beside it.
+  Those are authoring instructions; this file's first heading is *"how I like to be talked to"*.
+  **A defensible line drawn the other way — worth Richard's eye, not blocking.**
+- ✅ **One renderer.** `renderProfileForPrompt` is re-exported through `editor-deps` with the same
+  containment note the doctrine modules carry.
+
+### ⚠️ Carried out, uncosted
+
+🔴 **`claudeMcpAdd` does not quote its `-e` pairs.** Pre-existing, and it matters more now that one
+carries a path: on a machine whose user data sits under a directory with a space, the **displayed**
+command needs the user to quote it. The written registration is JSON and is unaffected.
+**Wants its own task.**
+
+### Still undriven
+
+⚠️ **Nothing here has been seen in a running editor.** The specs grade the chain at both ends and
+the mutation grades the security check, but no session has clicked Connect and read a real
+`~/.claude.json`. **That is the drive this task still owes.**
