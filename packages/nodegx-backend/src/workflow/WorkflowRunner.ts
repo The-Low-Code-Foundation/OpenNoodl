@@ -31,7 +31,7 @@ import type { ExecutionHistory } from '../execution/ExecutionStore';
 import { logger } from '../ops/logger';
 // CWF-013 — type-only, from the cloud runtime's own declaration, so the sink this file builds
 // and the `NodeScope.runContext` a node reads cannot drift apart.
-import type { NodeRunContext, RuntimeLogEntry } from '@cloud-runtime';
+import type { CloudKitLoadResult, NodeRunContext, RuntimeLogEntry } from '@cloud-runtime';
 
 // Bundled from noodl-viewer-cloud/src by esbuild (test-time: jest mapper).
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -320,6 +320,44 @@ export class WorkflowRunner {
     };
   }
 
+  /**
+   * CN-013 — say what happened to a bundle's kits, at load, in the service log.
+   *
+   * 🔴 **The alternative is a hang that names nothing.** A kit whose nodes are not registered
+   * leaves every cloud function using them with its chain cut: `NodeScope` logs and skips the
+   * unknown type *and its connections*, no Response node is reached, and the request ends as
+   * CWF-018's 504 — which talks about unwired `Failure` ports and cannot mention kits, because at
+   * that point nothing knows a kit was involved. Load is the only moment the two facts are in the
+   * same place.
+   *
+   * ⚠️ `not-cloud-enabled` is logged at `info`, not `warn`: a project whose kits are all browser
+   * kits is the ordinary case, and a warning on every start for the ordinary case is a warning
+   * nobody reads. Everything else is a `warn` — it means the author asked for a cloud kit and did
+   * not get one.
+   */
+  private reportKitLoad(workflowName: string, load: CloudKitLoadResult | undefined): void {
+    if (!load) return;
+
+    if (load.registered.length) {
+      safeLog(
+        `Workflow ${workflowName}: registered ${load.registered.length} cloud kit(s) — ` +
+          `${load.registered.join(', ')} (${load.nodeTypes.length} node type(s))`
+      );
+    }
+
+    for (const skip of load.skippedReactNodes) {
+      safeLog(
+        `Workflow ${workflowName}: kit "${skip.module}" has ${skip.count} visual node(s), ` +
+          'which do not exist in the cloud runtime. Its logic nodes were registered.'
+      );
+    }
+
+    for (const failure of load.failures) {
+      if (failure.reason === 'not-cloud-enabled') safeLog(`Workflow ${workflowName}: ${failure.message}`);
+      else logger.warn(`Workflow ${workflowName}: ${failure.message}`, { workflow: workflowName, kit: failure.module });
+    }
+  }
+
   private createCloudRunner(): void {
     this.cloudRunner = new CloudRunner({
       enableDebugInspectors: this.enableDebugInspectors,
@@ -348,7 +386,7 @@ export class WorkflowRunner {
         const content = await fs.readFile(path.join(this.workflowsPath, file), 'utf-8');
         const exportData = JSON.parse(content);
         this.loadedWorkflows.set(workflowName, exportData);
-        await this.cloudRunner.load(exportData);
+        this.reportKitLoad(workflowName, await this.cloudRunner.load(exportData));
         safeLog(`Loaded workflow: ${workflowName}`);
       } catch (e) {
         // One broken file must not take down the rest — but say so.
@@ -395,9 +433,9 @@ export class WorkflowRunner {
         enableDebugInspectors: this.enableDebugInspectors,
         connectToEditor: false
       });
-      for (const bundle of candidateWorkflows.values()) {
+      for (const [bundleName, bundle] of candidateWorkflows) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (candidateRunner as any).load(bundle);
+        this.reportKitLoad(bundleName, await (candidateRunner as any).load(bundle));
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);

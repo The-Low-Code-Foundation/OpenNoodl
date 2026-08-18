@@ -61,6 +61,8 @@
 import {
   buildInjectionTags,
   injectIntoTemplate,
+  moduleRunsInCloud,
+  readCloudModuleSources,
   scanModuleManifests,
   toInjectModules
 } from '@nodegx/module-inject';
@@ -79,6 +81,7 @@ import * as vm from 'vm';
 // be visible to a caller.
 
 export type {
+  CloudModuleSource,
   InjectModule,
   InjectionTags,
   ModuleBrowserManifest,
@@ -89,6 +92,12 @@ export type {
 // The scan itself, re-exported so `projectmodel.modules.ts` and the ERG-002
 // surface below both keep calling `scanModuleManifests` from here.
 export { scanModuleManifests };
+
+// CN-013 — the cloud half of `runtimes`, through the same door. This file is
+// still the one public surface (LIB-003); `moduleRunsInCloud` is the predicate
+// `libraryNeedsSsrWarning` below is modelled on, and `readCloudModuleSources`
+// is what `exporter/cloudFunctions.ts` puts in the cloud-function bundle.
+export { moduleRunsInCloud, readCloudModuleSources };
 
 // ─── ERG-002: verify on add ──────────────────────────────────────────────────
 

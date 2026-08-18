@@ -13,6 +13,8 @@
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
+import { readCloudModuleSources } from '../../../../shared/utils/projectmodules';
+
 import { exportComponent, exportSettings } from './util';
 
 /** Path prefix that makes a component a cloud function. */
@@ -79,6 +81,48 @@ export function exportCloudFunctionsToJSON(project: ProjectModel): Record<string
     settings: exportSettings(project),
     metadata: project.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {}
   };
+}
+
+/**
+ * The bundle, plus the project's kits (CN-013 / D18).
+ *
+ * Separate from {@link exportCloudFunctionsToJSON} and async because it reads files: the sync
+ * function stays the pure graph half that `cloudFunctions.test.ts` partitions against
+ * `build/deployer.ts`, and this is the one the deployer actually pushes.
+ *
+ * 🔴 **Only cloud-enabled kits ship their source.** `readCloudModuleSources` applies
+ * `moduleRunsInCloud` — `runtimes` including `"cloud"` — and returns everything else with
+ * `source: null`. Two reasons, and the second is the one that is easy to lose:
+ *
+ * 1. A kit is third-party code, and D18 explicitly does **not** re-open D6 — "every kit in the
+ *    project is evaluated in the backend unless it objects" is not a default this phase gets to
+ *    set on an author's behalf. Reaching the cloud is opt-in.
+ * 2. The names of the kits that did **not** opt in still travel, without their source. That is
+ *    what lets the runtime answer *"that kit exists and is not cloud-enabled"* rather than
+ *    nothing at all, which is the difference between a 504 an author can act on and the hang
+ *    CN-012 measured.
+ *
+ * ⚠️ It is included in {@link hashCloudExport}'s input by construction — the hash is taken of
+ * whatever this returns — so **editing a kit re-pushes the bundle**. Without that, a kit fix would
+ * sit on disk while the backend went on running the previous copy, which is CN-014's "a stale
+ * module that still works is the worst outcome" wearing a deployment hat.
+ */
+export async function exportCloudFunctionsWithKits(project: ProjectModel): Promise<Record<string, unknown> | null> {
+  const bundle = exportCloudFunctionsToJSON(project);
+  if (!bundle) return null;
+
+  try {
+    const modules = await readCloudModuleSources(project._retainedProjectDirectory);
+    if (modules.length) bundle.modules = modules;
+  } catch (e) {
+    // A kit scan that fails must not stop the functions deploying — they may not use a kit at
+    // all. Loud, never silent: this file's own standing promise, and the runtime will report the
+    // missing types anyway.
+    // eslint-disable-next-line no-console
+    console.error('[cloudFunctions] could not read the project kits for the cloud bundle', e);
+  }
+
+  return bundle;
 }
 
 /**

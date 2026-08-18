@@ -35,7 +35,7 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import {
   cloudBundleName,
-  exportCloudFunctionsToJSON,
+  exportCloudFunctionsWithKits,
   getCloudFunctionNames,
   hashCloudExport
 } from '../utils/exporter/cloudFunctions';
@@ -123,7 +123,7 @@ class CloudFunctionDeployerImpl {
      * had nothing to send, and nothing anywhere said so. If there are
      * components but no bundle, that is a bug, not an empty project.
      */
-    const bundle = exportCloudFunctionsToJSON(project);
+    const bundle = await exportCloudFunctionsWithKits(project);
     const functionCount = getCloudFunctionNames(project).length;
     if (!bundle && functionCount > 0) {
       const message = `Could not export ${functionCount} cloud function(s) from this project.`;

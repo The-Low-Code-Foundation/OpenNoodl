@@ -442,6 +442,90 @@ function injectIntoTemplate(template, tags) {
   return injected;
 }
 
+// ─── The cloud half of `runtimes` (CN-013 / D18) ─────────────────────────────
+
+/**
+ * Does this module run in the **cloud** runtime?
+ *
+ * The mirror of `buildInjectionTags`' `runtimes.indexOf('browser') !== -1`, and
+ * deliberately in the same file: `runtimes` is one vocabulary and a second
+ * reading of it somewhere else is how the field came to mean different things
+ * in different places. `toInjectModules` has already defaulted a missing
+ * `runtimes` to `['browser']`, so a kit that says nothing is **not** a cloud
+ * kit — reaching the cloud is opt-in, by the field's own documented meaning.
+ *
+ * 🔴 Opt-in is a decision, not an oversight. D18 rules pure-JS logic kit nodes
+ * into the cloud runtime and rules SDK dependencies out, and explicitly does
+ * **not** re-open D6: a kit in the service process is third-party code beside
+ * the database. "Every kit in the project is evaluated in the backend unless it
+ * objects" is not a default this phase gets to set on the author's behalf.
+ *
+ * ⚠️ The consequence, measured as CN-012's M4b before this existed: a kit
+ * declaring `["cloud"]` was removed from the page by the browser filter and
+ * loaded by nothing else, so **the field's only positive value made the kit run
+ * nowhere**. This predicate is the other half that makes it mean something.
+ *
+ * @param {Pick<import('./index').InjectModule, 'runtimes'>} m
+ * @returns {boolean}
+ */
+function moduleRunsInCloud(m) {
+  return !!m && Array.isArray(m.runtimes) && m.runtimes.indexOf('cloud') !== -1;
+}
+
+/**
+ * Read every module's entry script off disk, tagged with whether it is a cloud
+ * module, ready for the cloud-function bundle.
+ *
+ * Both halves are returned — cloud modules **with** their source, non-cloud
+ * modules **without** it — because the two answer different questions and only
+ * one of them costs anything. The source is what the cloud loader evaluates;
+ * the names of the modules that are *not* enabled are what lets an unregistered
+ * node type in a cloud function be reported as *"the kit exists and is not
+ * cloud-enabled"* instead of as the hang CWF-018 had to bound.
+ *
+ * ⚠️ A module with no `main` (a stylesheet-only library) has no entry script and
+ * is reported with `source: null` whatever its `runtimes` says. A module whose
+ * entry script cannot be read is reported the same way, with the read error in
+ * `error` — never dropped in silence, which is this file's standing promise.
+ *
+ * @param {string | undefined} projectDirectory
+ * @returns {Promise<import('./index').CloudModuleSource[]>}
+ */
+async function readCloudModuleSources(projectDirectory) {
+  if (!projectDirectory) return [];
+
+  const modules = toInjectModules(await scanModuleManifests(projectDirectory));
+  const out = [];
+
+  for (const m of modules) {
+    const entry = {
+      name: m.name,
+      runtimes: m.runtimes,
+      cloud: moduleRunsInCloud(m),
+      index: m.index || null,
+      source: null,
+      error: null
+    };
+
+    if (entry.cloud) {
+      if (!m.index) {
+        entry.error = 'the manifest declares the cloud runtime but has no "main" entry script';
+      } else {
+        try {
+          entry.source = await fs.promises.readFile(projectDirectory + '/' + m.index, 'utf8');
+        } catch (e) {
+          entry.error = `could not read ${m.index} (${e && e.message ? e.message : 'read error'})`;
+        }
+      }
+      if (entry.error) warn(entry.name, `${entry.error} — its nodes will not exist in the cloud runtime`);
+    }
+
+    out.push(entry);
+  }
+
+  return out;
+}
+
 /**
  * Scan a project's modules and hand back the inject-shaped list — or
  * `undefined` when there are none, which is the contract `injectIntoHtml`'s
@@ -488,5 +572,7 @@ module.exports = {
   buildInjectionTags,
   injectIntoTemplate,
   scanProjectModules,
-  injectIntoHtml
+  injectIntoHtml,
+  moduleRunsInCloud,
+  readCloudModuleSources
 };

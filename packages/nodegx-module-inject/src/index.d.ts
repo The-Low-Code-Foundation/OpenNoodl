@@ -85,6 +85,39 @@ export interface InjectModule {
   browser?: ModuleBrowserManifest;
   runtimes: string[];
   index?: string;
+  /**
+   * The manifest's `name`, falling back to the directory name.
+   *
+   * ⚠️ `toInjectModules` has set this since CN-003 and this interface did not
+   * declare it — so every TypeScript consumer read the field through an
+   * implicit `any` or not at all. Declared here because `readCloudModuleSources`
+   * carries it into the cloud bundle, where it is the only handle a diagnostic
+   * has on which kit failed.
+   */
+  name: string;
+}
+
+/**
+ * One module as the cloud-function bundle carries it (CN-013 / D18).
+ *
+ * `source` is present **only** for a module whose `runtimes` includes `cloud`;
+ * everything else is reported with `source: null` so that a node type missing
+ * from a cloud function can be attributed to *"that kit is not cloud-enabled"*
+ * rather than to nothing at all.
+ */
+export interface CloudModuleSource {
+  /** Manifest name, the handle every cloud-side diagnostic uses. */
+  name: string;
+  /** The manifest's `runtimes`, already defaulted to `['browser']`. */
+  runtimes: string[];
+  /** Whether `runtimes` includes `cloud`. */
+  cloud: boolean;
+  /** Project-relative path of the entry script, or `null` when there is none. */
+  index: string | null;
+  /** The entry script's text — cloud modules only, `null` otherwise. */
+  source: string | null;
+  /** Why a cloud module has no `source`, when that happened. `null` otherwise. */
+  error: string | null;
 }
 
 /** The two blobs `injectIntoTemplate` substitutes. */
@@ -113,3 +146,5 @@ export declare function injectIntoHtml(
   pathPrefix: string,
   callback: (injected: string) => void
 ): void;
+export declare function moduleRunsInCloud(m: Pick<InjectModule, 'runtimes'>): boolean;
+export declare function readCloudModuleSources(projectDirectory: string | undefined): Promise<CloudModuleSource[]>;
