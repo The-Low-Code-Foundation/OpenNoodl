@@ -5,6 +5,27 @@
 `new-port-1.png`), researched by ten parallel read-only lanes the same day. **Every mechanism
 claim below was read in source at file:line on `cline-dev` (HEAD includes `3f633df4`).**
 
+## ✅ PHASE COMPLETE — closed 2026-08-18 (s63)
+
+**All 24 tasks are accounted for: 23 closed in this phase, and FIX-015 deliberately left for its
+own phase.** ⚠️ **Count the names in TASKS.md, never copy a total** — this phase's index drifted out
+of agreement with its own task files once already (TASKS.md § "reconciled 2026-08-16").
+
+**FIX-021 was the last one open** and closed on its editor half: `Connect Claude Code` driven on the
+real launcher against the real `~/.claude.json`, with the control that matters — `ELECTRON_RUN_AS_NODE`
+still present beside the new `NODEGX_USER_PREFERENCES`, because a registration that *replaced* the env
+record instead of extending it passes any probe checking only the new key.
+
+🔴 **What did NOT ship, and is not a defect:** **FIX-015** (style tokens) produced rulings and a
+green-lit successor phase, not code — its slice 1 is *"build and test the panel"*. **FIX-021 slice A**
+was **RULED OUT** at Q2, not deferred.
+
+🔴 **Carried out of the phase, uncosted** — these are real and unowned, listed in
+`NEXT-SESSION-PROMPT.md`'s close-out: the `claudeMcpAdd` display-only quoting defect, the
+`define()`-declared ports invisible to every editor surface, the `io-error` message that names
+neither tool nor project, the unguarded missing-`id` shape, `noodl-core-ui`'s uneslintable config,
+the planning turn not carrying the profile, and Blockly's declared-globals enumeration.
+
 ## The premise, in one sentence
 
 This is the first bug list filed by *using* 0.1.7 as a builder rather than building 0.1.7 — and
@@ -84,9 +105,14 @@ the sixteen reports contain one:
 **Product-shaping (need discussion):**
 - FIX-015 — the eight style-token rulings (schema, editing home, derive-vs-set, **shadows**,
   hover, logic-node outputs, import mapping, legacy endgame). *The biggest sitting; likely its own
-  session, output = a new phase.*
-- FIX-021 — the six memory-doc rulings (who writes, taxonomy, CLAUDE.md's role, privacy scope,
-  always-vs-pull, structured-vs-prose).
+  session, output = a new phase.* ✅ **RESOLVED AS PREDICTED — green-lit as its own phase and
+  therefore LEFT this one.** ⚠️ It is **not** an unfinished P66 task; do not count it as one.
+  🔴 **Its slice 1 is "build and test the panel."**
+- ~~FIX-021 — the six memory-doc rulings (who writes, taxonomy, CLAUDE.md's role, privacy scope,
+  always-vs-pull, structured-vs-prose).~~ ✅ **ALL SIX RULED and the task is CLOSED 2026-08-18.**
+  Q2 → **one file** (slice A ruled OUT, not deferred); Q5 → `always`, 2,000-char cap, free when
+  empty (`pull` rejected); Q6 → **prose only** (`ai.role.*` keys rejected). Built s58, driven in two
+  halves: MCP server end 4/4 (s62), editor end 3/3 plus a negative control (s63).
 - ~~FIX-018 — pick a mockup option~~ ✅ **RULED 2026-08-14: option C, chip + stacked card**
   ("awesome, validated"); purple default = plumbing keeps it, glyph disambiguates.
 - FIX-013 — what a data-reading component shows on the bench (recommend: shim serves zero rows);

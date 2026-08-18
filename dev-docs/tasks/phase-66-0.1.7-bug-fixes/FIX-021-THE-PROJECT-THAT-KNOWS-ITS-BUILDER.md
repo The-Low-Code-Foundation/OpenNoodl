@@ -622,7 +622,7 @@ The read-only server advertised **13 tools** and its payload carried **no** `aut
 from a client that cannot author, and the profile is correctly not, because its first heading is
 *"how I like to be talked to"*.
 
-### ⛔ Observations 1, 2 and 3 are NOT driven — the editor never rendered
+### ⚠️ STALE (s62) — the observations below WERE driven at s63. Kept as an environment measurement
 
 **Nothing about the feature failed. The dev stack never produced a usable renderer**, across two
 full launches and ~1h40m.
@@ -666,7 +666,138 @@ Richard's own profile path contains a space (`…/Application Support/NodeGX/…
 worst case, and it is safe on both the CLI route and the JSON route. **The defect is confined to the
 DISPLAYED, copy-pasteable string.** Still wants its own task; it is now a cosmetic one.
 
+
+---
+
+## ✅ THE EDITOR HALF, DRIVEN 2026-08-18 (s63) — FIX-021 IS CLOSED
+
+**All three observations taken, plus a negative control s62 did not have.** The task is complete:
+the server half was driven 4/4 at s62 (above), the editor half is driven 3/3 here.
+
+### The instrument
+
+Real `npm run dev:debug` stack, real renderer over CDP, real click on the real button, then the
+**real `~/.claude.json`** read off disk. No stub, no spec, no in-process shim.
+
+⚠️ **Step zero re-checked first:** `packages/noodl-mcp/dist/noodl-mcp.cjs` is gitignored, so it was
+grepped before anything else — `NODEGX_USER_PREFERENCES` present. A stale bundle would have produced
+an absence indistinguishable from the feature being broken.
+
+✅ **The pre-state was recorded BEFORE the click**, which is what makes this a before/after rather
+than an assertion: `mcpServers.nodegx.env` was **`{"ELECTRON_RUN_AS_NODE":"1"}` and nothing else.**
+
+### The card, and the correction that got us to it
+
+`[data-test=connect-agent-card]` on the **launcher**, exactly as s62 said — not the settings panel.
+🆕 **The button has its own testId, `[data-test=connect-agent-connect]`**, which is a steadier handle
+than the label s62 recorded. Pre-click state: card present and visible, button enabled and reading
+`Connect Claude Code`, **no success or failure row** — the clean `idle` state. `useConnectAgent`
+starts at `'idle'` and never inspects the existing registration, so an already-registered machine
+still gets a live button.
+
+### The three observations
+
+| # | Observation | Result |
+|---|---|---|
+| 1 | `~/.claude.json` → `mcpServers.nodegx.env.NODEGX_USER_PREFERENCES` | ✅ **PASS** — `/Users/richardosborne/Library/Application Support/NodeGX/PREFERENCES.md`, and the file at that path exists |
+| 2 | **THE CONTROL** — `ELECTRON_RUN_AS_NODE` still present beside it | ✅ **PASS** — env keys are **both**: `["ELECTRON_RUN_AS_NODE","NODEGX_USER_PREFERENCES"]` |
+| 3 | a project's `.mcp.json` carries the same variable, same value | ✅ **PASS** — see the correction below |
+
+🔴 **Observation 2 is the one that mattered and it is why both keys are asserted.** A registration
+that *replaced* the env record instead of extending it passes any probe that checks only the new key,
+and leaves a server booting a GUI app with a dock icon (BST-004/F80). The mechanism is visible in
+`mcpFrontDoor.js`: `trusted.env` spreads `registration.env` minus the profile key, then re-adds the
+**main-resolved** path — so the control key survives by construction, and the renderer's proposed
+path is discarded.
+
+✅ **The click's own report, on screen:** *"Claude Code can now build NodeGX apps… Registered as
+`nodegx` in `/Users/richardosborne/.claude.json`."*
+
+### 🔴 A CORRECTION TO THE BRIEF — scoped, after a peer pushed back and was right
+
+The handover's §4 said *"open or create a project; read its `.mcp.json`"*. **The open half is wrong
+for the MCP TOOL** — and the first way I wrote this up was itself too broad, so both corrections are
+recorded here rather than only the tidy one.
+
+🔴 **There are TWO `.mcp.json` writers, in two packages, with two different mechanisms.**
+
+| Writer | Reached by | How it gets the profile path | This drive |
+|---|---|---|---|
+| `noodl-mcp` — `create_project` → `project/agentConfig.ts` | a model calling the tool | **inherits `process.env[NODEGX_USER_PREFERENCES]`** from the server it runs in | ✅ **driven here** |
+| `noodl-editor` — backfill when the **editor** opens a project (`utils/LocalProjectsModel.ts:142` → `backfillAgentConfigFor:269` → `models/template/agentConfig.ts` `installAgentConfig:245`) | a user picking a project in the UI | `withUserProfile(…, frontDoor.userProfilePath)` (`mcpCommands.ts:287,468`) — **the front door, not the environment** | ⛔ not driven; **spec-covered** |
+
+🔴 **My "exactly one caller" was a BOUNDED query reported as an absence.** The grep ran over
+`packages/noodl-mcp/src` only, where it is true; the editor's writer lives in a *different package
+and a second file also called `agentConfig.ts`. ⚠️ A second bounded-query slip followed in the same
+session — searching `packages/noodl-editor/src` for the spec cover and concluding there was none,
+when the spec is in `packages/noodl-editor/tests-unit/`. **Both times the bound, not the codebase,
+produced the answer.**
+
+✅ **The editor path is specced, including this drive's own control:** `tests-unit/mcp-001/
+mcpCommands.test.ts:362` asserts `buildProjectRegistration(...).registration.env
+.NODEGX_USER_PREFERENCES`, and the next case is literally *"keeps the Electron flag beside it rather
+than replacing it."* ⚠️ **So one writer is driven and the other is specced but never driven** — that
+is the honest state, not "both driven".
+⚠️ **`withUserProfile` returns the runtime UNCHANGED when `userProfilePath` is falsy**, so the editor
+path omits the key silently rather than failing. Nothing grades that branch end-to-end.
+
+✅ **The MCP tool's silence is DELIBERATE, not a hole** (`openProject.ts:30-42`): *"Writing into a
+directory because a model passed its path to a tool is a different act with a different consent
+behind it."* It is therefore **not** a FIX-008 regression, and should not be "fixed".
+
+Driven, in this order:
+
+1. `open_project` over real stdio → **bound the project, `toolsRevealed` 18 tools, wrote no
+   `.mcp.json` at all.** Not a failure of the feature; it is simply not that tool's job.
+2. `create_project` → `.mcp.json` written, carrying **both** `ELECTRON_RUN_AS_NODE: "1"` and
+   `NODEGX_USER_PREFERENCES` with the identical path.
+
+⚠️ **A first attempt died on the fixture, not the feature:** the copy chosen was a **legacy V1
+project**, and `open_project` correctly refused with `not-a-v2-project`. Same class as the
+`cashflow-command-centre` trap — check the project format before reading anything into a refusal.
+
+### ✅ THE NEGATIVE CONTROL — the arms disagree
+
+The same server binary, same project shape, **`NODEGX_USER_PREFERENCES` stripped from the spawn env**:
+
+| Arm | `.mcp.json` `env` |
+|---|---|
+| registration as written after Connect | `ELECTRON_RUN_AS_NODE: "1"` + `NODEGX_USER_PREFERENCES: <path>` |
+| **control — variable stripped** | `ELECTRON_RUN_AS_NODE: "1"` **only; profile key ABSENT** |
+
+🔴 **Without this arm, observation 3 proves nothing about causation** — a hardcoded path would look
+identical. The two arms disagree, so the value in `.mcp.json` demonstrably tracks the registration
+the Connect click wrote. ✅ A pre-FIX-021 specimen turned up by accident and says the same thing:
+`cn012-drive`'s inherited `.mcp.json` carries `"env": {}`, empty.
+
+### ✅ Richard's files, left correct
+
+- **`PREFERENCES.md` never touched** — `sha1 c3c8425950`, 1193 bytes, mtime **10:28:36**, i.e.
+  unchanged since before the session began. Observations 1 and 2 do not need it answered, so it was
+  not written and did not need putting back. ⚠️ **s62's `c3c8425…` is a sha1** — `md5` gives
+  `e48a5181…` and reproduces nothing; that cost a few minutes to resolve and is worth stating.
+- **`~/.claude.json` NOT restored from the backup**, per s62's warning. Compared **section by
+  section** instead: `nodegx-puppy-test-3` **IDENTICAL**, `nodegx-observe` **IDENTICAL**, `nodegx`
+  **CHANGED** — which is precisely and only the change the drive was for.
+- Fixtures created for the drive were removed; nothing was left in the projects directory.
+- Stack down via `dev:stop`: **25 processes stopped, 29 MCP servers survived** the sweep.
+
+### ⚠️ Two small things this drive turned up, neither owed by any criterion
+
+- 🔴 **The success message says an earlier registration *"pointed somewhere else and was replaced"* —
+  but `command` and `args` were byte-identical before and after.** Only `env` changed. The wording
+  overstates what happened; a user reading it would think their server had been repointed. Cosmetic,
+  unowned, worth a small task alongside the `claudeMcpAdd` display defect.
+- ⚠️ The renderer's first compile took **208 s** at load ~7, against s62's **998 s** at load 23–53.
+  The environment, not the code, is what decides whether this drive is possible.
+
 ### Still owed
 
-⚠️ **Observations 1, 2 and 3 only.** They need a running editor and nothing else — no API credit, no
-new code. See the phase handover's §4.
+✅ **NOTHING BY ANY ACCEPTANCE CRITERION. FIX-021 is CLOSED.** Both halves are driven: the MCP server
+end 4/4 (s62), the editor end 3/3 plus a negative control (s63).
+
+⚠️ **One honest remainder, carried rather than owed:** the **editor's** `.mcp.json` backfill (writer 2
+in the table above) is **specced but never driven**. It reaches the profile path by a different
+mechanism than the one driven here — the front door rather than the environment — and
+`withUserProfile` drops the key silently when the front door has no path. No criterion asks for it;
+it is a one-drive item for whoever next has an editor open, not a reason to hold the phase.
