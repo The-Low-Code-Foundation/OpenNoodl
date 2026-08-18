@@ -244,6 +244,46 @@ person does not re-derive it.**
 
 ---
 
+# 🔴 THE MACHINE'S STATE RIGHT NOW — and the first item is a landmine for LANE B
+
+**Left running at the end of session 29, deliberately, so the site could be shown.** Read this
+before you review the look, because **step zero of a look review is checking the served CSS hash**
+and one of these two servers will fail it.
+
+| Port | What | Do what with it |
+|---|---|---|
+| **3222** | `next start`, session 29's build. **Served hash `37460e78f1988423.css`, verified against disk, 200.** | Yours to use or kill |
+| 🔴 **3111** | A `next-server` **~15 hours old**, from session 28's slice-5 review. It predates two rebuilds | ⚠️ **DO NOT REVIEW THE LOOK ON THIS ONE.** Its HTML points at a CSS hash that no longer exists ⇒ **404 stylesheet ⇒ completely unstyled page**, which is indistinguishable from "the design is bad" — the exact misread LANE B exists to fix. It is not known to be mine; leave it or attribute it by PPID first |
+
+✅ **Kill by port, never by name:** `lsof -nP -iTCP:<port> -sTCP:LISTEN -t`. **`pkill -f "next start"`
+matches NOTHING** — the process is `next-server`.
+
+## ⚠️ The local database is SEEDED WITH FAKE CONTENT
+
+`npm run db:seed` (committed) plus **four bench threads and an accepted answer written straight in
+SQL, which were NOT committed** — throwaway, because a committed seed becomes a fixture nobody
+maintains and **the first `freshDb()` any spec runs drops the lot**.
+
+🔴 **Re-seed before believing any screenshot of an empty page.** The committed seed covers people,
+profiles, RFPs, coaching, replays and articles — **it does NOT create bench threads**, so `/bench`
+is empty out of the box and looks like a design problem when it is a data problem. ⚠️ It also mints
+**dev session tokens** (`dev-session-nia`, `dev-session-tom`, …) usable as
+`Cookie: nodegx_session=dev-session-nia` — which is how the signed-in header was checked without an
+OAuth app.
+
+## ✅ What was confirmed on the running site, session 29
+
+- signed out → header offers **Sign in to NodeGX** → `/api/auth/github/start`
+- signed in → `whoami` chip → `/u/<handle>`, a **Sign out** button, and the device form
+- `/api/auth/github/start` → **503 `{"error":"sign-in is not configured on this deployment"}`**,
+  which is E1 correct and E10 outstanding, in one line
+
+🔴 **And the look review reproduced BOTH recorded slice-5 findings**, so they are not stale: the
+home shows **none of the four threads that exist** (E3), and the Bench renders **two link styles on
+one page** with **the queue repeating the list beneath it**.
+
+---
+
 # Standing constraints
 
 - Editor work on `cline-dev`. 🔴 **Never `git stash`** — ⚠️ there is a stash that is not yours.
