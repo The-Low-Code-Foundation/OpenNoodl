@@ -1,4 +1,5 @@
 import { platform } from '@noodl/platform';
+import { describeIncompatibilityFor, Incompatibility } from './moduleCompatibility';
 
 import { addHashToUrl } from '@noodl-utils/addHashToUrl';
 import FileSystem from '@noodl-utils/filesystem';
@@ -42,22 +43,18 @@ export interface IModule {
  */
 export type LibraryFetchStatus = 'loading' | 'loaded' | 'error';
 
-/** Parses a "x.y.z" string into a comparable triple; missing/odd input sorts as 0.0.0. */
-function parseVersion(v: string | undefined): [number, number, number] {
-  const parts = (v || '').split('.').map((n) => parseInt(n, 10));
-  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
-}
+/**
+ * ✅ CN-016 AC3. The rule itself lives in `./moduleCompatibility`, which imports
+ * nothing, so a plain-Node spec can reach it — this module cannot be imported
+ * outside a renderer. Re-exported here because `ModuleCard` and
+ * `scripts/library/verify-dist.ts` both address it through this model.
+ */
+export { isVersionAtLeast } from './moduleCompatibility';
+export type { Incompatibility } from './moduleCompatibility';
 
-/** true if `current` is >= `minRequired` (both "x.y.z"). No `minRequired` means always compatible. */
-export function isVersionAtLeast(current: string, minRequired: string | undefined): boolean {
-  if (!minRequired) return true;
-  const a = parseVersion(current);
-  const b = parseVersion(minRequired);
-  for (let i = 0; i < 3; i++) {
-    if (a[i] > b[i]) return true;
-    if (a[i] < b[i]) return false;
-  }
-  return true;
+/** Why this entry cannot be installed into the running editor, or null if it can. */
+export function describeIncompatibility(module: IModule): Incompatibility | null {
+  return describeIncompatibilityFor(platform.getVersion(), module);
 }
 
 /**
@@ -66,9 +63,13 @@ export function isVersionAtLeast(current: string, minRequired: string | undefine
  * when the running editor's version meets it. Used to render incompatible
  * entries as such instead of letting install proceed into content the
  * running editor may not understand (LIB-001).
+ *
+ * Kept as a boolean because `ModuleCard` and `verify-dist` ask a yes/no
+ * question; derived from `describeIncompatibility` so there is exactly one
+ * rule rather than two that agree until they don't.
  */
 export function isModuleCompatible(module: IModule): boolean {
-  return isVersionAtLeast(platform.getVersion(), module.minEditorVersion);
+  return describeIncompatibility(module) === null;
 }
 
 export class ModuleLibraryModel extends Model {
@@ -161,9 +162,20 @@ export class ModuleLibraryModel extends Model {
     return parsed;
   }
 
-  async installModule(modulePath: string, onBeforePopup?: () => void, onAfterPopup?: () => void, module?: IModule) {
-    if (module && !isModuleCompatible(module)) {
-      throw { message: `This module requires editor version ${module.minEditorVersion} or newer.` };
+  /**
+   * ✅ CN-016 AC3. `module` is **required**. It used to be optional, and the
+   * compat refusal was written `if (module && ...)` — so any caller that omitted
+   * it skipped the gate entirely and installed an entry this editor had already
+   * decided it could not run. `ModuleCard` is the only caller and always passed
+   * it, so the gate happened to hold; it held by convention, not by the
+   * signature. Grepped for `.js`/`.jsx` callers before tightening this — there
+   * are none, which is the check a type-level change needs here, because an
+   * untyped caller is invisible to every gate but `test:ci`.
+   */
+  async installModule(modulePath: string, onBeforePopup: (() => void) | undefined, onAfterPopup: (() => void) | undefined, module: IModule) {
+    const incompatible = describeIncompatibility(module);
+    if (incompatible) {
+      throw { message: incompatible.full };
     }
 
     await this._install(await this.getModuleTemplateRoot(modulePath), {
@@ -175,9 +187,11 @@ export class ModuleLibraryModel extends Model {
     });
   }
 
-  async installPrefab(modulePath: string, onBeforePopup?: () => void, onAfterPopup?: () => void, module?: IModule) {
-    if (module && !isModuleCompatible(module)) {
-      throw { message: `This prefab requires editor version ${module.minEditorVersion} or newer.` };
+  /** ✅ CN-016 AC3 — see `installModule` for why `module` is required. */
+  async installPrefab(modulePath: string, onBeforePopup: (() => void) | undefined, onAfterPopup: (() => void) | undefined, module: IModule) {
+    const incompatible = describeIncompatibility(module);
+    if (incompatible) {
+      throw { message: incompatible.full };
     }
 
     await this._install(await this.getModuleTemplateRoot(modulePath), {

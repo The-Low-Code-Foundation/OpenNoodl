@@ -177,6 +177,13 @@ function loadEditorModel(): {
             // the catch-all Proxy — see this function's header.
             if (args.path === '@noodl-utils/getContentEndpoint') return { path: args.path, namespace: 'stub-endpoint' };
             if (args.path === '@noodl-utils/addHashToUrl') return { path: args.path, namespace: 'stub-hash' };
+            // ✅ CN-016 AC3. The compat RULE moved into this import-free leaf so
+            // a plain-Node spec could reach it. Stubbing it would replace
+            // isModuleCompatible's answer with a truthy Proxy — EVERY entry
+            // would read as compatible and check 4 below would pass vacuously,
+            // which is exactly how the getContentEndpoint stub failed silently.
+            // Resolve it for real, and the self-test in main() proves it.
+            if (/moduleCompatibility$/.test(args.path)) return null;
             return { path: args.path, namespace: 'stub-any' };
           });
           build.onLoad({ filter: /.*/, namespace: 'stub-platform' }, () => ({
@@ -550,6 +557,22 @@ async function main() {
           `self-test on ${what} rejected with a TypeError — the harness stubs are broken: ${rejection.message}`
         );
       }
+    }
+
+    // 0b. ✅ CN-016 AC3 — the compat helper must be DISCRIMINATING, not merely
+    // present. `loadEditorModel` already asserts it is a function, which a
+    // stubbed Proxy also satisfies while returning truthy for everything. An
+    // absence assertion ("no entry is incompatible") is only worth reading
+    // beside a signal known to fire, so make one fire.
+    const impossible = { label: 'CN-016 self-test', minEditorVersion: '999.0.0' } as IModuleLike;
+    if (model.isModuleCompatible(impossible)) {
+      indexProblems.push(
+        `self-test: isModuleCompatible() called an entry requiring editor 999.0.0 compatible with ` +
+          `${EDITOR_VERSION} — the compat check is stubbed out and check 4 below is vacuous`
+      );
+    }
+    if (!model.isModuleCompatible({ label: 'CN-016 self-test', minEditorVersion: '0.0.1' } as IModuleLike)) {
+      indexProblems.push('self-test: isModuleCompatible() rejected an entry requiring editor 0.0.1 — the harness is wrong');
     }
 
     for (const type of TYPES) {

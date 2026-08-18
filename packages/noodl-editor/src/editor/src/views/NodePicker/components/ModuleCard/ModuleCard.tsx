@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 
-import { IModule, isModuleCompatible, ModuleLibraryModel } from '@noodl-models/modulelibrarymodel';
+import { describeIncompatibility, IModule, ModuleLibraryModel } from '@noodl-models/modulelibrarymodel';
 import getContentEndpoint from '@noodl-utils/getContentEndpoint';
 import { tracker } from '@noodl-utils/tracker';
 
@@ -29,7 +29,7 @@ export type ModuleCardProps = IModule;
 const endpoint = getContentEndpoint();
 
 export function ModuleCard(module: ModuleCardProps) {
-  const { label, desc, icon, project, docs, tags, minEditorVersion } = module;
+  const { label, desc, icon, project, docs, tags } = module;
   const context = useNodePickerContext();
 
   const [cardState, setCardState] = useState(CardState.Idle);
@@ -48,7 +48,12 @@ export function ModuleCard(module: ModuleCardProps) {
   // running editor render as incompatible instead of being offered for
   // install (installModule/installPrefab also guard this server-side of the
   // click, so this is belt-and-braces against a stale/cached card).
-  const isCompatible = useMemo(() => isModuleCompatible(module), [module]);
+  //
+  // ✅ CN-016 AC3: the sentence comes from the model rather than from a copy
+  // kept here. The card and the refusal used to word the same fact differently,
+  // which is how a user ends up reading two accounts of one problem.
+  const incompatibility = useMemo(() => describeIncompatibility(module), [module]);
+  const isCompatible = incompatibility === null;
 
   function handleDownload(url: string) {
     setCardState(CardState.Downloading);
@@ -96,8 +101,13 @@ export function ModuleCard(module: ModuleCardProps) {
             </Title>
           </header>
           <Text textType={TextType.Shy}>{desc}</Text>
-          {!isCompatible && (
-            <Text textType={FeedbackType.Danger}>{`Requires editor v${minEditorVersion} or newer`}</Text>
+          {incompatibility && (
+            // The full sentence is the tooltip because the card has room for a
+            // badge and not for the paragraph that says what to do about it;
+            // the refusal thrown on click carries the same `full` text.
+            <div title={incompatibility.full} data-test="module-card-incompatible">
+              <Text textType={FeedbackType.Danger}>{incompatibility.short}</Text>
+            </div>
           )}
         </div>
 

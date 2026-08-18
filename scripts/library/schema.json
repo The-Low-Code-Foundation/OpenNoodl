@@ -46,7 +46,7 @@
     "runtimeVersion": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
-      "description": "noodl-runtime version this entry was authored/verified against."
+      "description": "noodl-runtime version this entry was authored/verified against. DESCRIPTIVE PROVENANCE, NOT A REQUIREMENT, and deliberately ungated: unlike minEditorVersion there is no comparand — the editor has no runtime version to check it against (measured 2026-08-18: no constant, no generated file, no dependency edge from noodl-editor to noodl-runtime). CN-016 item 3 considered a minRuntimeVersion floor and did not add one, because a schema field nothing can evaluate is worse than an absent one: library:check would accept it while every consumer ignored it in silence. It becomes worth adding the day the editor knows its runtime version."
     },
     "provenance": {
       "type": "object",
