@@ -78,6 +78,7 @@ import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 import { UpdateManager } from '../../views/UpdateManager';
 import { LauncherSettingsDialog, LauncherSettingsSection } from './LauncherSettingsDialog';
 import { LAST_PROJECT_LOCATION_KEY, pickProjectLocation } from './projectLocationMemory';
+import { useCommunityAccount } from './useCommunityAccount';
 import { useConnectAgent } from './useConnectAgent';
 
 export interface ProjectsPageProps extends IRouteProps {
@@ -253,6 +254,13 @@ export function ProjectsPage(props: ProjectsPageProps) {
 
   /** BST-003 — the connect-an-agent card's state, or `undefined` when there is nothing to offer. */
   const connectAgent = useConnectAgent();
+
+  /**
+   * UNI-001 AC2 — the NodeGX account. 🔴 Always present, unlike `connectAgent`: the card draws
+   * nothing until the store has answered, and a community that cannot be reached right now is
+   * still an account a person can have.
+   */
+  const community = useCommunityAccount();
 
   // GitHub OAuth state
   const [githubIsAuthenticated, setGithubIsAuthenticated] = useState(false);
@@ -1300,6 +1308,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
         // BST-003 — the on-ramp before there is a project. `undefined` when there is no server
         // bundle to point at, in which case the card does not render at all.
         connectAgent={connectAgent}
+        // UNI-001 AC2 — the sign-in card, and the chip plus sign-out once there is a session.
+        // The editor is fully functional signed out; this adds a surface and gates nothing.
+        community={community}
       />
 
       <ProjectCreationWizard

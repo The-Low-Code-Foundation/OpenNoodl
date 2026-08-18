@@ -71,8 +71,10 @@ import { Box } from '@noodl-core-ui/components/layout/Box';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { COMMUNITY_SIGN_IN_LABEL } from '@noodl-core-ui/constants/communityCopy';
+
 import { CommunityApiClient, type Write } from '@noodl-models/community/communityapi';
-import { COMMUNITY_URL as COMMUNITY_ORIGIN } from '@noodl-models/community/communityorigin';
+import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 import { readCommunitySession, type CommunitySession } from '@noodl-models/community/communitysession';
 import { signIntoCommunity, type SignInProgress } from '@noodl-models/community/communitysignin';
 import { buildNodeArtifacts } from '@noodl-models/community/nodeartifact';
@@ -311,7 +313,7 @@ export function AskAboutNodeDialog({
     setPostState({ phase: 'posting' });
     if (capture && includeCapture) setSavedTo(await saveCaptureNextTo(capture.data));
 
-    const client = new CommunityApiClient({ baseUrl: COMMUNITY_ORIGIN, token });
+    const client = new CommunityApiClient({ baseUrl: COMMUNITY_URL, token });
     const result = await client.askQuestion({
       section: ASK_SECTION,
       // 🔴 The same two values the `<pre>` below renders. Not recomposed, not re-derived —
@@ -348,7 +350,7 @@ export function AskAboutNodeDialog({
     // The exact value that was on screen. Not recomposed, not re-derived.
     void navigator.clipboard.writeText(`${question.title}\n\n${question.body}`);
     if (capture && includeCapture) setSavedTo(await saveCaptureNextTo(capture.data));
-    platform.openExternal(COMMUNITY_ORIGIN);
+    platform.openExternal(COMMUNITY_URL);
     setHandedOff(true);
   }
 
@@ -500,7 +502,7 @@ export function AskAboutNodeDialog({
               ) : (
                 <HStack hasSpacing={2}>
                   <PrimaryButton
-                    label={signIn ? 'Starting…' : 'Sign in to NodeGX'}
+                    label={signIn ? 'Starting…' : COMMUNITY_SIGN_IN_LABEL}
                     size={PrimaryButtonSize.Small}
                     isDisabled={signIn !== undefined}
                     onClick={() => void beginSignIn()}

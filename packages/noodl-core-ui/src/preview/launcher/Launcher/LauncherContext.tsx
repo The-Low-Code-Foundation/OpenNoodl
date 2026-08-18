@@ -8,6 +8,7 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 
+import type { CommunityAccountState } from './components/CommunityAccountCard';
 import type { ConnectAgentResult, ConnectAgentState } from './components/ConnectAgentCard';
 import type { LauncherLearningData } from './components/LearningSection';
 import { LauncherProjectData } from './components/LauncherProjectCard';
@@ -147,6 +148,29 @@ export interface LauncherContextValue {
    * render at all rather than rendering a button that cannot work.
    */
   connectAgent?: ConnectAgentHostState;
+
+  /**
+   * UNI-001 AC2 — the NodeGX account: the sign-in card, and the chip once there is one.
+   *
+   * Supplied by the host for the same reason as `connectAgent`: the device flow, the token store
+   * and `platform.openExternal` all live in `noodl-editor`, and this package renders in Storybook
+   * where none of them exists. Absent there, and the card then does not render at all.
+   *
+   * 🔴 **Unlike `connectAgent`, the host supplies this even when the platform is unreachable.** A
+   * connect button with no bundle to point at cannot work; a community that is down right now is
+   * one that is up in ten minutes, and hiding the account on a failed fetch would make signing in
+   * look like a feature that comes and goes.
+   */
+  community?: CommunityAccountHostState;
+}
+
+/** What the host tells the launcher about the NodeGX account. */
+export interface CommunityAccountHostState {
+  state: CommunityAccountState;
+  /** The last failure, in a sentence a person can act on. `null` when there is nothing to say. */
+  error?: string | null;
+  onSignIn: () => void;
+  onSignOut: () => void;
 }
 
 /** What the host tells the launcher about connecting an agent. */

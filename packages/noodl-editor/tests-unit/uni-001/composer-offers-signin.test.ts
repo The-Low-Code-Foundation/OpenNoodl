@@ -98,10 +98,21 @@ describe('the composer offers a sign-in', () => {
     expect(code.includes('openExternal')).toBe(true);
   });
 
-  it('uses D2 exact string for the button', () => {
-    // One string, one owner (the FUN-001 shape). The platform's `SIGN_IN_BUTTON_LABEL` holds
-    // the same words; four surfaces disagreeing about one piece of copy is worse than blank.
-    expect(code.includes('Sign in to NodeGX')).toBe(true);
+  it('uses D2 exact string for the button — through the constant, not a literal', () => {
+    // One string, one owner (the FUN-001 shape). The platform's `SIGN_IN_BUTTON_LABEL` holds the
+    // same words; four surfaces disagreeing about one piece of copy is worse than blank.
+    //
+    // 🔴 **AMENDED by AC2's launcher card.** This used to assert the literal was HERE, which was
+    // right while the composer was the only editor surface that offered a sign-in. It is now the
+    // second of two, so the assertion moves up a level: the words live in
+    // `noodl-core-ui/constants/communityCopy.ts` — the only module both surfaces can reach — and
+    // this file must go through it rather than re-type them. `launcher-offers-signin.test.ts`
+    // makes the same demand of the card and pins the constant's exact value.
+    expect({
+      imports: code.includes("from '@noodl-core-ui/constants/communityCopy'"),
+      uses: code.includes('COMMUNITY_SIGN_IN_LABEL'),
+      reTypes: code.includes('Sign in to NodeGX')
+    }).toEqual({ imports: true, uses: true, reTypes: false });
   });
 });
 

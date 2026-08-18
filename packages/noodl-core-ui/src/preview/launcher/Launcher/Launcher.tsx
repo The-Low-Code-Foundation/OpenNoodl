@@ -19,6 +19,7 @@ import type { LauncherLearningData } from '@noodl-core-ui/preview/launcher/Launc
 import { NoodlGitHubRepo, UseGitHubReposReturn } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
 import { usePersistentTab } from '@noodl-core-ui/preview/launcher/Launcher/hooks/usePersistentTab';
 import {
+  CommunityAccountHostState,
   ConnectAgentHostState,
   GitHubUser,
   LauncherLessonData,
@@ -90,6 +91,9 @@ export interface LauncherProps {
 
   /** BST-003 — the connect-an-agent card. Absent in Storybook, where it does not render. */
   connectAgent?: ConnectAgentHostState;
+
+  /** UNI-001 AC2 — the NodeGX account card and chip. Absent in Storybook, same as above. */
+  community?: CommunityAccountHostState;
 }
 
 // FIXME: make the mock data real
@@ -246,7 +250,8 @@ export function Launcher({
   onMinimizeWindow,
   onMaximizeWindow,
   onCloseWindow,
-  connectAgent
+  connectAgent,
+  community
 }: LauncherProps) {
   // Determine initial tab: props > deep link > persisted > default
   const deepLinkTab = parseDeepLink();
@@ -393,7 +398,8 @@ export function Launcher({
         onMinimizeWindow,
         onMaximizeWindow,
         onCloseWindow,
-        connectAgent
+        connectAgent,
+        community
       }}
     >
       <div className={css['Root']}>

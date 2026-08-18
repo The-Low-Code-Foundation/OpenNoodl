@@ -32,16 +32,31 @@
  * place that writes this key is a second place a stale token can come from.
  *
  * ───────────────────────────────────────────────────────────────────────────────
- * ⚠️ THE STORE IS `JSONStorage`, WHICH IS `localStorage` IN THE RENDERER.
+ * ⚠️ THE STORE IS `JSONStorage`, WHICH IS A **PLAINTEXT JSON FILE IN `userData`**.
  *
- * That is a real limitation and it is written down here rather than discovered later: a
- * session token in `localStorage` is readable by anything running in the renderer, and this
- * renderer is `nodeIntegration: true`. It is acceptable **only** because the token is a
- * community session — it reads and writes a public forum under a handle the user chose — and
- * because it is what a browser would do with the same credential. 🔴 If UNI-001 ever issues a
- * token that reaches anything of value (payment, an org roster, a pupil's record), this is
- * the wrong store and the OS keychain is the right one. Recorded as a condition, because a
- * store chosen for a cheap credential is exactly the store an expensive one silently inherits.
+ * 🔴 **This paragraph used to say `localStorage`, and that was wrong** — measured 2026-08-18 in
+ * a running editor rather than reasoned about. `@noodl/platform-electron` calls
+ * `setStorage(new StorageNode())` at import, and `StorageNode` writes
+ * `<userData>/<key>.json` through the filesystem; the renderer's `localStorage` never sees it.
+ * On this machine that is
+ * `~/Library/Application Support/NodeGX/nodegx.community.session.json`, confirmed by writing a
+ * session and watching the launcher's chip appear, and by watching sign-out delete the file.
+ *
+ * ⚠️ **The conclusion survives the correction, and the reasoning had to be redone to know
+ * that.** A plaintext file at 0644 in `userData` is readable by any process running as this
+ * user, and this renderer is `nodeIntegration: true`, so it is also readable by anything
+ * running *in* the renderer. It is acceptable **only** because the token is a community
+ * session — it reads and writes a public forum under a handle the user chose. 🔴 If UNI-001
+ * ever issues a token that reaches anything of value (payment, an org roster, a pupil's
+ * record), this is the wrong store and the OS keychain is the right one. Recorded as a
+ * condition, because a store chosen for a cheap credential is exactly the store an expensive
+ * one silently inherits.
+ *
+ * ⚠️ **UNI-001's scope says the token is stored `0600`. It is not** — `StorageNode` writes with
+ * the process umask, like every other file it writes, and nothing here narrows it. The
+ * relay-token precedent OBS-004 set is a different code path. Left as a recorded gap rather
+ * than fixed silently in a launcher task: making it true means changing `StorageNode` for all
+ * of its callers, which is a decision about the platform layer and not about this key.
  *
  * @module models/community/communitysession
  */

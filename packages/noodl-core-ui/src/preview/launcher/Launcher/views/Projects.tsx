@@ -3,6 +3,10 @@ import React, { useMemo, useState } from 'react';
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { SelectOption } from '@noodl-core-ui/components/inputs/Select';
 import {
+  CommunityAccountCard,
+  CommunityAccountVariant
+} from '@noodl-core-ui/preview/launcher/Launcher/components/CommunityAccountCard';
+import {
   ConnectAgentCard,
   ConnectAgentVariant
 } from '@noodl-core-ui/preview/launcher/Launcher/components/ConnectAgentCard';
@@ -57,7 +61,8 @@ export function Projects({}: ProjectsViewProps) {
     onDeleteProject,
     onMigrateProject,
     onOpenReadOnly,
-    connectAgent
+    connectAgent,
+    community
   } = useLauncherContext();
 
   const { getProjectMeta, getProjectsInFolder, folders, moveProjectToFolder } = useProjectOrganization();
@@ -230,6 +235,11 @@ export function Projects({}: ProjectsViewProps) {
                   server's command has no project path in it, so the objection that kept this offer
                   buried in Settings no longer applies. */}
               {connectAgent && <ConnectAgentCard variant={ConnectAgentVariant.Prominent} {...connectAgent} />}
+
+              {/* UNI-001 AC2 — the account, offered where a brand-new user actually looks. The
+                  card says in its own body that the editor works without one; see
+                  `COMMUNITY_GATES_NOTHING`. */}
+              {community && <CommunityAccountCard variant={CommunityAccountVariant.Prominent} {...community} />}
             </div>
           ) : (
             <>
@@ -237,6 +247,10 @@ export function Projects({}: ProjectsViewProps) {
                   has never connected an agent is the same user, just further along — so the offer
                   stays and only its prominence changes. */}
               {connectAgent && <ConnectAgentCard variant={ConnectAgentVariant.Row} {...connectAgent} />}
+
+              {/* ⚠️ Stays once there are projects, for the same reason the card above it does —
+                  and because this is where the signed-in chip and the sign-out live. */}
+              {community && <CommunityAccountCard variant={CommunityAccountVariant.Row} {...community} />}
 
               <ProjectSettingsModal
                 isVisible={selectedProjectId !== null}
