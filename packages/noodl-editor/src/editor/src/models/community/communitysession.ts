@@ -19,7 +19,17 @@
  *
  * ⚠️ **What this file must NOT become.** A "paste your token here" field would be inventing
  * product surface UNI-001 owns, and a sign-in flow that half-works is worse than one that
- * plainly does not exist. This reads a store; it never mints, prompts or negotiates.
+ * plainly does not exist. This reads and writes a store; it never mints, prompts or negotiates.
+ *
+ * ───────────────────────────────────────────────────────────────────────────────
+ * ✅ **2026-08-19 — UNI-001 E1 LANDED THE ISSUER, so the paragraph above is now history
+ * rather than the state of the world.** `readCommunitySession()` still returns `null` for a
+ * user who has not signed in, which is the ordinary answer; what changed is that there is a
+ * way to stop being that user. The minting is on the platform (`src/lib/session.ts` and the
+ * device flow in `src/lib/devicepairing.ts`); the negotiation is in `communitysignin.ts`;
+ * this file is still only the store. 🔴 **Keep it that way** — the reason the seam was worth
+ * writing before the issuer existed is that it is ONE function with ONE name, and a second
+ * place that writes this key is a second place a stale token can come from.
  *
  * ───────────────────────────────────────────────────────────────────────────────
  * ⚠️ THE STORE IS `JSONStorage`, WHICH IS `localStorage` IN THE RENDERER.
@@ -53,6 +63,12 @@ export interface SessionStore {
   get(key: string): Promise<unknown>;
 }
 
+/** The writing half, kept separate so a reader cannot be handed a store that writes. */
+export interface WritableSessionStore {
+  set(key: string, data: { [key: string]: unknown }): Promise<void>;
+  remove(key: string): Promise<void>;
+}
+
 /**
  * The stored session, or `null`.
  *
@@ -80,4 +96,39 @@ export async function readCommunitySession(store: SessionStore = JSONStorage): P
   if (typeof token !== 'string' || token.trim().length === 0) return null;
 
   return { token: token.trim(), handle: typeof handle === 'string' ? handle : undefined };
+}
+
+/**
+ * Stores a session. 🔴 The ONLY writer of {@link COMMUNITY_SESSION_KEY}.
+ *
+ * ⚠️ `handle` is stored beside the token because the composer's primary button says *"Post
+ * to the community as @nia-builds"*, and asking the platform who you are on every dialog
+ * open would put a network round trip in front of a button. It is a CACHE of a fact the
+ * platform owns: if a handle is renamed, this is stale until the next sign-in, and the
+ * consequence is a button with the wrong name on it rather than a post from the wrong
+ * account — the token is what decides the author, and only the platform reads it.
+ */
+export async function writeCommunitySession(
+  session: CommunitySession,
+  store: WritableSessionStore = JSONStorage
+): Promise<void> {
+  const token = session.token.trim();
+  // 🔴 Refusing to store a blank is not defensive tidying. `readCommunitySession` maps a
+  // blank to `null`, so writing one would produce a store that says "signed in" to anything
+  // reading the raw key and "signed out" to the reader — two answers to one question.
+  if (token.length === 0) throw new Error('refusing to store a blank community token');
+  await store.set(COMMUNITY_SESSION_KEY, session.handle ? { token, handle: session.handle } : { token });
+}
+
+/**
+ * Forgets the stored session — the editor's half of signing out.
+ *
+ * ⚠️ **Local only, and the name says less than the caller means.** This removes our copy; it
+ * does NOT revoke the row on the platform, which is `POST /api/auth/signout` and needs the
+ * token we are about to throw away. 🔴 A caller that wants a real sign-out must revoke FIRST
+ * and clear second — clearing first leaves a live session nobody can reach to revoke, which
+ * is the worse of the two failure orders.
+ */
+export async function clearCommunitySession(store: WritableSessionStore = JSONStorage): Promise<void> {
+  await store.remove(COMMUNITY_SESSION_KEY);
 }

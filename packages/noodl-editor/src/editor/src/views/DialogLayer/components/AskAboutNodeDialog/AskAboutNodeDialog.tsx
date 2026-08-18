@@ -59,7 +59,7 @@
  * @module views/DialogLayer/components/AskAboutNodeDialog/AskAboutNodeDialog
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { platform } from '@noodl/platform';
 
@@ -72,7 +72,9 @@ import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { CommunityApiClient, type Write } from '@noodl-models/community/communityapi';
+import { COMMUNITY_URL as COMMUNITY_ORIGIN } from '@noodl-models/community/communityorigin';
 import { readCommunitySession, type CommunitySession } from '@noodl-models/community/communitysession';
+import { signIntoCommunity, type SignInProgress } from '@noodl-models/community/communitysignin';
 import { buildNodeArtifacts } from '@noodl-models/community/nodeartifact';
 import { GraphExcerpt } from '@noodl-models/community/nodeexcerpt';
 import { LibraryPorts } from '@noodl-models/community/nodeexcerpt';
@@ -91,20 +93,13 @@ import css from './AskAboutNodeDialog.module.scss';
 /**
  * Where the entry point goes while the mirror is gated.
  *
- * ✅ **`community.nodegx.io` resolves as of 2026-08-17** — an A record to nexus-1
- * (`49.12.102.195`), added by Richard. ⚠️ **The domain is `.io`, not `.dev`**: every phase-67
- * document said `community.nodegx.dev` for four days, including this constant, and it was never
- * checked against the registrar. It is a subdomain of the domain the landing page already uses.
- *
- * ⚠️ **Resolving is not being served.** nexus-1 runs the static `nodegx.io` landing page and two
- * other sites; the platform (`nodegx-community`) is deployed nowhere and Caddy has no site block
- * for this host. So the button opens a hostname that answers — which is still the right behaviour
- * under D16, because the alternative is a button that opens nothing.
- *
- * This constant remains the one place that changes, and it is deliberately not spread across the
- * composer: AC2 and AC3 both hand off through it.
+ * 🔴 **MOVED to `@noodl-models/community/communityorigin` by UNI-001 E1** and re-exported here
+ * so no caller had to change. It grew a second and third consumer — the device sign-in and
+ * sign-out — and a constant exported from a *view* is one a *model* cannot import without
+ * pointing the dependency arrow backwards. The reasoning about `.io` vs `.dev`, and about the
+ * host resolving while nothing serves it, now lives with the constant.
  */
-export const COMMUNITY_URL = 'https://community.nodegx.io';
+export { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 
 /**
  * Where a node question lands on the Bench.
@@ -203,6 +198,25 @@ export function AskAboutNodeDialog({
   const [session, setSession] = useState<CommunitySession | null | undefined>(undefined);
   const [postState, setPostState] = useState<PostState>({ phase: 'idle' });
 
+  /**
+   * UNI-001 E1 — signing in, from the composer.
+   *
+   * 🔴 HERE AND NOT ONLY IN THE LAUNCHER, and the reason is the alpha bar's own sentence: *"a
+   * stranger can … ask a question about a node from inside the editor."* A person who has
+   * written their question and then discovers they must go and find a launcher card has been
+   * asked to abandon what they were doing. ⚠️ UNI-001 AC2 still names a launcher affordance and
+   * it is still owed — this is the loop's sign-in, not a substitute for that one.
+   *
+   * ⚠️ `undefined` means *not signing in*, distinct from a progress value, for exactly the
+   * reason `session` uses `undefined` above.
+   */
+  const [signIn, setSignIn] = useState<SignInProgress | undefined>(undefined);
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const abandoned = useRef(false);
+  useEffect(() => () => {
+    abandoned.current = true;
+  }, []);
+
   useEffect(() => {
     let live = true;
     void readCommunitySession().then((found) => {
@@ -297,7 +311,7 @@ export function AskAboutNodeDialog({
     setPostState({ phase: 'posting' });
     if (capture && includeCapture) setSavedTo(await saveCaptureNextTo(capture.data));
 
-    const client = new CommunityApiClient({ baseUrl: COMMUNITY_URL, token });
+    const client = new CommunityApiClient({ baseUrl: COMMUNITY_ORIGIN, token });
     const result = await client.askQuestion({
       section: ASK_SECTION,
       // 🔴 The same two values the `<pre>` below renders. Not recomposed, not re-derived —
@@ -334,8 +348,38 @@ export function AskAboutNodeDialog({
     // The exact value that was on screen. Not recomposed, not re-derived.
     void navigator.clipboard.writeText(`${question.title}\n\n${question.body}`);
     if (capture && includeCapture) setSavedTo(await saveCaptureNextTo(capture.data));
-    platform.openExternal(COMMUNITY_URL);
+    platform.openExternal(COMMUNITY_ORIGIN);
     setHandedOff(true);
+  }
+
+  /**
+   * Runs the device dance and, on success, re-reads the store the same way the dialog does on
+   * mount — so the signed-in composer that appears is rendered from the credential that was
+   * actually persisted, not from the value the flow happened to return.
+   *
+   * 🔴 `isCancelled` reads a REF and not the `signIn` state, and that is not a style
+   * preference: the poll loop closes over its arguments once and runs for up to fifteen
+   * minutes, so a state value captured there is frozen at the value it had on the first
+   * render and the loop would never see a cancellation. The ref is set by the unmount effect
+   * below — without it, a dismissed dialog leaves a poll hammering the platform every five
+   * seconds until the pairing lapses.
+   */
+  async function beginSignIn() {
+    setSignInError(null);
+    const result = await signIntoCommunity(setSignIn, {
+      openExternal: (url) => platform.openExternal(url),
+      isCancelled: () => abandoned.current
+    });
+    setSignIn(undefined);
+    if (result.outcome === 'signed-in') {
+      setSession(await readCommunitySession());
+      return;
+    }
+    if (result.outcome === 'expired') {
+      setSignInError('That sign-in timed out. Try again, or use the browser button below.');
+      return;
+    }
+    if (result.outcome === 'failed') setSignInError(result.detail);
   }
 
   return (
@@ -432,6 +476,45 @@ export function AskAboutNodeDialog({
             person reaches for when the post is refused or the platform cannot be reached, and
             `describeWriteFailure` sends them to it by name.
           */}
+          {/*
+            🔴 UNI-001 E1 — the sign-in, and it appears only when we KNOW there is no session.
+            `session === null` and not `!session`: `undefined` is "the store has not answered
+            yet", and rendering this on that frame would flash "Sign in" at somebody who is
+            already signed in — the same distinction the `session` state's own comment makes.
+          */}
+          {session === null && (
+            <VStack hasSpacing={1}>
+              {signIn?.phase === 'waiting' ? (
+                <>
+                  <Text textType={TextType.Default}>
+                    Type this code in the browser window that just opened:
+                  </Text>
+                  <pre className={css['Payload']}>{signIn.userCode}</pre>
+                  <Text textType={TextType.Shy}>
+                    {/* ⚠️ The address is shown as well as opened. A browser that opened on a
+                        different profile, or did not open at all, leaves a person with a code
+                        and nowhere to put it. */}
+                    {signIn.verificationUri}
+                  </Text>
+                </>
+              ) : (
+                <HStack hasSpacing={2}>
+                  <PrimaryButton
+                    label={signIn ? 'Starting…' : 'Sign in to NodeGX'}
+                    size={PrimaryButtonSize.Small}
+                    isDisabled={signIn !== undefined}
+                    onClick={() => void beginSignIn()}
+                  />
+                  <Text textType={TextType.Shy}>
+                    Sign in to post from here — or use the browser button below, which needs no
+                    account.
+                  </Text>
+                </HStack>
+              )}
+              {signInError && <Text textType={TextType.Danger}>{signInError}</Text>}
+            </VStack>
+          )}
+
           <HStack hasSpacing={2}>
             {session && (
               <PrimaryButton
