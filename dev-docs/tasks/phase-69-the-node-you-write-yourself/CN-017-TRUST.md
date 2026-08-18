@@ -336,3 +336,79 @@ JSZip's writer normalises it; the contract graded is *given a name that escapes,
 write nothing*. One spec pins JSZip's own normalisation, so an upgrade that changes it fails here and
 points at the guard as the thing now doing the work.
 
+---
+
+## 9. 🔴 SECOND CORRECTION — `verifyKitSource` shipped with two defects, found by running it over the real library
+
+**2026-08-18, while scoping CN-016.** The verifier this task shipped was tested against the
+**scaffold's** output and against fixtures written to exercise it. It had never been run over a real
+third-party kit. Running it across the 29 shipped library modules found two defects, one of which was
+user-facing.
+
+### 9a. It read only one of the two node-declaration shapes
+
+The runtime's own signature is the authority (`noodl-runtime.ts`):
+
+```ts
+nodes?: Array<NodeDefinitionOptions | { node: NodeDefinitionOptions }>;
+```
+
+**Both shapes.** `verifyKitSource` read `definition.name` at the top level, which is `undefined` for
+every `{ node: { name: … } }` wrapper — **and the wrapper is the shape most of the real library
+uses.** The census before and after the fix:
+
+| | before | after |
+|---|---|---|
+| `defines-nodes` | **6** | **15** |
+| `defines-no-nodes` | 11 | 2 |
+| `threw` | 4 | 4 |
+| `no-define-module` | 1 | 1 |
+
+🔴 **Ten working kits were being reported as defining no nodes.** ✅ Fixed in `nodeDefinitionName`,
+which reads `.node.name` when the wrapper is present and the bare `.name` otherwise.
+
+⚠️ **And a definition may be a bare `function`** — `nodegx-qrcode` puts one in `reactNodes`.
+`Function.prototype.name` is a string, so the original `typeof d.name === 'string'` test would have
+promoted a minified component's function name into a node type name, **inventing a node that does not
+exist**. A definition is now an object or it is nothing.
+
+### 9b. 🔴 The verdict was gating installation, and it should not have been
+
+This is the one that mattered. `toRow` marked any `verification.ok === false` as **not offerable**,
+so a kit the check disliked **could not be installed at all**.
+
+**Measured:** `verifyKitSource` runs in a `vm` context with a minimal `document` and a noop `React`.
+**Four working library kits throw in it** — `lottie` (`getContext`), `mapbox` (`.style`), `markdown`,
+`simple-tooltips` (`querySelector`). Under the shipped rule, **none of the four could be installed
+through the consent flow.**
+
+That is the check punishing exactly the behaviour the product wants, and it is a worse failure than
+the one it was guarding against. It is also the tradeoff `verifyLibrarySource`'s own docstring warned
+about in writing — *"a library that genuinely requires DOM APIs beyond `document`'s stub … will
+false-negative here"* — which this task read, quoted, and then built a gate on anyway.
+
+✅ **The rule is now: verification INFORMS consent; the user's decision IS the gate.**
+
+- `unreadable` (the manifest names a file that is not there) is the **only** non-offerable state —
+  there is no code to consent to, and no decision can change that. It has its own outcome now, split
+  out of `threw`.
+- Every other finding is **shown as a finding**, on the row, beside a sentence saying the check runs
+  the file outside a real browser and a kit that needs the page can fail it and still work.
+
+⚠️ **AC2 is unchanged and still met, on its correct reading:** *a kit the user did not accept writes
+nothing.* It never meant *a kit this check disliked writes nothing* — and reading it the second way is
+what produced the defect.
+
+### 9c. What this says about the task, not just the code
+
+🔴 **"Build the caller" was applied to the editor's call sites and not to the data.** Every spec used
+either the scaffold's output or a fixture shaped like it. The library was sitting in the repo the
+whole time — 29 real kits, free to run — and one pass over it would have caught both defects before
+they shipped. ✅ **A check that grades other people's artefacts must be run over the artefacts that
+exist**, not only over the one the same repo generates.
+
+**Now graded:** 4 new specs in `verifyKitSource.test.ts` covering the wrapper shape, both shapes
+together, the function case and wrapper precedence; 2 in `consentCopy.test.ts` pinning the offerable
+rule at the source, with a confirmed mutation kill (reverting to `offerable: verification.ok` turns
+them red). **58 specs total.**
+

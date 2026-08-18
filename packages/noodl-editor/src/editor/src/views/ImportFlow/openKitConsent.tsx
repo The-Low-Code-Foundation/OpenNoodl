@@ -37,27 +37,45 @@ import { ImportFlowCancelled } from './openImportFlow';
 interface ConsentRow {
   module: ScannedExecutableModule;
   /**
-   * 🔴 **AC2: a failing kit writes nothing.** A module whose source could not be
-   * loaded is not offered for consent and is not copied — there is no "install it
-   * anyway" affordance, because the only thing it could do is fail identically
-   * inside the user's project with the reason a step further away.
+   * 🔴 **AC2 means "a kit the user did not accept writes nothing" — NOT "a kit
+   * this check disliked writes nothing".** Measured 2026-08-18 against the
+   * shipped library: `verifyKitSource` runs in a `vm` context with a minimal
+   * `document` and a noop `React`, and **four working library kits throw in it**
+   * (`lottie`, `mapbox`, `markdown`, `simple-tooltips` — `getContext`,
+   * `querySelector`, `.style`). Refusing on this check's say-so would make those
+   * four uninstallable. That is the check punishing the behaviour the product
+   * wants, and it is a worse failure than the one it was guarding against.
+   *
+   * ⚠️ So verification **informs** consent; the user's decision **is** the gate.
+   * The one exception is below: a module whose code cannot be read at all has
+   * nothing to install, and no decision can change that.
    */
   offerable: boolean;
   /** What the row says about verification. Never the word "safe". */
   detail: string;
+  /** True when the check found a problem the user should weigh before accepting. */
+  concerning: boolean;
 }
 
 function toRow(module: ScannedExecutableModule): ConsentRow {
   const verification = module.verification;
 
-  // ⚠️ Three states, not two. "Not checked" is offerable — there was nothing to
-  // read, which is a fact about the module's shape and not a failure of it — and
-  // the copy says so rather than letting a silent row read as a pass.
-  if (verification.outcome === 'not-checked') {
-    return { module, offerable: true, detail: verification.message };
+  // 🔴 The only genuinely non-offerable state: the manifest names a file that is
+  // not there, so there is no code to consent to.
+  if (verification.outcome === 'unreadable') {
+    return { module, offerable: false, detail: verification.message, concerning: true };
   }
 
-  return { module, offerable: verification.ok, detail: verification.message };
+  // ⚠️ "Not checked" is offerable and says so — there was nothing to read, which
+  // is a fact about the module's shape, not a failure of it. A silent row would
+  // read as a pass.
+  if (verification.outcome === 'not-checked' || verification.ok) {
+    return { module, offerable: true, detail: verification.message, concerning: false };
+  }
+
+  // Everything else: offered, with the finding shown as a finding. The user is
+  // told what the check saw and decides; the check does not decide for them.
+  return { module, offerable: true, detail: verification.message, concerning: true };
 }
 
 const CARD: React.CSSProperties = {
@@ -126,12 +144,28 @@ function ConsentDialog({
       </div>
 
       {offered.map((row) => (
-        <div key={row.module.dirName} style={CARD} data-test={`kit-consent-item-${row.module.dirName}`}>
+        <div
+          key={row.module.dirName}
+          style={row.concerning ? { ...CARD, borderColor: 'var(--theme-color-warning, var(--theme-color-fg-muted))' } : CARD}
+          data-test={`kit-consent-item-${row.module.dirName}`}
+          data-test-concerning={row.concerning ? 'true' : 'false'}
+        >
           <div style={{ fontSize: '12px', fontWeight: 600 }}>{row.module.displayName}</div>
           <div style={{ fontSize: '11px', color: 'var(--theme-color-fg-muted)', marginTop: '2px' }}>
             noodl_modules/{row.module.dirName}
           </div>
           <div style={{ fontSize: '11px', marginTop: '4px' }}>{row.detail}</div>
+          {/*
+            ⚠️ Shown, not hidden, and not turned into a refusal. The check is a
+            shape smoke test that false-negatives on kits needing real DOM APIs,
+            so this says what it saw and leaves the decision where it belongs.
+          */}
+          {row.concerning && (
+            <div style={{ fontSize: '11px', marginTop: '4px', color: 'var(--theme-color-fg-muted)' }}>
+              This check runs the file outside a real browser, so a kit that needs the page to exist can fail it and
+              still work once installed.
+            </div>
+          )}
         </div>
       ))}
 

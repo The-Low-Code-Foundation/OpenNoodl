@@ -112,3 +112,40 @@ describe('CN-017 AC5 — the dialog markup itself over-claims nothing', () => {
     }
   });
 });
+
+describe('CN-017 — verification informs consent; it does not gate it', () => {
+  /*
+   * 🔴 **Measured 2026-08-18 against the shipped library, and it changed the
+   * design.** `verifyKitSource` runs in a `vm` context with a minimal `document`
+   * and a noop `React`. Four working library kits throw in it — `lottie`
+   * (`getContext`), `mapbox` (`.style`), `markdown`, `simple-tooltips`
+   * (`querySelector`). Treating that verdict as a refusal would have made those
+   * four **uninstallable through the consent flow**: the check punishing exactly
+   * the behaviour the product wants.
+   *
+   * So the offerable rule is graded here, on the source, because the decision
+   * lives in a `.tsx` this runner cannot import.
+   */
+  const dialogPath = path.join(__dirname, '../../src/editor/src/views/ImportFlow/openKitConsent.tsx');
+
+  it('refuses only the one state that has no code to install', () => {
+    const source = fs.readFileSync(dialogPath, 'utf8');
+
+    // Known-firing control first: the sweep is reading the real decision.
+    expect(source).toContain('function toRow');
+    expect(source).toContain("verification.outcome === 'unreadable'");
+
+    // `unreadable` is the only branch that returns offerable: false.
+    const notOfferable = source.match(/offerable:\s*false/g) ?? [];
+    expect(notOfferable).toHaveLength(1);
+
+    // And the old rule — refuse whenever the check was unhappy — is gone.
+    expect(source).not.toContain('offerable: verification.ok');
+  });
+
+  it('says plainly that the check can fail a kit that works', () => {
+    const source = fs.readFileSync(dialogPath, 'utf8');
+    expect(source).toContain('outside a real browser');
+    expect(source).toContain('still work once installed');
+  });
+});

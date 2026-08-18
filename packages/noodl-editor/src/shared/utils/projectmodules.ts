@@ -282,7 +282,13 @@ export type KitVerifyOutcome =
   /** A CommonJS (Node) build; a `<script>` tag cannot load it. */
   | 'commonjs'
   /** Threw while running. */
-  | 'threw';
+  | 'threw'
+  /**
+   * The manifest names a `main` that could not be read. 🔴 **The only outcome
+   * that means there is no code to install** — every other failure is this
+   * check's *opinion* about code that exists.
+   */
+  | 'unreadable';
 
 export interface KitVerifyResult {
   ok: boolean;
@@ -396,9 +402,9 @@ export function verifyKitSource(code: string): KitVerifyResult {
     for (const list of [module.nodes, module.reactNodes]) {
       if (!Array.isArray(list)) continue;
       for (const definition of list) {
-        const name = definition && typeof definition.name === 'string' ? definition.name : null;
         // Named, never counted: a definition with no `name` cannot be registered
         // and a count would report it as though it could.
+        const name = nodeDefinitionName(definition);
         if (name) nodes.push(name);
       }
     }
@@ -420,6 +426,36 @@ export function verifyKitSource(code: string): KitVerifyResult {
     message: `Defines ${nodes.length} node${nodes.length === 1 ? '' : 's'}: ${nodes.join(', ')}.`,
     nodes
   };
+}
+
+/**
+ * The type name a kit node definition declares, across **both** shapes the
+ * runtime accepts.
+ *
+ * 🔴 **Measured against the shipped library, after a first version of this read
+ * only the bare shape and reported 10 working kits as defining no nodes.** The
+ * runtime's own signature is the authority:
+ * `nodes?: Array<NodeDefinitionOptions | { node: NodeDefinitionOptions }>`
+ * (`noodl-runtime.ts`) — so `{ node: { name: 'data_context.context' } }` is as
+ * valid as `{ name: 'Bar Chart' }`, and it is the shape most of the real library
+ * uses. Reading only the outer `name` yields `undefined` for every one of them.
+ *
+ * ⚠️ **A `function` is refused rather than read.** One shipped kit
+ * (`nodegx-qrcode`) puts a bare function in `reactNodes`, and `Function.prototype.name`
+ * is a string — so a naive `typeof d.name === 'string'` would have promoted a
+ * minified component's function name into a node type name. A definition is an
+ * object or it is nothing.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function nodeDefinitionName(definition: any): string | null {
+  // `typeof` excludes functions as well as primitives, which is the point.
+  if (!definition || typeof definition !== 'object') return null;
+
+  const wrapped = definition.node;
+  const target = wrapped && typeof wrapped === 'object' ? wrapped : definition;
+
+  const name = target.name;
+  return typeof name === 'string' && name ? name : null;
 }
 
 /**
@@ -498,7 +534,7 @@ export async function scanExecutableModules(sourceDirectory: string): Promise<Sc
         displayName,
         verification: {
           ok: false,
-          outcome: 'threw',
+          outcome: 'unreadable',
           message: `The manifest names "${mainFile}", which could not be read: ${message}`,
           nodes: []
         }

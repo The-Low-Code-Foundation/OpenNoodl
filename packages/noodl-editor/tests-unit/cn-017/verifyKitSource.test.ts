@@ -163,3 +163,52 @@ describe('CN-017 — scanning a directory for the modules that execute code', ()
     expect(found.verification.message).toContain('nowhere.js');
   });
 });
+
+describe('CN-017 — both node-declaration shapes, measured against the shipped library', () => {
+  /*
+   * 🔴 **This suite exists because the first version of `verifyKitSource` was
+   * wrong, and only running it over the real library showed it.** It read
+   * `definition.name` at the top level, which is `undefined` for the wrapper
+   * shape — so it reported **10 working library kits as defining no nodes**,
+   * and the consent dialog then marked them un-installable.
+   *
+   * The runtime's own signature is the authority:
+   * `nodes?: Array<NodeDefinitionOptions | { node: NodeDefinitionOptions }>`.
+   */
+  it('reads the { node: … } wrapper shape most of the real library uses', () => {
+    const result = verifyKitSource(
+      "Noodl.defineModule({ nodes: [{ node: { name: 'data_context.context' }, setup: function () {} }] });"
+    );
+    expect(result.outcome).toBe('defines-nodes');
+    expect(result.nodes).toEqual(['data_context.context']);
+  });
+
+  it('reads the bare shape the scaffold emits, and both together', () => {
+    const result = verifyKitSource(
+      "Noodl.defineModule({ nodes: [{ name: 'bare' }, { node: { name: 'wrapped' } }] });"
+    );
+    expect(result.nodes).toEqual(['bare', 'wrapped']);
+  });
+
+  /*
+   * 🔴 One shipped kit (`nodegx-qrcode`) puts a bare **function** in
+   * `reactNodes`. `Function.prototype.name` is a string, so a naive
+   * `typeof d.name === 'string'` would promote a component's function name into
+   * a node type name — inventing a node that does not exist.
+   */
+  it('refuses to read a function as a node definition', () => {
+    const result = verifyKitSource(
+      "function MyComponent() {} Noodl.defineModule({ reactNodes: [MyComponent] });"
+    );
+    expect(result.nodes).toEqual([]);
+    expect(result.outcome).toBe('defines-no-nodes');
+  });
+
+  it('prefers the wrapped name when a wrapper also carries an outer one', () => {
+    const result = verifyKitSource(
+      "Noodl.defineModule({ nodes: [{ name: 'outer', node: { name: 'inner' } }] });"
+    );
+    // The runtime registers `.node`; the outer key is the wrapper's business.
+    expect(result.nodes).toEqual(['inner']);
+  });
+});

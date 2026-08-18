@@ -34,6 +34,42 @@ P65's audit is the reason this task is Tier 6 rather than Tier 2:
 **This task must not build on an assumption that "modules work".** Exactly one kit has been proven
 end-to-end — the cashflow kit, on 2026-08-15 — and it is not one of the 29.
 
+### ✅ First actual measurement of the fleet — 2026-08-18 (s31)
+
+P65's audit said *"0 of 29 have ever been run"*. They have now been run, in CN-017's
+`verifyKitSource` sandbox, which reports **what each declares**:
+
+| outcome | count | which |
+|---|---|---|
+| **declares nodes** | **15** | avatar, chart-js (9 nodes), custom-html, data-context, geospatial-analysis, google-analytics, google-sheets, graphql, i18next-translation, marquee, mqtt-module, parse-cloud-function, pdf-viewer, qr-scanner, web-camera |
+| **threw** | 4 | lottie (`getContext`), mapbox (`.style`), markdown, simple-tooltips (`querySelector`) |
+| **declares no named nodes** | 2 | confetti, qr-code |
+| **never calls `defineModule`** | 1 | form-validation |
+| iconsets | 7 | — |
+| no `noodl_modules/` at all | 3 | — |
+
+🔴 **Read the four `threw` results as the INSTRUMENT, not the fleet.** The sandbox has a minimal
+`document` and a noop `React`; every one of those four fails on a DOM API it does not stub
+(`getContext`, `querySelector`, `.style`). They are **false negatives** — the tradeoff
+`verifyLibrarySource`'s own docstring states in writing. **Nothing here says those four are broken**,
+and CN-016 must not act as though it does. What it does establish is a floor: **15 modules
+demonstrably declare nodes**, which is 15 more than anyone had confirmed.
+
+⚠️ **`qr-code` puts a bare `function` in `reactNodes`** rather than a definition object. That is a
+real oddity worth looking at when the taxonomy is decided.
+
+### 🔴 The taxonomy problem is worse than "give kits a type"
+
+**Measured: 22 of the 29 shipped modules are ALREADY kit-shaped** by the predicate the editor uses
+(`manifestLooksLikeKit` — a `main`, not `kind: 'external-library'`, not `type: 'iconset'`). The
+remaining 7 are iconsets.
+
+So item 2's *"decide whether kits need their own `type`"* is not a greenfield choice. Adding
+`type: 'kit'` to `library.json` creates a state where **22 existing entries are labelled `module`
+while being kits**, and relabelling them is a content migration across entries whose code has only
+just been run for the first time. ⚠️ **Whatever is decided, say what happens to those 22** — a new
+field that only new entries carry is a taxonomy that describes nothing.
+
 ## ✅ What D5 settled
 
 The library ships a **new, deliberately minimal reference kit** (1–2 nodes), optimised to be read as
@@ -91,6 +127,12 @@ than the phase intends.
   bite packaging work specifically.
 - ⚠️ The **shipped library is not the repaired library**: the CDN serves 2024 content. Verify against
   what users actually receive, not against `library/` in the checkout.
+- ✅ **`library:verify-dist` already exists and already does most of AC1's descoped form** — it serves
+  `library-dist/` over HTTP at the editor's expected path, walks `fetchModules`/`ModuleCard`'s real URL
+  construction, checks `isModuleCompatible` (imported, not re-implemented), and unzips through JSZip
+  as `filesystem.unzipUrl` does. 🔴 **But it is NOT in CI** — `.github/workflows/pr.yml` runs
+  `library:check` and not `library:verify-dist`. The artefact harness exists and is ungated; that is
+  the cheapest half of D21's divergence gate already written.
 - 🔴 **A peer is holding `scripts/library/check.ts` uncommitted** (as of 2026-08-18) and phase 65 is
   being scoped by them. `library:check` is AC4's gate and the divergence gate's likely home, so
   **announce before editing it** — this is the file most likely to collide in the whole task.

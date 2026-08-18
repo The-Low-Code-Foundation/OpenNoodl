@@ -93,6 +93,12 @@ answering is not consent.
 installs in one click; a prompt for an icon set would train people to click through the one that
 matters.
 
+🔴 **Verification INFORMS consent; it does not gate it — and that was a correction, not the design.**
+The shipped rule refused any kit the check disliked, and the check false-negatives on kits needing
+real DOM: **four library kits (`lottie`, `mapbox`, `markdown`, `simple-tooltips`) could not be
+installed at all.** Only `unreadable` (the manifest names a file that is not there) is non-offerable
+now. **If CN-016 adds a compat gate, ask what being wrong costs before making it block.**
+
 🔴 **The copy is in `kitConsentCopy.ts`, as data, and AC5 is graded on it two ways** — as data, and by
 reading `openKitConsent.tsx` **off disk as source** and sweeping it, because a `.tsx` is invisible to
 the plain-Node jest runner. **If CN-016 adds a publish or install surface with its own words, put
@@ -165,13 +171,13 @@ Tree: `cline-dev` with CN-017's 24 changed/added files and nothing else of mine.
 | Gate | Result |
 |---|---|
 | `test:ci` @ `NOODL_SPEC_SEED=39393` | ✅ **2849 total / 10 failed — AT FLOOR, the same ten BY NAME** (§4a) |
-| editor `test:main` | ✅ **3875 / 254 suites, ZERO failures** |
+| editor `test:main` | ✅ **3884 / 254 suites, ZERO failures** (peers added specs during the session) |
 | `typecheck:editor` | ✅ 0 |
 | `typecheck:editor-tests` | ✅ 0 |
 | `typecheck:mcp` | ✅ 0 |
 | `test:packages` | ✅ all green |
 | `@noodl/mcp` alone | ✅ **644 / 54, ZERO failures** |
-| new: `tests-unit/cn-017` | ✅ **52 / 4 suites** |
+| new: `tests-unit/cn-017` | ✅ **58 / 4 suites** |
 
 🔴 **`@noodl/mcp` reported 2 failures in `projectOwnsBackend.test.ts` when `test:packages` ran
 beside a live `test:ci`, and 0 when re-run alone.** Contention, not a regression — but it is the
