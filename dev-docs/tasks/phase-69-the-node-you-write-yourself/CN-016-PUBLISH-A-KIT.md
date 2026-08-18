@@ -6,7 +6,7 @@
 | **Effort** | L |
 | **Surface** | `library` |
 | **Rulings** | ✅ **D5** — ship a **new, minimal** reference kit; the cashflow kit is docs material, not shipped content · ✅ **D21** (2026-08-18) — **AC1 descoped** to a built artefact **plus a divergence gate** |
-| **Status** | 🔴 Never started. **Unblocked as of D21** — the last task in phase 69. |
+| **Status** | ✅ **COMPLETE (s32, 2026-08-18).** All five acceptance criteria met; AC5 driven in a live editor. See the s32 section at the end. ⚠️ Closing this does **not** answer the licensing question — that is P65 LBR-007, untouched. |
 | **Depends on** | CN-006 (the scaffold), CN-017 (the trust gate, for anything not first-party) |
 
 ## The job
@@ -240,3 +240,183 @@ tick.
 | AC2 — install twice, don't disturb | ⬜ not started |
 | AC5 — build the caller (install → place → deploy → load) | ⬜ not started |
 
+
+---
+
+# ✅ s32 — CN-016 is complete. All five acceptance criteria met.
+
+**2026-08-18.** Items 2, 3 and 4 built; AC1's divergence gate written and in CI;
+AC2, AC3 and AC5 graded. AC5 was driven in a live editor against predictions
+committed beforehand — see
+[notes/cn-016-drive-expectations.md](notes/cn-016-drive-expectations.md) and
+[notes/cn-016-drive-observations.md](notes/cn-016-drive-observations.md).
+
+## The table from the top of this section, closed
+
+| item | state |
+|---|---|
+| 1. The minimal reference kit | ✅ s31 |
+| AC1 — installs from a built artefact | ✅ s31, **and driven live in s32** |
+| AC1 — divergence gate | ✅ **`library:verify-origin`, in CI** |
+| 2. Kit-aware `library.json` | ✅ **decided: no new field. Reasoning below** |
+| 3. Compat gating that means something | ✅ **AC3 met; and one of the two version fields has no comparand** |
+| 4. Versioning and update | ✅ **item 4's floor met; the version premise was false** |
+| AC2 — install twice, don't disturb | ✅ 9 specs, off-renderer, on disk |
+| AC5 — build the caller | ✅ **install → place → deploy → load, end to end** |
+
+## AC1 — the divergence gate
+
+`npm run library:verify-origin`, in `.github/workflows/pr.yml` beside
+`library:check` and `library:verify-dist`. It fetches both indexes from the live
+content origin — **by calling `getContentEndpoint()` itself**, with
+`@electron/remote` stubbed at the resolver, so a repoint like 2026-08-13's is
+followed with no edit here rather than by a second copy of the URL that nothing
+checks — and compares them against `library/`.
+
+🔴 **It checks COVERAGE, BY LABEL, and says so in its own output**, because a
+gate that implies more than it checks is worse than no gate. It does not check
+that a published zip matches its source: nothing publishes `library/` yet
+(LBR-001), so there is no payload derived from these sources to hash against, and
+the published fleet's legacy filenames make slug comparison meaningless.
+
+The origin and `library/` already diverge, so `origin-baseline.json` records the
+divergence **as measured** and the rule is that the measured set must **equal**
+the baseline. A new entry is drift nobody chose; a stale entry means the
+situation improved and the line should go. Both are red and both print the exact
+edit. When LBR-001 lands, `unpublished` empties and this is where a payload-hash
+check belongs.
+
+⚠️ It needs egress by construction and exits **2** as UNAVAILABLE when it lacks
+it — never 0. A self-test on every run pins that a dead endpoint raises
+UNAVAILABLE rather than resolving to an empty index, because an empty index reads
+as *"the origin publishes nothing"*: a divergence report, not an outage, and the
+wrong verdict entirely.
+
+**Controls:** a new `library/` entry → exit 1 NEW DIVERGENCE; a ghost baseline
+line → exit 1 STALE BASELINE; dropping the array guard → exit 2, named by the
+self-test. Base green either side of all three.
+
+**Measured, independently reproducing s31:** prefabs 29/29 shared; modules 26 of
+30, the four unpublished being Confetti, Lucide Icons, QR Code and Example Node
+Kit.
+
+## Item 2 — the taxonomy. ✅ Decided: kits do NOT get their own `type`.
+
+🔴 **The two `type` fields in play live in different files and answer different
+questions**, which is the whole answer:
+
+- **`library.json`'s `type`** is `prefab | module`. It is read in exactly **one**
+  place — `ModuleCard`'s `isPrefab` — and its sole behavioural consequence is
+  `keepExistingNonComponents`: the **default conflict resolution for
+  non-component collisions** (`prefab` → keep yours, `module` → overwrite). It is
+  a **routing** field, not a taxonomy field.
+- **`noodl_modules/<dir>/manifest.json`'s `type: 'iconset'`** and
+  **`kind: 'external-library'`** are what `manifestLooksLikeKit` reads. Kit-ness
+  is **derived from the payload**, which is exactly what makes it un-driftable.
+
+So `type: 'kit'` would be a second declaration of a fact already derivable,
+checked by nothing — and it could not be truthful anyway: **`avatar` ships an
+iconset AND a kit in one entry**, so no scalar on the entry can describe it.
+
+**What happens to the 22 (now 23):** nothing. They are already correctly
+described by their own payload, and the entry-level `type` they carry is
+answering a different question, correctly, for all 30.
+
+**Reconciling LBR-006.** The mistyping worth naming is not *"a kit called a
+module"*. It is **Shake Detector**: a `type: 'module'` entry shipping **zero**
+`noodl_modules/` and two components, so it installs with the **overwrite**
+default rather than keep-yours. `verify-dist` now says so as a NOTE. Retyping
+library content is phase 65's call, not this gate's.
+
+`verify-dist` calls the editor's own `listNodeKits` and `scanModuleManifests`
+over each unpacked zip — not a twin of the predicate — and censuses all 59
+entries: **23 declare node kits, 7 ship an iconset, 1 ships both, 30 ship no
+modules at all.** 🔴 Notes, never problems; they do not touch the exit code.
+CN-017 §9b is why.
+
+## Item 3 / AC3 — refusal that names why
+
+One function produces both the thrown refusal and the card's badge, so they
+cannot drift into two accounts of one problem. It names the entry, the field, the
+requirement, **the running version** and what to do. The old wording named the
+requirement and neither the entry nor what you had — the half that tells a user
+whether the problem is theirs or the author's.
+
+🔴 **The refusal was also bypassable.** `module` was optional and the guard read
+`if (module && ...)`, so any caller omitting it skipped the gate. ModuleCard is
+the only caller and always passed it — the gate held by convention, not by the
+signature. Now required, after grepping for `.js`/`.jsx` callers, of which there
+are none.
+
+🔴 **The premise that changed the design.** Item 3 treats `minEditorVersion` and
+`runtimeVersion` as symmetrical. They are not. `minEditorVersion` is a floor with
+a real comparand. `runtimeVersion` is *"authored/verified against"* — provenance,
+not a requirement — **and the editor has no runtime version to compare it with**:
+no constant, no generated file, no dependency edge from `noodl-editor` to
+`noodl-runtime`. A `minRuntimeVersion` floor was considered and **not added**: a
+schema field nothing can evaluate is worse than an absent one, because
+`library:check` would accept it while every consumer ignored it in silence. The
+schema now says this about itself.
+
+## Item 4 / AC2 — and two false premises
+
+🔴 **Both corrected in specs rather than prose, so they cannot be re-inherited:**
+
+1. *"`recordKitProvenance` already stores `version`-bearing install records"* —
+   **it does not.** No arm of `KitProvenance` carries a version.
+2. *"A project has kit v1 and the library offers v2"* is **not a comparison this
+   product can make.** The library entry declares a version and nothing carries
+   it into the installed project; the kit's `manifest.json` may declare one, but
+   **the scaffold writes none** — the reference kit this task ships declares no
+   version at all — and `MANIFEST_SCHEMA` has no `version` property.
+
+So the update story cannot be version-aware yet, and item 4's floor — *do not
+silently replace* — is met by something that needs no version: a module already
+in the target **collides by name**, and a collision routes the install away from
+LIB-005's one-click path into the import flow.
+
+That is the load-bearing assertion and it is not obvious: **a kit that ships zero
+components — the reference kit ships zero — would take the one-click path on a
+reinstall if module collisions did not count towards `hasCollisions`**, and the
+user's kit would be replaced with no dialog at all. They do count. Controlled by
+dropping `plannedModules` from `collisionInAny`: exactly that spec goes red.
+
+⚠️ **One honest limit, measured and recorded rather than fixed:** the copy is
+**additive**. A file v1 shipped and v2 dropped survives the second install. Safe
+in AC2's sense — nothing corrupted, nothing else touched — but it is a merge, not
+a replacement. Deleting files out of a user's project directory is a different
+decision from copying into it.
+
+## AC5 — build the caller. Driven.
+
+Install from the built artefact → place → deploy → load, all seven predictions
+met bar one correction. Full account in
+[notes/cn-016-drive-observations.md](notes/cn-016-drive-observations.md). The
+short version: three independent readings prove the install came from the
+artefact and not the real origin; the node library went 128 → 129 and the picker
+showed **"Stat Tile"** under External libraries labelled **"Example Node Kit"**;
+the deploy shipped `noodl_modules/` byte-identical by `cmp`; and headless Chrome
+rendered the kit's node in the deployed page.
+
+**The same launch paid two other debts.** CN-017's two undriven surfaces agree
+(*"written here"* for a scaffolded kit, *"installed from localhost:3000"* for the
+installed one, on both the Settings row and the property-panel byline), and
+s29's undriven fix is driven **with both arms**: a kit whose `main` is missing
+says *"None of its nodes are available"*, while a kit that registers one node and
+then throws says *"It is only PARTIALLY registered"*. The branches disagree on
+the two cases, which is what makes the first reading discriminating rather than
+merely absent.
+
+🔴 **Two defects found that no prediction anticipated**, neither CN-016's, both
+recorded rather than fixed — every install throws two uncaught `TypeError`s and
+the import report's error path is **unreachable**; and the deploy publishes
+`CLAUDE.md`, `IMPORT-REPORT.md`, `import-report.json` and `kit-provenance.json`.
+Both are written up in the observations note.
+
+## 🔴 What closing CN-016 does NOT mean
+
+**The licensing question is untouched.** P65's audit found **~9 shipped modules
+vendoring large third-party libraries with no licence text**, and **mapbox-gl
+v2+ is proprietary**. That is **LBR-007**, in phase 65, and nothing in this task
+went near it. Neither did this task audit the 29 shipped modules for licences.
+"20/20" is about phase 69's tasks, not about the library being fit to publish.
