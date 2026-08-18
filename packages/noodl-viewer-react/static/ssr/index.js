@@ -23,8 +23,14 @@ async function cacheFetch(args, callback) {
 // XMLHttpRequest, the Parse cloud data nodes use the latter — is pending, the
 // runtime is not idle and renderToString must wait). Shared with the SSG
 // template via runtime-globals.js; the per-path render itself lives in
-// server-core.js so server and SSG rendering cannot drift. All of static/ssr
-// is copied into the deploy runtime by webpack, so these travel together.
+// server-core.js so server and SSG rendering cannot drift.
+//
+// 🔴 These do NOT travel automatically, and the sentence that used to sit here
+// said they did. `deployToFolder` copies the explicit list in `index.json`; the
+// webpack `from: 'static/ssr'` rule only populates the BUILT runtime, one step
+// earlier. `kit-modules.js` was added without a manifest entry and every
+// deployed folder failed `npm run build` until s27 measured it. A new require
+// here needs an `index.json` entry — `tests/ssr-deploy-manifest.test.js` enforces it.
 const { installRuntimeGlobals } = require('./runtime-globals');
 const { loadKitModules } = require('./kit-modules');
 const { renderPage } = require('./server-core');

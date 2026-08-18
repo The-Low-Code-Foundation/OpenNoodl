@@ -6,6 +6,7 @@
   {"url":"render-gate.js"},
   {"url":"runtime-globals.js"},
   {"url":"server-core.js"},
+  {"url":"kit-modules.js"},
   {"url":"inject-seo.js"},
   {"url":"ssg-paths.js"},
   {"url":"README.md"}
