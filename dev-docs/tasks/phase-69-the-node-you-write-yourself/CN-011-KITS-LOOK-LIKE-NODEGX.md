@@ -32,12 +32,12 @@ old kit and reads as *"the change did not land"*.
 
 ### What is genuinely left
 
-- **AC2** — both themes, and a token change propagating without a reload. The s15 drive read **one**
-  theme. **Not measured.**
-- **AC3** — a variant created on a kit node surviving a save/reload, testing the **reader** path.
-  **Not measured.**
+- ✅ **AC2 — met s27, and re-scoped s28.** Token resolution and live propagation both measured. The
+  *"both themes"* clause is **struck**: there is no second theme in the viewer (see AC2 below for the
+  measurement and for why `ThemeManager` is not it).
+- ✅ **AC3 — met s27**, on the reader path: a variant survived a full project close and reopen.
 
-Both want a stack. Neither is blocked on anything else.
+✅ **All four criteria are now met. CN-011 is closed.**
 
 ### 🔴 A finding for Richard: the semantic token set has no `--success` and no `--warning`
 
@@ -83,7 +83,8 @@ deliverable most at risk of being forgotten.
 ## What to build
 
 1. **Verify the token path end-to-end from a kit** — a kit node with a `var(--token)` colour and a
-   `var(--token)` spacing value, rendering with the token's computed value in both themes. The
+   `var(--token)` spacing value, rendering with the token's computed value. (*"in both themes"*
+   struck s28 — see AC2.) The
    AIB-001 note says it is *"provably inert for existing projects: no units-typed parameter in any of
    the 35 projects in this repository is a `var(` string"* — so a kit doing this is genuinely the
    first caller.
@@ -98,7 +99,23 @@ deliverable most at risk of being forgotten.
 1. A kit node styled with `var(--token)` renders the token's value — asserted on the **computed
    style**, not on the parameter. ⚠️ `an-icon-host-that-sets-fill-sets-nothing` is the local
    precedent for a style that is set and does nothing.
-2. Both themes, and a token change propagates without a reload.
+2. ✅ **RE-SCOPED s28** — a kit node's token **resolves**, and a token change **propagates without a
+   reload**. Both halves measured and met by s27 (T1, T3).
+
+   🔴 **The original clause read "both themes", and it was struck rather than failed: there is no
+   second theme to render in.** Re-measured s28, independently of s27: `StyleTokenRecord` is
+   `{name, value, category, isCustom, description?}` — one value per token, no theme dimension — and
+   `packages/noodl-viewer-react/src` contains **zero** occurrences of `data-theme`,
+   `prefers-color-scheme`, `setTheme` or `themeName`. A project has exactly one token set, so the
+   clause asked for a capability the product does not have. Logging it as a failure would have made
+   the criterion permanently unmeetable and told a reader the kit path was broken when it is not.
+
+   ⚠️ **The trap that will try to reopen this: `ThemeManager` exists.** Five files under
+   `noodl-editor/src/editor/src` do theme work (`ThemeManager.ts`, `useThemeTokens.ts`,
+   `CanvasTheme.ts`, the two Blockly ones). They theme the **editor's own chrome** — canvas, panels,
+   the Blockly workspace. This criterion is about the colour a **kit node renders in the running
+   app**, which is the viewer's population, and the viewer has no theme. Finding `ThemeManager` is
+   not finding the second theme; measure `noodl-viewer-react/src` before reopening.
 3. A variant created on a kit node survives a save/reload cycle. 🔴 **State that rides on a save is
    lost for a reader** — test the *reader* path, and note the recorded trap that a spec containing a
    save cannot catch this.

@@ -321,3 +321,60 @@ could arrive through. This serves date maths, validation, transforms, formatting
   code beside the database; CN-017 still owns the trust story for anything not first-party.
 - **The SDK story wants its own task and probably its own phase** — it reopens the deployed-backend
   packaging decision, the isolate's `require`, and the trust boundary together.
+
+---
+
+## D19 — SSR gets a `window` shim carrying **`React` and nothing else**; the documented pattern then changes ⚠️ **NOT BUILT**
+
+**Settled 2026-08-18 (s28). Queue #13.** Every kit begins `var React = window.React;`. Under SSR
+there is no `window`, so **all four kits in s27's fixture threw** and the loader named each one. That
+is not a kit written badly — it is the kit **written as documented**: `cashflow-kit`'s own header
+teaches the pattern and CN-007 documents it. The consequence is a **hydration mismatch**, not a blank
+page: the client loads the kits, the server does not, and the two renders disagree.
+
+**The ruling: (a) then (b).**
+
+- **(a)** The SSR loader puts `React` on a `window` shim before evaluating a kit, so every kit that
+  exists today works server-side.
+- **(b)** The documented pattern moves to a guarded accessor, and the worked example **and** the
+  scaffold move with it.
+
+🔴 **The shim carries `React` and NOTHING else — not `document`, not a DOM.** `kit-modules.js`
+already argues this against itself and is right: faking a DOM *"would let a kit register nodes that
+cannot render server-side anyway, trading a named failure for a silent one."* A shim that grows into
+a fake `document` re-opens exactly that. A kit needing more than `React` is a **new ruling**, not a
+widening of this one.
+
+⚠️ **(b) is not optional follow-up.** Without it, new kits keep being written against a global that
+may not exist, and the shim silently becomes load-bearing forever.
+
+✅ **This is the whole of what is left on CN-013 AC1** — the build half is fixed (`8ea0f6c1`): the
+deploy ships `kit-modules.js` and the manifest gate walks the require graph transitively.
+
+## D20 — A kit that throws during registration loses **the whole kit**, not the whole app ⚠️ **NOT BUILT**
+
+**Settled 2026-08-18 (s28). Queue #14.** A kit logic node with no `category` throws out of
+`registerModule`, which does not catch: the loop aborts, the kit's remaining nodes never register,
+and **the whole viewer renders nothing** (`reactMounted: false`, `rootChildren: 0`). One missing
+field in one node of one kit took down the entire preview.
+
+**The ruling: (b) — skip the whole kit and report it.** A broken kit costs its own nodes and nothing
+else, whether it broke at **parse** time or at **registration** time. Today those two behave
+oppositely — a syntax error is isolated and recovers, a `defineNode` throw is fatal — and nothing
+documents why. This is also what the SSR loader already chose deliberately.
+
+🔴 **The condition this does NOT relax: the failure must reach Settings → Kits**, by the same channel
+the load-time failures already use. Skipping a kit *silently* is **strictly worse than today**: it
+replaces a blank screen the author cannot miss with a missing node they will blame on a typo. The
+reporting is not a nicety attached to (b) — it is what makes (b) safe.
+
+⚠️ **(a) — skipping just the bad node — was rejected**: it is the half-registered state CN-015
+already names as the alarming case (nodes before the bad definition live, ones after are gone, and
+the kit looks partly fine).
+
+⚠️ **`packages/noodl-runtime/test/registration-failures-name-the-kit.test.ts` asserts the CURRENT
+blast radius on purpose.** Implementing this means **rewriting that test to the new contract**, not
+deleting it — so the next change to this behaviour is also deliberate.
+
+✅ **s28 already did the naming half** (the message names the node, the kit, and the consequence), so
+this ruling is purely about what survives.

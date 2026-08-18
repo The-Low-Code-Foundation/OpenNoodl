@@ -244,13 +244,61 @@ function makeNodeInert(
   }
 }
 
+/**
+ * CN-015 — say *which* definition, in *which* kit, was rejected.
+ *
+ * 🔴 **Both throws below were anonymous, and the `category` one takes down the
+ * whole preview.** `registerModule` does not catch, so one kit node missing one
+ * field means `reactMounted: false` and `rootChildren: 0` — a blank app whose
+ * only signal was `Error: Node must have a category`, naming no kit, no node
+ * and no file. s27 hit it and read it as a dead renderer; the editor's node
+ * library then reads empty *because the viewer died*, which looks like a second
+ * fault and is not one.
+ *
+ * The names were already here. `registerModule` stamps `node.module` with the
+ * manifest name **before** calling `registerNode`, so by the time a kit's
+ * definition reaches this function both the kit and (in the `category` case)
+ * the node are in `opts` — `opts.name` is literally the next check.
+ *
+ * ⚠️ **Degrades rather than guesses.** A built-in is defined with no `module`,
+ * so it gets the node name alone; a definition missing `name` is called "a
+ * definition" and `registerModule` adds its position in the kit's `nodes` list.
+ * The prefix is kept verbatim (`Node must have a category`) because it is the
+ * string the extractor surfaces and existing callers match on.
+ */
+function describeDefinition(opts: NodeDefinitionOptions): string {
+  const parts: string[] = [];
+  // A definition missing its `name` has nothing to be called; `registerModule`
+  // supplies its position in the kit's `nodes` list, which is the only locator
+  // left in exactly that case.
+  parts.push(opts.name ? `node "${opts.name}"` : 'a definition');
+  // 'Unknown Module' is `registerModule`'s own fallback for a kit whose
+  // manifest name never arrived — passing it through says more than dropping it.
+  if (opts.module) parts.push(`in kit "${opts.module}"`);
+  return ` — ${parts.join(' ')}`;
+}
+
+/**
+ * The consequence, stated only where it is true. A kit definition that throws
+ * here aborts `registerModule` mid-loop, so the module's remaining nodes never
+ * register and the viewer never mounts. A built-in throwing is a bug in this
+ * repository, not something an author can act on, so it gets no advice.
+ */
+function definitionFixHint(opts: NodeDefinitionOptions, field: string): string {
+  if (!opts.module) return '';
+  return (
+    ` Add a \`${field}\` to its definition: without one the kit stops registering at this node` +
+    ' and the preview renders nothing at all.'
+  );
+}
+
 function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
   if (!opts.category) {
-    throw new Error('Node must have a category');
+    throw new Error(`Node must have a category${describeDefinition(opts)}.${definitionFixHint(opts, 'category')}`);
   }
 
   if (!opts.name) {
-    throw new Error('Node must have a name');
+    throw new Error(`Node must have a name${describeDefinition(opts)}.${definitionFixHint(opts, 'name')}`);
   }
 
   const metadata: NodeMetadata = {

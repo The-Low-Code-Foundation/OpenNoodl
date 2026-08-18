@@ -1,5 +1,58 @@
 # CN-015 — Failures name the kit
 
+> ## ✅ COMPLETE — s22 the headless/CLI half, s23 the editor half, **s28 the two surfaces both missed**.
+>
+> ### s28 — a failure now names the kit where the author is actually looking
+>
+> 🔴 **s23's "AC1 met" and s27's "AC1 not met" were both right, about different surfaces.** The kit
+> **is** named — in **Settings → Kits**, which `KitsSection.tsx` renders from `kitDiagnostics`. It
+> was **not** named in the two places an author is when a node stops rendering: the devtools
+> console, and the exception that kills the viewer. s27 read those and recorded "not met"; nothing
+> was broken that s23 built. **Reconciled by reading the code, not by picking a session to believe.**
+>
+> Three seams, all naming-only — **no behaviour moved**:
+>
+> 1. **`nodedefinition.ts`** — `Node must have a category` / `Node must have a name` now name the
+>    node and the kit. 🔴 The data was always there: `registerModule` stamps `node.module` **before**
+>    calling `registerNode`, and `opts.name` was literally the next check. A kit definition also gets
+>    the consequence stated (*"the preview renders nothing at all"*), because nothing connected one
+>    missing field to a blank app. ⚠️ A **built-in** gets the node name only — no kit, no kit advice.
+> 2. **`registerModule`** — any throw under the registration loop is caught, prefixed with the kit
+>    and the node (or its **index**, when the definition is the one missing its name), and
+>    **rethrown**. This covers `setup` and `nodeRegister.register`, which `defineNode` does not.
+> 3. **The capture preamble** (`@nodegx/module-inject`) — `console.error`s a line naming the kit
+>    **and the file**, and carries the file into the captured record too. s27's exact complaint was
+>    `SyntaxError: Unexpected identifier 'Noodl'` naming *"neither the kit nor the file"*; with four
+>    kits installed that does not say which to open.
+>
+> ⚠️ **The blast radius is deliberately unchanged, and there is a test asserting so.** One bad
+> definition still aborts its module and still takes the viewer down. Making it cost only its own
+> node trades a loud dead app for a quietly missing one — **a ruling, not a naming fix**, so it is
+> queued rather than decided here (RULINGS-OPEN-QUEUE #14).
+>
+> **Tests: module-inject 21 → 27, runtime +12. 8/8 mutants killed** (4 per side, each restored and
+> re-run green). 🔴 **The six new module-inject tests EXECUTE the preamble** against a fake `window`
+> rather than string-matching it — the existing block's own comment concedes that *"a string
+> assertion cannot show that an event fires"*, so the guard had no gate.
+>
+> ⚠️ **`expected-inject.snapshot.txt` was re-recorded deliberately.** The diff is exactly the
+> preamble, in both `pathPrefix` sections, and nothing else — checked against `git show HEAD:` before
+> writing. Behaviour that moved: the injected page now names the kit and the file on the console when
+> a kit fails to load.
+>
+> ✅ **`test:ci` came back 2849 / 10 against a recorded floor of 2843 / 6, and it was A/B'd rather
+> than argued.** s28's four files were reverted to `HEAD` and the same suite re-run at the same seed:
+> **identical failure set, by name — delta zero.** The ten (4 × `AIX-006 style vocabulary`,
+> 2 × `AI model registry`, 1 × `AIX-011`, 3 × `SUB-011`) are pre-existing and the recorded floor is
+> simply **stale**. ⚠️ A count alone would not have settled it; the comparison had to be by name.
+> ✅ **The injector golden RAN and PASSED in both runs** — that, not the totals, is what cleared the
+> capture-preamble change.
+>
+> 🔴 **What this does NOT do: the shipped viewer bundle is not the repaired one.** The editor runs
+> `src/external/viewer/noodl.viewer.js`, a **built** artifact carrying the old messages. A drive on a
+> stack that has not rebuilt the viewer will read the old anonymous text and look like the change did
+> not land.
+
 > ## ✅ COMPLETE 2026-08-18 — s22 built the headless/CLI half, s23 the editor half.
 >
 > ### s23 — AC1's editor half, built and driven

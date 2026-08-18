@@ -530,12 +530,58 @@ NoodlRuntime.prototype.setTraceEnabled = function (enabled: boolean) {
 
 NoodlRuntime.prototype.registerModule = function (module: NoodlModule) {
   if (module.nodes) {
-    for (const entry of module.nodes) {
+    const moduleName = module.name || 'Unknown Module';
+
+    for (let i = 0; i < module.nodes.length; i++) {
+      const entry = module.nodes[i];
       // A module may list bare definitions or `{ node }` wrappers; both are accepted.
       const wrapped: NodeRegistration =
         'node' in entry && entry.node ? (entry as { node: NodeDefinitionOptions }) : { node: entry as NodeDefinitionOptions };
-      wrapped.node.module = module.name || 'Unknown Module';
-      this.registerNode(wrapped);
+      wrapped.node.module = moduleName;
+
+      /*
+       * 🔴 CN-015 — the kit's name, on the way out of *any* registration throw.
+       *
+       * `defineNode` names the kit itself now, but it is not the only thing that
+       * can throw in here: `nodeRegister.register`, a definition's `setup`, and
+       * `setupNumberedInputDynamicPorts` all run under this loop, and a throw
+       * from any of them is unattributed the way the `category` throw was.
+       *
+       * ⚠️ **Rethrown, not swallowed — the blast radius is deliberately
+       * unchanged.** Today one bad definition aborts the loop, so the nodes
+       * after it never register and the viewer never mounts. Catching here would
+       * turn a loud dead app into a quietly missing node, which is a trade with
+       * an owner: it is queued as a ruling, not decided in a naming fix.
+       *
+       * ⚠️ The index is the module's own `nodes` array position, which is what
+       * an author scrolls to in their `index.js`. `nodeAt` degrades to the index
+       * alone when the entry has no usable name — the failing definition is
+       * precisely the one whose name may be missing.
+       */
+      try {
+        this.registerNode(wrapped);
+      } catch (e) {
+        const message = e && (e as Error).message ? (e as Error).message : String(e);
+        const nodeAt = wrapped.node && wrapped.node.name ? `"${wrapped.node.name}"` : `at index ${i}`;
+
+        // Not re-prefixed when `defineNode` already said which kit — the two
+        // must not stack into "in kit X … in kit X" on the common path.
+        if (message.indexOf(`kit "${moduleName}"`) !== -1) {
+          if (wrapped.node && wrapped.node.name) throw e;
+
+          // ⚠️ Except when the definition has no name: the kit is named but the
+          // node cannot be, and the position is then the only locator there is.
+          // Caught by a test that expected the index and got a bare kit name.
+          const located = new Error(`${message} It is the definition at index ${i} in the kit's \`nodes\` list.`);
+          (located as Error & { cause?: unknown }).cause = e;
+          throw located;
+        }
+
+        const error = new Error(`Kit "${moduleName}" failed to register its node ${nodeAt}: ${message}`);
+        // Keep the original for anything reading a stack rather than a message.
+        (error as Error & { cause?: unknown }).cause = e;
+        throw error;
+      }
     }
   }
 

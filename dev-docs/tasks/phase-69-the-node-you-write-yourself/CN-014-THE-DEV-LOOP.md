@@ -147,3 +147,26 @@ Full readings: [notes/s27-drive-observations.md](notes/s27-drive-observations.md
 `Node must have a category` out of `registerModule` and the **whole viewer renders nothing**
 (`reactMounted:false`). `nodedefinition.ts:248` has `opts.name` on the next line and does not use
 it. Same authoring-mistake class as AC3, opposite blast radius. Belongs with CN-015.
+
+---
+
+## ✅ s28 (2026-08-18) — AC3's naming gap closed; the criterion needs a re-drive, not more code
+
+**Both s23 and s27 were right about different surfaces.** A syntax-error kit **was** already named —
+in **Settings → Kits** — and was **not** named on the console or in the viewer-killing exception,
+which is where s27 (correctly) looked. s28 closed the second half in three seams; see
+[CN-015](CN-015-FAILURES-NAME-THE-KIT.md) for the detail and the mutation results.
+
+What an author now gets for the AC3 fixture, from the console rather than a settings panel:
+
+```
+Kit "Rename Kit" failed to load: Unexpected identifier 'Noodl'
+  (in http://localhost:8574/noodl_modules/rename-kit/index.js)
+  — its nodes will be missing from the app until this is fixed.
+```
+
+🔴 **AC3 is NOT being claimed as met, and the reason is mechanical.** The editor runs a **built**
+viewer (`src/external/viewer/noodl.viewer.js`); the repaired messages are in source. Until that
+artifact is rebuilt and a stack is driven, the criterion is unmeasured — and a drive against a stale
+bundle will read the **old** anonymous text and look like the change never landed. ⚠️ Re-drive with
+the `cn027-drive` fixture, which already carries a kit with a deliberate syntax error.

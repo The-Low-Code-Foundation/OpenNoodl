@@ -326,13 +326,28 @@ const CAPTURE_PREAMBLE =
   'if (!name) return;' +
   'var t = e && e.target;' +
   'var isResource = !!(t && t !== window && t.tagName === "SCRIPT");' +
+  // CN-015 (s28): the file. A resource error carries it on the element, an
+  // exception on the event — and it is what the author has to open.
+  'var file = (isResource ? (t && t.src) : (e && e.filename)) || "";' +
+  'var message = isResource' +
+  ' ? ("its script could not be loaded (" + file + ")")' +
+  ' : ((e && e.message) || "it threw while loading");' +
+  'if (!isResource && file) message += " (in " + file + ")";' +
   'window.__noodl_module_failures.push({' +
   'module: name,' +
   'reason: isResource ? "script-not-loaded" : "threw",' +
-  'message: isResource' +
-  ' ? ("its script could not be loaded (" + ((t && t.src) || "") + ")")' +
-  ' : ((e && e.message) || "it threw while loading")' +
+  'message: message' +
   '});' +
+  // 🔴 The console line, and why the captured record was not enough. The record
+  // reaches Settings → Kits, which is not where an author is when their node
+  // stops rendering: they are on the canvas with devtools open, reading
+  // `SyntaxError: Unexpected identifier` — a browser message that names neither
+  // the kit nor the file, and with four kits installed does not say which to
+  // open. This is the same fact, said where it is being looked for.
+  'if (window.console && window.console.error) {' +
+  'window.console.error("Kit \\"" + name + "\\" failed to load: " + message +' +
+  ' " — its nodes will be missing from the app until this is fixed.");' +
+  '}' +
   '}, true);' +
   '})();' +
   '</script>\n';

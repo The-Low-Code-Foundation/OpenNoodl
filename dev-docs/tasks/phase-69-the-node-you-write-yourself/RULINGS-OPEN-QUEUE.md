@@ -277,3 +277,100 @@ the `--json` path needs the same treatment — it builds `jsonResults` from `toJ
 so kit diagnostics are absent from it entirely.
 
 **RICHARD ANSWER:**
+
+---
+
+## 13. The documented kit-authoring pattern is incompatible with SSR — **BLOCKS CN-013 AC1**
+
+**Today, measured (s27, on a real deploy).** Every kit begins `var React = window.React;`. Server-side
+there is no `window`, so **all four kits in the drive fixture threw** and the SSR loader named each
+one:
+
+```
+SSR: kit "Cashflow Kit" threw while loading server-side (window is not defined). Its nodes will be
+missing from the server render and will appear only after hydration, which is a hydration mismatch.
+```
+
+🔴 **This is not a kit written badly — it is the kit written as documented.** `cashflow-kit`'s own
+header teaches the pattern and CN-007 documents it, so the phase's flagship worked example is the
+thing that fails. The consequence is not a blank page but a **hydration mismatch**: the client loads
+the kits and the server does not, so the two renders disagree.
+
+⚠️ **The other half of CN-013 AC1 is already fixed** (`8ea0f6c1`, `b886e1f9`): the deploy now ships
+`kit-modules.js` and builds. This is the whole of what is left on that criterion.
+
+| | Option |
+|---|---|
+| **(a)** | Give the SSR loader a `window` shim carrying `React` before evaluating a kit. |
+| **(b)** | Change the documented pattern to a guarded accessor; update the worked example and the scaffold. |
+| **(c)** | Declare kits browser-only under SSR; keep today's diagnostic as the honest answer. |
+
+**Recommendation: (a) then (b).** (a) is small and makes every kit that exists today work; (b) stops
+new ones being written against a global that may not exist. ⚠️ **(c) is a real option and is what
+ships right now** — the diagnostic already names the kit, the cause, the consequence and the fix.
+
+🔴 **The trap inside (a), which `kit-modules.js` already argues against itself.** Its comment says
+faking a DOM *"would let a kit register nodes that cannot render server-side anyway, trading a named
+failure for a silent one."* A shim carrying only `React` does not have that problem; a shim that
+grows into a fake `document` does. If (a) is chosen, the ruling should say **`React` and nothing
+else**, so the next session does not widen it to `document` and turn a loud failure quiet.
+
+**RICHARD ANSWER (2026-08-18, s28): ✅ (a) then (b).** Shim `React` onto `window` in the SSR loader
+so every kit that exists today works server-side, then move the documented pattern to a guarded
+accessor and update the worked example and the scaffold.
+
+🔴 **The shim carries `React` and NOTHING ELSE.** Not `document`, not a DOM. The moment it grows, a
+kit registers nodes that cannot render server-side anyway and a **named** failure becomes a
+**silent** one — which is the trade `kit-modules.js` already refuses in its own comment, and it is
+right to. If a later session finds a kit that needs more than `React`, that is a new ruling, not a
+widening of this one.
+
+⚠️ **(b) is not optional follow-up.** Without it, new kits keep being written against a global that
+may not exist and the shim quietly becomes load-bearing forever.
+
+---
+
+## 14. Should one bad kit definition cost its own node, or the whole app?
+
+**Today, measured (s27 hit it; s28 pinned it with a test).** A kit logic node with no `category`
+throws out of `registerModule`, which does not catch. The loop aborts, the module's remaining nodes
+never register, and **the whole viewer renders nothing** — `reactMounted: false`, `rootChildren: 0`.
+One missing field in one node of one kit takes down the entire preview.
+
+⚠️ **s28 fixed only the naming.** The message now says which node, in which kit, and what the
+consequence is. The blast radius is untouched, and
+`test/registration-failures-name-the-kit.test.ts` asserts it is untouched — so this cannot drift
+under a later commit without someone changing that test on purpose.
+
+🔴 **The two failure modes in this family already behave differently, which is the real argument for
+a ruling.** A kit with a *syntax error* is isolated: its nodes vanish, its neighbours live, the
+viewer stays mounted, and it **recovers** when fixed. A throw inside `defineNode` takes everything
+down. Same authoring mistake, opposite outcomes, and nothing documents why.
+
+| | Option |
+|---|---|
+| **(a)** | Catch per definition: the bad node is skipped and reported, the kit's other nodes register, the app runs. |
+| **(b)** | Catch per **kit**: the whole kit is skipped and reported — matching how a kit that throws at *load* already behaves. |
+| **(c)** | Leave it: a malformed definition is an authoring error and a loud dead app is the honest signal. |
+
+**Recommendation: (b).** It makes the two failure modes agree — a broken kit costs its own nodes and
+nothing else, whether it broke at parse time or at registration time — and it is the behaviour the
+SSR loader already chose deliberately (*"a kit that throws costs its own nodes and nothing else"*).
+⚠️ **(a) is the tempting one and is the half-registered state CN-015 already calls the alarming
+case**: nodes before the bad definition live, ones after it are gone, and the kit looks partly fine.
+⚠️ Under (b) or (a), the reported failure must reach **Settings → Kits** by the same channel the
+load-time failures use, or a quietly missing node replaces a loud dead app — strictly worse.
+
+**RICHARD ANSWER (2026-08-18, s28): ✅ (b) — skip the whole kit and report it.** A broken kit costs
+its own nodes and nothing else, whether it broke at parse time or at registration time. The two
+failure modes stop disagreeing.
+
+🔴 **The condition this ruling does NOT relax: the failure must reach Settings → Kits.** Skipping a
+kit silently is strictly worse than today's loud dead app — it replaces a blank screen the author
+cannot miss with a missing node they will blame on a typo. The reporting channel is not a nicety
+attached to (b); it is what makes (b) safe.
+
+⚠️ **`test/registration-failures-name-the-kit.test.ts` asserts the CURRENT blast radius** (*"still
+aborts the module"*, and that a node after the bad one does not register). Implementing this means
+**changing that test on purpose** — that is exactly why it was written that way. Do not delete it;
+rewrite it to assert the new contract, so the next change to this behaviour is also deliberate.
