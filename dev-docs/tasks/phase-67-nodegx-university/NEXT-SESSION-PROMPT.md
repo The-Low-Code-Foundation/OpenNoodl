@@ -62,6 +62,30 @@ all** — the inert one was in the *site's* header (`src/app/layout.tsx`), and i
 
 ---
 
+# ⚠️ TWO SESSIONS WORKED THIS LANE AT ONCE, AND ONE OVERWROTE THE OTHER'S NOTE
+
+**Recorded because the silent version of this is how a shared checkout rots.** At **13:57** a peer
+session committed **`32a143cf`** — 24 lines onto this file's LANE A section reading *"🔴 CHECK IF
+IT IS ALREADY DONE BEFORE YOU START"*, with an inventory of uncommitted files by mtime and a
+warning not to run the platform suite while that work was moving. **The work it inventoried was
+this session's**, in flight. The peer was right, and its instruction — *"`git log` and `git status`
+in BOTH repos before writing a line"* — is the correct one.
+
+🔴 **This session then rewrote the whole file with `cat >` and discarded those 24 lines.** The
+*substance* is genuinely superseded (E1 is built and committed, so "check whether it is done" has
+an answer now), but the overwrite was not a decision, it was a side effect of rewriting a file
+wholesale that somebody else had edited in the meantime.
+
+✅ **Two things to carry forward:**
+1. **A wholesale `cat >` over a shared file is a merge you did not perform.** Re-read the file
+   immediately before writing it, or patch the sections you mean to change.
+2. 🔴 **The concurrency was real and probably cost a suite run.** The first full platform run died
+   with **`EXIT=137` — SIGKILL** at 9 of 26 files, with another Claude session live on this
+   machine. `pkill -f vitest` is a command both sessions had reason to run. **Do not `pkill` by a
+   pattern as broad as a test runner's name**, and expect somebody else's run to be what you hit.
+
+---
+
 # WHERE THE PHASE IS — 2026-08-19 (session 29)
 
 | In the close? | Item | State |
