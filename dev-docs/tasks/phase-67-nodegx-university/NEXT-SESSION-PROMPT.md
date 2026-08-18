@@ -26,6 +26,14 @@ Session 29 built the issuer (E1). Session 31 built UNI-019 (E3). Session 32 buil
 there is no GitHub OAuth App.** `/api/auth/github/start` answers **503** with a plain sentence,
 deliberately. **That is E10, it is Richard's, it is free, and it is one form.**
 
+✅ **AND THE LOOP BEHIND IT IS PROVED, END TO END, ON LOCALHOST (s33).** With the editor pointed at
+a local `next start` for four minutes: clicked **Sign in to NodeGX** → the card showed a live device
+code → approved as `@nia` → **the editor polled, redeemed a real platform-minted token, persisted it
+and rendered the chip.** 🔴 **So the failure a real click produces today is exactly one hostname
+deep.** Nothing in the editor and nothing in the device flow is waiting on code; E10 then E2 are the
+whole of it. ⚠️ The pointer change was reverted in the same session — `communityorigin.ts` is
+`https://community.nodegx.io` and `git status` is clean on it. **Do not commit a localhost origin.**
+
 > ⚠️ **Do not "work around" it.** A dev-only issuer, a paste-your-token box, a seeded session in
 > production — each is a back door, and `communitysession.ts` warns against exactly that shape in
 > its own header. The correct state of a deployment with no credential is **503**.
@@ -88,7 +96,7 @@ than by COUNT is a suite nobody can check.**
 
 ---
 
-# 🔴 SESSION 33's FINDINGS — three of them outlive the card
+# 🔴 SESSION 33's FINDINGS — five, and four of them outlive the card
 
 ### A. The editor's session store is a PLAINTEXT FILE in `userData`, and the module said `localStorage`
 
@@ -128,6 +136,28 @@ account used for cloning, and the NodeGX community account — and **one round a
 Putting the handle there makes *"whose face is that?"* unanswerable, so the chip lives on the card
 with Sign out beside it. 🔴 A later task that wants identity in the header has to decide **which
 identity the header is about** first; that is a design decision, not a placement.
+
+### E. 🔴 THE PLATFORM SUITE WIPES THE DEV SEED, AND RESEEDING POISONS A RUNNING SERVER
+
+**Two traps in one lane, both found by showing Richard the site, neither written down before.**
+
+1. **`npm test` DESTROYS the seeded database.** `freshDb()` calls `resetSchema`, which is
+   `drop schema public cascade` against `DEFAULT_DATABASE_URL` — **the same database `next start`
+   reads**. After a suite run the site serves **zero accounts and zero threads**, and 🔴 **every
+   page still returns 200**, because an empty list is a valid render. Anybody who looks at the site
+   after running the suite sees a site with nothing on it and concludes the last three sessions
+   built nothing. ✅ **`npm run db:seed` after any suite run, before any look.**
+2. **Reseeding under a RUNNING server produces a 500, not a blank page.** `db:seed` re-creates the
+   schema, which invalidates the enum type OIDs the running server's pool already resolved:
+   `cache lookup failed for type 18939951`, `XX000`, surfaced by Next as
+   *"Application error: a server-side exception has occurred"* with only a digest. It reads exactly
+   like an application bug and is not one. ✅ **Start the server AFTER the seed; restart it after
+   any reseed.**
+
+⚠️ **This is the same hazard `resetApiSql()` already fixes on the test side** — a cached pool
+outliving the schema it resolved. The running server has no equivalent, so the fix is ordering.
+
+🔴 **The order that always works:** `npm test` → `npm run db:seed` → `npm start -- -p <port>`.
 
 ### D. ⚠️ NOBODY HAS STILL LOOKED AT ANY PLATFORM PAGE IN THE LIGHT THEME
 
@@ -178,13 +208,21 @@ file**; a sign-in click runs the real device flow and reports
 | Port | What | Do what with it |
 |---|---|---|
 | 🔴 **3111** | The `next-server`, pid **62819**, still up — **now ~19 hours old** | 🔴 **STILL SERVING THE PRE-UNI-019 PAGE.** Anybody reviewing a look on this port will conclude the last three sessions did nothing. Kill it or ignore it; left because it is not known to be ours |
-| ✅ 3210 | free | Start your own |
-| ✅ 9222 | free | The editor stack was launched and torn down this session; `dev:stop` reports nothing running |
+| ⚠️ **3210** | **`next start` LEFT RUNNING** (started 2026-08-18 ~19:1x, **after** the reseed, so its pool is valid) serving the real seeded site | Yours to use or kill — `lsof -nP -iTCP:3210 -sTCP:LISTEN -t`. 🔴 **If you reseed, RESTART it** (finding E) |
+| ✅ 9222 | free | The editor stack was launched and torn down **twice** this session; `dev:stop` reports nothing running |
 
 ✅ **Kill by port, never by name:** `lsof -nP -iTCP:<port> -sTCP:LISTEN -t`. 🔴 **`pkill -f "next
 start"` matches NOTHING** — the process is `next-server`.
 
-✅ **Postgres:** `nodegx-community-db` up and healthy, **port 55432**, seeded.
+✅ **Postgres:** `nodegx-community-db` up and healthy, **port 55432**. **Reseeded at ~19:1x**
+(8 accounts, 3 bench threads, 6 dev sessions) after this session's suite runs wiped it — see
+finding E, and 🔴 **do not trust any handover's "the database is seeded" after you run the suite.**
+
+⚠️ **The editor's session store currently holds a REAL token minted by the LOCAL platform**
+(`~/Library/Application Support/NodeGX/nodegx.community.session.json`, `@nia-new`), left from the
+end-to-end drive. It is inert — the editor points at `community.nodegx.io` again, so the next
+**Sign out** will fail to revoke, clear locally anyway, and show the signed-out card. That is the
+documented order, not a bug. Delete the file if you want a clean slate.
 ⚠️ Dev session tokens: `Cookie: nodegx_session=dev-session-nia` (also `-ada`, `-tom`, `-teacher`,
 `-pupil`).
 
@@ -248,6 +286,8 @@ name your uncommitted files when asked** — a peer had to ask whose three modif
   `tests/uni011-mirror-api.test.ts`; **a new free-text column needs a CLASSIFICATION** in
   `tests/uni005-data-inventory.test.ts` (floor **92**); **a new colour PAIRING needs a row** in
   `tests/uni013-contrast.test.ts`, with an **`over:`** if its ground is translucent.
+- 🔴 **`npm test` WIPES THE SEED and a reseed poisons a running server.** The order that always
+  works is `npm test` → `npm run db:seed` → `npm start -- -p <port>`. Finding E.
 - 🔴 **`NOTIFICATION_LINK_SECRET` is read PER CALL, not at import**, and the dev default is scoped
   to insecure origins. A module-level `const` made *"is this configured?"* a question about import
   order and unanswerable from a spec.
@@ -269,6 +309,8 @@ name your uncommitted files when asked** — a peer had to ask whose three modif
 
 # ⚠️ FOR RICHARD — the asks, and the first is still first
 
+0. 🟢 **Context that changes how the first three read: the whole sign-in loop was driven end to end
+   on localhost this session and it works.** Nothing below is waiting on code.
 1. 🔴 **E10 — a GitHub OAuth App. Cheapest, and the first domino.** Homepage
    `https://community.nodegx.io`, callback **`https://community.nodegx.io/api/auth/github/callback`**.
    ⚠️ **Byte for byte** — GitHub reports a mismatch as `redirect_uri_mismatch` *without saying which

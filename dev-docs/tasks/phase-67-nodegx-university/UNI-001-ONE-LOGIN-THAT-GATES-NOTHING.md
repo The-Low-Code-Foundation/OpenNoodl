@@ -166,6 +166,24 @@ anybody.
 | **Sign out** clicked | chip gone, offer back, **and the store file deleted** — AC2's *"sign-out wipes it"*, end to end |
 | **Sign in** clicked | the real device flow ran and reported the unreachable platform in the card's error line, button still live |
 
+## ✅ AND THEN THE HAPPY PATH, END TO END, ON LOCALHOST
+
+**Same session, after Richard clicked the button and got the unreachable-platform message.** With
+`COMMUNITY_URL` pointed at a local `next start` for four minutes: **Sign in to NodeGX** clicked in
+the real launcher → the card rendered a live device code → approved over HTTP as `@nia` with a
+seeded dev cookie → **the editor's own poll redeemed a real platform-minted token, persisted it to
+the store, and rendered the chip** (`@nia-new`). The three routes ran in the order the flow
+specifies: `POST /api/v1/auth/device` → `/approve` → `/token`.
+
+🔴 **So the only thing between a stranger and an account is E10 then E2.** Every route exists, the
+editor calls them correctly, and the token round-trips into the store the launcher reads. ⚠️ The
+pointer change was **reverted in the same session** and `git status` is clean on
+`communityorigin.ts` — a localhost origin must never be committed.
+
+⚠️ **What this still does not prove:** the GitHub half. `/api/auth/github/start` answers 503, so
+the browser sign-in that normally precedes an approval was replaced by a seeded dev session. E9's
+smoke drive on the deployed box is still the only thing that closes that.
+
 ⚠️ **"Survives a restart" was driven as a renderer RELOAD, not a process restart.** The read path is
 the same one and the store is a file on disk, so it survives by construction — but the stronger
 claim is not what was measured, and is written down that way rather than rounded up.
