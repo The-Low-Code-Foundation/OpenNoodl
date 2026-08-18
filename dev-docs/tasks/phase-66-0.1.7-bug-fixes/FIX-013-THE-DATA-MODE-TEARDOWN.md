@@ -308,3 +308,97 @@ empty map, so it **iterated zero times and passed without measuring anything**. 
 rewritten: the empty-map case is now asserted directly (`Object.keys(classes).length` is `0`, and
 `synthesizeMissing` is `false`), and the populated case is pinned in a second spec that **supplies**
 a class through `userData` rather than hoping the fixture has one.
+
+---
+
+## ✅ DRIVEN s57 (2026-08-18) — AC1 and AC2 both met in the running editor
+
+**The task is now CLOSED for code and for drive.** Built at `346114a6` (s55), driven here on the
+checkout tree with that commit as an ancestor of HEAD `fd811952`. No source was changed to drive it.
+
+**Rig.** `npm run dev:debug`, CDP on 9222, against a `cp -R` copy of the waiting fixture
+`fix013-drive` — 🔴 **whose `project.json` `name` field read `fix012-drive`**, the coin-toss the
+memory warns about, so the copy's `name` was rewritten to `FIX013-S57-DRIVE-COPY` **before** driving
+and every reading below is provably about that project (the window title in the screenshot carries
+it, and the card matched **1 of 46** in the launcher). The source fixture is byte-identical
+afterwards (`30c47070…`, checked before and after). The copy and its launcher-recents entry were
+removed at teardown.
+
+### AC1 — the four controls are gone, the five parts are there
+
+Measured by `data-test` hook rather than by visible text, because 🔴 **a text search for
+`"Sample data"` FALSE-POSITIVES on the summary itself** — ruling 1(c)'s caption is the literal
+string `No sample data — signed in as a sample user`.
+
+| | `/Probe` | `/App` |
+|---|---|---|
+| frame · inputs rail · outputs rail · scenario bar · summary | ✅ 5/5 | ✅ 5/5 |
+| `sandbox-auth-toggle` (Sign out) | 0 | 0 |
+| `sandbox-data-toggle` (Data) | 0 | 0 |
+| `sandbox-sample-data` (Sample data) | 0 | 0 |
+| `sandbox-real-backend` (Real backend) | 0 | 0 |
+| `Apply` button · Apply-banner text | 0 · absent | 0 · absent |
+
+🔴 **The absence is asserted beside a KNOWN-FIRING signal, and the first attempt at that control
+FAILED — which is the finding.** The real `SandboxToolbar` was mounted from the webpack module cache
+into the bench's own subtree and the *identical* query re-run:
+
+```
+BEFORE   auth=0 data=0 sample=0 real=0
+CONTROL  auth=1 data=1 sample=1 real=1     ← labels read "Sign out", "Data", "Sample data", "Real backend"
+AFTER    auth=0 data=0 sample=0 real=0
+```
+
+⚠️ **A first control run reported `0 0 0 0` and would have been recorded as a passing absence check
+had the control row not been read.** The cause was the instrument, not the app: `SandboxToolbar` and
+`SandboxDataEditor` were mounted as siblings, `SandboxDataEditor` threw, and React discarded the
+**whole** tree — including the toolbar that was supposed to be firing. Mounted alone, the toolbar
+fires 4/4. 🔴 **A control that reads zero is indistinguishable from the absence it is supposed to
+license; read the control row before the measurement row.**
+
+✅ **Static corroboration, independent of the DOM:** `ComponentBench.tsx` references neither
+`SandboxToolbar` nor `SandboxDataEditor` nor `sandboxDataDraft` — grep returns nothing. Their only
+importer is `SandboxPreview.tsx`, which is exactly ruling 2's divergence, still standing.
+
+### AC2 — the backwards-ports sentence, in full, wrapped, unclipped
+
+`/Probe`'s summary, read verbatim off the live DOM:
+
+> /Probe on the bench — 6 inputs, 5 outputs. "pBackwards" is declared on a Component Inputs node with
+> plug "input", which publishes it as a component OUTPUT — it must be plugged "output" to be settable
+> here. No sample data — signed in as a sample user
+
+| measure | reading |
+|---|---|
+| whole backwards clause present | ✅ `true` (compared against the whole clause, not a substring) |
+| `white-space` | `normal` — **not** `nowrap` |
+| `text-overflow` | `clip`; no `…` anywhere in the text |
+| rendered box | 48px tall at `line-height: 17.4px`, `font-size: 12px`, width 988px |
+| wrapped | ✅ ≈2.75 line-heights — it is on more than one line |
+| clipped horizontally | ❌ no — probed with `scrollLeft`, **not** `scrollWidth` (integer-rounded) |
+| clipped vertically | ❌ no — probed with `scrollTop` |
+
+✅ **Negative control:** `/App`, which has no backwards port, gets **no** backwards sentence
+(`/App on the bench — 0 inputs, 0 outputs. No sample data — signed in as a sample user`). The
+diagnostic is driven by the port, not printed unconditionally.
+
+✅ **`workbench-1.png` is the BEFORE, and the comparison is exact.** That screenshot shows all four
+buttons, the open Data panel, the Apply banner — and a summary **cut off mid-word**: *"…signed in as
+a sample us"*. The same clause now renders complete, on two lines. **AC2 is met for the first time
+here, not merely preserved** — as s55 predicted from the source.
+
+⚠️ **`ComponentBench`'s `useTrackBounds` history did not repeat.** s55's `.Summary` is conditionally
+rendered but holds no ref; the preview surface mounted and stayed up across the whole drive.
+
+### 🔴 Two facts the build's own write-up gets slightly wrong
+
+1. **The backwards sentence is no longer last.** `componentBench.ts:489` appends
+   `dataset.summary` after `describe()`, so ruling 1(c)'s caption trails it. The "appended last,
+   dropped into the shrink zone" argument for the placement still holds — it is second-to-last, and
+   it wraps — but the wording in §"The summary did NOT go where the Fix direction said" is no longer
+   literally true of the shipped string.
+2. **`/Probe` reports 5 outputs, not 4.** `benchInterface` reads `component.getPorts()`, the
+   *published* interface, so `pBackwards` — plugged `"input"` on `Component Inputs` — is counted as
+   an **output**, and the outputs rail lists it beside `oStr`, `oNum`, `oAB`, `oNone`. The count and
+   the sentence are consistent with each other; a reader predicting "4 outputs" from the
+   `Component Outputs` node alone will mis-predict. Worth knowing before writing an assertion on it.
