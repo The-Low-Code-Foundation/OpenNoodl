@@ -131,6 +131,32 @@ nothing (`component-bench.test.ts:259-262` needs no edit).
 
 ## 4. What to do next — the drive, and nothing else
 
+### 🔴 STEP ZERO, AND THE DRIVE FAILS WITHOUT IT: REBUILD THE MCP BUNDLE
+
+🔴 **`packages/noodl-mcp/dist/noodl-mcp.cjs` is s59's build (Aug 18 10:33) and contains ZERO
+occurrences of `NODEGX_USER_PREFERENCES`.** s60 changed `src/` and never rebuilt it. **Measured at
+s61**, and it is the single thing most likely to burn the next session: a drive against that bundle
+gets a `get_project_info` with no `userPreferences`, which is **indistinguishable from the feature
+being broken**.
+
+```
+npm --prefix packages/noodl-mcp run build     # esbuild, seconds — NOT build:sidecars, which builds three
+```
+
+✅ **Verify it took, before driving anything:**
+```
+grep -c NODEGX_USER_PREFERENCES packages/noodl-mcp/dist/noodl-mcp.cjs   # expect ≥1, was 0
+```
+
+⚠️ **This is a SHARED checkout and 25 live MCP servers run from that exact file** (measured s61).
+A rebuild does not disturb a running server — the module is already loaded — but it changes what
+every one of them loads **on next spawn**. **Announce it.**
+
+✅ **The editor's main process needs NO manual step.** `main.bundle.js` is untracked and equally
+stale, but `scripts/start.ts:190-191` rebuilds it on every `npm run dev` — so the `mcpFrontDoor.js`
+half of this feature arrives automatically. **Only the MCP bundle is manual.** 🔴 **Do not conclude
+from "the editor half worked" that the server half is current — they are built by different things.**
+
 ### 🔴 Drive FIX-021's MCP half
 
 **Write the observations down BEFORE launching.** These five are pre-registered here so the next
