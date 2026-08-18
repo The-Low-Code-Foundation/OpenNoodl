@@ -257,18 +257,30 @@ to an RFP requires clearing D8's bar"*, UNI-003's change to UNI-002's catalogue.
 
 # Gates
 
-**`nodegx-community`:** HEAD **`cdc7b17`**, clean, `main` == `origin/main`. **Measured on that
-tree, this session:** vitest **692 / 692 across 24 files, zero failures, zero skips**; `tsc` clean;
-`next build` clean at **24 routes**; `check:css` clean over **971 declarations / 19 components**.
-🔴 **Re-measure; never quote a handover's number.** The floor this replaced was 579 / 22.
+**`nodegx-community`:** HEAD **`a10ad9b`**, clean, `main` == `origin/main`. **Measured on that
+tree, this session:** vitest **708 / 708 across 25 files, zero failures, zero skips** — ✅ **file
+count reconciled (25 listed = 25 reported)** and `uni015-bench-http` **ran rather than skipped**;
+`tsc` clean; `next build` clean; `check:css` clean over **971 declarations / 19 components**.
+The floor this replaced was 692 / 24, and 708 = 692 + 14 (the intake suite) + 2 (the HTTP
+consequences). 🔴 **Re-measure; never quote a handover's number.**
 
-**This checkout:** phase-67's work is `eeb64051` + `bf7dcbba` on `cline-dev`. 🔴 **Do NOT read
-those as HEAD** — this checkout is shared and peers commit to it constantly (`7947d193` landed
-within the hour). `tests-unit/uni-015` **39/39**. ⚠️ **No `test:main`, no `test:ci`, no `tsc` run
-this session** — the editor change is one JSON file and one new spec directory, and nothing else in
-the editor was touched, so the suites were not re-measured and **this session's evidence says
-nothing about the editor's overall state**. 🔴 **Do not quote session 23's numbers as current
-either.**
+⚠️ **The build reports 26 route entries by `grep -cE "[○ƒ] /"`; session 27's handover said 24.**
+**No route was added this session** — only a field on two existing POST handlers — so the delta is
+a counting method, not a surface change. Flagged rather than smoothed over: if it matters, count
+it the same way twice.
+
+**This checkout:** phase-67's session-28 work is `179c6432` (code) + `4c23f869` (this handover)
+on `cline-dev`. 🔴 **Do NOT read those as HEAD** — this checkout is shared and peers commit
+constantly (`c6dcb3a2`, CN-013, landed immediately before). **Measured this session:** `test:main`
+**3752 / 3752 across 244 suites**, `tsc -p packages/noodl-editor` clean, `tsc -p
+packages/noodl-editor/tsconfig.tests.json` clean. `tests-unit/uni-016` **42 across 3 files**.
+⚠️ **No `test:ci` this session** — no `.jsx` and no renderer-only surface changed, but that means
+**this session's evidence says nothing about the Electron suite.**
+
+⚠️ **Peers had uncommitted work all session** in `nodegx-backend`, `nodegx-module-inject`,
+`CloudFunctionDeployer.ts`, `cloudFunctions.ts`, `projectmodules.ts`, `noodl-viewer-cloud`,
+`scripts/library/check.ts` and four phase directories. **All left untouched** — every commit here
+used explicit pathspecs and nothing was staged broadly.
 
 ⚠️ **`npm run lint` is still not a gate on the platform** — the script exists, there is no ESLint
 config, and running it starts Next's interactive setup.
