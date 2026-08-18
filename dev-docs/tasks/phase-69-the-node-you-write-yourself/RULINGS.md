@@ -451,3 +451,50 @@ kit's nodes register … It is only PARTIALLY registered"*. Cause: the picker's 
 pruned, so `kitDiagnostics` was told the kit had registered nodes it had not. Fixed in
 `NodeLibraryImporter.updateIndex`; the `partial` branch is **kept**, because a script that throws
 after some `defineModule` calls really is half-registered. 7 tests, **5/5 mutants killed**.
+
+---
+
+## D21 — CN-016 AC1 is descoped to a built artefact, with a divergence gate
+
+**Ruled by Richard, 2026-08-18 (s31).** Recommended in README §2 by s28, s29, s30 and s31; taken.
+
+**The problem AC1 could not survive.** CN-016 AC1 read *"the reference kit installs from the **real
+origin** into a fresh project"*, explicitly *"not from a local folder that happens to resolve."*
+Measured s28 and unchanged since: the real origin serves **2024 Noodl content**, nothing publishes
+`library/`, `library:build` writes a **gitignored** `library-dist/`, and "copy it into the docs repo"
+is a documented manual step **nobody has ever performed**. The task that fixes that is phase 65's
+**LBR-001**, which is `Not started`, and phase 65's own README says nothing else in that phase matters
+until the publish path works.
+
+So AC1 was unmeetable inside phase 69 by any amount of work, and the phase could not close.
+
+### The ruling
+
+**AC1 becomes:** *the reference kit installs from a **built artefact** into a fresh project, and a
+gate fails the moment the origin and `library/` diverge.*
+
+🔴 **The gate is the load-bearing half, not the descope.** Descoping alone would leave phase 69
+closed and the origin quietly rotting further — which is the state that produced this problem. The
+gate converts an invisible drift into a red build the next time anyone touches it.
+
+🔴 **What this ruling does NOT permit.** A session must not satisfy AC1 by installing from a local
+folder that happens to resolve. That is the exact move the original criterion forbade; it would read
+as green and it would be false. "A built artefact" means the output of `library:build`, addressed as
+a build output — not a checkout path that resolves because the repo happens to be on disk.
+
+### What stays true
+
+- The origin gap **remains phase 65's**, in LBR-001, and is not closed by this.
+- ⚠️ **D5's obligation is untouched**: the shipped reference kit is deliberately minimal, so CN-007's
+  docs must carry the cashflow kit as the worked example, or the shipped reference teaches less than
+  the phase intends.
+- ⚠️ **P65's audit still stands and this task must not assume the fleet is healthy** — 0 of 29 shipped
+  modules have ever been run, 3 register zero nodes, ~9 vendor third-party libraries with no licence
+  text, and mapbox-gl v2+ is proprietary.
+
+### Options not taken, and why
+
+| | Option | Why not |
+|---|---|---|
+| **(a)** | Build LBR-001 inside this campaign as RUN 3a | Annexes another phase's work, and phase 65 is being scoped by a peer — coordinate or collide. |
+| **(c)** | Hold CN-016 until phase 65 lands LBR-001; close phase 69 at 19/20 | Legitimate, and was the standing fallback. Rejected because it leaves the phase's last task on someone else's schedule with no gate stopping the drift meanwhile. |

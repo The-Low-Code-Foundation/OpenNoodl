@@ -1,7 +1,8 @@
 # Phase 69 — **19 of 20 done.** One Tier-6 task left, and it still needs a ruling from Richard.
 
-**Amended 2026-08-18, end of s31: CN-017 is BUILT and closed.** Only CN-016 remains, and §2 below is
-still the ruling it is blocked on. The rest of this file is s29's.
+**Amended 2026-08-18, end of s31: CN-017 is BUILT and closed, and ✅ D21 unblocks CN-016.** Richard
+ruled §2 that day — AC1 is descoped to a built artefact **plus a divergence gate**. CN-016 is now
+buildable and is the only task left. The rest of this file is s29's.
 
 **Written 2026-08-18, end of s29.** 🔴 **This file is a REWRITE, not an amendment.** Overwrite it
 when the campaign ends; anything that outlives the phase goes to memory, not here.
@@ -9,8 +10,8 @@ when the campaign ends; anything that outlives the phase goes to memory, not her
 > ## Read §1 and §2 before touching anything.
 >
 > **§1** is the map, measured from the ledger rather than inherited.
-> **§2 is still the ruling Richard must make**, and s29 did not touch it — CN-016 AC1 cannot be met
-> by any amount of work inside phase 69. Nothing in RUN 1 changed that.
+> **§2 is ✅ RULED (D21, 2026-08-18)** — AC1 is descoped to a built artefact with a divergence gate.
+> Read it anyway: the ruling names two moves it does not permit.
 >
 > **RUN 1 is done.** What is left is RUN 2 (CN-017) and RUN 3 (CN-016), each effort **L**, each
 > its own session. A session that tries both will finish neither.
@@ -45,14 +46,24 @@ explicit pathspecs, never `git add -A`. 🔴 **Never `git stash` on this checkou
 | What is left | Owner | Reality |
 |---|---|---|
 | ~~**CN-017** — Trust~~ | ~~RUN 2~~ | ✅ **CLOSED s31, all five AC met.** See [CN-017-TRUST.md](CN-017-TRUST.md) — four of its own premises were wrong and are corrected there. |
-| **CN-016** — Publish a kit | RUN 3 | 🔴 **Never started.** Tier 6, effort **L**. ⚠️ **AC1 blocked — §2.** |
+| **CN-016** — Publish a kit | **RUN 3, and now unblocked** | 🔴 **Never started.** Tier 6, effort **L**. ✅ **AC1 ruled 2026-08-18 (D21)** — a built artefact plus a divergence gate; §2. |
 | **CN-007** AC2 | not yours | Needs a reader who has **not** read this phase. |
 | **CN-008** AC1 | not yours | Needs a live model. |
 
 ✅ **Everything remaining is distribution-and-trust.** This is a clean place to stop if appetite runs
 out — say so plainly rather than leaving it ambiguous.
 
-## 2. 🔴 STILL UNRULED — CN-016 AC1 cannot be met inside this phase
+## 2. ✅ RULED 2026-08-18 (D21) — AC1 is descoped, with a divergence gate
+
+🔴 **This section is kept as the record of what the ruling was about; it is no longer open.** Richard
+took option **(b)** on 2026-08-18: **AC1 becomes *"installs from a built artefact, with a gate that
+fails the moment the origin and `library/` diverge"***. See [RULINGS.md D21](RULINGS.md) for the full
+ruling, including the two things it does **not** permit — most importantly, **no session may satisfy
+AC1 by installing from a local folder that happens to resolve.**
+
+**CN-016 is therefore unblocked.** The original problem statement follows.
+
+### The problem the ruling was about
 
 **CN-016 AC1:** *"The reference kit installs from the **real origin** into a fresh project"* —
 explicitly *"not from a local folder that happens to resolve."*

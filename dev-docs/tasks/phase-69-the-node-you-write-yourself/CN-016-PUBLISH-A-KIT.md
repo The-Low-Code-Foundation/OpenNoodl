@@ -5,7 +5,8 @@
 | **Tier** | 6 |
 | **Effort** | L |
 | **Surface** | `library` |
-| **Rulings** | ✅ **D5** — ship a **new, minimal** reference kit; the cashflow kit is docs material, not shipped content |
+| **Rulings** | ✅ **D5** — ship a **new, minimal** reference kit; the cashflow kit is docs material, not shipped content · ✅ **D21** (2026-08-18) — **AC1 descoped** to a built artefact **plus a divergence gate** |
+| **Status** | 🔴 Never started. **Unblocked as of D21** — the last task in phase 69. |
 | **Depends on** | CN-006 (the scaffold), CN-017 (the trust gate, for anything not first-party) |
 
 ## The job
@@ -61,9 +62,22 @@ than the phase intends.
 
 ## Acceptance criteria
 
-1. The reference kit installs from the **real origin** into a fresh project, and its node is placeable
-   with zero console errors. (LBR-001's standard: *"install from the real origin"* — not from a local
-   folder that happens to resolve.)
+1. ✅ **AMENDED BY D21, 2026-08-18.** The reference kit installs from a **built artefact** into a
+   fresh project, its node is placeable with zero console errors, **and a gate fails the moment the
+   origin and `library/` diverge.**
+
+   🔴 **The gate is the load-bearing half.** Descoping alone would close this phase and leave the
+   origin rotting further, which is the state that produced the problem.
+
+   🔴 **This does not permit installing from a local folder that happens to resolve.** That is the
+   move the original criterion forbade; it would read as green and be false. "A built artefact" means
+   the output of `library:build`, addressed as a build output — ⚠️ and `library:build` writes a
+   **gitignored** `library-dist/`, which is its own trap: a gitignored artefact makes tests vanish,
+   and an ignored build leaves an observation with no provenance.
+
+   *Original, unmeetable inside this phase:* the kit installs from the **real origin** — the origin
+   serves 2024 Noodl content, nothing publishes `library/`, and the fix is phase 65's LBR-001, which
+   is not started. See [RULINGS.md D21](RULINGS.md).
 2. Installing does not disturb an existing kit, and installing twice is safe.
 3. Compat gating refuses an incompatible kit **with a message naming why**.
 4. `library:check` passes; the schema is strict, so a new field must be added to it deliberately.
@@ -77,3 +91,9 @@ than the phase intends.
   bite packaging work specifically.
 - ⚠️ The **shipped library is not the repaired library**: the CDN serves 2024 content. Verify against
   what users actually receive, not against `library/` in the checkout.
+- 🔴 **A peer is holding `scripts/library/check.ts` uncommitted** (as of 2026-08-18) and phase 65 is
+  being scoped by them. `library:check` is AC4's gate and the divergence gate's likely home, so
+  **announce before editing it** — this is the file most likely to collide in the whole task.
+- ✅ **CN-017 gives this task its trust gate for free, if the install goes through `apply()`.** An
+  install route that writes to `noodl_modules/` directly is gated by nothing, and `ImportPlan.origin`
+  is required, so a new route will not compile until it states what it is. See CN-017 §1.

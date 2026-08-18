@@ -4,6 +4,77 @@ import fse, { mkdirp } from 'fs-extra';
 import JSZip from 'jszip';
 import { FileBlob, FileInfo, FileStat, IFileSystem, OpenDialogOptions } from '@noodl/platform';
 
+/**
+ * 🔴 **Where a zip entry is allowed to land, and where it is not.**
+ *
+ * A zip is a list of names the *archive* chooses, and `path.join(root, name)`
+ * happily resolves `../../.ssh/authorized_keys` to somewhere that is not `root`.
+ * Every archive this app extracts comes from a URL — a downloaded project, a
+ * module or prefab from the library, a forge template — so the names are a
+ * stranger's input on every path that reaches here.
+ *
+ * ⚠️ **Containment is checked on the RESOLVED path, not by looking for `..` in
+ * the name.** A substring check is defeated by encoding, by a name that reaches
+ * outside without a literal `..` (an absolute path, a drive letter on Windows),
+ * and by nothing at all on a name like `ok/../ok/x` that is in fact safe. Asking
+ * the path module where the file actually ends up is the only question with a
+ * reliable answer.
+ *
+ * @returns the absolute destination, or `null` if the entry escapes `root`.
+ */
+export function resolveZipEntryPath(root: string, entryName: string): string | null {
+  const base = nodePath.resolve(root);
+  const dest = nodePath.resolve(base, entryName);
+
+  // `base + sep` rather than `base`: without the separator, a sibling directory
+  // whose name merely starts with the root's (`/tmp/app-evil` beside `/tmp/app`)
+  // would read as contained.
+  if (dest !== base && !dest.startsWith(base + nodePath.sep)) return null;
+  return dest;
+}
+
+/** Raised when an archive names an entry that would land outside its target. */
+export class ZipEntryEscapesTargetError extends Error {
+  constructor(public readonly entryName: string) {
+    super(
+      `This archive contains an entry ("${entryName}") that would be written outside the folder it is being extracted into, so nothing was extracted.`
+    );
+    this.name = 'ZipEntryEscapesTargetError';
+  }
+}
+
+/**
+ * Extract a loaded zip into `path`.
+ *
+ * 🔴 **Module-level rather than a closure inside `unzipUrl`, so it can be
+ * graded.** `unzipUrl` reaches for `XMLHttpRequest`, which does not exist under
+ * a plain-Node runner — a traversal guard that could only be exercised inside a
+ * renderer is a guard nobody checks. This takes the loaded archive and does the
+ * writing; the transport stays where it was.
+ *
+ * ⚠️ **Refuses the WHOLE archive on one bad entry**, and does so before writing
+ * anything. A per-entry skip would leave a half-extracted directory that every
+ * caller here would then treat as a successfully downloaded project.
+ */
+export async function extractZipToFolder(zip: JSZip, path: string): Promise<void> {
+  const names = Object.keys(zip.files).filter((name) => !zip.files[name].dir);
+
+  // Checked in full, first. Nothing is written until every name is known to land
+  // inside the target.
+  for (const name of names) {
+    if (resolveZipEntryPath(path, name) === null) throw new ZipEntryEscapesTargetError(name);
+  }
+
+  for (const name of names) {
+    const dest = resolveZipEntryPath(path, name)!;
+    const buffer = await zip.file(name)!.async('nodebuffer');
+    await new Promise<void>((resolve, reject) => {
+      mkdirp(nodePath.dirname(dest), (err) => (err ? reject(err) : resolve()));
+    });
+    fs.writeFileSync(dest, buffer);
+  }
+}
+
 export class FileSystemNode implements IFileSystem {
   resolve(...paths: string[]): string {
     return nodePath.resolve(...paths);
@@ -240,48 +311,26 @@ export class FileSystemNode implements IFileSystem {
   unzipUrl(url: string, to: string): Promise<void> {
     const _this = this;
 
-    function unzipToFolder(path: string, blob: any, callback: (_: { result: 'success' | 'failure' }) => void) {
+    /**
+     * The transport half. The writing half is {@link extractZipToFolder}, which
+     * is module-level so a plain-Node spec can reach it — see its header.
+     *
+     * ⚠️ **The failure message is now the extractor's own**, not a fixed
+     * "Failed to extract". A refused archive names the entry that refused it;
+     * telling a user only that extraction failed, when we know exactly which
+     * entry and why, is the silence this repo keeps paying for elsewhere.
+     */
+    function unzipToFolder(
+      path: string,
+      blob: any,
+      callback: (_: { result: 'success' | 'failure'; message?: string }) => void
+    ) {
       JSZip.loadAsync(blob)
-        .then(function (zip) {
-          let numFiles = Object.keys(zip.files).length;
-          let err = false;
-          function fileCompleted(_success?: boolean) {
-            numFiles--;
-            if (numFiles === 0) {
-              if (err) callback({ result: 'failure' });
-              else callback({ result: 'success' });
-            }
-          }
-
-          Object.keys(zip.files).forEach(function (filename) {
-            if (zip.files[filename].dir) {
-              fileCompleted();
-              return;
-            } // Ignore dirs
-
-            let dest, buffer;
-
-            zip
-              .file(filename)
-              .async('nodebuffer')
-              .then((_buffer) => {
-                dest = nodePath.join(path, filename);
-                buffer = _buffer;
-                return _this.makeDirectory(nodePath.dirname(dest));
-              })
-              .then(() => {
-                fs.writeFileSync(dest, buffer);
-                fileCompleted();
-              })
-              .catch((e) => {
-                err = e;
-                fileCompleted(false);
-              });
-          });
-        })
-        .catch(function (e) {
-          callback({ result: 'failure' });
-        });
+        .then((zip) => extractZipToFolder(zip, path))
+        .then(() => callback({ result: 'success' }))
+        .catch((e) =>
+          callback({ result: 'failure', message: e instanceof Error ? e.message : undefined })
+        );
     }
 
     return new Promise((resolve, reject) => {
@@ -300,7 +349,7 @@ export class FileSystemNode implements IFileSystem {
       xhr.onload = function (_e) {
         unzipToFolder(to, this.response, function (r) {
           if (r.result !== 'success') {
-            reject({ result: 'failure', message: 'Failed to extract' });
+            reject({ result: 'failure', message: r.message ?? 'Failed to extract' });
             _this.removeDirRecursive(to);
             return;
           }

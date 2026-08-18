@@ -293,8 +293,46 @@ edits. A suite's bundle is built at the start, so an edit made during a run is s
 
 Signing, a trusted-author registry and runtime sandboxing of kit code stayed out, as the spec says.
 
-⚠️ **Worth a ruling, adjacent and outside D6: `unzipIntoDirectory` extracts a downloaded archive
-with no path checks.** A crafted archive with `../` entries writes outside its target. It is
-install-time and it is not what D6 is about, so it was not scoped in — but it is the one thing found
-in this area that a consent dialog does not help with, because it happens before anyone is asked
-anything.
+⚠️ **Archive extraction was flagged here as an adjacent hazard and has since been measured and
+fixed — see §8, which corrects the flag's own wording.** Richard ruled "fix it now" on 2026-08-18.
+
+## 8. 🔴 CORRECTION — the archive-extraction flag this task raised was OVERSTATED
+
+CN-017's close flagged *"`unzipIntoDirectory` extracts a downloaded archive with no path checks — a
+crafted archive with `../` entries writes outside its target."* **Measured 2026-08-18, that is wrong**,
+and the commit message `ce96338c` carries the overstated version.
+
+| entry name | JSZip's **loader** | `path.join(root, name)` | escapes? |
+|---|---|---|---|
+| `../escaped.js` | **normalised to `escaped.js`** | — | **no** |
+| `a/b/../../../x.js` | **normalised to `x.js`** | — | **no** |
+| `/etc/passwd` | preserved | `root/etc/passwd` — `join` eats the leading `/` | **no** |
+| `..\win.js` | **preserved** | posix: a file literally named `..\win.js`; **win32: `C:\tmp\win.js`** | 🔴 **yes, on Windows** |
+
+🔴 **The classic traversal was never reachable through this code path**, because JSZip sanitises it
+before the writing code ever sees it — and JSZip's *writer* normalises it too, which is why the first
+fixture written against it produced a perfectly safe archive and graded nothing.
+
+**What is real:** a **backslash entry on Windows**, which this app ships to. `..\win.js` survives
+JSZip and `path.join('C:\tmp\target', '..\win.js')` is `C:\tmp\win.js`.
+
+✅ **The guard was still worth building, for two accurate reasons rather than one inflated one:** it
+closes the Windows case, and it is what stops a future JSZip release changing its normalisation from
+silently reopening the rest. It is *defence in depth over a dependency's current behaviour*, not the
+patch for a live traversal — and describing it as the latter would be the kind of over-claim AC5
+exists to prevent, applied to our own work instead of to a kit's.
+
+**Built:** `resolveZipEntryPath` (containment on the **resolved** path, `+ path.sep` so a sibling
+whose name merely starts with the target's is refused too) and `extractZipToFolder`, lifted out of
+`unzipUrl`'s closure so a plain-Node spec can reach it — `unzipUrl` reaches for `XMLHttpRequest`, and
+a guard that could only run inside a renderer is a guard nobody checks. **The whole archive is
+refused on one bad entry, before anything is written**, so no caller inherits a half-extracted
+directory it would treat as a successful download. The failure now names the entry instead of saying
+"Failed to extract".
+
+⚠️ **9 specs in `packages/noodl-platform-node/tests/filesystem-unzip.test.ts`** (`test:platform`, a CI
+gate). They inject the hostile name into the loaded archive rather than trying to build one, because
+JSZip's writer normalises it; the contract graded is *given a name that escapes, however it arrived,
+write nothing*. One spec pins JSZip's own normalisation, so an upgrade that changes it fails here and
+points at the guard as the thing now doing the work.
+

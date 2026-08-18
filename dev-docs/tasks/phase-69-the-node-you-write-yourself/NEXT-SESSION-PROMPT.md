@@ -1,42 +1,50 @@
-# RUN 3 — **CN-016 (Publish a kit)**. Phase 69 is at **19 of 20**.
+# RUN 3 — **CN-016 (Publish a kit)**. Phase 69 is at **19 of 20**, and CN-016 is now UNBLOCKED.
 
 **Written 2026-08-18, end of s31.** ✅ **CN-017 is BUILT and CLOSED — all five acceptance criteria
-met.** What is left is CN-016, and **it is the one task in this phase that cannot be finished without
-a ruling from Richard.** Read §1 before you plan anything: the honest outcome of this session may be
-*"19/20, CN-016 named and deferred"*, and leaving that ambiguous is the one bad ending.
+met.** ✅ **Richard ruled the blocker the same day (D21): CN-016 AC1 is descoped to a built artefact
+plus a divergence gate.** So CN-016 is buildable, it is the last task in the phase, and **closing it
+closes phase 69 at 20/20.**
+
+⚠️ Also fixed in s31, on Richard's ruling: archive-extraction containment in `@noodl/platform-node`.
+🔴 **The flag that prompted it was overstated and is corrected in §3 — do not re-raise it as a live
+`../` traversal.**
 
 ## Read, in this order
 
-1. **[README.md §2](README.md)** — the open ruling. **This is the whole shape of RUN 3.**
-2. **[CN-016-PUBLISH-A-KIT.md](CN-016-PUBLISH-A-KIT.md)** — the task.
-3. **§2 and §3 of this file** — what CN-017 built that CN-016 now sits on, and the four measured
-   facts you would otherwise re-derive.
+1. **[RULINGS.md D21](RULINGS.md)** — what AC1 now is, and **the two moves it does not permit**.
+2. **[CN-016-PUBLISH-A-KIT.md](CN-016-PUBLISH-A-KIT.md)** — the task, with AC1 amended in place.
+3. **§2 and §3 of this file** — what CN-017 built that CN-016 now sits on, and the measured facts you
+   would otherwise re-derive.
 
 ---
 
-## 1. 🔴 CN-016 AC1 cannot be met inside this phase. Get the ruling first.
+## 1. ✅ AC1, as ruled — and the two things the ruling does not permit
 
-**AC1:** *"The reference kit installs from the **real origin** into a fresh project"* — explicitly
-*"not from a local folder that happens to resolve."*
+**AC1 is now:** *the reference kit installs from a **built artefact** into a fresh project, its node
+is placeable with zero console errors, **and a gate fails the moment the origin and `library/`
+diverge.***
 
-**Measured s28, re-confirmed unchanged s31:** the real origin serves **2024 Noodl content**. Nothing
-publishes `library/`. `library:build` writes gitignored `library-dist/`, and "copy it into the docs
-repo" is a documented **manual** step nobody has ever performed. The task that owns fixing this is
-phase 65's **LBR-001**, which is **`Not started`**, and phase 65's own README says *"nothing else in
-this phase matters until the publish path works."*
+🔴 **The gate is the load-bearing half, not the descope.** Descoping alone would close phase 69 and
+leave the origin rotting further — which is the state that produced the problem. The gate turns an
+invisible drift into a red build the next time anyone touches it. **If you build the install and skip
+the gate, you have not met AC1.**
 
-README §2's three options stand, and **(b) is still the recommendation** — descope AC1 to *"installs
-from a built artefact, with a gate that fails the moment the origin and `library/` diverge"*. It is
-the only option that closes the phase on its own terms without annexing another phase's work, and the
-divergence gate is the durable half.
+🔴 **You may not satisfy AC1 by installing from a local folder that happens to resolve.** That is the
+exact move the original criterion forbade, it would read as green, and it would be false. *"A built
+artefact"* means the output of `library:build`, addressed as a build output.
 
-🔴 **Do not let a session "satisfy" AC1 by installing from a local folder.** That is the exact move
-the criterion forbids, it would read as green, and it would be false.
+⚠️ **And `library:build` writes a GITIGNORED `library-dist/`** — which is its own recorded trap twice
+over: a gitignored artefact makes tests vanish, and an ignored build leaves an observation with no
+provenance. `git check-ignore -v` before trusting anything you measure against it.
 
-⚠️ **If the ruling does not arrive, stop cleanly.** 19/20 with CN-016 named and deferred is a
-legitimate end for this phase. Say so plainly rather than half-building around the blocker.
+**Why it had to be ruled:** the real origin serves **2024 Noodl content**, nothing publishes
+`library/`, and "copy it into the docs repo" is a documented manual step nobody has ever performed.
+The fix belongs to phase 65's **LBR-001**, which is `Not started`. That gap **stays phase 65's** — this
+ruling does not close it, it stops it widening unobserved.
 
----
+⚠️ **A peer holds `scripts/library/check.ts` uncommitted and is scoping phase 65.** `library:check` is
+AC4's gate and the divergence gate's most likely home, so it is **the single most collision-prone file
+in this task**. Announce before editing it.
 
 ## 2. What CN-017 built, and what CN-016 inherits from it
 
@@ -107,7 +115,7 @@ recorded"*.
 
 ---
 
-## 3. Four things measured in s31 that you would otherwise re-derive
+## 3. Five things measured in s31 that you would otherwise re-derive
 
 1. **`verifyLibrarySource` cannot verify a kit.** `globalName` is a hard requirement
    (`projectmodules.ts`) and a kit declares no global — it calls `Noodl.defineModule`. Use
@@ -123,11 +131,30 @@ recorded"*.
 4. **The module installer caches and reuses `getUserDataPath()/library/<name>` without re-downloading**
    (`modulelibrarymodel.ts:239-283`). A check inside the download branch runs on the **first** install
    of a module and never again. Anything CN-016 adds must run on the **resolved root path**.
+5. 🔴 **JSZip's LOADER normalises `../` out of entry names — and its WRITER does too.** A fixture
+   built with `zip.file('../x')` therefore produces a perfectly safe archive and grades nothing;
+   s31's first traversal spec passed for exactly that reason and had to be rewritten to inject the
+   hostile name into the *loaded* archive instead.
 
-⚠️ **Flagged and deliberately unscoped: `unzipIntoDirectory` extracts a downloaded archive with no
-path checks.** A crafted archive with `../` entries writes outside its target. It is install-time,
-it is adjacent to CN-016's whole subject, and a consent dialog does not help because it happens
-before anyone is asked anything. **Worth raising with Richard as part of the CN-016 conversation.**
+✅ **Archive extraction: raised, measured, corrected and FIXED on 2026-08-18 — Richard ruled "fix it
+now".**
+
+🔴 **The flag as CN-017 originally wrote it was WRONG, and this is the important half.** *"A crafted
+archive with `../` entries writes outside its target"* is **false here**: JSZip strips `../` before
+the writing code sees it, and `path.join` eats a leading `/`. The commit message `ce96338c` carries
+the overstated wording; CN-017 §8 carries the correction.
+
+**What was real:** a **backslash entry on Windows**, which this app ships to. `..\win.js` survives
+JSZip, and `path.join('C:\tmp\target', '..\win.js')` is `C:\tmp\win.js`.
+
+**Fixed:** `resolveZipEntryPath` + `extractZipToFolder` in `@noodl/platform-node`, lifted out of
+`unzipUrl`'s `XMLHttpRequest` closure so a plain-Node spec can reach them. The **whole archive is
+refused on one bad entry, before any write**, and the failure names the entry. 9 specs under
+`test:platform` (a CI gate), one of which pins JSZip's own normalisation so an upgrade that changes
+it fails loudly. ⚠️ **`FileSystemElectron extends FileSystemNode` and does not override `unzipUrl`**,
+so the editor inherits this — there is one implementation, reached through a subclass.
+
+🔴 **Do not re-raise this as a live `../` traversal.**
 
 ---
 
@@ -232,4 +259,4 @@ useful part of a close. Rewrite this file for the session after you. Save anythi
 phase 69 to memory rather than here.
 
 **If CN-016 closes, phase 69 is done at 20/20** and this campaign's README should be overwritten
-rather than amended.
+rather than amended. There is no remaining blocker and no remaining ruling — D21 was the last one.
