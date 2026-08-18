@@ -6,8 +6,9 @@ Paste the block below into a fresh session.
 
 Continue phase 67 (NodeGX Community), `dev-docs/tasks/phase-67-nodegx-university/`.
 
-**Read first, in this order:** **[D19](RULINGS.md)**, then §"WHERE THE PHASE IS" below, then
-`TASKS.md`'s table, then your task file.
+**Read first, in this order:** **[README.md](README.md) §"What closes this phase"** — the alpha
+bar, and it decides which task you pick — then **[D19](RULINGS.md)**, then §"WHERE THE PHASE IS"
+below, then `TASKS.md`'s table, then your task file.
 
 🔴 **Two repos.** Editor work is this checkout. Platform work is
 `/Users/richardosborne/vscode_projects/nodegx-community` — a **sibling directory, never nested** —
@@ -16,11 +17,73 @@ traps apply there.
 
 ---
 
-# ✅ UNI-016 IS BUILT. D19's tranche is four-fifths landed.
+# 🎯 THE PHASE NOW HAS AN EXIT CRITERION. IT IS THE ALPHA, AND IT IS NINE ITEMS.
 
-**UNI-014, UNI-015, UNI-016 done. UNI-017 half pre-built. UNI-018 not started.**
+**Set 2026-08-18 (session 28), in [README.md](README.md) §"What closes this phase".** The phase ran
+five days without one, which is why *"are we nearly done"* had no answer.
+
+> **Phase 67 closes when a stranger can reach `community.nodegx.io`, make an account, ask a
+> question about a node from inside the editor, and get an answer — and when that site does not
+> look like a placeholder.**
+
+🔴 **Read that section before choosing a task.** It names four code items (E1–E4), three of
+Richard's (E5–E7), two hygiene (E8–E9), and — as importantly — **what is explicitly NOT in the
+close**, so UNI-017 and UNI-018 stop reading as unfinished business.
+
+## 🟢 THE ORDER, AND IT IS NOT THE TASK NUMBERS
+
+1. 🔴 **E1 — UNI-001's issuer.** Everything the last three sessions built is **unreachable
+   without it**: the only `insert into sessions` in the whole platform repo are in **test files**.
+   D19 struck the OIDC provider face, so this is plain session auth — issue a token, store it under
+   `nodegx.community.session` (the seam is built and specced), sign in from the editor.
+   ⚠️ **Do not build the OIDC provider speculatively.**
+2. 🔴 **E4 — UNI-013 slice 5, the page archetypes.** Newly scoped from a driven review, below.
+3. **E3 — UNI-009 AC1**, which is small: the home does not link the Bench.
+4. **E2 — deployment**, once Richard answers E5.
+
+⚠️ **UNI-017 and UNI-018 are NOT next**, despite being the obvious next task numbers. They are
+outside the close.
 
 ---
+
+# 🎨 SLICE 5 — THE LOOK. DRIVEN 2026-08-18, AND RICHARD IS RIGHT FOR THE SECOND TIME
+
+**Richard, 08-18:** *"we updated the 'people' detail page but the rest of the app still looks sad,
+dark and simple."* He said a version of this on 08-17 too, and slices 1–3 answered the 08-17
+version. **The remaining problem is the scope, not the execution.**
+
+**Reviewed properly**: `next start` on a fresh build, DB seeded with four people, four threads and
+an answer, screenshotted at 1440×1000. ⚠️ **The served CSS hash was checked against
+`ls .next/static/css/` first** — this task's own trap, and an unstyled page is exactly what a "sad"
+review misreads. ⚠️ **Content was seeded before looking**, because an empty page looks sad for a
+reason that is not design.
+
+**The finding: AC4 named the wrong unit.** It restyled **six components**, and the premise says
+*"the other pages inherit from the tokens."* 🔴 **They inherit tokens; they do not inherit a
+design.** Eight pages are the same page — `<h1>`, grey two-line sub, filter pills, one stack of
+identical `bg-1` rectangles. **The profile page is the proof rather than the exception:** it looks
+designed because it is the one page the pitch artifact drew a specimen of.
+
+**Worst first:** the home has **no accent colour anywhere** and shows **none of the four threads
+that exist** (which is E3 as well as a design fault) · `/people` has **no avatars** while the
+profile does · the Bench renders **two different link styles on one page**, the queue's being raw
+underlined browser links · the queue **repeats the list beneath it** · `/replays` is **~90% empty
+viewport** under one dashed box.
+
+🔴 **The rule it generalises to:** every surface built *after* slice 3 — the Bench, the attachment
+renderers, the notification surfaces — reaches for `bg-1` and a bordered rectangle. **A design
+system with no worked example of its page shapes gets read as a colour palette.**
+
+✅ **So slice 5 is not "restyle eight pages".** It is **draw three archetypes — index, list, detail
+— and make every page an instance of one.** The profile is already the detail archetype. Full
+findings table in [UNI-013](UNI-013-THE-COMMUNITY-SITE-IN-NODEGX-CLOTHES.md) §"Slice 5".
+
+⚠️ **AC1, AC3 and AC5 still bind**: no hardcoded colour, contrast rows split per theme, and the
+suites must pass unchanged.
+
+---
+
+# ✅ UNI-016 IS BUILT. D19's tranche is four-fifths landed.
 
 # 🔴 START HERE: THE HANDOVER YOU ARE READING REPLACED ONE THAT WAS WRONG. CHECK THIS ONE TOO.
 

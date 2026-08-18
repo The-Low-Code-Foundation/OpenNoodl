@@ -152,6 +152,54 @@ and opens *everything* on the platform.
   wording must land first** or L2 is authored against a false sentence; (3) **L11 must not be
   authored until phase 61 lands**. Confirm phases 59/60/61 status before UNI-007 claims a spine.
 
+## 🔴 What closes this phase — the alpha bar, set 2026-08-18
+
+**The phase had no written exit criterion for five days**, which is why "are we nearly done" had no
+answer. It has one now, and it is deliberately a *shipping* bar rather than a task-count: 18 tasks
+across four tiers will never all be done, and waiting for that is how a phase never closes.
+
+> **Phase 67 closes when a stranger can reach `community.nodegx.io`, make an account, ask a
+> question about a node from inside the editor, and get an answer — and when that site does not
+> look like a placeholder.**
+
+Everything below is a consequence of that sentence. **Nine items. Nothing else blocks the close.**
+
+### The four that are code, and they are the whole critical path
+
+| # | What | Owner | Why it is on this list |
+|---|---|---|---|
+| **E1** | 🔴 **UNI-001's issuer** — OAuth, sessions, consent screen, editor sign-in | task | **Nothing else here can be exercised without it.** The only `insert into sessions` in the whole platform repo are in **test files** (measured, session 28), so no human can post, claim a profile, or answer an RFP. D19 struck the OIDC provider face — this is plain session auth now, not federation |
+| **E2** | 🔴 **Deployment** — the platform served at `community.nodegx.io` | 🔴 **NO TASK OWNS IT** | It resolves (A → nexus-1) and nothing serves it. ⚠️ Shares the box with two live sites and Caddy is all-or-nothing — **curl the neighbours before and after** |
+| **E3** | **UNI-009 AC1** — the home shows real threads signed out | task | D19 rewrote it; `/bench` exists and **the home page does not link to it** (observed, session 28) |
+| **E4** | **UNI-013 slice 5** — the page archetypes | task | Richard, twice: *"simple and sad"*. The close is *"does not look like a placeholder"*, so this is in scope rather than polish |
+
+### The three that are Richard's, and two of them gate E1/E2
+
+| # | What | Blocks |
+|---|---|---|
+| **E5** | 🔴 **The nexus-1 decision** — does the platform go there? | **E2**, and it is the first domino |
+| **E6** | **A transactional sending account + domain** (Postmark / SES / Resend) | **D19's own condition.** The ruling was made *on* email landing: *"a forum where 'someone answered you' never reaches an inbox is a forum nobody returns to."* `log` delivery covers dev and **cannot ship** |
+| **E7** | **Where capture images live** | Nothing hard — a `capture` stores dimensions and consent and no image, so **nothing migrates** when it is decided. ⚠️ Intersects E2 |
+
+### The two that are hygiene
+
+| # | What |
+|---|---|
+| **E8** | 🔴 **`NOTIFICATION_LINK_SECRET` has a dev default.** A deployment that does not set it has **forgeable unsubscribe links**. This is a launch blocker, not a nice-to-have |
+| **E9** | A smoke drive of the whole loop **on the deployed box**, signed in, over real HTTPS — because every gate in both repos runs against localhost |
+
+### 🔴 Explicitly NOT in the close — written down so they stop reading as unfinished
+
+**UNI-017** (queue + *same here*), **UNI-018** (pull a graph — and it carries an arbitrary-code
+hazard that deserves its own care, not a deadline), **UNI-007**'s intake, **UNI-006**'s bridge
+endpoint, **UNI-011**'s in-editor views (**deliberately** unbuilt — D16's ship order is the reverse
+of its build order), **UNI-008** hosting, **UNI-010**'s remaining slice, **UNI-012**'s
+packaged-install check, and **UNI-013 slice 4** (the twelve badge artworks — the profile renders a
+family mark and a tier colour rather than a broken image, which was the point of doing it that way).
+
+⚠️ **These are a phase 67b or they fold into phase 68.** That is a call for Richard at the close,
+not a thing to decide by drift.
+
 ## What is deliberately NOT in this phase
 
 - **The coaching delivery space (LearnBook)** — D13, ruled 2026-08-14: programs, modules, threaded

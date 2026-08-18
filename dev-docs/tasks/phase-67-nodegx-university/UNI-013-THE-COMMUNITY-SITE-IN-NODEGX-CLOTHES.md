@@ -287,9 +287,66 @@ and it goes red, in the same commit that adds it.
    resolving to its fallback in silence.
 3. ✅ **DONE — the six components.** Card/row unified with a `bg-1` → `bg-2` hover lift, gradient
    avatar, mono handle, larger display-face badge marks, mono uppercase pills.
+5. 🔴 **THE PAGES — ADDED 2026-08-18 (session 28) OUT OF A SECOND READ OF THE RUNNING SITE.**
+   **Richard, 08-18:** *"we updated the 'people' detail page but the rest of the app still looks
+   sad, dark and simple."* **He is right again, and slices 1–3 are not the reason — the scope is.**
+   See §"Slice 5" below; this is the largest remaining piece of the task.
+
 4. **The twelve badges.** 🔴 **Still undrawn** — D4 ruled ~12 flat SVGs in the editor's idiom, and
    the profile currently renders a family mark and a tier colour rather than a broken image, which
    was deliberate. **Richard's to draw or delegate; it is the one slice that is not code.**
+
+## 🔴 Slice 5 — the pages. Reviewed on the running site, 2026-08-18
+
+**Driven, not inspected**: `next start` on a fresh build with the DB seeded to four people, four
+threads and an answer, screenshotted at 1440×1000 in dark. ⚠️ **The CSS hash in the served HTML
+was checked against `ls .next/static/css/` before anything was believed** — this file's own trap,
+and an unstyled page is exactly what a "sad" review would misread.
+
+⚠️ **The content was SEEDED first, deliberately.** An empty page looks sad for a reason that is
+not design, and reviewing one would have produced a list of fixes that change nothing.
+
+### The finding: AC4 named the wrong unit, and the premise line is what did it
+
+AC4 restyled **six components** and the premise says *"the other pages inherit from the tokens."*
+🔴 **They inherit the tokens and they do not inherit a design.** A page is a composition — a
+hierarchy, a rhythm, a reason for the eye to land somewhere first — and tokens supply none of it.
+What shipped is eight pages that are the *same* page: `<h1>` · two-line grey paragraph · a row of
+filter pills · a vertical stack of identical `bg-1` rectangles. Consistent, legible, and inert.
+
+**The profile page is the proof, not the counter-example.** `201a71a` gave `/u/[handle]` an
+eyebrow, a gradient avatar, a headline points figure with a progress wire, tier colour on the
+badge edges, mono labels. It is the one page that looks designed **because it is the one page the
+artifact drew a specimen of.** The language works; it was applied once.
+
+### What was observed, in priority order
+
+| # | Where | Observed |
+|---|---|---|
+| 1 | `/` home | 🔴 **Six identical grey boxes and no content at all.** The azure accent appears **nowhere on the page** — not on a heading, a link, or the sign-in button. It is a menu, not a home, and **UNI-009's D19-rewritten AC1 (*"the entry point shows real threads signed out"*) is visibly unmet**: four threads exist and the home shows none of them |
+| 2 | `/people` | 🔴 **No avatars** — the profile page has a gradient avatar and the *list* of people has none. Points are body text, not the headline figure the profile uses. The one component whose whole job is to make people feel present |
+| 3 | `/bench` | 🔴 **Two link styles on one page.** The queue's titles render as **default underlined browser links**; the list below them uses azure display-face titles. The queue is UNI-015's, built after slice 3 and never given its patterns |
+| 4 | `/bench` | 🔴 **The queue repeats the list.** All four threads appear in *"waiting for an answer"* and again below. With a real backlog it will look like duplication; today it looks like a bug |
+| 5 | `/bench` | A stray azure rule sits under the queue block, reading as an artifact rather than a divider |
+| 6 | `/replays`, `/tutorials` | 🔴 **~90% empty viewport** under a single dashed *"No replays published yet."* box. **D16's never-empty composition obligation is discharged nowhere** — and D16 says out loud that the threshold does not discharge it |
+| 7 | all | No page uses more than **two** of the five surface steps. `bg-3`/`bg-4` are unused, so nothing recedes and nothing lifts |
+| 8 | all | Every page is `<h1>` + grey sub + pills + one card stack. **No page has a second layout idea** |
+
+### 🔴 The rule this generalises to, and it is the reason slice 5 exists at all
+
+**Every surface built after slice 3 was built without the design.** The Bench (UNI-015), the
+attachment renderers (UNI-016) and the notification surfaces (UNI-014) all landed later, and all
+of them reach for `bg-1` and a bordered rectangle. A design system with no *worked example* of the
+page shapes gets read as a colour palette.
+
+✅ **So slice 5 is not "restyle eight pages".** It is: **draw three page archetypes — an index, a
+list, and a detail — and make every page an instance of one**, so the next surface inherits a
+composition and not just a token. The profile is already the detail archetype; it needs a sibling
+for the other two.
+
+⚠️ **AC5 still binds**: presentation only, and the suites must pass unchanged. ⚠️ **AC1 and AC3
+still bind**: no hardcoded colour, and the contrast rows are per-theme (see the `--site-fg-alert` /
+`--site-fg-good` split, which is the fifth instance of that same defect).
 
 ## Not in v1
 
