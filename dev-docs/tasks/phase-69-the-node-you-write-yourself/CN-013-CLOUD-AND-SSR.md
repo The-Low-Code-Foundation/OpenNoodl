@@ -8,6 +8,40 @@
 | **Rulings** | — |
 | **Depends on** | CN-012 (which establishes whether the cloud path exists at all) |
 
+## ✅ CLOUD HALF BUILT AND DRIVEN — s25, 2026-08-18. ⚠️ SSR half MEASURED, not fixed
+
+| Item | State |
+|---|---|
+| 1. Does a kit render under SSR? | ✅ **ESTABLISHED: no.** [notes/cn-013-ssr.md](notes/cn-013-ssr.md) |
+| 2. A browser-only kit on an SSG build | ✅ answered — **silent omission**, but see below: it is not browser-only kits, it is *all* of them |
+| 3. Cloud runtime | ✅ **BUILT.** [notes/cn-013-cloud-drive.md](notes/cn-013-cloud-drive.md) |
+| 4. `kitNeedsSsrWarning` | 🔴 **DO NOT BUILD YET** — see below |
+| 5. Document `ssr` for kit authors | 📋 CN-007, Bundle B |
+
+**The cloud half (✅ D18).** `noodl-viewer-cloud/src/kitModules.ts` evaluates a cloud-enabled kit's
+entry script and registers its **logic** nodes; `@nodegx/module-inject` gained the `runtimes` cloud
+predicate and the disk read; the editor's cloud-function bundle carries the sources; `WorkflowRunner`
+prints what happened at load. A `require` shim throws D18's sentence, so an SDK reach fails **naming
+the limit** rather than dying on `require is not defined`. Verified in **both build shapes** — source
+via the `@cloud-runtime` alias, and the esbuild bundle over real HTTP where the same graph with
+`modules` deleted still 504s. **Mutations 5/5 killed.**
+
+🔴 **D18's premise 2 is false and it changes the verification obligation, not the ruling.**
+[notes/cn-013-cloud-premise.md](notes/cn-013-cloud-premise.md): nothing in this repo loads
+`sandbox.isolate.js`, and the editor's "cloud preview" spawns `nodegx-backend/dist/cli.js` — the
+bundle a deploy target runs. **One context, two build shapes.** D18's conclusion stands on premise 4.
+
+🔴 **AC1's SSR half is established and NOT fixed.** The globals are set and **nothing fills them** —
+no file in `static/ssr/` evaluates a kit, so `__noodl_modules` is `[]` at every server render while
+the client loads the kits from `public/index.html`. The server renders the page **without** the kit
+nodes and hydration renders a different tree. ⚠️ **Item 4 must not be built before this is fixed**:
+*every* kit is missing under SSR, not just browser-only ones, so a `kitNeedsSsrWarning` modelled on
+`libraryNeedsSsrWarning` would warn about the wrong kits and stay silent about the rest.
+
+⚠️ **AC2 and AC4 are open. AC3 is now met for `browser` and `cloud`** — `effectiveKitRuntimes` is the
+one place that knows which runtimes have loaders, and `kit-loads-nowhere` documents the ones that do
+not. **AC1 is met for cloud, half-met for SSR** (the seam is measured; a rendered SSR page is not).
+
 ## The question
 
 A kit is a `<script>` tag. That works in a browser. NodeGX also renders **server-side** (SSR/SSG) and
