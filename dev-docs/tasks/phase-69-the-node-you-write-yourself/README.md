@@ -97,47 +97,45 @@ this phase burned a session on that specific mistake.
 | `library:check` | ✅ **59/59 clean** (183 warnings, not gated) |
 | `library:build` + `library:verify-dist` | ✅ **29 prefabs + 30 modules, 0 problems** |
 | `library:verify-origin` | ✅ **matches the baseline** — prefabs 29/29, modules 26/30 |
-| `test:ci` @ `NOODL_SPEC_SEED=39393` | 🔴 **NOT MEASURED — two runs timed out. See below.** |
+| `test:ci` @ `NOODL_SPEC_SEED=39393` | ✅ **2849 specs / 10 failures — AT FLOOR, the same ten BY NAME** |
 
-## 🔴 `test:ci` was not measured in s32, and this says so rather than quoting a number
+## `test:ci` — measured on the third attempt, and what the first two taught
 
-**Two attempts, both timed out at 900s "without reporting results", both exiting 1.**
+✅ **Measured 2026-08-19 00:18 on tree `853c1da3`: `Jasmine: 2849 specs, 10 failures`**, with a real
+summary line and a `test-results.json` written fresh at that minute. The ten, by name — unchanged
+from s31, so **no delta is attributable to this session's changes**:
 
-- **Attempt 1** ran beside `test:main` and three typechecks — self-inflicted contention.
-- **Attempt 2** ran with nothing else on this checkout and **timed out anyway**, at **1,910 of
-  ~2,850 specs**.
+- **4 ×** `AIX-006 style vocabulary`
+- **2 ×** `AI model registry`
+- **1 ×** `AIX-011 — update mode is judged against its own base`
+- **3 ×** `SUB-011 expression parameters — the validator stays silent`
 
-**Why, measured rather than guessed:** the machine is **swapping** — `vm.swapusage` showed
-**20,527 MB of 21,504 MB in use**, 33% memory free, load average ~7, a `Virtualization.framework` VM
-at 115% CPU and five peer Claude sessions live. *"Alone on this checkout"* is not *"alone on this
-machine"*.
+⚠️ **This supersedes the older `2843 / 6 @ 39393` floor** (tree `d0891746`, 2026-08-16), which is
+~260 commits behind. The count moved because tests landed, not because anything regressed — which is
+exactly why the floor is pinned **by name** and not by count.
 
-`packages/noodl-editor/test.js` exposes **`NOODL_TEST_TIMEOUT_MINUTES`** and says in its own
-docstring: *"Raise it only after checking the machine is not swapping; a timeout is far more often a
-symptom than a limit."* It is swapping, so the override was **not** used. Raising it would have
-produced a number bought by degrading four other sessions.
+🔴 **The first two attempts were not measurements, and the difference is invisible in the exit code.**
+Both timed out at 900s *"without reporting results"* and both exited **1** — and a clean floor run
+also exits **1**. Attempt 1 ran beside `test:main` and three typechecks; attempt 2 ran with nothing
+else on this checkout **and timed out anyway**, at 1,910 of 2,849 specs, because the machine was
+swapping (20,527 MB of 21,504 MB, load ~7, a VM at 115% CPU, five peer sessions).
+✅ **"Alone on this checkout" is not "alone on this machine."**
 
-🔴 **A run with no summary line is not a measurement, and a timeout exits 1 exactly like the clean
-floor** — so the exit code cannot tell them apart, and `test-results.json` is never written at all.
-Delete it first, then require the **summary line**, never `$?`.
+`packages/noodl-editor/test.js` exposes `NOODL_TEST_TIMEOUT_MINUTES` and tells you to raise it *"only
+after checking the machine is not swapping"*. It **was not used**: instead the run was repeated when
+the machine went idle — pageouts had moved only **3,564 in 30 minutes** and free memory had gone 33%
+→ 51%. Waiting produced a measurement at the **default** ceiling, which is comparable to every other
+session's; an override would have produced a number with an asterisk.
 
-⚠️ **What this leaves unverified for s32's changes, and how far it was bounded without the gate.**
-`test:ci` is the only gate that sees an **untyped** caller of a type-level change, and this session
-made `module` **required** on `installModule`/`installPrefab`. A peer traced the exposure rather than
-leaving it at "a grep is not a gate":
+✅ **How to read this gate:** prove completion from the **summary line**, never from `$?`; require a
+**fresh** `test-results.json` (it is not written at all on a timeout, so its absence is itself a
+failure signal); and compare failures **BY NAME**, not by count.
 
-- **8 references in total, all `.ts`/`.tsx`** — two declarations, four prose comments, two the real
-  call site, which passes `module` as the 4th argument and matches the new signature.
-- **Zero `.js`/`.jsx`/`.mjs`/`.cjs` references** — and that absence is not vacuous, because there are
-  **99 untyped `.js`/`.jsx` files** under `packages/noodl-editor/src` for it to have hit.
-- 🔴 **The alias path a name-grep cannot see was traced and is contained.** `ModuleCard.tsx:64-65`
-  does `.bind(instance)` into `const installFunc`, so a downstream caller would never mention the
-  method name. `installFunc` is a **local const invoked in the same function body** — never returned,
-  never passed as a prop, never stored. The indirection does not escape the `.tsx`.
-
-That is a bounded argument, not a bare grep. ⚠️ **It is still not `test:ci` passing** — it cannot see
-a `.js` file constructing the call in a way nobody imagined. Re-run `test:ci` alone on an idle
-machine before treating this row as complete, and compare failures **BY NAME**, not by count.
+⚠️ **This also closes the one exposure the earlier runs left open.** `test:ci` is the only gate that
+sees an untyped `.js` caller of a type-level change, and this session made `module` **required** on
+`installModule`/`installPrefab`. A peer had bounded it by tracing — 8 references, all `.ts`/`.tsx`;
+zero `.js`/`.jsx` hits against 99 untyped files; and the `.bind()` alias in `ModuleCard.tsx` shown
+not to escape its own function body. That argument was sound, and the gate has now confirmed it.
 
 ## 6. The map
 

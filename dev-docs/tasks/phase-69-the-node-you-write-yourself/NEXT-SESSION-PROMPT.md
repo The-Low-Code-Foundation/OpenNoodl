@@ -64,10 +64,19 @@ this repo has authored since the last publish.
 
 ## 4. If you are picking up a gate here
 
-- 🔴 **`test:ci` must run with NOTHING else on this checkout.** s32 ran it beside `test:main` and
-  three typechecks and it **timed out at 900s without reporting results** — which exits **1**, and a
-  clean floor run also exits 1. **A run with no summary line is not a measurement.** Delete
-  `packages/noodl-editor/tests/test-results.json` first; note it is not written at all on a timeout,
-  so its absence is itself a failure signal.
-- ⚠️ **Compare failures BY NAME, not by count.** The count moves as tests land.
-- 🔴 **Re-measure. Never quote a handover's numbers** — including this one's.
+✅ **The floor, measured 2026-08-19 on tree `853c1da3`: `test:ci` @ `NOODL_SPEC_SEED=39393` =
+`2849 specs, 10 failures`** — 4 × `AIX-006 style vocabulary`, 2 × `AI model registry`, 1 × `AIX-011`,
+3 × `SUB-011 expression parameters`. ⚠️ This supersedes `2843 / 6` (tree `d0891746`, ~260 commits
+back). 🔴 **Re-measure anyway. Never quote a handover's numbers — including this one's.**
+
+- 🔴 **`test:ci` must run with nothing else on the MACHINE, not merely on this checkout.** s32 lost
+  two runs to 900s timeouts, the second with this checkout idle, because the box was swapping. Check
+  `sysctl vm.swapusage` and `uptime` before blaming the suite.
+- 🔴 **A timeout exits 1 exactly like the clean floor.** Prove completion from the **summary line**,
+  never from `$?`. Delete `packages/noodl-editor/tests/test-results.json` first — it is not written
+  at all on a timeout, so its absence is itself a failure signal.
+- ⚠️ **Compare failures BY NAME, not by count.** The count moves as tests land; a new *name* is the
+  finding.
+- ⚠️ `NOODL_TEST_TIMEOUT_MINUTES` exists but `test.js` says to raise it only when the machine is not
+  swapping. **Waiting for an idle machine beat overriding**: it produced a number at the default
+  ceiling, comparable to every other session's.
