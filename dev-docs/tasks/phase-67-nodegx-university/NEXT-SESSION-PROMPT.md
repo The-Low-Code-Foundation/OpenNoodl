@@ -228,6 +228,11 @@ as binary.
 
 # ⚠️ FOR RICHARD — the asks, unchanged and now the whole of the close
 
+> 📋 **These are written out for him, in order, with the exact values and the two real decisions,
+> in [CLOSING-THE-PHASE-RICHARDS-LIST.md](CLOSING-THE-PHASE-RICHARDS-LIST.md).** 🔴 **Read it
+> before answering "what is left" — it is the one that splits *decisions* (his) from *work* (ours,
+> and E2 is a build rather than a button: there is no Dockerfile, no CI and no `ops/`).**
+
 0. 🟢 **Nothing below is waiting on code.** The sign-in loop was driven end to end on localhost in
    session 33; session 34 removed the last editor item the close named.
 1. 🔴 **E10 — a GitHub OAuth App. Cheapest, and the first domino.** Homepage
