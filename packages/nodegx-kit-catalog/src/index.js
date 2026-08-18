@@ -259,7 +259,7 @@ function toDynamicPorts(nodeType) {
  * - the browser is the only loader there is: `buildInjectionTags` emits a script
  *   tag only for a module whose `runtimes` contains `browser`, so a cloud-only
  *   kit is removed from the page;
- * - and nothing loads it server-side. `CloudRunner`'s constructor calls
+ * - and nothing loaded it server-side at the time. `CloudRunner`'s constructor called
  *   `registerNodes` and nothing else, and `load(exportData, projectSettings)`
  *   has no parameter a module could arrive through. Driven: the same cloud
  *   function answers `200` with a built-in `Counter` and **times out** with a
@@ -281,12 +281,15 @@ function toDynamicPorts(nodeType) {
  * `["cloud"]` is no longer a manifest that runs nowhere, and this function had to
  * learn about it exactly as the paragraph above said it would.
  *
- * 🔴 **`ssr` is still not a loader, and that is measured too, not assumed.** No
- * file in `noodl-viewer-react/static/ssr/` evaluates a kit: the bootstrap creates
- * `globalThis.__noodl_modules = []`, installs a working `defineModule`, and
- * nothing ever calls it, so the server render is handed an empty module list
- * every time (`tests/ssr-kit-modules.test.js`, with a known-firing control beside
- * the absence). A kit declaring only `ssr` therefore still runs nowhere.
+ * 🔴 **`ssr` is not a loader either, but for a different reason, and the difference
+ * matters.** SSR/SSG are not a runtime an author opts into — they are the *browser*
+ * app rendered on a server. `static/ssr/kit-modules.js` (CN-013) loads exactly the
+ * scripts `buildInjectionTags` put in the page, which is exactly the set whose
+ * `runtimes` contains `browser`. So a kit reaches a server render by declaring
+ * **`browser`**, and a kit declaring only `ssr` is in no page and therefore still
+ * runs nowhere. ⚠️ Adding `'ssr'` below would be wrong twice over: it names no
+ * loader, and it would make `availableIn` claim a runtime the injector filters the
+ * kit out of.
  *
  * ⚠️ The list below is **loaders, not runtimes**. `runtimes` accepts values this
  * repo has no loader for; naming them here would restate the manifest's intent as

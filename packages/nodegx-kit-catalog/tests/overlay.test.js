@@ -137,8 +137,11 @@ describe('catalogNodesFromNodeLibrary', () => {
    * ⚠️ **The title changed with the fact, and that is the point.** A row whose
    * name outlives its assertion is how a suite comes to assert the opposite of
    * what it says — the failure class this phase keeps finding. `ssr` is the row
-   * that still reads `[]`, and it is measured, not assumed: nothing in
-   * `static/ssr/` evaluates a kit (`noodl-viewer-react/tests/ssr-kit-modules.test.js`).
+   * that still reads `[]`, and it stays empty even though CN-013 later built an
+   * SSR kit loader: that loader runs the scripts the injector put in the page,
+   * i.e. the **browser** set, so `browser` is what reaches a server render and
+   * `ssr` names no loader at all
+   * (`noodl-viewer-react/tests/ssr-kit-modules.test.js`).
    */
   it('reports a cloud-only kit as running in the cloud, now that a loader exists', () => {
     const { nodes } = catalogNodesFromNodeLibrary(payload, {

@@ -12,11 +12,11 @@
 
 | Item | State |
 |---|---|
-| 1. Does a kit render under SSR? | ✅ **ESTABLISHED: no.** [notes/cn-013-ssr.md](notes/cn-013-ssr.md) |
-| 2. A browser-only kit on an SSG build | ✅ answered — **silent omission**, but see below: it is not browser-only kits, it is *all* of them |
+| 1. Does a kit render under SSR? | ✅ **ESTABLISHED (it did not) and ✅ FIXED.** [notes/cn-013-ssr.md](notes/cn-013-ssr.md) |
+| 2. A browser-only kit on an SSG build | ✅ answered — it was **silent omission of every kit**; now they load |
 | 3. Cloud runtime | ✅ **BUILT.** [notes/cn-013-cloud-drive.md](notes/cn-013-cloud-drive.md) |
-| 4. `kitNeedsSsrWarning` | 🔴 **DO NOT BUILD YET** — see below |
-| 5. Document `ssr` for kit authors | 📋 CN-007, Bundle B |
+| 4. `kitNeedsSsrWarning` | 📋 **now buildable, and its shape changed** — see below |
+| 5. Document `ssr` for kit authors | 📋 CN-007, Bundle B — ⚠️ **the thing to document is that there is NO `ssr` value** |
 
 **The cloud half (✅ D18).** `noodl-viewer-cloud/src/kitModules.ts` evaluates a cloud-enabled kit's
 entry script and registers its **logic** nodes; `@nodegx/module-inject` gained the `runtimes` cloud
@@ -31,16 +31,28 @@ via the `@cloud-runtime` alias, and the esbuild bundle over real HTTP where the 
 `sandbox.isolate.js`, and the editor's "cloud preview" spawns `nodegx-backend/dist/cli.js` — the
 bundle a deploy target runs. **One context, two build shapes.** D18's conclusion stands on premise 4.
 
-🔴 **AC1's SSR half is established and NOT fixed.** The globals are set and **nothing fills them** —
-no file in `static/ssr/` evaluates a kit, so `__noodl_modules` is `[]` at every server render while
-the client loads the kits from `public/index.html`. The server renders the page **without** the kit
-nodes and hydration renders a different tree. ⚠️ **Item 4 must not be built before this is fixed**:
-*every* kit is missing under SSR, not just browser-only ones, so a `kitNeedsSsrWarning` modelled on
-`libraryNeedsSsrWarning` would warn about the wrong kits and stay silent about the rest.
+✅ **The SSR half — established, then FIXED the same session** (`static/ssr/kit-modules.js`). It was
+the same defect in a second runtime: the globals were set and **nothing filled them**, so the server
+rendered every page with its kit nodes missing while the client hydrated with them present.
 
-⚠️ **AC2 and AC4 are open. AC3 is now met for `browser` and `cloud`** — `effectiveKitRuntimes` is the
-one place that knows which runtimes have loaders, and `kit-loads-nowhere` documents the ones that do
-not. **AC1 is met for cloud, half-met for SSR** (the seam is measured; a rendered SSR page is not).
+🔴 **The loader reads the injector's own `<script>` tags out of `index.html`, not `noodl_modules/`.**
+A second manifest scanner is the regression LIB-003 exists to end, and an SSR deploy is a standalone
+folder that cannot import the first one — so it consumes the browser's instructions instead and
+**cannot disagree with the browser about which kits load.** CN-003's name adoption is reused rather
+than copied. **11 tests, 4/4 mutations killed.**
+
+⚠️ **There is no `runtimes: ["ssr"]`, and item 5 should say so.** SSR is the *browser* app rendered
+on a server, so `browser` is what reaches it. A kit declaring only `ssr` is in no page and still runs
+nowhere — which is why `KIT_LOADERS` stays `['browser', 'cloud']`.
+
+✅ **Item 4 is unblocked and its shape has changed.** The objection was that *every* kit was missing
+under SSR, so a `libraryNeedsSsrWarning`-shaped predicate would name the wrong kits. The honest
+predicate is what that objection implied: **warn about a kit that throws or no-ops server-side**,
+and the loader's own failure list — loaded / threw / skipped-remote-dependency — is the input.
+
+⚠️ **AC3 is met. AC1 is met for both runtimes at the seam;** a **rendered SSR page** is the one
+thing still not observed, and it is now a *confirmation* drive rather than a discovery one. **AC2
+and AC4 are what is left**, and both are item 4.
 
 ## The question
 

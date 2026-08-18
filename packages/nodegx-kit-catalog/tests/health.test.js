@@ -256,11 +256,12 @@ describe('CN-012 — kit-loads-nowhere', () => {
    * grading fiction.
    *
    * `ssr` replaces it because it is the live counter-example: `runtimes` accepts the value and
-   * **no loader in this repo honours it**, measured this session — nothing in
-   * `noodl-viewer-react/static/ssr/` evaluates a kit
-   * (`noodl-viewer-react/tests/ssr-kit-modules.test.js`, absence asserted beside a known-firing
-   * control). So the diagnostic keeps a real population to fire on, and the row below asserts
-   * that a cloud kit is no longer accused.
+   * **no loader honours it**. ⚠️ That stayed true after CN-013 built an SSR kit loader, and the
+   * reason is worth keeping: SSR is the *browser* app rendered on a server, so the loader runs the
+   * scripts `buildInjectionTags` put in the page — the `browser` set. A kit declaring only `ssr` is
+   * in no page and so reaches no render (`noodl-viewer-react/tests/ssr-kit-modules.test.js`). The
+   * diagnostic therefore keeps a real population to fire on, and the row below asserts that a
+   * cloud kit is no longer accused.
    */
   function nowhereOverlay() {
     return {

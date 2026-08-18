@@ -221,10 +221,11 @@ function kitDiagnostics(overlay, options = {}) {
         `kit "${kit.kitModule}" declares runtimes [${(kit.declaredRuntimes || []).join(', ')}] in its ` +
         'manifest, and nothing loads it. There are exactly two loaders: the browser injector, which ' +
         'skips any module whose `runtimes` omits "browser"; and the cloud-function runtime, which ' +
-        'loads a module declaring "cloud" and registers its logic nodes only. Nothing loads a kit ' +
-        'under SSR or SSG. So this kit’s nodes will be missing everywhere and a graph using them will ' +
-        'report unknown types. Add "browser" and/or "cloud" to `runtimes`, or remove the field (it ' +
-        'defaults to browser).'
+        'loads a module declaring "cloud" and registers its logic nodes only. A server render ' +
+        '(SSR/SSG) runs the browser set, so "browser" is what reaches it — there is no "ssr" ' +
+        'runtime to declare. So this kit’s nodes will be missing everywhere and a graph using them ' +
+        'will report unknown types. Add "browser" and/or "cloud" to `runtimes`, or remove the field ' +
+        '(it defaults to browser).'
     });
   }
 
