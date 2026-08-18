@@ -1,8 +1,67 @@
 # UNI-014 — the mail room
 
 **Surface:** platform · **Tier 1 (it is the dependency, not a feature)** · **Effort:** M ·
-🔴 **NOT BUILT.** Unblocked to build; **one ask inside it** (a sending account) that does not block
-the build.
+✅ **BUILT AND PUSHED 2026-08-18 — `70d8acc` on `nodegx-community`. All five ACs met.**
+
+> ## ✅ WHAT SHIPPED, and the two places reality disagreed with this file
+>
+> **Migration `0007_uni014_notifications.sql`** — `notifications` (canonical, every account kind),
+> `notification_deliveries`, `notification_suppressions`, `notification_policy`, and
+> `notification_delivery_guard()`. **`src/lib/notifications.ts`** (recipe, `notify()`, suppression,
+> signed links, drainer), **`src/lib/mail/transport.ts`** (interface + `log`), and
+> **`/unsubscribe/[token]`**.
+>
+> **Gates, all re-measured on the shipped tree:** vitest **579 / 22 files** (floor was 548/21),
+> `tsc` clean, `next build` clean at **22 routes**, `check:css` clean over 775 declarations.
+> Census floors raised **with their reasons**: schema drift 32→36, free-text inventory 80→92.
+>
+> ### 🔴 1. `outbound_emails` could NOT become the notification channel
+>
+> This file's §"Scope" says it does. Measured against `0004`, it cannot:
+> `outbound_emails.thread_id` is `not null references relay_threads`, and
+> `outbound_emails_relay_guard` is an **unconditional `before insert … for each row`** trigger that
+> raises `[relay-no-thread]`, pins the envelope to the relay domain and pins `Reply-To` to a relay
+> alias. **That guard IS UNI-004 AC1's proof, precisely because it holds for every row in the
+> table.** Widening it means gating it on `thread_id is not null` — converting a total guarantee
+> into a branch a future bug can skip. ✅ **The unification the scope wanted is real and sits one
+> level up: ONE transport interface drained over BOTH queues.** The full argument is in the
+> migration header, where the next reader of the schema will find it.
+>
+> ### 🔴 2. The assumption about *which* events needed email was backwards
+>
+> Every notification-worthy event that already existed runs through a relay thread, and
+> `relayMessageIn` **already renders and queues an email for it**. Queuing a notification email too
+> would send two emails about one event — and the second is the worse one, because only the relay's
+> is double-blind. So relay-backed kinds use **`via: 'relay'`**: write the row, queue nothing.
+>
+> ✅ **The consequence is worth carrying:** the events with **no** email path today are exactly the
+> ones that reach **org-minor** accounts — assignments, grading, project requests, badges. Those are
+> what this task actually put mail behind, and what AC5's transport assertions exercise.
+>
+> ### ✅ Two gaps found while wiring, both fixed
+>
+> * **`declineBooking` and `cancelBooking` told nobody anything.** Bare updates, no relay message,
+>   no notification. They are now the first coaching transitions with a real notification email.
+>   ⚠️ `cancelBooking` takes no actor, so it notifies **both** parties — correct whichever side
+>   cancelled, where notifying one may notify nobody.
+> * **The runner's grading is a SECOND `submission_gradings` insert.** `gradeManually` is the path a
+>   reader thinks of; the ordinary school assignment is `grading: 'runner'` and never passes through
+>   it. Two inserts, two notify sites — there is no third.
+>
+> ### How each criterion was actually proved
+>
+> | AC | Proof | Its control |
+> |---|---|---|
+> | 1 | Verdict census over **every export** of the five event modules; a `notifies` verdict is checked **against the source** (must reach `notify(`, following `through` for the two real delegations); recipe ↔ enum censused **both ways** | org-minor row-and-no-delivery asserted **beside a known-firing adult** on the same call |
+> | 2 | Crash simulated at the only point that matters — claimed, handed to the transport, no `markSent` | 🔴 **Remove the claim (`states: ['queued','claimed']`) and the same spec double-sends.** It does |
+> | 3 | HMAC'd link; **no session read anywhere in the route**. Driven live over HTTP: 200 GET, 200 one-click POST, 404 tampered, 404 garbage, both rows verified in the database | a *different* kind on the *same* account still delivers |
+> | 4 | Erasure swept over **`information_schema`**, not a hand-list | the same sweep **finds** the address before the erasure |
+> | 5 | **One renderer** shared by transport and spec, asserted field by field | a **lossy** transport must FAIL the same three needles the log transport passes |
+>
+> ⚠️ **Unchanged and still stated:** nothing has ever been posted to a real MX. `log` is the default
+> and the only transport. **`NOTIFICATION_LINK_SECRET` has a development default** — a deployment
+> that does not set it has forgeable unsubscribe links (bounded: the worst outcome is unsubscribing
+> somebody else). **Deployment is the task that owns fixing it.**
 
 > **D19** ([RULINGS.md](RULINGS.md)): the forum is **built, not bought**. That ruling makes this
 > task the critical path — see its §"The dependency that decides it". Nothing else in the D19
