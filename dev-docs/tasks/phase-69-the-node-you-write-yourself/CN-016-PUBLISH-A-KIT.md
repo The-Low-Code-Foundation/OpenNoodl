@@ -139,3 +139,104 @@ than the phase intends.
 - ✅ **CN-017 gives this task its trust gate for free, if the install goes through `apply()`.** An
   install route that writes to `noodl_modules/` directly is gated by nothing, and `ImportPlan.origin`
   is required, so a new route will not compile until it states what it is. See CN-017 §1.
+
+---
+
+# 📐 s31 progress — the reference kit exists, and the artefact path works again
+
+**2026-08-18.** Item 1 is built and AC1's harness is repaired and gated. Items 2–4 are scoped with
+measurements rather than assumptions. What follows is measured; where it corrects an inherited
+premise, it says so.
+
+## ✅ Built
+
+**`library/modules/example-node-kit/`** — scaffold output (✅ D5's "new, deliberately minimal"), one
+React node (`example-node-kit.StatTile`), every visual decision a port with design-token defaults
+(✅ D8, by construction — it is the scaffold's own template), the author's `docs` sentence per node,
+the kit types, a README and an MIT `LICENSE`.
+
+| gate | result |
+|---|---|
+| `verifyKitSource` on the kit | ✅ `defines-nodes` — 1 node, named |
+| `library:check` | ✅ **59/59 clean**, and the new entry contributes **zero** warnings (total stays 183) |
+| `library:build` | ✅ `example-node-kit-1.0.0.zip` |
+| `library:verify-dist` | ✅ **29 prefabs + 30 modules, 0 problems — installable-shaped** |
+
+⚠️ **`library:verify-dist` disclaims its own limit and so must this file:** *"This is NOT LIB-001
+Criterion 5 — that needs a live editor install."* AC1's artefact half is proven; the live-editor half
+is not, and no editor has been launched in four sessions.
+
+## 🔴 AC1's harness was broken, and had been since ALPHA-006 §5
+
+`library:verify-dist` — the script that serves `library-dist/` over HTTP and walks the editor's real
+install path — **failed on every entry**, reporting `0 entries` for both tabs:
+
+```
+INDEX  prefabs: fetchModules rejected: Cannot convert object to primitive value
+```
+
+**Cause:** ALPHA-006 §5 split `getContentEndpoint` out of `getDocsEndpoint` (`307967a5`) and
+`fetchModules` moved to the new one. `verify-dist`'s esbuild stub list still named only the old one,
+so the real `getContentEndpoint` fell through to the catch-all noop `Proxy`, and
+`` `${endpoint}/library/…` `` threw on the template literal.
+
+🔴 **Confirmed pre-existing, not caused by CN-017**: re-run against `modulelibrarymodel.ts` at
+`ce96338c~1` and it fails identically.
+
+✅ **Fixed** (one line in the stub list, and a header explaining why both names are stubbed), and
+✅ **added to CI** in `.github/workflows/pr.yml` alongside `library:check`.
+
+**This is the argument for D21's divergence gate, demonstrated on the gate's own harness.** A script
+outside CI rotted silently for however long, and the first thing the new CI step does is keep it
+honest about itself.
+
+## 🔴 The inherited "the origin serves 2024 content" premise, re-measured
+
+The claim CN-016 and README §2 inherited was measured **s28**, three sessions ago and **before the
+origin was repointed to `nodegx-content` on 2026-08-13** (`getContentEndpoint.ts`, ALPHA-006 B5).
+Re-measured today against what `getContentEndpoint()` actually returns:
+
+| | origin | `library/` | shared | in `library/`, unpublished |
+|---|---|---|---|---|
+| **prefabs** | 29 | 29 | **29** | **none** |
+| **modules** | 26 | 30 | **26** | **4** — Confetti, Lucide Icons, QR Code, Example Node Kit |
+
+Both indexes are **HTTP 200 and well-formed**. So the sharper statement is:
+
+- 🔴 **"Nothing publishes `library/`" still stands** — the published zips carry *legacy pre-LIB-001
+  filenames* (`chartjs-module-1-4`, `gsheets-1`, `modal-0`, `pagesandrows-0`) that no `library/`
+  entry would produce. The content is the old fleet under old names.
+- ✅ **But the origin is neither dead nor wholly stale.** Label coverage matches for every prefab and
+  for 26 of 30 modules; the divergence is exactly the four entries authored in this repo since the
+  last publish.
+- ⚠️ **This was compared on `label` only.** Slug and filename comparison is meaningless across the
+  naming schemes, and **content equality is unproven** — a zip could carry anything under a matching
+  label. Any gate that claims more than label coverage must hash the payloads.
+
+**What that means for the gate:** it can assert *coverage* today (every `library/` entry has a
+published counterpart, by label) and cannot assert *content* until a publish from `library/` has
+happened once. Saying which of the two it checks is the difference between a real gate and a green
+tick.
+
+## 🔴 Two divergences between the schema and its consumers
+
+1. **`icon` is optional in `scripts/library/schema.json` and mandatory in practice.**
+   `verify-dist` refuses an entry without one: *"missing/empty `icon` — ModuleCard destructures it
+   unguarded."* An entry that passes `library:check` therefore breaks the card. **Either the schema
+   should require it or the card should guard it; today neither is true.**
+2. **22 of 29 shipped modules are already kit-shaped** (see the audit section above), so item 2's
+   `type` decision is a migration question, not a greenfield one.
+
+## What is left
+
+| item | state |
+|---|---|
+| 1. The minimal reference kit | ✅ **done** |
+| AC1 — installs from a built artefact | ✅ **done**; ⚠️ live-editor half not driven |
+| AC1 — divergence gate | ◐ **half done** — `verify-dist` is repaired and in CI; the origin-vs-`library/` comparison itself is designed above but not written |
+| 2. Kit-aware `library.json` | ◐ measured, not decided — 22 entries would need relabelling |
+| 3. Compat gating that means something | ⬜ not started. ⚠️ **Ask what being wrong costs before making it block** — CN-017 §9b is the cautionary case |
+| 4. Versioning and update | ⬜ not started |
+| AC2 — install twice, don't disturb | ⬜ not started |
+| AC5 — build the caller (install → place → deploy → load) | ⬜ not started |
+

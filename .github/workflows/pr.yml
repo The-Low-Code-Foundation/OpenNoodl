@@ -215,6 +215,21 @@ jobs:
       # the SUB-006 semantic validator reports zero errors. Warnings are
       # reported but not gated — seeded content is LIB-002/003's to repair.
       - run: npm run library:check
+      # ✅ CN-016 / D21. `library:check` grades the SOURCES; this grades the
+      # ARTEFACT — it builds library-dist/ and walks the editor's own install
+      # path against it (fetchModules' URL construction, ModuleCard's field
+      # destructuring and URL rule, isModuleCompatible, the JSZip unpack, the
+      # SUB-006 project load).
+      #
+      # 🔴 It is here because it was NOT here, and it rotted in silence.
+      # ALPHA-006 §5 split `getContentEndpoint` out of `getDocsEndpoint`
+      # (307967a5) and `fetchModules` moved to the new one; verify-dist's stub
+      # list did not follow, so every entry failed with "Cannot convert object
+      # to primitive value" and nothing reported it. That is exactly the drift
+      # between the origin and `library/` that D21 requires a gate for, and the
+      # gate's first job is to keep this script honest about itself.
+      - run: npm run library:build
+      - run: npm run library:verify-dist
       # POL-006: the icon set every new project starts with is generated from the
       # library module above, so it goes stale the moment that one is updated —
       # and the only symptom would be a picker quietly showing the old glyph list.

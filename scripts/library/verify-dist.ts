@@ -101,8 +101,16 @@ const ENDPOINT_ENV = 'NODEGX_LIBRARY_VERIFY_ENDPOINT';
  *
  *   - `@noodl/platform` gets a real `getVersion`, so `isModuleCompatible`
  *     answers for the editor version this repo would ship;
- *   - `@noodl-utils/getDocsEndpoint` points at this script's server, so
- *     `fetchModules` builds its URL from the local dist;
+ *   - `@noodl-utils/getContentEndpoint` **and** `@noodl-utils/getDocsEndpoint`
+ *     point at this script's server, so `fetchModules` builds its URL from the
+ *     local dist. 🔴 **Both, and that was a repair.** ALPHA-006 §5 split
+ *     `getContentEndpoint` out of `getDocsEndpoint` (`307967a5`) and
+ *     `fetchModules` moved to the new one; this stub list did not follow, so
+ *     the real function fell through to the catch-all Proxy and
+ *     `` `${endpoint}/library/…` `` threw *"Cannot convert object to primitive
+ *     value"* on every entry. **The whole script had been failing since that
+ *     split and nothing said so, because it is not in CI** — which is the
+ *     argument for ✅ D21's divergence gate, demonstrated on this script itself;
  *   - `@noodl-utils/addHashToUrl` is the real one-liner, so the cache-buster
  *     is the editor's and not an approximation of it.
  *
@@ -155,6 +163,10 @@ function loadEditorModel(): {
             if (args.kind === 'entry-point') return null;
             if (args.path === '@noodl/platform') return { path: args.path, namespace: 'stub-platform' };
             if (args.path === '@noodl-utils/getDocsEndpoint') return { path: args.path, namespace: 'stub-endpoint' };
+            // ALPHA-006 §5 split this out of getDocsEndpoint and fetchModules
+            // moved to it. Stubbing only the old name left the real one behind
+            // the catch-all Proxy — see this function's header.
+            if (args.path === '@noodl-utils/getContentEndpoint') return { path: args.path, namespace: 'stub-endpoint' };
             if (args.path === '@noodl-utils/addHashToUrl') return { path: args.path, namespace: 'stub-hash' };
             return { path: args.path, namespace: 'stub-any' };
           });

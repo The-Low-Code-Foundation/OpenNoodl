@@ -1,0 +1,12 @@
+{
+  "label": "Example Node Kit",
+  "description": "A custom node you can read in one sitting. One React node whose every visual decision is a port — colour, spacing and size default to design tokens — plus the kit types, so your editor autocompletes the definition. Install it to see how a node kit is put together, then edit index.js and make it yours.",
+  "type": "module",
+  "tags": [
+    "Custom nodes"
+  ],
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}
