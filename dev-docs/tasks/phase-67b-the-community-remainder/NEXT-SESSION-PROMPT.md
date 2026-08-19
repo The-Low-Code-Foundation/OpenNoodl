@@ -1,118 +1,114 @@
 # Phase 67b — next session
 
-**Written 2026-08-19 (session 40), replacing session 39's.** Platform repo:
+**Written 2026-08-19 (session 41), replacing session 40's.** Platform repo:
 `~/vscode_projects/nodegx-community`. Task ledger:
 `dev-docs/tasks/phase-67b-the-community-remainder/README.md` — the phase has **no per-task files**;
 its work items are the `UNI-0xx` files in `phase-67-nodegx-university/`.
 
-⚠️ **A phase-72 session (NAT-014, the outbox drainer) worked in `nodegx-community` all afternoon
-and CLOSED at the end of it** — nothing of theirs is running. It wrote `ops/install-mail.sh`,
-`scripts/drain-outbox.ts`, `tests/nat014-*` and edits to `ops/deploy.sh`, `ops/provision.sh` and
-`package.json`, **all committed**. Treat those as theirs and announce before editing, but nothing is
-held: they explicitly handed back the one line this phase owes in `deploy.sh` (§4).
+⚠️ **A phase-72 session (NAT-006, the community API) was live in `nodegx-community` at 21:00 and
+had NOT committed.** Its work in the tree: `src/app/api/v1/community/{people,rfps,coaching,
+tutorials,replays,university}/`, `src/lib/{apiread,apishape,apisurfaces,ratelimit}.ts`,
+`tests/nat006-api-contract.test.ts`, and edits to `src/lib/{apiviewer,articles,lists}.ts` and
+`tests/uni011-mirror-api.test.ts`. **Check whether it landed before touching any of those.**
 ⚠️ **Check for a live peer yourself — that is a per-session fact, not this file's to assert.**
 
 ---
 
-## 1. 🔴 THE ONE THING RICHARD WAS OWED IS DONE — the live site is current
+## 1. ✅ E7 IS DONE, AND THE LINE IT WAS WAITING ON WAS A LIVE BUG
 
-`0015` is **deployed**. He said yes this session; it went out and was verified by its readings, not
-its exit code. **Nothing in this phase is blocked on Richard any more.**
-
-| | |
-|---|---|
-| migration | `already applied: 14` → `applied: 0015_uni017_queue_and_signal.sql` |
-| stamp | ✅ `0cbd716fb011` on `main`, clean, read back **off the host** |
-| neighbours | all three `200 → 200`, unmoved |
-| backups | ✅ ok, 433,391 bytes, 49 tables off-site · restore check ✅ **49 tables restored from the object** |
-| consequence | `POST …/same-here` → **401** live, while a nonexistent sibling → **404** |
-
-## 1b. 🔴 THE BOX IS BEHIND `main`, AND THE NEXT DEPLOY IS NOT A NO-OP
-
-nexus-1 is at **`0cbd716`**. Five commits have landed on `main` since, and **nobody has deployed
-them** — the phase-72 session closed without deploying, deliberately.
-
-🔴 **`ops/deploy.sh:324` now invokes `ops/install-mail.sh`**, so the next deploy of this repo — for
-any reason at all, including a one-line E7 change from this phase — **installs phase 72's mail drain
-timer**. ⚠️ **This is NAT-014's AC2/AC7 and it is theirs to verify**; if you deploy first, tell them,
-and read what `install-mail.sh` printed rather than assuming.
-
-✅ **AMENDED, same evening — the peer closed the sharp edge in `c245679`, and the amendment changes
-what you should DO.** The hazard was worse than "mail starts working": **the outbox was never
-empty.** `notify()` has written rows since UNI-014 and nothing has ever drained them, so a first
-drain would have released **an unknown pile of weeks-old notifications at once**, through the Brevo
-account `nodegx.io`'s waitlist shares. Now a backlog older than `MAIL_DRAIN_MAX_AGE_DAYS` (**7**)
-**refuses the whole drain — no row touched, nothing lost**, and `deploy.sh` prints the count and the
-oldest age in its `==> outbox drain` block. Release is `npm run mail:drain -- --send-stale`, typed
-by a human; the timer's `ExecStart` passes neither that nor `--retry-failed` (verified — it is the
-bare script) and a spec asserts the unit contains neither.
-
-🔴 **SO EXPECT YOUR FIRST DEPLOY TO PRINT A REFUSAL, AND DO NOT ROUTE AROUND IT.** It is the guard
-working, not a broken deploy. Releasing weeks-old mail is a decision with a person's name on it —
-if it needs taking, it is Richard's, not a flag you add to get a clean log.
-
-What else rides along: E7's two libraries (inert — nothing calls them yet) and a
-DeprecationWarning fix. Nothing schema-touching; there is no unapplied migration.
-
-✅ **Deploy from a pristine clone of a named commit**, as `0015` went out — `git clone` the repo to
-`/tmp`, `git checkout main`, run `ops/deploy.sh` from there. The refusal is satisfied honestly, only
-committed code ships, and the stamp is true. ⚠️ Check out the **branch**, not the bare sha, or the
-stamp records `branch: HEAD`.
-
-## 2. What was built
+`nodegx-community@e7bae87`. Session 40 left the two libraries with nothing calling them; this
+session built the three surfaces, the intake check and the `deploy.sh` line.
 
 | | |
 |---|---|
-| **A deploy can be named** | `ops/deploy.sh` refuses a dirty tree (`--allow-dirty` / `NODEGX_ALLOW_DIRTY=1`), stamps `/etc/nodegx-community/deployed.json`, prints what is live **before** replacing it and reads the new stamp **back off the host**. `tests/ops-deploy-provenance.test.ts` + `tests/helpers/deploy-stubs/` **run the script end to end** — `ops/` was outside every gate before this |
-| **E7 — half** | `src/lib/objectstore.ts` (SigV4 by hand, **driven against the real bucket**) and `src/lib/captureupload.ts` (what may be stored, and whose it is). See README *"Also landing here"* |
+| `POST /api/v1/bench/captures` | raw PNG in, `{key, grant}` out |
+| intake | `acceptCaptureImages` in **both** bench POST routes; the grant is **stripped** before storage |
+| `GET /api/v1/bench/attachments/:id/image` | serves through the app, never a public object URL |
+| `Attachment.tsx` | draws the image; a capture without one still says *"image not yet hosted"* |
+| `ops/deploy.sh` | the env line **plus** a `==> capture hosting (E7)` readout |
+| gates | **18** route specs + **5** render specs, all green, incl. the **real-bucket round trip** |
 
-## 3. 🔴 Four things that cost this session time, in the order they will cost the next one
+🔴 **The `deploy.sh` line was a shipped bug that every readout vouched for.** `install-backup.sh`
+wrote `HETZNER_S3_*` into `backup.env`; the daily `pg_dump` read them, worked, and printed a
+healthy off-site backup on **every deploy** — while the **app** reads a different file, so
+`objectStoreConfig()` returned `null` on the live site. A working backup vouching for a broken
+feature. ✅ The test asserts the env file **on the fake host**, not the secrets file the harness
+wrote: the inputs were never the problem, so an input-side assertion would have passed for the
+whole time the bug was live.
 
-1. **A stub more forgiving than the real binary hides the bug it was built to catch.** The deploy
-   harness passed **13/13** and the first real deploy **died before pushing a byte**: the `ssh` stub
-   answered `cat <missing file>` with *"print nothing, exit 0"*, which is not what `cat` does, so
-   `cat x 2>/dev/null` and `… || true` were indistinguishable inside it. Under `pipefail` that is
-   the difference between a deploy that works and one that dies. ✅ **The stubs now execute the
-   rewritten command instead of answering it.** ⚠️ **The same shape had made the `🔴 NO BACKUP HAS
-   EVER RUN` branch unreachable by the path that prints it.**
-2. 🔴 **`git add <paths>` and `git commit -- <paths>` guard OPPOSITE hazards and neither guards
-   both.** The second was used *believing it was the safe form* and swept ~74 lines of the peer's
-   unstaged work into a commit titled as a one-line fix. **With a peer live in the same file, use
-   the index technique** (`git show HEAD:<path>` → your hunks → `hash-object -w` → `update-index`).
-3. ⚠️ **`NodeJS.ProcessEnv` is augmented here to REQUIRE `NODE_ENV`**, so a function taking it
-   cannot be called with a literal bag of the values it reads. A typecheck error shipped in one
-   commit because **`tsc` was run before the tests were written and not again before committing** —
-   vitest uses esbuild and does not typecheck.
-4. ⚠️ **`git status` clean at pre-flight is not clean at deploy.** The refusal's first catch was the
-   peer saving files into the **shared checkout** between the two. ✅ **Deploy from a pristine
-   `git clone` of a named commit** — it satisfies the refusal honestly where `--allow-dirty`
-   silences it, and it is how `0015` went out.
+## 1b. 🔴 THE BOX IS STILL BEHIND `main`, AND THE NEXT DEPLOY IS STILL NOT A NO-OP
+
+nexus-1 is at **`0cbd716`**. Everything since — NAT-014's mail drain, E7's libraries, and now E7's
+surfaces — is undeployed. **Session 40's warning stands unchanged and is not repeated here in
+full**: read §1b of the git history's previous version of this file, or `ops/deploy.sh:324`.
+
+The short of it: the next deploy **installs phase 72's mail timer**, and the first drain will
+**refuse** because the outbox backlog is older than `MAIL_DRAIN_MAX_AGE_DAYS` (7). 🔴 **That
+refusal is the guard working — do not route around it.** Releasing weeks-old mail is Richard's
+decision, not a flag you add to get a clean log.
+
+✅ **New, and it changes what a deploy is worth:** E7 now needs one. `POST .../captures` answers
+**503 on the live site** until the env line ships, and every capture still renders *"image not yet
+hosted"*. That is correct degrading behaviour, not breakage — but it means E7 is **built and
+undeployed**, which is the distinction this phase keeps insisting on.
+
+✅ **Deploy from a pristine clone of a named commit** — `git clone` to `/tmp`, `git checkout main`
+(the **branch**, not the bare sha, or the stamp records `branch: HEAD`), run `ops/deploy.sh` there.
+
+## 2. 🔴 Three things that cost this session time
+
+1. 🔴 **A CREDENTIAL WITH NO ISSUER AND NO VERIFIER READS AS A WORKING ONE.** `grantFor` and
+   `verifyGrant` were written, thoroughly tested and green in session 40 — and nothing minted a
+   grant, nothing checked one. Every assertion was the two functions agreeing with each other.
+   **This is *build the caller* for the fifteenth time in this phase**, and the instrument that hid
+   it was a suite calling the functions directly. ✅ **The attack is now played through the route**:
+   account B puts account A's key and A's grant into its own post. Verified red-then-green.
+2. ⚠️ **A CHECK MUST AGREE WITH THE FUNCTION IT CHECKS.** The first `deploy.sh` readout counted
+   **five** `HETZNER_S3_*` keys. `objectStoreConfig()` requires **four** — the region is derived
+   from the endpoint host when unset — so a correctly configured deployment would have been
+   reported broken.
+3. ⚠️ **`update bench_threads set hidden_at = now()` IS REFUSED BY THE SCHEMA.**
+   `bench_thread_hidden_has_reason` requires hiding and its reason together. ✅ Which forced the
+   better test: the hidden-thread case now goes through **D8's real moderation path**
+   (`reportContent` → `upholdReport`), so it proves the mechanism and not just the join.
+
+✅ **AND THE TRICK WORTH REUSING.** A peer held the shared Postgres for most of the session.
+`DATABASE_URL` overrides `src/db/index.ts`'s default, so this session created
+**`nodegx_community_e7`** on the same 55432 container and ran every DB spec there —
+`freshDb()`'s `drop schema public cascade` then touches only that database. **Neither session
+waited.** The database still exists; drop it or reuse it.
+
+```
+DATABASE_URL='postgres://nodegx:nodegx@localhost:55432/nodegx_community_e7' npx vitest run <file>
+```
+
+## 3. Gate readings — 2026-08-19, `nodegx-community@e7bae87`
+
+| Gate | Reading |
+|---|---|
+| `npx tsc --noEmit` | ✅ **0**, measured without a pipe |
+| `tests/e7-capture-routes.test.ts` | ✅ **18/18**, incl. real bucket `nodegx`@`nbg1` (did **not** skip — checked) |
+| `tests/e7-capture-render.test.tsx` | ✅ **5/5** |
+| `tests/ops-deploy-provenance.test.ts` | ✅ **16/16**; E7's three verified **red** with the heredoc lines removed |
+| `uni011` + `uni015` + `uni016` + `d15` | ✅ **135/135** (+ uni011 alone **21/21**, with the peer's routes on disk) |
+| `npm run lint` | 🔴 **NOT A GATE** — no eslint configured; `next lint` drops into an interactive prompt |
+
+⚠️ **`npm test` (the whole suite) was NOT run** — the peer held the shared DB, and the isolated
+database was only migrated for the files above. Not a claim about the rest of the suite.
 
 ## 4. What to do next
 
 ### An agent alone — nothing needs Richard
 
-1. **Finish E7**, and it is one coherent DB-touching tranche, so do it in one go:
-   - the **upload endpoint** (binary PNG in, `{ key, grant }` out — the 32 KB payload cap is why it
-     cannot ride inside the attachment JSON),
-   - the **image-serving route**, which **must apply the same visibility rules as the attachment it
-     belongs to** — a capture is a screenshot of somebody's project, and a public object URL would
-     bypass every rule this platform has,
-   - `Attachment.tsx`, which still says *"image not yet hosted"*,
-   - and 🔴 **the one line in `deploy.sh`** putting `HETZNER_S3_*` into the **app's** env file.
-     `install-backup.sh` writes them to `backup.env`, which the *backup* reads and the *app* does
-     not, so `objectStoreConfig()` returns `null` on the live site today. ✅ **This one is YOURS** —
-     the NAT-014 session closed having deliberately not touched the env heredoc, and recorded it as
-     this phase's so nobody absorbs it by accident.
-2. **UNI-006 + UNI-007's intake as ONE tranche.** ⚠️ **Check NAT-011 first — it was still unstarted
-   at 18:00 today**, and its own dependency NAT-006 (the platform API) is unstarted too. The
-   handover that said *"build on NAT-011's editor-side client"* describes a client **that does not
-   exist yet**; building one here would be the second-client defect UNI-011 already paid for.
-3. **UNI-008** (L+, and it carries a standing legal and ops burden — read D9 before starting),
-   **UNI-010's remainder**, **UNI-012** (needs a **packaged build** to verify anything).
+1. **UNI-006 + UNI-007's intake as ONE tranche.** ⚠️ **NAT-006 was being built this evening** —
+   check whether it landed. Its `src/lib/apisurfaces.ts` and `docs/API.md` are very likely the
+   thing to build on, and NAT-011's editor-side client is the other half. 🔴 **Do not write a
+   second community client in the editor** — that is the defect UNI-011 already paid for.
+2. **UNI-008** (L+, carries a standing legal and ops burden — read D9 before starting).
+3. **UNI-010's remainder**; **UNI-012** (needs a **packaged build** to verify anything).
+4. ⚠️ **A deploy, whenever one is wanted** — see §1b. E7 is inert on the live site until then.
 
 ### Not this phase's
 
-Gap A (the mail drainer) is **P72 NAT-014**, ✅ **built and committed 2026-08-19**
-(`b41a94a` + `c245679`) though **not deployed** — see §1b. UNI-018 is **NAT-015**;
-UNI-011's rail icon is **NAT-012 AC7**. Settled 2026-08-19, do not re-litigate.
+Gap A (the mail drainer) is **P72 NAT-014**, built and committed, **not deployed**. UNI-018 is
+**NAT-015**; UNI-011's rail icon is **NAT-012 AC7**. Settled 2026-08-19, do not re-litigate.
