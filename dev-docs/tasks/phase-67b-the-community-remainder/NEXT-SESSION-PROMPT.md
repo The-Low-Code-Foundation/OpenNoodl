@@ -5,10 +5,12 @@
 `dev-docs/tasks/phase-67b-the-community-remainder/README.md` — the phase has **no per-task files**;
 its work items are the `UNI-0xx` files in `phase-67-nodegx-university/`.
 
-⚠️ **A phase-72 session ran in parallel all afternoon and is IN `nodegx-community` now**, not just
-in the editor checkout — NAT-014, the outbox drainer. It owns `ops/deploy.sh`, `ops/install-mail.sh`,
-`ops/provision.sh`, `scripts/drain-outbox.ts`, `package.json` and `tests/nat014-*`. **Announce
-before touching any of those.**
+⚠️ **A phase-72 session (NAT-014, the outbox drainer) worked in `nodegx-community` all afternoon
+and CLOSED at the end of it** — nothing of theirs is running. It wrote `ops/install-mail.sh`,
+`scripts/drain-outbox.ts`, `tests/nat014-*` and edits to `ops/deploy.sh`, `ops/provision.sh` and
+`package.json`, **all committed**. Treat those as theirs and announce before editing, but nothing is
+held: they explicitly handed back the one line this phase owes in `deploy.sh` (§4).
+⚠️ **Check for a live peer yourself — that is a per-session fact, not this file's to assert.**
 
 ---
 
@@ -99,8 +101,9 @@ stamp records `branch: HEAD`.
    - `Attachment.tsx`, which still says *"image not yet hosted"*,
    - and 🔴 **the one line in `deploy.sh`** putting `HETZNER_S3_*` into the **app's** env file.
      `install-backup.sh` writes them to `backup.env`, which the *backup* reads and the *app* does
-     not, so `objectStoreConfig()` returns `null` on the live site today. **Coordinate — `deploy.sh`
-     is the NAT-014 session's.**
+     not, so `objectStoreConfig()` returns `null` on the live site today. ✅ **This one is YOURS** —
+     the NAT-014 session closed having deliberately not touched the env heredoc, and recorded it as
+     this phase's so nobody absorbs it by accident.
 2. **UNI-006 + UNI-007's intake as ONE tranche.** ⚠️ **Check NAT-011 first — it was still unstarted
    at 18:00 today**, and its own dependency NAT-006 (the platform API) is unstarted too. The
    handover that said *"build on NAT-011's editor-side client"* describes a client **that does not
@@ -110,5 +113,6 @@ stamp records `branch: HEAD`.
 
 ### Not this phase's
 
-Gap A (the mail drainer) is **P72 NAT-014** and is being built now. UNI-018 is **NAT-015**;
+Gap A (the mail drainer) is **P72 NAT-014**, ✅ **built and committed 2026-08-19**
+(`b41a94a` + `c245679`) though **not deployed** — see §1b. UNI-018 is **NAT-015**;
 UNI-011's rail icon is **NAT-012 AC7**. Settled 2026-08-19, do not re-litigate.
