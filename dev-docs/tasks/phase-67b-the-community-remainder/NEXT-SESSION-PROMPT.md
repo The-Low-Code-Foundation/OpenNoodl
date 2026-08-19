@@ -1,114 +1,143 @@
 # Phase 67b — next session
 
-**Written 2026-08-19 (session 42), replacing session 41's.** Platform repo:
+**Written 2026-08-19 (session 43), replacing session 42's.** Platform repo:
 `~/vscode_projects/nodegx-community`. Task ledger:
 `dev-docs/tasks/phase-67b-the-community-remainder/README.md` — the phase has **no per-task
 files**; its work items are the `UNI-0xx` files in `phase-67-nodegx-university/`.
 
-⚠️ **A phase-72 session was live in `OpenNoodl` at 21:50 and had NOT committed** — NAT-005 work:
-`packages/noodl-core-ui/{.storybook/*,src/preview/launcher/Launcher/views/Community.tsx}`,
-`packages/noodl-editor/src/editor/src/views/panels/CommunityPanel/CommunityPanel.tsx`,
-`tests-unit/nat-001/palette-contrast.spec.ts`, and the untracked `nat-005/` test folders.
-**Check whether it landed before touching any of those.** ⚠️ **Check for a live peer yourself —
-that is a per-session fact, not this file's to assert.**
+⚠️ **Check for a live peer yourself — that is a per-session fact, not this file's to assert.**
+At 23:0x there were three OpenNoodl sessions: one on **phase 73 TUT-001** (BackendServicesPanel,
+driving an editor) and one on **phase 72 NAT-007** (the thread view — five untracked files under
+`noodl-core-ui/src/components/community/` and `editor/src/hooks/useCommunityThread.ts`). Neither
+had committed. **Session 43 touched no OpenNoodl source at all** — only the two docs commits below.
 
 ---
 
-## 1. ✅ UNI-006 IS DONE. THE BRIDGE HAS A CALLER, END TO END
+## 1. ✅ UNI-007 AC1 IS MET. THE INTAKE, THE PATH, AND A CACHE THAT CAN PROVE ITSELF
 
-`nodegx-community@08d8e1c`, `OpenNoodl@7a21e5e0` + `79117c45`. UNI-006 had been *"built
-platform-side"* since 08-16 with its own limit written down: *"there is no bridge and no session
-issuer"*, *"every write is reachable only from a test."* Both are now false.
+`nodegx-community@ce3b4ea`, `OpenNoodl@0ee76722`. This was session 42's named next job and it is
+done. Full write-up is in the **AC1 block at the top of
+[UNI-007](../phase-67-nodegx-university/UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md)**.
 
 | | |
 |---|---|
-| `GET /me/assignments/:id` | the direct-URL twin the audience rule forgets |
-| `GET /me/assignments/:id/lesson` | the bundle to install — **or why there is not one** |
-| `POST /me/assignments/:id/start` | idempotent; reopening does not withdraw submitted work |
-| `POST /me/assignments/:id/submit` | the evidence bundle, narrowed |
-| `GET /me/gradings` + `POST /me/gradings/:id/seen` | AC2's notice, for members with no email address |
-| the caller | `checkMyWork` hands in after grading — `models/lessoncheck.ts` |
-| gates | **20** platform specs + **26** editor specs, controls included |
+| The intake | 3 closed-answer questions, `learner_intakes` (0016) — retaking replaces |
+| Tier-0 branching | `src/lib/pathing.ts` — visual-logic learner never meets the function-node lesson; `data` / `custom-nodes` tracks join when asked for |
+| Tier-1 projection | `src/lib/projection/projector.ts` + `concept_projections` (0016) |
+| The real projector | `src/lib/projection/anthropic.ts` — **Sonnet**, per UNI-007's own scope line |
+| Routes | `GET/POST /v1/me/intake`, `GET /v1/me/path`, `POST /v1/me/path/project` — `docs/API.md` **§5c** |
+| Gates | **29** new specs; whole platform suite **48 files / 1164 tests / 0 failures** |
 
-🔴 **The one thing to read before touching it:** the grade is recorded **before** the network is
-touched, asserted by comparing source offsets in `session-readers.test.ts`. Swap those two lines
-and a learner who pressed "check my work" offline silently loses a grade they earned.
+### 🔴 Three things to read before touching any of it
 
-## 1b. 🔴 THE ROUND TRIP RUNS INTO A WALL THAT IS NOT UNI-006'S
+1. **The cache guarantee is the primary key, and the ORDER of two lines is the feature.** The
+   `(account_id, concept)` row is **claimed before the model is called**. Swap those and
+   "exactly one call ever" silently becomes sequential-only: two concurrent requests both find
+   no row, both call, the second overwrites the first with an equally plausible answer, nothing
+   errors and the bill doubles. **Measured, not argued**: with the defect reintroduced the
+   eight-concurrent-request spec went red and **the sequential one still passed**.
+2. **A failed projection is NEVER retried, deliberately.** Deleting the row on failure restores
+   "one call per request, forever" against a provider that is down. If a later session wants
+   retryable failures, the spec line `records a failure and does not retry it` is where that
+   argument has to be won.
+3. **An unconfigured projector must not claim the row.** Availability is checked *before* the
+   claim, so a deployment with no `ANTHROPIC_API_KEY` does not poison every pair it is asked
+   for. There is a spec for exactly that repair path.
 
-**The platform hosts no curated lesson bundles at all.** `src/lib/curriculum.ts`'s own header:
-*"There is no download, no install and no bundle"* — and all **fifteen** lessons in
-`curriculum.json` are `state: 'in-writing'`. So `lessonSource: 'curated'`, the ordinary
-assignment, has **nothing to pull**.
+### ⚠️ The repo gained its first new runtime dependency: `@anthropic-ai/sdk`
 
-✅ `org_shelf` works end to end — a school's own lesson travels as the shelf item's `payload`,
-gated by `shelf_item_visible_to`. That is the school case UNI-006 exists for, and it is driven.
+Deliberate, and argued in `projection/anthropic.ts`'s header. `mail/brevo.ts` avoids a dependency
+because it posts one fixed body to one URL forever; a model API is a moving surface with versioned
+per-model parameter rules, and hand-rolling it fails silently-wrong for the model it names.
 
-🔴 **This is UNI-007 §11's owed *curriculum hosting*, open since 2026-07-25**, and it is the
-real blocker on "a stranger learns NodeGX from the platform". **Do not re-derive it as a
-UNI-006 bug.** ⚠️ It is also two problems, not one: a *hosting route* and *fifteen lessons
-nobody has written*. The second is the larger.
+## 1b. 🔴 A NEIGHBOURING TASK'S GATE FOUND A DESIGN ERROR IN THIS ONE
 
-## 2. 🔴 Two defects found by measurement, both fixed, both worth the generalisation
+The first `pathFor` hardcoded three lesson slugs. **UNI-022 AC4's sweep — *no `.ts` under `src/`
+may name a lesson* — failed it.** That was not a naming quibble: hardcoded slugs meant **branching
+a learner past a lesson was a code change**, which is the same defect as adding a lesson being one.
 
-1. **A malformed id was a 500 — and not even JSON — on NINE routes** (`b7789a1`). Six
-   pre-existing. The reason it survived: **every route spec calls handlers with ids it seeded
-   itself, so every id is well-formed by construction.** *A suite that manufactures its own
-   inputs cannot test the shape of an input.* Fixed with `isId` answering the same `notFound()`;
-   the sweep derives its route list off disk and was verified red.
-2. **`nat014-outbox-drain.test.ts` seeded one database and drained another** (`f9e7151`). It
-   hard-coded `DEFAULT_DATABASE_URL` for the spawned process. On the shared database: 20/20 and
-   **cannot tell**. On a per-session database: **11 of 20 failed**, all reading as *"the drainer
-   sent nothing"*. ⚠️ **If you use a per-session database — and you should — a red suite may be
-   the harness, not you. Reconcile against the shared one before believing it.**
+Fixed by moving the rules into `curriculum.json` — `requires` / `includedBecause` /
+`omittedBecause` on a lesson or a whole path, and `final` on the spine. `pathFor` now names no
+lesson at all. ✅ **Putting a new lesson behind an intake answer is an edit to that file.**
 
-## 3. Gate readings — 2026-08-19
+⚠️ **The generalisation worth carrying: a gate written for a neighbouring task is a gate on YOUR
+work too, and it is the one most likely to see what you cannot.** Two other derived-from-disk
+sweeps also fired and both were right — UNI-011 wanted a D15 verdict per route, UNI-005 wanted
+every new free-text column classified with an executed probe.
+
+## 1c. §11's WALL IS UNCHANGED, AND AC1 DID NOT MOVE IT
+
+**All fifteen lessons in `curriculum.json` are still `state: 'in-writing'`**, so every path AC1
+produces is a path to nothing installable. That is deliberate and *visible* rather than worked
+around: `ready`/`total` and a `truth` sentence are computed per path from each lesson's own
+standing, and a spec asserts the curriculum really is all-in-writing so the sentence cannot rot.
+
+🔴 **Curriculum hosting is UNI-007 §11's, open since 2026-07-25, and it is still the real blocker
+on "a stranger learns NodeGX from the platform."** Two problems, not one: a hosting route, and
+**fifteen lessons nobody has written**. The second is much the larger and is not an agent's call
+to scope alone. ✅ `org_shelf` still works end to end — a school's own lesson travels as the shelf
+item's payload — so the school case is unaffected.
+
+## 2. D10 is now structural in two places, and both are worth not undoing
+
+- **Off for org-minor accounts**, decided by reading the account's **own kind** from the database
+  rather than trusting a caller's argument, and decided **before** the row is claimed. Paired with
+  a known-firing control (an individual account through identical code *does* call), because zero
+  calls reads the same whether the gate refused or the projector was never wired up.
+- **Pathing metadata only, never pupil content.** The projector is handed two finished strings and
+  never sees the learner, the account, or the intake object. The answer set is **closed — there is
+  no free-text intake question** — and `learner_intakes_answers_are_tokens` (0016) enforces
+  token-shaped values *in the schema*. 🔴 **That constraint exists because "the route validates
+  it" is the sentence that stops being true the day somebody adds a second writer.** Adding a
+  free-text intake question re-opens D10; do not, without a ruling.
+
+## 3. Gate readings — 2026-08-19, session 43
 
 | Gate | Reading |
 |---|---|
-| `nodegx-community` `npx tsc --noEmit` | ✅ **0 errors**, exit measured without a pipe |
-| `nodegx-community` `npm test` | ✅ **47 files / 1132 tests, 0 failures, 0 skipped** — after `npm run build`, so the real-HTTP file actually ran |
-| `OpenNoodl` `npm run test:main` | ✅ **262 suites / 4152 tests, 0 failures** |
-| `OpenNoodl` `typecheck:editor` + `typecheck:editor-tests` | ✅ **0 errors** each |
+| `nodegx-community` `npx tsc --noEmit` | ✅ **0 errors**, measured without a pipe |
+| `nodegx-community` `npm test` | ✅ **48 files / 1164 tests / 0 failures** — after `npm run build`, so the real-HTTP file actually ran |
 | `npm run lint` (platform) | 🔴 **STILL NOT A GATE** — no eslint configured |
+| `OpenNoodl` `test:main` | ⚠️ **NOT MINE TO REPORT.** A peer measured 1 failure at ~23:00 (`uni-001/session-readers` — an unlisted reader from *their* NAT-007 neighbour's untracked `useCommunityThread.ts`), against 0 at 22:47. **Session 43 changed no OpenNoodl source**, so this is not from this work. Re-measure yourself. |
+| `OpenNoodl` `test:ci` | ⚠️ Not run by me. A peer reported it at floor (2849 specs / 10 failures @ seed 39393, same 10 by name) at ~22:5x. Not my measurement — re-measure before quoting. |
 
-⚠️ **`test:ci` (the electron suite) was NOT run.** Nothing this session touched a spec in it, and
-the machine was at 7.8G swap. Not a claim about it.
-
-✅ **The isolated database is `nodegx_community_s42`** on the same 55432 container; it still
-exists. `DATABASE_URL='postgres://nodegx:nodegx@localhost:55432/nodegx_community_s42'`.
+✅ **Isolated database `nodegx_community_s43`** on the 55432 container; it still exists.
+`DATABASE_URL='postgres://nodegx:nodegx@localhost:55432/nodegx_community_s43'`.
+⚠️ `nodegx_community_s42` also still exists — tidy up when nobody needs it.
 
 ## 4. What to do next
 
 ### An agent alone — nothing needs Richard
 
-1. **UNI-007's intake + pathing (AC1)** — the other half of the tranche session 41 named, and
-   **not started this session**. It is the last unbuilt criterion of UNI-007: a conversational
-   intake → a personalised path, tier-0 branching plus a tier-1 projection cached per
-   (learner, concept). 🔴 **Read §1b first** — a path made of fifteen `in-writing` lessons is a
-   path to nothing, so scope the intake against that fact rather than around it.
-2. **UNI-008** (L+, carries a standing legal and ops burden — read D9 before starting).
-3. **UNI-010's remainder**; **UNI-012** (needs a **packaged build** to verify anything).
-4. ⚠️ **A deploy, whenever one is wanted** — see below. UNI-006's bridge is inert on the live
-   site until then, exactly as E7 is.
+1. **UNI-008** (L+, carries a standing legal and ops burden — **read D9 before starting**).
+2. **UNI-010's remainder**; **UNI-012** (needs a **packaged build** to verify anything).
+3. **Wiring AC1 into the editor.** The platform end is complete and has no caller in the editor —
+   the same shape UNI-006 was in before session 42 built its bridge, and the same lesson applies:
+   *building the caller is what finds what a shipped thing does not do.* The three routes are in
+   `docs/API.md` §5c. ⚠️ This overlaps phase 72's editor surface — **check for a live peer first.**
+4. ⚠️ **A deploy, whenever one is wanted** — see below. AC1's routes are inert on the live site
+   until then, exactly as UNI-006's bridge and E7 are.
 
 ### 🔴 The deploy warning is UNCHANGED and still applies
 
-nexus-1 is at **`0cbd716`**. Everything since — NAT-014's mail drain, E7, NAT-006's read API and
-now UNI-006's bridge — is undeployed. **The next deploy installs phase 72's mail timer, and the
-first drain will refuse because the outbox backlog is older than `MAIL_DRAIN_MAX_AGE_DAYS` (7).
-That refusal is the guard working — do not route around it.** Releasing weeks-old mail is
-Richard's decision. ✅ **Deploy from a pristine clone of a named commit**: `git clone` to `/tmp`,
-`git checkout main` (the **branch**, not the bare sha, or the stamp records `branch: HEAD`), run
-`ops/deploy.sh` there.
+nexus-1 is at **`0cbd716`**. Everything since — NAT-014's mail drain, E7, NAT-006's read API,
+UNI-006's bridge and now UNI-007's AC1 — is undeployed. **The next deploy installs phase 72's mail
+timer, and the first drain will refuse because the outbox backlog is older than
+`MAIL_DRAIN_MAX_AGE_DAYS` (7). That refusal is the guard working — do not route around it.**
+Releasing weeks-old mail is Richard's decision. ✅ **Deploy from a pristine clone of a named
+commit**: `git clone` to `/tmp`, `git checkout main` (the **branch**, not the bare sha, or the
+stamp records `branch: HEAD`), run `ops/deploy.sh` there.
+
+⚠️ **A deploy now also needs `ANTHROPIC_API_KEY` in the environment**, or tier-1 projection
+answers `unavailable` on every request. That is the honest degraded state and not an error — the
+tier-0 path is a complete path — but it is a config step somebody has to *choose* not to take.
 
 ### ⚠️ One open ruling this session touched rather than settled
 
-UNI-006's three writes take **the same session scope as the browser** — a *default*, not a
-ruling. Phase 72's **D5** (*what authorises a write from the editor?*) is open; its stated blast
-radius is the **community** writes rather than this school surface. If D5 rules for a narrower
-post-only scope, `start`, `submit` and `seen` are the routes to re-scope — named in
-`docs/API.md` §5b so nobody has to go looking.
+UNI-007's two writes take **the same session scope as the browser** — a *default*, not a ruling,
+exactly as UNI-006's three do. Phase 72's **D5** (*what authorises a write from the editor?*) is
+open. If D5 rules for a narrower post-only scope, the list to re-scope is now **five routes, not
+three**, and they are named together in `docs/API.md` §5b/§5c so nobody has to go looking.
 
 ### Not this phase's
 
