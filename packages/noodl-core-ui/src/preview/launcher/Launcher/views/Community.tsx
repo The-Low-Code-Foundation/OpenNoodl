@@ -1,5 +1,5 @@
 /**
- * UNI-011 / D21 — the community, as a launcher tab.
+ * UNI-011 / D21 / NAT-005 — the community, as a launcher tab.
  *
  * ## Why the TYPES live here and not with the code that computes them
  *
@@ -15,6 +15,23 @@
  * which is the failure this phase has now paid for repeatedly. The path is a wart; two view models
  * would be a defect.
  *
+ * ## NAT-005 — what changed on 2026-08-19, and what did not
+ *
+ * This file used to be **two inline style objects and a 13px column**: `shy` and `rowStyle`, the
+ * only structure `marginBottom: 28`. Nothing about it was a bug a designer would name and nothing
+ * about it invited anybody in — it read as a status readout because that is what it was.
+ *
+ * The rendering now comes from `@noodl-core-ui/components/community`, which the editor's rail
+ * panel draws from too. 🔴 **That shared vocabulary is the deliverable, not this page.** People,
+ * jobs, coaching and University are four more surfaces about to want the same list, row, empty
+ * and error — built once here, or invented four more times.
+ *
+ * ⚠️ **Three things were deliberately kept exactly as they were**: the four section states stay
+ * four (UNI-011 paid for `loading` being its own case); `emptyLine` stays required and
+ * per-section (D21's surviving obligation from D16); and the health numbers stay a readout with
+ * their `required` and their `n` beside them (D21 reversed D16 — nothing may branch on them, and
+ * nothing may draw them as a progress bar towards a threshold that no longer gates anything).
+ *
  * ## What this component may and may not do
  *
  * 🔴 **It renders text children only.** The launcher is `pages/ProjectsPage` inside the *same*
@@ -22,13 +39,26 @@
  * is under exactly the security constraint the rail panel is under, and for the same reason.
  * No `dangerouslySetInnerHTML`, ever. Post *bodies* do not reach this surface at all: the list
  * payloads carry titles and counts, and a body would have to come through `parsePostBody` →
- * `Block[]`, which has no field that can hold markup.
+ * `Block[]`, which has no field that can hold markup. ⚠️ `CommunityRow` types its `title`, `meta`
+ * and `detail` as `string` rather than `ReactNode` for the same reason — a `ReactNode` prop is a
+ * hole an element carrying markup fits through.
  *
  * @module noodl-core-ui/preview/launcher/Launcher/views/Community
  */
 
 import React from 'react';
 
+import {
+  CommunityRow,
+  CommunitySection,
+  absoluteDate,
+  kindLabel,
+  metaLine,
+  relativeTime,
+  replyLatency
+} from '@noodl-core-ui/components/community';
+import type { CommunitySectionState } from '@noodl-core-ui/components/community';
+import css from '@noodl-core-ui/components/community/Community.module.scss';
 import { LauncherPage } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherPage';
 import { useLauncherContext } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 
@@ -37,15 +67,12 @@ import { useLauncherContext } from '@noodl-core-ui/preview/launcher/Launcher/Lau
 /**
  * One section's state.
  *
- * ⚠️ `loading` is its own case rather than an empty list. A surface that renders "no discussions
- * yet" for the 300ms before the first response tells every user the community is dead, on every
- * open — the `undefined`-versus-`null` bug `useCommunityAccount` documents, in a new place.
+ * ⚠️ Re-exported rather than declared: NAT-005 moved it next to the component that switches on
+ * it, and the editor's `mirrorview.ts` has imported it from this path since UNI-011. Moving the
+ * declaration and keeping the name is the change nobody has to notice; renaming the import site
+ * would be a change every consumer has to.
  */
-export type CommunitySectionState<T> =
-  | { state: 'loading' }
-  | { state: 'items'; items: T[] }
-  | { state: 'empty' }
-  | { state: 'unreachable'; detail: string };
+export type { CommunitySectionState };
 
 export type CommunityThreadRow = {
   id: string;
@@ -108,86 +135,23 @@ export interface LauncherCommunityHostState {
 // ── Rendering ─────────────────────────────────────────────────────────────────
 
 /**
- * 🔴 NAT-002. This was `--theme-color-fg-muted`, and this one object is the viewer line, all four
- * empty states, every health readout and the error text — so it was the colour of nearly every
- * word on the tab. On this surface's ground (`bg-0`, painted by `Launcher.module.scss`) it
- * measured **4.18:1 in dark and 3.19:1 in light**, the worst text ratio in the product and short
- * of AA in both themes. `fg-default-shy` is 6.63/5.98 here and is the same step `Text`'s Shy type
- * took in POL-017 for the same reason.
- * ⚠️ Named explicitly rather than left on `fg-muted`, which is now an alias of this token: an
- * alias keeps working, but it keeps the retired name in the code where the next reader copies it.
- */
-const shy: React.CSSProperties = { color: 'var(--theme-color-fg-default-shy)', fontSize: 13, lineHeight: 1.5 };
-const rowStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: 4,
-  cursor: 'pointer',
-  fontSize: 13,
-  color: 'var(--theme-color-fg-default)'
-};
-
-/**
- * One section.
+ * The tab, as a pure function of the host state.
  *
- * ⚠️ `emptyLine` is REQUIRED and says what the section is *for*, never "nothing here". A shared
- * default would let a new section inherit a sentence written about a different one — which is how
- * four honest empties collapse into one shrug, and the composition is the only thing protecting
- * this surface now that D16's threshold does not.
+ * 🔴 **Split out from {@link Community} so it can be graded.** This checkout's jest runs have no
+ * DOM, but a React *element tree* is plain objects — a component that takes props and calls no
+ * hooks can be invoked directly and walked. That is how `nat-005/launcher-community-render` asserts
+ * D15 draws nothing *with a not-hidden control beside it*, which an assertion about a null return
+ * cannot do on its own: a component that never ran also draws nothing.
  */
-function Section<T>({
-  title,
-  state,
-  emptyLine,
-  onRetry,
-  renderItem
-}: {
-  title: string;
-  state: CommunitySectionState<T>;
-  emptyLine: string;
-  onRetry: () => void;
-  renderItem: (item: T, index: number) => React.ReactNode;
-}) {
-  return (
-    <section style={{ marginBottom: 28 }}>
-      <h3 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--theme-color-fg-highlight)' }}>
-        {title}
-      </h3>
-      {state.state === 'loading' && <div style={shy}>Loading…</div>}
-      {state.state === 'empty' && <div style={shy}>{emptyLine}</div>}
-      {state.state === 'unreachable' && (
-        <div style={shy}>
-          {/* ⚠️ Our fetch error, never platform prose — a stranger cannot reach this string. */}
-          Could not reach the community ({state.detail}).{' '}
-          <button
-            type="button"
-            onClick={onRetry}
-            /* NAT-002 D10: `primary` is the FILL accent and measures 4.03:1 on this ground in
-               light. `fg-accent` is the same accent chosen to be read. */
-            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--theme-color-fg-accent)', cursor: 'pointer', font: 'inherit' }}
-          >
-            Try again
-          </button>
-        </div>
-      )}
-      {state.state === 'items' && <div>{state.items.map(renderItem)}</div>}
-    </section>
-  );
-}
-
-export function Community() {
-  const { communityMirror: community } = useLauncherContext();
-
-  // Nothing wired (Storybook, or an editor build without the host hook).
-  if (!community) {
-    return (
-      <LauncherPage title="Community">
-        <div style={shy}>The community is not available in this preview.</div>
-      </LauncherPage>
-    );
-  }
-
-  const { view, isRefreshing, onRefresh } = community;
-
+export function CommunityTab({
+  view,
+  isRefreshing,
+  onRefresh,
+  onOpenThread,
+  onOpenArticle,
+  onOpenReplay,
+  onOpenCommunity
+}: LauncherCommunityHostState) {
   // 🔴 D15: the platform said this surface does not exist for this viewer — an org-minor whose
   // school has the community switched off. Draw NOTHING. `apiviewer.ts` answers them with a 404
   // precisely so *a pupil is not told a door exists*, and "the community is unavailable" would
@@ -206,90 +170,130 @@ export function Community() {
 
   return (
     <LauncherPage title="Community">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <span style={shy}>
+      <div className={css['Head']}>
+        <span className={css['HeadLine']}>
           {who}
           {view.standing ? `  ·  ${view.standing.points} points` : ''}
         </span>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          style={{ background: 'none', border: 'none', color: 'var(--theme-color-fg-default-shy)', cursor: 'pointer', font: 'inherit', fontSize: 13 }}
-        >
+        <button type="button" className={css['GhostButton']} onClick={onRefresh} disabled={isRefreshing}>
           {isRefreshing ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
 
-      <Section
+      {/* ⚠️ The first screen says what this place is FOR. The tab shipped without one and read as
+          a status page — three headings over three lists, with nothing anywhere saying why a
+          person would look. This is one sentence and it is the cheapest thing on the page. */}
+      <p className={css['Lead']}>
+        Questions you ask from the editor, the guides people write and the calls we record — all of it here, beside
+        your projects. You never have to open a browser to read it.
+      </p>
+
+      <CommunitySection
         title="Discussions"
         state={view.threads}
         emptyLine="Questions asked from the editor land here. Right-click any node and choose “Ask about this node”."
         onRetry={onRefresh}
-        renderItem={(thread) => (
-          <div key={thread.id} style={rowStyle} onClick={() => community.onOpenThread?.(thread.externalId)}>
-            {thread.title}
-          </div>
-        )}
-      />
+      >
+        {(threads) =>
+          threads.map((thread) => (
+            <CommunityRow
+              key={thread.id}
+              title={thread.title}
+              // AC2. Both of these were in the view model from the first commit and neither was
+              // drawn. 🔴 `firstReplyMinutes === null` is "no reply yet" — the row worth scanning
+              // for, and the one the health readout counts as `unreplied`.
+              meta={metaLine([relativeTime(thread.createdAt), replyLatency(thread.firstReplyMinutes)])}
+              onClick={() => onOpenThread?.(thread.externalId)}
+            />
+          ))
+        }
+      </CommunitySection>
 
-      <Section
+      <CommunitySection
         title="Guides and tutorials"
         state={view.articles}
         emptyLine="Written guides published to the community appear here."
         onRetry={onRefresh}
-        renderItem={(article) => (
-          <div key={article.slug} style={rowStyle} onClick={() => community.onOpenArticle?.(article.slug)}>
-            {article.title}
-          </div>
-        )}
-      />
+      >
+        {(articles) =>
+          articles.map((article) => (
+            <CommunityRow
+              key={article.slug}
+              title={article.title}
+              meta={kindLabel(article.kind)}
+              detail={article.summary}
+              onClick={() => onOpenArticle?.(article.slug)}
+            />
+          ))
+        }
+      </CommunitySection>
 
-      <Section
+      <CommunitySection
         title="Call replays"
         state={view.replays}
         emptyLine="Recordings of the weekly call are listed here, newest first."
         onRetry={onRefresh}
-        renderItem={(replay) => (
-          <div key={replay.slug} style={rowStyle} onClick={() => community.onOpenReplay?.(replay.slug)}>
-            {replay.title}
-          </div>
-        )}
-      />
+      >
+        {(replays) =>
+          replays.map((replay) => (
+            <CommunityRow
+              key={replay.slug}
+              title={replay.title}
+              // ⚠️ Both spellings of the date: a replay is a thing that happened on a day, and
+              // "9 days ago" is what tells you whether you have already seen it.
+              meta={metaLine([absoluteDate(replay.heldOn), relativeTime(replay.heldOn)])}
+              detail={replay.description}
+              onClick={() => onOpenReplay?.(replay.slug)}
+            />
+          ))
+        }
+      </CommunitySection>
 
       {view.health && (
-        <section style={{ marginBottom: 28 }}>
-          <h3 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--theme-color-fg-highlight)' }}>
-            How the community is doing
-          </h3>
-          <div style={shy}>
-            {view.health.threads.value} of {view.health.threads.required} threads
-          </div>
-          <div style={shy}>
-            {view.health.weeksWithCall.value} of {view.health.weeksWithCall.required} consecutive weeks with a call
-          </div>
-          <div style={shy}>
-            {view.health.reply.medianHours === null
-              ? 'no replies yet'
-              : `${view.health.reply.medianHours.toFixed(1)}h median first reply`}{' '}
-            (n={view.health.reply.n}
-            {view.health.reply.unreplied > 0 ? `, ${view.health.reply.unreplied} unreplied` : ''}), target under{' '}
-            {view.health.reply.requiredBelowHours}h
+        <section className={css['Section']}>
+          <div className={css['SectionCard']}>
+            <div className={css['SectionHead']}>
+              <h3 className={css['SectionTitle']}>How the community is doing</h3>
+            </div>
+            <ul className={css['HealthList']}>
+              <li className={css['HealthLine']}>
+                {view.health.threads.value} of {view.health.threads.required} threads
+              </li>
+              <li className={css['HealthLine']}>
+                {view.health.weeksWithCall.value} of {view.health.weeksWithCall.required} consecutive weeks with a
+                call
+              </li>
+              <li className={css['HealthLine']}>
+                {view.health.reply.medianHours === null
+                  ? 'no replies yet'
+                  : `${view.health.reply.medianHours.toFixed(1)}h median first reply`}{' '}
+                (n={view.health.reply.n}
+                {view.health.reply.unreplied > 0 ? `, ${view.health.reply.unreplied} unreplied` : ''}), target under{' '}
+                {view.health.reply.requiredBelowHours}h
+              </li>
+            </ul>
           </div>
         </section>
       )}
 
-      <button
-        type="button"
-        onClick={() => community.onOpenCommunity?.()}
-        /* 🔴 NAT-002: the border was `bg-3`, an ELEVATION step used as a control boundary — 1.32:1
-           dark and 1.01:1 light against this ground, so the only thing saying "this is a button"
-           was invisible. `--theme-color-border-control` already existed for exactly this (POL-016)
-           and measures 4.18/3.19 here, clear of 1.4.11's 3:1. */
-        style={{ background: 'none', border: '1px solid var(--theme-color-border-control)', borderRadius: 4, padding: '8px 12px', color: 'var(--theme-color-fg-default)', cursor: 'pointer', font: 'inherit', fontSize: 13 }}
-      >
+      <button type="button" className={css['OutlineButton']} onClick={() => onOpenCommunity?.()}>
         Open community.nodegx.io
       </button>
     </LauncherPage>
   );
+}
+
+export function Community() {
+  const { communityMirror: community } = useLauncherContext();
+
+  // Nothing wired (Storybook, or an editor build without the host hook).
+  if (!community) {
+    return (
+      <LauncherPage title="Community">
+        <p className={css['Lead']}>The community is not available in this preview.</p>
+      </LauncherPage>
+    );
+  }
+
+  return <CommunityTab {...community} />;
 }

@@ -1,0 +1,356 @@
+/**
+ * NAT-005 — the community vocabulary, in two densities.
+ *
+ * 🔴 **Two surfaces, one stylesheet, and that is the point.** The launcher tab and the editor's
+ * rail panel drew the same four states and the same three lists out of two separate piles of
+ * inline `style` objects. Whatever was fixed on one did not reach the other. `Page` is the
+ * launcher's density (a card on the `bg-0` canvas) and `Panel` is the rail's (no card of its own,
+ * inheriting `BasePanel`'s `bg-2`, exactly where `ListItem` left the rows).
+ *
+ * ⚠️ **Every fg×bg pairing below has a row in NAT-001's PAIRS table** and is graded at 4.5:1 in
+ * both themes. A new colour combination here without a row there is the same bug in a nicer shape
+ * — which is AC6, and is why the hover grounds are named rather than left to `bg-hover`'s wash.
+ */
+
+/* ── The card a section sits in, on the launcher's canvas ──────────────────────────────── */
+
+.Section {
+  margin-bottom: var(--spacing-6);
+}
+
+.SectionCard {
+  /*
+    🔴 The FILL is what makes this card visible, and the border is the smaller half.
+
+    NAT-003 opened the elevation ramp: `bg-0`→`bg-1` was 1.06:1 — a card that dissolved into the
+    canvas — and measures 1.16 dark / 1.13 light now, clearing that task's stated bar of
+    1.15/1.09. Measured against this same `bg-0` ground, `border-subtle` is **1.29 dark but 1.03
+    light** — in light it is less of a line than the fill step beside it, i.e. nothing. So the
+    edge is `border-default` (1.46 / 1.12), which is the smaller contributor in light and the
+    sharper one in dark. ⚠️ A card here that dropped the fill and kept a subtle border would
+    look correct in dark and have no edge at all in light.
+  */
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.SectionHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-3-5) var(--spacing-2);
+}
+
+.SectionTitle {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
+  color: var(--theme-color-fg-highlight);
+}
+
+.SectionCount {
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  color: var(--theme-color-fg-default-shy);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The four states ───────────────────────────────────────────────────────────────────── */
+
+.Body {
+  &.is-density-page {
+    padding: 0 var(--spacing-3-5) var(--spacing-3);
+  }
+
+  &.is-density-panel {
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+}
+
+/* `items` draws rows and no padding of its own — the rows carry it, so a row's hover reaches
+   the full width of the card rather than stopping short of a gutter. */
+.Rows {
+  &.is-density-page {
+    padding: 0 0 var(--spacing-1-5);
+  }
+}
+
+.StateLine {
+  margin: 0;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.5;
+
+  .is-density-page & {
+    font-size: var(--font-size-md);
+  }
+
+  .is-density-panel & {
+    font-size: var(--font-size-base);
+  }
+}
+
+/*
+  🔴 The three non-item states are visibly different *shapes*, not three greys.
+
+  UNI-011 paid for `loading` being its own case rather than an empty list, and D21 paid for the
+  four empty lines being four sentences. A redesign that renders all three as one shy paragraph
+  re-buys both bugs while passing any test that only asks whether a string appeared — so
+  `loading` gets the pulse, `unreachable` gets a rule down its left edge and a button, and
+  `empty` gets neither.
+*/
+.Loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.LoadingPulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  /* NON-TEXT (1.4.11): a 6px dot is a shape and is graded at 3:1, not 4.5. */
+  background: var(--theme-color-fg-default-shy);
+  animation: community-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes community-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .LoadingPulse {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
+.Unreachable {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  border-left: 2px solid var(--theme-color-border-control);
+  padding-left: var(--spacing-2-5);
+}
+
+.RetryButton {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  /* NAT-002 D10: `primary` is the FILL accent and measures 4.03:1 on `bg-0` in light.
+     `fg-accent` is the same accent chosen to be read. */
+  color: var(--theme-color-fg-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+/* ── A row ─────────────────────────────────────────────────────────────────────────────── */
+
+.Row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  color: inherit;
+
+  &.is-density-page {
+    padding: var(--spacing-2) var(--spacing-3-5);
+  }
+
+  &.is-density-panel {
+    padding: var(--spacing-1-5) var(--spacing-3);
+  }
+
+  /* ⚠️ Named grounds, not `bg-hover`'s wash. A translucent hover is a colour nobody can grade
+     without knowing what is underneath — see the `over` column in NAT-001's table and the row
+     that refuses to score a wash with no opaque surface named. */
+  &.is-density-page:hover {
+    background: var(--theme-color-bg-2);
+  }
+
+  &.is-density-panel:hover {
+    background: var(--theme-color-bg-3);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: -2px;
+  }
+}
+
+.RowTitle {
+  display: block;
+  color: var(--theme-color-fg-default);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  .is-density-page & {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .is-density-panel & {
+    font-size: var(--font-size-base);
+  }
+}
+
+.RowMeta {
+  display: block;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.4;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  .is-density-page & {
+    font-size: var(--font-size-sm);
+  }
+
+  .is-density-panel & {
+    font-size: var(--font-size-xs);
+  }
+}
+
+/*
+  A second line of the row's own words — a guide's summary, a replay's description.
+
+  ⚠️ Clamped to two lines rather than truncated to one: a summary cut at 60 characters is a
+  sentence a reader cannot finish, which is worse than one they can skip.
+*/
+.RowDetail {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.45;
+  margin-top: var(--spacing-1);
+  font-size: var(--font-size-sm);
+
+  .is-density-panel & {
+    -webkit-line-clamp: 1;
+    font-size: var(--font-size-xs);
+  }
+}
+
+/* ── The lead paragraph: what this place is for ────────────────────────────────────────── */
+
+.Lead {
+  margin: 0 0 var(--spacing-5);
+  max-width: 62ch;
+  font-size: var(--font-size-md);
+  line-height: 1.55;
+  color: var(--theme-color-fg-default);
+}
+
+/* ── The launcher tab's own chrome ─────────────────────────────────────────────────────── */
+
+.Head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+}
+
+.HeadLine {
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.GhostButton {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: var(--spacing-1) var(--spacing-2);
+  font: inherit;
+  font-size: var(--font-size-md);
+  cursor: pointer;
+  color: var(--theme-color-fg-default-shy);
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-bg-1);
+    color: var(--theme-color-fg-default);
+  }
+
+  &:disabled {
+    cursor: default;
+    color: var(--theme-color-fg-disabled);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+}
+
+.OutlineButton {
+  background: none;
+  /* POL-016's control boundary. NAT-002 replaced `bg-3` here — an ELEVATION step used as a
+     control edge, 1.32:1 dark and 1.01:1 light on this ground, so the only thing saying "this is
+     a button" was invisible. `border-control` measures 4.17/3.72 on `bg-1` and clears 1.4.11. */
+  border: 1px solid var(--theme-color-border-control);
+  border-radius: 4px;
+  padding: var(--spacing-2) var(--spacing-3);
+  font: inherit;
+  font-size: var(--font-size-md);
+  cursor: pointer;
+  color: var(--theme-color-fg-default);
+
+  &:hover {
+    background: var(--theme-color-bg-1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* ── The health readout ────────────────────────────────────────────────────────────────── */
+
+.HealthList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: 0 var(--spacing-3-5) var(--spacing-3);
+  margin: 0;
+  list-style: none;
+}
+
+/*
+  🔴 A readout, NOT a gate — D21 reversed D16 on 2026-08-19 and nothing may branch on these
+  numbers. ⚠️ Do not draw them as a progress bar towards their `required`: the threshold stopped
+  being a gate, and drawing it as one puts it back. They are sentences, deliberately.
+*/
+.HealthLine {
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  color: var(--theme-color-fg-default-shy);
+  font-variant-numeric: tabular-nums;
+}

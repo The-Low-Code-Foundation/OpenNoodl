@@ -80,53 +80,135 @@ type Pair = {
  */
 const PAIRS: Pair[] = [
   // ── The launcher's Community tab ────────────────────────────────────────────────────────
-  // `views/Community.tsx`. Its ground is `bg-0`: `Launcher.module.scss` paints `.ContentArea`
+  // `views/Community.tsx`. Its canvas is `bg-0`: `Launcher.module.scss` paints `.ContentArea`
   // with it and `LauncherPage` adds padding and no background of its own.
   //
-  // 🔴 THE FIRST ROW IS THE WHOLE REASON THIS FILE EXISTS. `const shy = { color:
-  // 'var(--theme-color-fg-muted)', fontSize: 13 }` is one object used for the viewer line, all
-  // four empty states, every health readout and the error text — nearly every word on the page.
+  // 🔴 **NAT-005 MOVED MOST OF THIS SURFACE UP A GROUND, and that is why five rows below changed
+  // their `bg` rather than a sixth being appended.** The tab used to be one flat column on the
+  // canvas; the sections now sit in cards on `bg-1`, so a heading, a row title, a state line and
+  // the retry link are all pairings nobody had graded — with foregrounds so familiar that an
+  // appended row would have looked like the diligent move while leaving the *old* rows asserting
+  // a ground nothing paints any more. ⚠️ The trigger for editing a row is the same as the trigger
+  // for adding one: a new PAIRING.
+  //
+  // The chain is canvas `bg-0` < card `bg-1` < row hover `bg-2`.
   {
-    what: 'the launcher tab: viewer line, four empty states, health readouts and error text',
+    what: 'the launcher tab: the viewer line, on the canvas above the cards',
     fg: '--theme-color-fg-default-shy',
     bg: '--theme-color-bg-0',
     min: 4.5,
     why: '13px body copy — no large-text relief, which does not begin until 24px (or 18.66px bold)'
   },
   {
-    what: 'the launcher tab: the Refresh button label',
+    what: 'the launcher tab: the Refresh button label, at rest on the canvas',
     fg: '--theme-color-fg-default-shy',
     bg: '--theme-color-bg-0',
     min: 4.5,
-    why: '13px words in a ghost button; a separate inline style from `shy`, so it can move alone'
+    why: '13px words in a ghost button; a separate rule from the viewer line, so it can move alone'
   },
   {
-    what: 'the launcher tab: a section heading',
-    fg: '--theme-color-fg-highlight',
+    what: 'the launcher tab: the Refresh button under the pointer, which lifts to bg-1 and darkens its label',
+    fg: '--theme-color-fg-default',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: 'hover changes BOTH halves of the pair, so the resting row does not cover it'
+  },
+  {
+    what: 'the launcher tab: the lead paragraph saying what this place is for',
+    fg: '--theme-color-fg-default',
     bg: '--theme-color-bg-0',
+    min: 4.5,
+    why: '13px words on the canvas — the first sentence a person reads on the tab'
+  },
+  // 🔴 **NAT-005's two CARD-BOUNDARY claims are NOT rows here, and the table said so itself.**
+  // A first draft added them at `min: 1.09` and `every row names a bar it stated on purpose` went
+  // red: this table grades WORDS at 4.5 and SHAPES at 3, and an elevation step is neither. A row
+  // at 1.09 would have loosened that guard for every future row in exchange for two claims that
+  // belong elsewhere — so the card fill is the `bg-0`↔`bg-1` step the elevation ramp below
+  // already grades, and the 1px edge is asserted beside it. See `the %s elevation ramp is a ramp`.
+  {
+    what: 'the launcher tab: a section heading, now on the card',
+    fg: '--theme-color-fg-highlight',
+    bg: '--theme-color-bg-1',
     min: 4.5,
     why: '13px semibold — under the 18.66px bold threshold, so the normal-size bar applies'
   },
   {
-    what: 'the launcher tab: a discussion, guide or replay title in a row',
-    fg: '--theme-color-fg-default',
-    bg: '--theme-color-bg-0',
+    what: 'the launcher tab: the item count beside a section heading',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-1',
     min: 4.5,
-    why: '13px words, and the only content on the surface'
+    why: '11px words. ⚠️ Smaller than body copy and held to the SAME bar — 1.4.3 has no relief below 24px, only above'
+  },
+  {
+    what: 'the launcher tab: the loading, empty and unreachable lines on a card',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: '13px words, and on an empty tab they are the ONLY words in the section'
+  },
+  {
+    what: 'the launcher tab: the pulsing dot beside “Loading…”',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-1',
+    min: 3,
+    why: 'NON-TEXT (1.4.11): a 6px dot is a shape. ⚠️ It carries no information the word beside it does not — it is what makes `loading` a different SHAPE from `empty`, not a different sentence'
+  },
+  {
+    what: 'the launcher tab: the rule down the left of an unreachable section',
+    fg: '--theme-color-border-control',
+    bg: '--theme-color-bg-1',
+    min: 3,
+    why: 'NON-TEXT (1.4.11): the 2px rule is what makes an error a different shape from an empty, so it is a graphical object doing work'
   },
   {
     what: 'the launcher tab: the “Try again” link on an unreachable section',
     fg: '--theme-color-fg-accent',
-    bg: '--theme-color-bg-0',
+    bg: '--theme-color-bg-1',
     min: 4.5,
     why: 'words, and the only way out of the error state'
+  },
+  {
+    what: 'the launcher tab: a discussion, guide or replay title in a row on a card',
+    fg: '--theme-color-fg-default',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: '13px medium-weight words, and the thing a person came to the tab to read'
+  },
+  {
+    what: 'the launcher tab: a row’s meta line and its summary — NAT-005’s new second and third lines',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: '11px words: “3 days ago · no reply yet”, and a guide’s summary. 🔴 These are WORDS and the smallest on the surface — the first draft of this table graded a duration as chrome'
+  },
+  {
+    what: 'the launcher tab: a row title under the pointer',
+    fg: '--theme-color-fg-default',
+    bg: '--theme-color-bg-2',
+    min: 4.5,
+    why: 'hover lifts the row to a new ground, and a hover surface nobody listed is one nobody graded'
+  },
+  {
+    what: 'the launcher tab: a row’s meta line under the pointer',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-2',
+    min: 4.5,
+    why: 'the quietest words on the surface, on the surface’s brightest row ground — the worst case of the four row pairings'
+  },
+  {
+    what: 'the launcher tab: a health readout line on its card',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: '12px words. D21 made these a READOUT — a number nobody can read is not a readout'
   },
   {
     what: 'the launcher tab: the “Open community.nodegx.io” label',
     fg: '--theme-color-fg-default',
     bg: '--theme-color-bg-0',
     min: 4.5,
-    why: '13px words in a bordered button'
+    why: '13px words in a bordered button, still on the canvas below the cards'
   },
   {
     what: 'the launcher tab: the border that IS the “Open community.nodegx.io” button',
@@ -138,7 +220,15 @@ const PAIRS: Pair[] = [
 
   // ── The rail panel ──────────────────────────────────────────────────────────────────────
   // `views/panels/CommunityPanel`. `BasePanel` paints `bg-2` and sets `color: fg-default`;
-  // `Section` gutters keep that ground; `ListItem` rows sit a step up on `bg-3`.
+  // `Section` gutters keep that ground.
+  //
+  // 🔴 **NAT-005 replaced this panel's `ListItem` rows with the shared `CommunityRow`**, and a
+  // `CommunityRow` has no fill of its own — it rests on the panel's `bg-2` and paints `bg-3` only
+  // under the pointer. So the row pairings below moved DOWN a ground, which is the opposite
+  // direction to the launcher's and just as ungraded. ⚠️ The `ListItem` rows that used to be here
+  // still exist everywhere else in the editor, so their pairings are kept and re-labelled rather
+  // than deleted — retiring a check needs a higher bar than adding one, and nothing about
+  // `ListItem` changed.
   {
     what: 'the rail panel: Shy copy — loading, the four empty lines, the health readout, the sign-in pointer',
     fg: '--theme-color-fg-default-shy',
@@ -154,21 +244,49 @@ const PAIRS: Pair[] = [
     why: '12px words; a different token from the launcher’s equivalent line, so a separate claim'
   },
   {
-    what: 'the rail panel: a thread, guide or replay title in a list row',
+    what: 'the rail panel: a thread, guide or replay title in a row, at rest',
+    fg: '--theme-color-fg-default',
+    bg: '--theme-color-bg-2',
+    min: 4.5,
+    why: '12px words. A `CommunityRow` has no fill of its own, so at rest the row ground IS the panel’s'
+  },
+  {
+    what: 'the rail panel: a row’s meta line — NAT-005’s new second line',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-2',
+    min: 4.5,
+    why: '10px words: “3 days ago · no reply yet”. 🔴 The smallest text in the product and held to the full bar — 1.4.3 gives no relief below 24px'
+  },
+  {
+    what: 'the rail panel: a row under the pointer',
     fg: '--theme-color-fg-default',
     bg: '--theme-color-bg-3',
     min: 4.5,
-    why: 'words on the row’s own ground, which is a step above the panel’s'
+    why: 'hover lifts the row one step, and a hover surface nobody listed is one nobody graded'
   },
   {
-    what: 'the rail panel: a list row under the pointer',
-    fg: '--theme-color-fg-default',
-    bg: '--theme-color-bg-4',
+    what: 'the rail panel: a row’s meta line under the pointer',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-3',
     min: 4.5,
-    why: 'hover lifts the row to a new ground, and a hover surface nobody listed is one nobody graded'
+    why: 'the quietest words in the panel on its brightest row ground — the worst case of the four'
   },
   {
-    what: 'the rail panel: a list row’s leading icon',
+    what: 'the rail panel: the pulsing dot beside “Loading…”, and the rule down an unreachable section',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-2',
+    min: 3,
+    why: 'NON-TEXT (1.4.11): the two shapes that make `loading` and `unreachable` different SHAPES from `empty` rather than three greys'
+  },
+  {
+    what: 'the rail panel: the “Try again” link on an unreachable section',
+    fg: '--theme-color-fg-accent',
+    bg: '--theme-color-bg-2',
+    min: 4.5,
+    why: 'words, and the only way out of the error state. NAT-005 made this the same link the launcher draws, so it is the same token on a different ground'
+  },
+  {
+    what: 'a `ListItem` row’s leading icon, anywhere in the editor — the community panel no longer draws one (NAT-005)',
     fg: '--theme-color-fg-default-shy',
     bg: '--theme-color-bg-3',
     min: 3,
@@ -180,7 +298,7 @@ const PAIRS: Pair[] = [
   // leading GLYPH. So this is two rows at two bars, and the 4.48/3.56 the first run reported was
   // a shape being held to a word's standard.
   {
-    what: 'the rail panel: a selected list row’s leading icon on the accent wash',
+    what: 'a selected `ListItem` row’s leading icon on the accent wash, anywhere in the editor',
     fg: '--theme-color-primary',
     bg: '--theme-color-primary-bg',
     over: '--theme-color-bg-3',
@@ -188,7 +306,7 @@ const PAIRS: Pair[] = [
     why: 'NON-TEXT (1.4.11): a message/book/play glyph is a shape. The wash is 13% alpha, so it is graded composited over the row ground beneath it'
   },
   {
-    what: 'the rail panel: a selected list row’s label on the accent wash',
+    what: 'a selected `ListItem` row’s label on the accent wash, anywhere in the editor',
     fg: '--theme-color-fg-highlight',
     bg: '--theme-color-primary-bg',
     over: '--theme-color-bg-3',
@@ -644,6 +762,25 @@ describe.each(['dark', 'light'] as const)('the %s elevation ramp is a ramp', (th
       surface(upper)
     )}) are ${ratio.toFixed(3)}:1 apart in ${theme}, below the stated ${BAR} — the step is invisible`;
     expect(verdict).toBe('passes');
+  });
+
+  it('🔴 NAT-005: the 1px edge on a launcher card is a line, not a suggestion', () => {
+    // The card's visibility has two halves and this is the SMALLER one: the `bg-0`→`bg-1` fill
+    // step above is what a reader mostly sees. It is asserted here rather than in PAIRS because
+    // it is neither words (4.5) nor a graphical object 1.4.11 reaches (3) — a decorative edge on
+    // a section whose own heading names it — and a third bar in that table would have loosened
+    // the guard that keeps every other row honest.
+    //
+    // 🔴 The measurement that chose the token: `border-subtle` on this ground is 1.29 dark but
+    // **1.03 light** — in light it is less of a line than the fill step beside it, i.e. nothing.
+    // A card that dropped the fill and kept a subtle border would look correct in dark and have
+    // no edge at all in light, which is the exact NAT-003 complaint in a new place.
+    const edge = contrastRatio(surface('--theme-color-border-default'), surface('--theme-color-bg-0'));
+    const subtle = contrastRatio(surface('--theme-color-border-subtle'), surface('--theme-color-bg-0'));
+    expect(edge).toBeGreaterThanOrEqual(BAR);
+    // ⚠️ CONTROL, and it is the reason the row exists: if this ever stops being true, the two
+    // tokens have converged and the sentence above is no longer why `border-default` was chosen.
+    expect(edge).toBeGreaterThan(subtle);
   });
 
   it('the ramp only ever goes one way', () => {

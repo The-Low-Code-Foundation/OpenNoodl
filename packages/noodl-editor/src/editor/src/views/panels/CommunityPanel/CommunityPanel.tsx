@@ -1,5 +1,5 @@
 /**
- * UNI-011 — the community, in the editor's own chrome.
+ * UNI-011 / NAT-005 — the community, in the editor's own chrome.
  *
  * ## 🔴 D21 (2026-08-19) is why this file exists at all
  *
@@ -20,6 +20,22 @@
  * posted — replays, guides, standing, and the health reading. Four sections, four independent
  * empty lines, each saying what it is *for*. See `mirrorview.ts` for the state machine.
  *
+ * ## NAT-005 — the rows and the four states are no longer this file's own
+ *
+ * They come from `@noodl-core-ui/components/community`, which the **launcher tab** draws from
+ * too. Before this, each surface had its own copy of the four-state switch and its own row, and
+ * the launcher's copy drew titles while throwing away every piece of metadata the same view model
+ * handed it. 🔴 Two copies is the arrangement where a fix lands on one of them.
+ *
+ * ⚠️ **The rows lost their leading icon, and that was a trade with a reason.** `Icon.tsx` uses
+ * webpack's `require.context`, so anything importing it cannot be loaded by this repo's jest at
+ * all — a shared row with an icon in it would be a shared row no runner can grade, and grading it
+ * is how `nat-005/` asserts D15 draws nothing with a live control beside it. The section headings
+ * already say which list a row is in.
+ *
+ * ⚠️ **`sidebar/Section` still supplies the panel's chrome.** `CommunitySection` — the card the
+ * launcher uses — is deliberately *not* used here: two frames saying the same thing.
+ *
  * ## 🔴 No stranger-authored body is rendered here, and nothing in this file could render one
  *
  * The list payloads carry titles and counts, never bodies — deliberately, so nothing on this path
@@ -29,6 +45,7 @@
  * has already had a `javascript:` URL compiled into a live anchor in it (RULINGS.md, the second
  * amendment). When a body *does* arrive, it goes through `asPostBody()` → `Block[]`, which has no
  * field that could hold markup — that is AC1's second half and it is already met and specced.
+ * ⚠️ `CommunityRow` types its text props as `string` rather than `ReactNode` for the same reason.
  *
  * @module noodl-editor/views/panels/CommunityPanel/CommunityPanel
  */
@@ -39,77 +56,33 @@ import { platform } from '@noodl/platform';
 
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 
-import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
+import {
+  CommunityDensity,
+  CommunityRow,
+  CommunitySectionBody,
+  absoluteDate,
+  kindLabel,
+  metaLine,
+  relativeTime,
+  replyLatency
+} from '@noodl-core-ui/components/community';
+import { IconName } from '@noodl-core-ui/components/common/Icon';
+import { IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Box } from '@noodl-core-ui/components/layout/Box';
-import { ListItem } from '@noodl-core-ui/components/layout/ListItem';
-import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
+import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
 import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { useCommunityMirror } from '@noodl-hooks/useCommunityMirror';
 
-import type { HealthReading, SectionState } from '@noodl-models/community/mirrorview';
+import type { HealthReading } from '@noodl-models/community/mirrorview';
 
 function openCommunity(path = ''): void {
   platform.openExternal(`${COMMUNITY_URL}${path}`);
-}
-
-/**
- * One section's body.
- *
- * ⚠️ `emptyLine` is a **required** prop and says what the section is for, never "nothing here".
- * A shared default would let a new section inherit a sentence written about a different one,
- * which is how four honest empties become one shrug.
- */
-function SectionBody<T>({
-  state,
-  emptyLine,
-  onRetry,
-  children
-}: {
-  state: SectionState<T>;
-  emptyLine: string;
-  onRetry: () => void;
-  children: (items: T[]) => React.ReactNode;
-}) {
-  if (state.state === 'loading') {
-    return (
-      <Box hasXSpacing hasYSpacing>
-        <Text textType={TextType.Shy}>Loading…</Text>
-      </Box>
-    );
-  }
-
-  if (state.state === 'unreachable') {
-    return (
-      <Box hasXSpacing hasYSpacing>
-        <VStack UNSAFE_style={{ gap: 8, alignItems: 'flex-start' }}>
-          {/* ⚠️ The detail is OUR fetch error, never platform prose — a stranger cannot reach it. */}
-          <Text textType={TextType.Shy}>Could not reach the community ({state.detail}).</Text>
-          <PrimaryButton
-            variant={PrimaryButtonVariant.Ghost}
-            size={PrimaryButtonSize.Small}
-            label="Try again"
-            onClick={onRetry}
-          />
-        </VStack>
-      </Box>
-    );
-  }
-
-  if (state.state === 'empty') {
-    return (
-      <Box hasXSpacing hasYSpacing>
-        <Text textType={TextType.Shy}>{emptyLine}</Text>
-      </Box>
-    );
-  }
-
-  return <>{children(state.items)}</>;
 }
 
 /**
@@ -191,60 +164,71 @@ export function CommunityPanel() {
       <ScrollArea>
         <Box hasYSpacing UNSAFE_style={{ width: '100%' }}>
           <Section title="Discussions" variant={SectionVariant.Panel} hasGutter>
-            <SectionBody
+            <CommunitySectionBody
               state={view.threads}
               emptyLine="Questions asked from the editor land here. Right-click any node and choose “Ask about this node”."
               onRetry={refresh}
+              density={CommunityDensity.Panel}
             >
               {(threads) =>
                 threads.map((thread) => (
-                  <ListItem
+                  <CommunityRow
                     key={thread.id}
-                    icon={IconName.MessageCircleQuestion}
-                    text={thread.title}
+                    density={CommunityDensity.Panel}
+                    title={thread.title}
+                    // AC2. Both fields were in the view model from the first commit and neither
+                    // surface drew either. 🔴 `no reply yet` is the row worth scanning for, and
+                    // the one the health readout above counts as `unreplied`.
+                    meta={metaLine([relativeTime(thread.createdAt), replyLatency(thread.firstReplyMinutes)])}
                     onClick={() => openCommunity(`/bench/${thread.externalId}`)}
                   />
                 ))
               }
-            </SectionBody>
+            </CommunitySectionBody>
           </Section>
 
           <Section title="Guides and tutorials" variant={SectionVariant.Panel} hasGutter>
-            <SectionBody
+            <CommunitySectionBody
               state={view.articles}
               emptyLine="Written guides published to the community appear here."
               onRetry={refresh}
+              density={CommunityDensity.Panel}
             >
               {(articles) =>
                 articles.map((article) => (
-                  <ListItem
+                  <CommunityRow
                     key={article.slug}
-                    icon={IconName.BookOpen}
-                    text={article.title}
+                    density={CommunityDensity.Panel}
+                    title={article.title}
+                    meta={kindLabel(article.kind)}
+                    detail={article.summary}
                     onClick={() => openCommunity(`/articles/${article.slug}`)}
                   />
                 ))
               }
-            </SectionBody>
+            </CommunitySectionBody>
           </Section>
 
           <Section title="Call replays" variant={SectionVariant.Panel} hasGutter>
-            <SectionBody
+            <CommunitySectionBody
               state={view.replays}
               emptyLine="Recordings of the weekly call are listed here, newest first."
               onRetry={refresh}
+              density={CommunityDensity.Panel}
             >
               {(replays) =>
                 replays.map((replay) => (
-                  <ListItem
+                  <CommunityRow
                     key={replay.slug}
-                    icon={IconName.Play}
-                    text={replay.title}
+                    density={CommunityDensity.Panel}
+                    title={replay.title}
+                    meta={metaLine([absoluteDate(replay.heldOn), relativeTime(replay.heldOn)])}
+                    detail={replay.description}
                     onClick={() => openCommunity(`/replays/${replay.slug}`)}
                   />
                 ))
               }
-            </SectionBody>
+            </CommunitySectionBody>
           </Section>
 
           {view.health && (
