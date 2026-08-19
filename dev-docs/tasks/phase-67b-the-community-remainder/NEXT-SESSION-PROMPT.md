@@ -25,6 +25,25 @@ its exit code. **Nothing in this phase is blocked on Richard any more.**
 | backups | ✅ ok, 433,391 bytes, 49 tables off-site · restore check ✅ **49 tables restored from the object** |
 | consequence | `POST …/same-here` → **401** live, while a nonexistent sibling → **404** |
 
+## 1b. 🔴 THE BOX IS BEHIND `main`, AND THE NEXT DEPLOY IS NOT A NO-OP
+
+nexus-1 is at **`0cbd716`**. Five commits have landed on `main` since, and **nobody has deployed
+them** — the phase-72 session closed without deploying, deliberately.
+
+🔴 **`ops/deploy.sh:324` now invokes `ops/install-mail.sh`.** So **the next deploy of this repo, for
+any reason at all, installs phase 72's mail drain timer and starts sending mail from the live
+platform.** A 67b session shipping a one-line E7 change would turn that on without meaning to, and
+it would look like a normal deploy. ⚠️ **This is NAT-014's AC2/AC7 and it is theirs to verify** —
+if you deploy first, tell them, and read what `install-mail.sh` printed rather than assuming.
+
+What else rides along: E7's two libraries (inert — nothing calls them yet) and a
+DeprecationWarning fix. Nothing schema-touching; there is no unapplied migration.
+
+✅ **Deploy from a pristine clone of a named commit**, as `0015` went out — `git clone` the repo to
+`/tmp`, `git checkout main`, run `ops/deploy.sh` from there. The refusal is satisfied honestly, only
+committed code ships, and the stamp is true. ⚠️ Check out the **branch**, not the bare sha, or the
+stamp records `branch: HEAD`.
+
 ## 2. What was built
 
 | | |
