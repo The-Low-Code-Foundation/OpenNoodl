@@ -50,7 +50,7 @@ the P67 ruling record.
 | ~~**UNI-017**~~ | ✅ **BUILT 2026-08-19 (session 39) — all 5 ACs.** 🔴 **The queue could not move the number it was built for**: it selected *"not accepted"* and exists to move *"first reply"*, and a replied thread cannot improve a first-reply median. See [UNI-017](../phase-67-nodegx-university/UNI-017-THE-QUEUE-AND-THE-SIGNAL.md) | ~~The Bench answers questions without it~~ |
 | ~~**UNI-018**~~ | ~~Pull a graph~~ — 🔴 **MOVED 2026-08-19 to [P72 NAT-015](../phase-72-nobody-has-to-leave/NAT-015-A-GRAPH-YOU-CAN-PULL-INTO-YOUR-PROJECT.md)** | It rode the same seam as NAT-007's renderer. Not this phase's any more |
 | **UNI-007** (intake) | The lesson beamed into the editor — the intake half | The editor half shipped; the platform's intake is the other end of a bridge nobody crosses yet |
-| **UNI-006** (bridge) | Assign / grade / review — the editor↔platform bridge | Assignments and grading work **on the platform**; the bridge is a second client |
+| ~~**UNI-006** (bridge)~~ | ✅ **BUILT 2026-08-19 (session 42).** Six `/api/v1/me` routes, the editor's client, and **the caller** — "check my work" hands the work in. AC1 is a round trip over HTTP. See [UNI-006](../phase-67-nodegx-university/UNI-006-ASSIGN-GRADE-REVIEW.md) | ~~the bridge is a second client~~ — 🔴 **and the round trip runs into a wall that is not this task's:** the platform hosts **no curated lesson bundles** (`curriculum.ts`: *"There is no download, no install and no bundle"*; all 15 lessons `in-writing`). `org_shelf` works end to end; `curated` has nothing to pull. **UNI-007 §11's owed *curriculum hosting*, since 2026-07-25** |
 | ~~**UNI-011**~~ (in-editor views) | ✅ **BUILT 2026-08-19 (session 37)** — the rail entry, four sections, the threshold as a readout. 🔴 **D21 reversed D16** at Richard's instruction; the panel ships empty and he fills it | ~~⚠️ ONE REMAINDER~~ — the rail **icon** drawn for a D15-refused viewer 🔴 **MOVED 2026-08-19 to P72 NAT-012 AC7**, the task that audits every door. An icon is a door, and the task auditing doors should close it |
 | **UNI-008** | Online in one click, off in forty-five days | Hosting. Not in the closing sentence, and it is a product decision as much as a build |
 | **UNI-010** (remainder) | A tutorial your own Claude can write — the remaining slice | 3/3 criteria met on the built slice; the remainder is scope, not debt |
@@ -209,6 +209,42 @@ not backing up at all*, because it fails at exactly the moment nobody can afford
 weekly restore check tests the passphrase every Sunday, which removes the *drift* failure but not
 the *where is it written down* one. **Set it and record where the passphrase lives, or leave it
 empty deliberately.** Not answering is the one option that is worse than either answer.
+
+---
+
+### F. 🔴 A malformed id was a 500 — and not even JSON — on nine API routes
+
+Found 2026-08-19 (session 42) **by measurement, not by review**, while building UNI-006's
+bridge. Every route that puts a path segment into a `uuid` column handed postgres `invalid
+input syntax for type uuid`; nothing caught it; Next answered with its own error page. So the
+first line of `docs/API.md` — *"JSON. `Content-Type: application/json` on every response,
+including errors"* — was **false for all nine**. Six pre-dated the task; three were being added
+by it, which is the only reason it came to light.
+
+🔴 **The generalisable half, and it is about fixtures rather than about ids.** Every route spec
+in that repo calls handlers with ids it seeded itself, so **every id is well-formed by
+construction**. The fixtures and the code agreed about what an id looks like, and the only
+party that could disagree was a client that got it wrong — which is to say, the population the
+API exists for. ⚠️ *A test suite that manufactures its own inputs cannot test the shape of an
+input.*
+
+✅ Fixed with one shared `isId` answering the **same** `notFound()` a wrong id gets — a
+distinguishable "malformed" reply would be a third body in a family that function exists to
+keep at one. `tests/api-malformed-id.test.ts` derives the route list **off disk**, so a route
+added next year is in the sweep the day it is written; verified red by removing one guard.
+
+### G. ⚠️ A test harness pinned the spawned process to the DEFAULT database
+
+Same session, and it cost the first full-suite reading. `tests/nat014-outbox-drain.test.ts`
+seeds through `freshDb()` — which honours `DATABASE_URL` — and spawned the drainer with
+`DATABASE_URL: DEFAULT_DATABASE_URL` hard-coded. On the shared database it passes 20/20 and
+**cannot tell**. On a per-session database — the arrangement this repo uses so two agents can
+work at once — it failed **11 of 20**, every failure reading as *"the drainer sent nothing"*.
+
+🔴 **A harness fault wearing the feature's face**, and the file makes this exact argument about
+the systemd unit one screen earlier: *"a drain pointed at a different database from the app is
+a drain that reports success and sends nothing."* It was true of the harness as well. ✅ Fixed
+to `databaseUrl()`; verified 20/20 on both.
 
 ---
 

@@ -103,13 +103,88 @@
 > asserted equal. (There is a grep as well; the two catch different things — the grep catches a
 > branch that has not been given behaviour yet.)
 >
-> ### ⚠️ Two things this does not do, said out loud
+> ## ✅ THE BRIDGE IS BUILT — 2026-08-19 (session 42). AC1 is a round trip over HTTP.
 >
-> - **No bridge endpoint.** The "pull" is `assignmentsForMember()`, a reader. The HTTP surface it
->   will be served over is UNI-001's (no sessions are issued) and UNI-011's. What is built is the
->   model and the rule — which is where AC3's *"removed mid-assignment"* is true or false.
-> - **Every write is reachable only from a test.** Setting an assignment, submitting and grading
->   are all specced and driven, and there is no form, because there is no way to sign in.
+> `nodegx-community@08d8e1c` + `OpenNoodl@7a21e5e0`, `79117c45`. The two paragraphs below
+> headed *"Two things this does not do"* were true for three days and are now **struck** — they
+> are kept because what they said is exactly what was built.
+>
+> | Shipped | Where |
+> |---|---|
+> | Six routes under `/api/v1/me` — one assignment, its lesson, start, submit, gradings, seen | `src/app/api/v1/me/…` |
+> | The refusal translator, one producer, total over what `submission_gate()` raises | `src/lib/assignments-http.ts` |
+> | 20 specs, every one through a **route handler with a bearer token** | `tests/uni006-bridge.test.ts` |
+> | The editor's client methods, and 429 stops reading as an outage | `models/community/communityapi.ts` |
+> | **The caller** — "check my work" hands the work in | `models/lessoncheck.ts` + `views/lessonlayer2.ts` |
+> | The assignment link on a Learning-folder entry, and `recordSubmission` | `models/learningfolder.ts` |
+> | 26 editor specs | `tests-unit/uni-006/` |
+>
+> ### 🔴 Four things worth not re-deriving
+>
+> **1. THE GRADE IS RECORDED BEFORE THE NETWORK IS TOUCHED, and it is asserted structurally
+> rather than promised.** A learner who presses "check my work" on a train has been graded —
+> that is a local fact about a local project, computed by two local engines — and losing it
+> because a POST failed would make the offline case worse than having no bridge at all. A spec
+> in `session-readers.test.ts` compares the two source offsets: swap them and an offline
+> learner silently loses a grade they earned.
+>
+> **2. A CLOSED ASSIGNMENT IS 403, NOT THE TIDIER 409.** `CommunityApiClient.post()` maps
+> 400/403 to `refused` — the branch that shows the learner the platform's own words — and
+> *everything else* to `unreachable`, which renders as "could not reach the community". A 409
+> would tell a pupil whose homework is late that their network was down. ⚠️ **The status codes a
+> server may choose are constrained by what its client already renders**, and nothing in either
+> repo says so except the route that had to obey it.
+>
+> **3. `submittedAt` IS WRITTEN ONLY ON ACCEPTANCE.** It is the field somebody would later read
+> to decide whether a pupil was late, so an unsent submission must be indistinguishable from one
+> that was never attempted. The specs assert the *absence* of the write on every failing outcome,
+> not just the presence of it on the good one.
+>
+> **4. 🔴 THE THIRD COPY OF THE EVIDENCE LIST IS NOW MANAGED, AND THE LIMIT IS STATED.** `0006`
+> named the gap and said no test in either repo can see both sides. That was harmless while
+> nothing submitted; it stopped being harmless the hour the caller existed, because the platform
+> **drops** an unknown key by design — so a field added to `LessonEvidence` would submit
+> successfully, grade successfully, and be nowhere. `submittedEvidence()` narrows to a named list
+> **beside the producer**, and the spec builds a `Required<LessonEvidence>` so **adding a field
+> fails to compile** until somebody classifies it. ✅ Verified by control: an unclassified field
+> takes the file to *0 tests run*. ⚠️ It still cannot read the platform's schema — what it catches
+> is the direction the gap actually leaks.
+>
+> ### 🔴 WHAT THE ROUND TRIP CANNOT DO, AND IT IS NOT A BUILD PROBLEM
+>
+> **The platform hosts no curated lesson bundles at all.** `curriculum.ts`'s own header:
+> *"There is no download, no install and no bundle"* — and all **fifteen** lessons in
+> `curriculum.json` are `state: 'in-writing'`. So `lessonSource: 'curated'`, which is the
+> ordinary assignment, has nothing to pull. UNI-007 §11 has owed *curriculum hosting* since
+> 2026-07-25 and this is the task that runs into it.
+>
+> ✅ **`org_shelf` DOES work end to end** — a school's own lesson travels as the shelf item's
+> `payload`, which `shelf.ts` already calls *"what the editor pulls"*, gated by
+> `shelf_item_visible_to`. That is the school case UNI-006 exists for, and it is driven.
+>
+> 🔴 **So `/lesson` answers `200 {available: false, reason}` and NOT 404.** A 404 would be
+> indistinguishable from *"this assignment is not yours"* — one is a refusal and the other is our
+> own unfinished work, and no client can say the right sentence about either unless the API tells
+> them apart. ⚠️ **This is the generalisable half: "we have not built it yet" is a state, and an
+> API that encodes it as absence hands every client a lie to render.**
+>
+> ### ⚠️ AN OPEN RULING THIS TOUCHES, NOT ROUTED AROUND
+>
+> These writes take **the same session scope as the browser**, which is a *default* rather than a
+> ruling. Phase 72's **D5** — *what authorises a write from the editor?* — is open, and its stated
+> blast radius is NAT-007's reply path and the Tier-3 **community** writes, not this school
+> surface, which UNI-006 scoped as pull-and-submit long before D5 was raised. But the mechanism
+> question applies here too: **if D5 rules for a narrower post-only scope or a first-write consent
+> step, `start`, `submit` and `seen` are the routes to re-scope.** Listed in `docs/API.md` §5b so
+> nobody has to go looking.
+>
+> ### ⚠️ Two things this does not do, said out loud — ~~STRUCK 2026-08-19, both are now built~~
+>
+> - ~~**No bridge endpoint.** The "pull" is `assignmentsForMember()`, a reader.~~ ✅ **Six routes,
+>   2026-08-19.** The reader is still the reader; it now has a URL.
+> - ~~**Every write is reachable only from a test.**~~ ✅ **Reachable from an editor**, and driven
+>   from one end to the other — though see the curated-bundle limit above, which is the half that
+>   is not this task's to fix.
 >
 > ### 🔴 A drive trap this repo will hit again
 >
@@ -171,7 +246,13 @@ actually buy consulting around, and the twin of the "corporate onboarding" offer
 
 1. Assign → member's editor pulls it (outbound) → member completes → submit → machine grade
    lands in the admin's results view — one full round trip on a test org.
-   ✅ **MET platform-side, and the limit is stated rather than implied:** the round trip runs
+   ✅ **MET OVER HTTP, 2026-08-19** — assign → list → read → pull the bundle → start → submit →
+   machine grade in the response → the admin's results view, every step through a route handler
+   with a bearer token (`tests/uni006-bridge.test.ts`), plus the editor-side caller and its 26
+   specs. ⚠️ **The pull works for `org_shelf` and has nothing to serve for `curated`**, because
+   the platform hosts no curriculum bundles — stated above, and owed by UNI-007 §11 rather than
+   by this task.
+   ⚠️ **The original platform-side reading, kept because it is what was true until then:** the round trip runs
    end to end in `tests/uni006-assignments.test.ts` and over HTTP in the drive, with the
    editor's *real* `LessonEvidence` shape as the input. What is NOT exercised is the editor
    pulling over a bridge — there is no bridge and no session issuer. **"The member's editor
