@@ -157,4 +157,45 @@ ratchet spec** (a count that may only go down), because nothing currently stops 
 
 ### AC6 — driven and looked at
 
-See the drive record below.
+Editor launched 2026-08-19 (`dev:debug`), project opened, **both themes**, stack torn down after.
+
+**Token values read out of the live renderer**, not the source file — because the spec grades
+`colors.css` and only a running editor proves the cascade delivers it:
+
+```
+--theme-color-fg-muted          #95a0ac   (= fg-default-shy: the alias is live)
+--theme-color-fg-default-shy    #95a0ac
+--theme-color-fg-disabled       #6b7682   (kept its value, no longer an alias)
+--theme-color-fg-accent         #4da3ff
+--theme-color-fg-danger         #fda29b
+--theme-color-border-control    #6b7682
+--theme-color-node-category-default  #6b7682
+```
+
+**Rendered contrast, light theme, measured off composited pixels** (walking up for the real
+ground rather than assuming one): panel viewer line **7.10:1**, list row title **7.10:1**, the
+health readout — the `Shy` type, the one that moved — **5.70:1**. All clear.
+
+**What was looked at:**
+- 🔴 **The node canvas, both themes.** Node cards, the type line under each node name, and the
+  category tint. `cardSubText` takes the raise (it is words, and it was 3.93:1); the category hue
+  and the rect-select box are **pixel-identical** to before, which is what
+  `node-category-default` and `border-control` were for. Confirmed the canvas *re-resolves* on a
+  theme change rather than caching the first palette it saw.
+- **The launcher's Community tab.** The line the whole task is about is legible, and 🔴 **the
+  "Open community.nodegx.io" button now has a visible edge** — it had been drawing a 1.32:1
+  border, so the control had no boundary at all. That is a defect the eye finds instantly and no
+  spec had ever asked about.
+- **The rail panel**, both themes.
+
+**⚠️ Stated limits, because a drive that does not say what it skipped reads as full coverage:**
+- The theme was flipped by setting `data-theme` directly, not through `ThemeManager`. That
+  exercises the palette, which is what this task changed; it does **not** exercise the switch.
+- The **composer dialog was not opened**. Its two failing pairs (`fg-default-shy` and `danger` on
+  bg-4) are the same tokens verified above, but the surface itself was not seen. NAT-007 opens
+  this dialog for real and should look.
+- The remaining non-text `fg-muted` consumers outside the canvas — scrollbar thumbs on hover, the
+  `Select` separator, a few icon fills — were **reasoned about and not driven**. All move in the
+  same direction (more visible), so none is a contrast regression, but none was looked at.
+- 🔴 **`bg-1` cards on `bg-0` remain 1.06:1.** Visible in both screenshots: the node cards and the
+  page ground are one surface. This task did not touch it and NAT-003 owns it.
