@@ -7,7 +7,7 @@ import KeyboardHandler, { KeyboardCommand } from '@noodl-utils/keyboardhandler';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import { LearningFolderModel } from '../models/learningfolder';
-import { checkMyWork, liveCheckMyWorkDeps } from '../models/lessoncheck';
+import { checkMyWork, liveCheckMyWorkDeps, summariseSubmission } from '../models/lessoncheck';
 import { ProjectModel } from '../models/projectmodel';
 import evalConditions from './lessons/lessonevalconditions.live';
 import LessonLayerView from './lessons/LessonLayerView';
@@ -174,10 +174,28 @@ export class LessonLayer {
     let next: ILessonCheckState;
     try {
       const outcome = await checkMyWork(this.learningLessonId, liveCheckMyWorkDeps());
-      next =
-        outcome.result === 'graded'
-          ? { busy: false, summary: outcome.summary, complete: outcome.evidence.complete }
-          : { busy: false, summary: outcome.reason, unavailable: true };
+      if (outcome.result === 'graded') {
+        /*
+         * 🔴 UNI-006 — the hand-in sentence is APPENDED to the grade's, never substituted for
+         * it. A learner whose school could not be reached has still been graded, by two local
+         * engines, on the project in front of them: replacing that with a network message
+         * would throw away the answer they asked for. And the reverse is the more dangerous
+         * one — a lesson that graded cleanly while the submit was refused must not read as
+         * "all done", because a pupil who believes they handed in stops trying.
+         *
+         * ⚠️ Only the summary carries it. `recordGrade` already stored the grading sentence
+         * as the card's feedback, and a card still reading "could not reach your school" six
+         * weeks later would be describing a moment rather than the work.
+         */
+        const handIn = summariseSubmission(outcome.submission);
+        next = {
+          busy: false,
+          summary: handIn ? `${outcome.summary} ${handIn}` : outcome.summary,
+          complete: outcome.evidence.complete
+        };
+      } else {
+        next = { busy: false, summary: outcome.reason, unavailable: true };
+      }
     } catch (e) {
       // `checkMyWork` does not throw; building its live ports can (no store, no
       // project). Either way the learner pressed a button and is owed a

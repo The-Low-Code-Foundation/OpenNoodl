@@ -144,6 +144,25 @@ export interface LearningEntry {
   installedAt: string;
   progress?: LearningProgress;
   grade?: LearningGrade;
+  /**
+   * UNI-006 — set when this lesson is on the card because an org ASSIGNED it.
+   *
+   * 🔴 Its presence is the only thing that makes "check my work" hand anything in. An
+   * ordinary lesson a learner installed themselves has no assignment, submits nothing, and
+   * must not: D5 rules that the Learning folder works with no platform and no account at
+   * all, and a grader that phoned home for every lesson would quietly repeal that.
+   */
+  assignment?: LearningAssignmentLink;
+}
+
+/** What links a Learning-folder entry back to the org that set the work. */
+export interface LearningAssignmentLink {
+  assignmentId: string;
+  orgSlug: string;
+  /** Set once the platform has ACCEPTED a submission — never when one was merely attempted. */
+  submittedAt?: string;
+  /** The platform's own state for the submission, as of the last accepted submit. */
+  state?: 'in_progress' | 'submitted' | 'graded';
 }
 
 /**
@@ -536,6 +555,37 @@ export class LearningFolderModel extends Model {
       ...(evidence.wholeSolution ? { wholeSolution: evidence.wholeSolution } : {})
     };
     return this.update(id, (entry) => ({ ...entry, grade }));
+  }
+
+  /**
+   * Record that the platform ACCEPTED a submission for this entry.
+   *
+   * 🔴 CALLED ONLY ON A 201, and the narrowness is the whole value. A `submittedAt` written
+   * on every attempt would say a pupil handed their homework in when the request was refused,
+   * timed out, or went nowhere because the laptop was on a train — and this is precisely the
+   * field somebody would later read to decide whether they were late. An unsent submission
+   * must look identical to one that was never attempted.
+   *
+   * ⚠️ It writes the platform's `state`, never a state this process inferred. The platform
+   * answers `submitted` for a human-graded assignment and `graded` for a runner-graded one,
+   * and which of those it is depends on a column only the platform has read.
+   */
+  recordSubmission(
+    id: string,
+    accepted: { submittedAt: string; state: 'in_progress' | 'submitted' | 'graded' }
+  ): LearningEntry | undefined {
+    return this.update(id, (entry) =>
+      entry.assignment
+        ? {
+            ...entry,
+            assignment: {
+              ...entry.assignment,
+              submittedAt: accepted.submittedAt,
+              state: accepted.state
+            }
+          }
+        : entry
+    );
   }
 
   private update(id: string, change: (entry: LearningEntry) => LearningEntry): LearningEntry | undefined {

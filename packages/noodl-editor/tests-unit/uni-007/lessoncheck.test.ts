@@ -80,7 +80,10 @@ function deps(overrides: Partial<CheckMyWorkDeps> = {}, recorded: Recorded[] = [
       recordGrade: (id, evidence, options) => {
         recorded.push({ id, evidence, options });
         return undefined;
-      }
+      },
+      // UNI-006. Unused by this file's fixtures — `entry` carries no assignment — and present
+      // because the register's shape is the contract. See tests-unit/uni-006/.
+      recordSubmission: () => undefined
     },
     readManifest: () => manifest,
     evalContext: () => context([node('Card', 'Group'), node('T', 'Text')]),
@@ -104,7 +107,7 @@ describe('checkMyWork — what it refuses to grade', () => {
 
   it('points at reset when the lesson folder has gone', async () => {
     const missing = { ...entry, missing: true };
-    const outcome = await checkMyWork(entry.id, deps({ register: { get: () => missing, recordGrade: () => undefined } }));
+    const outcome = await checkMyWork(entry.id, deps({ register: { get: () => missing, recordGrade: () => undefined, recordSubmission: () => undefined } }));
 
     expect(outcome.result).toBe('unavailable');
     expect(outcome.result === 'unavailable' && outcome.reason).toContain('Reset it');

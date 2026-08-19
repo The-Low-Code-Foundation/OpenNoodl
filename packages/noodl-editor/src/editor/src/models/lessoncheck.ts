@@ -53,6 +53,28 @@ export interface CheckMyWorkRegister {
     evidence: LessonEvidence,
     options?: { gradedBy?: 'runner' | 'human'; feedback?: string; gradedAt?: string }
   ): LearningEntry | undefined;
+  /** UNI-006. Called only when the platform accepted the submission. */
+  recordSubmission(
+    id: string,
+    accepted: { submittedAt: string; state: 'in_progress' | 'submitted' | 'graded' }
+  ): LearningEntry | undefined;
+}
+
+/**
+ * What handing in came to. 🔴 `notAttempted` is a distinct outcome and not a null: *"this
+ * lesson is not assigned work"* and *"we tried and could not"* are opposite facts, and the
+ * sentence a learner should read differs completely between them.
+ */
+export type SubmissionOutcome =
+  | { result: 'notAttempted' }
+  | { result: 'accepted'; state: 'in_progress' | 'submitted' | 'graded'; score: number | null }
+  | { result: 'unauthenticated' }
+  | { result: 'refused'; detail: string }
+  | { result: 'failed'; detail: string };
+
+/** The one call this module makes over the network. Injected, so the suite needs none. */
+export interface SubmitAssignmentPort {
+  (assignmentId: string, evidence: LessonEvidence): Promise<SubmissionOutcome>;
 }
 
 export interface CheckMyWorkDeps {
@@ -67,6 +89,12 @@ export interface CheckMyWorkDeps {
    * failed check.
    */
   wholeSolution?: WholeSolutionGrader;
+  /**
+   * UNI-006's bridge. **Optional, and its absence is a working editor rather than a degraded
+   * one** — D5 rules that the Learning folder works with no platform and no account, so a
+   * build that could not hand in still grades every lesson exactly as before.
+   */
+  submitAssignment?: SubmitAssignmentPort;
   now(): string;
 }
 
@@ -78,6 +106,12 @@ export type CheckMyWorkOutcome =
       evidence: LessonEvidence;
       /** The sentence shown to the learner and stored as the card's feedback. */
       summary: string;
+      /**
+       * 🔴 ALWAYS PRESENT, so a caller cannot forget to look. An undefined field is one a UI
+       * renders as nothing and a reviewer reads as "not applicable" — which is exactly the
+       * reading that would be wrong for a failed hand-in.
+       */
+      submission: SubmissionOutcome;
     }
   /** Nothing was graded, and nothing was written. */
   | { result: 'unavailable'; reason: string };
@@ -133,7 +167,84 @@ export async function checkMyWork(projectId: string | undefined, deps: CheckMyWo
   const summary = summariseGrade(grade, evidence);
   deps.register.recordGrade(entry.id, evidence, { gradedBy: 'runner', feedback: summary });
 
-  return { result: 'graded', entryId: entry.id, grade, evidence, summary };
+  /*
+   * 🔴 UNI-006's BRIDGE, AND THE ORDER IS THE DESIGN. The grade is recorded BEFORE the
+   * network is touched, and nothing below can undo it. A learner who pressed "check my work"
+   * on a train has been graded — that is a local fact about a local project, computed by two
+   * local engines — and losing it because a POST failed would make the offline case worse
+   * than having no bridge at all.
+   *
+   * ⚠️ This is also why a failed submit is not an `unavailable` outcome. `unavailable` means
+   * *nothing was graded and nothing was written*, and both halves would be false here.
+   */
+  const submission = await submitIfAssigned(entry, evidence, deps);
+
+  return { result: 'graded', entryId: entry.id, grade, evidence, summary, submission };
+}
+
+/**
+ * Hand the work in, when there is work to hand in and somewhere to hand it to.
+ *
+ * 🔴 THE TWO GUARDS ARE NOT THE SAME GUARD. `entry.assignment` absent means this lesson is
+ * the learner's own and must never be sent anywhere — D5's *"works with no platform and no
+ * account"*. `deps.submitAssignment` absent means this build has no bridge wired. Collapsing
+ * them into one condition would work today and would send a personal lesson to a school the
+ * day somebody made the port non-optional.
+ */
+async function submitIfAssigned(
+  entry: LearningEntryView,
+  evidence: LessonEvidence,
+  deps: CheckMyWorkDeps
+): Promise<SubmissionOutcome> {
+  if (!entry.assignment) return { result: 'notAttempted' };
+  if (!deps.submitAssignment) return { result: 'notAttempted' };
+
+  let outcome: SubmissionOutcome;
+  try {
+    outcome = await deps.submitAssignment(entry.assignment.assignmentId, evidence);
+  } catch (e) {
+    // The port is written not to throw; a caller that ignored that must not take the whole
+    // check down with it, because the grade above is already recorded and already true.
+    return { result: 'failed', detail: e instanceof Error ? e.message : String(e) };
+  }
+
+  // 🔴 Written ONLY on acceptance. See `recordSubmission`: a `submittedAt` written on a
+  // refused attempt is a field that says a pupil handed their homework in when they did not,
+  // and it is the field somebody would later read to decide whether they were late.
+  if (outcome.result === 'accepted') {
+    deps.register.recordSubmission(entry.id, { submittedAt: deps.now(), state: outcome.state });
+  }
+  return outcome;
+}
+
+/**
+ * The sentence to add when a lesson was assigned work.
+ *
+ * ⚠️ Kept apart from {@link summariseGrade} on purpose. That sentence is about the learner's
+ * project and is stored on the card as feedback; this one is about a network and must not
+ * become part of a grade's permanent record — a card reading *"could not reach your school"*
+ * six weeks later would be describing a moment, not the work.
+ *
+ * 🔴 NOTHING HERE MAY SAY THE WORK WAS HANDED IN UNLESS IT WAS. The refused and failed
+ * branches are the ones with damage available to them: a pupil who believes they submitted
+ * stops trying.
+ */
+export function summariseSubmission(submission: SubmissionOutcome, orgSlug?: string): string {
+  const school = orgSlug ? `${orgSlug}` : 'your school';
+  switch (submission.result) {
+    case 'notAttempted':
+      return '';
+    case 'accepted':
+      return submission.state === 'graded'
+        ? `Handed in to ${school}, and marked.`
+        : `Handed in to ${school}. A person will look at it and you will see their feedback here.`;
+    case 'unauthenticated':
+      return `Not handed in — sign in to ${school} from the community panel, then press Check my work again.`;
+    case 'refused':
+      return `Not handed in — ${submission.detail}`;
+    case 'failed':
+      return `Not handed in — ${school} could not be reached. Your work is graded and saved; press Check my work again when you are back online.`;
+  }
 }
 
 /**
@@ -252,6 +363,52 @@ export function liveCheckMyWorkDeps(): CheckMyWorkDeps {
     readManifest: (projectDirectory: string) => readLessonManifest(projectDirectory, fs),
     evalContext: liveLessonEvalContext,
     wholeSolution: liveWholeSolutionGrader(),
+    submitAssignment: liveSubmitAssignment,
     now: () => new Date().toISOString()
   };
+}
+
+/**
+ * UNI-006's bridge, wired to the real platform.
+ *
+ * 🔴 THE NARROWING IS HERE AND NOT IN THE CLIENT, and that is deliberate: `submittedEvidence`
+ * lives beside `LessonEvidence`, which is the file somebody edits when they add a field. A
+ * narrowing tucked into the transport is one they would never see.
+ *
+ * ⚠️ **Never throws.** Every branch of `Write<T>` becomes a {@link SubmissionOutcome}, because
+ * `checkMyWork` has already recorded a grade by the time this runs and an exception here would
+ * lose it. `absent` folds into `refused` with a plain sentence: D15 says a pupil is not told a
+ * door exists, so the honest thing a learner can be told is that it was not handed in.
+ */
+async function liveSubmitAssignment(
+  assignmentId: string,
+  evidence: LessonEvidence
+): Promise<SubmissionOutcome> {
+  /* eslint-disable @typescript-eslint/no-var-requires */
+  const { CommunityApiClient } = require('./community/communityapi');
+  const { COMMUNITY_URL } = require('./community/communityorigin');
+  const { readCommunitySession } = require('./community/communitysession');
+  const { submittedEvidence } = require('./lessongrading');
+  /* eslint-enable @typescript-eslint/no-var-requires */
+
+  const session = await readCommunitySession();
+  // ⚠️ Asked BEFORE the request rather than reading a 401 back. A learner who never signed in
+  // should not have their homework put on the wire at all.
+  if (!session?.token) return { result: 'unauthenticated' };
+
+  const client = new CommunityApiClient({ baseUrl: COMMUNITY_URL, token: session.token });
+  const written = await client.submitAssignment(assignmentId, submittedEvidence(evidence));
+
+  switch (written.outcome) {
+    case 'ok':
+      return { result: 'accepted', state: written.value.state, score: written.value.score };
+    case 'unauthenticated':
+      return { result: 'unauthenticated' };
+    case 'refused':
+      return { result: 'refused', detail: written.detail };
+    case 'absent':
+      return { result: 'refused', detail: 'this assignment is not available to you.' };
+    case 'unreachable':
+      return { result: 'failed', detail: written.detail };
+  }
 }

@@ -116,7 +116,9 @@ const ALLOWED: Record<string, string> = {
   'noodl-editor/src/editor/src/views/DialogLayer/components/AskAboutNodeDialog/AskAboutNodeDialog.tsx':
     'the composer: CHOOSES A TRANSPORT (direct post vs the browser hand-off, which needs no account) and adds a sign-in offer. Withholds nothing — asserted structurally below',
   'noodl-editor/src/editor/src/hooks/useCommunityMirror.ts':
-    'UNI-011/D21 community panel: the token is a BEARER HEADER on reads that already work without one, plus the handle in the header line. Reading is UNI-011 AC4 and is ungated — asserted structurally below'
+    'UNI-011/D21 community panel: the token is a BEARER HEADER on reads that already work without one, plus the handle in the header line. Reading is UNI-011 AC4 and is ungated — asserted structurally below',
+  'noodl-editor/src/editor/src/models/lessoncheck.ts':
+    'UNI-006 bridge: read ONLY inside liveSubmitAssignment, to hand an ASSIGNED lesson to the org that set it. Withholds nothing — grading, installing, resetting, progress and feedback are untouched, and an entry can only carry an assignment if an account obtained it, so there is nothing for an account-less editor to be refused. Asserted structurally below'
 };
 
 describe('the instrument itself — controls before any absence is claimed', () => {
@@ -269,5 +271,51 @@ describe('AC4 — the community panel withholds nothing, proven against the real
   it('and neither is the link out to the web community', () => {
     // The capability a person with no account has on the web, kept in the editor.
     expect(isGated(communityPanel, 'label="Open community.nodegx.io"', VIEWER_OPENER)).toBe(false);
+  });
+});
+
+/**
+ * UNI-006's bridge — the reader added on 2026-08-19, and the two things that make it a
+ * "withholds nothing" row rather than a row somebody wrote to go green.
+ *
+ * 🔴 The question this file demands is *what does this read WITHHOLD?* For `lessoncheck.ts`
+ * the answer is nothing, and it rests on two structural facts rather than on a promise:
+ * grading happens **before** the session is consulted, and the session is consulted **only**
+ * inside the live submit port. A learner with no account presses "check my work", is graded by
+ * both engines, and has the result written to their card exactly as they were before this
+ * existed.
+ */
+describe('AC4 — the lesson bridge withholds nothing, proven against the real source', () => {
+  const lessoncheck = stripComments(readFileSync(join(EDITOR_SRC, 'models/lessoncheck.ts'), 'utf8'));
+
+  it('records the grade BEFORE anything touches the network — the order is the guarantee', () => {
+    const graded = lessoncheck.indexOf('deps.register.recordGrade(');
+    const submitted = lessoncheck.indexOf('submitIfAssigned(');
+    // A missing anchor means this spec is blind, so it fails rather than passing vacuously.
+    expect(graded).toBeGreaterThan(-1);
+    expect(submitted).toBeGreaterThan(-1);
+    // 🔴 Swap these two lines and an offline learner loses a grade they had earned, silently.
+    expect(graded).toBeLessThan(submitted);
+  });
+
+  it('reads the session ONLY inside the live submit port, never on the grading path', () => {
+    const port = lessoncheck.indexOf('async function liveSubmitAssignment');
+    const reads = [...lessoncheck.matchAll(/readCommunitySession/g)].map((m) => m.index ?? -1);
+    expect(port).toBeGreaterThan(-1);
+    // Non-vacuity: if the token stopped appearing at all, "every occurrence is inside the
+    // port" would be true of an empty set and this spec would guard nothing.
+    expect(reads.length).toBeGreaterThan(0);
+    expect(reads.every((at) => at > port)).toBe(true);
+  });
+
+  it('and a lesson with no assignment returns before the port is reached', () => {
+    // The capability an account-less editor keeps: grade a lesson you installed yourself.
+    // `submitIfAssigned` leaves on `!entry.assignment` before any transport exists.
+    const body = lessoncheck.slice(lessoncheck.indexOf('async function submitIfAssigned'));
+    const guard = body.indexOf("if (!entry.assignment) return { result: 'notAttempted' };");
+    const call = body.indexOf('deps.submitAssignment(');
+    expect(guard).toBeGreaterThan(-1);
+    expect(call).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(call);
   });
 });
