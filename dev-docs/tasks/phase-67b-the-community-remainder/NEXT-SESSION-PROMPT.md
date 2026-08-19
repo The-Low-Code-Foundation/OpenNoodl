@@ -27,7 +27,10 @@ site does not have the queue lens, the signal tables or the same-here route. Dep
 `ops/deploy.sh 49.12.102.195` — **it rebuilds and restarts a live site sharing a box with three
 others**, so it was deliberately left for a session that has been asked to do it.
 
-## 2. Gate readings — 2026-08-19, `nodegx-community@d0ba01c`
+## 2. Gate readings — 2026-08-19, `nodegx-community@c5fd343`
+
+⚠️ Measured at `d0ba01c`; `c5fd343` adds only the missing migration registration, which was
+**already in the working tree when these ran**. The readings describe this tree.
 
 | Gate | Reading | ⚠️ |
 |---|---|---|
@@ -75,15 +78,19 @@ others**, so it was deliberately left for a session that has been asked to do it
 
 ### An agent alone, in order
 
-1. **Deploy, once 1 above lands** — and then *read* `last-backup.json` and
-   `last-restore-check.json`, which `deploy.sh` now prints. Do not report backups as working off the
-   exit code.
+1. **Deploy `0015`, once Richard says so** (his item 3 — the only thing of his still open). Then
+   *read* `last-backup.json` and `last-restore-check.json`, which `deploy.sh` now prints. **Do not
+   report backups as working off the exit code**; the whole point of those files is that "no backup
+   has ever run" and "the last backup failed" must look different from a deploy log.
 2. **UNI-006 + UNI-007's intake as ONE tranche.** They share a client and a transport. 🔴 **Build on
    P72 NAT-011's editor-side community client** — a second client in the editor is a defect UNI-011
    already paid for once. Check NAT-011's state first.
 3. **UNI-008** (online in one click / off in 45 days), **UNI-010's remainder**, **UNI-012** (F4 on a
    packaged install) — independent, any order.
-4. **E7's capture upload** — same shape as B: a form, then a small build, gated on the same keys.
+4. **E7's capture upload** — ✅ **NO LONGER BLOCKED ON ANYTHING OF RICHARD'S.** It needed the same
+   Hetzner keys, which arrived this session; the bucket is `nodegx` and backups already use the
+   `nodegx-community/` prefix, so give the artefacts their own. A `capture` attachment currently
+   stores dimensions and consent and no image, so nothing has to be migrated.
 5. ⚠️ **Optional, small, and it would have saved this session an hour:** make `ops/deploy.sh` refuse
    a dirty tree without a flag and stamp the deployed commit on the host. *Deployed* and *committed*
    are independent facts today and nothing checks the second.
