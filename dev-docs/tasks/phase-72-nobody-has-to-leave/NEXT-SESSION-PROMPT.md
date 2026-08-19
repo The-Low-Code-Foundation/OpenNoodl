@@ -1,58 +1,93 @@
 # Next session — phase 72
 
-**Written 2026-08-19.** The phase was scoped this session out of a review conversation with
-Richard. **Nothing has been built.**
+**Written 2026-08-19, second session.** Tier 0 and half of Tier 1 are **built and committed**.
+NAT-003 is next and is the other half of the same measurement.
 
 ## Read first, in this order
 
-1. [README.md](README.md) §1 — the three findings. They are not what the review started from.
-2. [README.md](README.md) §5 — **five open rulings**, each blocking a named task.
-3. [TASKS.md](TASKS.md) — the order, and the proposed closing bar.
+1. [NAT-002](NAT-002-THE-GREY-NOBODY-CAN-READ.md) §"Done" — what the palette is **now**, and the
+   remainder it deliberately did not clear.
+2. [README §4](README.md) — **D9 settled, D11 and D12 added and settled.** Five rulings still open (D5, D6, D7, D8, D10).
+3. [TASKS.md](TASKS.md) — NAT-003 is the next row, and 🔴 it is *measured together* with NAT-002.
 
 ## What happened this session
 
-A review of the community surfaces UNI-011 shipped. Richard's two asks were the UI ("it's still a
-bit sad… too dark… dark on dark is really depressing") and full editor integration ("the fucking
-thing just bumps you out to the browser page"). Investigation of **both** repos
-(`OpenNoodl` and `~/vscode_projects/nodegx-community`) produced:
+**NAT-001 ✅** — the editor now has the contrast gate the platform has had since UNI-013.
+`tests-unit/nat-001/palette-contrast.spec.ts`, 36 pairs × 2 themes + six controls, under
+`npm run test:main` (jest matches by path — **no barrel to register**).
+🔴 **It was observed at 22 failures on the unmodified palette before a single hex value moved**,
+and those numbers are in the task file.
 
-- **`--theme-color-fg-muted` fails AA in both themes** — 3.93 dark / 3.62 light on `bg-1`, worse at
-  higher elevations — and it is the colour of nearly every word on the launcher's Community tab.
-- **The platform already fixed this and did it by forking the palette**: `--site-fg-secondary`
-  points at `fg-default-shy` and is gated by `tests/uni013-contrast.test.ts` (~30 pairs, both
-  themes). The editor has no equivalent gate. UNI-013's "one palette" is currently false.
-- **`bg-0` → `bg-1` is 1.06:1 in dark.** The elevation ramp the token file calls "deliberately
-  distinct" is not distinct.
-- **19 platform pages, 15 API routes, and no endpoint at all** for people, profiles, RFPs,
-  coaching, University, tutorials or replays. That — not the launcher UI — is why the mirror has
-  three sections.
-- **Every community action in the editor is `platform.openExternal`** (`ProjectsPage.tsx:1325-1328`,
-  `CommunityPanel.tsx:58`, `AskAboutNodeDialog.tsx:353`).
+**NAT-002 ✅** — 123/123 green. Three rulings, not one:
 
-Richard settled four rulings in the conversation: **fix the shared tokens** (accepting the
-whole-editor blast radius), **light fallback on the web**, **native read *and* reply** (not
-read-only, not a webview), and **all four surfaces in scope**.
+- **D9 — Richard retired `fg-muted`** (an alias of `fg-default-shy`), against this task file's own
+  recommendation. The ~217 declarations naming it keep working and all get AA.
+- **D11 — the accent splits fill from text.** `--theme-color-fg-accent`. Only **light** moves.
+- **D12 — the status colours split the same way.** `-fg-success` / `-fg-notice` / `-fg-danger`.
+
+Both D11 and D12 came out of NAT-001's measurements and were **not** in the review's scope.
 
 ## Where to start
 
-**NAT-001**, and 🔴 **observe it failing before touching a hex value** — the standing lesson about
-measuring after a fix applies directly, and the specific numbers to capture are in NAT-002.
+**NAT-003.** The instrument is built and its numbers are already recorded:
 
-**NAT-006 can start in parallel** — it is a platform-only task with five tasks queued behind it.
+```
+bg-1 on bg-0   1.06 dark / 1.13 light
+bg-2 on bg-1   1.07 / 1.06
+bg-3 on bg-2   1.16 / 1.09
+```
 
-## Before building anything user-visible
+🔴 **Those rows are deliberately NOT in NAT-001's PAIRS**, and the reason is in NAT-001's task
+file: a card edge is decorative elevation, not a control boundary, so asserting WCAG 1.4.11's 3:1
+on it would be a gate rejecting a correct answer. **NAT-003 has to state its own bar as a design
+choice and defend it** — do not borrow WCAG's number for a thing WCAG does not govern.
 
-The five open rulings are not decoration. **D9** blocks NAT-002 (does `fg-muted` survive, or is it
-kept and forbidden for text?). **D5** blocks every write in Tier 3 — the device-token flow was
-scoped for identity, not for posting, and that is a decision with a consent step attached. Get them
-in one sitting.
+Two things NAT-003 inherits, already measured:
 
-## Verification notes for this phase
+- **`fg-default-shy` has only ~0.17 of headroom on `bg-4`** (4.67 dark). If NAT-003 lifts the dark
+  ramp, bg-4 gets lighter and that token fails again. The gate will say so — re-run it, don't
+  assume.
+- **The light `--theme-color-primary` clears `bg-1` by 0.07** (4.57). If `bg-1` moves in light,
+  re-measure the accent. NAT-002's trap section already flagged this and it is now load-bearing.
 
-- 🔴 A change to `colors.css` is **not done** until `npm run tokens:sync` has run in
-  `nodegx-community` and both `uni013-token-drift` and `uni013-contrast` are green. Either side
-  alone reads as finished.
-- 🔴 D15 assertions need a **permitted control beside them** — "nothing was drawn" passes equally
-  well when the component never ran.
-- 🔴 The palette work must be **driven and looked at** on the node canvas. No spec knows what a wire
-  is, and every spec can be green while the graph is unreadable.
+## Before you touch a hex value
+
+🔴 **Run `npm run test:main` and see it green first.** Same lesson as last session, one level up: a
+palette change measured only after the fact proves nothing, and this session's gate exists
+precisely so the *next* change has a before.
+
+## The queue NAT-002 did not clear
+
+**~99 files still paint words with a fill role** (`color: var(--theme-color-primary|success|
+notice|danger)`, 202 declarations). NAT-002 migrated the design system's text primitive
+(`Text.module.scss`) and the community surfaces; the rest hand-rolled a colour instead of going
+through `Text`, and a grep cannot separate those from `currentColor` icon fills.
+⚠️ **They are sub-AA in light today.** NAT-005 should take the ones on the community surfaces; the
+rest want their own task **with a ratchet spec** — a count that may only go down — because nothing
+currently stops a hundredth.
+
+## 🔴 One loose end that is not a task
+
+`packages/noodl-core-ui/src/preview/launcher/Launcher/views/Community.tsx` carries a NAT-002 edit
+(`shy` → `fg-default-shy`, "Try again" → `fg-accent`, the border → `border-control`) and is
+**untracked** — it is part of the UNI-011 tranche that has never been committed, along with
+`mirrorview.ts`, `useCommunityMirror.ts` and `CommunityPanel/`. Taking ownership of another phase's
+uncommitted work was not NAT-002's call, but **that tranche is one `git clean` from gone.**
+Ask Richard whether it should be committed.
+
+## Verification notes that earned their place this session
+
+- 🔴 **A known-bad control rots when somebody fixes the defect.** It happened **twice** in one
+  session — mine (`fg-muted` on `bg-0`) and the platform's, which began *failing because the
+  palette got better*. Both are now self-calibrating: measure a pair that passes, then demand
+  0.01 more than it scores.
+- 🔴 **"They must differ" can be the wrong assertion.** In dark, `fg-success` and `fg-notice`
+  deliberately equal their fills because those already read. The spec asserts the **conditional** —
+  a text role may share a fill only where that fill is readable — so a correct answer is not
+  rejected.
+- 🔴 **Grep for the token before adding one.** `--theme-color-border-control` already existed
+  (POL-016) with exactly the right value and reasoning, while the launcher's button drew a 1.32:1
+  border. Two of the three tokens this task needed were already in the file.
+- ⚠️ **A spec can keep its own copy of `colors.css`.** `tests/canvas/CanvasThemeNodeSchemes.test.ts`
+  does, it drifted, and nothing failed — it would simply have gone on grading a palette the product
+  no longer ships.
