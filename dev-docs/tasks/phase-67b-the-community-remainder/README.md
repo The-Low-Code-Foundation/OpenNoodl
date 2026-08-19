@@ -19,15 +19,39 @@ because a few of them stopped being true the moment the platform was actually de
 
 ---
 
+## 🔴 Amended 2026-08-19 — three items left this phase, and one line below was false
+
+Phase 72 (*nobody has to leave*) was scoped on 2026-08-19 and overlaps this phase at three points.
+Rather than track them in two ledgers, **they are struck from here and owned there**:
+
+| Left this phase | Now | Why it moved |
+|---|---|---|
+| **Gap A**, the mail drainer | **[P72 NAT-014](../phase-72-nobody-has-to-leave/NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md)** | Three phase-72 tasks (NAT-009 AC5, NAT-010 AC5, NAT-013 AC4) assert that a write from the editor **sends**. A blocker owned by a phase nobody is working on is how those tasks ship a feature that tells somebody they were emailed |
+| **UNI-018** — pull a graph | **[P72 NAT-015](../phase-72-nobody-has-to-leave/NAT-015-A-GRAPH-YOU-CAN-PULL-INTO-YOUR-PROJECT.md)** | NAT-007 builds the attachment *renderer*; pulling is the same seam's other half, and it is phase 72's closing sentence |
+| **UNI-011's remainder** — the rail icon drawn for a D15-refused viewer | **P72 NAT-012 AC7** | NAT-012 audits every door in the editor. Forbidding it from closing this one was ledger tidiness buying a worse product |
+
+🔴 **And section A below understated the defect.** Measured against `nodegx-community` at `aa7bd6a`
+on 2026-08-19: it is not that the relay queue lacks a drainer. **No mail leaves this platform at
+all.** `drainOutbox` is written and thoroughly tested and is **imported by exactly two files, both
+tests** — no route, no npm script, no systemd unit (`ops/provision.sh` installs two timers: the app
+and the `pg_dump`). So the sentence below claiming *"D19's condition is met for the Bench"* **was
+wrong from the day it was written**: a transport is not a delivery, and *"someone answered you"*
+has never been sent either. Corrected here rather than silently, and NAT-014 owns the amendment to
+the P67 ruling record.
+
+⚠️ **Everything else in this file stays here.** Phase 72 defers to it by name.
+
+---
+
 ## What came in from phase 67
 
 | Task | What it is | Why it was held out of the close |
 |---|---|---|
 | **UNI-017** | The queue and the signal — triage for unanswered questions, "same here" | The Bench answers questions without it; it makes answering *efficient*, not possible |
-| **UNI-018** | Pull a graph — take an attached fragment into your own editor | The attachment renders and can be read; pulling it is the next verb |
+| ~~**UNI-018**~~ | ~~Pull a graph~~ — 🔴 **MOVED 2026-08-19 to [P72 NAT-015](../phase-72-nobody-has-to-leave/NAT-015-A-GRAPH-YOU-CAN-PULL-INTO-YOUR-PROJECT.md)** | It rode the same seam as NAT-007's renderer. Not this phase's any more |
 | **UNI-007** (intake) | The lesson beamed into the editor — the intake half | The editor half shipped; the platform's intake is the other end of a bridge nobody crosses yet |
 | **UNI-006** (bridge) | Assign / grade / review — the editor↔platform bridge | Assignments and grading work **on the platform**; the bridge is a second client |
-| **UNI-011** (in-editor views) | The community mirrored in the editor — slices beyond s1–s2b | The mirror API exists and is specced; the views are editor surface |
+| ~~**UNI-011**~~ (in-editor views) | ✅ **BUILT 2026-08-19 (session 37)** — the rail entry, four sections, the threshold as a readout. 🔴 **D21 reversed D16** at Richard's instruction; the panel ships empty and he fills it | ~~⚠️ ONE REMAINDER~~ — the rail **icon** drawn for a D15-refused viewer 🔴 **MOVED 2026-08-19 to P72 NAT-012 AC7**, the task that audits every door. An icon is a door, and the task auditing doors should close it |
 | **UNI-008** | Online in one click, off in forty-five days | Hosting. Not in the closing sentence, and it is a product decision as much as a build |
 | **UNI-010** (remainder) | A tutorial your own Claude can write — the remaining slice | 3/3 criteria met on the built slice; the remainder is scope, not debt |
 | **UNI-012** | F4 on a packaged install | An editor-packaging check; orthogonal to the platform being reachable |
@@ -35,16 +59,26 @@ because a few of them stopped being true the moment the platform was actually de
 
 ---
 
-## 🔴 Two gaps found on 2026-08-18 that were NOT on anyone's list
+## 🔴 Gaps found that were NOT on anyone's list
 
-These were measured while closing phase 67 and they are the reason this phase should not be treated
-as leftovers. Both are cases where a thing reads as working and is not.
+A and B were measured while closing phase 67 on 2026-08-18; **C was found on 2026-08-19** while
+picking this phase up. They are the reason this phase should not be treated as leftovers. Every one
+is a case where a thing reads as working and is not.
 
-### A. `outbound_emails` HAS NO DRAINER — the relay queue is written and never sent
+### A. ~~`outbound_emails` HAS NO DRAINER~~ — 🔴 **MOVED to [P72 NAT-014](../phase-72-nobody-has-to-leave/NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md)** on 2026-08-19
 
-`src/lib/relay.ts` inserts into `outbound_emails` and reads it back. **Nothing sends it.** Phase 67
+⚠️ **Kept here, struck through, because the paragraph below contains a claim that was believed for
+a day and acted on.** The work is NAT-014's; the correction is this phase's to record.
+
+`src/lib/relay.ts` inserts into `outbound_emails` and reads it back. **Nothing sends it.** ~~Phase 67
 closed E6 by giving `notification_deliveries` a real transport (Brevo), and that is genuinely the
-queue behind *"someone answered you"* on the Bench — so D19's condition is met for the Bench.
+queue behind *"someone answered you"* on the Bench — so D19's condition is met for the Bench.~~
+
+🔴 **That last sentence is FALSE and was false when written.** A transport is not a delivery.
+`drainOutbox` — claim, send, mark — exists and is tested against a real database, and **nothing in
+production calls it**: two importers, both test files. So the Bench's *"someone answered you"* has
+never been sent either, and D19's condition is met for **nothing**. This is *build the caller*
+again, and the instrument that hid it was a green suite calling the function directly.
 
 ⚠️ **But `notify()` has a `'relayed'` outcome**, which means *"UNI-004's relay is already mailing
 this event, so do not queue a second email about it."* For an RFP response or a coaching booking,
@@ -58,15 +92,117 @@ shippable while changing nothing about whether a relayed message reaches anybody
 a domain that exists, a drainer, and a decision about inbound (UNI-004's double-blind replies need
 it; v1's ruling is outbound-only with replies through the site).
 
-### B. Backups are on the same box as the database
+### B. ~~Backups are on the same box as the database~~ — ✅ **BUILT 2026-08-19 (session 39), waiting on one credential**
 
-`ops/provision.sh` installs a daily `pg_dump` with 14 days of retention into
+`ops/provision.sh` installed a daily `pg_dump` with 14 days of retention into
 `/var/backups/nodegx-community`. ⚠️ **That survives "somebody dropped a table". It does not survive
 "the box is gone"** — and the box is nexus-1, shared with `nodegx.io`,
-`nexus.digitalbricks.io` and `digitalbricks.io`. Moving the dumps off-host is small, and it is the
-kind of small that is only ever done before it is needed.
+`nexus.digitalbricks.io` and `digitalbricks.io`.
+
+🔴 **AND IT HAD NEVER RUN ONCE.** Measured before touching anything: `/var/backups/nodegx-community`
+was **empty**, `systemctl list-timers` showed `LAST` and `PASSED` as `-`. The timer was provisioned
+that morning and first fires at midnight, so **nothing had ever established that `pg_dump` worked on
+that host at all** — the item read as "we have local backups, they just need moving", and the true
+state was "we have a timer". ⚠️ This is [[verify-the-consequence-not-just-the-mechanism]] on
+infrastructure: *provisioned* and *ever having produced a file* are different claims, and only the
+second one is a backup.
+
+**What is built** (`nodegx-community@4c9c07d`, three scripts):
+
+| | |
+|---|---|
+| `ops/backup.sh` | dump to a `.part` name → **prove it** → rename → upload → **read the object back** → prune both ends |
+| `ops/restore-check.sh` | weekly: pull the newest **object**, decrypt, restore into a throwaway database, count, drop |
+| `ops/install-backup.sh` | idempotent wiring, called by `provision.sh` **and by every deploy** |
+
+🔴 **Three design points that are the actual content, not decoration:**
+
+1. **The dump is proved twice, and the second proof is the one that matters.** `pg_restore -l`
+   shows the archive *parses*; comparing its `TABLE DATA` count against the live schema shows it is
+   *complete*. A dump holding 30 of 49 tables passes the first and fails the second — and because
+   the dump is written to `.part` and only renamed once it passes, **a file with a real backup's
+   name is a file that passed**. The old one-liner's `>` created the file before `pg_dump` ran, so a
+   dump that died half-way left a plausible name with a fresh mtime.
+2. **The restore check goes back to the object store, not to the local file.** Restoring the local
+   dump would test `pg_restore` and nothing else. The copy whose readability is genuinely in
+   question is the one that would still exist if the box did not.
+3. **An unconfigured off-site EXITS NON-ZERO.** The local dump still runs and is kept; the unit
+   fails, because a green timer meaning *"there is a file next to the database"* is precisely the
+   defect this item is about. `OFFSITE_MODE=off` accepts local-only **as a decision on the record**,
+   and still says so every day in `last-backup.json`, which `deploy.sh` now prints on every deploy.
+
+**Measured on nexus-1 — six outcomes, not one:**
+
+| | |
+|---|---|
+| unconfigured | dump ok **433,391 bytes, 49/49 tables**, unit **exit 1**, status file honest |
+| full pipeline | encrypt → off-box → download → decrypt → **49 tables, 1 account** restored |
+| control A | corrupted **encrypted** object → FAILS (*gpg: message has been manipulated*) |
+| control B | wrong passphrase → FAILS (*bad session key*) |
+| control C | empty prefix → FAILS — **not** "0 objects, fine" |
+| control D | corrupted **plain** object → FAILS (*pg_restore: end of file*) |
+
+⚠️ **The S3 leg is exercised through rclone's LOCAL backend**, so everything except Hetzner's
+endpoint and its SigV4 signature is proven. Say that rather than "backups work".
+
+🔴 **THE HOST IS DELIBERATELY LEFT FAILING NIGHTLY.** It has the new units and an *unconfigured*
+destination, so from tonight `nodegx-community-backup.service` goes red every day until the keys
+exist. That is the honest state and it was chosen over a quiet local-only pass.
+
+**What is owed — and it is Richard's, not code's** (same shape as E7 and E10):
+
+```
+# add to ~/nodegx-community-deploy.env, then: ops/deploy.sh 49.12.102.195
+HETZNER_S3_ACCESS_KEY=...
+HETZNER_S3_SECRET_KEY=...
+HETZNER_S3_BUCKET=nodegx-community-backups
+HETZNER_S3_ENDPOINT=https://fsn1.your-objectstorage.com   # or nbg1 / hel1
+BACKUP_ENCRYPT_PASSPHRASE=                                 # optional — see the decision below
+```
+
+⚠️ **These are the same Hetzner Object Storage credentials E7's capture-upload path needs.** One
+minting unblocks both. The bucket must exist before the first run (`--s3-no-check-bucket` is set, so
+the script will not try to create it — creating a bucket needs a wider permission than writing to
+one, and a backup job should not hold it).
+
+🔴 **AN OPEN DECISION, AND IT IS NOT A TECHNICAL ONE.** The dump holds real accounts and email
+addresses. `BACKUP_ENCRYPT_PASSPHRASE` turns on gpg AES256 before anything leaves the box, and it is
+**built and tested both ways** — but *encrypting the backups and losing the passphrase is worse than
+not backing up at all*, because it fails at exactly the moment nobody can afford to debug it. The
+weekly restore check tests the passphrase every Sunday, which removes the *drift* failure but not
+the *where is it written down* one. **Set it and record where the passphrase lives, or leave it
+empty deliberately.** Not answering is the one option that is worse than either answer.
 
 ---
+
+### C. 🔴 A production hotfix existed in exactly two places, and neither was a repository
+
+Found 2026-08-19 (session 39) on picking this phase up, not looked for. `nodegx-community` had an
+**uncommitted** `src/lib/session.ts` in the working tree, `md5 d36b7936` — **byte-identical to the
+copy running on nexus-1**. So the only two copies of a live sign-in fix were *a running box* and
+*one uncommitted file in a checkout several sessions share*. ✅ **Now committed as `36748ae`**, as a
+record rather than as new work.
+
+⚠️ **What it fixes is not understood, and that is the part that stays open.** `createSession` and
+`sessionCookie` now coerce `timestamptz` to a `Date` at the boundary, because the deployed server
+returned a value carrying neither `toUTCString` nor `toISOString` and threw a 500 on a sign-in whose
+account and session rows **had already committed** — a real account, a real session, and no cookie
+to reach either with. Retrying just minted a second orphaned session. postgres.js is documented to
+parse `timestamptz` into a `Date` and does so when probed in isolation *on that same box*, same
+driver 3.4.9, same pool, same statement. The comments in the file say all of this and say plainly
+that tolerance is not an explanation.
+
+🔴 **The live remainder: roughly half this codebase wraps DB timestamps in `new Date(...)` and half
+calls date methods directly** (`home.ts:133`'s weekly-call projection, `lists.ts:434`'s
+`lastActiveAt`). **The defended half is evidence somebody hit this before and patched locally. The
+undefended half is still live**, and two call sites already failed in succession — which is what a
+type that is a *claim* rather than a *guarantee* looks like from the outside.
+
+✅ **The generalisable half:** *deployed* and *committed* are independent facts, and nothing checks
+the second. `ops/deploy.sh` rsyncs the working tree — it neither requires a clean tree nor records
+what it shipped, so a hotfix typed straight into a deploy leaves no trace anywhere a future session
+would look. **Worth a refusal in `deploy.sh`** (deploy a dirty tree only with an explicit flag, and
+stamp the deployed commit on the host), and that is smaller than this paragraph.
 
 ## Also landing here
 
@@ -82,13 +218,20 @@ same shape as E10 — a form, then a small build.
 
 ## The order, when this phase is picked up
 
-1. **A** above — the relay drainer, because it is the one where the database currently says
-   something that is not true.
-2. **B** above — off-host backups. Cheap, and it stops being cheap after an incident.
-3. **UNI-017** and **UNI-018**, which are what make the Bench worth returning to.
-4. The editor-side bridges (**UNI-006**, **UNI-007** intake, **UNI-011** views) as one tranche —
-   they share a client and a transport, and doing them separately means three sessions rediscovering
-   the same seam.
+⚠️ **Re-ordered 2026-08-19** — what used to be items 1 and 3 are partly in phase 72 now.
+
+1. ~~**A** above — the relay drainer.~~ 🔴 **Now [P72 NAT-014](../phase-72-nobody-has-to-leave/NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md)**, and it is that phase's day-one task. Nothing here waits on it.
+2. ~~**B** above — off-host backups.~~ ✅ **BUILT 2026-08-19 (session 39).** Everything but the
+   Hetzner credential, which is Richard's to mint; the host runs the new units tonight and **fails
+   loudly** until it exists. 🔴 **It was never "cheap" — it was never having run**, and the item
+   would have been closed as "moved off-host" over a `pg_dump` nobody had ever seen produce a file.
+3. **UNI-017**, which is what makes the Bench worth returning to. (~~UNI-018~~ is P72 NAT-015.)
+   ⚠️ When phase 72 designs the community API (NAT-006), triage and *"same here"* should not be
+   designed *out* of it — say so there rather than discovering it after the endpoints ship.
+4. The editor-side bridges (**UNI-006**, **UNI-007** intake) as one tranche — they share a client
+   and a transport, and doing them separately means two sessions rediscovering the same seam.
+   🔴 **P72 NAT-011 will build that client first.** Whoever picks these up builds *on* it; a second
+   community client in the editor is the defect UNI-011 already paid for once.
 5. **UNI-008**, **UNI-010**'s remainder, **UNI-012** — independent, any order.
 6. ✅ **UNI-013 slice 4 is BUILT (session 36), and it was never going to be Richard's.** This line
    said it was his and not code; the artworks moved to us on 2026-08-18 and landed the same day.
