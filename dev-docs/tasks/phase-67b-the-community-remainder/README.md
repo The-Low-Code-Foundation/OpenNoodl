@@ -47,7 +47,7 @@ the P67 ruling record.
 
 | Task | What it is | Why it was held out of the close |
 |---|---|---|
-| **UNI-017** | The queue and the signal — triage for unanswered questions, "same here" | The Bench answers questions without it; it makes answering *efficient*, not possible |
+| ~~**UNI-017**~~ | ✅ **BUILT 2026-08-19 (session 39) — all 5 ACs.** 🔴 **The queue could not move the number it was built for**: it selected *"not accepted"* and exists to move *"first reply"*, and a replied thread cannot improve a first-reply median. See [UNI-017](../phase-67-nodegx-university/UNI-017-THE-QUEUE-AND-THE-SIGNAL.md) | ~~The Bench answers questions without it~~ |
 | ~~**UNI-018**~~ | ~~Pull a graph~~ — 🔴 **MOVED 2026-08-19 to [P72 NAT-015](../phase-72-nobody-has-to-leave/NAT-015-A-GRAPH-YOU-CAN-PULL-INTO-YOUR-PROJECT.md)** | It rode the same seam as NAT-007's renderer. Not this phase's any more |
 | **UNI-007** (intake) | The lesson beamed into the editor — the intake half | The editor half shipped; the platform's intake is the other end of a bridge nobody crosses yet |
 | **UNI-006** (bridge) | Assign / grade / review — the editor↔platform bridge | Assignments and grading work **on the platform**; the bridge is a second client |
@@ -204,6 +204,34 @@ what it shipped, so a hotfix typed straight into a deploy leaves no trace anywhe
 would look. **Worth a refusal in `deploy.sh`** (deploy a dirty tree only with an explicit flag, and
 stamp the deployed commit on the host), and that is smaller than this paragraph.
 
+### D. 🔴 A queue that could not move the number it was built for — and the instrument that caught what it opened
+
+Found and fixed 2026-08-19 while building UNI-017, and recorded here because the *shape* generalises
+past that task. `unansweredQueue` selected `accepted_post_id is null`; the queue exists to move
+D16's median **first reply**. A thread that has already been replied to **cannot improve a
+first-reply median, ever** — so the surface built to move the metric was filling with rows inert to
+it, and **the more the community answered without accepting, the more of the queue went inert.**
+Nothing threw. No test failed. The number simply did not move.
+
+✅ **The generalisable half:** *a surface built to move a metric should be filtered by that metric's
+own denominator.* Ask what set of rows can still change the number, and check that the surface shows
+that set — not a set that merely correlates with it.
+
+🔴 **AND THE HOLE IT OPENED, caught by a different task's instrument.** The first draft of the
+signal table had **no minor gate**, while every other Bench write is gated by `bench_author_gate` —
+an org-minor who cannot ask or answer could have pressed a button that put a row of theirs into a
+roadmap query. **UNI-005's data inventory found it**, because it censuses the *live schema* and
+refuses to pass until every new free-text column is classified, and classifying `node_type` is what
+forced *"who can write this row?"* to be asked out loud. ✅ **This is the payoff of
+[[run-a-checker-over-the-artefacts-that-already-exist]]**: an instrument written for one criterion
+caught a defect in a different one, a task later, with nobody looking for it. Two more fired the
+same way — the typed schema mirror and UNI-011's route inventory.
+
+⚠️ **And one about the suite, which is this phase's kind of defect:** `npm test` alone reports
+**1006 tests with 8 skipped**, and the skipped file is the **only one that drives real HTTP** — it
+skips when there is no `.next` build. So the default command reads as a full green pass with the
+end-to-end file silently absent. **Build first.** 1010/0 either way once you do.
+
 ## Also landing here
 
 **E7's second half.** Richard chose **Hetzner Object Storage** for artefacts on 2026-08-18. That
@@ -225,9 +253,14 @@ same shape as E10 — a form, then a small build.
    Hetzner credential, which is Richard's to mint; the host runs the new units tonight and **fails
    loudly** until it exists. 🔴 **It was never "cheap" — it was never having run**, and the item
    would have been closed as "moved off-host" over a `pg_dump` nobody had ever seen produce a file.
-3. **UNI-017**, which is what makes the Bench worth returning to. (~~UNI-018~~ is P72 NAT-015.)
-   ⚠️ When phase 72 designs the community API (NAT-006), triage and *"same here"* should not be
-   designed *out* of it — say so there rather than discovering it after the endpoints ship.
+3. ~~**UNI-017**~~ ✅ **BUILT 2026-08-19 (session 39).** (~~UNI-018~~ is P72 NAT-015.)
+   ✅ **The warning below was already discharged** — NAT-006 carries it verbatim at its own line 75,
+   written when phase 72 was scoped. Checked rather than assumed, and it cost one grep.
+   ~~⚠️ When phase 72 designs the community API (NAT-006), triage and *"same here"* should not be
+   designed *out* of it.~~ ⚠️ **What UNI-017 leaves for phase 72:** the *same here* press is an
+   **API endpoint with no web control**, because this site's Bench is read-only by construction —
+   every write is `/api/v1`, driven by the editor. **The button belongs in the editor**, and
+   `POST/DELETE /api/v1/bench/threads/:id/same-here` is waiting for it.
 4. The editor-side bridges (**UNI-006**, **UNI-007** intake) as one tranche — they share a client
    and a transport, and doing them separately means two sessions rediscovering the same seam.
    🔴 **P72 NAT-011 will build that client first.** Whoever picks these up builds *on* it; a second
