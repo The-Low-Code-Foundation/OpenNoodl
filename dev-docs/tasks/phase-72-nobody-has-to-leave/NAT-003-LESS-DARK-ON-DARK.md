@@ -62,3 +62,145 @@ near-black so the product reads as *dim*, not *off*.
   arithmetic (step separation, AA, off-black anchor) is the acceptance criteria; the warmth of the
   neutral ramp is **Richard's call on a rendered screen**, and the task ships a proposal for it,
   not a decision.
+
+---
+
+## Done — 2026-08-19
+
+**5 of 6 acceptance criteria met. AC6 is met in part and the gap is named below.**
+Editor `4d6658df` (+ the syntax follow-up), platform `ad21f97`.
+
+### The bar, and why it is this number
+
+**Dark 1.15 on every step of `bg-0`→`bg-1`→`bg-2`→`bg-3`→`bg-4`. Light 1.09.**
+Asserted as its own table in `tests-unit/nat-001/palette-contrast.spec.ts`, deliberately *not* as
+rows in `PAIRS` — that table enforces `min ∈ {3, 4.5}`, and neither number governs two backgrounds.
+
+🔴 **The number is derived from this product, not imported.** The steps that produced Richard's
+complaint measured **1.065** and **1.072**; the steps nobody has ever complained about measured
+**1.156** and **1.180**. The threshold therefore lies between 1.07 and 1.16, and 1.15 sits above
+everything that failed and at-or-below everything that passed. Holding a card edge to WCAG's 3:1
+would have been [a gate rejecting a correct answer](../../../packages/noodl-editor/tests-unit/nat-001/palette-contrast.spec.ts) — no dark theme separates a panel from its canvas by 3:1.
+
+⚠️ **Light's 1.09 is a LIMIT, not a preference, and the file says so.** Its raised surface is pure
+white and cannot go higher, so the ramp is squeezed between white and the darkest ground AA text
+survives on. 1.09 is close to the most that budget affords without darkening the light foregrounds.
+
+### The finding: you cannot open the ramp by moving backgrounds
+
+This is the part worth carrying forward. **The top of the ramp is capped by the AA text sitting on
+it.** `fg-default-shy` had 0.17 of headroom on `bg-4`, so `bg-4`'s `(L+0.05)` could rise 3.8% and no
+more. Four steps of 1.15 from a *lifted* `bg-0` needs far more than that — with the foregrounds
+held still, it would require `bg-0` to be blacker than `bg-page` was. **It is arithmetically
+impossible.** So the quiet inks moved with the grounds, which is what AC3 anticipated.
+
+✅ **NAT-002's D11 split is what made it affordable.** Accent *text* went to `azure-300`;
+`--theme-color-primary`, the **fill**, did not move at all. Without D11 this task would have had to
+lighten the brand azure itself.
+⚠️ The step is **two**, and the skipped one is deliberate: `azure-400` measures 4.45 on the new
+`bg-4` *and* is `--theme-color-primary-highlight`, which is a link's hover. NAT-002 hit that same
+rock; this is it recorded a second time.
+
+| | before | after |
+|---|---|---|
+| `bg-page` | `#07090c` | `#0e1117` |
+| `bg-0` (canvas) | `#0b0e12` (L\* 3.9) | `#161c24` (L\* 10) |
+| `bg-1` (panels) | `#12161b` | `#212932` |
+| `bg-2` (cards/CodeMirror) | `#181d24` | `#2b3440` |
+| `bg-3` (hover) | `#222933` | `#333e4d` |
+| `bg-4` (dialogs) | `#2c3540` | `#3c4857` |
+
+⚠️ The ramp is derived by **multiplicative** scaling, not by blending toward white. Blending keeps
+the absolute channel spread and so drops the relative chroma — `#0b0e12` would have become
+`#191c20`, a flat grey. On a brief that says *friendly and welcoming*, shipping the desaturated
+answer would have satisfied the arithmetic and missed the ask.
+
+### AC4 — the control that is not a text pair, and what it caught
+
+🔴 **`border-default` / `-subtle` / `-strong` are literals and did not follow the ramp.** A divider
+is not a colour, it is a fixed distance off the surface it divides. With the ground lifted and these
+left behind, `border-default` stopped being a hair off `bg-3` (**1.01**) and became a visible line
+on it (**1.34**) — the opposite of its job. **VFN-002's negative control is what found it**: that
+spec asserts `border-default` is *invisible* on `bg-3` (<1.2), and it went red for a reason that had
+nothing to do with dividers. Each is re-placed at the ratio it held against `bg-1`.
+
+### The trap that turned out to be the biggest one: CodeMirror
+
+The task file flagged it and it was right, but not for the reason given — the theme is *fully*
+token-driven (70 token reads, zero hardcoded surface hexes). The problem is that its editing
+surface is **`bg-2`**, and **`PAIRS` had no syntax row at all.**
+
+🔴 **`colors.css` claimed in a comment that the light syntax values were "all AA on bg-1/bg-2".
+Three of them never were.** Measured on the palette as it shipped *before* this task: `type` 4.35,
+`number` 4.36, `brace` 4.36, and `meta` 4.12/4.29. Nothing failed because nothing looked.
+
+Nine values moved, and the record says which were this task's doing:
+
+| token | before | after the ramp | now | |
+|---|---|---|---|---|
+| dark `keyword` | 5.74 | 4.27 | 4.64 | NAT-003 broke it |
+| dark `comment` | 5.08 | 3.78 | 4.61 | NAT-003 broke it |
+| dark `string-special` | 4.79 | 3.56 | 4.63 | NAT-003 broke it |
+| dark `invalid` | 4.71 | 3.50 | 4.62 | NAT-003 broke it |
+| dark `meta` | **4.29** | 3.19 | 4.64 | ⚠️ already sub-AA |
+| light `meta` | **4.12** | 4.12 | 4.62 | ⚠️ already sub-AA |
+| light `type` | **4.35** | 4.16 | 4.63 | ⚠️ already sub-AA |
+| light `number` / `brace` | **4.36** | 4.17 | 4.62 | ⚠️ already sub-AA |
+
+Every `--theme-color-syntax-*` token is now graded on `bg-2` in both themes, **generated from the
+token list rather than hand-listed** — a hand-listed table is exactly how three of twenty-one went
+unwatched. ⚠️ `control` (4.60) and `string` (4.58) survive on thin margins; if `bg-2` moves again
+they go first, and the gate will say so.
+
+### The new gate: `tests-unit/nat-003/palette-copies.spec.ts`
+
+Three places keep their own copy of palette values because they cannot read a stylesheet. **That
+class of copy has now drifted twice with nothing going red** — NAT-002 caught the canvas scheme
+test holding `fg-muted` at a retired value, and a comment saying *"keep this in sync"* is what was
+there both times. So this walks the **real source tree** and compares every literal claiming to be
+a token's value against `colors.css`.
+
+🔴 **It found 19 on its first run, and five were already wrong before this task**: `bg-1` recorded
+as `#11151b` (one digit out), `fg-default` as `#c9d2dd`, `fg-muted` as `#8a97a6` and as `#6b7682`.
+All repaired.
+
+### AC6 — the drive, and what it did NOT cover
+
+Editor launched, `uni011-ac3-drive` opened, screenshots read in both themes.
+
+- ✅ **dark**: launcher, rail, side panel (the UNI-011 Community panel), node canvas with node
+  cards and wires, toolbar, and a `bg-4` popout (Deploy Options) over the canvas.
+- ✅ **light**: rail, side panel, node canvas with node cards, toolbar.
+- 🔴 **NOT covered: the launcher in light, and a dialog in light.** Neither was reached before the
+  stack came down. ⚠️ **CodeMirror was never opened in either theme** — the syntax numbers above are
+  computed, and the one surface this task changed most is the one nobody has looked at. That is the
+  honest gap and it should be the first thing the next session does.
+
+Node cards read as raised in both themes: they derive as `mix(bg-1, accent, 0.2)`, so they moved
+**with** the canvas — deliberately, since a card that dissolves into its ground still dissolves if
+only the ground is rescued. `nodelibraryexport.ts`'s literals were re-derived by the same mix.
+
+### The reading job the task asked for
+
+⚠️ **`--theme-color-bg-1-transparent` stays `rgba(0,0,0,0.8)` and does not follow the ramp.** Its
+consumers are scrims and `box-shadow`s — `BaseDialog`, `PopupToolbar`, `popuplayer.css`,
+`SideNavigation` — and a shadow is an occlusion, not a surface; a modal scrim's job is to darken
+what is behind it wherever the panel ramp sits. **The name is the defect, not the value**, and
+renaming a token 20 call sites use is not this task's change.
+
+### Platform (AC5)
+
+`npm run tokens:sync` re-run twice (once after the ramp, once after the syntax fix).
+`uni013-token-drift` + `uni013-contrast` **172/172**. Two of the failures there were real, not pins:
+`--site-fg-accent` was pointing at the **fill** while every consumer is a `color:` declaration
+(4.13:1 on `bg-3`), and `--site-avatar-ink` was reaching the dark ramp through `neutral-0` while
+painting a gradient that follows no theme.
+
+### Still open
+
+- ⚠️ **`AskAboutNodeDialog.module.scss` carries a stale comment** — it states `bg-4` resolves to
+  `#2c3540`, which is now `#3c4857`. Left alone deliberately: that file is another session's
+  uncommitted work and editing it would have swept it into this commit.
+- ⚠️ **"Friendly and welcoming" is still Richard's call on a rendered screen.** The arithmetic is
+  done and the proposal is shipped; the warmth of the neutral ramp is not something this task can
+  mark itself green on.

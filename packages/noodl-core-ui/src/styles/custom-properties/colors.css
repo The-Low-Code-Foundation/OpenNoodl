@@ -502,11 +502,23 @@
      block. Add a syntax colour here + its light counterpart — never inline a hex
      in the CodeMirror theme.
      --------------------------------------------------------------------------- */
-  --theme-color-syntax-keyword: #569cd6;
+  /* 🔴 NAT-003 (2026-08-19): FIVE OF THESE MOVED, and the measurement says which were this
+     task's doing and which were not. On `bg-2` — CodeMirror's editing surface — before the ramp
+     lifted / after / now:
+       keyword        5.74 / 4.27 / 4.64   NAT-003 broke it
+       comment        5.08 / 3.78 / 4.61   NAT-003 broke it
+       string-special 4.79 / 3.56 / 4.63   NAT-003 broke it
+       invalid        4.71 / 3.50 / 4.62   NAT-003 broke it
+       meta           4.29 / 3.19 / 4.64   ⚠️ ALREADY SUB-AA — nothing was watching
+     Each is the SAME hue scaled, not a re-pick: the VSCode Dark+ lineage is the point of these
+     values and a taste change smuggled in beside a contrast fix is not a contrast fix.
+     ⚠️ `control` (4.60) and `string` (4.58) survive on thin margins. If `bg-2` moves again they
+     go first, and `tests-unit/nat-001/palette-contrast.spec.ts` now grades every one of them. */
+  --theme-color-syntax-keyword: #5aa3df;
   --theme-color-syntax-control: #c586c0;
-  --theme-color-syntax-comment: #6a9955;
+  --theme-color-syntax-comment: #76aa5f;
   --theme-color-syntax-string: #ce9178;
-  --theme-color-syntax-string-special: #d16969;
+  --theme-color-syntax-string-special: #f07979;
   --theme-color-syntax-number: #b5cea8;
   --theme-color-syntax-variable: #9cdcfe;
   --theme-color-syntax-function: #dcdcaa;
@@ -515,10 +527,10 @@
   --theme-color-syntax-operator: #d4d4d4;
   --theme-color-syntax-punctuation: #d4d4d4;
   --theme-color-syntax-type: #4ec9b0;
-  --theme-color-syntax-meta: #808080;
+  --theme-color-syntax-meta: #9d9d9d;
   --theme-color-syntax-escape: #d7ba7d;
   --theme-color-syntax-label: #c8c8c8;
-  --theme-color-syntax-invalid: #f44747;
+  --theme-color-syntax-invalid: #ff6e6e;
   --theme-color-syntax-paren: #ffd700;
   --theme-color-syntax-bracket: #87ceeb;
   --theme-color-syntax-brace: #98fb98;
@@ -698,27 +710,36 @@
   --theme-color-node-component-3: #9a7eea;
   --theme-color-node-component-dim: #e7defb;
 
-  /* Code syntax — light values (VSCode Light+ lineage; all AA on bg-1/bg-2). */
+  /* Code syntax — light values (VSCode Light+ lineage).
+     🔴 NAT-003: THIS COMMENT USED TO SAY "all AA on bg-1/bg-2" AND IT WAS NOT TRUE. Measured
+     2026-08-19 against the palette as it then shipped: `type` 4.35, `number` 4.36 and `brace`
+     4.36 on `bg-2`, all under AA before this task touched anything, while the line above
+     asserted otherwise and no spec checked it. `meta` was 4.12. NAT-003 lifting `bg-2` made all
+     four slightly worse and is what sent anyone looking.
+     ⚠️ CodeMirror's editing surface is `bg-2` (`codemirror-theme.ts:50`), which is why bg-2 is
+     the ground that binds — it is where a person reads for the longest stretch. The four values
+     below are darkened to clear 4.5 there; the claim is now asserted rather than written down,
+     by the syntax rows in `tests-unit/nat-001/palette-contrast.spec.ts`. */
   --theme-color-syntax-keyword: #0000ff;
   --theme-color-syntax-control: #af00db;
   --theme-color-syntax-comment: #008000;
   --theme-color-syntax-string: #a31515;
   --theme-color-syntax-string-special: #811f3f;
-  --theme-color-syntax-number: #098658;
+  --theme-color-syntax-number: #087e53;
   --theme-color-syntax-variable: #001080;
   --theme-color-syntax-function: #795e26;
   --theme-color-syntax-property: #001080;
   --theme-color-syntax-property-special: #0070c1;
   --theme-color-syntax-operator: #24292e;
   --theme-color-syntax-punctuation: #24292e;
-  --theme-color-syntax-type: #267f99;
-  --theme-color-syntax-meta: #6e7781;
+  --theme-color-syntax-type: #247790;
+  --theme-color-syntax-meta: #676f78;
   --theme-color-syntax-escape: #795e26;
   --theme-color-syntax-label: #24292e;
   --theme-color-syntax-invalid: #cf222e;
   --theme-color-syntax-paren: #795e26;
   --theme-color-syntax-bracket: #0070c1;
-  --theme-color-syntax-brace: #098658;
+  --theme-color-syntax-brace: #087e53;
   --theme-color-syntax-angle: #af00db;
 
   /* Compat aliases with literal values (see dark-theme compat block) */

@@ -42,13 +42,13 @@ const JSON_THEME_TOKENS = {
   string: { css: '--theme-color-syntax-string', fallback: '#ce9178' },
   number: { css: '--theme-color-syntax-number', fallback: '#b5cea8' },
   /** `true`/`false`/`null` — keywords, as in the code editor. */
-  keyword: { css: '--theme-color-syntax-keyword', fallback: '#569cd6' },
+  keyword: { css: '--theme-color-syntax-keyword', fallback: '#5aa3df' },
   /** Array indices. */
   property: { css: '--theme-color-syntax-property', fallback: '#9cdcfe' },
   /** Dates and functions. */
   callable: { css: '--theme-color-syntax-function', fallback: '#dcdcaa' },
   /** `NaN` — a value that is wrong, so the invalid colour. */
-  invalid: { css: '--theme-color-syntax-invalid', fallback: '#f44747' }
+  invalid: { css: '--theme-color-syntax-invalid', fallback: '#ff6e6e' }
 };
 
 /**

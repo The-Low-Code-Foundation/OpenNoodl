@@ -287,6 +287,48 @@ const PAIRS: Pair[] = [
   { what: 'an error message, which reaches its colour through `fg-error`', fg: '--theme-color-fg-error', bg: '--theme-color-bg-4', min: 4.5, why: 'a separate alias with its own consumers, so a separate claim' }
 ];
 
+/**
+ * NAT-003 — the syntax palette, on the ground CodeMirror actually paints.
+ *
+ * 🔴 **PAIRS HAD NO SYNTAX ROW AT ALL, AND THAT HOLE IS HOW A FALSE CLAIM SURVIVED.**
+ * `colors.css` stated, in a comment, that the light syntax values were "all AA on bg-1/bg-2".
+ * Three of them were not — `type` 4.35, `number` 4.36, `brace` 4.36 — and had not been since
+ * they were written. Nothing failed, because nothing looked. NAT-003 lifting `bg-2` made them
+ * marginally worse, which is the only reason anyone measured.
+ *
+ * ⚠️ The ground is **`bg-2`**, not `bg-1`: `codemirror-theme.ts:50` paints `.cm-editor` with it.
+ * That is also the surface a person stares at for the longest continuous stretch in this app, so
+ * it gets the normal-size bar rather than any large-text relief.
+ *
+ * These are generated rather than hand-listed — a hand-listed table is how three of twenty-one
+ * went unwatched. Every `--theme-color-syntax-*` token in the file is graded, so a token added
+ * tomorrow is covered without anybody remembering this file exists.
+ */
+describe.each(['dark', 'light'] as const)('the %s syntax palette is readable where code is read', (theme) => {
+  const SYNTAX = Object.keys(themeTokens(theme))
+    .filter((token) => /^--theme-color-syntax-/.test(token))
+    .sort();
+
+  it('found the syntax tokens at all', () => {
+    // The control: a filter that matches nothing grades nothing and reports success.
+    expect(SYNTAX.length).toBeGreaterThanOrEqual(15);
+  });
+
+  it.each(SYNTAX.map((token) => [token.replace('--theme-color-syntax-', ''), token] as const))(
+    '`%s` clears AA on the editing surface',
+    (_name, token) => {
+      const pair: Pair = {
+        what: `syntax: ${token}`,
+        fg: token,
+        bg: '--theme-color-bg-2',
+        min: 4.5,
+        why: "CodeMirror's editing surface is bg-2 — code is normal-size text and is read for longer than anything else here"
+      };
+      expect(verdict(pair, theme)).toBe('passes');
+    }
+  );
+});
+
 // ── The instrument ────────────────────────────────────────────────────────────────────────
 
 /** The opaque colour a token actually paints, given the surface underneath it. */
