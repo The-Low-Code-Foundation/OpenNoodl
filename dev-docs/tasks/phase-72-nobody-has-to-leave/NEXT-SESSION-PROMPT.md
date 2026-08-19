@@ -74,7 +74,33 @@ handovers — no dependencies, blocks NAT-009/010/013, and it is still the only 
 production caller). ⚠️ Several of its ACs need Richard: a real send to a real MX, a registered
 relay domain with SPF/DKIM/DMARC, and a claim made against the deployed box. **D10 is open.**
 
+> 🔴 **NAT-014's TRAP SECTION WENT STALE ON 2026-08-19, ABOUT AN HOUR AFTER IT WAS WRITTEN.** Phase
+> 67b landed item B in the meantime, so re-read `ops/` from disk before trusting that task file:
+>
+> - It says *"`ops/provision.sh` installs precisely two timers, the app and the `pg_dump` backup"*.
+>   **It does not.** `ops/` is now five scripts, not two, and the timers live in
+>   **`ops/install-backup.sh`** — `nodegx-community-backup.timer` and
+>   `nodegx-community-restorecheck.timer`. **AC1 tells you to put the drain timer "beside the
+>   backup timer in `ops/provision.sh`", and that is no longer where the backup timer is.**
+> - Its last trap flags *"backups live on the same box as the database"* and defers it to 67b.
+>   **67b did it** (`d5f433e`, `4c9c07d`): the backup leaves the box to Hetzner, verified by md5
+>   read back off the bucket, with a weekly restore check that restored 49 tables. **Do not
+>   re-flag it, and do not "fix" it.**
+>
+> ⚠️ This is worth reading as a general point and not just a correction: **NAT-014's whole premise
+> is a claim about what is and is not wired up in `ops/`, and `ops/` is a file another phase edits.**
+> Derive it from disk. The task file is a hypothesis about a directory, and it has already decayed
+> once.
+
 ## Loose ends
+
+- 🔴 **NAT-014 and NAT-015 were UNTRACKED until this was written** — the two task files a peer added
+  to this phase, including the one every handover has named as the top pick. Committed protectively
+  (see below) for the same reason the UNI-011 tranche was: a `git clean` would have taken the file
+  the next session is told to open. They are a peer's authorship, unmodified.
+- ⚠️ **Eight more phase-72 files are modified and uncommitted** — NAT-006/007/009/010/011/012/013
+  and the README. They were already in that state when this session started and are not mine; they
+  are tracked, so a clean will not take them, but they are somebody's unlanded edits.
 
 - ⚠️ **`AskAboutNodeDialog.module.scss` carries a stale comment** — it states `bg-4` resolves to
   `#2c3540`; it is now `#3c4857`. Left alone on purpose: that file is another session's
