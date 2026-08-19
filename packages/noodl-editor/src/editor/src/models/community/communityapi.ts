@@ -20,7 +20,7 @@
  * stop without knowing about it.
  */
 import type { PostAttachment } from './nodeartifact';
-import { parsePostBody, type Block } from './postbody';
+import { parsePostBody, readPostBlocks, type Block, type PostBlock } from './postbody';
 
 // ───────────────────────────────────────────────────────────────────────────────
 // The payloads, mirroring `nodegx-community/src/lib` — the API's types, not ours
@@ -79,9 +79,30 @@ export type CommunityHome = {
   standing: { points: number; badges: unknown[] } | null;
 };
 
+/**
+ * A row in the Bench's thread list.
+ *
+ * 🔴 **`externalId` WAS DECLARED HERE AND THE PLATFORM HAS NEVER SENT IT.** Retired 2026-08-19
+ * (NAT-007). `mirrorThreads` returns `MirrorThread`, which carries `id` and no external
+ * identifier of any kind — the field is a leftover from the Discourse era, when a thread's real
+ * home was somebody else's forum and its id here was a foreign key.
+ *
+ * ⚠️ **It was not dead code. It was read, and it was `undefined`.** Both surfaces built their
+ * browser hand-off out of it — `openCommunity(`/bench/${thread.externalId}`)` in the rail panel
+ * and the same string in `ProjectsPage` — so every thread anybody clicked opened
+ * `community.nodegx.io/bench/undefined`. The web page's route segment is the thread's **uuid**
+ * (`app/bench/[threadId]/page.tsx` passes it straight to `threadById`), so `id` was the right
+ * value all along and is what both call sites use now.
+ *
+ * 🔴 **This is the second field in this file to outlive the platform that sent it**, after the
+ * `{forum: 'absent'}` arm above, and it failed the same way: both sides compile, TypeScript
+ * checks the *declaration* against the consumers and never against the wire, and the value that
+ * arrives is `undefined` rather than a type error. ⚠️ The first was found by curling a live
+ * route; this one by looking for the field on the platform because a task needed it. **Neither
+ * was found by a test, and there is still no mechanism that would find the third.**
+ */
 export type ForumThread = {
   id: string;
-  externalId: string;
   title: string;
   createdAt: string;
   firstReplyMinutes: number | null;
@@ -106,6 +127,172 @@ export type ForumThread = {
  * rule layer** — and the type layer has no test that fails, because both sides compile.
  */
 export type ForumState = { threads: ForumThread[] };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NAT-007 — one thread, as an editor object
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A post's attachment, mirroring the platform's `Attachment` (`src/lib/attachments.ts`).
+ *
+ * ⚠️ `payload` stays `Record<string, unknown>` and is NOT narrowed by `kind` here. The kinds are
+ * an open enum on the platform (`attachment_kind`), the editor renders two of the four, and a
+ * union that claimed to know every payload shape would be a claim this client cannot keep — the
+ * renderer reads the fields it needs and says so when they are missing.
+ */
+export type ThreadAttachment = {
+  id: string;
+  kind: string;
+  payload: Record<string, unknown>;
+  note: string | null;
+  /** Derived by the platform's database, never by a sender. See `nodeartifact.ts`. */
+  facets: {
+    nodeType: string | null;
+    appVersion: string | null;
+    os: string | null;
+    warningCode: string | null;
+    portsWithheld: number;
+  };
+};
+
+/**
+ * One post in a thread.
+ *
+ * 🔴 `blocks` is {@link PostBlock}`[]`, which is the parser's model **plus** the marker for a
+ * kind this editor could not render — see {@link readThreadDetail} for why the wire's own
+ * `Block[]` is read rather than cast.
+ */
+export type ThreadPost = {
+  id: string;
+  authorHandle: string;
+  blocks: PostBlock[];
+  createdAt: string;
+  accepted: boolean;
+  attachments: ThreadAttachment[];
+};
+
+/**
+ * A thread and every post in it, mirroring the platform's `BenchThread`.
+ *
+ * ⚠️ `question` and `answers` are separate rather than one `posts` array, because that is the
+ * platform's own shape and the distinction is real: `bench_threads` carries no body, so the first
+ * post **is** the question. Flattening them here would make the renderer re-derive by index, and
+ * "index 0 is the question" is a rule that survives exactly until a thread's opening post is
+ * hidden by moderation.
+ */
+export type ThreadDetail = {
+  id: string;
+  section: string;
+  title: string;
+  authorHandle: string;
+  createdAt: string;
+  replyCount: number;
+  accepted: boolean;
+  acceptedPostId: string | null;
+  firstReplyMinutes: number | null;
+  question: ThreadPost;
+  answers: ThreadPost[];
+};
+
+function readAttachments(value: unknown): ThreadAttachment[] {
+  if (!Array.isArray(value)) return [];
+  const out: ThreadAttachment[] = [];
+  for (const raw of value) {
+    if (typeof raw !== 'object' || raw === null) continue;
+    const row = raw as Record<string, unknown>;
+    const facets = (typeof row.facets === 'object' && row.facets !== null ? row.facets : {}) as Record<string, unknown>;
+    const payload = typeof row.payload === 'object' && row.payload !== null && !Array.isArray(row.payload)
+      ? (row.payload as Record<string, unknown>)
+      : {};
+    out.push({
+      id: String(row.id ?? ''),
+      kind: String(row.kind ?? ''),
+      payload,
+      note: typeof row.note === 'string' ? row.note : null,
+      facets: {
+        nodeType: typeof facets.nodeType === 'string' ? facets.nodeType : null,
+        appVersion: typeof facets.appVersion === 'string' ? facets.appVersion : null,
+        os: typeof facets.os === 'string' ? facets.os : null,
+        warningCode: typeof facets.warningCode === 'string' ? facets.warningCode : null,
+        portsWithheld: Number.isFinite(Number(facets.portsWithheld)) ? Number(facets.portsWithheld) : 0
+      }
+    });
+  }
+  return out;
+}
+
+function readPost(value: unknown): ThreadPost | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const row = value as Record<string, unknown>;
+  const id = typeof row.id === 'string' ? row.id : null;
+  if (!id) return null;
+  return {
+    id,
+    authorHandle: typeof row.authorHandle === 'string' ? row.authorHandle : '',
+    // 🔴 `readPostBlocks`, never a cast. See `postbody.ts`.
+    blocks: readPostBlocks(row.blocks),
+    // ⚠️ Kept as the string it arrived as, including Postgres's own spelling — `communityMeta`'s
+    // formatters take both and return `null` for neither-of-those, which is where that decision
+    // already lives. Normalising here would put a second one beside it.
+    createdAt: typeof row.createdAt === 'string' ? row.createdAt : '',
+    accepted: row.accepted === true,
+    attachments: readAttachments(row.attachments)
+  };
+}
+
+/**
+ * A thread payload, **validated rather than cast**.
+ *
+ * 🔴 THIS IS THE FIRST METHOD ON THIS CLIENT THAT TRANSFORMS A PAYLOAD, and the header's *"it
+ * transports and it types"* is worth re-reading against it. Nothing here decides anything the
+ * platform decided: not who may see the thread (the 404 does that, and `get()` turns it into
+ * `absent` untouched), not what is accepted, not what order posts are in.
+ *
+ * ⚠️ **One thing it does do that the platform did not: it marks a block kind this editor cannot
+ * draw.** That is AC3's requirement and it is a rendering decision rather than a policy one — but
+ * it is a *difference from the wire*, so it is stated here rather than left for a reader to find
+ * in `postbody.ts`. The alternative shapes are worse in both directions: casting publishes an
+ * unaudited payload into a `nodeIntegration: true` renderer, and dropping silently shows somebody
+ * a post with a hole in it that neither end can see.
+ *
+ * Exported because it is the whole of what {@link CommunityApiClient.thread} does beyond a GET,
+ * and a spec should not need a fake `fetch` to grade it.
+ */
+export function readThreadDetail(value: unknown): ThreadDetail | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const row = value as Record<string, unknown>;
+  const id = typeof row.id === 'string' ? row.id : null;
+  const question = readPost(row.question);
+  // ⚠️ A thread with no readable question is not a thread with an empty question — the platform
+  // returns null rather than serve one (moderation can hide an opening post), so a payload that
+  // arrives without one is a payload this client did not understand.
+  if (!id || !question) return null;
+
+  const answers: ThreadPost[] = [];
+  if (Array.isArray(row.answers)) {
+    for (const raw of row.answers) {
+      const post = readPost(raw);
+      if (post) answers.push(post);
+    }
+  }
+
+  const replyCount = Number(row.replyCount);
+  const firstReply = Number(row.firstReplyMinutes);
+
+  return {
+    id,
+    section: typeof row.section === 'string' ? row.section : '',
+    title: typeof row.title === 'string' ? row.title : '',
+    authorHandle: typeof row.authorHandle === 'string' ? row.authorHandle : '',
+    createdAt: typeof row.createdAt === 'string' ? row.createdAt : '',
+    replyCount: Number.isFinite(replyCount) ? replyCount : answers.length,
+    accepted: row.accepted === true,
+    acceptedPostId: typeof row.acceptedPostId === 'string' ? row.acceptedPostId : null,
+    firstReplyMinutes: row.firstReplyMinutes === null || !Number.isFinite(firstReply) ? null : firstReply,
+    question,
+    answers
+  };
+}
 
 export type MemberAssignment = {
   id: string;
@@ -380,6 +567,33 @@ export class CommunityApiClient {
 
   threads(): Promise<Read<ForumState>> {
     return this.get<ForumState>('/api/v1/community/threads');
+  }
+
+  /**
+   * NAT-007 — one thread, with every post in it.
+   *
+   * 🔴 **The only read on this client that does not hand the payload straight back.** See
+   * {@link readThreadDetail} for what it checks and, more importantly, for the one difference
+   * from the wire that it introduces on purpose.
+   *
+   * ⚠️ **A payload this client could not read is `unreachable`, not `absent`.** The distinction
+   * is D15's and it is load-bearing: `absent` means *the platform says this surface does not
+   * exist for you* and is drawn as nothing at all, so answering it for a malformed body would
+   * make a platform bug look like a school policy — and would hide the bug behind the one state
+   * nobody is allowed to narrate. A body we could not parse is our problem, it is retryable, and
+   * it says so.
+   */
+  async thread(threadId: string): Promise<Read<ThreadDetail>> {
+    const read = await this.get<{ thread?: unknown }>(
+      `/api/v1/bench/threads/${encodeURIComponent(threadId)}`
+    );
+    if (read.outcome !== 'ok') return read;
+
+    const detail = readThreadDetail(read.value?.thread);
+    if (!detail) {
+      return { outcome: 'unreachable', status: null, detail: 'the thread payload could not be read' };
+    }
+    return { outcome: 'ok', value: detail };
   }
 
   threshold(): Promise<Read<ThresholdResponse>> {

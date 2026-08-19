@@ -82,7 +82,7 @@ describe('UNI-011 / D21 — the community panel view model', () => {
           },
           forum: {
             outcome: 'ok',
-            value: { threads: [{ id: '1', externalId: 'x', title: 'A thread', createdAt: '', firstReplyMinutes: null }] }
+            value: { threads: [{ id: '1', title: 'A thread', createdAt: '', firstReplyMinutes: null }] }
           }
         })
       );
@@ -158,7 +158,7 @@ describe('UNI-011 / D21 — the community panel view model', () => {
             forum: {
               outcome: 'ok',
               value: {
-                threads: [{ id: '1', externalId: 'ext', title: 'Why is my repeater empty?', createdAt: '', firstReplyMinutes: 12 }]
+                threads: [{ id: '1', title: 'Why is my repeater empty?', createdAt: '', firstReplyMinutes: 12 }]
               }
             }
           })
@@ -166,7 +166,7 @@ describe('UNI-011 / D21 — the community panel view model', () => {
       );
       expect(view.threads).toEqual({
         state: 'items',
-        items: [{ id: '1', externalId: 'ext', title: 'Why is my repeater empty?', createdAt: '', firstReplyMinutes: 12 }]
+        items: [{ id: '1', title: 'Why is my repeater empty?', createdAt: '', firstReplyMinutes: 12 }]
       });
       expect(view.articles.state).toBe('items');
       expect(view.replays.state).toBe('items');

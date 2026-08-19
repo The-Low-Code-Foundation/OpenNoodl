@@ -354,3 +354,330 @@
   color: var(--theme-color-fg-default-shy);
   font-variant-numeric: tabular-nums;
 }
+
+/* ══ NAT-007 — a thread, read in place ═══════════════════════════════════════════════════
+   🔴 **Two grounds, one per density, and every rule below names which.** `Page` is the
+   launcher: the thread is a card on the `bg-0` canvas, so its ground is `bg-1` — the same
+   ground `SectionCard` paints, deliberately, so the tab and the thread are the same surface at
+   two depths rather than two designs. `Panel` is the rail: `BasePanel` paints `bg-2` and the
+   thread inherits it, exactly as the rows do.
+
+   ⚠️ Every fg×bg pairing introduced here has a row in NAT-001's PAIRS table. A post body is the
+   longest text this product renders and it is a stranger's words — the one surface where a
+   reader cannot skim past a colour that is nearly right. */
+
+.Thread {
+  &.is-density-page {
+    background: var(--theme-color-bg-1);
+    border: 1px solid var(--theme-color-border-default);
+    border-radius: 6px;
+    padding: var(--spacing-3-5);
+    margin-bottom: var(--spacing-6);
+  }
+
+  &.is-density-panel {
+    padding: var(--spacing-3);
+  }
+}
+
+.ThreadBack {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: var(--theme-color-fg-accent);
+  margin-bottom: var(--spacing-3);
+  display: inline-block;
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+.ThreadTitle {
+  margin: 0 0 var(--spacing-1-5);
+  color: var(--theme-color-fg-highlight);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.35;
+
+  .is-density-page & {
+    font-size: var(--font-size-lg);
+  }
+
+  .is-density-panel & {
+    font-size: var(--font-size-md);
+  }
+}
+
+.ThreadMeta {
+  margin: 0 0 var(--spacing-3);
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+/* AC8 — a copy admitting its age. `notice` rather than `danger`: nothing is broken and nothing
+   was lost, the words on screen are simply from a moment ago. */
+.ThreadCached {
+  margin: 0 0 var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-2-5);
+  border-left: 2px solid var(--theme-color-notice);
+  color: var(--theme-color-fg-notice);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.ThreadAnswersHead {
+  margin: var(--spacing-5) 0 var(--spacing-2);
+  color: var(--theme-color-fg-highlight);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.ThreadReply {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-5);
+  padding-top: var(--spacing-3);
+  border-top: 1px solid var(--theme-color-border-subtle);
+}
+
+/* ── One post ──────────────────────────────────────────────────────────────────────────── */
+
+.Post {
+  padding: var(--spacing-3) 0;
+
+  & + & {
+    border-top: 1px solid var(--theme-color-border-subtle);
+  }
+}
+
+/* ⚠️ The accepted answer is marked by a RULE and a WORD, never by colour alone (1.4.1). */
+.is-accepted {
+  border-left: 2px solid var(--theme-color-success);
+  padding-left: var(--spacing-2-5);
+}
+
+.PostHead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-1-5);
+}
+
+.PostAuthor {
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.PostWhen,
+.PostAsked {
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-sm);
+}
+
+.PostAccepted {
+  color: var(--theme-color-fg-success);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── The body ──────────────────────────────────────────────────────────────────────────── */
+
+.PostBody {
+  color: var(--theme-color-fg-default);
+
+  &.is-density-page {
+    font-size: var(--font-size-md);
+  }
+
+  &.is-density-panel {
+    font-size: var(--font-size-base);
+  }
+}
+
+.PostParagraph {
+  margin: 0 0 var(--spacing-2);
+  /* 🔴 A stranger's post can contain a 400-character unbroken token. Without this it pushes the
+     rail panel's layout sideways and takes the editor's chrome with it. */
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+
+.PostHeading {
+  margin: var(--spacing-3) 0 var(--spacing-1-5);
+  color: var(--theme-color-fg-highlight);
+  font-size: 1em;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
+}
+
+.PostList {
+  margin: 0 0 var(--spacing-2);
+  padding-left: var(--spacing-4);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.PostLink {
+  color: var(--theme-color-fg-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.PostCode {
+  font-family: var(--font-family-mono, monospace);
+  font-size: 0.92em;
+  padding: 1px 4px;
+  border-radius: 3px;
+
+  .is-density-page & {
+    background: var(--theme-color-bg-2);
+  }
+
+  .is-density-panel & {
+    background: var(--theme-color-bg-3);
+  }
+}
+
+.PostCodeBlock {
+  margin: 0 0 var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-2-5);
+  border-radius: 4px;
+  font-family: var(--font-family-mono, monospace);
+  font-size: 0.92em;
+  line-height: 1.5;
+  /* ⚠️ Code does NOT wrap — it scrolls. Wrapped code is code that reads wrong, and this is the
+     one place in the product where a horizontal scrollbar is the correct answer. */
+  overflow-x: auto;
+  white-space: pre;
+
+  .is-density-page & {
+    background: var(--theme-color-bg-2);
+  }
+
+  .is-density-panel & {
+    background: var(--theme-color-bg-3);
+  }
+}
+
+/* AC3 — a block this editor cannot draw, named. Shy because it is an aside, and bordered because
+   a reader has to be able to tell it apart from the post's own words. */
+.PostUnsupported {
+  margin: 0 0 var(--spacing-2);
+  padding-left: var(--spacing-2-5);
+  border-left: 2px solid var(--theme-color-border-control);
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+/* ── An attachment ─────────────────────────────────────────────────────────────────────── */
+
+.Attachment {
+  margin: var(--spacing-2-5) 0;
+  padding: var(--spacing-2-5);
+  border-radius: 4px;
+  border: 1px solid var(--theme-color-border-default);
+
+  .is-density-page & {
+    background: var(--theme-color-bg-2);
+  }
+
+  .is-density-panel & {
+    background: var(--theme-color-bg-3);
+  }
+}
+
+.AttachmentHead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-1-5);
+}
+
+.AttachmentHeading {
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.AttachmentFacts {
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-sm);
+}
+
+.AttachmentPorts {
+  margin: 0 0 var(--spacing-1-5);
+  padding: 0;
+  list-style: none;
+}
+
+.AttachmentPort {
+  display: flex;
+  gap: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.AttachmentPortName {
+  color: var(--theme-color-fg-default-shy);
+  min-width: 0;
+}
+
+.AttachmentPortValue {
+  color: var(--theme-color-fg-default);
+  font-family: var(--font-family-mono, monospace);
+  min-width: 0;
+}
+
+.AttachmentWithheld,
+.AttachmentNote {
+  margin: 0 0 var(--spacing-1);
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.AttachmentPull {
+  margin-top: var(--spacing-2);
+}
+
+.PullButton {
+  background: none;
+  border: 1px solid var(--theme-color-border-control);
+  border-radius: 4px;
+  padding: var(--spacing-1) var(--spacing-2-5);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  color: var(--theme-color-fg-accent);
+
+  &:disabled {
+    cursor: not-allowed;
+    color: var(--theme-color-fg-disabled);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.PullBlocked {
+  margin: var(--spacing-1-5) 0 0;
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}

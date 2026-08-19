@@ -117,6 +117,8 @@ const ALLOWED: Record<string, string> = {
     'the composer: CHOOSES A TRANSPORT (direct post vs the browser hand-off, which needs no account) and adds a sign-in offer. Withholds nothing — asserted structurally below',
   'noodl-editor/src/editor/src/hooks/useCommunityMirror.ts':
     'UNI-011/D21 community panel: the token is a BEARER HEADER on reads that already work without one, plus the handle in the header line. Reading is UNI-011 AC4 and is ungated — asserted structurally below',
+  'noodl-editor/src/editor/src/hooks/useCommunityThread.ts':
+    'NAT-007 thread view: the token is a BEARER HEADER on a read the platform serves to strangers — `GET /api/v1/bench/threads/:id` says so in its own module note. Withholds nothing: the module that decides what is drawn never sees a session at all — asserted structurally below',
   'noodl-editor/src/editor/src/models/lessoncheck.ts':
     'UNI-006 bridge: read ONLY inside liveSubmitAssignment, to hand an ASSIGNED lesson to the org that set it. Withholds nothing — grading, installing, resetting, progress and feedback are untouched, and an entry can only carry an assignment if an account obtained it, so there is nothing for an account-less editor to be refused. Asserted structurally below'
 };
@@ -317,5 +319,61 @@ describe('AC4 — the lesson bridge withholds nothing, proven against the real s
     expect(guard).toBeGreaterThan(-1);
     expect(call).toBeGreaterThan(-1);
     expect(guard).toBeLessThan(call);
+  });
+});
+
+/**
+ * NAT-007's thread view — the reader added on 2026-08-19.
+ *
+ * 🔴 **The question ALLOWED's third column demands, answered before the row was added: what does
+ * this read WITHHOLD? Nothing.** A thread is readable by a stranger with no session at its own
+ * URL — the platform's `GET /api/v1/bench/threads/:threadId` states it as its own AC1 — so the
+ * token here is the same bearer header `useCommunityMirror` sends on reads that already work
+ * without one.
+ *
+ * ⚠️ **And that is an argument about the platform, which is the far side of a wire.** So it is
+ * not the argument this file rests on. The structural fact is nearer and checkable: the module
+ * that decides *every state this screen can be in* — `threadview.ts`, six branches, D15 included
+ * — **never receives a session or a token at all**. A view model that cannot see a credential
+ * cannot withhold on the strength of one, whatever the API does.
+ *
+ * 🔴 The one action on the screen is the answer-on-the-web hand-off, and it is built
+ * unconditionally beside the state rather than inside any session branch — the same property the
+ * composer's hand-off has above, for the same reason.
+ */
+describe('AC4 — the thread view withholds nothing, proven against the real source', () => {
+  const hook = stripComments(readFileSync(join(EDITOR_SRC, 'hooks/useCommunityThread.ts'), 'utf8'));
+  const model = stripComments(readFileSync(join(EDITOR_SRC, 'models/community/threadview.ts'), 'utf8'));
+
+  it('control: the hook really does read the session — the known-firing arm', () => {
+    // Without this, every absence below passes for a hook that reads nothing.
+    expect(readsTheSession(hook)).toBe(true);
+    expect(hook).toContain('readCommunitySession');
+  });
+
+  it('the module that decides what is drawn never sees a session or a token', () => {
+    // 🔴 The load-bearing claim. `composeThreadView` returns one of six states, and none of them
+    // can be chosen on the strength of a credential it was never handed.
+    expect(readsTheSession(model)).toBe(false);
+    expect(model).not.toContain('token');
+    expect(READERS).not.toContain('noodl-editor/src/editor/src/models/community/threadview.ts');
+  });
+
+  it('and the hook hands it the reads, never the session', () => {
+    const call = hook.slice(hook.indexOf('composeThreadView({'), hook.indexOf('return {\n    openThread'));
+    expect(call).toContain('composeThreadView({');
+    expect(call).not.toContain('session');
+    expect(call).not.toContain('token');
+  });
+
+  it('the token is used once, to build a client, and nowhere else', () => {
+    // ⚠️ Counted rather than eyeballed: a second use is a second place a decision could hide.
+    expect(hook.split('session?.token').length - 1).toBe(1);
+    expect(hook).toContain('token: session?.token ?? null');
+  });
+
+  it('the answer-on-the-web hand-off is not inside any session branch', () => {
+    // The capability a person with no account has on the web, kept in the editor.
+    expect(isGated(hook, "actionLabel: 'Answer on the web'")).toBe(false);
   });
 });

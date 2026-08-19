@@ -38,8 +38,8 @@ const DAY = 24 * HOUR;
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
 
 const THREADS = [
-  { id: 't1', externalId: 'x1', title: 'Why does my For Each render one row?', createdAt: ago(3 * DAY), firstReplyMinutes: 41 },
-  { id: 't2', externalId: 'x2', title: 'Deploy writes twice', createdAt: ago(2 * HOUR), firstReplyMinutes: null }
+  { id: 't1', title: 'Why does my For Each render one row?', createdAt: ago(3 * DAY), firstReplyMinutes: 41 },
+  { id: 't2', title: 'Deploy writes twice', createdAt: ago(2 * HOUR), firstReplyMinutes: null }
 ];
 const ARTICLES = [{ slug: 'a1', title: 'Wiring a repeater', summary: 'Static Data into a For Each.', kind: 'tutorial' }];
 const REPLAYS = [{ slug: 'r1', title: 'Weekly call', heldOn: ago(9 * DAY), videoUrl: null, description: 'The logic node.' }];
@@ -224,7 +224,7 @@ describe('AC2 — rows draw the metadata the old UI threw away', () => {
       shown({
         threads: {
           state: 'items',
-          items: [{ id: 'b', externalId: 'b', title: 'A thread', createdAt: 'not a date', firstReplyMinutes: -1 }]
+          items: [{ id: 'b', title: 'A thread', createdAt: 'not a date', firstReplyMinutes: -1 }]
         }
       })
     );

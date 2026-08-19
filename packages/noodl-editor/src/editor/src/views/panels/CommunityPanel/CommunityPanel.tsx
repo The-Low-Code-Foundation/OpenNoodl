@@ -60,6 +60,7 @@ import {
   CommunityDensity,
   CommunityRow,
   CommunitySectionBody,
+  CommunityThreadView,
   absoluteDate,
   kindLabel,
   metaLine,
@@ -78,6 +79,7 @@ import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Secti
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { useCommunityMirror } from '@noodl-hooks/useCommunityMirror';
+import { useCommunityThread } from '@noodl-hooks/useCommunityThread';
 
 import type { HealthReading } from '@noodl-models/community/mirrorview';
 
@@ -121,6 +123,9 @@ function Health({ health }: { health: HealthReading }) {
 
 export function CommunityPanel() {
   const { view, isRefreshing, refresh } = useCommunityMirror();
+  // NAT-007 — the same hook the launcher tab uses. See `useCommunityThread` for why the open/
+  // closed state and the cache are shared rather than duplicated per surface.
+  const { pane, openThread } = useCommunityThread();
 
   // 🔴 D15: the platform said this surface does not exist for this viewer. Draw NOTHING — not a
   // message, not an empty state. `apiviewer.ts` answers an org-minor with a 404 precisely so a
@@ -128,6 +133,26 @@ export function CommunityPanel() {
   // the act of closing it. ⚠️ The rail ENTRY is still there — `SidebarModel.register` is
   // synchronous at setup and has no async gate — and that is a recorded gap, not a solved one.
   if (view.surface === 'hidden') return null;
+
+  // 🔴 NAT-007 AC1 — a thread opens IN PLACE, in the rail. ⚠️ After the D15 check, never before:
+  // see the same note in `CommunityTab`. `ScrollArea` wraps it because a thread is the longest
+  // thing this panel ever draws and the rail is the narrowest place it is drawn.
+  if (pane) {
+    return (
+      <BasePanel title="Community" isFill>
+        <ScrollArea>
+          <CommunityThreadView
+            state={pane.state}
+            density={CommunityDensity.Panel}
+            onBack={pane.onBack}
+            onRetry={pane.onRetry}
+            onOpenLink={pane.onOpenLink}
+            reply={pane.reply}
+          />
+        </ScrollArea>
+      </BasePanel>
+    );
+  }
 
   return (
     <BasePanel title="Community" isFill>
@@ -180,7 +205,8 @@ export function CommunityPanel() {
                     // surface drew either. 🔴 `no reply yet` is the row worth scanning for, and
                     // the one the health readout above counts as `unreplied`.
                     meta={metaLine([relativeTime(thread.createdAt), replyLatency(thread.firstReplyMinutes)])}
-                    onClick={() => openCommunity(`/bench/${thread.externalId}`)}
+                    // AC1 — in place. `openExternal` is no longer the primary action here.
+                    onClick={() => openThread(thread.id)}
                   />
                 ))
               }

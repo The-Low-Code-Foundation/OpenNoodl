@@ -51,13 +51,14 @@ import React from 'react';
 import {
   CommunityRow,
   CommunitySection,
+  CommunityThreadView,
   absoluteDate,
   kindLabel,
   metaLine,
   relativeTime,
   replyLatency
 } from '@noodl-core-ui/components/community';
-import type { CommunitySectionState } from '@noodl-core-ui/components/community';
+import type { CommunitySectionState, CommunityThreadState } from '@noodl-core-ui/components/community';
 import css from '@noodl-core-ui/components/community/Community.module.scss';
 import { LauncherPage } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherPage';
 import { useLauncherContext } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
@@ -74,9 +75,13 @@ import { useLauncherContext } from '@noodl-core-ui/preview/launcher/Launcher/Lau
  */
 export type { CommunitySectionState };
 
+/**
+ * ⚠️ **`externalId` was here and the platform has never sent it** — retired 2026-08-19 with the
+ * declaration in `communityapi.ts`, which says what it cost. Both surfaces built a browser URL
+ * out of it and opened `/bench/undefined`.
+ */
 export type CommunityThreadRow = {
   id: string;
-  externalId: string;
   title: string;
   createdAt: string;
   firstReplyMinutes: number | null;
@@ -121,12 +126,37 @@ export type CommunityMirrorView =
       health: CommunityHealthReading | null;
     };
 
+/**
+ * NAT-007's half of the host state — everything {@link CommunityThreadView} needs, passed
+ * through. ⚠️ Declared rather than spread so a new prop on the thread view is a change the tab's
+ * author sees, not one that arrives silently through an object rest.
+ */
+export interface LauncherCommunityThreadPane {
+  state: CommunityThreadState;
+  onBack: () => void;
+  onRetry: () => void;
+  onOpenLink?: (href: string) => void;
+  reply?: { line: string; actionLabel: string; onAction: () => void } | null;
+}
+
 /** What the editor supplies to this tab. */
 export interface LauncherCommunityHostState {
   view: CommunityMirrorView;
   isRefreshing: boolean;
   onRefresh: () => void;
-  onOpenThread?: (externalId: string) => void;
+  /**
+   * NAT-007 — a thread, open **in place of the lists**.
+   *
+   * 🔴 A tab, not a dialog and not a second page. The launcher has one content area and the
+   * thread takes it; going back returns the lists exactly as they were, because they were never
+   * unmounted from the *editor's* state — `useCommunityThread` holds which thread is open and
+   * `useCommunityMirror` holds the lists, and neither knows about the other.
+   *
+   * ⚠️ Optional so Storybook and any editor build without the host hook still render the tab.
+   */
+  thread?: LauncherCommunityThreadPane | null;
+  /** NAT-007 — the thread's own id. Opens it IN PLACE; see {@link thread}. */
+  onOpenThread?: (threadId: string) => void;
   onOpenArticle?: (slug: string) => void;
   onOpenReplay?: (slug: string) => void;
   onOpenCommunity?: () => void;
@@ -147,6 +177,7 @@ export function CommunityTab({
   view,
   isRefreshing,
   onRefresh,
+  thread,
   onOpenThread,
   onOpenArticle,
   onOpenReplay,
@@ -158,6 +189,23 @@ export function CommunityTab({
   // narrate the door in the act of closing it. ⚠️ The TAB is still in the nav; that is the same
   // recorded gap the rail entry has, and it is owned by phase 67b.
   if (view.surface === 'hidden') return null;
+
+  // 🔴 NAT-007 AC1 — a thread opens IN PLACE. ⚠️ **After the D15 check and never before it**: a
+  // refused viewer who somehow holds a thread id must reach nothing, and a `thread` prop checked
+  // first would draw the pane for them on the strength of the host having set it.
+  if (thread) {
+    return (
+      <LauncherPage title="Community">
+        <CommunityThreadView
+          state={thread.state}
+          onBack={thread.onBack}
+          onRetry={thread.onRetry}
+          onOpenLink={thread.onOpenLink}
+          reply={thread.reply}
+        />
+      </LauncherPage>
+    );
+  }
 
   const who =
     view.viewer === null
@@ -203,7 +251,7 @@ export function CommunityTab({
               // drawn. 🔴 `firstReplyMinutes === null` is "no reply yet" — the row worth scanning
               // for, and the one the health readout counts as `unreplied`.
               meta={metaLine([relativeTime(thread.createdAt), replyLatency(thread.firstReplyMinutes)])}
-              onClick={() => onOpenThread?.(thread.externalId)}
+              onClick={() => onOpenThread?.(thread.id)}
             />
           ))
         }

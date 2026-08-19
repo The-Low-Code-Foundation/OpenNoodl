@@ -12,3 +12,16 @@ export type { CommunitySectionState, CommunitySectionBodyProps } from './Communi
 export { CommunitySection } from './CommunitySection';
 export type { CommunitySectionProps } from './CommunitySection';
 export { absoluteDate, kindLabel, metaLine, relativeTime, replyLatency } from './communityMeta';
+export { CommunityPostBody } from './CommunityPostBody';
+export type { CommunityPostBodyProps } from './CommunityPostBody';
+export { CommunityThreadView } from './CommunityThreadView';
+export type {
+  CommunityAttachmentPull,
+  CommunityAttachmentPort,
+  CommunityAttachmentView,
+  CommunityPostView,
+  CommunityThreadDetailView,
+  CommunityThreadState,
+  CommunityThreadViewProps
+} from './CommunityThreadView';
+export type { PostBlock, PostInline } from './postBlocks';

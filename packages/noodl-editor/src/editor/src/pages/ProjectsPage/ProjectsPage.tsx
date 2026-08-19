@@ -81,6 +81,7 @@ import { LAST_PROJECT_LOCATION_KEY, pickProjectLocation } from './projectLocatio
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 
 import { useCommunityMirror } from '@noodl-hooks/useCommunityMirror';
+import { useCommunityThread } from '@noodl-hooks/useCommunityThread';
 
 import { useCommunityAccount } from './useCommunityAccount';
 import { useConnectAgent } from './useConnectAgent';
@@ -268,6 +269,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
   // UNI-011 / D21 — the community TAB's data. ⚠️ A different fact from `community` above:
   // that one is who you are, this one is what the community contains.
   const communityMirror = useCommunityMirror();
+  // NAT-007 — which thread is open, and its data. The same hook the editor's rail panel calls;
+  // see `useCommunityThread` on why one hook rather than one per surface.
+  const communityThread = useCommunityThread();
 
   // GitHub OAuth state
   const [githubIsAuthenticated, setGithubIsAuthenticated] = useState(false);
@@ -1322,7 +1326,11 @@ export function ProjectsPage(props: ProjectsPageProps) {
           view: communityMirror.view,
           isRefreshing: communityMirror.isRefreshing,
           onRefresh: communityMirror.refresh,
-          onOpenThread: (externalId) => platform.openExternal(`${COMMUNITY_URL}/bench/${externalId}`),
+          // 🔴 NAT-007 AC1 — this was `platform.openExternal(`${COMMUNITY_URL}/bench/${externalId}`)`,
+          // and `externalId` was a field the platform has never sent, so every thread anybody
+          // clicked opened `/bench/undefined`. It opens in place now; see `communityapi.ts`.
+          thread: communityThread.pane,
+          onOpenThread: communityThread.openThread,
           onOpenArticle: (slug) => platform.openExternal(`${COMMUNITY_URL}/articles/${slug}`),
           onOpenReplay: (slug) => platform.openExternal(`${COMMUNITY_URL}/replays/${slug}`),
           onOpenCommunity: () => platform.openExternal(COMMUNITY_URL)

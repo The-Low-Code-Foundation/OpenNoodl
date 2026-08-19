@@ -255,3 +255,149 @@ export function hrefsIn(blocks: Block[]): string[] {
   }
   return found;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────
+// NAT-007 — reading a body the PLATFORM parsed
+// ─────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A block a reader could not render, named rather than dropped.
+ *
+ * 🔴 NAT-007 AC3: *"Any block kind the editor cannot render is **skipped visibly**, never passed
+ * through raw."* The two failure modes this sits between are both real. Passing an unknown block
+ * through is how a payload reaches a sink nobody audited. Dropping it silently is how a reader is
+ * shown a post with a hole in it and no way to know — they answer the question that is missing a
+ * paragraph, and neither end can see why.
+ *
+ * ⚠️ `label` is a **wire string** and is sanitised on the way in ({@link safeBlockLabel}). It
+ * reaches React as a text child, so React escapes it; the sanitising is the second belt, for the
+ * case where a future renderer puts it somewhere React does not escape.
+ */
+export type UnsupportedBlock = { kind: 'unsupported'; label: string };
+
+/** What a *reader* holds: everything the parser can emit, plus what it could not. */
+export type PostBlock = Block | UnsupportedBlock;
+
+const BLOCK_KINDS = new Set(['paragraph', 'heading', 'list', 'codeblock']);
+const PLAIN_INLINE_KINDS = new Set(['text', 'code', 'strong', 'em']);
+
+/**
+ * A wire `kind` reduced to something safe to print back at the reader.
+ *
+ * ⚠️ Capped and character-filtered rather than escaped: this is a diagnostic label, so losing an
+ * exotic character costs nothing, and a 4KB "kind" rendered in full is a layout attack for free.
+ */
+function safeBlockLabel(kind: unknown): string {
+  const cleaned = String(kind ?? '')
+    .replace(/[^A-Za-z0-9_ -]/g, '')
+    .trim()
+    .slice(0, 40);
+  return cleaned || 'unknown';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Inlines off the wire.
+ *
+ * 🔴 **An unknown inline kind keeps its words and loses its formatting**, rather than becoming an
+ * `unsupported` marker of its own. The block-level rule and this one differ on purpose: a missing
+ * *block* is a missing paragraph and the reader must be told, whereas a `strikethrough` a future
+ * platform adds is one sentence rendered without its line through it — legible, complete, and not
+ * worth interrupting somebody's reading to announce. What is never kept is an inline with no text
+ * to keep.
+ */
+function readInlines(value: unknown): Inline[] {
+  if (!Array.isArray(value)) return [];
+  const out: Inline[] = [];
+  for (const raw of value) {
+    if (!isRecord(raw)) continue;
+    const kind = String(raw.kind ?? '');
+    const textValue = typeof raw.text === 'string' ? raw.text : null;
+    if (textValue === null) continue;
+
+    if (kind === 'link') {
+      // 🔴 THE HREF IS RE-CHECKED HERE, against this editor's allow-list, even though the
+      // platform already ran its own. Three reasons, and the third is the one that matters:
+      // the two allow-lists are separate copies that can drift; a client cannot know which
+      // platform version answered it; and **this renderer is the sink** — `nodeIntegration:
+      // true, contextIsolation: false`. A boundary that trusts the far side is not a boundary,
+      // it is a convention. See this file's header for what that cost once already.
+      const href = safeCommunityUrl(String(raw.href ?? ''));
+      // A refused href keeps the words, exactly as `parseInline` does for a refused markdown
+      // link: deleting the label leaves a hole in somebody's sentence.
+      out.push(href ? { kind: 'link', text: textValue, href } : { kind: 'text', text: textValue });
+      continue;
+    }
+
+    if (PLAIN_INLINE_KINDS.has(kind)) {
+      out.push({ kind, text: textValue } as Inline);
+      continue;
+    }
+
+    out.push({ kind: 'text', text: textValue });
+  }
+  return out;
+}
+
+/**
+ * A post body as it arrives from the platform: **validated, not cast**.
+ *
+ * The platform parses markdown at its own boundary and puts `Block[]` on the wire, so the naive
+ * client does `payload.blocks as Block[]` and renders it. 🔴 **That cast is the whole risk.** It
+ * is a claim about JSON a stranger's post produced on a machine this editor does not control, and
+ * a type assertion is not a check — a `{kind: 'html', raw: '…'}` a future platform emits, or a
+ * `href` an older platform's allow-list let through, arrives typed as safe.
+ *
+ * ⚠️ This does NOT distrust the platform in the sense of expecting it to be hostile. It declines
+ * to make the platform's parser part of *this* renderer's safety argument, which is the same
+ * reason `parsePostBody` emits a model with nowhere to put markup rather than a sanitised string.
+ *
+ * @param value the raw `blocks` field, `unknown` because that is what it is.
+ */
+export function readPostBlocks(value: unknown): PostBlock[] {
+  if (!Array.isArray(value)) return [];
+  const out: PostBlock[] = [];
+
+  for (const raw of value) {
+    if (!isRecord(raw)) continue;
+    const kind = String(raw.kind ?? '');
+
+    if (!BLOCK_KINDS.has(kind)) {
+      out.push({ kind: 'unsupported', label: safeBlockLabel(raw.kind) });
+      continue;
+    }
+
+    if (kind === 'paragraph') {
+      out.push({ kind: 'paragraph', inlines: readInlines(raw.inlines) });
+    } else if (kind === 'heading') {
+      // ⚠️ Clamped rather than refused. A heading that arrives as level 7 is still a heading
+      // somebody wrote words in, and turning it into an `unsupported` marker would delete the
+      // words to enforce a number this renderer picked.
+      const level = Number(raw.level);
+      const clamped = (Number.isFinite(level) ? Math.min(4, Math.max(1, Math.round(level))) : 3) as 1 | 2 | 3 | 4;
+      out.push({ kind: 'heading', level: clamped, inlines: readInlines(raw.inlines) });
+    } else if (kind === 'list') {
+      const items = Array.isArray(raw.items) ? raw.items.map(readInlines) : [];
+      out.push({ kind: 'list', ordered: raw.ordered === true, items });
+    } else {
+      // A codeblock with no text is an empty code block, not a missing one.
+      out.push({ kind: 'codeblock', text: typeof raw.text === 'string' ? raw.text : '' });
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Every href a *read* body would put in an anchor — {@link hrefsIn} for `PostBlock[]`.
+ *
+ * ⚠️ Not a convenience wrapper: `hrefsIn` takes `Block[]`, and a spec that quantified over the
+ * wire path by narrowing to `Block[]` first would be quantifying over the blocks that survived,
+ * which is the population the claim is not about.
+ */
+export function hrefsInPost(blocks: PostBlock[]): string[] {
+  return hrefsIn(blocks.filter((block): block is Block => block.kind !== 'unsupported'));
+}
