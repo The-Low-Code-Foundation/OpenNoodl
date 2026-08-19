@@ -92,7 +92,7 @@ shippable while changing nothing about whether a relayed message reaches anybody
 a domain that exists, a drainer, and a decision about inbound (UNI-004's double-blind replies need
 it; v1's ruling is outbound-only with replies through the site).
 
-### B. ~~Backups are on the same box as the database~~ — ✅ **BUILT 2026-08-19 (session 39), waiting on one credential**
+### B. ~~Backups are on the same box as the database~~ — ✅ **DONE 2026-08-19 (session 39). THE DATABASE IS OFF THE BOX.**
 
 `ops/provision.sh` installed a daily `pg_dump` with 14 days of retention into
 `/var/backups/nodegx-community`. ⚠️ **That survives "somebody dropped a table". It does not survive
@@ -149,7 +149,29 @@ endpoint and its SigV4 signature is proven. Say that rather than "backups work".
 destination, so from tonight `nodegx-community-backup.service` goes red every day until the keys
 exist. That is the honest state and it was chosen over a quiet local-only pass.
 
-**What is owed — and it is Richard's, not code's** (same shape as E7 and E10):
+## ✅ CONFIGURED AND RUNNING — 2026-08-19, with the real destination
+
+Richard supplied the keys the same session. Measured against **Hetzner Object Storage `nbg1`,
+bucket `nodegx`, prefix `nodegx-community/`** — not against a stand-in:
+
+| | |
+|---|---|
+| Bucket reachable | ✅ SigV4 against `nbg1.your-objectstorage.com`, bucket listed, empty |
+| First real backup | ✅ `nodegx_community-20260819-152058.dump`, **433,391 bytes, 49/49 tables**, verified by **md5 read back off Hetzner** (`37302e2b…`) |
+| First real restore check | ✅ pulled that object **back down from Hetzner**, restored **49 tables, 1 account** into a throwaway database, dropped it |
+| Timers armed | ✅ backup **daily ~00:03 UTC**, restore check **Sundays 04:00 UTC** |
+
+🔴 **The claim is now "we can restore", not "we have backups"** — and the difference was measured
+rather than assumed, on the copy that would survive the box.
+
+⚠️ **STILL OPEN: THE DUMP IS UNENCRYPTED IN THE BUCKET.** `BACKUP_ENCRYPT_PASSPHRASE` is empty, so
+the object holds real accounts and email addresses in the clear at rest. The mechanism is built and
+tested both ways; turning it on is one line in `~/nodegx-community-deploy.env` plus a re-run of
+`ops/install-backup.sh`. **The passphrase must then be written down somewhere that survives the
+laptop** — the weekly restore check tests the passphrase every Sunday, which removes the *drift*
+failure but not the *where is it kept* one.
+
+**What was owed, and is now supplied** (same shape as E7 and E10):
 
 ```
 # add to ~/nodegx-community-deploy.env, then: ops/deploy.sh 49.12.102.195
@@ -249,9 +271,10 @@ same shape as E10 — a form, then a small build.
 ⚠️ **Re-ordered 2026-08-19** — what used to be items 1 and 3 are partly in phase 72 now.
 
 1. ~~**A** above — the relay drainer.~~ 🔴 **Now [P72 NAT-014](../phase-72-nobody-has-to-leave/NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md)**, and it is that phase's day-one task. Nothing here waits on it.
-2. ~~**B** above — off-host backups.~~ ✅ **BUILT 2026-08-19 (session 39).** Everything but the
-   Hetzner credential, which is Richard's to mint; the host runs the new units tonight and **fails
-   loudly** until it exists. 🔴 **It was never "cheap" — it was never having run**, and the item
+2. ~~**B** above — off-host backups.~~ ✅ **DONE 2026-08-19 (session 39), configured and running
+   against Hetzner `nbg1`/`nodegx`** — first backup uploaded and verified by md5, first restore
+   check restored 49 tables and 1 account back off the object store. ⚠️ **The dump is unencrypted
+   at rest**; the mechanism is built and the passphrase is Richard's call. 🔴 **It was never "cheap" — it was never having run**, and the item
    would have been closed as "moved off-host" over a `pg_dump` nobody had ever seen produce a file.
 3. ~~**UNI-017**~~ ✅ **BUILT 2026-08-19 (session 39).** (~~UNI-018~~ is P72 NAT-015.)
    ✅ **The warning below was already discharged** — NAT-006 carries it verbatim at its own line 75,

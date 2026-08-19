@@ -15,7 +15,7 @@ sessions edit `dev-docs/`.**
 
 | Item | Built | Driven | Note |
 |---|---|---|---|
-| **B — off-host backups** | ✅ 3 scripts + provision/deploy wiring | 🟡 **PARTLY** — the dump, the completeness proof, the retirement of a bad dump, upload, read-back verify, gpg round-trip and a **real restore into a throwaway DB** were all run **on nexus-1**. ⚠️ **The S3 leg was exercised through rclone's LOCAL backend** — Hetzner's endpoint and its SigV4 signature are the only untested part | Blocked on Richard's keys |
+| **B — off-host backups** | ✅ 3 scripts + provision/deploy wiring | ✅ **FULLY DRIVEN against the real destination.** Richard supplied the keys the same session: bucket reachable over SigV4 at `nbg1`, first backup uploaded and **verified by md5 read back off Hetzner**, first restore check **restored 49 tables and 1 account from the Hetzner object**. Timers armed (daily 00:03 UTC, restore check Sun 04:00) | ⚠️ **The dump is UNENCRYPTED at rest** — the one thing still open |
 | **UNI-017 — the queue and the signal** | ✅ all 5 ACs, 35 specs | 🟡 **library + handler driven; no browser** — pages compile and render in specs, nobody has looked at `/bench` or a profile in a browser since the change | `d0ba01c` |
 | **C — the uncommitted hotfix** | ✅ committed `36748ae` | n/a | Its **root cause is still unknown** |
 
@@ -64,12 +64,13 @@ others**, so it was deliberately left for a session that has been asked to do it
 
 ### Richard's, and nothing here can proceed without him
 
-1. 🔴 **Mint the Hetzner Object Storage keys** → `~/nodegx-community-deploy.env` as
-   `HETZNER_S3_ACCESS_KEY` / `_SECRET_KEY` / `_BUCKET` / `_ENDPOINT`, and **create the bucket**
-   (`--s3-no-check-bucket` is set on purpose). **The same keys unblock E7's capture upload.**
-   Then `ops/deploy.sh 49.12.102.195` and the nightly timer goes green.
-2. 🔴 **Decide `BACKUP_ENCRYPT_PASSPHRASE`** — built and tested both ways. Encrypting and losing the
-   passphrase is worse than not backing up. **Not answering is worse than either answer.**
+1. ✅ ~~Mint the Hetzner keys~~ **SUPPLIED 2026-08-19** and in `~/nodegx-community-deploy.env`
+   (bucket `nodegx`, endpoint `nbg1.your-objectstorage.com`). 🔴 **THE SAME KEYS UNBLOCK E7's
+   CAPTURE UPLOAD** — that item is no longer blocked on anything of Richard's.
+2. 🔴 **STILL OPEN — `BACKUP_ENCRYPT_PASSPHRASE`.** The dump sits in the bucket **unencrypted**,
+   holding real accounts and email addresses. Built and tested both ways; one line plus a re-run of
+   `ops/install-backup.sh`. ⚠️ Then **write the passphrase somewhere that survives the laptop** —
+   the weekly check proves the passphrase still works, not that anyone else can find it.
 3. ⚠️ **Whether to deploy `0015`** — see the undeployed-migration note above.
 
 ### An agent alone, in order
