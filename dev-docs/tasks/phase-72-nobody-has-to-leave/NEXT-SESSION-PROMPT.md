@@ -1,111 +1,117 @@
 # Next session — phase 72
 
-**Written 2026-08-19, sixth session.** **NAT-006's read surface is built and committed.** The
-editor can now see people, profiles, RFPs, coaching, University, tutorials and replays — ten
-endpoints, one shape, a written contract. What it still cannot do is *write*, and that waits on a
-ruling rather than on code.
+**Written 2026-08-19, seventh session.** **NAT-005 landed and Tier 3's vocabulary now exists.**
+The launcher's Community tab and the editor's rail panel draw from one set of components, rows
+carry the metadata the view model always had, and there is a way to grade a React component in
+this repo's jest. **NAT-004 is the only unstarted Tier-1 task.** Two rulings still block writes.
 
 ## Read first, in this order
 
-1. [NAT-006](NAT-006-THE-API-THE-EDITOR-CANNOT-SEE.md) §Status — the AC table, and the two findings.
-   **Read the AC4 one even if you never touch this API**: the tidy implementation *was* the
-   criterion's failure, and the same trap is waiting in any read API written over these modules.
-2. `nodegx-community/docs/API.md` — the contract. §4 (the 404 that means several things) and §6
-   (the writes, and what D5 has to decide) are the two sections a Tier-3 task needs.
-3. [TASKS.md](TASKS.md) §The order, then [README §4](README.md) — five rulings still open
-   (D5, D6, D7, D8, D10).
+1. [NAT-005](NAT-005-THE-TAB-THAT-IS-A-LIST-OF-GREY-LINES.md) §Status — the AC table and four
+   findings. **Read the "this runner CAN grade a React component" one before writing any spec for
+   NAT-007..011**; it is the instrument, and it comes with one design constraint.
+2. `packages/noodl-core-ui/src/components/community/` — the vocabulary itself. `CommunityRow`,
+   `CommunitySectionBody`, `CommunitySection`, `communityMeta.ts`, two densities.
+3. [NAT-006](NAT-006-THE-API-THE-EDITOR-CANNOT-SEE.md) §Status and `nodegx-community/docs/API.md`
+   §4 and §6 — still the contract every Tier-3 task reads.
+4. [TASKS.md](TASKS.md) §The order, then [README §4](README.md) — five rulings open (D5, D6, D7,
+   D8, D10).
 
 ## What happened this session
 
-**NAT-006 AC1, AC2, AC3, AC4, AC6 and AC7 are closed** — `nodegx-community@126a0b6`. Ten endpoints
-under `/api/v1/community/`, each reading through the function its page already calls. The one
-page-side query copy left on the platform (`tutorialsList`'s article read, living in `lists.ts`)
-moved to `articles.ts` and now has both callers — that is the trap the task calls its
-highest-value structural decision, and it was the last instance.
+**NAT-005 AC1, AC2, AC3, AC5, AC6 and AC7 are closed** — `5c5bb08f`. Gates on the committed tree:
+`test:main` **263 suites / 4210 tests / 0 failures**, core-ui jest **28 / 521 / 0**,
+`typecheck:editor` and `typecheck:editor-tests` clean. 51 new tests, **verified red 6 of 6**.
 
-Gates: `tsc --noEmit` clean, vitest **45 files / 1110 tests, 0 failures**. `npm run lint` is not a
-working gate in that repo — `next lint` drops into an interactive ESLint setup prompt. Not fixed,
-recorded.
+### 🔴 The finding worth carrying: this jest CAN grade a React component
 
-### 🔴 The finding worth carrying: the tidy implementation was the AC4 failure
+`tests-unit/` has assumed that no DOM means components are ungradeable, so component-shaped
+questions get **source analysis** — read the `.tsx` as text, match strings. That is blind to a
+rename, and it cannot tell a component that *drew nothing* from one that was *never called* —
+which is exactly what a D15 assertion is asking.
 
-AC4 says the API must not be wider than a signed-out browser. The obvious implementation — return
-the shared read modules' own types — **is** wider: `DirectoryEntry`, `PublicProfile`, `RfpListing`
-and `CoachingOffer` all carry an internal **account UUID** that no page renders. A React Server
-Component emits HTML, so a field it fetches and never prints leaves no trace; the same field in
-JSON is published to every client, and it looks like the clean implementation the whole way.
+A React element is a plain object and a hook-free component is a plain function from props to
+elements. **`tests-unit/support/renderElements.ts`** walks one: no DOM, no `react-dom`, no jsdom.
+Both arms of AC5 now come out of one call to one component with one field different.
 
-✅ **Ask of any read API: which fields does the page fetch and not print?** That set is the leak.
-Every surface is mapped in `apisurfaces.ts` now, each mapper states what it drops, and the spec
-asserts over *every* endpoint that no body contains a seeded account id — with a control that
-feeds it a leaky body and requires it to fire.
+✅ **Use it for NAT-007..011.** The constraint it asks for is small and worth it: keep the pure
+half of a surface separate from the half that reads context — `CommunityTab(props)` beside
+`Community()` — because a hook throws under this walk. ⚠️ It sees no effects, no layout, no paint.
+⚠️ And anything importing `common/Icon` cannot be loaded by this runner at all (`require.context`),
+which is why the shared row has no leading glyph.
 
-### 🔴 The second finding: a column typed `Date` is sometimes a raw string
+### 🔴 A gate said no to me twice, and was right both times
 
-`b.earnedAt.toISOString()` died on `2026-08-19 18:58:53.754123+00` — Postgres's own text,
-unparsed, from a field declared `Date`.
+**AC7 went red on a comment** — the sentence *"No `dangerouslySetInnerHTML`, ever"* in the module
+note of a file that does not use it. Comments are stripped now (`stripComments`, in the same
+support file, reusable). The dangerous direction is the other one: a file that both uses the
+construct and documents the prohibition reads identically to a naive checker, and the prose is
+what makes it look reviewed.
 
-🔴 **The connection decides, not the query.** Reproduced deterministically: read badges through the
-API pool (a `Date`), call `/v1/community/home` — enough concurrent queries to make the pool open
-more connections — then read the same badges through a route (a string). ⚠️ **I did not pin the
-mechanism down and the note says so**; postgres.js resolves parsers per connection, and that is a
-hypothesis, not a measurement.
+**NAT-001's PAIRS table rejected two rows** I added at `min: 1.09`. It grades **words at 4.5 and
+shapes at 3** and refuses any other bar on purpose; an elevation step is neither, and a third bar
+would have loosened the guard for every future row. Those two claims moved to the elevation test.
+⚠️ **Five existing PAIRS rows also had to be *corrected*, not appended to**: this task moved the
+tab up a ground (cards on `bg-1`), so familiar foregrounds were asserting grounds nothing paints
+any more. **The trigger for editing a row is the same as for adding one — a new pairing.**
 
-⚠️ **`lists.ts` had already met this and defended locally without recording it** — every date
-comparator there wraps in `new Date(...)`, and one helper is typed `Date | string`. A defence with
-no note is a finding the next person has to make again. One site was still exposed: `/people`'s
-*"recently active"* sort called `.getTime()` on the raw value, a 500 one pooled connection away.
-Fixed. 🔴 **`src/app/orgs/[slug]/assignments/page.tsx:32` is the same hazard, untouched** — 67b
-ground, named in the task file rather than repaired from outside.
+### 🔴 My red-verification harness reported a false GREEN
 
-### ✅ Verified red, and it was worth the four minutes
+Five of six injected defects fired by name; the sixth read as *passed*. The spec was fine. The
+harness counted failures by regexing `Tests: N failed` out of jest's output, and the mutation left
+the file unparseable — so the **suite failed to run**, that line never appeared, and it reported
+zero failures. **An unparseable file and a clean pass rendered identically.** Re-run as valid code
+it failed immediately. ✅ Give a mutation harness its own control.
 
-The envelope check, the account-id check and the rate limiter were each handed their defect back:
-**5 of 14 failed**, each by name. Same lesson as session 5's caller census — a green contract spec
-on an unbroken tree says nothing about whether it can see a break.
+### ⚠️ Storybook does not start in this repo, and 99 stories cannot be opened
+
+`npm run start:storybook` fails before serving anything, and did before this task. I fixed three
+causes (an `import.meta` shim that makes esbuild emit ESM; `@storybook/addons`, gone since SB7; an
+MDX1 stories glob SB8 cannot parse) and **did not narrow the fourth**: all 99 `.stories.tsx` fail
+with `Module parse failed: Unexpected token (1:12)` at their first `import type`. A `webpackFinal`
+helper that replaced an absent `include` instead of widening it looked like the answer, is a real
+defect, was fixed — **and was not the cause.** The file says so in both halves.
+
+That is why **NAT-005 AC4 is the one criterion still open**. The four states were looked at through
+a purpose-built esbuild harness instead (real components, real compiled stylesheets, both themes,
+both densities, plus `hidden` drawing nothing beside the others as its control) — which answers
+AC1 but not AC4's actual claim, that a designer can open these.
+
+⚠️ **Worth weighing before Tier 3 writes four surfaces' worth of stories.** A story nobody can
+render is a story nobody wrote — it is how this tab spent a whole phase as two inline style
+objects without anyone seeing it outside the running app.
 
 ## Where to start
 
-**NAT-007 is now the flagship and the read half is unblocked.** Threads already had an endpoint;
-what NAT-007 needs beyond it is the reply, which is AC5/D5 — so the honest shape of that session is
-*build the whole reading experience, and land the reply behind the ruling*. NAT-015 rides along in
-the same session on the same renderer.
+**NAT-007 is the flagship and its read half is unblocked** — threads have an endpoint, and the row,
+the four states and the metadata formatters it needs now exist. What it still cannot do is reply,
+which is AC5/D5. The honest shape is *build the whole reading experience, land the reply behind the
+ruling*, with **NAT-015 in the same session on the same renderer**.
 
-**If you would rather close NAT-006 completely, it is one decision:**
+**NAT-004** (light by default on the web, S, `nodegx-community`) is now the only unstarted Tier-1
+task and is independent of everything above — a good session on its own, or a warm-up.
 
-- 🔴 **D5 — what authorises a write from the editor?** `docs/API.md` §6 specifies the three writes
-  Tier 3 needs (a Bench reply, an RFP response, a coaching request) and the four things that hold
-  whatever D5 decides. The ruling wants Richard; the code after it is small.
+**If you would rather close something completely, two are one decision each:**
 
-**NAT-004** (light by default on the web, S) and **NAT-005** (the tab that is a list of grey lines,
-M) are still the unstarted Tier 1 work, and NAT-005 is the vocabulary Tier 3 reuses — building it
-before four surfaces reinvent it is still the right order.
+- 🔴 **D5 — what authorises a write from the editor?** `docs/API.md` §6 has the three writes
+  specified. Closes NAT-006 AC5 and unblocks four Tier-3 tasks.
+- 🟡 **NAT-005 AC4** — one webpack-loader question in `.storybook/main.ts`, and 99 stories come
+  back with it.
 
-🔴 **Do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4 on the strength of NAT-006 either.** They
-close when mail reaches a human, which is NAT-014 AC2/AC7 and still needs a deploy.
+🔴 **Do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4 on the strength of NAT-006.** They close
+when mail reaches a human — NAT-014 AC2/AC7, still needing a deploy.
 
 ## Loose ends
 
-- ⚠️ **Nine phase-72 files remain modified and uncommitted** — NAT-006 now among them, because it
-  already carried somebody else's unlanded edits when I arrived and a pathspec commit would sweep
-  them. My status section is appended to that file in the working tree. Everything of mine that
-  stands alone (TASKS.md, this file) is committed.
-- ✅ **The shared 55432 Postgres does not need queueing.** The 67b session pointed out the better
-  move and it works: `create database nodegx_community_e7` beside the default, then
-  `DATABASE_URL=…/<your-db> npx vitest run`. `freshDb()`'s `drop schema public cascade` is then
-  scoped to a database only you use. I queued twice today for nothing.
+- ⚠️ **Eight phase-72 files remain modified and uncommitted** from previous sessions (NAT-006/007/
+  009/010/011/012/013 and the README) — they carried somebody else's unlanded edits and a pathspec
+  commit would sweep them. Everything of mine is committed: `5c5bb08f`, by pathspec.
+- ✅ **The shared 55432 Postgres does not need queueing** — `create database <yours>` and pass
+  `DATABASE_URL`. 🔴 **A peer found the trap in doing so**: `nat014-outbox-drain.test.ts` spawned
+  the drainer with a hard-coded `DEFAULT_DATABASE_URL` while `freshDb()` honoured `DATABASE_URL`,
+  so it seeded one database and drained another — **20/20 on the shared DB, 11 of 20 red on an
+  isolated one**, all reading as "the drainer sent nothing". Fixed in `f9e7151`.
+- ⚠️ The peer also landed UNI-006's bridge; the platform floor is now **47 files / 1132 tests / 0
+  failures**, after `npm run build`.
 - ⚠️ **`AskAboutNodeDialog.module.scss`, the ~99 fill-role files, and the active-line contrast
-  finding** are all unchanged from the last three handovers.
-
-## Verification notes that earned their place
-
-- 🔴 **A route sweep derived from disk fails on a *sibling's* new routes, not only yours.** Mine and
-  67b's landed hours apart and each made the other's run red with "these routes have no D15
-  verdict". That is the gate working. ✅ Read the names in the failure before believing it is yours.
-- ✅ **Two sessions edited one test file cleanly** because both appended to an object literal and
-  neither rewrote the file. The peer committed a synthesized blob containing only their own
-  recipes, so my working copy kept both. **A wholesale write there would have destroyed one set.**
-- 🔴 **A spec can be green because the fixture is broken.** Every dynamic endpoint in the contract
-  spec asserts *"this file has a seeded id for you"* before calling — a made-up id 404s for
-  everybody, which satisfies half of a gate assertion and fails the other, and reads as a broken
-  gate rather than a broken fixture.
+  finding** are unchanged from the last four handovers.
