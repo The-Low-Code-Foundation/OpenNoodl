@@ -117,10 +117,23 @@ webview is genuinely the answer it is a *separate, sandboxed* surface on the
   an empty state. An org-minor whose school switched the community off is answered with a 404 so
   that *a pupil is not told a door exists*. 🔴 Every new surface in this phase inherits D15, and
   the **known remainder** is that the rail *icon* is still drawn for that viewer
-  (`SidebarModel.register` is synchronous, no async predicate) — owned by **phase 67b**, not here.
-- **Phase 67b** owns the remainder queue: UNI-017 (triage), UNI-018 (pull a graph), UNI-006/007
-  (the assignment bridge), and 🔴 **`outbound_emails` has no drainer**. Where a NAT task would
-  answer a 67b item, it says so and defers rather than forking it.
+  (`SidebarModel.register` is synchronous at setup, no async predicate,
+  [`router.setup.ts:262`](../../../packages/noodl-editor/src/editor/src/router.setup.ts)).
+  🔴 **Moved into this phase 2026-08-19 as NAT-012 AC7** — the task whose whole job is auditing
+  every door was previously forbidden from closing this one, which is ledger tidiness buying a
+  worse product. An icon is a door.
+- **Phase 67b** keeps: UNI-017 (triage), UNI-006/007 (the assignment bridge), UNI-008 (hosting),
+  UNI-010's remainder, UNI-012 (F4 on a packaged install), E7's capture-upload half, and 🔴
+  **off-host backups**. Where a NAT task would answer one of those, it says so and defers rather
+  than forking it. **Two items left 67b for this phase** — the mail drainer (NAT-014) and
+  pull-a-graph (NAT-015) — each because a phase-72 acceptance criterion depends on it.
+- 🔴 **Measured 2026-08-19, and in neither phase's notes before today: no mail leaves the
+  platform at all.** `drainOutbox` is written, thoroughly tested against a real database, and
+  **imported by exactly two files, both tests** — no route, no npm script, no systemd unit. The
+  relay queue `outbound_emails` has no drainer *and* no transport, pinned to an unregistered
+  domain. 67b's README records D19 as *"met for the Bench"* on the strength of a transport
+  existing; a transport is not a delivery. **[NAT-014](NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md)**
+  owns it and must amend the P67 ruling record.
 - **UNI-013** owns the token-sync machinery. Any change to `colors.css` here must be followed by
   `npm run tokens:sync` in `nodegx-community` **and** a re-run of its drift test, or the site
   silently keeps the old palette.
@@ -129,7 +142,7 @@ webview is genuinely the answer it is a *separate, sandboxed* surface on the
 
 ## 4. Rulings queue — OPEN as of 2026-08-19
 
-Richard settled four in the opening conversation; five remain.
+Richard settled four in the opening conversation. **D9 is now settled and D11/D12 were added and settled with it**; four remain — D10 was added on 2026-08-19 with NAT-014.
 
 **Settled 2026-08-19:**
 - ✅ **D1 — Fix the shared tokens.** Not a community-scoped override. The whole editor changes
@@ -139,6 +152,29 @@ Richard settled four in the opening conversation; five remain.
 - ✅ **D3 — Native, read *and* reply.** Not read-only, not a webview. Build the missing API and a
   native client. (NAT-006 through NAT-011.)
 - ✅ **D4 — All four surfaces are in scope**: people/profiles, jobs/RFPs, coaching, University.
+- ✅ **D9 — `fg-muted` is RETIRED**, not raised and not kept-and-forbidden. It is now an alias of
+  `--theme-color-fg-default-shy`, so the ~217 `color:` declarations that name it keep working and
+  all of them get AA. The *value* it held is not lost: `fg-disabled` and `border-control` now carry
+  `neutral-600` deliberately, and those were the two jobs it was doing that were correct.
+  ⚠️ Richard chose this over the README's own recommendation (raise it, keep the step), accepting
+  that the "quieter than shy" step disappears. (NAT-002 — **done 2026-08-19**.)
+
+**Settled 2026-08-19, second round — raised by NAT-001's measurements, not by the review:**
+- ✅ **D11 — The accent splits into a fill role and a text role.** `--theme-color-primary` is 4.03:1
+  on bg-0, 4.33 on bg-2 and 3.99 on bg-3 in **light** — every ground the editor paints links on —
+  while clearing everything in dark. `--theme-color-fg-accent` is the text half: `primary` in dark
+  (no split needed, and one would have collided with `primary-highlight`, which is a link's hover)
+  and `#0e5fd0` in light, the value `nodegx-community` had already proved as `--site-fg-accent`.
+  🔴 This was NOT in the review's scope. It is independent of `fg-muted` and no amount of fixing
+  `fg-muted` would have touched it. (NAT-002 — **done**; ~99 files still paint words with the fill
+  role and are queued, see NAT-002's remainder.)
+- ✅ **D12 — The status colours split the same way.** `success` is 3.81:1 in light on bg-2 and
+  `danger` is 4.46:1 in **dark** on bg-4 — the composer's sign-in error, on the ground every
+  dialog paints. `--theme-color-fg-success` / `-fg-notice` / `-fg-danger` are the text halves, one
+  step along the existing ramps; the fill roles keep their values and their jobs. ⚠️ In dark,
+  `fg-success` and `fg-notice` deliberately equal their fills, because those already read — the
+  spec asserts the *conditional*, not a difference, so a correct answer is not rejected.
+  (NAT-002 — **done**.)
 
 **Open — each blocks the task named:**
 - 🔴 **D5 — What authorises a *write* from the editor?** The device-token flow
@@ -155,11 +191,14 @@ Richard settled four in the opening conversation; five remain.
 - ⚠️ **D8 — Caching policy.** What persists to disk between editor sessions, where, and for how
   long — this is user data on a local-first tool and it is a privacy decision, not a perf one.
   **Blocks NAT-013.**
-- ⚠️ **D9 — Does `fg-muted` survive?** NAT-002 can either raise it to AA (and lose the *"quieter
-  than shy"* step the ramp currently offers) or keep it and forbid it for text. Recommendation:
-  keep the token, raise it to 4.5:1 anyway, and let `fg-disabled` carry genuinely-inactive text —
-  because a token that is legal only in unenforceable circumstances gets used for body copy again.
-  **Blocks NAT-002.**
+- 🔴 **D10 — Does the double-blind relay survive v1?** `outbound_emails` is pinned by trigger to
+  `relay.nodegx.dev`, an unregistered domain, and UNI-004's design needs *inbound* mail for
+  double-blind replies. Three options: register the domain and build inbound; keep the relay
+  outbound-only with replies through the site (v1's stated ruling); or retire the relay and route
+  everything through `notification_deliveries`, deleting `notify()`'s `'relayed'` outcome with it.
+  🔴 The third is the only one where a person is never told they were emailed when they were not.
+  **Blocks NAT-014 AC4**, and shapes NAT-009 and NAT-010.
+
 
 ---
 
@@ -168,4 +207,6 @@ Richard settled four in the opening conversation; five remain.
 - It is not a redesign of the community *site's* information architecture. The 19 routes stay.
 - It does not move the community into the editor's process. It is a client; the platform is the
   system of record.
-- It does not close phase 67b. Where the two touch, 67b keeps ownership.
+- It does not close phase 67b. Where the two touch, 67b keeps ownership — **except for the two
+  items formally moved here on 2026-08-19** (NAT-014, NAT-015) and the rail icon (NAT-012 AC7),
+  which are struck from 67b's ledger rather than tracked in both places.

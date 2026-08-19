@@ -8,6 +8,13 @@
    - `--theme-color-primary` is the azure ACTION accent. It is never used for
      destructive or error UI.
    - `--theme-color-danger` is the only red in chrome. Danger is never a CTA.
+   - NAT-002 (D10/D11): a FILL role and a TEXT role are not the same colour.
+     `primary`, `success`, `warning`/`notice` and `danger` are FILLS — button
+     grounds, rings, chips, wire tints — and they are chosen to look right as
+     an area. Words in those colours use `--theme-color-fg-accent`,
+     `-fg-success`, `-fg-notice` and `-fg-danger`, which are chosen to clear
+     4.5:1 on every surface the editor paints text on. Painting words with a
+     fill role is how the light theme shipped links at 3.99:1 on bg-3.
    - Elevation: page < bg-0 (canvas) < bg-1 (panels) < bg-2 (cards/inputs)
      < bg-3 (hover/active). Steps are deliberately distinct.
 
@@ -37,6 +44,11 @@
   --base-color-neutral-500: #4a5560;
   --base-color-neutral-600: #6b7682;
   --base-color-neutral-700: #8b95a1;
+  /* NAT-002: a half-step, added because the ramp had no tone between "secondary"
+     and "body" that clears 4.5:1 on bg-4 — and bg-4 is what `BaseDialog` paints,
+     so it is the ground of every dialog in the editor. neutral-700 measured
+     4.09:1 there. */
+  --base-color-neutral-750: #95a0ac;
   --base-color-neutral-800: #a6b0bb;
   --base-color-neutral-900: #cbd3dc;
   --base-color-neutral-950: #eef2f6;
@@ -270,14 +282,59 @@
 
   /* ---------------------------------------------------------------------------
      FOREGROUNDS
-     highlight = emphasized, default = body, muted = large/secondary text only
+     highlight = emphasized, default = body, default-shy = secondary.
+     Every one of these clears 4.5:1 on bg-0 through bg-4 in BOTH themes, which
+     is asserted by tests-unit/nat-001/palette-contrast.spec.ts.
      --------------------------------------------------------------------------- */
   --theme-color-fg-highlight: var(--base-color-neutral-950);
   --theme-color-fg-default-contrast: var(--base-color-neutral-900);
   --theme-color-fg-default: var(--base-color-neutral-800);
-  --theme-color-fg-default-shy: var(--base-color-neutral-700);
-  --theme-color-fg-muted: var(--base-color-neutral-600);
+  /* 🔴 NAT-002 raised this from `neutral-700`. It was 4.09:1 on bg-4 in dark and
+     4.33 in light — under AA on the ground every DIALOG is painted on, including
+     the "Ask about this node" composer's consent copy. D9 also made it the
+     target of the retired `fg-muted`, so it now carries most of the editor's
+     secondary text and had to hold on every surface, not most of them.
+     ⚠️ The step down from `fg-default` narrows from 1.38:1 to 1.21:1 — still a
+     visible hierarchy, and asserted as one by the NAT-001 spec so a later raise
+     cannot quietly collapse it. */
+  --theme-color-fg-default-shy: var(--base-color-neutral-750);
+  /* 🔴 RETIRED (NAT-002, D9). This was `neutral-600` and it was documented right
+     here as "large/secondary text only" — an unenforceable licence that 217
+     `color:` declarations took as permission. It measured 3.93:1 on bg-1 and
+     3.17:1 on bg-3 in dark, 3.62/3.16 in light, and it was the colour of nearly
+     every word on the launcher's Community tab (4.18 dark / 3.19 light on bg-0,
+     the worst text ratio in the product).
+     It is now an ALIAS of `fg-default-shy` so no consumer breaks. The value it
+     used to hold has not been thrown away: `fg-disabled` and `border-control`
+     both carry `neutral-600` deliberately, and those are the two jobs it was
+     actually doing that were correct. Do not reach for this token in new code —
+     say `fg-default-shy` if you mean quiet words. */
+  --theme-color-fg-muted: var(--theme-color-fg-default-shy);
   --theme-color-fg-transparent: var(--base-color-white-transparent-15);
+
+  /* ---------------------------------------------------------------------------
+     FOREGROUNDS — COLOURED TEXT (NAT-002, rulings D10 and D11)
+     🔴 These exist because the FILL roles fail AA as words, and they fail in
+     ways a diff cannot show. `--theme-color-primary` is 4.57:1 on bg-1 in light
+     — passing by 0.07 — and 4.33 on bg-2, 4.03 on bg-0, 3.99 on bg-3. Every one
+     of those is a ground the editor paints links on. `--theme-color-success` is
+     3.81 in light and `--theme-color-danger` is 4.46 in DARK on a dialog's bg-4.
+     nodegx-community hit this first and answered it the same way
+     (`--site-fg-accent`, `--site-fg-good`, `--site-fg-warn`, `--site-fg-alert`);
+     this is that shape brought upstream instead of forked.
+     ⚠️ The values are one step along the existing ramps, not new inventions, and
+     each clears 4.5:1 on bg-0..bg-4 AND on the accent wash over bg-3.
+     --------------------------------------------------------------------------- */
+  /* 🔴 DARK NEEDS NO SPLIT, and asserting one would have been symmetry rather than a fix. The
+     fill accent measures 7.37 / 6.92 / 6.45 / 5.58 / 4.73 on bg-0..bg-4 in dark — every ground
+     the editor paints accent text on. It is LIGHT that fails (4.03 / 4.57 / 4.33 / 3.99 / 3.70),
+     so light is the only arm that moves. A first pass here used `azure-400` in dark for
+     uniformity; it collided with `primary-highlight`, which is what a link's HOVER is, and
+     bought nothing a measurement asked for. */
+  --theme-color-fg-accent: var(--theme-color-primary);
+  --theme-color-fg-success: var(--base-color-success-500);
+  --theme-color-fg-notice: var(--base-color-amber-400);
+  --theme-color-fg-danger: var(--base-color-red-300);
 
   /* ---------------------------------------------------------------------------
      PRIMARY - Azure action accent
@@ -355,6 +412,12 @@
   --theme-color-node-category-logic: #f5b843;
   --theme-color-node-category-function: #f776c4;
   --theme-color-node-category-component: #a78bfa;
+  /* NAT-002. The canvas painted an uncategorised node with `--theme-color-fg-muted` — a
+     FOREGROUND token borrowed as a category hue. D9 retired that token to an alias of
+     `fg-default-shy`, which would have lightened every uncategorised node card on the graph as a
+     side effect of a TEXT fix. This is the value it always meant, said once, in the family it
+     belongs to. ⚠️ Both themes keep exactly the colour they had. */
+  --theme-color-node-category-default: var(--base-color-neutral-600);
   --theme-color-wire-signal: #35c3e8;
   --theme-color-wire-data: var(--theme-color-node-category-data);
 
@@ -459,8 +522,15 @@
   --theme-color-danger-transparent: rgba(249, 112, 102, 0.25);
   --theme-color-error: var(--theme-color-danger);
   --theme-color-error-bg: var(--theme-color-danger-bg);
-  --theme-color-fg-disabled: var(--theme-color-fg-muted);
-  --theme-color-fg-error: var(--theme-color-danger);
+  /* NAT-002 AC3. This used to alias `fg-muted`, so retiring that token would have
+     silently made disabled text as loud as secondary text. `neutral-600` is now
+     chosen here on purpose: it is what `fg-muted` used to be, which is the
+     appearance disabled controls already had and the one they should keep.
+     ⚠️ WCAG 1.4.3 exempts inactive controls from 4.5:1, and that exemption is
+     not a licence for this token to carry body copy. */
+  --theme-color-fg-disabled: var(--base-color-neutral-600);
+  /* NAT-002 D11: an ERROR is words, so this follows the text role, not the fill. */
+  --theme-color-fg-error: var(--theme-color-fg-danger);
   --theme-color-fg-on-accent: var(--theme-color-on-primary);
   --theme-color-fg-on-primary: var(--theme-color-on-primary);
   --theme-color-fg-on-warning: var(--base-color-neutral-0);
@@ -504,9 +574,23 @@
   --theme-color-fg-highlight: #18212b;
   --theme-color-fg-default-contrast: #2e3945;
   --theme-color-fg-default: #4a5663;
-  --theme-color-fg-default-shy: #616c79;
-  --theme-color-fg-muted: #7c8894;
+  /* NAT-002: partner of the dark-block raise. Was #616c79 (4.33:1 on bg-4). */
+  --theme-color-fg-default-shy: #5a6470;
+  /* NAT-002 D9: no `fg-muted` override any more. It is an alias of
+     `fg-default-shy` in `:root`, and an alias resolves per theme — restating it
+     here would fork it again. */
   --theme-color-fg-transparent: rgba(23, 32, 43, 0.15);
+
+  /* NAT-002 D10/D11 — partners of the dark-block definitions. Not aliases, so
+     they have to be restated. `fg-accent` is the value nodegx-community proved
+     (`--site-fg-accent`); the three status tones are one step further down their
+     ramps than the site's, because the editor paints text on bg-4 (dialogs) and
+     the site does not. Worst ground each: 4.59, 5.97, 5.86, 5.12. */
+  --theme-color-fg-accent: #0e5fd0;
+  --theme-color-fg-success: #05603a;
+  --theme-color-fg-notice: #93370d;
+  --theme-color-fg-danger: #b42318;
+  --theme-color-fg-disabled: #7c8894;
 
   --theme-color-primary: #1570ef;
   --theme-color-primary-highlight: #0e5fd0;
@@ -528,6 +612,8 @@
   --theme-color-node-category-logic: #b87e14;
   --theme-color-node-category-function: #d6479a;
   --theme-color-node-category-component: #7c5ce0;
+  /* NAT-002: partner of the dark-block definition. The value light `fg-muted` used to hold. */
+  --theme-color-node-category-default: #7c8894;
   --theme-color-wire-signal: #0e9cc4;
 
   --theme-color-success: #12915b;
@@ -551,8 +637,12 @@
   --theme-color-border-subtle: #eaeef3;
   --theme-color-border-strong: #c9d2dc;
   /* POL-016: partner of the dark-block definition. Not an alias, so it has to be
-     restated. Same value as this theme's `fg-muted` — the lightest tone that
-     still clears 3:1 on bg-1 (3.62), bg-2 (3.43) and bg-3 (3.16). */
+     restated. The lightest tone that still clears 3:1 on bg-1 (3.62), bg-2
+     (3.43), bg-3 (3.16) and bg-0 (3.19).
+     ⚠️ NAT-002: this used to be described as "same value as this theme's
+     `fg-muted`". `fg-muted` has been retired to an alias of `fg-default-shy`, so
+     that sentence stopped being true — but the VALUE is right here for its own
+     reason and did not move. */
   --theme-color-border-control: #7c8894;
 
   --theme-color-focus-ring: #1570ef;

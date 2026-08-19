@@ -88,8 +88,9 @@ const COLOR_SPECS = {
   cardBorderHover: { css: '--theme-color-border-strong', fallback: '#37404c' },
   /** Node name. */
   cardText: { css: '--theme-color-fg-highlight', fallback: '#eef2f6' },
-  /** Type line. */
-  cardSubText: { css: '--theme-color-fg-muted', fallback: '#6b7682' },
+  /** Type line. NAT-002: this is TEXT and it measured 3.93:1 on the card, so it takes the raise
+   *  D9 gave `fg-default-shy` rather than sitting on the retired alias. */
+  cardSubText: { css: '--theme-color-fg-default-shy', fallback: '#95a0ac' },
   /**
    * The "this node has a comment" gutter stripe (CAN-004).
    *
@@ -137,8 +138,10 @@ const COLOR_SPECS = {
   /* --- Editor decorations ------------------------------------------------- */
   /** Connection-drag indicator line + endpoints. */
   dragLine: { css: '--theme-color-primary', fallback: '#4da3ff' },
-  /** Rect-select dashed box. */
-  multiselect: { css: '--theme-color-fg-muted', fallback: '#6b7682' },
+  /** Rect-select dashed box. NAT-002: a selection rectangle is a CONTROL BOUNDARY, not words, so
+   *  it moves to the token POL-016 added for exactly that — same value, both themes, no visual
+   *  change — rather than following a text token's raise. */
+  multiselect: { css: '--theme-color-border-control', fallback: '#6b7682' },
   /** Multi-selection AABB outline. */
   multiselectBox: { css: '--theme-color-fg-default', fallback: '#a6b0bb' },
   /** Parent→child hierarchy spine (the mock's `--border-2` spine). */
@@ -170,7 +173,7 @@ const COLOR_SPECS = {
   categoryLogic: { css: '--theme-color-node-category-logic', fallback: '#f5b843' },
   categoryJavascript: { css: '--theme-color-node-category-function', fallback: '#f776c4' },
   categoryComponent: { css: '--theme-color-node-category-component', fallback: '#a78bfa' },
-  categoryDefault: { css: '--theme-color-fg-muted', fallback: '#6b7682' }
+  categoryDefault: { css: '--theme-color-node-category-default', fallback: '#6b7682' }
 } satisfies Record<string, ColorSpec>;
 
 type BaseColors = { [K in keyof typeof COLOR_SPECS]: string };

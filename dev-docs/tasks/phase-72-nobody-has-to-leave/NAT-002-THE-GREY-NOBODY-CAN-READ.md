@@ -66,3 +66,95 @@ again rather than aspirational.
 - ⚠️ The light-theme `--theme-color-primary` (`#1570ef`) is **4.57:1** on white — it passes, by
   0.07. It is not this task's job to change it, but any tweak to the light ground puts it under the
   bar. If `bg-1` moves in light, re-measure the accent.
+
+---
+
+## Done — 2026-08-19
+
+**Gate:** `tests-unit/nat-001/palette-contrast.spec.ts` — **123 passed, 123 total**. It was
+[observed red at 22 failures](NAT-001-THE-CONTRAST-FLOOR-THE-EDITOR-NEVER-HAD.md) on the
+unmodified palette first; that observation is what this entry is measured against.
+
+### AC2 — D9 answered
+
+🔴 **`fg-muted` is retired, not raised.** Richard's ruling, against this file's own recommendation:
+it is now `var(--theme-color-fg-default-shy)`. The ~217 `color:` declarations that name it keep
+working and every one of them gets AA. The "quieter than shy" step is gone, and that was accepted
+explicitly rather than by silence.
+
+The value it held did not vanish — it was already carried deliberately by two other tokens, which
+is the part that made the retirement safe:
+
+| token | dark | light | why it keeps `neutral-600` |
+|---|---|---|---|
+| `--theme-color-fg-disabled` | `#6b7682` | `#7c8894` | AC3. It used to **alias** `fg-muted`, so retiring that token would have silently made disabled text as loud as secondary text. Now chosen. |
+| `--theme-color-border-control` | `#6b7682` | `#7c8894` | POL-016 already added it for 1.4.11 boundaries. 🔴 **It existed the whole time** — the launcher's ghost button was using `bg-3` (1.32:1) while the right token sat unused. |
+
+### AC1 — the pairs, before → after
+
+| pair | dark | light |
+|---|---|---|
+| launcher tab body copy | 4.18 → **7.28** | 3.19 → **5.31** |
+| launcher "Try again" | 7.37 → 7.37 | 4.03 → **5.20** |
+| launcher button border | 1.32 → **4.18** | 1.01 → **3.19** |
+| composer Shy copy (bg-4) | 4.09 → **4.67** | 4.33 → **4.88** |
+| composer sign-in error (bg-4) | 4.46 → **6.40** | 3.92 → **5.33** |
+| `fg-muted` on bg-3 | 3.17 → **5.86** | 3.16 → **5.62** |
+| link on bg-3 | 5.58 → 5.58 | 3.99 → **5.14** |
+| success on bg-2 | 8.10 → 8.10 | 3.81 → **6.16** |
+
+### 🔴 Two rulings this task had to raise before it could finish
+
+The scoping pass framed this as one token. It is three. **D11** (accent) and **D12** (status) are
+recorded in [README §4](README.md); both were settled by Richard on the measurements above.
+Neither is reachable by fixing `fg-muted` — the accent fails in a theme the review never looked at,
+and `danger` fails in *dark*, which contradicts the whole "too dark" framing the review started
+from.
+
+### One token added, and one half-step
+
+- `--theme-color-node-category-default` — the canvas painted an **uncategorised node** with
+  `fg-muted`, a foreground borrowed as a category hue. Retiring `fg-muted` would have lightened
+  every uncategorised node card on the graph as a side effect of a *text* fix. Both themes keep
+  exactly the colour they had.
+- `--base-color-neutral-750: #95a0ac` — the ramp had no tone between "secondary" and "body" that
+  clears 4.5:1 on **bg-4**, and bg-4 is what `BaseDialog` paints, so it is the ground of *every*
+  dialog in the editor. `fg-default-shy` measured 4.09 there and had to move, because D9 made it
+  the target of everything `fg-muted` used to carry.
+  ⚠️ The step from `fg-default` narrows 1.38 → **1.21** (dark) and 1.40 → **1.25** (light). Still
+  a visible hierarchy, and now asserted as one so a later raise cannot quietly collapse it.
+
+### AC4/AC5 — the platform half
+
+`npm run tokens:sync` run in `nodegx-community`; `uni013-token-drift` **22/22**, `uni013-contrast`
+**150/150** after two fixes *on that side*:
+
+1. 🔴 **Its known-bad control had rotted the same way mine did.** `fails the pair that was actually
+   wrong — fg-muted on the light page ground` started **failing because the palette got better**
+   (3.19 → 5.31). Replaced with a self-calibrating control that cannot rot: measure a passing pair,
+   then demand 0.01 more than it scores.
+2. Its pinned `--site-fg-secondary` values follow the raise (`#95a0ac`/`#5a6470`) — which is the
+   alias working, and the reason that row is a pin rather than a range.
+
+**AC5 — `--site-fg-secondary` stays, as a plain alias, and the file now says why.** ⚠️ It was
+*never* a forked value — it has always been `var(--theme-color-fg-default-shy)`. The fork was in
+the **usage**: the site refused `fg-muted` while the editor went on painting body copy with it.
+D9 removes that at the source, so "one palette" is true again without deleting the role name. The
+name earns its place the day the site needs a tone the editor does not have.
+
+### 🔴 Remainder — the queue this task deliberately did not clear
+
+**~99 files still paint words with a fill role** (`color: var(--theme-color-primary|success|
+notice|danger)`, 202 declarations). NAT-002 migrated the **design system's text primitive**
+(`Text.module.scss` — anchors and the three status types) and the community surfaces. The rest are
+components that hand-rolled a colour instead of going through `Text`, and a grep cannot tell those
+apart from `currentColor` icon fills.
+
+⚠️ **They are sub-AA in light today and this task did not fix them.** Scaling that migration down
+was a scoping decision, and it is recorded here rather than left to be discovered:
+**NAT-005 should take the ones on the community surfaces; the rest want their own task with a
+ratchet spec** (a count that may only go down), because nothing currently stops a hundredth.
+
+### AC6 — driven and looked at
+
+See the drive record below.

@@ -13,12 +13,21 @@ import { CanvasTheme } from '../../src/editor/src/views/nodegrapheditor/canvas/C
  * test without depending on a stylesheet being present.
  */
 
-/** The values `colors.css` gives these tokens, per theme. */
+/**
+ * The values `colors.css` gives these tokens, per theme.
+ *
+ * 🔴 THIS IS A COPY, and NAT-002 caught it drifting. It held `--theme-color-fg-muted` at
+ * `#6b7682`/`#7c8894` — the values that token carried until D9 retired it to an alias of
+ * `fg-default-shy`. The map is self-consistent, so nothing here would have failed; it would
+ * simply have gone on grading a palette the product no longer ships. When a token named below
+ * moves in `colors.css`, it has to move here too.
+ */
 const DARK_TOKENS = {
   '--theme-color-bg-0': '#0b0e12',
   '--theme-color-bg-1': '#12161b',
   '--theme-color-fg-highlight': '#eef2f6',
-  '--theme-color-fg-muted': '#6b7682',
+  '--theme-color-fg-default-shy': '#95a0ac',
+  '--theme-color-node-category-default': '#6b7682',
   '--theme-color-node-category-visual': '#5ca9ff',
   '--theme-color-node-category-data': '#45d08a',
   '--theme-color-node-category-function': '#f776c4',
@@ -29,7 +38,8 @@ const LIGHT_TOKENS = {
   '--theme-color-bg-0': '#eef1f5',
   '--theme-color-bg-1': '#ffffff',
   '--theme-color-fg-highlight': '#18212b',
-  '--theme-color-fg-muted': '#7c8894',
+  '--theme-color-fg-default-shy': '#5a6470',
+  '--theme-color-node-category-default': '#7c8894',
   '--theme-color-node-category-visual': '#2e7cd6',
   '--theme-color-node-category-data': '#1e9e63',
   '--theme-color-node-category-function': '#d6479a',

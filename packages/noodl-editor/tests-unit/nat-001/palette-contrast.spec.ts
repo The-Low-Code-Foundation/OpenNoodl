@@ -88,14 +88,14 @@ const PAIRS: Pair[] = [
   // four empty states, every health readout and the error text — nearly every word on the page.
   {
     what: 'the launcher tab: viewer line, four empty states, health readouts and error text',
-    fg: '--theme-color-fg-muted',
+    fg: '--theme-color-fg-default-shy',
     bg: '--theme-color-bg-0',
     min: 4.5,
     why: '13px body copy — no large-text relief, which does not begin until 24px (or 18.66px bold)'
   },
   {
     what: 'the launcher tab: the Refresh button label',
-    fg: '--theme-color-fg-muted',
+    fg: '--theme-color-fg-default-shy',
     bg: '--theme-color-bg-0',
     min: 4.5,
     why: '13px words in a ghost button; a separate inline style from `shy`, so it can move alone'
@@ -116,7 +116,7 @@ const PAIRS: Pair[] = [
   },
   {
     what: 'the launcher tab: the “Try again” link on an unreachable section',
-    fg: '--theme-color-primary',
+    fg: '--theme-color-fg-accent',
     bg: '--theme-color-bg-0',
     min: 4.5,
     why: 'words, and the only way out of the error state'
@@ -130,7 +130,7 @@ const PAIRS: Pair[] = [
   },
   {
     what: 'the launcher tab: the border that IS the “Open community.nodegx.io” button',
-    fg: '--theme-color-bg-3',
+    fg: '--theme-color-border-control',
     bg: '--theme-color-bg-0',
     min: 3,
     why: 'NON-TEXT (1.4.11): the button has no fill, so this 1px edge is the only thing that says a control is there'
@@ -174,13 +174,26 @@ const PAIRS: Pair[] = [
     min: 3,
     why: 'NON-TEXT (1.4.11): the message/book/play glyph carries meaning but is a shape, not a word'
   },
+  // 🔴 CORRECTED after reading `ListItem.module.scss`. The first draft of this row called the
+  // selected row's LABEL accent-coloured and graded it at 4.5. It is not: FH-009 already moved
+  // the label to `fg-highlight`, and what `is-variant-active` paints with the accent is the
+  // leading GLYPH. So this is two rows at two bars, and the 4.48/3.56 the first run reported was
+  // a shape being held to a word's standard.
   {
-    what: 'the rail panel: a selected list row’s label on the accent wash',
+    what: 'the rail panel: a selected list row’s leading icon on the accent wash',
     fg: '--theme-color-primary',
     bg: '--theme-color-primary-bg',
     over: '--theme-color-bg-3',
+    min: 3,
+    why: 'NON-TEXT (1.4.11): a message/book/play glyph is a shape. The wash is 13% alpha, so it is graded composited over the row ground beneath it'
+  },
+  {
+    what: 'the rail panel: a selected list row’s label on the accent wash',
+    fg: '--theme-color-fg-highlight',
+    bg: '--theme-color-primary-bg',
+    over: '--theme-color-bg-3',
     min: 4.5,
-    why: 'words; the wash is 13% alpha so it is graded composited over the row ground beneath it'
+    why: 'words — FH-009 chose this pair deliberately after the previous one measured 2.17:1'
   },
 
   // ── The “Ask about this node” composer ──────────────────────────────────────────────────
@@ -223,7 +236,7 @@ const PAIRS: Pair[] = [
   },
   {
     what: 'the composer: the sign-in error',
-    fg: '--theme-color-danger',
+    fg: '--theme-color-fg-danger',
     bg: '--theme-color-bg-4',
     min: 4.5,
     why: 'words, and the only explanation of why the post did not happen'
@@ -238,11 +251,16 @@ const PAIRS: Pair[] = [
   { what: 'Shy copy on a panel', fg: '--theme-color-fg-default-shy', bg: '--theme-color-bg-1', min: 4.5, why: '12px secondary words — the role `fg-muted` used to carry here' },
   { what: 'Shy copy a step up', fg: '--theme-color-fg-default-shy', bg: '--theme-color-bg-3', min: 4.5, why: 'the highest ground Shy text is painted on, and therefore its worst case' },
 
-  // 🔴 THE THREE ROWS THE PALETTE ACTUALLY FAILS ON, listed at every elevation because the token
-  // gets worse as the ground gets lighter and "it fails on bg-1" understates it.
-  { what: 'muted copy on a panel', fg: '--theme-color-fg-muted', bg: '--theme-color-bg-1', min: 4.5, why: '`colors.css` documents this token as secondary text, and secondary text is words' },
-  { what: 'muted copy a step up', fg: '--theme-color-fg-muted', bg: '--theme-color-bg-2', min: 4.5, why: 'same token, worse ground' },
-  { what: 'muted copy two steps up', fg: '--theme-color-fg-muted', bg: '--theme-color-bg-3', min: 4.5, why: 'same token, worse ground again' },
+  { what: 'Shy copy on a dialog', fg: '--theme-color-fg-default-shy', bg: '--theme-color-bg-4', min: 4.5, why: 'the ground `BaseDialog` paints, and therefore the worst case for every dialog in the editor' },
+
+  // 🔴 THE ROWS THE PALETTE FAILED ON, KEPT. `fg-muted` is retired to an alias of
+  // `fg-default-shy` (NAT-002, D9) and these now pass because of that, not despite it. They stay
+  // in the table because ~217 `color:` declarations still name the retired token: if anybody
+  // restores it to a value of its own, this is what says so.
+  { what: 'the retired muted token, still named by ~217 declarations, on a panel', fg: '--theme-color-fg-muted', bg: '--theme-color-bg-1', min: 4.5, why: 'it was documented as secondary text, and secondary text is words' },
+  { what: 'the retired muted token, a step up', fg: '--theme-color-fg-muted', bg: '--theme-color-bg-2', min: 4.5, why: 'same token, worse ground' },
+  { what: 'the retired muted token, two steps up', fg: '--theme-color-fg-muted', bg: '--theme-color-bg-3', min: 4.5, why: 'same token, worse ground again' },
+  { what: 'the retired muted token, on a dialog', fg: '--theme-color-fg-muted', bg: '--theme-color-bg-4', min: 4.5, why: 'the ground that broke `fg-default-shy` too, and therefore the one an un-retirement would fail on first' },
 
   // ⚠️ NOT AA. 1.4.3 exempts inactive controls outright, so a 4.5 here would be a gate rejecting
   // a correct answer. 3 is a LOCAL floor, stated as a choice: disabled text still has to be
@@ -251,14 +269,22 @@ const PAIRS: Pair[] = [
   { what: 'disabled text on a panel', fg: '--theme-color-fg-disabled', bg: '--theme-color-bg-1', min: 3, why: 'NOT AA — 1.4.3 exempts inactive controls; 3 is this repo’s own floor for “still readable”' },
   { what: 'disabled text two steps up', fg: '--theme-color-fg-disabled', bg: '--theme-color-bg-3', min: 3, why: 'NOT AA — as above' },
 
-  { what: 'a link on a panel', fg: '--theme-color-primary', bg: '--theme-color-bg-1', min: 4.5, why: '`Text` paints anchors with the accent, and links are words' },
-  { what: 'a link a step up', fg: '--theme-color-primary', bg: '--theme-color-bg-2', min: 4.5, why: 'same accent, lighter ground' },
-  { what: 'a link two steps up', fg: '--theme-color-primary', bg: '--theme-color-bg-3', min: 4.5, why: 'same accent, lighter ground again' },
+  { what: 'a link on the page ground', fg: '--theme-color-fg-accent', bg: '--theme-color-bg-0', min: 4.5, why: '`Text` paints anchors with the TEXT accent (D10), and links are words' },
+  { what: 'a link on a panel', fg: '--theme-color-fg-accent', bg: '--theme-color-bg-1', min: 4.5, why: 'same role, the most common panel ground' },
+  { what: 'a link a step up', fg: '--theme-color-fg-accent', bg: '--theme-color-bg-2', min: 4.5, why: 'same role, lighter ground' },
+  { what: 'a link two steps up', fg: '--theme-color-fg-accent', bg: '--theme-color-bg-3', min: 4.5, why: 'same role, lighter ground again' },
+  { what: 'a link in a dialog', fg: '--theme-color-fg-accent', bg: '--theme-color-bg-4', min: 4.5, why: 'same role, on the ground every dialog paints' },
   { what: 'a primary button’s label', fg: '--theme-color-on-primary', bg: '--theme-color-primary', min: 4.5, why: 'words; ground-independent, so correct on any surface' },
 
-  { what: 'a success message a step up', fg: '--theme-color-success', bg: '--theme-color-bg-2', min: 4.5, why: '`TextType.Success` is words' },
-  { what: 'a notice message a step up', fg: '--theme-color-notice', bg: '--theme-color-bg-2', min: 4.5, why: '`TextType.Notice` is words' },
-  { what: 'a danger message a step up', fg: '--theme-color-danger', bg: '--theme-color-bg-2', min: 4.5, why: '`TextType.Danger` is words' }
+  // D11. `TextType.Success/Notice/Danger` paint the TEXT roles; the fill roles keep their values
+  // and their jobs. Graded on bg-2 and on bg-4, because bg-4 is where `danger` broke in DARK.
+  { what: 'a success message a step up', fg: '--theme-color-fg-success', bg: '--theme-color-bg-2', min: 4.5, why: '`TextType.Success` is words' },
+  { what: 'a success message in a dialog', fg: '--theme-color-fg-success', bg: '--theme-color-bg-4', min: 4.5, why: 'same role, the dialog ground' },
+  { what: 'a notice message a step up', fg: '--theme-color-fg-notice', bg: '--theme-color-bg-2', min: 4.5, why: '`TextType.Notice` is words' },
+  { what: 'a notice message in a dialog', fg: '--theme-color-fg-notice', bg: '--theme-color-bg-4', min: 4.5, why: 'same role, the dialog ground' },
+  { what: 'a danger message a step up', fg: '--theme-color-fg-danger', bg: '--theme-color-bg-2', min: 4.5, why: '`TextType.Danger` is words' },
+  { what: 'a danger message in a dialog', fg: '--theme-color-fg-danger', bg: '--theme-color-bg-4', min: 4.5, why: 'same role, the dialog ground — this is the pair that measured 4.46 in dark' },
+  { what: 'an error message, which reaches its colour through `fg-error`', fg: '--theme-color-fg-error', bg: '--theme-color-bg-4', min: 4.5, why: 'a separate alias with its own consumers, so a separate claim' }
 ];
 
 // ── The instrument ────────────────────────────────────────────────────────────────────────
@@ -339,21 +365,40 @@ describe('the instrument can reject a wrong answer', () => {
   });
 
   it('fails a deliberately bad pair put through the same function the table uses', () => {
-    // Mid grey on near-black: ~4.2:1, chosen because it is close enough to the bar that an
-    // instrument rounding in the wrong direction would let it through.
+    // 🔴 THE FIRST VERSION OF THIS CONTROL WAS `fg-muted` ON `bg-0` — the defect the file was
+    // written to catch, at 4.18:1. NAT-002 retired that token, the control started passing, and
+    // the gate briefly could not demonstrate that it rejects anything. A known-bad input has to
+    // be one nothing is trying to fix: two ELEVATION steps held to a text bar can never clear it.
     const bad: Pair = {
       what: 'a known-broken pair',
-      fg: '--theme-color-fg-muted',
+      fg: '--theme-color-bg-1',
       bg: '--theme-color-bg-0',
       min: 4.5,
       why: 'the control'
     };
     expect(verdict(bad, 'dark')).not.toBe('passes');
     expect(verdict(bad, 'dark')).toMatch(/below 4\.5/);
+    expect(verdict(bad, 'light')).not.toBe('passes');
 
-    // ⚠️ And the other direction: the same row with a bar it does clear must pass, or "fails"
-    // would be all this function knows how to say.
-    expect(verdict({ ...bad, min: 3 }, 'dark')).toBe('passes');
+    // A colour against itself is 1.00 exactly — the one ratio knowable without this code.
+    expect(verdict({ ...bad, fg: '--theme-color-bg-0', min: 1.01 }, 'dark')).toMatch(/is 1\.00:1/);
+  });
+
+  it('fails a pair that is barely under its bar, not just one that is obviously under', () => {
+    // ⚠️ Self-calibrating, so it cannot rot the way the row above did: measure a pair that
+    // passes comfortably, then demand 0.01 more than it scores. An instrument that rounded, or
+    // compared the wrong way round, lets this through and every real row still looks green.
+    const real: Pair = {
+      what: 'body copy on a panel',
+      fg: '--theme-color-fg-default',
+      bg: '--theme-color-bg-1',
+      min: 4.5,
+      why: 'the control'
+    };
+    const { ratio } = grade(real, 'dark');
+    expect(verdict(real, 'dark')).toBe('passes');
+    expect(verdict({ ...real, min: ratio + 0.01 }, 'dark')).not.toBe('passes');
+    expect(verdict({ ...real, min: ratio - 0.01 }, 'dark')).toBe('passes');
   });
 
   it('refuses a token that does not exist rather than scoring it as undefined', () => {
@@ -402,6 +447,78 @@ describe('the instrument can reject a wrong answer', () => {
 });
 
 /**
+ * NAT-002 AC2 — the hierarchy the raise could have traded away.
+ *
+ * 🔴 A contrast fix that lifts every quiet token until it meets the loud one has swapped a
+ * contrast bug for a hierarchy bug, and every assertion in this file would still be green. So
+ * the STEPS are asserted, not just the floors: `fg-default` → `fg-default-shy` → `fg-disabled`
+ * has to stay a descent that a reader can see.
+ *
+ * ⚠️ The bars are stated as choices, not derived from WCAG — WCAG has nothing to say about two
+ * foregrounds against each other. 1.15 is roughly where a tone step stops being visible at 12px
+ * on these grounds; the step measured 1.38/1.40 before NAT-002 and 1.21/1.25 after, so the bar
+ * is set below what shipped and above what would be indistinguishable.
+ */
+describe.each(['dark', 'light'] as const)('the %s foreground ramp keeps its steps', (theme) => {
+  const at = (token: string) => {
+    const colour = parseColorAlpha(resolveToken(themeTokens(theme), token));
+    if (!colour) throw new Error(`no such token: ${token}`);
+    return [colour[0], colour[1], colour[2]] as Rgb;
+  };
+
+  it('body copy is louder than secondary copy', () => {
+    expect(contrastRatio(at('--theme-color-fg-default'), at('--theme-color-fg-default-shy'))).toBeGreaterThanOrEqual(1.15);
+  });
+
+  it('secondary copy is louder than disabled text', () => {
+    expect(contrastRatio(at('--theme-color-fg-default-shy'), at('--theme-color-fg-disabled'))).toBeGreaterThanOrEqual(1.4);
+  });
+
+  it('no two of the four foreground steps are the same colour', () => {
+    // NAT-002 AC3: `fg-disabled` used to ALIAS `fg-muted`, so "they differ" was false by
+    // construction and nothing said so. `fg-muted` is now the alias — of `fg-default-shy` — and
+    // that one collision is the deliberate one, which is why it is named rather than counted.
+    const steps = ['--theme-color-fg-highlight', '--theme-color-fg-default', '--theme-color-fg-default-shy', '--theme-color-fg-disabled'];
+    const values = steps.map((token) => resolveToken(themeTokens(theme), token));
+    expect(new Set(values).size).toBe(steps.length);
+
+    expect(resolveToken(themeTokens(theme), '--theme-color-fg-muted')).toBe(
+      resolveToken(themeTokens(theme), '--theme-color-fg-default-shy')
+    );
+  });
+
+  it('a text role may only share its fill role’s value where that fill already reads as words', () => {
+    // 🔴 The naive form of this assertion — "they must differ" — is WRONG, and asserting it
+    // would be a gate rejecting a correct answer. In dark, `success` and `notice` already clear
+    // 4.5:1 on every ground, so their text roles point at the same values on purpose; the
+    // platform's own gate records the identical finding about `--site-fg-warn`. Only `accent`
+    // and `danger` needed moving in dark, and all four needed it in light.
+    //
+    // What must hold is the CONDITIONAL: a text role is allowed to equal its fill only when the
+    // fill is readable. That way a later tidy that points `fg-accent` back at `primary` fails
+    // here, in LIGHT, where it is wrong — rather than passing because dark happens to be fine.
+    const GROUNDS = ['--theme-color-bg-0', '--theme-color-bg-1', '--theme-color-bg-2', '--theme-color-bg-3', '--theme-color-bg-4'];
+
+    for (const [text, fill] of [
+      ['--theme-color-fg-accent', '--theme-color-primary'],
+      ['--theme-color-fg-success', '--theme-color-success'],
+      ['--theme-color-fg-notice', '--theme-color-notice'],
+      ['--theme-color-fg-danger', '--theme-color-danger']
+    ]) {
+      const tokens = themeTokens(theme);
+      if (resolveToken(tokens, text) !== resolveToken(tokens, fill)) continue;
+
+      const worst = Math.min(
+        ...GROUNDS.map((bg) => grade({ what: '', fg: fill, bg, min: 4.5, why: '' }, theme).ratio)
+      );
+      expect(
+        `${text} shares ${fill} and that fill is ${worst.toFixed(2)}:1 at worst — ${worst >= 4.5 ? 'readable' : 'NOT readable, so the split has been undone'}`
+      ).toMatch(/readable$/);
+    }
+  });
+});
+
+/**
  * 🔴 The two arms must actually be two arms.
  *
  * If `themeTokens('light')` silently returned the dark palette — a selector that stopped
@@ -417,9 +534,18 @@ describe('the light arm is a different palette from the dark arm', () => {
     ['--theme-color-bg-4', '#2c3540', '#e2e8ef'],
     ['--theme-color-fg-highlight', '#eef2f6', '#18212b'],
     ['--theme-color-fg-default', '#a6b0bb', '#4a5663'],
-    ['--theme-color-fg-default-shy', '#8b95a1', '#616c79'],
-    ['--theme-color-fg-muted', '#6b7682', '#7c8894'],
+    ['--theme-color-fg-default-shy', '#95a0ac', '#5a6470'],
+    // NAT-002 D9: `fg-muted` is an ALIAS now, so these are `fg-default-shy`'s values reached
+    // through it. If it ever resolves to something else, it has been un-retired.
+    ['--theme-color-fg-muted', '#95a0ac', '#5a6470'],
+    ['--theme-color-fg-disabled', '#6b7682', '#7c8894'],
     ['--theme-color-primary', '#4da3ff', '#1570ef'],
+    // ⚠️ Dark is `primary` itself — see the note in colors.css. The pin is what stops a later
+    // "tidy" splitting it for symmetry, or collapsing the LIGHT one back onto the fill.
+    ['--theme-color-fg-accent', '#4da3ff', '#0e5fd0'],
+    ['--theme-color-fg-success', '#3ccb7f', '#05603a'],
+    ['--theme-color-fg-notice', '#fdb022', '#93370d'],
+    ['--theme-color-fg-danger', '#fda29b', '#b42318'],
     ['--theme-color-on-primary', '#071627', '#ffffff']
   ])('%s resolves to %s in dark and %s in light', (token, inDark, inLight) => {
     expect(resolveToken(themeTokens('dark'), token)).toBe(inDark);
