@@ -1,127 +1,124 @@
 # Next session — phase 72
 
-**Written 2026-08-19, third session.** Tier 0 and Tier 1's palette work are **built and committed**.
-NAT-003 is done bar one gap, and that gap is the first thing to close.
+**Written 2026-08-19, fourth session.** **NAT-003 is fully done — all six ACs.** Tier 0 and Tier 1's
+palette work are built, committed (`268fe34d`) and now measured against the electron suite.
 
 ## Read first, in this order
 
-1. [NAT-003](NAT-003-LESS-DARK-ON-DARK.md) §"Done" — the bar, why it is 1.15, and **the finding
-   that the ramp could not be opened by moving backgrounds alone**.
-2. [TASKS.md](TASKS.md) §The order — **NAT-014 is still the highest-value unstarted task** and has
-   been since it was added. NAT-004 and NAT-005 are the rest of Tier 1.
+1. [TASKS.md](TASKS.md) §The order — **NAT-014 is the highest-value unstarted task** and has been
+   for four handovers. NAT-004 and NAT-005 are the rest of Tier 1.
+2. [NAT-003](NAT-003-LESS-DARK-ON-DARK.md) §"AC6 closed" — only if you are touching the palette.
+   The live finding there is **unclosed by design** and described below.
 3. [README §4](README.md) — five rulings still open (D5, D6, D7, D8, D10).
 
-## 🔴 Close this first — it is 20 minutes and it is owed
+## ✅ The two things the last handover said were owed are done
 
-**CodeMirror was never opened, in either theme.** NAT-003 moved **nine** syntax colours and
-`bg-2`, the surface CodeMirror paints, and every one of those numbers is *computed*. The one
-surface the task changed most is the one nobody has looked at.
-
-Also unseen: **the launcher in light**, and **a dialog in light**. Everything else was driven —
-canvas, node cards, rail, side panel and a `bg-4` popout in dark; canvas, rail, panel and toolbar
-in light.
-
-Launch (`npm run dev:debug -- --quiet`), open any project, open a code node or the Blockly/JS
-editor, and look at it in both themes. If it reads, say so in NAT-003's task file and AC6 closes.
-
+- **CodeMirror was driven in both themes**, plus the launcher and a dialog in light. Both read.
+- **`test:ci` was run, alone, seed 39393: `2849 specs, 10 failures` — exactly the floor, matched by
+  name** (4× AIX-006, 2× AI model registry, 1× AIX-011, 3× SUB-011). ✅ **`CanvasThemeNodeSchemes`
+  ran and passed** — the specific worry, since both sides of it were edited in one session.
 ## What happened this session
 
-**The UNI-011 tranche is committed** (`d2062ea8`), on Richard's instruction — nine files that had
-never been tracked, one `git clean` from gone. It is a snapshot for survival, **not** a close-out:
-no verification run stands behind it and UNI-011's own ACs are unchanged.
+**NAT-003 is fully done — AC6 closed**, and the drive that closed it found two things.
 
-**NAT-003 ✅ (5.5 of 6 ACs)** — `4d6658df` + the syntax follow-up; platform `ad21f97` + `e1082c2`.
+`leg003-drive` ("Kiln & Co."), code popout on the `Date Picker` script node, both themes, plus the
+launcher and a dialog in light. **CodeMirror reads in both themes**, and the syntax numbers are no
+longer computed-only: editor ground `#2b3440` / `#f2f4f6`, gutter `#333e4d` / `#e5e9ed`, line
+numbers 5.37 / 5.07, all matching the stylesheet exactly under `getComputedStyle`.
 
-- **The bar is 1.15 dark / 1.09 light and it is defended, not borrowed.** WCAG governs neither
-  side of a surface-vs-surface pair. The number comes from the product: the steps that drew the
-  complaint were 1.065/1.072, the ones nobody complained about were 1.156/1.180.
-- 🔴 **The ramp could not be opened by moving backgrounds.** The top is capped by the AA text
-  sitting on it — `fg-default-shy` had 0.17 of headroom on `bg-4`. With foregrounds held still,
-  four steps of 1.15 would have needed `bg-0` blacker than `bg-page` was. **Arithmetically
-  impossible.** The inks had to move, and NAT-002's **D11 split is what made it affordable**:
-  accent *text* went to `azure-300` while `--theme-color-primary`, the fill, never moved.
-- 🔴 **`border-default`/`-subtle`/`-strong` are literals and did not follow the ramp.**
-  `border-default` went from 1.01 on `bg-3` (a hair off it, its job) to 1.34 (a visible line on it).
-  **VFN-002's negative control found it** — a spec that went red for a reason having nothing to do
-  with dividers.
-- 🔴 **`colors.css` claimed in a comment that the light syntax palette was "all AA on bg-1/bg-2".
-  Three of them never were.** Nothing failed because nothing looked.
+### 🔴 The finding worth carrying: the palette is graded on a ground CodeMirror only half paints
 
-**New gate — `tests-unit/nat-003/palette-copies.spec.ts`.** Walks the real source tree and compares
-every literal claiming to be a token's value against `colors.css`. **19 on its first run, five
-already wrong before this task** (`bg-1` as `#11151b`, one digit out). It caught a second batch
-later the same session. ⚠️ It cannot see a copy that stores a colour *without naming the token* —
-`nodelibraryexport.ts`'s node blob is that shape, and is bound instead by
-`tests/canvas/CanvasThemeNodeSchemes.test.ts`, which lives in the **electron** suite.
+`PAIRS` grades every `--theme-color-syntax-*` token on **`bg-2`**. **The line the cursor is on is
+not `bg-2`.** `.cm-activeLine` is painted with `--theme-color-bg-hover`, `highlightActiveLine()` is
+registered, and **`bg-hover` is translucent** — so it composites over the ground rather than
+replacing it: `#2b3440` → **`#404853`**, `#f2f4f6` → **`#e5e7ea`**.
 
-## 🔴 The electron suite has not been run against this palette
+| | graded on `bg-2` | on the active line |
+|---|---|---|
+| dark | 21/21 pass | **8 of 21 sub-AA** (`control` 3.31 … `angle` 4.45) |
+| light | 21/21 pass | **10 of 21 sub-AA** (`meta`/`brace`/`number`/`type` 4.12 …) |
 
-`npm run test:main` is 260 suites / 4117 tests green. **`npm run test:ci` was not run.**
-`CanvasThemeNodeSchemes.test.ts` lives there, it compares CanvasTheme's derived node scheme to
-`nodelibraryexport.ts`'s literals within 16 per channel, and **both sides were edited this
-session**. They were re-derived by the same `mix()` so they should agree — but that is a
-calculation, not a measurement. Run it, alone, and compare **by name** against the floor.
+⚠️ **Pre-existing, and widened by NAT-003.** At `b668638e` it was **5/21 dark, 7/21 light**; after,
+8 and 10. Both halves are true and reporting either alone would be false.
+
+✅ **The gate was never alpha-blind — it just had no row.** `Pair` already carries `over`,
+`ground()` composites through it, and it *throws* on a translucent background without one. My first
+write-up said the opposite and it is corrected in the task file; the lesson is to check whether the
+instrument already does the thing before proposing to build it.
+
+**A ratchet is now in `palette-contrast.spec.ts`** pinning the counts at 8/10, with a control that
+fails first if `bg-hover` ever stops being translucent (which would make every new row a silent
+duplicate of the `bg-2` table). It is green, it may only go down, and **it would have caught
+NAT-003's own widening.** 🔴 **It was verified RED**, not just green — tightening the ceilings to
+7/9 turns both rows red and prints the offending tokens; the counts and membership agree with an
+independent Python sweep over `colors.css`.
+
+### 🔴 The dialog in light found a defect dating to the initial commit
+
+`DeployPopup.tsx:18` set `backgroundColor: '#444444'` **inline**, since `b9c60b07` (2024-01-26). It
+passed as correct in dark because it is near the old `bg-4`; **only light exposes it** — ~295px of
+bare grey beside the single tab, with `color: #000` at 2.16:1 for anything landing on it.
+✅ Fixed to `var(--theme-color-bg-4)`, **verified live over CDP before editing source**.
+
+🔴 **It sat in the gap between two gates that each look complete**: `palette-copies.spec.ts` only
+sees literals that *name* a token; UIX-002's mop-up is scoped to *stylesheets*. This is an inline
+style object in a `.tsx`. That gap is the more useful half of the finding.
 
 ## Where to start
 
-**If you are continuing the LOOK:** close AC6 above (20 min), then **NAT-004** (light by default on
-the web — small, independent of everything) or **NAT-005** (the tab that is a list of grey lines —
-⚠️ *this is the vocabulary Tier 3 reuses; build it once here or four tasks reinvent it*).
+**NAT-014 is the highest-value unstarted task and has been for four handovers.** No dependencies,
+blocks NAT-009/010/013, and it is still the only task whose defect is *currently telling users
+something untrue* — no mail leaves the platform; `drainOutbox` has no production caller.
 
-**If you are picking the highest-value unstarted work: NAT-014.** Unchanged from the last two
-handovers — no dependencies, blocks NAT-009/010/013, and it is still the only task whose defect is
-*currently telling users something untrue* (no mail leaves the platform; `drainOutbox` has no
-production caller). ⚠️ Several of its ACs need Richard: a real send to a real MX, a registered
-relay domain with SPF/DKIM/DMARC, and a claim made against the deployed box. **D10 is open.**
+> 🔴 **Re-read `ops/` from disk before trusting NAT-014's trap section.** It says `ops/provision.sh`
+> installs two timers and that AC1 should put the drain timer "beside the backup timer" there.
+> **It is no longer there** — 67b moved the timers into `ops/install-backup.sh`
+> (`nodegx-community-backup.timer`, `nodegx-community-restorecheck.timer`), and `ops/` is five
+> scripts now. Its last trap ("backups live on the same box") **was fixed by 67b** (`d5f433e`,
+> `4c9c07d`) — do not re-flag it. The task file is a hypothesis about a directory another phase
+> edits, and it has decayed twice.
 
-> 🔴 **NAT-014's TRAP SECTION WENT STALE ON 2026-08-19, ABOUT AN HOUR AFTER IT WAS WRITTEN.** Phase
-> 67b landed item B in the meantime, so re-read `ops/` from disk before trusting that task file:
->
-> - It says *"`ops/provision.sh` installs precisely two timers, the app and the `pg_dump` backup"*.
->   **It does not.** `ops/` is now five scripts, not two, and the timers live in
->   **`ops/install-backup.sh`** — `nodegx-community-backup.timer` and
->   `nodegx-community-restorecheck.timer`. **AC1 tells you to put the drain timer "beside the
->   backup timer in `ops/provision.sh`", and that is no longer where the backup timer is.**
-> - Its last trap flags *"backups live on the same box as the database"* and defers it to 67b.
->   **67b did it** (`d5f433e`, `4c9c07d`): the backup leaves the box to Hetzner, verified by md5
->   read back off the bucket, with a weekly restore check that restored 49 tables. **Do not
->   re-flag it, and do not "fix" it.**
->
-> ⚠️ This is worth reading as a general point and not just a correction: **NAT-014's whole premise
-> is a claim about what is and is not wired up in `ops/`, and `ops/` is a file another phase edits.**
-> Derive it from disk. The task file is a hypothesis about a directory, and it has already decayed
-> once.
+⚠️ Several NAT-014 ACs need Richard: a real send to a real MX, a registered relay domain with
+SPF/DKIM/DMARC, and a claim made against the deployed box. **D10 is open.**
+
+**If you are continuing the LOOK instead:** NAT-004 (light by default on the web — small,
+independent) or NAT-005 (⚠️ *this is the vocabulary Tier 3 reuses; build it once here or four tasks
+reinvent it*).
+
+**If you want to close the active-line finding properly:** it is a decision, not a mechanical edit.
+Either re-tune the sub-AA tokens against the second ground, or — probably better — **give the active
+line its own token** instead of reusing the app-wide `bg-hover`, and pick an opacity the graded
+palette survives. Then lower the ratchet's ceilings and the rows go green as a floor rather than a
+cap.
 
 ## Loose ends
 
-- 🔴 **NAT-014 and NAT-015 were UNTRACKED until this was written** — the two task files a peer added
-  to this phase, including the one every handover has named as the top pick. Committed protectively
-  (see below) for the same reason the UNI-011 tranche was: a `git clean` would have taken the file
-  the next session is told to open. They are a peer's authorship, unmodified.
-- ⚠️ **Eight more phase-72 files are modified and uncommitted** — NAT-006/007/009/010/011/012/013
-  and the README. They were already in that state when this session started and are not mine; they
-  are tracked, so a clean will not take them, but they are somebody's unlanded edits.
-
-- ⚠️ **`AskAboutNodeDialog.module.scss` carries a stale comment** — it states `bg-4` resolves to
-  `#2c3540`; it is now `#3c4857`. Left alone on purpose: that file is another session's
-  uncommitted work, and editing it would have swept it into a NAT-003 commit.
+- ⚠️ **Eight phase-72 files remain modified and uncommitted** — NAT-006/007/009/010/011/012/013 and
+  the README. They were in that state before this session and are not mine. Tracked, so a clean
+  will not take them, but they are somebody's unlanded edits. I committed **only** my four files by
+  explicit pathspec.
+- ⚠️ **`AskAboutNodeDialog.module.scss` still carries the stale `bg-4: #2c3540` comment** (now
+  `#3c4857`). Still another session's uncommitted work; still left alone for the same reason.
 - ⚠️ **~99 files still paint words with a fill role** (NAT-002's remainder, 202 declarations, sub-AA
-  in light). Unchanged. NAT-005 should take the community surfaces; the rest want their own task
-  **with a ratchet spec**.
-- ⚠️ **"Friendly and welcoming" is Richard's call on a rendered screen.** The arithmetic is done.
-  The palette is a proposal and he has not seen it yet.
+  in light). Unchanged. Wants its own task with a ratchet.
+- ⚠️ **"Friendly and welcoming" is still Richard's call on a rendered screen.** The arithmetic is
+  done; he has not seen the palette yet.
+- `leg003-drive` was opened by the drive, so it carries the three files opening writes and every
+  component is dirtied. It is a fixture outside the repo. The recents store was **not** written.
 
 ## Verification notes that earned their place
 
-- 🔴 **A gate can have a hole shaped exactly like the defect.** `PAIRS` graded 36 pairs and had
-  **no syntax row at all**, so a false claim in a comment stood for years. The replacement rows are
-  **generated from the token list** — a hand-listed table is how three of twenty-one went unwatched.
-- 🔴 **Ask whether YOUR change broke it or whether it was always broken, and say which.** Nine
-  syntax values moved; five were sub-AA before this task. Reporting all nine as regressions would
-  have been as wrong as reporting none.
-- 🔴 **A derived palette beats a picked one, and the derivation itself has a taste failure mode.**
-  Blending a dark blue-grey toward white keeps the channel spread and drops the relative chroma —
-  it would have shipped a flat grey that satisfied every assertion. Multiplicative scaling keeps
-  the hue. **The arithmetic can be right and the answer still wrong.**
-- ⚠️ **A peer's red can be stale.** A peer reported `uni013-token-drift` red and was deferring work
-  on it; it had been green since `ad21f97`, committed before their message. Worth one short reply.
+- 🔴 **An instrument pinned to line numbers reads a different file wrongly.** The first version of
+  the active-line sweep hard-coded `colors.css`'s current block boundaries, then ran against older
+  revisions where they differ — and reported a *dark* active line of `#eaecef` and "21/21 sub-AA".
+  Confident nonsense that looked like a finding. ✅ Brace-match the blocks and **print an
+  `[instrument]` line** so a mis-parse is visible rather than inferred.
+- 🔴 **A screenshot misled in both directions in one session.** It showed a real dark band in the
+  deploy dialog (true, and a two-year-old defect) *and* appeared to show the property panel's
+  dropdowns keeping light backgrounds in dark mode (false — a sweep for luminance > 0.6 returned
+  **zero**; what read as a light field was the colour swatch beside it).
+- ✅ **Prove a colour fix over CDP before editing source.** Not just tidiness here: editing
+  `noodl-editor`/`noodl-core-ui` source while the dev stack is up wedges `webpack-dev-middleware`
+  permanently, and only a relaunch clears it.
+- ✅ **`test-results.json` was 18 hours stale when this session started.** Deleted before the run,
+  per the standing rule; reading it would have shown a pass predating the entire palette.
