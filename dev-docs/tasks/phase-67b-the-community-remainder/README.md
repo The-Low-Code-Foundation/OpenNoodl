@@ -357,8 +357,9 @@ decision on its own unblocks UNI-020's *"Download the starter project"* button, 
 **no code is owed for the button.** What *is* owed is the **capture image upload path**: a
 `capture` attachment stores dimensions and consent and no image, so nothing has to be migrated.
 
-🟡 **HALF BUILT 2026-08-19 (session 40) — the two libraries, gated and driven; the three surfaces
-are not written.** The credentials arrived this session, so nothing here is blocked on Richard.
+✅ **BUILT 2026-08-19 (session 41) — all five pieces.** The two libraries landed in session 40;
+the three surfaces and the `deploy.sh` line landed here. Nothing in E7 is blocked on Richard, and
+nothing is owed to another task.
 
 | | |
 |---|---|
@@ -375,17 +376,29 @@ as the other. ⚠️ Two more refusals worth keeping: the **bytes are sniffed, n
 captures prefix is refused** — otherwise a payload naming a dump under `nodegx-community/` would
 have the image route fetch and serve a database backup.
 
-⚠️ **What is NOT built, and it is the visible half:** the upload endpoint, the image-serving route
-(which must apply the same visibility rules as the attachment it belongs to — a capture is a
-screenshot of somebody's project, so a public object URL would bypass every rule this platform
-has), and `Attachment.tsx` still says *"image not yet hosted"*. All three are DB-touching and were
-left rather than started, because a peer held the shared Postgres.
+✅ **The visible half, built session 41:**
 
-🔴 **AND ONE LINE IS OWED IN `deploy.sh`:** the app's env file does **not** carry `HETZNER_S3_*`.
-`install-backup.sh` writes them to `/etc/nodegx-community/backup.env`, which the *backup* reads and
-the *app* does not — so `objectStoreConfig()` returns `null` on the live site today. That is
-correct, degrading behaviour rather than a crash, but the upload path cannot work until the line
-lands. It was not written this session because `deploy.sh` belonged to the NAT-014 session.
+| | |
+|---|---|
+| `POST /api/v1/bench/captures` | Raw PNG in, `{key, grant}` out. 🔴 **May-you before can-we** — `board_actor_is_eligible` (the database function every board write uses, so D15's write rule has one copy) runs **before** the hosting check, or a read-only minor on a bucket-less deployment would be told `503 try later` when the answer is *never*, and a refusal would depend on whether a bucket was configured |
+| **Intake** | `acceptCaptureImages` in both bench POST routes. 🔴 **The grant is STRIPPED before storage** — `attachmentsFor` serves the payload to every reader of the thread, so a grant left in it is a proof of ownership published to the people it exists to exclude |
+| `GET /api/v1/bench/attachments/:id/image` | Serves through the app, never a public object URL. The join is the content: **the post AND its thread must both be unhidden**, the same filter `threadById` applies, so a moderated thread's capture stops being fetchable at the instant it stops being readable |
+| `Attachment.tsx` | Renders the image, and a capture with none still renders its dimensions — the field is additive and nothing was migrated. A plain `<img>`, **not `next/image`**: the optimiser fetches the source itself and re-serves it from `/_next/image`, which would put an unauthenticated handler in front of the one route whose whole purpose is deciding who may see those bytes |
+| `ops/deploy.sh` | The env line, **plus a `==> capture hosting (E7)` readout that greps the app env file ON THE HOST** |
+
+🔴 **THE `deploy.sh` LINE WAS A LIVE BUG, AND EVERYTHING VISIBLE VOUCHED FOR IT.**
+`install-backup.sh` wrote `HETZNER_S3_*` into `backup.env`; the daily `pg_dump` read them and
+worked; every deploy printed a healthy off-site backup. The **app** reads a different file, so
+`objectStoreConfig()` returned `null` on the live site. A working backup vouching for a broken
+feature — [[a-project-level-drawn-count-vouches-for-a-broken-mechanism]] in ops clothes.
+✅ **The test asserts the env file ON THE FAKE HOST, not the secrets file the harness wrote**: the
+inputs were never the problem, so an input-side assertion would have passed for the whole time the
+bug was live. Verified red-then-green — with the heredoc lines removed, all three E7 deploy tests
+fail, the no-bucket control included.
+
+⚠️ **The readout counts FOUR keys, not five.** `HETZNER_S3_REGION` is derived from the endpoint host
+when unset, so counting all five would report a working deployment as broken — *a check has to
+agree with the function it is checking.*
 
 ---
 
