@@ -27,9 +27,21 @@ and those numbers are in the task file.
 
 Both D11 and D12 came out of NAT-001's measurements and were **not** in the review's scope.
 
-## Where to start
+## Where to start — 🔴 there are TWO candidates, and this file used to name only one
 
-**NAT-003.** The instrument is built and its numbers are already recorded:
+A peer session added **NAT-014** and **NAT-015** to this phase after the palette work started.
+[TASKS.md](TASKS.md) §The order says **NAT-014 can start on day one and should** — it depends on
+nothing, three Tier-3 tasks cannot close until it does, and it is *the only task whose defect is
+currently telling users something untrue* (no mail leaves the platform: `drainOutbox` exists, is
+tested, and has no production caller). It is a **platform** task, so it does not touch the palette
+and the two can run in either order or in parallel.
+
+**If you are continuing the LOOK: NAT-003.** If you are picking the highest-value unstarted work
+in the phase: **NAT-014**. NAT-015 rides along with NAT-007 and is not a standalone start.
+
+### NAT-003 — the elevation ramp
+
+The instrument is built and its numbers are already recorded:
 
 ```
 bg-1 on bg-0   1.06 dark / 1.13 light
@@ -50,7 +62,7 @@ Two things NAT-003 inherits, already measured:
 - **The light `--theme-color-primary` clears `bg-1` by 0.07** (4.57). If `bg-1` moves in light,
   re-measure the accent. NAT-002's trap section already flagged this and it is now load-bearing.
 
-## Before you touch a hex value
+## Before you touch a hex value (NAT-003 only)
 
 🔴 **Run `npm run test:main` and see it green first.** Same lesson as last session, one level up: a
 palette change measured only after the fact proves nothing, and this session's gate exists
