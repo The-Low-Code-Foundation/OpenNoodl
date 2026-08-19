@@ -113,6 +113,46 @@ export function parseColor(value: string | undefined): Rgb | null {
   return null;
 }
 
+export type Rgba = [number, number, number, number];
+
+/**
+ * The same four spellings as `parseColor`, but **keeping** the alpha channel.
+ *
+ * 🔴 Added by NAT-001 because `parseColor` silently drops alpha, and a translucent value
+ * measured as though it were opaque is not a weaker measurement — it is a made-up number.
+ * `--theme-color-primary-bg` is `rgba(77, 163, 255, 0.13)`; graded as opaque azure it scores
+ * a comfortable ratio against text that in reality sits on a ground 87% made of whatever is
+ * underneath. Callers that need a number composite with `composite()` below; callers that
+ * cannot name what is underneath must refuse to grade the pair rather than guess.
+ *
+ * `parseColor` is left exactly as it was: three specs depend on its current behaviour, and its
+ * header already states the limitation. This is an addition, not a correction to it.
+ */
+export function parseColorAlpha(value: string | undefined): Rgba | null {
+  if (!value) return null;
+
+  const rgba = value.trim().match(/^rgba?\(([^)]+)\)$/i);
+  if (rgba) {
+    const parts = rgba[1].split(/[\s,/]+/).filter(Boolean).map((part) => parseFloat(part));
+    if (parts.length < 3 || parts.some((part) => Number.isNaN(part))) return null;
+    return [parts[0], parts[1], parts[2], parts.length > 3 ? parts[3] : 1];
+  }
+
+  const opaque = parseColor(value);
+  return opaque && [opaque[0], opaque[1], opaque[2], 1];
+}
+
+/** Source-over compositing of a translucent colour onto an opaque one. */
+export function composite(top: Rgba, under: Rgb): Rgb {
+  const alpha = top[3];
+  return [0, 1, 2].map((i) => Math.round(top[i] * alpha + under[i] * (1 - alpha))) as Rgb;
+}
+
+/** `[12, 34, 56]` → `#0c2238`, for failure messages that name the colour actually graded. */
+export function toHex(colour: Rgb): string {
+  return `#${colour.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`;
+}
+
 function relativeLuminance(colour: Rgb): number {
   const [r, g, b] = colour.map((channel) => {
     const c = channel / 255;
