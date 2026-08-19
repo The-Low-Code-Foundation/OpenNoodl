@@ -527,23 +527,126 @@ describe.each(['dark', 'light'] as const)('the %s foreground ramp keeps its step
  * The values are pinned rather than merely required to differ: "they differ" still passes if
  * light resolves to a third thing that is nobody's palette.
  */
+/**
+ * NAT-003 AC1 — the ELEVATION table. Surface against surface, not text against surface.
+ *
+ * ## Why this is a separate table with a separate bar, and not more rows in PAIRS
+ *
+ * PAIRS grades readability, and every row in it names 4.5 (WCAG 1.4.3) or 3 (1.4.11). **WCAG
+ * governs neither of those for two backgrounds.** A card edge is decorative elevation, not a
+ * control boundary, so holding it to 1.4.11's 3:1 would be a gate rejecting a correct answer —
+ * no dark theme in existence separates a panel from its canvas by 3:1, and one that did would be
+ * a set of stacked greys, not a product. The bar below is therefore **a design choice, and it is
+ * defended rather than borrowed.** `PAIRS`'s own shape assertion enforces `min ∈ {3, 4.5}`, which
+ * is exactly why these rows cannot live there.
+ *
+ * ## Where the number comes from — this product's own evidence
+ *
+ * Before NAT-003, the dark ramp measured:
+ *
+ * | step | dark | light |
+ * |---|---|---|
+ * | `bg-0` → `bg-1` | **1.065** | 1.133 |
+ * | `bg-1` → `bg-2` | **1.072** | 1.055 |
+ * | `bg-2` → `bg-3` | 1.156 | 1.085 |
+ * | `bg-3` → `bg-4` | 1.180 | 1.077 |
+ *
+ * Richard's complaint — *"less dark on dark, it's really depressing"* — was about a canvas whose
+ * cards dissolve into it. The two steps that produced it are 1.065 and 1.072. The two nobody has
+ * ever complained about are 1.156 and 1.180. **The perceptual threshold for this palette,
+ * measured on this palette, lies between 1.07 and 1.16**, so the bar is set at **1.15** in dark:
+ * above everything that drew the complaint, at or below everything that did not. That is a
+ * boundary the product demonstrated, not a number imported from a spec that has no opinion.
+ *
+ * 🔴 **LIGHT GETS A LOWER BAR (1.09) AND THAT IS A LIMIT, NOT A PREFERENCE.** In light the raised
+ * surface is `bg-1` = pure white, which cannot go higher, so the whole ramp is squeezed between
+ * white and the darkest ground AA text still survives on (`fg-accent` clears `bg-4` by 0.10).
+ * 1.09 is very close to the most that budget affords without darkening the light foregrounds, and
+ * saying so is the honest form. Light also carries elevation a second way that dark barely uses —
+ * `border-default` is a visible line there (1.04 on bg-3) and an invisible one in dark (1.08).
+ * ⚠️ Do not "fix" the asymmetry by raising light to 1.15. It does not fit, and the pairs it would
+ * break are text pairs.
+ *
+ * ## What this table cannot see
+ *
+ * Alpha. `--theme-color-bg-1-transparent` is `rgba(0,0,0,0.8)` in dark and does NOT follow the
+ * ramp — deliberately, because its consumers are scrims and `box-shadow`s (`BaseDialog`,
+ * `PopupToolbar`, `popuplayer.css`, `SideNavigation`), and a shadow is an occlusion rather than a
+ * surface. That reading is NAT-003's, it is recorded in `colors.css`, and it is not asserted here
+ * because a token named `bg-1-*` that is not on the `bg-1` ramp is a NAMING defect, not a
+ * contrast one.
+ */
+describe.each(['dark', 'light'] as const)('the %s elevation ramp is a ramp', (theme) => {
+  /** Adjacent surfaces a user sees meeting each other, and the bar each is held to. */
+  const STEPS: Array<[string, string]> = [
+    ['--theme-color-bg-0', '--theme-color-bg-1'],
+    ['--theme-color-bg-1', '--theme-color-bg-2'],
+    ['--theme-color-bg-2', '--theme-color-bg-3'],
+    ['--theme-color-bg-3', '--theme-color-bg-4']
+  ];
+  const BAR = { dark: 1.15, light: 1.09 }[theme];
+
+  const surface = (token: string): Rgb => {
+    const value = resolveToken(themeTokens(theme), token);
+    const colour = parseColorAlpha(value);
+    if (!colour) throw new Error(`no such token: ${token}`);
+    // 🔴 An elevation step is opaque by definition. A translucent ground here would be composited
+    // against something this table does not know, so refuse it rather than drop the alpha.
+    if (colour[3] !== 1) throw new Error(`${token} is translucent (${value}) — not an elevation step`);
+    return [colour[0], colour[1], colour[2]];
+  };
+
+  it.each(STEPS)('%s and %s are distinguishable surfaces', (lower, upper) => {
+    const ratio = contrastRatio(surface(lower), surface(upper));
+    const verdict = ratio >= BAR ? 'passes' : `${lower} (${toHex(surface(lower))}) and ${upper} (${toHex(
+      surface(upper)
+    )}) are ${ratio.toFixed(3)}:1 apart in ${theme}, below the stated ${BAR} — the step is invisible`;
+    expect(verdict).toBe('passes');
+  });
+
+  it('the ramp only ever goes one way', () => {
+    // ⚠️ In LIGHT it does not go the same way as dark: `bg-1` is white and is the PEAK, with
+    // bg-2..4 descending from it. So this asserts monotonic LUMINANCE only where the theme
+    // actually claims it, which is dark. Asserting a direction in light would be asserting a
+    // model the light theme does not use.
+    if (theme !== 'dark') return;
+    const ys = ['--theme-color-bg-page', '--theme-color-bg-0', '--theme-color-bg-1', '--theme-color-bg-2', '--theme-color-bg-3', '--theme-color-bg-4', '--theme-color-bg-5']
+      .map((t) => contrastRatio(surface(t), [0, 0, 0]));
+    for (let i = 1; i < ys.length; i++) expect(ys[i]).toBeGreaterThan(ys[i - 1]);
+  });
+
+  it('🔴 CONTROL: this table rejects the ramp it was written against', () => {
+    // Self-calibrating and un-rottable: the SHIPPED pre-NAT-003 values, which are what the bar
+    // was chosen to exclude. If a future edit lands back near them, this says so.
+    const before = { dark: ['#0b0e12', '#12161b'], light: ['#eef1f5', '#ffffff'] }[theme];
+    const ratio = contrastRatio(parseColorAlpha(before[0])!.slice(0, 3) as Rgb, parseColorAlpha(before[1])!.slice(0, 3) as Rgb);
+    if (theme === 'dark') expect(ratio).toBeLessThan(BAR);
+    // ⚠️ In light the old bg-0→bg-1 was 1.133 and ALREADY cleared 1.09 — it was never the
+    // complaint. Asserting it fails would be inventing a defect to have a control, so the light
+    // arm's control is the opposite claim, and it is still a claim.
+    else expect(ratio).toBeGreaterThan(BAR);
+  });
+});
+
 describe('the light arm is a different palette from the dark arm', () => {
   it.each([
-    ['--theme-color-bg-0', '#0b0e12', '#eef1f5'],
-    ['--theme-color-bg-1', '#12161b', '#ffffff'],
-    ['--theme-color-bg-4', '#2c3540', '#e2e8ef'],
+    ['--theme-color-bg-0', '#161c24', '#eef1f5'],
+    ['--theme-color-bg-1', '#212932', '#ffffff'],
+    ['--theme-color-bg-4', '#3c4857', '#d9dfe6'],
     ['--theme-color-fg-highlight', '#eef2f6', '#18212b'],
-    ['--theme-color-fg-default', '#a6b0bb', '#4a5663'],
-    ['--theme-color-fg-default-shy', '#95a0ac', '#5a6470'],
+    ['--theme-color-fg-default', '#bbc6d3', '#4a5663'],
+    ['--theme-color-fg-default-shy', '#abb8c5', '#59626e'],
     // NAT-002 D9: `fg-muted` is an ALIAS now, so these are `fg-default-shy`'s values reached
     // through it. If it ever resolves to something else, it has been un-retired.
-    ['--theme-color-fg-muted', '#95a0ac', '#5a6470'],
-    ['--theme-color-fg-disabled', '#6b7682', '#7c8894'],
+    ['--theme-color-fg-muted', '#abb8c5', '#59626e'],
+    ['--theme-color-fg-disabled', '#7d8a98', '#7a8691'],
     ['--theme-color-primary', '#4da3ff', '#1570ef'],
-    // ⚠️ Dark is `primary` itself — see the note in colors.css. The pin is what stops a later
-    // "tidy" splitting it for symmetry, or collapsing the LIGHT one back onto the fill.
-    ['--theme-color-fg-accent', '#4da3ff', '#0e5fd0'],
-    ['--theme-color-fg-success', '#3ccb7f', '#05603a'],
+    // 🔴 NAT-003: dark is NO LONGER `primary`. NAT-002 pinned them equal and said so; lifting the
+    // elevation ramp took the fill from 4.73 to 3.54 on bg-4, so accent TEXT had to leave and the
+    // FILL stayed exactly where it was. The pin now stops the reverse tidy — re-aliasing dark
+    // because the two "should" match. They should not: one is words, the other is an area.
+    ['--theme-color-fg-accent', '#9dccff', '#0e5cca'],
+    ['--theme-color-fg-success', '#6ce9a6', '#05603a'],
     ['--theme-color-fg-notice', '#fdb022', '#93370d'],
     ['--theme-color-fg-danger', '#fda29b', '#b42318'],
     ['--theme-color-on-primary', '#071627', '#ffffff']

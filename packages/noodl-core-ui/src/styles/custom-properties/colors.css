@@ -35,21 +35,21 @@
      --------------------------------------------------------------------------- */
 
   /* Neutrals - cool blue-gray ramp, dark end = elevation steps, light end = text */
-  --base-color-neutral-0: #07090c;
-  --base-color-neutral-50: #0b0e12;
-  --base-color-neutral-100: #12161b;
-  --base-color-neutral-200: #181d24;
-  --base-color-neutral-300: #222933;
-  --base-color-neutral-400: #2c3540;
+  --base-color-neutral-0: #0e1117;
+  --base-color-neutral-50: #161c24;
+  --base-color-neutral-100: #212932;
+  --base-color-neutral-200: #2b3440;
+  --base-color-neutral-300: #333e4d;
+  --base-color-neutral-400: #3c4857;
   --base-color-neutral-500: #4a5560;
-  --base-color-neutral-600: #6b7682;
+  --base-color-neutral-600: #7d8a98;
   --base-color-neutral-700: #8b95a1;
   /* NAT-002: a half-step, added because the ramp had no tone between "secondary"
      and "body" that clears 4.5:1 on bg-4 — and bg-4 is what `BaseDialog` paints,
      so it is the ground of every dialog in the editor. neutral-700 measured
      4.09:1 there. */
-  --base-color-neutral-750: #95a0ac;
-  --base-color-neutral-800: #a6b0bb;
+  --base-color-neutral-750: #abb8c5;
+  --base-color-neutral-800: #bbc6d3;
   --base-color-neutral-900: #cbd3dc;
   --base-color-neutral-950: #eef2f6;
   --base-color-neutral-1000: #ffffff;
@@ -277,7 +277,7 @@
   --theme-color-bg-2: var(--base-color-neutral-200);
   --theme-color-bg-3: var(--base-color-neutral-300);
   --theme-color-bg-4: var(--base-color-neutral-400);
-  --theme-color-bg-5: #37424f;
+  --theme-color-bg-5: #414e5e;
   --theme-color-bg-hover: var(--base-color-white-transparent-10);
 
   /* ---------------------------------------------------------------------------
@@ -325,14 +325,23 @@
      ⚠️ The values are one step along the existing ramps, not new inventions, and
      each clears 4.5:1 on bg-0..bg-4 AND on the accent wash over bg-3.
      --------------------------------------------------------------------------- */
-  /* 🔴 DARK NEEDS NO SPLIT, and asserting one would have been symmetry rather than a fix. The
-     fill accent measures 7.37 / 6.92 / 6.45 / 5.58 / 4.73 on bg-0..bg-4 in dark — every ground
-     the editor paints accent text on. It is LIGHT that fails (4.03 / 4.57 / 4.33 / 3.99 / 3.70),
-     so light is the only arm that moves. A first pass here used `azure-400` in dark for
-     uniformity; it collided with `primary-highlight`, which is what a link's HOVER is, and
-     bought nothing a measurement asked for. */
-  --theme-color-fg-accent: var(--theme-color-primary);
-  --theme-color-fg-success: var(--base-color-success-500);
+  /* 🔴 NAT-003 (2026-08-19): DARK NOW NEEDS THE SPLIT TOO, and the reason is that the GROUND
+     MOVED — not that NAT-002's reading was wrong. NAT-002 measured the fill accent at
+     7.37 / 6.92 / 6.45 / 5.58 / 4.73 on bg-0..bg-4 and correctly concluded dark needed no split.
+     Lifting the elevation ramp spent exactly that margin: on the ramp this file now carries, the
+     fill measures 6.53 / 5.60 / 4.80 / 4.13 / 3.54, so accent TEXT fails on bg-3 and bg-4 while
+     the fill itself is still a perfectly good fill (3:1 is its bar, and it clears it).
+     ⚠️ THE FILL DOES NOT MOVE. `--theme-color-primary` is still azure-500; a button, a ring and a
+     wire tint are unchanged. This is the D11 mechanism doing the job it was built for — without
+     it, opening the ramp would have forced the brand azure itself to lighten.
+     🔴 The step is TWO, not one, and the skipped one is deliberate. `azure-400` measures 4.45 on
+     bg-4 — under AA by 0.05 — AND it is `--theme-color-primary-highlight`, which is what a link's
+     HOVER is. NAT-002 recorded that collision when a first pass reached for it; this is the same
+     rock, and the way past it is `azure-300`, which clears bg-4 at 5.55 and is nobody else's
+     value. Same story for success: `success-500` lands at 4.45, so accent text takes
+     `success-400`. `amber-400` (5.06) and `red-300` (4.79) still clear and do not move. */
+  --theme-color-fg-accent: var(--base-color-azure-300);
+  --theme-color-fg-success: var(--base-color-success-400);
   --theme-color-fg-notice: var(--base-color-amber-400);
   --theme-color-fg-danger: var(--base-color-red-300);
 
@@ -458,9 +467,20 @@
   /* ---------------------------------------------------------------------------
      BORDERS
      --------------------------------------------------------------------------- */
-  --theme-color-border-default: #232a33;
-  --theme-color-border-subtle: #1a2029;
-  --theme-color-border-strong: #37404c;
+  /* 🔴 NAT-003: THESE THREE ARE RAMP-RELATIVE AND THEY ARE LITERALS, WHICH IS HOW THEY GOT LEFT
+     BEHIND. A divider is not a colour, it is a fixed distance off the surface it divides — so
+     when NAT-003 lifted the grounds and these did not follow, `border-default` stopped being a
+     hair off `bg-3` (1.01) and became a visible line on it (1.34), which is the opposite of what
+     it is for. VFN-002's negative control caught it: that spec asserts `border-default` is
+     INVISIBLE on bg-3 (<1.2), and it went red not because anything about dividers changed but
+     because the ground walked away from them.
+     ⚠️ Each is re-placed at the ratio it held against `bg-1` (1.109 / 1.254 / 1.730), which is
+     the relationship a reader actually sees. They are still literals — expressing them as ramp
+     offsets is a real improvement and a bigger change than this task should make. If the ramp
+     moves again, MOVE THESE, and re-run VFN-002. */
+  --theme-color-border-default: #2f3945;
+  --theme-color-border-subtle: #27303e;
+  --theme-color-border-strong: #434e5c;
   /* POL-016. The three above are DIVIDER tones: against bg-1/2/3 they measure
      1.01–1.73:1, which is right for a hairline between two regions and far under
      the 3:1 WCAG 1.4.11 asks of anything that has to be identified as a control.
@@ -565,17 +585,17 @@
   --theme-color-bg-1: #ffffff;
   --theme-color-bg-1-transparent: rgba(255, 255, 255, 0.85);
   --theme-color-bg-1-transparent-2: rgba(255, 255, 255, 0.5);
-  --theme-color-bg-2: #f7f9fb;
-  --theme-color-bg-3: #ecf0f4;
-  --theme-color-bg-4: #e2e8ef;
-  --theme-color-bg-5: #d8dfe8;
+  --theme-color-bg-2: #f2f4f6;
+  --theme-color-bg-3: #e5e9ed;
+  --theme-color-bg-4: #d9dfe6;
+  --theme-color-bg-5: #cfd6df;
   --theme-color-bg-hover: rgba(23, 32, 43, 0.06);
 
   --theme-color-fg-highlight: #18212b;
   --theme-color-fg-default-contrast: #2e3945;
   --theme-color-fg-default: #4a5663;
   /* NAT-002: partner of the dark-block raise. Was #616c79 (4.33:1 on bg-4). */
-  --theme-color-fg-default-shy: #5a6470;
+  --theme-color-fg-default-shy: #59626e;
   /* NAT-002 D9: no `fg-muted` override any more. It is an alias of
      `fg-default-shy` in `:root`, and an alias resolves per theme — restating it
      here would fork it again. */
@@ -586,11 +606,11 @@
      (`--site-fg-accent`); the three status tones are one step further down their
      ramps than the site's, because the editor paints text on bg-4 (dialogs) and
      the site does not. Worst ground each: 4.59, 5.97, 5.86, 5.12. */
-  --theme-color-fg-accent: #0e5fd0;
+  --theme-color-fg-accent: #0e5cca;
   --theme-color-fg-success: #05603a;
   --theme-color-fg-notice: #93370d;
   --theme-color-fg-danger: #b42318;
-  --theme-color-fg-disabled: #7c8894;
+  --theme-color-fg-disabled: #7a8691;
 
   --theme-color-primary: #1570ef;
   --theme-color-primary-highlight: #0e5fd0;
@@ -613,10 +633,10 @@
   --theme-color-node-category-function: #d6479a;
   --theme-color-node-category-component: #7c5ce0;
   /* NAT-002: partner of the dark-block definition. The value light `fg-muted` used to hold. */
-  --theme-color-node-category-default: #7c8894;
+  --theme-color-node-category-default: #7a8691;
   --theme-color-wire-signal: #0e9cc4;
 
-  --theme-color-success: #12915b;
+  --theme-color-success: #128f5a;
   --theme-color-success-dim: #027a48;
   --theme-color-success-bg: rgba(18, 145, 91, 0.1);
 
@@ -643,7 +663,7 @@
      `fg-muted`". `fg-muted` has been retired to an alias of `fg-default-shy`, so
      that sentence stopped being true — but the VALUE is right here for its own
      reason and did not move. */
-  --theme-color-border-control: #7c8894;
+  --theme-color-border-control: #7a8691;
 
   --theme-color-focus-ring: #1570ef;
   --theme-color-focus-ring-offset: #ffffff;

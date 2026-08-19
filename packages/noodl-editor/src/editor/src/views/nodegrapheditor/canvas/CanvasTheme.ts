@@ -77,20 +77,20 @@ export function resolveThemeTokens<K extends string>(specs: Record<K, ColorSpec>
 const COLOR_SPECS = {
   /* --- Ground ------------------------------------------------------------ */
   /** Canvas ground (also set on `.nodegrapgeditor-bg` in CSS). */
-  ground: { css: '--theme-color-bg-0', fallback: '#0b0e12' },
+  ground: { css: '--theme-color-bg-0', fallback: '#161c24' },
   /** Base colour of the dot grid; alpha is applied in `derive()`. */
   gridDotBase: { css: '--theme-color-fg-highlight', fallback: '#eef2f6' },
 
   /* --- Node card ---------------------------------------------------------- */
-  cardBg: { css: '--theme-color-bg-1', fallback: '#12161b' },
-  cardBgHover: { css: '--theme-color-bg-2', fallback: '#181d24' },
-  cardBorder: { css: '--theme-color-border-default', fallback: '#232a33' },
-  cardBorderHover: { css: '--theme-color-border-strong', fallback: '#37404c' },
+  cardBg: { css: '--theme-color-bg-1', fallback: '#212932' },
+  cardBgHover: { css: '--theme-color-bg-2', fallback: '#2b3440' },
+  cardBorder: { css: '--theme-color-border-default', fallback: '#2f3945' },
+  cardBorderHover: { css: '--theme-color-border-strong', fallback: '#434e5c' },
   /** Node name. */
   cardText: { css: '--theme-color-fg-highlight', fallback: '#eef2f6' },
   /** Type line. NAT-002: this is TEXT and it measured 3.93:1 on the card, so it takes the raise
    *  D9 gave `fg-default-shy` rather than sitting on the retired alias. */
-  cardSubText: { css: '--theme-color-fg-default-shy', fallback: '#95a0ac' },
+  cardSubText: { css: '--theme-color-fg-default-shy', fallback: '#abb8c5' },
   /**
    * The "this node has a comment" gutter stripe (CAN-004).
    *
@@ -102,7 +102,7 @@ const COLOR_SPECS = {
    */
   commentIndicator: { css: '--theme-color-primary', fallback: '#4da3ff' },
   /** Port row labels. */
-  portText: { css: '--theme-color-fg-default', fallback: '#a6b0bb' },
+  portText: { css: '--theme-color-fg-default', fallback: '#bbc6d3' },
 
   /** Selection / drag-affordance ring (accent; glow derived below). */
   selection: { css: '--theme-color-primary', fallback: '#4da3ff' },
@@ -133,7 +133,7 @@ const COLOR_SPECS = {
   annotationChanged: { css: '--theme-color-warning', fallback: '#fdb022' },
   annotationDeleted: { css: '--theme-color-danger', fallback: '#f97066' },
   /** Ink for the +/-/~ glyph inside the corner badge (dark on colour). */
-  annotationBadgeGlyph: { css: '--theme-color-bg-0', fallback: '#0b0e12' },
+  annotationBadgeGlyph: { css: '--theme-color-bg-0', fallback: '#161c24' },
 
   /* --- Editor decorations ------------------------------------------------- */
   /** Connection-drag indicator line + endpoints. */
@@ -141,15 +141,15 @@ const COLOR_SPECS = {
   /** Rect-select dashed box. NAT-002: a selection rectangle is a CONTROL BOUNDARY, not words, so
    *  it moves to the token POL-016 added for exactly that — same value, both themes, no visual
    *  change — rather than following a text token's raise. */
-  multiselect: { css: '--theme-color-border-control', fallback: '#6b7682' },
+  multiselect: { css: '--theme-color-border-control', fallback: '#7d8a98' },
   /** Multi-selection AABB outline. */
-  multiselectBox: { css: '--theme-color-fg-default', fallback: '#a6b0bb' },
+  multiselectBox: { css: '--theme-color-fg-default', fallback: '#bbc6d3' },
   /** Parent→child hierarchy spine (the mock's `--border-2` spine). */
-  hierarchyLine: { css: '--theme-color-border-strong', fallback: '#37404c' },
+  hierarchyLine: { css: '--theme-color-border-strong', fallback: '#434e5c' },
   /** Child insert-location indicator bar. */
   insertIndicator: { css: '--theme-color-primary', fallback: '#4da3ff' },
   /** Dim layer behind a connection drag (painted at 0.6 globalAlpha). */
-  scrim: { css: '--theme-color-bg-page', fallback: '#07090c' },
+  scrim: { css: '--theme-color-bg-page', fallback: '#0e1117' },
 
   /* --- Wires -------------------------------------------------------------- */
   wireSignal: { css: '--theme-color-wire-signal', fallback: '#35c3e8' },
@@ -173,7 +173,7 @@ const COLOR_SPECS = {
   categoryLogic: { css: '--theme-color-node-category-logic', fallback: '#f5b843' },
   categoryJavascript: { css: '--theme-color-node-category-function', fallback: '#f776c4' },
   categoryComponent: { css: '--theme-color-node-category-component', fallback: '#a78bfa' },
-  categoryDefault: { css: '--theme-color-node-category-default', fallback: '#6b7682' }
+  categoryDefault: { css: '--theme-color-node-category-default', fallback: '#7d8a98' }
 } satisfies Record<string, ColorSpec>;
 
 type BaseColors = { [K in keyof typeof COLOR_SPECS]: string };

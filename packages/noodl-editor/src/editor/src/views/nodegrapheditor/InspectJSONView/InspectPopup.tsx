@@ -30,15 +30,15 @@ import css from './InspectPopup.module.scss';
  * ------------------------------------------------------------------------- */
 const JSON_THEME_TOKENS = {
   /** Popup surface (ReactJson's own background is forced transparent). */
-  surface: { css: '--theme-color-bg-4', fallback: '#2c3540' },
-  surfaceRaised: { css: '--theme-color-bg-5', fallback: '#37424f' },
-  border: { css: '--theme-color-border-default', fallback: '#232a33' },
+  surface: { css: '--theme-color-bg-4', fallback: '#3c4857' },
+  surfaceRaised: { css: '--theme-color-bg-5', fallback: '#414e5e' },
+  border: { css: '--theme-color-border-default', fallback: '#2f3945' },
   /** Object/array keys and braces. */
   key: { css: '--theme-color-fg-highlight', fallback: '#eef2f6' },
   /** `undefined`, the collapsed-node ellipsis. */
-  muted: { css: '--theme-color-fg-default', fallback: '#a6b0bb' },
+  muted: { css: '--theme-color-fg-default', fallback: '#bbc6d3' },
   /** Object size counters (currently hidden) and thin borders. */
-  shy: { css: '--theme-color-fg-muted', fallback: '#6b7682' },
+  shy: { css: '--theme-color-fg-muted', fallback: '#abb8c5' },
   string: { css: '--theme-color-syntax-string', fallback: '#ce9178' },
   number: { css: '--theme-color-syntax-number', fallback: '#b5cea8' },
   /** `true`/`false`/`null` — keywords, as in the code editor. */
