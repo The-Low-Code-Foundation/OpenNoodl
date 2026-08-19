@@ -20,8 +20,7 @@ from **both** `provision.sh` and `deploy.sh` (install-backup.sh's split, for its
 runs once and nexus-1 is long past it), driving `scripts/drain-outbox.ts`. `npm run mail:drain` for
 a human on the box.
 
-Gates: `tsc --noEmit` clean, vitest **39 files / 1039 tests** green — the 38/1023 baseline plus this
-task's 16.
+Gates: `tsc --noEmit` clean, vitest **42 files / 1070 tests**, 0 failures.
 
 ### 🔴 The finding worth carrying: my own gate had a hole shaped like the defect
 
@@ -47,6 +46,17 @@ that dropped the key would walk the **whole queue** into a state v1 never retrie
 **refuses before the first claim** — no row is touched, and the queue drains when the key arrives.
 That makes the promise true without adding a retry loop. `--retry-failed` stays a flag a human
 types, and a spec asserts the timer's unit does not contain it.
+
+### 🔴 The third finding, and the one that most affects YOU: the next deploy sends mail
+
+`deploy.sh` installs the drain timer on **every** deploy, so the next deploy **for any reason** —
+including an unrelated one-line change from another phase — starts mail leaving the live platform.
+The 67b session raised this; it is a defect in my own first commit and it is now fixed (`c245679`).
+
+A queued backlog older than seven days **refuses the whole drain** rather than sending it, because
+`notify()` has been writing rows since UNI-014 and nothing ever emptied them. Releasing it is
+`npm run mail:drain -- --send-stale`, typed by a human, on purpose. ⚠️ **Expect the first real
+deploy to print that refusal** — that is the system working, not a bug.
 
 ## Where to start
 

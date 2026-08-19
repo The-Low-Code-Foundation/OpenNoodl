@@ -42,8 +42,8 @@ shippable while changing nothing about whether a relayed message reaches anybody
 
 ## ✅ Status — 2026-08-19 (phase 72, session 5): AC1, AC5 and AC6 CLOSED
 
-Built on `nodegx-community@b41a94a`. **The caller exists.** `tsc --noEmit` clean; vitest
-**39 files / 1039 tests** green (the 38/1023 baseline plus this task's 16).
+Built on `nodegx-community@b41a94a`, `c18671c`, `c245679`. **The caller exists.** `tsc --noEmit`
+clean; vitest **42 files / 1070 tests**, 0 failures.
 
 | AC | State | Where |
 |---|---|---|
@@ -66,6 +66,32 @@ goes out afterwards"*) and **that promise had no caller either**: it needs `stat
 ['queued','failed']` and nothing passed it. Refusing before the first claim makes the promise true
 without adding a retry loop. `--retry-failed` is a flag a human types; the timer never passes it,
 and a spec asserts the unit does not contain it.
+
+### 🔴 The hazard this task CREATED by working — closed 08-19, `c245679`
+
+Raised by the 67b session while deploying, and it is a real defect in the first commit.
+
+`deploy.sh` invokes `install-mail.sh` **unconditionally**, so the next deploy for **any** reason —
+an unrelated one-line change, by somebody who has never read this task — installs the timer and
+starts draining. And the queue is not empty: `notify()` has written rows since UNI-014 merged and
+**nothing has ever emptied them**, so the live box holds an unknown pile of notifications about
+events from weeks ago. Draining it mails *"someone answered your question"* about a three-week-old
+thread to real people, through **the same Brevo account `nodegx.io`'s waitlist runs on** — and the
+deploy log reads completely ordinary.
+
+✅ **A backlog older than `MAIL_DRAIN_MAX_AGE_DAYS` (7) now refuses the whole drain.** Same shape as
+the unconfigured refusal: no row touched, no mail lost, a human decides. `--send-stale` releases
+it; **the timer passes neither that nor `--retry-failed`**, and a spec asserts the unit contains
+neither. The deploy readback prints the count and the age of the oldest.
+
+🔴 **Verified red — 3 of 20 fail with the guard disabled**, and the control (same row, *inside* the
+window) stays green, so the refusal is keyed to AGE. ⚠️ One spec was also overclaiming: *"the guard
+is configurable"* asserted only that a 3-day row passes the 7-day default, which measures nothing
+about whether the variable is read. It now varies the variable across two arms of one row.
+
+✅ **This makes AC2 honest too.** The first message this repo ever sends to a real MX should be one
+somebody chose to send, to an address they are watching — not the oldest row in a queue nobody has
+looked at.
 
 ### 🔴 The gate had a hole shaped like the defect — found by the control, not by review
 
