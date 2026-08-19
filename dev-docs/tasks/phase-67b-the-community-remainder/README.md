@@ -235,11 +235,11 @@ calls date methods directly** (`home.ts:133`'s weekly-call projection, `lists.ts
 undefended half is still live**, and two call sites already failed in succession — which is what a
 type that is a *claim* rather than a *guarantee* looks like from the outside.
 
-✅ **The generalisable half:** *deployed* and *committed* are independent facts, and nothing checks
-the second. `ops/deploy.sh` rsyncs the working tree — it neither requires a clean tree nor records
-what it shipped, so a hotfix typed straight into a deploy leaves no trace anywhere a future session
-would look. **Worth a refusal in `deploy.sh`** (deploy a dirty tree only with an explicit flag, and
-stamp the deployed commit on the host), and that is smaller than this paragraph.
+✅ **The generalisable half:** *deployed* and *committed* are independent facts, and nothing checked
+the second. `ops/deploy.sh` rsyncs the working tree — it neither required a clean tree nor recorded
+what it shipped, so a hotfix typed straight into a deploy left no trace anywhere a future session
+would look. ✅ **BUILT 2026-08-19 (session 40) — see section E below**, which also records the two
+defects it found within an hour of existing.
 
 ### D. 🔴 A queue that could not move the number it was built for — and the instrument that caught what it opened
 
@@ -269,6 +269,73 @@ same way — the typed schema mirror and UNI-011's route inventory.
 skips when there is no `.next` build. So the default command reads as a full green pass with the
 end-to-end file silently absent. **Build first.** 1010/0 either way once you do.
 
+### E. ✅ A deploy can be named — and the refusal caught something real on its first run
+
+Built 2026-08-19 (session 40), out of section C's closing paragraph, and it stopped being a
+tidiness item within the hour.
+
+**What `ops/deploy.sh` does now:** a dirty working tree **refuses, before the rsync**, naming the
+files and the way out (`--allow-dirty`, or `NODEGX_ALLOW_DIRTY=1`); every deploy stamps
+`/etc/nodegx-community/deployed.json` with commit, branch, dirty flag, time and who; what is live
+is printed **before** the push replaces it, and the new stamp is **read back off the host** rather
+than echoed from the variable that was just sent. Untracked files count as dirty — rsync sends an
+untracked file exactly like a modified one, and a new migration is untracked before it is committed.
+
+🔴 **Three things worth keeping, none of which was the feature.**
+
+**1. The gate was too forgiving, and thirteen green tests proved nothing.** `ops/` was outside every
+gate — nothing in `tests/` had executed a line of it — so the work came with
+`tests/ops-deploy-provenance.test.ts`, which **runs** the script against stubbed `ssh`/`rsync`/`curl`
+rather than grepping its source. It passed 13/13. **The first real deploy then died before pushing a
+byte**, at `$SSH "cat $STAMP_FILE 2>/dev/null" | python3` — real ssh returns the remote command's
+status, `cat` on a missing file is 1, and the script runs under `pipefail`. Reading a stamp that
+does not exist yet is the normal case **exactly once**, on the first deploy after the feature ships.
+
+The stub had answered `cat <missing file>` with *"print nothing, exit 0"*, which is not what `cat`
+does — so `cat x 2>/dev/null` and `cat x 2>/dev/null || true` were **indistinguishable inside the
+harness** while being the difference between a deploy that works and one that dies. ✅ **A stub more
+forgiving than the real binary hides the bug it was built to catch.** The stubs now rewrite host
+paths and **execute** the command, so `||`, `&&`, redirections and exit statuses come out right for
+free; with the `|| true` removed again, **7 of 13 go red**. ⚠️ The same shape sat unnoticed in the
+two *backup* status reads, where it made the `🔴 NO BACKUP HAS EVER RUN` branch — the entire reason
+those blocks exist — **unreachable by the path that prints it**.
+
+**2. The refusal's first catch was a peer's uncommitted work, not mine.** Between the pre-flight
+`git status` and the deploy, the phase-72 session writing NAT-014 saved `scripts/drain-outbox.ts`,
+`ops/install-mail.sh` and a modified `package.json` into the **shared checkout**. The deploy refused
+and named them. Without it, another session's half-finished mail drainer would have gone to
+production. 🔴 **`--allow-dirty` would have been exactly the wrong answer**; the right one is
+**deploy from a pristine `git clone` of a named commit**, which satisfies the refusal honestly
+instead of silencing it, and is how 0015 actually went out. ⚠️ **This generalises past this repo:**
+`deploy.sh` ships the working tree of a checkout that more than one session writes to, so
+*"my tree is clean"* is a claim with a lifetime measured in minutes.
+
+**3. A test that asserts a message is not a test that asserts the deploy survived.** The
+*"reports an unstamped host as unstamped"* case passed against the broken script, because the script
+printed that exact line **and then died**. It now asserts the deploy carries on. Same shape as the
+`NODEGX_ALLOW_DIRTY=1` case, which passed against a script with **no dirty check at all** — a script
+that never checks also deploys a dirty tree and exits 0. Both were measured against the pre-fix
+script rather than reasoned about: **12 red, 1 green, and the 1 green is the control** (a clean tree
+still deploys) that has to stay green either way.
+
+### ✅ 0015 IS DEPLOYED — 2026-08-19, session 40, at Richard's instruction
+
+The live site had **none** of UNI-017 until this session; `0015` existed locally and had never been
+applied. Deployed from a clean clone at `0cbd716`, and the readings rather than the exit code:
+
+| | |
+|---|---|
+| migration | `already applied: 14` → `applied: 0015_uni017_queue_and_signal.sql` |
+| stamp, read back off the host | ✅ `0cbd716fb011` on `main`, clean, `2026-08-19T17:37:06Z` |
+| neighbours | `nodegx.io`, `nexus.digitalbricks.io`, `digitalbricks.io` — all `200 → 200`, unmoved |
+| site / sign-in | `200` · `/api/auth/github/start` → `302` to github.com |
+| off-site backup | ✅ ok, 2.3h old, 433,391 bytes, 49 tables, object on Hetzner |
+| restore check | ✅ ok, **49 tables restored from the object** |
+
+✅ **The consequence, not just the mechanism:** `POST /api/v1/bench/threads/:id/same-here` answers
+**401** on the live site while a nonexistent sibling route answers **404** — a control pair, because
+"the app returns 200" would have been true before this deploy too.
+
 ## Also landing here
 
 **E7's second half.** Richard chose **Hetzner Object Storage** for artefacts on 2026-08-18. That
@@ -291,7 +358,7 @@ same shape as E10 — a form, then a small build.
    check restored 49 tables and 1 account back off the object store. ⚠️ **The dump is unencrypted
    at rest**; the mechanism is built and the passphrase is Richard's call. 🔴 **It was never "cheap" — it was never having run**, and the item
    would have been closed as "moved off-host" over a `pg_dump` nobody had ever seen produce a file.
-3. ~~**UNI-017**~~ ✅ **BUILT 2026-08-19 (session 39).** (~~UNI-018~~ is P72 NAT-015.)
+3. ~~**UNI-017**~~ ✅ **BUILT 2026-08-19 (session 39), and ✅ DEPLOYED (session 40)** — see section E. (~~UNI-018~~ is P72 NAT-015.)
    ✅ **The warning below was already discharged** — NAT-006 carries it verbatim at its own line 75,
    written when phase 72 was scoped. Checked rather than assumed, and it cost one grep.
    ~~⚠️ When phase 72 designs the community API (NAT-006), triage and *"same here"* should not be
