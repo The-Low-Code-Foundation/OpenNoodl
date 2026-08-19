@@ -355,9 +355,37 @@ applied. Deployed from a clean clone at `0cbd716`, and the readings rather than 
 decision on its own unblocks UNI-020's *"Download the starter project"* button, because
 `articles.project_url` already exists and a public object URL can simply be written into it —
 **no code is owed for the button.** What *is* owed is the **capture image upload path**: a
-`capture` attachment stores dimensions and consent and no image, so nothing has to be migrated, and
-the upload needs S3 credentials that only Richard can mint from the Hetzner console. That is the
-same shape as E10 — a form, then a small build.
+`capture` attachment stores dimensions and consent and no image, so nothing has to be migrated.
+
+🟡 **HALF BUILT 2026-08-19 (session 40) — the two libraries, gated and driven; the three surfaces
+are not written.** The credentials arrived this session, so nothing here is blocked on Richard.
+
+| | |
+|---|---|
+| `src/lib/objectstore.ts` | S3-compatible PUT/GET/HEAD/DELETE, **SigV4 by hand** — ~90 lines rather than several megabytes of `@aws-sdk`, on a codebase whose whole production dependency list is five packages. ✅ **Driven against the real bucket**: `e7-objectstore-http.test.ts` puts, heads, gets back **byte-identical** bytes and deletes, against `nodegx` at `nbg1` |
+| `src/lib/captureupload.ts` | What may be stored and **whose it is**. Server-issued unguessable key + a **grant** (keyed HMAC over key and account) that intake must check |
+
+🔴 **The hole `captureupload.ts` exists to close, because the obvious design has it.** *Upload
+returns a key, the composer puts the key in the payload* lets anyone put **any** key in a payload —
+including one they watched somebody else receive — and the thread would render a stranger's
+screenshot under their name. The grant is stateless, follows `notifications.ts`'s unsubscribe token
+**deliberately rather than by accident**, and is domain-separated so neither token can be replayed
+as the other. ⚠️ Two more refusals worth keeping: the **bytes are sniffed, not the header** (a
+`Content-Type: image/png` on a zip is one line for a sender to change), and a key **outside the
+captures prefix is refused** — otherwise a payload naming a dump under `nodegx-community/` would
+have the image route fetch and serve a database backup.
+
+⚠️ **What is NOT built, and it is the visible half:** the upload endpoint, the image-serving route
+(which must apply the same visibility rules as the attachment it belongs to — a capture is a
+screenshot of somebody's project, so a public object URL would bypass every rule this platform
+has), and `Attachment.tsx` still says *"image not yet hosted"*. All three are DB-touching and were
+left rather than started, because a peer held the shared Postgres.
+
+🔴 **AND ONE LINE IS OWED IN `deploy.sh`:** the app's env file does **not** carry `HETZNER_S3_*`.
+`install-backup.sh` writes them to `/etc/nodegx-community/backup.env`, which the *backup* reads and
+the *app* does not — so `objectStoreConfig()` returns `null` on the live site today. That is
+correct, degrading behaviour rather than a crash, but the upload path cannot work until the line
+lands. It was not written this session because `deploy.sh` belonged to the NAT-014 session.
 
 ---
 
