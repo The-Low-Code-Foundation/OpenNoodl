@@ -81,10 +81,16 @@ close when mail reaches a human — NAT-014 AC2/AC7.
 
 ## Loose ends
 
-- ⚠️ **Eight phase-72 files remain modified and uncommitted from previous sessions** (NAT-006/009/
+- ⚠️ **Seven phase-72 files remain modified and uncommitted from previous sessions** (NAT-006/009/
   010/011/012/013 and the README). They carried somebody else's unlanded edits before this session
   and still do — my status sections were **inserted** into NAT-007/015 rather than written over
   them. Everything of mine is committed by pathspec.
+- 🔴 **`2d3960a7`'s docs commit swept 7 lines of somebody else's unlanded NAT-007 edit** — the AC5
+  rewrite pointing at NAT-015 — because a pathspec commit takes the *file*, not my hunks. The
+  content is correct and belongs where it landed, so it is **recorded rather than rewritten**:
+  un-picking a commit on a branch a live session commits to is the greater risk. ⚠️ The habit that
+  guards the other direction (pathspec-scoping so a sibling's *other* files are not swept) does not
+  guard this one.
 - ⚠️ A peer landed TUT-001 work in `BackendServicesPanel`, `tsconfig.tests-main.json` and
   `tests-unit/tut-001/` during this session. Untouched, and the `test:main` figures above include
   their suites.
