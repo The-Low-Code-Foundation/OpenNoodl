@@ -14,7 +14,9 @@ mail can now leave this platform. It has not yet left it: what remains needs a d
 
 ## What happened this session
 
-**NAT-014 AC1, AC5 and AC6 are closed**, on `nodegx-community@b41a94a`. The caller is the
+**NAT-014 AC1, AC5 and AC6 are closed** — `nodegx-community@b41a94a`, `c18671c`, `c245679`,
+`baadd58`. 🔴 **Deploy from `baadd58` or later**: `b41a94a` alone has the timer without the
+stale-backlog guard, which is the one combination that mass-mails a weeks-old queue. The caller is the
 deliverable and it now exists: `ops/install-mail.sh` installs a unit and a five-minute timer, run
 from **both** `provision.sh` and `deploy.sh` (install-backup.sh's split, for its reason — provision
 runs once and nexus-1 is long past it), driving `scripts/drain-outbox.ts`. `npm run mail:drain` for
@@ -57,6 +59,14 @@ A queued backlog older than seven days **refuses the whole drain** rather than s
 `notify()` has been writing rows since UNI-014 and nothing ever emptied them. Releasing it is
 `npm run mail:drain -- --send-stale`, typed by a human, on purpose. ⚠️ **Expect the first real
 deploy to print that refusal** — that is the system working, not a bug.
+
+🔴 **And the guard's own failure mode is somebody silencing it** (`baadd58`). A person meeting a
+refusal in a deploy log for an unrelated change reads "broken deploy" and reaches for the flag —
+which is the mass send, now with a clean log. Both the drain's stderr and the deploy readback
+therefore say outright that it is not a broken deploy and that **releasing weeks-old mail is a call
+for Richard, not a step to a green log**. ✅ **If you are here for an unrelated change: ask him.**
+**A safety message that names an override without naming who may authorise it is an instruction to
+use the override** — worth applying to the next warning you write.
 
 ## Where to start
 
