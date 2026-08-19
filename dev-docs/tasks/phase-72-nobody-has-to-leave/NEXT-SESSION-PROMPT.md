@@ -1,126 +1,111 @@
 # Next session — phase 72
 
-**Written 2026-08-19, fifth session.** **NAT-014's code is done** — the outbox has a caller, and
-mail can now leave this platform. It has not yet left it: what remains needs a deploy and Richard.
+**Written 2026-08-19, sixth session.** **NAT-006's read surface is built and committed.** The
+editor can now see people, profiles, RFPs, coaching, University, tutorials and replays — ten
+endpoints, one shape, a written contract. What it still cannot do is *write*, and that waits on a
+ruling rather than on code.
 
 ## Read first, in this order
 
-1. [NAT-014](NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md) §Status — the AC table, the one decision
-   inside the drain, and **§"the gate had a hole shaped like the defect"**. Read that third section
-   even if you never touch mail again; it generalises.
-2. [TASKS.md](TASKS.md) §The order — **NAT-006 is now the long pole**, and NAT-004/005 are the rest
-   of Tier 1.
-3. [README §4](README.md) — five rulings still open (D5, D6, D7, D8, D10).
+1. [NAT-006](NAT-006-THE-API-THE-EDITOR-CANNOT-SEE.md) §Status — the AC table, and the two findings.
+   **Read the AC4 one even if you never touch this API**: the tidy implementation *was* the
+   criterion's failure, and the same trap is waiting in any read API written over these modules.
+2. `nodegx-community/docs/API.md` — the contract. §4 (the 404 that means several things) and §6
+   (the writes, and what D5 has to decide) are the two sections a Tier-3 task needs.
+3. [TASKS.md](TASKS.md) §The order, then [README §4](README.md) — five rulings still open
+   (D5, D6, D7, D8, D10).
 
 ## What happened this session
 
-**NAT-014 AC1, AC5 and AC6 are closed** — `nodegx-community@b41a94a`, `c18671c`, `c245679`,
-`baadd58`. 🔴 **Deploy from `baadd58` or later**: `b41a94a` alone has the timer without the
-stale-backlog guard, which is the one combination that mass-mails a weeks-old queue. The caller is the
-deliverable and it now exists: `ops/install-mail.sh` installs a unit and a five-minute timer, run
-from **both** `provision.sh` and `deploy.sh` (install-backup.sh's split, for its reason — provision
-runs once and nexus-1 is long past it), driving `scripts/drain-outbox.ts`. `npm run mail:drain` for
-a human on the box.
+**NAT-006 AC1, AC2, AC3, AC4, AC6 and AC7 are closed** — `nodegx-community@126a0b6`. Ten endpoints
+under `/api/v1/community/`, each reading through the function its page already calls. The one
+page-side query copy left on the platform (`tutorialsList`'s article read, living in `lists.ts`)
+moved to `articles.ts` and now has both callers — that is the trap the task calls its
+highest-value structural decision, and it was the last instance.
 
-Gates: `tsc --noEmit` clean, vitest **42 files / 1070 tests**, 0 failures.
+Gates: `tsc --noEmit` clean, vitest **45 files / 1110 tests, 0 failures**. `npm run lint` is not a
+working gate in that repo — `next lint` drops into an interactive ESLint setup prompt. Not fixed,
+recorded.
 
-### 🔴 The finding worth carrying: my own gate had a hole shaped like the defect
+### 🔴 The finding worth carrying: the tidy implementation was the AC4 failure
 
-The caller census reads `ops/`, `package.json` and the route tree **off disk**, because the import
-graph is what said everything was fine for weeks. Then the control removed the caller outright —
-`ExecStart=/bin/true`, npm script deleted — and **the gate stayed green**, because a *comment* in
-`install-mail.sh` mentions `scripts/drain-outbox.ts`.
+AC4 says the API must not be wider than a signed-out browser. The obvious implementation — return
+the shared read modules' own types — **is** wider: `DirectoryEntry`, `PublicProfile`, `RfpListing`
+and `CoachingOffer` all carry an internal **account UUID** that no page renders. A React Server
+Component emits HTML, so a field it fetches and never prints leaves no trace; the same field in
+JSON is published to every client, and it looks like the clean implementation the whole way.
 
-A gate satisfied by prose about the mechanism is exactly the defect the task exists to fix, one
-level up. ✅ Comments are stripped now and `package.json` is parsed to its script commands, and it
-is **verified red — 4 of 16 fail with the defects reintroduced**. 🔴 **A green gate proved nothing
-here and the red run took four minutes.** Do this to any "does a caller exist" check you write.
+✅ **Ask of any read API: which fields does the page fetch and not print?** That set is the leak.
+Every surface is mapped in `apisurfaces.ts` now, each mapper states what it drops, and the spec
+asserts over *every* endpoint that no body contains a seeded account id — with a control that
+feeds it a leaky body and requires it to fire.
 
-### 🔴 The second finding: the recovery `transport.ts` promises had no caller either
+### 🔴 The second finding: a column typed `Date` is sometimes a raw string
 
-`transport.ts` says mail queued before the API key is installed *"still goes out afterwards,
-because `drainOutbox` accepts `'failed'` among its states"*. That is only true for a caller passing
-`states: ['queued','failed']`, and **nothing passed it** — the same defect one layer down.
+`b.earnedAt.toISOString()` died on `2026-08-19 18:58:53.754123+00` — Postgres's own text,
+unparsed, from a field declared `Date`.
 
-Worse, the default path made it destructive: on a secure origin with no key, `UnconfiguredTransport`
-throws per message and `drainOutbox` marks each row `failed`, so one timer firing after a deploy
-that dropped the key would walk the **whole queue** into a state v1 never retries. ✅ The drain now
-**refuses before the first claim** — no row is touched, and the queue drains when the key arrives.
-That makes the promise true without adding a retry loop. `--retry-failed` stays a flag a human
-types, and a spec asserts the timer's unit does not contain it.
+🔴 **The connection decides, not the query.** Reproduced deterministically: read badges through the
+API pool (a `Date`), call `/v1/community/home` — enough concurrent queries to make the pool open
+more connections — then read the same badges through a route (a string). ⚠️ **I did not pin the
+mechanism down and the note says so**; postgres.js resolves parsers per connection, and that is a
+hypothesis, not a measurement.
 
-### 🔴 The third finding, and the one that most affects YOU: the next deploy sends mail
+⚠️ **`lists.ts` had already met this and defended locally without recording it** — every date
+comparator there wraps in `new Date(...)`, and one helper is typed `Date | string`. A defence with
+no note is a finding the next person has to make again. One site was still exposed: `/people`'s
+*"recently active"* sort called `.getTime()` on the raw value, a 500 one pooled connection away.
+Fixed. 🔴 **`src/app/orgs/[slug]/assignments/page.tsx:32` is the same hazard, untouched** — 67b
+ground, named in the task file rather than repaired from outside.
 
-`deploy.sh` installs the drain timer on **every** deploy, so the next deploy **for any reason** —
-including an unrelated one-line change from another phase — starts mail leaving the live platform.
-The 67b session raised this; it is a defect in my own first commit and it is now fixed (`c245679`).
+### ✅ Verified red, and it was worth the four minutes
 
-A queued backlog older than seven days **refuses the whole drain** rather than sending it, because
-`notify()` has been writing rows since UNI-014 and nothing ever emptied them. Releasing it is
-`npm run mail:drain -- --send-stale`, typed by a human, on purpose. ⚠️ **Expect the first real
-deploy to print that refusal** — that is the system working, not a bug.
-
-🔴 **And the guard's own failure mode is somebody silencing it** (`baadd58`). A person meeting a
-refusal in a deploy log for an unrelated change reads "broken deploy" and reaches for the flag —
-which is the mass send, now with a clean log. Both the drain's stderr and the deploy readback
-therefore say outright that it is not a broken deploy and that **releasing weeks-old mail is a call
-for Richard, not a step to a green log**. ✅ **If you are here for an unrelated change: ask him.**
-**A safety message that names an override without naming who may authorise it is an instruction to
-use the override** — worth applying to the next warning you write.
+The envelope check, the account-id check and the rate limiter were each handed their defect back:
+**5 of 14 failed**, each by name. Same lesson as session 5's caller census — a green contract spec
+on an unbroken tree says nothing about whether it can see a break.
 
 ## Where to start
 
-**NAT-006 is the long pole** — 19 pages, 15 routes, zero endpoints for people/profiles/RFPs/
-coaching/University, and five Tier-3 tasks queue behind it. It has no editor dependency.
+**NAT-007 is now the flagship and the read half is unblocked.** Threads already had an endpoint;
+what NAT-007 needs beyond it is the reply, which is AC5/D5 — so the honest shape of that session is
+*build the whole reading experience, and land the reply behind the ruling*. NAT-015 rides along in
+the same session on the same renderer.
 
-**If you want to finish NAT-014 instead, it is now a deploy task, not a coding task:**
+**If you would rather close NAT-006 completely, it is one decision:**
 
-1. **AC7 + AC2 together.** Deploy `nodegx-community` to nexus-1, confirm
-   `systemctl list-timers nodegx-community-drain.timer`, then make something notify a real address
-   and **read the email**. The deploy prints the drain status on every run (`==> outbox drain`).
-2. ⚠️ **Deploy from a pristine `git clone` of a named commit**, not the shared checkout — the
-   dirty-tree refusal is real and `deploy.sh` rsyncs the working tree. A sibling caught my
-   half-finished drainer that way today. `--allow-dirty` silences the check; a clone satisfies it.
-3. **AC3 needs Richard, not code.** The recommendation is written up in the task file: do **not**
-   build a second drainer (the relay's `Reply-To` is an alias on an unregistered domain with no
-   inbound path — that is D10) and do **not** retire the relay (its trigger is UNI-004 AC1's proof).
-   Instead let `'relayed'` queue an ordinary *"you have a new message on NodeGX"* notification,
-   which needs no relay domain at all. **Not implemented deliberately** — it changes delivery on the
-   privacy-sensitive path D10 is open about.
+- 🔴 **D5 — what authorises a write from the editor?** `docs/API.md` §6 specifies the three writes
+  Tier 3 needs (a Bench reply, an RFP response, a coaching request) and the four things that hold
+  whatever D5 decides. The ruling wants Richard; the code after it is small.
 
-🔴 **Do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4 on the strength of this session.** The
-machinery runs; nothing has reached a human. Those close when somebody reads one of these emails.
+**NAT-004** (light by default on the web, S) and **NAT-005** (the tab that is a list of grey lines,
+M) are still the unstarted Tier 1 work, and NAT-005 is the vocabulary Tier 3 reuses — building it
+before four surfaces reinvent it is still the right order.
+
+🔴 **Do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4 on the strength of NAT-006 either.** They
+close when mail reaches a human, which is NAT-014 AC2/AC7 and still needs a deploy.
 
 ## Loose ends
 
-- ⚠️ **`ops/deploy.sh`'s two NAT-014 blocks are in `f30677d`, a sibling's commit** — a
-  `git commit -- <path>` takes the working tree, so my unstaged edits to that file were swept in.
-  The tree is correct; rewriting to un-sweep is worse than the sweep. Not repaired, recorded.
-- ✅ **D19's ruling record is amended** (`phase-67/RULINGS.md`), dated, with the narrow statement:
-  the machinery runs and the condition is **still not met**.
-- ⚠️ **`src/lib/notifications.ts`' header claimed the relay "is already mailing this event"** —
-  false. Corrected in the source so the next reader inherits the gap rather than the claim. The
-  behaviour is unchanged and still wrong; that is AC3.
-- ⚠️ **Eight phase-72 files remain modified and uncommitted** (NAT-006/007/009/010/011/012/013 and
-  the README) — unchanged from the last two handovers, still somebody else's unlanded edits. I
-  committed only my own by explicit pathspec.
-- ⚠️ **`AskAboutNodeDialog.module.scss` still carries the stale `bg-4` comment.** Untouched, same
-  reason.
-- ⚠️ **~99 files still paint words with a fill role** (NAT-002's remainder). Unchanged.
-- ⚠️ **The active-line contrast finding from session 4 is still open by design** — 8/21 dark,
-  10/21 light sub-AA, ratcheted. See NAT-003.
+- ⚠️ **Nine phase-72 files remain modified and uncommitted** — NAT-006 now among them, because it
+  already carried somebody else's unlanded edits when I arrived and a pathspec commit would sweep
+  them. My status section is appended to that file in the working tree. Everything of mine that
+  stands alone (TASKS.md, this file) is committed.
+- ✅ **The shared 55432 Postgres does not need queueing.** The 67b session pointed out the better
+  move and it works: `create database nodegx_community_e7` beside the default, then
+  `DATABASE_URL=…/<your-db> npx vitest run`. `freshDb()`'s `drop schema public cascade` is then
+  scoped to a database only you use. I queued twice today for nothing.
+- ⚠️ **`AskAboutNodeDialog.module.scss`, the ~99 fill-role files, and the active-line contrast
+  finding** are all unchanged from the last three handovers.
 
 ## Verification notes that earned their place
 
-- 🔴 **`npx tsc --noEmit | head` reports `head`'s exit code, not tsc's.** Redirect to a file and
-  read the real status; a peer and I briefly disagreed about a typecheck failure for this reason.
-- 🔴 **A peer's report can be true and stale.** They saw a real `tsc` error in
-  `scripts/drain-outbox.ts` — during the four-minute window when I had the file deliberately broken
-  to verify the gate went red. ✅ Re-measure before acting on a relayed failure, and say which
-  window it came from.
-- ✅ **Reconcile the suite's file count against disk.** 39 ran, 42 exist — the three missing were a
-  peer's, two written *after* vitest built its file list. The arithmetic (38/1023 baseline + my 16)
-  is what made the numbers attributable rather than merely plausible.
-- ✅ **The shared docker Postgres on 55432 is one database.** `freshDb()` drops and recreates
-  `public`, so two sessions running DB tests at once corrupt both runs. Announce it; it cost
-  nothing and the peer held off twice.
+- 🔴 **A route sweep derived from disk fails on a *sibling's* new routes, not only yours.** Mine and
+  67b's landed hours apart and each made the other's run red with "these routes have no D15
+  verdict". That is the gate working. ✅ Read the names in the failure before believing it is yours.
+- ✅ **Two sessions edited one test file cleanly** because both appended to an object literal and
+  neither rewrote the file. The peer committed a synthesized blob containing only their own
+  recipes, so my working copy kept both. **A wholesale write there would have destroyed one set.**
+- 🔴 **A spec can be green because the fixture is broken.** Every dynamic endpoint in the contract
+  spec asserts *"this file has a seeded id for you"* before calling — a made-up id 404s for
+  everybody, which satisfies half of a gate assertion and fails the other, and reads as a broken
+  gate rather than a broken fixture.
