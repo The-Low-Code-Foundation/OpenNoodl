@@ -53,7 +53,7 @@ and is **amended 2026-08-15** by D14 (an editor *client*; the build does not mov
 | ~~**D16**~~ | ~~The never-empty launch threshold~~ | 🔴 **REVERSED 08-19 by D21.** The threshold gated a surface that was never built, and the gate was never wired to anything. **The community panel ships unconditionally, empty if empty**, and Richard fills it | ~~**08-16**~~ → **08-19** |
 | **D17** | Curriculum hosting — where lessons are served from | **Part of the platform API under D14; GitHub Pages as v0.** 🔴 A lesson must stay installable from a **local directory with no origin**, whatever else changes | **08-16** |
 | **D18** | One accent hue across the products | 🔵 **AZURE** (`#4da3ff`) — the community site adopts the editor's, against the recommendation. ⚠️ The **landing page keeps teal** and becomes the odd one out; that is chosen, not inherited | **08-17** |
-| **D19** | Forum: bought or built | 🔴 **BUILT — reverses UNI-009's "bought, not built".** Not *a forum*: the **Q&A surface for NodeGX artifacts**, where a post is a graph with a question attached. Discourse's generic 80% is a **chosen absence**. ⚠️ **Conditional on email landing first** | **08-18** |
+| **D19** | Forum: bought or built | 🔴 **BUILT — reverses UNI-009's "bought, not built".** Not *a forum*: the **Q&A surface for NodeGX artifacts**, where a post is a graph with a question attached. Discourse's generic 80% is a **chosen absence**. ⚠️ **Conditional on email landing first** — 🔴 **that condition was recorded MET and was not; amended 08-19, still OPEN.** The outbox has a caller since `b41a94a`, but nothing has reached a real MX | **08-18** |
 | **D20** | The close's four open decisions — where it runs, what sends its mail, where artefacts live, where the remainder goes | **nexus-1** (beside the other three, additively) · **Brevo** · **Hetzner Object Storage** · **a phase 67b**. 🔴 **Amends D1's "Docker on Hetzner"** — see below | **08-18** |
 | **D21** | Does the in-editor community surface wait for the community to be busy | 🔴 **NO — REVERSES D16.** The tab ships now, with whatever data exists including none. **One surface, not two**: the editor is the source of truth and a browser hand-off is a second surface, not a safer one | **08-19** |
 
@@ -137,6 +137,28 @@ provider and no domain. **Every other gap in this tranche degrades gracefully; t
 — a forum where "someone answered you" never reaches an inbox is a forum nobody returns to, and
 D16's threshold is precisely about people coming back. **UNI-014 is therefore not a supporting task,
 it is the condition on which this ruling was made**, and it is owed to UNI-004 and UNI-006 anyway.
+
+#### 🔴 AMENDED 2026-08-19 by [P72 NAT-014](../phase-72-nobody-has-to-leave/NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md) — the condition was recorded as met, and was not
+
+Phase 67b's README stated that E6 gave `notification_deliveries` a real transport and therefore
+*"D19's condition is met for the Bench"*. **That was false on the day it was written, and it is
+amended here rather than only there, because two live documents disagreeing about a ruling is how
+the next person inherits the wrong one.**
+
+**A transport is not a delivery.** `drainOutbox` — claim, send, mark — was written, tested against
+a real database, and imported by exactly two files, **both of them tests**. No route, no npm
+script, no systemd unit. So *"someone answered you"* had never been sent for the Bench either, and
+the condition was met for **nothing**.
+
+⚠️ **What changed on 2026-08-19, stated narrowly.** `nodegx-community@b41a94a` gives the outbox a
+production caller: a five-minute systemd timer installed by `ops/install-mail.sh` from both
+`provision.sh` and `deploy.sh`, plus `npm run mail:drain` for a human. The machinery now **runs**.
+
+🔴 **The condition is still NOT met, and the reason is no longer unbuilt code.** Nothing in this
+repo has yet posted a message to a real MX — every Brevo test stubs `fetch` — and the drain has not
+run on nexus-1. Those are NAT-014 AC2 and AC7, and until both are closed the honest statement is
+*"the mail room is built and wired and has never delivered anything to a human"*. **Do not record
+this ruling's condition as met until somebody has read one of these emails in an inbox.**
 
 ### The counter-argument, kept on the record
 

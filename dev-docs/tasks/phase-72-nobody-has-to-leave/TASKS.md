@@ -39,7 +39,7 @@ negotiable for a nicer UI. All four are acceptance criteria in every task.
 | **[NAT-004](NAT-004-LIGHT-BY-DEFAULT-ON-THE-WEB.md)** | **Light by default on the web.** OS-follow with a **light** fallback, plus the visible toggle the site never had (it reads `nodegx-theme`; nothing writes it) | platform | **1** | S | ✅ D2. Independent of the tokens — do it whenever |
 | **[NAT-005](NAT-005-THE-TAB-THAT-IS-A-LIST-OF-GREY-LINES.md)** | **The tab that is a list of grey lines.** Two inline styles and one 13px column. Real hierarchy and rows that show the metadata the view model already carries and throws away | core-ui / editor | **1** | M | NAT-002, NAT-003. ⚠️ **This is the vocabulary Tier 3 reuses** — build it once here or four tasks reinvent it |
 | **[NAT-006](NAT-006-THE-API-THE-EDITOR-CANNOT-SEE.md)** ⭐ | **The API the editor cannot see.** 19 pages, 15 routes, **zero** endpoints for people, profiles, RFPs, coaching, University, tutorials or replays. The reason the scope looked thin | platform | **2** | L | 🔴 **Every Tier-3 task depends on this.** D5, D6 open. 🔴 Pages query the DB directly — share the query, never copy the SQL |
-| **[NAT-014](NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md)** 🔴 | **The queue that nothing empties.** No mail leaves this platform: `drainOutbox` exists, is tested, and has **no production caller**; the relay queue has no drainer at all | platform / ops | **2** | M | none — **start it immediately**. 🔴 **Blocks NAT-009, NAT-010, NAT-013.** D10 open (inbound relay) |
+| **[NAT-014](NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md)** 🟡 | **The queue that nothing empties.** No mail leaves this platform: `drainOutbox` exists, is tested, and has **no production caller**; the relay queue has no drainer at all | platform / ops | **2** | M | 🟡 **AC1/AC5/AC6 DONE 08-19 s5** — `b41a94a`, timer + script + a disk-derived caller gate (**hole found by its own control**: a *comment* satisfied it). 🔴 **AC2/AC4/AC7 need Richard**: a real MX, the relay domain (D10), a claim against nexus-1. ⚠️ **AC3 recommended, not ruled** — do NOT build a second drainer; the relay's `Reply-To` needs inbound. **Still blocks NAT-009/010/013 until mail is seen in an inbox** |
 | **[NAT-007](NAT-007-A-THREAD-YOU-CAN-ACTUALLY-ANSWER.md)** ⭐ | **A thread you can actually answer.** Open it, read every post, render its attachments, **reply** — the flagship. The platform half already exists; this is an editor task | editor / core-ui | **3** | L | NAT-005, NAT-006. 🔴 **D5** gates the reply; **D7** gates moderation. AC7 drives the round trip **both** directions |
 | **[NAT-008](NAT-008-THE-PEOPLE-ARE-THE-PRODUCT.md)** | **The people are the product.** The directory and profiles, with author lines everywhere becoming entry points | editor / core-ui | **3** | M | NAT-005, NAT-006. 🔴 Badges paint through a **CSS mask** — `<img>` renders them invisible; 🔴 control-test the search |
 | **[NAT-009](NAT-009-WORK-YOU-CAN-TAKE-FROM-THE-EDITOR.md)** | **Work you can take from the editor.** The RFP board, browsable and **answerable** from the tool the qualified person is already sitting in | editor / platform | **3** | M/L | NAT-005, NAT-006. 🔴 D5. 🔴 The relay's `'relayed'` outcome + the missing drainer |
@@ -60,10 +60,13 @@ Then Tier 1 (**NAT-002/003 together**, NAT-004 whenever, NAT-005 last) answers R
 the look. Then **NAT-006 is the long pole** — it is a platform task with no editor dependency, so
 it can start in parallel with Tier 1 and should, because five tasks queue behind it.
 
-🔴 **NAT-014 can start on day one and should.** It has no dependency on anything in this phase, it
-is the only task whose defect is *currently telling users something untrue*, and three Tier-3 tasks
-cannot close until it does. It is also the smallest platform task here — the caller is the
-deliverable.
+🟡 **NAT-014 was started on 2026-08-19 (s5) and is three-quarters closed.** The caller exists —
+`nodegx-community@b41a94a` — so the machinery now runs. ⚠️ **It has still delivered nothing to a
+human**, and until it has, the three Tier-3 tasks behind it (NAT-009 AC5, NAT-010 AC5, NAT-013 AC4)
+should not be closed on the strength of it. What is left is not code: a real send to a real MX
+(AC2), the relay domain (AC4, **D10**), and running it on nexus-1 (AC7). 🔴 **Its own gate had a
+hole shaped like the defect** and only the red-verification found it — read that section before
+writing any "does a caller exist" check elsewhere.
 
 Tier 3 is four independent surfaces plus the flagship; **NAT-007 goes first** and the other three
 copy its shapes. **NAT-015 rides along with NAT-007** — same session, same renderer, or it becomes

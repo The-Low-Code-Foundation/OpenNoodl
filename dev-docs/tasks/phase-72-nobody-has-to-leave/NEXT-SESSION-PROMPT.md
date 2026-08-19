@@ -1,124 +1,106 @@
 # Next session — phase 72
 
-**Written 2026-08-19, fourth session.** **NAT-003 is fully done — all six ACs.** Tier 0 and Tier 1's
-palette work are built, committed (`268fe34d`) and now measured against the electron suite.
+**Written 2026-08-19, fifth session.** **NAT-014's code is done** — the outbox has a caller, and
+mail can now leave this platform. It has not yet left it: what remains needs a deploy and Richard.
 
 ## Read first, in this order
 
-1. [TASKS.md](TASKS.md) §The order — **NAT-014 is the highest-value unstarted task** and has been
-   for four handovers. NAT-004 and NAT-005 are the rest of Tier 1.
-2. [NAT-003](NAT-003-LESS-DARK-ON-DARK.md) §"AC6 closed" — only if you are touching the palette.
-   The live finding there is **unclosed by design** and described below.
+1. [NAT-014](NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md) §Status — the AC table, the one decision
+   inside the drain, and **§"the gate had a hole shaped like the defect"**. Read that third section
+   even if you never touch mail again; it generalises.
+2. [TASKS.md](TASKS.md) §The order — **NAT-006 is now the long pole**, and NAT-004/005 are the rest
+   of Tier 1.
 3. [README §4](README.md) — five rulings still open (D5, D6, D7, D8, D10).
 
-## ✅ The two things the last handover said were owed are done
-
-- **CodeMirror was driven in both themes**, plus the launcher and a dialog in light. Both read.
-- **`test:ci` was run, alone, seed 39393: `2849 specs, 10 failures` — exactly the floor, matched by
-  name** (4× AIX-006, 2× AI model registry, 1× AIX-011, 3× SUB-011). ✅ **`CanvasThemeNodeSchemes`
-  ran and passed** — the specific worry, since both sides of it were edited in one session.
 ## What happened this session
 
-**NAT-003 is fully done — AC6 closed**, and the drive that closed it found two things.
+**NAT-014 AC1, AC5 and AC6 are closed**, on `nodegx-community@b41a94a`. The caller is the
+deliverable and it now exists: `ops/install-mail.sh` installs a unit and a five-minute timer, run
+from **both** `provision.sh` and `deploy.sh` (install-backup.sh's split, for its reason — provision
+runs once and nexus-1 is long past it), driving `scripts/drain-outbox.ts`. `npm run mail:drain` for
+a human on the box.
 
-`leg003-drive` ("Kiln & Co."), code popout on the `Date Picker` script node, both themes, plus the
-launcher and a dialog in light. **CodeMirror reads in both themes**, and the syntax numbers are no
-longer computed-only: editor ground `#2b3440` / `#f2f4f6`, gutter `#333e4d` / `#e5e9ed`, line
-numbers 5.37 / 5.07, all matching the stylesheet exactly under `getComputedStyle`.
+Gates: `tsc --noEmit` clean, vitest **39 files / 1039 tests** green — the 38/1023 baseline plus this
+task's 16.
 
-### 🔴 The finding worth carrying: the palette is graded on a ground CodeMirror only half paints
+### 🔴 The finding worth carrying: my own gate had a hole shaped like the defect
 
-`PAIRS` grades every `--theme-color-syntax-*` token on **`bg-2`**. **The line the cursor is on is
-not `bg-2`.** `.cm-activeLine` is painted with `--theme-color-bg-hover`, `highlightActiveLine()` is
-registered, and **`bg-hover` is translucent** — so it composites over the ground rather than
-replacing it: `#2b3440` → **`#404853`**, `#f2f4f6` → **`#e5e7ea`**.
+The caller census reads `ops/`, `package.json` and the route tree **off disk**, because the import
+graph is what said everything was fine for weeks. Then the control removed the caller outright —
+`ExecStart=/bin/true`, npm script deleted — and **the gate stayed green**, because a *comment* in
+`install-mail.sh` mentions `scripts/drain-outbox.ts`.
 
-| | graded on `bg-2` | on the active line |
-|---|---|---|
-| dark | 21/21 pass | **8 of 21 sub-AA** (`control` 3.31 … `angle` 4.45) |
-| light | 21/21 pass | **10 of 21 sub-AA** (`meta`/`brace`/`number`/`type` 4.12 …) |
+A gate satisfied by prose about the mechanism is exactly the defect the task exists to fix, one
+level up. ✅ Comments are stripped now and `package.json` is parsed to its script commands, and it
+is **verified red — 4 of 16 fail with the defects reintroduced**. 🔴 **A green gate proved nothing
+here and the red run took four minutes.** Do this to any "does a caller exist" check you write.
 
-⚠️ **Pre-existing, and widened by NAT-003.** At `b668638e` it was **5/21 dark, 7/21 light**; after,
-8 and 10. Both halves are true and reporting either alone would be false.
+### 🔴 The second finding: the recovery `transport.ts` promises had no caller either
 
-✅ **The gate was never alpha-blind — it just had no row.** `Pair` already carries `over`,
-`ground()` composites through it, and it *throws* on a translucent background without one. My first
-write-up said the opposite and it is corrected in the task file; the lesson is to check whether the
-instrument already does the thing before proposing to build it.
+`transport.ts` says mail queued before the API key is installed *"still goes out afterwards,
+because `drainOutbox` accepts `'failed'` among its states"*. That is only true for a caller passing
+`states: ['queued','failed']`, and **nothing passed it** — the same defect one layer down.
 
-**A ratchet is now in `palette-contrast.spec.ts`** pinning the counts at 8/10, with a control that
-fails first if `bg-hover` ever stops being translucent (which would make every new row a silent
-duplicate of the `bg-2` table). It is green, it may only go down, and **it would have caught
-NAT-003's own widening.** 🔴 **It was verified RED**, not just green — tightening the ceilings to
-7/9 turns both rows red and prints the offending tokens; the counts and membership agree with an
-independent Python sweep over `colors.css`.
-
-### 🔴 The dialog in light found a defect dating to the initial commit
-
-`DeployPopup.tsx:18` set `backgroundColor: '#444444'` **inline**, since `b9c60b07` (2024-01-26). It
-passed as correct in dark because it is near the old `bg-4`; **only light exposes it** — ~295px of
-bare grey beside the single tab, with `color: #000` at 2.16:1 for anything landing on it.
-✅ Fixed to `var(--theme-color-bg-4)`, **verified live over CDP before editing source**.
-
-🔴 **It sat in the gap between two gates that each look complete**: `palette-copies.spec.ts` only
-sees literals that *name* a token; UIX-002's mop-up is scoped to *stylesheets*. This is an inline
-style object in a `.tsx`. That gap is the more useful half of the finding.
+Worse, the default path made it destructive: on a secure origin with no key, `UnconfiguredTransport`
+throws per message and `drainOutbox` marks each row `failed`, so one timer firing after a deploy
+that dropped the key would walk the **whole queue** into a state v1 never retries. ✅ The drain now
+**refuses before the first claim** — no row is touched, and the queue drains when the key arrives.
+That makes the promise true without adding a retry loop. `--retry-failed` stays a flag a human
+types, and a spec asserts the timer's unit does not contain it.
 
 ## Where to start
 
-**NAT-014 is the highest-value unstarted task and has been for four handovers.** No dependencies,
-blocks NAT-009/010/013, and it is still the only task whose defect is *currently telling users
-something untrue* — no mail leaves the platform; `drainOutbox` has no production caller.
+**NAT-006 is the long pole** — 19 pages, 15 routes, zero endpoints for people/profiles/RFPs/
+coaching/University, and five Tier-3 tasks queue behind it. It has no editor dependency.
 
-> 🔴 **Re-read `ops/` from disk before trusting NAT-014's trap section.** It says `ops/provision.sh`
-> installs two timers and that AC1 should put the drain timer "beside the backup timer" there.
-> **It is no longer there** — 67b moved the timers into `ops/install-backup.sh`
-> (`nodegx-community-backup.timer`, `nodegx-community-restorecheck.timer`), and `ops/` is five
-> scripts now. Its last trap ("backups live on the same box") **was fixed by 67b** (`d5f433e`,
-> `4c9c07d`) — do not re-flag it. The task file is a hypothesis about a directory another phase
-> edits, and it has decayed twice.
+**If you want to finish NAT-014 instead, it is now a deploy task, not a coding task:**
 
-⚠️ Several NAT-014 ACs need Richard: a real send to a real MX, a registered relay domain with
-SPF/DKIM/DMARC, and a claim made against the deployed box. **D10 is open.**
+1. **AC7 + AC2 together.** Deploy `nodegx-community` to nexus-1, confirm
+   `systemctl list-timers nodegx-community-drain.timer`, then make something notify a real address
+   and **read the email**. The deploy prints the drain status on every run (`==> outbox drain`).
+2. ⚠️ **Deploy from a pristine `git clone` of a named commit**, not the shared checkout — the
+   dirty-tree refusal is real and `deploy.sh` rsyncs the working tree. A sibling caught my
+   half-finished drainer that way today. `--allow-dirty` silences the check; a clone satisfies it.
+3. **AC3 needs Richard, not code.** The recommendation is written up in the task file: do **not**
+   build a second drainer (the relay's `Reply-To` is an alias on an unregistered domain with no
+   inbound path — that is D10) and do **not** retire the relay (its trigger is UNI-004 AC1's proof).
+   Instead let `'relayed'` queue an ordinary *"you have a new message on NodeGX"* notification,
+   which needs no relay domain at all. **Not implemented deliberately** — it changes delivery on the
+   privacy-sensitive path D10 is open about.
 
-**If you are continuing the LOOK instead:** NAT-004 (light by default on the web — small,
-independent) or NAT-005 (⚠️ *this is the vocabulary Tier 3 reuses; build it once here or four tasks
-reinvent it*).
-
-**If you want to close the active-line finding properly:** it is a decision, not a mechanical edit.
-Either re-tune the sub-AA tokens against the second ground, or — probably better — **give the active
-line its own token** instead of reusing the app-wide `bg-hover`, and pick an opacity the graded
-palette survives. Then lower the ratchet's ceilings and the rows go green as a floor rather than a
-cap.
+🔴 **Do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4 on the strength of this session.** The
+machinery runs; nothing has reached a human. Those close when somebody reads one of these emails.
 
 ## Loose ends
 
-- ⚠️ **Eight phase-72 files remain modified and uncommitted** — NAT-006/007/009/010/011/012/013 and
-  the README. They were in that state before this session and are not mine. Tracked, so a clean
-  will not take them, but they are somebody's unlanded edits. I committed **only** my four files by
-  explicit pathspec.
-- ⚠️ **`AskAboutNodeDialog.module.scss` still carries the stale `bg-4: #2c3540` comment** (now
-  `#3c4857`). Still another session's uncommitted work; still left alone for the same reason.
-- ⚠️ **~99 files still paint words with a fill role** (NAT-002's remainder, 202 declarations, sub-AA
-  in light). Unchanged. Wants its own task with a ratchet.
-- ⚠️ **"Friendly and welcoming" is still Richard's call on a rendered screen.** The arithmetic is
-  done; he has not seen the palette yet.
-- `leg003-drive` was opened by the drive, so it carries the three files opening writes and every
-  component is dirtied. It is a fixture outside the repo. The recents store was **not** written.
+- ⚠️ **`ops/deploy.sh`'s two NAT-014 blocks are in `f30677d`, a sibling's commit** — a
+  `git commit -- <path>` takes the working tree, so my unstaged edits to that file were swept in.
+  The tree is correct; rewriting to un-sweep is worse than the sweep. Not repaired, recorded.
+- ✅ **D19's ruling record is amended** (`phase-67/RULINGS.md`), dated, with the narrow statement:
+  the machinery runs and the condition is **still not met**.
+- ⚠️ **`src/lib/notifications.ts`' header claimed the relay "is already mailing this event"** —
+  false. Corrected in the source so the next reader inherits the gap rather than the claim. The
+  behaviour is unchanged and still wrong; that is AC3.
+- ⚠️ **Eight phase-72 files remain modified and uncommitted** (NAT-006/007/009/010/011/012/013 and
+  the README) — unchanged from the last two handovers, still somebody else's unlanded edits. I
+  committed only my own by explicit pathspec.
+- ⚠️ **`AskAboutNodeDialog.module.scss` still carries the stale `bg-4` comment.** Untouched, same
+  reason.
+- ⚠️ **~99 files still paint words with a fill role** (NAT-002's remainder). Unchanged.
+- ⚠️ **The active-line contrast finding from session 4 is still open by design** — 8/21 dark,
+  10/21 light sub-AA, ratcheted. See NAT-003.
 
 ## Verification notes that earned their place
 
-- 🔴 **An instrument pinned to line numbers reads a different file wrongly.** The first version of
-  the active-line sweep hard-coded `colors.css`'s current block boundaries, then ran against older
-  revisions where they differ — and reported a *dark* active line of `#eaecef` and "21/21 sub-AA".
-  Confident nonsense that looked like a finding. ✅ Brace-match the blocks and **print an
-  `[instrument]` line** so a mis-parse is visible rather than inferred.
-- 🔴 **A screenshot misled in both directions in one session.** It showed a real dark band in the
-  deploy dialog (true, and a two-year-old defect) *and* appeared to show the property panel's
-  dropdowns keeping light backgrounds in dark mode (false — a sweep for luminance > 0.6 returned
-  **zero**; what read as a light field was the colour swatch beside it).
-- ✅ **Prove a colour fix over CDP before editing source.** Not just tidiness here: editing
-  `noodl-editor`/`noodl-core-ui` source while the dev stack is up wedges `webpack-dev-middleware`
-  permanently, and only a relaunch clears it.
-- ✅ **`test-results.json` was 18 hours stale when this session started.** Deleted before the run,
-  per the standing rule; reading it would have shown a pass predating the entire palette.
+- 🔴 **`npx tsc --noEmit | head` reports `head`'s exit code, not tsc's.** Redirect to a file and
+  read the real status; a peer and I briefly disagreed about a typecheck failure for this reason.
+- 🔴 **A peer's report can be true and stale.** They saw a real `tsc` error in
+  `scripts/drain-outbox.ts` — during the four-minute window when I had the file deliberately broken
+  to verify the gate went red. ✅ Re-measure before acting on a relayed failure, and say which
+  window it came from.
+- ✅ **Reconcile the suite's file count against disk.** 39 ran, 42 exist — the three missing were a
+  peer's, two written *after* vitest built its file list. The arithmetic (38/1023 baseline + my 16)
+  is what made the numbers attributable rather than merely plausible.
+- ✅ **The shared docker Postgres on 55432 is one database.** `freshDb()` drops and recreates
+  `public`, so two sessions running DB tests at once corrupt both runs. Announce it; it cost
+  nothing and the peer held off twice.
