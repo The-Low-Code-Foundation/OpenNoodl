@@ -30,11 +30,24 @@ its exit code. **Nothing in this phase is blocked on Richard any more.**
 nexus-1 is at **`0cbd716`**. Five commits have landed on `main` since, and **nobody has deployed
 them** — the phase-72 session closed without deploying, deliberately.
 
-🔴 **`ops/deploy.sh:324` now invokes `ops/install-mail.sh`.** So **the next deploy of this repo, for
-any reason at all, installs phase 72's mail drain timer and starts sending mail from the live
-platform.** A 67b session shipping a one-line E7 change would turn that on without meaning to, and
-it would look like a normal deploy. ⚠️ **This is NAT-014's AC2/AC7 and it is theirs to verify** —
-if you deploy first, tell them, and read what `install-mail.sh` printed rather than assuming.
+🔴 **`ops/deploy.sh:324` now invokes `ops/install-mail.sh`**, so the next deploy of this repo — for
+any reason at all, including a one-line E7 change from this phase — **installs phase 72's mail drain
+timer**. ⚠️ **This is NAT-014's AC2/AC7 and it is theirs to verify**; if you deploy first, tell them,
+and read what `install-mail.sh` printed rather than assuming.
+
+✅ **AMENDED, same evening — the peer closed the sharp edge in `c245679`, and the amendment changes
+what you should DO.** The hazard was worse than "mail starts working": **the outbox was never
+empty.** `notify()` has written rows since UNI-014 and nothing has ever drained them, so a first
+drain would have released **an unknown pile of weeks-old notifications at once**, through the Brevo
+account `nodegx.io`'s waitlist shares. Now a backlog older than `MAIL_DRAIN_MAX_AGE_DAYS` (**7**)
+**refuses the whole drain — no row touched, nothing lost**, and `deploy.sh` prints the count and the
+oldest age in its `==> outbox drain` block. Release is `npm run mail:drain -- --send-stale`, typed
+by a human; the timer's `ExecStart` passes neither that nor `--retry-failed` (verified — it is the
+bare script) and a spec asserts the unit contains neither.
+
+🔴 **SO EXPECT YOUR FIRST DEPLOY TO PRINT A REFUSAL, AND DO NOT ROUTE AROUND IT.** It is the guard
+working, not a broken deploy. Releasing weeks-old mail is a decision with a person's name on it —
+if it needs taking, it is Richard's, not a flag you add to get a clean log.
 
 What else rides along: E7's two libraries (inert — nothing calls them yet) and a
 DeprecationWarning fix. Nothing schema-touching; there is no unapplied migration.
