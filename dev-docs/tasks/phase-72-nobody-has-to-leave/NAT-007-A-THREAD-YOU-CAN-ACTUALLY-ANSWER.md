@@ -58,13 +58,26 @@ arm, and it failed identically: both sides compile, TypeScript checks the declar
 ⚠️ The first was found by curling a live route; this one by looking for the field on the platform
 because a task needed it. **Neither was found by a test, and nothing would find the third.**
 
-### 🔴 The platform is LIVE, and every handover since UNI-001 says it is not
+### 🔴 The platform SERVES — on an older build, and both halves of that matter
 
 `https://community.nodegx.io/api/v1/community/threads` answers **200** with two real threads
 Richard posted from the editor this morning. The task files, `communityorigin.ts` and the last four
-handovers all say the platform is deployed nowhere. ✅ **This whole task's read half was therefore
-driven end to end against the real thing** rather than a stub — which is how the next two findings
-turned up.
+handovers all say the platform is deployed nowhere. ✅ **This task's read half was therefore driven
+end to end against the real thing** rather than a stub — which is how the next two findings turned
+up.
+
+🔴 **But the handovers are not wrong, and the first draft of this section said they were.**
+Measured in the same session: `/api/v1/community/people`, `/university` and `/rfps` — NAT-006's ten
+endpoints, committed s6 as `126a0b6` — **all 404**. The box is running a build from *before* this
+phase's work. *Live* and *undeployed* are claims about **different populations**: the running
+deployment, and the commits since it. A 200 from a route that predates the deployment does not
+refute a statement about the routes that came after it.
+
+✅ **So: read paths that predate the deployment can be driven for real** — `/me`,
+`/community/home`, `/community/threads`, `/bench/threads/:id`, which is exactly the set this task
+needed. 🔴 **NAT-008/009/010/011 must not assume NAT-006's endpoints answer.** They exist in the
+repo and 404 in production, and a surface built against them will read as broken for a reason that
+is not in its own code.
 
 ⚠️ And the live wire really does carry **`2026-08-19 11:19:27.206885+00`** — NAT-006's pooled-
 connection finding, in production, on the field every row and every post renders. `communityMeta`

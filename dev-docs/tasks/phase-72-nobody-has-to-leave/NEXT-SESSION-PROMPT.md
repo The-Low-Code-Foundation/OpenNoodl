@@ -24,13 +24,19 @@ and wait on D5. Gates on the committed tree: `typecheck:editor` and `typecheck:e
 `test:main` **268 suites / 4350 tests / 0 failures** · core-ui jest **28 / 521 / 0**. 97 new tests,
 **verified red 12 of 12**.
 
-### 🔴 The platform is LIVE, and four handovers in a row say it is not
+### 🔴 The platform SERVES — on a build from before this phase
 
 `https://community.nodegx.io/api/v1/community/threads` answers **200**, with two real threads
 Richard posted from the editor this morning. `communityorigin.ts`, the task files and every
-handover since UNI-001 say it is deployed nowhere. ✅ **Check it before you build a stub.** This
-task's whole read half was driven end to end against the real thing, and two of the findings below
-exist only because of that.
+handover since UNI-001 say it is deployed nowhere. ✅ **Check before you build a stub** — this
+task's read half was driven end to end against the real thing, and two findings below exist only
+because of that.
+
+🔴 **And the handovers are still right.** `/api/v1/community/people`, `/university` and `/rfps` —
+NAT-006's ten endpoints — **all 404** there. *Live* and *undeployed* are claims about different
+populations: the running deployment, and the commits since it. ⚠️ **NAT-008/009/010/011 must not
+assume NAT-006's endpoints answer in production.** Curl **two** routes, one old and one new, before
+believing either statement — including your own first reading.
 
 ⚠️ The live wire really does carry `2026-08-19 11:19:27.206885+00` — NAT-006's pooled-connection
 finding, in production, on the field every row and every post renders.
