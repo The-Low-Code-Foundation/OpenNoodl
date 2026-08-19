@@ -10,6 +10,7 @@ import React, { createContext, useContext, ReactNode } from 'react';
 
 import type { CommunityAccountState } from './components/CommunityAccountCard';
 import type { ConnectAgentResult, ConnectAgentState } from './components/ConnectAgentCard';
+import type { LauncherCommunityHostState } from './views/Community';
 import type { LauncherLearningData } from './components/LearningSection';
 import { LauncherProjectData } from './components/LauncherProjectCard';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from './hooks/useGitHubRepos';
@@ -25,7 +26,9 @@ import { NoodlGitHubRepo, UseGitHubReposReturn } from './hooks/useGitHubRepos';
 // Renaming `'learn'` out of existence would delete the retired catalogue, which
 // POL-002 deliberately kept compiled; reusing it would put the dead catalogue
 // behind the live tab. So both ids stay, and only one of them is reachable.
-export type LauncherPageId = 'projects' | 'learn' | 'learning' | 'templates' | 'github';
+//  - `'community'` — UNI-011 / D21's community tab. Added 2026-08-19 when Richard reversed D16:
+//                 the surface ships now, with whatever data exists including none.
+export type LauncherPageId = 'projects' | 'learn' | 'learning' | 'templates' | 'github' | 'community';
 
 export type LauncherLessonState = 'not-started' | 'in-progress' | 'completed';
 
@@ -102,6 +105,17 @@ export interface LauncherContextValue {
   onResetLearningLesson?: (lessonId: string) => void;
   /** Install a bundle from a folder — the account-free route D5 and UNI-010 both rely on. */
   onInstallLearningLesson?: () => void;
+
+  /**
+   * UNI-011 / D21 — the community tab's data, supplied by the editor.
+   *
+   * ⚠️ Absent in Storybook and in any build without the host hook, and the view says so rather
+   * than rendering an empty community. `undefined` here means *nobody wired this*, which is a
+   * different fact from every state inside `CommunityMirrorView` and must not be folded into it.
+   *
+   * ⚠️ **NOT `community`** — that key is UNI-001's sign-in card state. Caught by tsc.
+   */
+  communityMirror?: LauncherCommunityHostState;
 
   // GitHub OAuth integration (optional - for Storybook compatibility)
   githubUser?: GitHubUser | null;

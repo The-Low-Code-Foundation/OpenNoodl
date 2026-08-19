@@ -78,6 +78,10 @@ import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 import { UpdateManager } from '../../views/UpdateManager';
 import { LauncherSettingsDialog, LauncherSettingsSection } from './LauncherSettingsDialog';
 import { LAST_PROJECT_LOCATION_KEY, pickProjectLocation } from './projectLocationMemory';
+import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
+
+import { useCommunityMirror } from '@noodl-hooks/useCommunityMirror';
+
 import { useCommunityAccount } from './useCommunityAccount';
 import { useConnectAgent } from './useConnectAgent';
 
@@ -261,6 +265,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
    * still an account a person can have.
    */
   const community = useCommunityAccount();
+  // UNI-011 / D21 — the community TAB's data. ⚠️ A different fact from `community` above:
+  // that one is who you are, this one is what the community contains.
+  const communityMirror = useCommunityMirror();
 
   // GitHub OAuth state
   const [githubIsAuthenticated, setGithubIsAuthenticated] = useState(false);
@@ -1311,6 +1318,15 @@ export function ProjectsPage(props: ProjectsPageProps) {
         // UNI-001 AC2 — the sign-in card, and the chip plus sign-out once there is a session.
         // The editor is fully functional signed out; this adds a surface and gates nothing.
         community={community}
+        communityMirror={{
+          view: communityMirror.view,
+          isRefreshing: communityMirror.isRefreshing,
+          onRefresh: communityMirror.refresh,
+          onOpenThread: (externalId) => platform.openExternal(`${COMMUNITY_URL}/bench/${externalId}`),
+          onOpenArticle: (slug) => platform.openExternal(`${COMMUNITY_URL}/articles/${slug}`),
+          onOpenReplay: (slug) => platform.openExternal(`${COMMUNITY_URL}/replays/${slug}`),
+          onOpenCommunity: () => platform.openExternal(COMMUNITY_URL)
+        }}
       />
 
       <ProjectCreationWizard

@@ -70,7 +70,13 @@ export function usePersistentTab(defaultTab: LauncherPageId): [LauncherPageId, (
  * the same reason `shouldWriteDeepLinkUrl` and `isMacPlatform` are exported.
  */
 export function isValidPageId(value: string): value is LauncherPageId {
-  return value === 'projects' || value === 'learning' || value === 'templates' || value === 'github';
+  return (
+    value === 'projects' ||
+    value === 'community' ||
+    value === 'learning' ||
+    value === 'templates' ||
+    value === 'github'
+  );
 }
 
 /**

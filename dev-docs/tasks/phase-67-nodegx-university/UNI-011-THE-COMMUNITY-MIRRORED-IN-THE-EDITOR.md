@@ -1,10 +1,16 @@
 # UNI-011 — the community, mirrored in the editor
 
-**Surface:** editor + bridge · **Tier 2** (needs UNI-001's account and UNI-009's forum to exist
-first) · **Effort:** M/L · 🟡 **SLICES 1, 2a AND 2b BUILT 2026-08-16 — the transport, the boundary,
-and both editor-only criteria.** ✅ **AC2 and AC3 are MET and driven.** 🔴 **Everything still open in
-this task needs a forum or an issuer that does not exist**, so the remaining work is UNI-009's and
-UNI-001's, not this task's. D14, D15 and D16 all ruled; nothing is waiting on a decision.
+**Surface:** editor + bridge · **Tier 2** · **Effort:** M/L · 🟢 **SLICES 1, 2a, 2b AND 3 BUILT.**
+✅ **AC2, AC3 and AC5 MET and driven; AC1, AC4 and AC6 MET as far as the platform's data allows.**
+🔴 **THE MIRROR IS SURFACED — D16 WAS REVERSED BY [D21](RULINGS.md#d21) on 2026-08-19** at Richard's
+instruction: *"show the community tab immediately with no data, I'll start filling it with tutorials
+and whatnot myself."* The rail entry is live and unconditional.
+
+> 🔴 **The header below this line said, from 2026-08-16 to 2026-08-19, that *"everything still open
+> in this task needs a forum or an issuer that does not exist."* Both halves stopped being true
+> without this file being edited** — D19 built the forum on 2026-08-18 and UNI-001 E1 landed the
+> issuer on 2026-08-19 — and the task went on reading as blocked for a day after it was not.
+> ⚠️ *A blocking claim decays exactly as fast as the thing it names, and nothing re-checks it.*
 
 > ## Slice 1 — what was built, and the thing it found first
 >
@@ -392,6 +398,140 @@ defect report**, and recording it as one would be the over-claim this phase warn
 the under-claim. The objection is structural: the lesson renderer is safe because two passes run in
 a particular order, and that property can be removed by an edit while every test still passes.
 
+> ## Slice 3 — the mirror is SURFACED (2026-08-19, thirty-seventh session)
+>
+> 🔴 **D21 reverses D16.** The community panel is registered in the editor's rail, unconditionally
+> and **not** behind the experimental flag, and it renders whatever the platform has — including
+> nothing. Richard fills it.
+>
+> ✅ **DRIVEN 2026-08-19 against a live platform — 8 consequences written first, 10 observed, two
+> real bugs found and fixed. See the drive block below.**
+>
+> **Built:** [`CommunityPanel/`](../../../packages/noodl-editor/src/editor/src/views/panels/CommunityPanel/)
+> — `mirrorview.ts` (the view model, pure), `useCommunityMirror.ts` (the poll), `CommunityPanel.tsx`
+> (the view), registered at `order: 5.9` in
+> [`router.setup.ts`](../../../packages/noodl-editor/src/editor/src/router.setup.ts). **19 new
+> specs** (16 on `mirrorview`, 3 on the AC4 gate), `test:main` **257 suites / 3923 specs, 0
+> failures**, `typecheck:editor` **clean**, eslint clean on the touched files.
+>
+> ### 🔴 The finding: D16's gate had no production caller, and that is not a tidy-up note
+>
+> `entryPointFor()` — the function that *was* D16, in code — was called by **its own three specs
+> and nothing else**. *Build the caller*, **eighth instance in this phase**, and the first where
+> the uncalled function was a **ruling's enforcement**. ⚠️ The honest reading is that D16 was never
+> in force: it did not gate the surface, it **substituted** for building one. A ruling that names
+> a mechanism is a claim about a place, and the place is not checked by ruling it.
+>
+> ✅ Retired as a gate in its own header rather than deleted — the specs beneath it still prove the
+> client follows the API's `entryPoint` instead of recomputing the threshold, which is D15's rule
+> and is still live now the reading is shown as a **readout**.
+>
+> ### 🔴 The second finding: the gate had been applied wider than it was ruled
+>
+> D16 gates *the mirror* — a browsable forum. Its own closing paragraph names events, replays,
+> release notes and the shelf as the things that **cannot look empty**, and therefore as things
+> outside the gate. **None of them were built either.** A ruling about threads became a ruling
+> about the whole rail entry by nobody's decision, and no document recorded the widening.
+>
+> ### What protects the surface now the threshold does not
+>
+> D16's **design obligation** is the half D21 keeps, and it is now the only thing there is:
+> four sections, four independent empty lines, each saying what the section is *for*.
+> `mirrorview.ts` makes `loading`, `empty` and `unreachable` three separate states because
+> collapsing them renders "the community is dead" during the 300ms before the first response —
+> the `useCommunityAccount` `undefined`/`null` bug, in a new place.
+>
+> ### 🔴 D15's `absent` is the one case that draws NOTHING, and its spec is a control pair
+>
+> `absent` is how the platform answers an org-minor whose school has the community switched off,
+> and a panel saying *"the community is unavailable"* would narrate the door in the act of closing
+> it. ⚠️ **The trap: a `composeMirror` that returned `hidden` for anything less than a perfect `ok`
+> would satisfy that assertion and destroy the panel.** So every hidden assertion is paired with a
+> NOT-hidden assertion over a payload failing some other way — `unreachable`, `absent` forum,
+> empty, signed-out. Both mutations were run: blanking the D15 guard reds 2 specs, re-introducing
+> D16's gate reds 13.
+>
+> ⚠️ **The rail ENTRY is still drawn for a refused viewer, and that is a recorded gap rather than a
+> solved one.** `SidebarModel.register` is synchronous at editor setup and has no async predicate,
+> so the icon is there and the panel behind it is blank. It reveals the *word* "Community", not
+> any content — but D15's standard is that a pupil is not told a door exists, and an icon is a
+> door. **Owned by phase 67b.**
+>
+> ### The drive — 8 consequences written first, 10 observed, and **TWO REAL BUGS**
+>
+> Driven 2026-08-19 against `uni011-ac3-drive` (slice 2b's copy of ALPHA-007's hostile fixture),
+> signed in as **@richardosborne14**, against a **live** `community.nodegx.io`. 🔴 **The two extra
+> observations are the two bugs — neither reachable by any spec in this repo.**
+>
+> #### 🔴 BUG 1 — the transport had never made a real request
+>
+> Every section rendered *"Could not reach the community (TypeError: Failed to execute 'fetch' on
+> 'Window': Illegal invocation)"* against a platform answering **200**.
+> `CommunityApiClient` stored a bare `globalThis.fetch` as an object property, so `this.doFetch(…)`
+> handed it the client as its receiver.
+>
+> ⚠️ **The precise rule, because *"fetch needs a receiver"* is not it:** WebIDL substitutes the
+> global only when `this` is **undefined**. A bare `fetch(…)` is fine; a *method* call on anything
+> else is not. That is why `communitysignin.ts` worked untouched — it holds its fetch in a local
+> `const` and calls it bare. **One reference, two call shapes, opposite outcomes.**
+>
+> 🔴 **Unreachable by every spec BY CONSTRUCTION**: they all inject `fetchImpl`, the branch that
+> exists so the suite needs no network. The default had therefore never executed anywhere —
+> `AskAboutNodeDialog` hands off to the browser rather than posting — so **until this panel, this
+> client had never made a request**. *Build the caller*, **ninth instance**, and the first where
+> the thing with no caller was the transport itself.
+> ⚠️ **And it cannot be asserted by making a request**: jest here has no `Window`, so Node's fetch
+> tolerates the wrong receiver and a round-trip test passes on the broken code. The spec asserts
+> the stored function **is not** the global one, with an injected-impl control beside it.
+> ✅ Found independently by a second session within minutes, which is where the WebIDL wording came
+> from.
+>
+> #### 🔴 BUG 2 — the editor declared a shape the platform had deleted
+>
+> `GET /api/v1/community/threads` returns a bare `{threads: []}`. This editor still declared
+> `ForumState = {forum:'absent'; reason} | {forum:'present'; threads}`, and `ThresholdResponse`
+> still declared `source`. **D19 removed both from the platform** — `src/lib/mirror.ts:45,60,123`,
+> with a spec asserting the branch is absent from its own source — because we own the Bench, so an
+> empty Bench is empty and there is no second reading to distinguish.
+>
+> ⚠️ **A discriminated union whose discriminant never arrives makes every consumer fall into its
+> `else`**, so the panel rendered the right thing for the wrong reason and nothing failed. 🔴 **This
+> is D15's *"the two clients drift"* warning arriving in the TYPE layer rather than the rule layer,
+> where there is no test to fail because both sides compile.** Found by curling the live route, not
+> by reading either repo.
+>
+> #### The eight rows, as written beforehand
+>
+> | # | expected | observed |
+> |---|---|---|
+> | 1 | a **Community** rail entry with no experimental setting enabled | ✅ `community-panel`, between `versioncontrol-panel` and `backend-services-panel` |
+> | 2 | clicking it opens a panel titled **Community** | ✅ |
+> | 3 | three content headings | ✅ Discussions · Guides and tutorials · Call replays |
+> | 4 | each with its **own distinct** empty line | ✅ three different sentences, none shared |
+> | 5 | header reads **Reading as a guest** | ⚠️ **NOT TESTED AS WRITTEN** — a real session existed, so it read `@richardosborne14 · 0 points`. The signed-**in** arm was driven; the signed-out arm was not |
+> | 6 | unreachable renders as unreachable, **not** as "no discussions yet" | ✅ **BOTH ARMS OBSERVED** — the bug gave the unreachable arm, the fix gave the empty arm, same panel ten minutes apart |
+> | 7 | the health readout appears only if `home` answered | ✅ **BOTH ARMS** — absent while broken, `0 of 30 threads · 0 of 3 weeks · no replies yet (n=0)` after |
+> | 8 | no uncaught exception in the renderer | ✅ no `renderer:exception` in `.logs/dev.log` |
+>
+> 🔴 **Row 5 is recorded as not-tested rather than passed.** The machine had a session, and calling
+> that a pass for a criterion about the *signed-out* path would be the reading-that-fits this phase
+> warns about. The signed-out branch is covered by `mirrorview.test.ts`, not by this drive.
+>
+> ⚠️ **A near-miss worth recording about the INSTRUMENT.** The first read used
+> `querySelector('[data-test=panel-header]')` and got *"Components"* — the panel was open all along
+> and the sweep took the **first** of two headers. One more step and it would have been written up
+> as a blocked click. *A singular selector over a plural DOM reports the wrong element, not an
+> error.*
+
+> ### AC4's gate caught this build, which is what it is for
+>
+> `session-readers.test.ts` went red the moment `useCommunityMirror.ts` read the session: the
+> recorded set of readers is a **failing test**, not a lint. The row was added only after its third
+> column was answered — the token is a bearer header on reads that already work without one, plus
+> a handle in the header line — and the panel now carries the same structural proof the composer
+> does: the sign-in *pointer* is the known-firing gated arm, the three content sections and the
+> link out are proved ungated.
+
 ## Acceptance criteria
 
 > **Where slice 1 leaves these (2026-08-16).** 🟡 AC1 second half **met**; AC1 first half is
@@ -407,6 +547,21 @@ a particular order, and that property can be removed by an edit while every test
 > 🔴 **Every editor-only criterion is now met. What is left is the mirror**, and D16's gate on it
 > cannot be met until UNI-009 buys a forum: AC1's first half, AC4's sign-in half, and AC6's surface.
 > AC5 remains met in shape. 📋 **Nothing in this task is buildable without a forum or an issuer.**
+>
+> 🔴 **UPDATED 2026-08-19 (slice 3) — THE PARAGRAPH ABOVE IS OUT OF DATE IN EVERY CLAUSE, and it is
+> left standing because the shape of the mistake is the value.** *"Until UNI-009 buys a forum"* was
+> reversed by D19 on 08-18 (built, not bought); *"an issuer that does not exist"* was landed by
+> UNI-001 E1 on 08-19; and D16's gate itself was reversed by [D21](RULINGS.md#d21) the same day.
+> ⚠️ **Three separate blockers, none of which un-blocked itself in this file.**
+>
+> ✅ **AC1** — second half was already met; the first half is now met *for the threads the platform
+> has*, which is the most any client can do. ✅ **AC4** — reading signed out is met and the
+> structural proof is in `session-readers.test.ts`; the sign-in half points at the launcher, which
+> is where UNI-001 put the one device flow. ✅ **AC5** — met in fact, not just in shape:
+> `useCommunityMirror` is `poll()`'s first production caller, three outbound reads a minute, no
+> socket, no notification. 🟡 **AC6** — the surface renders and its non-forum content is composed
+> so it cannot be empty *by construction*; whether it is empty *in fact* is now Richard's to
+> change, which is the whole point of D21.
 
 1. A thread visible on the web is visible in the editor, from the same API, with the same content —
    and **no post body is ever rendered as HTML in the editor's own renderer** (proved by the chosen

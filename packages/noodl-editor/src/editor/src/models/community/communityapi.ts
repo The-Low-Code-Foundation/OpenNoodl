@@ -53,7 +53,13 @@ export type ThresholdResponse = {
     met: boolean;
     note?: string;
   };
-  source: { forum: 'absent' | 'present' };
+  /**
+   * 🔴 **REMOVED FROM THE PLATFORM BY D19 AND STILL DECLARED HERE UNTIL 2026-08-19.** Optional
+   * so the type stops lying about a live route: `src/lib/mirror.ts:123` records the field going
+   * with the branch that produced it. ⚠️ Nothing reads it; it is kept optional rather than
+   * deleted only so an older platform's payload still parses.
+   */
+  source?: { forum: 'absent' | 'present' };
 };
 
 export type MirrorReplay = {
@@ -81,9 +87,25 @@ export type ForumThread = {
   firstReplyMinutes: number | null;
 };
 
-export type ForumState =
-  | { forum: 'absent'; reason: string }
-  | { forum: 'present'; threads: ForumThread[] };
+/**
+ * 🔴 **THE `{forum: 'absent'}` ARM IS GONE, 2026-08-19, and it was found by driving rather than
+ * by reading.**
+ *
+ * The arm existed because `forum_threads` used to be written only by the Discourse webhook
+ * receiver, so an empty table meant *"nobody has bought a forum"* rather than *"nobody has
+ * posted"* — two facts that want opposite renderings. **D19 removed the situation**: we own the
+ * Bench, an empty Bench is empty, and the platform deleted the branch *and* a spec now asserts
+ * it is absent from its source (`src/lib/mirror.ts:45,60`).
+ *
+ * ⚠️ **This editor went on declaring the union for a day after the platform stopped producing
+ * it**, and nothing caught it: a discriminated union whose discriminant never arrives makes
+ * every consumer fall into its `else`, which rendered the right thing for the wrong reason. It
+ * surfaced only when the live route was curled during the slice-3 drive.
+ *
+ * 🔴 **This is D15's "the two clients drift" warning, arriving in the type layer rather than the
+ * rule layer** — and the type layer has no test that fails, because both sides compile.
+ */
+export type ForumState = { threads: ForumThread[] };
 
 export type MemberAssignment = {
   id: string;
@@ -156,7 +178,26 @@ export class CommunityApiClient {
   constructor(options: ClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, '');
     this.token = options.token ?? null;
-    this.doFetch = options.fetchImpl ?? ((globalThis as { fetch?: typeof fetch }).fetch as typeof fetch);
+    // 🔴 **`.bind(globalThis)`, AND THE BIND IS THE WHOLE FIX.** A bare `globalThis.fetch`
+    // reference loses its receiver, so `this.doFetch(...)` calls it with `this` === the client
+    // and the browser throws `TypeError: Failed to execute 'fetch' on 'Window': Illegal
+    // invocation`. Every read fails; the panel renders three "could not reach the community"
+    // rows against a platform that is up and answering 200.
+    //
+    // ⚠️ **The precise rule, because "fetch needs a receiver" is not quite it:** WebIDL
+    // substitutes the global only when `this` is **undefined**. A bare `fetch(...)` call is
+    // therefore fine, and a *method* call on any other object is not — which is why
+    // `communitysignin.ts` works untouched: it holds its fetch in a local `const` and calls it
+    // bare. Two call shapes, one reference, opposite outcomes.
+    //
+    // ⚠️ **Unreached by every spec in this repo BY CONSTRUCTION** — they all inject `fetchImpl`,
+    // which is the branch that exists so the suite needs no network. The default branch had
+    // therefore never executed anywhere: `AskAboutNodeDialog` hands off to the browser rather
+    // than posting, so until the community panel this client had **never made a real request**.
+    // *Build the caller*, ninth instance in this phase, and the first where the thing with no
+    // caller was the transport itself. Found by driving, on 2026-08-19, not by reading.
+    const fallbackFetch = (globalThis as { fetch?: typeof fetch }).fetch;
+    this.doFetch = options.fetchImpl ?? (fallbackFetch ? fallbackFetch.bind(globalThis) : (fallbackFetch as typeof fetch));
   }
 
   private async get<T>(path: string): Promise<Read<T>> {
@@ -301,6 +342,24 @@ export class CommunityApiClient {
  * own posture rather than a defensive default: *the entry point exists either way and always
  * goes somewhere real.* An editor that cannot reach the platform still has a working link to
  * a website.
+ */
+/**
+ * 🔴 **RETIRED AS A GATE, 2026-08-19 (D21). It is kept, and it is called by nothing.**
+ *
+ * D16 said the editor surfaces the community only past a threshold and otherwise opens the
+ * browser; this function was that decision, in code. **D21 reverses D16** — the community panel
+ * ships unconditionally — so there is nothing left for the return value to decide.
+ *
+ * ⚠️ **It was already called by nothing, and that is the finding rather than a tidy-up note.**
+ * On 2026-08-19 the only callers of this function were its own three specs. *Build the caller*,
+ * eighth instance in this phase, and the first where the uncalled function was a **ruling's
+ * enforcement** — so D16 did not gate the surface, it substituted for building one.
+ *
+ * ✅ **Not deleted**, deliberately. The specs beneath it prove the client follows the API's
+ * `entryPoint` rather than recomputing the threshold, which is D15's rule and is still live: the
+ * panel now shows all three components as a **readout**, and a client that recomputed them would
+ * disagree with the web the first time the numbers move. Retiring a check needs a higher bar than
+ * adding one, and "its ruling was reversed" clears the bar for the *gate*, not for the *parse*.
  */
 export function entryPointFor(reading: Read<ThresholdResponse>): 'in-editor-mirror' | 'browser' {
   return reading.outcome === 'ok' ? reading.value.entryPoint : 'browser';

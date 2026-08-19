@@ -68,8 +68,10 @@ const CONTRADICTORY_THRESHOLD: ThresholdResponse = {
     unreplied: 0,
     minimumSample: 10,
     met: false
-  },
-  source: { forum: 'absent' }
+  }
+  // ⚠️ `source: {forum: 'absent'}` was here until 2026-08-19. D19 removed the field from the
+  // platform along with the branch that produced it; the field is now optional on the type and
+  // this fixture no longer asserts a shape the live route cannot send.
 };
 
 describe('UNI-011 — the editor client', () => {
@@ -186,7 +188,9 @@ describe('UNI-011 — the editor client', () => {
       const routes: Record<string, Route> = {
         '/api/v1/me': { status: 200, body: PRESENT_ME },
         '/api/v1/community/home': { status: 200, body: {} },
-        '/api/v1/community/threads': { status: 200, body: { forum: 'absent', reason: 'x' } },
+        // The live shape, curled 2026-08-19. The body is never read here — this test counts
+        // methods — but a fixture is documentation, and this one described a dead branch.
+        '/api/v1/community/threads': { status: 200, body: { threads: [] } },
         '/api/v1/community/threshold': { status: 200, body: CONTRADICTORY_THRESHOLD },
         '/api/v1/me/assignments': { status: 200, body: { assignments: [] } }
       };
@@ -250,5 +254,34 @@ describe('UNI-011 — the editor client', () => {
       expect(read.outcome === 'ok' && read.value.threshold.entryPoint).toBe('in-editor-mirror');
       expect(read.outcome === 'ok' && read.value.replays).toHaveLength(1);
     });
+  });
+});
+
+/**
+ * 🔴 THE DEFAULT FETCH — the branch every other spec in this file exists to avoid.
+ *
+ * Added 2026-08-19 after a drive found `TypeError: Failed to execute 'fetch' on 'Window':
+ * Illegal invocation` in a running editor. A bare `globalThis.fetch` reference loses its
+ * receiver, so calling it as `this.doFetch(...)` hands it the client as `this` and the browser
+ * rejects it. Every read failed while the platform answered 200.
+ *
+ * ⚠️ **This cannot be asserted by making a request**, which is why it went unseen: jest here has
+ * no `Window`, so Node's `fetch` tolerates the wrong receiver and a round-trip test would pass
+ * on the broken code. The property that actually differs is **that the stored function is not
+ * the global one** — bound, not borrowed — and that is what is asserted.
+ */
+describe('UNI-011 — the transport the suite never used', () => {
+  it('binds the default fetch instead of borrowing the reference', () => {
+    const client = new CommunityApiClient({ baseUrl: 'https://x' });
+    const stored = (client as unknown as { doFetch: typeof fetch }).doFetch;
+    expect(stored).not.toBe(globalThis.fetch);
+  });
+
+  it('still uses an injected impl untouched — the control', () => {
+    // Without this arm the assertion above is satisfied by any wrapper, including one that
+    // silently wraps the injected impl too and breaks every other spec's identity check.
+    const impl = (async () => new Response('{}')) as unknown as typeof fetch;
+    const client = new CommunityApiClient({ baseUrl: 'https://x', fetchImpl: impl });
+    expect((client as unknown as { doFetch: typeof fetch }).doFetch).toBe(impl);
   });
 });

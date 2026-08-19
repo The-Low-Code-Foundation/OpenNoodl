@@ -26,6 +26,7 @@ import {
   LauncherPageId,
   LauncherProvider
 } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
+import { Community, type LauncherCommunityHostState } from '@noodl-core-ui/preview/launcher/Launcher/views/Community';
 import { GitHubRepos } from '@noodl-core-ui/preview/launcher/Launcher/views/GitHubRepos';
 import { Learning } from '@noodl-core-ui/preview/launcher/Launcher/views/Learning';
 import { LearningCenter } from '@noodl-core-ui/preview/launcher/Launcher/views/LearningCenter';
@@ -78,6 +79,16 @@ export interface LauncherProps {
   onGitHubDisconnect?: () => void;
 
   // GitHub repos for clone feature (optional - for Storybook compatibility)
+  /**
+   * UNI-011 / D21 — the community TAB's data.
+   *
+   * ⚠️ **`communityMirror`, not `community`.** `community` was already taken by UNI-001's
+   * sign-in card state (`CommunityAccountHostState`), and the collision was caught by tsc
+   * rather than by review. Two different facts about the same word: one is *who you are*, the
+   * other is *what the community contains*.
+   */
+  communityMirror?: LauncherCommunityHostState;
+
   githubRepos?: UseGitHubReposReturn | null;
   onCloneRepo?: (repo: NoodlGitHubRepo) => Promise<void>;
 
@@ -239,6 +250,7 @@ export function Launcher({
   onResetLearningLesson,
   onInstallLearningLesson,
   projectOrganizationService,
+  communityMirror,
   githubUser,
   githubIsAuthenticated,
   githubIsConnecting,
@@ -343,6 +355,10 @@ export function Launcher({
         return <Projects />;
       case 'github':
         return <GitHubRepos />;
+      // UNI-011 / D21 — the community, natively. Richard's call on 2026-08-19: not an embedded
+      // web page, the same content in launcher chrome, over the same API the web uses.
+      case 'community':
+        return <Community />;
       // POL-002: unreachable — the Learn tab, the deep link and the persisted
       // tab id all stopped producing `'learn'`. Kept so `LearningCenter` and
       // the lesson pipeline behind it stay compiled and one line from coming
@@ -387,6 +403,7 @@ export function Launcher({
         onOpenLearningLesson,
         onResetLearningLesson,
         onInstallLearningLesson,
+        communityMirror,
         githubUser,
         githubIsAuthenticated,
         githubIsConnecting,

@@ -114,7 +114,9 @@ const ALLOWED: Record<string, string> = {
   'noodl-editor/src/editor/src/pages/ProjectsPage/useCommunityAccount.ts':
     'the launcher card adapter — draws the offer or the chip, gates no project and no feature',
   'noodl-editor/src/editor/src/views/DialogLayer/components/AskAboutNodeDialog/AskAboutNodeDialog.tsx':
-    'the composer: CHOOSES A TRANSPORT (direct post vs the browser hand-off, which needs no account) and adds a sign-in offer. Withholds nothing — asserted structurally below'
+    'the composer: CHOOSES A TRANSPORT (direct post vs the browser hand-off, which needs no account) and adds a sign-in offer. Withholds nothing — asserted structurally below',
+  'noodl-editor/src/editor/src/hooks/useCommunityMirror.ts':
+    'UNI-011/D21 community panel: the token is a BEARER HEADER on reads that already work without one, plus the handle in the header line. Reading is UNI-011 AC4 and is ungated — asserted structurally below'
 };
 
 describe('the instrument itself — controls before any absence is claimed', () => {
@@ -164,9 +166,9 @@ describe('AC4 — the session has a recorded set of readers', () => {
  * ⚠️ `${session.handle …}` inside a template literal is a substitution, not a guard; the `$`
  * is excluded so a label does not read as a gate.
  */
-function sessionGuardedRegions(code: string): Array<[number, number]> {
+function sessionGuardedRegions(code: string, opener: RegExp = /\{\s*session\b/g): Array<[number, number]> {
   const regions: Array<[number, number]> = [];
-  const opener = /\{\s*session\b/g;
+  opener.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = opener.exec(code)) !== null) {
     const start = match.index;
@@ -186,10 +188,10 @@ function sessionGuardedRegions(code: string): Array<[number, number]> {
   return regions;
 }
 
-function isGated(code: string, needle: string): boolean {
+function isGated(code: string, needle: string, opener?: RegExp): boolean {
   const at = code.indexOf(needle);
   if (at === -1) throw new Error(`the anchor ${needle} is not in the source any more — this spec is blind, fix it`);
-  return sessionGuardedRegions(code).some(([from, to]) => at > from && at < to);
+  return sessionGuardedRegions(code, opener).some(([from, to]) => at > from && at < to);
 }
 
 const composer = stripComments(
@@ -225,5 +227,47 @@ describe('AC4 — the composer withholds nothing, proven against the real source
 
   it('and neither is the Cancel button, so the dialog is never a trap', () => {
     expect(isGated(composer, 'onClick={onClose}')).toBe(false);
+  });
+});
+
+/**
+ * UNI-011 / D21 — the second reader outside the launcher, added 2026-08-19.
+ *
+ * 🔴 **The question ALLOWED's third column demands, answered before the row was added:** does the
+ * community panel withhold anything without an account? **No.** Discussions, guides and replays
+ * are read from `/api/v1` routes that answer a request with no bearer header — UNI-011 AC4,
+ * *"reading works signed out, because it does on the web"* — and the token only adds `standing`,
+ * which is not a withheld feature but a fact that does not exist for a person with no account.
+ *
+ * ⚠️ **The gate this panel DOES have is not a session gate**, and conflating the two would be
+ * the flattening this phase keeps paying for. `{ surface: 'hidden' }` comes from D15 — the
+ * platform saying the community does not exist for this viewer — and it is about *who the
+ * viewer is*, not about *whether they are signed in*. `mirrorview.test.ts` owns that one, with
+ * its own control pair.
+ */
+const communityPanel = stripComments(readFileSync(join(EDITOR_SRC, 'views/panels/CommunityPanel/CommunityPanel.tsx'), 'utf8'));
+
+/** The panel's conditionals are on `view.viewer`, not on a bare `session`. */
+const VIEWER_OPENER = /\{\s*view\.viewer\b/g;
+
+describe('AC4 — the community panel withholds nothing, proven against the real source', () => {
+  it('sees the signed-out sign-in POINTER as gated — the known-broken arm', () => {
+    // 🔴 The control. This sentence is legitimately inside `{view.viewer === false && (…)}`:
+    // it is the one thing that should only appear to somebody without an account. If the
+    // checker cannot see THIS gate it cannot be trusted to report the sections ungated.
+    expect(isGated(communityPanel, 'Sign in from the launcher', VIEWER_OPENER)).toBe(true);
+  });
+
+  it('and the three content sections are NOT inside any viewer branch', () => {
+    expect({
+      discussions: isGated(communityPanel, 'title="Discussions"', VIEWER_OPENER),
+      guides: isGated(communityPanel, 'title="Guides and tutorials"', VIEWER_OPENER),
+      replays: isGated(communityPanel, 'title="Call replays"', VIEWER_OPENER)
+    }).toEqual({ discussions: false, guides: false, replays: false });
+  });
+
+  it('and neither is the link out to the web community', () => {
+    // The capability a person with no account has on the web, kept in the editor.
+    expect(isGated(communityPanel, 'label="Open community.nodegx.io"', VIEWER_OPENER)).toBe(false);
   });
 });

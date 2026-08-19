@@ -36,6 +36,10 @@ interface HeaderTab {
 // projects (Richard, 2026-08-17). `'learn'` is still unreachable.
 const HEADER_TABS: HeaderTab[] = [
   { id: 'projects', label: 'Projects' },
+  // UNI-011 / D21 — second, not last. Richard's framing on 2026-08-19 was that the community
+  // should be visible from the launcher *without going looking for it*; a tab in fourth place
+  // beside GitHub is a tab nobody clicks. Projects stays first because it stays the default.
+  { id: 'community', label: 'Community' },
   { id: 'learning', label: 'Learning' },
   { id: 'templates', label: 'Templates' },
   { id: 'github', label: 'GitHub' }

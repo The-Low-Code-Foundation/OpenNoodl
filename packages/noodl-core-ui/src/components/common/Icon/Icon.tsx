@@ -146,6 +146,7 @@ export enum IconName {
   /** Lucide `unfold-horizontal` — POL-003. Widen the side panel. */
   UnfoldHorizontal = 'unfold_horizontal',
   User = 'user',
+  Users = 'users',
   UI = 'ui',
   VerticalSplit = 'vertical_split',
   ViewportDiagonalArrow = 'viewport_diagonal_arrow',

@@ -36,6 +36,7 @@ import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
 // import kept commented so the panel code (one release cycle) still compiles.
 // import { DataLineagePanel } from './views/panels/DataLineagePanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
+import { CommunityPanel, CommunityPanel_ID } from './views/panels/CommunityPanel';
 import { DocsPanel, DocsPanel_ID } from './views/panels/DocsPanel';
 import { ExecutionHistoryPanel } from './views/panels/ExecutionHistoryPanel';
 import { WorkflowsPanel, WorkflowsPanel_ID } from './views/panels/WorkflowsPanel';
@@ -244,6 +245,37 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // code-editor call sites read this one surface, which is what keeps them
   // identical without any of them being edited.
   installCodeAuthoringContext();
+
+  // UNI-011 / 🔴 D21 (2026-08-19) — the community, in the rail.
+  //
+  // D16 said this entry point opens the BROWSER until the community clears 30 threads, three
+  // consecutive weeks with a call and a median first reply under 24h. **D21 reverses it**: the
+  // panel ships now, empty if empty, and Richard fills it.
+  //
+  // ⚠️ NOT `experimental`, unlike its neighbours, and that is the ruling rather than an oversight
+  // — a tab behind a settings toggle is not "immediately", and D14's objective is ONE surface a
+  // user does not have to go looking for.
+  //
+  // 🔴 The gate D16 prescribed was never wired to anything: `entryPointFor()` had no production
+  // caller, only its own specs. *Build the caller*, eighth instance in this phase, and the first
+  // where the uncalled function was a ruling's enforcement.
+  SidebarModel.instance.register({
+    id: CommunityPanel_ID,
+    defaultWidth: 380,
+    name: 'Community',
+    description:
+      'Questions asked from the editor, written guides, and replays of the weekly call — from ' +
+      'community.nodegx.io, in the editor. Reading works signed out; sign in from the launcher to post.',
+    order: 5.9,
+    // 🔴 Richard's call, 2026-08-19: the PEOPLE, not the question mark. A speech bubble names the
+    // mechanism (threads); this names who is on the other end, which is what the tab is for.
+    //
+    // ⚠️ `Users` had to be ADDED — the set had `User` (one person, a legacy 25-grid FILLED export)
+    // and `Group` (a grid of dots from the layout toolset, not people at all). Neither is a
+    // plural-people glyph, and `Group` would have been wrong in a way only a screenshot shows.
+    icon: IconName.Users,
+    panel: CommunityPanel
+  });
 
   SidebarModel.instance.register({
     experimental: true,

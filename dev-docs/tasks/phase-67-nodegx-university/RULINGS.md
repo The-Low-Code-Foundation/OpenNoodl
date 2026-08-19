@@ -4,7 +4,7 @@
 future phase re-litigates one. Supersedes the "rulings queue" in [README.md](README.md), which now
 points here.
 
-**Status: the queue is EMPTY — D19 ruled 2026-08-18; D18 ruled 2026-08-17; D15, D16 and D17 ruled 2026-08-16.** 🔴 **D19 REVERSES A PRIOR RULING** (UNI-009's *"bought, not built"*) and **amends D14 consequence 5**, which was derived from it — read both before scoping anything that touches the forum. It
+**Status: the queue is EMPTY — D21 ruled 2026-08-19 and REVERSES D16; D20 and D19 ruled 2026-08-18; D18 ruled 2026-08-17; D15, D16 and D17 ruled 2026-08-16.** 🔴 **D19 REVERSES A PRIOR RULING** (UNI-009's *"bought, not built"*) and **amends D14 consequence 5**, which was derived from it — read both before scoping anything that touches the forum. It
 reopened 2026-08-15 with D14; all three successors are now closed and every one was ruled **as
 recommended**, which is recorded because a queue emptied by agreement is weaker evidence than one
 emptied by argument — see the note under D17. D1 and
@@ -50,11 +50,12 @@ and is **amended 2026-08-15** by D14 (an editor *client*; the build does not mov
 | **D13** | Coaching delivery (LearnBook) | **Phase 68, platform repo, D1 stack — not NodeGX**; reuses UNI-005's roster and UNI-006's state machine; NodeGX rebuild is a later tranche · ⚠️ **amended 08-15 by D14** — an editor *client* is in scope; the *build* does not move | 08-14 |
 | **D14** | Community surface: web, editor, or both | 🔴 **BOTH — the web is canonical and public; the editor MIRRORS it against the same API.** Editor-only features are the transition incentive, not a different feature set | **08-15** |
 | **D15** | Community for org-minor accounts | **Default OFF; org admin may enable READ-ONLY.** Never write, never post, in either client | **08-16** |
-| **D16** | The never-empty launch threshold | **30 threads · 3 consecutive weeks with a call held · median first reply < 24h.** Until met, the entry point opens the browser | **08-16** |
+| ~~**D16**~~ | ~~The never-empty launch threshold~~ | 🔴 **REVERSED 08-19 by D21.** The threshold gated a surface that was never built, and the gate was never wired to anything. **The community panel ships unconditionally, empty if empty**, and Richard fills it | ~~**08-16**~~ → **08-19** |
 | **D17** | Curriculum hosting — where lessons are served from | **Part of the platform API under D14; GitHub Pages as v0.** 🔴 A lesson must stay installable from a **local directory with no origin**, whatever else changes | **08-16** |
 | **D18** | One accent hue across the products | 🔵 **AZURE** (`#4da3ff`) — the community site adopts the editor's, against the recommendation. ⚠️ The **landing page keeps teal** and becomes the odd one out; that is chosen, not inherited | **08-17** |
 | **D19** | Forum: bought or built | 🔴 **BUILT — reverses UNI-009's "bought, not built".** Not *a forum*: the **Q&A surface for NodeGX artifacts**, where a post is a graph with a question attached. Discourse's generic 80% is a **chosen absence**. ⚠️ **Conditional on email landing first** | **08-18** |
 | **D20** | The close's four open decisions — where it runs, what sends its mail, where artefacts live, where the remainder goes | **nexus-1** (beside the other three, additively) · **Brevo** · **Hetzner Object Storage** · **a phase 67b**. 🔴 **Amends D1's "Docker on Hetzner"** — see below | **08-18** |
+| **D21** | Does the in-editor community surface wait for the community to be busy | 🔴 **NO — REVERSES D16.** The tab ships now, with whatever data exists including none. **One surface, not two**: the editor is the source of truth and a browser hand-off is a second surface, not a safer one | **08-19** |
 
 ---
 
@@ -676,7 +677,25 @@ an org tenant, against a rule that lives in the API.
 
 ---
 
-## D16 — the never-empty threshold · ✅ RULED 2026-08-16
+## D16 — the never-empty threshold · 🔴 REVERSED 2026-08-19 by D21 · ~~RULED 2026-08-16~~
+
+> 🔴 **REVERSED 2026-08-19 (session 37) by Richard. Read [D21](#d21) first; everything below this
+> block is the ruling as it stood from 2026-08-16 to 2026-08-19 and is kept because D16's own text
+> said to amend here with a date rather than reinterpret quietly.**
+>
+> **What the reversal keeps.** The *design obligation* in the last paragraph of this section is
+> **not** reversed and is now the only thing protecting the surface: the mirror's home must be
+> composed of things that exist whether or not anyone posted — replays, articles, standing, the
+> shelf. D16's own words: *"the threshold protects the launch; the composition protects every quiet
+> week after it."* With the threshold gone, the composition is all there is.
+>
+> **What the reversal discards.** The gate itself, and with it the browser hand-off as the rail's
+> destination.
+>
+> ⚠️ **The threshold reading is not deleted** — `/api/v1/community/threshold` still computes all
+> three components with their `n` visible, and the panel shows them. It stopped being a **gate** and
+> became a **readout**, which is the thing point 2 below actually asked for. `entryPointFor()` is
+> retired as a gate in the same edit and says so in its own header.
 
 **Ruled: the editor surfaces the community only once all three of these hold — 30 threads, three
 consecutive weeks in which a call was held, and a median first reply under 24 hours. Until then the
@@ -712,6 +731,64 @@ alternative to it. The mirror's home must be *structurally* incapable of looking
 replays, release notes and the prefab shelf exist whether or not anyone posted this week. **The
 threshold protects the launch; the composition protects every quiet week after it.** Building only
 the threshold ships a surface that passes the gate and then decays.
+
+---
+
+<a id="d21"></a>
+
+## D21 — the community tab ships now · ✅ RULED 2026-08-19
+
+**Ruled: the in-editor community panel is surfaced immediately, with whatever data exists — including
+none. D16's threshold is reversed. Richard fills the surface with tutorials and content himself.**
+
+**Richard's framing, 2026-08-19, and it is the ruling:**
+
+> *"Let's reverse the ruling, show the community tab immediately with no data, I'll start filling it
+> with tutorials and whatnot myself."*
+
+### Why D16 was wrong, and it is not the reason D16 anticipated
+
+D16 defended against **a tab that advertises a dead community**. That is a real failure and the
+ruling was not foolish. What it missed is the objective the whole community track exists to serve,
+which D14 states and D16 does not mention: **one source of truth — the editor.** Measured against
+*"is the community busy?"* the gate is sound. Measured against *"how many surfaces does a NodeGX
+user have to hold in their head?"*, the gate **creates** the problem it was reasoning about, because
+the browser hand-off it prescribes **is a second surface**. D16 never framed the cost that way, so
+it never got weighed.
+
+🔴 **Three facts found on 2026-08-19 that were not available on 2026-08-16, and each of them moves
+the ruling on its own:**
+
+1. **D19 reversed *"bought, not built"*.** When D16 was ruled the forum was a Discourse licence
+   nobody had bought, so *"30 threads"* was a gate on a purchase. The Bench is built,
+   `POST /api/v1/bench/threads` accepts a thread, and the threshold is now a gate on **Richard
+   writing things** — which is exactly what he is offering to do, and cannot do without a surface.
+2. 🔴 **The gate was never wired to anything.** `entryPointFor()` in
+   [`communityapi.ts`](../../../packages/noodl-editor/src/editor/src/models/community/communityapi.ts)
+   had **no production callers** — only its own three specs. *Build the caller*, **eighth instance
+   in this phase**, and the first where the uncalled function is a **ruling's enforcement**. ⚠️ The
+   honest reading is that D16 was never in force: it did not gate the surface, it **substituted**
+   for building it.
+3. **The gate was applied wider than it was ruled.** D16 gates *the mirror* — a browsable forum. It
+   says nothing about events, replays, release notes, standing or the prefab shelf, and its own
+   closing paragraph names those as the things that **cannot look empty**. All of them went
+   unbuilt too. A ruling about threads became a ruling about the whole rail entry, by nobody's
+   decision.
+
+### What this ruling does NOT license
+
+⚠️ **"Empty is fine" is a decision about *this* surface at *this* moment, not a general permission.**
+It holds because the person who will fill it is the person who ruled it, and he ruled it the day he
+started. It stops holding the moment the panel is shipped to strangers with nothing in it and nobody
+committed to changing that. 🔴 **The composition obligation carried over from D16 is what makes the
+difference survivable** — the panel must be built so that content arriving makes it fuller, not so
+that content arriving is the only thing that makes it work.
+
+✅ **And the threshold survives as a readout.** All three components are still computed with their
+`n` visible, which is what D16 point 2 was actually protecting: *"a threshold nobody can see the
+approach to is a threshold that gets crossed by rounding."* Nobody is crossing it now — but the
+numbers are the only honest answer to *"is this working?"*, and they are worth more visible than
+they ever were as a gate.
 
 ---
 
