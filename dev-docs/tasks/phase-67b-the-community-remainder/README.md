@@ -164,12 +164,27 @@ bucket `nodegx`, prefix `nodegx-community/`** — not against a stand-in:
 🔴 **The claim is now "we can restore", not "we have backups"** — and the difference was measured
 rather than assumed, on the copy that would survive the box.
 
-⚠️ **STILL OPEN: THE DUMP IS UNENCRYPTED IN THE BUCKET.** `BACKUP_ENCRYPT_PASSPHRASE` is empty, so
-the object holds real accounts and email addresses in the clear at rest. The mechanism is built and
-tested both ways; turning it on is one line in `~/nodegx-community-deploy.env` plus a re-run of
-`ops/install-backup.sh`. **The passphrase must then be written down somewhere that survives the
-laptop** — the weekly restore check tests the passphrase every Sunday, which removes the *drift*
-failure but not the *where is it kept* one.
+### 🔴 DECIDED 2026-08-19 by Richard — the dump is UNENCRYPTED at rest, on purpose
+
+Asked and answered the same session: *"leave it empty for now."* `BACKUP_ENCRYPT_PASSPHRASE` is
+empty, so the object in the bucket holds real accounts and email addresses in the clear.
+
+⚠️ **This is a decision on the record, not an unanswered question** — do not re-open it as though
+nobody had chosen. What makes it defensible today: the bucket is private, and nexus-1 is already the
+same trust boundary as the database itself, so encrypting the dump while the box holds the plaintext
+would move the risk rather than remove it.
+
+🔴 **What would change the answer**, so a future session recognises it rather than re-deriving it:
+the bucket gaining a second reader (E7's artefacts are going into the same bucket under a different
+prefix), the credentials being shared with anything outside this laptop and that box, or the account
+table growing past the handful of people it holds now. **The mechanism stays built and tested both
+ways** — turning it on is one line in `~/nodegx-community-deploy.env` plus a re-run of
+`ops/install-backup.sh`, and the weekly restore check already exercises the decrypt path.
+
+⚠️ **The cost that made it worth asking, kept here because it does not go away:** an encrypted
+backup whose passphrase nobody can find fails on the one day nobody has time to debug it. The Sunday
+check proves the passphrase still *works*; it cannot prove anyone else can *find* it. **If this is
+ever switched on, the passphrase has to live somewhere that survives this laptop.**
 
 **What was owed, and is now supplied** (same shape as E7 and E10):
 
