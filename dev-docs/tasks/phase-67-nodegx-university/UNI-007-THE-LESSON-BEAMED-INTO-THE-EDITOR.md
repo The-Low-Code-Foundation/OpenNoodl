@@ -433,6 +433,63 @@
 > runs on pathing metadata only, never pupil project content. LEARN-005's "verified zero external
 > data transmission" is a network-level claim and no account ruling relaxes it.
 
+> ## ✅ AC1 IS MET — intake → path, and the projection cache (2026-08-19, session 43)
+>
+> Platform repo, `nodegx-community`. **48 test files / 1164 tests / 0 failures**, `tsc` clean.
+>
+> | Shipped | Where |
+> |---|---|
+> | **The intake** — three closed-answer questions, one current set per learner | `src/lib/pathing.ts`, `learner_intakes` (0016) |
+> | **Tier-0 branching** — the visual-logic learner never meets the function-node lesson; `data` / `custom-nodes` tracks join the path when asked for | `pathFor()` |
+> | **Tier-1 projection, cached per (learner, concept)** | `src/lib/projection/projector.ts`, `concept_projections` (0016) |
+> | **The real projector** — Sonnet, per this task's own scope line | `src/lib/projection/anthropic.ts` |
+> | Routes | `GET/POST /v1/me/intake`, `GET /v1/me/path`, `POST /v1/me/path/project` — `docs/API.md` §5c |
+> | Gates | **29 specs**, `tests/uni007-intake-and-pathing.test.ts` |
+>
+> ### 🔴 The two assertions the criterion actually turns on, and both were verified RED first
+>
+> 1. **"Exactly one model call ever" is only provable concurrently.** Check-then-call-then-store
+>    passes a sequential test perfectly and double-bills under any real load: two requests both
+>    find no row, both call, and the second overwrites the first with an equally plausible answer —
+>    nothing errors and the output is indistinguishable. So the `(account_id, concept)` **primary
+>    key is claimed before the model is called**, and the loser reads the row. Measured: with the
+>    defect deliberately reintroduced, the eight-concurrent-request spec went red and **the
+>    sequential one still passed**, which is the evidence for the claim rather than the theory.
+> 2. **Omitting a lesson orphans whatever depended on it.** The capstone needs the code-mapping
+>    lesson; the visual-logic learner does not get that lesson. Omit it naively and the path's last
+>    step depends on a lesson that is not in the path — and the path still *renders* perfectly. So
+>    an omitted lesson hands its own `needs` down, and the invariant is asserted directly over all
+>    **18** intake combinations, not on the two the criterion names.
+>
+> ### 🔴 UNI-022 AC4 caught the first implementation, and it was right to
+>
+> The first `pathFor` hardcoded three lesson slugs. UNI-022's sweep — *no `.ts` under `src/` may
+> name a lesson* — failed, and it was not a naming quibble: it meant **branching a learner past a
+> lesson was a code change**, which is the same defect as adding a lesson being one. Fixed by
+> moving the rules into `curriculum.json` (`requires` / `includedBecause` / `omittedBecause` /
+> `final`); `pathFor` now names no lesson at all. ⚠️ **A guard from a neighbouring task found a
+> design error in this one** — the sweep was not written for UNI-007 and is what made it visible.
+>
+> ### D10, made structural in two places
+>
+> - **Off for org-minor accounts**, decided by reading the account's **own kind** rather than by
+>   trusting a caller's argument, and decided **before** the row is claimed — so the day D10
+>   changes for an account there is something left to project into. Paired with a known-firing
+>   control: an individual account through the identical code does call.
+> - **Pathing metadata only, never pupil content.** The projector is handed two finished strings
+>   and never sees the learner, the account or the intake object. The answer set is closed — no
+>   free-text question — and `learner_intakes_answers_are_tokens` (0016) enforces it *in the
+>   schema*, because "the route validates it" is the sentence that stops being true when somebody
+>   adds a second writer. Registered in UNI-005's inventory with a probe.
+>
+> ### ⚠️ What this does NOT change
+>
+> **§1b's wall stands: all fifteen lessons are still `in-writing`, so every path is a path to
+> nothing installable.** That is deliberate and visible rather than worked around — `ready`/`total`
+> and a `truth` sentence are computed per path from each lesson's own standing, and a spec asserts
+> the curriculum really is all `in-writing` so the sentence cannot rot. **Curriculum hosting is
+> UNI-007 §11's, still open, and it is the real blocker on "a stranger learns NodeGX".**
+
 ## Premise
 
 The pedagogy ruling (R8): Loom-*style* — an intake conversation works out what the learner
@@ -503,9 +560,11 @@ against `node-catalog.json` — neither currently does.
 
 ## Acceptance criteria
 
-1. Intake → path: two learners with different intakes (visual-logic vs function-node) receive
-   visibly different paths from the same spine; the projection for one (learner, concept) pair
-   makes exactly one model call ever (the cache spec — Loom's proven guarantee, re-proven here).
+1. ✅ **MET 2026-08-19.** Intake → path: two learners with different intakes (visual-logic vs
+   function-node) receive visibly different paths from the same spine; the projection for one
+   (learner, concept) pair makes exactly one model call ever (the cache spec — Loom's proven
+   guarantee, re-proven here). ⚠️ Re-proven **concurrently**: the sequential form of that spec
+   passes with the defect in place. See the AC1 block above.
 2. A lesson pulled into the Learning folder appears in the launcher's Learning section with its
    metadata, absent from the normal picker flow per D5; reset re-pulls a clean copy.
 3. ✅ **MET 2026-08-14.** "Check my work" grades a deliberately-wrong and a correct attempt
