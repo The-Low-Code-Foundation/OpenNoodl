@@ -310,6 +310,19 @@ instead of silencing it, and is how 0015 actually went out. ⚠️ **This genera
 `deploy.sh` ships the working tree of a checkout that more than one session writes to, so
 *"my tree is clean"* is a claim with a lifetime measured in minutes.
 
+🔴 **And the same afternoon, the inverse.** A later fix was committed as
+`git commit -m ... -- ops/deploy.sh` — a pathspec **specifically to avoid sweeping a peer's
+staged files**, which is the habit this repo already learned. It guards the wrong direction:
+**a pathspec commit takes the WORKING TREE**, so it swept ~74 lines of the peer's *unstaged*
+NAT-014 wiring into a commit titled as a one-line deprecation fix. The commit is incoherent on
+its own — it invokes `ops/install-mail.sh`, which is still untracked, so a clone of it rsyncs and
+then dies at 127 — while the **working tree is correct**. ✅ **Left alone deliberately**: the peer
+committed the missing half within the hour, and rewriting history to un-sweep is worse than the
+sweep. ⚠️ **`git add <paths>` and `git commit -- <paths>` protect against opposite hazards, and
+neither protects against both.** The only thing that does is the index technique — build the
+blob from `HEAD` plus your own hunks and `update-index` it — which is worth the four lines when a
+peer is live in the same file.
+
 **3. A test that asserts a message is not a test that asserts the deploy survived.** The
 *"reports an unstamped host as unstamped"* case passed against the broken script, because the script
 printed that exact line **and then died**. It now asserts the deploy carries on. Same shape as the
