@@ -204,3 +204,128 @@ painting a gradient that follows no theme.
 - ⚠️ **"Friendly and welcoming" is still Richard's call on a rendered screen.** The arithmetic is
   done and the proposal is shipped; the warmth of the neutral ramp is not something this task can
   mark itself green on.
+
+---
+
+## AC6 closed — 2026-08-19, fourth session
+
+**All six acceptance criteria are now met.** The three surfaces the previous session named as unseen
+were driven: **CodeMirror in both themes**, **the launcher in light**, **a dialog in light**.
+Project `leg003-drive` ("Kiln & Co.", 20 `JavaScriptFunction` nodes), code popout opened on the
+`Date Picker` script node.
+
+The syntax numbers are no longer computed-only. Measured off the running renderer, they agree with
+the stylesheet exactly: editor ground `#2b3440` dark / `#f2f4f6` light, gutter `#333e4d` / `#e5e9ed`,
+line numbers 5.37 / 5.07. **Both themes read.**
+
+### 🔴 The finding: the syntax palette is graded on a ground CodeMirror only half paints
+
+**`PAIRS` grades every `--theme-color-syntax-*` token on `bg-2`. The line the cursor is on is not
+`bg-2`.** `codemirror-theme.ts:83` paints `.cm-activeLine` with `--theme-color-bg-hover`, and
+`highlightActiveLine()` is enabled (`codemirror-extensions.ts:357`) — so this is live, not dead CSS.
+
+🔴 **`bg-hover` is translucent** — `rgba(255,255,255,0.1)` dark, `rgba(23,32,43,0.06)` light — so it
+does not replace the ground, it **composites over it**: `#2b3440` → **`#404853`**, `#f2f4f6` →
+**`#e5e7ea`**. Confirmed against `getComputedStyle` in the running editor, both themes.
+
+⚠️ **The gate is not alpha-blind — it simply has no row for this pair.** `Pair` already carries an
+`over` field, `ground()` composites a translucent token over the opaque surface named by it, and it
+**throws** if a translucent background is graded without one (`palette-contrast.spec.ts:335-348`);
+two rows already use it. So the capability was there the whole time and the missing thing is two
+`describe.each` blocks, not an instrument. **That makes this cheaper to close than it first looked**
+— and it is a sharper version of the same lesson: the hole was a missing *row*, exactly as the
+absent syntax rows were before this task added them.
+
+| | on `bg-2` (graded) | on the active line (ungraded) | sub-AA |
+|---|---|---|---|
+| **dark** | all 21 ≥ 4.5 | **8 of 21 below 4.5** | `control` 3.31, `comment` 3.37, `invalid` 3.38, `string-special` 3.39, `keyword` 3.40, `meta` 3.40, `string` 3.49, `angle` 4.45 |
+| **light** | all 21 ≥ 4.5 | **10 of 21 below 4.5** | `meta`/`brace`/`number`/`type` 4.12, `bracket`/`property-special`/`comment` 4.15, `invalid` 4.33, `angle`/`control` 4.41 |
+
+Live confirmation on the real document, which contains a subset of the palette: **4 of the 11
+distinct colours dark** (`if` 3.31, regex 3.39, `function` 3.40, string 3.49) and **3 of the 9
+light** (`{` 4.12, `[` 4.15, `if` 4.41) are sub-AA on the highlighted line.
+
+⚠️ **This is not NAT-003's defect, and it is not untouched by NAT-003 either.** Measured across
+revisions with one instrument: at `b668638e` (before this task) it was **5/21 dark, 7/21 light**;
+after, **8/21 and 10/21**. The hole pre-dates the task by a long way; **the task widened it by three
+tokens in each theme** and should say so.
+
+✅ **Worth carrying: an instrument pinned to line numbers reads a different file wrongly.** The first
+version of this sweep hard-coded `colors.css`'s current block boundaries and, run against older
+revisions, reported a *dark* active line of `#eaecef` and "21/21 sub-AA" — nonsense that looked like
+a finding. Derive the blocks by brace-matching. The tell was a light hex under a dark label, the
+same shape as [[a-theme-flip-does-not-apply-in-the-same-eval]]'s consistent-and-wrong label.
+
+**Not fixed here.** Re-tuning ten tokens against a second ground is a palette change with a taste
+call attached, and there is a second, probably better lever: **give the active line its own token**
+instead of reusing `bg-hover`, tuned so the graded palette still holds. Either way it is a decision,
+not a mechanical fix.
+See the recommendation in the handover.
+
+### 🔴 The dialog in light found a defect that has been there since the initial commit
+
+`DeployPopup.tsx:18` set **`backgroundColor: '#444444'` inline** — a literal, on the dialog's own
+container. `git log -L` dates it to **`b9c60b07`, the initial commit (2024-01-26)**. It has never
+followed the theme.
+
+It survived because it is close enough to the *old* dark `bg-4` (`#2c3540`) to pass as correct, and
+**the only theme that exposes it is light**, which is the one surface class nobody had looked at.
+In light it renders as a grey slab: the dialog is 400px wide, the tab strip occupies 105px, and the
+remaining **~295px sits bare beside the single "Self Hosting" tab**. Anything unstyled landing on it
+inherits `color: #000` — **2.16:1**.
+
+🔴 **It is invisible to both gates that exist.** `palette-copies.spec.ts` compares literals that
+*claim to be a token's value*; this one names no token. UIX-002's legacy-hex mop-up is scoped to
+**stylesheets** — this is an inline style object in a `.tsx`. The defect sits in the gap between
+them, which is the more useful half of this finding.
+
+✅ **Fixed** — `var(--theme-color-bg-4)`. Verified live *before* editing source, by patching the
+inline style over CDP and re-screenshotting: the band goes. (Editing editor source while the dev
+stack is up wedges `webpack-dev-middleware` permanently, so proving the fix in the running app first
+is not just tidiness.)
+
+### One reading corrected by measuring
+
+The dark screenshot appeared to show the property panel's colour dropdowns keeping **light**
+backgrounds while the panel went dark. A sweep for controls with background luminance > 0.6 returned
+**zero**. They are dark; what read as a light field was the colour *swatch* beside each one.
+A screenshot is not a measurement, in this direction too.
+
+### Drive notes
+
+- `leg003-drive` was opened, so it now carries the three files opening writes and every component is
+  dirtied. It is a drive fixture outside the repo. The recents store was **not** written — the
+  project was already listed, so no backup/restore was needed.
+- Two recents share the display name "FIX003 Drive" (`fix016-s50-drive` and `fix003-drive`).
+  `leg003-drive` was chosen partly because "Kiln & Co." matched exactly one card of 49.
+
+### The electron suite, which had never been run against this palette
+
+`npm run test:ci`, alone on the machine, seed pinned to **39393**:
+**`Jasmine: 2849 specs, 10 failures`** — **exactly the floor of 08-19 (`853c1da3`), matched by name**:
+
+4× `AIX-006 style vocabulary` · 2× `AI model registry` · 1× `AIX-011 — update mode is judged against
+its own base` · 3× `SUB-011 expression parameters — the validator stays silent`.
+
+✅ **`CanvasThemeNodeSchemes.test.ts` ran and passed.** That was the specific worry: it compares
+CanvasTheme's derived node scheme against `nodelibraryexport.ts`'s literals within 16 per channel,
+and **both sides were edited in the same session**. They were re-derived by the same `mix()`, so
+they *should* have agreed — but that was a calculation. It is now a measurement.
+
+⚠️ `test-results.json` was **18 hours stale** when this session started (00:18 for an 18:28 run) and
+was deleted first; the run above is confirmed by a fresh 18:39 mtime, not by an exit code. The exit
+code was **1**, which is also what the clean floor exits — the summary line is the readout.
+
+`npm run typecheck:editor`: **0 errors**. `npx jest tests-unit/nat-001/palette-contrast.spec.ts`:
+**185/185**, including the six new rows.
+
+### The ratchet this session added
+
+`palette-contrast.spec.ts` now grades every syntax token on `bg-hover` **composited over `bg-2`**,
+and pins the sub-AA count at **8 dark / 10 light** — the count may only go down.
+
+🔴 **It was verified to fail, not just to pass.** Tightening the ceilings to 7/9 turns both rows red
+and prints the offending tokens with their ratios; the counts and the membership agree with an
+independent Python sweep over `colors.css`. A ratchet that has never been seen red is a hypothesis.
+It carries a control of its own: if `bg-hover` ever stops being translucent, the composited ground
+equals `bg-2` and every row becomes a silent duplicate of the table above — that control fails first.

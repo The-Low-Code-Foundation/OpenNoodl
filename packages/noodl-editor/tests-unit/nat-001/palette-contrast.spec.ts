@@ -697,3 +697,68 @@ describe('the light arm is a different palette from the dark arm', () => {
     expect(resolveToken(themeTokens('light'), token)).toBe(inLight);
   });
 });
+
+/**
+ * NAT-003 AC6 — the ground CodeMirror paints on the line the cursor is on.
+ *
+ * 🔴 **THE SYNTAX TABLE ABOVE GRADES `bg-2`, AND THE ACTIVE LINE IS NOT `bg-2`.**
+ * `codemirror-theme.ts:83` paints `.cm-activeLine` with `--theme-color-bg-hover`, and
+ * `highlightActiveLine()` is registered (`codemirror-extensions.ts:357`), so every line a person
+ * edits is read on a *different* surface from the one the gate checks.
+ *
+ * `bg-hover` is translucent — `rgba(255,255,255,0.1)` dark, `rgba(23,32,43,0.06)` light — so it
+ * does not replace the ground, it composites over it: `#2b3440` → `#404853`, `#f2f4f6` → `#e5e7ea`.
+ * Both confirmed against `getComputedStyle` in the running editor on 2026-08-19.
+ *
+ * ⚠️ **This is a RATCHET, not a floor, and the difference is deliberate.** Eight dark and ten light
+ * syntax tokens are below 4.5 on this ground *today*. Asserting 4.5 outright would land a red gate;
+ * asserting nothing is how the number grew in the first place. **Before NAT-003 it was 5 and 7** —
+ * that task widened it by three in each theme with every existing row still green. So this pins the
+ * count where it now stands and lets it move one way.
+ *
+ * ✅ The real fix is a decision, not a mechanical edit: either re-tune the tokens against a second
+ * ground, or give the active line its own token instead of reusing the app-wide `bg-hover` and pick
+ * an opacity the graded palette survives. Whoever takes it lowers the ceilings below.
+ */
+describe.each(['dark', 'light'] as const)('the %s syntax palette on the highlighted line', (theme) => {
+  const CEILING = { dark: 8, light: 10 }[theme];
+  const SYNTAX = Object.keys(themeTokens(theme))
+    .filter((token) => /^--theme-color-syntax-/.test(token))
+    .sort();
+
+  const onActiveLine = (token: string): Pair => ({
+    what: `syntax: ${token} on the active line`,
+    fg: token,
+    bg: '--theme-color-bg-hover',
+    over: '--theme-color-bg-2',
+    min: 4.5,
+    why: 'the line the cursor sits on is bg-hover composited over the editing surface'
+  });
+
+  it('🔴 CONTROL: the active line is a DIFFERENT ground from the one the table above grades', () => {
+    // Without this, a `bg-hover` that stopped being translucent would make every assertion below
+    // a silent duplicate of the bg-2 rows — passing, and measuring nothing.
+    const composited = grade(onActiveLine(SYNTAX[0]), theme).bgHex;
+    const plain = grade({ ...onActiveLine(SYNTAX[0]), bg: '--theme-color-bg-2', over: undefined }, theme).bgHex;
+    expect(composited).not.toBe(plain);
+  });
+
+  it('found the syntax tokens at all', () => {
+    expect(SYNTAX.length).toBeGreaterThanOrEqual(15);
+  });
+
+  it(`no more than ${CEILING} tokens are sub-AA there — the count may only go down`, () => {
+    const failing = SYNTAX.filter((token) => grade(onActiveLine(token), theme).ratio < 4.5).map(
+      (token) => `${token.replace('--theme-color-syntax-', '')} ${grade(onActiveLine(token), theme).ratio.toFixed(2)}`
+    );
+
+    const verdict =
+      failing.length <= CEILING
+        ? 'passes'
+        : `${failing.length} syntax tokens are below 4.5 on the active line in ${theme}, up from ${CEILING}: ${failing.join(
+            ', '
+          )} — a palette change made the code editor worse on the one line every reader is looking at`;
+
+    expect(verdict).toBe('passes');
+  });
+});

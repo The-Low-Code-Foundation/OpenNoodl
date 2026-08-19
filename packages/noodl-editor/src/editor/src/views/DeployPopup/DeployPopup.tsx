@@ -15,7 +15,11 @@ function DeployPopupChild() {
     <div style={{ width: 400 }}>
       <div
         style={{
-          backgroundColor: '#444444',
+          // NAT-003: this dialog is an elevation surface and must follow the ramp.
+          // It was `#444444` from the initial commit — near enough to the old dark
+          // `bg-4` to pass unnoticed, and a grey slab in light, where ~295px of it
+          // sits exposed beside the single tab.
+          backgroundColor: 'var(--theme-color-bg-4)',
           position: 'relative',
           maxHeight: `calc(90vh - 40px)`,
           overflowY: 'overlay' as React.CSSProperties['overflowY'],
