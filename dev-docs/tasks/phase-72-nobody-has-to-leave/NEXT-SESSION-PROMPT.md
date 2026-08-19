@@ -1,117 +1,94 @@
 # Next session — phase 72
 
-**Written 2026-08-19, seventh session.** **NAT-005 landed and Tier 3's vocabulary now exists.**
-The launcher's Community tab and the editor's rail panel draw from one set of components, rows
-carry the metadata the view model always had, and there is a way to grade a React component in
-this repo's jest. **NAT-004 is the only unstarted Tier-1 task.** Two rulings still block writes.
+**Written 2026-08-19, eighth session.** **NAT-007's reading half landed, and it was driven against
+a platform everybody thought was undeployed.** A thread now opens *in place* in the launcher tab
+and the editor's rail, renders every post, and says honestly what it cannot do. **The writes —
+reply and accept — are the whole of what is left, and they are one ruling away.**
 
 ## Read first, in this order
 
-1. [NAT-005](NAT-005-THE-TAB-THAT-IS-A-LIST-OF-GREY-LINES.md) §Status — the AC table and four
-   findings. **Read the "this runner CAN grade a React component" one before writing any spec for
-   NAT-007..011**; it is the instrument, and it comes with one design constraint.
-2. `packages/noodl-core-ui/src/components/community/` — the vocabulary itself. `CommunityRow`,
-   `CommunitySectionBody`, `CommunitySection`, `communityMeta.ts`, two densities.
-3. [NAT-006](NAT-006-THE-API-THE-EDITOR-CANNOT-SEE.md) §Status and `nodegx-community/docs/API.md`
-   §4 and §6 — still the contract every Tier-3 task reads.
+1. [NAT-007](NAT-007-A-THREAD-YOU-CAN-ACTUALLY-ANSWER.md) §Status — the AC table and six findings.
+   🔴 **Read it before NAT-008/009/010/011**: it names the D15 branch order all four need, and the
+   two ways this client has now silently outlived the platform's payload.
+2. [NAT-015](NAT-015-A-GRAPH-YOU-CAN-PULL-INTO-YOUR-PROJECT.md) §Status — **it is blocked, and not
+   for the reason anyone expected.**
+3. `packages/noodl-editor/src/editor/src/models/community/threadview.ts` — the pattern a Tier-3
+   surface's view model follows, and the six-branch state machine with its order argued.
 4. [TASKS.md](TASKS.md) §The order, then [README §4](README.md) — five rulings open (D5, D6, D7,
    D8, D10).
 
 ## What happened this session
 
-**NAT-005 AC1, AC2, AC3, AC5, AC6 and AC7 are closed** — `5c5bb08f`. Gates on the committed tree:
-`test:main` **263 suites / 4210 tests / 0 failures**, core-ui jest **28 / 521 / 0**,
-`typecheck:editor` and `typecheck:editor-tests` clean. 51 new tests, **verified red 6 of 6**.
+**`2d3960a7`.** AC1, AC2, AC3 and AC8 close; AC5 half-closes; AC4, AC6 and half of AC7 are writes
+and wait on D5. Gates on the committed tree: `typecheck:editor` and `typecheck:editor-tests` clean ·
+`test:main` **268 suites / 4350 tests / 0 failures** · core-ui jest **28 / 521 / 0**. 97 new tests,
+**verified red 12 of 12**.
 
-### 🔴 The finding worth carrying: this jest CAN grade a React component
+### 🔴 The platform is LIVE, and four handovers in a row say it is not
 
-`tests-unit/` has assumed that no DOM means components are ungradeable, so component-shaped
-questions get **source analysis** — read the `.tsx` as text, match strings. That is blind to a
-rename, and it cannot tell a component that *drew nothing* from one that was *never called* —
-which is exactly what a D15 assertion is asking.
+`https://community.nodegx.io/api/v1/community/threads` answers **200**, with two real threads
+Richard posted from the editor this morning. `communityorigin.ts`, the task files and every
+handover since UNI-001 say it is deployed nowhere. ✅ **Check it before you build a stub.** This
+task's whole read half was driven end to end against the real thing, and two of the findings below
+exist only because of that.
 
-A React element is a plain object and a hook-free component is a plain function from props to
-elements. **`tests-unit/support/renderElements.ts`** walks one: no DOM, no `react-dom`, no jsdom.
-Both arms of AC5 now come out of one call to one component with one field different.
+⚠️ The live wire really does carry `2026-08-19 11:19:27.206885+00` — NAT-006's pooled-connection
+finding, in production, on the field every row and every post renders.
 
-✅ **Use it for NAT-007..011.** The constraint it asks for is small and worth it: keep the pure
-half of a surface separate from the half that reads context — `CommunityTab(props)` beside
-`Community()` — because a hook throws under this walk. ⚠️ It sees no effects, no layout, no paint.
-⚠️ And anything importing `common/Icon` cannot be loaded by this runner at all (`require.context`),
-which is why the shared row has no leading glyph.
+### 🔴 A field this client declared, the platform has never sent
 
-### 🔴 A gate said no to me twice, and was right both times
+`ForumThread.externalId` was a Discourse leftover. Both surfaces built their browser hand-off out
+of it, so **every thread anybody clicked opened `/bench/undefined`.** Second time in this file:
+the `{forum: 'absent'}` arm went the same way. Both sides compile, TypeScript checks the
+declaration against its *consumers* and never against the wire, and the value arrives `undefined`
+rather than as an error. ⚠️ **Neither was found by a test, and nothing would find the third.**
 
-**AC7 went red on a comment** — the sentence *"No `dangerouslySetInnerHTML`, ever"* in the module
-note of a file that does not use it. Comments are stripped now (`stripComments`, in the same
-support file, reusable). The dangerous direction is the other one: a file that both uses the
-construct and documents the prohibition reads identically to a naive checker, and the prose is
-what makes it look reviewed.
+### 🔴 The port list renders twice — and fixing it here would be the bug
 
-**NAT-001's PAIRS table rejected two rows** I added at `min: 1.09`. It grades **words at 4.5 and
-shapes at 3** and refuses any other bar on purpose; an elevation step is neither, and a third bar
-would have loosened the guard for every future row. Those two claims moved to the elevation test.
-⚠️ **Five existing PAIRS rows also had to be *corrected*, not appended to**: this task moved the
-tab up a ground (cards on `bg-1`), so familiar foregrounds were asserting grounds nothing paints
-any more. **The trigger for editing a row is the same as for adding one — a new pairing.**
+The post body says the ports in prose and the `node_excerpt` attachment says the same ports as
+structured rows. Eleven ports, twice, one screen. **The web does it too** — measured on the same
+thread, not assumed. So this editor is mirroring faithfully, and a unilateral fix would make the
+editor disagree with the web, which is the one thing D15 says a mirror may not do. Left alone
+deliberately; it is one decision on the composer/renderer pair.
 
-### 🔴 My red-verification harness reported a false GREEN
+### 🔴 NAT-015 cannot be built, and the reason is upstream of it
 
-Five of six injected defects fired by name; the sixth read as *passed*. The spec was fine. The
-harness counted failures by regexing `Tests: N failed` out of jest's output, and the mutation left
-the file unparseable — so the **suite failed to run**, that line never appeared, and it reported
-zero failures. **An unparseable file and a clean pass rendered identically.** Re-run as valid code
-it failed immediately. ✅ Give a mutation harness its own control.
-
-### ⚠️ Storybook does not start in this repo, and 99 stories cannot be opened
-
-`npm run start:storybook` fails before serving anything, and did before this task. I fixed three
-causes (an `import.meta` shim that makes esbuild emit ESM; `@storybook/addons`, gone since SB7; an
-MDX1 stories glob SB8 cannot parse) and **did not narrow the fourth**: all 99 `.stories.tsx` fail
-with `Module parse failed: Unexpected token (1:12)` at their first `import type`. A `webpackFinal`
-helper that replaced an absent `include` instead of widening it looked like the answer, is a real
-defect, was fixed — **and was not the cause.** The file says so in both halves.
-
-That is why **NAT-005 AC4 is the one criterion still open**. The four states were looked at through
-a purpose-built esbuild harness instead (real components, real compiled stylesheets, both themes,
-both densities, plus `hidden` drawing nothing beside the others as its control) — which answers
-AC1 but not AC4's actual claim, that a designer can open these.
-
-⚠️ **Worth weighing before Tier 3 writes four surfaces' worth of stories.** A story nobody can
-render is a story nobody wrote — it is how this tab spent a whole phase as two inline style
-objects without anyone seeing it outside the running app.
+**Nothing anywhere composes a `graph_fragment`.** The kind is in the enum, the database accepts
+it, the web renders it — and the editor *refuses* to emit one, on purpose, with a UNI-016 spec
+asserting it never will. NAT-015's own first sentence is false and the file that made it false says
+so. Building the producer means publishing an **unredacted** graph, which is P67's *"a port name is
+user content whenever its type is"* at full strength — a ruling, a consent surface, and *then* the
+S/M this task was scoped as. ✅ **The seam NAT-007 was told not to split is built and specced**, so
+nothing is lost by the delay.
 
 ## Where to start
 
-**NAT-007 is the flagship and its read half is unblocked** — threads have an endpoint, and the row,
-the four states and the metadata formatters it needs now exist. What it still cannot do is reply,
-which is AC5/D5. The honest shape is *build the whole reading experience, land the reply behind the
-ruling*, with **NAT-015 in the same session on the same renderer**.
+🔴 **D5 is now the highest-value decision in the phase, and it is cheaper than it looks.** One
+fact, measured this session: the platform **already accepts the editor's device-flow bearer token**
+on `POST /api/v1/bench/threads/:id/posts` — `apiViewer` reads the header, `answerThread` asks
+nothing more. So D5 is not *"can it work"*, it is *"should an identity-scoped token post, or does
+it need a re-consent step"*. Answering it closes **NAT-007 AC4, AC6 and AC7's second direction**,
+plus NAT-006 AC5, plus the write half of NAT-009 and NAT-010. Nothing else in this phase unlocks
+that much.
 
-**NAT-004** (light by default on the web, S, `nodegx-community`) is now the only unstarted Tier-1
-task and is independent of everything above — a good session on its own, or a warm-up.
+**If Richard is not available to rule**, the next best session is **NAT-008 (the people are the
+product)** or **NAT-011 (the University beside your project)**: both are read-only surfaces, both
+are unblocked, and both now have the vocabulary *and* the view-model pattern to copy. **NAT-004**
+(light by default on the web, S, `nodegx-community`) is still the only unstarted Tier-1 task.
 
-**If you would rather close something completely, two are one decision each:**
-
-- 🔴 **D5 — what authorises a write from the editor?** `docs/API.md` §6 has the three writes
-  specified. Closes NAT-006 AC5 and unblocks four Tier-3 tasks.
-- 🟡 **NAT-005 AC4** — one webpack-loader question in `.storybook/main.ts`, and 99 stories come
-  back with it.
-
-🔴 **Do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4 on the strength of NAT-006.** They close
-when mail reaches a human — NAT-014 AC2/AC7, still needing a deploy.
+🔴 **Still do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4 on the strength of NAT-006.** They
+close when mail reaches a human — NAT-014 AC2/AC7.
 
 ## Loose ends
 
-- ⚠️ **Eight phase-72 files remain modified and uncommitted** from previous sessions (NAT-006/007/
-  009/010/011/012/013 and the README) — they carried somebody else's unlanded edits and a pathspec
-  commit would sweep them. Everything of mine is committed: `5c5bb08f`, by pathspec.
-- ✅ **The shared 55432 Postgres does not need queueing** — `create database <yours>` and pass
-  `DATABASE_URL`. 🔴 **A peer found the trap in doing so**: `nat014-outbox-drain.test.ts` spawned
-  the drainer with a hard-coded `DEFAULT_DATABASE_URL` while `freshDb()` honoured `DATABASE_URL`,
-  so it seeded one database and drained another — **20/20 on the shared DB, 11 of 20 red on an
-  isolated one**, all reading as "the drainer sent nothing". Fixed in `f9e7151`.
-- ⚠️ The peer also landed UNI-006's bridge; the platform floor is now **47 files / 1132 tests / 0
-  failures**, after `npm run build`.
-- ⚠️ **`AskAboutNodeDialog.module.scss`, the ~99 fill-role files, and the active-line contrast
-  finding** are unchanged from the last four handovers.
+- ⚠️ **Eight phase-72 files remain modified and uncommitted from previous sessions** (NAT-006/009/
+  010/011/012/013 and the README). They carried somebody else's unlanded edits before this session
+  and still do — my status sections were **inserted** into NAT-007/015 rather than written over
+  them. Everything of mine is committed by pathspec.
+- ⚠️ A peer landed TUT-001 work in `BackendServicesPanel`, `tsconfig.tests-main.json` and
+  `tests-unit/tut-001/` during this session. Untouched, and the `test:main` figures above include
+  their suites.
+- ⚠️ **AC4's rail-and-launcher drive did not include a thread with an accepted answer**, because no
+  thread on the live platform has one. The state is specced; it has not been looked at.
+- ⚠️ **Storybook still does not start** (NAT-005 AC4), the ~99 fill-role files and the active-line
+  contrast finding are unchanged from the last five handovers.
