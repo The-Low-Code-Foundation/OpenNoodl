@@ -1,105 +1,101 @@
 # Next session — phase 72
 
-**Written 2026-08-19, second session.** Tier 0 and half of Tier 1 are **built and committed**.
-NAT-003 is next and is the other half of the same measurement.
+**Written 2026-08-19, third session.** Tier 0 and Tier 1's palette work are **built and committed**.
+NAT-003 is done bar one gap, and that gap is the first thing to close.
 
 ## Read first, in this order
 
-1. [NAT-002](NAT-002-THE-GREY-NOBODY-CAN-READ.md) §"Done" — what the palette is **now**, and the
-   remainder it deliberately did not clear.
-2. [README §4](README.md) — **D9 settled, D11 and D12 added and settled.** Five rulings still open (D5, D6, D7, D8, D10).
-3. [TASKS.md](TASKS.md) — NAT-003 is the next row, and 🔴 it is *measured together* with NAT-002.
+1. [NAT-003](NAT-003-LESS-DARK-ON-DARK.md) §"Done" — the bar, why it is 1.15, and **the finding
+   that the ramp could not be opened by moving backgrounds alone**.
+2. [TASKS.md](TASKS.md) §The order — **NAT-014 is still the highest-value unstarted task** and has
+   been since it was added. NAT-004 and NAT-005 are the rest of Tier 1.
+3. [README §4](README.md) — five rulings still open (D5, D6, D7, D8, D10).
+
+## 🔴 Close this first — it is 20 minutes and it is owed
+
+**CodeMirror was never opened, in either theme.** NAT-003 moved **nine** syntax colours and
+`bg-2`, the surface CodeMirror paints, and every one of those numbers is *computed*. The one
+surface the task changed most is the one nobody has looked at.
+
+Also unseen: **the launcher in light**, and **a dialog in light**. Everything else was driven —
+canvas, node cards, rail, side panel and a `bg-4` popout in dark; canvas, rail, panel and toolbar
+in light.
+
+Launch (`npm run dev:debug -- --quiet`), open any project, open a code node or the Blockly/JS
+editor, and look at it in both themes. If it reads, say so in NAT-003's task file and AC6 closes.
 
 ## What happened this session
 
-**NAT-001 ✅** — the editor now has the contrast gate the platform has had since UNI-013.
-`tests-unit/nat-001/palette-contrast.spec.ts`, 36 pairs × 2 themes + six controls, under
-`npm run test:main` (jest matches by path — **no barrel to register**).
-🔴 **It was observed at 22 failures on the unmodified palette before a single hex value moved**,
-and those numbers are in the task file.
+**The UNI-011 tranche is committed** (`d2062ea8`), on Richard's instruction — nine files that had
+never been tracked, one `git clean` from gone. It is a snapshot for survival, **not** a close-out:
+no verification run stands behind it and UNI-011's own ACs are unchanged.
 
-**NAT-002 ✅** — 123/123 green. Three rulings, not one:
+**NAT-003 ✅ (5.5 of 6 ACs)** — `4d6658df` + the syntax follow-up; platform `ad21f97` + `e1082c2`.
 
-- **D9 — Richard retired `fg-muted`** (an alias of `fg-default-shy`), against this task file's own
-  recommendation. The ~217 declarations naming it keep working and all get AA.
-- **D11 — the accent splits fill from text.** `--theme-color-fg-accent`. Only **light** moves.
-- **D12 — the status colours split the same way.** `-fg-success` / `-fg-notice` / `-fg-danger`.
+- **The bar is 1.15 dark / 1.09 light and it is defended, not borrowed.** WCAG governs neither
+  side of a surface-vs-surface pair. The number comes from the product: the steps that drew the
+  complaint were 1.065/1.072, the ones nobody complained about were 1.156/1.180.
+- 🔴 **The ramp could not be opened by moving backgrounds.** The top is capped by the AA text
+  sitting on it — `fg-default-shy` had 0.17 of headroom on `bg-4`. With foregrounds held still,
+  four steps of 1.15 would have needed `bg-0` blacker than `bg-page` was. **Arithmetically
+  impossible.** The inks had to move, and NAT-002's **D11 split is what made it affordable**:
+  accent *text* went to `azure-300` while `--theme-color-primary`, the fill, never moved.
+- 🔴 **`border-default`/`-subtle`/`-strong` are literals and did not follow the ramp.**
+  `border-default` went from 1.01 on `bg-3` (a hair off it, its job) to 1.34 (a visible line on it).
+  **VFN-002's negative control found it** — a spec that went red for a reason having nothing to do
+  with dividers.
+- 🔴 **`colors.css` claimed in a comment that the light syntax palette was "all AA on bg-1/bg-2".
+  Three of them never were.** Nothing failed because nothing looked.
 
-Both D11 and D12 came out of NAT-001's measurements and were **not** in the review's scope.
+**New gate — `tests-unit/nat-003/palette-copies.spec.ts`.** Walks the real source tree and compares
+every literal claiming to be a token's value against `colors.css`. **19 on its first run, five
+already wrong before this task** (`bg-1` as `#11151b`, one digit out). It caught a second batch
+later the same session. ⚠️ It cannot see a copy that stores a colour *without naming the token* —
+`nodelibraryexport.ts`'s node blob is that shape, and is bound instead by
+`tests/canvas/CanvasThemeNodeSchemes.test.ts`, which lives in the **electron** suite.
 
-## Where to start — 🔴 there are TWO candidates, and this file used to name only one
+## 🔴 The electron suite has not been run against this palette
 
-A peer session added **NAT-014** and **NAT-015** to this phase after the palette work started.
-[TASKS.md](TASKS.md) §The order says **NAT-014 can start on day one and should** — it depends on
-nothing, three Tier-3 tasks cannot close until it does, and it is *the only task whose defect is
-currently telling users something untrue* (no mail leaves the platform: `drainOutbox` exists, is
-tested, and has no production caller). It is a **platform** task, so it does not touch the palette
-and the two can run in either order or in parallel.
+`npm run test:main` is 260 suites / 4117 tests green. **`npm run test:ci` was not run.**
+`CanvasThemeNodeSchemes.test.ts` lives there, it compares CanvasTheme's derived node scheme to
+`nodelibraryexport.ts`'s literals within 16 per channel, and **both sides were edited this
+session**. They were re-derived by the same `mix()` so they should agree — but that is a
+calculation, not a measurement. Run it, alone, and compare **by name** against the floor.
 
-**If you are continuing the LOOK: NAT-003.** If you are picking the highest-value unstarted work
-in the phase: **NAT-014**. NAT-015 rides along with NAT-007 and is not a standalone start.
+## Where to start
 
-### NAT-003 — the elevation ramp
+**If you are continuing the LOOK:** close AC6 above (20 min), then **NAT-004** (light by default on
+the web — small, independent of everything) or **NAT-005** (the tab that is a list of grey lines —
+⚠️ *this is the vocabulary Tier 3 reuses; build it once here or four tasks reinvent it*).
 
-The instrument is built and its numbers are already recorded:
+**If you are picking the highest-value unstarted work: NAT-014.** Unchanged from the last two
+handovers — no dependencies, blocks NAT-009/010/013, and it is still the only task whose defect is
+*currently telling users something untrue* (no mail leaves the platform; `drainOutbox` has no
+production caller). ⚠️ Several of its ACs need Richard: a real send to a real MX, a registered
+relay domain with SPF/DKIM/DMARC, and a claim made against the deployed box. **D10 is open.**
 
-```
-bg-1 on bg-0   1.06 dark / 1.13 light
-bg-2 on bg-1   1.07 / 1.06
-bg-3 on bg-2   1.16 / 1.09
-```
+## Loose ends
 
-🔴 **Those rows are deliberately NOT in NAT-001's PAIRS**, and the reason is in NAT-001's task
-file: a card edge is decorative elevation, not a control boundary, so asserting WCAG 1.4.11's 3:1
-on it would be a gate rejecting a correct answer. **NAT-003 has to state its own bar as a design
-choice and defend it** — do not borrow WCAG's number for a thing WCAG does not govern.
+- ⚠️ **`AskAboutNodeDialog.module.scss` carries a stale comment** — it states `bg-4` resolves to
+  `#2c3540`; it is now `#3c4857`. Left alone on purpose: that file is another session's
+  uncommitted work, and editing it would have swept it into a NAT-003 commit.
+- ⚠️ **~99 files still paint words with a fill role** (NAT-002's remainder, 202 declarations, sub-AA
+  in light). Unchanged. NAT-005 should take the community surfaces; the rest want their own task
+  **with a ratchet spec**.
+- ⚠️ **"Friendly and welcoming" is Richard's call on a rendered screen.** The arithmetic is done.
+  The palette is a proposal and he has not seen it yet.
 
-Two things NAT-003 inherits, already measured:
+## Verification notes that earned their place
 
-- **`fg-default-shy` has only ~0.17 of headroom on `bg-4`** (4.67 dark). If NAT-003 lifts the dark
-  ramp, bg-4 gets lighter and that token fails again. The gate will say so — re-run it, don't
-  assume.
-- **The light `--theme-color-primary` clears `bg-1` by 0.07** (4.57). If `bg-1` moves in light,
-  re-measure the accent. NAT-002's trap section already flagged this and it is now load-bearing.
-
-## Before you touch a hex value (NAT-003 only)
-
-🔴 **Run `npm run test:main` and see it green first.** Same lesson as last session, one level up: a
-palette change measured only after the fact proves nothing, and this session's gate exists
-precisely so the *next* change has a before.
-
-## The queue NAT-002 did not clear
-
-**~99 files still paint words with a fill role** (`color: var(--theme-color-primary|success|
-notice|danger)`, 202 declarations). NAT-002 migrated the design system's text primitive
-(`Text.module.scss`) and the community surfaces; the rest hand-rolled a colour instead of going
-through `Text`, and a grep cannot separate those from `currentColor` icon fills.
-⚠️ **They are sub-AA in light today.** NAT-005 should take the ones on the community surfaces; the
-rest want their own task **with a ratchet spec** — a count that may only go down — because nothing
-currently stops a hundredth.
-
-## 🔴 One loose end that is not a task
-
-`packages/noodl-core-ui/src/preview/launcher/Launcher/views/Community.tsx` carries a NAT-002 edit
-(`shy` → `fg-default-shy`, "Try again" → `fg-accent`, the border → `border-control`) and is
-**untracked** — it is part of the UNI-011 tranche that has never been committed, along with
-`mirrorview.ts`, `useCommunityMirror.ts` and `CommunityPanel/`. Taking ownership of another phase's
-uncommitted work was not NAT-002's call, but **that tranche is one `git clean` from gone.**
-Ask Richard whether it should be committed.
-
-## Verification notes that earned their place this session
-
-- 🔴 **A known-bad control rots when somebody fixes the defect.** It happened **twice** in one
-  session — mine (`fg-muted` on `bg-0`) and the platform's, which began *failing because the
-  palette got better*. Both are now self-calibrating: measure a pair that passes, then demand
-  0.01 more than it scores.
-- 🔴 **"They must differ" can be the wrong assertion.** In dark, `fg-success` and `fg-notice`
-  deliberately equal their fills because those already read. The spec asserts the **conditional** —
-  a text role may share a fill only where that fill is readable — so a correct answer is not
-  rejected.
-- 🔴 **Grep for the token before adding one.** `--theme-color-border-control` already existed
-  (POL-016) with exactly the right value and reasoning, while the launcher's button drew a 1.32:1
-  border. Two of the three tokens this task needed were already in the file.
-- ⚠️ **A spec can keep its own copy of `colors.css`.** `tests/canvas/CanvasThemeNodeSchemes.test.ts`
-  does, it drifted, and nothing failed — it would simply have gone on grading a palette the product
-  no longer ships.
+- 🔴 **A gate can have a hole shaped exactly like the defect.** `PAIRS` graded 36 pairs and had
+  **no syntax row at all**, so a false claim in a comment stood for years. The replacement rows are
+  **generated from the token list** — a hand-listed table is how three of twenty-one went unwatched.
+- 🔴 **Ask whether YOUR change broke it or whether it was always broken, and say which.** Nine
+  syntax values moved; five were sub-AA before this task. Reporting all nine as regressions would
+  have been as wrong as reporting none.
+- 🔴 **A derived palette beats a picked one, and the derivation itself has a taste failure mode.**
+  Blending a dark blue-grey toward white keeps the channel spread and drops the relative chroma —
+  it would have shipped a flat grey that satisfied every assertion. Multiplicative scaling keeps
+  the hue. **The arithmetic can be right and the answer still wrong.**
+- ⚠️ **A peer's red can be stale.** A peer reported `uni013-token-drift` red and was deferring work
+  on it; it had been green since `ad21f97`, committed before their message. Worth one short reply.
