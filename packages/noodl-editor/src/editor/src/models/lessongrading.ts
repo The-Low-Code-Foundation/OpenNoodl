@@ -364,3 +364,72 @@ export function buildLessonEvidence(
     ...(options.gradedAt ? { gradedAt: options.gradedAt } : {})
   };
 }
+
+/**
+ * The keys the platform actually STORES, and the ones it deliberately does not.
+ *
+ * 🔴 THIS IS THE THIRD COPY OF A LIST WHOSE OTHER TWO ARE IN ANOTHER REPOSITORY, and until
+ * 2026-08-19 that was a named, live gap rather than a managed one. `nodegx-community` holds
+ * the list twice — `submission_evidence_allowed_keys()` in
+ * `src/db/sql/0006_uni006_assignments.sql` and `EVIDENCE_ALLOWED_KEYS` in
+ * `src/lib/assignments.ts` — and a spec there reads the SQL one out of the live database and
+ * asserts the TypeScript one equals it, so those two cannot drift. **No test in either repo
+ * can see both sides of the boundary**, and the migration's own comment says so.
+ *
+ * ⚠️ THE FAILURE MODE IS SILENT AND POINTS THE WRONG WAY. The platform *drops* an unknown key
+ * rather than refusing it — deliberately, so that a learner running a newer editor than the
+ * server still hands their homework in. The cost is that a field added to {@link
+ * LessonEvidence} arrives as a submission the platform quietly discards: the learner sees a
+ * successful submit, the teacher sees a grade, and the new field is nowhere. Nothing throws
+ * and nothing goes red.
+ *
+ * ✅ WHAT MAKES IT MANAGED NOW: `tests-unit/uni-006/submittedevidence.test.ts` builds a
+ * `Required<LessonEvidence>` — so **adding a field to that interface fails to compile** until
+ * somebody classifies it into one of the two lists below. It cannot detect a change made on
+ * the platform's side; what it can do is stop this side changing by accident, which is the
+ * direction the gap actually leaks.
+ *
+ * 🔴 AND THE TWO WITHHELD KEYS ARE NOT AN OVERSIGHT TO BE TIDIED AWAY. `0006`'s comment gives
+ * the reasons and they are worth keeping here, next to the producer:
+ *
+ *   * `lessonTitle` is the bundle's ONLY free-text field and it is read out of a `lesson.json`
+ *     on the submitting machine — so it is free text the *submitter* controls. A pupil who
+ *     opens the manifest and types their name into the title has found a route into the
+ *     platform's database, and `submissions.evidence` is the first column in that whole schema
+ *     an org-minor account can write to.
+ *   * `gradedAt` is a clock on a learner's laptop. The platform stamps `submitted_at` itself,
+ *     and a client-supplied time that disagrees with it is not evidence of anything.
+ *
+ * Narrowing here rather than letting the platform drop them is what makes both facts visible
+ * to the person changing this file, instead of to nobody.
+ */
+export const SUBMITTED_EVIDENCE_KEYS = [
+  'provenance',
+  'stepsGraded',
+  'stepsPassed',
+  'completionPercent',
+  'complete',
+  'stepOutcomes',
+  'wholeSolution'
+] as const satisfies readonly (keyof LessonEvidence)[];
+
+/** Present on the bundle, never sent. See {@link SUBMITTED_EVIDENCE_KEYS} for each reason. */
+export const WITHHELD_EVIDENCE_KEYS = ['lessonTitle', 'gradedAt'] as const satisfies readonly (keyof LessonEvidence)[];
+
+/**
+ * The bundle as it goes over the wire: allow-listed keys, `undefined` dropped.
+ *
+ * ⚠️ Deliberately NOT a `delete` of the withheld keys. An allow-list and a deny-list behave
+ * identically today and differently on the day a field is added — the deny-list sends it.
+ */
+export function submittedEvidence(evidence: LessonEvidence): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of SUBMITTED_EVIDENCE_KEYS) {
+    // ⚠️ Indexed directly rather than through a `Record<string, unknown>` cast, and the
+    // `satisfies` above is why: both lists are checked against `keyof LessonEvidence`, so a
+    // typo or a renamed field is a compile error instead of a key that silently sends nothing.
+    const value = evidence[key];
+    if (value !== undefined) out[key] = value;
+  }
+  return out;
+}

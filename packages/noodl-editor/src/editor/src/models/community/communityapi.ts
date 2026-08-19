@@ -123,6 +123,52 @@ export type MemberAssignment = {
 };
 
 /**
+ * UNI-006's bridge — what the editor pulls, hands in, and hears back.
+ *
+ * 🔴 THE THREE-WAY `lesson` READING IS THE PLATFORM'S, AND THIS CLIENT MUST NOT COLLAPSE IT.
+ * `available: false` is not a failure and not an absence: it means *the assignment is
+ * genuinely yours and we have not published the lesson*. Today that is the ordinary case —
+ * the platform hosts no curated bundles at all. A client that treated it as an error would
+ * tell a pupil their homework does not exist, which is the one sentence the API went out of
+ * its way to make sayable-apart. `reason` is the platform's own words; show them.
+ */
+export type AssignmentLesson =
+  | {
+      available: true;
+      source: 'org_shelf';
+      lessonRef: string;
+      title: string;
+      version: number;
+      /** The lesson bundle, as `learningfolder` installs it. Opaque here on purpose. */
+      bundle: unknown;
+    }
+  | { available: false; source: 'curated' | 'org_shelf'; lessonRef: string; reason: string };
+
+/** `POST /api/v1/me/assignments/:id/submit`, 201. */
+export type SubmissionAccepted = {
+  submissionId: string;
+  state: 'in_progress' | 'submitted' | 'graded';
+  /**
+   * 🔴 `null` IS SUCCESS, not a failure to grade. A `human`-graded assignment waits for a
+   * person (D13), which is the shape phase 68's coaching flow is built on. A caller that
+   * treated null as an error would break it before it is written.
+   */
+  score: number | null;
+};
+
+/** A grading by a PERSON that the member has not seen. Runner grades never appear here. */
+export type GradingNotice = {
+  gradingId: string;
+  assignmentId: string;
+  assignmentTitle: string;
+  orgSlug: string;
+  score: number;
+  complete: boolean;
+  feedback: string | null;
+  gradedAt: string;
+};
+
+/**
  * 🔴 A community read is one of three outcomes and `absent` is not an error.
  *
  * A client that modelled the 404 as a failure would retry it, log it, or show a "could not
@@ -286,6 +332,22 @@ export class CommunityApiClient {
 
     if (response.status === 401) return { outcome: 'unauthenticated' };
     if (response.status === 404) return { outcome: 'absent' };
+    // 🔴 429 IS A REFUSAL, NOT AN OUTAGE, and it fell through to `unreachable` until UNI-006's
+    // bridge needed it. The platform rate-limits writes at 30/minute and says how long to wait;
+    // rendering that as "could not reach the community" would tell a learner their network was
+    // down while the platform was answering them precisely. `ratelimit.ts` argues the same point
+    // from the other side: a caller learning it is throttled learns a fact about ITSELF, which
+    // is exactly what a polling client needs in order to stop.
+    if (response.status === 429) {
+      const after = response.headers.get('retry-after');
+      const seconds = after && /^\d+$/.test(after) ? Number(after) : null;
+      return {
+        outcome: 'refused',
+        detail: seconds
+          ? `Too many requests — try again in ${seconds} second${seconds === 1 ? '' : 's'}.`
+          : 'Too many requests — try again shortly.'
+      };
+    }
     if (response.status === 400 || response.status === 403) {
       // 🔴 The platform's own words, and it chooses them for this. `bench-http.ts` maps every
       // refusal through one table precisely so that a caller *"learns THAT it was refused,
@@ -326,6 +388,69 @@ export class CommunityApiClient {
 
   assignments(): Promise<Read<{ assignments: MemberAssignment[] }>> {
     return this.get<{ assignments: MemberAssignment[] }>('/api/v1/me/assignments');
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // UNI-006's bridge. 🔴 The header's *"it transports and it types"* still holds: not one
+  // of these decides anything. Whether a lesson may be pulled is `shelf_item_visible_to`;
+  // whether work may be handed in is `submission_gate()`; whether a bundle is acceptable is
+  // `submission_evidence_violation()`. All three are in the database, on the far side of
+  // the wire, and this client's job is to carry the answer back unedited.
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /** One assignment at its own URL — fresher than the row in a list that may be minutes old. */
+  assignment(assignmentId: string): Promise<Read<{ assignment: MemberAssignment }>> {
+    return this.get<{ assignment: MemberAssignment }>(
+      `/api/v1/me/assignments/${encodeURIComponent(assignmentId)}`
+    );
+  }
+
+  /** The bundle to install. See {@link AssignmentLesson} — `available: false` is not an error. */
+  assignmentLesson(assignmentId: string): Promise<Read<{ lesson: AssignmentLesson }>> {
+    return this.get<{ lesson: AssignmentLesson }>(
+      `/api/v1/me/assignments/${encodeURIComponent(assignmentId)}/lesson`
+    );
+  }
+
+  /**
+   * "I have this lesson open." Idempotent on the platform, so the editor may call it every
+   * time the project is opened without that being a second attempt — and a learner who
+   * reopens work they already handed in does not withdraw it.
+   */
+  startAssignment(assignmentId: string): Promise<Write<{ submissionId: string }>> {
+    return this.post<{ submissionId: string }>(
+      `/api/v1/me/assignments/${encodeURIComponent(assignmentId)}/start`,
+      {}
+    );
+  }
+
+  /**
+   * Hand the work in.
+   *
+   * ⚠️ `evidence` is narrowed by {@link submittedEvidence} before it gets here, and that is a
+   * decision about what leaves the machine rather than a formality — see that function.
+   */
+  submitAssignment(
+    assignmentId: string,
+    evidence: Record<string, unknown>
+  ): Promise<Write<SubmissionAccepted>> {
+    return this.post<SubmissionAccepted>(
+      `/api/v1/me/assignments/${encodeURIComponent(assignmentId)}/submit`,
+      { evidence }
+    );
+  }
+
+  /** Gradings by a person that this member has not seen. A poll; signed out is an empty list. */
+  gradings(): Promise<Read<{ gradings: GradingNotice[] }>> {
+    return this.get<{ gradings: GradingNotice[] }>('/api/v1/me/gradings');
+  }
+
+  /** ⚠️ Call this only once the feedback has actually been PUT IN FRONT OF the learner. */
+  markGradingSeen(gradingId: string): Promise<Write<{ seen: true }>> {
+    return this.post<{ seen: true }>(
+      `/api/v1/me/gradings/${encodeURIComponent(gradingId)}/seen`,
+      {}
+    );
   }
 }
 
