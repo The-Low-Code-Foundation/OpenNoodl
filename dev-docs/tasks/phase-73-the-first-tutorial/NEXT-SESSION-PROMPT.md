@@ -1,107 +1,119 @@
 # Phase 73 — next session
 
-**Written 2026-08-20, end of session 3.** Read [README §0](README.md) and [TASKS.md](TASKS.md)
+**Written 2026-08-20, end of session 4.** Read [README §0](README.md) and [TASKS.md](TASKS.md)
 first; this file is the working state, not the phase.
 
 ---
 
-## 1. Built vs. driven
+## 1. 🔴 Start here: author the bundle. Nothing blocks it.
 
-| Task | Built | Driven | Note |
-|---|---|---|---|
-| **TUT-001** one database, not forty | ✅ | ✅ | all six ACs close; committed `6ba357e9` |
-| **TUT-002** a condition that can see data | ✅ | 🟡 **half** | all seven ACs close; committed `b73b5972`. The **sidecar** filler is driven against four real backends; the **renderer** filler is specced underneath and not driven end to end — see §4 |
-| **TUT-003** the tutorial itself | — | — | 🔴 **no longer blocked by TUT-002. Blocked on R3 only** |
-| **TUT-004** one click from the panel | — | — | blocked on TUT-003, NAT-005/006, and **R2** |
+**R3 is answered — the learner creates the collection.** TUT-002 is done. The F2′ defect that would
+have refused the result is fixed. TUT-003 has no open dependency of any kind.
 
-**Built-but-undriven: the renderer half of TUT-002's filler**, and the honest way to drive it is to
-author TUT-003 against it — which is what the next session should do the moment R3 lands.
+The remaining work is the artefact itself, in this order:
 
-## 2. Gate readings — 2026-08-20, tree at `6ba357e9`
+1. **Author the solution project.** Every type name and port name it needs is written down in
+   [TUT-003 §"The graph, in the type names it is actually saved under"](TUT-003-THE-TUTORIAL-ITSELF.md)
+   — **read it rather than re-deriving it**; session 4 spent most of its budget getting those out of
+   runtime source and three of them are traps.
+2. **Write `lesson.json`.** Step body names the collection **verbatim**; first data condition is
+   `collectionExists`.
+3. **`derive_starter`**, then **`check_lesson` with `backend_id`** — that is now safe and is the only
+   route that grades the data conditions.
+4. **Drive it in the editor.** This also closes the renderer half of TUT-002 (§4).
+5. Only then TUT-004 (still needs **R2**).
+
+⚠️ **One thing session 4 stopped short of and should be honest about:** the solution graph was
+*specified*, not written. The Repeater's `parameters.template` names a **component**, so the row is a
+second component and the graph is two components, not one. That is the first real decision next
+session makes.
+
+## 2. What session 4 changed
+
+**`b5058f3b` — F2′ convicted the one step a data lesson cannot do without.**
+
+`check_lesson --backend_id` reads one live backend and hands the **same** snapshot to the starter and
+the solution context ([`lessonTools.ts:270-274`](../../../packages/noodl-mcp/src/tools/lessonTools.ts)),
+because a bundle on disk has one database and not two. A snapshot describes the author's world
+*after* they ran the solution; F2′ asks about the learner's world *before* they start. So any step
+whose conditions are **all** data conditions was `already-satisfied-in-starter` by construction.
+
+Measured, varying only where the snapshot went:
+
+| Snapshot given to | F2 |
+|---|---|
+| starter **and** solution — the real caller's shape | **fail**, `already-satisfied-in-starter` |
+| solution only — what every TUT-002 spec does | **pass** |
+
+That step is **TUT-003 AC5**: "complete the graph, create no record, the data step stays red." F2′
+now reports `not-checked` per step for database-graded steps and says which half it could not answer.
+
+🔴 **The lesson, and it is session 3's lesson one layer out:** 70 green specs did not see it because
+they all supply a snapshot in a shape **no caller uses**. The thing that found it was reading the
+caller and asking what it actually passes.
+
+## 3. Gate readings — 2026-08-20, tree at `b5058f3b`
 
 | Gate | Reading | |
 |---|---|---|
-| `typecheck:editor` | **exit 0** | process exit, not a grep of the output |
-| `typecheck:mcp` | **exit 0** | stricter than `typecheck:editor`; run both |
-| `test:main` | **279 / 280 suites · 4538 / 4539 tests** | 🔴 the one failure is **not mine**: `uni-001/session-readers` on a peer's untracked `src/editor/src/hooks/useCommunityPeople.ts` (phase 72 NAT-008), which their next commit fixes. Two peers confirmed it independently |
-| `noodl-mcp` jest | **55 suites / 648 tests, 0 failures** | ⚠️ `tests/provision.test.ts` failed once under parallel load and passed alone and on a clean re-run — it spawns a real backend. A lone red there is a flake until re-run |
-| `tests-unit/tut-002/` | **70 tests, 5 files** | 8 controls red-then-restored |
-| MCP resident surface | **8,223 / 8,280 tokens, 20 tools** | the `lesson` group is **deferred**, so nothing added this session is billed against the gate |
-| `test:ci` @ `NOODL_SPEC_SEED=39393` | **`Jasmine: 2849 specs, 10 failures`** | ✅ re-measured 08-20 08:27 on this tree — the floor, and the same 10 by name (4× AIX-006 · 2× AI model registry · 1× AIX-011 · 3× SUB-011) |
+| `typecheck:mcp` | **exit 0** | |
+| `tests-unit/tut-002` + `tut-003` | **76 tests / 6 suites**, all green | 70 + 6; reconciled against disk |
+| new specs | **6**, of which **3 verified red** with the guard disabled | two known-firing controls stayed green in both arms, on purpose |
+| `typecheck:editor` | 🔴 **exit 2 — NOT MINE** | 2 errors, both `kind: "handoff"` on `CommunityReplyBox`: `noodl-core-ui/.../Launcher/views/Community.tsx:275` and `.../CommunityPanel/CommunityPanel.tsx:176`. From a peer's **`736af592`** (phase 72 NAT-008). Zero errors in lesson files |
+| `test:main` | 🔴 **3 suites failed, 278 passed · 4463/4463 tests passed** | **0 test failures** — the 3 suites (`nat-005`, `nat-007`, `nat-008`) *never compiled*, on the same peer error. ~81 tests unrun |
+| `test:ci` | **not run this session** | last floor: **2849 specs / 10 failures @ `NOODL_SPEC_SEED=39393`**, re-measured 08-20 08:27 |
 
-🔴 `test:ci` exits **1** at a clean floor, and a 600s tool timeout promotes it to background and
-reports **exit 0** regardless. Completion is the `Jasmine:` line. Never `$?`, never through a pipe.
+🔴 **`test:main` reporting `4463 passed, 4463 total` with three red suites is the trap this repo keeps
+paying for.** Zero test failures and a green-looking tail; the number went *down* by ~75 from session
+3's 4538 because three files never ran. **Reconcile the suite count as well as the test count, every
+time.**
 
-## 3. 🔴 Start here: R3, then TUT-003
+Relayed to the peer sessions; the EL-009 session confirmed the reading and corrected my count (I said
+one error, it is two — fixing only `Community.tsx` leaves the gate red). Not this phase's to fix, and
+**do not read either gate as a phase-73 regression.**
 
-TUT-002 is done and TUT-003 is now blocked on **one ruling and nothing else**:
-
-> **R3 — does the tutorial ship its collection pre-made, or does the learner create it?**
-
-Both are gradeable now, which is new. What changed the question:
-
-- **Learner-creates** is what the three verbs were built for, and F1 will check the collection name
-  against the bundle's own projects, so a typo is caught before install.
-- **Pre-made** is now the *riskier* one to grade, not the safer one: with a snapshot in play, a
-  `collectionExists` step whose collection ships pre-made is **already satisfied in the starter**,
-  which is F2′ — and the harness is right to say so.
-
-⚠️ **Do not grade `hasColumns` against a system table.** Confirmed on real backends: `/admin/schema`
-pairs `sqlite_master` with `_Schema` *by exact name*, so a table the backend created itself comes
-back with `columns: []` and `hasColumns` answers false forever. `User`, `Conversation` and one
-`Puppy` all did this on this machine.
-
-Order once R3 lands:
-
-1. **Author TUT-003's solution**, then `derive_starter`, then `check_lesson`.
-   ✅ Pass `backend_id` to `check_lesson` to have the data conditions replayed against a real
-   backend rather than reported as not-checkable.
-2. **Drive it in the editor.** That is what closes the renderer half of TUT-002 (§4): install the
-   bundle, open it, create the record, watch the step tick without touching the graph.
-3. Only then TUT-004.
-
-## 4. What is specced but not driven, precisely
+## 4. Still true from session 3 — the unproven link
 
 `models/lessondatabase.live.ts` cannot be loaded by a plain-Node runner (it imports `ProjectModel`
-and `ipcRenderer`), so the suite grades everything *underneath* it — the reader, the narrowing, the
-snapshot builder, the binding classifier, both transports — and the drive graded the same shared
-core through the *other* transport, against four real backends.
-
-The unproven link is short and named:
+and `ipcRenderer`), so the suite grades everything underneath it and the drive graded the same shared
+core through the other transport. The unproven link is short and named:
 
 ```
 ProjectModel.instance → getCloudServices → matchEndpointToManaged → backend:list / backend:status
    → ipcLessonReader → a step going green in lessonlayer2
 ```
 
-Nothing about it is subtle; it simply needs a lesson with a data condition to exist. Do not write
-another spec for it — write the lesson.
+Do not write another spec for it — **write the lesson**. That is step 4 of §1.
 
 ## 5. Owed by Richard
 
-- 🔴 **R3** — see §3. **Blocks TUT-003, which is now the only thing it blocks.**
 - 🔴 **R2** — what provenance does a community bundle install under? `lessoninstallpolicy.ts` grades
-  `local` vs `local-ai`; a platform bundle is a **third** trust profile. Blocks TUT-004 AC3.
+  `local` vs `local-ai`; a platform bundle is a **third** trust profile. **Blocks TUT-004 AC3 only.**
+- ~~R3~~ ✅ answered 2026-08-20: the learner creates the collection. See
+  [TUT-003 §R3](TUT-003-THE-TUTORIAL-ITSELF.md) for the four measurements that had already narrowed
+  it to one arm.
 
 ## 6. Housekeeping
 
-- **Committed this session:** `b73b5972` (TUT-002 code + specs, 22 files) and `6ba357e9` (TUT-001,
-  9 files). Docs commit follows. Nothing of a peer's was swept — checked the stat list of both.
-- 🔴 Peers commit to `cline-dev` from this same checkout. **`git commit -- <pathspecs>`, never
-  `git add -A`, never stash.** Untracked files need `git add <paths> && git commit -- <paths>` as
-  **one chain**, and `-m`/`-F` must come *before* the `--`.
-- Two peer sessions are live: phase 72's community panel (`models/community/`, `CommunityPanel`,
-  `hooks/useCommunityPeople.ts`) and phase 67b's render harness (`scripts/devtools`,
-  `noodl-mcp/src/render.ts`). Neither overlaps this phase.
-- Drive copy `tut001-drive` and its launcher-store row are left in place on purpose.
-- The four backends started by the drive stopped themselves; `lsof` on 8578+ was clean afterwards.
+- **Committed this session:** `b5058f3b` (2 files: `lessonbundleverify.ts` + the new spec). Docs
+  commit follows. Nothing of a peer's was swept — checked the stat list.
+- 🔴 Peers commit to `cline-dev` from this same checkout, and did so **during** this session
+  (`736af592`, `e86cd31e`, `996ccdc7` all landed after session 3's HEAD). **`git commit -- <pathspecs>`,
+  never `git add -A`, never stash.** Untracked files need `git add <paths> && git commit -- <paths>`
+  as **one chain**, with `-m` *before* the `--`.
+- Three peer sessions were live: phase 72's community panel, phase 67b/EL-009's render harness
+  (`scripts/devtools`, `tests-unit/el-009`), and one more. Neither overlaps this phase.
+- No backends were started this session; no drive was run.
 
-## 7. The two traps this session paid for, for whoever hits them next
+## 7. The trap this session paid for, for whoever hits it next
 
-1. 🔴 **A control read `52 passed, 52 total` with no failure line.** A jest *worker* had crashed on
-   an unhandled rejection from a `void somePromise` in one of my own specs, taking an 18-test file
-   with it. **Reconcile the test count AND the suite count on every control** — 70 → 52 is not a
-   failure, it is a file that never ran. Second session running this exact shape has appeared.
-2. 🔴 **The green suite was not evidence about the feature.** 31 specs passed while the bundle
-   harness would have refused every data lesson ever written. What found it was asking *"who calls
-   this, and what happens when they do"* — not another spec on the same seam.
+🔴 **A spec fixture in a shape no caller uses is not coverage — it is a decoy.** Session 3's
+`bundle-verifies-a-data-lesson.test.ts` hands the snapshot to the solution alone. That is a
+reasonable-looking fixture, it made 70 specs pass, and the one real caller does something else. The
+question that found it is the same one session 3 recorded and I nearly failed to ask a second time:
+
+> **who calls this, and what exactly do they pass?**
+
+Not "is there a spec for it". Session 3 found its defect by asking *"who calls this, and what happens
+when they do"*; session 4 found the next one by asking the narrower version — **not whether a caller
+exists, but whether the fixture matches the argument the caller actually builds.**
