@@ -142,6 +142,23 @@ main suite and it was skipped for a stated reason, not an oversight:
 - 🔴 **Delete `packages/noodl-editor/tests/test-results.json` first and require a fresh mtime.**
   It was last written **08:37** on 2026-08-20 and a stale one reads as a perfect pass.
 
+### 2b′. 🔴 THE PR GATE RAN FOR THE FIRST TIME IN A WEEK, AND IT IS RED
+
+Run **32370134956** (PR #20, `cline-dev` → `main`), the first `pr.yml` pass over any of these
+478 commits. ✅ **`Build (viewer + editor bundles)` is GREEN** — independent confirmation of §1's
+fix. ✅ `Typecheck`, `Test (platform-node)`, `Library check`, `Check build artefacts` green.
+**Four jobs failed, and none of them is the release build:**
+
+| Job | What it actually is |
+|---|---|
+| **Test (editor)** | 🔴 **DID NOT COMPLETE.** **2766 `[spec-start]` markers against a 2849 floor**, no summary line, died mid-`AIX-011 plan staging` under a flood of `Warning: we have more that 10000 listeners on this model`. **This is neither a pass nor a failure count — it is an unfinished run.** Reconcile the marker count before believing any reading; `exit 1` here is the timed-out-looks-like-the-floor trap |
+| **Test (runtime, …)** | 🔴 Concrete and small: `@noodl/runtime` **1 suite failed to RUN** — `EditorConnection` is declared at `test/editorconnection.replyidentity.test.ts:23` *and* `test/editorconnection.sendqueue.test.ts:24`, colliding in one TS program scope. A duplicate-identifier error, not a behaviour failure |
+| **Node catalog freshness** | 🔴 Concrete and small: *"Stale cloud node library: `cloud-node-library.json` does not match the cloud registry."* ✅ Fix is stated by the gate — **`npm run cloud-library:generate` and commit the result** |
+| **Lint** | The three ratchets in §2a |
+
+⚠️ **None of these was caused by the release commits** — they are a week of unpushed work meeting
+CI for the first time. But two are one-line fixes and should not ride into 0.2.1.
+
 ### 2c. What WAS measured, so it is not re-derived
 
 All at `3a20f46c`, exit codes captured **without a pipe**:
