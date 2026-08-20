@@ -238,6 +238,34 @@ describe('the intake form', () => {
     expect(surface.canSubmit).toBe(false);
   });
 
+  it('carries a failed submit into the form — found by driving, invisible to every spec', () => {
+    // 🔴 THE DEFECT THIS EXISTS FOR. `onSubmit` returned early on any non-`ok` write, so the
+    // screen did not change **in any way**: no message, no spinner, no state. A learner
+    // pressing "Rebuild my path" against a rate limit got a button that appeared not to be
+    // connected to anything. ⚠️ Every spec here passed, because every one of them fed the view
+    // a world in which the write succeeded.
+    const failed = learnerPathSurface({
+      intake: intakeOk,
+      path: pathRead({ intake: null, path: null }),
+      chosen: { experience: 'none', logic: 'visual', building: 'data-app' },
+      submitError: 'Couldn’t reach the community, so your answers weren’t saved.'
+    });
+    if (failed.state !== 'intake') throw new Error(`expected intake, got ${failed.state}`);
+    expect(failed.error).toContain('weren’t saved');
+    // 🔴 And it is STILL submittable — the answers are intact and retrying is the whole point.
+    expect(failed.canSubmit).toBe(true);
+  });
+
+  it('CONTROL: with no failure there is no error, so the field above was the data', () => {
+    const fine = learnerPathSurface({
+      intake: intakeOk,
+      path: pathRead({ intake: null, path: null }),
+      chosen: { experience: 'none', logic: 'visual', building: 'data-app' }
+    });
+    if (fine.state !== 'intake') throw new Error(`expected intake, got ${fine.state}`);
+    expect(fine.error).toBeUndefined();
+  });
+
   it('retaking shows the form over a held path, and says it is a retake', () => {
     const surface = learnerPathSurface({
       intake: intakeOk,

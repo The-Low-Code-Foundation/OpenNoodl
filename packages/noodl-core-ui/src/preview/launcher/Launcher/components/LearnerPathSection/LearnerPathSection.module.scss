@@ -278,3 +278,12 @@
     font-weight: 600;
   }
 }
+
+/* A failed submit. Warning-weight rather than muted: it reports an action that did
+   not happen, which is the one thing on this form a learner must not read past. */
+.Error {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--theme-color-danger, #e5534b);
+  margin: 0 0 10px;
+}

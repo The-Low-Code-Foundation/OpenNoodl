@@ -177,6 +177,38 @@ describe('the intake form', () => {
     expect(chosen[0].ownText).toBe('Write a few lines of code');
   });
 
+  it('DRAWS a failed submit, above the button that failed', () => {
+    const tree = render(
+      <LearnerPathSection
+        surface={{
+          state: 'intake',
+          questions: QUESTIONS,
+          chosen: { logic: 'visual' },
+          canSubmit: true,
+          retaking: true,
+          error: 'Your session has expired — sign in again and your answers will save.'
+        }}
+      />
+    );
+    expect(text(tree)).toContain('Your session has expired');
+    // Above the control the learner just pressed — a message under it is one they scroll past
+    // while concluding the button is broken.
+    const errorAt = positionOf(tree, 'Your session has expired');
+    const buttonAt = walk(tree).findIndex((n) => n.props['data-test'] === 'learner-path-submit');
+    expect(errorAt).toBeGreaterThanOrEqual(0);
+    expect(errorAt).toBeLessThan(buttonAt);
+  });
+
+  it('CONTROL: no error field, no message — and the form still draws', () => {
+    const tree = render(
+      <LearnerPathSection
+        surface={{ state: 'intake', questions: QUESTIONS, chosen: {}, canSubmit: false, retaking: false }}
+      />
+    );
+    expect(walk(tree).some((n) => n.props['data-test'] === 'learner-path-submit-error')).toBe(false);
+    expect(text(tree)).toContain('Wire it up visually so I can see it');
+  });
+
   it('says a retake REPLACES, because it does', () => {
     const tree = render(
       <LearnerPathSection

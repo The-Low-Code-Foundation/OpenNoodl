@@ -37,7 +37,8 @@ export function Learning({}: LearningViewProps) {
     onRetakeIntake,
     onProjectConcept,
     projectingConcept,
-    learnerPathProjectionNote
+    learnerPathProjectionNote,
+    community
   } = useLauncherContext();
 
   return (
@@ -62,6 +63,14 @@ export function Learning({}: LearningViewProps) {
           onProject={onProjectConcept}
           projecting={projectingConcept}
           projectionNote={learnerPathProjectionNote}
+          // 🔴 THE SAME DEVICE FLOW THE ACCOUNT CARD USES, and wiring it is not a detail:
+          // without it a signed-out learner reads the three questions and has **no way to
+          // sign in from the surface that just asked them**. Found by driving, 2026-08-20 —
+          // the render spec asserts both branches of this prop and neither could see that the
+          // host never passed one. ⚠️ `community` is absent in Storybook and in any host with
+          // no account hook, and the section then draws the questions with no door, which is
+          // the deliberate behaviour rather than the bug.
+          onSignIn={community?.onSignIn}
         />
       )}
       <LearningSection

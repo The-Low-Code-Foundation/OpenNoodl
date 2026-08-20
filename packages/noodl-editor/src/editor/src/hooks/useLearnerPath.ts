@@ -51,6 +51,24 @@ export type LearnerPathHost = {
   projectionNote: string | null;
 };
 
+/**
+ * What to say when the intake could not be saved. ⚠️ The platform's own words when it chose
+ * some (`refused` carries them); ours only for the outcomes that have none.
+ */
+function submitFailure(write: { outcome: string; detail?: string }): string {
+  switch (write.outcome) {
+    case 'unauthenticated':
+      return 'Your session has expired — sign in again and your answers will save.';
+    case 'refused':
+      return write.detail ?? 'The community refused those answers.';
+    case 'absent':
+      // D15: the surface does not exist for this viewer. Not narrated as a door.
+      return 'Your answers could not be saved.';
+    default:
+      return 'Couldn’t reach the community, so your answers weren’t saved. Try again in a moment.';
+  }
+}
+
 export function useLearnerPath(): LearnerPathHost {
   const [session, setSession] = useState<CommunitySession | null | undefined>(undefined);
   const [intake, setIntake] = useState<Read<IntakeState> | undefined>(undefined);
@@ -59,6 +77,7 @@ export function useLearnerPath(): LearnerPathHost {
   const [retaking, setRetaking] = useState(false);
   const [projecting, setProjecting] = useState<string | null>(null);
   const [lastProjection, setLastProjection] = useState<ProjectionOutcome | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
 
   useEffect(() => {
@@ -119,8 +138,15 @@ export function useLearnerPath(): LearnerPathHost {
     // the platform's own option list and its `parseIntake` is the authority — see the client's
     // note on why the editor does not narrow them.
     const answers = chosen as unknown as IntakeAnswers;
+    setSubmitError(null);
     void client.submitIntake(answers).then((write) => {
-      if (write.outcome !== 'ok') return;
+      // 🔴 EVERY NON-OK OUTCOME IS SAID OUT LOUD. This used to be a bare `return`, and the
+      // drive found what that looks like: the button does nothing, for ever, with no way for
+      // the learner to tell a rate limit from an expired session from a broken editor.
+      if (write.outcome !== 'ok') {
+        setSubmitError(submitFailure(write));
+        return;
+      }
       setRetaking(false);
       setChosen({});
       // Re-read rather than build the path from the write's echo: the write answers with the
@@ -162,7 +188,7 @@ export function useLearnerPath(): LearnerPathHost {
     [client]
   );
 
-  const surface = learnerPathSurface({ intake, path, chosen, retaking });
+  const surface = learnerPathSurface({ intake, path, chosen, retaking, submitError });
 
   return {
     surface,

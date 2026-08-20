@@ -84,6 +84,17 @@ export type LearnerPathSurface =
       canSubmit: boolean;
       /** They already had a path and chose to redo this. Retaking REPLACES. */
       retaking: boolean;
+      /**
+       * 🔴 WHY THE FORM CARRIES AN ERROR AT ALL. Found by driving, 2026-08-20: the submit
+       * failed and **the screen did not change in any way** — no message, no spinner, no
+       * state — because the hook returned early on any non-`ok` write. A learner pressing
+       * "Rebuild my path" against a rate limit, an expired session or a platform blip gets a
+       * button that appears not to be connected to anything, which is worse than an error and
+       * indistinguishable from a broken build. ⚠️ Every spec passed: they all fed the view a
+       * *successful* world, and no source-analysis or render check can see a callback that
+       * quietly does nothing.
+       */
+      error?: string;
     }
   | {
       state: 'path';
@@ -162,6 +173,8 @@ export interface LearnerPathInputs {
   chosen?: Record<string, string>;
   /** They pressed "take it again" while holding a path. */
   retaking?: boolean;
+  /** What the last submit failed with, if it did. See the `error` field on the intake state. */
+  submitError?: string | null;
 }
 
 /**
@@ -218,7 +231,8 @@ export function learnerPathSurface(inputs: LearnerPathInputs): LearnerPathSurfac
       questions,
       chosen,
       canSubmit: questions.length > 0 && questions.every((question) => chosen[question.key] !== undefined),
-      retaking: held !== null
+      retaking: held !== null,
+      ...(inputs.submitError ? { error: inputs.submitError } : {})
     };
   }
 

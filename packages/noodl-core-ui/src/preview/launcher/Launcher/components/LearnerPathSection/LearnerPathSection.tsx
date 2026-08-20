@@ -72,6 +72,8 @@ export type LauncherLearnerPath =
       chosen: Record<string, string>;
       canSubmit: boolean;
       retaking: boolean;
+      /** 🔴 The submit failed. Drawn, because the drive found a button that silently did nothing. */
+      error?: string;
     }
   | {
       state: 'path';
@@ -168,6 +170,16 @@ export function LearnerPathSection({
               : 'Three questions, and none of them are a test. They decide which lessons you meet and in what order.'}
           </p>
           <QuestionList questions={surface.questions} chosen={surface.chosen} onChoose={onChoose} />
+          {/*
+            🔴 ABOVE the button, not below it. The learner's eye is on the control they just
+            pressed; a message underneath it is one they scroll past while concluding the
+            button is broken.
+          */}
+          {surface.error && (
+            <p className={css['Error']} data-test="learner-path-submit-error">
+              {surface.error}
+            </p>
+          )}
           <button
             type="button"
             className={css['Primary']}
