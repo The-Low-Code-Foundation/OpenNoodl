@@ -77,6 +77,66 @@ export type CommunityAttachmentView = {
   pull?: CommunityAttachmentPull | null;
 };
 
+/**
+ * NAT-007 AC6 — the one write a post itself offers.
+ *
+ * 🔴 **Drawn only where the host says so, and the host's rule is in `threadwrites.ts`.** This
+ * component does not know who asked the question; it knows that a post either carries this or
+ * does not. That is deliberate — *"only the person who asked may accept an answer"* is the
+ * platform's rule, enforced in `acceptAnswer`'s transaction, and a renderer that re-derived it
+ * from an author line would be a second copy of a rule that already has one owner.
+ *
+ * ⚠️ `error` is the platform's own words about the LAST attempt on THIS post. A refusal drawn
+ * against every answer at once would tell four people's posts about one person's failure.
+ */
+export type CommunityPostAccept = {
+  label: string;
+  /** What the verb says while the request is in flight — never the same string as {@link label}. */
+  busyLabel: string;
+  busy: boolean;
+  onAccept: () => void;
+  error?: string | null;
+};
+
+/**
+ * NAT-007 AC4 — how this screen offers to answer.
+ *
+ * 🔴 **Two arms, because there are two honest answers and they are not the same shape.** Before
+ * D5 was settled the only arm was `handoff`: a *labelled* browser round trip, which is what
+ * NAT-012 leaves `openExternal` for. D5 settled on 2026-08-20 — the editor gets the same session
+ * scope as the browser — so a signed-in reader gets `composer` and posts from here. A reader who
+ * is signed out still gets `handoff`, because the thread is readable signed out and a screen with
+ * no way to answer at all would be the browser round trip with an extra step in front of it.
+ *
+ * ⚠️ **`value` is the host's**, not this component's state. `renderElements.ts` cannot evaluate a
+ * component that calls a hook, and every criterion on this screen is a claim about what it drew.
+ */
+export type CommunityReplyBox =
+  | { kind: 'handoff'; line: string; actionLabel: string; onAction: () => void }
+  | {
+      kind: 'composer';
+      /** The label above the box. */
+      label: string;
+      placeholder: string;
+      value: string;
+      onChange: (next: string) => void;
+      onSubmit: () => void;
+      submitLabel: string;
+      /** False disables the verb. See {@link blockedReason} for why that is a separate field. */
+      canSubmit: boolean;
+      /**
+       * ⚠️ **Non-null only when there is something worth SAYING**, which is not the same as
+       * `!canSubmit`. An empty box explains itself and a sentence under it would be scolding;
+       * being 412 characters over a limit the reader cannot see does not explain itself at all.
+       */
+      blockedReason: string | null;
+      busy: boolean;
+      /** 🔴 The send failed and {@link value} still holds the text — AC4 in one field. */
+      error: string | null;
+      /** It worked. */
+      note: string | null;
+    };
+
 export type CommunityPostView = {
   id: string;
   /** "@handle". */
@@ -95,6 +155,14 @@ export type CommunityPostView = {
   accepted: boolean;
   blocks: PostBlock[];
   attachments: CommunityAttachmentView[];
+  /**
+   * NAT-007 AC6 — *"accepting an answer works from the editor if you are the asker"*.
+   *
+   * ⚠️ Absent on almost every post, and that is the ordinary case rather than a missing feature:
+   * a question is never accepted, an answer is accepted only by the person who asked, and once a
+   * thread has an accepted answer nothing here offers to move it. See `threadwrites.ts`.
+   */
+  accept?: CommunityPostAccept | null;
 };
 
 export type CommunityThreadDetailView = {
@@ -124,7 +192,20 @@ export type CommunityThreadState =
   /** AC8 — never opened, and we cannot reach the platform. NOT an empty thread. */
   | { state: 'unreachable'; detail: string }
   /** `cachedSince` non-null means this is a copy we already had, and how old it is. */
-  | { state: 'ready'; thread: CommunityThreadDetailView; cachedSince: string | null };
+  | {
+      state: 'ready';
+      thread: CommunityThreadDetailView;
+      cachedSince: string | null;
+      /**
+       * 🔴 NAT-007 AC4 — *"your answer was posted; this copy predates it"*.
+       *
+       * ⚠️ **Only ever set alongside `cachedSince`**, and it is the sentence that stops the cached
+       * arm from reading as *your answer vanished*. `threadview.ts`'s `postedNote` carries the
+       * argument; the short version is that every other word on a cached screen is true, which is
+       * what makes the missing answer invisible.
+       */
+      postedNote?: string | null;
+    };
 
 export interface CommunityThreadViewProps {
   state: CommunityThreadState;
@@ -142,14 +223,13 @@ export interface CommunityThreadViewProps {
    */
   onOpenPerson?: (handle: string) => void;
   /**
-   * How to answer.
+   * How to answer — see {@link CommunityReplyBox} for the two arms and why there are two.
    *
-   * 🔴 **Optional because D5 is open**, not because answering is optional. Until the ruling says
-   * what authorises a write from a desktop client, the honest thing on this screen is a *labelled*
-   * hand-off saying where the reply goes — which is what NAT-012 leaves `openExternal` for. A
-   * screen with no way to answer at all would be the browser round trip with an extra step.
+   * ⚠️ Still optional, and no longer because D5 is open. A host with no session store wired at all
+   * (a story, a spec grading the read half) passes nothing and the screen draws no answering
+   * affordance — which is honest, because that host cannot post either.
    */
-  reply?: { line: string; actionLabel: string; onAction: () => void } | null;
+  reply?: CommunityReplyBox | null;
 }
 
 function Attachment({ attachment }: { attachment: CommunityAttachmentView }) {
@@ -236,6 +316,29 @@ function Post({
       {post.attachments.map((attachment) => (
         <Attachment key={attachment.id} attachment={attachment} />
       ))}
+
+      {/* 🔴 NAT-007 AC6. The verb is drawn UNDER the answer it is about, never in a toolbar at the
+          top of the thread: "accept" is a claim about one post, and a control that floated free of
+          the words it refers to is how somebody accepts the answer above the one they read. */}
+      {post.accept && (
+        <div className={css['PostAccept']}>
+          <button
+            type="button"
+            className={css['AcceptButton']}
+            onClick={post.accept.onAccept}
+            disabled={post.accept.busy}
+          >
+            {post.accept.busy ? post.accept.busyLabel : post.accept.label}
+          </button>
+          {/* ⚠️ The platform's own refusal, beside the verb that earned it. `role="alert"` because
+              a person who clicked and saw nothing change has no other way to learn it failed. */}
+          {post.accept.error && (
+            <p className={css['AcceptError']} role="alert">
+              {post.accept.error}
+            </p>
+          )}
+        </div>
+      )}
     </article>
   );
 }
@@ -312,7 +415,7 @@ export function CommunityThreadView({
     );
   }
 
-  const { thread, cachedSince } = state;
+  const { thread, cachedSince, postedNote } = state;
 
   return (
     <div className={`${css['Thread']} ${css[`is-density-${density}`]}`}>
@@ -329,6 +432,10 @@ export function CommunityThreadView({
         </p>
       )}
 
+      {/* 🔴 Under the cached banner, not under the composer: a reader looking at a list that does
+          not contain their answer is looking HERE, at the list. */}
+      {postedNote && <p className={css['ThreadPosted']}>{postedNote}</p>}
+
       <Post post={thread.question} isQuestion onOpenLink={onOpenLink} onOpenPerson={onOpenPerson} density={density} />
 
       <h3 className={css['ThreadAnswersHead']}>{thread.answersLine}</h3>
@@ -344,7 +451,7 @@ export function CommunityThreadView({
         />
       ))}
 
-      {reply && (
+      {reply?.kind === 'handoff' && (
         <div className={css['ThreadReply']}>
           <p className={css['StateLine']}>{reply.line}</p>
           <button type="button" className={css['RetryButton']} onClick={reply.onAction}>
@@ -352,6 +459,59 @@ export function CommunityThreadView({
           </button>
         </div>
       )}
+
+      {reply?.kind === 'composer' && (
+        <div className={css['ThreadReply']}>
+          {/*
+            ⚠️ A real `<label htmlFor>` rather than a placeholder standing in for one. A
+            placeholder disappears the moment somebody types, so a person who looks away mid-answer
+            comes back to an unlabelled box — and a screen reader announces nothing at all.
+
+            🔴 The id is a constant rather than a `useId`. This component is hook-free on purpose
+            (see `renderElements.ts`), and the two surfaces that draw it — the rail panel and the
+            launcher tab — live in different windows, so one thread view is drawn per document.
+          */}
+          <label className={css['ReplyLabel']} htmlFor={REPLY_FIELD_ID}>
+            {reply.label}
+          </label>
+          <textarea
+            id={REPLY_FIELD_ID}
+            className={css['ReplyInput']}
+            value={reply.value}
+            placeholder={reply.placeholder}
+            rows={4}
+            spellCheck
+            // 🔴 AC4 — disabled while the request is in flight, so a second click cannot post the
+            // same answer twice. The TEXT is never cleared here; only a confirmed `ok` clears it,
+            // and that happens in the host.
+            disabled={reply.busy}
+            onChange={(event) => reply.onChange(event.target.value)}
+          />
+
+          <div className={css['ReplyActions']}>
+            <button
+              type="button"
+              className={css['ReplySubmit']}
+              onClick={reply.onSubmit}
+              disabled={!reply.canSubmit || reply.busy}
+            >
+              {reply.submitLabel}
+            </button>
+            {reply.blockedReason && <p className={css['ReplyBlocked']}>{reply.blockedReason}</p>}
+          </div>
+
+          {/* 🔴 AC4's whole point: this sentence appears and the text above it does not move. */}
+          {reply.error && (
+            <p className={css['ReplyError']} role="alert">
+              {reply.error}
+            </p>
+          )}
+          {reply.note && <p className={css['ReplyNote']}>{reply.note}</p>}
+        </div>
+      )}
     </div>
   );
 }
+
+/** See the label above — a constant because this component may not call `useId`. */
+const REPLY_FIELD_ID = 'community-thread-reply';

@@ -416,8 +416,40 @@ describe('AC4 — the thread view withholds nothing, proven against the real sou
     expect(hook).toContain('token: session?.token ?? null');
   });
 
-  it('the answer-on-the-web hand-off is not inside any session branch', () => {
-    // The capability a person with no account has on the web, kept in the editor.
-    expect(isGated(hook, "actionLabel: 'Answer on the web'")).toBe(false);
+  /**
+   * 🔴 THE HAND-OFF MOVED, AND THE CLAIM ABOUT IT CHANGED SHAPE — 2026-08-20, NAT-007 AC4.
+   *
+   * This used to be `isGated(hook, "actionLabel: 'Answer on the web'")` — *"the capability a
+   * person with no account has on the web, kept in the editor"* — and it went red because the
+   * literal moved into `threadwrites.ts`. ✅ The `isGated` tripwire is what said so, in as many
+   * words: *"this spec is blind, fix it."* Without it this would have gone on asserting `false`
+   * about a string that was not there.
+   *
+   * ⚠️ **And the old claim would now be WRONG rather than merely blind.** D5 settled, so the
+   * editor composes for a signed-in reader and hands off for a signed-out one — the hand-off IS
+   * chosen on the session, and that is the opposite of withholding: it is the arm a person
+   * without an account gets. So the structural question *"is this behind a session gate"* stopped
+   * being the right one, and what replaces it is the property the gate existed to protect: the
+   * module that decides which arm to draw is handed a BOOLEAN and never a credential.
+   *
+   * The behavioural half — *signed out really does get a way to answer* — is
+   * `nat-007/threadwrites.test.ts`, which calls `composeReplyBox` rather than reading it.
+   */
+  const writes = stripComments(readFileSync(join(EDITOR_SRC, 'models/community/threadwrites.ts'), 'utf8'));
+
+  it('control: the hand-off is still SOMEWHERE — otherwise every claim below is about nothing', () => {
+    expect(writes).toContain("actionLabel: 'Answer on the web'");
+  });
+
+  it('the module that chooses composer-or-hand-off never sees a session or a token', () => {
+    expect(readsTheSession(writes)).toBe(false);
+    expect(writes).not.toContain('session?.token');
+    expect(READERS).not.toContain('noodl-editor/src/editor/src/models/community/threadwrites.ts');
+  });
+
+  it('and the hook hands it a BOOLEAN, which is the whole of what it may know', () => {
+    // 🔴 `Boolean(session)` rather than the session: a credential that never arrives cannot be
+    // read, and no amount of later editing in that module can start gating on one.
+    expect(hook).toContain('signedIn: Boolean(session)');
   });
 });

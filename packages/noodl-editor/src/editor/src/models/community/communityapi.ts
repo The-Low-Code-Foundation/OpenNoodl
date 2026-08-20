@@ -650,15 +650,30 @@ export type GradingNotice = {
 };
 
 /**
- * 🔴 A community read is one of three outcomes and `absent` is not an error.
+ * 🔴 A community read is one of FOUR outcomes and `absent` is not an error.
  *
  * A client that modelled the 404 as a failure would retry it, log it, or show a "could not
  * reach the community" banner — and a pupil whose school switched the community off would get
  * an error message about a surface D15 says must not appear to them at all. *Absent means
  * absent* is a property of the client's type, not of its rendering.
+ *
+ * 🔴 **`unauthenticated` was added 2026-08-20, and the reason is a defect rather than a
+ * symmetry.** Every read on this API answered `200` for a null viewer — deliberately, because
+ * D15's refusal is a `404` and a signed-out pull must be indistinguishable from a member with
+ * an empty list. `GET /api/v1/me/path` is **the first read that answers `401`** (UNI-007 AC1;
+ * a path is nobody's but its owner's), and until this variant existed `get()` fell through to
+ * `!response.ok` and reported it as `unreachable` — telling a learner whose token had expired
+ * that their network was down, while the platform was answering them precisely.
+ *
+ * ⚠️ That is the *same* argument {@link Write} makes for its own `unauthenticated`, which was
+ * written on 2026-08-16 and reasoned about writes only. The read path had the identical bug
+ * for four days and no route exercised it. **A distinction argued for one half of a client is
+ * not thereby made in the other half** — the doc comment reads as though it were.
  */
 export type Read<T> =
   | { outcome: 'ok'; value: T }
+  /** No credential, or an expired one. The caller's own fix, and an ordinary fact. */
+  | { outcome: 'unauthenticated' }
   | { outcome: 'absent' }
   | { outcome: 'unreachable'; status: number | null; detail: string };
 
@@ -740,6 +755,13 @@ export class CommunityApiClient {
       return { outcome: 'unreachable', status: null, detail: String(err) };
     }
 
+    // 🔴 ORDER MATTERS AND IT IS THE OPPOSITE OF THE OBVIOUS ONE. 401 is checked before 404
+    // because they are both refusals and only one of them may be narrated: `absent` is D15
+    // saying *this surface does not exist for you*, which is drawn as nothing at all, and
+    // `unauthenticated` is *you, specifically, are not signed in*, which is drawn as a way
+    // back in. Collapsing either into the other tells somebody about a door they must not
+    // know exists, or hides the only one they could actually open.
+    if (response.status === 401) return { outcome: 'unauthenticated' };
     if (response.status === 404) return { outcome: 'absent' };
     if (!response.ok) {
       return { outcome: 'unreachable', status: response.status, detail: `HTTP ${response.status}` };
@@ -788,6 +810,29 @@ export class CommunityApiClient {
   }
 
   /**
+   * NAT-007 AC6 — mark the answer that solved it.
+   *
+   * 🔴 **The route decides who may, and it decides it in the transaction that moves the row** —
+   * `acceptAnswer` reads `bench_threads.author_account_id` and throws `[bench-accept-not-asker]`
+   * before touching anything. So this method sends the request for anybody who asks and reports
+   * what came back; `threadwrites.ts` decides only whether the VERB is drawn. ⚠️ The two are
+   * separate on purpose. The editor cannot see `author_account_id` at all — NAT-006 removed it
+   * from every read payload as its own AC4 failure — so a client-side gate is a guess about
+   * handles, and a guess is a fine reason to hide a button and a terrible reason to be the only
+   * check.
+   *
+   * ⚠️ **200, not 201.** The accept route answers `Response.json({pointsAwarded})` with no status,
+   * unlike `/posts`, which is 201. Both are `response.ok` and `post()` reads neither, which is why
+   * this is a note rather than a branch.
+   */
+  acceptAnswer(threadId: string, postId: string): Promise<Write<{ pointsAwarded: number }>> {
+    return this.post<{ pointsAwarded: number }>(
+      `/api/v1/bench/threads/${encodeURIComponent(threadId)}/accept`,
+      { postId }
+    );
+  }
+
+  /**
    * ⚠️ Not a `get()` with a method parameter. The two differ in more than the verb — a body,
    * a content type, a distinct outcome union and a 401 branch — and threading four
    * conditionals through one function to save a dozen lines is how the read path acquires a
@@ -829,7 +874,15 @@ export class CommunityApiClient {
           : 'Too many requests — try again shortly.'
       };
     }
-    if (response.status === 400 || response.status === 403) {
+    // 🔴 409 IS A REFUSAL WITH A FIX IN IT, and it fell through to `unreachable` until UNI-007's
+    // caller needed it — the same hole 429 had, one status along. `POST /api/v1/me/path/project`
+    // answers `409 {error: "take the intake first"}`, and API.md §6 gives the RFP response cap
+    // the same status. Both are sentences a learner can act on; both read as "the community is
+    // down" without this branch. ⚠️ The rule this keeps failing is that the mapping table's
+    // completeness is a property of the ROUTES, not of the client — every status the platform
+    // deliberately chooses needs a home here, and a status with no home defaults to the one
+    // outcome that blames the network.
+    if (response.status === 400 || response.status === 403 || response.status === 409) {
       // 🔴 The platform's own words, and it chooses them for this. `bench-http.ts` maps every
       // refusal through one table precisely so that a caller *"learns THAT it was refused,
       // and for the rules that are about their own input, enough to fix it"* — while never

@@ -430,6 +430,20 @@
   line-height: 1.5;
 }
 
+/*
+  🔴 The `success` text role, not the notice role the cached banner uses. The two sentences sit one
+  above the other and say opposite things — "this is old" and "and the thing you just did worked" —
+  so drawing them in one colour would merge them into a single warning.
+*/
+.ThreadPosted {
+  margin: calc(var(--spacing-3) * -1) 0 var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-2-5);
+  border-left: 2px solid var(--theme-color-success);
+  color: var(--theme-color-fg-success);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
 .ThreadAnswersHead {
   margin: var(--spacing-5) 0 var(--spacing-2);
   color: var(--theme-color-fg-highlight);
@@ -445,6 +459,176 @@
   margin-top: var(--spacing-5);
   padding-top: var(--spacing-3);
   border-top: 1px solid var(--theme-color-border-subtle);
+}
+
+/*
+  ── NAT-007 AC4: the composer ────────────────────────────────────────────────────────────
+
+  🔴 The field takes `.SearchInput`'s shape EXACTLY — `bg-2` fill, `border-control` edge, in both
+  densities. That is not tidiness: pinning one named ground per control is what NAT-008 bought to
+  keep the PAIRS table from multiplying (a field that inherited its density's ground would be two
+  more pairings per ink), and a second field on the same two surfaces that chose differently would
+  spend that budget for nothing. ⚠️ In the rail the fill EQUALS the panel ground, so the edge is
+  the only thing saying a control is there — which is why `border-control` on `bg-2` is graded.
+*/
+.ReplyLabel {
+  display: block;
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.ReplyInput {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  /* ⚠️ Vertical only. A horizontally resizable box in a 320px rail is a box a person can drag
+     out of the panel it lives in. */
+  resize: vertical;
+  min-height: 84px;
+  padding: var(--spacing-2);
+  background: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-control);
+  border-radius: 3px;
+  color: var(--theme-color-fg-default);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+
+  &::placeholder {
+    color: var(--theme-color-fg-default-shy);
+  }
+
+  &:disabled {
+    cursor: progress;
+    color: var(--theme-color-fg-disabled);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: -1px;
+  }
+}
+
+.ReplyActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+/*
+  The one FILLED control on this screen, and the only one in `components/community`.
+
+  🔴 Posting an answer is the verb the phase is named after; drawing it in the same quiet outline
+  as "pull this fragment" and "try again" would make the primary action of the surface the third
+  most visible thing on it. `on-primary` over `primary` is already graded and is ground-
+  independent, so the fill costs the PAIRS table nothing.
+*/
+.ReplySubmit {
+  background: var(--theme-color-primary);
+  border: 1px solid var(--theme-color-primary);
+  border-radius: 3px;
+  padding: var(--spacing-1-5) var(--spacing-3);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--theme-color-fg-on-primary);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-primary-hover);
+    border-color: var(--theme-color-primary-hover);
+  }
+
+  /* ⚠️ Disabled loses the FILL, not just the ink. A filled button at reduced opacity still reads
+     as the loudest thing on the screen, so a person keeps clicking it. */
+  &:disabled {
+    cursor: default;
+    background: none;
+    border-color: var(--theme-color-border-control);
+    color: var(--theme-color-fg-disabled);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.ReplyBlocked {
+  margin: 0;
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+/*
+  🔴 AC4's sentence. It is `fg-danger` — D12's TEXT half — and not the fill red: the composer's
+  sign-in error is already a graded row on `bg-4` for exactly this reason, and this one lands on
+  the thread's own ground.
+*/
+.ReplyError {
+  margin: 0;
+  color: var(--theme-color-fg-danger);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ReplyNote {
+  margin: 0;
+  color: var(--theme-color-fg-success);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+/* ── NAT-007 AC6: accepting an answer ────────────────────────────────────────────────────── */
+
+.PostAccept {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2-5);
+}
+
+/*
+  ⚠️ Outlined, not filled — deliberately quieter than `.ReplySubmit`. Accepting is a verb only the
+  asker ever sees, and only until one answer is accepted; the composer's verb is on every thread
+  for everybody. Two filled buttons on one screen is two primary actions, which is none.
+*/
+.AcceptButton {
+  background: none;
+  border: 1px solid var(--theme-color-border-control);
+  border-radius: 3px;
+  padding: var(--spacing-1) var(--spacing-2-5);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  color: var(--theme-color-fg-accent);
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-bg-2);
+  }
+
+  &:disabled {
+    cursor: default;
+    color: var(--theme-color-fg-disabled);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.AcceptError {
+  margin: 0;
+  color: var(--theme-color-fg-danger);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 /* ── One post ──────────────────────────────────────────────────────────────────────────── */

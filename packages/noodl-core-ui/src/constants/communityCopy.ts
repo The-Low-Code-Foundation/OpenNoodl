@@ -33,3 +33,18 @@ export const COMMUNITY_SIGN_OUT_LABEL = 'Sign out';
  * breath as the offer, that it does not.
  */
 export const COMMUNITY_GATES_NOTHING = 'Everything in the editor works without an account, and always will.';
+
+/**
+ * 🔴 D5's follow-up, on the editor's side of the device flow.
+ *
+ * The ruling (2026-08-20) gave the editor **the same session scope as the browser** — so the code
+ * a person is about to type authorises posting under their handle, not only proving who they are.
+ * The approval screen on the platform is where consent is actually given and it says so at
+ * length; this is the sentence on the window they are reading the code OFF, so that the two
+ * screens agree and nobody types eight characters to find out afterwards what they meant.
+ *
+ * ⚠️ Deliberately not a capability list. NAT-009 and NAT-010 add writes and would each have to
+ * remember to edit a list; *the same reach as the browser* is D5's actual wording and stays true.
+ */
+export const COMMUNITY_DEVICE_GRANT =
+  'This gives the editor the same reach as your browser — including posting as you.';

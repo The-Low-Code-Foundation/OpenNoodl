@@ -19,7 +19,9 @@ export type {
   CommunityAttachmentPull,
   CommunityAttachmentPort,
   CommunityAttachmentView,
+  CommunityPostAccept,
   CommunityPostView,
+  CommunityReplyBox,
   CommunityThreadDetailView,
   CommunityThreadState,
   CommunityThreadViewProps

@@ -42,6 +42,7 @@ import {
 
 import type { MeResponse, Read, ThreadAttachment, ThreadDetail, ThreadPost } from './communityapi';
 import type { PostBlock } from './postbody';
+import { acceptFor, isAsker, type AcceptOffer } from './threadwrites';
 
 export type { CommunityThreadState, CommunityThreadDetailView };
 
@@ -184,6 +185,29 @@ export type ThreadViewInputs = {
   cached?: { thread: ThreadDetail; at: number } | null;
   now?: number;
   pullFor?: PullOffer;
+  /**
+   * NAT-007 AC6 — what the host can do about accepting, or nothing at all.
+   *
+   * ⚠️ Absent for every host that has not wired the write, and `acceptFor` draws no verb in that
+   * case. A spec grading the read half passes nothing and gets exactly the screen it graded before.
+   */
+  accept?: AcceptOffer | null;
+  /**
+   * 🔴 What this editor session posted to this thread, if anything.
+   *
+   * **This exists for the arm nobody would think of.** A successful post is followed by a re-read.
+   * If that re-read FAILS, what is left on screen is branch 4 below — the copy we already had,
+   * taken *before* the post, under a banner saying it is a copy and how old it is. Every word of
+   * that is true, and the whole screen is a lie: the answer the person just wrote is not in the
+   * list and nothing says why. AC4 forbids losing somebody's typed answer; a screen implying it
+   * never arrived is the same failure one step later.
+   *
+   * ⚠️ **`postId` is carried, not just the time**, so the question *"is their answer in what we
+   * are drawing"* is ANSWERED rather than assumed. A read that lands after a write ought to
+   * contain it — one Postgres, committed before the response — but *ought to* is the shape of
+   * every finding in this phase. See {@link postedNote}.
+   */
+  posted?: { at: number; postId: string } | null;
 };
 
 function attachmentView(attachment: ThreadAttachment, pullFor?: PullOffer): CommunityAttachmentView {
@@ -198,7 +222,22 @@ function attachmentView(attachment: ThreadAttachment, pullFor?: PullOffer): Comm
   };
 }
 
-function postView(post: ThreadPost, now: number, pullFor?: PullOffer): CommunityPostView {
+/** What `threadDetailView` needs beyond the payload — all of it optional, all of it a host's. */
+export type ThreadViewOptions = {
+  pullFor?: PullOffer;
+  accept?: AcceptOffer | null;
+  /** 🔴 Decided ONCE per thread, in `threadDetailView`, never per post. See {@link isAsker}. */
+  viewerIsAsker?: boolean;
+};
+
+function postView(
+  post: ThreadPost,
+  now: number,
+  isQuestion: boolean,
+  thread: ThreadDetail,
+  options: ThreadViewOptions
+): CommunityPostView {
+  const { pullFor } = options;
   return {
     id: post.id,
     // ⚠️ An empty handle draws as "someone" rather than as a bare "@". The platform joins on
@@ -211,20 +250,28 @@ function postView(post: ThreadPost, now: number, pullFor?: PullOffer): Community
     when: relativeTime(post.createdAt, now),
     accepted: post.accepted,
     blocks: post.blocks,
-    attachments: post.attachments.map((attachment) => attachmentView(attachment, pullFor))
+    attachments: post.attachments.map((attachment) => attachmentView(attachment, pullFor)),
+    // NAT-007 AC6 — and `acceptFor` says no for almost every post. See its four refusals.
+    accept: acceptFor({
+      thread,
+      post,
+      isQuestion,
+      viewerIsAsker: options.viewerIsAsker === true,
+      offer: options.accept
+    })
   };
 }
 
 export function threadDetailView(
   thread: ThreadDetail,
   now: number,
-  pullFor?: PullOffer
+  options: ThreadViewOptions = {}
 ): CommunityThreadDetailView {
   return {
     title: thread.title,
     meta: threadMeta(thread, now),
-    question: postView(thread.question, now, pullFor),
-    answers: thread.answers.map((answer) => postView(answer, now, pullFor)),
+    question: postView(thread.question, now, true, thread, options),
+    answers: thread.answers.map((answer) => postView(answer, now, false, thread, options)),
     // ⚠️ Counted from what we are about to DRAW, not from the payload's `replyCount`. The two
     // disagree the moment moderation hides a post: the count is over rows, the array is over
     // visible ones, and a heading that says "3 answers" above two of them is a reader looking
@@ -256,8 +303,25 @@ export function composeThreadView(inputs: ThreadViewInputs): CommunityThreadStat
     return { state: 'hidden' };
   }
 
+  // 🔴 Read once, from `me` and the thread, and handed to every post. Deciding it per post would
+  // ask the same question as many times as there are answers — and the day one of those calls got
+  // a different argument, one answer in a list would carry a verb the others did not.
+  const options = (thread: ThreadDetail): ThreadViewOptions => ({
+    pullFor,
+    accept: inputs.accept,
+    viewerIsAsker: isAsker(me, thread)
+  });
+
   if (read?.outcome === 'ok') {
-    return { state: 'ready', thread: threadDetailView(read.value, now, pullFor), cachedSince: null };
+    return {
+      state: 'ready',
+      thread: threadDetailView(read.value, now, options(read.value)),
+      cachedSince: null,
+      // ⚠️ Asked on the LIVE copy too, and that is not belt-and-braces. A re-read that succeeds
+      // and comes back without the answer in it is the case that would otherwise pass silently:
+      // fresh copy, no banner, no answer, nothing to read.
+      postedNote: postedNote(inputs.posted ?? null, { thread: read.value, at: now })
+    };
   }
 
   if (read?.outcome === 'absent') {
@@ -267,15 +331,46 @@ export function composeThreadView(inputs: ThreadViewInputs): CommunityThreadStat
   if (read !== undefined && cached) {
     return {
       state: 'ready',
-      thread: threadDetailView(cached.thread, now, pullFor),
+      thread: threadDetailView(cached.thread, now, options(cached.thread)),
       // ⚠️ `relativeTime` takes a string, and this is the one timestamp on this screen the
       // editor produced itself rather than received — so it is spelled as an ISO string here
       // rather than given a second formatter that takes a number.
-      cachedSince: relativeTime(new Date(cached.at).toISOString(), now) ?? 'a moment ago'
+      cachedSince: relativeTime(new Date(cached.at).toISOString(), now) ?? 'a moment ago',
+      postedNote: postedNote(inputs.posted ?? null, cached)
     };
   }
 
   if (read === undefined) return { state: 'loading' };
 
   return { state: 'unreachable', detail: read.detail };
+}
+
+/**
+ * 🔴 The sentence that stops a true screen from being a lie.
+ *
+ * A person posts an answer; the network drops before the re-read lands; branch 4 draws the copy we
+ * already had. That copy was taken *before* the post, so their answer is not in the list — and
+ * every other word on screen ("Showing a copy saved 4 minutes ago") is accurate, which is exactly
+ * what makes the omission invisible. AC4 forbids losing somebody's typed answer; a screen implying
+ * it never arrived is the same failure one step later.
+ *
+ * ⚠️ **`null` when the copy is NEWER than the post**, which is the ordinary case after a
+ * successful re-read followed by a later failure: that copy contains the answer and a sentence
+ * saying otherwise would be the lie in the other direction.
+ */
+export function postedNote(
+  posted: { at: number; postId: string } | null | undefined,
+  copy: { thread: ThreadDetail; at: number }
+): string | null {
+  if (!posted) return null;
+  // 🔴 The FIRST question is whether the answer is in what we are about to draw, because that is
+  // the question the reader has. Everything below only chooses which sentence explains why not.
+  if (copy.thread.answers.some((answer) => answer.id === posted.postId)) return null;
+  if (copy.at < posted.at) {
+    return 'Your answer was posted. This copy was taken before it, so it is not in the list yet.';
+  }
+  // ⚠️ A read that landed AFTER the write and still does not list it. Says what it knows and
+  // guesses at nothing: the post succeeded — the platform returned its id — and the thread we can
+  // see does not have it.
+  return 'Your answer was posted, but the community has not listed it yet.';
 }

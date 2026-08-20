@@ -63,6 +63,7 @@ import {
 import type {
   CommunityDirectoryViewModel,
   CommunityProfileState,
+  CommunityReplyBox,
   CommunitySectionState,
   CommunityThreadState
 } from '@noodl-core-ui/components/community';
@@ -152,7 +153,8 @@ export interface LauncherCommunityThreadPane {
    * lists survive a thread opening in place.
    */
   onOpenPerson?: (handle: string) => void;
-  reply?: { line: string; actionLabel: string; onAction: () => void } | null;
+  /** NAT-007 AC4 — see {@link CommunityReplyBox} for the two arms and why there are two. */
+  reply?: CommunityReplyBox | null;
 }
 
 /**

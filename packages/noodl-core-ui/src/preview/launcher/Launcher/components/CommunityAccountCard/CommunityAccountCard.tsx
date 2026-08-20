@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import React from 'react';
 
 import {
+  COMMUNITY_DEVICE_GRANT,
   COMMUNITY_GATES_NOTHING,
   COMMUNITY_SIGN_IN_LABEL,
   COMMUNITY_SIGN_OUT_LABEL
@@ -148,6 +149,11 @@ export function CommunityAccountCard({
               <pre className={css['Code']} data-test="community-account-code">
                 {state.userCode}
               </pre>
+              {/* 🔴 D5's follow-up — see `COMMUNITY_DEVICE_GRANT`. Above the URL rather than
+                  below it, because what this code DOES is the thing to read before typing it. */}
+              <p className={css['Aside']} data-test="community-account-grant">
+                {COMMUNITY_DEVICE_GRANT}
+              </p>
               {/* ⚠️ Shown as well as opened: a browser on a different profile, or none. */}
               <p className={css['Aside']}>{state.verificationUri}</p>
             </div>

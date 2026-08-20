@@ -523,8 +523,94 @@ const PAIRS: Pair[] = [
   { what: 'a notice message in a dialog', fg: '--theme-color-fg-notice', bg: '--theme-color-bg-4', min: 4.5, why: 'same role, the dialog ground' },
   { what: 'a danger message a step up', fg: '--theme-color-fg-danger', bg: '--theme-color-bg-2', min: 4.5, why: '`TextType.Danger` is words' },
   { what: 'a danger message in a dialog', fg: '--theme-color-fg-danger', bg: '--theme-color-bg-4', min: 4.5, why: 'same role, the dialog ground — this is the pair that measured 4.46 in dark' },
-  { what: 'an error message, which reaches its colour through `fg-error`', fg: '--theme-color-fg-error', bg: '--theme-color-bg-4', min: 4.5, why: 'a separate alias with its own consumers, so a separate claim' }
+  { what: 'an error message, which reaches its colour through `fg-error`', fg: '--theme-color-fg-error', bg: '--theme-color-bg-4', min: 4.5, why: 'a separate alias with its own consumers, so a separate claim' },
+
+  // ── NAT-007 AC4/AC6: answering, and accepting an answer ─────────────────────────────────
+  // `CommunityThreadView`'s composer and its per-answer accept verb, on both surfaces.
+  //
+  // 🔴 **SEVEN ROWS, AND ONLY SEVEN, BECAUSE THE COMPOSER BORROWS `.SearchInput`'S GROUNDS.**
+  // The field is `bg-2`-filled with a `border-control` edge in BOTH densities — NAT-008's
+  // one-named-ground-per-control constraint, reused rather than re-decided. So the typed answer,
+  // the placeholder, the blocked reason and the accent verb all land on pairings this table
+  // already grades, and what is new is the four inks the composer introduces plus the three
+  // grounds nobody had reached.
+  //
+  // ⚠️ **`border-control` on `bg-2` was a HOLE, and not one this task made.** The rail panel
+  // paints `bg-2`, and NAT-008 put a search box and five filter pills on it whose only edge is
+  // `border-control` — graded on `bg-1` (the launcher card) and never on the rail's own ground.
+  // It passes: 3.57 dark / 3.37 light. It was simply never asked.
+  {
+    what: 'the rail panel: the 1px edge that says a field or a pill is there — the composer’s, the directory’s, every filter pill’s',
+    fg: '--theme-color-border-control',
+    bg: '--theme-color-bg-2',
+    min: 3,
+    why: 'NON-TEXT (1.4.11): on the rail the field’s fill EQUALS the panel ground, so this edge is the only thing that makes it a control. 🔴 The hole NAT-008 left — its pills and its search box are on this ground too'
+  },
+  {
+    what: 'the composer: the “Post answer” verb, which is the one FILLED control in `components/community`',
+    fg: '--theme-color-fg-on-primary',
+    bg: '--theme-color-primary-hover',
+    min: 4.5,
+    why: 'words. `on-primary` over `primary` is already graded above; a filled button also has a HOVER fill, and a hover surface nobody listed is one nobody graded — this is the row that says the hover was checked rather than assumed'
+  },
+  {
+    what: 'the composer: the label of a verb that cannot fire yet',
+    fg: '--theme-color-fg-disabled',
+    bg: '--theme-color-bg-2',
+    min: 3,
+    why: 'NOT AA — 1.4.3 exempts inactive controls. ⚠️ The disabled verb loses its FILL and falls back to the ground behind it, which on the rail is `bg-2`; the two existing disabled rows are `bg-1` and `bg-3` and neither is where this one lands'
+  },
+  {
+    what: 'the composer: “this was not posted, your answer is still here”, on the launcher card',
+    fg: '--theme-color-fg-danger',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: 'words, and the only thing telling somebody their answer did not send. 🔴 `fg-danger` was graded on `bg-2` and `bg-4` and never on the panel ground — the launcher card is `bg-1`'
+  },
+  {
+    what: 'the composer: “Posted.”, on the launcher card',
+    fg: '--theme-color-fg-success',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: 'words. Same gap as the row above: `fg-success` had `bg-2`, `bg-3` and `bg-4` and not the commonest panel ground of the three'
+  },
+  {
+    what: 'the rule down “your answer was posted, this copy predates it” — and the one down an accepted answer',
+    fg: '--theme-color-success',
+    bg: '--theme-color-bg-1',
+    min: 3,
+    why: 'NON-TEXT (1.4.11): the 2px rule is what makes the posted note a different SHAPE from the cached banner above it, and it is `.is-accepted`’s marker too — the FILL role, which is a different token from the words beside it'
+  },
+  {
+    what: 'the same rule, in the rail',
+    fg: '--theme-color-success',
+    bg: '--theme-color-bg-2',
+    min: 3,
+    why: 'NON-TEXT (1.4.11): the panel ground, where every one of these is drawn narrower and the rule is doing more of the work'
+  }
 ];
+
+/**
+ * 🔴 HOW MANY PAIRINGS THIS TABLE ACTUALLY MEASURES, WHICH IS NOT HOW MANY ROWS IT HAS.
+ *
+ * `PAIRS` held **75 rows and 41 distinct (fg, bg, over, min) tuples** when this was added on
+ * 2026-08-20, and NAT-007's seven rows took it to **82 and 48**. Rows outnumbering pairings is not
+ * a defect: a row records *where* a pairing is drawn, and several say so explicitly — *"this row
+ * records that it was checked rather than inherited"*. Re-recording a known pairing at a new site
+ * is real bookkeeping.
+ *
+ * ⚠️ **What it is not is coverage, and nothing here said so.** Handovers have quoted the
+ * assertion count as evidence — *"245 assertions, 14 new pairings"* — and a row that duplicates an
+ * existing tuple cannot fail unless the row it duplicates fails too. Five new rows can therefore
+ * be five new claims or none, and the table gave no way to tell which.
+ *
+ * So the count is **stated**, and a session that changes it has to change it deliberately and say
+ * which half moved. 🔴 It is asserted in BOTH directions on purpose: going up silently would hide
+ * a pairing nobody argued for, and going down silently is a pairing that stopped being measured.
+ */
+// ⚠️ 41 before NAT-007, 48 after. The first run of the assertion below caught this constant being
+// wrong by two — which is the whole argument for having it, on the day it was written.
+const DISTINCT_PAIRINGS = 48;
 
 /**
  * NAT-003 — the syntax palette, on the ground CodeMirror actually paints.
@@ -724,6 +810,23 @@ describe('the instrument can reject a wrong answer', () => {
       expect(pair.why.length).toBeGreaterThan(10);
       if (pair.min === 3) expect(pair.why).toMatch(/NON-TEXT|NOT AA/);
     }
+  });
+
+  /**
+   * 🔴 THE ROW COUNT IS NOT THE COVERAGE. See {@link DISTINCT_PAIRINGS}.
+   *
+   * ⚠️ This is deliberately NOT a no-duplicates rule. Duplicate rows are wanted here — a pairing
+   * re-recorded at a new site is a claim that somebody looked. What was missing is any way to see
+   * that five new rows added *zero* new measurements, which is what a reader takes "14 new
+   * pairings" to mean.
+   */
+  it('states how many DISTINCT pairings it measures, so a row that measures nothing is visible', () => {
+    const key = (p: Pair) => `${p.fg}|${p.bg}|${p.over ?? ''}|${p.min}`;
+    const distinct = new Set(PAIRS.map(key));
+    expect(distinct.size).toBe(DISTINCT_PAIRINGS);
+    // The other half of the same fact, and the reason the number above is worth having: the table
+    // has always held more rows than pairings, and it will go on doing so.
+    expect(PAIRS.length).toBeGreaterThan(distinct.size);
   });
 });
 
