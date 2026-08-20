@@ -142,7 +142,7 @@ webview is genuinely the answer it is a *separate, sandboxed* surface on the
 
 ## 4. Rulings queue — OPEN as of 2026-08-19
 
-Richard settled four in the opening conversation. **D9 is now settled and D11/D12 were added and settled with it**; four remain — D10 was added on 2026-08-19 with NAT-014.
+Richard settled four in the opening conversation. **D9 is now settled and D11/D12 were added and settled with it**; **D5 was settled on 2026-08-20**, so **four remain** (D6, D7, D8, D10) — D10 was added on 2026-08-19 with NAT-014.
 
 **Settled 2026-08-19:**
 - ✅ **D1 — Fix the shared tokens.** Not a community-scoped override. The whole editor changes
@@ -176,11 +176,19 @@ Richard settled four in the opening conversation. **D9 is now settled and D11/D1
   spec asserts the *conditional*, not a difference, so a correct answer is not rejected.
   (NAT-002 — **done**.)
 
+✅ **D5 — settled 2026-08-20. The editor gets the same session scope as the browser.** A
+device-flow token *is* a session; the editor posts exactly as the web does, with no re-consent step
+and no second, narrower grant. ✅ **The measurement this was ruled on:** the platform already
+accepts the editor's bearer token on `POST /api/v1/bench/threads/:id/posts` — `apiViewer` reads
+`Authorization: Bearer` and `answerThread` asks nothing further — so D5 was never a capability
+question. ⚠️ **What the ruling costs, written down rather than discovered later:** the device flow's
+consent copy was authored for identity and now authorises writes, so **the approval screen's wording
+is a follow-up**, not an optional polish. 🔴 **It does not widen anything else.** Same scope as the
+browser means exactly the browser's scope: a write the web refuses this account, the editor is
+refused too, and D15 is unchanged. **Unblocks NAT-007 AC4/AC6/AC7-second-direction, NAT-006 AC5,
+and the write halves of NAT-009 and NAT-010.**
+
 **Open — each blocks the task named:**
-- 🔴 **D5 — What authorises a *write* from the editor?** The device-token flow
-  (`communitysignin.ts`) was scoped for identity, not for posting. Does the editor get the same
-  session scope as the browser, a narrower post-only scope, or a re-consent step on first write?
-  **Blocks NAT-007's reply path and every Tier-3 write.**
 - 🔴 **D6 — How much long tail stays browser-only?** Orgs, assignments, shelf items and the admin
   surfaces are 8 of the 19 routes and none was named in the review. Recommendation: leave them on
   the web behind an explicit "this opens in your browser" affordance, and say so in the UI rather

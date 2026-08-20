@@ -5,7 +5,7 @@
 | **Tier** | 3 |
 | **Effort** | L |
 | **Surface** | `editor`, `core-ui` |
-| **Rulings** | ✅ D3 · 🔴 **D5 OPEN** (write auth) · 🔴 **D7 OPEN** (moderation) |
+| **Rulings** | ✅ D3 · ✅ **D5 settled 2026-08-20** (same session scope as the browser) · 🔴 **D7 OPEN** (moderation) |
 | **Depends on** | **NAT-005** (the shapes), **NAT-006** (posts endpoint exists but is unused by the editor) |
 | **Flagship** | ⭐ This is the task the phase is named after |
 
@@ -27,7 +27,8 @@ are built. This is almost entirely an editor task.
 ## 🟡 Status — 2026-08-19 (session 8): the reading half is built, driven against the LIVE platform
 
 `2d3960a7`. **AC1, AC2, AC3 and AC8 close. AC5 half-closes. AC4, AC6 and half of AC7 are the
-writes, and they wait on D5.** A thread opens in place on both surfaces, renders every post, and
+writes.** 🔴 **They waited on D5 when this was written; ✅ D5 was settled on 2026-08-20 — same
+session scope as the browser — and they are now unblocked and unbuilt.** A thread opens in place on both surfaces, renders every post, and
 was read from the editor against `community.nodegx.io` — which turns out to be **serving**.
 
 | AC | State | Where |
@@ -35,9 +36,9 @@ was read from the editor against `community.nodegx.io` — which turns out to be
 | 1 — opens in place on both surfaces, `openExternal` no longer primary | ✅ | `useCommunityThread`, one hook for both. 🔴 Found: the row handed back a field the platform has never sent |
 | 2 — every post, in order, author/time/accepted | ✅ | `threadDetailView`; 3 posts asserted by walking the element tree |
 | 3 — `Block[]`, no `dangerouslySetInnerHTML`, unknown kinds skipped visibly | ✅ | `readPostBlocks` **validates rather than casts**; 9 files checked with comments stripped |
-| 4 — reply from the editor | 🔴 **D5** | Not built. A *labelled* hand-off ships in its place, and says where an answer goes |
+| 4 — reply from the editor | 🟡 **unblocked 08-20** | Not built. A *labelled* hand-off ships in its place. ✅ **D5 settled — same session scope as the browser**, so this is now a build, not a wait |
 | 5 — attached fragments render | 🟡 | They render, and the **pull seam** exists (`pullFor`, drawn-and-refused). 🔴 NAT-015 cannot be built — see below |
-| 6 — accept an answer | 🔴 **D5** | A write. Not built, not guessed at |
+| 6 — accept an answer | 🟡 **unblocked 08-20** | A write. Not built, not guessed at. ✅ D5 settled |
 | 7 — round trip, both directions | 🟡 **half** | Web → editor **driven for real**. Editor → web is AC4 |
 | 8 — offline states, neither reading as "no replies" | ✅ | Both arms **driven with the network genuinely cut**, not stubbed |
 
@@ -119,10 +120,13 @@ runtime spec could not either: both sides compile happily while disagreeing.
 
 ### What is left, and what it waits on
 
-1. 🔴 **AC4 and AC6 need D5**, and D5 needs Richard. ✅ **One fact for the ruling, measured:** the
-   platform **already accepts the editor's device-flow bearer token on `POST .../posts`** —
-   `apiViewer` reads `Authorization: Bearer` and `answerThread` asks nothing further. So D5 is not
-   *"can it work"*; it is *"should an identity-scoped token post, or does it need re-consent"*.
+1. ✅ **D5 IS SETTLED — 2026-08-20: the editor gets the same session scope as the browser.** No
+   re-consent step, no narrower grant; the editor posts exactly as the web does, and the platform
+   already accepts the token (`apiViewer` reads `Authorization: Bearer`; `answerThread` asks
+   nothing further). **AC4 and AC6 are now a build.** ⚠️ **The ruling created one piece of work in
+   this task:** the device flow's approval copy was authored for *identity* and now authorises
+   *writes*, so the consent screen's wording is part of AC4 rather than a polish item — a person
+   who approved "sign in" should not discover later that they also approved "post as me".
 2. 🔴 **AC5's other half is NAT-015, and NAT-015 has no population** — see that file.
 3. ⚠️ **AC7's second direction is AC4.** The first was driven for real.
 4. ⚠️ **The rail was driven, and so was the launcher** — both densities, both themes, a real
