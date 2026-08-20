@@ -84,6 +84,10 @@ class FakeFs implements LearningFolderFs {
       return undefined;
     }
   }
+  writeJsonFile(path: string, data: unknown): void {
+    if (this.failWrites) throw new Error(this.failWrites);
+    this.writeFile(path, JSON.stringify(data, null, 2));
+  }
   join(...parts: string[]): string {
     return parts.join('/');
   }
@@ -110,13 +114,15 @@ let clock = 0;
 function makeModel(fs = new FakeFs()) {
   clock = 0;
   const store = new FakeStore();
+  let mintCount = 0;
   const model = new LearningFolderModel({
     store,
     fs,
     root: '/data/Learning',
     // Monotonic and fake: `list()` sorts on it, so a real clock would make the
     // ordering assertions depend on how fast the machine is.
-    now: () => `2026-08-15T00:00:${String(clock++).padStart(2, '0')}.000Z`
+    now: () => `2026-08-15T00:00:${String(clock++).padStart(2, '0')}.000Z`,
+    newProjectId: () => `minted-${++mintCount}`
   });
   return { model, fs, store };
 }

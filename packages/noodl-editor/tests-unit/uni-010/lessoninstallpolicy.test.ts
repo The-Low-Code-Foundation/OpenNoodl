@@ -90,6 +90,9 @@ class FakeFs implements LearningFolderFs {
       return undefined;
     }
   }
+  writeJsonFile(path: string, data: unknown): void {
+    this.writeFile(path, JSON.stringify(data, null, 2));
+  }
   join(...parts: string[]) {
     return parts.join('/');
   }
@@ -97,11 +100,13 @@ class FakeFs implements LearningFolderFs {
 
 function makeModel() {
   const fs = new FakeFs();
+  let mintCount = 0;
   const model = new LearningFolderModel({
     store: new FakeStore(),
     fs,
     root: '/data/Learning',
-    now: () => '2026-08-15T12:00:00.000Z'
+    now: () => '2026-08-15T12:00:00.000Z',
+    newProjectId: () => `minted-${++mintCount}`
   });
   return { model, fs };
 }

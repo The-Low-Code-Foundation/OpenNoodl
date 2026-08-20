@@ -133,6 +133,9 @@ class FakeFs implements LearningFolderFs {
       return undefined;
     }
   }
+  writeJsonFile(path: string, data: unknown): void {
+    this.writeFile(path, JSON.stringify(data, null, 2));
+  }
   join(...parts: string[]): string {
     return parts.join('/');
   }
@@ -188,11 +191,13 @@ function writeBundle(fs: FakeFs, dir: string, options: BundleOptions): void {
 function installBundle(options: BundleOptions) {
   const fs = new FakeFs();
   writeBundle(fs, '/bundles/lesson', options);
+  let mintCount = 0;
   const model = new LearningFolderModel({
     store: new FakeStore(),
     fs,
     root: '/data/Learning',
-    now: () => '2026-08-16T00:00:00.000Z'
+    now: () => '2026-08-16T00:00:00.000Z',
+    newProjectId: () => `minted-${++mintCount}`
   });
   return model.install({ bundleDir: '/bundles/lesson', provenance: 'curated' });
 }

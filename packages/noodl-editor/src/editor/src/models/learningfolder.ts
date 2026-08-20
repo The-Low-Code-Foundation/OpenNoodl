@@ -54,6 +54,7 @@ import { buildLessonEvalContext } from './lessonprojectcontext';
 import type { LessonProjectSource } from './lessonprojectcontext';
 import { bundleLessonVocabulary } from './lessonverify';
 import type { LessonVerificationReport, LessonVocabulary } from './lessonverify';
+import { V2_INDICATORS } from '../io/ProjectFormatDetector';
 import { shippedCatalogIndex } from '../validation/catalog';
 import type { CatalogIndex } from '../validation/CatalogIndex';
 import type { LessonEvalContext } from '../views/lessons/lessonevalconditions';
@@ -194,6 +195,12 @@ export interface LearningFolderFs {
   copyRecursive(from: string, to: string): void;
   /** Parsed JSON, or `undefined` when the file is missing or unreadable. Never throws. */
   readJsonFile(path: string): unknown;
+  /**
+   * Overwrite a JSON file. **Throws** when it cannot, unlike {@link readJsonFile}
+   * — a failed identity write leaves a copy that will bind to somebody else's
+   * backend, so it has to reach the caller as a refusal.
+   */
+  writeJsonFile(path: string, data: unknown): void;
   join(...parts: string[]): string;
 }
 
@@ -204,6 +211,14 @@ export interface LearningFolderDeps {
   root: string;
   /** ISO-timestamp source. Injected so the module stays pure and its tests stay stable. */
   now: () => string;
+  /**
+   * A fresh project identity for an installed copy. Injected for the same reason
+   * {@link now} is, and **required rather than defaulted** — see
+   * {@link LearningFolderModel.reidentifyProject}. A default would let a second
+   * construction site skip the one write that stops two projects sharing a
+   * backend, which is the shape this module's header refuses everywhere else.
+   */
+  newProjectId: () => string;
 }
 
 // ─── Outcomes ───────────────────────────────────────────────────────────────
@@ -408,6 +423,8 @@ export class LearningFolderModel extends Model {
       if (fs.exists(projectDirectory)) fs.removeDirectoryRecursive(projectDirectory);
       fs.makeDirectory(projectDirectory);
       fs.copyRecursive(bundleDir, projectDirectory);
+      // 🔴 The copy is not the bundle, and it must not answer to the bundle's name.
+      this.reidentifyProject(projectDirectory, this.deps.newProjectId());
     } catch (e) {
       return {
         result: 'rejected',
@@ -478,6 +495,56 @@ export class LearningFolderModel extends Model {
     );
   }
 
+  /** The `id` an installed copy currently answers to, or `undefined`. Never throws. */
+  private projectIdOf(projectDirectory: string): string | undefined {
+    const { fs } = this.deps;
+    const project = fs.readJsonFile(fs.join(projectDirectory, V2_INDICATORS.projectFile));
+    const id = (project as { id?: unknown } | undefined)?.id;
+    return typeof id === 'string' && id.trim() ? id : undefined;
+  }
+
+  /**
+   * 🔴 **Give the installed copy a project identity of its own.**
+   *
+   * A bundle is a **template**, and a template carries no identity. Every stage
+   * of the authoring route copies `nodegx.project.json` verbatim — `create_project`
+   * stamps an `id`, `derive_starter` copies it, `create_lesson` copies it again —
+   * so without this write the bundle root, its `solution/`, the author's project
+   * and *every learner's installed copy* answer to one id.
+   *
+   * That is not cosmetic. `findReusableBackend` matches a backend on **name plus
+   * ownership**, and ownership is *"this project's id is in the backend's
+   * `projectIds`"*. Two projects with one id is README §1B's two-apps-one-datastore
+   * defect **with the ownership check intact and useless** — the check returns
+   * true, honestly, for the wrong project. Measured on TUT-003's first bundle,
+   * where the authoring project and the installed lesson both claimed
+   * `620eff71-718e-4be7-a39b-462eafcdeb23`.
+   *
+   * ⚠️ **The root project file only, and `solution/` deliberately not.** The rule
+   * takes the *open* project's id as an argument (`provision.findReusableBackend`)
+   * rather than scanning directories, and nothing opens a bundle's solution as a
+   * project — the harness reconstructs its files in memory. Rewriting a file no
+   * matcher reads would be a second write to justify.
+   *
+   * A bundle with no readable project file is left alone rather than repaired: it
+   * has no identity to collide with, so there is nothing here to fix, and minting
+   * one into a file this module could not parse is how a second defect hides the
+   * first (`projectIdentity`'s rule, one process over).
+   *
+   * ⚠️ Position of the key is cosmetic here and is **not** mirrored from
+   * `noodl-mcp/backend/projectIdentity.withIdAfterName`, which inserts it after
+   * `name`. Copying that placement would be a second copy of a rule that is only
+   * about diffs, and an installed lesson is not under the learner's version
+   * control.
+   */
+  private reidentifyProject(projectDirectory: string, id: string): void {
+    const { fs } = this.deps;
+    const file = fs.join(projectDirectory, V2_INDICATORS.projectFile);
+    const project = fs.readJsonFile(file);
+    if (!project || typeof project !== 'object' || Array.isArray(project)) return;
+    fs.writeJsonFile(file, { ...(project as Record<string, unknown>), id });
+  }
+
   /**
    * D5's whole recovery story: throw the copy away and pull a fresh one.
    *
@@ -505,10 +572,21 @@ export class LearningFolderModel extends Model {
       };
     }
 
+    // 🔴 **Reset KEEPS the identity it is repairing, and install mints one.** The
+    // two are opposite on purpose. Install produces a project that did not exist
+    // a moment ago, so it needs a name of its own. Reset replaces the *files* of
+    // a project that already has a backend bound to its id — minting there would
+    // orphan that backend and provision a second one, on every press, which is
+    // README §1B's defect arriving through the repair button. A backend outlives
+    // the files; disposing of one is the lifecycle's other end and is scoped
+    // elsewhere (README §1A).
+    const keptProjectId = this.projectIdOf(entry.projectDirectory) ?? this.deps.newProjectId();
+
     try {
       if (fs.exists(entry.projectDirectory)) fs.removeDirectoryRecursive(entry.projectDirectory);
       fs.makeDirectory(entry.projectDirectory);
       fs.copyRecursive(entry.source.path, entry.projectDirectory);
+      this.reidentifyProject(entry.projectDirectory, keptProjectId);
     } catch (e) {
       return { result: 'unavailable', reason: `The lesson could not be re-pulled: ${errorText(e)}` };
     }
@@ -664,6 +742,7 @@ export function defaultDeps(): LearningFolderDeps {
         return undefined;
       }
     },
+    writeJsonFile: (p, data) => nodeFs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8'),
     join: (...parts) => nodePath.join(...parts)
   };
 
@@ -671,6 +750,10 @@ export function defaultDeps(): LearningFolderDeps {
     store: { get: (key) => store.get(key), set: (key, value) => store.set(key, value) },
     fs,
     root,
-    now: () => new Date().toISOString()
+    now: () => new Date().toISOString(),
+    // The same shape `noodl-mcp/backend/projectIdentity.mintProjectId` produces, so
+    // a project that acquired its id here and one `create_project` made are
+    // indistinguishable to the matcher that reads them.
+    newProjectId: () => require('node:crypto').randomUUID()
   };
 }
