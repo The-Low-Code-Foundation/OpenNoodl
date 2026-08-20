@@ -27,6 +27,8 @@ import { CommunityTab, type LauncherCommunityHostState } from '@noodl-core-ui/pr
 import type { ThreadDetail } from '@noodl-models/community/communityapi';
 import { threadDetailView } from '@noodl-models/community/threadview';
 
+import { CommunityDensity } from '@noodl-core-ui/components/community';
+
 import { byClass, render, text, walk } from '../support/renderElements';
 
 const noop = () => undefined;
@@ -109,6 +111,22 @@ describe('NAT-008 — the directory draws', () => {
     expect(label.ownText).toBe('Search names, handles, bios and skills');
     expect(label.props.htmlFor).toBe(input.props.id);
     expect(input.props.placeholder).toBeUndefined();
+  });
+
+  it('the two densities give their search boxes DIFFERENT ids', () => {
+    // 🔴 `htmlFor` binds by document-unique id, and the launcher tab and the editor's rail live in
+    // the SAME BrowserWindow. Two boxes with one id resolve to the first: clicking the rail's
+    // label would focus the launcher's field. Asserted rather than trusted.
+    const page = render(<CommunityDirectoryView {...directoryProps()} density={CommunityDensity.Page} />);
+    const panel = render(<CommunityDirectoryView {...directoryProps()} density={CommunityDensity.Panel} />);
+
+    const pageId = byClass(page, 'SearchInput')[0].props.id;
+    const panelId = byClass(panel, 'SearchInput')[0].props.id;
+
+    expect(pageId).not.toBe(panelId);
+    // ...and each label still points at its OWN field — the half a "they differ" check misses.
+    expect(byClass(page, 'SearchLabel')[0].props.htmlFor).toBe(pageId);
+    expect(byClass(panel, 'SearchLabel')[0].props.htmlFor).toBe(panelId);
   });
 
   it('the label NAMES the fields, so the box does not promise more than it does', () => {

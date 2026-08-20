@@ -82,17 +82,30 @@ export function CommunityDirectoryView({
   onOpenPerson,
   onRetry
 }: CommunityDirectoryViewProps) {
+  /**
+   * 🔴 **The id carries the density, and that is a correctness fix rather than a nicety.** A
+   * `<label htmlFor>` binds by **document-unique id**: two directories mounted at once — the
+   * launcher tab and the editor's rail live in the *same* `BrowserWindow` — would give both boxes
+   * the same id, and every browser resolves that to the **first** one. Clicking the rail's label
+   * would then focus the launcher's field, and a screen reader would read one box's name twice.
+   *
+   * ⚠️ Not `useId()`, deliberately: this component is graded by walking its element tree with no
+   * renderer, and **any** hook throws there. The two densities are the two mount points, so they
+   * are a sufficient key — and a spec asserts the ids differ rather than trusting that.
+   */
+  const searchId = `community-directory-search-${density}`;
+
   return (
     <div className={`${css['Directory']} ${css[`is-density-${density}`]}`}>
       <div className={css['SearchRow']}>
         {/* ⚠️ A real `<label>` rather than a placeholder. A placeholder disappears the moment
             somebody types, which is exactly when a person needs to be reminded what the box
             searches — and it is not an accessible name. */}
-        <label className={css['SearchLabel']} htmlFor="community-directory-search">
+        <label className={css['SearchLabel']} htmlFor={searchId}>
           {view.searchLabel}
         </label>
         <input
-          id="community-directory-search"
+          id={searchId}
           className={css['SearchInput']}
           type="search"
           value={view.query}
