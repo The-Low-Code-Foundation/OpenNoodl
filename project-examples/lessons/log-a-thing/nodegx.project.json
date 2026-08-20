@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Log a Thing",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-08-20T07:40:27.023Z",
+  "modified": "2026-08-20T07:41:14.414Z",
+  "settings": {
+    "htmlTitle": "Log a Thing",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "636095a9-6bd9-477d-83e4-5a0db50c781b"
+}

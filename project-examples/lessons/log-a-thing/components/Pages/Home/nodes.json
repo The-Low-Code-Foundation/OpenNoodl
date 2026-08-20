@@ -1,0 +1,173 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "05814355-6cda-4807-8aed-20b3aed17e4b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Log a Thing",
+        "urlPath": "home",
+        "paddingTop": "var(--space-10)",
+        "paddingBottom": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Page shell",
+      "parent": "page",
+      "children": [
+        "heading",
+        "intro",
+        "entry_input",
+        "log_button",
+        "status_text",
+        "list_card"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Page heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Log a thing",
+        "as": "h1",
+        "fontSize": "var(--text-4xl)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "intro",
+      "type": "Text",
+      "label": "Intro line",
+      "parent": "shell",
+      "parameters": {
+        "text": "Type a line and press Log it. The Visual Function checks what you typed; the canvas saves it.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "entry_input",
+      "type": "net.noodl.controls.textinput",
+      "label": "Entry field",
+      "parent": "shell",
+      "parameters": {
+        "useLabel": true,
+        "label": "What happened?",
+        "placeholder": "Something worth remembering",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-md)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "log_button",
+      "type": "net.noodl.controls.button",
+      "label": "Log it button",
+      "parent": "shell",
+      "parameters": {
+        "label": "Log it",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "status_text",
+      "type": "Text",
+      "label": "Status line",
+      "parent": "shell",
+      "parameters": {
+        "text": "Nothing saved yet.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "metadata": {
+        "comment": "Its `text` parameter is what the page shows before the Visual Function has ever run. A Text with no parameter and an unfired connection renders the node-type default, which the render harness reports as dead placeholder text."
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "list_card",
+      "type": "Group",
+      "label": "Saved entries",
+      "parent": "shell",
+      "children": [],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 880
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

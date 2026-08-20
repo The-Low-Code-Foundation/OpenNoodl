@@ -1,0 +1,227 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "05814355-6cda-4807-8aed-20b3aed17e4b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Log a Thing",
+        "urlPath": "home",
+        "paddingTop": "var(--space-10)",
+        "paddingBottom": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Page shell",
+      "parent": "page",
+      "children": [
+        "heading",
+        "intro",
+        "entry_input",
+        "log_button",
+        "status_text",
+        "list_card"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Page heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Log a thing",
+        "as": "h1",
+        "fontSize": "var(--text-4xl)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "intro",
+      "type": "Text",
+      "label": "Intro line",
+      "parent": "shell",
+      "parameters": {
+        "text": "Type a line and press Log it. The Visual Function checks what you typed; the canvas saves it.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "entry_input",
+      "type": "net.noodl.controls.textinput",
+      "label": "Entry field",
+      "parent": "shell",
+      "parameters": {
+        "useLabel": true,
+        "label": "What happened?",
+        "placeholder": "Something worth remembering",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-md)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "log_button",
+      "type": "net.noodl.controls.button",
+      "label": "Log it button",
+      "parent": "shell",
+      "parameters": {
+        "label": "Log it",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "status_text",
+      "type": "Text",
+      "label": "Status line",
+      "parent": "shell",
+      "parameters": {
+        "text": "Nothing saved yet.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "metadata": {
+        "comment": "Its `text` parameter is what the page shows before the Visual Function has ever run. A Text with no parameter and an unfired connection renders the node-type default, which the render harness reports as dead placeholder text."
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "list_card",
+      "type": "Group",
+      "label": "Saved entries",
+      "parent": "shell",
+      "children": [
+        "log_repeater"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "log_repeater",
+      "type": "For Each",
+      "label": "One row per entry",
+      "parent": "list_card",
+      "parameters": {
+        "template": "/Components/LogRow",
+        "templateType": "explicit"
+      },
+      "metadata": {
+        "comment": "parameters.template names a COMPONENT, not a node. That is why this list is two components: the Repeater here, and /Components/LogRow as the thing it stamps."
+      },
+      "x": 220,
+      "y": 1000
+    },
+    {
+      "id": "check_entry",
+      "type": "Logic Builder",
+      "label": "Check the entry",
+      "x": 420,
+      "y": 0,
+      "metadata": {
+        "comment": "The synchronous half. It validates and shapes what was typed, stashes the shaped value in a variable, and then fans out on two signal outputs \u2014 ok and bad. It never touches the database, because a block program cannot await one."
+      },
+      "parameters": {
+        "workspace": "{\"blocks\":{\"languageVersion\":0,\"blocks\":[{\"type\":\"noodl_define_input\",\"id\":\"def_entry\",\"x\":30,\"y\":30,\"fields\":{\"NAME\":\"entry\",\"TYPE\":\"string\"},\"next\":{\"block\":{\"type\":\"noodl_define_output\",\"id\":\"def_title\",\"fields\":{\"NAME\":\"title\",\"TYPE\":\"string\"},\"next\":{\"block\":{\"type\":\"noodl_define_output\",\"id\":\"def_message\",\"fields\":{\"NAME\":\"message\",\"TYPE\":\"string\"},\"next\":{\"block\":{\"type\":\"noodl_define_signal_output\",\"id\":\"def_ok\",\"fields\":{\"NAME\":\"ok\"},\"next\":{\"block\":{\"type\":\"noodl_define_signal_output\",\"id\":\"def_bad\",\"fields\":{\"NAME\":\"bad\"},\"next\":{\"block\":{\"type\":\"controls_if\",\"id\":\"branch\",\"extraState\":{\"hasElse\":true},\"inputs\":{\"IF0\":{\"block\":{\"type\":\"logic_negate\",\"id\":\"no_entry\",\"inputs\":{\"BOOL\":{\"block\":{\"type\":\"noodl_get_input\",\"id\":\"get_entry_check\",\"fields\":{\"NAME\":\"entry\"}}}}}},\"DO0\":{\"block\":{\"type\":\"noodl_set_output\",\"id\":\"set_complaint\",\"fields\":{\"NAME\":\"message\"},\"inputs\":{\"VALUE\":{\"block\":{\"type\":\"text\",\"id\":\"complaint_text\",\"fields\":{\"TEXT\":\"Type something first, then press Log it.\"}}}},\"next\":{\"block\":{\"type\":\"noodl_send_signal\",\"id\":\"send_bad\",\"fields\":{\"NAME\":\"bad\"}}}}},\"ELSE\":{\"block\":{\"type\":\"noodl_set_variable\",\"id\":\"stash_title\",\"fields\":{\"NAME\":\"lastEntryTitle\"},\"inputs\":{\"VALUE\":{\"block\":{\"type\":\"noodl_get_input\",\"id\":\"get_entry_save\",\"fields\":{\"NAME\":\"entry\"}}}},\"next\":{\"block\":{\"type\":\"noodl_set_output\",\"id\":\"set_title\",\"fields\":{\"NAME\":\"title\"},\"inputs\":{\"VALUE\":{\"block\":{\"type\":\"noodl_get_variable\",\"id\":\"read_stash\",\"fields\":{\"NAME\":\"lastEntryTitle\"}}}},\"next\":{\"block\":{\"type\":\"noodl_set_output\",\"id\":\"clear_message\",\"fields\":{\"NAME\":\"message\"},\"inputs\":{\"VALUE\":{\"block\":{\"type\":\"text\",\"id\":\"empty_text\",\"fields\":{\"TEXT\":\"\"}}}},\"next\":{\"block\":{\"type\":\"noodl_send_signal\",\"id\":\"send_ok\",\"fields\":{\"NAME\":\"ok\"}}}}}}}}}}}}}}}}}}}}}]}}",
+        "generatedCode": "if (!Inputs[\"entry\"]) {\n  Outputs[\"message\"] = 'Type something first, then press Log it.';\n  sendSignalOnOutput(\"bad\");\n} else {\n  Noodl.Variables[\"lastEntryTitle\"] = Inputs[\"entry\"];\n  Outputs[\"title\"] = Noodl.Variables[\"lastEntryTitle\"];\n  Outputs[\"message\"] = '';\n  sendSignalOnOutput(\"ok\");\n}\n\n"
+      }
+    },
+    {
+      "id": "save_entry",
+      "type": "NewDbModelProperties",
+      "label": "Save the entry",
+      "x": 800,
+      "y": 0,
+      "parameters": {
+        "collectionName": "LogEntries"
+      },
+      "metadata": {
+        "comment": "The async half, on the canvas. Its Do input is the ok branch of the Visual Function and its terminal signal is Done \u2014 not Success, which is what the Visual Function two nodes away calls its own."
+      }
+    },
+    {
+      "id": "entries_query",
+      "type": "DbCollection2",
+      "label": "Read the entries",
+      "x": 800,
+      "y": 220,
+      "parameters": {
+        "collectionName": "LogEntries"
+      }
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}
