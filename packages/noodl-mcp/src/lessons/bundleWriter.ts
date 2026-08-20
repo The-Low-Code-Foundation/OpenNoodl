@@ -236,8 +236,10 @@ export async function writeLessonBundle(
       refusal:
         'Every class that could be checked passed, but the solution was never rendered, so F4 — the solution ' +
         'draws nothing — is unanswered. That is the class most likely to reach a learner: a lesson whose own ' +
-        'answer produces an empty page. Fix the render if you can (it needs a built viewer bundle and a ' +
-        'Chrome), or pass allow_unrendered: true to write the bundle with F4 deliberately unchecked.'
+        'answer produces an empty page. Fix the render if you can — it needs a Chrome or Chromium on this ' +
+        'machine (install one, or point CHROME_PATH at an existing one), and from a source checkout a built ' +
+        'viewer bundle. Or pass allow_unrendered: true to write the bundle with F4 deliberately unchecked. ' +
+        'The findings above name whichever of those actually stopped it.'
     };
   }
 

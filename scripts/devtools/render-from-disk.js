@@ -79,9 +79,14 @@ const path = require('path');
  */
 const { buildInjectionTags, scanProjectModules } = require('@nodegx/module-inject');
 
-const REPO = path.resolve(__dirname, '../..');
-const VIEWER = path.join(REPO, 'packages/noodl-editor/src/external/viewer');
-const TOKENS_SRC = path.join(REPO, 'packages/noodl-editor/src/editor/src/models/StyleTokensModel/DefaultTokens.ts');
+/**
+ * UNI-012 — resolved for both layouts (checkout, packaged `app.asar`) rather than
+ * off a `REPO` that only exists in the first. See `harness-paths.js`.
+ */
+const HARNESS_PATHS = require('./harness-paths');
+
+const VIEWER = HARNESS_PATHS.VIEWER_DIR.path;
+const TOKENS_SRC = HARNESS_PATHS.TOKENS_SRC.path;
 
 const argv = process.argv.slice(2);
 /** Flags that consume the following argument, so it is never mistaken for the project dir. */
@@ -220,10 +225,13 @@ function buildProjectData() {
   // certifying a page the editor cannot render, and this is that same contract.
   const visualTypeNames = (() => {
     try {
-      const catalog = require(path.join(REPO, 'packages/noodl-types/src/node-catalog-enriched.json'));
+      const catalog = require(HARNESS_PATHS.ENRICHED_CATALOG_JSON.path);
       return new Set((catalog.nodes || []).filter((n) => n.isVisual === true).map((n) => n.typeName));
     } catch {
-      return null; // no catalog in this checkout — leave declared roots alone
+      // No catalog resolved for either layout — leave declared roots alone.
+      // `render-report.js` names the absence as a prerequisite before it gets
+      // here, so this abstention is the standalone-server case.
+      return null;
     }
   })();
   if (visualTypeNames) {
@@ -329,7 +337,7 @@ function tokenCss(cb) {
     cb(css);
   };
   const fallback = () => {
-    const src = fs.readFileSync(TOKENS_SRC, 'utf8');
+    const src = TOKENS_SRC ? fs.readFileSync(TOKENS_SRC, 'utf8') : '';
     // Both quote styles. A single-quote-only pattern silently dropped every
     // token whose value CONTAINS an apostrophe — which is exactly the font
     // stacks: `--font-sans` is "Inter, …, 'Apple Color Emoji', …". So
@@ -466,7 +474,9 @@ if (PRINT_PROJECT) {
       }
 
       // Viewer assets first, then the project's own (fonts, icon modules, images).
-      for (const file of [path.join(VIEWER, url), path.join(PROJECT, url)]) {
+      // VIEWER is null only when neither layout resolved; `render-report.js`
+      // refuses before spawning this server, so that is the standalone case.
+      for (const file of [VIEWER && path.join(VIEWER, url), path.join(PROJECT, url)].filter(Boolean)) {
         if (fs.existsSync(file) && fs.statSync(file).isFile()) {
           res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
           return res.end(fs.readFileSync(file));
@@ -476,8 +486,11 @@ if (PRINT_PROJECT) {
       res.end('not found: ' + url);
     })
     .listen(PORT, '127.0.0.1', () => {
-      if (!fs.existsSync(path.join(VIEWER, 'noodl.viewer.js'))) {
-        console.error('[render] WARNING: no noodl.viewer.js — build packages/noodl-viewer-react first.');
+      if (!VIEWER || !fs.existsSync(path.join(VIEWER, 'noodl.viewer.js'))) {
+        console.error(
+          '[render] WARNING: no noodl.viewer.js — build packages/noodl-viewer-react first. Probed: ' +
+            HARNESS_PATHS.VIEWER_DIR.probed.join(', ')
+        );
       }
       console.error(`[render] http://127.0.0.1:${PORT}/`);
     });

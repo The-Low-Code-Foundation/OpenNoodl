@@ -37,11 +37,19 @@ const net = require('net');
 const os = require('os');
 const path = require('path');
 
-const REPO = path.resolve(__dirname, '../..');
+/**
+ * UNI-012 — every data path this file reads now comes from the resolver, because
+ * there are two layouts: a repo checkout and a packaged install's `app.asar`.
+ * The `REPO = path.resolve(__dirname, '../..')` this replaced was correct in
+ * exactly one of them, and silently correct-looking in the other.
+ */
+const HARNESS_PATHS = require('./harness-paths');
+
 const RENDER_SCRIPT = path.join(__dirname, 'render-from-disk.js');
-const VIEWER_BUNDLE = path.join(REPO, 'packages/noodl-editor/src/external/viewer/noodl.viewer.js');
-const CATALOG_JSON = path.join(REPO, 'packages/noodl-types/src/node-catalog.json');
-const WS_MODULE = path.join(REPO, 'node_modules', 'ws');
+const VIEWER_DIR = HARNESS_PATHS.VIEWER_DIR.path;
+const VIEWER_BUNDLE = VIEWER_DIR && path.join(VIEWER_DIR, 'noodl.viewer.js');
+const CATALOG_JSON = HARNESS_PATHS.CATALOG_JSON.path;
+const WS_MODULE = HARNESS_PATHS.WS_MODULE.path;
 
 /**
  * F22 (LAS-005), decided 2026-08-10 — the pure half now lives in its own
@@ -390,7 +398,7 @@ function overriddenDefaults(projectDir) {
  * established abstention as the honest third state and this keeps to it — a
  * diagnosis guessed from a missing catalog is exactly the failure being fixed.
  */
-const ENRICHED_CATALOG_JSON = path.join(REPO, 'packages/noodl-types/src/node-catalog-enriched.json');
+const ENRICHED_CATALOG_JSON = HARNESS_PATHS.ENRICHED_CATALOG_JSON.path;
 
 const visualTypesCache = new Map();
 
@@ -744,19 +752,47 @@ function checkPrerequisites(projectDir) {
       `Not a NodeGX v2 project directory (no nodegx.project.json): ${projectDir || '(none given)'}.`
     );
   }
-  if (!fs.existsSync(VIEWER_BUNDLE)) {
+  if (!VIEWER_BUNDLE || !fs.existsSync(VIEWER_BUNDLE)) {
     problems.push(
-      `The viewer bundle is missing (${VIEWER_BUNDLE}). Build it first: ` +
-        'cd packages/noodl-viewer-react && npx webpack --config webpack-configs/webpack.viewer.prod.js'
+      `The viewer bundle is missing. Build it first: ` +
+        'cd packages/noodl-viewer-react && npx webpack --config webpack-configs/webpack.viewer.prod.js. ' +
+        `Probed: ${HARNESS_PATHS.VIEWER_DIR.probed.join(', ')}`
     );
   }
-  if (!fs.existsSync(WS_MODULE)) {
-    problems.push(`The "ws" package is missing (${WS_MODULE}). Run npm install at the repo root.`);
+  if (!WS_MODULE) {
+    problems.push(
+      `The "ws" package is missing. Run npm install at the repo root. ` +
+        `Probed: ${HARNESS_PATHS.WS_MODULE.probed.join(', ')}`
+    );
+  }
+  /**
+   * 🔴 UNI-012 — the catalogs are a prerequisite, not a degradation.
+   *
+   * {@link visualTypeNames} and {@link contentBearingTypeNames} abstain to `null`
+   * when the catalog cannot be read, and that abstention is right *inside* the
+   * walk — a diagnosis guessed from a missing catalog is worse than none. But
+   * abstention with nothing said is how a packaged install would report a page
+   * "clean" using a strictly weaker rule than the checkout applied to the same
+   * project, and F4's whole job is to say whether the solution draws. So the
+   * absence is named here, once, where a refusal still means something.
+   */
+  if (!CATALOG_JSON) {
+    problems.push(
+      `The node catalog is missing. Probed: ${HARNESS_PATHS.CATALOG_JSON.probed.join(', ')}`
+    );
+  }
+  if (!ENRICHED_CATALOG_JSON) {
+    problems.push(
+      `The enriched node catalog is missing. Probed: ` +
+        `${HARNESS_PATHS.ENRICHED_CATALOG_JSON.probed.join(', ')}`
+    );
   }
   const { chrome, probed } = findChrome();
   if (!chrome) {
     problems.push(
-      'No Chrome or Chromium binary found. Install Google Chrome, or set CHROME_PATH to one. Probed: ' +
+      'No Chrome or Chromium binary found. Install Google Chrome, or set CHROME_PATH to one. ' +
+        'If you cannot install one, pass allow_unrendered to skip the render check rather than ' +
+        'waiting on it. Probed: ' +
         probed.join(', ')
     );
   }
@@ -923,7 +959,14 @@ async function withRenderedPage(options, fn) {
   const serverArgs = [RENDER_SCRIPT, projectDir, '--port', String(servePort)];
   if (backendPort) serverArgs.push('--backend-port', String(backendPort));
   if (editorTokens) serverArgs.push('--editor-tokens');
-  const server = spawn(process.execPath, serverArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+  // UNI-012 — explicit for the same reason `render.ts` sets it: on a packaged
+  // install `process.execPath` is the Electron binary, and only this variable
+  // keeps the child a plain Node process that can read the asar it lives in.
+  // Plain `node` in a checkout ignores it, so it costs nothing there.
+  const server = spawn(process.execPath, serverArgs, {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+  });
   let serverLog = '';
   server.stdout.on('data', (d) => (serverLog += d));
   server.stderr.on('data', (d) => (serverLog += d));

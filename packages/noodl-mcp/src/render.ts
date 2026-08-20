@@ -139,7 +139,24 @@ export function resolveRenderCli(): { entry: string | null; probed: string[]; ov
   const candidates = [
     // From src/, and from dist/ or src/tools/.
     path.resolve(__dirname, '..', '..', '..', 'scripts', 'devtools', 'measure-from-disk.js'),
-    path.resolve(__dirname, '..', '..', '..', '..', 'scripts', 'devtools', 'measure-from-disk.js')
+    path.resolve(__dirname, '..', '..', '..', '..', 'scripts', 'devtools', 'measure-from-disk.js'),
+    /**
+     * UNI-012 — the packaged install.
+     *
+     * The sidecar runs from `<Resources>/noodl-mcp/noodl-mcp.cjs`, and the
+     * harness ships **inside `app.asar`** rather than beside it. That is not
+     * where the other sidecars live, and the reason is worth stating: the asar
+     * already carries the 14MB viewer bundle, `ws` and `@nodegx/render-measure`,
+     * so putting the harness in there costs three small files and an ordinary
+     * `require`, while putting it outside would mean duplicating the viewer or
+     * hand-resolving every dependency.
+     *
+     * 🔴 This resolves because the sidecar's own runtime is the Electron binary
+     * under `ELECTRON_RUN_AS_NODE=1`, which reads and executes inside an asar.
+     * Plain Node does not — see `harness-paths.js` for the four measurements.
+     */
+    path.resolve(__dirname, '..', 'app.asar', 'render-harness', 'measure-from-disk.js'),
+    path.resolve(__dirname, '..', '..', 'app.asar', 'render-harness', 'measure-from-disk.js')
   ];
   for (const candidate of candidates) {
     const found = push(candidate);
@@ -150,7 +167,20 @@ export function resolveRenderCli(): { entry: string | null; probed: string[]; ov
 
 function spawnRender(entry: string, args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [entry, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+    /**
+     * 🔴 `ELECTRON_RUN_AS_NODE` is set explicitly rather than inherited.
+     *
+     * `process.execPath` is the Electron binary on a packaged install, and the
+     * sidecar is registered with this variable set — so the child inherited it
+     * and the harness ran. Relying on that is a load-bearing accident: without
+     * it the same binary boots as a full Electron *app*, with a dock icon and an
+     * event loop that never exits, and the render would hang rather than fail.
+     * In a checkout `process.execPath` is plain `node`, which ignores it.
+     */
+    const child = spawn(process.execPath, [entry, ...args], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+    });
     let stdout = '';
     let stderr = '';
     let timedOut = false;
@@ -193,16 +223,28 @@ export async function runRenderReport(
     throw new ToolError(
       'io-error',
       `NODEGX_RENDER_CLI points at "${overrideMissing}", which does not exist. Point it at the render harness ` +
-        '(scripts/devtools/measure-from-disk.js) or unset it to use the checkout beside this server.',
+        '(scripts/devtools/measure-from-disk.js), or unset it — a packaged install then uses the harness ' +
+        'shipped inside the app, and a source checkout the one beside this server.',
       { probed }
     );
   }
   if (!entry) {
+    /**
+     * 🔴 UNI-012 rewrote this sentence, and the direction of the old one is the
+     * point. It said *"render_report needs the repo checkout … or run this
+     * server from a checkout"*, which was true while `scripts/` shipped with
+     * nothing. A packaged install now carries the harness, so on the install
+     * where this message is most likely to be read, the old text sent someone
+     * to clone a repository to fix what is actually a broken installation — or,
+     * more often, a missing browser it never mentioned.
+     */
     throw new ToolError(
       'io-error',
-      'The render harness is not present in this installation — render_report needs the repo checkout ' +
-        '(scripts/devtools/measure-from-disk.js). Set NODEGX_RENDER_CLI to it, or run this server from a ' +
-        'checkout.',
+      'The render harness could not be located, so the page cannot be rendered or measured. On a packaged ' +
+        'install it ships inside the app and this means the installation is incomplete — reinstall NodeGX. ' +
+        'From a source checkout, run this server from the checkout or set NODEGX_RENDER_CLI to ' +
+        'scripts/devtools/measure-from-disk.js. If you only need the write and not the picture, ' +
+        'allow_unrendered writes the bundle with the render check deliberately unanswered.',
       { probed }
     );
   }

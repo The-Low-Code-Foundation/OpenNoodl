@@ -72,7 +72,32 @@
       "!src/main/src",
       "!src/editor/src",
       "!src/frames/viewer-frame/src",
-      "!src/shared"
+      "!src/shared",
+      {
+        "from": "../../scripts/devtools",
+        "to": "render-harness",
+        "filter": [
+          "measure-from-disk.js",
+          "render-report.js",
+          "render-from-disk.js",
+          "harness-paths.js"
+        ]
+      },
+      {
+        "from": "../noodl-types/src",
+        "to": "render-harness/data",
+        "filter": [
+          "node-catalog.json",
+          "node-catalog-enriched.json"
+        ]
+      },
+      {
+        "from": "src/editor/src/models/StyleTokensModel",
+        "to": "render-harness/data",
+        "filter": [
+          "DefaultTokens.ts"
+        ]
+      }
     ],
     "publish": [
       {
