@@ -778,6 +778,36 @@
   display: block;
 }
 
+/*
+  🔴 THE CONTROLS CARRY THE CARD'S GUTTER AND THE ROWS DELIBERATELY DO NOT.
+
+  Measured in the running editor on 2026-08-20: the People card spanned 32→1328, its heading was
+  inset to 47, and the search field ran 33→1327 — **flush to the card edge**, a pixel outside the
+  gutter every other thing in the card respects. The cause is structural rather than a missing
+  value: `.SectionHead` pads itself and `.Body` pads itself, so a component inserted BETWEEN them
+  inherits neither. Nothing about the screenshot looked broken; the alignment was 14px out and
+  reads as a slightly wrong card until you measure it.
+
+  ⚠️ **`.Rows` still has no side padding, and that is the existing rule rather than an oversight**
+  — a row carries its own, so its hover fill reaches the full width of the card instead of
+  stopping short of a gutter. So the two are inset by different mechanisms on purpose, and the
+  numbers below are `.Body`'s, per density, so they cannot drift from it silently.
+*/
+.SearchRow,
+.ChipRow,
+.DirectorySummary,
+.DirectoryBound {
+  .Directory.is-density-page & {
+    padding-left: var(--spacing-3-5);
+    padding-right: var(--spacing-3-5);
+  }
+
+  .Directory.is-density-panel & {
+    padding-left: var(--spacing-3);
+    padding-right: var(--spacing-3);
+  }
+}
+
 .SearchRow {
   display: block;
   margin-bottom: var(--spacing-2);
