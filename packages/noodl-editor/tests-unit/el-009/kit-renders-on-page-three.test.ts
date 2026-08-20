@@ -90,11 +90,55 @@ interface Report {
 
 /** One viewport, no screenshots: this file asks "did it draw", not "how did it look". */
 function render(projectDir: string, page: string): Report {
-  const stdout = execFileSync(
-    process.execPath,
-    [CLI, projectDir, '--screenshot', 'none', '--viewports', 'desktop', '--page', page, '--json'],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }
-  );
+  let stdout: string;
+  try {
+    stdout = execFileSync(
+      process.execPath,
+      [CLI, projectDir, '--screenshot', 'none', '--viewports', 'desktop', '--page', page, '--json'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }
+    );
+  } catch (thrown) {
+    /*
+     * 🔴 A refused render answers on STDOUT and exits 1 — that is
+     * `measure-from-disk.js`'s `--json` contract, and `page-selection.test.ts`
+     * asserts it by name one file over. So `execFileSync` THROWS, and the
+     * machine-readable cause is sitting on the throw's `.stdout` where, until
+     * this catch existed, nothing read it. Jest printed `Command failed: <argv>`
+     * and the diagnosis went in the bin.
+     *
+     * That is not hypothetical. Both arms of this file failed on CI on
+     * 2026-08-20 (runs 32386192365 and 32386199625) with an EMPTY stderr and no
+     * other evidence anywhere in the log, while the same command exited 0
+     * locally — so the one thing needed to tell a wedged Chrome from an OOM kill
+     * from a real regression had been generated, serialised, and discarded.
+     *
+     * ⚠️ `status` is null when the child was SIGNALLED rather than exiting, which
+     * is exactly the OOM case, so the signal is named too — the two look
+     * identical in a bare `Command failed:` and want opposite fixes.
+     */
+    // ⚠️ Typed rather than `any`: this file is counted by the `tsfixme` ratchet,
+    // and a diagnostic improvement that widens the `any` census pays for itself
+    // in the wrong currency.
+    const e = thrown as { stdout?: unknown; stderr?: unknown; status?: number | null; signal?: string | null };
+    const out = String(e?.stdout ?? '');
+    const err = String(e?.stderr ?? '');
+    let why = out.trim() || err.trim() || '(nothing on stdout or stderr)';
+    try {
+      const refusal = JSON.parse(out);
+      if (refusal?.error) {
+        // `problems` repeats `message` verbatim for a single-problem refusal, so
+        // the duplicate is dropped rather than printed twice under one bullet.
+        const extra = (refusal.error.problems ?? []).filter((p: string) => p !== refusal.error.message);
+        why = [refusal.error.message, ...extra].join('\n     - ');
+      }
+    } catch {
+      // Not JSON at all: the CLI died before it could answer in its own dialect.
+      // The raw text — or its absence — is then the whole of the evidence.
+    }
+    const how = e?.signal ? `was killed by ${e.signal}` : `exited ${e?.status}`;
+    throw new Error(`measure-from-disk ${how} for --page ${page}:\n     - ${why}`);
+  }
+
   const parsed = JSON.parse(stdout);
   if (parsed.error) throw new Error(`render refused: ${parsed.error.message}`);
   return parsed as Report;
