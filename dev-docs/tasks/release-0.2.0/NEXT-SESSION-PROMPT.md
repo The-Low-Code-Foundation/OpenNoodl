@@ -195,11 +195,47 @@ result **stronger** than a seed-pinned match would have been: these ten are **de
 order-independent**, not artefacts of one random order. Anything that reproduces across two
 unrelated seeds *and* two operating systems is not a flake.
 
-⚠️ **So `Test (editor)` being red is EXPECTED, not a regression.** The floor is 10 failures and
-this job has **no baseline mechanism** — unlike `tsfixme`, nothing lets it encode "10 known
-failures". It will stay red until either the ten are fixed (they belong to AIX-006, SUB-011,
-AIX-011 and the AI model registry — other phases, not this release) or the job gains a baseline.
-**That is a decision for Richard, not a cleanup.**
+⚠️ **`Test (editor)` has NO BASELINE MECHANISM** — unlike `tsfixme`, nothing lets it encode "10
+known failures", so a floor run reads as red. Fixing that is a decision for Richard, not a
+cleanup. **But that is only half the reason it is red — see the correction immediately below.**
+
+#### 🔴 CORRECTION, same session: the job is UNSTABLE. One run in three finishes.
+
+**I first wrote that `Test (editor)`'s red was simply "expected, the floor is 10". That is wrong
+as a general statement**, and the next run proved it — 45 minutes later, on the commit that fixed
+`@noodl/preview`:
+
+| Run | started | `[spec-start]` | summary line | duration | reading |
+|---|---|---|---|---|---|
+| 32370134956 | 12:41Z | 2766 | **none** | 16m57s | 🔴 incomplete |
+| **32379435450** | 14:19Z | **2849** | ✅ `2849 specs, 10 failures` | **15m48s** | ✅ **complete — the floor** |
+| 32384127560 | 15:06Z | **2194** | **none** | 17m09s | 🔴 incomplete, died EARLIEST |
+
+🔴 **The two incomplete runs took LONGER while covering FEWER specs.** 17m09s to reach 2194 specs
+against 15m48s to finish all 2849. That is **degradation, not a wall-clock cap** — the job sets no
+`timeout-minutes` (default 360). Something makes the run grind down and die, and it is **not**
+deterministic: same suite, three runs, three different stopping points.
+
+🔴 **Both incomplete runs died in `AIX-011`** — "plan staging" at 12:41, "updating a component
+that has no id, on disk" at 15:06. That is the death zone.
+
+⚠️ **The listener flood is a SUSPECT, not the proven cause — and the obvious reading is wrong.**
+`Warning: we have more that 10000 listeners on this model` begins in **`AAQ-011 F12 (editor)`**
+(line 3737 of the log) and only ~414 further specs start after it. But the run that **COMPLETED
+carried MORE of them — 12,688 against 8,799.** A count that is *higher* in the healthy run cannot
+by itself be the thing that kills the sick one. The leak is real and worth fixing; **it is not yet
+established as the cause of the death.**
+
+✅ **What IS established:** the floor measurement stands. Run 32379435450 completed, produced a
+real summary line, and matched the documented floor **name for name** on an unpinned seed. One
+good measurement is not undone by two bad runs — but **do not read a red `Test (editor)` as "the
+floor" without checking the marker count and the summary line first.** Two of three runs would
+have been misread that way.
+
+🔴 **The actionable item this creates:** `Test (editor)` cannot gate anything until it finishes
+reliably. Whether that is the AAQ-011 listener leak, a memory ceiling on the runner, or something
+in AIX-011 is **not yet diagnosed** — and it is the one genuinely open engineering question this
+release surfaced, as distinct from the decisions waiting on Richard.
 
 🔴 **The lesson worth keeping: a measurement you are blocked from taking LOCALLY may already
 exist REMOTELY.** Two sessions deferred this for machine-memory reasons while a completed run of
@@ -254,7 +290,7 @@ CI for the first time. But two are one-line fixes and should not ride into 0.2.1
 | **Test (runtime, …)** | ✅ **FIXED in `50892cb0`** (was red for a *third* reason again — see §2b⁗). 🔴 **NOT for the reason §2b′ recorded.** The `EditorConnection` defect was real and **is** fixed (`tsc --noEmit -p .` exit 0; runtime is **139 passed** in CI). But the job fails on **`@noodl/preview`**, a *different* package in the same job — see §2b‴ |
 | **Node catalog freshness** | ✅ **FIXED.** Regenerated. The diff is **26 lines, every one a colour hex** — no node type added, removed or renamed. It was a **second copy of the node palette drifting** from the cloud registry. `cloud-library:check` exit 0, and `catalog:check` / `groups:check` / `examples` / `merge:check` were **already green** |
 | **Lint** | 🟡 **PARTLY.** `lint:ci`, `tokens:css`, `colors` all exit 0. **`tsfixme` still red** — §2a explains why that is a decision |
-| **Test (editor)** | ✅ **NOW MEASURED — AT THE FLOOR.** CI's own run completed: **2849 specs / 10 failures**, matching the floor **name for name** under a *different* seed. Red is expected; the job has no baseline mechanism — see §2b |
+| **Test (editor)** | 🟡 **MEASURED ONCE, AT THE FLOOR — but the job is UNSTABLE.** Run 32379435450 completed: **2849 specs / 10 failures**, floor **name for name**, unpinned seed. **Two other runs never finished** (2766 and 2194 markers, no summary), both dying in `AIX-011` — see §2b |
 
 ~~🔴 `Test (editor)` was deliberately not attempted…~~ — **superseded.** The local machine was
 never the only instrument: **CI had already run the whole suite to completion.** See §2b. The
