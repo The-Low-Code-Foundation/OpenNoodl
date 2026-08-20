@@ -72,6 +72,93 @@ export type MirrorReplay = {
 
 export type MirrorArticle = { slug: string; title: string; summary: string | null; kind: string };
 
+// ───────────────────────────────────────────────────────────────────────────────
+// TUT-004 — tutorials, and the bundles the editor can install
+// ───────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A row of `/api/v1/community/tutorials`.
+ *
+ * 🔴 **`installable` is not `projectUrl !== null`, and the panel must not derive it.** They are
+ * two different affordances that happen to sit on one article: `projectUrl` is the *web page's*
+ * "Download the starter project →" link — unconstrained free text on any host — and
+ * `installable` says the platform holds a bundle this editor can score and install. A tutorial
+ * may have either, both or neither, and a panel that inferred one from the other would offer to
+ * install a blog post.
+ *
+ * ⚠️ `projectUrl` is deliberately **absent from this type**. Nothing in the editor should be
+ * able to reach for it: the whole point of P1 is that no browser opens, and a URL nobody can
+ * read is a URL nobody can be tempted to fetch.
+ */
+export type TutorialSummary = {
+  slug: string;
+  title: string;
+  summary: string | null;
+  level: string | null;
+  category: string | null;
+  estimatedMinutes: number | null;
+  outcomes: string[];
+  nodes: string[];
+  installable: boolean;
+};
+
+/**
+ * The bundle itself: relative path → file contents.
+ *
+ * ⚠️ **Text only.** A lesson bundle is JSON and Markdown — TUT-003's is 35 files with not one
+ * binary in it — and the transport is jsonb, so a bundle that needed a PNG would need a
+ * different wire, not a bigger string. If that day comes it is a new decision, not a
+ * widened type.
+ */
+export type TutorialBundlePayload = {
+  slug: string;
+  title: string;
+  version: number;
+  updatedAt: string;
+  files: Record<string, string>;
+};
+
+/**
+ * 🔴 **A bundle entry is a relative path, AND THIS CHECK IS DELIBERATELY THE SECOND COPY.**
+ *
+ * `nodegx-community/src/lib/tutorialbundles.isSafeBundlePath` refuses the same shapes at
+ * publish. That one protects the *platform's* data; this one protects *this machine*, and they
+ * are not the same job. Every key here becomes a filename under the learner's Learning folder,
+ * written by this process — so the question "may this land at this path" has to be answered by
+ * the process doing the landing. A validator on the far side of a wire is a claim about a
+ * server, not a gate on a disk, and a compromised or simply older platform would satisfy it
+ * while sending `../../.ssh/authorized_keys`.
+ *
+ * ⚠️ So this is not drift and must not be "deduplicated". `learningfolder.isSafeLessonId`
+ * carries the identical argument one level up, for the lesson id.
+ */
+export function isSafeBundleEntry(path: string): boolean {
+  if (!path || path.length > 400) return false;
+  if (path.includes('\\') || path.includes('\0')) return false;
+  if (path.startsWith('/') || path.endsWith('/')) return false;
+  return path.split('/').every((s) => s.length > 0 && s !== '.' && s !== '..');
+}
+
+function readTutorialSummary(raw: unknown): TutorialSummary | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.slug !== 'string' || typeof r.title !== 'string') return null;
+  const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+  return {
+    slug: r.slug,
+    title: r.title,
+    summary: typeof r.summary === 'string' ? r.summary : null,
+    level: typeof r.level === 'string' ? r.level : null,
+    category: typeof r.category === 'string' ? r.category : null,
+    estimatedMinutes: typeof r.estimatedMinutes === 'number' ? r.estimatedMinutes : null,
+    outcomes: strings(r.outcomes),
+    nodes: strings(r.nodes),
+    // ⚠️ Defaults to FALSE on anything that is not a literal `true`. An older platform that
+    // does not send the field must read as "no button", never as "install this".
+    installable: r.installable === true
+  };
+}
+
 export type CommunityHome = {
   replays: MirrorReplay[];
   articles: MirrorArticle[];
@@ -1386,6 +1473,98 @@ export class CommunityApiClient {
       outcome: 'ok',
       value: { responseId, outcome: typeof item.outcome === 'string' ? item.outcome : '' }
     };
+  }
+
+  /**
+   * TUT-004 — the tutorials index, with `installable` on each row.
+   *
+   * ⚠️ Sixth endpoint in this API with **no keyword parameter**. Filtering is the client's job
+   * over the rows it holds, and the surface that filters has to report the bound it searched.
+   */
+  async tutorials(window: { limit?: number; offset?: number } = {}): Promise<Read<Paged<TutorialSummary>>> {
+    const search = new URLSearchParams();
+    if (window.limit !== undefined) search.set('limit', String(window.limit));
+    if (window.offset !== undefined && window.offset > 0) search.set('offset', String(window.offset));
+    const query = search.toString();
+
+    const read = await this.get<{ items?: unknown; page?: unknown }>(
+      `/api/v1/community/tutorials${query === '' ? '' : `?${query}`}`
+    );
+    if (read.outcome !== 'ok') return read;
+
+    const raw = Array.isArray(read.value?.items) ? read.value.items : null;
+    if (!raw) {
+      return { outcome: 'unreachable', status: null, detail: 'the tutorials payload could not be read' };
+    }
+
+    const items: TutorialSummary[] = [];
+    for (const entry of raw) {
+      const row = readTutorialSummary(entry);
+      if (row) items.push(row);
+    }
+    return { outcome: 'ok', value: { items, page: readPageInfo(read.value?.page, items.length) } };
+  }
+
+  /**
+   * TUT-004 — the bundle behind a tutorial's Install button.
+   *
+   * 🔴 **`absent` covers three things and the caller must not try to tell them apart**: no such
+   * tutorial, not published yet, and no bundle attached. The platform answers one 404 to all
+   * three on purpose (`getArticle`: *"a page that says 'this is not published yet' tells a
+   * stranger there is something to come back for"*), and D15's refusal is the same bytes again.
+   * The panel's button comes from `installable` on the listing, so an `absent` here is a race
+   * rather than a state anybody navigates to.
+   *
+   * 🔴 **A bundle carrying an unsafe path is refused HERE, as `unreachable`, and never reaches
+   * a staging directory.** `unreachable` rather than `absent` for the reason `people()` states:
+   * a payload this client will not accept is our problem and is retryable; `absent` is a
+   * statement about the viewer's permission and must never be produced by a parse failure.
+   */
+  async tutorialBundle(slug: string): Promise<Read<TutorialBundlePayload>> {
+    const read = await this.get<{ item?: unknown }>(
+      `/api/v1/community/tutorials/${encodeURIComponent(slug)}/bundle`
+    );
+    if (read.outcome !== 'ok') return read;
+
+    const item = read.value?.item as Record<string, unknown> | undefined;
+    const files = item?.files;
+    if (!item || typeof item.slug !== 'string' || !files || typeof files !== 'object' || Array.isArray(files)) {
+      return { outcome: 'unreachable', status: null, detail: 'the bundle payload could not be read' };
+    }
+
+    const out: Record<string, string> = {};
+    for (const [path, contents] of Object.entries(files as Record<string, unknown>)) {
+      // 🔴 One bad entry refuses the WHOLE bundle. Dropping it and installing the rest would
+      // produce a lesson that is quietly not the lesson that was published — and the dropped
+      // file is exactly the one an attacker chose.
+      if (!isSafeBundleEntry(path)) {
+        return {
+          outcome: 'unreachable',
+          status: null,
+          detail: `the bundle contains an entry that is not a relative path: ${path}`
+        };
+      }
+      if (typeof contents !== 'string') {
+        return { outcome: 'unreachable', status: null, detail: `the bundle entry ${path} is not text` };
+      }
+      out[path] = contents;
+    }
+
+    return {
+      outcome: 'ok',
+      value: {
+        slug: item.slug,
+        title: typeof item.title === 'string' ? item.title : item.slug,
+        version: typeof item.version === 'number' ? item.version : 1,
+        updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : '',
+        files: out
+      }
+    };
+  }
+
+  /** The URL a platform-installed lesson records as its source, so `reset` can re-pull it. */
+  tutorialBundleUrl(slug: string): string {
+    return `${this.baseUrl}/api/v1/community/tutorials/${encodeURIComponent(slug)}/bundle`;
   }
 
   threshold(): Promise<Read<ThresholdResponse>> {

@@ -369,7 +369,12 @@ describe('resetting a lesson', () => {
     expect(fs.files.get('/data/Learning/make-a-group/project.json')).toBe('{"components":["their work"]}');
   });
 
-  it('says a platform lesson cannot be reset yet, rather than pretending', async () => {
+  // ⚠️ TUT-004 changed the SENTENCE and not the rule. This method still refuses a platform
+  // lesson, for the reason it always did — it is synchronous, has no network, and must stay
+  // loadable in plain Node. What changed is that "the platform is not connected yet" stopped
+  // being true: `lessonplatforminstall.resetFromPlatform` fetches and comes back through
+  // `resetFrom`, so the honest sentence now points at the panel instead of at an absence.
+  it('refuses to reset a platform lesson HERE, and points at the caller that can', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
     await model.install({
@@ -381,7 +386,10 @@ describe('resetting a lesson', () => {
     const outcome = model.reset('make-a-group');
     expect(outcome.result).toBe('unavailable');
     if (outcome.result !== 'unavailable') return;
-    expect(outcome.reason).toMatch(/not connected yet/);
+    expect(outcome.reason).toMatch(/community panel/);
+    // 🔴 And it left the installed copy standing — the whole point of refusing rather than
+    // deleting first. A reset is the button someone presses when they are already stuck.
+    expect(fs.files.get('/data/Learning/make-a-group/project.json')).toBe('{"components":[]}');
   });
 
   it('reports an unknown lesson instead of throwing', () => {

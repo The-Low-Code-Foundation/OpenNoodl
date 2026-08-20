@@ -49,7 +49,7 @@ import type { LessonEvidence, WholeSolutionGrader } from './lessongrading';
 import { verifyLessonBundle } from './lessonbundleverify';
 import type { LessonBundleScorecard } from './lessonbundleverify';
 import { readLessonBundle } from './lessonbundleread';
-import { decideInstall, resolveProvenance } from './lessoninstallpolicy';
+import { decideInstall, describeInstallCheck, resolveProvenance } from './lessoninstallpolicy';
 import { buildLessonEvalContext } from './lessonprojectcontext';
 import type { LessonProjectSource } from './lessonprojectcontext';
 import { bundleLessonVocabulary } from './lessonverify';
@@ -259,6 +259,36 @@ export type InstallLessonOutcome =
       scorecard?: LessonBundleScorecard;
     };
 
+/**
+ * What {@link LearningFolderModel.preflight} answers: the same verdict {@link install} reaches,
+ * reached without writing anything.
+ *
+ * 🔴 **This exists because AC3 asks for the scorecard "before the bundle lands — not after".**
+ * The obvious implementation of that sentence is a second scorer in the caller, which is the
+ * shape this module's own header refuses: *"a rule enforced at N sites is broken at N+1"*. So
+ * `install` and `preflight` share one private scorer and there is still exactly one place that
+ * decides whether a bundle may install.
+ */
+export type PreflightOutcome =
+  | {
+      result: 'ok';
+      /** After the manifest's claim has been folded in — a claim may only ever TIGHTEN. */
+      provenance: LessonProvenance;
+      title: string;
+      verification: LessonVerificationReport;
+      scorecard: LessonBundleScorecard;
+      /** One line naming what was checked and what was not. Safe to show a person. */
+      checked: string;
+    }
+  | {
+      result: 'refused';
+      reason: string;
+      verification?: LessonVerificationReport;
+      scorecard?: LessonBundleScorecard;
+      /** Absent when the refusal came before a scorecard could be produced at all. */
+      checked?: string;
+    };
+
 export type ResetLessonOutcome =
   | { result: 'reset'; entry: LearningEntry }
   /** Nothing was touched — the source could not be re-pulled, so the installed copy stands. */
@@ -368,19 +398,33 @@ export class LearningFolderModel extends Model {
    * JSON, so a malformed bundle is an outcome, not an exception. The context
    * builders reconstruct arbitrary on-disk files, so they are guarded too.
    */
-  async install(options: InstallLessonOptions): Promise<InstallLessonOutcome> {
+  /**
+   * Score a bundle and decide whether it may install — **without writing anything**.
+   *
+   * 🔴 **AC3's "shown before the bundle lands, not after" is a sequencing requirement, and this
+   * is the only honest way to meet it.** A caller that wanted to show a scorecard first could
+   * have run its own `verifyLessonBundle`; then two scorers would decide one question, and the
+   * one that got updated would never be both. `install` calls straight through to this, so the
+   * verdict a person is shown is the same object, produced by the same code, as the verdict that
+   * admits the bundle.
+   *
+   * ⚠️ It is **not** a promise that the subsequent install will succeed. Between the two, the
+   * disk can still refuse — that is `install`'s own rejection and it is about writing, not about
+   * the lesson.
+   */
+  async preflight(options: InstallLessonOptions): Promise<PreflightOutcome> {
     const { fs } = this.deps;
     const bundleDir = options.bundleDir;
 
     if (!bundleDir || !fs.exists(bundleDir)) {
-      return { result: 'rejected', reason: `There is no lesson bundle at ${bundleDir || '(no path given)'}.` };
+      return { result: 'refused', reason: `There is no lesson bundle at ${bundleDir || '(no path given)'}.` };
     }
 
     const bundle = readLessonBundle(bundleDir, fs);
     const manifest = bundle.manifest;
     if (!manifest || typeof manifest !== 'object') {
       return {
-        result: 'rejected',
+        result: 'refused',
         reason: 'The bundle has no readable lesson.json. A lesson bundle is project files plus a lesson.json manifest.'
       };
     }
@@ -403,11 +447,37 @@ export class LearningFolderModel extends Model {
       verify: { vocabulary }
     });
     const verification = scorecard.verification;
+    const checked = describeInstallCheck(scorecard, provenance);
 
     const decision = decideInstall(scorecard, provenance);
     if (!decision.allowed) {
-      return { result: 'rejected', reason: decision.reason ?? 'This lesson was refused.', verification, scorecard };
+      return {
+        result: 'refused',
+        reason: decision.reason ?? 'This lesson was refused.',
+        verification,
+        scorecard,
+        checked
+      };
     }
+
+    return { result: 'ok', provenance, title: manifest.title ?? '', verification, scorecard, checked };
+  }
+
+  async install(options: InstallLessonOptions): Promise<InstallLessonOutcome> {
+    const { fs } = this.deps;
+    const bundleDir = options.bundleDir;
+
+    const pre = await this.preflight(options);
+    if (pre.result !== 'ok') {
+      return {
+        result: 'rejected',
+        reason: pre.reason,
+        ...(pre.verification ? { verification: pre.verification } : {}),
+        ...(pre.scorecard ? { scorecard: pre.scorecard } : {})
+      };
+    }
+    const { provenance, verification, scorecard } = pre;
+    const manifest = readLessonBundle(bundleDir, fs).manifest as { title?: string; description?: string };
 
     const id = options.id ?? slugifyLessonId(manifest.title);
     if (!isSafeLessonId(id)) {
@@ -558,10 +628,16 @@ export class LearningFolderModel extends Model {
     const entry = this.read().find((e) => e.id === id);
     if (!entry) return { result: 'unavailable', reason: `No lesson called "${id}" is installed.` };
 
+    // 🔴 A platform lesson is re-pulled over the network, which is asynchronous and belongs to
+    // whatever holds the client — so this method cannot do it and does not pretend to. It says
+    // so rather than reporting a generic failure, and `lessonplatforminstall.resetFromPlatform`
+    // is the caller that CAN: it fetches, stages, and comes back through {@link resetFrom}.
+    // ⚠️ The two paths share {@link repairFrom} below, so "reset keeps the project identity" is
+    // one rule and not two.
     if (entry.source.kind !== 'local') {
       return {
         result: 'unavailable',
-        reason: 'This lesson came from NodeGX Community. Resetting it needs the platform, which is not connected yet.'
+        reason: 'This lesson came from NodeGX Community. Resetting it needs the community panel, which fetches a fresh copy.'
       };
     }
 
@@ -571,6 +647,35 @@ export class LearningFolderModel extends Model {
         reason: `The lesson can't be re-pulled: its bundle is no longer at ${entry.source.path}. Nothing was changed.`
       };
     }
+
+    return this.repairFrom(entry, entry.source.path);
+  }
+
+  /**
+   * Re-pull an installed lesson from a directory the caller has already obtained.
+   *
+   * 🔴 **For the platform arm of `reset`, and it takes a directory rather than a URL on
+   * purpose.** This module has no network and must not acquire one: D5's rule is that the
+   * editor process writes the register, and `learningfolder`'s own header keeps it loadable in
+   * plain Node with no renderer around it. A fetch belongs to the caller; what belongs here is
+   * that the replacement is atomic-ish, that the source is checked before anything is deleted,
+   * and that the project identity survives — all three of which are {@link repairFrom}'s, so
+   * the platform path cannot get a different answer from the local one.
+   */
+  resetFrom(id: string, sourceDir: string): ResetLessonOutcome {
+    const { fs } = this.deps;
+    const entry = this.read().find((e) => e.id === id);
+    if (!entry) return { result: 'unavailable', reason: `No lesson called "${id}" is installed.` };
+    if (!sourceDir || !fs.exists(sourceDir)) {
+      return { result: 'unavailable', reason: `The lesson can't be re-pulled: there is nothing at ${sourceDir || '(no path given)'}. Nothing was changed.` };
+    }
+    return this.repairFrom(entry, sourceDir);
+  }
+
+  /** The shared body of both resets. See {@link reset} for why the source is checked first. */
+  private repairFrom(entry: LearningEntry, sourceDir: string): ResetLessonOutcome {
+    const { fs } = this.deps;
+    const id = entry.id;
 
     // 🔴 **Reset KEEPS the identity it is repairing, and install mints one.** The
     // two are opposite on purpose. Install produces a project that did not exist
@@ -585,7 +690,7 @@ export class LearningFolderModel extends Model {
     try {
       if (fs.exists(entry.projectDirectory)) fs.removeDirectoryRecursive(entry.projectDirectory);
       fs.makeDirectory(entry.projectDirectory);
-      fs.copyRecursive(entry.source.path, entry.projectDirectory);
+      fs.copyRecursive(sourceDir, entry.projectDirectory);
       this.reidentifyProject(entry.projectDirectory, keptProjectId);
     } catch (e) {
       return { result: 'unavailable', reason: `The lesson could not be re-pulled: ${errorText(e)}` };
