@@ -89,9 +89,16 @@ receiving mail on it**. D10.
 
 ## Loose ends
 
-- ⚠️ **A peer was running `next dev` in `nodegx-community` this session** and dropped/recreated a
-  database mid-afternoon. **Do not `next build` there without asking** — it stamps on their `.next`,
-  and `uni015-bench-http.test.ts`'s kind of spec needs one. Use your own DB name.
+- 🔴 **THE POSTGRES CONTAINER IS SHARED AND A DATABASE WAS DROPPED TODAY BY SOMEBODY WHO BELIEVED
+  IT WAS FREE.** `nodegx-community-db` on port `55432` holds one database per session. As of
+  2026-08-20: **`nodegx_community_s49` is this task's** (migrated, the one the command above names)
+  and **`nodegx_community_tut004_s6` is the TUT-004 peer's**. ✅ **Create your own —
+  `docker exec nodegx-community-db psql -U nodegx -d postgres -c "create database <name>"` — and
+  announce it.** ⚠️ `freshDb()` resets the schema per test, so a peer dropping *your* database
+  mid-run does not corrupt a result; it fails loudly. Dropping *theirs* costs them a re-seed.
+- ⚠️ **A peer was also running `next dev` in that checkout.** **Do not `next build` there without
+  asking** — it stamps on their `.next`, and `uni015-bench-http.test.ts`'s kind of spec needs one.
+  That is why nothing in NAT-009 was driven over real HTTP.
 - ⚠️ **The double blind's direction is easy to get backwards and I got it wrong twice.**
   `to_address` is the recipient's **real inbox**; `from_address` is one generic address on the relay
   domain; `reply_to` is the recipient's **own** alias. The smuggling vector is the **responder's
