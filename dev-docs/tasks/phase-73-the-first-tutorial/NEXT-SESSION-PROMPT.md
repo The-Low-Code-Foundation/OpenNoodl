@@ -127,8 +127,8 @@ instead. `logic_negate` is the block that is actually right.
 - 🔴 Peers commit to `cline-dev` from this same checkout and did so during this session.
   **`git commit -- <pathspecs>`, never `git add -A`, never stash.** Untracked files need
   `git add <paths> && git commit -- <paths>` as **one chain**, `-m` before the `--`.
-  One peer has `models/community/communityorigin.ts` temporarily pointed at `localhost:3947` for a
-  drive — **do not commit that file.**
+  ~~One peer has `communityorigin.ts` pointed at `localhost:3947`~~ — reverted and verified clean
+  (`COMMUNITY_URL` back to `https://community.nodegx.io`, empty `git status`), so that warning is spent.
 - **Working directories outside the repo** (kept, not needed):
   `NodeGX test projects/tut003-log-a-thing-solution` (the authoring project, bound to backend
   `backend_mt17opj2xbxsi` on 8585), `…-starter`, `…-bundle`, `tut003-drive-bundle`. The installed
