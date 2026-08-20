@@ -1,124 +1,106 @@
 # Next session — phase 72
 
-**Written 2026-08-20, tenth session.** **NAT-007 is closed, 8/8.** You can ask a question from the
-editor, read every answer, reply, and accept the one that solved it — without opening a browser.
-That is the sentence the phase is named after, and it is now true. **Every remaining Tier-3 surface
-is a copy of shapes that exist.**
+**Written 2026-08-20, eleventh session.** **NAT-009's platform half is done and the editor's half is
+the client and every sentence on it.** What is missing is a screen: `rfpboardview.ts` returns the
+exact types `CommunityDirectoryView` and `CommunityThreadView` already place, and nothing places
+them yet. **Nothing has been driven.**
 
 ## Read first, in this order
 
-1. [NAT-007 §Status](NAT-007-A-THREAD-YOU-CAN-ACTUALLY-ANSWER.md) — 🔴 **read it before NAT-009/010/011.**
-   Four findings they inherit, and the first one is a defect class nothing in this repo was looking
-   for.
-2. `models/community/threadwrites.ts` — the shape NAT-009 and NAT-010 copy for **their** writes: a
-   draft, four failure sentences, and a per-item verb with its own busy and error state.
-3. [README §4](README.md) — ✅ **D5's follow-up is done.** D6, D7, D8, D10 remain, and D10 is the
-   one that shapes NAT-009/010.
+1. [NAT-009 §Status](NAT-009-WORK-YOU-CAN-TAKE-FROM-THE-EDITOR.md) — 🔴 **read the first two
+   findings before writing any spec anywhere.** A guard whose test passes with the guard deleted,
+   and why the route could not have caught it.
+2. `models/community/rfpboardview.ts` — the shape a view places, and the three sentences that are
+   deliberately not there.
+3. [README §4](README.md) — **D6, D7, D8, D10 remain.** D10 got sharper this session and D7 now owns
+   a line of SQL.
 
 ## What happened this session
 
-`bb73b50c` (editor) · `eb563f4` (platform). Gates on the committed trees: `typecheck:editor` and
-`typecheck:editor-tests` clean · `test:main` **286 suites / 4657 tests / 0 failures** · core-ui jest
-**28 / 521 / 0** · PAIRS **260 assertions** · platform `tsc` clean, vitest **48 files / 1164 tests /
-0 failures**. **84 new tests, verified red 42 of 42.**
+`6b2360b` (platform) · `638c82cc` (editor). Gates on the committed trees: platform `tsc` clean and
+vitest **51 files / 1225 tests / 0 failures** · `typecheck:editor` and `typecheck:editor-tests`
+clean · `test:main` **290 suites / 4746 tests / 0 failures**. **92 new tests; 18 mutations run, 16
+went red** — and the two that did not are the session's main finding.
 
-### 🔴 A screen can be true in every word and still be a lie
+### 🔴 The capability model expressing D15 had never gated anything
 
-Post an answer; the re-read fails. What is left is the cached copy — taken *before* the post, under
-a banner saying so. Every sentence accurate. **The answer is missing and nothing says why**, which
-reads as *it never sent*: the exact failure AC4 exists to prevent, one step later than AC4 looks.
+`WRITE_CAPABILITIES` has existed since D15 was ruled. **No route had ever checked one** — every
+reference in the repository is a test asserting `communityVisibility`'s output, or `/v1/me`
+publishing the list. And it was not cosmetic: `communityGate` refuses `surface: 'absent'`, which
+for an org-minor means `access: 'off'` **only**, so a **read-only** minor passed the gate and
+reached `serve` with a **201**. The board was safe because `board_actor_is_eligible` refuses them
+under the insert — a *board* guard. A community write whose domain module had no equivalent would
+have had nothing above it. `serveCommunityWrite` now takes the capability the write needs.
 
-✅ The fix's shape matters more than its words. `postedNote` asks **"is the answer IN the copy we
-are about to draw"** — by post id, against the array — not "is the copy older than the post". That
-one predicate also catches the arm a timestamp check calls fine: a re-read that **succeeds** and
-comes back without it.
+🔴 **NAT-010's booking write inherits this and there is no capability named for it.**
+`WRITE_CAPABILITIES` is `postThread`, `postReply`, `react`, `directMessage`, `contactViaRfp`,
+`editProfile`. Booking a coaching session is none of those. **Do not reuse `directMessage` because
+it is nearest** — that is the guessed-vocabulary failure NAT-008 recorded four times. Either add
+one to `community-visibility.ts` (and `d15-visibility.test.ts` quantifies over the list, so it is
+governed the day it is added) or rule that it is out of scope, in the task file.
 
-🔴 **NAT-009's brief response and NAT-010's booking have the same shape.** A write, a re-read that
-can fail, and a list that will look unchanged. Copy the predicate, not the sentence.
+### 🔴 And the route's own spec could not have found it
 
-### 🔴 The write routes had no UI caller on the WEB either
+The route test says an org-minor gets a bare 404. **It passes with `communityGate` deleted** — the
+database refuses the same population and the translator maps it to the same bytes. *"The route
+applies D15"* is a claim about the route that the route's test cannot make. ✅ So
+`nat009-write-wrapper.test.ts` drives the wrapper with the domain removed.
 
-`POST /v1/bench/threads/:id/posts` and `.../accept` have existed since UNI-015. Nothing called
-them — `src/app/bench/[threadId]/page.tsx` renders read-only, and no client anywhere composed an
-answer. **The editor is now the only client that can answer or accept at all.** 19th "build the
-caller" in this phase, and the first where neither client had one.
+⚠️ **One assertion in that file was wrong and is kept as a record.** It claimed the gate runs before
+the 401. The order is **unobservable**: a token that does not resolve produces no viewer, and an
+anonymous viewer is `surface: 'present'`, so the two branches are disjoint. What does bind is the
+**capability check's** position — after the 401, or every signed-out caller reads "not found".
 
-⚠️ Worth expecting again in NAT-009/010: `rfps/{id}/responses` and `coaching/{offerId}/bookings`
-are **specified in `docs/API.md` §6 and not built**. NAT-007's half was free because its routes
-already existed. Those two are not.
+### 🔴 §6 specified one refusal; the migration raises eighteen
 
-### 🔴 `post()` had no 409 branch, and NAT-009's response cap is a 409
+`board-http.ts` maps them, swept off the migration **per function** with a known-firing control
+(the translator has a catch-all default, so a totality check over it passes with an empty table).
+⚠️ Thirteen relay guards answer **500** rather than the 400 default: this write runs a five-table
+transaction through a subsystem the caller never names, so a 4xx blames the caller for our outage.
 
-Found and fixed by the UNI-007 session (`0912694f`, phase 67b) while working the same client. A
-`409` fell through to `unreachable` — *"the community could not be reached"* — and **`docs/API.md`
-§6 gives the RFP response cap that exact status**: `409` when the cap is spent. So NAT-009's write
-would have told somebody their network was down while the platform was refusing them precisely, in
-a sentence it had chosen. Same hole `429` had, one status along, and the same one this codebase
-keeps re-finding: **a status the client never enumerated becomes an outage.**
+### 🔴 `acceptConnection` has no caller, so a response's state can never move
 
-✅ Already fixed on `main` — 409 now maps to `refused` carrying the platform's own words. ⚠️ **Do
-not re-narrow that branch**, and when you build the two write routes, check the status table in
-`post()` against §6 *before* wiring a caller rather than after.
+The double-blind relay's connect step is unreachable from any page, route or client. `connectedAt`
+is null on every response that will ever exist. ✅ The client reports what happened and offers no
+next step. 🔴 **NAT-010 has the same shape**: a booking has `requested`/`confirmed`/`declined`, and
+`confirmBooking`/`declineBooking` need a caller check before any UI promises a coach will answer.
 
-### 🔴 An accept is never offered once one exists, and that is a refusal to decide
+### 🔴 Two holes that are nobody's task
 
-The platform *permits* moving an accept. It neither revokes the first award nor tells the first
-author they were unaccepted. Nobody ruled that, so the client does not expose it. ⚠️ Read off the
-**thread**, not `post.accepted`.
-
-### 🔴 The consent screen authorised a read and now authorises a write
-
-D5 changed **no code**, which is why it needed work. The copy now states the scope (the browser's
-reach, no more) rather than a verb list NAT-009/010 would make stale — and states the uncomfortable
-half: **the editor is the only place the grant can be ended.** 30-day sessions, no account page, no
-session list, no web revoke. A lost laptop holds a 30-day write credential nothing can reach.
-🟡 **That is a real gap and it is nobody's task.** It probably belongs to NAT-012 (the door audit)
-or a new one.
-
-### ⚠️ Two spec signals answered by fixing code, not assertions
-
-`session-readers.test.ts` counts token uses; three identical client constructions satisfy every
-reading of that sentence except its own. And its `isGated` tripwire caught a moved anchor and said
-*"this spec is blind, fix it"* — where the old **claim** had also become wrong, not just blind.
-**Read that section before editing a red counting assertion anywhere.**
-
-### 🔴 PAIRS: 75 rows, 41 pairings — and handovers quoted the rows
-
-Duplicate rows are wanted; nothing distinguished them from accidental re-measurement.
-`DISTINCT_PAIRINGS` is now stated and asserted, and **caught its own constant being wrong on the
-first run**. It exposed one real hole: `border-control` on `bg-2` — the rail's ground, where
-NAT-008's search box and five pills are edged and were never graded.
+- **The four bench write routes take no rate-limit token at all** — no middleware exists, and
+  NAT-007's composer posts to two of them. `docs/API.md` §5 states the limit as a property of the
+  API; it is a property of the routes that remembered. **Not fixed — it is NAT-007's ground.**
+- **A lost laptop still holds a 30-day write credential nothing can reach** (s10's finding).
+  Unchanged.
 
 ## Where to start
 
-🔴 **NAT-009 (the work board) or NAT-010 (coaching).** Both read halves are two files' worth of
-copying; both write halves now have a worked example in `threadwrites.ts` **and a platform route
-that does not exist yet**. Build the route first — `docs/API.md` §6 specifies both — then the
-client. ⚠️ D10 shapes the relay outcome NAT-009 renders; do not guess it.
+🔴 **NAT-009's view and the drive.** NAT-008's arc is the template and every type already lines up:
+a core-ui view, a `useCommunityRfps` hook, the launcher tab and the rail panel. Then drive it — and
+🔴 **run the platform locally**, `DATABASE_URL=postgres://nodegx:nodegx@localhost:55432/nodegx_community_s49 npx next dev -p 3100` (that DB is migrated). `COMMUNITY_URL` is a hard-coded constant with no env override — edit it and **revert it**.
 
-Otherwise **NAT-004** (light by default on the web, S, `nodegx-community`) — still the only
-unstarted Tier-1 task, and independent of everything above.
+Otherwise **NAT-010** (`serveCommunityWrite` and `board-http.ts` are built for it — the booking
+route is `respondToRfp`'s shape one surface over) or **NAT-004** (light by default on the web, S,
+still the only unstarted Tier-1 task).
 
-🔴 **Still do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4** on the strength of NAT-006. They
-close when mail reaches a human — NAT-014 AC2/AC7.
+🔴 **Still do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4** on the strength of NAT-006 or
+NAT-014's drainer. The relay's `Reply-To` is on `relay.nodegx.dev`, **unregistered, with nothing
+receiving mail on it**. D10.
 
 ## Loose ends
 
-- ✅ **The rail was driven this session** — s9's open loose end. Composer flush at 82→402 in a 378px
-  panel, zero overflowing elements. The 14px break-out NAT-008 found does not repeat.
-- ⚠️ **To drive any of this you must run the platform locally.** NAT-006's endpoints still **404 in
-  production**. `DATABASE_URL=postgres://nodegx:nodegx@localhost:55432/nodegx_community_s46 npx next
-  dev -p 3100` in `nodegx-community` (that DB is migrated and seeded). 🔴 `COMMUNITY_URL` is a
-  hard-coded constant with **no env override** — edit it and **revert it**.
-- 🔴 **The editor's `userData` is `~/Library/Application Support/NodeGX`**, not `OpenNoodl Editor`.
-  Writing a drive session to the wrong one does not read as signed-out — the editor keeps using
-  **Richard's real production session** and the resulting 401 looks like your bug. Back the file up
-  and diff it back. (It was restored byte-identical this session.)
-- ⚠️ **NAT-015 still has no producer** and AC5's other half stays open. **D7 (moderation) is still
-  open** and nothing renders a moderation affordance.
-- ⚠️ **The ports still render twice**, on both clients. Unchanged, still one decision on the
-  composer/renderer pair.
+- ⚠️ **A peer was running `next dev` in `nodegx-community` this session** and dropped/recreated a
+  database mid-afternoon. **Do not `next build` there without asking** — it stamps on their `.next`,
+  and `uni015-bench-http.test.ts`'s kind of spec needs one. Use your own DB name.
+- ⚠️ **The double blind's direction is easy to get backwards and I got it wrong twice.**
+  `to_address` is the recipient's **real inbox**; `from_address` is one generic address on the relay
+  domain; `reply_to` is the recipient's **own** alias. The smuggling vector is the **responder's
+  own** address, not the poster's.
+- ⚠️ `expect(value, message)` is **vitest's**; the editor's runner is jest. Third time.
+- ⚠️ **NAT-015 still has no producer**, **D7 is still open** — and it now owns a specific line:
+  `responsesBy` filters `r.hidden_at`, so a moderated-away request takes the responder's own row
+  with it, silently. Recorded in `rfps.ts`.
+- ⚠️ **The ports still render twice** on both clients. Unchanged.
 - ⚠️ **Seven phase-72 files remain modified and uncommitted from earlier sessions.** Untouched.
   Everything of mine is committed by pathspec.
-- ⚠️ A peer is on TUT-003 (phase 73) in the same checkout — `lesson*`, bundles. Untouched.
-- ⚠️ **Storybook still does not start** (NAT-005 AC4); the new composer has no story for that reason.
+- ⚠️ **Storybook still does not start** (NAT-005 AC4).
