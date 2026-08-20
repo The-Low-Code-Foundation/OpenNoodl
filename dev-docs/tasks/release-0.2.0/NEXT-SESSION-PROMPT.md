@@ -134,16 +134,81 @@ to the working tree. `git diff` on that file now shows **only their background h
 
 ### 🔴 `tsfixme` is NOT a one-line fix, and raising it is not mine to do
 
-**+37 `TSFixme` and +125 `any`** across ~20 files — a week of phase work meeting the gate at
-once. The largest single contributor is `packages/nodegx-node-kit-types/src/index.d.ts` (**+32**),
-then `cn-013-cloud-kits.test.ts` (+11) and `cn-006-scaffold-runs.test.ts` (+11).
+**+37 `TSFixme` and +125 `any`** across **45 files** — a week of phase work meeting the gate at
+once. Still exactly those numbers at `50892cb0`, re-measured this session without a pipe.
+
+🔴 **"~20 files" was the RATCHET'S DISPLAY CAP, not the file count.** `tsfixme-ratchet.js:319`
+prints `worse.slice(0, 20)`, so the list stops at 20 and the visible deltas sum to **+132 of the
++162** — the missing 30 are simply not shown. A bounded query reports its bound. Re-run uncapped
+(a scratchpad copy with the `slice` removed; the repo was not touched) the totals close exactly:
+
+| | markers | share |
+|---|---|---|
+| **Test files** (`tests/`, `tests-unit/`, `*.spec.*`, `*.test.*`) | **+110** | **68%** |
+| **Shipped source** | **+52** | 32% |
+| | **+162** ✓ | matches the gate delta exactly |
+
+✅ **That reframes the decision, and it is worth having before deciding.** Two thirds of the
+growth is in other phases' *test* files, where a `TSFixme` costs a reader nothing. The shipped
+half is **+52, and 32 of them are ONE file** — `packages/nodegx-node-kit-types/src/index.d.ts`.
+The remaining **20 are scattered singletons across 15 editor files** (`componentmodel.ts`,
+`BlockProbes.ts`, `usePortValues.ts`, `provenance.ts`, …) — one marker each, no cluster.
+
+So the realistic options are narrower than "retype 162 markers":
+1. **Type the one `.d.ts`** (+32, the only concentration in shipped code) and raise the baseline
+   for the rest — the smallest change that shrinks the *shipped* surface most.
+2. Raise the baseline wholesale, deliberately and in the PR.
+3. Retype everything, including 110 markers in tests that no user ever sees.
 
 The gate's own instruction is to say so in the PR, run `npm run tsfixme:baseline`, and **commit
 the raised baseline so a reviewer sees the decision** — "raising it silently is the one thing this
 gate exists to stop." So the choice is: retype ~162 markers across other phases' test files, or
 raise the baseline deliberately. **That is a call for Richard, not a cleanup.**
 
-### 2b. 🔴 `test:ci` was NOT run for this release
+### 2b. ✅ `test:ci` HAS NOW BEEN MEASURED — CI ran it, and it is AT THE FLOOR
+
+🔴 **Supersedes everything below in this subsection.** The "one outstanding measurement" is
+closed, and it did **not** need a quiet machine — **CI had already run the whole suite.** The
+local run was never the only instrument; nobody had read the CI log.
+
+**Run 32379435450, job `Test (editor)` (96458711831), 2026-08-20 14:35Z:**
+
+```
+Jasmine: 2849 specs, 10 failures (failed).
+```
+
+✅ **2849 specs — the full floor — and a SUMMARY LINE, so the run COMPLETED.** (The handover's
+2766-marker unfinished run was the *earlier* 32370134956. That reading was correct for that run
+and does not describe this one.)
+
+✅ **The 10 failures match the documented floor NAME FOR NAME**, not merely in count:
+
+| n | Failure |
+|---|---|
+| 4 | `AIX-006 style vocabulary` — F11 stalled provider · guidance-off raw candidate · one advisory pass · suggestion-never-downgrades |
+| 3 | `SUB-011 expression parameters — the validator stays silent` — round-trip · strict mode · no diagnostics at all |
+| 2 | `AI model registry` — one default per provider · openai-compatible shares the OpenAI catalogue |
+| 1 | `AIX-011 — update mode is judged against its own base` (AAQ-005 pre-existing blocking warning) |
+
+🔴 **CI ran seed `02601`, NOT the pinned `39393`** — and got the identical ten. That makes the
+result **stronger** than a seed-pinned match would have been: these ten are **deterministic and
+order-independent**, not artefacts of one random order. Anything that reproduces across two
+unrelated seeds *and* two operating systems is not a flake.
+
+⚠️ **So `Test (editor)` being red is EXPECTED, not a regression.** The floor is 10 failures and
+this job has **no baseline mechanism** — unlike `tsfixme`, nothing lets it encode "10 known
+failures". It will stay red until either the ten are fixed (they belong to AIX-006, SUB-011,
+AIX-011 and the AI model registry — other phases, not this release) or the job gains a baseline.
+**That is a decision for Richard, not a cleanup.**
+
+🔴 **The lesson worth keeping: a measurement you are blocked from taking LOCALLY may already
+exist REMOTELY.** Two sessions deferred this for machine-memory reasons while a completed run of
+the same suite sat in the CI log. Before declaring a measurement blocked, ask **who else has
+already run it**.
+
+<details>
+<summary>The original (now closed) local-run instructions, kept for when the ten are worked on</summary>
+
 
 **Not a release-workflow gate** — `release.yml` runs no tests at all. But it is the editor's
 main suite and it was skipped for a stated reason, not an oversight:
@@ -162,6 +227,9 @@ main suite and it was skipped for a stated reason, not an oversight:
 - 🔴 **Delete `packages/noodl-editor/tests/test-results.json` first and require a fresh mtime.**
   It was last written **08:37** on 2026-08-20 and a stale one reads as a perfect pass.
 
+
+</details>
+
 ### 2b′. 🔴 THE PR GATE RAN FOR THE FIRST TIME IN A WEEK, AND IT IS RED
 
 Run **32370134956** (PR #20, `cline-dev` → `main`), the first `pr.yml` pass over any of these
@@ -179,19 +247,18 @@ fix. ✅ `Typecheck`, `Test (platform-node)`, `Library check`, `Check build arte
 ⚠️ **None of these was caused by the release commits** — they are a week of unpushed work meeting
 CI for the first time. But two are one-line fixes and should not ride into 0.2.1.
 
-#### ✅ Status after `8a17a0ad` — three of the four addressed, one left, one NOT re-measured
+#### ✅ Status after `8a17a0ad`, updated at `50892cb0` — only `tsfixme` is still open
 
 | Job | Now |
 |---|---|
-| **Test (runtime, …)** | 🔴 **STILL RED — and NOT for the reason §2b′ recorded.** The `EditorConnection` defect was real and **is** fixed (`tsc --noEmit -p .` exit 0; runtime is **139 passed** in CI). But the job fails on **`@noodl/preview`**, a *different* package in the same job — see §2b‴ |
+| **Test (runtime, …)** | ✅ **FIXED in `50892cb0`** (was red for a *third* reason again — see §2b⁗). 🔴 **NOT for the reason §2b′ recorded.** The `EditorConnection` defect was real and **is** fixed (`tsc --noEmit -p .` exit 0; runtime is **139 passed** in CI). But the job fails on **`@noodl/preview`**, a *different* package in the same job — see §2b‴ |
 | **Node catalog freshness** | ✅ **FIXED.** Regenerated. The diff is **26 lines, every one a colour hex** — no node type added, removed or renamed. It was a **second copy of the node palette drifting** from the cloud registry. `cloud-library:check` exit 0, and `catalog:check` / `groups:check` / `examples` / `merge:check` were **already green** |
 | **Lint** | 🟡 **PARTLY.** `lint:ci`, `tokens:css`, `colors` all exit 0. **`tsfixme` still red** — §2a explains why that is a decision |
-| **Test (editor)** | 🔴 **UNCHANGED AND UNMEASURED.** Nothing here touches it, and it was **not** re-run — see §2b |
+| **Test (editor)** | ✅ **NOW MEASURED — AT THE FLOOR.** CI's own run completed: **2849 specs / 10 failures**, matching the floor **name for name** under a *different* seed. Red is expected; the job has no baseline mechanism — see §2b |
 
-🔴 **`Test (editor)` was deliberately not attempted.** `vm.swapusage` read **9465M used of
-10240M** with a second Claude session live on the checkout — the same condition that stopped
-§2b. A run there produces flakes indistinguishable from regressions. **It is still the one
-outstanding measurement for this release.**
+~~🔴 `Test (editor)` was deliberately not attempted…~~ — **superseded.** The local machine was
+never the only instrument: **CI had already run the whole suite to completion.** See §2b. The
+standing lesson: *before recording a measurement as blocked, ask who else has already taken it.*
 
 ### 2b‴. 🔴 THE RUNTIME FIX WAS REAL, AND THE JOB IS STILL RED — measured on CI 2026-08-20 14:02
 
@@ -236,6 +303,77 @@ validator gained an `unknown-parameter` diagnostic that now fires first on this 
 edit stopped producing the dangling connection it was written to produce. 🔴 **Establish which
 before touching the assertion** — editing the expectation to match the output is how a validator
 regression gets ratified. It failed at **13:01 on 2026-08-20, before any commit in this session**.
+
+### 2b⁗. ✅ THE `@noodl/preview` FAILURE IS DIAGNOSED AND FIXED — `50892cb0`
+
+**The handover asked the right question and refused to guess: "either a validator gained an
+`unknown-parameter` diagnostic that now fires first on this fixture, or the edit stopped
+producing the dangling connection it was written to produce." It is the FIRST.** Measured, not
+inferred — by driving the built CLI over HTTP exactly as the suite does and dumping the whole
+report instead of indexing position 0:
+
+```
+warning  unknown-parameter    Text has no input port "textAlign", so this parameter is never read.
+error    dangling-connection  Connection ghost.value → greeting.text references a missing node…
+summary  { errors: 1, warnings: 1 }
+```
+
+✅ **The gate is intact.** `dangling-connection` still fires, still as the *only* error, carrying
+the very message the spec's own later assertion looks for. Nothing about the invalid-edit gate
+regressed. What broke is the **index**: `diagnostics` is the validator's full list, warnings
+included ([`validate.ts:49`](../../../packages/noodl-preview/src/validate.ts)), and the warning
+sorts ahead of the error.
+
+✅ **The warning is TRUE — not a false positive.** `Text`'s real ports are `textAlignX` /
+`textAlignY` ([`text.ts:88`](../../../packages/noodl-viewer-react/src/nodes/visual/text.ts));
+plain `textAlign` is only the CSS property the node sets internally. **The fixture has been
+setting a parameter nothing reads since the day it was written.**
+
+✅ **Confirmed NOT a release regression, by measurement rather than by assertion.** The fixture
+and `packages/noodl-types/src/node-catalog.json` are **byte-identical to `v0.1.7`** (`Text`'s
+inputs are `alignX, alignY, textAlignX, textAlignY` at both trees — never `textAlign`), and the
+spec itself predates the release (SUB-009 `a5fc7d23`, **23 July**). It was invisible only because
+this job had never reached `@noodl/preview:test` — nx bailed on an earlier package every time
+([`pr.yml:132`](../../../.github/workflows/pr.yml)).
+
+#### 🔴 The finding worth keeping: the CI log named ONE assertion; there were TWO
+
+Fixing the reported line (185) alone leaves the suite **still red** at line 200 — the SSE frame's
+`diagnostics.at(-1).diagnostics[0].message`, which lands on the *same* warning. **A failing
+assertion hides every assertion after it**, so "13 of 14 pass, one assertion" understated the
+work. Verified by reverting each half separately and re-running.
+
+⚠️ **This is the nx-bails trap one level down** — same shape, different runner: *the first
+failure is reported as THE failure*. §2b‴ caught it at package granularity; it repeats inside a
+single test. **Do not size a fix from the first red line.**
+
+**The fix** — both assertions now select by code, never by position:
+
+```ts
+const errors = state.state.report.diagnostics.filter((d) => d.severity === 'error');
+expect(errors.map((d) => d.code)).toEqual(['dangling-connection']);
+```
+
+✅ **The fixture's dead `textAlign` is deliberately LEFT IN.** It is the only warning the fixture
+produces, so it is precisely what keeps this spec exercising the mixed-severity case that just
+broke it. Removing it would turn the test green by deleting the coverage — the "edit until green"
+move this gate exists to stop. It is named in a comment so the next reader does not "fix" it.
+
+⚠️ **The local dist was two weeks stale (Aug 7) and 172KB smaller than a fresh build.** CI
+rebuilds it before testing (`pr.yml:135`), so a run against the stale one would have measured the
+wrong artifact — quite possibly "cannot reproduce". **Rebuild before believing a local preview
+result.**
+
+**Verified locally:** 14/14 against a freshly built dist; `tsc --noEmit` exit 0, captured without
+a pipe.
+
+✅ **VERIFIED ON CI — the job is GREEN.** Pushed `50892cb0`, run **32384127560**:
+`Test (runtime, backend, viewer, mcp, preview)` = **success** (job 96474274587), the first time
+that job has passed in this whole release. `Typecheck`, `Build`, `Node catalog freshness`,
+`Test (platform-node)`, `Library check`, `Check build artefacts` all green alongside it.
+
+🔴 **Only `Lint` is still red, and only for `tsfixme` — which is §2a's decision for Richard.**
+That is now the *sole* remaining red on this branch that is not expected-by-design.
 
 ### 2b″. ✅ A FIFTH red job nobody had counted: `Test noodl/platform-node`
 
