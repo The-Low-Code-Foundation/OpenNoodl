@@ -588,6 +588,121 @@ export async function readDirectory(
   return { outcome: 'ok', value: { people, total, complete: people.length >= total } };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// NAT-009 — the work board
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * One request for work, mirroring the platform's `RfpView` (`lib/apisurfaces.ts`).
+ *
+ * ⚠️ **`responseCount` is a COUNT and there is no field for the responses.** That is the
+ * platform's mechanism rather than a thin payload: *"a response is a private message between two
+ * parties that the relay exists to keep private"*, so publishing the bodies would defeat this
+ * board's own privacy design on its index page. A client that wanted them would be asking for
+ * something no endpoint serves.
+ *
+ * ⚠️ `responseCap` is dropped platform-side too — the web renders the approach to the threshold
+ * (`responsesRemaining`) and never the raw policy number.
+ */
+export type RfpSummary = {
+  id: string;
+  title: string;
+  description: string;
+  budgetBand: string;
+  timeline: string | null;
+  state: 'open' | 'closed';
+  posterHandle: string;
+  responseCount: number;
+  responsesRemaining: number;
+  createdAt: string;
+  closedAt: string | null;
+};
+
+function readRfpSummary(value: unknown): RfpSummary | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const row = value as Record<string, unknown>;
+  const id = typeof row.id === 'string' ? row.id : '';
+  const title = typeof row.title === 'string' ? row.title : '';
+  // 🔴 Validated rather than cast, for `readPostBlocks`' reason: a row this client cannot read is
+  // dropped and the page's `total` is left alone, so the surface can say it is showing part of
+  // the board. Casting would draw a row with an empty title and a working button.
+  if (!id || !title) return null;
+  const state = row.state === 'closed' ? 'closed' : 'open';
+  const count = Number(row.responseCount);
+  const remaining = Number(row.responsesRemaining);
+  return {
+    id,
+    title,
+    description: typeof row.description === 'string' ? row.description : '',
+    budgetBand: typeof row.budgetBand === 'string' ? row.budgetBand : '',
+    timeline: typeof row.timeline === 'string' ? row.timeline : null,
+    state,
+    posterHandle: typeof row.posterHandle === 'string' ? row.posterHandle : '',
+    responseCount: Number.isFinite(count) ? count : 0,
+    responsesRemaining: Number.isFinite(remaining) ? remaining : 0,
+    createdAt: typeof row.createdAt === 'string' ? row.createdAt : '',
+    closedAt: typeof row.closedAt === 'string' ? row.closedAt : null
+  };
+}
+
+/**
+ * One of the caller's own responses — `GET /api/v1/me/rfp-responses`.
+ *
+ * 🔴 **`connectedAt` IS ALWAYS NULL AND BOTH ACCEPTS ARE ALWAYS FALSE, and this is the platform's
+ * measurement rather than a client guess.** The relay thread beside a response has an
+ * accept-and-connect step, and the function that performs it — `acceptConnection` — has no caller
+ * anywhere on the platform but its own suite. Nothing on any client can advance it.
+ *
+ * ⚠️ So `rfpboardview.ts` draws them as **facts about the row** and never as a stage in a
+ * process. A progress bar that cannot fill is worse than no bar: it tells somebody to wait for
+ * something that is not coming.
+ */
+export type MyRfpResponse = {
+  id: string;
+  rfpId: string;
+  rfpTitle: string;
+  rfpState: 'open' | 'closed';
+  posterHandle: string;
+  message: string;
+  createdAt: string;
+  connectedAt: string | null;
+  posterAccepted: boolean;
+  youAccepted: boolean;
+};
+
+function readMyRfpResponse(value: unknown): MyRfpResponse | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const row = value as Record<string, unknown>;
+  const id = typeof row.id === 'string' ? row.id : '';
+  const rfpId = typeof row.rfpId === 'string' ? row.rfpId : '';
+  if (!id || !rfpId) return null;
+  return {
+    id,
+    rfpId,
+    rfpTitle: typeof row.rfpTitle === 'string' ? row.rfpTitle : '',
+    rfpState: row.rfpState === 'closed' ? 'closed' : 'open',
+    posterHandle: typeof row.posterHandle === 'string' ? row.posterHandle : '',
+    message: typeof row.message === 'string' ? row.message : '',
+    createdAt: typeof row.createdAt === 'string' ? row.createdAt : '',
+    connectedAt: typeof row.connectedAt === 'string' ? row.connectedAt : null,
+    posterAccepted: row.posterAccepted === true,
+    youAccepted: row.youAccepted === true
+  };
+}
+
+/** `POST /api/v1/community/rfps/:id/responses`, 201. */
+export type ResponseAccepted = {
+  responseId: string;
+  /**
+   * 🔴 **READ OFF THE PLATFORM AND NEVER ASSUMED.** It is `'relayed'` on every response today —
+   * the relay has already queued the double-blind email — and the field exists because the
+   * sentence a client draws differs by arm: *"the poster has been emailed"* against *"the poster
+   * will be told"*. **D10 is open and it is exactly this choice.** NAT-008's four guessed
+   * rate-band keys, all four wrong and silently invisible, are the standing warning.
+   */
+  outcome: string;
+};
+
 export type MemberAssignment = {
   id: string;
   orgSlug: string;
@@ -991,7 +1106,21 @@ export class CommunityApiClient {
     // completeness is a property of the ROUTES, not of the client — every status the platform
     // deliberately chooses needs a home here, and a status with no home defaults to the one
     // outcome that blames the network.
-    if (response.status === 400 || response.status === 403 || response.status === 409) {
+    // 🔴 413 IS A REFUSAL WITH A FIX IN IT, AND IT IS THE THIRD TIME THIS EXACT HOLE HAS BEEN
+    // FOUND HERE — after 429 (UNI-006) and 409 (UNI-007), each discovered by the caller that
+    // needed it rather than by anybody auditing the table. NAT-009's `serveCommunityWrite`
+    // answers 413 with the byte cap in the sentence; without this branch a person whose response
+    // is too long is told the community could not be reached, and retries the same body forever.
+    //
+    // ⚠️ **The rule this file keeps failing is in its own comment two branches down**: the
+    // mapping's completeness is a property of the ROUTES, not of the client. It is stated, it is
+    // true, and nothing enforces it — which is why the count is three.
+    if (
+      response.status === 400 ||
+      response.status === 403 ||
+      response.status === 409 ||
+      response.status === 413
+    ) {
       // 🔴 The platform's own words, and it chooses them for this. `bench-http.ts` maps every
       // refusal through one table precisely so that a caller *"learns THAT it was refused,
       // and for the rules that are about their own input, enough to fix it"* — while never
@@ -1120,6 +1249,143 @@ export class CommunityApiClient {
       return { outcome: 'unreachable', status: null, detail: 'the profile payload could not be read' };
     }
     return { outcome: 'ok', value: profile };
+  }
+
+  /**
+   * NAT-009 AC1 — the work board.
+   *
+   * ⚠️ **`state` is the ONE filter this endpoint takes** (`open` | `closed`), and an unrecognised
+   * value is ignored rather than refused — the platform's reading, so a polling client cannot
+   * turn a typo into an outage. 🔴 **There is no `q`**, exactly as `/people` has none: a keyword
+   * filter is the client's job over rows it holds, and `rfpboardview.ts` reports the bound it
+   * searched over. Fifth endpoint in this API with no keyword parameter.
+   *
+   * ⚠️ **Readable signed out**, as `/rfps` is. A board that demanded an account to read would be
+   * stricter than the site it mirrors, which inverts the phase's first principle.
+   */
+  async rfps(
+    window: { limit?: number; offset?: number; state?: 'open' | 'closed' } = {}
+  ): Promise<Read<Paged<RfpSummary>>> {
+    const search = new URLSearchParams();
+    if (window.limit !== undefined) search.set('limit', String(window.limit));
+    if (window.offset !== undefined && window.offset > 0) search.set('offset', String(window.offset));
+    if (window.state !== undefined) search.set('state', window.state);
+    const query = search.toString();
+
+    const read = await this.get<{ items?: unknown; page?: unknown }>(
+      `/api/v1/community/rfps${query === '' ? '' : `?${query}`}`
+    );
+    if (read.outcome !== 'ok') return read;
+
+    const raw = Array.isArray(read.value?.items) ? read.value.items : null;
+    // ⚠️ `unreachable`, never `absent`: a body we could not read is our problem and is
+    // retryable, where `absent` is a statement about the viewer's permission. See `thread()`.
+    if (!raw) {
+      return { outcome: 'unreachable', status: null, detail: 'the work board payload could not be read' };
+    }
+
+    const items: RfpSummary[] = [];
+    for (const entry of raw) {
+      const rfp = readRfpSummary(entry);
+      if (rfp) items.push(rfp);
+    }
+    return { outcome: 'ok', value: { items, page: readPageInfo(read.value?.page, items.length) } };
+  }
+
+  /**
+   * NAT-009 AC1 — one request, opened to its full brief.
+   *
+   * 🔴 **A 404 is `absent` and must not be narrated as a removal.** `getRfp` returns null for a
+   * hidden request and for a missing one, deliberately — *"a stub page is a disclosure"* — and
+   * D15's refusal is the same bytes again. Three meanings, one answer, and `docs/API.md` §4
+   * forbids a client from picking one.
+   */
+  async rfp(id: string): Promise<Read<RfpSummary>> {
+    const read = await this.get<{ item?: unknown }>(
+      `/api/v1/community/rfps/${encodeURIComponent(id)}`
+    );
+    if (read.outcome !== 'ok') return read;
+    const rfp = readRfpSummary(read.value?.item);
+    if (!rfp) {
+      return { outcome: 'unreachable', status: null, detail: 'the request payload could not be read' };
+    }
+    return { outcome: 'ok', value: rfp };
+  }
+
+  /**
+   * NAT-009 AC3 — what this caller has sent to the board.
+   *
+   * 🔴 **`401` here is `unauthenticated`, and that arm exists because this route chose 401 over
+   * an empty list.** `/v1/me/gradings` beside it answers `[]` signed out because it is a poll;
+   * this is a screen a person opens to check on something they sent, and *"you have sent
+   * nothing"* is a lie to tell somebody whose session expired. `get()` already separates the two.
+   */
+  async myRfpResponses(
+    window: { limit?: number; offset?: number } = {}
+  ): Promise<Read<Paged<MyRfpResponse>>> {
+    const search = new URLSearchParams();
+    if (window.limit !== undefined) search.set('limit', String(window.limit));
+    if (window.offset !== undefined && window.offset > 0) search.set('offset', String(window.offset));
+    const query = search.toString();
+
+    const read = await this.get<{ items?: unknown; page?: unknown }>(
+      `/api/v1/me/rfp-responses${query === '' ? '' : `?${query}`}`
+    );
+    if (read.outcome !== 'ok') return read;
+
+    const raw = Array.isArray(read.value?.items) ? read.value.items : null;
+    if (!raw) {
+      return { outcome: 'unreachable', status: null, detail: 'your responses could not be read' };
+    }
+    const items: MyRfpResponse[] = [];
+    for (const entry of raw) {
+      const row = readMyRfpResponse(entry);
+      if (row) items.push(row);
+    }
+    return { outcome: 'ok', value: { items, page: readPageInfo(read.value?.page, items.length) } };
+  }
+
+  /**
+   * NAT-009 AC2 — respond to a request for work.
+   *
+   * 🔴 **THE ROUTE THIS CALLS DID NOT EXIST UNTIL 2026-08-20, AND NEITHER DID ANY OTHER CALLER OF
+   * THE THING BEHIND IT.** `respondToRfp` shipped with UNI-004 and its only callers anywhere were
+   * two test files; the web's `/rfps/[id]` still says *"responding needs an account, which arrives
+   * with sign-in"*. So the editor is the only client that can answer a request for work at all —
+   * the second surface in this phase where that was true, after NAT-007's answer and accept.
+   *
+   * ⚠️ **`post()` already carries every status this route chooses**: 400, 403, 409 and 429 all
+   * become `refused` with the platform's own sentence, 401 is `unauthenticated`, 404 is `absent`.
+   * 🔴 That was not free — `409` fell through to `unreachable` until UNI-007 needed it, which
+   * would have told a builder whose response cap was spent that their network was down. **Do not
+   * re-narrow that branch**; this route answers 409 for four different reasons.
+   */
+  async respond(rfpId: string, input: { message: string }): Promise<Write<ResponseAccepted>> {
+    // ⚠️ **`{item: …}` and not a bare body**, unlike `/bench/threads/:id/posts` beside it, which
+    // answers `{postId, pointsAwarded}` flat. The bench's writes predate `apishape.ts`; this one
+    // is under `/v1/community` and answers §2's item envelope, which `docs/API.md` §6 specified.
+    // Unwrapped HERE rather than by the caller, so no view model learns the envelope.
+    const write = await this.post<{ item?: unknown }>(
+      `/api/v1/community/rfps/${encodeURIComponent(rfpId)}/responses`,
+      input
+    );
+    if (write.outcome !== 'ok') return write;
+
+    const item = (typeof write.value?.item === 'object' && write.value.item !== null
+      ? write.value.item
+      : {}) as Record<string, unknown>;
+    const responseId = typeof item.responseId === 'string' ? item.responseId : '';
+    if (!responseId) {
+      // 🔴 A 201 whose body we could not read is NOT `ok`, and it is not `refused` either. The
+      // response almost certainly landed — so the sentence a caller draws must not say it did
+      // not — but this client cannot say what happened, and `unreachable` is the arm whose
+      // sentence is *"try again"* rather than *"that was rejected"*.
+      return { outcome: 'unreachable', status: null, detail: 'the response was sent but could not be read back' };
+    }
+    return {
+      outcome: 'ok',
+      value: { responseId, outcome: typeof item.outcome === 'string' ? item.outcome : '' }
+    };
   }
 
   threshold(): Promise<Read<ThresholdResponse>> {
