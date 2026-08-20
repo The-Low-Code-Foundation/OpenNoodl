@@ -77,8 +77,16 @@ its bound, and the bound is invisible in the output.*
 | `npm run test:main` | ⚠️ **280 suites / 4492 tests / 2 failed + 1 suite that would not compile — ALL THREE PEERS'.** Mine: `uni-010/render-harness-*` both PASS |
 | `nodegx-render-measure` jest | ✅ 5/5 |
 | Live control pair | ✅ arms A/B/C above, plus both pinned phase-55 controls restored |
-| `test:ci` | ⚠️ **NOT MINE.** The phase-73 peer started one ~08:30. Re-measure before quoting |
+| `test:ci` | 🟡 **NOT MINE, but informative.** The phase-73 peer ran one and reported **2849 specs / 10 failures @ seed 39393, same 10 by name as the floor** |
 | `nodegx-community` | ⚠️ **Untouched this session.** Session 43's readings stand |
+
+⚠️ **What the peer's `test:ci` does and does not establish about session 46's change.** This is a
+**shared checkout**, so their run read the same working tree my harness edits were already sitting
+in — and the floor did not move. That is worth something, but it is **not** a measurement of this
+change: my specs are **jest** (`test:main`), the Jasmine suite has no spec that drives the render
+harness, and the exact overlap between their run's start and my last two edits is unknown. ✅ Treat
+it as *the floor is intact*, not as *the change is covered*. **Re-measure before quoting it as
+either.**
 
 ⚠️ **The three `test:main` failures were attributed, not assumed**: `uni-001/session-readers` and
 `nat-008/peopleview` are phase 72's untracked `useCommunityPeople.ts`; `uni-010/lessonprojectcontext`
