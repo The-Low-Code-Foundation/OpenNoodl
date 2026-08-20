@@ -183,7 +183,7 @@ CI for the first time. But two are one-line fixes and should not ride into 0.2.1
 
 | Job | Now |
 |---|---|
-| **Test (runtime, …)** | ✅ **FIXED.** Both files declared `const EditorConnection` at top level with **no import or export**, so TS treated them as scripts sharing one global scope. `export {}` makes each a module. `tsc --noEmit -p .` **exit 0**; the full package suite is **139 suites / 2537 tests, exit 0** |
+| **Test (runtime, …)** | 🔴 **STILL RED — and NOT for the reason §2b′ recorded.** The `EditorConnection` defect was real and **is** fixed (`tsc --noEmit -p .` exit 0; runtime is **139 passed** in CI). But the job fails on **`@noodl/preview`**, a *different* package in the same job — see §2b‴ |
 | **Node catalog freshness** | ✅ **FIXED.** Regenerated. The diff is **26 lines, every one a colour hex** — no node type added, removed or renamed. It was a **second copy of the node palette drifting** from the cloud registry. `cloud-library:check` exit 0, and `catalog:check` / `groups:check` / `examples` / `merge:check` were **already green** |
 | **Lint** | 🟡 **PARTLY.** `lint:ci`, `tokens:css`, `colors` all exit 0. **`tsfixme` still red** — §2a explains why that is a decision |
 | **Test (editor)** | 🔴 **UNCHANGED AND UNMEASURED.** Nothing here touches it, and it was **not** re-run — see §2b |
@@ -192,6 +192,50 @@ CI for the first time. But two are one-line fixes and should not ride into 0.2.1
 10240M** with a second Claude session live on the checkout — the same condition that stopped
 §2b. A run there produces flakes indistinguishable from regressions. **It is still the one
 outstanding measurement for this release.**
+
+### 2b‴. 🔴 THE RUNTIME FIX WAS REAL, AND THE JOB IS STILL RED — measured on CI 2026-08-20 14:02
+
+Pushed `77f0b83e`, run **32377316910**. ✅ `Node catalog freshness`, `Typecheck`, `Build`,
+`Library check`, `Check build artefacts`, `Test (platform-node)` all **green**.
+🔴 `Test (runtime, …)`, `Test (editor)` and `Lint` still red.
+
+**Read the per-package summaries, not the job name.** The job is called
+`Test (runtime, backend, viewer, mcp, preview)` and covers 16 packages. Its summaries:
+
+| Run | `@noodl/runtime` | `@noodl/preview` |
+|---|---|---|
+| **32370134956** — the handover's run | 🔴 **1 failed**, 138 passed, and the log carries **2 `TS2451` / "Cannot redeclare"** hits | **never ran** — nx bailed |
+| **32371952973** — 13:01, still pre-fix | ✅ 139 passed | 🔴 **1 failed** |
+| **32377316910** — post-fix | ✅ 139 passed | 🔴 **1 failed** |
+
+🔴 **Two corrections fall out of that table.**
+
+1. **The `EditorConnection` fix was real but it did NOT turn this job green.** §2b′ named it as
+   *the* cause because in the handover's run nx bailed before `@noodl/preview` ever ran — so the
+   only failure visible was the runtime one. **A bailing task runner reports the FIRST failure as
+   THE failure.** ⚠️ Do not read "1 suite failed to run" in a 16-package job as the job's cause.
+2. **The runtime symptom was INTERMITTENT in jest and DETERMINISTIC in `tsc`.** Same commit,
+   `139 passed` at 13:01 and `1 failed` earlier. `tsc --noEmit -p .` reported the collision
+   **every** time. ✅ **`npm run test:packages` passing is not evidence the package typechecks** —
+   only `tsc` is, and the root `npm run typecheck` (exit 0 throughout) never reached it either.
+
+#### The actual `@noodl/preview` failure — pre-existing, one assertion, NOT a release regression
+
+`tests/preview.test.ts:185`, *"watching › gates an invalid edit: diagnostics out, last good build
+kept"*. 13 of 14 tests pass.
+
+```
+expect(state.state.report.diagnostics[0].code).toBe('dangling-connection');
+Expected: "dangling-connection"
+Received: "unknown-parameter"
+```
+
+⚠️ **`summary.errors` is still 1** (line 184 passes), so the invalid edit still produces exactly
+one error — its **code changed**. That makes this a real question, not a stale snapshot: either a
+validator gained an `unknown-parameter` diagnostic that now fires first on this fixture, or the
+edit stopped producing the dangling connection it was written to produce. 🔴 **Establish which
+before touching the assertion** — editing the expectation to match the output is how a validator
+regression gets ratified. It failed at **13:01 on 2026-08-20, before any commit in this session**.
 
 ### 2b″. ✅ A FIFTH red job nobody had counted: `Test noodl/platform-node`
 
