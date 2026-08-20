@@ -1,8 +1,12 @@
 # Release 0.2.0 — next session
 
-**Written 2026-08-20, end of the release session.** This file is the working state of the
-0.2.0 release, not a phase. Read [RELEASE-PROCESS.md](../../guidelines/RELEASE-PROCESS.md)
-before touching anything in §3.
+**Written 2026-08-20, end of the release session; updated the same day after a CI-cleanup
+session.** This file is the working state of the 0.2.0 release, not a phase. Read
+[RELEASE-PROCESS.md](../../guidelines/RELEASE-PROCESS.md) before touching anything in §3.
+
+🔴 **THE DRAFT IS STILL UNPUBLISHED AND §3 IS STILL THE WHOLE REMAINING RELEASE.** The cleanup
+session changed **nothing** about the shipped artifacts — it fixed CI gates on `cline-dev` only.
+`gh release list` still shows **0.1.7 as Latest** and **0.2.0 as Draft**.
 
 ---
 
@@ -13,6 +17,7 @@ before touching anything in §3.
 | `3a20f46c` | `chore(release): 0.2.0` — the version bump, committed with a **pathspec** so a peer's two in-flight files stayed out |
 | `v0.2.0` | tag pushed 12:31Z, triggering run **32369270228** |
 | `b2aeaad` (nodegx-community@main) | deployed to nexus-1 12:23Z — the reason any of the new community surfaces have data at all |
+| `8a17a0ad` | `fix(ci): three of the four red PR jobs…` — the CI cleanup, **after** the tag. Not in the 0.2.0 build; it rides in 0.2.1 |
 
 **0.2.0, not 0.1.8**, and the previous release was **0.1.7** — not 0.1.17. 149 feature and fix
 commits, 478 total, since `v0.1.7` (13 August).
@@ -97,31 +102,46 @@ with `if: always()` and names what is missing; its rules self-test offline with
 
 ## 2. Housekeeping — none of it blocks the build, all of it is real
 
-### 2a. 🔴 Three ratchets are RED on `cline-dev`
+### 2a. ✅ Two of the three ratchets are FIXED — `tsfixme` is left as a decision
 
-Pre-existing on committed work, **not** caused by the release, and **not** run by
-`release.yml` — but they are red on the PR gate right now.
+Fixed in `8a17a0ad`. Verified by re-running each gate on the **committed** tree, exit codes
+captured without a pipe.
 
-| Gate | What it says |
-|---|---|
-| `tokens:css` | **3 custom properties used but never defined.** `--font-family-mono` in **4 files**, `--logic-overlay-height` in `CanvasTabs.module.scss`, `--theme-font-family-mono` in `AskAboutNodeDialog.module.scss` |
-| `colors` | **noodl-core-ui rose by 2** — hex literals in `preview/launcher/Launcher/components/LearnerPathSection/LearnerPathSection.module.scss`. Baseline 0 |
-| `tsfixme` | count rose above baseline; largest are `cn-006-token-defaults.test.ts` (+5), `NodeComponentMark.test.ts` (+4), `paste-carries-labels-and-comments.spec.ts` (+4), `NodePickerSearch.test.ts` (+4) |
+| Gate | Was | Now |
+|---|---|---|
+| `tokens:css` | 3 properties used but never defined | ✅ **exit 0** — "every var(--…) in 319 stylesheets names a defined property" |
+| `colors` | noodl-core-ui rose by 2 | ✅ **exit 0** — back to baseline 0 |
+| `tsfixme` | above baseline | 🔴 **still exit 1 — deliberately not fixed, see below** |
 
-✅ **`--font-family-mono` is a NAME ERROR, not a missing token.** The real one is
-**`--font-family-code`**, defined in
-`packages/noodl-core-ui/src/styles/custom-properties/fonts.css:21`. A `var()` naming nothing
-renders its fallback silently, and one of the four files is
-`components/community/Community.module.scss` — so **mono text in the new community UI is
-falling back to the body font** on the build that just shipped. Cosmetic, real, one rename.
+✅ **Both mono tokens were the same NAME ERROR.** `--font-family-mono` (4 files) *and*
+`--theme-font-family-mono` (`AskAboutNodeDialog.module.scss`) name nothing anywhere in the repo.
+The token is **`--font-family-code`**
+(`packages/noodl-core-ui/src/styles/custom-properties/fonts.css:21`) — which `InspectPopup`,
+`InterviewCard`, `BuildThread` and `TokenCategorySection` already use, so the rename follows the
+convention rather than inventing one. 8 occurrences across 5 files.
 
-⚠️ **`AskAboutNodeDialog.module.scss` was a peer's uncommitted file during this session** —
-that is why `--theme-font-family-mono` was left alone. **Check `git status` before assuming it
-is yours to fix.**
+✅ **`--logic-overlay-height` IS host-supplied, and now says so.** `LogicOverlay.ts:149-155`
+(`applyRect`) writes all four of `LOGIC_OVERLAY_VARS` onto `editor.shell.root.style` on every
+drag frame. Added to `HOST_SUPPLIED` in `scripts/css-token-check.js` **with the host named**, as
+the script demands. ⚠️ The doc comment in `LogicOverlay.ts` says these are "read by
+`styles/nodegrapheditor.css`" — **that is stale**; the only CSS reader is
+`CanvasTabs.module.scss`, whose `90vh` fallback is the height before the overlay is first opened.
 
-⚠️ **`--logic-overlay-height` may legitimately be host-supplied at runtime.** The checker has a
-`HOST_SUPPLIED` list for exactly that. Establish which it is before adding it — the script says
-to name the host.
+✅ **The peer's file was handled without sweeping their work.** `AskAboutNodeDialog.module.scss`
+carried an uncommitted background fix from 2026-08-19. The rename was committed **alone** — the
+HEAD version was written out, re-renamed, committed by pathspec, then the peer's version restored
+to the working tree. `git diff` on that file now shows **only their background hunk**.
+
+### 🔴 `tsfixme` is NOT a one-line fix, and raising it is not mine to do
+
+**+37 `TSFixme` and +125 `any`** across ~20 files — a week of phase work meeting the gate at
+once. The largest single contributor is `packages/nodegx-node-kit-types/src/index.d.ts` (**+32**),
+then `cn-013-cloud-kits.test.ts` (+11) and `cn-006-scaffold-runs.test.ts` (+11).
+
+The gate's own instruction is to say so in the PR, run `npm run tsfixme:baseline`, and **commit
+the raised baseline so a reviewer sees the decision** — "raising it silently is the one thing this
+gate exists to stop." So the choice is: retype ~162 markers across other phases' test files, or
+raise the baseline deliberately. **That is a call for Richard, not a cleanup.**
 
 ### 2b. 🔴 `test:ci` was NOT run for this release
 
@@ -158,6 +178,40 @@ fix. ✅ `Typecheck`, `Test (platform-node)`, `Library check`, `Check build arte
 
 ⚠️ **None of these was caused by the release commits** — they are a week of unpushed work meeting
 CI for the first time. But two are one-line fixes and should not ride into 0.2.1.
+
+#### ✅ Status after `8a17a0ad` — three of the four addressed, one left, one NOT re-measured
+
+| Job | Now |
+|---|---|
+| **Test (runtime, …)** | ✅ **FIXED.** Both files declared `const EditorConnection` at top level with **no import or export**, so TS treated them as scripts sharing one global scope. `export {}` makes each a module. `tsc --noEmit -p .` **exit 0**; the full package suite is **139 suites / 2537 tests, exit 0** |
+| **Node catalog freshness** | ✅ **FIXED.** Regenerated. The diff is **26 lines, every one a colour hex** — no node type added, removed or renamed. It was a **second copy of the node palette drifting** from the cloud registry. `cloud-library:check` exit 0, and `catalog:check` / `groups:check` / `examples` / `merge:check` were **already green** |
+| **Lint** | 🟡 **PARTLY.** `lint:ci`, `tokens:css`, `colors` all exit 0. **`tsfixme` still red** — §2a explains why that is a decision |
+| **Test (editor)** | 🔴 **UNCHANGED AND UNMEASURED.** Nothing here touches it, and it was **not** re-run — see §2b |
+
+🔴 **`Test (editor)` was deliberately not attempted.** `vm.swapusage` read **9465M used of
+10240M** with a second Claude session live on the checkout — the same condition that stopped
+§2b. A run there produces flakes indistinguishable from regressions. **It is still the one
+outstanding measurement for this release.**
+
+### 2b″. ✅ A FIFTH red job nobody had counted: `Test noodl/platform-node`
+
+This is a **separate workflow** (`.github/workflows/test-platform-node.yml`), not the `pr.yml`
+job of a similar name — which is why §2b′ could correctly record `Test (platform-node)` as green
+while this one was failing. It is triggered by paths under `packages/noodl-platform*`.
+
+🔴 **It was not a code failure. It could never have passed.** The workflow pinned
+`node-version: 16`, while the repo's root `engines` requires `node >=22` / `npm >=10`, so
+`npm install` died at `EBADENGINE` **before a single test ran**:
+
+```
+npm ERR! notsup Required: {"npm":">=10.0.0","node":">=22.0.0"}
+npm ERR! notsup Actual:   {"npm":"8.19.4","node":"v16.20.2"}
+```
+
+✅ **Bumped to `node-version: 22`.** Verified locally first — `@noodl/platform-node`'s suite is
+**22 passed, 3 skipped** on node 22.22.0. ⚠️ The workflow still uses `actions/checkout@v3` and
+`actions/setup-node@v2` while every `pr.yml` job uses `@v4` and the shared `./.github/actions/setup`;
+that was left alone as out of scope, **but it is the reason this workflow drifted unnoticed.**
 
 ### 2c. What WAS measured, so it is not re-derived
 
