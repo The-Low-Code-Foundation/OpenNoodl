@@ -7,6 +7,11 @@ module.exports = function ({ production }) {
   //skip this in dev mode since it slows down the bundling
   function getExcludedNodeModules() {
     return packageJson.build.files
+      // `build.files` is not all strings: electron-builder also takes `{from, to, filter}`
+      // copy directives, and three of them ship the render harness inside the asar. Those
+      // can never be a `!node_modules/…` exclusion, so they are skipped rather than matched
+      // — without this, `.match` throws and the PRODUCTION config fails to load at all.
+      .filter((pattern) => typeof pattern === 'string')
       .map((pattern) => pattern.match(/\!node_modules\/(.+)/))
       .filter((match) => match !== null)
       .map((match) => match[1]);
