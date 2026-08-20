@@ -41,6 +41,12 @@
  * easiest mistake for a model to make — it has the solution in front of it while
  * it writes the starter.
  *
+ * ⚠️ **It is silent about the database, and says so per step.** F2′ compares two points in time,
+ * and a {@link LessonEvalContext.database} snapshot only ever describes one — see the guard in the
+ * F2′ arm. A step that grades against the built-in database is reported `not-checked` for this half
+ * rather than passed, because "the collection does not ship pre-made" is a claim about a bundle
+ * that no snapshot of a running backend can support.
+ *
  * 🔴 F3 IS TWO FINDINGS, BECAUSE THE FIRST DRAFT FAILED EVERY SOUND LESSON
  * ------------------------------------------------------------------------
  * The decoy test asks "would this condition survive a second node of the type it
@@ -120,7 +126,7 @@ import type {
   LessonVerificationReport,
   VerifyLessonOptions
 } from './lessonverify';
-import { evalConditionsWithContext } from '../views/lessons/lessonevalconditions';
+import { evalConditionsWithContext, isCollectionCondition } from '../views/lessons/lessonevalconditions';
 import type { LessonCondition, LessonEvalContext } from '../views/lessons/lessonevalconditions';
 
 // ─── Findings ───────────────────────────────────────────────────────────────
@@ -430,6 +436,42 @@ export async function verifyLessonBundle(
 
       // F2′ — the same conditions, against the starter.
       if (options.starter) {
+        // 🔴 TUT-003 — A DATABASE SNAPSHOT DESCRIBES *NOW*, AND F2′ IS A QUESTION ABOUT *BEFORE*.
+        //
+        // Every caller that fills `database` fills it from one live backend, and hands the same
+        // snapshot to both contexts (`check_lesson --backend_id` does exactly this). That snapshot
+        // is the author's world *after* they built and ran the solution, so replaying a collection
+        // condition against the starter asks "did the learner's future already happen?" and is
+        // answered yes by construction.
+        //
+        // The step it convicts is the one a data lesson cannot do without: "now create a record",
+        // whose conditions are *all* data conditions and which therefore has nothing structural to
+        // disagree about. Measured before this guard: a two-step lesson whose second step was
+        // `rowCountAtLeast: 1` scored F2 `fail` with `already-satisfied-in-starter`, while the same
+        // bundle with the snapshot on the solution alone scored `pass`.
+        //
+        // So the honest answer is that F2′ has no opinion here — not that the step is clean. A
+        // partial replay of only the structural half would be worse than either: a step that reads
+        // "the Save node exists AND a row exists" would be convicted on the half the starter can
+        // legitimately satisfy. `asked − answered = absent`; this class asks something the input
+        // cannot answer, and says so.
+        const dataConditions = s.checkable.filter(isCollectionCondition);
+        if (dataConditions.length > 0) {
+          findings.push({
+            code: 'not-checked',
+            severity: 'info',
+            failureClass: 'F2',
+            where: s.where,
+            step: s.index,
+            message:
+              'This step was not checked for the "already complete in the starter" defect, because it ' +
+              'grades against the built-in database and a snapshot only ever describes the database as ' +
+              'it is now — never as it will be when a learner opens the starter. Whether the collection ' +
+              'ships pre-made is a question the bundle cannot answer about itself.'
+          });
+          continue;
+        }
+
         const alreadyDone = evaluate(s.checkable, options.starter);
         if (alreadyDone === true) {
           f2 = 'fail';
