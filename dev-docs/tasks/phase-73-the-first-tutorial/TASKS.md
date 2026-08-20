@@ -20,7 +20,7 @@
 | **✅ [TUT-001](TUT-001-ONE-DATABASE-NOT-FORTY.md)** | **One database, not forty.** The Backend Services list renders every backend on the machine flat; show the attached one and put the rest behind a finder that searches the metadata already on disk | editor | **1** | S/M | ✅ **DONE 08-19.** R1 answered and **driven**; all six ACs close |
 | **✅ [TUT-002](TUT-002-A-CONDITION-THAT-CAN-SEE-DATA.md)** | **A condition that can see data.** The lesson vocabulary is entirely graph-structural, so a data tutorial cannot grade the data. Add snapshot-backed collection verbs, built-in DB only, and give the MCP the same ones | editor / noodl-mcp | **2** | M | ✅ **DONE 08-20 (session 3).** All seven ACs close; both fillers built and called; the sidecar half **driven against four real backends**. 🔴 Session 3 also found and fixed the harness defect that would have refused every data lesson as F2 |
 | **✅ [TUT-003](TUT-003-THE-TUTORIAL-ITSELF.md)** | **The tutorial itself.** A Visual Function that validates and shapes input, fans out on `send signal` to Create Record, and a Query that feeds the list back — the composition ruling, taught | content / editor | **3** | M | ✅ **DONE 2026-08-20 (session 5).** The bundle is `project-examples/lessons/log-a-thing/` — 8 steps, 6 graded, **F1–F4 all pass, `installable: true`**, and **driven end to end**: installed as `local-ai`, the wrong wiring grades 5/6 and the right one 6/6, and the data step was **observed red on a complete graph** |
-| **[TUT-004](TUT-004-ONE-CLICK-FROM-THE-PANEL.md)** | **One click from the panel.** The community panel installs a bundle; the web page keeps its download link. Build the caller, not the mechanism | editor / platform | **4** | S/M | TUT-003, phase 72 NAT-005/006. 🔴 **R2.** 🔴 §1D — `install()` already exists |
+| **🟡 [TUT-004](TUT-004-ONE-CLICK-FROM-THE-PANEL.md)** | **One click from the panel.** The community panel installs a bundle; the web page keeps its download link. Build the caller, not the mechanism | editor / platform | **4** | S/M | 🟡 **BUILT + SPECCED 08-20 (s6).** ✅ **R2 answered: `curated`.** 7 of 8 ACs closed with readings; **AC1/AC8 need the drive**. 🔴 The task file's *"the same URL"* was **wrong** — `project_url` is unconstrained free text and `0011` had already ruled "Open in editor is deliberately NOT here" |
 
 ---
 
@@ -34,7 +34,8 @@
   running backend, two clicks stopped it, **and `lsof` confirmed the port dead**.
 - **R1 is answered** (README §3): the collapsed line is `1 attached · 6 others, 1 running` and the
   finder draws the **same** `LocalBackendCard`, so Stop is two interactions away. ✅ **R3 answered
-  2026-08-20** (session 4); **R2 is still open** and blocks TUT-004 AC3.
+  2026-08-20** (session 4). ✅ **R2 answered 2026-08-20** (session 6) — `curated`, and see the
+  TUT-004 entry below for why the question turned out to be smaller than it looked.
 - **🟡 TUT-002 session 2 (2026-08-20) — the CONTRACT, not the feature.** Three verbs
   (`collectionExists` / `hasColumns` / `rowCountAtLeast`), the evaluator arms, the three-way refusal
   (`refused` / `unavailable` / absent) and the F1 `unreachable-collection` check. **31 specs**,
@@ -93,6 +94,43 @@
   ⚠️ **This session changed no source.** The only repo change is the new bundle directory and these docs,
   so no gate can have regressed from it.
 
+- **🟡 TUT-004 session 6 (2026-08-20) — built, specced, not yet driven.**
+  **✅ R2 answered — `curated`**, and the question was smaller than it looked: `articles` has **no
+  author column and no authoring UI**, so a member-authored tutorial cannot exist yet. TUT-003
+  still installs as **`local-ai`** because its manifest claims `authoredBy: "ai"` and a claim may
+  only ever tighten — measured: `Checked as local-ai: F1, F2, F3 passed; F4 not checked.`
+  🔴 **The task file's platform paragraph was wrong and a measurement says so.** `project_url` is
+  unconstrained free text on any host, and `0011`'s own migration had already ruled that *"'Open in
+  editor' is deliberately NOT here"*. So the bundle is a **new table** (`tutorial_bundles`,
+  migration `0017`) served at `/api/v1/community/tutorials/:slug/bundle`, reusing
+  `shelf_items.payload`'s jsonb transport rather than inventing a second one. **The web page is
+  untouched** (AC6).
+  **Editor:** `preflight()` extracted from `install()` so AC3's *"shown before it lands"* has **one**
+  scorer and not two; `lessonplatforminstall.ts` fetches → stages → installs → records
+  `{kind:'platform', url}`; `reset` split into `reset`/`resetFrom` so local and platform share one
+  repair. **`Tutorials.tsx` is its own file so jest can grade it** — `CommunityPanel.tsx` imports
+  `common/Icon` and cannot be loaded by this runner at all.
+  **Measured:** 79 specs in `tests-unit/tut-004/` + 31 on the platform; **7 mutations verified red**;
+  `test:main` **295 suites / 4831 tests / 0 failures, exit 0**; `typecheck:editor` and
+  `:editor-tests` exit 0; platform suite **1257 passed / 8 skipped, exit 0**, `tsc` exit 0. The **real
+  35-file bundle** installs through the **real editor code** on a **real filesystem**, and is
+  published to the local instance and served over the real route (200, 65 KB, nesting five deep).
+  🔴 **Its own finding:** `tutorial_bundle_has_files` was written as `jsonb_typeof(payload->'files')
+  = 'object'`, which is **NULL** when the key is absent — **and a CHECK constraint passes on NULL**.
+  A payload with no `files` key went through the gate named after that shape and was caught two
+  constraints later by accident. Every constraint spec now asserts the constraint **by name**.
+  🔴 **Four pre-existing gates refused to wave the new route through** — the NAT-006 contract sweep,
+  the D15 visibility inventory, the UNI-005 data census and `uni-001/session-readers`. All four are
+  answered rather than bypassed; the last one's answer is that this is **the first session reader
+  where a token can only make the editor do *less***.
+  ⚠️ **Left: the drive.** Nobody has clicked the row in a running editor. It needs the local
+  community server, `COMMUNITY_URL` repointed (**a shared-checkout source edit — announce and
+  revert it**) and a launched editor. The predictions to check are written down in TUT-004
+  §"What is left".
+  ⚠️ **Observed and not mine:** `typecheck:core-ui` exits 2 with **44 errors**, every one in
+  `AiAssistant/`, `workflow/`, `utils/` or `CanvasOverlays/` — none in a file this session touched,
+  and it is in no gate script.
+
 ## The order
 
 1. ~~**TUT-001**~~ ✅ — unforked, self-contained, and it is the thing Richard is looking at every day.
@@ -101,7 +139,8 @@
 3. ~~**TUT-003**~~ ✅ — the artefact. Run it through `lessonbundleverify` **before** driving it; the
    harness refusing a bundle is cheaper than the editor doing it. ✅ Now safe to run it *with*
    `backend_id`, which is the only route that grades the data conditions — see session 4 in Status.
-4. **TUT-004** — needs a bundle to install and phase 72's panel to install it from.
+4. **TUT-004** 🟡 — built and specced; **the drive is the remainder**, and it is the only thing
+   between this phase and closed.
 
 ## What this phase borrows and must not rebuild
 
