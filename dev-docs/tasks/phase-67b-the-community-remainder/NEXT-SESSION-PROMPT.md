@@ -122,8 +122,12 @@ a peer's; leave it alone.**
 ⚠️ Two **headless Chrome** processes orphaned since 2026-08-19 (PPID 1, `23135` and `46145`) and a
 stray `render-from-disk.js` on **port 8901** (PPID 1) were still there at session 49's start.
 
-⚠️ **`MEMORY.md` was over budget at session 48's end (17,838 UTF-16 units against 17,510).** Measure
-with `len(s.encode('utf-16-le'))//2`, never `wc -c`.
+✅ **`MEMORY.md` is back UNDER budget — 17,402 against 17,510** (was 17,838 at session 48's end).
+🔴 **Done entirely by tightening and re-filing MY OWN lines; no peer's line was cut.** The two
+densest Phase 67/67b trap lines moved verbatim into `phase-67-nodegx-university.md`, which the index
+links, so nothing was retired and a transitive reachability check confirms nothing was orphaned
+(44 unreachable files, the same pre-existing backlog). ⚠️ Measure with
+`len(s.encode('utf-16-le'))//2`, never `wc -c`.
 
 ### Not this phase's
 
