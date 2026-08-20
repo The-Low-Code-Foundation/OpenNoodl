@@ -332,6 +332,16 @@ export function composeDirectory(inputs: DirectoryInputs): { surface: 'hidden' }
   //    disagree and the safer reading is the refusal.
   if (read.outcome === 'absent') return { surface: 'hidden' };
 
+  // 5. ⚠️ **`unauthenticated` CANNOT HAPPEN ON THIS ROUTE TODAY, and it is still branched.**
+  //    `/api/v1/community/people` answers 200 for a null viewer on purpose — D15's refusal is
+  //    the 404 above, and a signed-out pull has to be indistinguishable from a member's. So
+  //    this is the shape of a state that only appears if that route is ever re-scoped, and it
+  //    gets a sentence rather than a cast. 🔴 If it ever DOES fire, this view needs a state of
+  //    its own: "sign in" and "could not reach" are different offers and this union has one.
+  if (read.outcome === 'unauthenticated') {
+    return shell({ state: 'unreachable', detail: 'Sign in to see who is here.' });
+  }
+
   const directory = read.value;
   const rows = selectPeople(directory.people, query, activeFilters);
 
@@ -491,6 +501,9 @@ export function composeProfileView(inputs: ProfileInputs): CommunityProfileState
   }
 
   if (read === undefined) return { state: 'loading' };
+  // ⚠️ See `communityPeopleView`'s branch 5 — unreachable on this route today, branched rather
+  // than cast, and a sign to add a real state if the profile route ever answers 401.
+  if (read.outcome === 'unauthenticated') return { state: 'unreachable', detail: 'Sign in to see this profile.' };
 
   return { state: 'unreachable', detail: read.detail };
 }

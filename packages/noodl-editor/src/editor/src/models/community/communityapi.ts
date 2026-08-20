@@ -649,6 +649,115 @@ export type GradingNotice = {
   gradedAt: string;
 };
 
+// ───────────────────────────────────────────────────────────────────────────────
+// UNI-007 AC1 — the intake, and the path it produces
+// ───────────────────────────────────────────────────────────────────────────────
+
+/**
+ * One intake question. 🔴 **The options come down the wire and are NOT declared here**, which
+ * is the whole reason this type is so thin. `pathing.ts` owns the question set; an editor that
+ * shipped its own copy would show a learner one set of choices and record them against
+ * another the first time the platform re-words a question — and nothing would error, because
+ * the values would still parse. `intakeQuestionsAreUsed` on the platform fails if a question
+ * stops branching anything; there is no equivalent guard against a client that stopped
+ * agreeing, so the client does not get to have an opinion.
+ */
+export type IntakeQuestion = {
+  key: string;
+  prompt: string;
+  options: { value: string; label: string }[];
+};
+
+/** ⚠️ Three known keys, and the values are open `string` **on purpose** — see {@link IntakeState}. */
+export type IntakeAnswers = {
+  experience: string;
+  logic: string;
+  building: string;
+};
+
+/**
+ * `GET /api/v1/me/intake`.
+ *
+ * 🔴 **`answers` is `null` for a signed-out viewer and this read needs no token** — the only
+ * one on this client that says so out loud. The question set is nobody's data, and requiring
+ * a session to see the form makes signing in a prerequisite for finding out what it is for.
+ *
+ * ⚠️ **The answer values are typed `string`, not a union of the six literals.** Narrowing them
+ * here would put a copy of the platform's closed answer set in the editor, which is the same
+ * defect as copying the questions one field along: a learner answering a re-worded option
+ * would fail an editor-side check against a value the platform considers perfectly valid.
+ * Validity is the platform's (`parseIntake`, and `learner_intakes_answers_are_tokens` in the
+ * schema beneath it); this client carries what was chosen.
+ */
+export type IntakeState = { questions: IntakeQuestion[]; answers: IntakeAnswers | null };
+
+/** Per-lesson, never one banner for the page — `curriculum.ts` argues why. */
+export type LessonStanding =
+  | { kind: 'ready' }
+  | { kind: 'in-writing' }
+  | { kind: 'needs'; lesson: { slug: string; title: string } };
+
+export type PathStep = {
+  slug: string;
+  title: string;
+  description: string;
+  teaches: string;
+  estimatedMinutes: number;
+  nodes: string[];
+  /** Always null, or a slug appearing EARLIER in this path — repaired platform-side. */
+  needs: string | null;
+  track: string;
+  standing: LessonStanding;
+  /** Why this step is in THIS learner's path. */
+  reason: string;
+  /** Tier 1, from the cache only. `GET /me/path` never calls a model. */
+  projection: string | null;
+};
+
+/** 🔴 What the intake branched AWAY, with the platform's reason. Half of "visibly different". */
+export type PathOmission = { slug: string; title: string; reason: string };
+
+export type LearnerPath = {
+  steps: PathStep[];
+  omitted: PathOmission[];
+  ready: number;
+  total: number;
+  minutes: number;
+  /**
+   * 🔴 **The platform's own sentence about what this path can deliver today, and the editor
+   * prints it rather than deciding it.** Today it reads *"none of them can be installed yet"*
+   * for every learner, because all fifteen lessons are `in-writing`. That is the one string on
+   * this screen it would be most tempting to drop — a personalised path reads better without
+   * it — and dropping it is what would make a path to nothing look like a product.
+   */
+  truth: string;
+};
+
+/** `GET /api/v1/me/path`. ⚠️ No intake is `{intake: null, path: null}`, NOT a 404. */
+export type PathState = { intake: IntakeAnswers | null; path: LearnerPath | null };
+
+/**
+ * What `POST /api/v1/me/path/project` can come back as.
+ *
+ * 🔴 **`refused` IS D10 AND IT IS NOT AN ERROR.** Tier-1 projection is off for org-owned
+ * accounts belonging to under-18s, decided from the account's own kind. The client that draws
+ * this as a failure tells a pupil their school's policy is a bug; the tier-0 path is complete
+ * and is what they should see.
+ *
+ * ⚠️ **`fresh` is the only evidence that "one model call ever" held.** Two calls for one
+ * concept return the same `projection` with `fresh: false` on the second — and a client that
+ * ignored the field could not tell that from having made two calls, because both answers are
+ * equally plausible prose.
+ */
+export type ProjectionOutcome =
+  | { kind: 'ready'; projection: string; model: string | null; fresh: boolean }
+  | { kind: 'refused'; reason: string }
+  | { kind: 'failed'; failure: string }
+  | { kind: 'in-flight' }
+  | { kind: 'unavailable'; reason: string };
+
+export type ProjectionAccepted = { concept: string; outcome: ProjectionOutcome };
+
 /**
  * 🔴 A community read is one of FOUR outcomes and `absent` is not an error.
  *
@@ -1082,6 +1191,67 @@ export class CommunityApiClient {
       `/api/v1/me/gradings/${encodeURIComponent(gradingId)}/seen`,
       {}
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // UNI-007 AC1 — the intake and the path
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * The three questions, and this learner's answers if they have any.
+   *
+   * ⚠️ **The one read on this client that is useful with `token: null`.** Everything else
+   * either needs a viewer or answers the same for everybody; this answers *half* the same for
+   * everybody, which is why the questions and the answers are one payload rather than two
+   * routes. An editor can therefore draw the form before it has signed anybody in.
+   */
+  intake(): Promise<Read<IntakeState>> {
+    return this.get<IntakeState>('/api/v1/me/intake');
+  }
+
+  /**
+   * Answer the intake. **Retaking replaces** — the row's primary key is the account.
+   *
+   * ⚠️ A partial set is a `400` with the platform's sentence, not a merge. `parseIntake`
+   * returns null for a missing answer rather than defaulting one, because a path built on a
+   * preference nobody expressed gives the learner no way to tell which parts came from them.
+   */
+  submitIntake(answers: IntakeAnswers): Promise<Write<{ answers: IntakeAnswers }>> {
+    return this.post<{ answers: IntakeAnswers }>('/api/v1/me/intake', { answers });
+  }
+
+  /**
+   * This learner's path.
+   *
+   * 🔴 **FREE TO CALL, AND THAT IS A PROPERTY OF THE ROUTE RATHER THAN OF THIS METHOD'S
+   * RESTRAINT.** Projections are attached from the cache only, so polling this cannot spend a
+   * learner's concept budget. Making a projection is {@link projectConcept}, which is a
+   * request somebody had to mean. ⚠️ Do not "helpfully" project the missing ones from a
+   * refresh path — that is the same money-spending read the platform split this route to avoid.
+   *
+   * 🔴 **This is the first read on this API that can answer `unauthenticated`.** See
+   * {@link Read} — the variant exists because of this route.
+   */
+  path(): Promise<Read<PathState>> {
+    return this.get<PathState>('/api/v1/me/path');
+  }
+
+  /**
+   * Make — or re-read — the tier-1 projection for one concept.
+   *
+   * 🔴 **Idempotent, and it spends money.** At most one model call per `(learner, concept)`
+   * pair ever: the pair is a primary key claimed *before* the model is called, so two
+   * concurrent requests are one call and the loser reads the winner's row. Calling this twice
+   * is not a bug and is not free of consequence either — the second answer is the first one,
+   * with `outcome.fresh: false` saying so.
+   *
+   * ⚠️ **The concept must be one of the caller's own steps**, and anything else is the same
+   * `absent` every other refusal here answers with. The body is not a free text field that
+   * reaches a model — `buildProjectionPrompt` exists to make that impossible and its own caller
+   * is the only thing that could undo it.
+   */
+  projectConcept(concept: string): Promise<Write<ProjectionAccepted>> {
+    return this.post<ProjectionAccepted>('/api/v1/me/path/project', { concept });
   }
 }
 

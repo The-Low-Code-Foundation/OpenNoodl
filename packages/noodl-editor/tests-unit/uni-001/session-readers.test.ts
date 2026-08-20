@@ -122,7 +122,9 @@ const ALLOWED: Record<string, string> = {
   'noodl-editor/src/editor/src/hooks/useCommunityPeople.ts':
     'NAT-008 people: the token is a BEARER HEADER on two reads the platform serves to strangers — `/people` says so in its own lede, *"readable without an account, like everything else here"*. Withholds nothing: the directory, the profile, the search and the filters are all computed by `peopleview.ts`, which never sees a session — asserted structurally below',
   'noodl-editor/src/editor/src/models/lessoncheck.ts':
-    'UNI-006 bridge: read ONLY inside liveSubmitAssignment, to hand an ASSIGNED lesson to the org that set it. Withholds nothing — grading, installing, resetting, progress and feedback are untouched, and an entry can only carry an assignment if an account obtained it, so there is nothing for an account-less editor to be refused. Asserted structurally below'
+    'UNI-006 bridge: read ONLY inside liveSubmitAssignment, to hand an ASSIGNED lesson to the org that set it. Withholds nothing — grading, installing, resetting, progress and feedback are untouched, and an entry can only carry an assignment if an account obtained it, so there is nothing for an account-less editor to be refused. Asserted structurally below',
+  'noodl-editor/src/editor/src/hooks/useLearnerPath.ts':
+    'UNI-007 AC1 intake and path: the token is a BEARER HEADER on the path read, and the INTAKE read — the questions themselves — is not session-gated at all, because `GET /api/v1/me/intake` takes no token by design. Withholds nothing: a path is a fact that does not exist for a person with no account, in the same way `standing` does not, and no capability the editor had before this surface moved behind a session. Asserted structurally below'
 };
 
 describe('the instrument itself — controls before any absence is claimed', () => {
@@ -451,5 +453,66 @@ describe('AC4 — the thread view withholds nothing, proven against the real sou
     // 🔴 `Boolean(session)` rather than the session: a credential that never arrives cannot be
     // read, and no amount of later editing in that module can start gating on one.
     expect(hook).toContain('signedIn: Boolean(session)');
+  });
+});
+
+/**
+ * UNI-007 AC1 — the intake and the path, added 2026-08-20. The fifth reader outside the
+ * launcher and the account module.
+ *
+ * 🔴 **The question ALLOWED's third column demands, answered before the row was added: does
+ * this reader change what the editor can DO without an account? No, and it is worth separating
+ * the two halves of why, because only one of them is the interesting one.**
+ *
+ * The cheap half: this is a NEW surface, so there is no capability it could have taken away.
+ * That answer is true and it is not enough on its own — it would license any new surface to be
+ * account-only, and *"the login gates nothing"* would decay into *"the login gates nothing that
+ * existed on 2026-08-14."*
+ *
+ * The half that matters: **the part of this surface that CAN work without an account DOES.**
+ * `GET /api/v1/me/intake` serves the three questions to anybody, signed in or not — its route
+ * says so in its own lede, and the reason is that requiring a session to see a form makes
+ * signing in a prerequisite for finding out what it is for. So the signed-out editor draws the
+ * real questions, not a locked panel describing them. The path itself needs an account for the
+ * same reason `standing` does on the community panel: it is a fact that does not exist for a
+ * person who has not answered, not a feature being withheld from them.
+ *
+ * ⚠️ **`session === undefined` IS NOT A GATE AND MUST NOT BE READ AS ONE.** It means the local
+ * store has not answered yet — `useCommunityAccount` makes the same distinction in prose, and
+ * conflating it with `null` is the bug that flashes "Sign in" at somebody who is signed in. The
+ * opener below therefore matches `session === null` only, and the delay is a delay: the store
+ * answers `null` immediately for a signed-out editor and the questions load.
+ */
+const learnerPath = stripComments(readFileSync(join(EDITOR_SRC, 'hooks/useLearnerPath.ts'), 'utf8'));
+
+/** This hook guards with a statement, not JSX — `if (session === null) {`, never `{session &&`. */
+const NULL_SESSION_OPENER = /if \(session === null\) \{/g;
+
+describe('AC4 — the learner path withholds nothing, proven against the real source', () => {
+  it('control: the region finder can see THIS hook’s gate — the known-firing arm', () => {
+    // 🔴 Without this the "not gated" assertion below is a claim about an instrument that
+    // cannot see a gate at all, which is the reading that fits every hypothesis. The path read
+    // legitimately IS behind the session: there is no path for a learner the platform has
+    // never met.
+    expect(isGated(learnerPath, "setPath({ outcome: 'unauthenticated' })", NULL_SESSION_OPENER)).toBe(true);
+  });
+
+  it('and the QUESTIONS read is not inside any session branch — the arm needing no account', () => {
+    // The capability itself: see what the intake would ask you. A person with no account can,
+    // and moving this call inside the session branch is the regression this exists to catch.
+    expect(isGated(learnerPath, 'client.intake()', NULL_SESSION_OPENER)).toBe(false);
+  });
+
+  it('the token is a bearer header and nothing else', () => {
+    expect(learnerPath).toContain('token: session?.token ?? null');
+  });
+
+  it('and the module that decides what is DRAWN never sees a session at all', () => {
+    // Same property as `threadwrites.ts` above and `peopleview.ts` before it: the view model is
+    // handed reads, not credentials, so no later edit in it can start gating on one.
+    const view = stripComments(readFileSync(join(EDITOR_SRC, 'models/community/learnerpathview.ts'), 'utf8'));
+    expect(readsTheSession(view)).toBe(false);
+    expect(view).not.toContain('session');
+    expect(READERS).not.toContain('noodl-editor/src/editor/src/models/community/learnerpathview.ts');
   });
 });

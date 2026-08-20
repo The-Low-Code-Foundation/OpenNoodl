@@ -490,6 +490,119 @@
 > the curriculum really is all `in-writing` so the sentence cannot rot. **Curriculum hosting is
 > UNI-007 §11's, still open, and it is the real blocker on "a stranger learns NodeGX".**
 
+> ## ✅ AC1's EDITOR HALF IS BUILT — the caller the platform end never had (2026-08-20, session 48)
+>
+> Editor repo. **49 specs** in `tests-unit/uni-007/` (`learnerpath`, `communityapi-path`,
+> `learnerpath-render`) plus 4 added to UNI-001's session gate; `tsc -p packages/noodl-editor`
+> clean; **driven over real HTTP** against `next dev` on its own database.
+>
+> | Shipped | Where |
+> |---|---|
+> | The four `/api/v1/me` calls — `intake`, `submitIntake`, `path`, `projectConcept` — and their payload types | [`models/community/communityapi.ts`](../../../packages/noodl-editor/src/editor/src/models/community/communityapi.ts) |
+> | The view model — which of six states, and the words for each | [`models/community/learnerpathview.ts`](../../../packages/noodl-editor/src/editor/src/models/community/learnerpathview.ts) |
+> | The hook — the caller | [`hooks/useLearnerPath.ts`](../../../packages/noodl-editor/src/editor/src/hooks/useLearnerPath.ts) |
+> | The section, above the installed-lessons grid on the Learning tab | [`noodl-core-ui/.../components/LearnerPathSection/`](../../../packages/noodl-core-ui/src/preview/launcher/Launcher/components/LearnerPathSection/LearnerPathSection.tsx) + `views/Learning.tsx` + `ProjectsPage.tsx` |
+>
+> ### 🔴 Building the caller found TWO defects in the shipped client, and neither had a route
+>
+> Both are the same shape: **a status the platform deliberately chooses had no home in the
+> client's mapping table, and every unmapped status defaults to the one outcome that blames the
+> network.**
+>
+> 1. **`Read<T>` had no `unauthenticated`, so a 401 read as *"could not reach the community"*.**
+>    Every other read on this API answers `200` for a null viewer *on purpose* — D15's refusal is
+>    a `404`, and a signed-out pull must be indistinguishable from a member with an empty list —
+>    so nothing had ever exercised it. `GET /me/path` is **the first read on this API that
+>    answers 401**, and it walked straight into the hole. ⚠️ The sharp part: `Write<T>` has had
+>    `unauthenticated` since 2026-08-16 and its doc comment argues the distinction at length.
+>    **A distinction argued for one half of a client is not thereby made in the other half** —
+>    and the comment reads as though it were, which is why four days of reading that file did not
+>    find this.
+> 2. **`post()` mapped 400/403/429 and let `409` fall through.** `POST /me/path/project` answers
+>    `409 {error: "take the intake first"}` — a sentence a learner can act on — and it arrived as
+>    an outage. API.md §6 gives the RFP response cap the same status, so NAT-009 would have
+>    inherited it.
+>
+> ✅ Both are asserted **against a control that must disagree**, never alone: *"401 produces some
+> outcome"* passes against the defect; *"401 and a dead socket produce **different** outcomes"*
+> does not.
+>
+> ⚠️ **The `Read<T>` change cost three edits elsewhere and the compiler found all three** —
+> `peopleview.ts` (×2) and `threadview.ts`. Each is branched with a sentence rather than cast:
+> those routes cannot 401 today, and a cast would have silently reinstated the conflation the day
+> the Bench is ever scoped to members.
+>
+> ### 🔴 The assertion this surface actually turns on
+>
+> **`truth` is printed verbatim and never reconstructed from `ready`/`total`.** Today it says
+> *"none of them can be installed yet: every one is still being written"* for every learner. An
+> eleven-step path with titles, times and reasons reads like a finished product; the same path
+> with that sentence reads like a curriculum being built — and it is the one string a tidy-up
+> would delete as redundant.
+>
+> Proved the only way it can be: the spec hands the view a payload whose counts **contradict its
+> own sentence** and requires the sentence. A version that recomputed would produce the plausible
+> string and the wrong one, **and every other assertion in the file would still pass**. Same shape
+> as `entryPointFor`'s spec for D16. The render spec then adds the half a view model cannot be
+> asked — **it is drawn ABOVE the steps**, because a caveat below an eleven-item list is a caveat
+> most readers never reach, and *"the sentence is present somewhere in the tree"* passes against
+> exactly that. Graded: moving it below the `<ol>` — a change that keeps it present — reddens only
+> the ordering assertion.
+>
+> ### ✅ Driven over real HTTP — `next dev`, own database, the real client
+>
+> Twelve consequences, written before the build. `nodegx_community_s48` on the 55432 container.
+>
+> | Consequence | Result |
+> |---|---|
+> | Questions arrive with **no token**, labels are the platform's | ✅ 3 questions, `answers: null` |
+> | **Expired token vs dead socket must DISAGREE** | ✅ `unauthenticated` vs `unreachable`; surface says *sign in*, questions still drawn |
+> | 409 reaches the learner as the platform's words | ✅ `"take the intake first"` |
+> | No intake ⇒ the **form**, not an error | ✅ `intake` state from `{intake: null, path: null}` |
+> | Two intakes ⇒ **visibly different paths** | ✅ visual **11** steps, code **13** |
+> | …and the **omission** carries its reason | ✅ *"The same ideas in code — you said you would rather wire logic up visually"* |
+> | The `truth` sentence is drawn | ✅ `ready 0/11` |
+> | **Five path reads spend NOTHING** | ✅ model calls `0 → 0`, counted |
+> | **Two project requests = ONE model call** | ✅ counted `0 → 1 → 1`; `fresh: true` then `false`; identical prose |
+> | **D10: org-minor refused while the individual is READY** | ✅ arms differ, and the allowed arm genuinely projected |
+> | …and the refusal **costs no model call** | ✅ `1 → 1` |
+> | The projection reaches the row, and the offer is **withdrawn** | ✅ `projectable: false` once one exists |
+>
+> 🔴 **The first drive reported C5 and C6 green and both were VACUOUS**, which is the transferable
+> bit. With no `ANTHROPIC_API_KEY` the individual arm answered `unavailable`, so *"the arms
+> differ"* was satisfied by `refused ≠ unavailable` — **while nothing had projected at all**, and
+> a `|| kind === 'unavailable'` escape hatch I had written myself carried the `fresh` assertion.
+> Re-run against a **counting fake projector** (temporary, reverted): only then is *"two requests,
+> one call"* a measurement rather than a shape. ⚠️ *A control pair whose arms differ for a reason
+> that is not the one you varied has measured nothing* — fourth instance in this phase.
+>
+> ### ✅ UNI-001 AC4's session gate fired on this hook, and it was right to
+>
+> `session-readers.test.ts` went red the moment `useLearnerPath.ts` landed: a new session reader
+> with nobody having answered *"what does this read withhold?"*. **The cheap answer — "it is a new
+> surface, so it took nothing away" — is true and is not enough**, because it would license any
+> new surface to be account-only and *"the login gates nothing"* would decay into *"gates nothing
+> that existed on 2026-08-14."* The answer that counts: **the part of this surface that can work
+> without an account does** — `GET /me/intake` takes no token, so a signed-out editor draws the
+> real questions, not a locked panel describing them. Registered with a control pair: the checker
+> is shown it **can** see this hook's gate (the path read) before it is believed about the intake
+> read being ungated.
+>
+> ### ⚠️ NOT done, and not claimable
+>
+> **The editor was never launched.** A peer held the stack and CDP 9222 for this whole session.
+> So: the wire is driven, the view model is graded by nine mutations, and the component is graded
+> by seventeen render assertions and four mutations — but **nobody has seen this section in the
+> running launcher**. Layout, the Learning tab's column width, theme, and whether the `truth`
+> paragraph reads as prominent rather than as boilerplate are all **unverified**. That is a drive,
+> not a spec, and it is the next session's first job.
+>
+> ⚠️ **§1b's wall is untouched and is now visible in the editor too**: all fifteen lessons are
+> `in-writing`, so this section draws a real, personalised, ordered path to **nothing
+> installable**. Curriculum hosting is §11's, still open, and still the real blocker on *"a
+> stranger learns NodeGX"*.
+
+
 ## Premise
 
 The pedagogy ruling (R8): Loom-*style* — an intake conversation works out what the learner

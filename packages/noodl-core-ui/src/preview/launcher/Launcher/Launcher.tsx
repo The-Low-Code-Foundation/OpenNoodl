@@ -15,6 +15,7 @@ import {
   CloudSyncType,
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
+import type { LauncherLearnerPath } from '@noodl-core-ui/preview/launcher/Launcher/components/LearnerPathSection';
 import type { LauncherLearningData } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
 import { usePersistentTab } from '@noodl-core-ui/preview/launcher/Launcher/hooks/usePersistentTab';
@@ -64,6 +65,14 @@ export interface LauncherProps {
 
   /** UNI-007 / D5 — lessons installed on this machine. See LauncherContext for why this is not `lessons`. */
   learning?: LauncherLearningData[];
+  /** UNI-007 AC1 — the intake and the path. See `LauncherContext` for why it is not `learning`. */
+  learnerPath?: LauncherLearnerPath;
+  onChooseIntakeAnswer?: (questionKey: string, value: string) => void;
+  onSubmitIntake?: () => void;
+  onRetakeIntake?: () => void;
+  onProjectConcept?: (concept: string) => void;
+  projectingConcept?: string | null;
+  learnerPathProjectionNote?: string | null;
   onOpenLearningLesson?: (lessonId: string) => void;
   onResetLearningLesson?: (lessonId: string) => void;
   onInstallLearningLesson?: () => void;
@@ -246,6 +255,13 @@ export function Launcher({
   onStartLesson,
   onRestartLesson,
   learning,
+  learnerPath,
+  onChooseIntakeAnswer,
+  onSubmitIntake,
+  onRetakeIntake,
+  onProjectConcept,
+  projectingConcept,
+  learnerPathProjectionNote,
   onOpenLearningLesson,
   onResetLearningLesson,
   onInstallLearningLesson,
@@ -400,6 +416,13 @@ export function Launcher({
         onStartLesson,
         onRestartLesson,
         learning,
+        learnerPath,
+        onChooseIntakeAnswer,
+        onSubmitIntake,
+        onRetakeIntake,
+        onProjectConcept,
+        projectingConcept,
+        learnerPathProjectionNote,
         onOpenLearningLesson,
         onResetLearningLesson,
         onInstallLearningLesson,

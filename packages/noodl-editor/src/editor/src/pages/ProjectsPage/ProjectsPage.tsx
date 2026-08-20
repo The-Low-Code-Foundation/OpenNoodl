@@ -81,6 +81,7 @@ import { LAST_PROJECT_LOCATION_KEY, pickProjectLocation } from './projectLocatio
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 
 import { useCommunityMirror } from '@noodl-hooks/useCommunityMirror';
+import { useLearnerPath } from '../../hooks/useLearnerPath';
 import { useCommunityPeople } from '@noodl-hooks/useCommunityPeople';
 import { useCommunityThread } from '@noodl-hooks/useCommunityThread';
 
@@ -270,6 +271,14 @@ export function ProjectsPage(props: ProjectsPageProps) {
   // UNI-011 / D21 — the community TAB's data. ⚠️ A different fact from `community` above:
   // that one is who you are, this one is what the community contains.
   const communityMirror = useCommunityMirror();
+  /**
+   * UNI-007 AC1 — the intake and the path it produces. ⚠️ A third distinct community fact
+   * beside the two above: `community` is who you are, `communityMirror` is what the community
+   * contains, and this is what YOU should learn next. It is always present for the same reason
+   * `community` is — the questions load without a session, so there is something to draw before
+   * anybody has signed in.
+   */
+  const learnerPath = useLearnerPath();
   // NAT-007 — which thread is open, and its data. The same hook the editor's rail panel calls;
   // see `useCommunityThread` on why one hook rather than one per surface.
   const communityThread = useCommunityThread();
@@ -1305,6 +1314,16 @@ export function ProjectsPage(props: ProjectsPageProps) {
         onOpenLearningLesson={handleOpenLearningLesson}
         onResetLearningLesson={handleResetLearningLesson}
         onInstallLearningLesson={handleInstallLearningLesson}
+        // UNI-007 AC1 — the path above the shelf. 🔴 The `surface` is the whole decision;
+        // this page passes it through and adds nothing, which is what keeps the mirror a
+        // mirror (`learnerpathview.ts`, and D15's argument one surface along).
+        learnerPath={learnerPath.surface}
+        onChooseIntakeAnswer={learnerPath.onChoose}
+        onSubmitIntake={learnerPath.onSubmit}
+        onRetakeIntake={learnerPath.onRetake}
+        onProjectConcept={learnerPath.onProject}
+        projectingConcept={learnerPath.projecting}
+        learnerPathProjectionNote={learnerPath.projectionNote}
         projectOrganizationService={ProjectOrganizationService.instance}
         githubUser={githubUser}
         githubIsAuthenticated={githubIsAuthenticated}

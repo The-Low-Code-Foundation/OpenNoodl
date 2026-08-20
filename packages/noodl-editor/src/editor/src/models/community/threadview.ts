@@ -341,6 +341,13 @@ export function composeThreadView(inputs: ThreadViewInputs): CommunityThreadStat
   }
 
   if (read === undefined) return { state: 'loading' };
+  // ⚠️ **Unreachable on this route today and branched anyway.** `Read<T>` gained
+  // `unauthenticated` on 2026-08-20 for UNI-007's path read, which is the first read on this
+  // API that answers 401; a thread read answers 200 for a null viewer and refuses with the 404
+  // that branch 3 draws as `hidden`. 🔴 A cast here would have been the cheap fix and would
+  // have silently made "you are signed out" render as "the community is down" the day the
+  // Bench is ever scoped to members.
+  if (read.outcome === 'unauthenticated') return { state: 'unreachable', detail: 'Sign in to read this thread.' };
 
   return { state: 'unreachable', detail: read.detail };
 }

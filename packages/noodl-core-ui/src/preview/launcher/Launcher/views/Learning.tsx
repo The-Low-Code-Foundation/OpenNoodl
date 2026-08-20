@@ -17,6 +17,7 @@
 
 import React from 'react';
 
+import { LearnerPathSection } from '@noodl-core-ui/preview/launcher/Launcher/components/LearnerPathSection';
 import { LearningSection } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
 import { useLauncherContext } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 
@@ -25,10 +26,44 @@ import css from './Learning.module.scss';
 export interface LearningViewProps {}
 
 export function Learning({}: LearningViewProps) {
-  const { learning, onOpenLearningLesson, onResetLearningLesson, onInstallLearningLesson } = useLauncherContext();
+  const {
+    learning,
+    onOpenLearningLesson,
+    onResetLearningLesson,
+    onInstallLearningLesson,
+    learnerPath,
+    onChooseIntakeAnswer,
+    onSubmitIntake,
+    onRetakeIntake,
+    onProjectConcept,
+    projectingConcept,
+    learnerPathProjectionNote
+  } = useLauncherContext();
 
   return (
     <div className={css['Root']}>
+      {/*
+        🔴 THE PATH GOES ABOVE THE SHELF, and the order is the argument. The path is what to
+        learn next; the grid below is what you already installed. A learner arriving with an
+        empty shelf and no path sees the three questions first, which is the only thing on
+        this tab that leads anywhere. Reversed, the first screen of the Learning tab would be
+        an empty grid explaining a folder format.
+
+        ⚠️ `learnerPath` undefined means NOBODY WIRED THIS (Storybook, or a build with no host
+        hook) — not a state of the surface. Rendering a `loading` section for it would tell a
+        Storybook user their path was on its way from a platform this build cannot reach.
+      */}
+      {learnerPath && (
+        <LearnerPathSection
+          surface={learnerPath}
+          onChoose={onChooseIntakeAnswer}
+          onSubmit={onSubmitIntake}
+          onRetake={onRetakeIntake}
+          onProject={onProjectConcept}
+          projecting={projectingConcept}
+          projectionNote={learnerPathProjectionNote}
+        />
+      )}
       <LearningSection
         lessons={learning ?? []}
         onOpen={onOpenLearningLesson}

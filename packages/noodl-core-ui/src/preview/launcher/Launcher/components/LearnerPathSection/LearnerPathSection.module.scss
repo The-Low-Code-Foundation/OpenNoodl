@@ -1,0 +1,280 @@
+/**
+ * LearnerPathSection — UNI-007 AC1.
+ *
+ * Same tokens and the same rhythm as LearningSection beside it, one elevation
+ * step down again: the path is a plan, and a plan that shouted louder than the
+ * lessons you already hold would have the launcher's priorities backwards.
+ *
+ * 🔴 `.Truth` is the one rule here that is not decoration. It is set at body
+ * weight and full foreground rather than as muted small print, because it is
+ * the sentence saying the lessons are not installable yet — and small grey
+ * text under a confident heading is how a caveat gets read as boilerplate.
+ */
+
+.Root {
+  margin-bottom: 28px;
+}
+
+.HeadRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.Title {
+  font-family: var(--font-family-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--theme-color-fg-highlight);
+  margin: 0;
+}
+
+.Count {
+  font-size: 12px;
+  color: var(--theme-color-fg-muted);
+}
+
+.Spacer {
+  flex: 1;
+}
+
+.Muted {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-muted);
+  margin: 0 0 12px;
+}
+
+.Detail {
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.Truth {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--theme-color-fg-default);
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-left: 3px solid var(--theme-color-primary);
+  border-radius: var(--radius-7);
+}
+
+.Questions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.Question {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.Prompt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.Options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.Option {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: var(--radius-7);
+  border: 1px solid var(--theme-color-border-default);
+  background: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-bg-3);
+  }
+
+  &[data-chosen='yes'] {
+    border-color: var(--theme-color-primary);
+    background: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+    font-weight: 600;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+.Primary {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--radius-7);
+  border: 1px solid var(--theme-color-primary);
+  background: var(--theme-color-primary);
+  color: var(--theme-color-on-primary, #fff);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.Ghost {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: var(--radius-7);
+  border: 1px solid var(--theme-color-border-default);
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-bg-2);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+.Steps {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.Step {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-7);
+
+  /* A lesson that cannot be installed yet is quieter, never struck through or
+     greyed to unreadability: it is coming, not cancelled. */
+  &[data-installable='no'] {
+    opacity: 0.82;
+  }
+}
+
+.Position {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-muted);
+}
+
+.StepBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.StepHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.StepTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight);
+  margin: 0;
+}
+
+.Standing {
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--theme-color-bg-3);
+}
+
+.Minutes {
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+  margin-left: auto;
+}
+
+.StepDescription {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--theme-color-fg-default);
+  margin: 4px 0 0;
+}
+
+.Reason {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-muted);
+  margin: 4px 0 0;
+  font-style: italic;
+}
+
+.Projection {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-default);
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  background: var(--theme-color-bg-2);
+  border-radius: var(--radius-7);
+}
+
+.Omitted {
+  padding: 12px 14px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-7);
+}
+
+.OmittedTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  margin: 0 0 6px;
+}
+
+.OmittedList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-muted);
+
+  strong {
+    color: var(--theme-color-fg-default);
+    font-weight: 600;
+  }
+}

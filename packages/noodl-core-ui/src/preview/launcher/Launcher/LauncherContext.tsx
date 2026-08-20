@@ -11,6 +11,7 @@ import React, { createContext, useContext, ReactNode } from 'react';
 import type { CommunityAccountState } from './components/CommunityAccountCard';
 import type { ConnectAgentResult, ConnectAgentState } from './components/ConnectAgentCard';
 import type { LauncherCommunityHostState } from './views/Community';
+import type { LauncherLearnerPath } from './components/LearnerPathSection';
 import type { LauncherLearningData } from './components/LearningSection';
 import { LauncherProjectData } from './components/LauncherProjectCard';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from './hooks/useGitHubRepos';
@@ -105,6 +106,31 @@ export interface LauncherContextValue {
   onResetLearningLesson?: (lessonId: string) => void;
   /** Install a bundle from a folder — the account-free route D5 and UNI-010 both rely on. */
   onInstallLearningLesson?: () => void;
+
+  /**
+   * UNI-007 AC1 — the intake, and the path it produces.
+   *
+   * ⚠️ **A different thing again from both fields above, and the three are easy to blur.**
+   * `lessons` is a catalogue, `learning` is the shelf of what is installed here, and this is
+   * the *plan*: which lessons this learner should meet, in what order, and — today — the
+   * platform's own sentence saying none of them can be installed yet. A path is not a shelf,
+   * and merging them would let a path step look like something you could open.
+   *
+   * 🔴 Absent in Storybook and in any build with no host hook, and the section then renders
+   * NOTHING rather than an empty path. `undefined` here means *nobody wired this*, which is
+   * not one of the surface's own states — `hidden` (D15 refused you) is, and it is a different
+   * fact that must not be folded into this one.
+   */
+  learnerPath?: LauncherLearnerPath;
+  onChooseIntakeAnswer?: (questionKey: string, value: string) => void;
+  onSubmitIntake?: () => void;
+  onRetakeIntake?: () => void;
+  /** 🔴 Spends money, once per (learner, concept), for ever. See the client's `projectConcept`. */
+  onProjectConcept?: (concept: string) => void;
+  /** The concept a projection is in flight for, so only that row says so. */
+  projectingConcept?: string | null;
+  /** What to say about the last projection attempt. D10's refusal arrives here, as a setting. */
+  learnerPathProjectionNote?: string | null;
 
   /**
    * UNI-011 / D21 — the community tab's data, supplied by the editor.
