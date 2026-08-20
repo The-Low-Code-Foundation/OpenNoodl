@@ -83,8 +83,10 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 import { useCommunityMirror } from '@noodl-hooks/useCommunityMirror';
 import { useCommunityPeople } from '@noodl-hooks/useCommunityPeople';
 import { useCommunityThread } from '@noodl-hooks/useCommunityThread';
+import { useTutorialInstall } from '@noodl-hooks/useTutorialInstall';
 
 import type { HealthReading } from '@noodl-models/community/mirrorview';
+import { Tutorials } from './Tutorials';
 
 function openCommunity(path = ''): void {
   platform.openExternal(`${COMMUNITY_URL}${path}`);
@@ -131,6 +133,9 @@ export function CommunityPanel() {
   const { pane, openThread } = useCommunityThread();
   // NAT-008 — the same hook the launcher tab uses, for the same reason.
   const { people, profile, openPerson } = useCommunityPeople();
+  // TUT-004 — the tutorials you can install. Its own hook for `useCommunityPeople`'s reason: the
+  // launcher tab will want the same list, and two copies is where a fix lands on one of them.
+  const tutorials = useTutorialInstall();
 
   // 🔴 D15: the platform said this surface does not exist for this viewer. Draw NOTHING — not a
   // message, not an empty state. `apiviewer.ts` answers an org-minor with a 404 precisely so a
@@ -253,6 +258,10 @@ export function CommunityPanel() {
               />
             </Section>
           )}
+
+          {/* 🔴 TUT-004 AC1 — ABOVE "Guides and tutorials", which opens the browser. The section
+              that keeps you here comes first. */}
+          <Tutorials pane={tutorials} />
 
           <Section title="Guides and tutorials" variant={SectionVariant.Panel} hasGutter>
             <CommunitySectionBody

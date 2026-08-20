@@ -123,6 +123,8 @@ const ALLOWED: Record<string, string> = {
     'NAT-008 people: the token is a BEARER HEADER on two reads the platform serves to strangers — `/people` says so in its own lede, *"readable without an account, like everything else here"*. Withholds nothing: the directory, the profile, the search and the filters are all computed by `peopleview.ts`, which never sees a session — asserted structurally below',
   'noodl-editor/src/editor/src/models/lessoncheck.ts':
     'UNI-006 bridge: read ONLY inside liveSubmitAssignment, to hand an ASSIGNED lesson to the org that set it. Withholds nothing — grading, installing, resetting, progress and feedback are untouched, and an entry can only carry an assignment if an account obtained it, so there is nothing for an account-less editor to be refused. Asserted structurally below',
+  'noodl-editor/src/editor/src/hooks/useTutorialInstall.ts':
+    'TUT-004 tutorials: the token is a BEARER HEADER on two reads the platform serves to strangers — `/api/v1/community/tutorials` and its `/bundle`, both of which the web page serves to anyone. Withholds nothing, and the account makes the editor do LESS rather than more: the token exists so D15 can refuse an org-minor whose school switched the community off, which is a school policy and not a paywall. Installing, scoring, resetting and the Learning folder never see a session at all — the whole decision layer is `tutorialsview.ts`, which takes a read and a set of slugs. Asserted structurally below',
   'noodl-editor/src/editor/src/hooks/useLearnerPath.ts':
     'UNI-007 AC1 intake and path: the token is a BEARER HEADER on the path read, and the INTAKE read — the questions themselves — is not session-gated at all, because `GET /api/v1/me/intake` takes no token by design. Withholds nothing: a path is a fact that does not exist for a person with no account, in the same way `standing` does not, and no capability the editor had before this surface moved behind a session. Asserted structurally below'
 };
@@ -514,5 +516,50 @@ describe('AC4 — the learner path withholds nothing, proven against the real so
     expect(readsTheSession(view)).toBe(false);
     expect(view).not.toContain('session');
     expect(READERS).not.toContain('noodl-editor/src/editor/src/models/community/learnerpathview.ts');
+  });
+});
+
+
+/**
+ * TUT-004 — the tutorials section, added 2026-08-20.
+ *
+ * 🔴 **The question ALLOWED's third column demands, answered before the row was added:** does
+ * installing a community tutorial withhold anything from someone with no account? **No**, and
+ * the direction is the interesting part — this is the first reader where the token can only ever
+ * make the editor do *less*. `/api/v1/community/tutorials` and `/api/v1/community/tutorials/:slug
+ * /bundle` are both public: the web page serves the same tutorials and the same download link to
+ * a stranger, and `tutorialbundles.ts` carries no viewer. The bearer header is there so **D15**
+ * can answer 404 to an org-minor whose school has switched the community off — a school policy
+ * applied to a signed-IN pupil, which is the opposite of a feature behind an account.
+ *
+ * ⚠️ **And the decision layer never sees a session.** `composeTutorials` takes a read and a set
+ * of installed slugs; `installTutorialFromPlatform` takes a fetcher and a filesystem. Neither
+ * imports `communitysession`, so there is no branch in either where an account could change what
+ * a person may install. That is asserted below rather than asserted here.
+ */
+describe('AC4 — installing a tutorial is not behind an account', () => {
+  const decisionLayer = [
+    'models/community/tutorialsview.ts',
+    'models/lessonplatforminstall.ts',
+    'models/learningfolder.ts',
+    'views/panels/CommunityPanel/Tutorials.tsx'
+  ];
+
+  it.each(decisionLayer)('%s never reads the session', (file) => {
+    const source = stripComments(readFileSync(join(EDITOR_SRC, file), 'utf8'));
+    expect(source).not.toContain('readCommunitySession');
+    expect(source).not.toContain('communitysession');
+  });
+
+  it('🔴 and the checker CAN see a session read — the known-firing arm', () => {
+    // ✅ Without this, the four assertions above pass identically against a misspelt needle or a
+    // path that no longer exists. `useTutorialInstall` genuinely does read it.
+    const hook = stripComments(readFileSync(join(EDITOR_SRC, 'hooks/useTutorialInstall.ts'), 'utf8'));
+    expect(hook).toContain('readCommunitySession');
+  });
+
+  it('the install action in the panel is not inside any session branch', () => {
+    const panel = stripComments(readFileSync(join(EDITOR_SRC, 'views/panels/CommunityPanel/Tutorials.tsx'), 'utf8'));
+    expect(isGated(panel, 'pane.onInstall(row.slug)')).toBe(false);
   });
 });
