@@ -588,14 +588,47 @@
 > is shown it **can** see this hook's gate (the path read) before it is believed about the intake
 > read being ungated.
 >
-> ### ⚠️ NOT done, and not claimable
+> ### ✅ DRIVEN IN THE RUNNING EDITOR — and it found two defects no spec could
 >
-> **The editor was never launched.** A peer held the stack and CDP 9222 for this whole session.
-> So: the wire is driven, the view model is graded by nine mutations, and the component is graded
-> by seventeen render assertions and four mutations — but **nobody has seen this section in the
-> running launcher**. Layout, the Learning tab's column width, theme, and whether the `truth`
-> paragraph reads as prominent rather than as boilerplate are all **unverified**. That is a drive,
-> not a spec, and it is the next session's first job.
+> The stack came free late in the session. `next dev` on its own database, `COMMUNITY_URL`
+> temporarily pointed at it (reverted), real CDP clicks.
+>
+> | Consequence | Result |
+> |---|---|
+> | E1 the section RENDERS in the Learning tab | ✅ `data-state="signed-out"` on first paint |
+> | E2 signed out draws the PLATFORM's question text | ✅ all three prompts and all eight option labels, fetched with **no token** |
+> | E3 submit disabled until every answer is given | ✅ disabled at 2 of 3, enabled at 3 of 3 — clicked, not simulated |
+> | E4 `truth` is ABOVE step 1 **in Y**, not only in the DOM | ✅ truth `y=120`, first step `y=183` |
+> | E5 the omission block names the lesson and its reason | ⚠️ **not reached** — see the dev-server note |
+> | E6 each row carries its standing and reason | ✅ 13 steps, `In writing` on each |
+> | E7 `truth` is not muted small print | ✅ 13px `rgb(187,198,211)` against the muted 11px `rgb(171,184,197)` beside it, plus a left accent rule |
+>
+> #### 🔴 Defect 1 — THERE WAS NO SIGN-IN DOOR
+>
+> Signed out, the section drew the three real questions and **no way to sign in**. `ProjectsPage`
+> never passed `onSignIn`. ⚠️ **The render spec asserts BOTH branches of that prop** — *draws the
+> door when given a handler*, *draws none when not* — and **both passed**, because neither can see
+> that the host never supplies one. *A spec that covers both branches of an optional prop still
+> says nothing about which branch production takes.* Wired to the same device flow the account card
+> uses; verified live.
+>
+> #### 🔴 Defect 2 — A FAILED SUBMIT CHANGED THE SCREEN IN NO WAY WHATEVER
+>
+> Found **by verifying defect 1's fix**. `onSubmit` returned early on any non-`ok` write, so
+> pressing *"Rebuild my path"* against a rate limit, an expired session or a platform blip left the
+> form exactly as it was — no message, no spinner, no state. A button that appears not to be
+> connected to anything, and **indistinguishable from a broken build**. Every spec passed because
+> every one of them fed the view a world in which the write succeeded. Now every non-`ok` outcome
+> is named, drawn **above** the button, in the platform's words where it chose some.
+>
+> ⚠️ **A `next dev` artefact, NOT an AC1 defect, and the distinction was measured rather than
+> assumed.** `POST /api/v1/me/intake` began answering `500` from `recordIntake`'s `sql.json`
+> (`ERR_INVALID_ARG_TYPE`). It **reproduces with plain `curl`**, so it is not the editor; it does
+> **not** occur on a cold server (three cold boots, `200` every time, including one that loaded
+> `/me/path` first); and the route demonstrably works — this task's earlier real-HTTP drive
+> submitted two different intakes and read back **11** and **13** step paths. 🔴 **The precise
+> trigger was NOT identified** and is worth an hour of somebody's time in the platform repo before
+> anyone builds a second writer against that route. E5 is the one consequence it cost.
 >
 > ⚠️ **§1b's wall is untouched and is now visible in the editor too**: all fifteen lessons are
 > `in-writing`, so this section draws a real, personalised, ordered path to **nothing

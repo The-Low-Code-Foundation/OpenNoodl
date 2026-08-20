@@ -56,28 +56,41 @@ above the installed-lessons grid on the Learning tab (`LearnerPathSection/` + `v
    sentence must be drawn **ABOVE** the steps — moving it below the `<ol>` keeps it present and
    reddens **only** the ordering assertion.
 
-### ⚠️ NOT done, and it is the next session's first job
+### ✅ AND IT WAS DRIVEN — the stack came free late, and the drive found two more defects
 
-**The editor was never launched.** A peer held CDP 9222 all session. Layout, the Learning tab's
-column width, theme, and whether the `truth` paragraph reads as prominent rather than as
-boilerplate are **all unverified**. That is a drive, not a spec.
+**Both are the shape only a running app shows: a control that appears connected to nothing.**
 
-✅ **The drive rig is ready and cheap to restart**: database `nodegx_community_s48` on the 55432
-container is migrated and seeded (an individual `ada-builds` and an org-minor `pupil-42` under
-`bellwood-high`). Bring up `DATABASE_URL=postgres://nodegx:nodegx@localhost:55432/nodegx_community_s48
-npx next dev -p 3947` in the platform repo, mint a session with `createSession`, and 🔴 **note that
-`COMMUNITY_URL` in `models/community/communityorigin.ts` is a hardcoded constant with no override**
-— a local drive needs a temporary one-line edit there, reverted after.
+1. **There was no sign-in door.** Signed out, the section drew the three real questions and no way
+   to sign in — `ProjectsPage` never passed `onSignIn`. ⚠️ **The render spec asserts BOTH branches
+   of that prop and both passed**, because neither can see which branch production takes. *Covering
+   both branches of an optional prop says nothing about whether the host supplies one.*
+2. **A failed submit changed the screen in no way whatever** — found *by verifying fix 1*.
+   `onSubmit` returned early on any non-`ok` write, so "Rebuild my path" against a rate limit or an
+   expired session left the form untouched: no message, no spinner, no state, indistinguishable
+   from a broken build. Every spec passed because every one fed the view a successful world.
+
+Both fixed and verified live — `4cea617b`. E1–E4, E6, E7 all ✅ in the running launcher (`truth` at
+`y=120`, first step at `y=183`; 13 steps; the platform's own option labels with no token).
+
+### 🔴 ONE THING FOR THE PLATFORM LANE — a `next dev` 500, trigger NOT identified
+
+`POST /api/v1/me/intake` began answering **500** from `recordIntake`'s `sql.json`
+(`ERR_INVALID_ARG_TYPE`). ✅ **Measured, not assumed:** it reproduces with plain **`curl`** (so it
+is not the editor), it does **not** happen on a cold server (three cold boots, `200` each — one of
+them loading `/me/path` first), and the route demonstrably works (the earlier real-HTTP drive
+submitted two intakes and read back 11- and 13-step paths). 🔴 **I did not find the trigger**, and
+it cost the one consequence I could not reach — the omissions block in the running editor.
+**Worth an hour before anyone builds a second writer against that route.**
 
 ## 2. Gate readings — 2026-08-20, session 48
 
 | Gate | Reading |
 |---|---|
 | `npx tsc -p packages/noodl-editor --noEmit` | ✅ **0 errors**, no pipe. (Session 47's 2 errors were the phase-72 peer's; they fixed both) |
-| `npm run test:main` | ✅ **289 suites / 4710 tests / 0 failures** |
+| `npm run test:main` | ✅ **289 suites / 4714 tests / 0 failures** (re-run after the drive fixes) |
 | `npx tsc -p packages/noodl-core-ui --noEmit` | ⚠️ **44 errors, ALL pre-existing `TS2307`** path-alias failures — it needs `npm run build:types` first (`pretypecheck`). **None name my files**; I ran `tsc` directly and skipped the prebuild |
 | Real-HTTP drive | ✅ 12 consequences, own database — see UNI-007 |
-| **Editor drive** | ❌ **NOT RUN — peer held CDP 9222 all session** |
+| **Editor drive** | ✅ **RUN** — found 2 defects, both fixed (`4cea617b`). E5 unreached, see the 500 above |
 | `test:ci` | ❌ **NOT RUN.** A peer's editor stack was live the whole session |
 | `nodegx-community` | ⚠️ **Read-only this session; tree left clean.** Session 43's readings stand |
 
@@ -89,8 +102,9 @@ not quote it.**
 
 ### An agent alone
 
-1. **Drive the path section in the running editor** — §1's warning. Everything else about AC1 is
-   measured; this is the only unverified half, and the rig is ready.
+1. **The `next dev` 500 above** — the one open thread on AC1, and it blocks nothing until a second
+   writer targets that route. ⚠️ Also still unreached: the **omissions block in the running
+   editor** (E5), which is what the 500 cost.
 2. **UNI-007 §11 — curriculum hosting.** 🔴 **The wall is now VISIBLE IN THE EDITOR**: the section
    draws a real, personalised, ordered path (11 steps for a visual learner, 13 for a code one) to
    **nothing installable**, because all fifteen lessons are `in-writing`. The surface is honest
