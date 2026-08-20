@@ -286,7 +286,7 @@ insists on a drawn count — and then a **project-level** drawn count lets an un
 vouch for a broken mechanism. `validate_project` on the same directory reports **0 errors, 0
 warnings**, so nothing else covers it either.
 
-### 8.2 F4 renders the start page and nothing else, so a multi-page lesson's subject is unscored
+### 8.2 F4 renders the start page and nothing else, so a multi-page lesson's subject is unscored — ✅ **CLOSED 2026-08-20**
 
 L4 teaches building an **About** page. Its solution renders **2 texts** — Home's heading and the
 button's label. The About page is not rendered, because `render-report.js`'s reachability walk is
@@ -343,6 +343,66 @@ the same blind spot. **It belongs with phase 69's CN-001**, which is rewriting t
 > a falsely-green render report have now been found in this one file within a day, one fixed and one
 > open — which is itself an argument for treating "did it draw?" as a probe that needs its own
 > known-broken control on every route it claims to cover, not just on the route last fixed.
+
+#### ✅ CLOSED 2026-08-20 — the harness renders every routed page
+
+**Where:** `render-report.js` (`routedPages`, `reachableComponents`, the per-page loop),
+`render-from-disk.js` (the serving half), `measure-from-disk.js` (coverage in the printout),
+`noodl-mcp/src/render.ts` (the ceiling). **11 specs**, `tests-unit/uni-010/`.
+
+**🔴 The defect was still live at HEAD, and this is the reading that proves it.** Three arms on a
+five-route project, the third present so that the absence in the second means something — *a control
+can read zero, so read a known-firing signal first*:
+
+| arm | the same `dead-placeholder-text`, placed on | report |
+|---|---|---|
+| A | nowhere (baseline) | `Rendered clean … 0 placeholders` |
+| **B** | **`/Pages/Thank You` (routed)** | **`Rendered clean … 0 placeholders` — `md5` IDENTICAL to A** |
+| C | `/Pages/Landing` (start) | `2 errors … dead-placeholder-text` |
+
+A and B were character-identical with timing stripped (`661b27a6…` both). C is the known-firing
+signal: the instrument sees this defect perfectly well, on one page.
+
+**After the fix**, A and B differ and B and C grade the same — the defect is graded wherever it sits:
+A `0 errors, 1 warning`; B `2 errors, 1 warning (dead-placeholder-text, …)` naming
+`/Pages/Thank You`; C the same two errors.
+
+⚠️ **Arm A is not the clean baseline it was.** The `minimum-layout-width` warning on Thank You is a
+**real pre-existing defect** in the fixture that nothing could see before. The "clean" reading was
+never clean.
+
+**✅ F4 inherits it with no change to the grader**, which was the design constraint: page findings
+merge into the same `report.findings` array, and `renderDefectCodes` reads that. Driven through the
+real function on arm B's actual report — `renderDefectCodes(report) -> ['dead-placeholder-text']`.
+Parking them in a separate array would have been tidier and would have left F4 exactly as blind.
+
+**🔴 The correction this section itself needs.** It says the About page is not rendered *"because
+`render-report.js`'s reachability walk is built around `startPage`"*, and CN-001 sharpened that to
+the server answering exactly one path. The walk is the right culprit; **the server was not.** The
+runtime routes on the **hash** by default and a hash never reaches a server — `/#about` always
+rendered the About page. Nothing ever navigated there. ⚠️ The trap: **fixing the 404 alone changes
+no reading**, so a session that fixed it and re-measured would have concluded the harness still
+could not see page two, having aimed at the wrong mechanism throughout.
+
+**🔴 What it cost to do correctly — a regression that only appeared once every page was rendered.**
+`listProbes` returns every knowable repeater in the *project*. Measuring page four against page
+one's repeater accuses it of failing to render rows it never had: `phase55-replay-sonnet`, the build
+phase 55 calls **correct** and a pinned control recorded as reporting *none*, came back with **14
+`empty-list` errors** — a gate rejecting the correct answer, which would have been F4 failing sound
+lessons. Probes are now scoped to the components a page can reach, and both pinned controls are
+restored: sonnet `Rendered clean (1 observation)`, haiku still its two defects.
+
+**⚠️ Two costs, stated rather than smoothed.**
+- **Wall clock**: ~4.3s per extra page (two viewports). One page 7.3s → eight pages **40.9s**. The
+  MCP ceiling was 90s behind a comment claiming ~7.5s, putting the cliff at about **twenty pages** —
+  a large but ordinary project killed mid-run for no reason its author could see. Raised to 240s.
+- **Coverage is now stated**: `pages: N/M measured`, a `[skipped]` line per unreachable page, and a
+  clause appended to the summary sentence itself when any page was skipped. Otherwise `Rendered
+  clean` over two never-visited pages is the same over-broad claim in a new place.
+
+**Controls run with the branches disabled**, because a spec that passes without its mechanism
+measures nothing: SPA fallback off → 2 of 4 serving specs fail and both control specs still pass;
+probe scoping off → the 14-error control fails; URL construction off → both navigation specs fail.
 
 ## 9. The human read — F5, F6, and "worth completing"
 
@@ -458,8 +518,11 @@ reader can disagree with individually rather than as a verdict.
 
    ⚠️ **What it does not close: §8.2 is untouched**, so a defect on any page but the start page is
    still invisible — including to this new check, which can only see what the render rendered.
-2. 🔴 **Take §8.2 to phase 69 / CN-001**, which is rewriting the same file. Rendering every routed
-   page, not just `startPage`, fixes `render_report` and F4 together.
+2. ✅ **DONE 2026-08-20 — §8.2 is closed**, and it fixed `render_report` and F4 together as this item
+   predicted. 🔴 **It did not travel with CN-001.** Phase 69 closed 20/20 on 2026-08-18 with this
+   recorded inside CN-001 as *"still OPEN"*, so the item outlived the phase that owned it and stayed
+   reachable only from a closed task file. ⚠️ *A finding parked in another phase's task inherits that
+   phase's lifecycle* — CN-001 was the right place for the fix and the wrong place for the ticket.
 3. ✅ **§12.3 DONE 2026-08-16 (slice 4).** The brief now carries *"🔴 Check what your prose actually
    asked for"* — the gradient named out loud, with the one question to ask (*if the learner does only
    what the conditions check, does the app work?*) and the two shapes it took in this run: **you told

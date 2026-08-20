@@ -482,6 +482,24 @@ if (PRINT_PROJECT) {
           return res.end(fs.readFileSync(file));
         }
       }
+      // UNI-010 §8.2 — a named route is the app, not a missing file.
+      //
+      // Until 2026-08-20 this 404'd every path but `/`, so the harness could not
+      // reach ANY route the router serves — including the start page's own
+      // `urlPath`. Measured before the fix on a five-route project: `/` 200,
+      // `/landing` `/thank-you` `/home` all 404. Anything driven by `urlPath`
+      // was therefore unmeasurable by this instrument on every page.
+      //
+      // 🔴 The fallback is deliberately restricted to EXTENSION-LESS paths. A
+      // blanket "serve index.html for anything unresolved" would hand back HTML
+      // for a missing `.png` or `.js`, and the report counts broken images — so
+      // the obvious version of this fix would have quietly disabled a check that
+      // works, which is the failure class this harness exists to catch.
+      if (!path.extname(url)) {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        return res.end(html);
+      }
+
       res.writeHead(404);
       res.end('not found: ' + url);
     })

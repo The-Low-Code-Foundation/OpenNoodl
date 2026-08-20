@@ -90,8 +90,22 @@ export interface RenderOptions {
   timeoutMs?: number;
 }
 
-/** Two viewports, a boot and two reflow settles: ~7.5s measured. This is the ceiling, not the cost. */
-export const RENDER_TIMEOUT_MS = 90_000;
+/**
+ * The ceiling, not the cost.
+ *
+ * A one-page project is two viewports, a boot and two reflow settles: **7.3s
+ * measured** (2026-08-20), which is what this number was set against.
+ *
+ * 🔴 **UNI-010 §8.2 changed the arithmetic.** The harness now renders every
+ * routed page rather than the start page alone, and each extra page costs one
+ * navigation settle plus one measurement per viewport — **~4.3s measured**, from
+ * an eight-page project at **40.9s** against the same project's 7.3s single-page
+ * predecessor. At the old 90s that put the cliff at roughly **twenty pages**,
+ * where a large but perfectly ordinary project would start being killed mid-run
+ * for no reason its author could see. Raised so the ceiling stays a backstop
+ * against a hang instead of a cap on project size.
+ */
+export const RENDER_TIMEOUT_MS = 240_000;
 
 /**
  * Whether a tool may render *without being asked to*.

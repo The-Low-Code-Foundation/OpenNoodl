@@ -204,7 +204,7 @@ which imports [`render-report.js:41`](../../../scripts/devtools/render-report.js
 - **Shipping the harness to packaged installs** — that is phase 67's open F4 scope call (above), not
   this task's to take.
 
-## 🔴 A SECOND falsely-green route in this same file, found 2026-08-16 and still OPEN
+## ✅ A SECOND falsely-green route in this same file — found 2026-08-16, **CLOSED 2026-08-20**
 
 Found by phase 67's UNI-010 criterion-3 run
 ([UNI-010-CRITERION-3-RUN.md](../phase-67-nodegx-university/UNI-010-CRITERION-3-RUN.md) §8.2), and
@@ -255,3 +255,40 @@ correct about all of it and be reported `Rendered clean` on the strength of `/`.
 phase 67's (UNI-010 criterion 3, §8.2); the HTTP measurement is the phase-69 session's; the `/home`
 reproduction is phase 67's again. Two instruments, two sessions, one conclusion — which is why it is
 worth more than either half. An earlier relay of this attributed it to a third session by mistake.
+
+### ✅ CLOSED 2026-08-20 — and the conclusion above was HALF WRONG in a way that mattered
+
+Fixed in `render-report.js` (navigation) and `render-from-disk.js` (serving), with the control pair
+and the gate readings in
+[UNI-010-CRITERION-3-RUN.md](../phase-67-nodegx-university/UNI-010-CRITERION-3-RUN.md) §8.2.
+
+🔴 **The sharpening above is right about the measurement and wrong about the consequence, and the
+wrong half is the one a reader acts on.** `GET /home -> 404` is real and reproduces. But the
+runtime's default `navigationPathType` is **`hash`** (`router.tsx:_getLocationPath`), and *a hash is
+never sent to a server*. Measured 2026-08-20 on the same five-route project:
+
+| URL | what renders |
+|---|---|
+| `/#thank-you` | the Thank You page — **correctly, and always did** |
+| `/#home` | the Home page |
+| `/#admin` | the Admin Login page |
+
+So *"anything driven by `urlPath` is unmeasurable by this instrument"* was **false**. Every routed
+page was reachable the whole time; **nothing ever navigated to one.** The blindness was in
+`render-report.js`, which booted `/` and measured that one page, not in the server.
+
+⚠️ **The trap for whoever reads this next: fixing the 404 alone changes no reading.** It is a real
+gap — it matters for `navigationPathType: 'path'` projects and for a hand-typed URL — and it is
+fixed. But a session that fixed it, re-ran the report, saw the same numbers and concluded "the
+harness still can't see page two" would have been measuring the wrong mechanism the whole time. **A
+correct measurement can carry an incorrect mechanism, and the mechanism is what the fix is aimed
+at.**
+
+🔴 **What rendering every page then exposed, which nothing had ever been in a position to see.**
+`listProbes` returns every knowable repeater in the *project*, and measuring page four against page
+one's repeater accuses it of failing to render rows it never had. `phase55-replay-sonnet` — the
+build phase 55 calls **correct**, a pinned control recorded as reporting *none* — came back with
+**14 `empty-list` errors**. That is a gate rejecting the correct answer, and it would have been
+UNI-010's F4 failing sound lessons. Probes are now scoped to the components a page can actually
+reach. ⚠️ The same defect already existed in the other direction and is fixed by the same rule: a
+repeater on page four made the **start page** report `empty-list`.

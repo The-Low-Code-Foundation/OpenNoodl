@@ -721,6 +721,129 @@ const CHROME_CANDIDATES = {
 };
 
 /** A Chrome/Chromium binary, or null with everything probed — `CHROME_PATH` wins. */
+/**
+ * Every page the project's routers can show, and how to reach each one by URL.
+ *
+ * ## UNI-010 §8.2 — the hole this closes
+ *
+ * Until 2026-08-20 this module rendered `/` and nothing else, so a defect on any
+ * page but the start page was invisible **and the report said `Rendered clean`
+ * about it**. Measured on a five-route project before the fix: the same
+ * `dead-placeholder-text` scored 2 errors on the start page and produced a
+ * character-identical clean report on a routed one. UNI-010's F4 grades through
+ * this chain, so a lesson that *teaches building a second page* had its entire
+ * subject unscored.
+ *
+ * 🔴 **The blindness was navigation, not serving.** CN-001 recorded the mechanism
+ * as `render-from-disk.js` answering exactly one path and concluded that anything
+ * driven by `urlPath` was unmeasurable. The serving half is real and is fixed
+ * there — but it is not what blinded F4. The runtime's default
+ * `navigationPathType` is `hash` (`router.tsx:_getLocationPath`), and a hash is
+ * never sent to a server: `/#thank-you` was always served correctly and always
+ * rendered the right page. What was missing is that nothing ever navigated.
+ * Fixing only the 404 would have left every reading in this file unchanged.
+ *
+ * ⚠️ Routers are matched by `n.type === 'Router'`, the same test `blankDiagnosis`
+ * uses, so the two cannot disagree about what a router is. A page's URL comes
+ * from its own `Page` node's `urlPath`.
+ *
+ * @returns {{ok: boolean, pages: Array, startPage: string|undefined, pathType: string}}
+ *   `pages` carries every routed component, `reachable` false ones included —
+ *   a page skipped for want of a URL is reported, never silently dropped.
+ */
+/**
+ * Every component a page can put on screen, itself included.
+ *
+ * ## UNI-010 §8.2 — why measuring more pages needed this too
+ *
+ * `listProbes` returns every knowable repeater in the **project**, and the
+ * measurement asks the DOM whether each probe's rows are present. That was
+ * sound while only one page was ever rendered and slightly wrong in a way
+ * nothing could see. Rendering all of them made it visible and severe:
+ * `phase55-replay-sonnet` — the build phase 55 calls **correct**, and a pinned
+ * control that "still reports none" — came back with **14 `empty-list` errors**,
+ * one per viewport per page, because its featured-products repeater lives on the
+ * Home page and every other page was accused of failing to render it.
+ *
+ * 🔴 That is a gate rejecting the correct answer, and it would have been F4
+ * failing sound lessons. A probe is only evidence about a page that could
+ * contain it.
+ *
+ * ⚠️ The same shape already existed in the other direction and is fixed by the
+ * same rule: a repeater on page four made the **start page** report `empty-list`,
+ * because its probe was evaluated against a page that never had those rows.
+ *
+ * Instantiation is static: a node whose `type` is a component's name instantiates
+ * it, and a `For Each` names its row component on `template`.
+ */
+function reachableComponents(startName, byName) {
+  const seen = new Set();
+  const queue = [startName];
+  while (queue.length) {
+    const name = queue.shift();
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const component = byName.get(name);
+    if (!component) continue;
+    for (const node of component.nodes) {
+      if (byName.has(node.type)) queue.push(node.type);
+      const template = (node.parameters || {}).template;
+      if (typeof template === 'string' && byName.has(template)) queue.push(template);
+    }
+  }
+  return seen;
+}
+
+function routedPages(projectDir) {
+  const { ok, project, components } = readComponents(projectDir);
+  if (!ok) return { ok: false, pages: [], startPage: undefined, pathType: 'hash' };
+
+  const pathType = (project.settings && project.settings.navigationPathType) || 'hash';
+  const byName = new Map(components.map((c) => [c.name, c]));
+
+  const routes = [];
+  let startPage;
+  for (const c of components) {
+    for (const n of c.nodes) {
+      if (n.type !== 'Router') continue;
+      const pages = (n.parameters || {}).pages || {};
+      for (const route of pages.routes || []) if (!routes.includes(route)) routes.push(route);
+      if (!startPage && pages.startPage) startPage = pages.startPage;
+    }
+  }
+
+  const pages = routes.map((component) => {
+    const c = byName.get(component);
+    const pageNode = c && c.nodes.find((n) => n.type === 'Page');
+    const params = (pageNode && pageNode.parameters) || {};
+    const urlPath = typeof params.urlPath === 'string' ? params.urlPath : undefined;
+    const isStart = component === startPage;
+
+    // A page is reachable when we can address it. The start page needs no URL —
+    // it is what `/` boots into — so it is reachable whatever its `urlPath` says.
+    let unreachable;
+    if (!c) unreachable = 'no component of that name exists in the project';
+    else if (!pageNode) unreachable = 'the component has no Page node, so it has no URL of its own';
+    else if (!isStart && !urlPath) unreachable = 'its Page node sets no urlPath, so there is no URL to navigate to';
+    else if (!isStart && /[{}]/.test(urlPath))
+      // `/product/{id}` needs a value this harness has no way to choose, and
+      // inventing one would measure a page nobody asked for.
+      unreachable = `its urlPath "${urlPath}" takes a route parameter, which this harness has no value for`;
+
+    return {
+      component,
+      title: typeof params.title === 'string' ? params.title : undefined,
+      urlPath,
+      isStart,
+      reachable: !unreachable,
+      ...(unreachable ? { unreachable } : {}),
+      url: isStart ? '/' : unreachable ? undefined : pathType === 'hash' ? `/#${urlPath}` : `/${urlPath}`
+    };
+  });
+
+  return { ok: true, pages, startPage, pathType };
+}
+
 function findChrome() {
   const probed = [];
   const check = (p) => {
@@ -913,6 +1036,16 @@ const BOOT_MS = 3500;
 const REFLOW_MS = 1200;
 
 /**
+ * How long a route change gets to settle before it is measured.
+ *
+ * UNI-010 §8.2. Shorter than `BOOT_MS` because nothing boots — the viewer is
+ * running and the router is swapping a subtree. Verified against the arm that
+ * has to fail: the same `dead-placeholder-text` on a routed page is detected at
+ * this value, which is the only reading that makes it long enough.
+ */
+const PAGE_NAV_MS = 2000;
+
+/**
  * A booted page, handed to the body of {@link withRenderedPage}.
  *
  * @typedef {object} RenderedPage
@@ -1035,7 +1168,22 @@ async function withRenderedPage(options, fn) {
       client,
       consoleErrors,
       serverLog: () => serverLog,
+      servePort,
       evaluate: (expression) => evaluate(client, expression),
+      /**
+       * Go to another route and let it settle.
+       *
+       * UNI-010 §8.2. `PAGE_NAV_MS` rather than `BOOT_MS`: the runtime is already
+       * booted, and in the default `hash` mode this is a `hashchange` the router
+       * listens for rather than a document load. The viewport emulation set by
+       * `setViewport` survives it — `Emulation.setDeviceMetricsOverride` is
+       * per-session, not per-document — so a caller that has already sized the
+       * page does not have to size it again.
+       */
+      async navigate(urlPath) {
+        await client.send('Page.navigate', { url: `http://127.0.0.1:${servePort}${urlPath}` });
+        await wait(PAGE_NAV_MS);
+      },
       async setViewport(vp) {
         await client.send('Emulation.setDeviceMetricsOverride', {
           width: vp.width,
@@ -1061,6 +1209,10 @@ async function withRenderedPage(options, fn) {
  * @param {number} [options.deviceScaleFactor=0.5]  Screenshot scale — 0.5 keeps a full page around 500KB.
  * @param {number} [options.backendPort]        Backend to proxy `/__backend` to, if the project has one.
  * @param {boolean}[options.editorTokens=false] Mirror a running editor's tokens (see render-from-disk.js).
+ * @param {boolean}[options.renderRoutedPages=true] Visit every routed page, not only the start page
+ *   (UNI-010 §8.2). Defaults to **on**: leaving it off by default would have shipped the fix and
+ *   left every existing caller — F4 included — reading the same one-page report it always did.
+ *   Each extra page costs one navigation plus one measurement per viewport.
  * @returns {Promise<{report: object, screenshots: Array<{name: string, mimeType: string, base64: string}>}>}
  */
 async function renderReport(options) {
@@ -1070,7 +1222,8 @@ async function renderReport(options) {
     screenshot = 'full',
     deviceScaleFactor = 0.5,
     backendPort,
-    editorTokens = false
+    editorTokens = false,
+    renderRoutedPages = true
   } = options;
 
   const started = Date.now();
@@ -1080,10 +1233,27 @@ async function renderReport(options) {
     // ports a Component Inputs node feeds. Neither source can see the other's
     // strings, and Kimi's three were all in the second.
     const overridden = Object.fromEntries(overriddenDefaults(projectDir));
-    const expression = measureExpression(
-      [...new Set([...placeholderStrings(), ...Object.keys(overridden)])],
-      listProbes(projectDir)
-    );
+    const placeholders = [...new Set([...placeholderStrings(), ...Object.keys(overridden)])];
+
+    // UNI-010 §8.2 — a probe is evidence about the page that can contain it.
+    // See `reachableComponents`: project-wide probes measured against one page
+    // is how a correct eight-page project scored 14 `empty-list` errors.
+    const routes = routedPages(projectDir);
+    const allProbes = listProbes(projectDir);
+    const { components: projectComponents } = readComponents(projectDir);
+    const byName = new Map(projectComponents.map((c) => [c.name, c]));
+    const reachBy = new Map(routes.pages.map((p) => [p.component, reachableComponents(p.component, byName)]));
+    // Anything the walk cannot place on any page keeps its old home rather than
+    // being dropped: a probe evaluated nowhere is a check that silently stopped
+    // running, which is worse than the false positive this scoping removes.
+    const unplaced = allProbes.filter((probe) => ![...reachBy.values()].some((set) => set.has(probe.component)));
+    const probesFor = (pageComponent) => {
+      const reach = reachBy.get(pageComponent);
+      const own = reach ? allProbes.filter((probe) => reach.has(probe.component)) : allProbes;
+      return pageComponent === routes.startPage ? [...own, ...unplaced] : own;
+    };
+
+    const expression = measureExpression(placeholders, probesFor(routes.startPage));
     const measured = {};
     const screenshots = [];
 
@@ -1127,6 +1297,96 @@ async function renderReport(options) {
     // explanation of an observed blank and never a prediction of one.
     const blank = Object.values(measured).some((v) => v && !v.error && v.text.elements === 0 && v.images.total === 0);
     const { findings, summary } = summarise(measured, blank ? blankDiagnosis(projectDir) : undefined, overridden);
+
+    // ── UNI-010 §8.2 — the other routed pages ────────────────────────────────
+    //
+    // Everything above measured `/`, which is the start page. A project's other
+    // pages were never visited at all, so `Rendered clean` was a claim about one
+    // page dressed as a claim about the app.
+    //
+    // 🔴 Findings from those pages are merged into the SAME top-level `findings`
+    // array rather than parked in `pages[]`. That is the whole of why F4 gains
+    // this for free: `renderDefectCodes` reads `report.findings`, so a defect on
+    // page four now fails a lesson without one line changing in the grader. A
+    // separate array would have been tidier and would have left every existing
+    // consumer exactly as blind as before.
+    const pageReports = [];
+    const extraFindings = [];
+
+    if (renderRoutedPages) {
+      for (const p of routes.pages) {
+        if (p.isStart) {
+          pageReports.push({ ...p, measured: true, viewports: measured });
+          continue;
+        }
+        if (!p.reachable) {
+          // Reported, not dropped. A page this harness cannot address is a limit
+          // of the instrument, and an instrument that hides its own blind spots
+          // is what this whole section exists to correct.
+          pageReports.push({ ...p, measured: false });
+          continue;
+        }
+
+        await page.navigate(p.url);
+        const pageExpression = measureExpression(placeholders, probesFor(p.component));
+        const pageMeasured = {};
+        for (const vp of viewports) {
+          const loggedBefore = page.consoleErrors.length;
+          await page.setViewport(vp);
+          const raw = await page.evaluate(pageExpression);
+          pageMeasured[vp.name] = {
+            requested: { width: vp.width, height: vp.height },
+            ...raw,
+            consoleErrors: page.consoleErrors.slice(loggedBefore)
+          };
+        }
+
+        // No `blankDiagnosis` for these: that walk is a start-page walk and every
+        // sentence it produces names the start page. Passing `undefined` would
+        // make a blank routed page report "No project was available to diagnose
+        // it against", which is false — a project was available. The message is
+        // rewritten below instead, to say only what was actually established.
+        const perPage = summarise(pageMeasured, undefined, overridden);
+        for (const f of perPage.findings) {
+          extraFindings.push({
+            ...f,
+            page: p.component,
+            message:
+              f.code === RenderFinding.BlankRender
+                ? `The routed page "${p.component}" rendered nothing at all — no text and no images. ` +
+                  'Only the start page is diagnosed against the graph, so the cause was not determined here.'
+                : `On the routed page "${p.component}": ${f.message}`
+          });
+        }
+
+        pageReports.push({ ...p, measured: true, viewports: pageMeasured, summary: perPage.summary });
+      }
+
+      // Back to where the caller found us. A screenshot taken after this function
+      // would otherwise be of whichever page happened to be measured last.
+      if (pageReports.some((p) => p.measured && !p.isStart)) await page.navigate('/');
+    }
+
+    const allFindings = [...findings, ...extraFindings];
+    // Recomputed, because the headline is the sentence most readers stop at and
+    // "Rendered clean" over a broken fourth page is the exact failure this task
+    // is closing. The shape half stays the start page's; the counts now cover
+    // every page measured, and each borrowed finding names its page.
+    let allSummary = extraFindings.length ? summaryLine(measured, allFindings) : summary;
+
+    // 🔴 And a summary must not out-claim its own coverage. A project whose other
+    // pages could not be addressed still gets "Rendered clean" from the line
+    // above — the same sentence about a different blindness, which is precisely
+    // what this task exists to stop. Say what was not looked at, in the sentence
+    // people actually read.
+    const skipped = pageReports.filter((p) => !p.measured);
+    if (skipped.length) {
+      allSummary +=
+        ` ⚠️ ${skipped.length} of ${pageReports.length} routed ${skipped.length === 1 ? 'page was' : 'pages were'} ` +
+        `not measured, so this says nothing about ${skipped.length === 1 ? 'it' : 'them'}: ` +
+        skipped.map((p) => `${p.component} (${p.unreachable})`).join('; ') +
+        '.';
+    }
     const project = JSON.parse(fs.readFileSync(path.join(projectDir, 'nodegx.project.json'), 'utf8'));
     const log = page.serverLog();
 
@@ -1138,8 +1398,9 @@ async function renderReport(options) {
         tokens: (log.match(/\[render\] design tokens: (.*)/) || [])[1] || 'unknown',
         components: (log.match(/\[render\] rootComponent=\S+\s+(\d+) components/) || [])[1],
         viewports: measured,
-        findings,
-        summary
+        pages: pageReports,
+        findings: allFindings,
+        summary: allSummary
       },
       screenshots
     };
@@ -1148,6 +1409,8 @@ async function renderReport(options) {
 
 module.exports = {
   renderReport,
+  routedPages,
+  reachableComponents,
   withRenderedPage,
   summarise,
   measureExpression,

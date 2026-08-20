@@ -403,9 +403,16 @@ lesson format and grading runner (criteria 3 and 4 there are this task's prerequ
 >
 > ### 🔴 Still open, and this does not touch either
 >
-> - **§8.2** — F4 renders only the Router's `startPage`, so a defect anywhere else is invisible
->   *including to this new check*, which can only see what was rendered. Belongs to phase 69's
->   CN-001 (upstream: `render_report` has the same blind spot).
+> - ✅ ~~**§8.2**~~ — **CLOSED 2026-08-20.** F4 rendered only the Router's `startPage`, so a defect
+>   anywhere else was invisible *including to slice 3's check*, which can only see what was
+>   rendered. The harness now visits every routed page and merges each page's findings into the same
+>   `report.findings`, so **F4 gained it with no change to the grader** — driven through the real
+>   `renderDefectCodes` on a real report. 🔴 **It was never CN-001's to carry:** phase 69 closed
+>   20/20 on 2026-08-18 with this still open inside its task file. 🔴 **And the mechanism everyone
+>   had recorded was wrong** — the runtime routes on the *hash*, which never reaches a server, so
+>   every page was always reachable and **nothing ever navigated**; fixing the recorded 404 alone
+>   would have changed no reading. Full write-up:
+>   [UNI-010-CRITERION-3-RUN.md](UNI-010-CRITERION-3-RUN.md) §8.2.
 > - ✅ ~~**The F4 packaged-install scope call is still Richard's.**~~ **RULED 2026-08-16 — ship the
 >   harness with the sidecar.** Scoped as **[UNI-012](UNI-012-F4-ON-A-PACKAGED-INSTALL.md)** and
 >   deliberately not built: it is verifiable only against a packaged build. ⚠️ **Two facts measured

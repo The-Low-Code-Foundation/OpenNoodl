@@ -54,6 +54,19 @@ function printHuman(report, files) {
         `${v.images.total} images (${v.images.broken} broken), ${v.placeholders.count} placeholders`
     );
   }
+  // UNI-010 §8.2 — say which pages this reading actually covers.
+  //
+  // Without this line the report looks the same whether it measured one page or
+  // nine, and a page skipped for want of a URL is indistinguishable from a page
+  // that was measured and found clean. That equivalence is the whole defect this
+  // section closed; reintroducing it in the printer would be a poor joke.
+  if (report.pages && report.pages.length) {
+    const measured = report.pages.filter((p) => p.measured);
+    console.log(`  pages: ${measured.length}/${report.pages.length} measured — ${measured.map((p) => p.component).join(', ')}`);
+    for (const p of report.pages.filter((page) => !page.measured)) {
+      console.log(`  [skipped] ${p.component} — ${p.unreachable}`);
+    }
+  }
   for (const f of report.findings) {
     console.log(`  [${f.severity}] ${f.viewport}: ${f.code} — ${f.message}`);
   }
