@@ -18,7 +18,7 @@ path was driven over real HTTP against a locally-run platform — because NAT-00
 
 | AC | State | Where |
 |---|---|---|
-| 1 — a people surface, browse and search, four section states | ✅ | `CommunityDirectoryView` + `composeDirectory`. 🔴 The search is **not** on the server — see below |
+| 1 — a people surface, browse and search, four section states | ✅ 🟡 | `CommunityDirectoryView` + `composeDirectory`. 🔴 The search is **not** on the server — see below. **Driven in the launcher**; 🟡 the rail panel in situ was not |
 | 2 — a profile, from the directory or an author line | ✅ | `CommunityProfileView`, `composeProfileView`; the six-branch order is `threadview`'s, one branch longer |
 | 3 — badges through a CSS **mask**, not an `<img>` | ✅ | `badgeMarks.ts` — twelve marks bundled as data URIs; graded with the comments stripped |
 | 4 — author lines are entry points | ✅ | `CommunityThreadView`'s author is a `button` when a host can open a profile, plain text when not |
@@ -118,18 +118,39 @@ view by hand. The defect it would have shipped is a profile link on an anonymous
 `/people/someone`. ✅ Fixed by asserting on `threadDetailView`'s own output — one assertion per
 half. **Worth generalising: the other three surfaces are about to copy these shapes.**
 
-### ⚠️ What was NOT driven
+### ✅ Driven in the running editor — and it found a defect no spec could
 
-The editor itself. A peer was running `test:ci` during the drive window, so the launch was held —
-the reading path was driven end to end through the **real client over real HTTP** instead
-(`CommunityApiClient` → `readDirectory` → `composeDirectory` → `composeProfileView`, against a
-platform run locally on a seeded database). 🔴 **What that cannot see is layout**: the rail is
-narrow, the directory adds a search field and a wrap of pills to it, and this editor has a
-recorded history of `overflow: hidden` clipping hit-testing. **Drive the rail before closing AC1.**
+The launcher tab was driven against a platform run locally on a seeded database (`COMMUNITY_URL`
+pointed at `localhost:3100`, **reverted afterwards**). Five people, both pills carrying their real
+counts (3 and 2), `5 people`, no bound line. Typing `coaching` → **`1 of 5 people`, one row**, and
+the pills recomputed against the live query (`Available for work 0`). Typing `zzzzzzzz` → `0 of 5`
+and *"Nobody here matches that yet"*. A row opened the profile **in place**, Back restored the
+lists, and the badges measured **3 spans, 0 `<img>`, each 20×20 with a resolved mask URL and a
+painted ink** — AC3 confirmed in the product rather than in a test.
 
-⚠️ **D15's refusal was not driven over HTTP either** — that needs an `org_minor` session token.
-It is graded at the composer and at the component, each with a permitted control beside it, and
-the platform's own `d15-visibility.test.ts` sweeps the routes.
+🔴 **THE DEFECT: the directory's controls broke out of the card's gutter.** Measured — the card
+spanned 32→1328, the heading was inset to 47, and the search field ran **33→1327**. It is
+structural rather than a missing value: `SectionHead` pads itself and `Body` pads itself, so a
+component inserted **between** them inherits neither. ⚠️ **The screenshot did not look broken** —
+14px is a card that reads as slightly wrong, and it was only visible once the numbers were read
+off the boxes. Fixed (`e86cd31e`); everything now starts at 47.
+
+⚠️ **`.Rows` still has no side padding and that stays** — a row carries its own so its hover fill
+reaches the card's full width. The two are inset by *different mechanisms* on purpose.
+
+### ⚠️ What was still NOT driven
+
+- 🔴 **The rail panel itself.** It needs a project open, the launcher's recents did not list the
+  copy made for the drive, and there is no editor global to open one programmatically — a native
+  file dialog is not reachable from CDP. ✅ What *was* measured is the same component narrowed to
+  **320px**: no horizontal overflow anywhere, chips wrapping to two lines, titles ellipsising
+  rather than clipping, no page scroll. That is the wrap behaviour; it is **not** `BasePanel`'s
+  chrome, `ScrollArea`, or `Panel` density in situ.
+- ⚠️ **A thread with an author line was not clicked through to a profile** — the seeded threads
+  render, but AC4's join was graded at the component and the producer rather than by a click.
+- ⚠️ **D15's refusal over HTTP** — needs an `org_minor` session token. Graded at the composer and
+  the component, each with a permitted control, and the platform's `d15-visibility.test.ts` sweeps
+  the routes.
 
 ---
 

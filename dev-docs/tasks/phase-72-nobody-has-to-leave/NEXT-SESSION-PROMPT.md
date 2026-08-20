@@ -76,12 +76,20 @@ the web, S, `nodegx-community`) is still the only unstarted Tier-1 task.
 🔴 **Still do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4 on the strength of NAT-006.** They
 close when mail reaches a human — NAT-014 AC2/AC7.
 
+🔴 **And when you do drive: the layout defect above is the shape to expect again.** Both other
+Tier-3 surfaces will insert their own controls between a section's head and its body. **Measure
+the boxes — do not read the screenshot.**
+
 ## Loose ends
 
-- 🟡 **NAT-008 AC1's layout was not driven.** A peer was running `test:ci`, so the editor launch was
-  held and the reading path was driven through the real client over real HTTP instead. **The rail
-  is narrow and the directory adds a search field and a wrap of pills to it**, in an editor with a
-  recorded history of `overflow: hidden` clipping hit-testing. Drive it before calling AC1 shut.
+- 🟡 **NAT-008's RAIL PANEL was not driven in situ.** The launcher tab was — and the drive found a
+  real defect no spec could see: the directory's controls sat **14px outside the card's gutter**,
+  because `SectionHead` pads itself and `Body` pads itself, so a component inserted *between* them
+  inherits neither. **The screenshot did not look broken.** Fixed in `e86cd31e`. What is left is
+  the rail: it needs a project open, the launcher's recents did not list the drive copy, and
+  there is no editor global — a native file dialog is not reachable from CDP. ✅ The same component
+  narrowed to 320px overflows nowhere, so the *wrap* is fine; `BasePanel`'s chrome and `ScrollArea`
+  in situ are what has not been looked at.
 - ⚠️ **To drive any of this you must run the platform locally.** NAT-006's ten endpoints still
   **404 in production** — `community.nodegx.io` serves a build from before this phase.
   `DATABASE_URL=postgres://nodegx:nodegx@localhost:55432/nodegx_community_s45 npx next dev -p 3100`
