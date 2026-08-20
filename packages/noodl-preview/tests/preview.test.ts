@@ -182,7 +182,13 @@ describe('watching', () => {
     const state = await waitForState(preview.port, (s) => s.state.kind === 'invalid');
     if (state.state.kind !== 'invalid') throw new Error(`Expected an invalid state, got ${state.state.kind}`);
     expect(state.state.report.summary.errors).toBe(1);
-    expect(state.state.report.diagnostics[0].code).toBe('dangling-connection');
+    // Select the error by code, never by position. `diagnostics` is the
+    // validator's full list and carries warnings too — this fixture's own
+    // `textAlign` parameter is one (Text's ports are `textAlignX`/`textAlignY`),
+    // and it sorts ahead of the error. Asserting the whole error set also says
+    // the thing this spec is actually about: one error, and it is the gate.
+    const errors = state.state.report.diagnostics.filter((d) => d.severity === 'error');
+    expect(errors.map((d) => d.code)).toEqual(['dangling-connection']);
     // The previous good build is still installed — that is what keeps the
     // browser showing something instead of blanking.
     expect(state.hasBuild).toBe(true);
@@ -191,7 +197,9 @@ describe('watching', () => {
     await new Promise((r) => setTimeout(r, 200));
     const diagnostics = events.frames.filter((f) => f.type === 'diagnostics');
     expect(diagnostics.length).toBeGreaterThan(0);
-    expect(diagnostics.at(-1).diagnostics[0].message).toContain('references a missing node');
+    expect(diagnostics.at(-1).diagnostics.find((d) => d.code === 'dangling-connection')?.message).toContain(
+      'references a missing node'
+    );
     // No reload was ordered — the invalid state must not swap the render.
     expect(events.frames.filter((f) => f.type === 'reload')).toHaveLength(0);
 
