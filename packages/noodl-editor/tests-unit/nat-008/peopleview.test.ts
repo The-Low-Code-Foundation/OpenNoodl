@@ -252,15 +252,25 @@ describe('NAT-008 — the words on a row', () => {
     // 🔴 And a key this client does not know draws nothing rather than the raw `day_9000_plus` —
     // a database column's spelling in a sentence somebody is trying to read.
     expect(rateBandLabel('day_9000_plus')).toBeNull();
-    expect(rateBandLabel('day_400_600')).toBe('£400–600/day');
+
+    // 🔴 THE FOUR KEYS, AS THE PLATFORM ACTUALLY SPELLS THEM. The first draft of this map guessed
+    // `day_400_600` in the house style of every other enum over there, and the real key is
+    // `400-700` — found by curling the endpoint, because the guarded failure draws NO chip and a
+    // missing chip is also what a person who did not answer correctly gets. A safe failure mode
+    // is not a substitute for reading the source.
+    expect(rateBandLabel('under-400')).toBe('Under £400/day');
+    expect(rateBandLabel('400-700')).toBe('£400–700/day');
+    expect(rateBandLabel('700-plus')).toBe('£700+/day');
+    // ⚠️ A real band, not a blank: somebody who answered "no" has answered.
+    expect(rateBandLabel('not-for-hire')).toBe('Not for hire');
 
     const labels = personChips(person({ rateBand: 'day_9000_plus' })).map((c) => c.label);
     expect(labels).not.toContain('day_9000_plus');
   });
 
   it('the two flags are toned chips and the skills come after them', () => {
-    const chips = personChips(person({ offersCoaching: true, rateBand: 'day_400_600', skills: ['C'] }));
-    expect(chips.map((c) => c.label)).toEqual(['Available for work', 'Offers coaching', '£400–600/day', 'C']);
+    const chips = personChips(person({ offersCoaching: true, rateBand: '400-700', skills: ['C'] }));
+    expect(chips.map((c) => c.label)).toEqual(['Available for work', 'Offers coaching', '£400–700/day', 'C']);
     expect(chips[0].tone).toBe('good');
     expect(chips[2].tone).toBe('neutral');
   });

@@ -145,20 +145,35 @@ export function personChips(person: PersonSummary): CommunityChip[] {
 }
 
 /**
- * The day-rate vocabulary, mirroring the platform's `RATE_BANDS`.
+ * The day-rate vocabulary, mirroring the platform's `RATE_BANDS` (`lib/profiles.ts:449`).
  *
- * ⚠️ **A second copy of a list, and it is the smallest available.** The alternative is printing
- * the key, which is worse, or asking the platform for a label it deliberately does not send. An
- * unrecognised key draws no chip — so a band added on the platform is a missing chip here, never
- * a wrong one, which is the same containment `badgeMark` uses.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🔴 **THE FIRST DRAFT OF THIS MAP HAD FOUR PLAUSIBLE KEYS AND ALL FOUR WERE WRONG**, and it
+ * was found by curling the endpoint rather than by any test in this repository.
+ *
+ * It said `day_400_600` and `day_600_plus`, in the house style of every other enum on the
+ * platform. The real keys are `under-400`, `400-700`, `700-plus` and `not-for-hire`. The failure
+ * is silent **by design of the surrounding code**: an unknown key draws no chip, so every rate
+ * band in the seeded directory would simply have vanished, on a surface where a blank band is
+ * *also* the correct rendering for somebody who did not answer. Nothing would have looked broken.
+ *
+ * ⚠️ **The containment worked and the vocabulary still has to be right.** `badgeMark`'s
+ * unknown-key-draws-nothing rule is what keeps a mistake here from becoming a WRONG label — and
+ * it is also what would have kept this mistake invisible for as long as nobody looked. A safe
+ * failure mode is not a substitute for reading the source, and a copied list is a copy whether or
+ * not it is guarded.
+ *
+ * ⚠️ **`not-for-hire` is a real band and it draws a chip**, which is a fact worth not tidying
+ * away: somebody who has answered *"no"* has answered, and that is different from a blank.
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 export function rateBandLabel(band: string | null): string | null {
   if (!band) return null;
   const labels: Record<string, string> = {
-    day_under_200: 'Under £200/day',
-    day_200_400: '£200–400/day',
-    day_400_600: '£400–600/day',
-    day_600_plus: '£600+/day'
+    'under-400': 'Under £400/day',
+    '400-700': '£400–700/day',
+    '700-plus': '£700+/day',
+    'not-for-hire': 'Not for hire'
   };
   return labels[band] ?? null;
 }
