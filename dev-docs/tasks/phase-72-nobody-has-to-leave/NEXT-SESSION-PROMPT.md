@@ -1,106 +1,111 @@
 # Next session — phase 72
 
-**Written 2026-08-20, ninth session.** **D5 is settled and NAT-008 is built.** The people surface
-opens in place on both surfaces, a post's author line opens the person behind it, and the whole
-reading path was driven over real HTTP. **Every Tier-3 write in this phase is now unblocked, and
-the flagship's remaining half is the highest-value thing left.**
+**Written 2026-08-20, tenth session.** **NAT-007 is closed, 8/8.** You can ask a question from the
+editor, read every answer, reply, and accept the one that solved it — without opening a browser.
+That is the sentence the phase is named after, and it is now true. **Every remaining Tier-3 surface
+is a copy of shapes that exist.**
 
 ## Read first, in this order
 
-1. [README §4](README.md) — **✅ D5 is settled: the editor gets the same session scope as the
-   browser.** No re-consent step, no narrower grant. ⚠️ It created one piece of work: the device
-   flow's approval copy was written for *identity* and now authorises *writes*.
-2. [NAT-008](NAT-008-THE-PEOPLE-ARE-THE-PRODUCT.md) §Status — 🔴 **read it before NAT-009/010/011.**
-   Three findings all three inherit, and one of them will bite silently.
-3. [NAT-007](NAT-007-A-THREAD-YOU-CAN-ACTUALLY-ANSWER.md) §Status — AC4/AC6 are now a build, not a
-   wait, and the platform already accepts the token.
-4. `models/community/peopleview.ts` and `hooks/useCommunityPeople.ts` — the shapes NAT-009/010/011
-   copy, one layer richer than `threadview.ts` (a list *and* a detail, with narrowing between them).
+1. [NAT-007 §Status](NAT-007-A-THREAD-YOU-CAN-ACTUALLY-ANSWER.md) — 🔴 **read it before NAT-009/010/011.**
+   Four findings they inherit, and the first one is a defect class nothing in this repo was looking
+   for.
+2. `models/community/threadwrites.ts` — the shape NAT-009 and NAT-010 copy for **their** writes: a
+   draft, four failure sentences, and a per-item verb with its own busy and error state.
+3. [README §4](README.md) — ✅ **D5's follow-up is done.** D6, D7, D8, D10 remain, and D10 is the
+   one that shapes NAT-009/010.
 
 ## What happened this session
 
-**`736af592` · `b19f2ec2` · `bb26f362`.** NAT-008's six criteria close. Gates on the committed
-tree: `typecheck:editor` and `typecheck:editor-tests` clean · `test:main` **280 suites / 4544
-tests / 0 failures** · core-ui jest clean · NAT-001's PAIRS table **245 assertions** with 14 new
-pairings graded in both themes. **71 new tests, verified red 14 of 14.**
+`bb73b50c` (editor) · `eb563f4` (platform). Gates on the committed trees: `typecheck:editor` and
+`typecheck:editor-tests` clean · `test:main` **286 suites / 4657 tests / 0 failures** · core-ui jest
+**28 / 521 / 0** · PAIRS **260 assertions** · platform `tsc` clean, vitest **48 files / 1164 tests /
+0 failures**. **84 new tests, verified red 42 of 42.**
 
-### 🔴 The list endpoints have no search, and they page — both halves matter
+### 🔴 A screen can be true in every word and still be a lie
 
-Measured against the route on a real database, with a control: `?q=ada` over three people returns
-**all three**, `?q=zzzzzzzz` returns **all three**, and `?offersCoaching=true` returns **one** — so
-the route ran and its own filters work. **The keyword is simply not read.** That is the fifth
-endpoint in this codebase found doing it.
+Post an answer; the re-read fails. What is left is the cached copy — taken *before* the post, under
+a banner saying so. Every sentence accurate. **The answer is missing and nothing says why**, which
+reads as *it never sent*: the exact failure AC4 exists to prevent, one step later than AC4 looks.
 
-🔴 **NAT-009's RFP board, NAT-010's coaching list and NAT-011's syllabus are the same shape.** They
-must filter locally (which is what the *web* does — one function for the rows and the counts) —
-**and say what they searched over**, because `listBody` pages at 50 and caps at 100. A local search
-over page 1 of 5 is the same silent lie in a nicer coat. `readDirectory` + `boundLine` are the
-pattern; copy them.
+✅ The fix's shape matters more than its words. `postedNote` asks **"is the answer IN the copy we
+are about to draw"** — by post id, against the array — not "is the copy older than the post". That
+one predicate also catches the arm a timestamp check calls fine: a re-read that **succeeds** and
+comes back without it.
 
-### 🔴 A vocabulary copied from the platform must be READ off the platform
+🔴 **NAT-009's brief response and NAT-010's booking have the same shape.** A write, a re-read that
+can fail, and a list that will look unchanged. Copy the predicate, not the sentence.
 
-`rateBandLabel` was written as `day_400_600` / `day_600_plus`, in the house style of every other
-enum over there. The real keys are `under-400`, `400-700`, `700-plus`, `not-for-hire`.
+### 🔴 The write routes had no UI caller on the WEB either
 
-⚠️ **The guard worked and that is exactly why it was dangerous.** An unknown key draws no chip, and
-a blank band is *also* the correct rendering for somebody who did not answer — so every rate would
-have vanished and nothing would have looked broken. Found by **curling**, not by a test. **A safe
-failure mode is not a substitute for reading the source.**
+`POST /v1/bench/threads/:id/posts` and `.../accept` have existed since UNI-015. Nothing called
+them — `src/app/bench/[threadId]/page.tsx` renders read-only, and no client anywhere composed an
+answer. **The editor is now the only client that can answer or accept at all.** 19th "build the
+caller" in this phase, and the first where neither client had one.
 
-### 🔴 There is no contact route on this platform, and AC6 closes by saying so
+⚠️ Worth expecting again in NAT-009/010: `rfps/{id}/responses` and `coaching/{offerId}/bookings`
+are **specified in `docs/API.md` §6 and not built**. NAT-007's half was free because its routes
+already existed. Those two are not.
 
-`PersonProfile` carries no email address, deliberately — UNI-004's relay exists so responding to a
-brief does not hand out addresses, and **D10 is open**. So the profile draws **no** contact button
-rather than one that opens Chrome. `contactFor` is the seam; the real verb is *"ask them on the
-Bench"* and it belongs to NAT-009/NAT-010, which are writes, which D5 has now unblocked.
+### 🔴 An accept is never offered once one exists, and that is a refusal to decide
 
-### ⚠️ A spec that builds a view model cannot grade the function that builds it
+The platform *permits* moving an accept. It neither revokes the first award nor tells the first
+author they were unaccepted. Nobody ruled that, so the client does not expose it. ⚠️ Read off the
+**thread**, not `post.accepted`.
 
-One hole in fourteen: mutating `postView`'s `authorHandle` to `author.replace('@','')` left **every
-render spec green**, because they all construct the view by hand. It would have shipped a profile
-link on an anonymous post opening `/people/someone`. Both halves need an assertion each — and the
-other three surfaces are about to copy these shapes.
+### 🔴 The consent screen authorised a read and now authorises a write
+
+D5 changed **no code**, which is why it needed work. The copy now states the scope (the browser's
+reach, no more) rather than a verb list NAT-009/010 would make stale — and states the uncomfortable
+half: **the editor is the only place the grant can be ended.** 30-day sessions, no account page, no
+session list, no web revoke. A lost laptop holds a 30-day write credential nothing can reach.
+🟡 **That is a real gap and it is nobody's task.** It probably belongs to NAT-012 (the door audit)
+or a new one.
+
+### ⚠️ Two spec signals answered by fixing code, not assertions
+
+`session-readers.test.ts` counts token uses; three identical client constructions satisfy every
+reading of that sentence except its own. And its `isGated` tripwire caught a moved anchor and said
+*"this spec is blind, fix it"* — where the old **claim** had also become wrong, not just blind.
+**Read that section before editing a red counting assertion anywhere.**
+
+### 🔴 PAIRS: 75 rows, 41 pairings — and handovers quoted the rows
+
+Duplicate rows are wanted; nothing distinguished them from accidental re-measurement.
+`DISTINCT_PAIRINGS` is now stated and asserted, and **caught its own constant being wrong on the
+first run**. It exposed one real hole: `border-control` on `bg-2` — the rail's ground, where
+NAT-008's search box and five pills are edged and were never graded.
 
 ## Where to start
 
-🔴 **NAT-007's writes.** D5 is settled, the platform already accepts the editor's bearer token on
-`POST /api/v1/bench/threads/:id/posts`, and `answer()` is already on the client. Closing it takes
-**AC4, AC6, AC7's second direction**, plus NAT-006 AC5 — the flagship, finished. ⚠️ **Carry the
-consent copy with it**: somebody who approved *"sign in"* should not discover later that they also
-approved *"post as me"*. That is UI in NAT-007, not a polish item.
+🔴 **NAT-009 (the work board) or NAT-010 (coaching).** Both read halves are two files' worth of
+copying; both write halves now have a worked example in `threadwrites.ts` **and a platform route
+that does not exist yet**. Build the route first — `docs/API.md` §6 specifies both — then the
+client. ⚠️ D10 shapes the relay outcome NAT-009 renders; do not guess it.
 
-Otherwise **NAT-009** (the work board) or **NAT-011** (the University) — both read-only halves are
-now a copy of two files, and both have writes that D5 unblocked. **NAT-004** (light by default on
-the web, S, `nodegx-community`) is still the only unstarted Tier-1 task.
+Otherwise **NAT-004** (light by default on the web, S, `nodegx-community`) — still the only
+unstarted Tier-1 task, and independent of everything above.
 
-🔴 **Still do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4 on the strength of NAT-006.** They
+🔴 **Still do not close NAT-009 AC5, NAT-010 AC5 or NAT-013 AC4** on the strength of NAT-006. They
 close when mail reaches a human — NAT-014 AC2/AC7.
-
-🔴 **And when you do drive: the layout defect above is the shape to expect again.** Both other
-Tier-3 surfaces will insert their own controls between a section's head and its body. **Measure
-the boxes — do not read the screenshot.**
 
 ## Loose ends
 
-- 🟡 **NAT-008's RAIL PANEL was not driven in situ.** The launcher tab was — and the drive found a
-  real defect no spec could see: the directory's controls sat **14px outside the card's gutter**,
-  because `SectionHead` pads itself and `Body` pads itself, so a component inserted *between* them
-  inherits neither. **The screenshot did not look broken.** Fixed in `e86cd31e`. What is left is
-  the rail: it needs a project open, the launcher's recents did not list the drive copy, and
-  there is no editor global — a native file dialog is not reachable from CDP. ✅ The same component
-  narrowed to 320px overflows nowhere, so the *wrap* is fine; `BasePanel`'s chrome and `ScrollArea`
-  in situ are what has not been looked at.
-- ⚠️ **To drive any of this you must run the platform locally.** NAT-006's ten endpoints still
-  **404 in production** — `community.nodegx.io` serves a build from before this phase.
-  `DATABASE_URL=postgres://nodegx:nodegx@localhost:55432/nodegx_community_s45 npx next dev -p 3100`
-  in `nodegx-community` works, seeded with five people. 🔴 `COMMUNITY_URL` is a **hard-coded
-  constant** with no env override (`models/community/communityorigin.ts`) — pointing the editor at
-  a local platform means editing it, and **reverting it**.
-- ⚠️ **D15's refusal was not driven over HTTP** — that needs an `org_minor` session token. Graded at
-  the composer and the component, each with a permitted control.
-- ⚠️ **Seven phase-72 files remain modified and uncommitted from earlier sessions** (NAT-006/009/
-  010/011/012/013). Untouched. Everything of mine is committed by pathspec.
-- ⚠️ A peer is landing TUT-002 (phase 73) in the same checkout — `lesson*`, `noodl-mcp`,
-  `BackendServicesPanel`. Untouched, and the `test:main` figures above include their suites.
-- ⚠️ **Storybook still does not start** (NAT-005 AC4) and the ~99 fill-role files are unchanged from
-  the last six handovers. The new people components have no stories for that reason.
+- ✅ **The rail was driven this session** — s9's open loose end. Composer flush at 82→402 in a 378px
+  panel, zero overflowing elements. The 14px break-out NAT-008 found does not repeat.
+- ⚠️ **To drive any of this you must run the platform locally.** NAT-006's endpoints still **404 in
+  production**. `DATABASE_URL=postgres://nodegx:nodegx@localhost:55432/nodegx_community_s46 npx next
+  dev -p 3100` in `nodegx-community` (that DB is migrated and seeded). 🔴 `COMMUNITY_URL` is a
+  hard-coded constant with **no env override** — edit it and **revert it**.
+- 🔴 **The editor's `userData` is `~/Library/Application Support/NodeGX`**, not `OpenNoodl Editor`.
+  Writing a drive session to the wrong one does not read as signed-out — the editor keeps using
+  **Richard's real production session** and the resulting 401 looks like your bug. Back the file up
+  and diff it back. (It was restored byte-identical this session.)
+- ⚠️ **NAT-015 still has no producer** and AC5's other half stays open. **D7 (moderation) is still
+  open** and nothing renders a moderation affordance.
+- ⚠️ **The ports still render twice**, on both clients. Unchanged, still one decision on the
+  composer/renderer pair.
+- ⚠️ **Seven phase-72 files remain modified and uncommitted from earlier sessions.** Untouched.
+  Everything of mine is committed by pathspec.
+- ⚠️ A peer is on TUT-003 (phase 73) in the same checkout — `lesson*`, bundles. Untouched.
+- ⚠️ **Storybook still does not start** (NAT-005 AC4); the new composer has no story for that reason.

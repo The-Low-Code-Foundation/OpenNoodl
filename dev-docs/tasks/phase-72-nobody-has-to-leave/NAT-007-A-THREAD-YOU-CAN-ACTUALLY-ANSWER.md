@@ -24,7 +24,144 @@ attached to it, and **reply without leaving**.
 The platform half already exists — `/v1/bench/threads/[threadId]`, `.../posts` and `.../accept`
 are built. This is almost entirely an editor task.
 
-## 🟡 Status — 2026-08-19 (session 8): the reading half is built, driven against the LIVE platform
+## ✅ Status — 2026-08-20 (session 10): ALL EIGHT CRITERIA CLOSE
+
+`bb73b50c` (editor) + `eb563f4` (platform). **AC4, AC6 and AC7's second direction are built and
+driven; AC5 stays half-closed and its other half is NAT-015, which is blocked on a ruling.** You
+can answer a thread from the editor, accept an answer if you asked, and the answer appears on the
+web — the sentence this phase is named after, finished.
+
+| AC | State | Where |
+|---|---|---|
+| 1 — opens in place on both surfaces | ✅ | s8 |
+| 2 — every post, in order | ✅ | s8 |
+| 3 — `Block[]`, no `dangerouslySetInnerHTML` | ✅ | s8 |
+| 4 — **reply from the editor**, honest optimistic state | ✅ | `threadwrites.ts` + `CommunityThreadView`'s composer. Driven: typed in the launcher, landed on the web |
+| 5 — attached fragments render | 🟡 | Unchanged. The pull seam exists; 🔴 **NAT-015 has no producer** |
+| 6 — **accept an answer** | ✅ | `acceptFor` + `client.acceptAnswer`. Driven: one verb, on the answer, for the asker only |
+| 7 — round trip, both directions | ✅ | Web → editor driven s8. **Editor → web driven this session, on a real database** |
+| 8 — offline states | ✅ | s8, **plus a ninth arm this session found** — see below |
+
+Gates on the committed tree: `typecheck:editor` and `typecheck:editor-tests` clean · `test:main`
+**286 suites / 4657 tests / 0 failures** · core-ui jest **28 / 521 / 0** · NAT-001's PAIRS table
+**260 assertions** · platform `tsc` clean and vitest **48 files / 1164 tests / 0 failures**.
+**84 new tests, verified red 42 of 42.**
+
+### 🔴 The screen that is true in every word and still a lie
+
+A person posts an answer. The re-read that follows it fails — they were on a train. What is left on
+screen is AC8's cached arm: the copy we already had, taken **before** the post, under a banner
+saying it is a copy and how old it is. Every sentence on that screen is accurate. **Their answer is
+not in the list and nothing says why**, which reads as *it never sent* — the exact failure AC4
+exists to prevent, arriving one step later than AC4 looks.
+
+✅ `postedNote` is the fix, and the shape of it matters more than the sentence. It asks **"is the
+answer in the copy we are about to draw"** — by post id, against the array — rather than comparing
+timestamps. So it also covers the arm a timestamp check would call fine: a re-read that **succeeds**
+and comes back without the answer in it. Fresh copy, no banner, no answer, nothing to read.
+
+⚠️ It draws on the live arm as well as the cached one, deliberately.
+
+### 🔴 An accept is never offered once a thread has one, and that is a refusal to decide
+
+The platform **permits** moving an accept: `acceptAnswer` re-`update`s `accepted_post_id` and the
+route re-runs happily. What it does not do is revoke the first award, or tell the first author they
+were unaccepted — `recordEvent` awards the new one and `notify` tells only them. So an editor that
+offered "Accept this answer" beside an already-accepted thread would let somebody silently demote a
+stranger and mint a second award, and **nobody has ruled that this is allowed**.
+
+The client therefore draws no verb at all once `acceptedPostId` is set. ⚠️ Read off the **thread**,
+not off `post.accepted` — "some answer is accepted" is what closes the verb, and `post.accepted`
+only ever describes the post it is on.
+
+### 🔴 The consent screen authorised a read and now authorises a write
+
+D5 changed **no code** — the platform already accepted the editor's bearer token — and that is
+precisely why it needed work. `/auth/device`'s copy was written when the device flow proved *who
+you are*; the editor now posts under your handle, and NAT-009/010 add more.
+
+⚠️ **Two things the new copy says that are uncomfortable and true.** The reach is the **same as the
+browser's**, stated as scope rather than as a list of verbs that would go stale the moment NAT-009
+lands. And the editor is the **only place the grant can be ended**: `SESSION_TTL_SECONDS` is 30
+days, this platform has no account page, no session list and nothing that revokes a device from the
+web. A lost laptop holds a 30-day write credential and there is no way to reach it. The spec asserts
+that absence with `routesOnDisk()`, so the day somebody adds `/account` the sentence fails rather
+than quietly becoming false.
+
+🔴 **And it is graded as RENDERED TEXT, not source.** `DevicePage` is an async server component
+nothing can render, so the only gradeable thing would have been its `.tsx` — a file whose own
+comments explain the ruling in the same words the promise uses. `DeviceGrantNotice` is a pure
+component for exactly that reason. **Third time a comment could have stood in for a check here.**
+
+### ✅ Two spec signals answered by fixing the code rather than the assertion
+
+`uni-001/session-readers.test.ts` went red twice, and both were worth having.
+
+1. **"the token is used once, to build a client, and nowhere else"** — *"counted rather than
+   eyeballed: a second use is a second place a decision could hide."* AC4 and AC6 added two more
+   requests. Three identical `new CommunityApiClient({token: session?.token ?? null})` expressions
+   satisfy every reading of that sentence **except the one it was written for**, so the fix is
+   `clientFor()` and the assertion is untouched. Editing it to say *three* would have retired it.
+2. **The hand-off anchor moved** into `threadwrites.ts` and `isGated` threw its own tripwire —
+   *"this spec is blind, fix it"*. ⚠️ **And the old claim would now be wrong rather than merely
+   blind**: the hand-off *is* chosen on the session, and that is the opposite of withholding — it is
+   the arm a person without an account gets. The structural question stopped being the right one, so
+   what replaced it is the property the gate protected: the module deciding which arm to draw is
+   handed a **boolean** and never a credential.
+
+### 🔴 The PAIRS table has 75 rows and 41 pairings, and nothing said so
+
+Found while adding NAT-007's rows. Duplicate rows are **wanted** — a pairing re-recorded at a new
+site is a claim that somebody looked, and rows say so explicitly. ⚠️ **What was missing is any way
+to tell that five new rows added zero new measurements**, which is what a reader takes *"14 new
+pairings"* in a handover to mean. A row duplicating an existing tuple cannot fail unless the row it
+duplicates fails too.
+
+✅ `DISTINCT_PAIRINGS` is now stated and asserted in both directions. **It caught its own constant
+being wrong by two on the first run**, which is the argument for it, on the day it was written.
+
+⚠️ **And one of the seven new rows was a real hole NAT-008 left**: `border-control` on `bg-2`. The
+rail panel paints `bg-2`, and NAT-008 put a search box and five filter pills on it whose only edge
+is that token — graded on `bg-1` (the launcher card) and never on the rail's own ground. It passes,
+3.57 dark / 3.37 light. It was simply never asked.
+
+### ✅ Driven, including the rail this time
+
+Against a platform run locally on a seeded database, signed in as two different people.
+
+- **@ada-builds** (not the asker): composer drawn, `Post answer` disabled until typed, **no accept
+  verb anywhere**. Typed 189 characters, posted → heading `No answers yet — you could be the first.`
+  became `1 answer`, the box cleared, no error and no stale note.
+- **The web**: `/bench/<id>` renders the same words under `@ada-builds`. **AC7's second direction,
+  both clients.**
+- **@nia-new** (the asker): exactly **one** accept verb, on the answer and not on the question —
+  which is the control that makes ada's zero mean something. Clicking it drew *Accepted answer*, the
+  verb vanished from every post, the web showed *"Worked for the asker"*, and
+  `bench_answer_accepted` was queued to ada.
+- **The rail**, in a project: panel content box 82→402, textarea **82→402** — flush with the gutter
+  on both sides, zero overflowing elements, `scrollLeft` pinned at 0. The 14px break-out NAT-008
+  found does not repeat here.
+
+⚠️ **The first attempt drove the wrong credential and it was instructive.** The editor's `userData`
+is `…/Application Support/NodeGX`, not `OpenNoodl Editor`, so the drive token went somewhere nothing
+reads and the editor used **Richard's real production session** against a local platform. It 401'd —
+and the failure arm rendered perfectly, with the text still in the box. An unplanned, real proof of
+AC4's failure path. ✅ The real session was backed up and restored byte-identical.
+
+⚠️ Two 400s from the posts route during the drive were **dev-server compile artifacts**, not a
+product defect: the same request answered 201 once the route was warm, and `answerThread` called
+directly succeeded. Recorded so nobody chases it.
+
+### What is left
+
+1. 🔴 **AC5's other half is NAT-015, and NAT-015 still has no producer.** Unchanged by this session.
+2. ⚠️ **D7 (moderation) is still open** and this task still renders no moderation affordance.
+3. ⚠️ **The ports still render twice**, on both clients. Unchanged and still one decision on the
+   composer/renderer pair.
+
+---
+
+## 🟡 Status — 2026-08-19 (session 8, superseded above): the reading half is built, driven against the LIVE platform
 
 `2d3960a7`. **AC1, AC2, AC3 and AC8 close. AC5 half-closes. AC4, AC6 and half of AC7 are the
 writes.** 🔴 **They waited on D5 when this was written; ✅ D5 was settled on 2026-08-20 — same

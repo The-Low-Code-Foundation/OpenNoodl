@@ -181,9 +181,13 @@ device-flow token *is* a session; the editor posts exactly as the web does, with
 and no second, narrower grant. ✅ **The measurement this was ruled on:** the platform already
 accepts the editor's bearer token on `POST /api/v1/bench/threads/:id/posts` — `apiViewer` reads
 `Authorization: Bearer` and `answerThread` asks nothing further — so D5 was never a capability
-question. ⚠️ **What the ruling costs, written down rather than discovered later:** the device flow's
-consent copy was authored for identity and now authorises writes, so **the approval screen's wording
-is a follow-up**, not an optional polish. 🔴 **It does not widen anything else.** Same scope as the
+question. ✅ **The follow-up the ruling created is DONE — 2026-08-20, s10, `eb563f4`.** The device flow's
+consent copy was authored for identity and now authorises writes; `/auth/device` states the scope
+(the browser's reach, no more) rather than a list of verbs that NAT-009/010 would make stale.
+🔴 **And it states what nobody had written down: the grant can only be ended from the editor.**
+`SESSION_TTL_SECONDS` is 30 days and this platform has no account page, no session list and no
+web-side revoke — so a lost laptop holds a 30-day write credential that cannot be reached. The spec
+asserts that absence, so adding `/account` later fails the test rather than quietly falsifying the copy. 🔴 **It does not widen anything else.** Same scope as the
 browser means exactly the browser's scope: a write the web refuses this account, the editor is
 refused too, and D15 is unchanged. **Unblocks NAT-007 AC4/AC6/AC7-second-direction, NAT-006 AC5,
 and the write halves of NAT-009 and NAT-010.**
