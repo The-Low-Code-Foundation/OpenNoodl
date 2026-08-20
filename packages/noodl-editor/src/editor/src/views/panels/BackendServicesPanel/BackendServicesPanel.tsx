@@ -70,8 +70,12 @@ import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Secti
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { AddBackendDialog } from './AddBackendDialog/AddBackendDialog';
+import finderCss from './BackendFinder/BackendFinder.module.scss';
+import { BackendFinderDialog } from './BackendFinder/BackendFinderDialog';
+import { BackendVisibilityList } from './BackendFinder/BackendVisibilityList';
 import css from './BackendServicesPanel.module.scss';
 import { BackendCard } from './BackendCard/BackendCard';
+import { VisibilityCandidate, describeCollapsedSummary, partitionBackends } from './backendVisibility';
 import { CloudServicesEndpointSection } from './CloudServicesEndpointSection/CloudServicesEndpointSection';
 import { useLocalBackends } from './hooks/useLocalBackends';
 import { LocalBackendCard } from './LocalBackendCard/LocalBackendCard';
@@ -110,6 +114,11 @@ export function BackendServicesPanel() {
   // BCN-009: the switch a user is about to make, and what it changes about what
   // their app publishes. Null when nothing is pending.
   const [pendingSwitch, setPendingSwitch] = useState<{ id: string; disclosure: BackendSwitchDisclosure } | null>(null);
+
+  // TUT-001: the finder holding every backend this project is not about, and the backend made in
+  // this panel a moment ago — panel state only, never persisted. See `backendVisibility.ts`.
+  const [isFinderVisible, setIsFinderVisible] = useState(false);
+  const [justCreatedBackendId, setJustCreatedBackendId] = useState<string | undefined>(undefined);
 
   // Local backends hook
   const {
@@ -191,7 +200,12 @@ export function BackendServicesPanel() {
   // Handle create local backend
   const handleCreateLocalBackend = useCallback(async () => {
     if (newLocalBackendName.trim()) {
-      await createLocalBackend(newLocalBackendName.trim());
+      const created = await createLocalBackend(newLocalBackendName.trim());
+      // TUT-001: a hand-made backend is owned by nobody — no endpoint points at it, it is not
+      // active, and its `projectIds` is empty — so the visibility rule would file it straight into
+      // the finder and the user would watch what they just made fail to appear. Remembering it
+      // here keeps it on screen without claiming an ownership it does not have.
+      if (created) setJustCreatedBackendId(created.id);
       setNewLocalBackendName('');
       setIsAddLocalVisible(false);
     }
@@ -380,6 +394,122 @@ export function BackendServicesPanel() {
     BackendServices.instance.endpointRemoved();
   }, [confirmDisconnect]);
 
+  /**
+   * TUT-001 — the one backend this project is about, and the rest behind the finder.
+   *
+   * Everything the rule needs was already computed above; this reduces the two card shapes to the
+   * facts `partitionBackends` reads and asks it which one to draw. See `backendVisibility.ts` for
+   * why that rule is a separate pure module and what its four tiers are.
+   */
+  const visibilityCandidates: VisibilityCandidate[] = [
+    ...localBackends.map((backend) => ({
+      id: backend.id,
+      name: backend.name,
+      kind: 'local' as const,
+      createdAt: backend.createdAt,
+      running: backend.running,
+      projectIds: backend.projectIds,
+      projectNames: projectNamesByBackend.get(backend.id) ?? []
+    })),
+    ...backends.map((backend) => ({
+      id: backend.id,
+      name: backend.name,
+      kind: 'external' as const,
+      createdAt: backend.createdAt,
+      projectNames: projectNamesByBackend.get(backend.id) ?? []
+    }))
+  ];
+
+  const visibility = partitionBackends({
+    candidates: visibilityCandidates,
+    activeBackendId,
+    boundLocalBackendId: boundLocalBackend?.id,
+    openProjectId: ProjectModel.instance?.id,
+    justCreatedBackendId
+  });
+
+  /**
+   * One card renderer, handed to both the panel's list and the finder.
+   *
+   * 🔴 The finder draws the **same** `LocalBackendCard`, which is what makes hiding a running
+   * backend safe: Stop is on that card, so the collapsed line below is two interactions from
+   * stopping anything it reports as running. A stripped-down finder row would have made the
+   * summary line a promise the finder could not keep — and this panel is the only place a
+   * hand-started backend can be stopped at all, because `ProjectBackendLifecycle` adopts those
+   * rather than owning them and deliberately never stops what it did not start.
+   */
+  const renderBackendRow = (candidate: VisibilityCandidate) => {
+    if (candidate.kind === 'local') {
+      const backend = localBackends.find((b) => b.id === candidate.id);
+      if (!backend) return null;
+      return (
+        <LocalBackendCard
+          backend={backend}
+          // AAQ-002: the badge, and the endpoint's own actions, on the
+          // card that can actually do things with the backend.
+          isProjectEndpoint={boundLocalBackend?.id === backend.id}
+          isActive={boundLocalBackend?.id === backend.id && activeBackendId === ENDPOINT_BACKEND_ID}
+          conflictNote={
+            boundLocalBackend?.id === backend.id && activeBackendId === ENDPOINT_BACKEND_ID ? conflictNote : undefined
+          }
+          onSetActive={
+            boundLocalBackend?.id === backend.id && activeBackendId !== ENDPOINT_BACKEND_ID
+              ? () => handleSetActive(ENDPOINT_BACKEND_ID)
+              : undefined
+          }
+          onDisconnect={boundLocalBackend?.id === backend.id ? () => void handleDisconnectEndpoint() : undefined}
+          onDeployCloudFunctions={() => deployCloudFunctions(backend.id)}
+          onStart={async (options) => {
+            const ok = await startLocalBackend(backend.id, options);
+            // WF-004 convenience: a running local backend becomes the
+            // project's cloud services endpoint automatically — but
+            // only when none is configured, never clobbering a real
+            // external/deployed endpoint.
+            if (ok) {
+              const project = ProjectModel.instance;
+              const current = project ? getCloudServices(project) : null;
+              if (project && current && !current.endpoint) {
+                setCloudServices(project, {
+                  id: backend.id,
+                  endpoint: `http://localhost:${backend.port}`,
+                  appId: backend.id,
+                  // WF-007: this is always our own nodegx-backend
+                  // instance — the canonical discriminant realtime/
+                  // transport selection (BAK-001) keys off.
+                  type: 'nodegx'
+                });
+                console.log(
+                  `[BackendServices] Project cloud services set to local backend "${backend.name}" (http://localhost:${backend.port})`
+                );
+              }
+            }
+            return ok;
+          }}
+          onStop={async () => stopLocalBackend(backend.id)}
+          onDelete={() => handleDeleteLocalBackend(backend.id)}
+          onRename={() => handleRenameLocalBackend(backend.id, backend.name)}
+          otherProjectNames={(projectNamesByBackend.get(backend.id) ?? []).filter(
+            (name) => name !== ProjectModel.instance?.name
+          )}
+        />
+      );
+    }
+
+    const backend = backends.find((b) => b.id === candidate.id);
+    if (!backend) return null;
+    return (
+      <BackendCard
+        backend={backend}
+        isActive={backend.id === activeBackendId}
+        conflictNote={backend.id === conflictingBackendId ? conflictNote : undefined}
+        onSetActive={() => handleSetActive(backend.id)}
+        onDelete={() => handleDeleteBackend(backend.id)}
+        onTestConnection={() => handleTestConnection(backend.id)}
+        onFetchSchema={() => handleFetchSchema(backend.id)}
+      />
+    );
+  };
+
   return (
     <BasePanel title="Backend Services" hasActivityBlocker={hasActivity} hasContentScroll>
       <DeleteDialog />
@@ -475,75 +605,34 @@ export function BackendServicesPanel() {
                 />
               )}
 
-              {localBackends.map((backend) => (
-                <LocalBackendCard
-                  key={backend.id}
-                  backend={backend}
-                  // AAQ-002: the badge, and the endpoint's own actions, on the
-                  // card that can actually do things with the backend.
-                  isProjectEndpoint={boundLocalBackend?.id === backend.id}
-                  isActive={boundLocalBackend?.id === backend.id && activeBackendId === ENDPOINT_BACKEND_ID}
-                  conflictNote={
-                    boundLocalBackend?.id === backend.id && activeBackendId === ENDPOINT_BACKEND_ID
-                      ? conflictNote
-                      : undefined
-                  }
-                  onSetActive={
-                    boundLocalBackend?.id === backend.id && activeBackendId !== ENDPOINT_BACKEND_ID
-                      ? () => handleSetActive(ENDPOINT_BACKEND_ID)
-                      : undefined
-                  }
-                  onDisconnect={
-                    boundLocalBackend?.id === backend.id ? () => void handleDisconnectEndpoint() : undefined
-                  }
-                  onDeployCloudFunctions={() => deployCloudFunctions(backend.id)}
-                  onStart={async (options) => {
-                    const ok = await startLocalBackend(backend.id, options);
-                    // WF-004 convenience: a running local backend becomes the
-                    // project's cloud services endpoint automatically — but
-                    // only when none is configured, never clobbering a real
-                    // external/deployed endpoint.
-                    if (ok) {
-                      const project = ProjectModel.instance;
-                      const current = project ? getCloudServices(project) : null;
-                      if (project && current && !current.endpoint) {
-                        setCloudServices(project, {
-                          id: backend.id,
-                          endpoint: `http://localhost:${backend.port}`,
-                          appId: backend.id,
-                          // WF-007: this is always our own nodegx-backend
-                          // instance — the canonical discriminant realtime/
-                          // transport selection (BAK-001) keys off.
-                          type: 'nodegx'
-                        });
-                        console.log(
-                          `[BackendServices] Project cloud services set to local backend "${backend.name}" (http://localhost:${backend.port})`
-                        );
-                      }
-                    }
-                    return ok;
-                  }}
-                  onStop={async () => stopLocalBackend(backend.id)}
-                  onDelete={() => handleDeleteLocalBackend(backend.id)}
-                  onRename={() => handleRenameLocalBackend(backend.id, backend.name)}
-                  otherProjectNames={(projectNamesByBackend.get(backend.id) ?? []).filter(
-                    (name) => name !== ProjectModel.instance?.name
-                  )}
-                />
-              ))}
+              {/* TUT-001: one card, not every backend on the machine. `visibility.attached` holds
+                  at most one — the backend the project points at, is active on, or last used —
+                  and everything else is one click away in the finder below. */}
+              <BackendVisibilityList candidates={visibility.attached} renderRow={renderBackendRow} />
 
-              {backends.map((backend) => (
-                <BackendCard
-                  key={backend.id}
-                  backend={backend}
-                  isActive={backend.id === activeBackendId}
-                  conflictNote={backend.id === conflictingBackendId ? conflictNote : undefined}
-                  onSetActive={() => handleSetActive(backend.id)}
-                  onDelete={() => handleDeleteBackend(backend.id)}
-                  onTestConnection={() => handleTestConnection(backend.id)}
-                  onFetchSchema={() => handleFetchSchema(backend.id)}
-                />
-              ))}
+              {/* 🔴 R1: the collapsed state stays honest. A bare hidden count reads as inert, and
+                  a hand-started backend is never stopped by `ProjectBackendLifecycle` — so if this
+                  line did not say how many hidden backends are RUNNING, hiding them would leave a
+                  live process with nothing on screen pointing at it. Clicking opens the finder,
+                  where the same card's Stop button is the second of two interactions. */}
+              {visibility.others.length > 0 && (
+                <button
+                  className={finderCss.SummaryLine}
+                  onClick={() => setIsFinderVisible(true)}
+                  data-test="backend-visibility-summary"
+                >
+                  <Text textType={TextType.Shy}>
+                    {describeCollapsedSummary(visibility.summary, {
+                      // The endpoint card above is an attachment the partition cannot see —
+                      // `ENDPOINT_BACKEND_ID` names no card. See `describeCollapsedSummary`.
+                      endpointCardVisible: !boundLocalBackend && Boolean(getCloudServicesEndpoint())
+                    })}
+                  </Text>
+                  <span className={finderCss.SummaryAction}>
+                    <Text textType={TextType.Default}>Find a backend</Text>
+                  </span>
+                </button>
+              )}
             </VStack>
           </Container>
 
@@ -570,6 +659,13 @@ export function BackendServicesPanel() {
         }}
         onRequestManagedBackend={() => setIsAddLocalVisible(true)}
         onRequestEndpoint={() => setIsEndpointEditRequested(true)}
+      />
+
+      <BackendFinderDialog
+        isVisible={isFinderVisible}
+        onClose={() => setIsFinderVisible(false)}
+        rows={visibility.others}
+        renderRow={renderBackendRow}
       />
 
       <BackendSwitchDialog

@@ -75,6 +75,13 @@
     "src/editor/src/models/nodelibrary/cloud-node-library.json",
     "src/editor/src/utils/import-engine/legacy",
     "src/editor/src/validation",
+    // TUT-001: `backendVisibility.ts` is the same shape once more — which backend the Backend
+    // Services panel shows and which fall behind the finder, lifted out of the panel so the rule
+    // is graded as a function of plain data rather than by reading a `.map()` as text. Import-free
+    // by design: it takes the two backend shapes reduced to a `VisibilityCandidate` rather than
+    // importing `LocalBackendInfo` or `BackendConfig`, which is what keeps React, the IPC hook and
+    // the `BackendServices` singleton out of this runner. The panel itself is not reached.
+    "src/editor/src/views/panels/BackendServicesPanel/backendVisibility.ts",
     // MCP-001: `mcpCommands.ts` is the same shape again — the settings section's command builder
     // imports nothing at all, which is what lets the plain-Node runner assert the exact strings
     // the two Copy buttons put on the clipboard. Its component neighbour is not reached.
