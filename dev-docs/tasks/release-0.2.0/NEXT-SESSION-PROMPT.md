@@ -287,7 +287,7 @@ CI for the first time. But two are one-line fixes and should not ride into 0.2.1
 
 | Job | Now |
 |---|---|
-| **Test (runtime, …)** | ✅ **FIXED in `50892cb0`** (was red for a *third* reason again — see §2b⁗). 🔴 **NOT for the reason §2b′ recorded.** The `EditorConnection` defect was real and **is** fixed (`tsc --noEmit -p .` exit 0; runtime is **139 passed** in CI). But the job fails on **`@noodl/preview`**, a *different* package in the same job — see §2b‴ |
+| **Test (runtime, …)** | 🔴 **RED AGAIN on `e87baadc` — a FOURTH cause, in `test:main`, see §2b⁵.** Previously: ✅ **FIXED in `50892cb0`** (was red for a *third* reason again — see §2b⁗). 🔴 **NOT for the reason §2b′ recorded.** The `EditorConnection` defect was real and **is** fixed (`tsc --noEmit -p .` exit 0; runtime is **139 passed** in CI). But the job fails on **`@noodl/preview`**, a *different* package in the same job — see §2b‴ |
 | **Node catalog freshness** | ✅ **FIXED.** Regenerated. The diff is **26 lines, every one a colour hex** — no node type added, removed or renamed. It was a **second copy of the node palette drifting** from the cloud registry. `cloud-library:check` exit 0, and `catalog:check` / `groups:check` / `examples` / `merge:check` were **already green** |
 | **Lint** | 🟡 **PARTLY.** `lint:ci`, `tokens:css`, `colors` all exit 0. **`tsfixme` still red** — §2a explains why that is a decision |
 | **Test (editor)** | 🟡 **MEASURED ONCE, AT THE FLOOR — but the job is UNSTABLE.** Run 32379435450 completed: **2849 specs / 10 failures**, floor **name for name**, unpinned seed. **Two other runs never finished** (2766 and 2194 markers, no summary), both dying in `AIX-011` — see §2b |
@@ -408,8 +408,59 @@ a pipe.
 that job has passed in this whole release. `Typecheck`, `Build`, `Node catalog freshness`,
 `Test (platform-node)`, `Library check`, `Check build artefacts` all green alongside it.
 
-🔴 **Only `Lint` is still red, and only for `tsfixme` — which is §2a's decision for Richard.**
-That is now the *sole* remaining red on this branch that is not expected-by-design.
+~~🔴 **Only `Lint` is still red…**~~ — **true when written, false one commit later.** That job
+went red again on the very next run, for a **fourth** distinct reason, in a **different package
+again**. See §2b⁵.
+
+### 2b⁵. 🔴 THE SAME JOB WENT RED AGAIN — a FOURTH cause, and the log could not say why
+
+Run **32386199625** (and its push-triggered twin **32386192365**), both on `e87baadc`:
+
+```
+Test Suites: 1 failed, 294 passed, 295 total
+Tests:       2 failed, 4829 passed, 4831 total
+```
+
+🔴 **Those are `test:main`'s numbers, not `test:packages`'.** The job runs **four** steps, and the
+first three passed — `@noodl/preview` really is fixed. The failure is
+`tests-unit/el-009/kit-renders-on-page-three.test.ts`, both arms, in the `npm run test:main`
+step that had **never been reached** before `50892cb0` unblocked the packages ahead of it.
+
+⚠️ **This is the nx-bails trap a THIRD time, now at STEP granularity.** §2b‴ caught it across
+packages, §2b⁗ inside one test file; here a green step-3 hid a red step-4 for the whole release.
+**"The job is green" was only ever "the job got further than last time."**
+
+🔴 **The diff from the last green run is ONE DOCS FILE.** `git diff --stat 50892cb0..e87baadc` is
+`NEXT-SESSION-PROMPT.md | 196 ++-` and nothing else, so the code is byte-identical across a green
+run and two red ones. **This is environmental, not a regression** — and `test:main` has now run in
+this job exactly three times: **1 pass, 2 fails**, all on the same code.
+
+#### ✅ Fixed the part that was actually broken: the harness was binning its own diagnosis
+
+**Not the flake — the blindness.** `measure-from-disk.js --json` answers a refusal on **stdout**
+and exits **1** ([`measure-from-disk.js:122-139`](../../../scripts/devtools/measure-from-disk.js)).
+The helper called it through `execFileSync`, which **throws** on a non-zero exit — so the
+machine-readable cause sat on the throw's `.stdout` with nothing reading it. Jest printed
+`Command failed: <argv>` against an **empty stderr**, which is why neither run says anything
+about why.
+
+✅ **Reproduced the exact symptom shape deliberately** — a bogus `--page` gives `EXIT=1`, full JSON
+on stdout, stderr **empty**. That is the CI signature, character for character.
+
+✅ **Fixed in `3f1985fb`**, reusing the idiom `page-selection.test.ts` (same directory) already
+uses and already asserts by name. The **signal** is reported as well as the status, because a
+SIGKILLed child reports `status: null` — and *OOM kill* vs *wedged Chrome* vs *real regression*
+look identical in a bare `Command failed:` and want opposite fixes.
+
+**Verified:** 13/13 across both el-009 suites, `typecheck:editor-tests` exit 0, eslint exit 0.
+The new path was **grade-tested by mutation** (ARM A pointed at a non-existent page): it now
+prints the refusal instead of the argv. File restored from backup and **md5-verified** after.
+`tsfixme` unmoved at **+37/+125** — the catch is typed, not `any`.
+
+🔴 **THE CAUSE IS STILL UNKNOWN, AND THAT IS THE POINT.** This commit does not make the job green;
+it makes the next failure **say its own name**. Do not read a green run as the fix — read the next
+red one, which will now carry a cause. ⚠️ Locally the command exits 0 and the suite is 4/4, so
+**"cannot reproduce" is the expected local result** and is not evidence of anything.
 
 ### 2b″. ✅ A FIFTH red job nobody had counted: `Test noodl/platform-node`
 
