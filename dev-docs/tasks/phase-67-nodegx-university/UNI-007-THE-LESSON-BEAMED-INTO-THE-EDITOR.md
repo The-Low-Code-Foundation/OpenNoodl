@@ -635,6 +635,63 @@
 > installable**. Curriculum hosting is §11's, still open, and still the real blocker on *"a
 > stranger learns NodeGX"*.
 
+> ---
+>
+> ### 🔴 THE 500 WAS HUNTED AND NOT CAUGHT — but the reason it was uncatchable is fixed (2026-08-20, session 49)
+>
+> Platform commit **`edbe04c`**. 🔴 **Read this before spending another hour on the trigger: nine
+> dimensions are already excluded, and none of them reproduce it.**
+>
+> | Dimension tested | Result |
+> |---|---|
+> | 12 repeated `recordIntake` calls on one real pool | ✅ all OK — so **per-connection prepared-statement caching is excluded** |
+> | 8 sequential `POST`s against a cold server | ✅ all `200` |
+> | HMR — 3 source touches, recompiles confirmed in the log | ✅ all `200` |
+> | 6 concurrent `POST`s | ✅ all `200` |
+> | `path` + `intake` interleaved concurrently | ✅ all `200` |
+> | 40-iteration mixed stress | ✅ `200` until `WRITE_LIMIT` returns `429` **correctly** |
+> | Querying an **ended** pool | ❌ different error — `CONNECTION_ENDED` |
+> | `sql.json(undefined)` | ❌ different error — `UNDEFINED_VALUE`, **not** `ERR_INVALID_ARG_TYPE` |
+> | **All 18 valid answer combinations** over HTTP | ✅ all `200` — the `intake_answers_are_tokens` CHECK accepts everything `parseIntake` admits |
+>
+> ⚠️ **And a code reading that narrows it further.** `connection.js:959` serializes a parameter
+> as `type in options.serializers ? options.serializers[type](x) : '' + x`, and `types.js:206`
+> registers `serializers[3802] = JSON.stringify` from `json`'s `from: [114, 3802]`. Reaching
+> `ERR_INVALID_ARG_TYPE` there needs a serializer returning a **non-string**, which
+> `JSON.stringify` does only for `undefined`/function/symbol — and `undefined` is caught earlier
+> as `UNDEFINED_VALUE`. 🔴 **So `recordIntake`'s parameters cannot produce that error from any
+> input `parseIntake` admits, and session 48's attribution of the 500 to `sql.json` is probably a
+> `next dev` source-mapped stack naming the wrong frame.** Whoever picks this up should capture
+> the **raw** error, not the dev overlay's attribution.
+>
+> ### ✅ What WAS fixed — the failure that left nothing behind
+>
+> 🔴 **Measured 2026-08-20:** an unguarded throw in a Next route handler answers with an **empty
+> body and NO `content-type` header at all**. Not *"Next's own HTML error page"* — this route's own
+> comment said that, and the comment was wrong; it is corrected in `edbe04c`. That breaks
+> `docs/API.md`'s first-table contract — *"`Content-Type: application/json` on every response,
+> including errors"* — for precisely the failures nobody predicted.
+>
+> **That is why session 48 lost the trigger**: the route discarded the error, so the only trace was
+> a line in a dev console that scrolled away. `serverError(where, cause)` in `apishape.ts` now logs
+> the cause and returns a JSON `500` that does not name our schema, and the intake route's read,
+> write and viewer lookup all use it.
+>
+> ⚠️ **This does NOT fix the original 500** — it makes the next one diagnosable. Stated plainly so
+> nobody reads `edbe04c` as a resolution.
+>
+> 🔴 **`isId` is the same family from the other end.** It fixed nine routes on 2026-08-19 by making
+> the throw *impossible*, which only covers throws whose cause is in the URL. Every other route in
+> this app is still unguarded and there is **no middleware** — a wider sweep is a real finding,
+> deliberately left unswept rather than done unasked.
+>
+> ✅ **Verified against a real DB failure, not a simulated one**: a template copy of the drive
+> database with `learner_intakes` dropped, over real HTTP. `POST` → `500` + `application/json` +
+> `{"error":…}`; `GET` → the same; the cause in the log with its Postgres message and source line.
+> **Controls read `200`** — `/v1/community/home`, and signed-out `GET /me/intake` still drawing the
+> real questions, so UNI-001 AC4's property survives the `try`/`catch`. The spec carries a
+> known-firing control and **reddens when the guard is removed** (mutation-tested).
+
 
 ## Premise
 
