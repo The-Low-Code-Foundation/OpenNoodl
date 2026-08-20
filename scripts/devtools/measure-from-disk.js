@@ -12,6 +12,10 @@
  *   --screenshot <mode>      full | viewport | none        (default: full)
  *   --scale <n>              screenshot scale              (default: 0.5)
  *   --backend-port <n>       proxy /__backend to this port
+ *   --page <path>            measure ONLY this page, by its urlPath ("quiz",
+ *                            "/quiz", "#quiz" or the component name; "/" is the
+ *                            start page). A path no router registers is a usage
+ *                            error, not an empty report (EL-009 AC3).
  *   --editor-tokens          mirror a running editor's tokens instead of the
  *                            project's own (see render-from-disk.js — this is a
  *                            way to measure the wrong palette, not a default)
@@ -25,7 +29,7 @@ const fs = require('fs');
 const { renderReport, parseViewports } = require('./render-report');
 
 const argv = process.argv.slice(2);
-const VALUE_FLAGS = new Set(['--out', '--viewports', '--screenshot', '--scale', '--backend-port']);
+const VALUE_FLAGS = new Set(['--out', '--viewports', '--screenshot', '--scale', '--backend-port', '--page']);
 const flag = (name, fallback) => {
   const i = argv.indexOf(name);
   return i === -1 ? fallback : argv[i + 1];
@@ -75,7 +79,7 @@ function printHuman(report, files) {
 
 async function main() {
   if (!projectDir) {
-    console.error('usage: measure-from-disk.js <project-dir> [--json] [--out prefix] [--viewports desktop,phone]');
+    console.error('usage: measure-from-disk.js <project-dir> [--json] [--out prefix] [--viewports desktop,phone] [--page quiz]');
     process.exit(2);
   }
 
@@ -85,7 +89,8 @@ async function main() {
     screenshot: flag('--screenshot', 'full'),
     deviceScaleFactor: Number(flag('--scale', 0.5)),
     backendPort: flag('--backend-port') ? Number(flag('--backend-port')) : undefined,
-    editorTokens: argv.includes('--editor-tokens')
+    editorTokens: argv.includes('--editor-tokens'),
+    page: flag('--page')
   });
 
   const out = flag('--out');

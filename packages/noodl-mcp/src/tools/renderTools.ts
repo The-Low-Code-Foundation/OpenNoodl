@@ -65,7 +65,11 @@ export function registerRenderTools(server: McpServer, binding: ProjectBinding):
         backend_port: z
           .number()
           .optional()
-          .describe('Port of this project’s running backend, so data-driven sections render their rows')
+          .describe('Port of this project’s running backend, so data-driven sections render their rows'),
+        page: z
+          .string()
+          .optional()
+          .describe('Measure only this page, by urlPath ("quiz"). Default: every page the router registers')
       }
     },
     guarded(
@@ -74,13 +78,15 @@ export function registerRenderTools(server: McpServer, binding: ProjectBinding):
         screenshot?: 'full' | 'viewport' | 'none';
         scale?: number;
         backend_port?: number;
+        page?: string;
       }): Promise<ToolResult> => {
         const scale = args.scale === undefined ? undefined : Math.min(MAX_SCALE, Math.max(MIN_SCALE, args.scale));
         const { report, screenshots } = await runRenderReport(binding.require().projectDir, {
           viewports: args.viewports,
           screenshot: args.screenshot,
           scale,
-          backendPort: args.backend_port
+          backendPort: args.backend_port,
+          page: args.page
         });
 
         return {

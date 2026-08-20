@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "el009f00-0000-4000-8000-000000000004",
+  "version": 1,
+  "nodes": [
+    { "id": "mid-page", "type": "Page", "x": 0, "y": 0, "parameters": { "title": "Middle", "urlPath": "middle" }, "children": ["mid-text"] },
+    { "id": "mid-text", "type": "Text", "x": 0, "y": 0, "parent": "mid-page", "parameters": { "text": "Page two draws its own text." } }
+  ],
+  "visualRoots": ["mid-page"]
+}

@@ -844,6 +844,81 @@ function routedPages(projectDir) {
   return { ok: true, pages, startPage, pathType };
 }
 
+/**
+ * Which routed page the caller asked for — or a refusal that names the miss.
+ *
+ * ## EL-009 AC3 — the control this instrument did not have
+ *
+ * Until a caller could *name* a page there was no wrong answer to reject, and a
+ * gate that cannot reject a wrong answer has measured nothing. The sweep added
+ * in UNI-010 §8.2 visits every page the router registers, which is the right
+ * default and is silent about the one case a human gets wrong most often:
+ * typing the path. `--page quizz` on a project whose page is `quiz` must not
+ * come back `Rendered clean` about some other page, and must not come back
+ * clean about nothing.
+ *
+ * 🔴 The failure has to be **distinct from a clean render and from a crash**.
+ * `renderReport` throws with `actionable` set, the same channel
+ * {@link checkPrerequisites} uses, so `--json` callers get
+ * `{error: {actionable: true, problems: [...]}}` and the MCP tool turns it into a
+ * sentence. Returning an empty report would read as "that page has no defects".
+ *
+ * ⚠️ Accepts the shapes people actually type — `quiz`, `/quiz`, `#quiz`,
+ * `/#quiz` — and the component's own name, because the report prints component
+ * names (`pages: 2/3 measured — Pages/Home, Pages/Quiz`) and the obvious next
+ * move is to paste one back in. `/` and the empty string mean the start page.
+ *
+ * @param {{pages: Array, startPage: string|undefined}} routes  from {@link routedPages}
+ * @param {string} requested
+ * @returns {{ok: true, page: object} | {ok: false, message: string}}
+ */
+function resolvePageRequest(routes, requested) {
+  const raw = String(requested).trim();
+  const normalised = raw.replace(/^\//, '').replace(/^#/, '').replace(/^\//, '');
+
+  const registered = routes.pages
+    .map((p) => `${p.isStart ? '/' : p.urlPath || '(no urlPath)'} (${p.component})`)
+    .join(', ');
+
+  if (!routes.pages.length) {
+    return {
+      ok: false,
+      message:
+        `Cannot render the page "${raw}": this project registers no pages at all. ` +
+        'A page is reachable only when a Router node lists it in its `pages` parameter.'
+    };
+  }
+
+  if (normalised === '') {
+    const start = routes.pages.find((p) => p.isStart);
+    if (start) return { ok: true, page: start };
+  }
+
+  const match =
+    routes.pages.find((p) => p.urlPath === normalised) ||
+    routes.pages.find((p) => p.component === raw || p.component === normalised);
+
+  if (!match) {
+    return {
+      ok: false,
+      message: `Cannot render the page "${raw}": no page registered at that path. Registered pages: ${registered}.`
+    };
+  }
+
+  // Found, but this harness still cannot address it — and saying "no such page"
+  // here would be a lie about a page that exists. The two refusals are kept
+  // apart because they have different fixes: one is a typo, the other is a
+  // missing `urlPath` or a route parameter nothing can choose a value for.
+  if (!match.reachable) {
+    return {
+      ok: false,
+      message: `The page "${raw}" is registered as ${match.component}, but this harness cannot address it: ${match.unreachable}.`
+    };
+  }
+
+  return { ok: true, page: match };
+}
+
 function findChrome() {
   const probed = [];
   const check = (p) => {
@@ -1213,6 +1288,10 @@ async function withRenderedPage(options, fn) {
  *   (UNI-010 §8.2). Defaults to **on**: leaving it off by default would have shipped the fix and
  *   left every existing caller — F4 included — reading the same one-page report it always did.
  *   Each extra page costs one navigation plus one measurement per viewport.
+ * @param {string} [options.page]              Measure only this page, named by its `urlPath` (EL-009
+ *   AC1/AC3) — `quiz`, `/quiz`, `#quiz` or the component name; `/` is the start page. A path no
+ *   router registers is an **actionable throw**, never an empty report. Implies no sweep: the
+ *   caller asked for one page and paying ~4.3s each for the rest is not what they asked.
  * @returns {Promise<{report: object, screenshots: Array<{name: string, mimeType: string, base64: string}>}>}
  */
 async function renderReport(options) {
@@ -1223,10 +1302,29 @@ async function renderReport(options) {
     deviceScaleFactor = 0.5,
     backendPort,
     editorTokens = false,
-    renderRoutedPages = true
+    renderRoutedPages = true,
+    page: requestedPage
   } = options;
 
   const started = Date.now();
+
+  // 🔴 EL-009 AC3 — resolved BEFORE the browser starts, on purpose. A typo'd
+  // path is a caller error that a disk read can settle, and `render.ts` records
+  // what the other shape costs: a spec meaning to assert "no harness at all"
+  // instead waited eight seconds for one. Refusing early also means the refusal
+  // cannot be confused with a render that failed.
+  const routes = routedPages(projectDir);
+  let focus;
+  if (requestedPage !== undefined) {
+    const resolved = resolvePageRequest(routes, requestedPage);
+    if (!resolved.ok) {
+      const error = new Error(resolved.message);
+      error.problems = [resolved.message];
+      error.actionable = true;
+      throw error;
+    }
+    focus = resolved.page;
+  }
 
   return withRenderedPage({ projectDir, backendPort, editorTokens }, async (page) => {
     // AWP-004 §3 — the catalog's defaults, plus this project's own fallbacks on
@@ -1238,7 +1336,6 @@ async function renderReport(options) {
     // UNI-010 §8.2 — a probe is evidence about the page that can contain it.
     // See `reachableComponents`: project-wide probes measured against one page
     // is how a correct eight-page project scored 14 `empty-list` errors.
-    const routes = routedPages(projectDir);
     const allProbes = listProbes(projectDir);
     const { components: projectComponents } = readComponents(projectDir);
     const byName = new Map(projectComponents.map((c) => [c.name, c]));
@@ -1253,7 +1350,19 @@ async function renderReport(options) {
       return pageComponent === routes.startPage ? [...own, ...unplaced] : own;
     };
 
-    const expression = measureExpression(placeholders, probesFor(routes.startPage));
+    // 🔴 EL-009 AC1 — the primary measurement is the page the caller NAMED.
+    // Everything below it (viewports, screenshots, findings, the summary line)
+    // describes `subject`, which is the start page unless `page` named another.
+    // Measuring the start page as well and appending the requested one would
+    // have been a smaller edit and the wrong product: the caller asked about one
+    // page, and every extra page costs a navigation and a measurement per
+    // viewport (~4.3s), on top of findings from a page nobody asked about.
+    const subject = focus || routes.pages.find((pg) => pg.isStart);
+    const subjectComponent = subject ? subject.component : routes.startPage;
+    const focusedOffStart = Boolean(focus && !focus.isStart);
+    if (focusedOffStart) await page.navigate(focus.url);
+
+    const expression = measureExpression(placeholders, probesFor(subjectComponent));
     const measured = {};
     const screenshots = [];
 
@@ -1296,7 +1405,28 @@ async function renderReport(options) {
     // AWP-003 — computed only when something is blank, because it is an
     // explanation of an observed blank and never a prediction of one.
     const blank = Object.values(measured).some((v) => v && !v.error && v.text.elements === 0 && v.images.total === 0);
-    const { findings, summary } = summarise(measured, blank ? blankDiagnosis(projectDir) : undefined, overridden);
+    // ⚠️ `blankDiagnosis` walks from the start page and every sentence it
+    // produces names it, so a blank *other* page must not be explained by it —
+    // the same reason the sweep below passes `undefined`. Attributing the start
+    // page's causes to page three is a confident wrong answer, which is worse
+    // than the "not determined" the message below says instead.
+    const diagnosable = blank && !focusedOffStart;
+    const { findings: rawFindings, summary } = summarise(
+      measured,
+      diagnosable ? blankDiagnosis(projectDir) : undefined,
+      overridden
+    );
+    const findings = !focusedOffStart
+      ? rawFindings
+      : rawFindings.map((f) => ({
+          ...f,
+          page: subjectComponent,
+          message:
+            f.code === RenderFinding.BlankRender
+              ? `The routed page "${subjectComponent}" rendered nothing at all — no text and no images. ` +
+                'Only the start page is diagnosed against the graph, so the cause was not determined here.'
+              : `On the routed page "${subjectComponent}": ${f.message}`
+        }));
 
     // ── UNI-010 §8.2 — the other routed pages ────────────────────────────────
     //
@@ -1313,7 +1443,12 @@ async function renderReport(options) {
     const pageReports = [];
     const extraFindings = [];
 
-    if (renderRoutedPages) {
+    if (focus) {
+      // Named-page mode: `pages` still carries a row, because a report whose
+      // `pages` is empty reads as "this project has none" — which is what the
+      // no-router control legitimately reports, and the two must not look alike.
+      pageReports.push({ ...focus, measured: true, viewports: measured });
+    } else if (renderRoutedPages) {
       for (const p of routes.pages) {
         if (p.isStart) {
           pageReports.push({ ...p, measured: true, viewports: measured });
@@ -1374,6 +1509,14 @@ async function renderReport(options) {
     // every page measured, and each borrowed finding names its page.
     let allSummary = extraFindings.length ? summaryLine(measured, allFindings) : summary;
 
+    // 🔴 A summary must not out-claim its coverage — the rule the skip notice
+    // below was added for, applied to the other direction. "Rendered clean" from
+    // a run that looked at ONE named page is true of that page and false of the
+    // app, and this is the sentence readers stop at.
+    if (focus) {
+      allSummary += ` (page "${focus.isStart ? '/' : focus.urlPath}" only — the rest of this project was not looked at.)`;
+    }
+
     // 🔴 And a summary must not out-claim its own coverage. A project whose other
     // pages could not be addressed still gets "Rendered clean" from the line
     // above — the same sentence about a different blindness, which is precisely
@@ -1410,6 +1553,7 @@ async function renderReport(options) {
 module.exports = {
   renderReport,
   routedPages,
+  resolvePageRequest,
   reachableComponents,
   withRenderedPage,
   summarise,

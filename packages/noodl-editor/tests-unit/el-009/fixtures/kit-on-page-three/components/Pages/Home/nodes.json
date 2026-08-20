@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "el009f00-0000-4000-8000-000000000003",
+  "version": 1,
+  "nodes": [
+    { "id": "home-page", "type": "Page", "x": 0, "y": 0, "parameters": { "title": "Home", "urlPath": "home" }, "children": ["home-text"] },
+    { "id": "home-text", "type": "Text", "x": 0, "y": 0, "parent": "home-page", "parameters": { "text": "The start page draws its own text." } }
+  ],
+  "visualRoots": ["home-page"]
+}

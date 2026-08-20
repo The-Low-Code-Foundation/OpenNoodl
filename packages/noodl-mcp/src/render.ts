@@ -88,6 +88,8 @@ export interface RenderOptions {
   scale?: number;
   backendPort?: number;
   timeoutMs?: number;
+  /** EL-009 AC1/AC3 — measure only this page, by `urlPath` or component name. */
+  page?: string;
 }
 
 /**
@@ -268,6 +270,7 @@ export async function runRenderReport(
   if (screenshot !== 'none') args.push('--inline-screenshots', '--scale', String(options.scale ?? 0.4));
   if (options.viewports) args.push('--viewports', options.viewports);
   if (options.backendPort) args.push('--backend-port', String(options.backendPort));
+  if (options.page) args.push('--page', options.page);
 
   const { stdout, stderr } = await spawnRender(entry, args, options.timeoutMs ?? RENDER_TIMEOUT_MS);
 
