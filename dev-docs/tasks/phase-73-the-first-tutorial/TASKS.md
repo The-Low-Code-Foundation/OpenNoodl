@@ -19,7 +19,7 @@
 |---|---|---|---|---|---|
 | **✅ [TUT-001](TUT-001-ONE-DATABASE-NOT-FORTY.md)** | **One database, not forty.** The Backend Services list renders every backend on the machine flat; show the attached one and put the rest behind a finder that searches the metadata already on disk | editor | **1** | S/M | ✅ **DONE 08-19.** R1 answered and **driven**; all six ACs close |
 | **✅ [TUT-002](TUT-002-A-CONDITION-THAT-CAN-SEE-DATA.md)** | **A condition that can see data.** The lesson vocabulary is entirely graph-structural, so a data tutorial cannot grade the data. Add snapshot-backed collection verbs, built-in DB only, and give the MCP the same ones | editor / noodl-mcp | **2** | M | ✅ **DONE 08-20 (session 3).** All seven ACs close; both fillers built and called; the sidecar half **driven against four real backends**. 🔴 Session 3 also found and fixed the harness defect that would have refused every data lesson as F2 |
-| **[TUT-003](TUT-003-THE-TUTORIAL-ITSELF.md)** | **The tutorial itself.** A Visual Function that validates and shapes input, fans out on `send signal` to Create Record, and a Query that feeds the list back — the composition ruling, taught | content / editor | **3** | M | ✅ **UNBLOCKED — R3 answered 2026-08-20: the learner creates it.** Must carry a `solution/` or three of four harness classes go dark. ⚠️ Do **not** grade `hasColumns` against a system table — see TUT-002's drive. 🟡 Session 4 fixed the F2′ defect that would have refused it and recorded every node type / port name it needs; **the bundle itself is not yet authored** |
+| **✅ [TUT-003](TUT-003-THE-TUTORIAL-ITSELF.md)** | **The tutorial itself.** A Visual Function that validates and shapes input, fans out on `send signal` to Create Record, and a Query that feeds the list back — the composition ruling, taught | content / editor | **3** | M | ✅ **DONE 2026-08-20 (session 5).** The bundle is `project-examples/lessons/log-a-thing/` — 8 steps, 6 graded, **F1–F4 all pass, `installable: true`**, and **driven end to end**: installed as `local-ai`, the wrong wiring grades 5/6 and the right one 6/6, and the data step was **observed red on a complete graph** |
 | **[TUT-004](TUT-004-ONE-CLICK-FROM-THE-PANEL.md)** | **One click from the panel.** The community panel installs a bundle; the web page keeps its download link. Build the caller, not the mechanism | editor / platform | **4** | S/M | TUT-003, phase 72 NAT-005/006. 🔴 **R2.** 🔴 §1D — `install()` already exists |
 
 ---
@@ -70,12 +70,35 @@
   the task file rather than re-derivable — including that Create Record's terminal signal is **Done**
   and the Visual Function's is **Success**.
 
+- **✅ TUT-003 session 5 (2026-08-20) — the bundle exists, and it was driven.**
+  [`project-examples/lessons/log-a-thing/`](../../../project-examples/lessons/log-a-thing/): 35 files,
+  three components (the Repeater's template names a component, so a list is never one), eight steps of
+  which six are graded, every condition addressed by `#Label` so **F3 raises not one warning**.
+  Harness on the shipped artefact: **F1 pass · F2 pass · F3 pass · F4 pass, `ok` and `installable` true**,
+  solution `valid: true, rendered: true, drawn: 5, renderDefects: []`. Two controls fired red
+  (rows deleted → `dead-on-solution` step 7; `prop-title` → `prop-titel` → `dead-on-solution` step 5).
+  Drive: install reported `Checked as local-ai: F1, F2, F3 passed`, the card renders in Learning and is
+  **absent** from the Projects picker, the lesson's own backend is a **different** one from the
+  authoring project's, and pressing **Log it** in the preview really wrote a row.
+  🔴 **The harness was run from SOURCE.** `packages/noodl-mcp/dist` was built 07:26 and `b5058f3b`
+  landed 08:58 — probed with a known-firing control, the dist has the old F2′ and not the new guard, so
+  `check_lesson` through the registered server would have refused this lesson for the defect session 4 fixed.
+  🔴 **Its own finding:** the derived starter carried the **solution's project `id`**, and so did every
+  installed copy — `findReusableBackend` matches on name plus *ownership by project id*, so that is
+  README §1B with the ownership check intact and useless. Removed from the bundle; the general fix is one
+  line inside `LearningFolderModel.install` — **TUT-004**.
+  ⚠️ Also: the lesson format's Markdown has **no blockquote** (found by looking at a screenshot, with every
+  gate green), and a **completed** task card's title fails AA in both themes (1.76:1 / 2.47:1) — the lesson
+  layer's styling, not the bundle's.
+  ⚠️ **This session changed no source.** The only repo change is the new bundle directory and these docs,
+  so no gate can have regressed from it.
+
 ## The order
 
 1. ~~**TUT-001**~~ ✅ — unforked, self-contained, and it is the thing Richard is looking at every day.
 2. ~~**TUT-002**~~ ✅ — all seven ACs close, and **R3 is answered**, so TUT-003 is blocked by
    nothing.
-3. **TUT-003** — the artefact. Run it through `lessonbundleverify` **before** driving it; the
+3. ~~**TUT-003**~~ ✅ — the artefact. Run it through `lessonbundleverify` **before** driving it; the
    harness refusing a bundle is cheaper than the editor doing it. ✅ Now safe to run it *with*
    `backend_id`, which is the only route that grades the data conditions — see session 4 in Status.
 4. **TUT-004** — needs a bundle to install and phase 72's panel to install it from.

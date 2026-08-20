@@ -1,119 +1,132 @@
 # Phase 73 — next session
 
-**Written 2026-08-20, end of session 4.** Read [README §0](README.md) and [TASKS.md](TASKS.md)
+**Written 2026-08-20, end of session 5.** Read [README §0](README.md) and [TASKS.md](TASKS.md)
 first; this file is the working state, not the phase.
 
 ---
 
-## 1. 🔴 Start here: author the bundle. Nothing blocks it.
+## 1. TUT-003 is done. The bundle exists and it was driven.
 
-**R3 is answered — the learner creates the collection.** TUT-002 is done. The F2′ defect that would
-have refused the result is fixed. TUT-003 has no open dependency of any kind.
+[`project-examples/lessons/log-a-thing/`](../../../project-examples/lessons/log-a-thing/) — 35 files,
+8 steps, 6 graded, **F1–F4 all pass, `installable: true`**, driven end to end in the real editor.
+All seven ACs are answered in
+[TUT-003 §"Session 5"](TUT-003-THE-TUTORIAL-ITSELF.md) with the readings beside them.
 
-The remaining work is the artefact itself, in this order:
+**Only TUT-004 is left in this phase, and it still needs R2 (§4).**
 
-1. **Author the solution project.** Every type name and port name it needs is written down in
-   [TUT-003 §"The graph, in the type names it is actually saved under"](TUT-003-THE-TUTORIAL-ITSELF.md)
-   — **read it rather than re-deriving it**; session 4 spent most of its budget getting those out of
-   runtime source and three of them are traps.
-2. **Write `lesson.json`.** Step body names the collection **verbatim**; first data condition is
-   `collectionExists`.
-3. **`derive_starter`**, then **`check_lesson` with `backend_id`** — that is now safe and is the only
-   route that grades the data conditions.
-4. **Drive it in the editor.** This also closes the renderer half of TUT-002 (§4).
-5. Only then TUT-004 (still needs **R2**).
+## 2. 🔴 Start here: the finding TUT-003 hands TUT-004
 
-⚠️ **One thing session 4 stopped short of and should be honest about:** the solution graph was
-*specified*, not written. The Repeater's `parameters.template` names a **component**, so the row is a
-second component and the graph is two components, not one. That is the first real decision next
-session makes.
+**The bundle shipped the solution project's `id`, and every installed copy had the same one.**
 
-## 2. What session 4 changed
+`create_project` stamps an `id` → `derive_starter` copies it → `create_lesson` copies it again → and
+`LearningFolderModel.install` copies the whole directory verbatim. So the bundle root, its
+`solution/`, the authoring project and the learner's installed copy all carried
+`620eff71-718e-4be7-a39b-462eafcdeb23`.
 
-**`b5058f3b` — F2′ convicted the one step a data lesson cannot do without.**
+That matters because `findReusableBackend` matches on backend **name plus ownership**, and ownership
+is *"this project id is in the backend's `projectIds`"*. Two projects with one id is README §1B's
+two-apps-one-datastore defect **with the ownership check intact and useless** — the exact thing
+`provisionBackend.ts:120-138` was written to end.
 
-`check_lesson --backend_id` reads one live backend and hands the **same** snapshot to the starter and
-the solution context ([`lessonTools.ts:270-274`](../../../packages/noodl-mcp/src/tools/lessonTools.ts)),
-because a bundle on disk has one database and not two. A snapshot describes the author's world
-*after* they ran the solution; F2′ asks about the learner's world *before* they start. So any step
-whose conditions are **all** data conditions was `already-satisfied-in-starter` by construction.
+- **Worked around in the bundle:** `id` removed from both `nodegx.project.json` files.
+  `ensureProjectId` mints one on demand, and an absent id is the supported pre-DSG-007 state.
+- **The real fix is one line inside a caller that already exists:** `install()` should mint a fresh
+  project id into the copy it writes ([`learningfolder.ts`](../../../packages/noodl-editor/src/editor/src/models/learningfolder.ts),
+  the `fs.copyRecursive` at ~line 410). That is TUT-004's, and it is **not** a new mechanism — §1D
+  still holds.
 
-Measured, varying only where the snapshot went:
+⚠️ Do not "fix" this by re-stamping the bundle. A shipped bundle is a template; a template must not
+carry an identity, and N learners installing one bundle is exactly the case that breaks.
 
-| Snapshot given to | F2 |
-|---|---|
-| starter **and** solution — the real caller's shape | **fail**, `already-satisfied-in-starter` |
-| solution only — what every TUT-002 spec does | **pass** |
+## 3. 🔴 The trap this session paid for: the dist that would have refused the lesson
 
-That step is **TUT-003 AC5**: "complete the graph, create no record, the data step stays red." F2′
-now reports `not-checked` per step for database-graded steps and says which half it could not answer.
+`check_lesson` through the registered `nodegx` MCP server would have refused this bundle — for the
+defect session 4 **fixed**. The server runs `packages/noodl-mcp/dist/noodl-mcp.cjs`, built **07:26**;
+`b5058f3b` landed **08:58**.
 
-🔴 **The lesson, and it is session 3's lesson one layer out:** 70 green specs did not see it because
-they all supply a snapshot in a shape **no caller uses**. The thing that found it was reading the
-caller and asking what it actually passes.
+Probed with a known-firing control, which is the only reason the absence was believable:
 
-## 3. Gate readings — 2026-08-20, tree at `b5058f3b`
-
-| Gate | Reading | |
+| probe | dist | source |
 |---|---|---|
-| `typecheck:mcp` | **exit 0** | |
-| `tests-unit/tut-002` + `tut-003` | **76 tests / 6 suites**, all green | 70 + 6; reconciled against disk |
-| new specs | **6**, of which **3 verified red** with the guard disabled | two known-firing controls stayed green in both arms, on purpose |
-| `typecheck:editor` | 🔴 **exit 2 — NOT MINE** | 2 errors, both `kind: "handoff"` on `CommunityReplyBox`: `noodl-core-ui/.../Launcher/views/Community.tsx:275` and `.../CommunityPanel/CommunityPanel.tsx:176`. From a peer's **`736af592`** (phase 72 NAT-008). Zero errors in lesson files |
-| `test:main` | 🔴 **3 suites failed, 278 passed · 4463/4463 tests passed** | **0 test failures** — the 3 suites (`nat-005`, `nat-007`, `nat-008`) *never compiled*, on the same peer error. ~81 tests unrun |
-| `test:ci` | **not run this session** | last floor: **2849 specs / 10 failures @ `NOODL_SPEC_SEED=39393`**, re-measured 08-20 08:27 |
+| `"so it will tick itself the"` (the OLD F2′ message) | **1** | 1 |
+| `"never as it will be when a learner opens the starter"` (the NEW guard) | **0** | 1 |
 
-🔴 **`test:main` reporting `4463 passed, 4463 total` with three red suites is the trap this repo keeps
-paying for.** Zero test failures and a green-looking tail; the number went *down* by ~75 from session
-3's 4538 because three files never ran. **Reconcile the suite count as well as the test count, every
-time.**
-
-Relayed to the peer sessions; the EL-009 session confirmed the reading and corrected my count (I said
-one error, it is two — fixing only `Community.tsx` leaves the gate red). Not this phase's to fix, and
-**do not read either gate as a phase-73 regression.**
-
-## 4. Still true from session 3 — the unproven link
-
-`models/lessondatabase.live.ts` cannot be loaded by a plain-Node runner (it imports `ProjectModel`
-and `ipcRenderer`), so the suite grades everything underneath it and the drive graded the same shared
-core through the other transport. The unproven link is short and named:
+✅ **The way round it, and it is reusable.** The tools are thin wrappers; call the same functions off
+`packages/noodl-mcp/src` directly:
 
 ```
-ProjectModel.instance → getCloudServices → matchEndpointToManaged → backend:list / backend:status
-   → ipcLessonReader → a step going green in lessonlayer2
+NODE_PATH=<repo>/node_modules npx ts-node --transpile-only \
+  -P packages/noodl-mcp/tsconfig.json <script>.ts check <bundleDir> <backendId>
 ```
 
-Do not write another spec for it — **write the lesson**. That is step 4 of §1.
+`editor-deps`, `lessons/bundleWriter` (`nodeBundleFs`), `lessons/starterWriter`,
+`lessons/lessonDatabase`, `lessons/wholeSolutionGrader` and `lessons/bundleVocabulary` **all load in
+plain Node**. So does `models/learningfolder.ts`, and so do `NoodlBlocks` / `NoodlGenerators` — see §5.
+The scripts from this session are in the session scratchpad, not the repo; they are ten lines each and
+faster to rewrite than to find.
 
-## 5. Owed by Richard
+🔴 A rebuild would **not** have helped in-session: the MCP server process is already running with the
+old module loaded, and this session cannot restart it.
+
+## 4. Owed by Richard
 
 - 🔴 **R2** — what provenance does a community bundle install under? `lessoninstallpolicy.ts` grades
-  `local` vs `local-ai`; a platform bundle is a **third** trust profile. **Blocks TUT-004 AC3 only.**
-- ~~R3~~ ✅ answered 2026-08-20: the learner creates the collection. See
-  [TUT-003 §R3](TUT-003-THE-TUTORIAL-ITSELF.md) for the four measurements that had already narrowed
-  it to one arm.
+  `local` / `local-ai` / `curated` / `org`; a platform bundle is a **third** trust profile.
+  **Blocks TUT-004 AC3 only.**
+  ⚠️ New context from the drive: this bundle declares `authoredBy: "ai"`, so it installs as
+  **`local-ai`** and is held to F1+F2+F3 — and it passed. Whatever R2 decides has to be at least that
+  strict, or the "a claim may only ever cost the claimant" spec inverts.
+- **The copy.** The lesson prose is mine. It is the argument as much as the tutorial, and it should
+  read the way Richard would say it before it goes near the community. When he has been through it,
+  `authoredBy: "ai"` is his call — it is a true statement today and only ever tightens the gate.
 
-## 6. Housekeeping
+## 5. Two smaller things worth carrying
 
-- **Committed this session:** `b5058f3b` (2 files: `lessonbundleverify.ts` + the new spec). Docs
-  commit follows. Nothing of a peer's was swept — checked the stat list.
-- 🔴 Peers commit to `cline-dev` from this same checkout, and did so **during** this session
-  (`736af592`, `e86cd31e`, `996ccdc7` all landed after session 3's HEAD). **`git commit -- <pathspecs>`,
-  never `git add -A`, never stash.** Untracked files need `git add <paths> && git commit -- <paths>`
-  as **one chain**, with `-m` *before* the `--`.
-- Three peer sessions were live: phase 72's community panel, phase 67b/EL-009's render harness
-  (`scripts/devtools`, `tests-unit/el-009`), and one more. Neither overlaps this phase.
-- No backends were started this session; no drive was run.
+**A Visual Function's `workspace` / `generatedCode` can be generated headlessly.** `NoodlBlocks` and
+`NoodlGenerators` import cleanly into plain Node; load the workspace JSON into a real
+`Blockly.Workspace`, call `javascriptGenerator.workspaceToCode`, and print
+`detectIO(JSON.stringify(state))` beside it. That is how this lesson's program was written, and it
+turns "is my workspace JSON well-formed and does it publish the ports I think?" into a two-second
+question instead of a drive.
 
-## 7. The trap this session paid for, for whoever hits it next
+🔴 **And the bug it caught, which is a runtime fact and not a lesson one:** an unconnected Logic
+Builder value input has **no default** (`registerInputIfNeeded`, `logic-builder.ts:231`), so
+`Inputs["x"]` is `undefined` until something writes it. Blockly's `text_trim` emits a bare `.trim()`
+with no coercion. `isEmpty(trim(get input entry))` therefore **throws** the first time a learner
+presses the button — and `String(undefined)` is `"undefined"`, so coercing makes it save a record
+instead. `logic_negate` is the block that is actually right.
 
-🔴 **A spec fixture in a shape no caller uses is not coverage — it is a decoy.** Session 3's
-`bundle-verifies-a-data-lesson.test.ts` hands the snapshot to the solution alone. That is a
-reasonable-looking fixture, it made 70 specs pass, and the one real caller does something else. The
-question that found it is the same one session 3 recorded and I nearly failed to ask a second time:
+## 6. Findings filed elsewhere, not this phase's to fix
 
-> **who calls this, and what exactly do they pass?**
+- ⚠️ **The lesson format's Markdown has no blockquote.** `renderMarkdown` does headings, lists,
+  paragraphs and inline; a `> ` line renders with the `>` visible. Found by **looking at a
+  screenshot** with every gate green. Both occurrences were rewritten as bold.
+- ⚠️ **A completed task card's title fails AA in both themes** — 1.76:1 dark, 2.47:1 light, measured
+  off computed styles with the theme flipped by `data-theme` and read in a *second* call. The lesson
+  **prose** passes comfortably (9.64 / 13.33) and so does CHECK MY WORK (6.94 / 4.57). This is the
+  lesson layer's own `completed` styling, NAT-002/003's territory. ⚠️ Only the `completed` state was
+  measured; the active state is **untested**.
+- ⚠️ **The Backend Services panel would not open under CDP** — clicking the rail button produced its
+  tooltip and no panel, three times, on a lesson project. TUT-001 drove this panel successfully in
+  session 1, so something about this state differs. The backend and collection were created by calling
+  `provisionBackend` instead, so **the Data-panel route to creating a collection is unverified**. If a
+  learner's Data-panel route ever answers `columns: []`, drop `hasColumns` from step 2 and keep
+  `collectionExists`.
 
-Not "is there a spec for it". Session 3 found its defect by asking *"who calls this, and what happens
-when they do"*; session 4 found the next one by asking the narrower version — **not whether a caller
-exists, but whether the fixture matches the argument the caller actually builds.**
+## 7. Housekeeping
+
+- **This session changed no source.** The repo diff is the new bundle directory plus these docs, so
+  no gate can have regressed from it. Last known readings, and whose they are:
+  `typecheck:editor` and `test:main` were red on this tree at session 4 from a **peer's** phase-72
+  commit; `test:ci` floor is **2849 specs / 10 failures @ `NOODL_SPEC_SEED=39393`**, re-measured 08-20.
+- 🔴 Peers commit to `cline-dev` from this same checkout and did so during this session.
+  **`git commit -- <pathspecs>`, never `git add -A`, never stash.** Untracked files need
+  `git add <paths> && git commit -- <paths>` as **one chain**, `-m` before the `--`.
+  One peer has `models/community/communityorigin.ts` temporarily pointed at `localhost:3947` for a
+  drive — **do not commit that file.**
+- **Working directories outside the repo** (kept, not needed):
+  `NodeGX test projects/tut003-log-a-thing-solution` (the authoring project, bound to backend
+  `backend_mt17opj2xbxsi` on 8585), `…-starter`, `…-bundle`, `tut003-drive-bundle`. The installed
+  learner copy is at `~/Library/Application Support/NodeGX/Learning/log-a-thing` with its own backend
+  `backend_mt18kzpf2usu6` on 8586 — **and the two being different is AC6.**
+- The editor stack was torn down (`dev:stop`, 27 processes, CDP 9222 free) and both peers told.

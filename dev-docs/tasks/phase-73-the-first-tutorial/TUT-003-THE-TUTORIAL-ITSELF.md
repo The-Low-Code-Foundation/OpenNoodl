@@ -158,3 +158,146 @@ A worked workspace to copy the envelope from:
   backend binding.
 - `suggestedNodes` on the data steps should surface the Record family, or the learner hunts the
   picker for a node the step just named.
+
+---
+
+# Session 5, 2026-08-20 — the bundle exists
+
+**The artefact:** [`project-examples/lessons/log-a-thing/`](../../../project-examples/lessons/log-a-thing/)
+— 35 files: the starter at the root, `lesson.json`, and `solution/`. Eight steps, six of them graded.
+
+## What it is, in the type names it is saved under
+
+Three components, and the count is the first decision session 4 left open. The Repeater's
+`parameters.template` names a **component**, so the list is two components and never one:
+
+| Component | What is in it |
+|---|---|
+| `/App` | the Router, one route |
+| `/Pages/Home` | `Page` → `Group` → heading, intro, `net.noodl.controls.textinput`, `net.noodl.controls.button`, status `Text`, card `Group` → `For Each`; and three parentless logic nodes: `Logic Builder` "Check the entry", `NewDbModelProperties` "Save the entry", `DbCollection2` "Read the entries" |
+| `/Components/LogRow` | the Repeater's template: `Group` → `Text`, plus a `Component Inputs` node whose `title` port is declared in **`ports`** (not `dynamicports` — UNI-010 §8.1) |
+
+Every node a step addresses carries a **label**, and every condition addresses it as `#Label`.
+That is what keeps F3 clean: not one `%Type` segment in the manifest, so the decoy test has nothing
+to displace and there is not a single `fragile-type-address` warning.
+
+## The Visual Function's program, and the one line that would have broken it
+
+```
+define input entry (string) · define output title (string) · define output message (string)
+define signal output ok · define signal output bad
+if NOT (get input entry):  set output message = "Type something first…" ; send signal bad
+else:  set variable lastEntryTitle = get input entry
+       set output title  = get variable lastEntryTitle
+       set output message = ""
+       send signal ok
+```
+
+🔴 **`workspace` and `generatedCode` were not hand-written.** The node type's own brief says to treat
+them as an editor-managed pair. They were **generated headlessly**: `NoodlBlocks.initNoodlBlocks()` +
+`NoodlGenerators.initNoodlGenerators()` load in plain Node, so a script loads the workspace JSON into
+a real `Blockly.Workspace` and calls `javascriptGenerator.workspaceToCode`. The same script prints
+`detectIO(workspace)`, which is how the port set was checked *before* the node was written:
+`inputs [entry] · outputs [title, message] · signalOutputs [ok, bad]`. That is worth keeping — it turns
+"is my workspace JSON well-formed?" from a drive question into a two-second one.
+
+🔴 **THE CONDITION IS `NOT entry`, AND THE OBVIOUS VERSION IS A BUG.** The first draft was
+`isEmpty(trim(get input entry))`. Blockly's `text_trim` generates a bare `.trim()` with no `String()`
+coercion, and `registerInputIfNeeded` (`logic-builder.ts:231`) gives an unconnected value input **no
+default** — so `Inputs["entry"]` is `undefined` until the learner types, and the *first* thing a
+learner does is press the button. `undefined.trim()` throws into `logic-builder/blocks-threw`.
+`String(…)` does not fix it either: `String(undefined)` is `"undefined"`, which is not empty, so the
+lesson would have saved a record called `undefined`. `logic_negate` is one block, catches
+`undefined`/`null`/`""`, and was **verified in the drive** — a reloaded preview, field never touched,
+press Log it: the status line reads the complaint and the row count stays put.
+
+## Readings
+
+### The harness — `project-examples/lessons/log-a-thing`, 2026-08-20 10:23
+
+| | |
+|---|---|
+| classes | **F1 pass · F2 pass · F3 pass · F4 pass** |
+| `ok` / `installable` | **true / true** — AC2 |
+| graded steps | 6 |
+| F2 info findings | `not-checked` on steps 2 and 7 only — the two database-graded steps, which is the `b5058f3b` behaviour AC2's caveat describes |
+| whole solution | `valid: true, rendered: true, drawnElementCount: 5, renderDefects: []` |
+| database snapshot | `LogEntries · columns [title] · rowCount 3` |
+
+🔴 **Run from SOURCE, not through the registered MCP server.** `packages/noodl-mcp/dist/noodl-mcp.cjs`
+was built **07:26**; `b5058f3b` landed **08:58**. Probed with a known-firing control: the dist carries
+the old F2′ message (`"so it will tick itself the"` — 1 hit) and **not** the new guard
+(`"never as it will be when a learner opens the starter"` — 0 hits, 1 in source). So `check_lesson`
+through the live server would have refused this lesson for the defect session 4 fixed. The runner
+calls the same functions the tools call, off `packages/noodl-mcp/src`, under `ts-node --transpile-only
+-P packages/noodl-mcp/tsconfig.json` with `NODE_PATH` at the repo's `node_modules`.
+
+### Two controls, so the green means something
+
+| Varied | Reading |
+|---|---|
+| deleted the 3 rows | **F2 FAIL**, `dead-on-solution` on step 7 |
+| `prop-title` → `prop-titel` in one condition | **F2 FAIL**, `dead-on-solution` on step 5 |
+| restored | back to 4/4 pass |
+
+### The drive — real editor, `dev:debug`, 2026-08-20
+
+| AC | Reading |
+|---|---|
+| **1** | Installed through the launcher's real "Install a lesson…" route. `[Learning] Checked as local-ai: F1, F2, F3 passed; F4 not checked.` Card renders in the Learning section as *Log a thing / Written locally*; **absent** from the Projects picker (control: `tut001-drive` present in the same list) |
+| **2** | above |
+| **3** | no F1 |
+| **4** | ✅ **both arms, varying one wire.** `bad → Do` instead of `ok → Do` (the plausible error TUT-003 named): **"5 of 6 checked steps are done. Step 5 — 'Do the saving on the canvas' is the first one still to do."** Correct wiring restored: advanced to step 8 of 8, all six graded steps complete |
+| **5** | ✅ **observed failing first.** Graph complete, zero records: the five structural steps go green and **"Log something" stays incomplete**. Then one entry typed into the preview → `rows now: 1` → 6 of 6 |
+| **6** | ✅ **asserted.** The bundle ships **no** `cloudservices` and **no** project `id`. The lesson project got `backend_mt18kzpf2usu6` on **8586**, `reused: false, adopted: false` — distinct from the authoring solution's `backend_mt17opj2xbxsi` on 8585. The editor started it on project open |
+| **7** | ⚠️ **measured, and it found something — see below** |
+
+**And the app actually works.** Typed an entry, pressed Log it: the Visual Function ran, sent `ok`,
+Create Record wrote the row, its `Done` refreshed the Query, and the row appeared in the list. The
+canvas screenshot shows the Visual Function carrying `Run`/`entry` in and `title`/`ok`/`message`/`bad`
+out — the ports minted from the generated workspace, on a real canvas.
+
+## Three findings
+
+🔴 **1. The derived starter carries the solution's project `id`, and so does every learner's copy.**
+`create_project` stamps an `id`; `derive_starter` copies it; `create_lesson` copies it again. So the
+bundle root, `solution/`, the authoring project and every installed copy shared
+`620eff71-718e-4be7-a39b-462eafcdeb23`. `findReusableBackend` matches on backend **name plus
+ownership**, and ownership is *"this project id appears in the backend's `projectIds`"* — which is
+README §1B's two-apps-one-datastore defect with the ownership check intact but useless. **Fixed in the
+bundle by removing `id` from both project files** (`ensureProjectId` mints one on demand — an absent
+id is the supported pre-DSG-007 state). The general fix belongs at install: `LearningFolderModel.install`
+should mint a fresh project id into the copy it writes. **That is a line inside a caller that already
+exists, not a new mechanism — TUT-004.**
+
+⚠️ **2. The lesson format's Markdown has no blockquote.** `renderMarkdown` handles headings, lists,
+paragraphs and inline; a `> ` line renders with the `>` visible. Caught by *looking at the screenshot*
+— every gate was green with it in. Both occurrences rewritten as bold.
+
+⚠️ **3. A completed task card's title fails AA, in both themes.** Measured off computed styles with the
+theme flipped by `data-theme` and read in a **second** call:
+
+| | dark | light |
+|---|---|---|
+| lesson prose (popup body) | **9.64:1** ✅ | **13.33:1** ✅ |
+| CHECK MY WORK button | **6.94:1** ✅ | **4.57:1** ✅ |
+| `.lesson-item.completed h3` | **1.76:1** ❌ | **2.47:1** ❌ |
+
+The content passes comfortably in both. The failure is the lesson layer's own *completed* styling
+(`rgba(240,247,249,0.5)` over the card), not this bundle's. ⚠️ **Only the `completed` state was
+measured** — all six cards were complete by then, so the active/incomplete state is **untested**, and
+the earlier screenshots suggest it is fine. Belongs to NAT-002/003's palette work, not here.
+
+## What was NOT verified, and should be said
+
+- **The Data-panel route to creating the collection.** The panel would not open under CDP (clicks
+  produced the tooltip and no panel), so the backend and the `LogEntries`/`title` collection were
+  created by calling `provisionBackend` — the same function the panel's route ends in, but not the
+  panel. What that leaves open is TUT-002's own warning: a table the **backend** creates registers in
+  `_Schema` and answers `hasColumns` (proven — step 2 went green live against the real backend); a
+  table created by some *other* route may not. Step 2 is `collectionExists` + `hasColumns:["title"]`,
+  and if a learner's Data-panel route ever returns `columns: []`, **drop `hasColumns` and keep
+  `collectionExists`** — the prose already names the column and `prop-title` cannot be wired without it.
+- **`authoredBy: "ai"`** is in the manifest and is true today. It only ever tightens the gate
+  (`local-ai` requires F1+F2+F3 to *pass*, which they do). Worth revisiting when Richard signs the
+  copy off — at that point it is co-authored, and the field is his call.
