@@ -47,6 +47,19 @@ caller" in this phase, and the first where neither client had one.
 are **specified in `docs/API.md` §6 and not built**. NAT-007's half was free because its routes
 already existed. Those two are not.
 
+### 🔴 `post()` had no 409 branch, and NAT-009's response cap is a 409
+
+Found and fixed by the UNI-007 session (`0912694f`, phase 67b) while working the same client. A
+`409` fell through to `unreachable` — *"the community could not be reached"* — and **`docs/API.md`
+§6 gives the RFP response cap that exact status**: `409` when the cap is spent. So NAT-009's write
+would have told somebody their network was down while the platform was refusing them precisely, in
+a sentence it had chosen. Same hole `429` had, one status along, and the same one this codebase
+keeps re-finding: **a status the client never enumerated becomes an outage.**
+
+✅ Already fixed on `main` — 409 now maps to `refused` carrying the platform's own words. ⚠️ **Do
+not re-narrow that branch**, and when you build the two write routes, check the status table in
+`post()` against §6 *before* wiring a caller rather than after.
+
 ### 🔴 An accept is never offered once one exists, and that is a refusal to decide
 
 The platform *permits* moving an accept. It neither revokes the first award nor tells the first
