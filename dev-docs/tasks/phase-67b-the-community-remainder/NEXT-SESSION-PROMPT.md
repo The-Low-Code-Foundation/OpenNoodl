@@ -141,6 +141,17 @@ not inferred.
 there, still nobody's. Session 48 also saw a stray `render-from-disk.js` on **port 8901** (PPID 1,
 from session `17a9d5f0`'s scratchpad). None are the render harness's; it cleans up after itself.
 
+### ⚠️ Housekeeping for whoever ends the next session
+
+**`MEMORY.md` is over its own budget: 17,838 UTF-16 units against 17,510.** Session 48 did not cause
+it — my net footprint was **−23** (I tightened two of my own lines; my new entries went into
+`judgement-trap-pointers.md`, which costs the index nothing). It grew from **17,501 → 17,861** while
+I worked, i.e. concurrent peer edits. 🔴 **I did not cut a peer's line**, because the standing rule
+is *tighten your own first, cut a peer's only when it stopped being TRUE*, and I cannot establish
+that for another phase's live status lines from here. The P72 line in particular looks stale now
+that NAT-007's flagship closed (`3880752f`) — **that is phase 72's to re-measure, not mine to
+guess.** ⚠️ Measure with `len(s.encode('utf-16-le'))//2`, never `wc -c` (overstates ~15%).
+
 ### Not this phase's
 
 Gap A (the mail drainer) is **P72 NAT-014**, built and committed, **not deployed**. UNI-018 is
