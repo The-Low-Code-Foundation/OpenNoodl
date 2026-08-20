@@ -116,9 +116,14 @@ instead. `logic_negate` is the block that is actually right.
 ## 7. Housekeeping
 
 - **This session changed no source.** The repo diff is the new bundle directory plus these docs, so
-  no gate can have regressed from it. Last known readings, and whose they are:
-  `typecheck:editor` and `test:main` were red on this tree at session 4 from a **peer's** phase-72
-  commit; `test:ci` floor is **2849 specs / 10 failures @ `NOODL_SPEC_SEED=39393`**, re-measured 08-20.
+  no gate can have regressed from it.
+  ✅ **`test:main` is green again, and the reading covers this work.** Session 4 recorded it red —
+  3 suites unrun on a peer's phase-72 typecheck errors. The **UNI-007 peer** has since fixed those and
+  measured **289 suites / 4714 tests / 0 failures** at `4cea617b`, which has `aababde6` as an ancestor
+  (checked with `git merge-base --is-ancestor`), so the tree it ran on contains this bundle.
+  ⚠️ **Relayed, not mine** — I did not run it, and it says nothing about `typecheck:editor` or
+  `test:ci`. Re-measure rather than quote it. `test:ci` floor is **2849 specs / 10 failures @
+  `NOODL_SPEC_SEED=39393`**, re-measured 08-20.
 - 🔴 Peers commit to `cline-dev` from this same checkout and did so during this session.
   **`git commit -- <pathspecs>`, never `git add -A`, never stash.** Untracked files need
   `git add <paths> && git commit -- <paths>` as **one chain**, `-m` before the `--`.
