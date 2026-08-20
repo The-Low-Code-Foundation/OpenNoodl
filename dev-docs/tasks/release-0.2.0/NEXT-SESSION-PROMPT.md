@@ -17,6 +17,24 @@ before touching anything in §3.
 **0.2.0, not 0.1.8**, and the previous release was **0.1.7** — not 0.1.17. 149 feature and fix
 commits, 478 total, since `v0.1.7` (13 August).
 
+### ✅ The build is GREEN and the draft is complete — run 32370132405, 16m14s
+
+All four legs plus `merge mac update feed` and `verify draft release is complete` passed on the
+**second** attempt (the first is §1). **15 assets**, checked directly rather than taken from the
+green tick:
+
+- both mac arches — `mac-arm64.dmg/.zip`, `mac-x64.dmg/.zip` (+ blockmaps)
+- `win-x64.exe` (+ blockmap) · `linux-x86_64.AppImage` · `linux-amd64.deb`
+- `latest.yml`, `latest-mac.yml`, `latest-linux.yml` (the last is inert by design)
+
+✅ **`latest-mac.yml` lists all FOUR mac files under one `version: 0.2.0`** — the multi-arch feed
+merge did its job; a single-arch feed has no symptom on the machine that cut the release.
+✅ **macOS signed and notarised** — `identityName=Developer ID Application: Osborne Solutions`,
+`notarization successful`, ticket stapled.
+
+🔴 **`isDraft: true`. It is NOT published.** Nothing has reached a user or the auto-update feed.
+**§3 is the remaining work**, and none of it is automatable.
+
 Draft release notes: **`scratchpad/RELEASE-NOTES-0.2.0.md`** in the release session's scratchpad.
 ⚠️ Scratchpads are session-scoped — if it is gone, it is regenerable from
 `git log v0.1.7..v0.2.0`, but re-read §2's "known limitations" before publishing anything.
