@@ -42,7 +42,13 @@ const HOST_SUPPLIED = new Set([
   // Set on context by `SideNavigation.module.scss` (`.Toolbar`) so the rail can
   // tune its idle glyph tone; read by `IconButton.module.scss`, which falls back
   // to `--theme-color-fg-default` for every other host.
-  '--icon-button-idle-fg'
+  '--icon-button-idle-fg',
+  // Written at runtime by `LogicOverlay.ts` (`applyRect` sets all four of
+  // `LOGIC_OVERLAY_VARS` on `editor.shell.root.style` on every drag frame); read by
+  // `CanvasTabs.module.scss`, whose `90vh` fallback is the height before the overlay
+  // has ever been opened. The host is the editor shell, not a stylesheet, so there is
+  // no declaration for this checker to find.
+  '--logic-overlay-height'
 ]);
 
 /** Build artefacts and vendored CSS we do not own. */

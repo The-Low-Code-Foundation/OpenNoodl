@@ -24,7 +24,7 @@
 
 /** The value beside each toggle, in the same face the payload uses — it is the same string. */
 .PortValue {
-  font-family: var(--theme-font-family-mono, monospace);
+  font-family: var(--font-family-code, monospace);
   font-size: 11px;
   word-break: break-word;
 }
@@ -37,7 +37,7 @@
   border-radius: 3px;
   background: var(--theme-color-bg-2);
   color: var(--theme-color-fg-default);
-  font-family: var(--theme-font-family-mono, monospace);
+  font-family: var(--font-family-code, monospace);
   font-size: 11px;
   line-height: 1.5;
   white-space: pre-wrap;

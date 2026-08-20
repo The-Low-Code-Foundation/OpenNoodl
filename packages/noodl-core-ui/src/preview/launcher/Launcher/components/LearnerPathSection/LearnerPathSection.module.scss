@@ -48,7 +48,7 @@
 }
 
 .Detail {
-  font-family: var(--font-family-mono);
+  font-family: var(--font-family-code);
   font-size: 11px;
   opacity: 0.8;
 }
@@ -127,7 +127,7 @@
   border-radius: var(--radius-7);
   border: 1px solid var(--theme-color-primary);
   background: var(--theme-color-primary);
-  color: var(--theme-color-on-primary, #fff);
+  color: var(--theme-color-on-primary);
   cursor: pointer;
 
   &:disabled {
@@ -284,6 +284,6 @@
 .Error {
   font-size: 12px;
   line-height: 1.55;
-  color: var(--theme-color-danger, #e5534b);
+  color: var(--theme-color-danger);
   margin: 0 0 10px;
 }

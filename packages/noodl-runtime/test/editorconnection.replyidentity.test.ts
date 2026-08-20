@@ -20,6 +20,14 @@
 
 /* eslint-env jest */
 
+/**
+ * `export {}` makes this file a module. Without it TypeScript treats both `editorconnection.*`
+ * test files as scripts sharing one global scope, so their two `const EditorConnection`
+ * declarations collide as TS2451 and the whole suite fails to compile — a build error, not a
+ * behaviour failure, and one that no single file shows on its own.
+ */
+export {};
+
 const EditorConnection = require('../src/editorconnection');
 
 type Sent = { cmd: string; clientId?: string; content?: unknown };
