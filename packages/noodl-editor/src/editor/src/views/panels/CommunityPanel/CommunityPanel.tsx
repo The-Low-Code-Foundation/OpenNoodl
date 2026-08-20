@@ -58,6 +58,8 @@ import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 
 import {
   CommunityDensity,
+  CommunityDirectoryView,
+  CommunityProfileView,
   CommunityRow,
   CommunitySectionBody,
   CommunityThreadView,
@@ -79,6 +81,7 @@ import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Secti
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { useCommunityMirror } from '@noodl-hooks/useCommunityMirror';
+import { useCommunityPeople } from '@noodl-hooks/useCommunityPeople';
 import { useCommunityThread } from '@noodl-hooks/useCommunityThread';
 
 import type { HealthReading } from '@noodl-models/community/mirrorview';
@@ -126,6 +129,8 @@ export function CommunityPanel() {
   // NAT-007 — the same hook the launcher tab uses. See `useCommunityThread` for why the open/
   // closed state and the cache are shared rather than duplicated per surface.
   const { pane, openThread } = useCommunityThread();
+  // NAT-008 — the same hook the launcher tab uses, for the same reason.
+  const { people, profile, openPerson } = useCommunityPeople();
 
   // 🔴 D15: the platform said this surface does not exist for this viewer. Draw NOTHING — not a
   // message, not an empty state. `apiviewer.ts` answers an org-minor with a 404 precisely so a
@@ -137,6 +142,25 @@ export function CommunityPanel() {
   // 🔴 NAT-007 AC1 — a thread opens IN PLACE, in the rail. ⚠️ After the D15 check, never before:
   // see the same note in `CommunityTab`. `ScrollArea` wraps it because a thread is the longest
   // thing this panel ever draws and the rail is the narrowest place it is drawn.
+  // 🔴 NAT-008 AC2 — a profile opens IN PLACE, and BEFORE the thread, because you reach one FROM
+  // a thread's author line and the newer pane is the one the reader just asked for. ⚠️ After the
+  // D15 check, like everything else here.
+  if (profile) {
+    return (
+      <BasePanel title="Community" isFill>
+        <ScrollArea>
+          <CommunityProfileView
+            state={profile.state}
+            density={CommunityDensity.Panel}
+            onBack={profile.onBack}
+            onRetry={profile.onRetry}
+            onOpenLink={profile.onOpenLink}
+          />
+        </ScrollArea>
+      </BasePanel>
+    );
+  }
+
   if (pane) {
     return (
       <BasePanel title="Community" isFill>
@@ -147,6 +171,8 @@ export function CommunityPanel() {
             onBack={pane.onBack}
             onRetry={pane.onRetry}
             onOpenLink={pane.onOpenLink}
+            // 🔴 NAT-008 AC4 — the author line opens their profile, in the rail too.
+            onOpenPerson={openPerson}
             reply={pane.reply}
           />
         </ScrollArea>
@@ -212,6 +238,21 @@ export function CommunityPanel() {
               }
             </CommunitySectionBody>
           </Section>
+
+          {/* 🔴 NAT-008 AC1 — the directory, in the rail. ⚠️ `people` is `null` when D15 refused
+              this viewer; the surface draws nothing rather than an empty section. */}
+          {people && (
+            <Section title="People" variant={SectionVariant.Panel} hasGutter>
+              <CommunityDirectoryView
+                view={people.directory}
+                density={CommunityDensity.Panel}
+                onQueryChange={people.onQueryChange}
+                onToggleFilter={people.onToggleFilter}
+                onOpenPerson={people.onOpenPerson}
+                onRetry={people.onRetry}
+              />
+            </Section>
+          )}
 
           <Section title="Guides and tutorials" variant={SectionVariant.Panel} hasGutter>
             <CommunitySectionBody

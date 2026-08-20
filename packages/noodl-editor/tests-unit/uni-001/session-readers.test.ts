@@ -119,6 +119,8 @@ const ALLOWED: Record<string, string> = {
     'UNI-011/D21 community panel: the token is a BEARER HEADER on reads that already work without one, plus the handle in the header line. Reading is UNI-011 AC4 and is ungated — asserted structurally below',
   'noodl-editor/src/editor/src/hooks/useCommunityThread.ts':
     'NAT-007 thread view: the token is a BEARER HEADER on a read the platform serves to strangers — `GET /api/v1/bench/threads/:id` says so in its own module note. Withholds nothing: the module that decides what is drawn never sees a session at all — asserted structurally below',
+  'noodl-editor/src/editor/src/hooks/useCommunityPeople.ts':
+    'NAT-008 people: the token is a BEARER HEADER on two reads the platform serves to strangers — `/people` says so in its own lede, *"readable without an account, like everything else here"*. Withholds nothing: the directory, the profile, the search and the filters are all computed by `peopleview.ts`, which never sees a session — asserted structurally below',
   'noodl-editor/src/editor/src/models/lessoncheck.ts':
     'UNI-006 bridge: read ONLY inside liveSubmitAssignment, to hand an ASSIGNED lesson to the org that set it. Withholds nothing — grading, installing, resetting, progress and feedback are untouched, and an entry can only carry an assignment if an account obtained it, so there is nothing for an account-less editor to be refused. Asserted structurally below'
 };
@@ -341,6 +343,48 @@ describe('AC4 — the lesson bridge withholds nothing, proven against the real s
  * unconditionally beside the state rather than inside any session branch — the same property the
  * composer's hand-off has above, for the same reason.
  */
+describe('AC4 — the people surfaces withhold nothing, proven against the real source', () => {
+  const hook = stripComments(readFileSync(join(EDITOR_SRC, 'hooks/useCommunityPeople.ts'), 'utf8'));
+  const model = stripComments(readFileSync(join(EDITOR_SRC, 'models/community/peopleview.ts'), 'utf8'));
+
+  it('control: the hook really does read the session — the known-firing arm', () => {
+    // Without this, every absence below passes for a hook that reads nothing.
+    expect(readsTheSession(hook)).toBe(true);
+    expect(hook).toContain('readCommunitySession');
+  });
+
+  it('the module that decides what is drawn never sees a session or a token', () => {
+    // 🔴 The load-bearing claim, and on this surface it covers more than a state machine: WHO
+    // APPEARS IN THE DIRECTORY and WHAT THE SEARCH RETURNS are decided in `peopleview.ts` too.
+    // A filter that could see a credential would be an editor deciding for itself which people
+    // exist, which is the D15 failure the mirror rule names.
+    expect(readsTheSession(model)).toBe(false);
+    expect(model).not.toContain('token');
+    expect(READERS).not.toContain('noodl-editor/src/editor/src/models/community/peopleview.ts');
+  });
+
+  it('and the hook hands the composer the reads, never the session', () => {
+    const call = hook.slice(hook.indexOf('composeDirectory({'), hook.indexOf('const profile:'));
+    expect(call).toContain('composeDirectory({');
+    expect(call).not.toContain('session');
+    expect(call).not.toContain('token');
+  });
+
+  it('the token is used once per client, and nowhere else', () => {
+    // ⚠️ Counted rather than eyeballed. Two clients are built here — one for the directory and
+    // one for a profile — so the expected count is two, and a third would be a third place a
+    // decision could hide.
+    expect(hook.split('session?.token').length - 1).toBe(2);
+  });
+
+  it('the directory is fetched with no branch on being signed in', () => {
+    // 🔴 A signed-out reader gets the same directory a signed-in one gets, because that is what
+    // the web page does. The read is unconditional; only the header differs.
+    expect(isGated(hook, 'readDirectory(client)')).toBe(false);
+    expect(isGated(hook, 'client.person(handle)')).toBe(false);
+  });
+});
+
 describe('AC4 — the thread view withholds nothing, proven against the real source', () => {
   const hook = stripComments(readFileSync(join(EDITOR_SRC, 'hooks/useCommunityThread.ts'), 'utf8'));
   const model = stripComments(readFileSync(join(EDITOR_SRC, 'models/community/threadview.ts'), 'utf8'));

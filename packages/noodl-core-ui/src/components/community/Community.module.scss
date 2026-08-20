@@ -681,3 +681,314 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+
+/* ── NAT-008: people ───────────────────────────────────────────────────────────────────── */
+
+/*
+  A person row lays the avatar beside the text rather than above it. ⚠️ `.Row` already owns the
+  padding, the hover grounds and the focus ring; this adds the two-column shape and nothing else.
+*/
+.PersonRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2-5);
+}
+
+.PersonBody {
+  display: block;
+  min-width: 0; /* 🔴 Without this the flex child refuses to shrink and `.RowTitle`'s ellipsis
+                   never fires — the title pushes the row wider than the rail instead. */
+  flex: 1 1 auto;
+}
+
+/*
+  The avatar: a FLAT disc, not the web's gradient. See `CommunityPersonRow`'s note — a gradient is
+  a colour that changes across the shape it fills, so the letter's contrast is two different
+  numbers, and NAT-001 refuses to score a ground that no token names.
+*/
+.PersonAvatar,
+.ProfileAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  user-select: none;
+}
+
+.PersonAvatar {
+  width: 28px;
+  height: 28px;
+  font-size: var(--font-size-sm);
+
+  .is-density-panel & {
+    width: 22px;
+    height: 22px;
+    font-size: var(--font-size-xs);
+  }
+}
+
+.ProfileAvatar {
+  width: 48px;
+  height: 48px;
+  font-size: var(--font-size-lg);
+}
+
+/* ── Chips ─────────────────────────────────────────────────────────────────────────────── */
+
+.ChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-1-5);
+}
+
+/*
+  ⚠️ Every chip sits on `bg-3` in BOTH densities, deliberately. A chip that inherited the row's
+  ground would be four different pairings (card, card-hover, panel, panel-hover) for one control,
+  and NAT-001 grades pairings rather than components — four rows for a chip is four chances for
+  one of them to go ungraded.
+*/
+.Chip {
+  display: inline-block;
+  padding: 1px var(--spacing-1-5);
+  border-radius: 3px;
+  background: var(--theme-color-bg-3);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.is-tone-good {
+  color: var(--theme-color-fg-success);
+}
+
+.is-tone-accent {
+  color: var(--theme-color-fg-accent);
+}
+
+/* ── The directory ─────────────────────────────────────────────────────────────────────── */
+
+.Directory {
+  display: block;
+}
+
+.SearchRow {
+  display: block;
+  margin-bottom: var(--spacing-2);
+}
+
+.SearchLabel {
+  display: block;
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-xs);
+  margin-bottom: var(--spacing-1);
+}
+
+.SearchInput {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--spacing-1-5) var(--spacing-2);
+  background: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-control);
+  border-radius: 3px;
+  color: var(--theme-color-fg-default);
+  font: inherit;
+  font-size: var(--font-size-sm);
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: -1px;
+  }
+}
+
+/*
+  A filter pill. ⚠️ `aria-pressed` carries the state; the fill is the same information for people
+  who can see it, and neither stands alone.
+*/
+.FilterPill {
+  display: inline-block;
+  padding: 1px var(--spacing-1-5);
+  border-radius: 3px;
+  border: 1px solid var(--theme-color-border-control);
+  background: none;
+  color: var(--theme-color-fg-default-shy);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+
+  &.is-active {
+    background: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.FilterCount {
+  color: var(--theme-color-fg-default-shy);
+}
+
+.DirectorySummary {
+  margin: var(--spacing-2) 0 var(--spacing-1);
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-xs);
+}
+
+/*
+  🔴 The partial-directory sentence. Drawn in the notice ink rather than the shy one because it is
+  a limit on what the reader is looking at, not a caption.
+*/
+.DirectoryBound {
+  margin: 0 0 var(--spacing-2);
+  color: var(--theme-color-fg-notice);
+  font-size: var(--font-size-xs);
+}
+
+/* ── The profile ───────────────────────────────────────────────────────────────────────── */
+
+.ProfileHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-2);
+}
+
+.ProfileHeadText {
+  display: block;
+  min-width: 0;
+}
+
+.ProfileEyebrow {
+  display: block;
+  color: var(--theme-color-fg-accent);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ProfileStat {
+  display: block;
+  margin-top: var(--spacing-1);
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-sm);
+}
+
+.ProfileBio {
+  margin: 0 0 var(--spacing-2);
+  max-width: 62ch;
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.BadgeList {
+  list-style: none;
+  margin: 0 0 var(--spacing-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1-5);
+}
+
+.Badge {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+/*
+  🔴 THE MASK. The twelve marks carry no colour at all, so `background` IS the badge's ink and
+  the mark is only a shape. An `<img>` here would render its own document, inherit nothing, and
+  come out invisible in one theme and black in the other — which is the failure AC3 names.
+*/
+.BadgeArt {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  background: var(--theme-color-fg-default-shy);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+.BadgeText {
+  display: block;
+  min-width: 0;
+}
+
+.BadgeTitle {
+  display: block;
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-sm);
+}
+
+.BadgeMeta {
+  display: block;
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-xs);
+}
+
+.ProfileLinks {
+  list-style: none;
+  margin: 0 0 var(--spacing-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+/*
+  What listing would require. ⚠️ Shy rather than notice: it is a fact about a page, not a warning
+  about a person, and painting it as a warning would make somebody's incomplete profile look like
+  a problem the reader has to do something about.
+*/
+.ProfileBar {
+  margin: 0;
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-xs);
+  max-width: 62ch;
+}
+
+/*
+  NAT-008 AC4 — the author line as an entry point.
+
+  ⚠️ It carries `.PostAuthor`'s ink and weight rather than a link colour: a thread with four posts
+  would otherwise have four accent-coloured names competing with the accepted-answer marker and
+  the links inside the bodies. The underline on hover and the focus ring are what say it is
+  operable, which is the same treatment `.PostLink` gets one level down.
+*/
+.PostAuthorLink {
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}

@@ -81,6 +81,15 @@ export type CommunityPostView = {
   id: string;
   /** "@handle". */
   author: string;
+  /**
+   * NAT-008 AC4 — the handle to open a profile with, when there is one.
+   *
+   * 🔴 **Separate from {@link author} rather than derived by stripping the `@`.** The author line
+   * is *words* and the handle is an *identifier*; a renderer that reconstructed one from the other
+   * would break the day a post is drawn as "someone" — which is exactly what `postView` does for a
+   * payload with no handle, and exactly the case where there is nothing to open.
+   */
+  authorHandle?: string | null;
   /** "3 days ago", or `null` when the timestamp could not be read — never "NaN days ago". */
   when: string | null;
   accepted: boolean;
@@ -124,6 +133,14 @@ export interface CommunityThreadViewProps {
   onRetry: () => void;
   /** See {@link CommunityPostBody} — a link is a decided hand-off, never a navigation. */
   onOpenLink?: (href: string) => void;
+  /**
+   * NAT-008 AC4 — *"author lines everywhere become entry points."*
+   *
+   * ⚠️ Optional, and when it is absent the author line is drawn as plain text rather than as a
+   * dead button. *"A directory nobody can reach from the content is a page nobody opens"* is the
+   * criterion; a control that looks clickable and is not would be worse than the text it replaced.
+   */
+  onOpenPerson?: (handle: string) => void;
   /**
    * How to answer.
    *
@@ -183,17 +200,30 @@ function Post({
   post,
   isQuestion,
   onOpenLink,
+  onOpenPerson,
   density
 }: {
   post: CommunityPostView;
   isQuestion: boolean;
   onOpenLink?: (href: string) => void;
+  onOpenPerson?: (handle: string) => void;
   density: CommunityDensity;
 }) {
+  const handle = post.authorHandle;
   return (
     <article className={`${css['Post']} ${post.accepted ? css['is-accepted'] : ''}`}>
       <header className={css['PostHead']}>
-        <span className={css['PostAuthor']}>{post.author}</span>
+        {/* 🔴 NAT-008 AC4 — the author line is the entry point to a profile, and it is a `button`
+            for `CommunityRow`'s reason: a `span` with an `onClick` is not focusable, not
+            announced and not operable from a keyboard. ⚠️ Both branches draw the SAME text, so a
+            thread rendered without a host to open profiles reads identically. */}
+        {handle && onOpenPerson ? (
+          <button type="button" className={css['PostAuthorLink']} onClick={() => onOpenPerson(handle)}>
+            {post.author}
+          </button>
+        ) : (
+          <span className={css['PostAuthor']}>{post.author}</span>
+        )}
         {post.when && <span className={css['PostWhen']}>{post.when}</span>}
         {/* ⚠️ A word, not a tick. An icon alone carries the state only for people who already
             know the convention, and `common/Icon` cannot be loaded by this repo's jest at all. */}
@@ -223,6 +253,7 @@ export function CommunityThreadView({
   onBack,
   onRetry,
   onOpenLink,
+  onOpenPerson,
   reply
 }: CommunityThreadViewProps) {
   // 🔴 D15: the platform said this thread does not exist for this viewer, and a 404 for a refused
@@ -298,12 +329,19 @@ export function CommunityThreadView({
         </p>
       )}
 
-      <Post post={thread.question} isQuestion onOpenLink={onOpenLink} density={density} />
+      <Post post={thread.question} isQuestion onOpenLink={onOpenLink} onOpenPerson={onOpenPerson} density={density} />
 
       <h3 className={css['ThreadAnswersHead']}>{thread.answersLine}</h3>
 
       {thread.answers.map((answer) => (
-        <Post key={answer.id} post={answer} isQuestion={false} onOpenLink={onOpenLink} density={density} />
+        <Post
+          key={answer.id}
+          post={answer}
+          isQuestion={false}
+          onOpenLink={onOpenLink}
+          onOpenPerson={onOpenPerson}
+          density={density}
+        />
       ))}
 
       {reply && (

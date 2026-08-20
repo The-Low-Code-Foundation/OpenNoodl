@@ -205,6 +205,9 @@ function postView(post: ThreadPost, now: number, pullFor?: PullOffer): Community
     // `accounts`, so a missing handle means a payload this client did not understand — and a
     // lone "@" beside a post reads as a defect in the post rather than in the fetch.
     author: post.authorHandle ? `@${post.authorHandle}` : 'someone',
+    // NAT-008 AC4 — the identifier beside the words. ⚠️ `null` for the 'someone' case above, and
+    // that is the point: there is no profile to open for a payload with no handle in it.
+    authorHandle: post.authorHandle ? post.authorHandle : null,
     when: relativeTime(post.createdAt, now),
     accepted: post.accepted,
     blocks: post.blocks,

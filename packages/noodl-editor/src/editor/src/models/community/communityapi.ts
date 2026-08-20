@@ -294,6 +294,300 @@ export function readThreadDetail(value: unknown): ThreadDetail | null {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// NAT-008 — the people, as editor objects
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The `{items, page}` envelope NAT-006 gave every list endpoint it added.
+ *
+ * 🔴 **This is a SECOND shape on this client and it has to be, which is worth saying out loud.**
+ * `/v1/community/home`, `/threads` and `/threshold` predate the contract and answer their own
+ * bodies; `docs/API.md` records all three as documented exceptions and
+ * `tests/nat006-api-contract.test.ts` holds the list. So a reader of this file sees two
+ * conventions and neither is a mistake — the older routes were not retrofitted because that
+ * would break the shipped editor for no reader's benefit.
+ *
+ * ⚠️ `nextOffset` is a `number | null` and never an absent field, deliberately, on the platform's
+ * side: *"there is no next page"* and *"this server does not tell you about next pages"* are
+ * different facts. {@link readDirectory} is the caller that depends on it.
+ */
+export type PageInfo = {
+  limit: number;
+  offset: number;
+  /** Rows matching the query **before** the window — what makes a partial read detectable. */
+  total: number;
+  nextOffset: number | null;
+};
+
+export type Paged<T> = { items: T[]; page: PageInfo };
+
+/**
+ * One row of the directory, mirroring the platform's `PersonSummary` (`lib/apisurfaces.ts`).
+ *
+ * ⚠️ **No account id, and its absence is the platform's decision rather than this client's
+ * omission.** NAT-006 found that returning the read modules' own types would publish an internal
+ * account UUID that no web page renders; `personSummary` drops it and the contract test asserts
+ * no response body carries one. Declaring a field for it here would be this client asking for it
+ * back.
+ *
+ * ⚠️ `lastActiveAt` is kept as the string it arrived as — including Postgres's own
+ * `2026-08-19 11:19:27.206885+00` spelling, which NAT-007 measured on the live wire.
+ * `communityMeta`'s formatters take both spellings and that is where the decision already lives.
+ */
+export type PersonSummary = {
+  handle: string;
+  displayName: string | null;
+  bio: string | null;
+  availableForWork: boolean;
+  offersCoaching: boolean;
+  points: number;
+  rateBand: string | null;
+  skills: string[];
+  badgeCount: number;
+  lastActiveAt: string | null;
+};
+
+/**
+ * A badge somebody holds.
+ *
+ * ⚠️ `artwork` is a PATH on the platform (`badges/learning-bronze.svg`) and this editor never
+ * fetches it — see `peopleview.badgeMark` for what the editor draws instead and why a remote
+ * request for a decoration is not a thing this window makes.
+ */
+export type PersonBadge = {
+  family: string;
+  tier: string;
+  title: string;
+  description: string;
+  artwork: string;
+  earnedAt: string;
+};
+
+/** D8's bar, so a profile can say what *listing* would require. Mirrors `ProfileBar`. */
+export type PersonBar = {
+  hasName: boolean;
+  hasBlurb: boolean;
+  hasPublishedThingOrLesson: boolean;
+  meets: boolean;
+};
+
+/**
+ * One public profile, mirroring the platform's `PersonProfile`.
+ *
+ * ⚠️ **No `skills`, and not by oversight** — `apisurfaces.ts` says so from the other end: the
+ * skill chips belong to a directory *row*, `/u/[handle]` does not render them, and an API that
+ * added them to a profile would be answering a question the web profile does not answer. A
+ * profile pane in this editor that wanted them would be a change to the page and the endpoint
+ * together, not a field invented here.
+ */
+export type PersonProfile = {
+  handle: string;
+  displayName: string | null;
+  bio: string | null;
+  availableForWork: boolean;
+  offersCoaching: boolean;
+  points: number;
+  avatarUrl: string | null;
+  links: { label: string; url: string; ordinal: number }[];
+  badges: PersonBadge[];
+  bar: PersonBar;
+};
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === 'string');
+}
+
+function readPageInfo(value: unknown, itemCount: number): PageInfo {
+  const row = (typeof value === 'object' && value !== null ? value : {}) as Record<string, unknown>;
+  const num = (raw: unknown, fallback: number): number =>
+    Number.isFinite(Number(raw)) ? Number(raw) : fallback;
+  const next = Number(row.nextOffset);
+  return {
+    limit: num(row.limit, itemCount),
+    offset: num(row.offset, 0),
+    // ⚠️ Falling back to the count we were handed rather than to 0: a `total` of zero beside a
+    // non-empty `items` is a payload that contradicts itself, and `readDirectory` would read it
+    // as *"we hold everything"* — the one conclusion this field exists to support.
+    total: num(row.total, itemCount),
+    nextOffset: row.nextOffset === null || !Number.isFinite(next) ? null : next
+  };
+}
+
+/** Exported so a spec can grade the reader without a fake `fetch`. */
+export function readPersonSummary(value: unknown): PersonSummary | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const row = value as Record<string, unknown>;
+  const handle = typeof row.handle === 'string' ? row.handle : null;
+  // 🔴 A row with no handle is not a person with a blank name: the handle is the id this surface
+  // navigates by, so a row without one is a payload this client did not understand — and drawing
+  // it would put an entry point on screen that cannot open.
+  if (!handle) return null;
+  const points = Number(row.points);
+  const badgeCount = Number(row.badgeCount);
+  return {
+    handle,
+    displayName: typeof row.displayName === 'string' ? row.displayName : null,
+    bio: typeof row.bio === 'string' ? row.bio : null,
+    availableForWork: row.availableForWork === true,
+    offersCoaching: row.offersCoaching === true,
+    points: Number.isFinite(points) ? points : 0,
+    rateBand: typeof row.rateBand === 'string' ? row.rateBand : null,
+    skills: readStringArray(row.skills),
+    badgeCount: Number.isFinite(badgeCount) ? badgeCount : 0,
+    lastActiveAt: typeof row.lastActiveAt === 'string' ? row.lastActiveAt : null
+  };
+}
+
+function readBadges(value: unknown): PersonBadge[] {
+  if (!Array.isArray(value)) return [];
+  const out: PersonBadge[] = [];
+  for (const raw of value) {
+    if (typeof raw !== 'object' || raw === null) continue;
+    const row = raw as Record<string, unknown>;
+    const title = typeof row.title === 'string' ? row.title : null;
+    if (!title) continue;
+    out.push({
+      family: typeof row.family === 'string' ? row.family : '',
+      tier: typeof row.tier === 'string' ? row.tier : '',
+      title,
+      description: typeof row.description === 'string' ? row.description : '',
+      artwork: typeof row.artwork === 'string' ? row.artwork : '',
+      earnedAt: typeof row.earnedAt === 'string' ? row.earnedAt : ''
+    });
+  }
+  return out;
+}
+
+function readLinks(value: unknown): { label: string; url: string; ordinal: number }[] {
+  if (!Array.isArray(value)) return [];
+  const out: { label: string; url: string; ordinal: number }[] = [];
+  for (const raw of value) {
+    if (typeof raw !== 'object' || raw === null) continue;
+    const row = raw as Record<string, unknown>;
+    const url = typeof row.url === 'string' ? row.url : null;
+    if (!url) continue;
+    const ordinal = Number(row.ordinal);
+    out.push({
+      label: typeof row.label === 'string' && row.label !== '' ? row.label : url,
+      url,
+      ordinal: Number.isFinite(ordinal) ? ordinal : out.length
+    });
+  }
+  return out;
+}
+
+/** Exported for the same reason {@link readThreadDetail} is. */
+export function readPersonProfile(value: unknown): PersonProfile | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const row = value as Record<string, unknown>;
+  const handle = typeof row.handle === 'string' ? row.handle : null;
+  if (!handle) return null;
+  const points = Number(row.points);
+  const bar = (typeof row.bar === 'object' && row.bar !== null ? row.bar : {}) as Record<string, unknown>;
+  return {
+    handle,
+    displayName: typeof row.displayName === 'string' ? row.displayName : null,
+    bio: typeof row.bio === 'string' ? row.bio : null,
+    availableForWork: row.availableForWork === true,
+    offersCoaching: row.offersCoaching === true,
+    points: Number.isFinite(points) ? points : 0,
+    avatarUrl: typeof row.avatarUrl === 'string' ? row.avatarUrl : null,
+    links: readLinks(row.links),
+    badges: readBadges(row.badges),
+    bar: {
+      hasName: bar.hasName === true,
+      hasBlurb: bar.hasBlurb === true,
+      hasPublishedThingOrLesson: bar.hasPublishedThingOrLesson === true,
+      meets: bar.meets === true
+    }
+  };
+}
+
+/**
+ * The whole directory, as far as this client is willing to read it.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🔴 **WHY THIS LOOP EXISTS, MEASURED 2026-08-20 RATHER THAN REASONED.**
+ *
+ * `GET /api/v1/community/people` **has no search parameter at all**, and it *pages*. Both
+ * halves were measured against the route handler on a real database, with a control beside
+ * them:
+ *
+ * | request | answer |
+ * |---|---|
+ * | `?q=ada` over `[ada, grace, linus]` | **all three** — the keyword is dropped, not honoured |
+ * | `?q=zzzzzzzz` | **all three** again |
+ * | `?offersCoaching=true` (the control) | `[linus]` — the route ran, and its own filters narrow |
+ * | `?limit=3` over 7 rows | 3 items, `total: 7`, `nextOffset: 3` |
+ * | `?limit=1000` | clamped to 100, and `page.limit` says so |
+ *
+ * ⚠️ The control is what makes the first two rows mean anything: *"the keyword is ignored"* and
+ * *"the request never reached the route"* are otherwise the same measurement, and this phase has
+ * recorded that confusion five times.
+ *
+ * 🔴 **So a client that searched by sending `q` would show the unfiltered directory and call it a
+ * result** — which is the *"four endpoints that silently ignore their keyword"* failure this
+ * task's traps name, arriving from the other side. Search therefore happens in the editor, over
+ * rows, which is also what the **web** does: `facets.ts`'s `select()` filters `listDirectory`'s
+ * full list in memory and the endpoint's own comment says a client should *"filter the page it
+ * was given rather than have this route grow a second filtering vocabulary"*.
+ *
+ * 🔴 **But filtering the page you were given is only honest if you were given the whole thing** —
+ * a local search over page 1 of 5 is the same silent lie in a nicer shape. So this follows
+ * `nextOffset` to the end, and when it stops early it **says so** rather than returning a partial
+ * list that looks whole. {@link Directory.complete} is not decoration: `peopleview.ts` puts a
+ * sentence on screen when it is false.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+export type Directory = {
+  people: PersonSummary[];
+  /** What the platform says exists, which is not always what we hold. */
+  total: number;
+  /** 🔴 `false` = we stopped early. The surface must say so; see the note above. */
+  complete: boolean;
+};
+
+/**
+ * ⚠️ A stated cap, not a `while (true)`. Ten pages of 100 is a thousand people, well past the
+ * *"the biggest table is in the hundreds"* scale `apishape.ts` says this design is sized for —
+ * and a client that would page forever is one a broken `nextOffset` turns into a hammer.
+ */
+export const DIRECTORY_MAX_PAGES = 10;
+
+export async function readDirectory(
+  client: Pick<CommunityApiClient, 'people'>,
+  options: { maxPages?: number } = {}
+): Promise<Read<Directory>> {
+  const maxPages = options.maxPages ?? DIRECTORY_MAX_PAGES;
+  const people: PersonSummary[] = [];
+  let offset = 0;
+  let total = 0;
+
+  for (let page = 0; page < maxPages; page++) {
+    const read = await client.people({ offset });
+    // ⚠️ A failure on page 2 is a failure, not a short directory. Returning what we had would
+    // hand the surface a list it would draw as complete — and `complete: false` cannot rescue
+    // that, because the reader would be told the platform has fewer people rather than that we
+    // could not finish asking.
+    if (read.outcome !== 'ok') return read;
+
+    for (const row of read.value.items) people.push(row);
+    total = read.value.page.total;
+
+    if (read.value.page.nextOffset === null) {
+      return { outcome: 'ok', value: { people, total, complete: true } };
+    }
+    // 🔴 A `nextOffset` that does not advance would loop forever on a platform bug. Treated as
+    // the end of the list AND as incomplete, which is the pair of statements that is true.
+    if (read.value.page.nextOffset <= offset) break;
+    offset = read.value.page.nextOffset;
+  }
+
+  return { outcome: 'ok', value: { people, total, complete: people.length >= total } };
+}
+
 export type MemberAssignment = {
   id: string;
   orgSlug: string;
@@ -594,6 +888,76 @@ export class CommunityApiClient {
       return { outcome: 'unreachable', status: null, detail: 'the thread payload could not be read' };
     }
     return { outcome: 'ok', value: detail };
+  }
+
+  /**
+   * NAT-008 — one page of the directory.
+   *
+   * ⚠️ **`limit` and `offset` only, because those are the only two the route reads.** It takes
+   * `availableForWork` and `offersCoaching` as well, and this client does not send them: the
+   * editor filters over rows so that its facets and its search agree with each other and with
+   * the web, and a client that filtered *some* dimensions on the server and the rest locally
+   * would have two producers of one list. `readDirectory` is the caller.
+   *
+   * 🔴 **There is deliberately no `q` parameter here.** Sending one would be silently ignored —
+   * measured, with a control; see {@link readDirectory}.
+   */
+  async people(window: { limit?: number; offset?: number } = {}): Promise<Read<Paged<PersonSummary>>> {
+    const search = new URLSearchParams();
+    if (window.limit !== undefined) search.set('limit', String(window.limit));
+    if (window.offset !== undefined && window.offset > 0) search.set('offset', String(window.offset));
+    const query = search.toString();
+
+    const read = await this.get<{ items?: unknown; page?: unknown }>(
+      `/api/v1/community/people${query === '' ? '' : `?${query}`}`
+    );
+    if (read.outcome !== 'ok') return read;
+
+    const raw = Array.isArray(read.value?.items) ? read.value.items : null;
+    // ⚠️ `unreachable`, never `absent`: see `thread()` for the full argument. A body we could not
+    // read is our problem and is retryable; `absent` is a statement about the viewer's permission
+    // that must never be produced by a parse failure.
+    if (!raw) {
+      return { outcome: 'unreachable', status: null, detail: 'the directory payload could not be read' };
+    }
+
+    const items: PersonSummary[] = [];
+    // 🔴 A row this client cannot read is DROPPED, and the page's `total` is left alone. The two
+    // then disagree, `readDirectory` reports `complete: false`, and the surface says it is showing
+    // part of the directory — which is true. Padding `total` down to match would hide a payload
+    // problem behind a number that looked consistent.
+    for (const entry of raw) {
+      const person = readPersonSummary(entry);
+      if (person) items.push(person);
+    }
+
+    return { outcome: 'ok', value: { items, page: readPageInfo(read.value?.page, items.length) } };
+  }
+
+  /**
+   * NAT-008 — one public profile.
+   *
+   * ⚠️ **The path is `people/{handle}`, where the web's page is `/u/{handle}`.** The platform
+   * chose the difference deliberately (`docs/API.md` maps every endpoint to its page): `/u/` is a
+   * short URL a person types, and this is a path a program builds after listing `/people`.
+   *
+   * 🔴 **A 404 here is `absent`, and that is right for all three of the things it can mean.** A
+   * private profile, a hidden profile and a handle that never existed are one answer on the wire
+   * — UNI-003's *"404, not a stub"* — and D15's refusal is the same bytes again. The editor must
+   * not tell them apart, because telling them apart is the disclosure the platform declined to
+   * make. `peopleview.ts` draws all four as *"there is no public profile here"*.
+   */
+  async person(handle: string): Promise<Read<PersonProfile>> {
+    const read = await this.get<{ item?: unknown }>(
+      `/api/v1/community/people/${encodeURIComponent(handle)}`
+    );
+    if (read.outcome !== 'ok') return read;
+
+    const profile = readPersonProfile(read.value?.item);
+    if (!profile) {
+      return { outcome: 'unreachable', status: null, detail: 'the profile payload could not be read' };
+    }
+    return { outcome: 'ok', value: profile };
   }
 
   threshold(): Promise<Read<ThresholdResponse>> {

@@ -218,6 +218,127 @@ const PAIRS: Pair[] = [
     why: 'NON-TEXT (1.4.11): the button has no fill, so this 1px edge is the only thing that says a control is there'
   },
 
+  // ── NAT-008: the people surfaces ────────────────────────────────────────────────────────
+  // `CommunityPersonRow`, `CommunityDirectoryView`, `CommunityProfileView`.
+  //
+  // 🔴 **THE AVATAR AND THE CHIPS ARE PINNED TO `bg-3` IN BOTH DENSITIES, AND THAT IS WHAT MAKES
+  // THIS FOUR ROWS INSTEAD OF SIXTEEN.** A chip that inherited the row's ground would be a
+  // different pairing on the launcher card, on the card under the pointer, in the rail and in the
+  // rail under the pointer — four grounds per tone, three tones, and the arithmetic is how one of
+  // them goes ungraded. One named ground per component is a design constraint bought to keep the
+  // table readable, and it is stated here rather than left as a coincidence in the stylesheet.
+  //
+  // ⚠️ **The web draws its avatar as a GRADIENT and this one does not.** A gradient is a colour
+  // that changes across the shape it fills, so the letter's ratio is a different number at the top
+  // of the disc and at the bottom — the same objection the `over` column raises against a wash.
+  // D15 forbids the editor disagreeing with the web about *who is visible*; it says nothing about
+  // ornament, and the editor has this floor to answer to.
+  {
+    what: 'the people row and the profile head: the letter in the avatar disc',
+    fg: '--theme-color-fg-default',
+    bg: '--theme-color-bg-3',
+    min: 4.5,
+    why: 'a WORD, not a shape — one character, but a character somebody reads. The disc is flat and named precisely so this is one number'
+  },
+  {
+    what: 'a chip with no tone: a day rate on a person row or a profile',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-3',
+    min: 4.5,
+    why: '10px words. The quietest ink on the chip ground, so the worst case of the three tones'
+  },
+  {
+    what: 'a “good” chip: Available for work',
+    fg: '--theme-color-fg-success',
+    bg: '--theme-color-bg-3',
+    min: 4.5,
+    why: 'words. D11 moved `fg-success` off the FILL green precisely so text tones clear 4.5 up to bg-4 — this is the row that holds it to that on the ground it is actually drawn on'
+  },
+  {
+    what: 'an “accent” chip: Offers coaching, and every skill',
+    fg: '--theme-color-fg-accent',
+    bg: '--theme-color-bg-3',
+    min: 4.5,
+    why: 'words, and the commonest chip on the surface — a person with six skills has six of them'
+  },
+  {
+    what: 'the directory search box: its label above the field',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: '10px words, and they are the box’s accessible NAME — a label nobody can read is a search box that promises nothing'
+  },
+  {
+    what: 'the directory search box: what somebody has typed into it',
+    fg: '--theme-color-fg-default',
+    bg: '--theme-color-bg-2',
+    min: 4.5,
+    why: 'words, on the field’s own recessed ground rather than the card’s'
+  },
+  {
+    what: 'the directory search box: the 1px edge that says a field is there',
+    fg: '--theme-color-border-control',
+    bg: '--theme-color-bg-1',
+    min: 3,
+    why: 'NON-TEXT (1.4.11): the field’s fill is only one step off the card, so the edge is what makes it a control'
+  },
+  {
+    what: 'a filter pill at rest: its label and its count',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: '10px words. An inactive pill has no fill of its own, so at rest its ground is the card’s'
+  },
+  {
+    what: 'a filter pill at rest: the border that IS the pill',
+    fg: '--theme-color-border-control',
+    bg: '--theme-color-bg-1',
+    min: 3,
+    why: 'NON-TEXT (1.4.11): an unfilled pill is a rectangle of words until this edge draws it'
+  },
+  {
+    what: 'a filter pill when it is ON',
+    fg: '--theme-color-fg-default',
+    bg: '--theme-color-bg-3',
+    min: 4.5,
+    why: 'the active pill fills, and the fill is the second half of the state `aria-pressed` carries'
+  },
+  {
+    what: 'the directory summary line — “2 of 11 people”',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: '10px words on the card'
+  },
+  {
+    what: 'the partial-directory sentence — “search covers only these”',
+    fg: '--theme-color-fg-notice',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: '🔴 words, and the one sentence on the surface that limits what everything else on it means. Drawn in the notice ink so it does not read as a caption, which is exactly why it needs its own row'
+  },
+  {
+    what: 'the profile eyebrow — “Coach · Available for work”',
+    fg: '--theme-color-fg-accent',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: '10px UPPERCASE with letter-spacing — smaller and thinner than the accent text already graded on this ground, so no relief is claimed'
+  },
+  {
+    what: 'a badge’s artwork on a profile',
+    fg: '--theme-color-fg-default-shy',
+    bg: '--theme-color-bg-1',
+    min: 3,
+    why: 'NON-TEXT (1.4.11): the mark is a SHAPE — `.BadgeArt`’s `background` is its ink, because the mask carries no colour of its own'
+  },
+  {
+    what: 'a post author line that is an entry point to a profile (NAT-008 AC4)',
+    fg: '--theme-color-fg-default',
+    bg: '--theme-color-bg-1',
+    min: 4.5,
+    why: 'words. ⚠️ It deliberately keeps `.PostAuthor`’s ink rather than taking a link colour — four accent-coloured names in a thread would compete with the accepted-answer marker — so the pairing is unchanged and this row records that it was checked rather than inherited'
+  },
+
   // ── The rail panel ──────────────────────────────────────────────────────────────────────
   // `views/panels/CommunityPanel`. `BasePanel` paints `bg-2` and sets `color: fg-default`;
   // `Section` gutters keep that ground.

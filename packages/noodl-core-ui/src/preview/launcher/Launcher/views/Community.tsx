@@ -49,6 +49,8 @@
 import React from 'react';
 
 import {
+  CommunityDirectoryView,
+  CommunityProfileView,
   CommunityRow,
   CommunitySection,
   CommunityThreadView,
@@ -58,7 +60,12 @@ import {
   relativeTime,
   replyLatency
 } from '@noodl-core-ui/components/community';
-import type { CommunitySectionState, CommunityThreadState } from '@noodl-core-ui/components/community';
+import type {
+  CommunityDirectoryViewModel,
+  CommunityProfileState,
+  CommunitySectionState,
+  CommunityThreadState
+} from '@noodl-core-ui/components/community';
 import css from '@noodl-core-ui/components/community/Community.module.scss';
 import { LauncherPage } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherPage';
 import { useLauncherContext } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
@@ -136,7 +143,35 @@ export interface LauncherCommunityThreadPane {
   onBack: () => void;
   onRetry: () => void;
   onOpenLink?: (href: string) => void;
+  /**
+   * NAT-008 AC4 — open the profile behind a post's author line.
+   *
+   * ⚠️ **Supplied by the HOST, not by the thread hook.** `useCommunityThread` knows which thread
+   * is open and `useCommunityPeople` knows which profile is; neither knows about the other, and
+   * the surface that mounts both is where they meet. That is the same arrangement that lets the
+   * lists survive a thread opening in place.
+   */
+  onOpenPerson?: (handle: string) => void;
   reply?: { line: string; actionLabel: string; onAction: () => void } | null;
+}
+
+/**
+ * NAT-008's half of the host state. ⚠️ Declared rather than spread, for the reason
+ * {@link LauncherCommunityThreadPane} gives: a new prop should be a change the tab's author sees.
+ */
+export interface LauncherCommunityPeoplePane {
+  directory: CommunityDirectoryViewModel;
+  onQueryChange: (query: string) => void;
+  onToggleFilter: (key: string) => void;
+  onOpenPerson: (handle: string) => void;
+  onRetry: () => void;
+}
+
+export interface LauncherCommunityProfilePane {
+  state: CommunityProfileState;
+  onBack: () => void;
+  onRetry: () => void;
+  onOpenLink?: (href: string) => void;
 }
 
 /** What the editor supplies to this tab. */
@@ -157,6 +192,19 @@ export interface LauncherCommunityHostState {
   thread?: LauncherCommunityThreadPane | null;
   /** NAT-007 — the thread's own id. Opens it IN PLACE; see {@link thread}. */
   onOpenThread?: (threadId: string) => void;
+  /**
+   * NAT-008 — the directory.
+   *
+   * 🔴 **`null` means D15 refused this viewer, and it is NOT the same as `undefined`.**
+   * `undefined` is a host that has not wired the surface (Storybook, an older editor build) and
+   * draws nothing for that reason; `null` is a host whose hook answered *"this viewer does not
+   * get people"* and draws nothing for that one. Collapsing them would make a refusal
+   * indistinguishable from an un-built feature, which is fine on screen and wrong in a spec —
+   * *"a component that never ran also draws nothing."*
+   */
+  people?: LauncherCommunityPeoplePane | null;
+  /** NAT-008 — a profile, open in place of everything else. `null` when none is open. */
+  profile?: LauncherCommunityProfilePane | null;
   onOpenArticle?: (slug: string) => void;
   onOpenReplay?: (slug: string) => void;
   onOpenCommunity?: () => void;
@@ -178,6 +226,8 @@ export function CommunityTab({
   isRefreshing,
   onRefresh,
   thread,
+  people,
+  profile,
   onOpenThread,
   onOpenArticle,
   onOpenReplay,
@@ -190,6 +240,26 @@ export function CommunityTab({
   // recorded gap the rail entry has, and it is owned by phase 67b.
   if (view.surface === 'hidden') return null;
 
+  // 🔴 NAT-008 AC2 — a profile opens IN PLACE, and BEFORE the thread, because you reach a profile
+  // FROM a thread's author line: a reader who clicks `@rosborne` inside a post has both panes
+  // open at once and expects the newer one. Going back closes the profile and the thread is
+  // exactly as it was, because neither hook knows about the other.
+  //
+  // ⚠️ **After the D15 check, like everything else on this surface.** A refused viewer who
+  // somehow holds a handle must reach nothing.
+  if (profile) {
+    return (
+      <LauncherPage title="Community">
+        <CommunityProfileView
+          state={profile.state}
+          onBack={profile.onBack}
+          onRetry={profile.onRetry}
+          onOpenLink={profile.onOpenLink}
+        />
+      </LauncherPage>
+    );
+  }
+
   // 🔴 NAT-007 AC1 — a thread opens IN PLACE. ⚠️ **After the D15 check and never before it**: a
   // refused viewer who somehow holds a thread id must reach nothing, and a `thread` prop checked
   // first would draw the pane for them on the strength of the host having set it.
@@ -201,6 +271,7 @@ export function CommunityTab({
           onBack={thread.onBack}
           onRetry={thread.onRetry}
           onOpenLink={thread.onOpenLink}
+          onOpenPerson={thread.onOpenPerson}
           reply={thread.reply}
         />
       </LauncherPage>
@@ -256,6 +327,37 @@ export function CommunityTab({
           ))
         }
       </CommunitySection>
+
+      {/*
+        🔴 NAT-008 AC1 — the directory. ⚠️ `people === null` is D15's refusal and `undefined` is a
+        host that has not wired it; both draw nothing here and the difference is the host's, which
+        is why the pane type documents it rather than this line deciding it.
+
+        ⚠️ It is a `CommunitySection` like the others so that the search box, the pills and the
+        four states arrive inside the same card the rest of the tab uses — a directory that looked
+        like a different page would be the second design language NAT-005 exists to prevent.
+      */}
+      {people && (
+        <section className={css['Section']}>
+          <div className={css['SectionCard']}>
+            <div className={css['SectionHead']}>
+              <h3 className={css['SectionTitle']}>People</h3>
+            </div>
+            {/* ⚠️ The card and the heading are drawn here rather than through `CommunitySection`
+                because the search box and the filter pills belong INSIDE the card and above the
+                rows, and `CommunitySection` renders the body itself. The count that component
+                would have drawn is `directory.summary`, which says "2 of 11 people" — a more
+                honest number on a filtered list than a bare item count. */}
+            <CommunityDirectoryView
+              view={people.directory}
+              onQueryChange={people.onQueryChange}
+              onToggleFilter={people.onToggleFilter}
+              onOpenPerson={people.onOpenPerson}
+              onRetry={people.onRetry}
+            />
+          </div>
+        </section>
+      )}
 
       <CommunitySection
         title="Guides and tutorials"

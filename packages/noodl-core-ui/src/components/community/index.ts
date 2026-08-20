@@ -24,4 +24,26 @@ export type {
   CommunityThreadState,
   CommunityThreadViewProps
 } from './CommunityThreadView';
+export { CommunityPersonRow } from './CommunityPersonRow';
+export type {
+  CommunityChip,
+  CommunityChipTone,
+  CommunityPersonRowProps,
+  CommunityPersonRowView
+} from './CommunityPersonRow';
+export { CommunityDirectoryView } from './CommunityDirectoryView';
+export type {
+  CommunityDirectoryView as CommunityDirectoryViewModel,
+  CommunityDirectoryViewProps,
+  CommunityFilterPill
+} from './CommunityDirectoryView';
+export { CommunityProfileView } from './CommunityProfileView';
+export type {
+  CommunityBadgeView,
+  CommunityProfileDetailView,
+  CommunityProfileLink,
+  CommunityProfileState,
+  CommunityProfileViewProps
+} from './CommunityProfileView';
+export { badgeMark, badgeMarkKeys } from './badgeMarks';
 export type { PostBlock, PostInline } from './postBlocks';

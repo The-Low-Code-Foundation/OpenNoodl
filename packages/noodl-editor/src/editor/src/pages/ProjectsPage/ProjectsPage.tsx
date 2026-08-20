@@ -81,6 +81,7 @@ import { LAST_PROJECT_LOCATION_KEY, pickProjectLocation } from './projectLocatio
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 
 import { useCommunityMirror } from '@noodl-hooks/useCommunityMirror';
+import { useCommunityPeople } from '@noodl-hooks/useCommunityPeople';
 import { useCommunityThread } from '@noodl-hooks/useCommunityThread';
 
 import { useCommunityAccount } from './useCommunityAccount';
@@ -272,6 +273,10 @@ export function ProjectsPage(props: ProjectsPageProps) {
   // NAT-007 — which thread is open, and its data. The same hook the editor's rail panel calls;
   // see `useCommunityThread` on why one hook rather than one per surface.
   const communityThread = useCommunityThread();
+  // NAT-008 — the directory and whichever profile is open. A third hook rather than a field on
+  // the second, for the reason the second gives: each owns one question, and the surface that
+  // mounts them is where they meet.
+  const communityPeople = useCommunityPeople();
 
   // GitHub OAuth state
   const [githubIsAuthenticated, setGithubIsAuthenticated] = useState(false);
@@ -1329,8 +1334,15 @@ export function ProjectsPage(props: ProjectsPageProps) {
           // 🔴 NAT-007 AC1 — this was `platform.openExternal(`${COMMUNITY_URL}/bench/${externalId}`)`,
           // and `externalId` was a field the platform has never sent, so every thread anybody
           // clicked opened `/bench/undefined`. It opens in place now; see `communityapi.ts`.
-          thread: communityThread.pane,
+          thread: communityThread.pane
+            ? // 🔴 NAT-008 AC4 — a post's author line opens their profile, and this is the join.
+              { ...communityThread.pane, onOpenPerson: communityPeople.openPerson }
+            : null,
           onOpenThread: communityThread.openThread,
+          // NAT-008 AC1/AC2. ⚠️ `people` is `null` when D15 refused this viewer, which the tab
+          // draws as nothing at all — see `LauncherCommunityHostState.people`.
+          people: communityPeople.people,
+          profile: communityPeople.profile,
           onOpenArticle: (slug) => platform.openExternal(`${COMMUNITY_URL}/articles/${slug}`),
           onOpenReplay: (slug) => platform.openExternal(`${COMMUNITY_URL}/replays/${slug}`),
           onOpenCommunity: () => platform.openExternal(COMMUNITY_URL)
