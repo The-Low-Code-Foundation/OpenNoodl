@@ -63,7 +63,20 @@ export type LessonConditionDef =
    * existed. `node` is optional: omitted, any Router or Page Stack in the
    * project may answer; given, only that one. See {@link RouterListsCondition}.
    */
-  | { node?: string; routerLists: string };
+  | { node?: string; routerLists: string }
+  /**
+   * TUT-002 — the three verbs that observe the project's **built-in database** rather than its
+   * graph, so a data tutorial can grade the outcome and not only the wiring.
+   *
+   * 🔴 Deliberately spelt so that none of them collides with a node verb. `{ collection, exists }`
+   * would have been the natural reading of the first, and it is a trap: `compileCondition` matches
+   * `'exists' in d` and would compile it into a node condition with no path. One verb per object,
+   * and every verb globally unique, is what keeps that dispatcher a lookup rather than an ordering
+   * puzzle.
+   */
+  | { collection: string; collectionExists: boolean }
+  | { collection: string; hasColumns: string[] }
+  | { collection: string; rowCountAtLeast: number };
 
 /** An editor side-effect performed when a step becomes active. */
 export type LessonActionDef =
@@ -180,6 +193,49 @@ class LessonFormatError extends Error {
   }
 }
 
+/**
+ * TUT-002 — a collection name, refused when blank.
+ *
+ * An empty name matches nothing and would compile into a condition that can never hold, which is
+ * exactly the F1 "unreachable" defect the bundle harness exists to catch. Cheaper to refuse here.
+ */
+function collectionName(value: unknown, where: string): string {
+  const name = str(value, where, 'collection').trim();
+  if (name === '') throw new LessonFormatError(`${where}: "collection" must name a collection.`);
+  return name;
+}
+
+/**
+ * Every verb an author may write, by the key that identifies it.
+ *
+ * 🔴 **Declared rather than spelt out in prose, because the prose was the only list.** The
+ * refusal below used to name the fifteen verbs in a string literal, which meant the one place
+ * that knew the whole vocabulary could not be read by anything — and `noodl-mcp`'s authoring
+ * brief, the surface a model actually reads before writing a manifest, had been sitting two
+ * verbs behind it with nothing to notice. A model cannot use a verb nobody told it about, so an
+ * undocumented verb is an unshipped one.
+ *
+ * Companion keys (`node`, `collection`, `equals`) are deliberately absent: they qualify a verb
+ * rather than choose one, and `compileCondition` dispatches on this list alone.
+ */
+export const LESSON_CONDITION_VERBS = [
+  'hasType',
+  'hasLabel',
+  'hasPort',
+  'exists',
+  'isVisualRoot',
+  'hasParams',
+  'paramsEqual',
+  'connection',
+  'metadata',
+  'previewRouteEquals',
+  'activeComponentEquals',
+  'routerLists',
+  'collectionExists',
+  'hasColumns',
+  'rowCountAtLeast'
+] as const;
+
 function compileCondition(def: LessonConditionDef, where: string): LessonCondition {
   const d = def as Record<string, unknown>;
 
@@ -220,10 +276,37 @@ function compileCondition(def: LessonConditionDef, where: string): LessonConditi
     };
   }
 
+  // TUT-002 — the database verbs. Checked here rather than beside `exists` because each one is
+  // uniquely spelt; the position in this chain carries no meaning and must not start to.
+  if ('collectionExists' in d) {
+    return {
+      collection: collectionName(d.collection, where),
+      collectionexists: bool(d.collectionExists, where, 'collectionExists')
+    };
+  }
+  if ('hasColumns' in d) {
+    if (!Array.isArray(d.hasColumns) || d.hasColumns.length === 0) {
+      throw new LessonFormatError(`${where}: "hasColumns" must be a non-empty array of column names.`);
+    }
+    const columns = d.hasColumns.map((c, i) => str(c, where, `hasColumns[${i}]`));
+    // A comma in a column name would silently split into two names that can never match, so it is
+    // refused at author time rather than becoming a permanently-false condition.
+    for (const c of columns) {
+      if (c.includes(',')) throw new LessonFormatError(`${where}: column name "${c}" may not contain a comma.`);
+    }
+    return { collection: collectionName(d.collection, where), collectionhascolumns: columns.join(',') };
+  }
+  if ('rowCountAtLeast' in d) {
+    const n = d.rowCountAtLeast;
+    if (typeof n !== 'number' || !Number.isInteger(n) || n < 0) {
+      throw new LessonFormatError(`${where}: "rowCountAtLeast" must be a non-negative whole number.`);
+    }
+    return { collection: collectionName(d.collection, where), collectionrowcountatleast: n };
+  }
+
   throw new LessonFormatError(
     `${where}: unrecognised condition ${JSON.stringify(def)}. ` +
-      `Expected one of: hasType, hasLabel, hasPort, exists, isVisualRoot, hasParams, ` +
-      `paramsEqual, connection, metadata, previewRouteEquals, activeComponentEquals, routerLists.`
+      `Expected one of: ${LESSON_CONDITION_VERBS.join(', ')}.`
   );
 }
 

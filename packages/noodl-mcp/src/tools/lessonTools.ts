@@ -41,6 +41,7 @@ import { z } from 'zod';
 
 import { EXAMPLE_MANIFEST, lessonAuthoringBrief } from '../lessons/authoringBrief';
 import { nodeBundleFs, scoreLesson, writeLessonBundle } from '../lessons/bundleWriter';
+import { lessonDatabaseFromBackend } from '../lessons/lessonDatabase';
 import { writeDerivedStarter } from '../lessons/starterWriter';
 import { createWholeSolutionGrader } from '../lessons/wholeSolutionGrader';
 import { formatBundleScorecard, readLessonBundle, SOLUTION_DIR, verifyLessonBundle } from '../editor-deps';
@@ -224,11 +225,20 @@ export function registerLessonTools(server: McpServer): void {
         render: z
           .boolean()
           .optional()
-          .describe('Render the solution to answer F4 ("does it draw?"). Takes ~8s. On by default.')
+          .describe('Render the solution to answer F4 ("does it draw?"). Takes ~8s. On by default.'),
+        backend_id: z
+          .string()
+          .optional()
+          .describe(
+            'A built-in backend to replay collectionExists / hasColumns / rowCountAtLeast against, started ' +
+              'if it is not running. WITHOUT it those conditions are reported as not-checkable — a bundle on ' +
+              'disk holds no data — and only their collection NAMES are checked. Name one to find out whether ' +
+              'the tables and columns the lesson grades actually exist.'
+          )
       }
     },
     guarded(
-      async (args: { bundle_dir: string; render?: boolean }): Promise<ToolResult> => {
+      async (args: { bundle_dir: string; render?: boolean; backend_id?: string }): Promise<ToolResult> => {
         const bundle = readLessonBundle(args.bundle_dir, nodeBundleFs);
         if (!bundle.manifest) {
           throw new ToolError('invalid-argument', bundle.problems.join(' '));
@@ -245,9 +255,19 @@ export function registerLessonTools(server: McpServer): void {
         // the wrong kit is the failure CN-003 records as its standing trap.
         const kits = bundleVocabularyFor(args.bundle_dir);
 
+        // TUT-002 AC3 — the sidecar's context filler, and it is opt-in for a reason worth
+        // keeping in view: absent, the collection verbs are reported as not-checkable and F1
+        // checks their names; present, they are replayed for real. Reported below either way, so
+        // "checked against a database" and "not checked at all" cannot read the same.
+        const database = args.backend_id ? await lessonDatabaseFromBackend(args.backend_id) : undefined;
+
         const scorecard = await verifyLessonBundle(bundle.manifest, {
-          ...(bundle.starter ? { starter: buildLessonEvalContext(bundle.starter, { catalog: kits.catalog }) } : {}),
-          ...(bundle.solution ? { solution: buildLessonEvalContext(bundle.solution, { catalog: kits.catalog }) } : {}),
+          ...(bundle.starter
+            ? { starter: buildLessonEvalContext({ ...bundle.starter, ...(database ? { database } : {}) }, { catalog: kits.catalog }) }
+            : {}),
+          ...(bundle.solution
+            ? { solution: buildLessonEvalContext({ ...bundle.solution, ...(database ? { database } : {}) }, { catalog: kits.catalog }) }
+            : {}),
           ...(bundle.solution && args.render !== false
             ? { wholeSolution: createWholeSolutionGrader(nodeBundleFs.join(args.bundle_dir, SOLUTION_DIR)) }
             : {}),
@@ -275,6 +295,16 @@ export function registerLessonTools(server: McpServer): void {
           graded_steps: scorecard.gradedSteps,
           scorecard: formatBundleScorecard(scorecard),
           ...kitNote,
+          // TUT-002 — said out loud, because "the data conditions passed" and "the data
+          // conditions were never asked" are the same silence otherwise.
+          ...(database
+            ? {
+                database:
+                  database.status === 'ok'
+                    ? { status: 'ok', collections: database.collections.map((c) => c.name) }
+                    : database
+              }
+            : {}),
           ...(bundle.problems.length ? { bundle_problems: bundle.problems } : {})
         });
       }

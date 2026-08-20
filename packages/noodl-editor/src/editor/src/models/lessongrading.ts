@@ -46,7 +46,7 @@
  */
 
 import type { LessonEvalContext } from '../views/lessons/lessonevalconditions';
-import { evalConditionsWithContext } from '../views/lessons/lessonevalconditions';
+import { databaseRefusal, evalConditionsWithContext } from '../views/lessons/lessonevalconditions';
 import { compileConditions, LessonFormatError } from './lessonformat';
 import type { LessonManifest, LessonStepDef } from './lessonformat';
 import { projectLessonVocabulary, verifyLessonManifest } from './lessonverify';
@@ -73,6 +73,19 @@ export interface StepGrade {
    * `passed: false`, which means "evaluated, and the learner is not there yet".
    */
   error?: string;
+  /**
+   * TUT-002 — set when the step could not be graded for a reason that is **neither the
+   * lesson's fault nor the learner's**: it reads the built-in database, and this project is
+   * bound to somebody else's server, or the built-in one could not be read.
+   *
+   * 🔴 Deliberately not folded into {@link error}. `error` means *the lesson's own condition is
+   * broken*, and `summariseGrade` says so in those words — sending a learner to look for a
+   * mistake in a lesson that is fine, when the actual fix is "start your backend", is the
+   * wrong instruction twice over. Deliberately not folded into `passed: false` either: that
+   * reads as "not there yet", and a step that can never tick would sit there forever with
+   * nothing on screen explaining why.
+   */
+  unevaluable?: string;
 }
 
 /**
@@ -97,6 +110,13 @@ export function gradeLessonSteps(manifest: LessonManifest, ctx: LessonEvalContex
 
     try {
       const conditions = compileConditions(step.completeWhen, where);
+      // TUT-002: asked before evaluating, because the evaluator's answer for an unreadable
+      // database is `false` — the safe direction, and indistinguishable from "not done yet".
+      // This is the half that makes them distinguishable.
+      const refusal = databaseRefusal(conditions, ctx);
+      if (refusal) {
+        return { ...base, graded: true, passed: false, conditionCount: conditions.length, unevaluable: refusal };
+      }
       return {
         ...base,
         graded: true,

@@ -70,6 +70,21 @@ export const CONDITION_EXAMPLES: ReadonlyArray<{ readonly def: LessonConditionDe
   {
     def: { node: '/#__page__/Home:%Page:%Router', routerLists: '/#__page__/About' },
     note: 'the same question aimed at one router, for a lesson that teaches nested routing or a Page Stack'
+  },
+  // TUT-002 — the three that observe the project's built-in database rather than its graph.
+  // Everything above grades the WIRING; these grade the OUTCOME, which for a data lesson is the
+  // difference between "you connected Create Record" and "you created a record".
+  {
+    def: { collection: 'Puppies', collectionExists: true },
+    note: '🔴 the learner MADE the collection — built-in database only, and `collection` is a separate key'
+  },
+  {
+    def: { collection: 'Puppies', hasColumns: ['name', 'age'] },
+    note: 'and it has these columns — names match case-insensitively, as SQLite identifiers do'
+  },
+  {
+    def: { collection: 'Puppies', rowCountAtLeast: 1 },
+    note: '🔴 they actually SAVED one. Zero rows is a legitimate answer; a database that could not be read is not'
   }
 ];
 
@@ -188,6 +203,26 @@ Every condition is an object with exactly one verb. All of a step's conditions
 must hold at once.
 
 ${conditionLines()}
+
+### 🔴 The three data verbs, and the one rule attached to them
+
+\`collectionExists\`, \`hasColumns\` and \`rowCountAtLeast\` read the project's
+**built-in database** — the \`nodegx-backend\` the editor runs — and nothing else.
+A project bound to Parse, Directus or a REST endpoint is **refused by name**, not
+graded false: a lesson condition that queried one of those would have the editor
+call someone else's server, during grading, unprompted.
+
+Three consequences worth having before you write one:
+
+- **They are the only verbs a bundle on disk cannot answer.** \`check_lesson\`
+  reports them as *not checkable* and verifies their collection NAMES instead —
+  a name that appears in neither the starter nor the solution is refused (F1).
+  Pass \`backend_id\` to replay them against a real backend.
+- **The collection has to be named somewhere in the projects.** That is what makes
+  the name checkable, and it is normally automatic: the Record node's Class
+  dropdown writes it.
+- **\`rowCountAtLeast: 0\` grades nothing.** Every collection has at least zero
+  rows. If you mean "they saved one", write \`1\`.
 
 ⚠️ **\`routerLists\` is the one verb whose value is not a node path.** It takes a
 component's **legacy name** — the same string the router stores in \`routes\` and a

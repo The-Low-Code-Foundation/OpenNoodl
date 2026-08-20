@@ -97,6 +97,53 @@ export interface LessonComponent {
   graph: { roots: LessonNode[] };
 }
 
+/**
+ * TUT-002 — one collection in the project's **built-in** database, as the grader sees it.
+ *
+ * 🔴 `rowCount` is optional and the distinction is load-bearing. **Zero rows is a legitimate
+ * answer; a snapshot that could not count is not.** Conflating them lets a lesson congratulate a
+ * learner whose backend never started — `rowCountAtLeast: 0` would hold against a collection
+ * nobody could read. Absent means *not counted*, and every verb treats it as unproven.
+ */
+export interface LessonCollection {
+  name: string;
+  columns: string[];
+  /** Number of rows, or absent when the snapshot could not count them. */
+  rowCount?: number;
+}
+
+/**
+ * TUT-002 — a pre-fetched view of the built-in database, or the reason there isn't one.
+ *
+ * 🔴 **This is the whole reason the evaluator stays synchronous.** A database read is
+ * asynchronous; grading an already-read snapshot is not. Making {@link evalConditionsWithContext}
+ * async would have made all twelve existing verbs async for the benefit of three new ones, so the
+ * *caller* does the reading and hands the result over as plain data — the same bargain
+ * {@link LessonEvalContext} already strikes for the node graph.
+ *
+ * 🔴 **`refused` is not `unavailable`, and neither is an empty `ok`.** A project bound to Parse,
+ * Directus or a bare REST endpoint must be *refused* by name: grading such a lesson would have the
+ * editor query someone else's server, unprompted, during a lesson, possibly on a school-managed
+ * machine. An empty `{ status: 'ok', collections: [] }` would read as "the learner has not made the
+ * collection yet" and quietly teach against the wrong database.
+ */
+/**
+ * 🔴 **NO PRODUCTION CALLER FILLS THIS YET (TUT-002, session 2).** Neither
+ * `lessonevalconditions.live.ts` nor `lessonprojectcontext.ts` sets `database`, so every collection
+ * verb currently answers `false` with a refusal sentence in the real editor. That is the *safe*
+ * direction — nothing congratulates a learner wrongly — but the verbs are **not yet usable in a
+ * shipped lesson**, and TUT-003 must not author against them until AC3 lands the two fillers.
+ *
+ * Recorded here rather than only in the task file because this arc has been bitten repeatedly by a
+ * mechanism that exists, is tested, and is called by nobody.
+ */
+export type LessonDatabaseSnapshot =
+  | { status: 'ok'; collections: LessonCollection[] }
+  /** The project is bound to a backend this grader will not query. `binding` names it. */
+  | { status: 'refused'; binding: string }
+  /** The built-in database is the right one and could not be read. */
+  | { status: 'unavailable'; reason: string };
+
 /** Everything the evaluator reads about the current editor state. */
 export interface LessonEvalContext {
   components: LessonComponent[];
@@ -107,6 +154,11 @@ export interface LessonEvalContext {
   viewerPath: string | undefined;
   /** The name of the component currently open in the node graph editor. */
   activeComponentName: string | undefined;
+  /**
+   * TUT-002 — the built-in database, pre-read by the caller. Absent when the caller does not
+   * supply one, which every collection verb treats as unproven rather than as "no collections".
+   */
+  database?: LessonDatabaseSnapshot;
 }
 
 // ─── Condition vocabulary ───────────────────────────────────────────────────
@@ -188,6 +240,34 @@ export interface RouterListsCondition {
   routerlists: string;
 }
 
+/**
+ * TUT-002 — "the learner made this collection."
+ *
+ * The first of three verbs that observe the project's **built-in database** rather than its graph.
+ * Everything before them in this union is structural: a data tutorial could grade *"you wired
+ * Create Record's `Do` to the Visual Function's signal output"* and could not grade *"you created a
+ * record"* — which for TUT-003 is the difference between checking the wiring and checking the
+ * outcome.
+ *
+ * 🔴 All three read {@link LessonEvalContext.database} and **never** return `true` against a
+ * snapshot that is missing, refused or unavailable. See {@link databaseRefusal} for how a caller
+ * turns that into a sentence rather than an unticked box.
+ */
+export interface CollectionExistsCondition {
+  /** Collection name. Compared case-insensitively — SQLite identifiers are. */
+  collection: string;
+  collectionexists: boolean;
+}
+export interface CollectionHasColumnsCondition {
+  collection: string;
+  /** Comma-separated column names, all of which must be present. Matches `hasparams`' shape. */
+  collectionhascolumns: string;
+}
+export interface CollectionRowCountAtLeastCondition {
+  collection: string;
+  collectionrowcountatleast: number;
+}
+
 export type LessonCondition =
   | HasTypeCondition
   | HasPortCondition
@@ -200,13 +280,72 @@ export type LessonCondition =
   | MetadataCondition
   | ViewerPathEqCondition
   | ActiveComponentNameEqCondition
-  | RouterListsCondition;
+  | RouterListsCondition
+  | CollectionExistsCondition
+  | CollectionHasColumnsCondition
+  | CollectionRowCountAtLeastCondition;
+
+/** The three TUT-002 verbs, by their compiled (internal, lower-case) key. */
+const COLLECTION_VERBS = ['collectionexists', 'collectionhascolumns', 'collectionrowcountatleast'] as const;
+
+/** True when this condition observes the built-in database rather than the graph. */
+export function isCollectionCondition(condition: LessonCondition): boolean {
+  return COLLECTION_VERBS.some((v) => v in (condition as unknown as Record<string, unknown>));
+}
+
+/**
+ * TUT-002 — why these conditions could not be graded, or `undefined` if they could.
+ *
+ * 🔴 **A collection verb against a refused binding must not read as `false`.** `false` is the same
+ * answer the evaluator gives a learner who simply has not made the collection yet, so a lesson
+ * graded against a Directus-bound project would sit there un-ticking forever with nothing on screen
+ * explaining why. This is the same distinction `lessonprojectcontext`'s `unevaluableReason` draws,
+ * and it exists for the same reason: **a check that could not run has not found anything.**
+ *
+ * Callers surface this sentence *instead of* the unticked step, never alongside a `true`.
+ */
+export function databaseRefusal(conditions: LessonCondition[], ctx: LessonEvalContext): string | undefined {
+  if (!conditions.some(isCollectionCondition)) return undefined;
+
+  const snapshot = ctx.database;
+  if (!snapshot) {
+    return (
+      'This step grades against the built-in database, and nothing read it. ' +
+      'The grader was given no database snapshot.'
+    );
+  }
+  if (snapshot.status === 'refused') {
+    return (
+      `This lesson grades against the built-in database, and this project is bound to ` +
+      `${snapshot.binding}. The lesson will not query it — point the project at its built-in ` +
+      `backend in Backend Services to continue.`
+    );
+  }
+  if (snapshot.status === 'unavailable') {
+    return `This step grades against the built-in database, which could not be read: ${snapshot.reason}.`;
+  }
+  return undefined;
+}
 
 // ─── Small helpers (replacing underscore / eval / assert) ───────────────────
 
 function splitAndTrim(stringList: string | undefined): string[] {
   if (!stringList) return [];
   return stringList.split(',').map((s) => s.trim());
+}
+
+/** TUT-002 — the collections the snapshot can actually vouch for, or undefined. */
+function readableCollections(ctx: LessonEvalContext): LessonCollection[] | undefined {
+  return ctx.database && ctx.database.status === 'ok' ? ctx.database.collections : undefined;
+}
+
+/** TUT-002 — one collection by name, case-insensitively, from a readable snapshot only. */
+function findCollection(ctx: LessonEvalContext, name: string): LessonCollection | undefined {
+  const collections = readableCollections(ctx);
+  if (!collections || typeof name !== 'string') return undefined;
+  const wanted = name.trim().toLowerCase();
+  if (wanted === '') return undefined;
+  return collections.find((c) => c.name.trim().toLowerCase() === wanted);
 }
 
 /** Case-insensitive string equality that tolerates non-string operands. */
@@ -486,6 +625,42 @@ export function evaluateSingleCondition(condition: LessonCondition, ctx: LessonE
     }
     // Unscoped: any Router or Page Stack anywhere in the project.
     return everyNode(ctx.components).some((n) => routerListsPage(n, page));
+  }
+
+  // ── TUT-002: the three verbs that observe the built-in database ──────────
+  //
+  // 🔴 Every arm below returns `false` for a snapshot that is not `ok`. That is deliberately the
+  // safe direction — a grader that cannot see the database must never congratulate — and it is
+  // only half the answer: `databaseRefusal()` is what turns "refused" into a sentence, so the two
+  // are not read as the same thing by the learner. Do not "simplify" one without the other.
+  if ('collectionexists' in cond) {
+    const found = findCollection(ctx, cond.collection as string);
+    // A `false` expectation is answerable from an `ok` snapshot: the collection is genuinely
+    // absent. It is NOT answerable from a missing one, which is why the guard is on the snapshot
+    // rather than on `found`.
+    if (!readableCollections(ctx)) return false;
+    return (cond.collectionexists as boolean) ? !!found : !found;
+  }
+
+  if ('collectionhascolumns' in cond) {
+    const found = findCollection(ctx, cond.collection as string);
+    if (!found) return false;
+    const wanted = splitAndTrim(cond.collectionhascolumns as string).filter((c) => c !== '');
+    if (wanted.length === 0) return false;
+    const have = new Set(found.columns.map((c) => c.toLowerCase()));
+    // Case-insensitive: SQLite identifiers are, and `planSchemaReconciliation` already paid for
+    // assuming otherwise — `ADD COLUMN age` against an existing `Age` fails, and
+    // `SchemaManager.addColumn` swallows precisely that error.
+    return wanted.every((c) => have.has(c.toLowerCase()));
+  }
+
+  if ('collectionrowcountatleast' in cond) {
+    const found = findCollection(ctx, cond.collection as string);
+    if (!found) return false;
+    // 🔴 `rowCount` absent means the snapshot could not count, which is not the same as zero.
+    // Without this guard `rowCountAtLeast: 0` would hold against a collection nobody could read.
+    if (typeof found.rowCount !== 'number') return false;
+    return found.rowCount >= (cond.collectionrowcountatleast as number);
   }
 
   throw new Error(`Unknown lesson condition: ${JSON.stringify(condition)}`);

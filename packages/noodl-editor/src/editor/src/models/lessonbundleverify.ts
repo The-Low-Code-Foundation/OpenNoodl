@@ -110,7 +110,9 @@ import { compileConditions, LessonFormatError } from './lessonformat';
 import type { LessonManifest, LessonStepDef } from './lessonformat';
 import { normaliseWholeSolutionResult } from './lessongrading';
 import type { WholeSolutionGrader, WholeSolutionResult } from './lessongrading';
+import { collectionNamesInComponents } from './lessondatabase';
 import { ambiguousTypeSegments, injectDecoys, unevaluableReason } from './lessonprojectcontext';
+import type { UnevaluableOptions } from './lessonprojectcontext';
 import { nodePathsInCondition, verifyLessonManifest } from './lessonverify';
 import type {
   LessonFinding,
@@ -234,7 +236,7 @@ export interface StepConditions {
  * would retract something the gate never asked about, or skip something it did.
  * One notion of "graded step", in the module that already had to decide.
  */
-export function stepConditions(manifest: LessonManifest): StepConditions[] {
+export function stepConditions(manifest: LessonManifest, options: UnevaluableOptions = {}): StepConditions[] {
   const steps: LessonStepDef[] = Array.isArray(manifest?.steps) ? manifest.steps : [];
 
   return steps
@@ -259,7 +261,7 @@ export function stepConditions(manifest: LessonManifest): StepConditions[] {
       const checkable: LessonCondition[] = [];
       const skipped: Array<{ condition: LessonCondition; reason: string }> = [];
       for (const condition of compiled) {
-        const reason = unevaluableReason(condition);
+        const reason = unevaluableReason(condition, options);
         if (reason) skipped.push({ condition, reason });
         else checkable.push(condition);
       }
@@ -267,6 +269,29 @@ export function stepConditions(manifest: LessonManifest): StepConditions[] {
       return { index, step, where, checkable, skipped };
     })
     .filter((s): s is StepConditions => s !== undefined);
+}
+
+/**
+ * Every collection name the bundle's own projects mention, across both of them.
+ *
+ * 🔴 **Both, and the union rather than the solution alone.** A lesson may legitimately name a
+ * collection that only the starter refers to — "delete the Query that reads `Puppies`" is a step
+ * — and a population drawn from the solution alone would call that name unreachable and refuse a
+ * correct lesson. F1's job is to catch a name nothing in the bundle has ever heard of.
+ */
+function bundleCollections(options: VerifyLessonBundleOptions): string[] {
+  const names = [
+    ...collectionNamesInComponents(options.solution?.components),
+    ...collectionNamesInComponents(options.starter?.components)
+  ];
+  const seen = new Set<string>();
+  // Reported verbatim, matched case-insensitively — see `verifyLessonManifest`.
+  return names.filter((name) => {
+    const key = name.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**
@@ -298,8 +323,27 @@ export async function verifyLessonBundle(
   options: VerifyLessonBundleOptions = {}
 ): Promise<LessonBundleScorecard> {
   const findings: LessonBundleFinding[] = [];
-  const verification = verifyLessonManifest(manifest, options.verify);
-  const steps = stepConditions(manifest);
+  const verification = verifyLessonManifest(manifest, {
+    ...options.verify,
+    // TUT-002 AC5 — F1's collection-reachability check, given its population at last. This is
+    // the caller `VerifyLessonOptions.knownCollections` was written for: the harness is the only
+    // thing that holds *both* projects, and a collection condition naming a table neither of
+    // them ever mentions can never hold.
+    //
+    // 🔴 Supplied only when there is a solution to derive it from. `undefined` skips the check;
+    // an empty array is *evidence* that the bundle names no collections at all, and asserting
+    // that from a bundle we were never given would reject every correct data lesson verified
+    // without one. `asked − answered = absent`; `everything − answered` is a lie.
+    ...(options.verify?.knownCollections
+      ? {}
+      : options.solution
+        ? { knownCollections: bundleCollections(options) }
+        : {})
+  });
+  // TUT-002: the same flag the replay below runs under. A collection condition is replayable
+  // only against a context that actually carries a snapshot; otherwise it is reported as
+  // not-checked, never as a step the solution fails.
+  const steps = stepConditions(manifest, { hasDatabase: !!options.solution?.database });
 
   // ── F1 ──────────────────────────────────────────────────────────────────
   for (const f of verification.findings) {

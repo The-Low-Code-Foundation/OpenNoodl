@@ -41,10 +41,11 @@
  */
 
 import type { LearningEntry, LearningEntryView } from './learningfolder';
+import { lessonObservesDatabase } from './lessondatabase';
 import type { LessonManifest } from './lessonformat';
 import { buildLessonEvidence, gradeLesson } from './lessongrading';
 import type { LessonEvidence, LessonGrade, WholeSolutionGrader } from './lessongrading';
-import type { LessonEvalContext } from '../views/lessons/lessonevalconditions';
+import type { LessonDatabaseSnapshot, LessonEvalContext } from '../views/lessons/lessonevalconditions';
 
 export interface CheckMyWorkRegister {
   get(id: string): LearningEntryView | undefined;
@@ -83,6 +84,19 @@ export interface CheckMyWorkDeps {
   readManifest(projectDirectory: string): LessonManifest | undefined;
   /** The live editor state engine 1 grades against. */
   evalContext(): LessonEvalContext;
+  /**
+   * TUT-002 — the project's built-in database, pre-read, for the three collection verbs.
+   *
+   * **Optional, and its absence is a working editor rather than a degraded one** — every
+   * lesson that grades only the graph is unaffected. It is called at most once per check, and
+   * only when the manifest actually names a collection verb: a lesson with none must not put
+   * HTTP traffic on the machine every time somebody presses the button.
+   *
+   * 🔴 It is a *separate* port from {@link evalContext} because it is the async half. Folding
+   * it in would make the context builder async, which is the thing this design exists not to
+   * do — see `LessonDatabaseSnapshot`.
+   */
+  readDatabase?(): Promise<LessonDatabaseSnapshot>;
   /**
    * Engine 2. Optional on purpose — a build with no viewer still grades every
    * step, and `gradeLesson` treats an absent grader as "not asked", never as a
@@ -145,7 +159,7 @@ export async function checkMyWork(projectId: string | undefined, deps: CheckMyWo
 
   let grade: LessonGrade;
   try {
-    grade = await gradeLesson(manifest, deps.evalContext(), {
+    grade = await gradeLesson(manifest, await lessonContext(manifest, deps), {
       ...(deps.wholeSolution ? { wholeSolution: deps.wholeSolution } : {})
     });
   } catch (e) {
@@ -180,6 +194,32 @@ export async function checkMyWork(projectId: string | undefined, deps: CheckMyWo
   const submission = await submitIfAssigned(entry, evidence, deps);
 
   return { result: 'graded', entryId: entry.id, grade, evidence, summary, submission };
+}
+
+/**
+ * The context engine 1 grades against, with the database in it when the lesson needs one.
+ *
+ * 🔴 **The merge is here rather than pushed through `evalContext()`, and that is deliberate.**
+ * A dependency shaped `evalContext(database?)` is one every existing implementation — the live
+ * one, and every fake in the suite — would silently ignore, and a snapshot dropped on the floor
+ * looks exactly like a snapshot nobody read: the step does not tick and the sentence blames the
+ * database. Merging over the returned object cannot be forgotten by an implementor.
+ *
+ * A `readDatabase` that throws becomes an `unavailable` snapshot rather than an exception: the
+ * learner pressed a button, and "the check could not run" is a worse answer than "your database
+ * could not be read", which names the thing to fix.
+ */
+async function lessonContext(manifest: LessonManifest, deps: CheckMyWorkDeps): Promise<LessonEvalContext> {
+  const ctx = deps.evalContext();
+  if (!deps.readDatabase || !lessonObservesDatabase(manifest)) return ctx;
+
+  let database: LessonDatabaseSnapshot;
+  try {
+    database = await deps.readDatabase();
+  } catch (e) {
+    database = { status: 'unavailable', reason: e instanceof Error ? e.message : String(e) };
+  }
+  return { ...ctx, database };
 }
 
 /**
@@ -284,6 +324,14 @@ export function summariseGrade(grade: LessonGrade, evidence: LessonEvidence): st
     parts.push(`${broken} step${broken === 1 ? '' : 's'} could not be checked — the lesson's own conditions failed.`);
   }
 
+  // TUT-002 — and it is a *different* sentence from the one above on purpose. A step that grades
+  // against the built-in database and could not read it has not failed, and neither has the
+  // lesson: the fix is on this machine, so the reason is quoted verbatim rather than counted.
+  const unevaluable = grade.steps.find((s) => s.unevaluable)?.unevaluable;
+  if (unevaluable) {
+    parts.push(unevaluable);
+  }
+
   const whole = grade.wholeSolution;
   if (whole) {
     if (whole.unavailable) {
@@ -352,6 +400,7 @@ export function liveCheckMyWorkDeps(): CheckMyWorkDeps {
   /* eslint-disable @typescript-eslint/no-var-requires */
   const { LearningFolderModel } = require('./learningfolder');
   const { liveLessonEvalContext } = require('../views/lessons/lessonevalconditions.live');
+  const { liveLessonDatabaseSnapshot } = require('./lessondatabase.live');
   const { liveWholeSolutionGrader } = require('./lessonwholesolution.live');
   const { defaultLearningLessonFs, readLessonManifest } = require('./learninglesson');
   /* eslint-enable @typescript-eslint/no-var-requires */
@@ -362,6 +411,9 @@ export function liveCheckMyWorkDeps(): CheckMyWorkDeps {
     register: LearningFolderModel.instance,
     readManifest: (projectDirectory: string) => readLessonManifest(projectDirectory, fs),
     evalContext: liveLessonEvalContext,
+    // TUT-002 AC3 — the caller that makes the three collection verbs real. Guarded by
+    // `lessonObservesDatabase` inside `checkMyWork`, so a graph-only lesson costs nothing.
+    readDatabase: liveLessonDatabaseSnapshot,
     wholeSolution: liveWholeSolutionGrader(),
     submitAssignment: liveSubmitAssignment,
     now: () => new Date().toISOString()

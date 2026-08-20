@@ -96,6 +96,15 @@ export type LessonFindingCode =
   | 'unmatchable-node-path'
   /** A URL naming a scheme a lesson may not use — `javascript:` and friends. */
   | 'unsafe-url'
+  /**
+   * TUT-002 / F1 — a collection condition names a collection that neither the starter nor the
+   * `solution/` ever creates, so it can never hold.
+   *
+   * 🔴 Only ever raised when the caller supplies the population to check against
+   * ({@link VerifyLessonOptions.knownCollections}). Absence derived from a list nobody provided is
+   * not absence, and a verifier that guesses here rejects correct lessons.
+   */
+  | 'unreachable-collection'
   /** The manifest does not compile — malformed before any vocabulary question arises. */
   | 'malformed-lesson';
 
@@ -550,6 +559,23 @@ export interface VerifyLessonOptions {
   vocabulary?: LessonVocabulary;
   /** Skip the compile check when the caller has already compiled the manifest. */
   skipCompile?: boolean;
+  /**
+   * TUT-002 / F1 — every collection the bundle's starter or `solution/` is known to create.
+   *
+   * 🔴 **Omit it and the collection-reachability check does not run at all.** That is the correct
+   * default, not a gap: this verifier is handed a manifest alone by two of its three callers, and
+   * "absent from a list I was never given" is not evidence of anything. A check that fired anyway
+   * would reject every correct data lesson the moment it was verified without a bundle around it.
+   * The bundle harness, which *does* know both projects, is the caller that supplies it.
+   *
+   * Compared case-insensitively, because SQLite identifiers are.
+   *
+   * 🔴 **NO PRODUCTION CALLER SUPPLIES THIS YET (TUT-002, session 2).** `lessonbundleverify` is the
+   * intended one and cannot until it can read a bundle's collections — TUT-002 AC3. Until then the
+   * collection-reachability check is specced and dormant, and a data lesson can ship with a
+   * condition naming a collection nothing creates. Do not read the green suite as coverage.
+   */
+  knownCollections?: string[];
 }
 
 /**
@@ -566,6 +592,12 @@ export function verifyLessonManifest(
 ): LessonVerificationReport {
   const vocabulary = options.vocabulary ?? defaultLessonVocabulary();
   const findings: LessonFinding[] = [];
+  // TUT-002: `undefined` (not supplied) and an empty array (supplied, and empty) are different
+  // answers, and only the second is evidence. See `VerifyLessonOptions.knownCollections`.
+  const knownNames = options.knownCollections?.map((c) => c.trim()).filter((c) => c !== '');
+  // Matched case-insensitively, but REPORTED verbatim: an author told to "correct the name to one
+  // of: owners, puppies" types exactly that, and `Owners` is what the solution actually creates.
+  const known = knownNames ? new Set(knownNames.map((c) => c.toLowerCase())) : undefined;
 
   if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.steps)) {
     return {
@@ -627,6 +659,35 @@ export function verifyLessonManifest(
             step: stepIndex,
             value: path,
             message
+          });
+        }
+      }
+
+      // TUT-002 / F1 — a collection condition that can never hold.
+      const collection = (def as Record<string, unknown>).collection;
+      const isCollectionDef =
+        'collectionExists' in (def as Record<string, unknown>) ||
+        'hasColumns' in (def as Record<string, unknown>) ||
+        'rowCountAtLeast' in (def as Record<string, unknown>);
+
+      if (isCollectionDef && known !== undefined) {
+        // 🔴 `collectionExists: false` is the one collection condition that is *supposed* to name a
+        // collection nothing creates — "you have not made it yet" is a legitimate step. Flagging it
+        // would be a gate rejecting the correct answer.
+        const assertsPresence = (def as Record<string, unknown>).collectionExists !== false;
+        const name = typeof collection === 'string' ? collection.trim() : '';
+
+        if (assertsPresence && name !== '' && !known.has(name.toLowerCase())) {
+          findings.push({
+            code: 'unreachable-collection',
+            severity: 'error',
+            where: `${where} ("collection")`,
+            step: stepIndex,
+            value: name,
+            message:
+              `No collection named "${name}" is created by the starter project or by the lesson's ` +
+              `own solution, so this condition can never hold. Either create "${name}" in the ` +
+              `solution, or correct the name to one of: ${[...(knownNames ?? [])].sort().join(', ') || '(none)'}.`
           });
         }
       }

@@ -569,6 +569,34 @@ export type {
 export { catalogWithOverlay } from '../../noodl-editor/src/editor/src/validation/catalog';
 export { buildLessonEvalContext } from '../../noodl-editor/src/editor/src/models/lessonprojectcontext';
 export type { LessonProjectSource } from '../../noodl-editor/src/editor/src/models/lessonprojectcontext';
+// TUT-002 AC3 — the database snapshot, shared rather than twinned. This is the arc's "one
+// evaluator, never forked" claim extended to the data side: the editor and this server read the
+// *same two routes* through the same narrowing, and the decisions that matter — a count that is
+// not a number leaves `rowCount` absent, an unmatched binding is refused by name — are made in
+// one file. Only the transport differs (Electron IPC there, `BackendClient` here).
+//
+// ✅ Bundle-clean, and by construction rather than by claim: `lessondatabase.ts` imports the
+// evaluator's types and `lessonformat`, both of which this path already carries, and nothing
+// else. The half that reaches `ipcRenderer` and `ProjectModel` is `lessondatabase.live.ts`,
+// which nothing here names.
+export {
+  classifyLessonBackend,
+  collectionNamesInComponents,
+  columnNamesFrom,
+  lessonObservesDatabase,
+  readLessonDatabaseSnapshot,
+  rowCountFromQueryResponse,
+  tablesFromSchemaResponse
+} from '../../noodl-editor/src/editor/src/models/lessondatabase';
+export type {
+  LessonBackendBinding,
+  LessonBackendTarget,
+  LessonDatabaseReader
+} from '../../noodl-editor/src/editor/src/models/lessondatabase';
+export type {
+  LessonCollection,
+  LessonDatabaseSnapshot
+} from '../../noodl-editor/src/editor/src/views/lessons/lessonevalconditions';
 export {
   MANIFEST_FILE,
   readLessonBundle,
@@ -576,7 +604,11 @@ export {
   SOLUTION_DIR
 } from '../../noodl-editor/src/editor/src/models/lessonbundleread';
 export type { LessonBundleFs } from '../../noodl-editor/src/editor/src/models/lessonbundleread';
-export { compileConditions } from '../../noodl-editor/src/editor/src/models/lessonformat';
+// `LESSON_CONDITION_VERBS` is the whole author-facing vocabulary, declared rather than described.
+// It is what lets a spec here prove the authoring brief documents every verb that exists — the
+// surface a model reads had been two verbs behind the compiler with nothing to notice, and a verb
+// nobody was told about is a verb nobody can use.
+export { compileConditions, LESSON_CONDITION_VERBS } from '../../noodl-editor/src/editor/src/models/lessonformat';
 export type {
   LessonConditionDef,
   LessonManifest,

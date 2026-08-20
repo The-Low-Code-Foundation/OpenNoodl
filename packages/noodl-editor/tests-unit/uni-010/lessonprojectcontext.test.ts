@@ -181,7 +181,12 @@ describe('what a file-backed context refuses to answer', () => {
       'test'
     );
 
-    expect(conditions.every(staticallyEvaluable)).toBe(true);
+    // ⚠️ Wrapped rather than passed point-free. TUT-002 gave `staticallyEvaluable` a second
+    // parameter (whether a database snapshot is in play), and `.every` would hand it the array
+    // INDEX — which is harmless at runtime and exactly the sort of quiet mismatch that stops
+    // being harmless the first time the option means something. TypeScript refuses it; the wrap
+    // is the fix, not a cast.
+    expect(conditions.every((condition) => staticallyEvaluable(condition))).toBe(true);
   });
 });
 

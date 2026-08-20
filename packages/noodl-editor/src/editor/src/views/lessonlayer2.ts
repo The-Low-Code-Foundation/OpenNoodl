@@ -9,7 +9,10 @@ import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import { LearningFolderModel } from '../models/learningfolder';
 import { checkMyWork, liveCheckMyWorkDeps, summariseSubmission } from '../models/lessoncheck';
 import { ProjectModel } from '../models/projectmodel';
-import evalConditions from './lessons/lessonevalconditions.live';
+import { liveLessonDatabaseSnapshot } from '../models/lessondatabase.live';
+import { liveLessonEvalContext } from './lessons/lessonevalconditions.live';
+import { databaseRefusal, evalConditionsWithContext, isCollectionCondition } from './lessons/lessonevalconditions';
+import type { LessonDatabaseSnapshot } from './lessons/lessonevalconditions';
 import LessonLayerView from './lessons/LessonLayerView';
 import PopupLayer from './popuplayer';
 
@@ -40,6 +43,16 @@ interface ILessonStep {
   hasNextButton?: boolean;
 }
 
+/**
+ * How often a data step re-reads the built-in database while it is on screen.
+ *
+ * Four seconds is a compromise with one number on each side: a learner who has just created a
+ * record should not have to wonder whether the tick is broken, and a localhost round trip per
+ * collection several times a minute is the most this may cost. Nothing else in the editor polls,
+ * and this one stops the moment the active step no longer grades the database.
+ */
+const DATABASE_POLL_MS = 4000;
+
 export class LessonLayer {
   keyboardCommands: KeyboardCommand[];
   model: TSFixme;
@@ -52,6 +65,18 @@ export class LessonLayer {
   /** The Learning-folder entry id of the open lesson, or undefined for a hosted one. */
   learningLessonId: string | undefined;
   checkState: ILessonCheckState = { busy: false };
+  /**
+   * TUT-002 — the built-in database as of the last read, for the three collection verbs.
+   *
+   * 🔴 Held here rather than read inside `refresh()` because `refresh()` is **synchronous and
+   * runs on every `Model.*` event** — reading a database from it is impossible and polling one
+   * from it would be an HTTP request per keystroke. Absent means nobody has looked yet, which
+   * every collection verb treats as unproven; it is never confused with an empty database.
+   */
+  database: LessonDatabaseSnapshot | undefined;
+  /** The poll that keeps {@link database} fresh, running only while a data step is active. */
+  databaseTimer: NodeJS.Timeout | undefined;
+  databaseReading = false;
 
   constructor() {
     this.keyboardCommands = [
@@ -236,6 +261,14 @@ export class LessonLayer {
     //   this.nextButton.parentElement.removeChild(this.nextButton);
     // }
 
+    // TUT-002 — a step that grades the database keeps a poll alive while it is the active one,
+    // and stops it the moment it is not. Decided here rather than inside the loop so that moving
+    // *off* a data step stops the poll even when the next step carries no conditions at all.
+    // 🔴 A learner adding a row in the Data Browser raises no editor model event, so without
+    // this the step would tick only when something else happened to change.
+    const active = this.steps[this.model.index];
+    this._watchDatabase(!!active?.conditions?.some(isCollectionCondition));
+
     this.steps.forEach((step, stepIndex) => {
       if (stepIndex < this.model.index) {
         step.isComplete = true;
@@ -246,7 +279,19 @@ export class LessonLayer {
       } else if (stepIndex === this.model.index) {
         if (step.conditions && step.conditions.length) {
           try {
-            step.isComplete = evalConditions(step.conditions);
+            // TUT-002 — one context, asked twice: whether these conditions could be graded at
+            // all, and then whether they hold. A refusal is neither a pass nor a "not yet", and
+            // saying so is the difference between a learner who starts their backend and one who
+            // stares at a step that can never tick.
+            const ctx = liveLessonEvalContext(this.database);
+            const refusal = databaseRefusal(step.conditions, ctx);
+            if (refusal) {
+              step.isComplete = false;
+              step.error = refusal;
+            } else {
+              step.error = undefined;
+              step.isComplete = evalConditionsWithContext(step.conditions, ctx);
+            }
           } catch (e) {
             console.error('error in lesson condition', step.conditions, e.message);
             step.error = `Step ${stepIndex}: ${e.message}. Invalid condition: ${JSON.stringify(step.conditions)}.`;
@@ -406,8 +451,54 @@ export class LessonLayer {
     this.model.start();
   }
 
+  /**
+   * TUT-002 — keep the database snapshot fresh while a data step is on screen, and only then.
+   *
+   * 🔴 **The poll exists because nothing else fires.** Every other condition verb observes the
+   * editor's own model, which raises `Model.*` when it changes; a row the learner adds in the
+   * Data Browser, or from their own running app, changes nothing this layer is listening to. So
+   * a data step either polls or never ticks until the learner happens to move a node.
+   *
+   * It is deliberately narrow: it runs only while the *active* step names a collection verb,
+   * every {@link DATABASE_POLL_MS}, one read at a time (`databaseReading` guards a slow backend
+   * from stacking requests), and it re-renders **only when the snapshot actually changed** —
+   * otherwise the poll would repaint the timeline several times a minute for no reason.
+   */
+  _watchDatabase(wanted: boolean) {
+    if (!wanted) {
+      if (this.databaseTimer) {
+        clearInterval(this.databaseTimer);
+        this.databaseTimer = undefined;
+      }
+      return;
+    }
+    if (this.databaseTimer) return;
+
+    void this._readDatabase();
+    this.databaseTimer = setInterval(() => void this._readDatabase(), DATABASE_POLL_MS);
+  }
+
+  async _readDatabase() {
+    if (this.databaseReading) return;
+    this.databaseReading = true;
+    try {
+      const snapshot = await liveLessonDatabaseSnapshot();
+      const changed = JSON.stringify(snapshot) !== JSON.stringify(this.database);
+      this.database = snapshot;
+      if (changed) this.refresh();
+    } catch (e) {
+      // `liveLessonDatabaseSnapshot` does not throw, so this is belt and braces — and it still
+      // must not leave the last snapshot in place, which would grade against a database that may
+      // be long gone. "Could not read" is the honest answer and ticks nothing.
+      this.database = { status: 'unavailable', reason: e instanceof Error ? e.message : String(e) };
+    } finally {
+      this.databaseReading = false;
+    }
+  }
+
   dispose() {
     clearTimeout(this.refreshTimeout);
+    this._watchDatabase(false);
     KeyboardHandler.instance.deregisterCommands(this.keyboardCommands);
 
     this.model.off(this);

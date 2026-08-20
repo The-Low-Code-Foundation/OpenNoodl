@@ -60,11 +60,12 @@ import type { ComponentV2File, ConnectionsV2File, NodesV2File } from '../schemas
 import type { LegacyComponent, LegacyConnection, LegacyNode } from '../io/ProjectExporter';
 import { CatalogIndex } from '../validation/CatalogIndex';
 import { loadDefaultCatalog } from '../validation/catalog';
-import { everyNode } from '../views/lessons/lessonevalconditions';
+import { everyNode, isCollectionCondition } from '../views/lessons/lessonevalconditions';
 import type {
   LessonComponent,
   LessonCondition,
   LessonConnection,
+  LessonDatabaseSnapshot,
   LessonEvalContext,
   LessonNode,
   LessonPort
@@ -93,6 +94,21 @@ export interface LessonProjectSource {
   components: LessonProjectComponentFiles[];
   rootNodeId?: string;
   metadata?: Record<string, unknown>;
+  /**
+   * TUT-002 AC3 — the built-in database, pre-read by the caller, for the three collection verbs.
+   *
+   * 🔴 **Absent is the normal case here, and it is not "no collections".** There is no file that
+   * answers "does this collection exist"; a bundle on disk simply does not contain the learner's
+   * database. So a caller that has not started a backend omits this, and `unevaluableReason`
+   * then reports collection conditions as **not checkable** rather than letting them evaluate to
+   * `false` — which is the difference between "the harness could not answer" and "the author's
+   * own solution fails its own step". The second is a *manufactured* failure, the one output a
+   * gate must never produce.
+   *
+   * A caller that *has* read one — the MCP sidecar, from a backend it started — passes it, and
+   * the same conditions grade through the same evaluator.
+   */
+  database?: LessonDatabaseSnapshot;
 }
 
 export interface BuildLessonContextOptions {
@@ -113,18 +129,39 @@ export const EDITOR_ONLY_CONDITIONS: Record<string, string> = {
   activecomponentnameeq: 'which component is open on the canvas is a property of a running editor, not of the project files'
 };
 
+/**
+ * TUT-002 — the reason a collection verb is not checkable, when nobody read a database.
+ *
+ * 🔴 **A third kind of unanswerable, and it had to be one.** The two above are unanswerable
+ * *always*; this one is unanswerable only when the caller supplied no snapshot — which is the
+ * usual case for a bundle on disk, and never the case in the live editor. Left out, the harness
+ * would replay `collectionExists` against a context with no database, read the evaluator's
+ * (correct, safe) `false`, and report **F2 dead-on-solution** against a perfectly good data
+ * lesson. F1's collection-reachability check is what covers these instead: it asks whether the
+ * bundle's own projects ever name the collection, which files *can* answer.
+ */
+const NO_DATABASE_REASON =
+  'this condition observes the project\'s built-in database, and no database snapshot was read — ' +
+  'a bundle on disk does not contain the learner\'s data';
+
+export interface UnevaluableOptions {
+  /** True when the context this condition will be replayed against carries a database snapshot. */
+  hasDatabase?: boolean;
+}
+
 /** Why this condition cannot be checked against files, or `undefined` if it can. */
-export function unevaluableReason(condition: LessonCondition): string | undefined {
+export function unevaluableReason(condition: LessonCondition, options: UnevaluableOptions = {}): string | undefined {
   for (const key of Object.keys(condition as unknown as Record<string, unknown>)) {
     const reason = EDITOR_ONLY_CONDITIONS[key.toLowerCase()];
     if (reason) return reason;
   }
+  if (!options.hasDatabase && isCollectionCondition(condition)) return NO_DATABASE_REASON;
   return undefined;
 }
 
 /** True when a file-backed context can answer this condition faithfully. */
-export function staticallyEvaluable(condition: LessonCondition): boolean {
-  return unevaluableReason(condition) === undefined;
+export function staticallyEvaluable(condition: LessonCondition, options: UnevaluableOptions = {}): boolean {
+  return unevaluableReason(condition, options) === undefined;
 }
 
 // ─── Node adaptation ────────────────────────────────────────────────────────
@@ -266,7 +303,10 @@ export function buildLessonEvalContext(
     // Deliberately undefined rather than guessed. See the module note: the two
     // verbs that read these are reported as not-checkable, never evaluated.
     viewerPath: undefined,
-    activeComponentName: undefined
+    activeComponentName: undefined,
+    // TUT-002: present only when the caller read one. Omitted is not empty — see
+    // `LessonProjectSource.database`.
+    ...(source.database ? { database: source.database } : {})
   };
 }
 

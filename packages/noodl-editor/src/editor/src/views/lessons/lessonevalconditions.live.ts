@@ -29,12 +29,30 @@
  */
 
 import { evalConditionsWithContext } from './lessonevalconditions';
-import type { LessonComponent, LessonCondition, LessonEvalContext, LessonNode } from './lessonevalconditions';
+import type {
+  LessonComponent,
+  LessonCondition,
+  LessonDatabaseSnapshot,
+  LessonEvalContext,
+  LessonNode
+} from './lessonevalconditions';
 import { ProjectModel } from '../../models/projectmodel';
 import { NodeGraphContextTmp } from '../../contexts/NodeGraphContext/NodeGraphContext';
 
-/** Build a context from the live editor singletons. Renderer-only, by nature. */
-export function liveLessonEvalContext(): LessonEvalContext {
+/**
+ * Build a context from the live editor singletons. Renderer-only, by nature.
+ *
+ * 🔴 **`database` is a parameter and not a read, and that is the whole shape of TUT-002.** The
+ * graph is already in memory and can be sampled synchronously; the database is over a wire and
+ * cannot. So the caller — which is the one that can `await` — reads it with
+ * `liveLessonDatabaseSnapshot()` and hands it in, and `evalConditionsWithContext` stays
+ * synchronous for all fifteen verbs.
+ *
+ * Omitting it is *not* the same as passing an empty snapshot: absent means nobody looked, and
+ * every collection verb treats it as unproven rather than as "no collections". See
+ * {@link databaseRefusal}, which turns that into a sentence.
+ */
+export function liveLessonEvalContext(database?: LessonDatabaseSnapshot): LessonEvalContext {
   const project = ProjectModel.instance as unknown as {
     components: LessonComponent[];
     getRootNode(): LessonNode | undefined;
@@ -47,14 +65,19 @@ export function liveLessonEvalContext(): LessonEvalContext {
     rootNode: project.getRootNode(),
     getMetaData: (key: string) => project.getMetaData(key),
     viewerPath: (window as unknown as { noodlEditorPreviewRoute?: string }).noodlEditorPreviewRoute,
-    activeComponentName: activeComponent?.name
+    activeComponentName: activeComponent?.name,
+    ...(database ? { database } : {})
   };
 }
 
 /**
  * Legacy entry point used by the lesson layer: evaluate a step's conditions
  * against the live editor. Retains the original default-export signature.
+ *
+ * `database` is optional for the same reason it is above: the lesson layer's `refresh()` is
+ * synchronous and re-runs on every graph change, so it keeps the last snapshot it read and
+ * passes it in rather than reading one here.
  */
-export default function evalConditions(conditions: LessonCondition[]): boolean {
-  return evalConditionsWithContext(conditions, liveLessonEvalContext());
+export default function evalConditions(conditions: LessonCondition[], database?: LessonDatabaseSnapshot): boolean {
+  return evalConditionsWithContext(conditions, liveLessonEvalContext(database));
 }
