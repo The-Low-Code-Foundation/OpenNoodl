@@ -20,9 +20,10 @@ Measured 2026-08-21 on `bdc8d5cd` — ⚠️ **re-measure, never quote a handove
 - `typecheck`, `typecheck:editor`, `typecheck:editor-tests`, `typecheck:mcp` — all exit 0
 - `test:main` — **300 suites / 4884 tests / 0 failures** (floor was 4871; +13 are this session's)
 - `noodl-mcp` `npx jest` — **55 suites / 651 tests / 0 failures**
-- ⚠️ **Two CI runs were still in flight on `bdc8d5cd`** — `32471001759` (push) and `32471005705`
-  (pull_request). Their `Test (editor)` result is **not** in this document. Read it before
-  claiming a clean branch.
+- ⚠️ **CI has NOT yet graded this branch — read it before claiming it is clean.** The runs on
+  `bdc8d5cd` were **cancelled by the very next push** (`cancel-in-progress`, §1) — this document's
+  own trap, hit while writing it. The live runs are on **`a3a9be95`**: `32471348298` (push) and
+  `32471353141` (pull_request), same code. `Test (editor)` on them is **unread**.
 
 ---
 
