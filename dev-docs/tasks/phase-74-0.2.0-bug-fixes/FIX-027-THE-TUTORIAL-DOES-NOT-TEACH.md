@@ -138,6 +138,17 @@ bundles: `state-on-a-page` has **26 diagnostics, of which 26 are non-`info`** (2
 **zero** of them. So 21 was not "26 minus 5 infos"; it was the cap, and only the cap.
 `log-a-thing` is **0 diagnostics**, in-repo and as installed.
 
+⚠️ **Re-measured after `dae76da8`: it is now 25, not 26** — 12 `unknown-parameter`, **6
+`invalid-parameter-value` errors**, 3 `inert-dimension`, 3 `unitless-dimension`, 1
+`inactive-conditional-parameter`. The one that went was the lone `invalid-parameter-value`
+**warning**: `dae76da8` stopped the validator reading the shipped `fx` expression form as invalid,
+which was one of the floor's ten failures and a real bug. **The six errors are untouched**, so
+nothing above changes as an argument — 21 was still the cap and not a count, and the bundle still
+ships dirty. Recorded because the arithmetic in this section (20 + 6 = 26) is now one out, and
+because it is a worked example of the thing this file keeps running into: **a corpus measurement
+inherits the defects of the instrument that took it.** If the remaining 25 are re-triaged, do it
+on a tree at or after `dae76da8`.
+
 🔴 **The same saturated number reached the platform.** `buildLessonEvidence` set
 `findingCount: grade.wholeSolution.findings.length` — so the *stored* evidence row carried 21 for
 a 26-problem project too. This was a data defect, not only a display one.
