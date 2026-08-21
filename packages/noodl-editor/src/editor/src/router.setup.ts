@@ -57,9 +57,16 @@ import { VersionControlPanel } from './views/panels/VersionControlPanel/VersionC
 
 export interface SetupEditorOptions {
   isLesson: boolean;
+  /**
+   * TUT-005 — this lesson grades against the built-in database.
+   *
+   * Derived from the lesson's own conditions (`lessonObservesDatabase`), never a
+   * hand-written field. It exists to make exactly one exception below.
+   */
+  lessonNeedsDatabase?: boolean;
 }
 
-export function installSidePanel({ isLesson }: SetupEditorOptions) {
+export function installSidePanel({ isLesson, lessonNeedsDatabase }: SetupEditorOptions) {
   const appRegistry = AppRegistry.instance;
 
   SidebarModel.instance.register({
@@ -336,7 +343,15 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     id: 'backend-services',
     defaultWidth: 560,
     name: 'Backend Services',
-    isDisabled: isLesson === true,
+    // 🔴 TUT-005 — a lesson that grades against the database KEEPS this panel,
+    // and it is the only lesson exception in the rail. `log-a-thing` step 1 is
+    // "create a collection called LogEntries", and the Schema and Data surfaces
+    // open from a local backend's card in here (`backendSurfaces.tsx`) and from
+    // nowhere else — so disabling it for every lesson made that step, and the
+    // tutorial behind it, impossible to finish. `ensureLessonBackend` has
+    // already created and bound the backend by the time a learner opens this,
+    // so what they meet is their own lesson database, not an empty panel.
+    isDisabled: isLesson === true && lessonNeedsDatabase !== true,
     order: 8,
     // Was RestApi — a `{ }` braces glyph, i.e. "code". This panel is now the
     // database, auth, email, storage, search and triggers; REST is one facet of it.

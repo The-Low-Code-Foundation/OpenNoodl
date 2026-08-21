@@ -34,6 +34,11 @@ import { ViewerConnection } from '../../ViewerConnection';
 import { Frame } from '../../views/common/Frame';
 import { ImportFlowCancelled, openImportFlow, requireDownloadConsent } from '../../views/ImportFlow';
 import { LessonLayer } from '../../views/lessonlayer2';
+import { ensureLessonBackend } from '@noodl-models/lessonbackend';
+import { lessonObservesDatabase } from '@noodl-models/lessondatabase';
+import { getCloudServices, setCloudServices } from '@noodl-models/projectmodel.editor';
+import { defaultLearningLessonFs, readLessonManifest } from '@noodl-models/learninglesson';
+import { getIpc } from '@noodl-utils/ipc';
 import PopupLayer from '../../views/popuplayer';
 import { AiAuthoringPanel_ID } from '../../views/panels/AiAuthoringPanel';
 import { SidePanel } from '../../views/SidePanel';
@@ -61,10 +66,60 @@ if (import.meta.webpackHot) {
   });
 }
 
+/**
+ * TUT-005 — give a database lesson its database.
+ *
+ * Kept out of the effect body so the effect stays readable, and so the two
+ * reasons this can do nothing (not a database lesson; already bound) are stated
+ * once, in `ensureLessonBackend`, rather than tested here as well.
+ */
+async function provisionLessonBackend(projectModel: ProjectModel): Promise<void> {
+  const ipc = getIpc();
+  if (!ipc) return;
+  const directory = projectModel._retainedProjectDirectory;
+  if (!directory) return;
+
+  const manifest = readLessonManifest(directory, defaultLearningLessonFs());
+  const outcome = await ensureLessonBackend({
+    manifest,
+    projectId: projectModel.id,
+    projectName: projectModel.name,
+    boundEndpoint: getCloudServices(projectModel).endpoint,
+    invoke: (channel, ...args) => ipc.invoke(channel, ...args)
+  });
+
+  // The binding is applied HERE, not in the model: `setCloudServices` raises
+  // `cloudServicesChanged`, which the Backend Services panel and the endpoint
+  // card both listen for, and a bare metadata write would leave them showing the
+  // unbound state they were mounted with.
+  if (outcome.status === 'provisioned') {
+    setCloudServices(projectModel, {
+      id: outcome.backendId,
+      endpoint: outcome.endpoint,
+      appId: outcome.backendId,
+      type: 'nodegx'
+    });
+    console.log(`[lesson] database ${outcome.reused ? 'adopted' : 'created'} at ${outcome.endpoint}`);
+  } else if (outcome.status === 'failed') {
+    // Reported, never thrown. The learner sees the consequence in grading's own
+    // honest refusal; this line is for whoever reads the log after they report it.
+    console.warn('[lesson] the lesson database could not be provisioned:', outcome.reason);
+  }
+}
+
 function setupSidePanels() {
   const isLesson = ProjectModel.instance.isLesson();
 
-  installSidePanel({ isLesson });
+  // Read from the lesson's own grading conditions, so a lesson cannot declare
+  // one thing and grade another. `undefined` for a project that is not a lesson,
+  // which is the same answer as "no" to the one check that reads it.
+  const directory = ProjectModel.instance._retainedProjectDirectory;
+  const lessonNeedsDatabase =
+    isLesson && directory
+      ? lessonObservesDatabase(readLessonManifest(directory, defaultLearningLessonFs()))
+      : false;
+
+  installSidePanel({ isLesson, lessonNeedsDatabase });
 }
 
 export type EditorPageProps = IRouteProps;
@@ -209,6 +264,14 @@ export function EditorPage({ route }: EditorPageProps) {
     const projectModel = ProjectModel.instance;
     const element = lessonLayer.startLesson(projectModel.getLessonModel());
     setLesson({ el: element });
+
+    // A lesson that grades against the database gets one, here, because this is
+    // the moment the project is open and `Backend Services` is not reachable to
+    // the learner. Fire-and-forget and deliberately un-awaited: the lesson must
+    // open at the same speed whether or not a backend has to start, and every
+    // failure path inside already resolves to a value rather than throwing.
+    // See `models/lessonbackend` for why it does not create the collections.
+    void provisionLessonBackend(projectModel);
 
     return () => {
       lessonLayer.dispose();

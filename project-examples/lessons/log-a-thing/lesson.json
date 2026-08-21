@@ -12,7 +12,7 @@
     },
     {
       "title": "Make somewhere to put them",
-      "body": "Open the **Data** panel and create a collection called `LogEntries`, with one text column called `title`.\n\nSpell both exactly as written — the rest of the lesson wires to those two names, and a typo here shows up three steps later as a node with no port to connect.\n\nIf this project has no database yet, the Data panel offers to make one. Say yes: it creates a database that belongs to this project and to nothing else on your machine.",
+      "body": "Open the **Backend Services** panel. This lesson already has its own database — it was made when you opened the lesson, and it belongs to this project and to nothing else on your machine.\nOn its card, open **Schema** and create a collection called `LogEntries` with one text column called `title`.\nSpell both exactly as written — the rest of the lesson wires to those two names, and a typo here shows up three steps later as a node with no port to connect.",
       "completeWhen": [
         {
           "collection": "LogEntries",

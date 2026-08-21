@@ -51,6 +51,12 @@ module.exports = {
     '^@noodl-versioning$': '<rootDir>/src/editor/src/versioning/index.ts',
     '^@noodl-versioning/(.*)$': '<rootDir>/src/editor/src/versioning/$1',
     '^@noodl-models/(.*)$': '<rootDir>/src/editor/src/models/$1',
+    // TUT-005: `models/lessonbackend` reaches `BackendServices/provisionBackend`
+    // for the ONE ownership rule (`findReusableBackend`) rather than restating
+    // it, and that module imports `@noodl-utils/ipc`. Mapping the alias does not
+    // make the renderer importable — `ipc` is a thin `require('electron')`
+    // wrapper and anything that touches React still fails here, loudly.
+    '^@noodl-utils/(.*)$': '<rootDir>/src/editor/src/utils/$1',
     // FIX-003: the AI link policy moved to its neutral home in core-ui
     // (`components/ai/AiMarkdown/linkActions`). Mapping the alias does NOT make
     // core-ui's components importable here — anything that names React or a
