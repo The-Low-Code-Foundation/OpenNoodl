@@ -43,7 +43,7 @@
 import type { LearningEntry, LearningEntryView } from './learningfolder';
 import { lessonObservesDatabase } from './lessondatabase';
 import type { LessonManifest } from './lessonformat';
-import { buildLessonEvidence, gradeLesson } from './lessongrading';
+import { buildLessonEvidence, findingTotalOf, gradeLesson } from './lessongrading';
 import type { LessonEvidence, LessonGrade, WholeSolutionGrader } from './lessongrading';
 import type { LessonDatabaseSnapshot, LessonEvalContext } from '../views/lessons/lessonevalconditions';
 
@@ -343,7 +343,32 @@ export function summariseGrade(grade: LessonGrade, evidence: LessonEvidence): st
           : 'Your app did not render.'
       );
     } else if (!whole.valid) {
-      parts.push(`Your app renders, but the project has problems (${whole.findings.length} reported).`);
+      /*
+       * 🔴 FIX-027 §18, and it is two defects in one sentence.
+       *
+       * THE NUMBER. It counted `findings`, which both adapters cap for display
+       * — so it printed "21 reported" over a project with 26 problems, and would
+       * have printed 21 over a project with a thousand. `findingTotalOf` is the
+       * tally; the capped list announces its own overflow separately.
+       *
+       * THE VERDICT. Richard finished every step of *State on a page* and was
+       * told his app "has problems" in the same breath as "all 3 checked steps
+       * are done" — over 26 diagnostics that ship inside the lesson and that he
+       * could not have caused or fixed. It read as a failure. So when every
+       * checked step is done, the whole-project observation is said as an
+       * observation and the lesson's own verdict is restated beside it. What is
+       * NOT done is softening the finding away: the problems are real, they are
+       * still counted, and the list still follows. A learner who genuinely broke
+       * something is still told so — they are simply not told they failed a
+       * lesson they passed.
+       */
+      const total = findingTotalOf(whole);
+      const problems = `${total} problem${total === 1 ? '' : 's'}`;
+      parts.push(
+        grade.firstIncompleteStep === -1 && grade.stepsGraded > 0
+          ? `Your app renders. The validator reports ${problems} in the project — worth a look, though none of it is a step you were asked to do.`
+          : `Your app renders, but the project has problems (${problems} reported).`
+      );
     } else {
       // ⚠️ The count is stated when there is one and omitted when there is not.
       // `rendered: true` with no count is only reachable from an adapter that

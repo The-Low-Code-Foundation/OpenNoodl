@@ -267,12 +267,19 @@ export function createWholeSolutionGrader(
       // contradicting itself. Nothing is lost by being honest here: the
       // guarantee that an unavailable check never completes a lesson is enforced
       // once, in `buildLessonEvidence()`.
+      // 🔴 Counted BEFORE the cap, and the editor's adapter does the same. A
+      // learner must not get a different number because they were graded in a
+      // different process — the same reason the two cap at the same figure.
+      // FIX-027 §18.
+      const allFindings = [...unavailable, ...findings];
+
       return {
         valid,
         rendered,
         ...(drawnElementCount !== undefined ? { drawnElementCount } : {}),
         ...(renderDefects !== undefined ? { renderDefects } : {}),
-        findings: capFindingLines([...unavailable, ...findings]),
+        findings: capFindingLines(allFindings),
+        findingTotal: allFindings.length,
         ...(unavailable.length > 0 ? { unavailable: unavailable.join(' ') } : {})
       };
     }

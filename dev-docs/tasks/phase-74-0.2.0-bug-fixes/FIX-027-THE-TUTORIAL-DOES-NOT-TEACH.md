@@ -59,7 +59,7 @@ an `openPanel` action and unlock on demand. **Pick one deliberately.**
 | 15 | A disabled rail item does not say why it is disabled | `SideNavigation.tsx:70` | **A** |
 | 16 | The lesson says *"the Data panel"*; the rail says *Backend Services*, and Data is inside it | `log-a-thing/lesson.json` step 1 | **A** |
 | 17 | A task step never shows its instructions until you click it | `LessonLayerView.jsx:83` | B |
-| 18 | "All 3 checked steps are done" arrives with "the project has problems (21 reported)" | shipped bundle + `lessoncheck.ts:346` | C |
+| 18 | 🟡 **PARTLY FIXED** — the count was a cap artefact and the sentence blamed the learner; both fixed. The **bundle and the gate are still open** | shipped bundle + `lessoncheck.ts:346` | C |
 | 19 | No completion moment at all when the last step is a graded card | `lessonlayer2.ts:441` | D |
 | 20 | When there *is* a completion popup, its only action is EXIT LESSON — no reset | `lessonlayer2.ts:450` | D |
 | 21 | ✅ **FIXED** — *"Explain this for me"* 404s every time; it has never worked for anybody | `me/path/project/route.ts:54` + `useLearnerPath.ts` | E |
@@ -113,6 +113,65 @@ before quoting either number as "the" count.
 Two separate fixes, and both are wanted: **clean the shipped bundle** (and gate it, so a lesson
 cannot ship with validator errors again), and **soften the sentence** so a whole-project
 observation cannot read as a failed lesson when every step passed.
+
+#### PARTLY FIXED 2026-08-21 — the number was never a count, and the sentence no longer blames the learner
+
+**Commit: see below. `21` is not "21 problems". It is `min(N, 20) + 1`, and it is the largest
+number that sentence could ever print.**
+
+The flagged discrepancy is resolved, and neither of the two obvious readings was right.
+`capFindingLines` keeps `MAX_FINDING_LINES = 20` lines and **appends one more announcing the
+overflow** — and that announcement line is itself in the array. So `findings.length` saturates:
+
+| real problems | `findings.length` — what the sentence printed |
+|---|---|
+| 20 | 20 |
+| 21 | 21 |
+| 26 | **21** |
+| 1,000 | **21** |
+
+Measured by running the real `capFindingLines` from source, not by reading it.
+
+**The `info` filter was a red herring.** Re-running `SemanticValidator` over both installed
+bundles: `state-on-a-page` has **26 diagnostics, of which 26 are non-`info`** (20 warnings,
+6 errors — `errors: 6` is what makes `valid: false`). The `severity !== 'info'` filter drops
+**zero** of them. So 21 was not "26 minus 5 infos"; it was the cap, and only the cap.
+`log-a-thing` is **0 diagnostics**, in-repo and as installed.
+
+🔴 **The same saturated number reached the platform.** `buildLessonEvidence` set
+`findingCount: grade.wholeSolution.findings.length` — so the *stored* evidence row carried 21 for
+a 26-problem project too. This was a data defect, not only a display one.
+
+✅ **Fixed:** `WholeSolutionResult` gains `findingTotal`, counted **before** the cap in both
+adapters (editor and sidecar — they must agree, which is why they already cap at one number).
+`findingTotalOf()` owns the read and falls back to the list length for an adapter that reports
+none: absent means *not reported*, never *none found*, so under-reporting beats reporting a
+broken project as clean. `normaliseWholeSolutionResult` bumps the tally when it adds the
+empty-page finding, and deliberately does **not** invent one when the adapter was silent.
+
+✅ **The sentence.** When every checked step is done it now reads *"Your app renders. The
+validator reports 26 problems in the project — worth a look, though none of it is a step you were
+asked to do."* A learner with a step outstanding still gets the plain sentence. 🔴 **The findings
+are still counted and still listed** — softening the verdict, never the finding.
+
+**Graded by mutation, six ways** (drop `findingTotal` from either adapter; count the capped list
+in the sentence; count it in the evidence; stop bumping in `normalise`; remove the softened
+branch) — each goes red, restores byte-identical. `test:main` **300 suites / 4884 tests / 0
+failures** (floor 4871 + 13 new); mcp **55 suites / 651 tests**; all four typechecks exit 0.
+
+#### 🔴 STILL OPEN — the bundle itself, and the gate
+
+- **The 26 diagnostics are still in `state-on-a-page`, and cannot be cleaned from this repo.**
+  The lesson **is not in either checkout** — `project-examples/lessons/` holds only
+  `log-a-thing`, and the community repo mentions the slug only in a test. Per FIX-026 its
+  `entry.source.path` is a `/tmp` path that is gone. ⚠️ The copy under
+  `~/Library/Application Support/NodeGX/Learning/state-on-a-page` is the **learner's working
+  copy** — Richard's, mtime today — and is not a source to clean. **Where this lesson ships from
+  is the question to answer before anything can be fixed in it.**
+- **No gate validates a shipped lesson bundle.** The only thing referencing
+  `project-examples/` in `scripts/` or `.github/` is the comment-legibility scanner. A checker
+  over the corpus that exists would have caught this — the third time this shape has appeared.
+  `log-a-thing` would pass it today at 0 diagnostics.
 
 ### 19 and 20 — there is no "well done"
 

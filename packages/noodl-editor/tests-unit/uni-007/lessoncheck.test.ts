@@ -361,3 +361,96 @@ describe('summariseGrade — what the learner reads', () => {
     expect(summary).not.toContain('undefined');
   });
 });
+
+describe('🔴 FIX-027 §18 — the problem count, and who it blames', () => {
+  const evidence = (grade: LessonGrade) => buildLessonEvidence(manifest, grade);
+
+  /**
+   * What an adapter hands over for a project with 26 problems: a display list
+   * the cap has already trimmed to 20 + an overflow line, and the real tally
+   * beside it. The shapes are the point — `findings.length` is 21 here, and 21
+   * is what the old sentence printed.
+   */
+  const twentySix = (): WholeSolutionResult => ({
+    valid: false,
+    rendered: true,
+    drawnElementCount: 9,
+    findings: [
+      ...Array.from({ length: 20 }, (_, i) => `[error] problem ${i}`),
+      '…and 6 more problems not listed here.'
+    ],
+    findingTotal: 26
+  });
+
+  it('reports the problems there are, not the lines it can fit', () => {
+    const grade = gradeOf([step(0, false, 'One')], twentySix());
+    const summary = summariseGrade(grade, evidence(grade));
+
+    expect(summary).toContain('26 problems');
+    // The number the capped list would have produced. Richard saw this one.
+    expect(summary).not.toContain('21 problems');
+    expect(summary).not.toContain('(21 reported)');
+  });
+
+  it('🔴 the evidence bundle carries the tally too — the platform stored 21 as well', () => {
+    const grade = gradeOf([step(0, false, 'One')], twentySix());
+    expect(evidence(grade).wholeSolution?.findingCount).toBe(26);
+  });
+
+  it('falls back to the list length for an adapter that reports no tally', () => {
+    // Absent means "not reported", never "none found": under-reporting a broken
+    // project by a few beats reporting it as clean.
+    const grade = gradeOf([step(0, false, 'One')], {
+      valid: false,
+      rendered: true,
+      drawnElementCount: 9,
+      findings: ['[error] one', '[error] two']
+    });
+    expect(summariseGrade(grade, evidence(grade))).toContain('2 problems');
+    expect(evidence(grade).wholeSolution?.findingCount).toBe(2);
+  });
+
+  it('says "1 problem", not "1 problems" — in both sentences', () => {
+    const one: WholeSolutionResult = {
+      valid: false,
+      rendered: true,
+      drawnElementCount: 9,
+      findings: ['[error] one'],
+      findingTotal: 1
+    };
+    const unfinished = gradeOf([step(0, false, 'One')], one);
+    const finished = gradeOf([step(0, true, 'One')], one);
+
+    for (const grade of [unfinished, finished]) {
+      expect(summariseGrade(grade, evidence(grade))).not.toContain('1 problems');
+    }
+    expect(summariseGrade(unfinished, evidence(unfinished))).toContain('(1 problem reported)');
+    expect(summariseGrade(finished, evidence(finished))).toContain('1 problem in the project');
+  });
+
+  it("🔴 does not read as a failure when every checked step is done — Richard's case", () => {
+    /*
+     * *State on a page*: three of three steps done, and 26 diagnostics that
+     * ship inside the lesson. "All 3 checked steps are done" landed next to
+     * "your app has problems" and read as one verdict. It is two.
+     */
+    const grade = gradeOf([step(0, true, 'One'), step(1, true, 'Two'), step(2, true, 'Three')], twentySix());
+    const summary = summariseGrade(grade, evidence(grade));
+
+    expect(summary).toContain('All 3 checked steps are done.');
+    expect(summary).toContain('none of it is a step you were asked to do');
+    expect(summary).not.toContain('but the project has problems');
+    // 🔴 Softened, never hidden: the problems are still counted and still said.
+    expect(summary).toContain('26 problems');
+  });
+
+  it('🔴 still says it plainly to a learner who has NOT finished — the control', () => {
+    // The pair that proves the sentence above turns on "every step done" and
+    // not on "the project is invalid". Same findings, one step outstanding.
+    const grade = gradeOf([step(0, true, 'One'), step(1, false, 'Two')], twentySix());
+    const summary = summariseGrade(grade, evidence(grade));
+
+    expect(summary).toContain('but the project has problems (26 problems reported)');
+    expect(summary).not.toContain('none of it is a step you were asked to do');
+  });
+});

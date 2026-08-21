@@ -185,12 +185,18 @@ export function createEditorWholeSolutionGrader(deps: EditorWholeSolutionDeps): 
         unavailable.push(`The render could not run: ${errorText(e)}`);
       }
 
+      // 🔴 Counted BEFORE the cap. `capFindingLines` keeps 20 and appends one
+      // line announcing the rest, so the capped list's length saturates at 21 —
+      // it is a display list and was never a tally. FIX-027 §18.
+      const allFindings = [...unavailable, ...findings];
+
       return {
         valid,
         rendered,
         ...(drawnElementCount !== undefined ? { drawnElementCount } : {}),
         ...(renderDefects !== undefined ? { renderDefects } : {}),
-        findings: capFindingLines([...unavailable, ...findings]),
+        findings: capFindingLines(allFindings),
+        findingTotal: allFindings.length,
         ...(unavailable.length > 0 ? { unavailable: unavailable.join(' ') } : {})
       };
     }

@@ -175,8 +175,32 @@ export interface WholeSolutionResult {
    * health, which is the failure mode this whole engine is built against.
    */
   renderDefects?: string[];
-  /** Human-readable problems, in the reporting tool's own words. */
+  /**
+   * Human-readable problems, in the reporting tool's own words.
+   *
+   * 🔴 **This is a display list, not a tally.** Both adapters cap it with
+   * `capFindingLines`, which keeps `MAX_FINDING_LINES` and appends one line
+   * announcing the overflow — so its length *saturates* at 21 and stays there
+   * for a project with 22 problems or 1,000. Never count it. {@link findingTotal}
+   * is the number, and {@link findingTotalOf} is how to read it.
+   */
   findings: string[];
+  /**
+   * How many problems were actually found, before the display cap trimmed
+   * {@link findings}.
+   *
+   * FIX-027 §18: the learner's card said *"the project has problems (21
+   * reported)"* over a project with 26, because the sentence counted the capped
+   * list. It was not off by five — 21 is the largest number that sentence could
+   * ever print. The same saturated value reached the platform as the evidence
+   * bundle's `findingCount`, so the defect was in the stored record too.
+   *
+   * ⚠️ **Absent means "not reported", never "none found"** — the same rule
+   * {@link drawnElementCount} and {@link renderDefects} state above. Read it
+   * through {@link findingTotalOf}, which falls back to the list length rather
+   * than inventing a zero.
+   */
+  findingTotal?: number;
   /**
    * Set when the check could not run at all — no render harness, no Chrome, a
    * project this adapter cannot read.
@@ -226,6 +250,7 @@ export interface WholeSolutionGrader {
 export function normaliseWholeSolutionResult(result: WholeSolutionResult): WholeSolutionResult {
   const findings = [...(result.findings ?? [])];
   let rendered = result.rendered;
+  let findingTotal = result.findingTotal;
 
   if (rendered && result.drawnElementCount === 0) {
     rendered = false;
@@ -233,9 +258,29 @@ export function normaliseWholeSolutionResult(result: WholeSolutionResult): Whole
       'The render reported success but drew nothing. An empty page is not a passing render — ' +
         'a clean report can mean empty.'
     );
+    // The rule adds a problem, so the tally moves with the list. Only when the
+    // adapter reported one: bumping an absent total would invent a count of 1
+    // for every silent adapter, which is the "absent means none found" mistake
+    // {@link WholeSolutionResult.findingTotal} exists to avoid.
+    if (typeof findingTotal === 'number') findingTotal += 1;
   }
 
-  return { ...result, rendered, findings };
+  return { ...result, rendered, findings, ...(findingTotal !== undefined ? { findingTotal } : {}) };
+}
+
+/**
+ * How many problems a whole-solution result found — the one place that knows
+ * {@link WholeSolutionResult.findings} is a capped display list.
+ *
+ * Falls back to the list length for an adapter that predates
+ * {@link WholeSolutionResult.findingTotal}. That fallback is the old, saturating
+ * behaviour, and it is deliberate: it under-reports a very broken project by a
+ * few, where inventing a zero would report a broken project as clean.
+ */
+export function findingTotalOf(result: Pick<WholeSolutionResult, 'findings' | 'findingTotal'> | undefined): number {
+  if (!result) return 0;
+  if (typeof result.findingTotal === 'number') return result.findingTotal;
+  return result.findings?.length ?? 0;
 }
 
 // ─── The full grade ─────────────────────────────────────────────────────────
@@ -376,7 +421,9 @@ export function buildLessonEvidence(
           wholeSolution: {
             valid: grade.wholeSolution.valid,
             rendered: grade.wholeSolution.rendered,
-            findingCount: grade.wholeSolution.findings.length,
+            // 🔴 The tally, never `findings.length` — that list is capped for
+            // display and its length saturates at 21. FIX-027 §18.
+            findingCount: findingTotalOf(grade.wholeSolution),
             ...(grade.wholeSolution.unavailable ? { unavailable: true as const } : {})
           }
         }

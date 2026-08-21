@@ -308,3 +308,90 @@ describe('capFindingLines', () => {
     expect(capFindingLines(['one', 'two'])).toEqual(['one', 'two']);
   });
 });
+
+describe('🔴 FIX-027 §18 — the adapter reports a tally the cap cannot flatten', () => {
+  it('counts before the cap, so 26 problems are 26 and not 21', async () => {
+    const lines = Array.from({ length: 26 }, (_, i) => `[error] problem ${i}`);
+    const result = await grader(() => ({ valid: false, lines }), async () =>
+      render({ viewports: { desktop: viewport(9, 0) } })
+    ).check();
+
+    // The display list saturates — that is what it is for, and why it is not a tally.
+    expect(result.findings).toHaveLength(MAX_FINDING_LINES + 1);
+    expect(result.findingTotal).toBe(26);
+  });
+
+  it('🔴 the tally moves when the list cannot — the pair that proves it is not findings.length', async () => {
+    const of = async (n: number) => {
+      const r = await grader(() => ({ valid: false, lines: Array.from({ length: n }, (_, i) => `[error] ${i}`) }), async () =>
+        render({ viewports: { desktop: viewport(9, 0) } })
+      ).check();
+      return { listed: r.findings.length, total: r.findingTotal };
+    };
+
+    // 22 and 400 are indistinguishable in the list and must not be in the tally.
+    expect([await of(22), await of(400)]).toEqual([
+      { listed: 21, total: 22 },
+      { listed: 21, total: 400 }
+    ]);
+  });
+
+  it('counts the reasons a half could not run, exactly as the list does', async () => {
+    const result = await grader(() => ({ valid: false, lines: ['[warning] a thing'] }), async () =>
+      render({ error: 'no viewer' })
+    ).check();
+
+    // One `unavailable` line + one finding — the tally covers both, because the
+    // list it is a tally of covers both.
+    expect(result.findingTotal).toBe(result.findings.length);
+    expect(result.findingTotal).toBe(2);
+  });
+
+  it('reports zero for a clean project rather than staying silent', async () => {
+    const result = await grader(
+      () => ({ valid: true, lines: [] }),
+      async () => render({ viewports: { desktop: viewport(9, 0) } })
+    ).check();
+
+    expect(result.findingTotal).toBe(0);
+  });
+});
+
+describe('🔴 FIX-027 §18 — normaliseWholeSolutionResult keeps the tally honest', () => {
+  it('bumps the tally when it adds the empty-page finding', () => {
+    const out = normaliseWholeSolutionResult({
+      valid: true,
+      rendered: true,
+      drawnElementCount: 0,
+      findings: ['[error] one'],
+      findingTotal: 1
+    });
+
+    expect(out.findings).toHaveLength(2);
+    expect(out.findingTotal).toBe(2);
+  });
+
+  it('🔴 does not invent a tally for an adapter that reported none', () => {
+    // Bumping an absent total would turn every silent adapter into "1 problem".
+    const out = normaliseWholeSolutionResult({
+      valid: true,
+      rendered: true,
+      drawnElementCount: 0,
+      findings: []
+    });
+
+    expect('findingTotal' in out).toBe(false);
+  });
+
+  it('leaves a tally alone when it adds nothing', () => {
+    const out = normaliseWholeSolutionResult({
+      valid: false,
+      rendered: true,
+      drawnElementCount: 9,
+      findings: ['[error] one'],
+      findingTotal: 26
+    });
+
+    expect(out.findingTotal).toBe(26);
+  });
+});

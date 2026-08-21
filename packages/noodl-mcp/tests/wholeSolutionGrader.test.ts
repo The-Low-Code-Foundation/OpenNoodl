@@ -348,3 +348,44 @@ describe('the real validity probe', () => {
     expect(result.valid).toBe(false);
   });
 });
+
+describe('🔴 FIX-027 §18 — the sidecar reports the same tally the editor does', () => {
+  /** A validation report carrying `n` non-`info` diagnostics. */
+  function withDiagnostics(n: number): ValidationReport {
+    return {
+      diagnostics: Array.from({ length: n }, (_, i) => ({
+        code: 'UnknownNodeType',
+        severity: 'error',
+        message: `problem ${i}`,
+        location: { component: '/App' }
+      })),
+      summary: { errors: n, warnings: 0, infos: 0, nodesChecked: 1, endpointsChecked: 1 }
+    } as unknown as ValidationReport;
+  }
+
+  it('counts before the cap — 26 problems are 26, not the 21 lines that fit', async () => {
+    const result = await grader({ validity: withDiagnostics(26) }).check();
+
+    expect(result.findings).toHaveLength(MAX_FINDING_LINES + 1);
+    expect(result.findingTotal).toBe(26);
+  });
+
+  it('🔴 agrees with the editor adapter, which is the whole reason both cap at one number', async () => {
+    // A learner graded in the sidecar and a learner graded in the editor must
+    // be told the same thing. The list length cannot carry that promise — it is
+    // 21 for both of these — so the tally has to.
+    const of = async (n: number) => {
+      const r = await grader({ validity: withDiagnostics(n) }).check();
+      return { listed: r.findings.length, total: r.findingTotal };
+    };
+
+    expect([await of(22), await of(400)]).toEqual([
+      { listed: 21, total: 22 },
+      { listed: 21, total: 400 }
+    ]);
+  });
+
+  it('reports zero for a clean project rather than staying silent', async () => {
+    expect((await grader({}).check()).findingTotal).toBe(0);
+  });
+});
