@@ -1,10 +1,17 @@
 # Next session — FIX-027's remainder, and the decisions blocking it
 
-`Test (editor)` is **fixed and the fix is confirmed**. Bug 18's two software halves are fixed, and
-**the lesson-bundle gate that was the last unblocked build is now in** (`2ba69638`, §3). **What is
-left in FIX-027 is not code you can start unasked: four of the remaining items are decisions only
-Richard can make**, and the two that are code both need the editor, which a peer has now held for
-two sessions running.
+✅ **Everything buildable is built, pushed and CI-verified.** The branch is on `origin/cline-dev`,
+`Lesson bundles (FIX-027)` has run on CI and passed **non-vacuously**, and `Test (editor)` sits on
+its documented floor across **four** unrelated seeds. Eight of ten jobs are green; the two reds are
+both known and neither is a regression (§6).
+
+🔴 **There is no unblocked code left in FIX-027.** Four of the six open items are decisions only
+Richard can make, and the two that are code both need the editor — which a peer has now held for
+**three** sessions running (`dev:debug`, CDP 9222, still live at the end of this one). The honest
+summary is that this phase is **waiting on people, not on work**.
+
+⚠️ **One recommendation from the previous handover was withdrawn this session** — "type the one
+`.d.ts`" is not an available move. Read §6c before acting on the `tsfixme` decision.
 
 Read `FIX-025-THE-LAUNCH-LIST.md` before touching lesson code: several fixes deliberately reversed
 previously-specced behaviour and the reasons are recorded there, not in the diffs.
