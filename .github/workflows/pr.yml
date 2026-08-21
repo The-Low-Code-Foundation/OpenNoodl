@@ -108,7 +108,23 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       # Electron needs a display even with a hidden window.
+      #
+      # 🔴 NOODL_TEST_TIMEOUT_MINUTES IS WHY THIS JOB USED TO BE A COIN FLIP. `test.js`
+      # caps a run at 15 minutes (`DEFAULT_TIMEOUT_MS`) and the suite needs about 15 minutes, so
+      # runner variance alone decided whether it finished. Measured over four runs: one
+      # completed (2849 specs, a real summary line) and three were killed mid-suite at 2766,
+      # 2264 and 2194 specs with no summary at all — which reads as a FAILING gate rather than
+      # an unfinished one, and `exit 1` looks identical either way.
+      #
+      # ⚠️ Raised because it was measured to be a LIMIT, not a symptom — which is the check
+      # `test.js`'s own comment asks for. Per-spec median is 0.001s and FLAT across the whole
+      # run, so nothing is degrading; the cost is 59 individually slow specs (17-20s each, all
+      # AAQ-*/AIX-*/AIB-*/BEN-001 authoring specs) that eat 12.4 of the 14.9 minutes. Fixing
+      # those is the real work and shrinks this back; until then the cap must not be the thing
+      # that decides.
       - name: Run editor suite headless
+        env:
+          NOODL_TEST_TIMEOUT_MINUTES: 30
         run: xvfb-run --auto-servernum -s "-screen 0 1280x1024x24" npm run test:ci
 
   test-platform:

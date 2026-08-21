@@ -266,6 +266,62 @@ main suite and it was skipped for a stated reason, not an oversight:
 
 </details>
 
+### 2b⁶. ✅ `Test (editor)` IS DIAGNOSED — IT IS A 900s CAP, NOT DEGRADATION, NOT THE LEAK
+
+**2026-08-21, run 32466293851.** The release's one open engineering question is closed, and the
+answer was in the log all along — one line, below the point every previous session stopped reading.
+
+```
+Test run timed out after 900s without reporting results.
+```
+
+🔴 **THERE IS A TIMEOUT, AND IT IS NOT THE JOB'S.** §2b was right that `test-editor` sets no
+`timeout-minutes` — and that is exactly what made this invisible. The cap is inside the harness:
+`DEFAULT_TIMEOUT_MS = 15 * 60 * 1000` at
+[`packages/noodl-editor/test.js:59`](../../../packages/noodl-editor/test.js), overridable by
+`NOODL_TEST_TIMEOUT_MINUTES`. **The suite needs about 15 minutes and the ceiling is 15 minutes**,
+so runner variance alone decided whether a run graded anything.
+
+| run | markers | summary | outcome |
+|---|---|---|---|
+| 32370134956 | 2766 | none | killed at 900s |
+| **32379435450** | **2849** | ✅ `2849 specs, 10 failures` | **finished inside the cap** |
+| 32384127560 | 2194 | none | killed at 900s |
+| **32466293851** | **2264** | none | **killed at 900s** |
+
+🔴 **THREE READINGS IN THIS FILE WERE WRONG, AND ALL THREE FIT THE EVIDENCE.**
+
+1. **"Degradation, not a wall-clock cap"** — backwards; it is precisely a wall-clock cap. The
+   *reasoning* was sound (longer wall, fewer specs) and the conclusion still did not follow.
+2. **"Both incomplete runs died in `AIX-011` — that is the death zone."** ❌ This run died in
+   **`AAQ-011`**. There is no death zone: a run dies wherever 900s happens to fall, and two
+   samples agreeing looked like a location because two samples always do.
+3. **The listener-flood comparison was CONFOUNDED.** "The completed run carried MORE of them
+   (12,688 vs 8,799)" was read as exonerating the leak — but the completed run carried more
+   because it *ran more specs*. Per-spec the rates are indistinguishable (4.45 vs 4.09). The
+   count could never have decided it either way. ⚠️ The leak is still real and still worth
+   fixing; it is simply not what stops these runs.
+
+✅ **What the timing actually shows, measured over all 2264 spec starts.** The per-spec **median
+is 0.001s and FLAT from the first decile to the last** — nothing degrades. The mean climbs only
+because **59 specs take 5s or more (17–20s each), and they eat 12.4 of the 14.9 minutes.** They
+are all authoring specs: `AAQ-005`, `AAQ-001`, `AAQ-011 F12`, `AIB-004`, `AIX-003`, `AIX-010`,
+`AIX-011`, `BEN-001`. **That is the real work, and it is what would shrink this suite back.**
+
+✅ **Raised to 30 minutes in `pr.yml`**, with the measurement recorded beside it. `test.js`'s own
+comment says to raise it *"only after checking the machine is not swapping; a timeout is far more
+often a symptom than a limit"* — the flat median is that check, and here it is a limit.
+Verified the variable actually arrives: both `scripts/test-editor.ts` and
+`run-electron-tests.js` spawn with `{ ...process.env }` and strip only `ELECTRON_RUN_AS_NODE`.
+
+🔴 **THE LESSON, AND IT IS THE SHARPEST ONE THIS RELEASE PRODUCED: `test.js` ALREADY SAID SO.**
+The doc comment above that constant records **2026-08-12** — *"a healthy machine reached 2476 of
+~2700 specs — 92% — and was cut off, the third consecutive run across two sessions to grade
+nothing … swap was fine and the suite was simply close to the wall"* — and warns *"a run that
+trips this grades NOTHING."* Three sessions then rediscovered "an unfinished run is not a
+failure count" from scratch and theorised about leaks and death zones. **Before diagnosing a
+harness, read the harness's own comments** — the file that prints the message usually explains it.
+
 ### 2b′. 🔴 THE PR GATE RAN FOR THE FIRST TIME IN A WEEK, AND IT IS RED
 
 Run **32370134956** (PR #20, `cline-dev` → `main`), the first `pr.yml` pass over any of these
