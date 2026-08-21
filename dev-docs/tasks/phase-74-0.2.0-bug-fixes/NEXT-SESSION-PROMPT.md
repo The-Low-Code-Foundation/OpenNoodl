@@ -294,6 +294,41 @@ suite would run in **3.2 minutes**. ⚠️ `AIX-010` appears in the handover's l
 measured top — it was in the truncated sample's tail. **`AIX-008` is there instead**, and nobody
 had named it.
 
+### 6e. 🟡 The listener flood is LOCATED and is a real leak — but still NOT shown to cause the slowness
+
+**Source found:** [`packages/noodl-editor/src/shared/model.js:17`](../../../packages/noodl-editor/src/shared/model.js).
+`Model.prototype.on` warns when `this.listeners.length > 10000` — **`>`, not `===`**, so once a
+model crosses the line **every subsequent `on()` prints**. The 12,636 lines are that, not 12,636
+separate leaks.
+
+🔴 **The cost is real and structural, not cosmetic.** `notifyListeners` (`:57-62`) walks the
+**whole** listener array and calls `shouldNotify` on each, for **every** event. Past 10,000
+listeners each event is an O(10,000) scan — and `set()` notifies on every field write.
+
+✅ **It IS a test-isolation leak.** The warning first fires at spec **#1219** and is still firing at
+spec **#2848, the last one** — so a model holding >10,000 listeners survives to the end of the run
+and is never torn down between specs. Firing is *episodic* (gaps up to 178 specs), i.e. only specs
+that touch that model pay.
+
+🔴 **BUT CAUSATION IS STILL NOT ESTABLISHED, AND THE OBVIOUS READING IS AGAIN A CONFOUND.**
+Mean spec time is 2.6× higher after the flood starts (0.232s → 0.604s) — and that is **not**
+evidence:
+
+- The **median is FLAT across the boundary** (0.0006s → 0.0005s). A global O(n) tax would move it.
+- The flood begins **inside `BEN-001`**, one of the slow suites — so "after the flood" and "in the
+  authoring suites" are **the same population**. This is the same confound that made the earlier
+  `12,688 vs 8,799` comparison meaningless, wearing different clothes.
+- The within-suite trend test **contradicts itself**: second half vs first half is 384× slower for
+  `AIX-011` and 224× for `BEN-006`, but **0.21× for `AAQ-011`, 0.07× for `AIX-002`, 0.00× for
+  `BEN-002`**. Monotonic accumulation cannot produce both directions.
+
+⚠️ **What would actually settle it:** run one slow suite (`AAQ-005`, 9 specs, 16s each) **alone**,
+where the flood never starts, and compare per-spec time against this run. That is a local
+measurement and was blocked this session — the machine was at **15.8G of 16.4G swap** with a peer's
+editor live. **Do not "fix" the leak and claim the suite got faster without that control.**
+
+---
+
 ---
 
 ## 🔴 Traps this session paid for — read before working
