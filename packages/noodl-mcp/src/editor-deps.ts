@@ -45,6 +45,7 @@ export {
   // that is not a value: a `template` fed by a connection is a working list.
   connectedInputs,
   declaredUrlPaths,
+  dedupeDiagnostics,
   diagnosticKey,
   isBlockingForAuthoredOutput,
   looksLikePageComponent

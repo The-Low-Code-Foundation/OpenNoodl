@@ -51,6 +51,7 @@ import {
   assertInsideDocs,
   buildComponentRefs,
   componentInterfaces,
+  dedupeDiagnostics,
   diagnosticKey,
   isComponentRef,
   DocPathError,
@@ -403,7 +404,14 @@ function validateStaged(
   const report = validator().validateComponent(project, legacyName, validatorOptions);
 
   const views = authoredProjectViews(store, stagedOverlay(plan, { opId: operation.id, files: candidate }));
-  const diagnostics = [...report.diagnostics, ...preconditionDiagnostics(legacyName, candidate, views)];
+  // Deduped for the reason `dedupeDiagnostics` records: since D13 the validator
+  // report and the precondition set both run `checkParameterValues`, so this
+  // join doubled every parameter-value finding. The baseline path below collapses
+  // into a Set already, so only this list needed it.
+  const diagnostics = dedupeDiagnostics([
+    ...report.diagnostics,
+    ...preconditionDiagnostics(legacyName, candidate, views)
+  ]);
   let errors = diagnostics.filter(isBlockingForAuthoredOutput);
 
   // LAS-006 §3 — the plan as a contract. LAS-001's index does the reading: what

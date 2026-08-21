@@ -49,6 +49,7 @@ export {
   componentInterfaces,
   connectedInputs,
   declaredUrlPaths,
+  dedupeDiagnostics,
   diagnosticKey,
   isBlockingForAuthoredOutput
 } from './authoredCandidate';

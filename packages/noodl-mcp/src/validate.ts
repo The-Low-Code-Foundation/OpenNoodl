@@ -33,6 +33,7 @@ import {
   componentInterfaces,
   connectedInputs,
   declaredUrlPaths,
+  dedupeDiagnostics,
   diagnosticKey,
   isBlockingForAuthoredOutput,
   SCHEMA_IDS,
@@ -181,38 +182,6 @@ function structuralCheck(files: ComponentFiles): StructuralFailure[] {
   return failures;
 }
 
-/**
- * The two diagnostic sources overlap, and since D13 they overlap on purpose.
- *
- * 🔴 **Measured 2026-08-18, driving CN-009 AC5.** `validateCandidate` merges the
- * semantic validator's report with `preconditionDiagnostics`. D13 registered
- * `rules/parameterValue`, which runs `checkParameterValues` — the same function
- * the precondition set has always run. The result was every parameter-value
- * finding appearing **twice** in `diagnostics`, in the `readable` list an agent
- * is shown, and in `summary.errors`/`warnings`. A rejection naming one mistake
- * twice reads as two mistakes.
- *
- * ⚠️ **Deduped rather than un-overlapped, deliberately.** Removing
- * `checkParameterValues` from the precondition set would silently drop it for
- * any caller that runs the preconditions alone — the editor's authoring loop
- * does exactly that — and that is a bigger change made for a cosmetic reason.
- * The overlap is now harmless and each source stays independently complete.
- *
- * `diagnosticKey` is the identity this file already trusts for baseline
- * exemption (code + node + port + plug + connection + message), so two entries
- * sharing it are the same finding by the definition already in use here.
- */
-function dedupeDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
-  const seen = new Set<string>();
-  const out: Diagnostic[] = [];
-  for (const diagnostic of diagnostics) {
-    const key = diagnosticKey(diagnostic);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(diagnostic);
-  }
-  return out;
-}
 
 /**
  * Validate a candidate create/update for `key`. `baseline` is the on-disk

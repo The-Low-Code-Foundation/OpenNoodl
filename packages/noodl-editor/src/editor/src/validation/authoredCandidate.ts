@@ -283,6 +283,43 @@ export function diagnosticKey(diagnostic: Diagnostic): string {
   return JSON.stringify([diagnostic.code, l.nodeId, l.port, l.plug, l.connection, diagnostic.message]);
 }
 
+/**
+ * Collapse findings that two overlapping sources both reported.
+ *
+ * 🔴 **The two diagnostic sources overlap, and since D13 they overlap on
+ * purpose.** A caller that merges the semantic validator's report with
+ * `authoredPreconditionDiagnostics` gets every parameter-value finding
+ * **twice**: D13 registered `rules/parameterValue`, which runs
+ * `checkParameterValues` — the same function the precondition set has always
+ * run. **A rejection naming one mistake twice reads as two mistakes**, and it
+ * reaches the agent's readable list and `summary.errors`/`warnings` that way.
+ *
+ * ⚠️ **Deduped rather than un-overlapped, deliberately.** Removing
+ * `checkParameterValues` from the precondition set would silently drop it for
+ * any caller that runs the preconditions alone, and that is a bigger change
+ * made for a cosmetic reason. The overlap stays harmless and each source stays
+ * independently complete.
+ *
+ * 🔴 **This lives here because it was fixed in ONE of three copies.**
+ * CN-009 AC5's drive found the regression on 2026-08-18 (`810478ce`) and
+ * deduped `noodl-mcp/src/validate.ts` — while `authoring/validate.ts` and
+ * `planTools.ts` kept doubling, which is 5 of the `Test (editor)` floor's ten
+ * failures (`AIX-006` ×4, `AIX-011`). That comment even names the editor's
+ * authoring loop as a caller. Same lesson as `diagnosticKey` directly above:
+ * **three copies that agree are still three copies; this is the one.**
+ */
+export function dedupeDiagnostics(diagnostics: readonly Diagnostic[]): Diagnostic[] {
+  const seen = new Set<string>();
+  const out: Diagnostic[] = [];
+  for (const diagnostic of diagnostics) {
+    const key = diagnosticKey(diagnostic);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(diagnostic);
+  }
+  return out;
+}
+
 export interface AuthoredPreconditionOptions {
   /** Legacy name of the component being submitted, e.g. `/Pages/Puppies`. */
   component: string;

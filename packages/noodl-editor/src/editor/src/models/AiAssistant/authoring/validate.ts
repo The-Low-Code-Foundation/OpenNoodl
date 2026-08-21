@@ -23,6 +23,7 @@ import {
   componentInterfaces,
   connectedInputs,
   declaredUrlPaths as collectUrlPaths,
+  dedupeDiagnostics,
   diagnosticKey,
   isBlockingForAuthoredOutput,
   loadDefaultCatalog,
@@ -173,21 +174,30 @@ export function validateCandidateComponent(
   };
 
   const report: ValidationReport = validator().validateComponent(project, legacyName, { strict: true });
-  // AIB-001: the semantic validator reasons about types and connectivity and
-  // has no view of parameter VALUES — its normalized model does not carry them.
-  // The precondition checks run over the candidate's own v2 nodes and their
-  // diagnostics join the report's, so they flow through the repair loop, the
-  // baseline exemption and the summary by exactly the same paths.
+  // AIB-001: the precondition checks run over the candidate's own v2 nodes and
+  // their diagnostics join the report's, so they flow through the repair loop,
+  // the baseline exemption and the summary by exactly the same paths.
+  //
+  // 🔴 The reason recorded here used to be stronger — *"the semantic validator
+  // reasons about types and connectivity and has no view of parameter VALUES —
+  // its normalized model does not carry them"* — and **D13 ended that on
+  // 2026-08-18**: `NormNode` carries `parameters` and `rules/parameterValue`
+  // runs `checkParameterValues`, the same function the precondition set runs.
+  // The two sources now OVERLAP, so this join doubled every parameter-value
+  // finding — a rejection naming one mistake twice, which is what exhausted the
+  // repair loop in `AIX-006` and made `AIX-011` count 2 blocking warnings where
+  // the agent caused 1. `dedupeDiagnostics` is the same fix CN-009 AC5 made in
+  // `noodl-mcp/src/validate.ts` on the day D13 landed; it never reached here.
   //
   // AAQ-005: the four of them, and the policy below, are now one shared
   // definition (`validation/authoredCandidate.ts`) that the MCP write gate and
   // the MCP plan gate call too. Before that they existed here and nowhere else,
   // so an agent driving Claude Code through `noodl-mcp` had no parameter-value
   // check at all.
-  const diagnostics = [
+  const diagnostics = dedupeDiagnostics([
     ...report.diagnostics,
     ...preconditionDiagnostics(graph, legacyName, files, options)
-  ];
+  ]);
   // The blocking-warning policy and its reasoning now live with the checks, in
   // `validation/authoredCandidate.ts` — including why `PageWithoutPageNode` is
   // still deliberately absent from it (AAQ-011 F7).
