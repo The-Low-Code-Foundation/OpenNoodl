@@ -3,10 +3,10 @@
 **Filed:** 2026-08-20, from Richard, using the app. **Worked:** 2026-08-20 → 08-21.
 
 Twelve reports in one list, spanning the Blockly canvas, the launcher, the editor rail, the
-community mirror, the learning surfaces and the community platform. Eleven are closed and **six of
-them are now confirmed in a running editor**; one is deployed but awaits a single action by
-Richard to prove; one has a second half deliberately left. **Driving them turned up a thirteenth
-bug, which 11a had just made reachable** — see the drive section.
+community mirror, the learning surfaces and the community platform. **Twelve are closed** — six of
+them confirmed in a running editor, and bug 6 proved in production on 2026-08-21. One (11b) has a
+second half deliberately left, scoped as `FIX-026`. **Driving them turned up a thirteenth bug,
+which 11a had just made reachable** — see the drive section.
 
 ---
 
@@ -70,7 +70,6 @@ with the double cast and `string` without it.
 | 11b | Protection against wrecking the tutorial | `lessonprotection.ts` | ⚠️ half |
 | 12 | Wrong-typed wire into a Visual Function is silent | `connectionCoercion.ts` | ✅ |
 | **13** | **Finishing a lesson blanked the lesson bar** — found by driving 11a | `lessonstepflow.ts` | ✅ |
-| **13** | **Finishing a lesson blanked the lesson bar** (found by driving 11a) | `lessonstepflow.ts` | ✅ |
 
 ### 11a — the shipped lesson had never been completable
 
