@@ -25,7 +25,7 @@ const THEME_TOKENS: Record<string, ColorSpec> = {
   workspace: { css: '--theme-color-bg-0', fallback: '#161c24' },
   /** Toolbox tree and flyout sit one step up, like every other panel. */
   panel: { css: '--theme-color-bg-1', fallback: '#212932' },
-  panelText: { css: '--theme-color-fg-default', fallback: '#bbc6d3' },
+  panelText: { css: '--theme-color-fg-default', fallback: '#dde4ec' },
   /** Grid dots and scrollbars: present, not loud. */
   subtle: { css: '--theme-color-border-default', fallback: '#2f3945' },
   /** Selection and insertion markers use the azure action accent. */

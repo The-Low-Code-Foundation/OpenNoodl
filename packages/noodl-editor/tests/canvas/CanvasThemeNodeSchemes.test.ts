@@ -25,8 +25,8 @@ import { CanvasTheme } from '../../src/editor/src/views/nodegrapheditor/canvas/C
 const DARK_TOKENS = {
   '--theme-color-bg-0': '#161c24',
   '--theme-color-bg-1': '#212932',
-  '--theme-color-fg-highlight': '#eef2f6',
-  '--theme-color-fg-default-shy': '#abb8c5',
+  '--theme-color-fg-highlight': '#ffffff',
+  '--theme-color-fg-default-shy': '#c4cedb',
   '--theme-color-node-category-default': '#7d8a98',
   '--theme-color-node-category-visual': '#5ca9ff',
   '--theme-color-node-category-data': '#45d08a',

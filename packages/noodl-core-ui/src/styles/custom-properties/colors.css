@@ -50,7 +50,16 @@
      4.09:1 there. */
   --base-color-neutral-750: #abb8c5;
   --base-color-neutral-800: #bbc6d3;
+  /* FIX-028: two rungs above `800`, added because the dark theme's working inks all sat in the
+     middle of this ramp and read as disabled. Richard, 2026-08-21: *"the description text and
+     buttons are still light grey on a dark grey background, everything looks disabled … I'm sick
+     of grey on grey."* Both keep the family's blue-grey tint, which thins toward white exactly as
+     the existing rungs do (B−R: 750→26, 800→24, 850→23, 925→15, 950→8). ⚠️ Derived along the
+     ramp rather than by blending toward white — blending drops relative chroma and lands on flat
+     grey, which is the complaint rather than the fix. */
+  --base-color-neutral-850: #c4cedb;
   --base-color-neutral-900: #cbd3dc;
+  --base-color-neutral-925: #dde4ec;
   --base-color-neutral-950: #eef2f6;
   --base-color-neutral-1000: #ffffff;
 
@@ -286,9 +295,33 @@
      Every one of these clears 4.5:1 on bg-0 through bg-4 in BOTH themes, which
      is asserted by tests-unit/nat-001/palette-contrast.spec.ts.
      --------------------------------------------------------------------------- */
-  --theme-color-fg-highlight: var(--base-color-neutral-950);
-  --theme-color-fg-default-contrast: var(--base-color-neutral-900);
-  --theme-color-fg-default: var(--base-color-neutral-800);
+  /* 🔴 FIX-028 — THE DARK INKS WERE RAISED BECAUSE ALL OF THEM READ AS DISABLED.
+     Richard, 2026-08-21, on the launcher's learner path: *"the description text and buttons are
+     still light grey on a dark grey background, everything looks disabled … make everything as
+     close to white as reasonable."*
+
+     ⚠️ **This was never an AA failure, and reading it as one is how it survived.** Measured
+     before the change, `fg-default` was 8.50:1 on `bg-1` and `fg-default-shy` 7.28:1 — both
+     comfortably past 4.5, and the NAT-001 table below was green on every row. What was wrong is
+     that every working ink sat in the MIDDLE of the neutral ramp (750/800/900) while only
+     `fg-highlight` was near white, and the step from `fg-default-shy` down to `fg-disabled` was
+     just 1.74:1 — so ordinary words landed close enough to the disabled tone to be read as
+     disabled. A contrast table cannot see that; it grades each ink against its ground and never
+     against the ink one rung down.
+
+     Raised: highlight → white, default-contrast → 950, default → 925, default-shy → 850.
+     `fg-disabled` is deliberately UNCHANGED at `neutral-600` — the gap it needed was bought by
+     lifting everything above it (1.74 → 2.21), and moving it as well would have touched the
+     TopologyMapPanel styles that consume `neutral-600` directly for non-text.
+
+     Measured after: on `bg-1`, highlight 14.71 / contrast 12.61 / default 11.47 / shy 9.24 /
+     disabled 4.17. Worst text ratio anywhere is shy on `bg-5` at 5.33. The hierarchy bars in
+     `tests-unit/nat-001/palette-contrast.spec.ts` both IMPROVE: default↔shy 1.167 → 1.241 (bar
+     1.15), shy↔disabled 1.744 → 2.214 (bar 1.4). ⚠️ Light theme is untouched — it sets its own
+     literals further down, and its inks are dark on light, where this complaint does not arise. */
+  --theme-color-fg-highlight: var(--base-color-white);
+  --theme-color-fg-default-contrast: var(--base-color-neutral-950);
+  --theme-color-fg-default: var(--base-color-neutral-925);
   /* 🔴 NAT-002 raised this from `neutral-700`. It was 4.09:1 on bg-4 in dark and
      4.33 in light — under AA on the ground every DIALOG is painted on, including
      the "Ask about this node" composer's consent copy. D9 also made it the
@@ -297,7 +330,11 @@
      ⚠️ The step down from `fg-default` narrows from 1.38:1 to 1.21:1 — still a
      visible hierarchy, and asserted as one by the NAT-001 spec so a later raise
      cannot quietly collapse it. */
-  --theme-color-fg-default-shy: var(--base-color-neutral-750);
+  /* ⚠️ FIX-028 raised this again, 750 → 850, for the reason in the block above: NAT-002's raise
+     fixed its ratio against the GROUND, which was the bug it was chasing, and left it a rung
+     below the tone the eye reads as "off". It carries most of the editor's secondary text, so it
+     is the token Richard's complaint was mostly about. */
+  --theme-color-fg-default-shy: var(--base-color-neutral-850);
   /* 🔴 RETIRED (NAT-002, D9). This was `neutral-600` and it was documented right
      here as "large/secondary text only" — an unenforceable licence that 217
      `color:` declarations took as permission. It measured 3.93:1 on bg-1 and

@@ -1031,17 +1031,25 @@ describe.each(['dark', 'light'] as const)('the %s elevation ramp is a ramp', (th
   });
 });
 
+/**
+ * ⚠️ FIX-028 (2026-08-21) raised four of the DARK values below — `fg-highlight` to white,
+ * `fg-default` to `neutral-925`, `fg-default-shy`/`fg-muted` to `neutral-850`. The light arm is
+ * unchanged. These rows are a STATEMENT of the palette, so they move when the palette
+ * deliberately moves; what they defend is that it cannot move by accident, and that the two arms
+ * never converge. See the note on the foregrounds in `colors.css` for why the raise was needed
+ * when every contrast row in this file was already green.
+ */
 describe('the light arm is a different palette from the dark arm', () => {
   it.each([
     ['--theme-color-bg-0', '#161c24', '#eef1f5'],
     ['--theme-color-bg-1', '#212932', '#ffffff'],
     ['--theme-color-bg-4', '#3c4857', '#d9dfe6'],
-    ['--theme-color-fg-highlight', '#eef2f6', '#18212b'],
-    ['--theme-color-fg-default', '#bbc6d3', '#4a5663'],
-    ['--theme-color-fg-default-shy', '#abb8c5', '#59626e'],
+    ['--theme-color-fg-highlight', '#ffffff', '#18212b'],
+    ['--theme-color-fg-default', '#dde4ec', '#4a5663'],
+    ['--theme-color-fg-default-shy', '#c4cedb', '#59626e'],
     // NAT-002 D9: `fg-muted` is an ALIAS now, so these are `fg-default-shy`'s values reached
     // through it. If it ever resolves to something else, it has been un-retired.
-    ['--theme-color-fg-muted', '#abb8c5', '#59626e'],
+    ['--theme-color-fg-muted', '#c4cedb', '#59626e'],
     ['--theme-color-fg-disabled', '#7d8a98', '#7a8691'],
     ['--theme-color-primary', '#4da3ff', '#1570ef'],
     // 🔴 NAT-003: dark is NO LONGER `primary`. NAT-002 pinned them equal and said so; lifting the

@@ -68,7 +68,7 @@ const BADGE_TOKENS: Record<string, ColorSpec> = {
   /** The hollow mark's wash over an inert block. Follows the theme. */
   wash: { css: '--theme-color-bg-2', fallback: '#2b3440' },
   border: { css: '--theme-color-border-strong', fallback: '#434e5c' },
-  muted: { css: '--theme-color-fg-muted', fallback: '#abb8c5' },
+  muted: { css: '--theme-color-fg-muted', fallback: '#c4cedb' },
   accent: { css: '--theme-color-primary', fallback: '#4da3ff' }
 };
 

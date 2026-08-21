@@ -34,11 +34,11 @@ const JSON_THEME_TOKENS = {
   surfaceRaised: { css: '--theme-color-bg-5', fallback: '#414e5e' },
   border: { css: '--theme-color-border-default', fallback: '#2f3945' },
   /** Object/array keys and braces. */
-  key: { css: '--theme-color-fg-highlight', fallback: '#eef2f6' },
+  key: { css: '--theme-color-fg-highlight', fallback: '#ffffff' },
   /** `undefined`, the collapsed-node ellipsis. */
-  muted: { css: '--theme-color-fg-default', fallback: '#bbc6d3' },
+  muted: { css: '--theme-color-fg-default', fallback: '#dde4ec' },
   /** Object size counters (currently hidden) and thin borders. */
-  shy: { css: '--theme-color-fg-muted', fallback: '#abb8c5' },
+  shy: { css: '--theme-color-fg-muted', fallback: '#c4cedb' },
   string: { css: '--theme-color-syntax-string', fallback: '#ce9178' },
   number: { css: '--theme-color-syntax-number', fallback: '#b5cea8' },
   /** `true`/`false`/`null` — keywords, as in the code editor. */

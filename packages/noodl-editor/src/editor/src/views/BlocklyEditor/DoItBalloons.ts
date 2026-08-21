@@ -37,8 +37,8 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const BALLOON_TOKENS: Record<string, ColorSpec> = {
   surface: { css: '--theme-color-bg-2', fallback: '#2b3440' },
   border: { css: '--theme-color-border-strong', fallback: '#434e5c' },
-  text: { css: '--theme-color-fg-default', fallback: '#bbc6d3' },
-  muted: { css: '--theme-color-fg-muted', fallback: '#abb8c5' },
+  text: { css: '--theme-color-fg-default', fallback: '#dde4ec' },
+  muted: { css: '--theme-color-fg-muted', fallback: '#c4cedb' },
   danger: { css: '--theme-color-danger', fallback: '#f97066' },
   accent: { css: '--theme-color-primary', fallback: '#4da3ff' }
 };

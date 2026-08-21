@@ -79,7 +79,7 @@ const COLOR_SPECS = {
   /** Canvas ground (also set on `.nodegrapgeditor-bg` in CSS). */
   ground: { css: '--theme-color-bg-0', fallback: '#161c24' },
   /** Base colour of the dot grid; alpha is applied in `derive()`. */
-  gridDotBase: { css: '--theme-color-fg-highlight', fallback: '#eef2f6' },
+  gridDotBase: { css: '--theme-color-fg-highlight', fallback: '#ffffff' },
 
   /* --- Node card ---------------------------------------------------------- */
   cardBg: { css: '--theme-color-bg-1', fallback: '#212932' },
@@ -87,10 +87,10 @@ const COLOR_SPECS = {
   cardBorder: { css: '--theme-color-border-default', fallback: '#2f3945' },
   cardBorderHover: { css: '--theme-color-border-strong', fallback: '#434e5c' },
   /** Node name. */
-  cardText: { css: '--theme-color-fg-highlight', fallback: '#eef2f6' },
+  cardText: { css: '--theme-color-fg-highlight', fallback: '#ffffff' },
   /** Type line. NAT-002: this is TEXT and it measured 3.93:1 on the card, so it takes the raise
    *  D9 gave `fg-default-shy` rather than sitting on the retired alias. */
-  cardSubText: { css: '--theme-color-fg-default-shy', fallback: '#abb8c5' },
+  cardSubText: { css: '--theme-color-fg-default-shy', fallback: '#c4cedb' },
   /**
    * The "this node has a comment" gutter stripe (CAN-004).
    *
@@ -102,7 +102,7 @@ const COLOR_SPECS = {
    */
   commentIndicator: { css: '--theme-color-primary', fallback: '#4da3ff' },
   /** Port row labels. */
-  portText: { css: '--theme-color-fg-default', fallback: '#bbc6d3' },
+  portText: { css: '--theme-color-fg-default', fallback: '#dde4ec' },
 
   /** Selection / drag-affordance ring (accent; glow derived below). */
   selection: { css: '--theme-color-primary', fallback: '#4da3ff' },
@@ -143,7 +143,7 @@ const COLOR_SPECS = {
    *  change — rather than following a text token's raise. */
   multiselect: { css: '--theme-color-border-control', fallback: '#7d8a98' },
   /** Multi-selection AABB outline. */
-  multiselectBox: { css: '--theme-color-fg-default', fallback: '#bbc6d3' },
+  multiselectBox: { css: '--theme-color-fg-default', fallback: '#dde4ec' },
   /** Parent→child hierarchy spine (the mock's `--border-2` spine). */
   hierarchyLine: { css: '--theme-color-border-strong', fallback: '#434e5c' },
   /** Child insert-location indicator bar. */
@@ -155,7 +155,7 @@ const COLOR_SPECS = {
   wireSignal: { css: '--theme-color-wire-signal', fallback: '#35c3e8' },
   wireData: { css: '--theme-color-wire-data', fallback: '#45d08a' },
   /** Debug-inspector wire pulse. */
-  wirePulse: { css: '--theme-color-fg-highlight', fallback: '#eef2f6' },
+  wirePulse: { css: '--theme-color-fg-highlight', fallback: '#ffffff' },
 
   /* --- Node categories (UIX-001 category tokens) --------------------------
      component, visual, data, javascript, default. `javascript` maps onto the
