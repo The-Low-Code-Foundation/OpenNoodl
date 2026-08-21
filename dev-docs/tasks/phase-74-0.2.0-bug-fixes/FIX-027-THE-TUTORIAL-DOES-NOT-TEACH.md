@@ -59,7 +59,7 @@ an `openPanel` action and unlock on demand. **Pick one deliberately.**
 | 15 | A disabled rail item does not say why it is disabled | `SideNavigation.tsx:70` | **A** |
 | 16 | The lesson says *"the Data panel"*; the rail says *Backend Services*, and Data is inside it | `log-a-thing/lesson.json` step 1 | **A** |
 | 17 | A task step never shows its instructions until you click it | `LessonLayerView.jsx:83` | B |
-| 18 | 🟡 **PARTLY FIXED** — the count was a cap artefact and the sentence blamed the learner; both fixed. The **bundle and the gate are still open** | shipped bundle + `lessoncheck.ts:346` | C |
+| 18 | 🟡 **PARTLY FIXED** — the count was a cap artefact and the sentence blamed the learner; both fixed. ✅ **The gate now exists** (`lessons:check`, self-tested, in CI). 🔴 **The `state-on-a-page` bundle is still open** — it ships from nowhere either checkout can see | shipped bundle + `lessoncheck.ts:346` | C |
 | 19 | No completion moment at all when the last step is a graded card | `lessonlayer2.ts:441` | D |
 | 20 | When there *is* a completion popup, its only action is EXIT LESSON — no reset | `lessonlayer2.ts:450` | D |
 | 21 | ✅ **FIXED** — *"Explain this for me"* 404s every time; it has never worked for anybody | `me/path/project/route.ts:54` + `useLearnerPath.ts` | E |
@@ -168,10 +168,39 @@ failures** (floor 4871 + 13 new); mcp **55 suites / 651 tests**; all four typech
   `~/Library/Application Support/NodeGX/Learning/state-on-a-page` is the **learner's working
   copy** — Richard's, mtime today — and is not a source to clean. **Where this lesson ships from
   is the question to answer before anything can be fixed in it.**
-- **No gate validates a shipped lesson bundle.** The only thing referencing
-  `project-examples/` in `scripts/` or `.github/` is the comment-legibility scanner. A checker
-  over the corpus that exists would have caught this — the third time this shape has appeared.
-  `log-a-thing` would pass it today at 0 diagnostics.
+- ✅ **THE GATE EXISTS — `npm run lessons:check`, 2026-08-21.**
+  `scripts/check-lesson-bundles.ts`, run by its own `Lesson bundles (FIX-027)` job in `pr.yml`.
+  Every bundle under `project-examples/lessons/<slug>/` is checked three ways: `lesson.json`
+  parses and verifies against the node catalog (`verifyLessonManifest`), and **both** projects —
+  the starter at the bundle root and `solution/` — load and validate clean.
+
+  **Measured, not assumed:** `log-a-thing` is **0 manifest findings, 0 diagnostics** across
+  `starter 3c/12n` and `solution 3c/16n`. The gate prints that cardinality on every run, because
+  a checker reporting "clean" over an empty read scores identically to one over a perfect bundle.
+
+  🔴 **Warnings fail this gate, unlike `library:check`, and that is the whole point.** An unknown
+  node type arrives as `severity: warning` — which is exactly how the sibling gate reported
+  **58/58 clean** while nine shipped prefabs had no type at all. Gating on errors alone would have
+  left a hole shaped precisely like bug 18. The strict bar is affordable because the corpus
+  already meets it.
+
+  ✅ **The gate is graded by mutation — `npm run lessons:check:self-test`, also in CI.** It copies
+  the real bundle, breaks it seven ways and requires each break to be caught **in the arm it
+  names**, not merely to exit non-zero: a harness that threw would exit non-zero too. Verified by
+  meta-mutation — pointing one expectation at an arm it cannot match reports `WRONG REASON` and
+  fails. Control green first; the shipped corpus is never written to (git-clean after every run).
+
+  ⚠️ **It does NOT cover `state-on-a-page`**, which is the bundle bug 18 was actually about and is
+  still in neither checkout — see the item above. This gate covers the corpus that exists, and
+  will cover that lesson the day it ships from here.
+
+  🔴 **`knownCollections` is deliberately not supplied.** `verifyLessonManifest` can also check
+  that every collection a condition names is one the bundle creates, but only when the caller
+  hands it the population — and omitted is not the same answer as supplied-and-empty. Passing `[]`
+  would fire `unreachable-collection` against every correct data lesson, `log-a-thing` first.
+  Deriving the real list is **TUT-002 AC3**, which is open and carries its own recorded trap
+  (`BackendManager.getRecordCount` ends `return result.count || 0`, so an unreadable table reads
+  as zero rows). This script is the caller to wire it into when AC3 lands.
 
 ### 19 and 20 — there is no "well done"
 

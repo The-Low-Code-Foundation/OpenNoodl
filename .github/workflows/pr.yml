@@ -269,6 +269,34 @@ jobs:
       # and the only symptom would be a picker quietly showing the old glyph list.
       - run: npm run starter-iconset:check
 
+  lessons:
+    name: Lesson bundles (FIX-027)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # Every bundle under project-examples/lessons/<slug>/: lesson.json parses
+      # and verifies against the node catalog, and BOTH projects — the starter
+      # at the bundle root and solution/ — load and validate clean.
+      #
+      # 🔴 It is a job of its own rather than a step on `library`, on purpose.
+      # Three times in this release a red step was hidden behind a green one
+      # earlier in the same job (nx bailing across packages, a failing assertion
+      # hiding the next, a passing step-3 hiding a red step-4). A lesson bundle
+      # is learner-facing content and should not be able to go unreported
+      # because an unrelated check ahead of it failed first.
+      #
+      # ⚠️ Warnings fail this gate, unlike `library:check`. An unknown node type
+      # arrives as a WARNING, and that is precisely how the sibling gate came to
+      # report 58/58 clean while nine shipped prefabs had no type at all. The
+      # script's header explains why the strict bar is affordable here.
+      - run: npm run lessons:check
+      # The gate's own mutation grading: it copies the real bundle, breaks it
+      # seven ways and requires every break to be caught. A content gate over a
+      # corpus of one reports "clean" whether or not it is looking, so the
+      # measurement above is only worth its exit code if this passes too.
+      - run: npm run lessons:check:self-test
+
   artefacts:
     name: Check build artefacts
     runs-on: ubuntu-latest
