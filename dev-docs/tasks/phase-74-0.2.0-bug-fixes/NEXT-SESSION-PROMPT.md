@@ -1,9 +1,10 @@
 # Next session — squash the rest of them
 
-FIX-025 is committed and six of its items are confirmed in a running editor. Since then Richard
-used the tutorials and filed **seven more** — researched in `FIX-027-THE-TUTORIAL-DOES-NOT-TEACH.md`,
-and 🔴 **one of them is that *Log a thing* cannot be completed at all.** That is now the top of the
-list, ahead of the three FIX-025 leftovers.
+FIX-025 is closed — **all twelve of Richard's original reports, plus a thirteenth the drive
+found**, and bug 6 is proved in production. FIX-028 (the dark theme's inks) is done. Since then
+Richard used the tutorials and the learner path and filed **nine more**, researched to root cause
+in `FIX-027-THE-TUTORIAL-DOES-NOT-TEACH.md`. 🔴 **One of them is that *Log a thing* cannot be
+completed at all.** That is the top of the list, ahead of the three FIX-025 leftovers.
 
 Read `FIX-025-THE-LAUNCH-LIST.md` first: several fixes deliberately reversed previously-specced
 behaviour and the reasons are recorded there, not in the diffs.
@@ -12,14 +13,19 @@ behaviour and the reasons are recorded there, not in the diffs.
 
 | repo | branch | state |
 |---|---|---|
-| `~/vscode_projects/OpenNoodl` | `cline-dev` | `0f97fcef` fixes, `3d8b1628` docs. ⚠️ Other sessions' uncommitted work is in the tree (`scripts/library/check.ts`, `AskAboutNodeDialog.module.scss`, several `dev-docs/` phases) — **not yours, do not sweep it** |
+| `~/vscode_projects/OpenNoodl` | `cline-dev` | HEAD `0dd5637c`. FIX-025 `0f97fcef`, FIX-028 `d5b0d027`, docs `3d8b1628`/`5cff418e`/`c14f8bdb`. ⚠️ Other sessions' uncommitted work is in the tree (`scripts/library/check.ts`, `AskAboutNodeDialog.module.scss`, several `dev-docs/` phases) — **not yours, do not sweep it** |
 | `~/vscode_projects/nodegx-community` | `main` | `c5d3ad5`, **deployed to nexus-1** |
 
 Measured 2026-08-21 — ⚠️ **re-measure, never quote a handover's**:
 
 - `npm run typecheck:editor` exit 0 · `npm run test:main` exit 0, **300 suites / 4865 tests / 0 failures**
 - platform `npx tsc --noEmit` exit 0 · `tests/uni007-intake-and-pathing.test.ts` **30/30**
-- `test:ci` at seed 39393 — **2849 specs / 10 failures, the floor name for name** (see the appendix)
+- 🔴 `test:ci` — **2849 specs / 10 failures at the floor, but measured on `3d8b1628`, BEFORE
+  FIX-028.** See the appendix, and **re-measure**: FIX-028 edited
+  `packages/noodl-editor/tests/canvas/CanvasThemeNodeSchemes.test.ts`, and `tests/` is the
+  **electron** suite that only `test:ci` runs — `test:main` does not list it. The edit looks safe
+  (a token fixture, and the assertions are about node-category colours) but that is a reading,
+  not a measurement.
 
 ---
 
@@ -73,7 +79,26 @@ cause; three of them are the same root cause. The short version:
 
 ---
 
-## 3. The three undriven FIX-025 items — recipes, not vague pointers
+## 3. ✅ FIX-028 is done — but only the tokens moved
+
+Richard: *"I'm sick of grey on grey, make everything as close to white as reasonable."* Done for
+the **dark** theme, `d5b0d027`: `fg-highlight` → white, `fg-default` → `neutral-925` (#dde4ec),
+`fg-default-shy`/`fg-muted` → `neutral-850` (#c4cedb), `fg-disabled` unchanged.
+
+⚠️ **This was never an AA failure and reading it as one is how it survived** — `fg-default` was
+already 8.50:1. The defect was that every working ink sat mid-ramp and `shy`→`disabled` was only
+1.74:1, so ordinary words read as disabled. **A contrast table cannot see that**: it grades each
+ink against its ground, never against the ink one rung down. Both hierarchy bars improved.
+
+🔴 **The follow-up: only tokens moved.** Anything with a hard-coded grey — chiefly the editor's
+legacy `src/assets/css/style.css` — did not follow, and Richard should be asked where it still
+looks grey-on-grey. ✅ `tests-unit/nat-003/palette-copies.spec.ts` caught **15 stale copies across
+5 files** when the tokens moved; **run it after any palette change**, it is the only thing that
+sees that class of drift.
+
+---
+
+## 4. The three undriven FIX-025 items — recipes, not vague pointers
 
 ✅ **`COMMUNITY_URL` is a hard-coded constant** (`models/community/communityorigin.ts:16`,
 `https://community.nodegx.io`) with **no env override**. So every community drive from the editor
@@ -118,7 +143,7 @@ every future community drive), or ask Richard to answer one of his own threads o
 
 ---
 
-## 4. FIX-026 — blocked on a decision, not on effort
+## 5. FIX-026 — blocked on a decision, not on effort
 
 `FIX-026-PUT-IT-BACK.md` is written. 🔴 **Its stated foundation was false**: `Learning/<slug>/`
 is the learner's *working copy*; there is no pristine original beside it, and the only source
@@ -127,7 +152,7 @@ recommendation are in the file. **Richard decides before any code.**
 
 ---
 
-## 5. Where to hunt next, when the list above is done
+## 6. Where to hunt next, when the list above is done
 
 - 🔴 **`tsfixme` is the last open red on the 0.2.0 ratchets, and it is a decision** — +37 `TSFixme`,
   +125 `any` across **45 files** (the "~20" was the ratchet's display cap). 68% is test files; 32
@@ -162,7 +187,7 @@ recommendation are in the file. **Richard decides before any code.**
 
 ---
 
-## Appendix — `test:ci` floor, re-measured 2026-08-21 on tree `3d8b1628`
+## Appendix — `test:ci` floor, measured 2026-08-21 on tree `3d8b1628` (⚠️ pre-FIX-028)
 
 ```
 Jasmine: 2849 specs, 10 failures (failed).      seed 39393
