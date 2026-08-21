@@ -444,6 +444,60 @@ nothing**: it walked `c.graph.nodes`, applied **0** mutations, and read identica
 unexplained) and 1× `AIX-011` (expected 1 blocking warning, got 2). Both undiagnosed.
 ⚠️ `test:ci` was **not** run locally: swap was 16.8G of 18.4G even with the editor closed.
 
+---
+
+## 2b⁹. THE FLOOR WAS FOUR CAUSES, NOT TEN FAILURES — session of 2026-08-21 (afternoon)
+
+**Read this before quoting "the floor is 10" anywhere.** Three commits pushed/queued on
+`cline-dev`: `dae76da8`, `a46b52ba`, `ea402850`.
+
+| was | cause | commit |
+|---|---|---|
+| `SUB-011` ×3 | D13 checks the shipped `fx` expression form against the port's primitive shape | `dae76da8` |
+| `AI model registry` ×2 | F35's surviving half — the gateway *default* was still `gpt-4.1` | `a46b52ba` |
+| `AIX-006` ×4 + `AIX-011` ×1 | the D13 double-report, fixed in **one of three copies** | `ea402850` |
+
+🔴 **Three of the four causes are D13** (`c1c0b5b5`, 2026-08-18). It is in `v0.2.0` and was not
+in `v0.1.7`, so **the unpublished draft carries the `fx` false positive**. All three fixes are
+after the tag: they ride in 0.2.1 and cannot destabilise the cut draft.
+
+✅ **Independently corroborated by a peer session**: on the installed state-on-a-page bundle the
+corpus went **26 → 25** diagnostics on a tree carrying `dae76da8`, and the one that went was the
+`invalid-parameter-value` warning on the `fx` form. The false positive was firing on **shipped
+content**, not only a fixture. Their lesson is worth keeping: *a corpus measurement inherits the
+defects of the instrument that took it.*
+
+### What is still open
+
+- 🔴 **`ea402850` IS NOT CI-GRADED YET.** It was committed after the run on `a46b52ba` started, so
+  push it and read `Test (editor)`. Expect **0** if the doubling was the whole of `AIX-006`/`AIX-011`;
+  if `AIX-006` survives, the style-pass assertions are a *second* defect behind the same symptom
+  and the "2 problem(s)" duplicate was only masking it.
+- 🔴 **SUB-011's posture decision is still unmade** — its "Decision record" is an empty
+  placeholder, which is the risk that task file names in its own Risks table. The carve-out did
+  **not** pre-empt it (it is required under both postures), but nobody has chosen embrace vs freeze,
+  and the out-of-scope rule "no `fx` UI on more port types until the decision lands" is still live.
+- ⚠️ **`Test (editor)` still has no baseline mechanism**, so even a floor of 0 goes red the moment
+  anything regresses, with nothing to compare against. That is now a much smaller problem than it was.
+
+### Method notes that cost time
+
+- 🔴 **Read the failing ASSERTION, not the failure count.** Five seeds and four sessions quoted
+  "10" as a constant. One pass over the assertion text turned five of them into two live bugs.
+- 🔴 **A red spec inside a known floor is not evidence it is stale.** Two of these suites were the
+  guard working. The registry catalogue spec had become *an assertion that the bug was still there*.
+- ✅ **Grep the task file for the BEHAVIOUR first.** SUB-011 predicted its own failure on
+  2026-07-24 — three weeks before the check existed — and named the fix, the guard to reuse, and
+  that it was needed under both postures.
+- 🔴 **A control that never fires reads exactly like a passing one.** My first mutation control
+  walked the wrong path, applied **0** mutations, and returned the valid case's summary. It became
+  evidence only once it printed `MUTATIONS_APPLIED 13`. Make controls state their own cardinality.
+- 🔴 **Two of my readings fit the evidence and were wrong**: the doubling looked like a duplicated
+  entry in `ALL_RULES` (it holds the rule once; the second occurrence is a re-export list), and
+  `origin/cline-dev` looked like it was missing `d5b0d027` (a `-3` log reporting its bound).
+- ⚠️ **`test:ci` was never run locally**: swap was **16.8G of 18.4G even with the editor closed**.
+  CI was the only honest instrument all session.
+
 ### 2b′. 🔴 THE PR GATE RAN FOR THE FIRST TIME IN A WEEK, AND IT IS RED
 
 Run **32370134956** (PR #20, `cline-dev` → `main`), the first `pr.yml` pass over any of these
