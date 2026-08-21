@@ -59,6 +59,7 @@ import { CatalogIndex, nearest, type CatalogPort } from './CatalogIndex';
 import { DiagnosticCode, type Diagnostic, type Severity } from './diagnostics';
 import { conditionForInput, conditionIsUnsatisfied } from './portConditions';
 import { SkippedCheck, unknownTypeSkip } from './unknownTypeSkip';
+import { isExpressionParameter } from '../models/ExpressionParameter';
 
 /** The catalog's `type` field, normalised to its object form. */
 export interface PortTypeShape {
@@ -897,6 +898,29 @@ export function checkParameterValues(
         });
         continue;
       }
+
+      // SUB-011 — an inline `fx` expression is a **shipped** parameter form:
+      // the toggle stores `{mode: 'expression', expression, fallback, version}`
+      // on a port still typed `string`/`number`, and the typed runtime
+      // evaluates it and coerces the result to the port's type
+      // (`noodl-runtime/src/node.ts`). So the stored object's shape is beside
+      // the point here in exactly the way a connection-only port's is above —
+      // checking it against the port's primitive shape reports every working
+      // expression in the project as a defect.
+      //
+      // 🔴 This is the carve-out SUB-011 predicted on 2026-07-24, before the
+      // check existed: *"if it ever grows parameter/type checking, the object
+      // form reads as invalid without an explicit carve-out (the same shape as
+      // the existing dynamic-port carve-outs)"*. D13 grew exactly that on
+      // 2026-08-18 by registering `rules/parameterValue`, and the corpus
+      // fixture went from silent to 5 errors + 9 warnings. The guard is
+      // `ExpressionParameter.ts`'s own, reused rather than reimplemented,
+      // because that task says to reuse it.
+      //
+      // ⚠️ The port-existence check above deliberately runs FIRST and keeps its
+      // diagnostic: an expression written on a port that does not exist is
+      // still never read, and that is the more useful sentence.
+      if (isExpressionParameter(value)) continue;
 
       // A bare number on a port that is read as a percentage. Skipped when a
       // `<name>Unit` sibling is present: `unitSuffixTrap` already owns that
