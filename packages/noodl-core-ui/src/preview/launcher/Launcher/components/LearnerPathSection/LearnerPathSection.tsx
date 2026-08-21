@@ -148,12 +148,31 @@ export function LearnerPathSection({
       {surface.state === 'signed-out' && (
         <div data-test="learner-path-signed-out">
           {/*
-            🔴 The questions render signed out, and this is the whole reason `GET /me/intake`
-            takes no token. "Sign in to find out what we would ask you" is a worse door than
-            the three questions themselves with a sign-in beneath them.
+            🔴 FIX-025 — THE QUESTIONS ARE NOT DRAWN SIGNED OUT. This reverses the note that
+            used to be here, which argued that showing the three questions greyed out was a
+            better door than describing them.
+
+            Richard, 2026-08-20, having met it: *"When I was signed out, the build my path
+            questions looked possible to answer, and didn't explain why clicking answers does
+            nothing. The questions should be hidden until the user signs in."*
+
+            The old argument was right that a form is a better invitation than a sentence. It
+            was wrong about what a **disabled** form communicates: `disabled` reads as *broken*
+            rather than as *locked*, there was no text anywhere saying why, and a radio that
+            does not respond to a click is the clearest possible statement that a screen is
+            not working. One sentence naming what you get, with a door under it, is honest.
+
+            ⚠️ `GET /me/intake` still takes no token, and that is still deliberate — see
+            `useLearnerPath`. The reason has changed from "so the form can render" to "so the
+            count below is true", and the route should not be re-scoped on the strength of
+            this component no longer drawing the options.
           */}
           <p className={css['Muted']}>{surface.note}</p>
-          <QuestionList questions={surface.questions} chosen={{}} disabled />
+          <p className={css['Muted']} data-test="learner-path-locked">
+            {surface.questions.length === 1
+              ? 'One short question, once you are signed in, and none of it is a test — your answer decides which lessons you meet and in what order.'
+              : `${surface.questions.length} short questions, once you are signed in, and none of them are a test — your answers decide which lessons you meet and in what order.`}
+          </p>
           {onSignIn && (
             <button type="button" className={css['Primary']} onClick={onSignIn} data-test="learner-path-sign-in">
               Sign in to the community

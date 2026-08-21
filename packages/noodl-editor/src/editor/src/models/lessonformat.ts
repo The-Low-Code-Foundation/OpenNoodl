@@ -476,9 +476,14 @@ function renderMedia(media: LessonMediaDef | undefined): string {
  */
 const LESSON_CHECKMARK_HTML =
   '<span class="lesson-checkmark">' +
+  // 🔴 FIX-025 — AN EMPTY RING. It used to be a ring WITH A TICK IN IT, which is what Richard
+  // meant by *"it should be like an empty circle icon when not completed yet"* — a step you
+  // have not done should not be wearing a checkmark. Paired with the CSS fix in
+  // `LessonLayerView.css` (both glyphs were being drawn at once), the two together are why a
+  // current step showed "two check icons".
   '<svg class="lesson-checkmark-incomplete" width="16" height="16" viewBox="0 0 16 16" fill="none" ' +
   'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
-  '<circle cx="8" cy="8" r="6.5"/><path d="M5.2 8.2 7.1 10.1 10.8 6.2"/></svg>' +
+  '<circle cx="8" cy="8" r="6.5"/></svg>' +
   '<svg class="lesson-checkmark-complete" width="16" height="16" viewBox="0 0 16 16" fill="none">' +
   '<path fill-rule="evenodd" clip-rule="evenodd" d="M8 0.75A7.25 7.25 0 1 0 8 15.25 7.25 7.25 0 0 0 8 0.75Zm3.33 ' +
   '5.94a.75.75 0 0 0-1.13-.99L7.06 9.29 5.79 7.99a.75.75 0 1 0-1.08 1.04l1.84 1.9a.75.75 0 0 0 1.1-.02l3.68-4.22Z" ' +

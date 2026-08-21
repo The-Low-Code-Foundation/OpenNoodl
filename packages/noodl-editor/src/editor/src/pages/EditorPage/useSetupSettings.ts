@@ -80,8 +80,9 @@ export function useSetupSettings() {
     // Set the active side panel
     const projectEditorSettings = EditorSettings.instance.get(ProjectModel.instance.id) || {};
 
-    const savedPanelId = migrateRetiredPanelIds(projectEditorSettings);
-    const panelExists = savedPanelId && SidebarModel.instance.getItems().find((p) => p.id === savedPanelId);
+    // ⚠️ Called for its width / float-rect cleanup, which is still needed. Its return value —
+    // the resolved saved panel id — is deliberately unused now; see the note below.
+    migrateRetiredPanelIds(projectEditorSettings);
 
     /**
      * AIB-005 — arriving with a plan agreed in the launcher's wizard is not a
@@ -104,8 +105,33 @@ export function useSetupSettings() {
      * never becomes the place they come back to. That is the "restore their
      * layout afterwards" trap answered by never disturbing it in the first place.
      */
+    /**
+     * 🔴 FIX-025 — OPENING A PROJECT LANDS ON `components`. THE SAVED PANEL IS NO LONGER RESTORED.
+     *
+     * Richard, 2026-08-20: *"When I open a project, the editor left menu is by default on the
+     * community panel. It should be on the component panel."*
+     *
+     * ⚠️ **`savedPanelId` used to win here**, and on this machine exactly one project had
+     * `community` stored — the one he opened. The restore was not wrong about what he last
+     * looked at; it was wrong that *what you last looked at* is where you want to start. The
+     * Community panel is a reading surface, and landing in it means opening a project and being
+     * shown someone else's questions instead of your own components.
+     *
+     * ⚠️ **The same reversal as the launcher's tab** (`usePersistentTab`), for the same reason
+     * and on the same day. Both were "remember where you were"; both made the opening screen
+     * unpredictable; Richard reported both as bugs in one list.
+     *
+     * ⚠️ **The write below is kept**, so the key still records where you were and re-enabling
+     * restore is a one-line change. `migrateRetiredPanelIds` is still called for its other two
+     * jobs — it drops retired ids out of the width and float-rect maps, which is about layout
+     * and nothing to do with which panel opens.
+     *
+     * ⚠️ **AIB-005's exception survives and is now the ONLY exception.** Arriving with a plan
+     * agreed in the launcher's wizard is a continuation, not an open, and that case still wins —
+     * see the note this replaces.
+     */
     const scopePlanWaiting = Boolean(peekPendingScopePlan(ProjectModel.instance.id));
-    const panelId = scopePlanWaiting ? AiAuthoringPanel_ID : panelExists ? savedPanelId : 'components';
+    const panelId = scopePlanWaiting ? AiAuthoringPanel_ID : 'components';
     SidebarModel.instance.switch(panelId);
 
     // Save changes to side panel

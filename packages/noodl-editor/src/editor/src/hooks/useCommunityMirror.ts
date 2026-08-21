@@ -32,6 +32,7 @@ import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 import { readCommunitySession, type CommunitySession } from '@noodl-models/community/communitysession';
 
 import { composeMirror, type MirrorView } from '@noodl-models/community/mirrorview';
+import { onCommunityChanged } from '../models/community/communitychanged';
 
 const POLL_EVERY_MS = 60_000;
 
@@ -102,6 +103,20 @@ export function useCommunityMirror(): CommunityMirror {
       stops.forEach((stop) => stop());
     };
   }, [session, generation]);
+
+  /**
+   * 🔴 FIX-025 — re-pull when something in this editor writes to the community.
+   *
+   * Richard: *"Replying to a question works, but when I go back to the list of questions the
+   * one I answered still says 'no reply yet'."* The reply is posted by `useCommunityThread`,
+   * which bumps **its own** generation and re-reads **its own** thread. This hook drew the row
+   * and had no way to know. Subscribing is the whole fix, and it is one line of behaviour:
+   * a write anywhere means this mirror is out of date, so re-read it.
+   *
+   * ⚠️ `refresh` is stable (`useCallback` with no deps), so this subscribes once and the
+   * cleanup really removes the listener rather than re-subscribing every render.
+   */
+  useEffect(() => onCommunityChanged(() => refresh()), [refresh]);
 
   return {
     view: composeMirror({ me, home, forum, session: session === undefined ? undefined : session }),

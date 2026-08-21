@@ -423,6 +423,39 @@ function isMatch(object: Record<string, unknown>, attrs: Record<string, unknown>
 // node.children. Segments: `#name` = by label, `%name` = by type name, bare
 // number = by child index. Semantic (names/types), not DOM-coupled.
 
+/**
+ * FIX-025 — 🔴 A `#label` OR `%type` SEGMENT SEARCHES THE WHOLE SUBTREE, not one level of it.
+ *
+ * Reported by Richard against the shipped *State on a page* lesson, whose last step asks the
+ * learner to drag a second `Text` onto the page and label it `Caption`, then grades it with
+ * `/#__page__/Home:#Caption`. He did it; the node is in the project file with `"type": "Text"`
+ * and `"label": "Caption"`; the step never completed.
+ *
+ * **A node dropped onto a page is a CHILD of the `Page` node**, and this resolver only ever
+ * looked at `component.graph.roots`. So the grammar could not express *"the Caption somewhere
+ * on this page"* — which is the only thing a lesson author ever means by a label — and the
+ * lesson's other two graded steps (`%Text`, `%Variable2`) were unreachable for the same reason.
+ * The lesson had never been completable; nothing detected that because every fixture in the
+ * suite put the graded node at the root.
+ *
+ * ⚠️ **A bare numeric segment is deliberately NOT descended.** An index is positional and only
+ * means anything among siblings; searching a subtree for "the third node" would return
+ * something arbitrary rather than nothing. Names are unique enough to search for, indices are not.
+ *
+ * ⚠️ Breadth-first, so the shallowest match wins. With depth-first, adding a nested decoy
+ * *deeper* in an earlier branch would silently steal a path that used to resolve to the
+ * obvious node.
+ */
+function findInSubtree(nodes: LessonNode[], matches: (node: LessonNode) => boolean): LessonNode | undefined {
+  let level = nodes;
+  while (level.length) {
+    const hit = level.find(matches);
+    if (hit) return hit;
+    level = level.flatMap((n) => n.children ?? []);
+  }
+  return undefined;
+}
+
 export function findNodeWithPath(path: string, components: LessonComponent[]): LessonNode | undefined {
   const tokens = path.split(':');
 
@@ -442,11 +475,12 @@ export function findNodeWithPath(path: string, components: LessonComponent[]): L
     let match: LessonNode | undefined;
     if (ref[0] === '#') {
       const label = ref.substring(1);
-      match = nodes.find((n) => eqi(n.label, label));
+      match = findInSubtree(nodes, (n) => eqi(n.label, label));
     } else if (ref[0] === '%') {
       const typename = ref.substring(1);
-      match = nodes.find((n) => n.type && eqi(n.type.name, typename));
+      match = findInSubtree(nodes, (n) => !!n.type && eqi(n.type.name, typename));
     } else {
+      // See the note above: positional, so siblings only.
       match = nodes[parseFloat(ref)];
     }
 

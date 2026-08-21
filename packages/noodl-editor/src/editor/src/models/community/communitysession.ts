@@ -63,6 +63,8 @@
 
 import { JSONStorage } from '@noodl/platform';
 
+import { notifyCommunityChanged } from './communitychanged';
+
 /** The one key. Named for the surface rather than the task, since UNI-001 will write it. */
 export const COMMUNITY_SESSION_KEY = 'nodegx.community.session';
 
@@ -133,6 +135,10 @@ export async function writeCommunitySession(
   // reading the raw key and "signed out" to the reader — two answers to one question.
   if (token.length === 0) throw new Error('refusing to store a blank community token');
   await store.set(COMMUNITY_SESSION_KEY, session.handle ? { token, handle: session.handle } : { token });
+  // 🔴 FIX-025 — every surface that read this key gets told. Signing in on the Projects tab
+  // used to leave the Learning tab's own sign-in button on screen, because that surface read
+  // the store once on mount and nothing ever told it to look again. See `communitychanged.ts`.
+  notifyCommunityChanged('session');
 }
 
 /**
@@ -146,4 +152,7 @@ export async function writeCommunitySession(
  */
 export async function clearCommunitySession(store: WritableSessionStore = JSONStorage): Promise<void> {
   await store.remove(COMMUNITY_SESSION_KEY);
+  // Signing out has to reach the same surfaces signing in does, or the asymmetry is a
+  // Learning tab still offering a path to somebody who just left.
+  notifyCommunityChanged('session');
 }

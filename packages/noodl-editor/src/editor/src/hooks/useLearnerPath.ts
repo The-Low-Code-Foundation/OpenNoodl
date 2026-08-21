@@ -40,6 +40,7 @@ import {
 import { COMMUNITY_URL } from '../models/community/communityorigin';
 import { readCommunitySession, type CommunitySession } from '../models/community/communitysession';
 import { learnerPathSurface, projectionNote, type LearnerPathSurface } from '../models/community/learnerpathview';
+import { onCommunityChanged } from '../models/community/communitychanged';
 
 export type LearnerPathHost = {
   surface: LearnerPathSurface;
@@ -80,14 +81,38 @@ export function useLearnerPath(): LearnerPathHost {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
 
+  /**
+   * 🔴 FIX-025 — THE SESSION IS RE-READ WHEN IT CHANGES, not only on mount.
+   *
+   * Richard: *"I'm signed in on the projects page, but on the Learning page it says 'Sign in to
+   * NodeGX'... I used the Sign in button on the learning page, it showed me the code in the
+   * browser, but coming back to the editor the sign in button still persisted."*
+   *
+   * Both halves are this effect's empty dependency array. The Learning tab's sign-in button is
+   * `useCommunityAccount`'s `onSignIn` — the *same* device flow — so on success that hook
+   * updated its own state and this one, which had read the store once, still held `null` and
+   * kept drawing the door. A surface that offers a sign-in and then ignores its result is worse
+   * than one that never offered it.
+   *
+   * ⚠️ The re-read goes back to the STORE rather than trusting the notification's word for it:
+   * `writeCommunitySession` announces that the key changed, never what it now holds, so this
+   * stays a mirror of the one place the token lives. Same argument as the path re-read below.
+   */
   useEffect(() => {
     let live = true;
-    void readCommunitySession().then((found) => {
-      if (!live) return;
-      setSession(found ?? null);
+    const read = () => {
+      void readCommunitySession().then((found) => {
+        if (!live) return;
+        setSession(found ?? null);
+      });
+    };
+    read();
+    const unsubscribe = onCommunityChanged((change) => {
+      if (change === 'session') read();
     });
     return () => {
       live = false;
+      unsubscribe();
     };
   }, []);
 

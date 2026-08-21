@@ -54,6 +54,28 @@ const SKIP = new Set(['node_modules', 'dist', 'build', 'coverage', '.next', 'out
 const CODE = /\.(ts|tsx|js|jsx)$/;
 
 /**
+ * 🔴 FIX-025 — WEBPACK BUNDLES ARE NOT SOURCE, AND THEY LIVE INSIDE `src/`.
+ *
+ * `packages/noodl-editor/src/editor/index.bundle.js` and its viewer-frame sibling are
+ * **generated, gitignored** artifacts (`.gitignore:171`) that happen to be written into the
+ * source tree rather than into `dist/`, which is the only reason `SKIP` above does not already
+ * exclude them. They contain a compiled copy of everything this gate scans, so on any checkout
+ * where somebody has run a dev build they appear as two "unrecorded readers" of the session and
+ * this file goes red — for a build, not for a code change.
+ *
+ * ⚠️ **This weakens nothing.** Every line inside a bundle is a copy of a `.ts` file the walk
+ * already visited, so a real new reader is still caught at its source. Excluding a *generated*
+ * duplicate is not the same as excluding a directory that might contain an original — which is
+ * why this is a filename pattern for build output and not another entry in `SKIP`.
+ *
+ * ⚠️ Measured on this checkout: the two bundles were last written at 14:40 on 2026-08-20 by a
+ * dev build, and `git check-ignore -v` names the rule that ignores them. Provenance matters
+ * here — an ignored artifact is invisible to `git status`, so a red gate caused by one reads as
+ * a red gate caused by whatever you were editing at the time.
+ */
+const GENERATED = /\.bundle\.js$/;
+
+/**
  * 🔴 The population is DERIVED FROM DISK, never listed. A hard-coded list of directories cannot
  * see a directory that did not exist when it was written, which is exactly the reader this gate
  * is here to catch.
@@ -78,7 +100,7 @@ function walk(dir: string, into: string[]): void {
     if (SKIP.has(entry.name)) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) walk(full, into);
-    else if (CODE.test(entry.name)) into.push(full);
+    else if (CODE.test(entry.name) && !GENERATED.test(entry.name)) into.push(full);
   }
 }
 

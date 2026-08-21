@@ -10,6 +10,7 @@ import { guid } from '@noodl-utils/utils';
 
 import Model from '../../../../shared/model';
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import { unconvertedCast } from './connectionCoercion';
 
 export type Connection = {
   fromProperty: string;
@@ -820,6 +821,34 @@ export class NodeGraphModel extends Model {
               NodeLibrary.nameForPortType(sourcePort.type) +
               '</strong>',
             level: 'error'
+          }
+        : undefined
+    );
+
+    /**
+     * FIX-025 — the wire the table ALLOWS and the runtime does not convert.
+     *
+     * The mismatch warning above only fires when `canCastPortTypes` says no. Richard's report
+     * is the case where it says yes and the value still arrives wrong: a string wired into a
+     * `number` input on a Visual Function, which the runtime stores verbatim. See
+     * `connectionCoercion.ts` for why this is a `warning` and not an error, and why it is
+     * deliberately narrow.
+     */
+    const coercion =
+      targetPort && sourcePort ? unconvertedCast(sourcePort.type as never, targetPort.type as never) : null;
+    WarningsModel.instance.setWarning(
+      { component: this.owner, connection: c, key: 'con-type-unconverted' },
+      coercion
+        ? {
+            message:
+              'This connects a <strong>' +
+              coercion.from +
+              '</strong> to a <strong>' +
+              coercion.to +
+              '</strong> port, and ' +
+              coercion.consequence +
+              '.',
+            level: 'warning'
           }
         : undefined
     );

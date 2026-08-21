@@ -75,6 +75,16 @@
   cursor: default;
 }
 
+/* FIX-025 — what the button will look for, shown before the first run. Same metrics as the
+   summary it is replaced by, so the control does not change height when a check completes. */
+.lesson-check-looking {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--theme-color-fg-muted);
+  overflow-y: auto;
+}
+
 .lesson-check-summary {
   margin-top: 6px;
   font-size: 11px;
@@ -142,18 +152,39 @@
   color: var(--theme-color-fg-muted);
 }
 
+/* 🔴 FIX-025 — THIS RULE USED TO SET `display: block` AND THAT DREW BOTH GLYPHS.
+
+   Richard: *"the current step has two check icons on it which doesn't make sense."* It is a
+   specificity defect, not a markup one. `lessonformat.ts` emits both glyphs in one span and
+   CSS picks which is shown — but `.lesson-item .lesson-checkmark svg` is (0,2,1) and the rule
+   hiding the completed glyph, `.lesson-item .lesson-checkmark-complete`, is only (0,2,0). The
+   sizing rule won, `display: none` never applied, and every INCOMPLETE step drew the outline
+   ring *and* the filled tick on top of each other. A COMPLETED step looked right, because
+   `.lesson-item.completed .lesson-checkmark-incomplete` is (0,3,0) and did beat it — which is
+   why this survived: the state everyone checks was the one state that rendered correctly.
+
+   So `display` is off this rule entirely, and the two state rules below own it at matching
+   specificity. Sizing and visibility are no longer decided by the same declaration. */
 .lesson-item .lesson-checkmark svg {
-  display: block;
   width: 100%;
   height: 100%;
 }
 
-.lesson-item .lesson-checkmark-complete,
-.lesson-item.completed .lesson-checkmark-incomplete {
+/* Not completed: the ring only. Completed: the tick only. Equal specificity, so the pair below
+   decides, and adding a third state means adding a rule rather than out-weighing one. */
+.lesson-item .lesson-checkmark .lesson-checkmark-incomplete {
+  display: block;
+}
+
+.lesson-item .lesson-checkmark .lesson-checkmark-complete {
   display: none;
 }
 
-.lesson-item.completed .lesson-checkmark-complete {
+.lesson-item.completed .lesson-checkmark .lesson-checkmark-incomplete {
+  display: none;
+}
+
+.lesson-item.completed .lesson-checkmark .lesson-checkmark-complete {
   display: block;
 }
 
@@ -287,8 +318,28 @@
   background-color: var(--theme-color-primary-highlight);
 }
 
+/* 🔴 FIX-025 — A LONG STEP DESCRIPTION USED TO OVERFLOW THE SCREEN WITH NO WAY BACK.
+
+   Richard: *"Clicking a step that has a short description, you see the popup and it's easy to
+   read. When the step has a very long description, the width being restricted means it
+   overflows Y top and bottom, and you can't scroll to read it all, or close it."*
+
+   Two separate causes, and fixing either alone leaves the popup unusable:
+
+   1. **Nothing bounded the height.** The popout is positioned above its step, so a tall card
+      grows off the top of the window — taking the close affordance with it. `max-height`
+      against the viewport is what keeps it on screen at all.
+   2. **Nothing could scroll.** With the height bounded, the overflow has to go somewhere, and
+      the scroll must be on the popup rather than the page — the popout is in `PopupLayer`,
+      outside the document flow, so the window has nothing to scroll.
+
+   ⚠️ The width is raised too, because a fixed 300px content column is what turned a paragraph
+   into a tall ribbon in the first place. `min()` so a narrow editor window still fits. */
 .lesson-item-popup {
   width: auto;
+  max-height: 80vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .lesson-item-popup [data-template='popup'] {
@@ -301,7 +352,10 @@
 }
 
 .lesson-item-popup .popup-content-wrapper {
-  width: 300px;
+  /* Was a flat `300px`. See the note on `.lesson-item-popup` — this column is the reason a
+     long body became taller than the screen. */
+  width: min(460px, 60vw);
+  min-width: 300px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;

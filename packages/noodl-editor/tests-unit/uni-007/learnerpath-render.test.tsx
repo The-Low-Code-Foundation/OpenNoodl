@@ -119,11 +119,27 @@ describe('D15 — a refused viewer gets nothing at all', () => {
   });
 });
 
+/**
+ * 🔴 FIX-025 — THESE TWO TESTS ASSERTED THE OPPOSITE, AND THE REVERSAL IS THE FIX.
+ *
+ * They required the signed-out state to draw the platform's real option labels, on the argument
+ * that a form is a better invitation than a sentence about a form. Richard met the result:
+ *
+ * > *"When I was signed out, the build my path questions looked possible to answer, and didn't
+ * > explain why clicking answers does nothing. The questions should be hidden until the user
+ * > signs in."*
+ *
+ * The old argument was right about invitations and wrong about what a **disabled** form says.
+ * `disabled` reads as *broken*, not as *locked*; there was no text anywhere giving a reason;
+ * and a radio button that does not respond is the clearest statement a screen can make that it
+ * is not working. So the options are gone and one sentence names what is behind the door.
+ *
+ * ⚠️ `GET /me/intake` still takes no token, and that is still deliberate — the questions are
+ * still fetched signed out, which is what lets the line below state the real COUNT rather than
+ * a number somebody typed. Do not re-scope the route on the strength of this change.
+ */
 describe('signed out', () => {
-  it('draws the platform’s actual option labels, not a description of them', () => {
-    // 🔴 `GET /me/intake` takes no token precisely so this is possible. A locked panel saying
-    // "sign in to see the questions" would render a heading and a button and satisfy any
-    // assertion about the section existing.
+  it('🔴 does NOT draw the options — an unanswerable form reads as a broken one', () => {
     const tree = render(
       <LearnerPathSection
         surface={{ state: 'signed-out', questions: QUESTIONS, note: 'Sign in and these build your path.' }}
@@ -131,9 +147,36 @@ describe('signed out', () => {
       />
     );
     const words = text(tree);
-    expect(words).toContain('Wire it up visually so I can see it');
-    expect(words).toContain('Write a few lines of code');
+    expect(words).not.toContain('Wire it up visually so I can see it');
+    expect(words).not.toContain('Write a few lines of code');
     expect(words).toContain('Sign in to the community');
+  });
+
+  it('says how many questions there are, from the platform’s own list', () => {
+    // 🔴 The COUNT is what the signed-out fetch buys, so it must come from the questions and
+    // never be a literal — a hard-coded "three" is what goes stale when the set changes.
+    // ⚠️ This fixture holds ONE question, so the singular branch is the one under test here,
+    // and the plural is exercised below. A count rendered by a template that only ever agrees
+    // with itself would pass either way.
+    const one = render(
+      <LearnerPathSection
+        surface={{ state: 'signed-out', questions: QUESTIONS, note: 'Sign in and these build your path.' }}
+        onSignIn={() => undefined}
+      />
+    );
+    expect(text(one)).toContain('One short question');
+
+    const two = render(
+      <LearnerPathSection
+        surface={{
+          state: 'signed-out',
+          questions: [...QUESTIONS, { key: 'experience', prompt: 'Have you written code before?', options: [] }],
+          note: 'Sign in and these build your path.'
+        }}
+        onSignIn={() => undefined}
+      />
+    );
+    expect(text(two)).toContain('2 short questions');
   });
 
   it('draws no sign-in door when the host offers no way through one', () => {
@@ -141,8 +184,9 @@ describe('signed out', () => {
       <LearnerPathSection surface={{ state: 'signed-out', questions: QUESTIONS, note: 'x' }} />
     );
     expect(text(tree)).not.toContain('Sign in to the community');
-    // The questions are still there — the door was the only thing missing.
-    expect(text(tree)).toContain('Wire it up visually so I can see it');
+    // ⚠️ Control: the section is still RENDERED, so the assertion above is about a missing
+    // door and not about a component that drew nothing at all.
+    expect(text(tree)).toContain('Your path');
   });
 });
 

@@ -42,6 +42,7 @@ import { composeThreadView, type PullOffer } from '@noodl-models/community/threa
 import { acceptFailureLine, canSendAnswer, composeReplyBox } from '@noodl-models/community/threadwrites';
 
 import type { CommunityReplyBox, CommunityThreadState } from '@noodl-core-ui/components/community';
+import { notifyCommunityChanged } from '../models/community/communitychanged';
 
 /**
  * Threads read this session, newest read wins.
@@ -202,6 +203,10 @@ export function useCommunityThread(options: { pullFor?: PullOffer } = {}): Commu
       setDraft('');
       setPosted({ at: Date.now(), postId: write.value.postId });
       setGeneration((n) => n + 1);
+      // 🔴 FIX-025 — and tell everything else. Bumping only this pane's generation re-read the
+      // THREAD and left the LIST that linked to it saying "no reply yet", which is exactly what
+      // Richard reported. The list is a different hook with a different cache; it cannot know.
+      notifyCommunityChanged('threads');
     });
   }, [threadId, draft, sending, session]);
 
@@ -231,6 +236,8 @@ export function useCommunityThread(options: { pullFor?: PullOffer } = {}): Commu
         // re-read the thread. ⚠️ `read` is deliberately NOT blanked: a flash of "Loading…" over a
         // thread somebody is reading is a worse answer than a marker that appears a moment later.
         setGeneration((n) => n + 1);
+        // Accepting awards points, so the standing line on the list surface is stale too.
+        notifyCommunityChanged('threads');
       });
     },
     [threadId, acceptPending, session]

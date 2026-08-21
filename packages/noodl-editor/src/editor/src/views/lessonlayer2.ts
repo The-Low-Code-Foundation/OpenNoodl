@@ -14,7 +14,9 @@ import { liveLessonEvalContext } from './lessons/lessonevalconditions.live';
 import { databaseRefusal, evalConditionsWithContext, isCollectionCondition } from './lessons/lessonevalconditions';
 import type { LessonDatabaseSnapshot } from './lessons/lessonevalconditions';
 import LessonLayerView from './lessons/LessonLayerView';
+import { stepFlowAction } from './lessons/lessonstepflow';
 import PopupLayer from './popuplayer';
+import { publishRunningLesson } from '../models/lessonprotection';
 
 /**
  * UNI-007 slice 4 — what the "check my work" control is showing.
@@ -54,6 +56,9 @@ interface ILessonStep {
 const DATABASE_POLL_MS = 4000;
 
 export class LessonLayer {
+  /** FIX-025 — withdraws this lesson's steps from the delete guard. */
+  private unpublishLesson?: () => void;
+
   keyboardCommands: KeyboardCommand[];
   model: TSFixme;
   nextButton: HTMLDivElement;
@@ -313,7 +318,25 @@ export class LessonLayer {
 
     const currentStep = this.steps[this.model.index];
 
-    if (currentStep && currentStep.conditions && currentStep.isComplete) {
+    /**
+     * 🔴 FIX-025 — COMPLETING THE LAST STEP USED TO BLANK THE LESSON BAR FOR GOOD.
+     *
+     * The choice is `stepFlowAction`'s, in `lessons/lessonstepflow.ts`, because the rule that
+     * was wrong is arithmetic and nothing in this file is reachable from the jest runner. The
+     * short version: `LessonModel.next()` does nothing on the final step, and advancing is the
+     * branch that does not render, so the layer sat in it forever showing an empty div. Read
+     * that module before changing this — including why the count comes from the model rather
+     * than from `this.steps`.
+     */
+    const action = stepFlowAction({
+      hasCurrentStep: !!currentStep,
+      hasConditions: !!(currentStep && currentStep.conditions && currentStep.conditions.length),
+      isComplete: !!(currentStep && currentStep.isComplete),
+      index: this.model.index,
+      stepCount: this.model.numberOfLessons ?? 0
+    });
+
+    if (action === 'advance') {
       //jump to the next step if all conditions are completed.
       //This will tigger the "instrcuctionsChanged" event on the model wich re-renders the lessons
       this.model.next();
@@ -439,6 +462,23 @@ export class LessonLayer {
     });
 
     this.steps = steps.filter((step) => step.itemContent || step.popupContent); //remove any steps with incorrect HTML
+
+    /**
+     * FIX-025 — publish what this lesson is grading, so the delete path can ask before a
+     * learner removes a node a step needs. Re-published on every parse because the steps are
+     * rebuilt whenever the lesson reloads, and a stale list would protect the wrong nodes.
+     * See `models/lessonprotection.ts` for why this is a registry rather than an import.
+     */
+    this.unpublishLesson?.();
+    this.unpublishLesson = publishRunningLesson(
+      this.steps.map((step) => ({
+        // The step's own heading, which is what the learner sees on the card. `ILessonStep`
+        // carries the compiled HTML rather than the authored fields, so this reads it back out
+        // — the alternative is a dialog that says "Step 4", which names nothing they recognise.
+        title: step.itemContent?.querySelector('h3')?.textContent?.trim() || undefined,
+        conditions: step.conditions
+      }))
+    );
   }
 
   reload() {
@@ -498,6 +538,10 @@ export class LessonLayer {
 
   dispose() {
     clearTimeout(this.refreshTimeout);
+    // 🔴 Withdraw first: a lesson layer that is going away must stop the delete guard firing in
+    // whatever project is opened next. See `models/lessonprotection.ts`.
+    this.unpublishLesson?.();
+    this.unpublishLesson = undefined;
     this._watchDatabase(false);
     KeyboardHandler.instance.deregisterCommands(this.keyboardCommands);
 

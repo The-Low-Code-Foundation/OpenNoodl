@@ -7,6 +7,7 @@ import type { CommunityAccountHostState } from '@noodl-core-ui/preview/launcher/
 
 import { readCommunitySession } from '../../models/community/communitysession';
 import { signIntoCommunity, signOutOfCommunity } from '../../models/community/communitysignin';
+import { onCommunityChanged } from '../../models/community/communitychanged';
 
 /**
  * UNI-001 AC2 — the launcher's half of "sign in to NodeGX".
@@ -60,13 +61,23 @@ export function useCommunityAccount(): CommunityAccountHostState {
 
   useEffect(() => {
     let live = true;
-    void readCommunitySession().then((found) => {
-      // ⚠️ The launcher can be torn down while the read is in flight.
-      if (!live) return;
-      setState(found ? { phase: 'signed-in', handle: found.handle } : { phase: 'signed-out' });
+    const read = () => {
+      void readCommunitySession().then((found) => {
+        // ⚠️ The launcher can be torn down while the read is in flight.
+        if (!live) return;
+        setState(found ? { phase: 'signed-in', handle: found.handle } : { phase: 'signed-out' });
+      });
+    };
+    read();
+    // FIX-025 — the other direction of the same fix. This hook already re-reads after ITS OWN
+    // sign-in and sign-out; this is for a session written or cleared anywhere else, so the card
+    // and the Learning tab cannot disagree about whether there is an account.
+    const unsubscribe = onCommunityChanged((change) => {
+      if (change === 'session') read();
     });
     return () => {
       live = false;
+      unsubscribe();
     };
   }, []);
 

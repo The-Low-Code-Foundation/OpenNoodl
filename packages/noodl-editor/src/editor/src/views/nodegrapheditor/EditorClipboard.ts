@@ -6,6 +6,7 @@ import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 import { extractToComponent, labelForPath } from '@noodl-utils/ExtractToComponent';
 
 import { ComponentModel } from '../../models/componentmodel';
+import { peekRunningLesson, protectedByLesson, protectionMessage } from '../../models/lessonprotection';
 import { NodeGraphNodeSet } from '../../models/nodegraphmodel';
 import { ProjectModel } from '../../models/projectmodel';
 import type { NodeGraphEditor } from '../nodegrapheditor';
@@ -102,6 +103,50 @@ export class EditorClipboard {
       return;
     }
 
+    /**
+     * 🔴 FIX-025 — in a lesson, deleting a node a step is grading asks first.
+     *
+     * Richard: *"it's easy to accidentally delete bits of the tutorial app that are needed to
+     * complete the session, and you might not remember what you deleted."* The problem is not
+     * that the delete is irreversible — undo exists — it is that nothing connects the delete to
+     * the step that stops completing several minutes later.
+     *
+     * ⚠️ **A confirm, never a refusal.** The lesson's own first step says *"Edit it freely — that
+     * IS the lesson."* See `lessonprotection.ts`.
+     *
+     * ⚠️ `peekRunningLesson()` is `null` in every ordinary project, so this whole branch is
+     * inert outside a lesson without `EditorClipboard` knowing anything about lessons.
+     */
+    const lessonSteps = peekRunningLesson();
+    if (lessonSteps) {
+      // ⚠️ `forEachNode` STOPS on a truthy return, so this callback must return nothing —
+      // `push` returns the new length, which would abort the walk after the first node and
+      // silently make every type-only condition look like the last of its type.
+      const everyNodeInComponent: ReturnType<typeof nodeProtectionView>[] = [];
+      editor.model?.forEachNode((n: never) => {
+        everyNodeInComponent.push(nodeProtectionView(n));
+      });
+      const findings = protectedByLesson(nodes.map((n) => nodeProtectionView(n.model)), lessonSteps, everyNodeInComponent);
+      const message = protectionMessage(findings);
+      if (message) {
+        PopupLayer.instance.showConfirmModal({
+          title: 'This is part of the lesson',
+          message,
+          confirmLabel: 'Delete anyway',
+          cancelLabel: 'Keep it',
+          onConfirm: () => this.performDelete(nodes),
+          onCancel: () => undefined
+        });
+        return;
+      }
+    }
+
+    this.performDelete(nodes);
+  }
+
+  /** The delete itself, once anything that wanted to ask about it has. */
+  private performDelete(nodes: NodeGraphEditorNode[]) {
+    const editor = this.editor;
     const undo = new UndoActionGroup({ label: 'delete nodes' });
 
     if (editor.commentLayer && editor.commentLayer.hasSelection()) {
@@ -335,4 +380,9 @@ export class EditorClipboard {
       hasDynamicHeight: true
     });
   }
+}
+
+/** A node model as `lessonprotection` needs to see it. Kept here so that module stays editor-free. */
+function nodeProtectionView(model: { id: string; label?: string; type?: { name?: string } }) {
+  return { id: model.id, label: model.label, typeName: model.type?.name };
 }

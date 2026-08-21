@@ -4,6 +4,7 @@ const React = require('react');
 const PopupLayer = require('../popuplayer').default;
 const LessonItem = require('./LessonItem');
 const { EventDispatcher } = require('../../../../shared/utils/EventDispatcher');
+const { describeStepCheck } = require('./lessonconditioncopy');
 
 require('./LessonLayerView.css');
 
@@ -85,7 +86,18 @@ function LessonLayerView({ steps, currentStepIndex, check }) {
             );
           })}
         </div>
-        {check ? <LessonCheckControl check={check} /> : null}
+        {/*
+          🔴 FIX-025 — the control is drawn only for a step that HAS something to grade.
+
+          Richard: *"'Check my work' doesn't make sense... it's not clear when or why you
+          should actually click it."* A narrative step has no `completeWhen`, so pressing it
+          there ran a grading pass that could only ever repeat itself — which is what taught
+          him the button was arbitrary. `currentStep.conditions` is the same array the
+          evaluator grades, so the control appears exactly when it can do something.
+        */}
+        {check && currentStep && currentStep.conditions && currentStep.conditions.length ? (
+          <LessonCheckControl check={check} looking={describeStepCheck(currentStep.conditions)} />
+        ) : null}
       </div>
       <div className="lesson-layer-progressbar">
         <div
@@ -110,7 +122,7 @@ function LessonLayerView({ steps, currentStepIndex, check }) {
  * The sentence itself is composed in `models/lessoncheck.ts` (`summariseGrade`),
  * so this file decides nothing about grading; it shows a string and a class.
  */
-function LessonCheckControl({ check }) {
+function LessonCheckControl({ check, looking }) {
   const stateClass = check.unavailable ? ' unavailable' : check.complete ? ' complete' : '';
 
   return (
@@ -123,6 +135,16 @@ function LessonCheckControl({ check }) {
       >
         {check.busy ? 'CHECKING…' : 'CHECK MY WORK'}
       </button>
+      {/*
+        🔴 Before any run there is no summary, so without this the button stood alone with
+        nothing anywhere saying what it was for. Replaced by the summary once a run has
+        happened — the result of the check is a better answer than a restatement of it.
+      */}
+      {!check.summary && looking ? (
+        <div className="lesson-check-looking" data-test="lesson-check-looking">
+          {looking}
+        </div>
+      ) : null}
       {check.summary ? (
         <div className={'lesson-check-summary' + stateClass} data-test="lesson-check-summary">
           {check.summary}

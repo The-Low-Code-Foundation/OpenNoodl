@@ -185,16 +185,26 @@ describe('F2 — conditions that never fire against the lesson’s own solution'
     expect(messages(card.findings)).toMatch(/still be told they have not finished/);
   });
 
-  it('catches the depth mistake the static check explicitly cannot', async () => {
+  /**
+   * FIX-025 — 🔴 THIS TEST USED TO ASSERT THE OPPOSITE, and the reversal is the fix.
+   *
+   * It called `/#__page__/Home:%Text` *"one level too shallow"* and required F2 to refuse it.
+   * That was the resolver's old contract — a `%type`/`#label` segment matched one level of
+   * siblings — and it is what made the shipped *State on a page* lesson ungradeable: a node
+   * dropped onto a page is a child of the `Page`, so all three of its graded steps named a
+   * node that could never be found. Richard hit it as *"I've added the Caption and the step
+   * won't complete"*.
+   *
+   * Depth is no longer significant for a named segment (see `findNodeWithPath`), so this path
+   * is now simply CORRECT and F2 must pass it. F2 still earns its place — the sibling test
+   * above, where the prose says `Caption` and the solution says `Greeting`, still fails.
+   */
+  it('a named node found deeper in the page is NOT a mistake', async () => {
     const lesson: LessonManifest = {
       title: 'Text',
       steps: [
         {
           title: 'Add a Text',
-          // Perfectly spelt, real type, well-formed path — and one level too
-          // shallow, because the Text sits inside the Page. `lessonverify` has
-          // no project and says so; this is the class of defect a solution
-          // replay exists to reach.
           completeWhen: [{ node: '/#__page__/Home:%Text', exists: true }]
         }
       ]
@@ -203,7 +213,7 @@ describe('F2 — conditions that never fire against the lesson’s own solution'
     const card = await verifyLessonBundle(lesson, { starter: starter(), solution: solution() });
 
     expect(card.classes.F1).toBe('pass');
-    expect(card.classes.F2).toBe('fail');
+    expect(card.classes.F2).toBe('pass');
   });
 });
 

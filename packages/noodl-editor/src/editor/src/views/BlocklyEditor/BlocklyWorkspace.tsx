@@ -29,7 +29,7 @@ import {
   LIBRARIES_SETTINGS_BUTTON
 } from './appLibraries';
 import { applyLanguage, currentLanguageCode } from './BlocklyLocale';
-import { registerBlocklyResizeHandler } from './blocklyResize';
+import { registerBlocklyResizeHandler, resizeBlocklyWorkspaces } from './blocklyResize';
 import { buildBlocklyTheme, resolveBlocklyChrome } from './BlocklyTheme';
 import css from './BlocklyWorkspace.module.scss';
 import { buildToolbox } from './BlocklyToolbox';
@@ -542,6 +542,30 @@ export function BlocklyWorkspace({
                 }
         });
       }
+
+      /**
+       * 🔴 FIX-025 — RE-MEASURE, BECAUSE THE STRIP JUST TOOK ~30px OFF THE WORKSPACE.
+       *
+       * Richard: *"the left drawer, scrolling through a list of blocks bigger than the canvas
+       * height, you can see that the last block is blocked by the bottom 'Run' bar."*
+       *
+       * The order is the bug. `Blockly.inject` runs first and caches the SVG height it measured
+       * — at which point `.Workspace` (`flex: 1`) still owned the whole of `.Root`, because the
+       * scrubber does not exist yet. `attachBlockValues` then appends the strip to `.Root` as a
+       * **flex sibling**, `.Workspace` shrinks by the strip's height, and Blockly is never told:
+       * it keeps an SVG that is a strip taller than its container. `.Root` is `overflow: hidden`,
+       * so that surplus is simply not drawn — and the flyout, whose scrollable height is the
+       * SVG's, ends with its last block inside it.
+       *
+       * ⚠️ It reads as "the bar covers the blocks" and it is not: nothing overlaps. The flyout
+       * genuinely believes it has room it does not have, which is also why scrolling further
+       * never reveals the block.
+       *
+       * ⚠️ Called through the same registered closure as a splitter drag rather than
+       * `svgResize` directly, so the zero-size guard above applies here too — a Logic Builder
+       * opened on a background tab must not cache a 0px SVG.
+       */
+      resizeBlocklyWorkspaces();
 
       // Follow the editor's light/dark setting (UIX-005 contract). The grid is not part of
       // the theme object and Blockly's setter for it is private, so the grid colour is
