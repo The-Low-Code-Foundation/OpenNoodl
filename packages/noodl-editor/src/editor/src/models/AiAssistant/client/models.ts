@@ -351,6 +351,14 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     provider: 'openai-compatible',
     displayName: 'DeepSeek V4 Pro (open weights, hosted)',
     tier: 'frontier',
+    // 🔴 F35's surviving half. Giving the provider its own entries fixed the
+    // *list*, but `getDefaultModel` is `find(isDefault) || models[0]` — and the
+    // OpenAI entries that follow carry `isDefault`, so the fallback never ran
+    // and a DeepInfra or vLLM user's PRESELECTED model was still `gpt-4.1`,
+    // the exact id F35 records as one their gateway does not serve.
+    // DeepSeek rather than Qwen because Richard's verdict names it first and it
+    // carries four times the context window.
+    isDefault: true,
     contextWindow: 1_048_576,
     maxOutputTokens: 32_768,
     capabilities: frontierTextOnly,
