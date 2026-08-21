@@ -242,6 +242,31 @@ boundary, not a reword**: `projectionNote` maps the five outcome *kinds* inside 
 drawing decision; this maps the *transport* outcomes of a write and knows about credentials. It
 lives in the hook and is exported for the spec.
 
+🔴 **AND A THIRD DEFECT, FOUND WHILE PREPARING THE DRIVE: PRODUCTION HAS NO PROJECTOR KEY.**
+`/etc/nodegx-community/nodegx-community.env` on nexus-1 carries `BREVO_API_KEY`, `DATABASE_URL`,
+the GitHub OAuth pair, `NOTIFICATION_LINK_SECRET` and `SITE_ORIGIN` — **no `ANTHROPIC_API_KEY`**.
+`defaultProjector()` therefore returns `UnconfiguredProjector`
+([`anthropic.ts:101-104`](../../../../nodegx-community/src/lib/projection/anthropic.ts)) and
+`projectConcept` answers `unavailable` at
+[`projector.ts:188`](../../../../nodegx-community/src/lib/projection/projector.ts) — **before the
+insert**, whose own comment reads *"Never claims a row, so configuring one later still works."*
+
+✅ **Three consequences, and two of them are good news.**
+1. **The drive is free and consequence-free.** No model call, no money, no row claimed, so the
+   `(learner, concept)` pair is not burnt and a later configured attempt still works. The hazard
+   that made session 48 refuse to drive bug 6 **does not apply to this button as deployed.**
+2. **The before/after is unambiguous anyway.** Before: 404 → the editor drew *nothing*. After:
+   200 `unavailable` → *"Tailored explanations are not switched on for this community yet."*
+   Silence becoming an honest sentence is exactly what both halves of this fix were for.
+3. 🔴 **But the button still cannot explain anything.** The field mismatch is fixed and the
+   silence is fixed; the feature is **inert until a key is configured on nexus-1**. That is a
+   spend decision and it is Richard's, not a defect to patch.
+
+⚠️ **`concept_projections = 0` does NOT by itself prove the 404.** An unconfigured call leaves
+zero rows too, so the row count cannot tell "never reached the projector" from "reached it and
+found no key". **The 0-of-15 slug/teaches measurement is what proves the 404** — the row count
+only confirms no projection was ever stored. Do not quote it as evidence of the mismatch.
+
 ⚠️ **Still not driven.** Both halves are specced and the platform half needs a **deploy** before
 any click changes. `COMMUNITY_URL` is hard-coded to production, so the editor cannot be pointed
 at an undeployed platform to prove it — see §4 of the next-session prompt.
