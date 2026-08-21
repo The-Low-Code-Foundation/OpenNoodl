@@ -218,7 +218,7 @@ Richard to answer one of his own threads. **Do not fake a reply row in the produ
 **Measured 2026-08-21 from run `32471411436` (code `f9924e3f`) and `32473637517` (code
 `8553b5e7`).** Both read from raw job logs, never from the tick.
 
-### 6a. ✅ `Test (editor)` is at the floor — now on a THIRD seed
+### 6a. ✅ `Test (editor)` is at the floor — on a THIRD **and FOURTH** seed
 
 ```
 [spec-start] markers : 2849      ← the whole suite
@@ -229,8 +229,26 @@ Randomized with seed 72336.
 
 ✅ **All ten match the floor NAME FOR NAME** — 4× `AIX-006 style vocabulary`, 3× `SUB-011
 expression parameters`, 2× `AI model registry`, 1× `AIX-011`. The seed is **72336**, a third
-unrelated one (after `02601` and `39393`): these ten are **deterministic and order-independent**
-across three seeds and two operating systems. The 30-minute cap is holding.
+unrelated one (after `02601` and `39393`).
+
+✅ **Repeated on the pushed tree `8553b5e7`** (run `32473637517`): **2849 markers, 2849 specs, 10
+failures, 0 timeouts, seed `68471`** — a **fourth** seed, same four suites in the same proportions.
+These ten are **deterministic and order-independent** across four seeds and two operating systems.
+The 30-minute cap is holding with ~7 minutes of headroom.
+
+### 6a′. ✅ `Lesson bundles (FIX-027)` RAN ON CI AND IS NOT VACUOUS
+
+First CI run ever, on `8553b5e7`: **success**. Read the output, not the tick — it printed real
+cardinality, which is what distinguishes a gate that checked something from one that found nothing:
+
+```
+✔ log-a-thing — clean (starter 3c/12n, solution 3c/16n)
+1 lesson bundle(s), 2 project(s) expected, 6 component(s) and 28 node(s) validated.
+```
+
+✅ **The self-test ran in CI too and caught all seven**, each in the arm it names — including
+`unknown node type … (WARNING severity — the library gate's blind spot)` and
+`(exit 2) — an empty corpus refuses rather than passing`.
 
 ### 6b. ✅ `Lint`: only `tsfixme` — and the skip-trap is confirmed, not assumed
 
