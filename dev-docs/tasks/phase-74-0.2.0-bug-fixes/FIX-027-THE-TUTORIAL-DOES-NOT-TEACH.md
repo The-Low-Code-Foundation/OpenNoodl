@@ -1,8 +1,8 @@
 # FIX-027 — the tutorials do not teach, and one of them cannot be finished at all
 
-**Filed:** 2026-08-21, from Richard, using *Log a thing* and *State on a page*. **Researched, not
-yet fixed.** Seven reports; **three of them are one root cause**, and that root cause makes a
-shipped lesson impossible to complete.
+**Filed:** 2026-08-21, from Richard, using *Log a thing*, *State on a page* and the learner path.
+**Researched, not yet fixed.** Nine reports; **three of them are one root cause**, and that root
+cause makes a shipped lesson impossible to complete. Two more (21, 22) came from the path.
 
 Sibling of `FIX-025-THE-LAUNCH-LIST.md`, which fixed thirteen. This is the batch after it, and it
 is the same shape as FIX-025's 11a: **a lesson that was shipped and never completed by anybody.**
@@ -51,7 +51,7 @@ an `openPanel` action and unlock on demand. **Pick one deliberately.**
 
 ---
 
-## The seven
+## The nine
 
 | # | Report | Where it lives | Root |
 |---|---|---|---|
@@ -62,6 +62,8 @@ an `openPanel` action and unlock on demand. **Pick one deliberately.**
 | 18 | "All 3 checked steps are done" arrives with "the project has problems (21 reported)" | shipped bundle + `lessoncheck.ts:346` | C |
 | 19 | No completion moment at all when the last step is a graded card | `lessonlayer2.ts:441` | D |
 | 20 | When there *is* a completion popup, its only action is EXIT LESSON — no reset | `lessonlayer2.ts:450` | D |
+| 21 | *"Explain this for me"* 404s every time — it has never worked for anybody | `LearnerPathSection.tsx:263` | E |
+| 22 | Answering the three intake questions barely changes the path | `curriculum.json` + `pathing.ts` | E |
 
 ### 17 — the steps that tell you what to do are exactly the ones that stay silent
 
@@ -147,6 +149,85 @@ will fail in front of the learner at the worst moment.
    ship.
 6. Finishing a lesson says so, and offers both *reset* and *exit* — with reset refusing gracefully
    when it cannot run.
+7. *"Explain this for me"* returns a projection for a step on the learner's own path — 🔴 **driven
+   against production once**, because it has never succeeded and a spec would only prove the two
+   sides agree with each other. And a refusal says something to the learner instead of only to the
+   console.
+8. The intake either changes the path visibly, or the surface stops implying that it will. This is
+   a **product decision for Richard**, not a defect to patch: the honest options are to give
+   `experience` real branching, to drop it to two questions, or to say plainly what the three
+   questions do.
 
 🔴 **Every one of these is a drive, not a diff.** FIX-025's thirteenth bug was created by fixing
 its eleventh and was invisible in source. See [[fixing-a-grader-makes-new-states-reachable]].
+
+---
+
+## 21 — *"Explain this for me"* sends the wrong field, and always has
+
+Richard: *"if I click on 'explain this for me' nothing happens and I get an error …
+`POST https://community.nodegx.io/api/v1/me/path/project 404 (Not Found)`."*
+
+✅ **The route is deployed and healthy.** Probed from the host with a known-firing control:
+`POST /api/v1/me/intake` → **401**, `/api/v1/me/path` → **405** (it is GET-only),
+`/api/v1/me/path/project` → **401**. All three answer; none is missing. So the 404 is raised
+*inside* the handler.
+
+🔴 **The bug is a field-name mismatch across the seam.**
+
+- The button sends the **slug**: `onClick={() => onProject(step.slug)}`
+  (`LearnerPathSection.tsx:263`), which becomes `{ concept: step.slug }`.
+- The route matches on **`teaches`**:
+  `pathFor(intake).steps.find((candidate) => candidate.teaches === concept)`, and
+  `if (!step) return notFound()` (`me/path/project/route.ts:44`).
+
+✅ **Measured: `slug === teaches` for 0 of the 15 curriculum lessons.** They are different kinds
+of string — `slug` is an identifier (`your-creature-on-screen`), `teaches` is prose
+(`elements, hierarchy, properties`). So **every** click 404s, for every learner, for every step.
+The feature has never once run.
+
+⚠️ **Decide which side is wrong before patching.** The route passes `step.teaches` to the model as
+the concept, so the prose is what the projection actually needs — but a request body keyed by a
+prose phrase is a poor API, and the editor's `LearnerPathStep` type already carries **both**
+`slug` and `teaches` (`communityapi.ts:903-906`). Recommend: **match on `slug` server-side** and
+keep passing `teaches` to the model. That keeps identifiers in the protocol and prose in the
+prompt, and it does not require the client to learn the curriculum's wording.
+
+🔴 **And nothing surfaced the failure to the learner** — Richard saw a console error and *"nothing
+happens"*. A 404 from this route is `absent` in the client's `Write` union; whatever the path
+section does with that, it is not telling anyone.
+
+## 22 — one of the three questions changes nothing a learner can see
+
+Richard: *"it's given me 11 steps, only leaving one off, so it makes you wonder what the point in
+answering the 3 questions was."*
+
+✅ **Measured with the real `pathFor` over all 18 answer combinations:**
+
+| | |
+|---|---|
+| distinct paths | **6 of 18 combinations** |
+| `experience` (none / some / fluent) | **changes the path not at all** — all three produce byte-identical step lists |
+| `logic` (visual / code) | ±1 lesson (`the-same-ideas-in-code`) — this is the *"only leaving one off"* Richard saw |
+| `building` | interactive +0, custom-nodes +1, data-app +2 |
+
+So the widest spread the intake can produce is **11 to 14 steps out of a 15-lesson curriculum**.
+
+⚠️ **The suite already knows and says so.** `tests/uni007-intake-and-pathing.test.ts` asserts
+*"every intake question changes something"* — but the check is deliberately **"path OR prompt"**,
+and its comment records that `experience` *"deliberately only does the second"*. So `experience`
+changes only the **projection prompt**.
+
+🔴 **Which is bug 21.** The single consequence of question 1 is routed entirely through the one
+feature that 404s every time. Fix 21 and question 1 becomes observable for the first time;
+until then it is decorative, and Richard's instinct that the questions did nothing is **correct
+as a description of the shipped product**.
+
+⚠️ **And the deeper answer to *"what point does the path have?"*: today, none you can act on.**
+`pathing.ts`'s own header says every lesson in the curriculum is `in-writing` — **all fifteen** —
+so a path is a reading list of lessons that cannot be installed. The module computes `ready/total`
+and a `truth` string precisely so the surface cannot pretend otherwise. Richard expected *"a bunch
+of tutorials"*; there are two installable lessons in the product and neither is on the path.
+**That is D17's fifteen unwritten lessons, and it is a content wall, not a bug** — but the path
+surface should say it in a way that survives a learner reading it, because right now it reads as
+a broken feature rather than an honest empty state.

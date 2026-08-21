@@ -23,37 +23,17 @@ Measured 2026-08-21 — ⚠️ **re-measure, never quote a handover's**:
 
 ---
 
-## 1. 🔴 Bug 6 — did the intake save?
+## 1. ✅ Bug 6 is CLOSED — the intake saves
 
-Richard was asked to answer the three questions in the Learning tab and press *Build my path*.
-**Check whether it worked before anything else** — it is the only item in FIX-025 still unproved,
-and the feature has never once worked in production.
+Richard answered the three questions in the editor on 2026-08-21 and the row landed. Measured on
+nexus-1: **1 row, `jsonb_typeof` = `object`** (not the double-encoded string scalar the first
+attempt at the fix produced), `taken_at` 08:34:11Z. `learner_intakes` had been empty since the
+table was created, so **this is the first intake that has ever saved in production.**
 
-```bash
-ssh nexus "cd /opt/nodegx-community && printf '%s\n' \
-  'import postgres from \"postgres\"' \
-  'const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} })' \
-  'console.log((await sql\`select count(*)::int n from learner_intakes\`)[0].n)' \
-  'await sql.end()' > ./count.mjs && set -a && . /etc/nodegx-community/nodegx-community.env \
-  && set +a && node ./count.mjs; rm -f ./count.mjs"
-```
-
-⚠️ Write the script **inside `/opt/nodegx-community`** — `postgres` resolves from that directory's
-`node_modules`. **One row is the pass.** Still 0 ⇒ the cause is already being logged:
-
-```bash
-ssh nexus "journalctl -u nodegx-community --since '2 hours ago' --no-pager | grep -A20 'me/intake failed'"
-```
-
-🔴 **The mechanism was never established and the fix comment says so. Do not theorise — four
-sessions have.** If the 500 survived, instrument postgres.js's `Bind` **inside the deployed
-bundle** and read what the parameter actually is. ✅ **The fix is confirmed present in the
-bundle** (`.next/server/chunks/7561.js` → `values (${b}::uuid, ${JSON.stringify(c)}::text::jsonb)`),
-so a surviving 500 is a *different* fault, not a failed deploy.
-
-🔴 **Do not drive the intake yourself.** Two routes were refused by the sandbox on 2026-08-21 and
-both refusals were right: one spent Richard's stored session token on his real account, one minted
-a probe account on the production host. **Ask him.**
+⚠️ **The mechanism is still not established** and the comment on `recordIntake` still says so.
+What is now known is that removing the `Parameter` wrapper fixed it in the built bundle. If the
+same `TypeError` ever appears on another route, that is the signal to convert the ~8 remaining
+`sql.json()` call sites — grep for `ERR_INVALID_ARG_TYPE` with `Function.str` in the frame.
 
 ---
 
@@ -62,6 +42,16 @@ a probe account on the production host. **Ask him.**
 **Read `FIX-027-THE-TUTORIAL-DOES-NOT-TEACH.md`.** Seven reports, already researched to root
 cause; three of them are the same root cause. The short version:
 
+**Nine reports now, not seven** — bugs 21 and 22 came from the learner path.
+
+- 🔴 **21 — *"Explain this for me"* has never worked for anybody.** The button sends `step.slug`;
+  the route matches `step.teaches`; ✅ **measured: they are equal for 0 of 15 lessons**, so every
+  click 404s. The route itself is healthy (401 unauthenticated, same as the intake control).
+  Recommend matching on `slug` server-side and keeping `teaches` for the prompt.
+- 🔴 **22 — one intake question changes nothing observable.** ✅ Measured with the real `pathFor`
+  over all 18 combinations: **6 distinct paths**, and `experience` produces byte-identical step
+  lists for all three answers. Its only consequence is the projection prompt — i.e. bug 21. **A
+  product decision for Richard**, not a patch.
 - 🔴 **14/15/16 — *Log a thing* is unfinishable.** Its first task says *"Open the **Data** panel and
   create a collection"*; Data lives inside **Backend Services**; Backend Services is
   `isDisabled: isLesson === true` (`router.setup.ts:339`). A disabled rail click is a no-op, no

@@ -61,7 +61,7 @@ with the double cast and `string` without it.
 | 3 | Launcher opens on Community | `usePersistentTab.ts` | ✅ |
 | 4 | Learning tab says "Sign in" while signed in | `useLearnerPath.ts` | ✅ |
 | 5 | Signed-out intake questions look answerable | `LearnerPathSection.tsx` | ✅ |
-| 6 | `POST /me/intake` → 500 | platform `pathing.ts` | ⚠️ deployed `c5d3ad5`, 1 action to prove |
+| 6 | `POST /me/intake` → 500 | platform `pathing.ts` | ✅ **deployed `c5d3ad5`, PROVED** |
 | 7 | Answered question still says "no reply yet" | `useCommunityMirror.ts` | ✅ |
 | 8 | Current step shows two check icons | `LessonLayerView.css` | ✅ |
 | 9 | "Check my work" doesn't explain itself | `lessonconditioncopy.ts` | ✅ |
@@ -194,7 +194,22 @@ in `lessonlayer2.ts` is reachable from the jest runner and a comment is not a re
 still advances from steps 0–2, so "never advance" cannot pass. **Mutation-checked:** reverting
 the rule to the pre-fix form fails 4 of its 8 rows.
 
-## Bug 6 — deployed, and half-proved
+## Bug 6 — ✅ CLOSED, proved in production 2026-08-21
+
+Richard answered the three questions in the editor and the row landed. Measured on nexus-1:
+**1 row, `jsonb_typeof` = `object`, `taken_at` 08:34:11Z.** `learner_intakes` had been empty since
+the table was created — **this is the first intake that has ever saved.** The `::text::jsonb`
+double cast is doing its job: the answers are a jsonb *object*, not the double-encoded string
+scalar the first attempt at the fix produced.
+
+⚠️ **The mechanism is still not established, and the comment on `recordIntake` still says so.**
+What is now known is that removing the `Parameter` wrapper fixes it inside the built bundle. If
+the same `TypeError` appears on another route, that is the signal to convert the remaining
+`sql.json()` call sites.
+
+<details><summary>The state before it was proved, kept for the reasoning</summary>
+
+### deployed, and half-proved
 
 `c5d3ad5` is live on nexus-1 (deploy verified: site 200, sign-in 302, all three neighbours 200).
 The fix is **confirmed present in the built bundle** — `.next/server/chunks/7561.js` reads
@@ -222,6 +237,8 @@ ssh nexus "cd /opt/nodegx-community && printf '%s\n' \
 
 **One row is the pass.** If it is still 0, the cause is logged:
 `journalctl -u nodegx-community --since '1 hour ago' | grep -A20 'me/intake failed'`.
+
+</details>
 
 ## 11b's second half is still not built
 
