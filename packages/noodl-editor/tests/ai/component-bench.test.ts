@@ -20,6 +20,7 @@ import {
   type BenchInterface
 } from '../../src/editor/src/models/AiAssistant/authoring/componentBench';
 import { NodeGraphNode } from '../../src/editor/src/models/nodegraphmodel';
+import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { ProjectModel } from '../../src/editor/src/models/projectmodel';
 import type { SandboxDataset } from '@noodl/runtime/src/sandbox/types';
 
@@ -45,7 +46,40 @@ function rootNodeOf(json: { components: Array<{ name: string; nodes?: TSFixme[] 
   return harness.nodes![0];
 }
 
+/**
+ * The bench reads an interface through `node.type`, and that resolves against
+ * the **global** `NodeLibrary`: a `Component Inputs` node whose type the library
+ * has never heard of gets `getUnknownNodeType()`, which carries no
+ * `haveComponentPorts`, so `ComponentModel.getPorts()` walks straight past it
+ * and every interface below comes back empty — inputs `[]`, and therefore no
+ * parameters on the mounted node either.
+ *
+ * Nothing loads that library at start-up. Fourteen suites each install the
+ * fixture blob in their own `beforeEach`, and this file used to rely on one of
+ * them having been drawn first. Under randomised order (DEBT-005) that is a coin
+ * toss, and CI tossed it: run 32475542268, seed 22715 — the harness-export specs
+ * ran at ordinal 208, the earliest library-loading suite at 508, and three specs
+ * failed with `inputs.length = 0`. The *same* assertion passed at ordinal 574 in
+ * the same run, from the interface describe below, which had only ever passed
+ * because it happened to be drawn late. Same tree at seed 69883: BEN-001 landed
+ * at 1009, all green, 10 failures — the floor.
+ *
+ * Nothing to restore afterwards: this installs the same shared fixture blob the
+ * other thirteen do, and `loadLibrary()` does not touch registered modules.
+ */
+function loadNodeLibrary() {
+  window.NodeLibraryData = require('../nodegraph/nodelibrary');
+  NodeLibrary.instance.loadLibrary();
+
+  // An empty interface is indistinguishable from a component that declares
+  // nothing, so fail here — where the cause is — rather than in an assertion
+  // about ports.
+  expect(NodeLibrary.instance.getNodeTypeWithName('Component Inputs')).toBeDefined();
+}
+
 describe('BEN-001 the component interface, as the bench reads it', () => {
+  beforeEach(loadNodeLibrary);
+
   it('reads declared inputs off the plug the runtime agrees with', () => {
     // ⚠️ TWO inversions, not one, and the first draft of this module got it
     // wrong because it stopped at the first — as does the BEN-001 task file.
@@ -147,6 +181,8 @@ describe('BEN-001 the parameter set is built from the interface', () => {
 });
 
 describe('BEN-001 the harness export', () => {
+  beforeEach(loadNodeLibrary);
+
   it('mounts the component as a child of a synthetic parent, with its inputs set', () => {
     // The whole task in one assertion: `rootComponent` is the harness, not the
     // target, and the target is an instance carrying parameters — which is the
