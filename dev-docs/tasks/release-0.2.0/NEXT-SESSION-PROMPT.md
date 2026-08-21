@@ -322,6 +322,74 @@ trips this grades NOTHING."* Three sessions then rediscovered "an unfinished run
 failure count" from scratch and theorised about leaks and death zones. **Before diagnosing a
 harness, read the harness's own comments** — the file that prints the message usually explains it.
 
+### 2b⁷. ✅ THE FLOOR IS 10, BUT ONLY IN SOME ORDERS — BEN-001 FIXED, GRADED AT THE FAILING SEED
+
+**2026-08-21.** With the cap raised, `Test (editor)` finishes — and the first thing a finishing
+run said was **`2849 specs, 13 failures`**. The floor's ten are all present *by name*; the three
+extra are all **`BEN-001 the harness export`**, reading `inputs.length = 0`.
+
+🔴 **NOT A REGRESSION, AND THE TREES PROVE IT.** The red run was the PR-merge commit and the
+green one the branch tip — and `refs/pull/20/merge` and `cline-dev` are the **same tree object**,
+`b9ce3f94`. `main` contributes nothing (`git diff HEAD...origin/main` is empty). Two runs, one
+tree, 13 against 10, forty seconds apart.
+
+| tree `b9ce3f94` | seed | specs | failures |
+|---|---|---|---|
+| run 32475537257 (push) | 69883 | 2849 | **10** — the floor |
+| run 32475542268 (PR) | 22715 | 2849 | **13** |
+
+**The cause.** `benchInterface` derives an interface from `component.getPorts()`, which only
+walks nodes whose `type.haveComponentPorts` is set — and `node.type`
+([`NodeGraphNode.ts:101-109`](../../../packages/noodl-editor/src/editor/src/models/nodegraphmodel/NodeGraphNode.ts))
+resolves against the **global `NodeLibrary`**. A `Component Inputs` node the library has never
+heard of resolves to the unknown type, contributes no ports, and the interface comes back empty —
+so no parameters land on the mounted node either. **Nothing loads that library at start-up**:
+thirteen suites in the bundle each install the fixture blob in their own setup, and
+`component-bench.test.ts` loaded none of them. Under randomised order (DEBT-005) it was a draw.
+
+✅ **THE CONTROL IS INSIDE A SINGLE RUN, which is what makes this a diagnosis and not a story.**
+At seed 22715 the *same assertion* — `iface.inputs` is `['Icon Src Set', 'Label']` — **failed at
+ordinal 208 and passed at ordinal 574**, in one process, with the earliest library-loading suite
+at **508** in between. The interface describe had only ever passed because it kept being drawn
+late; it was never more correct than the one that failed.
+
+✅ **Fixed and graded against the order that broke it.** Both interface-deriving describes now
+load the library themselves, following the idiom `NodeGraphNodePortCache.test.ts` (R8) already
+uses for this exact hazard, and the helper asserts `Component Inputs` is known — so an empty
+interface fails **where the cause is** rather than in an assertion about ports.
+
+| seed 22715, ordinals 208 / 574 / 508 identical | failures |
+|---|---|
+| before (`3b50bf96`, run 32475542268) | **13** |
+| after (`9f43ed2f`, run 32478157796) | ✅ **10 — the floor, name for name** |
+
+The seed was pinned in `pr.yml` for that one run and **removed in the commit that followed**;
+`SpecRunner.html` keeps it in the environment precisely so a reproduction cannot be committed by
+accident. ⚠️ It had to be CI: swap was 14.9G of 15.4G with a peer's editor stack live on the
+checkout, which is the state that produces flakes instead of measurements.
+
+🔴 **WHAT THIS COSTS THE FLOOR NUMBER, and it is the part worth carrying forward.** "2849 / 10"
+was quoted across four seeds as *the* floor — but a spec depending on ambient global state is
+invisible until the draw exposes it, and three of those four seeds simply drew kindly. **A floor
+measured on four passing orders is a floor for those orders.** Read the failure NAMES every time;
+a count that matches is not the same as a set that matches.
+
+✅ **The rest of the bundle was swept for the same shape, and it is clean — for a reason worth
+knowing.** Four files assert exact `getPorts()` lengths against library-resolved types while
+loading no library (`tests/components/{conditionalports,expandedports,numberedports,portchannels}.js`)
+— the identical hazard — but **every spec in all four is `xit`**: 0 active, 13 disabled. They
+cannot fire. (They still print `[spec-start]` lines, so they look like they ran; they show up at
+ordinals 962-1617 in the failing order having asserted nothing.) The other two callers derive
+interfaces from **fake** component objects carrying their own `getPorts`
+(`tests/canvas/bench-outputs-channel.test.ts`) or from payload JSON rather than the library
+(`tests/ai/authoring-validate.test.ts`). ⚠️ That is a reading of six files, not a run — but the
+one file that could fail is the one that did.
+
+🔴 **If a future seed produces failures nobody can place, check the ordinal of the first
+library-loading suite before anything else.** The thirteen loaders are in
+`grep -rl 'NodeLibrary.instance.loadLibrary\|NodeLibrary.instance.reload' packages/noodl-editor/tests`,
+and the per-spec `[spec-start]` markers give the order for nothing more than an `awk` count.
+
 ### 2b′. 🔴 THE PR GATE RAN FOR THE FIRST TIME IN A WEEK, AND IT IS RED
 
 Run **32370134956** (PR #20, `cline-dev` → `main`), the first `pr.yml` pass over any of these

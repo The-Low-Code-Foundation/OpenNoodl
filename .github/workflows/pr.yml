@@ -125,13 +125,6 @@ jobs:
       - name: Run editor suite headless
         env:
           NOODL_TEST_TIMEOUT_MINUTES: 30
-          # ⏳ TEMPORARY — REMOVE IN THE NEXT COMMIT. Replays the exact order in which run
-          # 32475542268 caught BEN-001 depending on a node library no spec in this file loaded
-          # (harness-export at ordinal 208, earliest library-loading suite at 508). Pinned for
-          # ONE run so the fix is graded against the order that broke it rather than against a
-          # fresh draw. `SpecRunner.html` reads it from the environment precisely so a
-          # reproduction cannot be committed by accident — this one is deliberate and short-lived.
-          NOODL_SPEC_SEED: 22715
         run: xvfb-run --auto-servernum -s "-screen 0 1280x1024x24" npm run test:ci
 
   test-platform:

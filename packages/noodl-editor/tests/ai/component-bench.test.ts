@@ -54,9 +54,9 @@ function rootNodeOf(json: { components: Array<{ name: string; nodes?: TSFixme[] 
  * and every interface below comes back empty — inputs `[]`, and therefore no
  * parameters on the mounted node either.
  *
- * Nothing loads that library at start-up. Fourteen suites each install the
- * fixture blob in their own `beforeEach`, and this file used to rely on one of
- * them having been drawn first. Under randomised order (DEBT-005) that is a coin
+ * Nothing loads that library at start-up. Thirteen other suites in this bundle
+ * each install the fixture blob in their own setup, and this file used to rely
+ * on one of them having been drawn first. Under randomised order (DEBT-005) that is a coin
  * toss, and CI tossed it: run 32475542268, seed 22715 — the harness-export specs
  * ran at ordinal 208, the earliest library-loading suite at 508, and three specs
  * failed with `inputs.length = 0`. The *same* assertion passed at ordinal 574 in
@@ -64,8 +64,8 @@ function rootNodeOf(json: { components: Array<{ name: string; nodes?: TSFixme[] 
  * because it happened to be drawn late. Same tree at seed 69883: BEN-001 landed
  * at 1009, all green, 10 failures — the floor.
  *
- * Nothing to restore afterwards: this installs the same shared fixture blob the
- * other thirteen do, and `loadLibrary()` does not touch registered modules.
+ * Nothing to restore afterwards: this installs the same shared fixture blob
+ * those thirteen do, and `loadLibrary()` touches no registered module.
  */
 function loadNodeLibrary() {
   window.NodeLibraryData = require('../nodegraph/nodelibrary');
