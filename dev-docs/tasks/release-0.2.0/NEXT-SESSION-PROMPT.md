@@ -1,5 +1,14 @@
 # Release 0.2.0 — next session
 
+> ⚠️ **SUPERSEDED for the cut itself, 2026-08-21.** This file describes the draft
+> built from `6fdf9de2`. **That draft no longer exists** — it was 42 commits stale
+> and was deleted and re-cut at `ffc08ae0`, which rebuilt green with 15 assets.
+> **Read [PUBLISH-0.2.0.md](./PUBLISH-0.2.0.md) first**; its top banner is the
+> current state. What is still accurate here is the *background*: the floors, the
+> `tsfixme` decision, and the tutorial-prose gap. What is not is anything about
+> the draft's artifacts or the tag.
+
+
 **Written 2026-08-20, end of the release session; updated the same day after a CI-cleanup
 session.** This file is the working state of the 0.2.0 release, not a phase. Read
 [RELEASE-PROCESS.md](../../guidelines/RELEASE-PROCESS.md) before touching anything in §3.
