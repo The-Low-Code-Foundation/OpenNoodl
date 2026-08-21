@@ -13,7 +13,7 @@ previously-specced behaviour and the reasons are recorded there, not in the diff
 
 | repo | branch | state |
 |---|---|---|
-| `~/vscode_projects/OpenNoodl` | `cline-dev` | Code at **`2ba69638`** (the gate), docs on top. 🔴 **NOT PUSHED** — CI runs were in flight and `pr.yml` cancels in progress. The `Lesson bundles` job has never run on CI |
+| `~/vscode_projects/OpenNoodl` | `cline-dev` | ✅ **PUSHED at `8553b5e7`** — the gate and the docs are on `origin/cline-dev`. ✅ **`Lesson bundles (FIX-027)` has now run on CI and PASSED**, first time ever (run `32473637517`) |
 | `~/vscode_projects/nodegx-community` | `main` | **`8d40b63`**, pushed and deployed to nexus-1 |
 
 Measured 2026-08-21 on `bdc8d5cd` — ⚠️ **re-measure, never quote a handover's**:
@@ -21,10 +21,12 @@ Measured 2026-08-21 on `bdc8d5cd` — ⚠️ **re-measure, never quote a handove
 - `typecheck`, `typecheck:editor`, `typecheck:editor-tests`, `typecheck:mcp` — all exit 0
 - `test:main` — **300 suites / 4884 tests / 0 failures** (floor was 4871; +13 are this session's)
 - `noodl-mcp` `npx jest` — **55 suites / 651 tests / 0 failures**
-- ⚠️ **CI has NOT yet graded this branch — read it before claiming it is clean.** The runs on
-  `bdc8d5cd` were **cancelled by the very next push** (`cancel-in-progress`, §1) — this document's
-  own trap, hit while writing it. The live runs are on **`a3a9be95`**: `32471348298` (push) and
-  `32471353141` (pull_request), same code. `Test (editor)` on them is **unread**.
+- ✅ **CI HAS NOW GRADED THIS BRANCH — read §6 before re-measuring any of it.** 🔴 The two runs
+  this document named (`32471348298`, `32471353141`) were themselves **cancelled** — the trap fired
+  a second time on the very commits that recorded it. The runs that actually graded the code were
+  **`32471411436`** (push) and **`32471418529`** (PR), on `f9924e3f`. Result: **7 jobs green, 2 red,
+  and both reds are the known ones** — `Test (editor)` (no baseline mechanism) and `Lint`
+  (`tsfixme`). §1 and §6 carry the measurements.
 
 ---
 
@@ -49,10 +51,10 @@ failures read as failure. **Read the marker count and the summary line, never th
 this session that way, harmlessly, after its measurement was already collected. **Check before you
 push if a run matters to you.**
 
-⚠️ **The real remaining work is the 59 slow specs**, not the timeout. Per-spec median is 0.001s and
-flat; **59 authoring specs take 17–20s each and eat 12.4 of the 14.9 minutes** (`AAQ-005`,
-`AAQ-001`, `AAQ-011 F12`, `AIB-004`, `AIX-003`, `AIX-010`, `AIX-011`, `BEN-001`). Making those
-faster would put the suite back under the original cap.
+⚠️ **The real remaining work is the slow specs**, not the timeout — 🔴 **and the count was
+measured on a TRUNCATED run. It is 82, not 59.** Re-derived from the *complete* 2849-spec log
+(run `32471411436`), which the earlier 2264-spec sample could not see the tail of. Full table in
+§6.
 
 ---
 
@@ -194,8 +196,9 @@ Richard to answer one of his own threads. **Do not fake a reply row in the produ
 - 🔴 **`tsfixme` is the last open red on the 0.2.0 ratchets, and it is a decision** — +37 `TSFixme`,
   +125 `any` across **45 files** ("~20" was the ratchet's display cap, `tsfixme-ratchet.js:319`).
   **68% is test files**; 32 of the 52 shipped-source additions are in **one** `.d.ts`
-  (`nodegx-node-kit-types/src/index.d.ts`). ✅ Smallest useful move: type that file, raise the
-  baseline for the rest **visibly, in the PR**. **Do not silently ratchet it.**
+  (`nodegx-node-kit-types/src/index.d.ts`). 🔴 **THE "SMALLEST USEFUL MOVE" IS NOT AVAILABLE
+  — MEASURED THIS SESSION, see §6.** Typing that file would break one of its own two rules.
+  What is left is: raise the baseline **visibly, in the PR**. **Do not silently ratchet it.**
   ⚠️ `Lint` fails on `tsfixme` first, so `colors`, `icons:css` and `tokens:css` are **skipped, not
   passed**. Do not report them as green.
 - 🔴 **The 0.2.0 draft must not be published until it is verified on CLEAN machines** — Windows is
@@ -207,6 +210,89 @@ Richard to answer one of his own threads. **Do not fake a reply row in the produ
 - **`submitFailure` in `useLearnerPath.ts`** is the same shape as the `projectionFailure` that was
   extracted earlier: a decision function, neither exported nor covered. Worth the same treatment
   next time that path is touched.
+
+---
+
+## 6. What CI actually said, and why one recommendation is withdrawn
+
+**Measured 2026-08-21 from run `32471411436` (code `f9924e3f`) and `32473637517` (code
+`8553b5e7`).** Both read from raw job logs, never from the tick.
+
+### 6a. ✅ `Test (editor)` is at the floor — now on a THIRD seed
+
+```
+[spec-start] markers : 2849      ← the whole suite
+Jasmine: 2849 specs, 10 failures (failed).
+Randomized with seed 72336.
+"timed out after"    : 0 occurrences
+```
+
+✅ **All ten match the floor NAME FOR NAME** — 4× `AIX-006 style vocabulary`, 3× `SUB-011
+expression parameters`, 2× `AI model registry`, 1× `AIX-011`. The seed is **72336**, a third
+unrelated one (after `02601` and `39393`): these ten are **deterministic and order-independent**
+across three seeds and two operating systems. The 30-minute cap is holding.
+
+### 6b. ✅ `Lint`: only `tsfixme` — and the skip-trap is confirmed, not assumed
+
+`lint:ci` reports **879 errors against a 3916 baseline — 3037 fewer**, exit 0. `tsfixme` is the
+sole failure at **+37 `TSFixme` / +125 `any`**. ⚠️ **`colors`, `tokens:css` and `icons:css` never
+ran** — the job stops at `tsfixme`. Confirmed by reading the step list, not inferred. **Do not
+report them as green.**
+
+### 6c. 🔴 THE `.d.ts` CANNOT BE TYPED — the "smallest useful move" is withdrawn
+
+The uncapped ratchet (a scratchpad copy with `slice(0, 20)` removed; the repo was not touched)
+confirms **45 files** and **`nodegx-node-kit-types/src/index.d.ts` at `+32`, the largest single
+block** — the handover's arithmetic was exact. **Its recommendation was not.**
+
+That file is a **hand-written mirror** of `noodl-viewer-react/src/react-component-node.ts` and
+`@noodl/types`, and it states **two rules it must keep**: (1) **self-contained** — no `import`, no
+`/// <reference>`, because it is copied into a kit folder with no `node_modules`; (2) **it must not
+lie** — "a type that overstates the runtime is worse than no type, because it is believed."
+
+🔴 **Typing the `any`s breaks one rule or the other.** Every one is load-bearing:
+
+| site | why it cannot change |
+|---|---|
+| `innerReactComponentRef: any` · `withInnerComponent(action: (inner: any) => void…` · `getValue?: ReactNodeCallback<any[], unknown>` · `methods?: Record<string, ReactNodeCallback<any[], any>>` · `[extra: string]: any` | **byte-identical to the runtime** (`react-component-node.ts:191, 289, 410, 506, 84/261/329`). Tightening makes the mirror **stricter than the thing it mirrors** — rule 2, in the direction that puts a spurious red squiggle in an author's editor |
+| `setup?: (context: any, graphModel: any) => void` | runtime says `(context: ReactNodeContext, graphModel: GraphModelLike)`. The published file **declares neither type** (grepped: zero hits). Naming them means importing — **rule 1** — or publishing two more mirrored types plus their drift entries |
+| `const React: any` · `Window.React: any` | React's own types are exactly what rule 1 forbids. The file **already explains this in place** and says it is **"Pinned by a test"** |
+
+🔴 **AND NOTHING WOULD CATCH A MISTAKE.** `tests/drift.test.js` looks like the guard here and is
+not: `typeSets.js:51` records `members[symbol.name] = isOptional` — **a boolean**. It compares
+member **names** and **optionality**, and is **completely blind to member types**. A retyped `any`
+that diverges from the runtime would pass every drift test in the package.
+
+⚠️ **The file is not even in the baseline** (`byFile` entry: absent) — it was *created* after the
+baseline was taken, so its 32 markers are "new" only in the sense that the file is. They were
+there from its first commit (`f251695c`, CN-005).
+
+✅ **So the decision is narrower than the handover framed it.** With the `.d.ts` off the table,
+shipped source holds **20 scattered singletons across 16 files** — no cluster, one marker each.
+The realistic options are now: **raise the baseline visibly in the PR**, or retype 110 markers in
+other phases' test files plus 20 singletons. **Still Richard's call — but "type the one file
+first" is not one of the choices.**
+
+### 6d. ✅ The slow specs, from the COMPLETE run — 82, and seven suites are 79% of it
+
+Per-spec **median 0.0005s, p90 0.120s** — flat, no degradation. **82 specs take ≥5s and eat 85% of
+the wall.**
+
+| suite | wall | % | specs | ≥5s | mean |
+|---|---|---|---|---|---|
+| `AIX-011` | 239.8s | 19% | 60 | 16 | 4.00s |
+| `BEN-001` | 208.3s | 16% | 23 | 16 | 9.06s |
+| `AAQ-011` | 190.0s | 15% | 35 | 10 | 5.43s |
+| `AAQ-005` | 144.1s | 11% | 9 | 9 | **16.01s** |
+| `AIX-008` | 94.3s | 7% | 29 | 8 | 3.25s |
+| `AIX-003` | 78.8s | 6% | 18 | 8 | 4.38s |
+| `AIB-004` | 62.4s | 5% | 4 | 4 | **15.61s** |
+| **total** | **1266.8s** | 100% | **2848** | **82** | |
+
+**Seven suites — 178 of 2849 specs — are 79% of the wall.** If every ≥5s spec were instant the
+suite would run in **3.2 minutes**. ⚠️ `AIX-010` appears in the handover's list but **not** in the
+measured top — it was in the truncated sample's tail. **`AIX-008` is there instead**, and nobody
+had named it.
 
 ---
 
