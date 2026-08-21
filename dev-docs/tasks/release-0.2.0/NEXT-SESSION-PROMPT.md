@@ -390,6 +390,60 @@ library-loading suite before anything else.** The thirteen loaders are in
 `grep -rl 'NodeLibrary.instance.loadLibrary\|NodeLibrary.instance.reload' packages/noodl-editor/tests`,
 and the per-spec `[spec-start]` markers give the order for nothing more than an `awk` count.
 
+### 2b⁸. ✅ THE FLOOR OF TEN IS NOT TEN THINGS — FIVE ARE FIXED, AND BOTH WERE REAL BUGS
+
+**2026-08-21.** Nobody had read the failing *assertions*. Doing that showed the ten are not ten
+independent items, and **two of the four suites were the guard catching a live defect** rather
+than stale expectations. Pushed as `dae76da8` and `a46b52ba`.
+
+🔴 **`SUB-011` ×3 — the shipped `fx` form has read as INVALID since D13, and it ships in 0.2.0.**
+The `fx` toggle stores `{mode:'expression',expression,fallback,version}` on a port still typed
+string/number, and the typed runtime evaluates and coerces it
+([`node.ts:32,60`](../../../packages/noodl-runtime/src/node.ts)). **D13** (`c1c0b5b5`, 08-18)
+registered `rules/parameterValue`, so `SemanticValidator` began checking those objects against the
+port's *primitive* shape: the corpus fixture went from silent to **5 errors + 9 warnings**, and the
+rule's own comment says `InvalidParameterValue` is *"the one that blocks"*.
+
+✅ **SUB-011 predicted this on 2026-07-24, three weeks before the check existed** — *"if it ever
+grows parameter/type checking, the object form reads as invalid without an explicit carve-out"* —
+and named the fix. That is the carve-out, using `ExpressionParameter.ts`'s own guard because the
+task says to reuse it. ⚠️ **The posture decision that task asks for is STILL UNMADE** (its
+"Decision record" is an empty placeholder); the carve-out is required under *both* postures, since
+"emits no false findings" is an unconditional in-scope AC, so it does not pre-empt it.
+
+🔴 **D13 is in `v0.2.0` and was NOT in `v0.1.7`.** The unpublished draft ships it. The fix is
+after the tag, so it rides in 0.2.1 and cannot destabilise the cut draft.
+
+🔴 **`AI model registry` ×2 — F35 fixed the LIST and left the DEFAULT behind.** LAS-011/F35 gave
+`openai-compatible` its own entries so a DeepInfra user is not offered `gpt-4.1`. But
+`getDefaultModel` is `find(isDefault) || models[0]`, and the OpenAI entries that follow carry
+`isDefault` — so the fallback never ran. **Measured: `getDefaultModel('openai-compatible')` →
+`gpt-4.1`**, the exact id F35 records as one those gateways do not serve, and the provider owned
+**0** defaults where every other owned 1. `DeepSeek-V4-Pro` is now flagged default. The catalogue
+spec asserted plain equality with OpenAI's list — the behaviour F35 deliberately ended — so it had
+become **an assertion that the bug was still there**; rewritten to the real contract.
+
+✅ **Graded by mutation, not by going green.** With 13 expression objects made malformed
+(`expression: 42`, which the guard correctly declines) the reading returns to 5 errors + 8
+warnings — so the carve-out skips only *well-formed* expressions. The fixture reads 0/0 on all
+three spec paths including the round-trip.
+
+⚠️ **The fixture's `textAlign` was a real defect** — now `textAlignX`. `Text` declares
+`textAlignX`/`textAlignY`; `textAlign` is only the CSS property the node sets internally. **The
+same dead parameter §2b⁗ found in noodl-preview's fixture** — a third sighting of one wrong idea
+about `Text` copied across fixtures.
+
+🔴 **TWO OF MY OWN READINGS WERE WRONG AND BOTH FIT THE EVIDENCE.** (1) The doubling in
+`AIX-006`/`AIX-011` looked like a duplicated rule registration — `ALL_RULES` holds `parameterValue`
+**once**; the second occurrence is a re-export list. (2) The first mutation control **measured
+nothing**: it walked `c.graph.nodes`, applied **0** mutations, and read identical to the valid case
+— which I could have reported as "the guard is safe". It only became evidence once it printed
+`MUTATIONS_APPLIED 13`. **A control that never fires proves nothing; make it say so.**
+
+**Left: 5** — 4× `AIX-006` (the rejection lists the *identical* `unknown-parameter` warning twice,
+unexplained) and 1× `AIX-011` (expected 1 blocking warning, got 2). Both undiagnosed.
+⚠️ `test:ci` was **not** run locally: swap was 16.8G of 18.4G even with the editor closed.
+
 ### 2b′. 🔴 THE PR GATE RAN FOR THE FIRST TIME IN A WEEK, AND IT IS RED
 
 Run **32370134956** (PR #20, `cline-dev` → `main`), the first `pr.yml` pass over any of these

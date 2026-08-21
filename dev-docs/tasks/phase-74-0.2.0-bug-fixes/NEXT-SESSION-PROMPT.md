@@ -243,6 +243,24 @@ failures, 0 timeouts, seed `68471`** — a **fourth** seed, same four suites in 
 These ten are **deterministic and order-independent** across four seeds and two operating systems.
 The 30-minute cap is holding with ~7 minutes of headroom.
 
+⚠️ **READ "order-independent" AS A CLAIM ABOUT THESE TEN ONLY — it is not a property of this
+suite.** `1877dbde` landed after the sentence above and found the opposite-shaped thing: `BEN-001`
+read an interface through a node library no spec in its bundle loaded, so it passed or failed on
+where the draw happened to put it, and **three of those four seeds simply drew kindly**. Both
+statements are true — *"these particular ten recur"* is not *"order does not matter here"* — but
+only the first one is. 🔴 **Never infer from a matching count that the set matches: read the
+FAILURE NAMES every time.**
+
+✅ **A fifth seed, `16562`** (run `32479979252`, the first unpinned run after the `BEN-001` fix):
+**2849 specs, 10 failures, the same ten by name**, and no `BEN-001` — so that fix holds on a draw
+nobody chose.
+
+🔴 **THE FLOOR IS NOW MOVING — do not quote 10 without re-reading.** Five of the ten have fixes
+pushed (`dae76da8`, `a46b52ba`) and are being CI-graded: the 3× `SUB-011` are D13 reaching the
+shipped `fx` expression form it has no carve-out for, and the 2× `AI model registry` are F35's
+surviving half — a gateway user's *default* was still `gpt-4.1`. Expect **5** (4× `AIX-006`,
+1× `AIX-011`), and see `release-0.2.0/NEXT-SESSION-PROMPT.md` §2b⁸.
+
 ### 6a′. ✅ `Lesson bundles (FIX-027)` RAN ON CI AND IS NOT VACUOUS
 
 First CI run ever, on `8553b5e7`: **success**. Read the output, not the tick — it printed real
