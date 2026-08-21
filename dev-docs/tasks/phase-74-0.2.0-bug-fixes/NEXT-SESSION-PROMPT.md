@@ -1,9 +1,10 @@
-# Next session — FIX-027's remainder, and the two decisions blocking it
+# Next session — FIX-027's remainder, and the decisions blocking it
 
-`Test (editor)` is **fixed and the fix is confirmed** — the measurement the last session was
-holding a commit to collect has been taken. Bug 18's two software halves are fixed. **What is left
-in FIX-027 is mostly not code: four of the six open items are decisions only Richard can make**,
-and the two that are code both need the editor, which a peer held all of the last session.
+`Test (editor)` is **fixed and the fix is confirmed**. Bug 18's two software halves are fixed, and
+**the lesson-bundle gate that was the last unblocked build is now in** (`2ba69638`, §3). **What is
+left in FIX-027 is not code you can start unasked: four of the remaining items are decisions only
+Richard can make**, and the two that are code both need the editor, which a peer has now held for
+two sessions running.
 
 Read `FIX-025-THE-LAUNCH-LIST.md` before touching lesson code: several fixes deliberately reversed
 previously-specced behaviour and the reasons are recorded there, not in the diffs.
@@ -12,7 +13,7 @@ previously-specced behaviour and the reasons are recorded there, not in the diff
 
 | repo | branch | state |
 |---|---|---|
-| `~/vscode_projects/OpenNoodl` | `cline-dev` | Code at **`bdc8d5cd`**, docs on top. All pushed — nothing held back this time |
+| `~/vscode_projects/OpenNoodl` | `cline-dev` | Code at **`2ba69638`** (the gate), docs on top. 🔴 **NOT PUSHED** — CI runs were in flight and `pr.yml` cancels in progress. The `Lesson bundles` job has never run on CI |
 | `~/vscode_projects/nodegx-community` | `main` | **`8d40b63`**, pushed and deployed to nexus-1 |
 
 Measured 2026-08-21 on `bdc8d5cd` — ⚠️ **re-measure, never quote a handover's**:
@@ -119,14 +120,31 @@ editors cannot coexist on this checkout — **ask, don't reap.**
   at the completion moment must handle `reset()`'s two refusals, or it fails in front of the
   learner at the worst possible moment. See FIX-026.
 
-### Worth building, blocked on nothing
+### ✅ DONE THIS SESSION — the lesson-bundle gate exists (`2ba69638`)
 
-- 🔴 **No gate validates a shipped lesson bundle.** The only thing referencing `project-examples/`
-  under `scripts/` or `.github/` is the comment-legibility scanner. A checker over the corpus that
-  exists is what would have caught bug 18 before a learner did — **the fourth time this shape has
-  come up.** `log-a-thing` passes at 0 diagnostics today, so the gate can land green.
-  `scripts/library/check.ts` is the pattern (`SemanticValidator` + `loadProject`). ⚠️ That file is
-  **uncommitted in the working tree** — read it, don't edit it.
+**`npm run lessons:check`** — `scripts/check-lesson-bundles.ts`, its own `Lesson bundles
+(FIX-027)` job in `pr.yml`. Every bundle under `project-examples/lessons/<slug>/`: `lesson.json`
+parses and verifies against the node catalog, and **both** projects — the starter at the bundle
+root and `solution/` — load and validate clean. `log-a-thing` measures **0 findings, 0
+diagnostics** (`starter 3c/12n`, `solution 3c/16n`), and the gate prints that cardinality every
+run.
+
+✅ **Graded by mutation, in CI too: `npm run lessons:check:self-test`.** Seven breaks derived from
+the real bundle, each required to be caught **in the arm it names** — not merely to exit non-zero,
+because a harness that threw would do that as well. Meta-mutated to prove the reason-check can
+fail. The shipped corpus is never written to.
+
+🔴 **It does not cover `state-on-a-page`** — that bundle is still in neither checkout, which is
+bug 18's other half above. The gate covers the corpus that exists.
+
+🔴 **`knownCollections` is deliberately NOT supplied — do not "tidy" that.** Omitted and
+supplied-empty are different answers; `[]` would fire `unreachable-collection` against every
+correct data lesson, `log-a-thing` first. Deriving the real list is **TUT-002 AC3**, still open.
+This script is the caller to wire it into when AC3 lands.
+
+⚠️ **Not pushed.** Two CI runs were in flight on `f9924e3f` and `pr.yml` sets
+`cancel-in-progress`. The new job has therefore **never run on CI** — its two commands were run
+locally, exit 0 both. Push when a cancelled run does not matter.
 
 ---
 
@@ -193,6 +211,32 @@ Richard to answer one of his own threads. **Do not fake a reply row in the produ
 ---
 
 ## 🔴 Traps this session paid for — read before working
+
+- 🔴 **A CONTENT GATE'S SEVERITY THRESHOLD IS WHERE ITS HOLE GOES.** `unknownNodeType` is
+  `severity: warning` unless `--strict` — so `library:check`, which fails only on errors, reported
+  **58/58 clean while nine shipped prefabs had no type at all**, and that is recorded in its own
+  header. Writing `lessons:check` the same way would have reproduced bug 18's blind spot exactly.
+  ✅ **Before choosing a threshold, mutate the artefact with the defect you are gating for and read
+  what severity it comes back as.** Mine came back `warning`. **The fourth instance of a gate with
+  a hole shaped like its defect.**
+- 🔴 **"EXITED NON-ZERO" IS NOT "CAUGHT".** A mutation harness that throws — a path that moved, a
+  fixture field that is absent — exits non-zero and reads as a successful catch against an
+  exit-code assertion. ✅ **Assert the ARM: require the report to contain the specific diagnostic
+  the mutation was aimed at**, then meta-mutate one expectation to a string that cannot match and
+  confirm it reports `WRONG REASON`. Grading the grader took four minutes here.
+- ✅ **DERIVE MUTATIONS FROM THE ARTEFACT THAT SHIPS, NOT A HAND-WRITTEN FIXTURE.** The self-test
+  copies `log-a-thing` and breaks the copy. A synthetic bundle can be missing a field the code
+  under test reads, and then the spec fails — or passes — for a reason unrelated to the property
+  being graded. Copying also means the corpus is never written to; `git status` on
+  `project-examples/` is the check that it stayed that way.
+- 🔴 **AN EMPTY CORPUS MUST REFUSE, NOT PASS.** A content gate that finds nothing and exits 0 is
+  indistinguishable from one that checked everything and approved it — and this corpus has already
+  moved directory once. `lessons:check` exits **2** on an empty `project-examples/lessons/`, and
+  the self-test covers that case separately because its correct answer is 2 rather than 1.
+- ⚠️ **`scripts/*.ts` is in NO typecheck gate** — root `tsconfig.json` includes only `packages/…`,
+  and `pr.yml` has no `scripts` typecheck. It is covered here only because ts-node type-checks as
+  it runs, so the CI step that *runs* the gate is also the only thing that typechecks it. Worth
+  knowing before assuming a script compiles because `npm run typecheck` is green.
 
 - 🔴 **A CAPPED LIST'S `.length` IS NOT A COUNT.** `capFindingLines` appends an overflow line that
   is itself in the array, so the length saturates at 21 forever. The capping module's own
