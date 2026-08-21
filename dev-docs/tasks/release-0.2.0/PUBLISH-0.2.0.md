@@ -8,6 +8,57 @@ only survived by luck.
 
 ---
 
+## ✅ DONE — the re-cut happened on 2026-08-21, 19:13Z. §0, §1 and §2 are CLOSED.
+
+**The draft on GitHub now is the new one.** Everything below §0 is kept as the
+record of how it was cut; read §3 and §4, not §1/§2.
+
+| | |
+|---|---|
+| old draft | deleted (built from `6fdf9de2`, 42 commits stale) |
+| `v0.2.0` now points at | **`ffc08ae0`** — the head of `cline-dev`, pushed |
+| release run | [32515694302](https://github.com/The-Low-Code-Foundation/NodeGX/actions/runs/32515694302) — **all 6 jobs green** |
+| draft | `isDraft: true`, **15 assets**, notes attached, **NOT published** |
+
+Verified by reading the artifacts, not the ticks:
+
+- **15 assets**, and `verify draft release is complete` printed
+  `✓ all 9 expected artifacts are present, and latest-mac.yml covers both architectures`.
+- **`latest-mac.yml` lists all FOUR mac files under one `version: 0.2.0`** —
+  downloaded and read; the four sizes match the asset listing byte for byte.
+- **Both mac legs signed and notarised** — `identityName=Developer ID Application:
+  Osborne Solutions`, `notarization successful`, ticket stapled, on arm64 *and* x64.
+- **Built from `ffc08ae0`** — the run's logs carry that sha three times and the old
+  `6fdf9de2` zero times.
+- `RELEASE-NOTES-0.2.0.md` is attached as the body, **"Known limitations" intact**.
+  No Gatekeeper-bypass text anywhere, so §3's macOS warning is not at risk.
+
+🔴 **WHAT IS LEFT IS §3, AND IT IS NOT A MACHINE'S JOB.** Clean-machine
+verification cannot be done from this checkout — a dev machine has already trusted
+the app, which is the exact failure §3 exists to prevent. Then a human clicks
+Publish.
+
+### ⚠️ §1a is now WRONG, and the correction is worth more than the step
+
+**Do not run `npm run ci:build:editor` locally.** `pr.yml` has a
+`Build (viewer + editor bundles)` job that runs `npm run ci:build:editor` verbatim
+(`pr.yml:187`), and it went **green on `ffc08ae0` at 18:45:40Z** — the same commit
+that was tagged. §1a's premise ("`pr.yml` had not run for a week") was true on
+08-20 and is false now. The measurement already existed remotely; running it here
+would have been redundant *and* risky, with the machine at **16.6G of 17.4G swap**
+under a live editor stack.
+
+### The two reds, re-measured by NAME on `0ce2e958` (`ffc08ae0` is docs-only over it)
+
+- **`Test (editor)`: `2849 specs, 4 failures`, every one `AIX-006 style vocabulary`.**
+  The floor, name for name — down from 10.
+- **`Lint`: `tsfixme` only.** It fails first, so `colors`, `icons:css` and
+  `tokens:css` are **skipped, not passed**.
+
+Neither blocks: `release.yml` runs no tests at all.
+
+---
+
 ## 0. 🔴 THE DECISION, AND IT COMES FIRST: THE DRAFT MUST BE RE-CUT
 
 **Do not publish the existing draft.** It was built from the `v0.2.0` tag on
