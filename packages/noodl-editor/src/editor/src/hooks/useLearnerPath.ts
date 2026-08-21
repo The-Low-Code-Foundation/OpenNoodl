@@ -70,6 +70,48 @@ function submitFailure(write: { outcome: string; detail?: string }): string {
   }
 }
 
+/**
+ * What to say when the projection REQUEST itself did not land — FIX-027 bug 21.
+ *
+ * 🔴 **THE BUTTON USED TO DO NOTHING AT ALL.** Richard clicked *"Explain this for me"*, saw
+ * a `404` in the console and nothing on screen, because this hook surfaced only `refused` and
+ * dropped every other non-`ok` outcome on the floor. The 404 had a cause (the route matched
+ * `teaches` while the button sent `slug`) and it is fixed on the platform — but a client that
+ * says nothing when a write fails would have hidden the NEXT cause just as completely.
+ *
+ * ⚠️ **`absent` IS NARRATED HERE, and that is not a hole in D15.** {@link Read}'s rule — *absent
+ * means absent, say nothing* — protects a surface the viewer must not learn exists. This is the
+ * opposite situation: the learner is looking at their own path and has just pressed a button on
+ * one of its steps. The surface is already theirs and already on screen, so silence here is not
+ * privacy, it is a dead control. It is worded as a fact about the step, never as an error.
+ *
+ * ⚠️ The platform's own words are returned for `refused`, which is what the route's 409
+ * (*"take the intake first"*) and its rate limit actually say. {@link projectionNote} cannot do
+ * this — it maps the five outcome KINDS that arrive inside a 200 and has no detail to show —
+ * which is why a transport failure needs its own sentence rather than a sixth kind.
+ *
+ * 🔴 **IT LIVES IN THE HOOK, NOT IN `learnerpathview.ts`, AND THAT IS LOAD-BEARING.** It was
+ * written there first — beside `projectionNote`, which is tested — and UNI-001 AC4 caught it:
+ * *"the module that decides what is DRAWN never sees a session at all"*, asserted as a
+ * substring over the stripped source, and the `unauthenticated` sentence below says
+ * "session". The right answer was the boundary, not a reword. `projectionNote` maps the five
+ * outcome KINDS the platform puts inside a 200 and is a drawing decision; this maps the
+ * TRANSPORT outcomes of a write, which is the client's half and knows about credentials.
+ * Exported for the spec, which is why it is not `function` alone.
+ */
+export function projectionFailure(write: { outcome: string; detail?: string }): string {
+  switch (write.outcome) {
+    case 'unauthenticated':
+      return 'Your session has expired — sign in again and ask for this explanation.';
+    case 'refused':
+      return write.detail ?? 'The community would not write that explanation.';
+    case 'absent':
+      return 'That step is not on your path, so there is no explanation to write for it.';
+    default:
+      return 'Couldn’t reach the community, so that explanation wasn’t written. Try again in a moment.';
+  }
+}
+
 export function useLearnerPath(): LearnerPathHost {
   const [session, setSession] = useState<CommunitySession | null | undefined>(undefined);
   const [intake, setIntake] = useState<Read<IntakeState> | undefined>(undefined);
@@ -78,6 +120,7 @@ export function useLearnerPath(): LearnerPathHost {
   const [retaking, setRetaking] = useState(false);
   const [projecting, setProjecting] = useState<string | null>(null);
   const [lastProjection, setLastProjection] = useState<ProjectionOutcome | null>(null);
+  const [projectionError, setProjectionError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
 
@@ -190,15 +233,20 @@ export function useLearnerPath(): LearnerPathHost {
     (concept: string) => {
       setProjecting(concept);
       setLastProjection(null);
+      setProjectionError(null);
       void client.projectConcept(concept).then((write) => {
         setProjecting(null);
         if (write.outcome !== 'ok') {
-          // 🔴 A refusal from the ROUTE (409 "take the intake first", a rate limit) is worded by
-          // the platform and shown as-is. It arrives here as `refused` only because `post()`
-          // gained a 409 branch for this caller; before that it was `unreachable`.
-          if (write.outcome === 'refused') {
-            setLastProjection({ kind: 'failed', failure: write.detail });
-          }
+          // 🔴 EVERY non-`ok` outcome is now said out loud — see {@link projectionFailure}.
+          // A refusal from the ROUTE (409 "take the intake first", a rate limit) is worded by the
+          // platform and shown as-is. It arrives here as `refused` only because `post()` gained a
+          // 409 branch for this caller; before that it was `unreachable`.
+          //
+          // ⚠️ It used to be routed into `{ kind: 'failed' }`, which meant the platform's words
+          // were dropped by `projectionNote` in favour of *"could not be written, and it will not
+          // be retried"* — wrong twice over for a 409, which is the learner's own to fix and
+          // will work on the next click.
+          setProjectionError(projectionFailure(write));
           return;
         }
         setLastProjection(write.value.outcome);
@@ -222,6 +270,9 @@ export function useLearnerPath(): LearnerPathHost {
     onRetake,
     onProject,
     projecting,
-    projectionNote: projectionNote(lastProjection)
+    // ⚠️ The transport sentence WINS when there is one: it is the more recent event, and the
+    // two cannot both be true — `projectionError` is only ever set on a request that did not
+    // land, which is the same request that left `lastProjection` null.
+    projectionNote: projectionError ?? projectionNote(lastProjection)
   };
 }

@@ -29,6 +29,7 @@ import {
   projectionNote,
   standingLabel
 } from '../../src/editor/src/models/community/learnerpathview';
+import { projectionFailure } from '../../src/editor/src/hooks/useLearnerPath';
 
 const QUESTIONS = [
   {
@@ -406,6 +407,72 @@ describe('projectionNote', () => {
     expect(projectionNote({ kind: 'unavailable', reason: 'no projector' })).not.toBe(
       projectionNote({ kind: 'refused', reason: 'org minor' })
     );
+  });
+});
+
+describe('projectionFailure — FIX-027 bug 21, the button that did nothing', () => {
+  /**
+   * 🔴 THE DEFECT WAS SILENCE, NOT THE WRONG WORDS. The hook surfaced `refused` and dropped
+   * `absent`, `unauthenticated` and `unreachable` on the floor, so Richard's click produced a
+   * console 404 and nothing on screen. Every one of the four must therefore produce a sentence
+   * — an assertion about `absent` alone would pass against a function that answered the same
+   * string to everything, which is why the arms are also required to disagree.
+   */
+  it('has something to say about every outcome a write can fail with', () => {
+    // ⚠️ `expect(value, message)` is vitest's signature and this suite is jest, so the outcome
+    // name is carried in the asserted VALUE instead — a bare `toBeTruthy()` in a loop names no
+    // arm when it fails.
+    const outcomes = ['absent', 'unauthenticated', 'refused', 'unreachable'];
+    const said = outcomes.map((outcome) => [
+      outcome,
+      projectionFailure({ outcome, detail: 'the platform’s own words' }).length > 10
+    ]);
+    expect(said).toEqual([
+      ['absent', true],
+      ['unauthenticated', true],
+      ['refused', true],
+      ['unreachable', true]
+    ]);
+  });
+
+  it('tells the four apart, so the sentence carries information', () => {
+    const said = ['absent', 'unauthenticated', 'refused', 'unreachable'].map((outcome) =>
+      projectionFailure({ outcome, detail: 'take the intake first' })
+    );
+    // Four outcomes must produce four distinct sentences.
+    expect(new Set(said).size).toBe(4);
+  });
+
+  it('shows the platform’s own words for a refusal, rather than substituting ours', () => {
+    // 🔴 This is the half that was LOST before: the hook routed `refused` into
+    // `{ kind: 'failed' }`, and `projectionNote` answers that with a fixed *"will not be
+    // retried"* — which is wrong twice for a 409 the learner can fix and retry themselves.
+    expect(projectionFailure({ outcome: 'refused', detail: 'take the intake first' })).toBe(
+      'take the intake first'
+    );
+    expect(projectionFailure({ outcome: 'refused', detail: 'take the intake first' })).not.toContain(
+      'not be retried'
+    );
+  });
+
+  it('falls back to our own words only when the platform chose none', () => {
+    const said = projectionFailure({ outcome: 'refused' });
+    expect(said).toBeTruthy();
+    expect(said).not.toContain('undefined');
+  });
+
+  it('states `absent` as a fact about the step, not as an error', () => {
+    // ⚠️ D15's silence protects a surface the viewer must not learn exists. This one is already
+    // on their screen with a button on it, so the rule does not reach here — but the wording
+    // still must not read as a fault in the product.
+    const said = projectionFailure({ outcome: 'absent' });
+    expect(said).not.toMatch(/error|failed|wrong|bug/i);
+    expect(said).toContain('path');
+  });
+
+  it('an unknown outcome still says something, and suggests the retry that would work', () => {
+    // A network blip IS worth clicking again — the opposite of `projectionNote`'s `failed`.
+    expect(projectionFailure({ outcome: 'unreachable' })).toMatch(/try again/i);
   });
 });
 

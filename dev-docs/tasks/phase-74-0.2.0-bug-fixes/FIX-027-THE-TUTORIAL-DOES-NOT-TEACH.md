@@ -62,7 +62,7 @@ an `openPanel` action and unlock on demand. **Pick one deliberately.**
 | 18 | "All 3 checked steps are done" arrives with "the project has problems (21 reported)" | shipped bundle + `lessoncheck.ts:346` | C |
 | 19 | No completion moment at all when the last step is a graded card | `lessonlayer2.ts:441` | D |
 | 20 | When there *is* a completion popup, its only action is EXIT LESSON — no reset | `lessonlayer2.ts:450` | D |
-| 21 | *"Explain this for me"* 404s every time — it has never worked for anybody | `LearnerPathSection.tsx:263` | E |
+| 21 | ✅ **FIXED** — *"Explain this for me"* 404s every time; it has never worked for anybody | `me/path/project/route.ts:54` + `useLearnerPath.ts` | E |
 | 22 | Answering the three intake questions barely changes the path | `curriculum.json` + `pathing.ts` | E |
 
 ### 17 — the steps that tell you what to do are exactly the ones that stay silent
@@ -196,6 +196,59 @@ prompt, and it does not require the client to learn the curriculum's wording.
 🔴 **And nothing surfaced the failure to the learner** — Richard saw a console error and *"nothing
 happens"*. A 404 from this route is `absent` in the client's `Write` union; whatever the path
 section does with that, it is not telling anyone.
+
+### ✅ FIXED 2026-08-21 — both halves, and the second was the one worth having
+
+**Half one, the platform.** `me/path/project/route.ts` now matches `candidate.slug`. The prose
+did not stop mattering, it stopped being the *key*: `step.teaches` is still what reaches the
+model, so identifiers travel over the wire and prose goes to the prompt. Re-measured
+independently before touching anything — **`slug === teaches` for 0 of 15**, and the exact
+`VISUAL` fixture confirmed on three controls: the code lesson is genuinely off that path, the
+state lesson is genuinely on it, and `variables, state` matches no slug at all. That third one
+is why the spec *had* to change rather than merely could.
+
+🔴 **The existing spec ratified the bug, and changing it carelessly would have destroyed its
+coverage.** `uni007`'s known-good arm sent `'variables, state'` — the route's own spelling — so
+it passed just as happily against a route matching the wrong field. Its "not on your path" arm
+sent prose too, and after the fix would have gone on returning 404 **for the wrong reason**
+(not a slug at all), silently testing nothing. Both arms are now slugs, the not-yours arm
+asserts its own precondition rather than trusting it, and two arms were **added**: the prose is
+now required to be *refused*, and every step on the learner's real path is required to accept
+its slug — the property that was false for all fifteen and that nothing checked.
+
+✅ **Graded by mutation, not by a green tick.** Reverted to `teaches` and the two arms disagree:
+`your-creature-on-screen` → 404 (Richard's bug, reproduced as a test) and the prose → 200. 31/31
+with the fix, 2 failed without it.
+
+**Half two, the editor — and this is the half that generalises.** `useLearnerPath` surfaced only
+`refused` and dropped `absent`, `unauthenticated` and `unreachable` on the floor, which is why
+Richard saw a console 404 and *nothing on screen*. 🔴 **A client that says nothing when a write
+fails would have hidden the NEXT cause just as completely** — the field mismatch was only
+findable from the console. `projectionFailure` now words all four, distinctly.
+
+⚠️ **Two things the fix corrected that were not in the report.** The hook's comment claimed a
+refusal is *"worded by the platform and shown as-is"* — it was not: it was routed into
+`{ kind: 'failed' }`, whose note is a fixed *"could not be written, and it will not be
+retried"*. Wrong twice for a 409 the learner can fix and retry themselves. And `absent` **is**
+narrated here, deliberately: D15's silence protects a surface the viewer must not learn exists,
+and this one is already on their screen with a button on it, so silence is not privacy, it is a
+dead control.
+
+🔴 **UNI-001 AC4 caught the first placement, and the boundary was right.** `projectionFailure`
+went into `learnerpathview.ts` first, beside `projectionNote`, because that module is tested —
+and AC4 asserts *"the module that decides what is DRAWN never sees a session at all"* as a
+substring over stripped source, which the `unauthenticated` sentence trips. **The answer was the
+boundary, not a reword**: `projectionNote` maps the five outcome *kinds* inside a 200 and is a
+drawing decision; this maps the *transport* outcomes of a write and knows about credentials. It
+lives in the hook and is exported for the spec.
+
+⚠️ **Still not driven.** Both halves are specced and the platform half needs a **deploy** before
+any click changes. `COMMUNITY_URL` is hard-coded to production, so the editor cannot be pointed
+at an undeployed platform to prove it — see §4 of the next-session prompt.
+
+⚠️ **`submitFailure` is the same shape and is still untestable** — same file, neither exported
+nor covered, and it words the intake's failures. Left alone as out of scope; worth the same
+treatment next time that path is touched.
 
 ## 22 — one of the three questions changes nothing a learner can see
 
