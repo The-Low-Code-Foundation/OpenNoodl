@@ -467,6 +467,22 @@ corpus went **26 → 25** diagnostics on a tree carrying `dae76da8`, and the one
 content**, not only a fixture. Their lesson is worth keeping: *a corpus measurement inherits the
 defects of the instrument that took it.*
 
+### ✅ MEASURED: 10 → 6, and the five targeted are gone
+
+Run **32482182225** on `a46b52ba`, seed **93591**: `Jasmine: 2849 specs, 6 failures`. The 3×
+`SUB-011` and 2× `AI model registry` are **gone by name**. Remaining: the 4× `AIX-006` and
+1× `AIX-011 AAQ-005` that `ea402850` targets — plus **one failure that was never in the ten**.
+
+🔴 **The sixth is `AIX-011 criterion 7 — createPlanDocWriter on real files`, and it is a TIMING
+FLAKE, not a regression.** Established rather than assumed: it **passed** in runs 32478157796
+(seed 22715) and 32479979252 (seed 16562); it takes a fresh `fs.mkdtempSync` dir so no residue
+crosses runs; and it settles its **asynchronous** undo writes with a fixed
+`setTimeout(…, 30)` ([`plan-doc-writer.test.ts:33`](../../../packages/noodl-editor/tests/ai/plan-doc-writer.test.ts)),
+which a loaded runner loses. Its imports — `PlanDocWriter`, `ProjectDocsModel`, `UndoQueue` —
+appear nowhere in the diff, and a diagnostic carve-out cannot change file bytes or undo timing.
+⚠️ **It is a real fragility and it will recur**; the 30ms constant is the thing to fix, not the
+assertion. A lone red is a flake until re-run — but this one names its own mechanism.
+
 ### What is still open
 
 - 🔴 **`ea402850` IS NOT CI-GRADED YET.** It was committed after the run on `a46b52ba` started, so
