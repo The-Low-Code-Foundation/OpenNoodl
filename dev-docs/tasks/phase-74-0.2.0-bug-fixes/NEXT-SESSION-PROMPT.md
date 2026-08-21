@@ -12,7 +12,7 @@ previously-specced behaviour and the reasons are recorded there, not in the diff
 
 | repo | branch | state |
 |---|---|---|
-| `~/vscode_projects/OpenNoodl` | `cline-dev` | HEAD **`bdc8d5cd`**, pushed. Nothing held back this time |
+| `~/vscode_projects/OpenNoodl` | `cline-dev` | Code at **`bdc8d5cd`**, docs on top. All pushed — nothing held back this time |
 | `~/vscode_projects/nodegx-community` | `main` | **`8d40b63`**, pushed and deployed to nexus-1 |
 
 Measured 2026-08-21 on `bdc8d5cd` — ⚠️ **re-measure, never quote a handover's**:
