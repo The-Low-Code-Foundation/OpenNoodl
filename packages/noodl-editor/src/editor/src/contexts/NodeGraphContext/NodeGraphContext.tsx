@@ -7,6 +7,7 @@ import { isComponentModel_CloudRuntime } from '@noodl-utils/NodeGraph';
 import { Slot } from '@noodl-core-ui/types/global';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import { restoreEditorPlace } from '../../utils/launcher/leaveForLauncher';
 import { CenterToFitMode, NodeGraphEditor } from '../../views/nodegrapheditor';
 
 type NodeGraphID = 'frontend' | 'backend';
@@ -56,6 +57,13 @@ export function NodeGraphContextProvider({ children }: NodeGraphContextProviderP
 
     let currentInstance = createNodeGraph();
     setNodeGraph(currentInstance);
+
+    // 🔴 NAT-012 AC3 — put the canvas back where the reader left it, if they left for the
+    // launcher and came back. A no-op on every ordinary open (nothing is stashed) and on a
+    // stashed name that no longer resolves; see `restoreEditorPlace` for why a miss draws
+    // nothing rather than guessing. ⚠️ Here rather than in `EditorPage` because this is the
+    // line at which a node graph exists at all, and the restore is a call *on* it.
+    restoreEditorPlace(currentInstance);
     if (import.meta.webpackHot) {
       import.meta.webpackHot.accept('../../views/nodegrapheditor', () => {
         const activeComponent = currentInstance.activeComponent;

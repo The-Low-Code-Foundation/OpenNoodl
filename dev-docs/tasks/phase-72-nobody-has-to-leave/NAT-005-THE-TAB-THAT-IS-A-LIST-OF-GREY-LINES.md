@@ -55,11 +55,35 @@ four tasks will each invent it.
 7. No `dangerouslySetInnerHTML`, anywhere. This file renders **text children only** — the launcher
    is `pages/ProjectsPage` inside the same `nodeIntegration: true` window as the editor.
 
+## 🔴 Revised 2026-08-22 — NAT-012 narrowed which of these the PANEL draws
+
+D6 ruled the launcher tab is the community's home and the rail panel is the **door** to it, so
+`CommunityPanel` no longer draws **Guides and tutorials**, **Call replays**, the **People
+directory** or the **health readout**. FB-006 had already given all four a home on the launcher
+page — the tabs the web has.
+
+⚠️ **Nothing in this task's AC list is withdrawn**, and the distinction matters:
+
+- The **components** — `CommunitySectionBody`, `CommunityRow`, the four states, the per-section
+  `emptyLine`, the `Panel`/`Page` densities — are untouched and every one is still drawn. The
+  launcher draws all of them; the panel draws the same components for **Discussions**, the thread
+  pane and the profile pane.
+- What changed is the panel's **inventory**, not this task's vocabulary. AC2's article and replay
+  metadata is still rendered, on the launcher.
+- 🔴 **AC5's D15 pairing gained rather than lost.** `tests-unit/nat-005/launcher-community-render`
+  is unaffected (it grades the page); the panel's D15 early return is now asserted to precede
+  *every* remaining surface in `tests-unit/nat-012/panel-is-a-door.test.ts`.
+- ⚠️ **The health readout left the editor entirely** — it is a *community* number, not a project
+  one. The trap below still binds wherever it is drawn, which is now the launcher chrome only.
+
 ## Traps
 
 - 🔴 **`Community.tsx` lives in core-ui and is imported by the editor's rail panel too.** That path
   looks wrong and is deliberate: core-ui cannot import the editor, so the renderer owns the type.
   Two view models would be the defect. Anything extracted here must serve **both** surfaces.
+  ⚠️ **Since 2026-08-22 the two surfaces draw different subsets** (above) — so "serves both" now
+  means the *components* do, not that both render the same list. `useCommunityMirror` deliberately
+  still fetches everything for both, because splitting the fetch would give them two caches.
 - 🔴 **The health readout is a *readout*, not a gate** (D21 reversed D16 on 2026-08-19). Nothing may
   branch on it. It carries its `required` and its `n` because *"a median over three staff-answered
   threads is a true statement about nothing"* — a redesign that drops `n` to make the number look

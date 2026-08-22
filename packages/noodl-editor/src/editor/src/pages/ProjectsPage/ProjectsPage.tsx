@@ -85,6 +85,8 @@ import { useLearnerPath } from '../../hooks/useLearnerPath';
 import { useCommunityPeople } from '@noodl-hooks/useCommunityPeople';
 import { useCommunityThread } from '@noodl-hooks/useCommunityThread';
 
+import { takeLauncherLanding } from '@noodl-utils/launcher/launcherHandoff';
+
 import { useCommunityAccount } from './useCommunityAccount';
 import { useConnectAgent } from './useConnectAgent';
 
@@ -228,6 +230,13 @@ function showLoadFailureToast(projectName: string | undefined, projectDir?: stri
 }
 
 export function ProjectsPage(props: ProjectsPageProps) {
+  /**
+   * NAT-012 AC3. `useState`'s initialiser rather than a bare call, so a re-render does not read
+   * the stash a second time and get `undefined` — which would send the launcher back to Projects
+   * the first time anything above it re-rendered.
+   */
+  const [launcherLanding] = useState(takeLauncherLanding);
+
   // Real projects from LocalProjectsModel
   const [realProjects, setRealProjects] = useState<LauncherProjectData[]>([]);
 
@@ -1296,6 +1305,15 @@ export function ProjectsPage(props: ProjectsPageProps) {
   return (
     <>
       <Launcher
+        /**
+         * 🔴 NAT-012 AC3 — a door in the editor asked for a page, and this is where it is
+         * honoured. `takeLauncherLanding` is **consumed on read**, so this is the one mount that
+         * lands anywhere but Projects: close a second project afterwards and nothing is stashed,
+         * so FIX-025's *"the launcher opens on Projects"* holds for every open nobody asked to
+         * redirect. ⚠️ Read during render on purpose — `initialTab` is only consulted on the
+         * `Launcher`'s first render, so claiming it in an effect would claim it too late.
+         */
+        initialTab={launcherLanding}
         projects={realProjects}
         appVersion={platform.getVersion()}
         onCreateProject={handleCreateProject}

@@ -290,17 +290,95 @@ describe('AC4 — the community panel withholds nothing, proven against the real
     expect(isGated(communityPanel, 'Sign in from the launcher', VIEWER_OPENER)).toBe(true);
   });
 
-  it('and the three content sections are NOT inside any viewer branch', () => {
+  /**
+   * 🔴 **This row lost two of its three subjects on 2026-08-22 and had to be REPOINTED, not
+   * shortened.** NAT-012's narrowing moved *Guides and tutorials* and *Call replays* out of the
+   * panel and into the launcher's tabs (D6: the launcher is the community's home, the panel is
+   * the door). Both anchors vanished, and `isGated` **threw** rather than passing on a needle it
+   * could not find — which is the only reason this was noticed at the moment it happened.
+   *
+   * ⚠️ Deleting the two entries would have been the wrong repair, and precisely the trap this
+   * file is built against: the *claim* is "reading works signed out", and shrinking a claim's
+   * population to whatever still happens to be on one surface is how a check goes quiet without
+   * going red. The two sections still exist — the row follows them to {@link communityPage}
+   * below rather than forgetting they were ever covered.
+   */
+  it('and the content sections still in the panel are NOT inside any viewer branch', () => {
     expect({
       discussions: isGated(communityPanel, 'title="Discussions"', VIEWER_OPENER),
-      guides: isGated(communityPanel, 'title="Guides and tutorials"', VIEWER_OPENER),
-      replays: isGated(communityPanel, 'title="Call replays"', VIEWER_OPENER)
-    }).toEqual({ discussions: false, guides: false, replays: false });
+      // TUT-004's installable lessons — the section D6 kept, because installing one writes into
+      // your project. It was always ungated; it is named here now that it is a survivor.
+      tutorials: isGated(communityPanel, '<Tutorials pane={tutorials} />', VIEWER_OPENER)
+    }).toEqual({ discussions: false, tutorials: false });
   });
 
-  it('and neither is the link out to the web community', () => {
-    // The capability a person with no account has on the web, kept in the editor.
-    expect(isGated(communityPanel, 'label="Open community.nodegx.io"', VIEWER_OPENER)).toBe(false);
+  it('and neither are the two ways out of the panel', () => {
+    // The capability a person with no account has on the web, kept in the editor. 🔴 Two controls
+    // since NAT-012 AC3: the door to the launcher's community home (which closes the project and
+    // says so) and the labelled browser link. Neither may be withheld from a signed-out reader —
+    // a guest who cannot reach the home is the dead end AC5 forbids.
+    expect({
+      home: isGated(communityPanel, "leaveForLauncher('community')", VIEWER_OPENER),
+      browser: isGated(communityPanel, 'label="Open community.nodegx.io in your browser"', VIEWER_OPENER)
+    }).toEqual({ home: false, browser: false });
+  });
+});
+
+/**
+ * 🔴 **Where the two sections went, so the claim's population did not shrink** — see the note on
+ * the repointed row above.
+ *
+ * ⚠️ The launcher page is a **different file in a different package** and its viewer conditional
+ * is written the same way, so `VIEWER_OPENER` transfers. What does *not* transfer is the control:
+ * this page has no signed-out-only sentence to gate, so the known-firing arm for these anchors is
+ * the one in the panel, above. That is stated rather than papered over — a `false` here is only
+ * as trustworthy as a checker proven able to return `true` somewhere, and it has been.
+ */
+const communityPage = stripComments(
+  readFileSync(
+    join(
+      EDITOR_SRC,
+      '../../../../noodl-core-ui/src/preview/launcher/Launcher/views/Community.tsx'
+    ),
+    'utf8'
+  )
+);
+
+describe('AC4 — and the sections NAT-012 moved to the launcher withhold nothing either', () => {
+  /**
+   * 🔴 **The control, and it is not optional here — it is the row that stops the three below
+   * being vacuous.** The panel's own control (*"Sign in from the launcher"* inside
+   * `{view.viewer === false && …}`) proves the checker on THAT file. This is a different file in
+   * a different package, and it happens to contain **no viewer conditional at all**: its only
+   * `view.viewer` mentions are a ternary building a label and a `${view.viewer.handle}`
+   * substitution, which `sessionGuardedRegions` skips by design.
+   *
+   * So on this file `isGated` returns `false` for *every* input, including inputs that ought to
+   * read `true` — and three `false`s would have proved nothing whatsoever. This row supplies the
+   * missing arm by **mutation**: wrap a real anchor from this real source in a real viewer branch
+   * and require the checker to catch it. If this goes red the three rows below are meaningless,
+   * whatever they report.
+   */
+  it('the checker can SEE a gate on this file — the mutation arm', () => {
+    const gated = communityPage.replace('<CommunitySection', '{view.viewer && (<CommunitySection');
+    expect(isGated(gated, 'title="Bench"', VIEWER_OPENER)).toBe(true);
+  });
+
+  it('and on the real source, nothing on the page is viewer-gated at all', () => {
+    // The stronger statement the mutation arm licenses: not "these three anchors are outside the
+    // branches" but "there are no branches". ⚠️ Stated as a count so a viewer gate added later
+    // fails HERE, where the reasoning is, rather than silently only for the anchors named below.
+    expect(sessionGuardedRegions(communityPage, VIEWER_OPENER)).toEqual([]);
+  });
+
+  it('and the sections that moved here are among what it draws', () => {
+    expect({
+      tutorials: isGated(communityPage, 'title="Tutorials"', VIEWER_OPENER),
+      replays: isGated(communityPage, 'title="Replays"', VIEWER_OPENER),
+      // The bench came with them as a tab rather than a heading — FB-006. Named so this row
+      // reads as the whole of what the launcher draws, not a leftover pair.
+      bench: isGated(communityPage, 'title="Bench"', VIEWER_OPENER)
+    }).toEqual({ tutorials: false, replays: false, bench: false });
   });
 });
 

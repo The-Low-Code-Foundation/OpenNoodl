@@ -29,12 +29,31 @@
  * ```
  * (`nodegx-community/src/app/layout.tsx`, read 2026-08-22.)
  *
- * 🔴 **The first tab is "Bench", not "Discussions".** D6's written proposal said *Discussions* —
- * which is what this page's first heading has said since UNI-011 — and in the same sentence said
- * *same names as the web*. The two halves disagree, because the web calls the place **the Bench**
- * and has since UNI-015. Two names for one place is exactly the seam the ruling exists to close,
- * so the web's name wins and the launcher's old heading is what changes. ⚠️ It is one string in
- * one table if Richard wants the other reading.
+ * 🔴 **The first tab is "Bench", not "Discussions" — ruled 2026-08-22, and the question that
+ * settled it was whether those are two things.** D6's written proposal said *Discussions*, which
+ * is what this page's first heading had said since UNI-011, and in the same sentence said *same
+ * names as the web*, which has said **Bench** since UNI-015. Richard read the departure and asked
+ * the right question: he had just commissioned **chat** (FB-013) *as well as* the bench, so a
+ * rename looked like it might be quietly merging two surfaces.
+ *
+ * It is not, and the check is on disk rather than in anybody's memory:
+ *
+ * - This page's old `title="Discussions"` sat over `view.threads` (`Community.tsx:312` at
+ *   `5d31a567^`); the rail panel's still does (`CommunityPanel.tsx:222`).
+ * - Those threads are `bench_threads`, fetched from `/api/v1/bench/threads` and opened at
+ *   `community.nodegx.io/bench/<id>` (`communityapi.ts:1112`, `useCommunityThread.ts:315`).
+ * - UNI-011 defined the word that way when it coined it: *"**Discussions**: thread list, filters,
+ *   search, the unanswered queue."*
+ * - The web has **no `/discussions` route** — see the nav quoted above.
+ *
+ * One data source, one place, two names. So this is a heading catching up with the product, not a
+ * feature being folded into another.
+ *
+ * 🔴 **And chat is the reason to spend the word carefully rather than the reason to keep it.**
+ * FB-013 is ruled and unbuilt, and it arrives *as its own tab in this table*. A chat feed is more
+ * literally a discussion than a Q&A bench with an answered-state is, so "Discussions" is the name
+ * that becomes ambiguous the moment chat ships — pinning it to the bench now would spend it on the
+ * wrong surface. ⚠️ Still one string in one table if that reading changes.
  *
  * @module noodl-core-ui/preview/launcher/Launcher/views/communityTabs
  */

@@ -15,10 +15,46 @@
  *
  * ## ⚠️ What "empty is fine" does NOT mean
  *
- * It does not mean blank. D16's *design obligation* survives the reversal and is now the only
- * thing protecting this surface: the home is composed of things that exist whether or not anybody
- * posted — replays, guides, standing, and the health reading. Four sections, four independent
- * empty lines, each saying what it is *for*. See `mirrorview.ts` for the state machine.
+ * It does not mean blank. D16's *design obligation* survives the reversal: a surface is composed
+ * of things that exist whether or not anybody posted, each with its own empty line saying what it
+ * is *for*. See `mirrorview.ts` for the state machine.
+ *
+ * ## 🔴 NAT-012 / D6, 2026-08-22 — this panel is a DOOR, and it used to be a second home
+ *
+ * It drew seven things: viewer + refresh, Discussions, People, installable Tutorials, Guides and
+ * tutorials, Call replays, the health readout, and a browser button. That was the launcher's page
+ * again, in a narrower column — and D6 ruled the two surfaces are not peers: **the launcher tab is
+ * the community's home** (FB-006 gave it the web's tabs) and **this is the door from inside a
+ * project**, showing what is relevant to what you are doing.
+ *
+ * What stays, and the test each one passes — *is this about the project on the canvas?*
+ *
+ * - **Discussions** — the questions you asked from this editor, and their answers. The one verb
+ *   D6 leaves in the rail (`AskAboutNodeDialog`) lands here.
+ * - **The thread pane and the profile pane** — you reach a thread from your own question and a
+ *   profile from that thread's author line. Both are *continuations* of something project-shaped.
+ * - **TUT-004's installable tutorials** — 🔴 not community *content*: installing one **writes a
+ *   lesson into your project**, which is as project-relevant as anything else in the rail.
+ *
+ * What left, and where it went:
+ *
+ * | Gone from here | Why | Where it lives |
+ * |---|---|---|
+ * | **People** (the directory) | Browsing strangers is not about your project | Launcher's People tab |
+ * | **Guides and tutorials** | Reading is a home activity; the rows opened a browser | Launcher's Tutorials tab |
+ * | **Call replays** | Same | Launcher's Replays tab |
+ * | **The health readout** | A *community* number, not a project one | Launcher chrome (FB-006) |
+ *
+ * 🔴 **This revises two live task files, and both are named here rather than only in a commit**:
+ * NAT-008 AC1's *rail* half (the directory in the panel) is withdrawn — AC2's profile pane, which
+ * is the half that opens from a thread, is untouched and still drawn below. NAT-005's *panel* loses
+ * the guides and replays sections it specified; its vocabulary and its row components are
+ * unchanged, and the launcher still draws every one of them.
+ *
+ * ⚠️ **`useCommunityMirror` still fetches all of it.** The hook is shared with the launcher tab
+ * and narrowing the *fetch* per surface would give the two surfaces different caches — the exact
+ * two-copies arrangement NAT-005 collapsed. `view.articles`, `view.replays` and `view.health` are
+ * therefore live and unread here, on purpose.
  *
  * ## NAT-005 — the rows and the four states are no longer this file's own
  *
@@ -58,13 +94,10 @@ import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 
 import {
   CommunityDensity,
-  CommunityDirectoryView,
   CommunityProfileView,
   CommunityRow,
   CommunitySectionBody,
   CommunityThreadView,
-  absoluteDate,
-  kindLabel,
   metaLine,
   relativeTime,
   replyLatency
@@ -85,45 +118,19 @@ import { useCommunityPeople } from '@noodl-hooks/useCommunityPeople';
 import { useCommunityThread } from '@noodl-hooks/useCommunityThread';
 import { useTutorialInstall } from '@noodl-hooks/useTutorialInstall';
 
-import type { HealthReading } from '@noodl-models/community/mirrorview';
+import { leaveForLauncher } from '@noodl-utils/launcher/leaveForLauncher';
+
 import { Tutorials } from './Tutorials';
 
-function openCommunity(path = ''): void {
-  platform.openExternal(`${COMMUNITY_URL}${path}`);
-}
-
 /**
- * The threshold, as a readout.
- *
- * 🔴 **This used to be a gate and is now a number on a page.** D16's second caveat is the half
- * D21 keeps: *"a threshold nobody can see the approach to is a threshold that gets crossed by
- * rounding."* So every component shows its `required`, and the median shows the `n` it was
- * computed from — a median over three staff-answered threads is a true statement about nothing,
- * and the sample size is the only thing that says so.
+ * ⚠️ **No `path` parameter any more, and dropping it was the point.** It took one because the
+ * article and replay rows passed `/articles/<slug>` and `/replays/<slug>` — the "row that silently
+ * jumps to Chrome" AC2 names. Those rows went to the launcher with their sections, leaving exactly
+ * one caller: the explicitly labelled browser control. A parameter kept for nobody is an invitation
+ * to add the next silent jump, so it goes with them.
  */
-function Health({ health }: { health: HealthReading }) {
-  const median =
-    health.reply.medianHours === null
-      ? 'no replies yet'
-      : `${health.reply.medianHours.toFixed(1)}h median first reply`;
-
-  return (
-    <Box hasXSpacing hasYSpacing>
-      <VStack UNSAFE_style={{ gap: 4, alignItems: 'flex-start' }}>
-        <Text textType={TextType.Shy}>
-          {health.threads.value} of {health.threads.required} threads
-        </Text>
-        <Text textType={TextType.Shy}>
-          {health.weeksWithCall.value} of {health.weeksWithCall.required} consecutive weeks with a call
-        </Text>
-        <Text textType={TextType.Shy}>
-          {median} (n={health.reply.n}
-          {health.reply.unreplied > 0 ? `, ${health.reply.unreplied} unreplied` : ''}), target under{' '}
-          {health.reply.requiredBelowHours}h
-        </Text>
-      </VStack>
-    </Box>
-  );
+function openCommunity(): void {
+  platform.openExternal(COMMUNITY_URL);
 }
 
 export function CommunityPanel() {
@@ -131,8 +138,11 @@ export function CommunityPanel() {
   // NAT-007 — the same hook the launcher tab uses. See `useCommunityThread` for why the open/
   // closed state and the cache are shared rather than duplicated per surface.
   const { pane, openThread } = useCommunityThread();
-  // NAT-008 — the same hook the launcher tab uses, for the same reason.
-  const { people, profile, openPerson } = useCommunityPeople();
+  // 🔴 NAT-008 — the same hook the launcher tab uses, but D6 narrowed which half this surface
+  // draws. The **directory** (`people`) moved to the launcher, where FB-006 gives it a tab; the
+  // **profile pane** stays, because you reach it from a thread's author line and that thread is
+  // still here. So this destructure deliberately drops `people` and keeps the other two.
+  const { profile, openPerson } = useCommunityPeople();
   // TUT-004 — the tutorials you can install. Its own hook for `useCommunityPeople`'s reason: the
   // launcher tab will want the same list, and two copies is where a fix lands on one of them.
   const tutorials = useTutorialInstall();
@@ -244,84 +254,47 @@ export function CommunityPanel() {
             </CommunitySectionBody>
           </Section>
 
-          {/* 🔴 NAT-008 AC1 — the directory, in the rail. ⚠️ `people` is `null` when D15 refused
-              this viewer; the surface draws nothing rather than an empty section. */}
-          {people && (
-            <Section title="People" variant={SectionVariant.Panel} hasGutter>
-              <CommunityDirectoryView
-                view={people.directory}
-                density={CommunityDensity.Panel}
-                onQueryChange={people.onQueryChange}
-                onToggleFilter={people.onToggleFilter}
-                onOpenPerson={people.onOpenPerson}
-                onRetry={people.onRetry}
-              />
-            </Section>
-          )}
-
-          {/* 🔴 TUT-004 AC1 — ABOVE "Guides and tutorials", which opens the browser. The section
-              that keeps you here comes first. */}
+          {/* 🔴 TUT-004 — the tutorials you can install into THIS project. ⚠️ Its AC1 positioned
+              this section "above Guides and tutorials"; D6 removed that section, so the ordering
+              claim has lost its subject while the section itself is untouched. It stays because
+              installing a lesson writes into your project, which is as project-relevant as
+              anything else in the rail — see the module note on what "community" means here. */}
           <Tutorials pane={tutorials} />
 
-          <Section title="Guides and tutorials" variant={SectionVariant.Panel} hasGutter>
-            <CommunitySectionBody
-              state={view.articles}
-              emptyLine="Written guides published to the community appear here."
-              onRetry={refresh}
-              density={CommunityDensity.Panel}
-            >
-              {(articles) =>
-                articles.map((article) => (
-                  <CommunityRow
-                    key={article.slug}
-                    density={CommunityDensity.Panel}
-                    title={article.title}
-                    meta={kindLabel(article.kind)}
-                    detail={article.summary}
-                    onClick={() => openCommunity(`/articles/${article.slug}`)}
-                  />
-                ))
-              }
-            </CommunitySectionBody>
-          </Section>
+          {/* 🔴 NAT-012 AC3 + AC5 — the two ways out, both saying where they go.
 
-          <Section title="Call replays" variant={SectionVariant.Panel} hasGutter>
-            <CommunitySectionBody
-              state={view.replays}
-              emptyLine="Recordings of the weekly call are listed here, newest first."
-              onRetry={refresh}
-              density={CommunityDensity.Panel}
-            >
-              {(replays) =>
-                replays.map((replay) => (
-                  <CommunityRow
-                    key={replay.slug}
-                    density={CommunityDensity.Panel}
-                    title={replay.title}
-                    meta={metaLine([absoluteDate(replay.heldOn), relativeTime(replay.heldOn)])}
-                    detail={replay.description}
-                    onClick={() => openCommunity(`/replays/${replay.slug}`)}
-                  />
-                ))
-              }
-            </CommunitySectionBody>
-          </Section>
+              The **first** is the door D6 describes: the launcher is the community's home, and
+              this panel is the door to it from inside a project. ⚠️ It closes your project, and
+              the label says so rather than discovering it — that is the whole of Richard's
+              2026-08-22 ruling. See `launcherHandoff.ts` for why the alternative (a router that
+              keeps the project across the route) was declined.
 
-          {view.health && (
-            <Section title="How the community is doing" variant={SectionVariant.Panel} hasGutter>
-              <Health health={view.health} />
-            </Section>
-          )}
-
+              The **second** is AC2's one permitted `openExternal`: an explicitly labelled "opens
+              in your browser" control. It is kept rather than folded into the first because the
+              website is not the launcher, and making somebody close a project to reach a page
+              they asked for by name would be a worse hand-off than the one being removed. */}
           <Section variant={SectionVariant.PanelShy} hasGutter hasTopDivider>
             <Box hasYSpacing>
-              <PrimaryButton
-                variant={PrimaryButtonVariant.Ghost}
-                size={PrimaryButtonSize.Small}
-                label="Open community.nodegx.io"
-                icon={IconName.ExternalLink}
-                onClick={() => openCommunity()}
-              />
+              <VStack UNSAFE_style={{ gap: 8, alignItems: 'stretch' }}>
+                <PrimaryButton
+                  variant={PrimaryButtonVariant.Ghost}
+                  size={PrimaryButtonSize.Small}
+                  label="Community home — closes your project"
+                  icon={IconName.Home}
+                  onClick={() => leaveForLauncher('community')}
+                />
+                <Text textType={TextType.Shy}>
+                  People, guides, replays and the full discussion list live in the launcher. Reopening this project
+                  brings you back to the component you were on.
+                </Text>
+                <PrimaryButton
+                  variant={PrimaryButtonVariant.Ghost}
+                  size={PrimaryButtonSize.Small}
+                  label="Open community.nodegx.io in your browser"
+                  icon={IconName.ExternalLink}
+                  onClick={() => openCommunity()}
+                />
+              </VStack>
             </Box>
           </Section>
         </Box>

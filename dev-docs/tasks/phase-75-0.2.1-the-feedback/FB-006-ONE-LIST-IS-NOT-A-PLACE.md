@@ -12,11 +12,19 @@ one section on screen at a time, with the chrome (who you are, refresh, the heal
 browser door) framing all of them and a lead sentence inside each one saying what *that* tab is
 for. `views/communityTabs.ts` holds the catalogue and the plan; `views/Community.tsx` draws it.
 
-- 🔴 **The first tab is "Bench", not "Discussions" — a deliberate departure from the ruled
-  proposal's wording, and one string to change back.** D6 said *Discussions* and, in the same
-  sentence, *same names as the web*. The web calls the place **the Bench** (UNI-015) and has
-  since it was built, so two names for one place is exactly the seam D6 exists to close. The
-  reasoning is in `communityTabs.ts`'s module note, and the label lives in one table row.
+- ✅ **The first tab is "Bench", not "Discussions" — RULED 2026-08-22**, after Richard read the
+  departure and asked whether the two were being confused: he had commissioned **chat** (FB-013)
+  *as well as* the bench, so a rename looked like it might be merging two surfaces. It is not, and
+  the check is on disk: the old `title="Discussions"` sat over `view.threads` (`Community.tsx:312`
+  at `5d31a567^`, and the rail panel's still does at `CommunityPanel.tsx:222`); those threads are
+  `bench_threads` from `/api/v1/bench/threads`, opened at `community.nodegx.io/bench/<id>`
+  (`communityapi.ts:1112`, `useCommunityThread.ts:315`); UNI-011 coined the word for exactly that
+  list (*"thread list, filters, search, the unanswered queue"*); and the web has **no
+  `/discussions` route**. One data source, one place, two names.
+  🔴 **Chat is the argument for "Bench", not against it.** FB-013 arrives as its own tab in the
+  same table, and a chat feed is more literally a *discussion* than an answered-state Q&A bench —
+  so "Discussions" is the name that goes ambiguous the moment chat ships. The full reasoning is in
+  `communityTabs.ts`'s module note; the label is still one table row.
 - 🔴 **`Tabs` grew a `TabStrip`** — the button row, controlled and hook-free — because `Tabs`
   holds the active tab in `useState` and `tests-unit`'s element walker throws on any hook in the
   tree it evaluates. A community tab rendering `Tabs` would have taken NAT-005's whole render

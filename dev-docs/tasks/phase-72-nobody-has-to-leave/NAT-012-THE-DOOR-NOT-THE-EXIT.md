@@ -5,7 +5,7 @@
 | **Tier** | 4 |
 | **Effort** | M |
 | **Surface** | `editor`, `core-ui` |
-| **Rulings** | ✅ **D6 SETTLED 2026-08-22** (launcher home, editor door) · 🔴 **AC3 needs a new one** — see below · inherits **D15**, **D21** |
+| **Rulings** | ✅ **D6 SETTLED 2026-08-22** (launcher home, editor door) · ✅ **AC3 SETTLED 2026-08-22** — accept the close, label it, restore the component · inherits **D15**, **D21** |
 | **Depends on** | **NAT-007** through **NAT-011** — this is the task that makes them one place |
 
 ## State, 2026-08-22 — D6 ruled, the launcher half shipped, AC4 built
@@ -37,7 +37,7 @@ behind itself.
   effect of a drive. The panel side of the path (a thread opening in place in the rail) was driven
   by NAT-007.
 
-### 🔴 AC3 is a ROUTER task, and the task file did not know that
+### ✅ AC3 is a ROUTER task, and the task file did not know that — ruled 2026-08-22
 
 *"Going from the rail panel to the launcher home does not lose your project or your place."*
 Read `router.tsx:154–210`: the editor and the launcher are **two routes in one window**, and
@@ -57,8 +57,16 @@ AC3 as written cannot be met by anything in the community code, and the two hone
    cost in honesty instead: the control says what it does, and reopening restores the component
    you were on.
 
-**This needs a ruling, and it is cheap to give one:** (1) is a router change with a blast radius
-across every panel; (2) is a label and a restore. Nothing else in NAT-012 is blocked on it.
+✅ **RULED 2026-08-22: (2) — accept the close, and pay for it in honesty.** Richard took the
+option that leaves `router.tsx`'s dispose branch alone; his framing already tolerated leaving the
+project, and (1) would have put a keep-flag through the twenty lines that previously produced the
+white-screen bug. So AC3 is met by **the control saying what it does** and **reopening putting you
+back on the component you were on** — not by keeping the project alive across the route.
+
+⚠️ **AC3's wording therefore no longer describes what is built.** "Does not lose your project"
+is false by ruling; "does not lose your place" is what survives, and it is now a *restore*
+obligation rather than a *persistence* one. The criterion is rewritten below to match the ruling
+rather than left as a bar nothing will clear.
 
 ### AC2 — the `openExternal` audit, taken 2026-08-22
 
@@ -109,7 +117,12 @@ community page."* Leaving your **project** for the launcher is fine. Leaving the
    your browser" control, for the D6 long tail and for things the editor genuinely should not host
    (a video call, a payment). 🔴 An audit lists every remaining call site and the reason it is
    still there. A call site nobody can justify is deleted.
-3. Going from the rail panel to the launcher home **does not lose your project or your place**.
+3. ✅ **Ruled 2026-08-22 — rewritten to the ruling.** Going from the rail panel to the launcher
+   home **closes the project, says so before it does, and puts you back where you were when you
+   reopen.** The control names the consequence (not "Community" alone), and reopening the project
+   restores the component you had open. 🔴 The old wording — *"does not lose your project or your
+   place"* — was written before anybody read `router.tsx:154–210` and asked for a persistence the
+   router does not offer; it is kept here only so the change is legible.
 4. `AskAboutNodeDialog` no longer ends at a browser: asking opens the thread in the editor.
 5. **D6 is answered and visible.** Orgs, assignments and shelf items either have editor surfaces or
    have honest hand-offs — never a dead end and never a silent jump to Chrome.

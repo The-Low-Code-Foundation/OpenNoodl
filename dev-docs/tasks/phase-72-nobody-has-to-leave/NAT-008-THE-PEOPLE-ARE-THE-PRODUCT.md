@@ -18,7 +18,7 @@ path was driven over real HTTP against a locally-run platform — because NAT-00
 
 | AC | State | Where |
 |---|---|---|
-| 1 — a people surface, browse and search, four section states | ✅ 🟡 | `CommunityDirectoryView` + `composeDirectory`. 🔴 The search is **not** on the server — see below. **Driven in the launcher**; 🟡 the rail panel in situ was not |
+| 1 — a people surface, browse and search, four section states | ✅ | `CommunityDirectoryView` + `composeDirectory`. 🔴 The search is **not** on the server — see below. **Driven in the launcher**. 🔴 **The rail half was WITHDRAWN 2026-08-22 — see below**, so *"the rail panel in situ was not driven"* is no longer an outstanding item; there is nothing there to drive |
 | 2 — a profile, from the directory or an author line | ✅ | `CommunityProfileView`, `composeProfileView`; the six-branch order is `threadview`'s, one branch longer |
 | 3 — badges through a CSS **mask**, not an `<img>` | ✅ | `badgeMarks.ts` — twelve marks bundled as data URIs; graded with the comments stripped |
 | 4 — author lines are entry points | ✅ | `CommunityThreadView`'s author is a `button` when a host can open a profile, plain text when not |
@@ -138,14 +138,31 @@ off the boxes. Fixed (`e86cd31e`); everything now starts at 47.
 ⚠️ **`.Rows` still has no side padding and that stays** — a row carries its own so its hover fill
 reaches the card's full width. The two are inset by *different mechanisms* on purpose.
 
+### 🔴 AC1's rail half was withdrawn by NAT-012, 2026-08-22
+
+D6 ruled that the launcher tab is the community's home and the rail panel is the **door** to it
+from inside a project — so NAT-012's narrowing removed `<CommunityDirectoryView>` from
+`CommunityPanel`. Browsing strangers fails the panel's one test (*is this about the project on the
+canvas?*); FB-006 gave the directory a People tab in the launcher, where it was driven anyway.
+
+⚠️ **AC2 is untouched, and the distinction is the point.** The *profile pane* stays in the rail,
+because you reach it from the author line of a thread that is still drawn there — AC4's entry
+points would otherwise become the dead ends D6 exists to remove. `useCommunityPeople` still feeds
+the panel `profile` and `openPerson`; only `people` stopped being destructured.
+
+That pairing — directory **absent**, pane **present**, opener **wired** — is asserted as one
+object in `tests-unit/nat-012/panel-is-a-door.test.ts`, so a later narrowing cannot take the pane
+with the directory and stay green.
+
 ### ⚠️ What was still NOT driven
 
-- 🔴 **The rail panel itself.** It needs a project open, the launcher's recents did not list the
-  copy made for the drive, and there is no editor global to open one programmatically — a native
-  file dialog is not reachable from CDP. ✅ What *was* measured is the same component narrowed to
-  **320px**: no horizontal overflow anywhere, chips wrapping to two lines, titles ellipsising
-  rather than clipping, no page scroll. That is the wrap behaviour; it is **not** `BasePanel`'s
-  chrome, `ScrollArea`, or `Panel` density in situ.
+- ✅ **The rail panel itself — MOOT since 2026-08-22.** It needs a project open, the launcher's
+  recents did not list the copy made for the drive, and there is no editor global to open one
+  programmatically. It no longer matters for AC1: **the directory is not drawn in the rail any
+  more** (above). ✅ What *was* measured is the same component narrowed to **320px**: no horizontal
+  overflow anywhere, chips wrapping to two lines, titles ellipsising rather than clipping, no page
+  scroll. ⚠️ That measurement still stands for the **launcher**, which is now the only surface
+  that draws it.
 - ⚠️ **A thread with an author line was not clicked through to a profile** — the seeded threads
   render, but AC4's join was graded at the component and the producer rather than by a click.
 - ⚠️ **D15's refusal over HTTP** — needs an `org_minor` session token. Graded at the composer and
