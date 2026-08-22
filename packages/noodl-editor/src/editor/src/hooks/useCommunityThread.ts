@@ -43,6 +43,12 @@ import { acceptFailureLine, canSendAnswer, composeReplyBox } from '@noodl-models
 
 import type { CommunityReplyBox, CommunityThreadState } from '@noodl-core-ui/components/community';
 import { notifyCommunityChanged } from '../models/community/communitychanged';
+import {
+  COMMUNITY_THREAD_EVENT,
+  clearPendingCommunityThread,
+  takePendingCommunityThread
+} from '../utils/community/communityThreadRequest';
+import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 
 /**
  * Threads read this session, newest read wins.
@@ -125,6 +131,37 @@ export function useCommunityThread(options: { pullFor?: PullOffer } = {}): Commu
     setAcceptPending(null);
     setAcceptFailure(null);
   }, []);
+
+  /**
+   * NAT-012 AC4 — a thread somebody asked for from elsewhere in the editor.
+   *
+   * 🔴 **Both halves are needed and they are not the same half.** The listener catches a request
+   * made while this hook is already mounted (the reader has the panel open and asks a second
+   * question); the `take` catches one made *before* it existed, which is the ordinary case —
+   * `AskAboutNodeDialog` is reached from a canvas right-click, so somebody asking their first
+   * question has never opened the Community panel. See `communityThreadRequest` for why an emit
+   * on its own loses exactly that case.
+   *
+   * ⚠️ In the hook rather than in the panel, so the launcher tab honours a request too. The two
+   * surfaces are exclusive routes in one window, so only one of them ever claims a given stash.
+   */
+  useEffect(() => {
+    const group = {};
+    EventDispatcher.instance.on(
+      COMMUNITY_THREAD_EVENT,
+      (id: string) => {
+        // Delivered live — drop the stash so a later remount does not reopen it.
+        clearPendingCommunityThread();
+        openThread(id);
+      },
+      group
+    );
+
+    const pending = takePendingCommunityThread();
+    if (pending) openThread(pending);
+
+    return () => EventDispatcher.instance.off(group);
+  }, [openThread]);
 
   const onBack = useCallback(() => setThreadId(null), []);
   const onRetry = useCallback(() => {

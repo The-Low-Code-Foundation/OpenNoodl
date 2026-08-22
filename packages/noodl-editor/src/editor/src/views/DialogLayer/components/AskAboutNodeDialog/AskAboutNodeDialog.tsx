@@ -85,6 +85,7 @@ import { composeNodeQuestion } from '@noodl-models/community/nodequestion';
 import { QuestionEnvironment } from '@noodl-models/community/nodequestion';
 import { OFF_REASON_TEXT, ShareAttachment, describeSharablePorts } from '@noodl-models/community/portshare';
 import { RedactorOptions } from '@noodl-utils/report/redact';
+import { requestCommunityThread } from '@noodl-utils/community/communityThreadRequest';
 
 import { captureLivePreview, hasLivePreview, type PreviewCapture } from '../../../SandboxSurface';
 import { portValueKey, type PortValueRef } from '../../../panels/propertyeditor/components/PortsTab/portValues';
@@ -546,12 +547,34 @@ export function AskAboutNodeDialog({
             />
           </HStack>
 
+          {/*
+            🔴 NAT-012 AC4 — the ask no longer ends at a sentence. It used to say "Answers will
+            appear on the Bench" and stop: the one project-relevant verb D6 leaves in the editor,
+            finishing with nowhere to click. Richard's bar is *"whatever you do in the editor can
+            be viewed and solved in the editor"*, and this is the click that makes it true.
+
+            ⚠️ The dialog CLOSES on the way. The thread opens in the rail panel behind it, and a
+            modal left standing over the answer it just opened is the same dead end with an extra
+            step. See `communityThreadRequest` for why the request is stashed as well as emitted —
+            somebody asking their first question has never opened that panel.
+          */}
           {postState.phase === 'posted' && (
-            <Text textType={TextType.Shy}>
-              {postState.pointsAwarded > 0
-                ? `Posted — ${postState.pointsAwarded} points. Answers will appear on the Bench.`
-                : 'Posted. Answers will appear on the Bench.'}
-            </Text>
+            <VStack hasSpacing={1} UNSAFE_style={{ alignItems: 'flex-start' }}>
+              <Text textType={TextType.Shy}>
+                {postState.pointsAwarded > 0
+                  ? `Posted — ${postState.pointsAwarded} points.`
+                  : 'Posted.'}
+              </Text>
+              <PrimaryButton
+                label="Open the thread"
+                variant={PrimaryButtonVariant.MutedOnLowBg}
+                size={PrimaryButtonSize.Small}
+                onClick={() => {
+                  requestCommunityThread(postState.threadId);
+                  onClose();
+                }}
+              />
+            </VStack>
           )}
           {postState.phase === 'failed' && <Text textType={TextType.Shy}>{postState.message}</Text>}
 
