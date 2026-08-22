@@ -13,5 +13,6 @@
   "provenance": {
     "sourceUrl": "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js",
     "importedAt": "2026-08-22"
-  }
+  },
+  "icon": "icon.png"
 }

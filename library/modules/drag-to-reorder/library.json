@@ -8,5 +8,6 @@
   "docsPath": "/library/modules/drag-to-reorder/",
   "version": "1.0.0",
   "minEditorVersion": "0.1.0",
-  "runtimeVersion": "2.7.0"
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png"
 }

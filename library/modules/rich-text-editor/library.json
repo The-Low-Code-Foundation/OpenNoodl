@@ -12,5 +12,6 @@
   "provenance": {
     "sourceUrl": "https://registry.npmjs.org/@tiptap/starter-kit/-/starter-kit-3.30.2.tgz (with @tiptap/core@3.30.2, @tiptap/extensions@3.30.2, @tiptap/pm@3.30.2, prosemirror-* per LICENSE-tiptap.txt; bundled locally with esbuild@0.25.9, iife, minified)",
     "importedAt": "2026-08-22"
-  }
+  },
+  "icon": "icon.png"
 }

@@ -7,5 +7,6 @@
     "Feedback"
   ],
   "version": "1.0.0",
-  "minEditorVersion": "0.1.0"
+  "minEditorVersion": "0.1.0",
+  "icon": "icon.png"
 }

@@ -9,5 +9,6 @@
   "docsPath": "/library/modules/virtual-list/",
   "version": "1.0.0",
   "minEditorVersion": "0.1.0",
-  "runtimeVersion": "2.7.0"
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png"
 }
