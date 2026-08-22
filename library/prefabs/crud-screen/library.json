@@ -1,0 +1,11 @@
+{
+  "label": "CRUD Screen",
+  "description": "A complete list-edit screen over one cloud collection: Query Records list with full-text search and Prev/Next pagination, a side panel that creates (Create Record) or edits (Update Record, form pre-filled via a Record node) the selected row, and per-row delete with an inline Yes/No confirm (Delete Record). Hand-built loading and empty states. The collection is one input: set Class on the CRUD Screen instance.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Data"
+  ],
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0"
+}

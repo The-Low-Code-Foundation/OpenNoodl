@@ -1,13 +1,13 @@
 {
   "label": "Avatar",
-  "description": "A module with components to build avatars.",
+  "description": "Registers an Avatar visual node (image, initials or custom content; sizes xsmall to xxlarge; borders, outlines and hover states) plus Avatar Group / Avatar Group Item components for overlapping avatar stacks driven by an Items array. Includes a Sample component demonstrating every variant. No longer bundles a Material Icons icon set — install the standalone Material Icons module if you want glyph avatars.",
   "type": "module",
   "tags": [
     "UI"
   ],
   "icon": "icon.png",
   "docsPath": "/library/modules/avatar/",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

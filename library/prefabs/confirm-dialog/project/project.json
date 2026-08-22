@@ -1,0 +1,455 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/Confirm Dialog",
+            "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b100",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b001",
+                        "fromProperty": "Open",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b002",
+                        "toProperty": "on"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b001",
+                        "fromProperty": "Close",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b002",
+                        "toProperty": "off"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b002",
+                        "fromProperty": "state",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b005",
+                        "toProperty": "mounted"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b001",
+                        "fromProperty": "Title",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b008",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b001",
+                        "fromProperty": "Message",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b009",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b001",
+                        "fromProperty": "Confirm Label",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b00c",
+                        "toProperty": "label"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b001",
+                        "fromProperty": "Cancel Label",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b00b",
+                        "toProperty": "label"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b001",
+                        "fromProperty": "Danger",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b003",
+                        "toProperty": "input"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b003",
+                        "fromProperty": "currentValue",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b00c",
+                        "toProperty": "backgroundColor"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b006",
+                        "fromProperty": "onClick",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b002",
+                        "toProperty": "off"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b006",
+                        "fromProperty": "onClick",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b004",
+                        "toProperty": "Cancelled"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b00b",
+                        "fromProperty": "onClick",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b002",
+                        "toProperty": "off"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b00b",
+                        "fromProperty": "onClick",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b004",
+                        "toProperty": "Cancelled"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b00c",
+                        "fromProperty": "onClick",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b002",
+                        "toProperty": "off"
+                    },
+                    {
+                        "fromId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b00c",
+                        "fromProperty": "onClick",
+                        "toId": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b004",
+                        "toProperty": "Confirmed"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b001",
+                        "type": "Component Inputs",
+                        "x": -620,
+                        "y": 80,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Open",
+                                "plug": "output",
+                                "type": {
+                                    "name": "signal"
+                                },
+                                "group": "Actions",
+                                "index": 0
+                            },
+                            {
+                                "name": "Close",
+                                "plug": "output",
+                                "type": {
+                                    "name": "signal"
+                                },
+                                "group": "Actions",
+                                "index": 1
+                            },
+                            {
+                                "name": "Title",
+                                "plug": "output",
+                                "type": {
+                                    "name": "string"
+                                },
+                                "group": "Content",
+                                "index": 2
+                            },
+                            {
+                                "name": "Message",
+                                "plug": "output",
+                                "type": {
+                                    "name": "string"
+                                },
+                                "group": "Content",
+                                "index": 3
+                            },
+                            {
+                                "name": "Confirm Label",
+                                "plug": "output",
+                                "type": {
+                                    "name": "string"
+                                },
+                                "group": "Content",
+                                "index": 4
+                            },
+                            {
+                                "name": "Cancel Label",
+                                "plug": "output",
+                                "type": {
+                                    "name": "string"
+                                },
+                                "group": "Content",
+                                "index": 5
+                            },
+                            {
+                                "name": "Danger",
+                                "plug": "output",
+                                "type": {
+                                    "name": "boolean"
+                                },
+                                "group": "Style",
+                                "index": 6
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b002",
+                        "type": "Switch",
+                        "label": "Dialog open?",
+                        "x": -220,
+                        "y": 40,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b003",
+                        "type": "Boolean To String",
+                        "label": "Danger variant color",
+                        "x": -220,
+                        "y": 260,
+                        "parameters": {
+                            "trueString": "var(--destructive)",
+                            "falseString": "var(--primary)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b004",
+                        "type": "Component Outputs",
+                        "x": 260,
+                        "y": 120,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Confirmed",
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Cancelled",
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b005",
+                        "type": "Group",
+                        "label": "Dialog layer",
+                        "x": 20,
+                        "y": -220,
+                        "parameters": {
+                            "position": "absolute",
+                            "width": {
+                                "value": 100,
+                                "unit": "%"
+                            },
+                            "height": {
+                                "value": 100,
+                                "unit": "%"
+                            },
+                            "mounted": false
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b006",
+                                "type": "Group",
+                                "label": "Scrim",
+                                "parameters": {
+                                    "position": "absolute",
+                                    "width": {
+                                        "value": 100,
+                                        "unit": "%"
+                                    },
+                                    "height": {
+                                        "value": 100,
+                                        "unit": "%"
+                                    },
+                                    "backgroundColor": "var(--gray-950)",
+                                    "opacity": 0.5
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b007",
+                                "type": "Group",
+                                "label": "Dialog card",
+                                "parameters": {
+                                    "position": "absolute",
+                                    "alignX": "center",
+                                    "alignY": "center",
+                                    "width": {
+                                        "value": 420,
+                                        "unit": "px"
+                                    },
+                                    "sizeMode": "contentHeight",
+                                    "backgroundColor": "var(--surface-raised)",
+                                    "borderStyle": "solid",
+                                    "borderWidth": {
+                                        "value": 1,
+                                        "unit": "px"
+                                    },
+                                    "borderColor": "var(--border)",
+                                    "borderRadius": {
+                                        "value": 8,
+                                        "unit": "px"
+                                    },
+                                    "blockTouch": true,
+                                    "paddingTop": {
+                                        "value": 24,
+                                        "unit": "px"
+                                    },
+                                    "paddingBottom": {
+                                        "value": 24,
+                                        "unit": "px"
+                                    },
+                                    "paddingLeft": {
+                                        "value": 24,
+                                        "unit": "px"
+                                    },
+                                    "paddingRight": {
+                                        "value": 24,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b008",
+                                        "type": "Text",
+                                        "label": "Title",
+                                        "parameters": {
+                                            "textStyle": "Title Medium",
+                                            "text": "Are you sure?",
+                                            "color": "var(--foreground)"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b009",
+                                        "type": "Text",
+                                        "label": "Message",
+                                        "parameters": {
+                                            "text": "This action cannot be undone.",
+                                            "color": "var(--muted-foreground)",
+                                            "marginTop": {
+                                                "value": 8,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b00a",
+                                        "type": "Group",
+                                        "label": "Button row",
+                                        "parameters": {
+                                            "flexDirection": "row",
+                                            "justifyContent": "flex-end",
+                                            "marginTop": {
+                                                "value": 24,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": [
+                                            {
+                                                "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b00b",
+                                                "type": "net.noodl.controls.button",
+                                                "label": "Cancel button",
+                                                "parameters": {
+                                                    "label": "Cancel",
+                                                    "backgroundColor": "transparent",
+                                                    "color": "var(--foreground)",
+                                                    "borderStyle": "solid",
+                                                    "borderWidth": {
+                                                        "value": 1,
+                                                        "unit": "px"
+                                                    },
+                                                    "borderColor": "var(--border)",
+                                                    "borderRadius": {
+                                                        "value": 6,
+                                                        "unit": "px"
+                                                    },
+                                                    "marginRight": {
+                                                        "value": 12,
+                                                        "unit": "px"
+                                                    }
+                                                },
+                                                "stateParameters": {
+                                                    "hover": {
+                                                        "borderColor": "var(--border-strong)"
+                                                    },
+                                                    "focused": {
+                                                        "borderColor": "var(--ring)"
+                                                    }
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            },
+                                            {
+                                                "id": "7d1c4e88-2a5b-4c19-9f3e-5aa0c2d4b00c",
+                                                "type": "net.noodl.controls.button",
+                                                "label": "Confirm button",
+                                                "parameters": {
+                                                    "label": "Confirm",
+                                                    "backgroundColor": "var(--primary)",
+                                                    "color": "var(--primary-foreground)",
+                                                    "borderStyle": "solid",
+                                                    "borderWidth": {
+                                                        "value": 2,
+                                                        "unit": "px"
+                                                    },
+                                                    "borderColor": "transparent",
+                                                    "borderRadius": {
+                                                        "value": 6,
+                                                        "unit": "px"
+                                                    }
+                                                },
+                                                "stateParameters": {
+                                                    "focused": {
+                                                        "borderColor": "var(--ring)"
+                                                    }
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {
+                "Title Medium": {
+                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                    "fontSize": {
+                        "value": "20",
+                        "unit": "px"
+                    },
+                    "color": "#000000",
+                    "letterSpacing": "Auto",
+                    "lineHeight": {
+                        "value": "120",
+                        "unit": "%"
+                    },
+                    "textTransform": "none"
+                }
+            },
+            "colors": {}
+        }
+    },
+    "variants": []
+}

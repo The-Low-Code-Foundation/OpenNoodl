@@ -1,0 +1,13 @@
+{
+  "label": "Multi Select",
+  "description": "Multi-select input in three display variants, each a drop-in component: List (checkbox group), Pills (toggleable pill buttons), and Dropdown (a drop-down whose selected items show as removable pills). All three are data-driven — feed an Options array (plus optional Labels and an initial Selection) and read the result from the Selected Items output and the Changed signal.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Form",
+    "Input"
+  ],
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}

@@ -1,0 +1,134 @@
+{
+    "name": "Drag To Reorder Module",
+    "components": [
+        {
+            "name": "/Drag To Reorder Demo",
+            "id": "d201e0de-0001-4c2e-9b3a-dd12ee450000",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "5747da7a-0005-4c2e-9b3a-dd12ee450005",
+                        "fromProperty": "items",
+                        "toId": "d0a61e00-0003-4c2e-9b3a-dd12ee450003",
+                        "toProperty": "items"
+                    },
+                    {
+                        "fromId": "d0a61e00-0003-4c2e-9b3a-dd12ee450003",
+                        "fromProperty": "fromIndex",
+                        "toId": "e78e5510-0006-4c2e-9b3a-dd12ee450006",
+                        "toProperty": "from"
+                    },
+                    {
+                        "fromId": "d0a61e00-0003-4c2e-9b3a-dd12ee450003",
+                        "fromProperty": "toIndex",
+                        "toId": "e78e5510-0006-4c2e-9b3a-dd12ee450006",
+                        "toProperty": "to"
+                    },
+                    {
+                        "fromId": "d0a61e00-0003-4c2e-9b3a-dd12ee450003",
+                        "fromProperty": "changed",
+                        "toId": "e78e5510-0006-4c2e-9b3a-dd12ee450006",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "e78e5510-0006-4c2e-9b3a-dd12ee450006",
+                        "fromProperty": "asString",
+                        "toId": "57a70510-0004-4c2e-9b3a-dd12ee450004",
+                        "toProperty": "text"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "9a0b1c2d-0002-4c2e-9b3a-dd12ee450002",
+                        "type": "Group",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                            "sizeMode": "contentHeight",
+                            "paddingTop": 16,
+                            "paddingBottom": 16,
+                            "paddingLeft": 16,
+                            "paddingRight": 16
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "7e0d0d0d-0000-4c2e-9b3a-dd12ee450007",
+                                "type": "Text",
+                                "x": 20,
+                                "y": 60,
+                                "parameters": {
+                                    "text": "Drag the rows to reorder the list",
+                                    "color": "var(--foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "d0a61e00-0003-4c2e-9b3a-dd12ee450003",
+                                "type": "nodegx.drag-to-reorder",
+                                "x": 20,
+                                "y": 130,
+                                "parameters": {
+                                    "labelProperty": "label",
+                                    "gap": 8,
+                                    "itemBackground": "var(--surface-raised)",
+                                    "textColor": "var(--foreground)",
+                                    "borderColor": "var(--border)",
+                                    "indicatorColor": "var(--primary)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "57a70510-0004-4c2e-9b3a-dd12ee450004",
+                                "type": "Text",
+                                "x": 20,
+                                "y": 200,
+                                "parameters": {
+                                    "text": "Drag an item to fire Changed",
+                                    "color": "var(--muted-foreground)",
+                                    "marginTop": 12
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "5747da7a-0005-4c2e-9b3a-dd12ee450005",
+                        "type": "Static Data",
+                        "x": 420,
+                        "y": 60,
+                        "parameters": {
+                            "type": "json",
+                            "json": "[\n  { \"label\": \"Sketch the landing page\" },\n  { \"label\": \"Wire up the sign-up form\" },\n  { \"label\": \"Seed the database\" },\n  { \"label\": \"Write the release notes\" },\n  { \"label\": \"Ship it\" }\n]"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "e78e5510-0006-4c2e-9b3a-dd12ee450006",
+                        "type": "Expression",
+                        "x": 420,
+                        "y": 200,
+                        "parameters": {
+                            "expression": "'Moved row ' + (from + 1) + ' to position ' + (to + 1)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "1",
+    "metadata": {}
+}

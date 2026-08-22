@@ -1,0 +1,13 @@
+{
+  "label": "File Download",
+  "description": "A Download File logic node that saves any string to the user's machine as a real file — Blob + object URL, fully client-side, no dependencies. Wire To CSV's CSV output into Content, send Download, and get Done or Failure + Error. Filename and MIME Type inputs (text/plain default; use text/csv or application/json). Ships a demo component: Static Data → To CSV → Download File behind a button.",
+  "type": "module",
+  "tags": [
+    "Utility",
+    "Data"
+  ],
+  "docsPath": "/library/modules/file-download/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}

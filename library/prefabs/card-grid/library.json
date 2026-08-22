@@ -1,0 +1,13 @@
+{
+  "label": "Card & Card Grid",
+  "description": "A styled Card (optional media area on top, title, body text, footer/actions strip, Clicked signal, hover affordance) plus a responsive Card Grid that repeats it over any data array. The grid packs as many 240px-minimum columns as fit and degrades to a single full-width column when narrow. Out of the box it renders six sample cards from a Static Data node; connect your own array (Title/Body/Image/Footer per item) to the Items input and it wins over the samples. The grid forwards each card's click as Card Clicked with Clicked Title and Clicked Item Id.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Layout",
+    "Data"
+  ],
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}

@@ -1,6 +1,6 @@
 {
   "label": "Supabase",
-  "description": "Connects to Supabase and handles queries, users and authTokens. Built by @gmaison and @RicoTrevisan.",
+  "description": "Supabase connector: pure-logic components for auth and data. Setup Client creates the client from your project URL + anon key (Noodl.Variables.supabase); Log In, Log Out, Sign Up, Send Magic Link, Send Password Reset, Resend Confirmation, Update/Fetch Current User Auth and Profile Data cover the auth flows, and an Example Request shows a from().select() query. No UI — wire the Do/Success/Failure signals into your own pages. Originally by @gmaison and @RicoTrevisan.",
   "type": "prefab",
   "tags": [
     "Data",
@@ -9,7 +9,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/supabase/",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

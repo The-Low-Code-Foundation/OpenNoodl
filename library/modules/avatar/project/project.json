@@ -2221,14 +2221,11 @@
                                                 "dynamicports": [],
                                                 "children": [
                                                     {
-                                                        "id": "fe60f5e6-b4c4-5d90-4be8-d6456b4c4a7a",
-                                                        "type": "net.noodl.visual.icon",
+                                                        "id": "046c8758-2c30-401e-80c1-0d6219f32f80",
+                                                        "type": "Text",
                                                         "parameters": {
-                                                            "iconIconSource": {
-                                                                "class": "material-icons",
-                                                                "code": "health_and_safety"
-                                                            },
-                                                            "iconColor": "#000000"
+                                                            "text": "⭐",
+                                                            "textAlignX": "center"
                                                         },
                                                         "ports": [],
                                                         "dynamicports": [],
@@ -2497,520 +2494,25 @@
                                 ]
                             },
                             {
-                                "id": "b2921d80-7117-6e72-86b7-b07f106990f8",
-                                "type": "Group",
+                                "id": "e666780d-48dc-4f58-a54b-0af9f96ff14f",
+                                "type": "/#Avatar Components/Size Row",
                                 "parameters": {
-                                    "sizeMode": "contentSize",
-                                    "paddingTop": {
-                                        "value": 16,
-                                        "unit": "px"
-                                    }
+                                    "Title": "Sizes"
                                 },
                                 "ports": [],
                                 "dynamicports": [],
-                                "children": [
-                                    {
-                                        "id": "0d14bfb2-c525-72de-a52c-7d601ed185d8",
-                                        "type": "Text",
-                                        "parameters": {
-                                            "text": "Sizes",
-                                            "marginLeft": {
-                                                "value": 12,
-                                                "unit": "px"
-                                            }
-                                        },
-                                        "ports": [],
-                                        "dynamicports": [],
-                                        "children": []
-                                    },
-                                    {
-                                        "id": "7d6c1470-0502-3c53-4550-e4ef40ba8d90",
-                                        "type": "Group",
-                                        "parameters": {
-                                            "sizeMode": "contentSize",
-                                            "flexDirection": "row",
-                                            "paddingBottom": {
-                                                "value": 6,
-                                                "unit": "px"
-                                            },
-                                            "paddingTop": {
-                                                "value": 6,
-                                                "unit": "px"
-                                            },
-                                            "paddingRight": {
-                                                "value": 6,
-                                                "unit": "px"
-                                            },
-                                            "paddingLeft": {
-                                                "value": 6,
-                                                "unit": "px"
-                                            }
-                                        },
-                                        "ports": [],
-                                        "dynamicports": [],
-                                        "children": [
-                                            {
-                                                "id": "54c26ae9-85da-8639-e615-6bcb6dc16901",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "xsmall",
-                                                    "backgroundColor": "Light Gray",
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            },
-                                            {
-                                                "id": "4cd74ea9-d5c9-1c45-fef8-e37e253b15d7",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "small",
-                                                    "backgroundColor": "Light Gray",
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            },
-                                            {
-                                                "id": "bbc5a4c2-53eb-ced8-1924-e64c02812322",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "medium",
-                                                    "backgroundColor": "Light Gray",
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            },
-                                            {
-                                                "id": "3d00a057-448e-8fe0-7105-5236ed8d2e59",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "large",
-                                                    "backgroundColor": "Light Gray",
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            },
-                                            {
-                                                "id": "a6636338-e6d4-2788-3742-84b5308d027a",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "xlarge",
-                                                    "backgroundColor": "Light Gray",
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            },
-                                            {
-                                                "id": "9f7de2f0-1163-0fb1-90f0-5c1ee8c71eb3",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "xxlarge",
-                                                    "backgroundColor": "Light Gray",
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            }
-                                        ]
-                                    }
-                                ]
+                                "children": []
                             },
                             {
-                                "id": "23dd0b36-7e64-57cf-6514-faa61f6e97e0",
-                                "type": "Group",
+                                "id": "4c66a6de-2439-4000-a49e-b83f45b3f9bb",
+                                "type": "/#Avatar Components/Size Row",
                                 "parameters": {
-                                    "sizeMode": "contentSize",
-                                    "paddingTop": {
-                                        "value": 16,
-                                        "unit": "px"
-                                    }
+                                    "Title": "Sizes with Text",
+                                    "Avatar Text": "AA"
                                 },
                                 "ports": [],
                                 "dynamicports": [],
-                                "children": [
-                                    {
-                                        "id": "f0a051c0-5801-def3-3ea4-e953042a2072",
-                                        "type": "Text",
-                                        "parameters": {
-                                            "text": "Sizes with Text",
-                                            "marginLeft": {
-                                                "value": 12,
-                                                "unit": "px"
-                                            }
-                                        },
-                                        "ports": [],
-                                        "dynamicports": [],
-                                        "children": []
-                                    },
-                                    {
-                                        "id": "4a45065e-9f22-2602-7ea1-275fd44eec5e",
-                                        "type": "Group",
-                                        "parameters": {
-                                            "sizeMode": "contentSize",
-                                            "flexDirection": "row",
-                                            "paddingBottom": {
-                                                "value": 6,
-                                                "unit": "px"
-                                            },
-                                            "paddingTop": {
-                                                "value": 6,
-                                                "unit": "px"
-                                            },
-                                            "paddingRight": {
-                                                "value": 6,
-                                                "unit": "px"
-                                            },
-                                            "paddingLeft": {
-                                                "value": 6,
-                                                "unit": "px"
-                                            }
-                                        },
-                                        "ports": [],
-                                        "dynamicports": [],
-                                        "children": [
-                                            {
-                                                "id": "5121c210-1ab9-b9a3-ef28-0d517b617b0e",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "xsmall",
-                                                    "backgroundColor": "Light Gray",
-                                                    "text": "AA",
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            },
-                                            {
-                                                "id": "b58120be-6a4d-a189-05f0-520218925a4b",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "small",
-                                                    "backgroundColor": "Light Gray",
-                                                    "text": "AA",
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            },
-                                            {
-                                                "id": "8e076593-637b-fda3-f49c-1757ce105493",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "medium",
-                                                    "backgroundColor": "Light Gray",
-                                                    "text": "AA",
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            },
-                                            {
-                                                "id": "6e1403c1-9b2d-f47d-c671-d9994a0ad2ba",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "large",
-                                                    "backgroundColor": "Light Gray",
-                                                    "text": "AA",
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            },
-                                            {
-                                                "id": "2282ad6a-fd43-28bd-c4ac-9f291f880dbc",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "xlarge",
-                                                    "backgroundColor": "Light Gray",
-                                                    "text": "AA",
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            },
-                                            {
-                                                "id": "8f813212-8ee1-67cd-d80e-283437617a86",
-                                                "type": "Avatar",
-                                                "parameters": {
-                                                    "borderColor": "#51D400",
-                                                    "borderWidth": {
-                                                        "value": 0,
-                                                        "unit": "px"
-                                                    },
-                                                    "appearance": "circle",
-                                                    "size": "xxlarge",
-                                                    "backgroundColor": "Light Gray",
-                                                    "text": "AA",
-                                                    "marginBottom": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginTop": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginRight": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    },
-                                                    "marginLeft": {
-                                                        "value": 6,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            }
-                                        ]
-                                    }
-                                ]
+                                "children": []
                             },
                             {
                                 "id": "bcbc5746-cda2-e32f-f7e9-e989ef619af2",
@@ -4163,6 +3665,336 @@
                     "height": "1446px"
                 }
             }
+        },
+        {
+            "name": "/#Avatar Components/Size Row",
+            "id": "3089462a-2a68-479d-9166-ca9b36ebfbb5",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "b9b51b00-cdf2-44a7-b098-347bd88726c8",
+                        "fromProperty": "Title",
+                        "toId": "dbb96998-3eaf-4946-b182-9d9af48ce4f8",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "b9b51b00-cdf2-44a7-b098-347bd88726c8",
+                        "fromProperty": "Avatar Text",
+                        "toId": "a8a20269-3b4e-4dd2-aecd-53e31da37bc1",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "b9b51b00-cdf2-44a7-b098-347bd88726c8",
+                        "fromProperty": "Avatar Text",
+                        "toId": "3670bf88-5097-471a-bd3a-5c5c75bd070b",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "b9b51b00-cdf2-44a7-b098-347bd88726c8",
+                        "fromProperty": "Avatar Text",
+                        "toId": "7253e7a2-41f5-4824-a115-50b4b929eb60",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "b9b51b00-cdf2-44a7-b098-347bd88726c8",
+                        "fromProperty": "Avatar Text",
+                        "toId": "850028ff-9930-4132-8ffd-4e606ec33684",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "b9b51b00-cdf2-44a7-b098-347bd88726c8",
+                        "fromProperty": "Avatar Text",
+                        "toId": "e772c1d9-13b2-4f0c-8bfb-5f6cd8681db7",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "b9b51b00-cdf2-44a7-b098-347bd88726c8",
+                        "fromProperty": "Avatar Text",
+                        "toId": "fcd28908-df2e-4392-8115-fecf8cefaf01",
+                        "toProperty": "text"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "6fffb246-7733-4d8e-a82e-aa04e0f336ee",
+                        "type": "Group",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                            "sizeMode": "contentSize",
+                            "paddingTop": {
+                                "value": 16,
+                                "unit": "px"
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "dbb96998-3eaf-4946-b182-9d9af48ce4f8",
+                                "type": "Text",
+                                "parameters": {
+                                    "marginLeft": {
+                                        "value": 12,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "5497f5e7-8f5d-439f-a982-8f992ed92eba",
+                                "type": "Group",
+                                "parameters": {
+                                    "sizeMode": "contentSize",
+                                    "flexDirection": "row",
+                                    "paddingTop": {
+                                        "value": 6,
+                                        "unit": "px"
+                                    },
+                                    "paddingBottom": {
+                                        "value": 6,
+                                        "unit": "px"
+                                    },
+                                    "paddingLeft": {
+                                        "value": 6,
+                                        "unit": "px"
+                                    },
+                                    "paddingRight": {
+                                        "value": 6,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "a8a20269-3b4e-4dd2-aecd-53e31da37bc1",
+                                        "type": "Avatar",
+                                        "parameters": {
+                                            "appearance": "circle",
+                                            "size": "xsmall",
+                                            "backgroundColor": "Light Gray",
+                                            "borderWidth": {
+                                                "value": 0,
+                                                "unit": "px"
+                                            },
+                                            "marginTop": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginBottom": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginLeft": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginRight": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "3670bf88-5097-471a-bd3a-5c5c75bd070b",
+                                        "type": "Avatar",
+                                        "parameters": {
+                                            "appearance": "circle",
+                                            "size": "small",
+                                            "backgroundColor": "Light Gray",
+                                            "borderWidth": {
+                                                "value": 0,
+                                                "unit": "px"
+                                            },
+                                            "marginTop": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginBottom": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginLeft": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginRight": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "7253e7a2-41f5-4824-a115-50b4b929eb60",
+                                        "type": "Avatar",
+                                        "parameters": {
+                                            "appearance": "circle",
+                                            "size": "medium",
+                                            "backgroundColor": "Light Gray",
+                                            "borderWidth": {
+                                                "value": 0,
+                                                "unit": "px"
+                                            },
+                                            "marginTop": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginBottom": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginLeft": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginRight": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "850028ff-9930-4132-8ffd-4e606ec33684",
+                                        "type": "Avatar",
+                                        "parameters": {
+                                            "appearance": "circle",
+                                            "size": "large",
+                                            "backgroundColor": "Light Gray",
+                                            "borderWidth": {
+                                                "value": 0,
+                                                "unit": "px"
+                                            },
+                                            "marginTop": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginBottom": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginLeft": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginRight": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "e772c1d9-13b2-4f0c-8bfb-5f6cd8681db7",
+                                        "type": "Avatar",
+                                        "parameters": {
+                                            "appearance": "circle",
+                                            "size": "xlarge",
+                                            "backgroundColor": "Light Gray",
+                                            "borderWidth": {
+                                                "value": 0,
+                                                "unit": "px"
+                                            },
+                                            "marginTop": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginBottom": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginLeft": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginRight": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "fcd28908-df2e-4392-8115-fecf8cefaf01",
+                                        "type": "Avatar",
+                                        "parameters": {
+                                            "appearance": "circle",
+                                            "size": "xxlarge",
+                                            "backgroundColor": "Light Gray",
+                                            "borderWidth": {
+                                                "value": 0,
+                                                "unit": "px"
+                                            },
+                                            "marginTop": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginBottom": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginLeft": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            },
+                                            "marginRight": {
+                                                "value": 6,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "b9b51b00-cdf2-44a7-b098-347bd88726c8",
+                        "type": "Component Inputs",
+                        "x": -400,
+                        "y": 20,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Title",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Avatar Text",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {}
         }
     ],
     "settings": {},

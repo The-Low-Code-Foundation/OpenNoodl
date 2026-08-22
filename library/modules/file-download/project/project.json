@@ -1,0 +1,125 @@
+{
+    "name": "File Download Module",
+    "components": [
+        {
+            "name": "/Download CSV Example",
+            "id": "c3a7e5d1-8f42-4b96-a0d3-51e8c9b7f214",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "3f9a1c20-51d2-4b8e-9c07-1a2b3c4d5e6f",
+                        "fromProperty": "items",
+                        "toId": "7c8d9e0f-1a2b-4c3d-8e5f-6a7b8c9d0e1f",
+                        "toProperty": "items"
+                    },
+                    {
+                        "fromId": "7c8d9e0f-1a2b-4c3d-8e5f-6a7b8c9d0e1f",
+                        "fromProperty": "text",
+                        "toId": "2b3c4d5e-6f70-4a81-92b3-c4d5e6f70a81",
+                        "toProperty": "Content"
+                    },
+                    {
+                        "fromId": "9d8c7b6a-5f4e-4d3c-82b1-a09f8e7d6c5b",
+                        "fromProperty": "onClick",
+                        "toId": "2b3c4d5e-6f70-4a81-92b3-c4d5e6f70a81",
+                        "toProperty": "Download"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "5e4d3c2b-1a09-4f8e-87d6-c5b4a3928170",
+                        "type": "Group",
+                        "x": 20,
+                        "y": 40,
+                        "parameters": {
+                            "alignX": "center",
+                            "alignY": "center"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "9d8c7b6a-5f4e-4d3c-82b1-a09f8e7d6c5b",
+                                "type": "Button",
+                                "x": 40,
+                                "y": 120,
+                                "parameters": {
+                                    "label": "Download CSV"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "3f9a1c20-51d2-4b8e-9c07-1a2b3c4d5e6f",
+                        "type": "Static Data",
+                        "label": "Demo rows",
+                        "x": 340,
+                        "y": 40,
+                        "parameters": {
+                            "type": "json",
+                            "json": "[\n  { \"name\": \"Ada Lovelace\", \"role\": \"Engineer\", \"score\": 97 },\n  { \"name\": \"Grace Hopper\", \"role\": \"Admiral\", \"score\": 95 },\n  { \"name\": \"Katherine Johnson\", \"role\": \"Mathematician\", \"score\": 99 }\n]"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "7c8d9e0f-1a2b-4c3d-8e5f-6a7b8c9d0e1f",
+                        "type": "net.noodl.ToCSV",
+                        "x": 340,
+                        "y": 160,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "2b3c4d5e-6f70-4a81-92b3-c4d5e6f70a81",
+                        "type": "nodegx.filedownload",
+                        "label": "Download File",
+                        "x": 340,
+                        "y": 280,
+                        "parameters": {
+                            "Filename": "export.csv",
+                            "MIME Type": "text/csv"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ],
+                "comments": [
+                    {
+                        "text": "The dead end, closed: Static Data feeds To CSV, and the button's Click sends Download on the Download File node — the CSV text is saved to the user's machine as export.csv. Swap Static Data for your own array.",
+                        "width": 320,
+                        "height": 180,
+                        "fill": true,
+                        "x": 620,
+                        "y": 40,
+                        "id": "0a1b2c3d-4e5f-4a6b-8c7d-8e9f0a1b2c3d",
+                        "color": "logic",
+                        "largeFont": false
+                    }
+                ]
+            },
+            "metadata": {
+                "canvasPos": {
+                    "x": 0,
+                    "y": 0
+                }
+            }
+        }
+    ],
+    "settings": {},
+    "version": "3",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {}
+        }
+    },
+    "variants": []
+}

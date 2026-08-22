@@ -1,0 +1,12 @@
+{
+  "label": "Page Header",
+  "description": "Standard page header: an h1 title, an optional subtitle (hidden until set), a data-driven breadcrumb trail and a right-aligned actions slot. Breadcrumbs take an array of {label, target} objects — separators are drawn between crumbs and the last crumb renders inert (foreground colour, no click). Clicking any earlier crumb emits the Crumb Clicked signal with that crumb's target on Crumb Target, ready to wire into navigation. Action buttons are added as children of the placed instance (Component Children slot).",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Navigation"
+  ],
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}

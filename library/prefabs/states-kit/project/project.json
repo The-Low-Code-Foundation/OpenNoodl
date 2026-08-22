@@ -1,0 +1,951 @@
+{
+    "name": "States Kit",
+    "components": [
+        {
+            "name": "/States Kit/Loading",
+            "id": "e04bab18-8079-4593-88d9-9d78a372345f",
+            "graph": {
+                "connections": [],
+                "roots": [
+                    {
+                        "id": "cd5c1a90-92fb-4c1f-9020-e385a6e3a0bd",
+                        "type": "Group",
+                        "parameters": {
+                            "sizeMode": "contentSize",
+                            "flexDirection": "column",
+                            "alignItems": "center",
+                            "justifyContent": "center"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "64efff1e-7c12-4125-a6ce-e658a104dec3",
+                                "type": "Circle",
+                                "parameters": {
+                                    "size": 32,
+                                    "fillEnabled": false,
+                                    "strokeEnabled": true,
+                                    "strokeWidth": 3,
+                                    "strokeColor": "var(--primary)",
+                                    "strokeLineCap": "round",
+                                    "startAngle": 0,
+                                    "endAngle": 300,
+                                    "cssClassName": "nsk-anim",
+                                    "styleCss": "animation: nsk-spin 0.9s linear infinite;"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ],
+                        "x": 0,
+                        "y": 100,
+                        "label": "Loading"
+                    },
+                    {
+                        "id": "02468cbe-1e87-4d3d-ae8d-061e43aad84a",
+                        "type": "CSS Definition",
+                        "parameters": {
+                            "style": "@keyframes nsk-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }\n@media (prefers-reduced-motion: reduce) { .nsk-anim { animation: none !important; } }"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "x": 320,
+                        "y": 100,
+                        "label": "States Kit keyframes"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/States Kit/Loading Overlay",
+            "id": "0bfb888a-269c-4803-934b-b258d2fbe028",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "ac3889e2-f172-46b3-9b3c-1287dcf47488",
+                        "fromProperty": "Visible",
+                        "toId": "bd02de4e-6eb5-40a1-ab83-bf1ea5d496d1",
+                        "toProperty": "visible"
+                    },
+                    {
+                        "fromId": "ac3889e2-f172-46b3-9b3c-1287dcf47488",
+                        "fromProperty": "Label",
+                        "toId": "e996d69d-7a96-4814-8a6e-6cf203304c0c",
+                        "toProperty": "text"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "ac3889e2-f172-46b3-9b3c-1287dcf47488",
+                        "type": "Component Inputs",
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Visible",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Label",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": [],
+                        "x": -320,
+                        "y": 140
+                    },
+                    {
+                        "id": "bd02de4e-6eb5-40a1-ab83-bf1ea5d496d1",
+                        "type": "Group",
+                        "parameters": {
+                            "position": "absolute",
+                            "width": {
+                                "value": 100,
+                                "unit": "%"
+                            },
+                            "height": {
+                                "value": 100,
+                                "unit": "%"
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "0565926c-fa24-42b5-8e79-077c24c51f9f",
+                                "type": "Group",
+                                "parameters": {
+                                    "position": "absolute",
+                                    "width": {
+                                        "value": 100,
+                                        "unit": "%"
+                                    },
+                                    "height": {
+                                        "value": 100,
+                                        "unit": "%"
+                                    },
+                                    "backgroundColor": "var(--background)",
+                                    "opacity": 0.85
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Backdrop"
+                            },
+                            {
+                                "id": "b6c65e05-55b6-44b0-8982-8133e2128154",
+                                "type": "Group",
+                                "parameters": {
+                                    "position": "absolute",
+                                    "width": {
+                                        "value": 100,
+                                        "unit": "%"
+                                    },
+                                    "height": {
+                                        "value": 100,
+                                        "unit": "%"
+                                    },
+                                    "flexDirection": "column",
+                                    "alignItems": "center",
+                                    "justifyContent": "center",
+                                    "rowGap": 12
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "1b0b4ea9-0452-4202-be5b-50a27beb408d",
+                                        "type": "Circle",
+                                        "parameters": {
+                                            "size": 36,
+                                            "fillEnabled": false,
+                                            "strokeEnabled": true,
+                                            "strokeWidth": 3,
+                                            "strokeColor": "var(--primary)",
+                                            "strokeLineCap": "round",
+                                            "startAngle": 0,
+                                            "endAngle": 300,
+                                            "cssClassName": "nsk-anim",
+                                            "styleCss": "animation: nsk-spin 0.9s linear infinite;"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "e996d69d-7a96-4814-8a6e-6cf203304c0c",
+                                        "type": "Text",
+                                        "parameters": {
+                                            "text": "Loading\u2026",
+                                            "sizeMode": "contentSize",
+                                            "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                                            "fontSize": 14,
+                                            "color": "var(--muted-foreground)",
+                                            "textAlignX": "center"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": [],
+                                        "label": "Label"
+                                    }
+                                ],
+                                "label": "Content"
+                            }
+                        ],
+                        "x": 0,
+                        "y": 140,
+                        "label": "Loading Overlay"
+                    },
+                    {
+                        "id": "97704ebe-635f-4450-80a9-221562dd9b7a",
+                        "type": "CSS Definition",
+                        "parameters": {
+                            "style": "@keyframes nsk-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }\n@media (prefers-reduced-motion: reduce) { .nsk-anim { animation: none !important; } }"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "x": 320,
+                        "y": 140,
+                        "label": "States Kit keyframes"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/States Kit/Empty",
+            "id": "2fff993a-8898-427b-8e72-d03459639603",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "1d9da967-71b2-40a0-9a3c-ca1b0241318c",
+                        "fromProperty": "Title",
+                        "toId": "bf457b8c-c2a1-404d-acd8-cf2176774b19",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "1d9da967-71b2-40a0-9a3c-ca1b0241318c",
+                        "fromProperty": "Hint",
+                        "toId": "d03bec3f-be93-4187-9319-4fc821599421",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "1d9da967-71b2-40a0-9a3c-ca1b0241318c",
+                        "fromProperty": "Show Action",
+                        "toId": "49d76d8e-6c03-4ffc-9b55-105a39d0434f",
+                        "toProperty": "visible"
+                    },
+                    {
+                        "fromId": "1d9da967-71b2-40a0-9a3c-ca1b0241318c",
+                        "fromProperty": "Action Label",
+                        "toId": "49d76d8e-6c03-4ffc-9b55-105a39d0434f",
+                        "toProperty": "label"
+                    },
+                    {
+                        "fromId": "49d76d8e-6c03-4ffc-9b55-105a39d0434f",
+                        "fromProperty": "onClick",
+                        "toId": "86230f89-214c-4197-a0aa-25c682de726e",
+                        "toProperty": "Clicked"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "1d9da967-71b2-40a0-9a3c-ca1b0241318c",
+                        "type": "Component Inputs",
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Title",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Hint",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Show Action",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            },
+                            {
+                                "name": "Action Label",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 4
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": [],
+                        "x": -340,
+                        "y": 180
+                    },
+                    {
+                        "id": "293be9e6-0738-4a53-8a93-9cfd0e57f512",
+                        "type": "Group",
+                        "parameters": {
+                            "sizeMode": "contentHeight",
+                            "width": {
+                                "value": 100,
+                                "unit": "%"
+                            },
+                            "flexDirection": "column",
+                            "alignItems": "center",
+                            "paddingTop": 32,
+                            "paddingBottom": 32,
+                            "paddingLeft": 24,
+                            "paddingRight": 24,
+                            "rowGap": 8
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "5ccde85f-2665-40f3-a6d1-9cf8b4f78676",
+                                "type": "net.noodl.visual.icon",
+                                "parameters": {
+                                    "iconSourceType": "icon",
+                                    "iconIconSource": {
+                                        "class": "lucide",
+                                        "code": "icon-inbox",
+                                        "codeAsClass": true
+                                    },
+                                    "iconSize": 40,
+                                    "iconColor": "var(--muted-foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Glyph"
+                            },
+                            {
+                                "id": "bf457b8c-c2a1-404d-acd8-cf2176774b19",
+                                "type": "Text",
+                                "parameters": {
+                                    "text": "Nothing here yet",
+                                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                                    "fontSize": 18,
+                                    "color": "var(--foreground)",
+                                    "textAlignX": "center"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Title"
+                            },
+                            {
+                                "id": "d03bec3f-be93-4187-9319-4fc821599421",
+                                "type": "Text",
+                                "parameters": {
+                                    "text": "When there is something to show, it will appear here.",
+                                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                                    "fontSize": 14,
+                                    "lineHeight": 1.5,
+                                    "color": "var(--muted-foreground)",
+                                    "textAlignX": "center"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Hint"
+                            },
+                            {
+                                "id": "49d76d8e-6c03-4ffc-9b55-105a39d0434f",
+                                "type": "net.noodl.controls.button",
+                                "parameters": {
+                                    "label": "Take action",
+                                    "visible": false,
+                                    "sizeMode": "contentSize",
+                                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                                    "fontSize": 14,
+                                    "color": "var(--primary-foreground)",
+                                    "backgroundColor": "var(--primary)",
+                                    "borderStyle": "none",
+                                    "borderRadius": 8,
+                                    "paddingLeft": 20,
+                                    "paddingRight": 20,
+                                    "paddingTop": 10,
+                                    "paddingBottom": 10,
+                                    "marginTop": 8
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Action"
+                            }
+                        ],
+                        "x": 0,
+                        "y": 180,
+                        "label": "Empty"
+                    },
+                    {
+                        "id": "86230f89-214c-4197-a0aa-25c682de726e",
+                        "type": "Component Outputs",
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Clicked",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": [],
+                        "x": 340,
+                        "y": 320
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/States Kit/Error",
+            "id": "6e568dde-1839-4e21-9894-f86f6ca57f43",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "a6c93915-39b5-4424-9921-011bfe5852ef",
+                        "fromProperty": "Title",
+                        "toId": "25ef8f06-b796-4e75-89cd-d6597166d7d2",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "a6c93915-39b5-4424-9921-011bfe5852ef",
+                        "fromProperty": "Message",
+                        "toId": "d532c7d5-d301-447d-bd2d-e6c04225307f",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "a6c93915-39b5-4424-9921-011bfe5852ef",
+                        "fromProperty": "Retry Label",
+                        "toId": "b478e947-eea9-45dd-9e3d-3e81db9ea29f",
+                        "toProperty": "label"
+                    },
+                    {
+                        "fromId": "b478e947-eea9-45dd-9e3d-3e81db9ea29f",
+                        "fromProperty": "onClick",
+                        "toId": "a91e0acd-65b9-48d9-a9fb-532161c8caf5",
+                        "toProperty": "Retry"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "a6c93915-39b5-4424-9921-011bfe5852ef",
+                        "type": "Component Inputs",
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Title",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Message",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Retry Label",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": [],
+                        "x": -340,
+                        "y": 180
+                    },
+                    {
+                        "id": "5d28b001-3059-4c04-a642-779582957f88",
+                        "type": "Group",
+                        "parameters": {
+                            "sizeMode": "contentHeight",
+                            "width": {
+                                "value": 100,
+                                "unit": "%"
+                            },
+                            "flexDirection": "column",
+                            "alignItems": "center",
+                            "paddingTop": 32,
+                            "paddingBottom": 32,
+                            "paddingLeft": 24,
+                            "paddingRight": 24,
+                            "rowGap": 8
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "fdd14ffb-5a92-46ff-b026-798b8951ad34",
+                                "type": "net.noodl.visual.icon",
+                                "parameters": {
+                                    "iconSourceType": "icon",
+                                    "iconIconSource": {
+                                        "class": "lucide",
+                                        "code": "icon-alert-triangle",
+                                        "codeAsClass": true
+                                    },
+                                    "iconSize": 40,
+                                    "iconColor": "var(--destructive)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Glyph"
+                            },
+                            {
+                                "id": "25ef8f06-b796-4e75-89cd-d6597166d7d2",
+                                "type": "Text",
+                                "parameters": {
+                                    "text": "Something went wrong",
+                                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                                    "fontSize": 18,
+                                    "color": "var(--foreground)",
+                                    "textAlignX": "center"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Title"
+                            },
+                            {
+                                "id": "d532c7d5-d301-447d-bd2d-e6c04225307f",
+                                "type": "Text",
+                                "parameters": {
+                                    "text": "We could not load this. Check your connection and try again.",
+                                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                                    "fontSize": 14,
+                                    "lineHeight": 1.5,
+                                    "color": "var(--muted-foreground)",
+                                    "textAlignX": "center"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Message"
+                            },
+                            {
+                                "id": "b478e947-eea9-45dd-9e3d-3e81db9ea29f",
+                                "type": "net.noodl.controls.button",
+                                "parameters": {
+                                    "label": "Try again",
+                                    "sizeMode": "contentSize",
+                                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                                    "fontSize": 14,
+                                    "color": "var(--secondary-foreground)",
+                                    "backgroundColor": "var(--secondary)",
+                                    "borderStyle": "none",
+                                    "borderRadius": 8,
+                                    "paddingLeft": 20,
+                                    "paddingRight": 20,
+                                    "paddingTop": 10,
+                                    "paddingBottom": 10,
+                                    "marginTop": 8
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Retry"
+                            }
+                        ],
+                        "x": 0,
+                        "y": 180,
+                        "label": "Error"
+                    },
+                    {
+                        "id": "a91e0acd-65b9-48d9-a9fb-532161c8caf5",
+                        "type": "Component Outputs",
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Retry",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": [],
+                        "x": 340,
+                        "y": 320
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/States Kit/Skeleton Text Row",
+            "id": "2ea234fe-6dd2-4239-8358-329fb4209df5",
+            "graph": {
+                "connections": [],
+                "roots": [
+                    {
+                        "id": "5a6df6ec-fbb0-484e-bb13-308ea9c72471",
+                        "type": "Group",
+                        "parameters": {
+                            "sizeMode": "explicit",
+                            "width": {
+                                "value": 100,
+                                "unit": "%"
+                            },
+                            "height": {
+                                "value": 14,
+                                "unit": "px"
+                            },
+                            "borderRadius": 6,
+                            "backgroundColor": "var(--muted)",
+                            "cssClassName": "nsk-anim",
+                            "styleCss": "animation: nsk-pulse 1.4s ease-in-out infinite;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "x": 0,
+                        "y": 100,
+                        "label": "Skeleton Text Row"
+                    },
+                    {
+                        "id": "8c74c3eb-da75-4f46-af30-7ac1f16424e1",
+                        "type": "CSS Definition",
+                        "parameters": {
+                            "style": "@keyframes nsk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }\n@media (prefers-reduced-motion: reduce) { .nsk-anim { animation: none !important; } }"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "x": 320,
+                        "y": 100,
+                        "label": "States Kit keyframes"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/States Kit/Skeleton Card",
+            "id": "29a7250c-ea24-4b0f-9c86-19d6c7e0b9ab",
+            "graph": {
+                "connections": [],
+                "roots": [
+                    {
+                        "id": "da9262e5-4f27-4e20-9974-d05c5fb87854",
+                        "type": "Group",
+                        "parameters": {
+                            "sizeMode": "contentHeight",
+                            "width": {
+                                "value": 100,
+                                "unit": "%"
+                            },
+                            "flexDirection": "row",
+                            "alignItems": "center",
+                            "columnGap": 12,
+                            "paddingTop": 16,
+                            "paddingBottom": 16,
+                            "paddingLeft": 16,
+                            "paddingRight": 16,
+                            "borderRadius": 12,
+                            "borderStyle": "solid",
+                            "borderWidth": 1,
+                            "borderColor": "var(--border)",
+                            "backgroundColor": "var(--surface)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "d1beb980-7386-447f-9d1a-4ad4c9a7f251",
+                                "type": "Group",
+                                "parameters": {
+                                    "sizeMode": "explicit",
+                                    "width": {
+                                        "value": 40,
+                                        "unit": "px"
+                                    },
+                                    "height": {
+                                        "value": 40,
+                                        "unit": "px"
+                                    },
+                                    "borderRadius": 20,
+                                    "backgroundColor": "var(--muted)",
+                                    "cssClassName": "nsk-anim",
+                                    "styleCss": "animation: nsk-pulse 1.4s ease-in-out infinite;"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Avatar block"
+                            },
+                            {
+                                "id": "d8f27697-7540-432b-88da-9859a5f6b004",
+                                "type": "Group",
+                                "parameters": {
+                                    "sizeMode": "contentHeight",
+                                    "flexDirection": "column",
+                                    "rowGap": 8,
+                                    "styleCss": "flex: 1 1 0; min-width: 0;"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "4dd62a53-3f29-4a8a-be29-2b4a61e9f103",
+                                        "type": "Group",
+                                        "parameters": {
+                                            "sizeMode": "explicit",
+                                            "width": {
+                                                "value": 100,
+                                                "unit": "%"
+                                            },
+                                            "height": {
+                                                "value": 12,
+                                                "unit": "px"
+                                            },
+                                            "borderRadius": 6,
+                                            "backgroundColor": "var(--muted)",
+                                            "cssClassName": "nsk-anim",
+                                            "styleCss": "animation: nsk-pulse 1.4s ease-in-out infinite;"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": [],
+                                        "label": "Line 1"
+                                    },
+                                    {
+                                        "id": "65e05b6e-8eb4-4bc2-9f04-1f0bced29c5a",
+                                        "type": "Group",
+                                        "parameters": {
+                                            "sizeMode": "explicit",
+                                            "width": {
+                                                "value": 60,
+                                                "unit": "%"
+                                            },
+                                            "height": {
+                                                "value": 12,
+                                                "unit": "px"
+                                            },
+                                            "borderRadius": 6,
+                                            "backgroundColor": "var(--muted)",
+                                            "cssClassName": "nsk-anim",
+                                            "styleCss": "animation: nsk-pulse 1.4s ease-in-out infinite;"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": [],
+                                        "label": "Line 2"
+                                    }
+                                ],
+                                "label": "Lines"
+                            }
+                        ],
+                        "x": 0,
+                        "y": 140,
+                        "label": "Skeleton Card"
+                    },
+                    {
+                        "id": "ff20c903-ce49-4400-b8bc-46f630a5be3d",
+                        "type": "CSS Definition",
+                        "parameters": {
+                            "style": "@keyframes nsk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }\n@media (prefers-reduced-motion: reduce) { .nsk-anim { animation: none !important; } }"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "x": 320,
+                        "y": 140,
+                        "label": "States Kit keyframes"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/States Kit/Demo",
+            "id": "06ee2a0e-dc22-41ce-b504-73a8fbc063b5",
+            "graph": {
+                "connections": [],
+                "roots": [
+                    {
+                        "id": "62159f5d-d4f6-43ce-ad55-d999fb2a08d6",
+                        "type": "Group",
+                        "parameters": {
+                            "sizeMode": "contentHeight",
+                            "width": {
+                                "value": 100,
+                                "unit": "%"
+                            },
+                            "maxWidth": {
+                                "value": 480,
+                                "unit": "px"
+                            },
+                            "flexDirection": "column",
+                            "rowGap": 16,
+                            "paddingTop": 24,
+                            "paddingBottom": 24,
+                            "paddingLeft": 24,
+                            "paddingRight": 24,
+                            "backgroundColor": "var(--background)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "a8a41929-2cf4-45d0-911c-3ac0e281e193",
+                                "type": "Text",
+                                "parameters": {
+                                    "text": "Loading",
+                                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                                    "fontSize": 12,
+                                    "letterSpacing": 1,
+                                    "textTransform": "uppercase",
+                                    "color": "var(--muted-foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Loading header"
+                            },
+                            {
+                                "id": "c673e7bc-efc2-4664-b13b-01e10bb7ecb2",
+                                "type": "/States Kit/Loading",
+                                "parameters": {},
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Loading demo"
+                            },
+                            {
+                                "id": "ba3d4b1f-611a-4289-b017-c760ac07ef22",
+                                "type": "Text",
+                                "parameters": {
+                                    "text": "Empty",
+                                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                                    "fontSize": 12,
+                                    "letterSpacing": 1,
+                                    "textTransform": "uppercase",
+                                    "color": "var(--muted-foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Empty header"
+                            },
+                            {
+                                "id": "33353ca7-6814-45bf-a8d6-be04444264ee",
+                                "type": "/States Kit/Empty",
+                                "parameters": {},
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Empty demo"
+                            },
+                            {
+                                "id": "0233d3fe-e5b6-4ac0-930f-6cd583661e21",
+                                "type": "Text",
+                                "parameters": {
+                                    "text": "Error",
+                                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                                    "fontSize": 12,
+                                    "letterSpacing": 1,
+                                    "textTransform": "uppercase",
+                                    "color": "var(--muted-foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Error header"
+                            },
+                            {
+                                "id": "370c4449-137b-4379-8b52-62ab818e1270",
+                                "type": "/States Kit/Error",
+                                "parameters": {},
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Error demo"
+                            },
+                            {
+                                "id": "0991bd24-d96e-4e1c-985b-022b509d52de",
+                                "type": "Text",
+                                "parameters": {
+                                    "text": "Skeleton",
+                                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                                    "fontSize": 12,
+                                    "letterSpacing": 1,
+                                    "textTransform": "uppercase",
+                                    "color": "var(--muted-foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Skeleton header"
+                            },
+                            {
+                                "id": "c551b5af-fb12-4d51-a43f-ff57e7d795e4",
+                                "type": "/States Kit/Skeleton Text Row",
+                                "parameters": {},
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Skeleton row demo"
+                            },
+                            {
+                                "id": "fb0834e9-b51d-422c-9d2a-dac34f4d9e67",
+                                "type": "/States Kit/Skeleton Card",
+                                "parameters": {},
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [],
+                                "label": "Skeleton card demo"
+                            }
+                        ],
+                        "x": 0,
+                        "y": 100,
+                        "label": "States Kit Demo"
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {}
+        }
+    },
+    "variants": []
+}

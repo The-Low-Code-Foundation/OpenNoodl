@@ -1,0 +1,648 @@
+{
+  "name": "Export",
+  "components": [
+    {
+      "name": "/Card",
+      "id": "ca4d0000-0000-4000-9000-000000000001",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "ca4d0000-1000-4000-9000-000000000001",
+            "fromProperty": "Title",
+            "toId": "ca4d0000-1000-4000-9000-000000000013",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "ca4d0000-1000-4000-9000-000000000001",
+            "fromProperty": "Title",
+            "toId": "ca4d0000-1000-4000-9000-000000000003",
+            "toProperty": "Title"
+          },
+          {
+            "fromId": "ca4d0000-1000-4000-9000-000000000001",
+            "fromProperty": "Body",
+            "toId": "ca4d0000-1000-4000-9000-000000000014",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "ca4d0000-1000-4000-9000-000000000001",
+            "fromProperty": "Image",
+            "toId": "ca4d0000-1000-4000-9000-000000000011",
+            "toProperty": "src"
+          },
+          {
+            "fromId": "ca4d0000-1000-4000-9000-000000000001",
+            "fromProperty": "Image",
+            "toId": "ca4d0000-1000-4000-9000-000000000002",
+            "toProperty": "in-Image"
+          },
+          {
+            "fromId": "ca4d0000-1000-4000-9000-000000000001",
+            "fromProperty": "Footer",
+            "toId": "ca4d0000-1000-4000-9000-000000000016",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "ca4d0000-1000-4000-9000-000000000001",
+            "fromProperty": "Footer",
+            "toId": "ca4d0000-1000-4000-9000-000000000002",
+            "toProperty": "in-Footer"
+          },
+          {
+            "fromId": "ca4d0000-1000-4000-9000-000000000002",
+            "fromProperty": "out-HasImage",
+            "toId": "ca4d0000-1000-4000-9000-000000000011",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "ca4d0000-1000-4000-9000-000000000002",
+            "fromProperty": "out-HasFooter",
+            "toId": "ca4d0000-1000-4000-9000-000000000015",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "ca4d0000-1000-4000-9000-000000000010",
+            "fromProperty": "onClick",
+            "toId": "ca4d0000-1000-4000-9000-000000000003",
+            "toProperty": "Clicked"
+          }
+        ],
+        "roots": [
+          {
+            "id": "ca4d0000-1000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -700,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Title",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Body",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Image",
+                "plug": "output",
+                "type": {
+                  "name": "image"
+                },
+                "group": "Media",
+                "index": 2
+              },
+              {
+                "name": "Footer",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Footer",
+                "index": 3
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "ca4d0000-1000-4000-9000-000000000002",
+            "type": "JavaScriptFunction",
+            "label": "Optional areas",
+            "x": -420,
+            "y": 220,
+            "parameters": {
+              "functionScript": "// The media and footer areas only exist when their input has content.\n// Every input is guarded: an unconnected input is undefined.\nconst hasText = (v) => typeof v === 'string' && v.trim() !== '';\nOutputs.HasImage = hasText(Inputs.Image);\nOutputs.HasFooter = hasText(Inputs.Footer);\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Image",
+                "displayName": "Image",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 4
+              },
+              {
+                "name": "in-Footer",
+                "displayName": "Footer",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 5
+              },
+              {
+                "name": "out-HasImage",
+                "displayName": "HasImage",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-HasFooter",
+                "displayName": "HasFooter",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 7
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "ca4d0000-1000-4000-9000-000000000003",
+            "type": "Component Outputs",
+            "x": 320,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Clicked",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "group": "Interaction",
+                "index": 0
+              },
+              {
+                "name": "Title",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Interaction",
+                "index": 1
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "ca4d0000-1000-4000-9000-000000000010",
+            "type": "Group",
+            "label": "Card",
+            "x": 20,
+            "y": -500,
+            "parameters": {
+              "flexDirection": "column",
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "backgroundColor": "var(--surface)",
+              "borderStyle": "solid",
+              "borderWidth": {
+                "value": 1,
+                "unit": "px"
+              },
+              "borderColor": "var(--border)",
+              "borderRadius": {
+                "value": 10,
+                "unit": "px"
+              },
+              "clip": true,
+              "styleCss": "cursor: pointer; min-width: 0;"
+            },
+            "stateParameters": {
+              "hover": {
+                "backgroundColor": "var(--surface-raised)",
+                "borderColor": "var(--border-strong)"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "ca4d0000-1000-4000-9000-000000000011",
+                "type": "Image",
+                "label": "Media",
+                "parameters": {
+                  "mounted": false,
+                  "sizeMode": "explicit",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 160,
+                    "unit": "px"
+                  },
+                  "objectFit": "cover",
+                  "styleCss": "flex: 0 0 auto;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "ca4d0000-1000-4000-9000-000000000012",
+                "type": "Group",
+                "label": "Card body",
+                "parameters": {
+                  "flexDirection": "column",
+                  "paddingTop": {
+                    "value": 16,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 16,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 16,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 16,
+                    "unit": "px"
+                  },
+                  "styleCss": "flex: 1 1 auto; min-height: 0;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "ca4d0000-1000-4000-9000-000000000013",
+                    "type": "Text",
+                    "label": "Title",
+                    "parameters": {
+                      "text": "Card title",
+                      "color": "var(--foreground)",
+                      "fontSize": {
+                        "value": 16,
+                        "unit": "px"
+                      },
+                      "styleCss": "font-weight: 600;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "ca4d0000-1000-4000-9000-000000000014",
+                    "type": "Text",
+                    "label": "Body",
+                    "parameters": {
+                      "text": "Card body text goes here.",
+                      "color": "var(--muted-foreground)",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "marginTop": {
+                        "value": 6,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "ca4d0000-1000-4000-9000-000000000015",
+                "type": "Group",
+                "label": "Footer / actions",
+                "parameters": {
+                  "mounted": false,
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "paddingTop": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 16,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 16,
+                    "unit": "px"
+                  },
+                  "borderTopStyle": "solid",
+                  "borderTopWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderTopColor": "var(--border)",
+                  "styleCss": "flex: 0 0 auto;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "ca4d0000-1000-4000-9000-000000000016",
+                    "type": "Text",
+                    "label": "Footer text",
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "color": "var(--muted-foreground)",
+                      "fontSize": {
+                        "value": 13,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "ca4d0000-1000-4000-9000-000000000017",
+                    "type": "Group",
+                    "label": "Spacer",
+                    "parameters": {
+                      "styleCss": "flex: 1 1 0%; min-width: 0;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "ca4d0000-1000-4000-9000-000000000018",
+                    "type": "net.noodl.visual.icon",
+                    "label": "Action hint",
+                    "parameters": {
+                      "iconIconSource": {
+                        "class": "material-icons",
+                        "code": "arrow_forward"
+                      },
+                      "iconColor": "var(--primary)",
+                      "iconSize": {
+                        "value": 16,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "metadata": {
+        "canvasPos": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "name": "/Card Grid",
+      "id": "ca4d0000-0000-4000-9000-000000000002",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "ca4d0000-2000-4000-9000-000000000001",
+            "fromProperty": "Items",
+            "toId": "ca4d0000-2000-4000-9000-000000000003",
+            "toProperty": "in-Items"
+          },
+          {
+            "fromId": "ca4d0000-2000-4000-9000-000000000002",
+            "fromProperty": "items",
+            "toId": "ca4d0000-2000-4000-9000-000000000003",
+            "toProperty": "in-Fallback"
+          },
+          {
+            "fromId": "ca4d0000-2000-4000-9000-000000000003",
+            "fromProperty": "out-Items",
+            "toId": "ca4d0000-2000-4000-9000-000000000011",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "ca4d0000-2000-4000-9000-000000000011",
+            "fromProperty": "itemOutputSignal-Clicked",
+            "toId": "ca4d0000-2000-4000-9000-000000000004",
+            "toProperty": "Card Clicked"
+          },
+          {
+            "fromId": "ca4d0000-2000-4000-9000-000000000011",
+            "fromProperty": "itemOutput-Title",
+            "toId": "ca4d0000-2000-4000-9000-000000000004",
+            "toProperty": "Clicked Title"
+          },
+          {
+            "fromId": "ca4d0000-2000-4000-9000-000000000011",
+            "fromProperty": "itemActionItemId",
+            "toId": "ca4d0000-2000-4000-9000-000000000004",
+            "toProperty": "Clicked Item Id"
+          }
+        ],
+        "roots": [
+          {
+            "id": "ca4d0000-2000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -700,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Items",
+                "plug": "output",
+                "type": {
+                  "name": "array"
+                },
+                "group": "Data",
+                "index": 0
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "ca4d0000-2000-4000-9000-000000000002",
+            "type": "Static Data",
+            "label": "Sample cards",
+            "x": -700,
+            "y": 220,
+            "parameters": {
+              "type": "json",
+              "json": "[\n    {\n        \"Title\": \"Ship your first page\",\n        \"Body\": \"Cards flow into as many columns as fit. Resize the window and watch them wrap.\",\n        \"Footer\": \"Guide · 5 min\"\n    },\n    {\n        \"Title\": \"Connect real data\",\n        \"Body\": \"Point the Items input at any array — records, a REST response, or a Function output.\",\n        \"Footer\": \"Data\"\n    },\n    {\n        \"Title\": \"Optional media\",\n        \"Body\": \"Give an item an Image property (a URL or a project file) and the card grows a media area on top.\"\n    },\n    {\n        \"Title\": \"Optional footer\",\n        \"Body\": \"Items without a Footer property render without the footer strip — like this one.\"\n    },\n    {\n        \"Title\": \"Click handling\",\n        \"Body\": \"Every card emits Clicked; the grid forwards it together with the clicked card's title and item id.\",\n        \"Footer\": \"Signals\"\n    },\n    {\n        \"Title\": \"One column when narrow\",\n        \"Body\": \"Below one card width the grid degrades to a single full-width column instead of overflowing.\",\n        \"Footer\": \"Responsive\"\n    }\n]"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "ca4d0000-2000-4000-9000-000000000003",
+            "type": "JavaScriptFunction",
+            "label": "Choose items",
+            "x": -420,
+            "y": 120,
+            "parameters": {
+              "functionScript": "// A non-empty connected Items array wins over the Static Data samples.\n// Every input is guarded: an unconnected input is undefined.\nconst asArray = (v) => Array.isArray(v) ? v : (v && Array.isArray(v.items) ? v.items : []);\nconst connected = asArray(Inputs.Items);\nOutputs.Items = connected.length > 0 ? connected : asArray(Inputs.Fallback);\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Items",
+                "displayName": "Items",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 4
+              },
+              {
+                "name": "in-Fallback",
+                "displayName": "Fallback",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 5
+              },
+              {
+                "name": "out-Items",
+                "displayName": "Items",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "ca4d0000-2000-4000-9000-000000000004",
+            "type": "Component Outputs",
+            "x": 320,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Card Clicked",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "group": "Interaction",
+                "index": 0
+              },
+              {
+                "name": "Clicked Title",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Interaction",
+                "index": 1
+              },
+              {
+                "name": "Clicked Item Id",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Interaction",
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "ca4d0000-2000-4000-9000-000000000010",
+            "type": "Group",
+            "label": "Card grid",
+            "x": 20,
+            "y": -320,
+            "parameters": {
+              "flexDirection": "row",
+              "flexWrap": "wrap",
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "styleCss": "display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 16px; align-items: stretch;"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "ca4d0000-2000-4000-9000-000000000011",
+                "type": "For Each",
+                "parameters": {
+                  "template": "/Card"
+                },
+                "ports": [],
+                "dynamicports": [
+                  {
+                    "name": "itemOutputSignal-Clicked",
+                    "displayName": "Clicked",
+                    "type": "signal",
+                    "plug": "output",
+                    "group": "Item Signals",
+                    "index": 6
+                  },
+                  {
+                    "name": "itemOutput-Title",
+                    "displayName": "Title",
+                    "type": {
+                      "name": "*",
+                      "allowConnectionsOnly": true
+                    },
+                    "plug": "output",
+                    "group": "Item Outputs",
+                    "index": 7
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "metadata": {
+        "canvasPos": {
+          "x": 900,
+          "y": 0
+        }
+      }
+    }
+  ],
+  "settings": {},
+  "version": "4",
+  "metadata": {
+    "styles": {
+      "text": {},
+      "colors": {}
+    }
+  },
+  "variants": []
+}

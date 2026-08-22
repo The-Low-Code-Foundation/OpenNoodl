@@ -1,0 +1,198 @@
+{
+    "name": "Virtual List Module",
+    "components": [
+        {
+            "name": "/Virtual List Demo",
+            "id": "7a1e5b30-4c11-9d20-b3f2-000000000001",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "7a1e5b30-4c11-9d20-b3f2-000000000011",
+                        "fromProperty": "out-Rows",
+                        "toId": "7a1e5b30-4c11-9d20-b3f2-000000000014",
+                        "toProperty": "items"
+                    },
+                    {
+                        "fromId": "7a1e5b30-4c11-9d20-b3f2-000000000014",
+                        "fromProperty": "firstVisibleIndex",
+                        "toId": "7a1e5b30-4c11-9d20-b3f2-000000000016",
+                        "toProperty": "in-First"
+                    },
+                    {
+                        "fromId": "7a1e5b30-4c11-9d20-b3f2-000000000014",
+                        "fromProperty": "visibleCount",
+                        "toId": "7a1e5b30-4c11-9d20-b3f2-000000000016",
+                        "toProperty": "in-Count"
+                    },
+                    {
+                        "fromId": "7a1e5b30-4c11-9d20-b3f2-000000000016",
+                        "fromProperty": "out-Text",
+                        "toId": "7a1e5b30-4c11-9d20-b3f2-000000000015",
+                        "toProperty": "text"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "7a1e5b30-4c11-9d20-b3f2-000000000011",
+                        "type": "JavaScriptFunction",
+                        "label": "Make 10k rows",
+                        "x": -560,
+                        "y": 40,
+                        "parameters": {
+                            "functionScript": "// Generates 10,000 demo rows — the array the Virtual List windows over.\n// No inputs; runs once. Every value is built locally, nothing external.\nconst count = 10000;\nconst firstNames = ['Ada', 'Grace', 'Alan', 'Edsger', 'Barbara', 'Donald', 'Radia', 'Katherine', 'Vint', 'Margaret'];\nconst lastNames = ['Lovelace', 'Hopper', 'Turing', 'Dijkstra', 'Liskov', 'Knuth', 'Perlman', 'Johnson', 'Cerf', 'Hamilton'];\nconst rows = new Array(count);\nfor (let i = 0; i < count; i++) {\n    const name = firstNames[i % firstNames.length] + ' ' + lastNames[Math.floor(i / firstNames.length) % lastNames.length];\n    rows[i] = {\n        name: name,\n        email: name.toLowerCase().split(' ').join('.') + '.' + i + '@example.com'\n    };\n}\nOutputs.Rows = rows;"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "out-Rows",
+                                "displayName": "Rows",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 1
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "7a1e5b30-4c11-9d20-b3f2-000000000016",
+                        "type": "JavaScriptFunction",
+                        "label": "Status text",
+                        "x": -560,
+                        "y": 260,
+                        "parameters": {
+                            "functionScript": "// Every input is guarded: an unconnected input arrives as undefined.\nconst first = typeof Inputs.First === 'number' ? Inputs.First : 0;\nconst count = typeof Inputs.Count === 'number' ? Inputs.Count : 0;\nOutputs.Text = 'First visible row: ' + first + ' · rows intersecting the viewport: ' + count;"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-First",
+                                "displayName": "First",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 1
+                            },
+                            {
+                                "name": "in-Count",
+                                "displayName": "Count",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 2
+                            },
+                            {
+                                "name": "out-Text",
+                                "displayName": "Text",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 3
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "7a1e5b30-4c11-9d20-b3f2-000000000012",
+                        "type": "Group",
+                        "label": "Virtual list demo",
+                        "x": 20,
+                        "y": -160,
+                        "parameters": {
+                            "sizeMode": "contentHeight",
+                            "width": {
+                                "value": 100,
+                                "unit": "%"
+                            },
+                            "paddingLeft": {
+                                "value": 24,
+                                "unit": "px"
+                            },
+                            "paddingRight": {
+                                "value": 24,
+                                "unit": "px"
+                            },
+                            "paddingTop": {
+                                "value": 24,
+                                "unit": "px"
+                            },
+                            "paddingBottom": {
+                                "value": 24,
+                                "unit": "px"
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "7a1e5b30-4c11-9d20-b3f2-000000000013",
+                                "type": "Text",
+                                "label": "Heading",
+                                "parameters": {
+                                    "text": "10,000 generated rows — only the visible window exists in the DOM",
+                                    "color": "var(--foreground)",
+                                    "marginBottom": {
+                                        "value": 8,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "7a1e5b30-4c11-9d20-b3f2-000000000014",
+                                "type": "nodegx.virtuallist",
+                                "label": "Virtual List",
+                                "parameters": {
+                                    "template": "#{{index}}  {{name}} — {{email}}",
+                                    "itemHeight": 40,
+                                    "overscan": 6,
+                                    "listHeight": 480
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "7a1e5b30-4c11-9d20-b3f2-000000000015",
+                                "type": "Text",
+                                "label": "Status",
+                                "parameters": {
+                                    "text": "Scroll the list to see the window move",
+                                    "color": "var(--muted-foreground)",
+                                    "marginTop": {
+                                        "value": 8,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {
+    },
+    "version": "1",
+    "metadata": {
+    }
+}

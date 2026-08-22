@@ -1,13 +1,13 @@
 {
   "label": "PDF Viewer",
-  "description": "A UI component for rendering PDFs from an URL.",
+  "description": "A /PDF Viewer component that renders a PDF from a URL (PDF URL, Width and Height inputs) via Google's document viewer in an iframe. REQUIRES the standalone Custom HTML module — install that first; this entry no longer bundles its own copy of it. See the entry README.",
   "type": "module",
   "tags": [
     "UI"
   ],
   "icon": "icon.png",
   "docsPath": "/library/modules/pdf-viewer/",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

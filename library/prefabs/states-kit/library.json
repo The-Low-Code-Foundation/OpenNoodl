@@ -1,0 +1,11 @@
+{
+  "label": "States Kit",
+  "description": "The four states every list and screen needs: Loading (an inline spinner plus a full-area overlay with a Visible input), Empty (glyph, title, hint and an optional action button with a Clicked signal), Error (message plus a Retry signal output), and Skeleton placeholders (a pulsing text row and a card). Each state is its own component, styled with the project design tokens, with a Demo component showing them together.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Feedback"
+  ],
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0"
+}

@@ -1,0 +1,18 @@
+{
+  "label": "Panning and Zooming Control",
+  "description": "A control that implements a pan and zoom view on large images.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Utility"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/panning-and-zooming/",
+  "version": "1.2.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/panning-and-zooming/panning-and-zoom-1-0.zip",
+    "importedAt": "2026-07-25"
+  }
+}

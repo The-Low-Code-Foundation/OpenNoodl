@@ -1,0 +1,17 @@
+{
+  "label": "MapLibre GL",
+  "description": "Interactive maps with zero configuration — a MapLibre Map node that renders the free MapLibre demo style out of the box (no access token, no account). Style URL, camera (longitude/latitude/zoom/bearing/pitch) and a Markers array are inputs; camera position, click coordinates and marker clicks are outputs. Bundles MapLibre GL JS 4.7.1 (BSD-3-Clause).",
+  "type": "module",
+  "tags": [
+    "UI",
+    "Service"
+  ],
+  "docsPath": "/library/modules/maplibre/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js",
+    "importedAt": "2026-08-22"
+  }
+}

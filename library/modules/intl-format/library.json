@@ -1,0 +1,13 @@
+{
+  "label": "Intl Format",
+  "description": "Locale-aware formatting nodes built on the browser's Intl APIs \u2014 no dependencies, no network. Relative Time turns a date into \"3 hours ago\" with an optional auto-refresh interval; Format Number handles decimal, currency and percent styles; Format List joins items with a localized conjunction or disjunction; Pluralize picks the right one/other form with Intl.PluralRules. Every node has a Locale input defaulting to the browser language, and every input is guarded \u2014 an unconnected input yields an empty string instead of throwing.",
+  "type": "module",
+  "tags": [
+    "Utilities",
+    "Localization"
+  ],
+  "docsPath": "/library/modules/intl-format/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}

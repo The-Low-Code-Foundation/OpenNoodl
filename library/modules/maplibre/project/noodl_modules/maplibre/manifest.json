@@ -1,0 +1,8 @@
+{
+  "name": "MapLibre GL",
+  "main": "index.js",
+  "dependencies": ["maplibre-gl.js"],
+  "browser": {
+    "stylesheets": ["noodl_modules/maplibre/maplibre-gl.css"]
+  }
+}

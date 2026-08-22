@@ -1,0 +1,13 @@
+{
+  "label": "Virtual List",
+  "description": "Windowed rendering for big arrays: a Virtual List visual node keeps only the rows that intersect its viewport (plus an overscan margin) in the DOM, absolutely positioned over a full-height spacer, so a ten-thousand-row array scrolls smoothly where a Repeater stalls. Inputs: Items (array), Row Template ({{field}} text substitution), Item Height (fixed, px), Overscan, Height or Use Container Size. Outputs: First Visible Index, Visible Count. Ships a demo component with 10,000 generated rows.",
+  "type": "module",
+  "tags": [
+    "UI",
+    "Data"
+  ],
+  "docsPath": "/library/modules/virtual-list/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}

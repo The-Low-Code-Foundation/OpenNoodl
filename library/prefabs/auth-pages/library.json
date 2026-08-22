@@ -1,0 +1,14 @@
+{
+  "label": "Auth Pages",
+  "description": "Complete sign-in flow behind a Page Router: Sign In, Sign Up, Forgot Password and Reset Password pages built on the built-in Log In, Sign Up, Request Password Reset and Reset Password nodes. Labelled email/password inputs, inline error text from each node's Error output, loading state on every submit button, and links between the pages. Fires an \"Auth Success\" event when a user signs in or signs up.",
+  "type": "prefab",
+  "tags": [
+    "Auth",
+    "UI",
+    "Pages"
+  ],
+  "docsPath": "/library/prefabs/auth-pages/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}

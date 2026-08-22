@@ -1,0 +1,580 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/Page Header",
+            "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0001",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0011",
+                        "fromProperty": "Title",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0018",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0011",
+                        "fromProperty": "Subtitle",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0019",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0011",
+                        "fromProperty": "Subtitle",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0012",
+                        "toProperty": "in-Subtitle"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0011",
+                        "fromProperty": "Breadcrumbs",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0012",
+                        "toProperty": "in-Breadcrumbs"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0012",
+                        "fromProperty": "out-Crumbs",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0015",
+                        "toProperty": "items"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0012",
+                        "fromProperty": "out-HasCrumbs",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0014",
+                        "toProperty": "visible"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0012",
+                        "fromProperty": "out-HasSubtitle",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0019",
+                        "toProperty": "visible"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e001c",
+                        "fromProperty": "eventReceived",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e001d",
+                        "toProperty": "Crumb Clicked"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e001c",
+                        "fromProperty": "Target",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e001d",
+                        "toProperty": "Crumb Target"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0011",
+                        "type": "Component Inputs",
+                        "x": -640,
+                        "y": 60,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Title",
+                                "plug": "output",
+                                "type": {
+                                    "name": "string"
+                                },
+                                "group": "Content",
+                                "index": 0
+                            },
+                            {
+                                "name": "Subtitle",
+                                "plug": "output",
+                                "type": {
+                                    "name": "string"
+                                },
+                                "group": "Content",
+                                "index": 1
+                            },
+                            {
+                                "name": "Breadcrumbs",
+                                "plug": "output",
+                                "type": {
+                                    "name": "array"
+                                },
+                                "group": "Content",
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0012",
+                        "type": "JavaScriptFunction",
+                        "label": "Prepare crumbs",
+                        "x": -360,
+                        "y": 160,
+                        "parameters": {
+                            "functionScript": "// Shape the breadcrumb array for the repeater.\n// Every input is guarded: an unconnected input arrives as undefined.\nconst source = Array.isArray(Inputs.Breadcrumbs) ? Inputs.Breadcrumbs : [];\nOutputs.Crumbs = source.map(function (crumb, index) {\n    const safe = crumb && typeof crumb === 'object' ? crumb : {};\n    return {\n        label: safe.label === undefined || safe.label === null ? '' : String(safe.label),\n        target: safe.target === undefined || safe.target === null ? '' : String(safe.target),\n        isLast: index === source.length - 1,\n        showSeparator: index < source.length - 1\n    };\n});\nOutputs.HasCrumbs = source.length > 0;\nconst subtitle = typeof Inputs.Subtitle === 'string' ? Inputs.Subtitle.trim() : '';\nOutputs.HasSubtitle = subtitle.length > 0;"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Breadcrumbs",
+                                "displayName": "Breadcrumbs",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Subtitle",
+                                "displayName": "Subtitle",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Crumbs",
+                                "displayName": "Crumbs",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-HasCrumbs",
+                                "displayName": "HasCrumbs",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-HasSubtitle",
+                                "displayName": "HasSubtitle",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 8
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0013",
+                        "type": "Group",
+                        "label": "Page header",
+                        "x": 20,
+                        "y": -220,
+                        "parameters": {
+                            "sizeMode": "contentHeight",
+                            "width": {
+                                "value": 100,
+                                "unit": "%"
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0014",
+                                "type": "Group",
+                                "label": "Breadcrumbs",
+                                "parameters": {
+                                    "flexDirection": "row",
+                                    "sizeMode": "contentSize",
+                                    "alignItems": "center",
+                                    "marginBottom": {
+                                        "value": 12,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0015",
+                                        "type": "For Each",
+                                        "label": "Crumbs",
+                                        "parameters": {
+                                            "template": "/Page Header/Breadcrumb"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0016",
+                                "type": "Group",
+                                "label": "Title row",
+                                "parameters": {
+                                    "flexDirection": "row",
+                                    "sizeMode": "contentHeight",
+                                    "width": {
+                                        "value": 100,
+                                        "unit": "%"
+                                    },
+                                    "justifyContent": "space-between",
+                                    "alignItems": "flex-end"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0017",
+                                        "type": "Group",
+                                        "label": "Title block",
+                                        "parameters": {
+                                            "flexDirection": "column",
+                                            "sizeMode": "contentSize"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": [
+                                            {
+                                                "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0018",
+                                                "type": "Text",
+                                                "label": "Title",
+                                                "parameters": {
+                                                    "text": "Page title",
+                                                    "as": "h1",
+                                                    "textStyle": "Title Large",
+                                                    "color": "var(--foreground)"
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            },
+                                            {
+                                                "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0019",
+                                                "type": "Text",
+                                                "label": "Subtitle",
+                                                "parameters": {
+                                                    "text": "Supporting description",
+                                                    "as": "p",
+                                                    "color": "var(--muted-foreground)",
+                                                    "marginTop": {
+                                                        "value": 4,
+                                                        "unit": "px"
+                                                    }
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e001a",
+                                        "type": "Group",
+                                        "label": "Actions slot",
+                                        "parameters": {
+                                            "flexDirection": "row",
+                                            "sizeMode": "contentSize",
+                                            "alignItems": "center",
+                                            "justifyContent": "flex-end",
+                                            "marginLeft": {
+                                                "value": 16,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": [
+                                            {
+                                                "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e001b",
+                                                "type": "Component Children",
+                                                "label": "Actions",
+                                                "parameters": {},
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e001c",
+                        "type": "Event Receiver",
+                        "label": "Crumb clicks",
+                        "x": -360,
+                        "y": 420,
+                        "parameters": {
+                            "channelName": "Page Header Crumb"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "Target",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Payload",
+                                "index": 3
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e001d",
+                        "type": "Component Outputs",
+                        "x": -60,
+                        "y": 420,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Crumb Clicked",
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal"
+                                },
+                                "index": 0
+                            },
+                            {
+                                "name": "Crumb Target",
+                                "plug": "input",
+                                "type": {
+                                    "name": "string"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/Page Header/Breadcrumb",
+            "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0002",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0021",
+                        "fromProperty": "label",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0023",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0021",
+                        "fromProperty": "isLast",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0025",
+                        "toProperty": "input"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0025",
+                        "fromProperty": "currentValue",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0023",
+                        "toProperty": "color"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0021",
+                        "fromProperty": "showSeparator",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0024",
+                        "toProperty": "visible"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0021",
+                        "fromProperty": "isLast",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0026",
+                        "toProperty": "condition"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0023",
+                        "fromProperty": "onClick",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0026",
+                        "toProperty": "eval"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0026",
+                        "fromProperty": "onfalse",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0027",
+                        "toProperty": "sendEvent"
+                    },
+                    {
+                        "fromId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0021",
+                        "fromProperty": "target",
+                        "toId": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0027",
+                        "toProperty": "Target"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0021",
+                        "type": "Component Inputs",
+                        "x": -560,
+                        "y": 60,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "label",
+                                "plug": "output",
+                                "type": {
+                                    "name": "string"
+                                },
+                                "group": "Data",
+                                "index": 0
+                            },
+                            {
+                                "name": "target",
+                                "plug": "output",
+                                "type": {
+                                    "name": "string"
+                                },
+                                "group": "Data",
+                                "index": 1
+                            },
+                            {
+                                "name": "isLast",
+                                "plug": "output",
+                                "type": {
+                                    "name": "boolean"
+                                },
+                                "group": "Data",
+                                "index": 2
+                            },
+                            {
+                                "name": "showSeparator",
+                                "plug": "output",
+                                "type": {
+                                    "name": "boolean"
+                                },
+                                "group": "Data",
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0022",
+                        "type": "Group",
+                        "label": "Crumb",
+                        "x": -60,
+                        "y": -80,
+                        "parameters": {
+                            "flexDirection": "row",
+                            "sizeMode": "contentSize",
+                            "alignItems": "center"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0023",
+                                "type": "Text",
+                                "label": "Crumb label",
+                                "parameters": {
+                                    "text": "Crumb",
+                                    "as": "span"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0024",
+                                "type": "Text",
+                                "label": "Separator",
+                                "parameters": {
+                                    "text": "/",
+                                    "as": "span",
+                                    "color": "var(--muted-foreground)",
+                                    "marginLeft": {
+                                        "value": 8,
+                                        "unit": "px"
+                                    },
+                                    "marginRight": {
+                                        "value": 8,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0025",
+                        "type": "Boolean To String",
+                        "label": "Crumb color",
+                        "x": -320,
+                        "y": 140,
+                        "parameters": {
+                            "trueString": "var(--foreground)",
+                            "falseString": "var(--muted-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0026",
+                        "type": "Condition",
+                        "label": "Last crumb is inert",
+                        "x": -320,
+                        "y": 280,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "3f8a1c00-9b2d-4e01-a1f0-0d5b7c9e0027",
+                        "type": "Event Sender",
+                        "label": "Report crumb click",
+                        "x": -60,
+                        "y": 280,
+                        "parameters": {
+                            "channelName": "Page Header Crumb",
+                            "propagation": "parent",
+                            "payload": "Target"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "Target",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Payload",
+                                "index": 4
+                            }
+                        ],
+                        "children": []
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {
+                "Title Large": {
+                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                    "fontSize": {
+                        "value": "24",
+                        "unit": "px"
+                    },
+                    "color": "#000000",
+                    "letterSpacing": "Auto",
+                    "lineHeight": {
+                        "value": "120",
+                        "unit": "%"
+                    },
+                    "textTransform": "none"
+                }
+            },
+            "colors": {}
+        }
+    },
+    "variants": []
+}

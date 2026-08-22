@@ -1,0 +1,16 @@
+{
+  "label": "Rich Text Editor",
+  "description": "A WYSIWYG rich text editor node built on TipTap (MIT, vendored — fully offline, no CDN). Toolbar with bold, italic, headings H1–H3, bullet/ordered lists, links and undo/redo. Inputs: HTML (set content), Placeholder, Editable. Outputs: HTML, Text and a Changed signal on every edit. Toolbar and content chrome follow the app theme via design tokens.",
+  "type": "module",
+  "tags": [
+    "UI"
+  ],
+  "docsPath": "/library/modules/rich-text-editor/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://registry.npmjs.org/@tiptap/starter-kit/-/starter-kit-3.30.2.tgz (with @tiptap/core@3.30.2, @tiptap/extensions@3.30.2, @tiptap/pm@3.30.2, prosemirror-* per LICENSE-tiptap.txt; bundled locally with esbuild@0.25.9, iife, minified)",
+    "importedAt": "2026-08-22"
+  }
+}

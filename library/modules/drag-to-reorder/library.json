@@ -1,0 +1,12 @@
+{
+  "label": "Drag to Reorder",
+  "description": "Sortable list with drag-and-drop reordering, built directly on pointer events — mouse, touch and pen all work. Ships a Drag To Reorder node: feed it an Items array and it renders the rows; while dragging, the other rows translate out of the way and a drop indicator marks the target slot. Dropping outputs Reordered Items (a new array — the input is never mutated), From Index and To Index, then fires a Changed signal. Row colours come from design tokens and are stylable per instance. No dependencies, no network.",
+  "type": "module",
+  "tags": [
+    "UI"
+  ],
+  "docsPath": "/library/modules/drag-to-reorder/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}
