@@ -172,7 +172,26 @@ community page."* Leaving your **project** for the launcher is fine. Leaving the
 6. D15 holds across the whole navigation graph: there is **no path** by which a refused viewer
    reaches a drawn community surface. This is a reachability claim over routes, so it is derived
    from the code and **driven**, not asserted from a component test.
-7. 🔴 **The rail icon is not drawn for a viewer D15 refused.** `SidebarModel.instance.register` at
+7. 🔴 **The rail icon is not drawn for a viewer D15 refused.** ⚠️ **Measured 2026-08-22, before
+   anything was built — the obvious fix has a hole shaped like the defect.** `SidebarModel`
+   already owns a removal path (the experimental-panel toggle, `sidebarmodel.tsx:181–184`):
+   splice from `items`, notify `itemsChanged`. Running exactly that against a **live, active**
+   Community panel in the editor reads:
+
+   | | |
+   |---|---|
+   | rail icon gone | ✅ `true` |
+   | `activeId` | 🔴 still `'community'` |
+   | `panels['community']` | 🔴 still registered |
+   | the panel itself | 🔴 **still drawing** |
+
+   So "unregister on viewer resolution" alone hands a refused viewer **the surface with no icon**,
+   which is the inverse of D15. The removal needs three things: splice `items`, `delete
+   panels[id]`, and — when `activeId === id` — switch away, to `components` for PNL-008's reason.
+   🔴 **And the drive must read the PANEL, not the rail**: a drive that checks only for the missing
+   icon passes on this bug. (For a refused viewer `CommunityPanel` returns `null` of its own
+   accord, so the surface is masked — which is what would let this ship unnoticed.)
+    `SidebarModel.instance.register` at
    [`router.setup.ts:262`](../../../packages/noodl-editor/src/editor/src/router.setup.ts) is
    synchronous at setup with no async predicate, so today every account gets a Community door —
    including the org-minor whose school switched the community off, who then finds a blank panel
