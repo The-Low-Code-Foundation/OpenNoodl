@@ -26,6 +26,14 @@ import css from './Community.module.scss';
 
 export interface CommunitySectionProps<T> {
   title: string;
+  /**
+   * FB-006 — drop the heading when the tab strip above already carries this title.
+   *
+   * ⚠️ The **count** survives a hidden title: "3 items" is the thing a reader scanning a list
+   * wants, and it is the half of the head that the tab label does not repeat. A section with no
+   * title and no count draws no head at all rather than an empty bar.
+   */
+  showTitle?: boolean;
   state: CommunitySectionState<T>;
   /** 🔴 REQUIRED and per-section — see {@link CommunitySectionBody}. */
   emptyLine: string;
@@ -33,20 +41,29 @@ export interface CommunitySectionProps<T> {
   children: (items: T[]) => React.ReactNode;
 }
 
-export function CommunitySection<T>({ title, state, emptyLine, onRetry, children }: CommunitySectionProps<T>) {
+export function CommunitySection<T>({
+  title,
+  showTitle = true,
+  state,
+  emptyLine,
+  onRetry,
+  children
+}: CommunitySectionProps<T>) {
   const count = state.state === 'items' ? state.items.length : null;
 
   return (
     <section className={css['Section']}>
       <div className={css['SectionCard']}>
-        <div className={css['SectionHead']}>
-          <h3 className={css['SectionTitle']}>{title}</h3>
-          {count !== null && (
-            <span className={css['SectionCount']}>
-              {count} {count === 1 ? 'item' : 'items'}
-            </span>
-          )}
-        </div>
+        {(showTitle || count !== null) && (
+          <div className={css['SectionHead']}>
+            {showTitle && <h3 className={css['SectionTitle']}>{title}</h3>}
+            {count !== null && (
+              <span className={css['SectionCount']}>
+                {count} {count === 1 ? 'item' : 'items'}
+              </span>
+            )}
+          </div>
+        )}
         <CommunitySectionBody
           state={state}
           emptyLine={emptyLine}

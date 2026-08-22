@@ -8,6 +8,14 @@
 | **Rulings** | ✅ D1 · inherits **P67 D15** and **D21** |
 | **Depends on** | **NAT-002**, **NAT-003** (it renders on the fixed palette). Precedes the Tier-3 surfaces, which copy its shapes |
 
+> 🔴 **Revised 2026-08-22 by FB-006 / D6 — the page, not the vocabulary.** The three stacked
+> sections are now four tabs (**Bench · Tutorials · Replays · People**), one on screen at a time,
+> because Richard asked for the web's structure: *"not everything on one page in a big list that
+> will one day be unmanageable"*. Everything this task built — the card, the row, the four states,
+> the required per-section empty line, the health readout — is reused unchanged, and
+> `tests-unit/nat-005/launcher-community-render.test.ts` now names the tab each assertion stands
+> in. ⚠️ AC4 (Storybook) is untouched and still open.
+
 ## The job
 
 Fix the tokens and the launcher Community tab is still three headings and some rows. Read

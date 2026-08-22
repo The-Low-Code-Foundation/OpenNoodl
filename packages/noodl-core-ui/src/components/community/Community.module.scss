@@ -257,6 +257,24 @@
   }
 }
 
+/* ── FB-006's tab strip ────────────────────────────────────────────────────────────────── */
+
+/**
+ * The wrapper carries `Tabs.module.scss`'s **variant** class and not its `.Root`.
+ *
+ * `.Root` is `height: 100%; overflow: hidden` — right for a full-height tabbed surface, wrong for
+ * a page that scrolls as one column with a head above the strip and a health readout below it. So
+ * FB-006 loosened the variant selectors there (`.is-variant-segmented .Button` rather than
+ * `.Root.is-variant-segmented .Button`) and this element supplies the ancestor.
+ *
+ * ⚠️ Inline-flex so the segmented track is as wide as its labels rather than the column: the
+ * pill-in-a-track reads as a control at label width and as a header bar at full width.
+ */
+.Tabs {
+  display: inline-flex;
+  margin-bottom: var(--spacing-4);
+}
+
 /* ── The lead paragraph: what this place is for ────────────────────────────────────────── */
 
 .Lead {

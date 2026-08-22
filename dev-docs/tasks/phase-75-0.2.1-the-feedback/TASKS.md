@@ -55,9 +55,15 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 
 - ⬜ **FB-001** — edit and delete your own bench post (M) — **D7 ruled 08-22: edit-own +
   delete-unanswered, no report/flag, no hide.** Build the smallest honest version
-- ⬜ **FB-006** — one navigation model: launcher home, editor door (L) — **D6 ruled 08-22 as
-  proposed**; build in one tranche with NAT-012 (this = launcher tabs, NAT-012 = the model + the
-  editor narrowing). ⚠️ narrows D21, name it in the diff
+- ✅ **FB-006** — the launcher half **done 2026-08-22**: the community page is the web's tabs
+  (**Bench · Tutorials · Replays · People**), one section at a time, chrome outside them, a lead
+  per tab. Built, specced (28 new assertions across two files), **driven in both themes**, and
+  revert-and-counted (**5 reds** when every section draws at once). 🔴 The first tab is **Bench**,
+  not the proposal's *"Discussions"* — the web's name wins over the launcher's old heading and it
+  is one table row to change back. `Tabs` grew a hook-free **`TabStrip`** so the page stays
+  walkable by `tests-unit`; the DOM seven editor panels draw is unchanged. Revises **NAT-005**'s
+  page and **NAT-008**'s D15 pair — both named in the diff. ⚠️ **NAT-012 still owns the editor
+  half** (the model, the `openExternal` audit, the rail narrowing, and the D21 mention)
 - ⬜ **FB-011** — the ports render once (revises UNI-016's rendering pair) (S/M)
 
 ## Tier 3 — content and distribution

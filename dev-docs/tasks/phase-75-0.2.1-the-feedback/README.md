@@ -27,9 +27,9 @@ change doesn't read as a regression later.
 | 2 | no way to become a coach or post an RFP | **FB-003** | `createOffer()` and `postRfp()` **have no caller anywhere** — no form, no route. NAT-009 ruled "posting stays on the web" and pointed at a page with no form. Sharpest gap of the thirteen |
 | 3 | "Your path" dominates the Learning tab | **FB-004** | The placement **is UNI-007 AC1 as built** ("above the installed-lessons grid"). Third report of this class (FIX-024, FIX-025 §2/§3). Path-vs-University reconciliation belongs to NAT-011 (open) |
 | 4 | uploadable templates, ratings, categories, search | **FB-005** | No coverage. ECO-002 is a gated spec; UNI-005's shelf is org-scoped; no template picker exists in the product at all |
-| 5 | launcher community tab is one big list | **FB-006** | NAT-005 did the hierarchy pass (6/7 ✅); the tabs-vs-list structure is **NAT-012, blocked on ruling D6** |
+| 5 | launcher community tab is one big list | **FB-006** | ✅ **DONE 2026-08-22** — the web's tabs (Bench · Tutorials · Replays · People), driven both themes. NAT-005's page revised, its vocabulary reused |
 | 6 | screen captures invisible / "image not yet hosted" | **FB-007** | Platform half (E7) fully built — objectstore, grant, routes, `Attachment.tsx`. **The editor never uploads**: capture is written to disk (`nodesharecontext.ts`) because "there is nowhere to upload to" — no longer true |
-| 7 | is the community tab in the *editor* even worth it? | **FB-006** | This is D6/NAT-012's exact question. Richard's position here is the ruling input |
+| 7 | is the community tab in the *editor* even worth it? | **FB-006** | D6 answered it: editor = door only. ⚠️ The narrowing itself is **NAT-012**, still open |
 | 8 | community link in the editor's ?-menu | **FB-008** | `HelpCenter.tsx` has Docs/YouTube/**Discord**/bug links, no community entry — and Discord is the thing being retired |
 | 9 | university lessons aren't clickable | **FB-009** | Deliberate (D17: the syllabus page carries no install link) — but the real walls are **nothing serves a curriculum index** and **all 15 lessons are `in-writing`** (Richard's prose) |
 | 10 | `/u/richardosborne14` 404s; avatars/bio/badges | **FB-010** | The page, `publicProfile()`, and 12 badges are built. **`upsertProfile` has no caller** — no settings/account page exists, so every profile 404s by construction |

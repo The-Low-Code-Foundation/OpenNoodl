@@ -308,12 +308,22 @@ describe('NAT-008 — D15 draws nothing, with a permitted control beside it', ()
       onRefresh: noop
     };
 
-    const refused = render(<CommunityTab {...base} people={null} />);
+    // 🔴 FB-006 — the directory is a TAB now, so the permitted arm has to be standing in it.
+    // ⚠️ `activeTab` is the only field that differs between these two calls besides `people`
+    // itself: a refused viewer asking for the People tab is exactly the case D15 has to survive,
+    // and it is stronger than the old page-level check — the refusal now removes the tab BUTTON
+    // as well as the rows, so there is no door left to knock on.
+    const refused = render(<CommunityTab {...base} people={null} activeTab="people" />);
     const permitted = render(
-      <CommunityTab {...base} people={{ directory: directory(), onQueryChange: noop, onToggleFilter: noop, onOpenPerson: noop, onRetry: noop }} />
+      <CommunityTab
+        {...base}
+        activeTab="people"
+        people={{ directory: directory(), onQueryChange: noop, onToggleFilter: noop, onOpenPerson: noop, onRetry: noop }}
+      />
     );
 
     expect(text(refused)).not.toContain('Ada Lovelace');
+    expect(text(refused)).not.toContain('People');
     // 🔴 The control, one field different.
     expect(text(permitted)).toContain('Ada Lovelace');
     expect(text(permitted)).toContain('People');

@@ -1,8 +1,61 @@
 # FB-006 — one list is not a place
 
 **Filed:** 2026-08-22, from Richard's items 5 and 7 — which together are **ruling D6's input**.
-**Status: ⬜ OPEN — D6 landed 2026-08-22, the proposal below confirmed as written.** Size: L
-(launcher restructure).
+**Status: ✅ DONE 2026-08-22 (launcher half) — built, specced and driven.** Size: L
+(launcher restructure). ⚠️ **NAT-012 still owns the editor half** of the same tranche: the
+navigation model, the `openExternal` audit and the rail narrowing.
+
+## What landed
+
+The launcher's community page is now the web's tabs — **Bench · Tutorials · Replays · People** —
+one section on screen at a time, with the chrome (who you are, refresh, the health readout, the
+browser door) framing all of them and a lead sentence inside each one saying what *that* tab is
+for. `views/communityTabs.ts` holds the catalogue and the plan; `views/Community.tsx` draws it.
+
+- 🔴 **The first tab is "Bench", not "Discussions" — a deliberate departure from the ruled
+  proposal's wording, and one string to change back.** D6 said *Discussions* and, in the same
+  sentence, *same names as the web*. The web calls the place **the Bench** (UNI-015) and has
+  since it was built, so two names for one place is exactly the seam D6 exists to close. The
+  reasoning is in `communityTabs.ts`'s module note, and the label lives in one table row.
+- 🔴 **`Tabs` grew a `TabStrip`** — the button row, controlled and hook-free — because `Tabs`
+  holds the active tab in `useState` and `tests-unit`'s element walker throws on any hook in the
+  tree it evaluates. A community tab rendering `Tabs` would have taken NAT-005's whole render
+  spec down with it. `Tabs` renders `TabStrip` in place of the markup it used to hold inline, so
+  **the DOM seven editor panels draw is unchanged**; `Tabs.module.scss`'s variant rules now hang
+  off the variant class alone (`.is-variant-segmented .Button`) so a strip can be styled without
+  inheriting `.Root`'s `height: 100%; overflow: hidden`.
+- **`CommunitySection` gained `showTitle`** — the tab label already names the section, and the
+  item count survives a hidden heading because that is the half the label does not repeat.
+- 🔴 **This revises NAT-005's page (not its vocabulary) and NAT-008's D15 pairing.** Both specs
+  now name the tab they stand in; NAT-008's refused arm got *stronger* (a refused viewer loses
+  the tab **button** as well as the rows). Named in the diff so a later session does not read a
+  one-section page as a regression.
+- ⚠️ **D21 is narrowed by D6, not by this task** — the rail panel is untouched here. NAT-012
+  carries the narrowing, and the diff naming D21 belongs with it.
+
+**Measured.** `tests-unit`: **286 suites / 4679 specs, 0 failures** — and the restructure was
+*caught* by the suite twice on the way: 7 reds in `nat-005` and 1 in `nat-008`, each of them an
+assertion about three sections on one page. core-ui package suite **521 / 0**. `typecheck:core-ui` and
+`typecheck:editor-tests`: no new errors (44 pre-existing `TS2307` module-resolution errors,
+unchanged). 🔴 **Revert-and-count:** rendering every section regardless of the active tab turns
+**5 specs red** across `fb-006` and `nat-005` — the exclusions are not passing on an empty read.
+
+**Driven** 2026-08-22 in the running launcher, both themes: four tabs, one selected, content and
+`aria-selected` moving together, the chrome on all four, real data on the Bench. ⚠️ The shared
+`TabStrip` was checked live in **three** other consumers (Learning's segmented strip, the node
+picker, the settings panel). The `sidebar`, `text` and `default` variants were **not** looked at
+— same mechanism, unchanged DOM, and the CSS change is a pure specificity loosening inside one
+module, but nobody has watched them.
+
+Screens: `fb006-dark.png`, `fb006-light.png` in the session scratchpad.
+
+## Still open here
+
+- AC2's future tabs — University, Work, Coaching and Orgs are catalogued and unwired; each is one
+  `wired` flag away once its surface exists in the launcher.
+- ⚠️ The segmented strip's inactive labels are `fg-muted` on `bg-2` in light — inherited from
+  UIX-013's control, shared with the Learning tab, and **not measured against NAT-001's PAIRS
+  table by this task**.
 
 ✅ **D6, as ruled:** all three points of "The D6 proposal" below, unchanged — launcher home in the
 web's tabs, editor reduced to the ask-about-this-node door, deep links from editor to launcher.
@@ -63,6 +116,10 @@ narrowing.
   the view's structure, not a comment.
 - AC3: the shared community vocabulary components are reused; no second copy of row/section
   primitives (a-second-copy-of-a-palette-drifts is the shape to avoid).
+(✅ AC1 — `fb-006/launcher-community-tabs-render`; ✅ AC2 — `fb-006/community-tabs`; ✅ AC3 — the
+strip is the shared one and there is exactly one `role="tablist"` in core-ui; ✅ AC4 — driven,
+both themes, with the plan specced apart from the page that draws it.)
+
 - AC4: driven in the running launcher, both themes; the pure view-model half specced separately
   (this-jest-can-grade-a-react-component — a spec that builds a view model can't grade its
   builder).

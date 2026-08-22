@@ -17,11 +17,15 @@ export enum TabsVariant {
   Segmented = 'is-variant-segmented'
 }
 
-export interface TabsTab {
+/** What the strip needs to draw a button. {@link TabsTab} adds the content behind it. */
+export interface TabStripTab {
   label: string;
   id?: string;
-  content: Slot;
   testId?: string;
+}
+
+export interface TabsTab extends TabStripTab {
+  content: Slot;
 }
 
 export interface TabsProps extends UnsafeStyleProps {
@@ -44,8 +48,64 @@ export interface TabsProps extends UnsafeStyleProps {
   onChange?: (activeTab: string) => void;
 }
 
-function getTabId(tab: TabsTab) {
+function getTabId(tab: TabStripTab) {
   return tab.hasOwnProperty('id') ? tab.id : tab.label;
+}
+
+export interface TabStripProps {
+  tabs: TabStripTab[];
+  /** The tab drawn as active. This component holds no state — the caller owns which one it is. */
+  activeTabId: string;
+  variant?: TabsVariant;
+  slotEnd?: Slot;
+  onSelect: (tab: TabStripTab) => void;
+}
+
+/**
+ * The button row on its own, controlled and **hook-free**.
+ *
+ * ## FB-006 — why this is split out of {@link Tabs}
+ *
+ * A surface that wants the strip but not the state cannot use `Tabs`: `Tabs` holds the active tab
+ * in `useState`, and the launcher's community tab needs the choice to live beside the rest of its
+ * host state so the pure half of the view stays a function of its props. 🔴 The concrete cost is a
+ * spec: `tests-unit/support/renderElements.ts` evaluates an element tree by *calling* every
+ * function component it meets, and **a component that calls a hook throws there**. A community tab
+ * that rendered `Tabs` would take NAT-005's whole render spec down with it — twenty assertions
+ * about what D15 draws, replaced by an exception.
+ *
+ * ⚠️ So the alternative was a second segmented control in the launcher, which is the drift shape
+ * FB-006 AC3 exists to prevent (`a-second-copy-of-a-palette-drifts`). One strip, one stylesheet,
+ * two callers: `Tabs` (stateful) and `views/Community` (controlled).
+ *
+ * ⚠️ `Tabs` renders this in place of the markup it used to hold inline, so **the DOM it produces
+ * is unchanged** — seven editor panels draw from it and none of them should notice this task.
+ */
+export function TabStrip({ tabs, activeTabId, variant = TabsVariant.Default, slotEnd, onSelect }: TabStripProps) {
+  const tabWidth = `calc(${100 / tabs.length}% - 2px)`;
+  const isAutoWidth = variant === TabsVariant.Text || variant === TabsVariant.Segmented;
+
+  return (
+    <div className={css['ButtonRow']}>
+      <nav className={css['Buttons']} role="tablist">
+        {tabs.map((tab) => (
+          <button
+            key={getTabId(tab)}
+            role="tab"
+            aria-selected={activeTabId === getTabId(tab)}
+            className={classNames([css['Button'], activeTabId === getTabId(tab) && css['is-active']])}
+            onClick={() => onSelect(tab)}
+            style={{ width: isAutoWidth ? null : tabWidth }}
+            data-test={tab.testId}
+          >
+            <Text>{tab.label}</Text>
+          </button>
+        ))}
+      </nav>
+
+      {Boolean(slotEnd) && <div className={css['SlotEnd']}>{slotEnd}</div>}
+    </div>
+  );
 }
 
 export function Tabs({
@@ -69,37 +129,15 @@ export function Tabs({
     setActiveTabId(activeTab);
   }, [activeTab]);
 
-  const tabWidth = `calc(${100 / tabs.length}% - 2px)`;
-
-  function changeTab(tab: TabsTab) {
+  function changeTab(tab: TabStripTab) {
     const tabId = getTabId(tab);
     setActiveTabId(tabId);
     onChange && onChange(tabId);
   }
 
-  const isAutoWidth = variant === TabsVariant.Text || variant === TabsVariant.Segmented;
-
   return (
     <div className={classNames(css['Root'], css[variant], UNSAFE_className)} style={UNSAFE_style}>
-      <div className={css['ButtonRow']}>
-        <nav className={css['Buttons']} role="tablist">
-          {tabs.map((tab) => (
-            <button
-              key={getTabId(tab)}
-              role="tab"
-              aria-selected={activeTabId === getTabId(tab)}
-              className={classNames([css['Button'], activeTabId === getTabId(tab) && css['is-active']])}
-              onClick={() => changeTab(tab)}
-              style={{ width: isAutoWidth ? null : tabWidth }}
-              data-test={tab.testId}
-            >
-              <Text>{tab.label}</Text>
-            </button>
-          ))}
-        </nav>
-
-        {Boolean(slotEnd) && <div className={css['SlotEnd']}>{slotEnd}</div>}
-      </div>
+      <TabStrip tabs={tabs} activeTabId={activeTabId} variant={variant} slotEnd={slotEnd} onSelect={changeTab} />
 
       <div className={css['TabContent']}>
         {Boolean(keepTabsAlive)

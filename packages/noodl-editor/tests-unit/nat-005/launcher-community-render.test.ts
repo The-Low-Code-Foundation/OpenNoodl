@@ -17,6 +17,19 @@
  * states and the metadata are claims about. What it cannot answer is whether any of it is legible
  * — that is NAT-001's PAIRS table and a person looking at it.
  *
+ * ## 🔴 FB-006 revised this file's subject on 2026-08-22
+ *
+ * NAT-005 asserted three sections on one page. D6 made each of them a tab, so the assertions
+ * below now say **which tab they are standing in** — `draw(view, { activeTab })` — and the
+ * page-wide counts became per-tab counts whose sum is the number this file used to check. That is
+ * an acceptance criterion revised on the word of the person it was written for (Richard, item 5:
+ * *"not everything on one page in a big list"*), not a regression, and it is named here so a later
+ * session does not read a one-section page as one.
+ *
+ * ⚠️ What did NOT change: the four states, the per-section empty line, the metadata on a row, the
+ * D15 pairing, and every source-side check. FB-006 moved the page's furniture and touched none of
+ * the vocabulary NAT-005 built.
+ *
  * @module noodl-editor/tests-unit/nat-005/launcher-community-render
  */
 import { readFileSync } from 'fs';
@@ -27,6 +40,7 @@ import {
   type CommunityMirrorView,
   type LauncherCommunityHostState
 } from '@noodl-core-ui/preview/launcher/Launcher/views/Community';
+import type { CommunityTabId } from '@noodl-core-ui/preview/launcher/Launcher/views/communityTabs';
 
 import { byClass, render, stripComments, text, walk } from '../support/renderElements';
 
@@ -70,6 +84,17 @@ function draw(view: CommunityMirrorView, extra: Partial<LauncherCommunityHostSta
   );
 }
 
+/**
+ * FB-006 — the same page, standing in one room.
+ *
+ * ⚠️ `activeTab` is the host's, not the strip's: `TabStrip` is hook-free precisely so this walk
+ * can still evaluate the whole tree. A community tab that rendered `Tabs` would throw here and
+ * take every assertion in this file with it.
+ */
+function on(tab: CommunityTabId, view: CommunityMirrorView = shown(), extra: Partial<LauncherCommunityHostState> = {}) {
+  return draw(view, { ...extra, activeTab: tab });
+}
+
 // ── The instrument ────────────────────────────────────────────────────────────────────────
 
 describe('the instrument can tell a drawn tree from an undrawn one', () => {
@@ -77,7 +102,8 @@ describe('the instrument can tell a drawn tree from an undrawn one', () => {
     const tree = draw(shown());
     expect(tree).not.toBeNull();
     expect(walk(tree).length).toBeGreaterThan(20);
-    expect(text(tree)).toContain('Discussions');
+    // FB-006: the first tab took the web's name for the place. See `communityTabs`.
+    expect(text(tree)).toContain('Bench');
   });
 
   it('🔴 CONTROL: and it can see something ABSENT from that same tree', () => {
@@ -150,7 +176,15 @@ describe('AC1 — the four section states are still four, and still distinguisha
   });
 
   it('items draws one row per item and no state line', () => {
-    expect(byClass(items, 'Row').length).toBe(THREADS.length + ARTICLES.length + REPLAYS.length);
+    // 🔴 FB-006 — per TAB now. The three numbers still sum to what this line used to assert about
+    // one page, which is the check that the restructure moved rows rather than losing them.
+    const rowsOn = (tab: CommunityTabId) => byClass(on(tab), 'Row').length;
+    expect(rowsOn('bench')).toBe(THREADS.length);
+    expect(rowsOn('tutorials')).toBe(ARTICLES.length);
+    expect(rowsOn('replays')).toBe(REPLAYS.length);
+    expect(rowsOn('bench') + rowsOn('tutorials') + rowsOn('replays')).toBe(
+      THREADS.length + ARTICLES.length + REPLAYS.length
+    );
     expect(text(items)).not.toContain('Loading…');
   });
 
@@ -169,18 +203,18 @@ describe('AC1 — the four section states are still four, and still distinguisha
 // ── AC3: emptyLine ────────────────────────────────────────────────────────────────────────
 
 describe('AC3 — emptyLine is required and per-section', () => {
-  const allEmpty = draw(
-    shown({ threads: { state: 'empty' }, articles: { state: 'empty' }, replays: { state: 'empty' } })
-  );
+  const nothing = shown({ threads: { state: 'empty' }, articles: { state: 'empty' }, replays: { state: 'empty' } });
+  const LIST_TABS: CommunityTabId[] = ['bench', 'tutorials', 'replays'];
+  // FB-006: one empty section per tab rather than three down one page.
+  const emptyLines = LIST_TABS.map((tab) => byClass(on(tab, nothing), 'StateLine').map((n) => n.ownText));
 
   it('🔴 three empty sections say three DIFFERENT things', () => {
-    const lines = byClass(allEmpty, 'StateLine').map((n) => n.ownText);
-    expect(lines.length).toBe(3);
-    expect(new Set(lines).size).toBe(3);
+    for (const lines of emptyLines) expect(lines.length).toBe(1);
+    expect(new Set(emptyLines.flat()).size).toBe(3);
   });
 
   it('each says what its own section is FOR', () => {
-    const all = text(allEmpty);
+    const all = LIST_TABS.map((tab) => text(on(tab, nothing))).join(' ');
     expect(all).toContain('Questions asked from the editor land here');
     expect(all).toContain('Written guides published to the community');
     expect(all).toContain('Recordings of the weekly call');
@@ -198,9 +232,10 @@ describe('AC3 — emptyLine is required and per-section', () => {
 // ── AC2: the metadata the view model always carried ───────────────────────────────────────
 
 describe('AC2 — rows draw the metadata the old UI threw away', () => {
-  const tree = draw(shown());
-  const rows = byClass(tree, 'RowMeta').map((n) => n.ownText);
-  const details = byClass(tree, 'RowDetail').map((n) => n.ownText);
+  // FB-006: the rows are on three tabs now, so the metadata claim is made over all three.
+  const trees = (['bench', 'tutorials', 'replays'] as CommunityTabId[]).map((tab) => on(tab));
+  const rows = trees.flatMap((tree) => byClass(tree, 'RowMeta').map((n) => n.ownText));
+  const details = trees.flatMap((tree) => byClass(tree, 'RowDetail').map((n) => n.ownText));
 
   it('🔴 a thread row says when it was asked and whether anybody answered', () => {
     expect(rows).toContain('3 days ago · answered in 41 min');
@@ -220,7 +255,8 @@ describe('AC2 — rows draw the metadata the old UI threw away', () => {
   it('🔴 CONTROL: a row whose metadata is unreadable draws NO meta line rather than "NaN"', () => {
     // NAT-006's finding: a column declared `Date` arrives as Postgres text on some pooled
     // connections, and both spellings parse. The failure mode is NaN reaching a reader as words.
-    const broken = draw(
+    const broken = on(
+      'bench',
       shown({
         threads: {
           state: 'items',
@@ -230,7 +266,13 @@ describe('AC2 — rows draw the metadata the old UI threw away', () => {
     );
     expect(text(broken)).not.toContain('NaN');
     expect(text(broken)).toContain('A thread');
-    expect(byClass(broken, 'RowMeta').length).toBe(ARTICLES.length + REPLAYS.length);
+    // The thread's own meta line is absent; ⚠️ on the Bench tab that is now the ONLY row, so the
+    // control is 0 rather than the other two tabs' rows. The two arms below are what keep that
+    // from being an assertion about an empty page: the title still draws, and the other tabs'
+    // rows still carry theirs.
+    expect(byClass(broken, 'RowMeta').length).toBe(0);
+    expect(byClass(on('tutorials'), 'RowMeta').length).toBe(ARTICLES.length);
+    expect(byClass(on('replays'), 'RowMeta').length).toBe(REPLAYS.length);
   });
 });
 
