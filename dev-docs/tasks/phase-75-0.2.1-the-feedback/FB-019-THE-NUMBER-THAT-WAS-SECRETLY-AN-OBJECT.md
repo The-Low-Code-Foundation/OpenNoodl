@@ -47,6 +47,80 @@ PORT-TYPE-CONTRACT.md's **Direction C** — distinguish *connectable losslessly*
 *connectable via cast* in the UI — "a model change, not built here". This task builds the
 useful four-fifths of that without the full model change.
 
+## 🆕 The sweep scope (1) demanded — done 2026-08-22, and it revises AC1
+
+Scope (1) said *"sweep the example projects and lesson bundles for connections into dimension
+ports first, and say what was found"*. Done, over **92 `project.json` files** (every one in the
+repo outside `node_modules`: library modules and prefabs, `project-examples`, QA fixtures, phase
+corpora and the editor's `testfs` sample apps). Both scripts are kept
+beside this file — `sweep.py` and `portset.py`, run from the repo root — and the port-name set is
+derived from the viewer source rather than typed by hand.
+
+🔴 **THE INSTRUMENT LIED FIRST, AND IN THE FLATTERING DIRECTION.** The first pass matched
+connections by **port name** and reported **189** hits. Seven of them were
+`Avatar.outDesiredSize → Expression.width` and friends — the `Expression` node has a plain number
+input that happens to be called `width`. One of those seven was about to be written up here as
+*"a shipped prefab hitting the bug today"*. Filtering by the **target node type** leaves **182**
+real hits on `Group`/`Image`/`Text`/`net.noodl.visual.icon`. ⚠️ The bound, stated: the name set is
+extracted by walking back from each `units:` declaration to its enclosing key, which also produced
+`methods` and `popout` (mis-attributions); neither is a connection target anywhere, so they cost
+nothing, but this is an approximation of the type table, not the type table.
+
+### There are THREE registration paths, not the two the task was written around
+
+| Declared with | Lands in | What a **bare number** does | Declared `default` applied? |
+|---|---|---|---|
+| `addInputCss` (padding, margin, `fontSize`, `borderRadius`, `borderWidth`, gaps, min/max) | `inputCss` | ✅ coerced to `{value, defaultUnit}` — `react-component-node.ts:1889` | ✅ yes, `:827` |
+| `addInputProps` (`width`, `height`, `iconSize`, `iconSpacing`) | `inputProps` → `defineRegularInputProp` | 🔴 `value.value` is undefined → **`delete props[name]`** — `:592–605` | ❌ **no** |
+| `addInputs` (`transformX`, `transformY`, `transformRotation`) | `inputs` | 🔴 the port's own `set` computes `value.value + value.unit` → **`NaN`** — `node-shared-port-definitions.ts:406–457` | ❌ **no** |
+
+🔴 **The third path is a silent failure the task did not name, and it is the one with instances.**
+The `default: 0` on `transformX` never reaches `_inputValues` — the default loop at `:827` runs
+over `inputCss` **only** — so there is nothing for `setInputValue`'s merge to find a unit on, and
+the custom setter builds `translate(NaN…)`, which the browser drops without an error.
+
+### The two populations, and why AC1 has to change
+
+**A — 34 connections carry a bare number into a port whose parameter DOES store `{value, unit}`.**
+The merge fires and they work. 🔴 **AC1's clause *"the stale-unit merge is gone"* would break every
+one of them**, re-uniting each to its port's `defaultUnit`: 13 into `width` and 7 into `height`,
+plus `iconSize`, `paddingBottom`, `fontSize`, `borderWidth`. Named examples, all shipped:
+`toggle-switch` drives `transformX` from `States.pos` against a stored `{value: 0, unit: '%'}` —
+`defaultUnit` for `transformX` is `px`, so removing the merge slides the switch by pixels instead
+of percent; `filters/Range` does the same on `marginLeft`/`marginRight`; `rating` feeds
+`Number.savedValue` into `iconSize` against `{32, 'px'}`; `table`'s Base Cell drives `width`
+against `{100, '%'}`.
+
+**The merge is not the bug. It is the feature** — it is how an author picks the unit once in the
+panel and drives the number by wire, and no wire can carry a unit. What is unlearnable is that it
+is invisible, and that it does nothing when the panel value was never set.
+
+✅ **AC1, revised:** keep the merge **when a unit is stored**; make the **no-stored-unit** case
+coerce with `defaultUnit` on all three paths, so `300` into a never-set `Width` renders at the
+port's default unit instead of vanishing (`inputProps`) or becoming `NaN` (`inputs`). The
+`50%`-then-`300` case stays `300%` **by design**, and scope (3)'s job of *saying the shape at the
+port* is what makes that legible rather than surprising.
+
+**B — 8 connections carry a bare number into a port with NO stored value: broken today.**
+🔴 **Not the failure that was filed.** Bug 2 as written (never-set + bare number → the
+`inputProps` branch deletes the prop) has **zero instances** in 92 projects. Six of the eight are
+on the third path, in **two shipped library modules**:
+
+- `image-cropper` — `Javascript2.ImageXpos/ImageYpos → Image.transformX/transformY` (×4, in both
+  `/#Image Cropper/Image Cropper` and its `Internal Components/Panning Control`)
+- `panning-and-zooming-control` — the same two connections
+- one editor `testfs` app (`Number Blend.result → transformRotation`, `Expression.result →
+  transformX`) and one phase-16 probe (`animatetovalue.currentValue → transformX`)
+
+The remaining two are `Expression.result → Group.borderRadius` on the coercing path, which is
+fine.
+
+⚠️ **PREDICTED FROM SOURCE, NOT YET OBSERVED.** These eight are read off the graphs and the three
+setter paths; nobody has watched an image cropper fail to pan. **Drive one before claiming the
+modules are broken** — the FB-020 lesson is that a filed mechanism can be wrong in exactly this
+way, and the control arm here is a sibling connection whose parameter *is* set, which must keep
+working across the same fix.
+
 ## Scope
 
 1. **Fix the runtime asymmetry** (the actual bugs): `dimension`/units-`number` inputs coerce a
@@ -81,10 +155,16 @@ useful four-fifths of that without the full model change.
 
 ## Acceptance criteria
 
-- AC1: bare number → Width renders at `defaultUnit`; the never-set case no longer deletes the
-  prop; the stale-unit merge is gone — all three graded with the failing shapes from this file.
-- AC2: padding and Width now behave identically for the same connected value (the asymmetry
-  spec: both arms asserted on one node).
+- AC1 (**REVISED 2026-08-22 by the sweep above — the original clause would have broken 34 live
+  connections**): bare number → a **never-set** `Width` renders at `defaultUnit` instead of the
+  prop being deleted; the same value into a never-set `Pos X` renders instead of becoming `NaN`;
+  and a port that **does** store a unit keeps merging, so `{0, '%'}` driven from a wire stays
+  percent. Graded with all three shapes, plus a control arm from population A (a stored-unit
+  connection that must not change) — a fix that re-units the shipped `toggle-switch` is a
+  regression, not a pass.
+- AC2: padding, Width **and Pos X** now behave identically for the same connected value — the
+  asymmetry is three-way (`inputCss` / `inputProps` / `inputs`), and all three arms are asserted
+  on one node.
 - AC3: string → icon input draws the glyph (or the refusal warns, per the (4) decision) —
   never an empty span with no diagnostic.
 - AC4: every structured type in the table above either casts losslessly, coerces with a defined
