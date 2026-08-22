@@ -36,6 +36,7 @@ import { registerProvisionTools } from './tools/provisionTools';
 import { registerReviewTools } from './tools/review';
 import { registerListProjectsTools } from './tools/listProjects';
 import { registerKitTools } from './tools/kitTools';
+import { registerLibraryTools } from './tools/libraryTools';
 import { registerLessonTools } from './tools/lessonTools';
 import { ToolDisclosure, recordTools, registerFindTools } from './tools/disclosure';
 
@@ -161,6 +162,10 @@ export function createServer(options: ServerOptions): CreatedServer {
   // `open_project` does it in a call. Passing the binding is what stops the
   // sentence being right for one of the two servers it ships in.
   registerListProjectsTools(rec, binding);
+  // LBR-008 — the shelf. The reads are registered in both modes (browsing what
+  // could be installed changes nothing); `install_prefab` registers itself only
+  // when `allowWrites` says so, which is what keeps WRITE_ONLY_TOOLS honest.
+  registerLibraryTools(rec, binding, { allowWrites: options.allowWrites });
   // AWP-006 — resident in both modes. A read-only server defers the docs and
   // backend *read* tools too, so the door out of the deferred set cannot be
   // behind the write flag.

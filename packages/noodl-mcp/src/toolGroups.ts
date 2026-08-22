@@ -267,7 +267,21 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     id: 'explore',
     title: 'Exploring an existing project',
     purpose: 'search every graph for a type, label or value; explain one component; browse the example library.',
-    tools: ['search_project', 'explain_component', 'list_examples'],
+    // ✅ LBR-008 — the shelf. Appended here rather than given a `library` group,
+    // and the placement was measured the way CN-006 measured `create_node_kit`'s
+    // (2026-08-22, same fixture and normalisation as `toolDisclosure.test.ts`):
+    // the surface stood at **8,255 against the 8,280 bar — 25 free** before this
+    // task, a new group costs ~26, and appending costs **0** because the only
+    // resident trace of a deferred group is `find_tools`' `(N tools)`, and
+    // "3 tools" and "6 tools" are the same length.
+    //
+    // 🔴 The `purpose` line above says "example library", not "prefab library" —
+    // the same trade `create_node_kit` records. Nothing is unreachable:
+    // `find_tools`' `query` matches tool names, so "library" and "prefab" reveal
+    // these from anywhere, and `tests/libraryTools.test.ts` asserts that door.
+    // Widening the purpose costs resident tokens and belongs in the next budget
+    // renegotiation, not here.
+    tools: ['search_project', 'explain_component', 'list_examples', 'list_library', 'get_library_entry', 'install_prefab'],
     resident: false
   },
   {
@@ -359,6 +373,10 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
  */
 export const WRITE_ONLY_TOOLS: ReadonlySet<string> = new Set<string>([
   ...CORE_WRITE_TOOLS,
+  // LBR-008. The shelf's reads (`list_library`, `get_library_entry`) ship in
+  // both modes; installing writes components, styles, assets and modules into
+  // the bound project, so it ships inside the write gate.
+  'install_prefab',
   // UNI-010. `create_lesson` writes a directory, so the whole group ships inside
   // the write gate — including the two that change nothing. Same reasoning, and
   // the same honesty, as `list_backend_processes` below: recorded as observed.

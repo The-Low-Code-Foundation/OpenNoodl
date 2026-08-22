@@ -1,0 +1,6 @@
+{
+  "name": "Tiny Kit",
+  "main": "index.js",
+  "runtimes": ["browser"],
+  "dependencies": []
+}
