@@ -107,13 +107,33 @@ Jordan flagged that distinction as the open question:
 
 | Ruling | Blocks | State |
 |---|---|---|
-| **D6** — one navigation model; what lives in launcher vs editor | FB-006, NAT-012, (FB-008's placement) | Richard's items 5/7/8 **are** the input; needs his confirmation |
-| **D7** — report / flag / delete-own | FB-001; moderation posture for FB-005/FB-013 | Open since phase 72 scoping |
+| **D6** — one navigation model; what lives in launcher vs editor | FB-006, NAT-012, (FB-008's placement) | ✅ **SETTLED 2026-08-22: launcher home in web-mirroring tabs, editor door only.** Narrows D21 — see phase-72 README §4 |
+| **D7** — report / flag / delete-own | FB-001; moderation posture for FB-005/FB-013 | ✅ **SETTLED 2026-08-22: edit-own + delete-unanswered. No report/flag, no hide.** ⚠️ leaves FB-005/FB-013 without a posture — see below |
 | **D8** — offline caching posture | NAT-013 | Open |
 | **D10** — the relay domain | NAT-009/010 AC5, NAT-014 AC4 | Open; relay.nodegx.dev unregistered |
-| **R-templates** — does template sharing open to everyone now? | FB-005 | New; partially reopens ECO-002's G3 gate |
-| **R-chat** — overrule UNI-011's no-chat argument? | FB-013, FB-014's second corpus | New; the old argument is quoted in FB-013 |
+| **R-templates** — does template sharing open to everyone now? | FB-005 | ✅ **SETTLED 2026-08-22: CURATED FIRST.** Richard publishes; a share button files a submission, it does not publish. G3 stays shut; same posture as tutorial curation |
+| **R-chat** — overrule UNI-011's no-chat argument? | FB-013, FB-014's second corpus | ✅ **SETTLED 2026-08-22: OVERRULED — build chat.** 🔴 UNI-011's written argument is now superseded, not forgotten; FB-014's corpus grows and D7's posture gap becomes load-bearing |
 | **FIX-026 (a)/(b)**, **FIX-027 14/15/16 + 22**, **tsfixme baseline**, **prod API key**, **15 lessons' prose** | carried | All Richard's, all already written up |
+
+### What the 2026-08-22 rulings changed
+
+Four landed in one sitting. Two unblock work as filed; two **create** work that was not in the
+phase when it was scoped:
+
+- 🔴 **R-chat was overruled — chat ships.** UNI-011's argument against it (*"a forum flatters low
+  volume; chat punishes it"*) is superseded by a decision, not by a counter-argument, so it stays
+  quotable and the risk it named is still real. Consequences the ruling inherits: FB-014's search
+  now has a **second corpus**, and chat is the surface where D7's declined moderation verbs
+  (report/flag) bite hardest.
+- 🔴 **D7 shipped the author's verbs only.** Edit-own + delete-unanswered, no report/flag, no hide.
+  That is a complete answer for FB-001 and an **incomplete** one for FB-005 and FB-013, both of
+  which were ruled *in* the same day and both of which take third-party content. ⚠️ Do not infer a
+  posture for them from D7 — it was ruled on the bench, and the question comes back.
+- **R-templates: curated first.** The share button files a submission; publishing stays Richard's.
+  ECO-002's G3 gate is **not** reopened, and the licence trap (P69: *"20/20 ≠ fit to publish"*)
+  stays parked until a later ruling opens uploads.
+- **D6 narrows D21.** Recorded in phase-72 README §4 with both of Richard's instructions named, so
+  a session reading D21 alone does not read the narrowing as a regression.
 
 ## Order
 

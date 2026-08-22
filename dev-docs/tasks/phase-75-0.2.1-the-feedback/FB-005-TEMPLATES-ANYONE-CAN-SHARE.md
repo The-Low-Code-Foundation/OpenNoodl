@@ -1,7 +1,14 @@
 # FB-005 — templates anyone can share
 
-**Filed:** 2026-08-22, from Richard's item 4. **Status: 🔒 needs ruling R-templates.**
-Size: L+. Slice before starting.
+**Filed:** 2026-08-22, from Richard's item 4. **Status: ⬜ OPEN — R-templates ruled 2026-08-22:
+CURATED FIRST.** Size: L+. Slice before starting.
+
+✅ **R-templates, as ruled:** Richard publishes; a share button **files a submission, it does not
+publish**. Same posture as tutorial curation. 🔴 This is *not* Richard's item 4 as written — he asked
+for "just let anyone upload anything" and ruled against his own phrasing, so **ECO-002's G3 gate
+stays shut** and the licence trap (P69: *"20/20 ≠ fit to publish"*) stays parked until a later
+ruling opens uploads. Ratings/categories/search are still in scope over the curated set.
+⚠️ **D7 gave no moderation posture for third-party content** — it was ruled on the bench only.
 
 > *"When can we add 'templates' to the things you can upload to the community? Shouldn't be
 > complicated I imagine? Just let anyone upload anything, make a star rating system and show the

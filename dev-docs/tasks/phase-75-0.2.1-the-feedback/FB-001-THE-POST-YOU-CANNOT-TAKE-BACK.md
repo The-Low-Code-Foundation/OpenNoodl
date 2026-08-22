@@ -1,6 +1,13 @@
 # FB-001 — the post you cannot take back
 
-**Filed:** 2026-08-22, from Richard's item 1a. **Status: 🔒 blocked on ruling D7.** Size: M.
+**Filed:** 2026-08-22, from Richard's item 1a. **Status: ⬜ OPEN — ruling D7 landed 2026-08-22.**
+Size: M.
+
+✅ **D7, as ruled:** *edit own post body* and *delete own thread while nobody else has answered* —
+exactly scope items 1 and 2 below. Richard **declined** the wider options: **no report/flag** and
+**no hide-after-answers**, so an answered thread is simply undeletable and the refusal says so.
+D19's no-revision-history exclusion stands: `updated_at` is the whole history. **Build scope 1–3
+as written; do not grow a fourth verb without a new ruling.**
 
 > *"Right now in the community I can't edit or delete the questions I added to the bench."*
 

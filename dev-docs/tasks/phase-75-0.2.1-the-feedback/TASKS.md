@@ -45,10 +45,13 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 - ⬜ **FB-022** — drag-to-scrub numeric fields (M/L; after FB-017/018 land in the same rows)
 - (FB-012 gains the CSS-basics lesson + the accumulating-state bar — tracked there)
 
-## Tier 2 — ruling-gated
+## Tier 2 — unblocked 2026-08-22 (D6, D7 ruled)
 
-- 🔒 **FB-001** — edit and delete your own bench post (D7) (M)
-- 🔒 **FB-006** — one navigation model: launcher home, editor door (D6) (L)
+- ⬜ **FB-001** — edit and delete your own bench post (M) — **D7 ruled 08-22: edit-own +
+  delete-unanswered, no report/flag, no hide.** Build the smallest honest version
+- ⬜ **FB-006** — one navigation model: launcher home, editor door (L) — **D6 ruled 08-22 as
+  proposed**; build in one tranche with NAT-012 (this = launcher tabs, NAT-012 = the model + the
+  editor narrowing). ⚠️ narrows D21, name it in the diff
 - ⬜ **FB-011** — the ports render once (revises UNI-016's rendering pair) (S/M)
 
 ## Tier 3 — content and distribution
@@ -56,10 +59,12 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 - ⬜ **FB-012** — a batch of default tutorials + share/export (content 🧭 Richard) (L)
 - ⬜ **FB-009** — a syllabus entry you can actually start (D17 v0 hosting; lessons 🧭 Richard) (M/L)
 
-## Tier 4 — new scope (scoping docs first, build after ruling)
+## Tier 4 — new scope (rulings landed 08-22; scoping docs first)
 
-- 🔒 **FB-005** — templates anyone can share (R-templates) (L+)
-- 🔒 **FB-013** — the chat we argued against (R-chat) (L)
+- ⬜ **FB-005** — templates, **curated first** (L+) — **R-templates ruled 08-22**: share files a
+  submission, Richard publishes. G3 stays shut; licences stay parked. Scope doc first
+- ⬜ **FB-013** — chat (L) — 🔴 **R-chat ruled 08-22: OVERRULED, build it.** UNI-011's argument is
+  superseded, not withdrawn. Pulls in FB-014's 2nd corpus and reopens D7's posture gap
 - ⬜ **FB-014** — search that survives renames (pgvector, design + prototype only) (M)
 
 ## Found while working, owned by nobody (2026-08-22)

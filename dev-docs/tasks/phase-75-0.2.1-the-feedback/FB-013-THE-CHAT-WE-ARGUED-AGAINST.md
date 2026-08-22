@@ -1,7 +1,15 @@
 # FB-013 — the chat we argued against
 
-**Filed:** 2026-08-22, from Richard's item 13. **Status: 🔒 needs ruling R-chat — this file is
-the ruling request, both sides stated.** Size: L if approved (scoping doc first, S).
+**Filed:** 2026-08-22, from Richard's item 13. **Status: ⬜ OPEN — R-chat ruled 2026-08-22: OVERRULED,
+build it.** Size: L (scoping doc first, S).
+
+🔴 **R-chat, as ruled:** UNI-011's written argument (*"a forum flatters low volume; chat punishes
+it"*) is **superseded by a decision, not answered by a counter-argument** — it stays quoted below
+because the risk it names is still real, and the scoping doc has to say how the design survives it.
+Richard chose the full build over the middle option (a no-answered-state `#lounge` bench category).
+Two consequences the ruling inherits: **FB-014's search gains a second corpus**, and **D7 declined
+report/flag on the same day** — chat is where that absence bites hardest, so the scoping doc must
+raise the posture question rather than assume the bench's answer transfers.
 
 > *"I think we need a chat tab. I know we said the bench is better, but when I think about
 > sharing tutorials, maybe chatting about templates, collaboration, just talking and not

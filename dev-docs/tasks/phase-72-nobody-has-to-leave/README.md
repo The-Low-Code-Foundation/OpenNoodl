@@ -142,7 +142,7 @@ webview is genuinely the answer it is a *separate, sandboxed* surface on the
 
 ## 4. Rulings queue — OPEN as of 2026-08-19
 
-Richard settled four in the opening conversation. **D9 is now settled and D11/D12 were added and settled with it**; **D5 was settled on 2026-08-20**, so **four remain** (D6, D7, D8, D10) — D10 was added on 2026-08-19 with NAT-014.
+Richard settled four in the opening conversation. **D9 is now settled and D11/D12 were added and settled with it**; **D5 was settled on 2026-08-20**; **D6 and D7 were settled on 2026-08-22** (below), so **two remain** (D8, D10) — D10 was added on 2026-08-19 with NAT-014.
 
 **Settled 2026-08-19:**
 - ✅ **D1 — Fix the shared tokens.** Not a community-scoped override. The whole editor changes
@@ -192,14 +192,36 @@ browser means exactly the browser's scope: a write the web refuses this account,
 refused too, and D15 is unchanged. **Unblocks NAT-007 AC4/AC6/AC7-second-direction, NAT-006 AC5,
 and the write halves of NAT-009 and NAT-010.**
 
+✅ **D6 — settled 2026-08-22. The launcher is the community's home; the editor keeps only the
+door.** Ruled on FB-006's restatement of Richard's 0.2.1 items 5 and 7. The launcher community view
+becomes tabs mirroring the web's nav (Discussions · Tutorials · Replays · People · University ·
+Work), so the two surfaces read as one product; the editor rail panel shrinks to the one
+project-relevant verb — the ask-about-this-node modal, plus follow-up on threads you asked or
+answered. Anything else the editor would have shown deep-links to the launcher tab.
+🔴 **This deliberately narrows Richard's own D21** (2026-08-19: *"show the community tab immediately
+with no data, I'll start filling it"*) — both instructions are his and he ranked them; a later
+session reading D21 alone will otherwise read the narrowing as a regression.
+⚠️ **The original phrasing's other half follows but was not separately ruled**: with the editor
+reduced to a door, the 8-of-19 long-tail routes (orgs, assignments, shelf items, admin) are outside
+it by construction, and the standing recommendation — leave them on the web behind an explicit
+"this opens in your browser" affordance — is unchanged and still unconfirmed. Note the launcher
+tabs are *native*, not that browser affordance. **Unblocks NAT-012 and FB-006**, which should be
+built in one tranche (FB-006 the launcher restructure, NAT-012 the navigation model + the editor
+narrowing).
+
+✅ **D7 — settled 2026-08-22. Edit-own and delete-unanswered ship; no report/flag in this round.**
+Ruled on FB-001. The author may edit their own post body (PATCH, `updated_at` only — D19's
+no-revision-history exclusion stands) and delete their own thread **only while nobody else has
+answered it**; after that the thread is part of someone else's record and the refusal must name
+why. Richard declined the wider options (hide-after-answers, report/flag), so the editor renders
+the author's own verbs and no moderation state. **D15 applies: both surfaces get the same verbs**,
+or the web-only choice gets recorded as a decision rather than happening by accident.
+⚠️ **This leaves FB-005 and FB-013 without a moderation posture** — both were noted as leaning on
+D7, and both were ruled *in* on the same day (see the phase-75 README), so the posture question
+comes back the moment either takes third-party content. **Unblocks FB-001 and NAT-007's post
+rendering.**
+
 **Open — each blocks the task named:**
-- 🔴 **D6 — How much long tail stays browser-only?** Orgs, assignments, shelf items and the admin
-  surfaces are 8 of the 19 routes and none was named in the review. Recommendation: leave them on
-  the web behind an explicit "this opens in your browser" affordance, and say so in the UI rather
-  than silently. **Blocks NAT-012's navigation model.**
-- 🔴 **D7 — Moderation in the editor.** If people can post from the editor they can post badly
-  from the editor. Report/flag/delete-own — which of these ship, and does the editor need to render
-  a moderation state at all? **Blocks NAT-007's post rendering.**
 - ⚠️ **D8 — Caching policy.** What persists to disk between editor sessions, where, and for how
   long — this is user data on a local-first tool and it is a privacy decision, not a perf one.
   **Blocks NAT-013.**

@@ -1,8 +1,14 @@
 # FB-006 — one list is not a place
 
 **Filed:** 2026-08-22, from Richard's items 5 and 7 — which together are **ruling D6's input**.
-**Status: 🔒 blocked on D6, and this file is the ruling request.** Size: L (launcher restructure)
-once ruled. Owns the structural half; **NAT-012 stays the navigation-model task** and should be
+**Status: ⬜ OPEN — D6 landed 2026-08-22, the proposal below confirmed as written.** Size: L
+(launcher restructure).
+
+✅ **D6, as ruled:** all three points of "The D6 proposal" below, unchanged — launcher home in the
+web's tabs, editor reduced to the ask-about-this-node door, deep links from editor to launcher.
+🔴 It **narrows D21** and Richard ranked them knowingly; **name D21 in the diff** or a later session
+reads the shrinking rail panel as a regression. Recorded in `phase-72-nobody-has-to-leave/README.md`
+§4. Owns the structural half; **NAT-012 stays the navigation-model task** and should be
 built in the same tranche.
 
 > *Item 5: "The community tab in the launcher is awful looking compared to the NodeGX web page,
