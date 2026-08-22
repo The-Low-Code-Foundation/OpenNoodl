@@ -28,7 +28,7 @@ export { assess } from './assess';
 export type { AssessInput, AssessResult, LegacyCodePattern } from './assess';
 export { buildReport, renderReportMarkdown, renderReportForAssistant, reportSummaryLine } from './report';
 export type { BuildReportInput } from './report';
-export { computeVerdict, tallyOutcomes, findingWeight, REBUILD_MAX_NODES, REBUILD_UNCONVERTED_SHARE } from './verdict';
+export { computeVerdict, tallyOutcomes, findingWeight, shouldWriteImportReport, REBUILD_MAX_NODES, REBUILD_UNCONVERTED_SHARE } from './verdict';
 export type { VerdictInput } from './verdict';
 export { applyLegacyTransforms } from './transforms';
 export type { TransformResult, LiveNode, LiveComponent, LiveProject } from './transforms';

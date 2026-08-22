@@ -25,6 +25,7 @@ import { applyModelChanges, ImportSource, ImportTarget, PreparedComponent } from
 import { assessImport, writeImportReport } from './legacy/importAssessment';
 import { applyLegacyTransforms } from './legacy/transforms';
 import type { ImportReport } from './legacy/types';
+import { shouldWriteImportReport } from './legacy/verdict';
 import { copyPlannedModules } from './moduleGate';
 import type { ImportPlan, ImportResult, ItemPolicy } from './types';
 
@@ -256,8 +257,13 @@ export function apply(plan: ImportPlan, targetProject: ProjectModel): Promise<Im
         // ── LIB-006: the report goes into the TARGET project, last ─────────
         // After the disk copies, so a report written into a project whose
         // resources failed to arrive still describes what actually landed.
+        //
+        // LBR-0xx: gated on the SAME predicate as ResultStage's banner. A
+        // proceed verdict (a clean first-party prefab install) writes NO
+        // legacy-salvage files; the report object still travels in the result
+        // for the UI. Repair/rebuild verdicts write both files as before.
         let reportFilesWritten: string[] | undefined;
-        if (legacyReport) {
+        if (legacyReport && shouldWriteImportReport(legacyReport)) {
           const write = await writeImportReport(legacyReport, targetProject);
           reportFilesWritten = write.written;
           warnings.push(...write.warnings);
