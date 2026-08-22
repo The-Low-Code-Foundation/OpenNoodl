@@ -1,5 +1,16 @@
 # Prefab Audit — LIB-002
 
+> **2026-08-22 — phase-65 blitz supersedes parts of this record.** The prefab set is now **35
+> entries**, and every consolidation proposal below has been EXECUTED: multi-choice +
+> multi-choice-with-pills + selection-pills → **multi-select** 1.0.0; pagination + pages-and-rows →
+> **pagination** 2.0.0; popup-modal → **confirm-dialog** 1.0.0 (ERG-001 outcome contract);
+> loading-spinner → absorbed into **states-kit** 1.0.0. **supabase** is 2.0.0 connector-only (the
+> 25-component example app deleted, Richard's ruling). Moved IN from modules/ (re-typed, they
+> register no nodes): image-cropper 1.6.0, panning-and-zooming-control 1.2.0, shake-detector 1.1.0.
+> NEW wave-1 entries: auth-pages, app-shell, crud-screen, form-fields, page-header, card-grid (all
+> 1.0.0, token-clean, README'd, monogram placeholder icons). The live-drive residual (LBR-003) still
+> stands for everything, old and new. See `dev-docs/tasks/phase-65-the-library/TASKS.md`.
+
 Static audit of all 29 prefabs under `library/prefabs/<slug>/`, produced by reading each
 `library.json` + `project/project.json` headlessly (no live editor). It is the plan-of-record
 for the live repair/restyle pass that must follow, and it records what was already done here.

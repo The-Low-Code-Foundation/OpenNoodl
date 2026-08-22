@@ -1,14 +1,9 @@
 {
-  "$comment": "CN-016 / D21. The origin-vs-library/ divergence AS MEASURED, so the gate fails when it CHANGES rather than being red on the day it was written. Rule: the measured divergence must EQUAL this file. A new entry is drift nobody chose; a stale entry means the situation improved and the line should be deleted. Both are red, both print the exact edit. The four unpublished modules are the entries authored in this repo since the last publish of the fleet — nothing publishes library/ yet, and that is phase 65's LBR-001. When LBR-001 lands, `unpublished` should empty and this gate should grow a payload-hash check; until then it compares COVERAGE BY LABEL only. Regenerate with `npm run library:verify-origin -- --update-baseline` and say WHY in the commit.",
-  "measuredOn": "2026-08-18",
+  "$comment": "CN-016 / D21. The origin-vs-library/ divergence AS MEASURED, so the gate fails when it CHANGES rather than being red on the day it was written. Rule: the measured divergence must EQUAL this file. A new entry is drift nobody chose; a stale entry means the situation improved and the line should be deleted. Both are red, both print the exact edit. EMPTY SINCE 2026-08-22: phase 65 LBR-001 published library/ to the origin (twice — the repaired 59, then the post-blitz 65), so origin coverage now exactly matches source. The next growth step this gate owes (per verify-origin.ts §When LBR-001 lands): a payload-hash check comparing published zips against a fresh build — coverage-by-label is still the only thing checked. Regenerate with `npm run library:verify-origin -- --update-baseline` and say WHY in the commit.",
+  "measuredOn": "2026-08-22",
   "unpublished": {
     "prefabs": [],
-    "modules": [
-      "Confetti",
-      "Example Node Kit",
-      "Lucide Icons",
-      "QR Code"
-    ]
+    "modules": []
   },
   "orphaned": {
     "prefabs": [],

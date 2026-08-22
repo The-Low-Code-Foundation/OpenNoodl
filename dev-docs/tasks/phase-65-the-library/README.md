@@ -7,8 +7,14 @@
 > done to fix them or if we should just build them from scratch, and also add a bunch more that
 > would be useful for NodeGX builders?"*
 
-**Status:** 🟡 Specced, nothing built. Tasks are **[TASKS.md](TASKS.md)**; the new-content proposal
-is **[PROPOSED-CONTENT.md](PROPOSED-CONTENT.md)** (Richard's additions go there).
+**Status:** 🟢 **Blitzed 2026-08-22** (Fable, one session, 24-agent fan-out). LBR-001/002/005/006/007/008/009/0xx
+built and **published live** — the origin serves the 65-entry post-surgery library, verified at
+payload level (0 `DbConfig`, 0 Roboto in the live zips), divergence baseline empty for the first
+time. Richard's four open rulings below were all taken 2026-08-22 (publish: yes to main; integrations:
+retire; supabase: connector-only, example app deleted; MapLibre: yes). **What remains is the
+exercised half — LBR-003/LBR-004 (open/drive all 65 entries, both React pairings) and LBR-010 —**
+plus the follow-up list at the bottom of [TASKS.md](TASKS.md). Tasks are **[TASKS.md](TASKS.md)**;
+the new-content proposal is **[PROPOSED-CONTENT.md](PROPOSED-CONTENT.md)** (Richard's additions go there).
 
 ## The premise, in one sentence
 

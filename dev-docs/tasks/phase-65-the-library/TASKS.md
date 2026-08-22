@@ -7,17 +7,17 @@ Status vocabulary: Not started · In progress · Built–not driven · Complete 
 
 | # | ID | Title | Status | Why it is here |
 |---|---|---|---|---|
-| 1 | **LBR-001** | **Publish, and prove it from the editor** | Not started | The live CDN serves 2024 content with a deleted node type in it. Copy `library-dist/` to `nodegx-content/static/library/`, then install SendGrid + Table + one module **from the real origin** in a fresh project and confirm zero console errors and no `DbConfig` placeholder. Add a gate that compares the live index against `library/` and fails when they diverge — the whole finding is that nothing noticed for eight months. |
+| 1 | **LBR-001** | **Publish, and prove it from the editor** | ✅ **Published 2026-08-22** — twice (repaired content, then the post-blitz 65 entries). Origin verified at payload level: live sendgrid zip has 0 `DbConfig`, live table zip has 0 Roboto. verify-origin re-baselined. **The editor-install half is folded into LBR-003** (no live drive yet). | The live CDN serves 2024 content with a deleted node type in it. Copy `library-dist/` to `nodegx-content/static/library/`, then install SendGrid + Table + one module **from the real origin** in a fresh project and confirm zero console errors and no `DbConfig` placeholder. Add a gate that compares the live index against `library/` and fails when they diverge — the whole finding is that nothing noticed for eight months. |
 | 2 | **LBR-002** | **The gate that will not say what is wrong** | ✅ **Done 2026-08-15** (uncommitted) | `check.ts` counted 49 warnings and discarded every message. It now prints them by default — exit code and 58/58 unchanged, nothing newly gated. **The result changes the triage: there were never 49 problems.** See below. |
 | 3 | **LBR-003** | **Open all 29 prefabs** | Not started | The residual phase 21 never reached. Open, exercise every interactive path, apply spacing/radius (never attempted — not readable from JSON), confirm the two deliberate colour shifts, regenerate icons (three size families ship today; media-query is a 1326×674 outlier), install each into a fresh project console-clean. **Verdicts in the table below are provisional until this runs.** |
 | 4 | **LBR-004** | **Exercise all 29 modules, both React pairings** | Not started | 0 of 29 have ever run. Priority is the four nobody has run by any means — **avatar, chart-js, mapbox, simple-tooltips**. Preview *and* a deploy build. |
-| 5 | **LBR-005** | **Re-author wave 1 — the merges** | Not started | Multi-select trio → one; pagination pair → one; Confirm Dialog on the ERG-001 outcome contract; a States Kit absorbing loading-spinner. 6 entries become 4 better ones. |
-| 6 | **LBR-006** | **Un-bundle, re-type, retire** | Not started | material-icons is bundled **4× in 2 incompatible glyph sets** (2122 vs 1865, neither a subset — installing one rewrites the other's picker in both directions). custom-html is bundled twice. Three "modules" register zero nodes. Apply the rulings from README §Open rulings. |
-| 7 | **LBR-007** | **Licence sweep, and MapLibre** | Not started | ~9 modules vendor large third-party libs with no licence text. **mapbox-gl v2+ is proprietary.** Recommendation: re-author as `maplibre` (BSD-3, drop-in, no vendor token) — a legal problem becomes a better module. |
-| 8 | **LBR-008** | **The library the AI can see** | Not started — 🔴 **RESCOPED 2026-08-15 by phase 69 ruling D7** | 🔴 **Do NOT build the catalog spine here.** [P69 / CN-003](../phase-69-the-node-you-write-yourself/RULINGS.md) owns "**this project**" — the exact, complete overlay of the module node types a project has *installed*, because validation depends on it. **LBR-008 keeps "the shelf"**: cheap discovery of the ~58 entries you could *install*, plus `install_prefab`, layered on top of CN-003. Original text: 0 references to prefabs in `noodl-mcp`, 0 module node types in the catalog; give `list_node_types`/`find_tools` the library. Note [[mcp-node-docs-are-the-token-budget]] — 58 entries must cost tokens like an index, not like 58 `get_node_type` calls. |
-| 9 | **LBR-009** | **New content, wave 1** | Not started | The eight Tier-1 prefabs and seven Tier-1 modules in [PROPOSED-CONTENT.md](PROPOSED-CONTENT.md). |
+| 5 | **LBR-005** | **Re-author wave 1 — the merges** | ✅ **Built 2026-08-22, not driven** — multi-select 1.0.0, pagination 2.0.0, confirm-dialog 1.0.0 (ERG-001), states-kit 1.0.0. 6 entries became 4. | Multi-select trio → one; pagination pair → one; Confirm Dialog on the ERG-001 outcome contract; a States Kit absorbing loading-spinner. 6 entries become 4 better ones. |
+| 6 | **LBR-006** | **Un-bundle, re-type, retire** | ✅ **Built 2026-08-22** — Richard's rulings applied: 3 integrations retired, supabase 2.0.0 connector-only (example app deleted), 3 entries re-typed to prefabs, avatar+pdf-viewer unbundled, avatar's subtree trio fixed. | material-icons is bundled **4× in 2 incompatible glyph sets** (2122 vs 1865, neither a subset — installing one rewrites the other's picker in both directions). custom-html is bundled twice. Three "modules" register zero nodes. Apply the rulings from README §Open rulings. |
+| 7 | **LBR-007** | **Licence sweep, and MapLibre** | ✅ **Done 2026-08-22** — 22 LICENSE texts across 14 entries, no GPL/proprietary found; maplibre 1.0.0 (maplibre-gl 4.7.1 vendored, BSD-3) replaces mapbox. | ~9 modules vendor large third-party libs with no licence text. **mapbox-gl v2+ is proprietary.** Recommendation: re-author as `maplibre` (BSD-3, drop-in, no vendor token) — a legal problem becomes a better module. |
+| 8 | **LBR-008** | **The library the AI can see** | ✅ **Built 2026-08-22** (per the D7 rescope — shelf only, no catalog spine) — list_library / get_library_entry / install_prefab in noodl-mcp's deferred explore group at **zero resident token cost** (8255/8280 before and after; ⚠️ headroom is **25 tokens**, not the 57 CN-006 recorded). 14 specs on a fixture library, package suite 665/665, typecheck:mcp clean. Never exercised from a live MCP client. | 🔴 **Do NOT build the catalog spine here.** [P69 / CN-003](../phase-69-the-node-you-write-yourself/RULINGS.md) owns "**this project**" — the exact, complete overlay of the module node types a project has *installed*, because validation depends on it. **LBR-008 keeps "the shelf"**: cheap discovery of the ~58 entries you could *install*, plus `install_prefab`, layered on top of CN-003. Original text: 0 references to prefabs in `noodl-mcp`, 0 module node types in the catalog; give `list_node_types`/`find_tools` the library. Note [[mcp-node-docs-are-the-token-budget]] — 58 entries must cost tokens like an index, not like 58 `get_node_type` calls. |
+| 9 | **LBR-009** | **New content, wave 1** | ✅ **Built 2026-08-22, not driven** — all 15 Tier-1 entries: 8 prefabs (auth-pages, app-shell, crud-screen, states-kit, form-fields, page-header, card-grid, confirm-dialog) + 7 modules (clipboard, file-download, intl-format, rich-text-editor, virtual-list, drag-to-reorder, maplibre). Monogram placeholder icons (verify-dist requires an icon — ModuleCard destructures it unguarded). | The eight Tier-1 prefabs and seven Tier-1 modules in [PROPOSED-CONTENT.md](PROPOSED-CONTENT.md). |
 | 10 | **LBR-010** | **New content, wave 2** | Not started | Tier 2, re-prioritised after 009 ships and Richard's list lands. |
-| — | **LBR-0xx** | Every import writes `IMPORT-REPORT.md` into your project | Not started | Filed 2026-08-03, still open: [`apply.ts:227`](../../../packages/noodl-editor/src/editor/src/utils/import-engine/apply.ts#L227) gates the write on `if (legacyReport)` while `ResultStage` gates its banner on `recommendation !== 'proceed'`. A first-party prefab install leaves two files in a fresh project claiming it was legacy salvage. Same intent, applied to the UI and not the files. Cheap; do it inside 001. |
+| — | **LBR-0xx** | Every import writes `IMPORT-REPORT.md` into your project | ✅ **Done 2026-08-22** — one shared predicate (`shouldWriteImportReport`, legacy/verdict.ts) now gates both report files with the UI banner's intent; proceed-clean installs write nothing. 5 specs; test:main 4992/4992. | Filed 2026-08-03, still open: [`apply.ts:227`](../../../packages/noodl-editor/src/editor/src/utils/import-engine/apply.ts#L227) gates the write on `if (legacyReport)` while `ResultStage` gates its banner on `recommendation !== 'proceed'`. A first-party prefab install leaves two files in a fresh project claiming it was legacy salvage. Same intent, applied to the UI and not the files. Cheap; do it inside 001. |
 
 ---
 
@@ -91,3 +91,56 @@ whether the current node set has made any of it unnecessary before repairing it.
 5. An AI asked to build a date picker offers the library one instead of rebuilding it.
 6. Wave 1 of the new content ships, and the eight Tier-1 prefabs cover a first app end to end
    without the builder hand-assembling auth, a shell, or a CRUD screen.
+
+---
+
+## 2026-08-22 — the blitz (Fable, one session, 24-agent fan-out)
+
+Everything except LBR-003/004/010 landed in one session. Commits: library surgery+content, icons,
+LBR-008 shelf, LBR-0xx fix, LBR-002 gate (all pathspec, on `cline-dev`); two publishes pushed to
+`nodegx-content` main. Gates at close: `library:check` **65/65** (warnings 183→135),
+`verify-dist` installable-shaped, `verify-origin` green on an **empty** baseline, `typecheck:mcp`
++ `typecheck:editor` clean, `test:main` 4992/4992, noodl-mcp suite 665/665.
+
+**Entry ledger:** 59 → **65** (35 prefabs + 30 modules). Deleted: google-sheets, google-analytics,
+parse-cloud-function, multi-choice, multi-choice-with-pills, selection-pills, pages-and-rows,
+popup-modal, loading-spinner, mapbox. Added: multi-select, confirm-dialog, states-kit, maplibre,
+auth-pages, app-shell, crud-screen, form-fields, page-header, card-grid, clipboard, file-download,
+intl-format, virtual-list, drag-to-reorder, rich-text-editor. Moved modules→prefabs: image-cropper,
+panning-and-zooming-control, shake-detector.
+
+### Follow-ups (distilled from all 24 agent reports)
+
+1. 🔴 **LBR-003/004 are now the whole residual** — all 65 entries undriven, including the 16 new
+   ones. Per-entry drive asks recorded by their authors: crud-screen's `collectionName` connections
+   (runtime-supported, editor QueryRecordsAdapter shows Class as edit-only enum); form-fields' JS
+   `type="date"` flip surviving React re-renders; rich-text-editor toolbar + Changed signal;
+   drag-to-reorder pointer capture; app-shell responsive collapse; confirm-dialog/states-kit
+   `var(--token)` resolution on node params; maplibre actually rendering the demo style; avatar's
+   Size Row refactor; pdf-viewer + standalone custom-html resolving `module.inlineHtml`.
+2. 🔴 **verify-origin still checks coverage by label only.** Its own header says the next step:
+   payload-hash published zips against a fresh build. Now that publishes exist, build it.
+3. **Cross-entry dependency needs a first-class mechanism.** pdf-viewer keeps a README-only
+   `noodl_modules/` dir purely to stay inside check.ts's `providesNodes` tolerance; verify-dist
+   separately notes it is now prefab-shaped in the modules tab (overwrite-vs-keep-yours install
+   semantics). schema.json has no dependency field; nothing reads manifest `dependencies`.
+4. **MCP shelf**: packaged-editor source is unbuilt (no `library/` on disk in a packaged app —
+   needs the CDN transport ModuleLibraryModel already uses; `NODEGX_LIBRARY_DIR` overrides today).
+   ⚠️ Budget headroom is **25 tokens, not 57** — CN-009 competes for it; re-measure before any
+   resident spend. The explore group's purpose line still says "example library".
+5. **Icons**: 15 monogram placeholders (generated, deliberate) — a bespoke icon pass would lift the
+   cards; pagination's seeded icon no longer depicts its rows-per-page half.
+6. **Docs site**: no pages exist for the 16 new slugs; old pages for the 10 deleted slugs
+   (modal, pagesandrows, multi-choice…, gsheets, google-analytics, parse-cloud-function, mapbox)
+   should be retired/redirected; supabase's page still describes the example app.
+7. **noodl-mcp importReportTool** reads `import-report.json`; clean installs now leave none — its
+   "authored in NodeGX rather than imported" copy should be checked for clean *imports*.
+8. **a11y**: drag-to-reorder is pointer-only (relevant to P71 SM-003's markets); material-icons +
+   two kept iconsets load `fonts.googleapis.com` at runtime (vendoring + privacy decision).
+9. **Small content debts**: supabase Setup Client's `window.createClient` shim could be inlined
+   (2.0.1); its Example Request still queries a hardcoded `companies` table; shake-detector Text
+   uses bare `Helvetica`; avatar keeps one #FFFFFF raw hex; confetti's bundle banner says MIT but
+   upstream is ISC; mqtt's small transitives not individually licensed; old Mapbox node types don't
+   auto-migrate to `nodegx.maplibre.map`.
+10. **Not done from the table**: the i18next-translation vs phase-47 check (nobody was assigned);
+    LBR-010 (Tier 2) untouched; avatar's 41 unknown-"Avatar" warnings remain the CN-003 fixture.

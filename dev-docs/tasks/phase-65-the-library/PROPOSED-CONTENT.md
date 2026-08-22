@@ -1,5 +1,10 @@
 # Proposed new library content
 
+> **2026-08-22: every Tier-1 item on this page SHIPPED** (all 8 prefabs — Confirm Dialog and the
+> States Kit via LBR-005, the other six as new entries — and all 7 modules, with MapLibre GL via
+> LBR-007). Published to the live origin the same day. All built headlessly against `library:check`
+> + `verify-dist`; none driven yet (LBR-003/004). Tier 2 is untouched and is now LBR-010's list.
+
 **My list first (2026-08-13). Richard's additions go in [§ Richard's list](#richards-list) — nothing
 in there has been vetted by me yet.**
 

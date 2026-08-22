@@ -1,5 +1,17 @@
 # Module audit & triage — LIB-003
 
+> **2026-08-22 — phase-65 blitz supersedes parts of this record.** The module set is now **30
+> entries**. RETIRED (Richard's ruling, no-integration-library policy): google-sheets,
+> google-analytics, parse-cloud-function. RE-TYPED to prefabs (register zero nodes): image-cropper,
+> panning-and-zooming-control, shake-detector. RE-AUTHORED: mapbox → **maplibre** 1.0.0 (BSD-3
+> maplibre-gl 4.7.1 vendored, zero-config demo style — the proprietary-redistribution question is
+> gone). UNBUNDLED: avatar 1.1.0 (embedded 1865-glyph material-icons removed — the picker fight is
+> over; repeated-sibling-subtree fixed), pdf-viewer 1.1.0 (embedded custom-html removed; depends on
+> the standalone module via README convention). LICENCE SWEEP: 22 LICENSE texts placed across 14
+> entries; **no GPL/proprietary code found anywhere**. NEW wave-1 modules: clipboard, file-download,
+> intl-format, virtual-list, drag-to-reorder, rich-text-editor (TipTap 3.30.2 vendored offline). The
+> run-them-all residual (LBR-004) still stands. See `dev-docs/tasks/phase-65-the-library/TASKS.md`.
+
 **Created:** 2026-07-25 (LIB-003 plumbing+inventory run)
 **Source:** live module index
 `https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/index.json`
