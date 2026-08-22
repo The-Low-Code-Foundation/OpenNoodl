@@ -39,6 +39,9 @@ const gesture = stripComments(readFileSync(join(EDITOR_SRC, 'utils/launcher/leav
 const nodeGraphContext = stripComments(
   readFileSync(join(EDITOR_SRC, 'contexts/NodeGraphContext/NodeGraphContext.tsx'), 'utf8')
 );
+const editorDocument = stripComments(
+  readFileSync(join(EDITOR_SRC, 'views/documents/EditorDocument/EditorDocument.tsx'), 'utf8')
+);
 
 describe('the reader is not blind — the known-firing arm', () => {
   /**
@@ -59,6 +62,23 @@ describe('the reader is not blind — the known-firing arm', () => {
     const raw = readFileSync(join(EDITOR_SRC, 'views/panels/CommunityPanel/CommunityPanel.tsx'), 'utf8');
     expect(raw).toContain('Call replays');
     expect(panel).not.toContain('Call replays');
+  });
+
+  /**
+   * 🔴 The AC3 rows below assert absences in the GESTURE and the node graph BOOTSTRAP, not in the
+   * panel — and the arm above cannot speak for either. A moved path or a failed read there would
+   * make `not.toContain('restoreEditorPlace')` pass for the wrong reason, which is the exact shape
+   * of the defect the drive just found: a source-text row that was true and meant nothing.
+   *
+   * ⚠️ `EditorDocument` is here for the same reason — it is where AC3's restore actually lives, so
+   * an absence-only file list would leave the surviving mechanism ungraded.
+   */
+  it('the gesture, the bootstrap and EditorDocument all loaded and still say something', () => {
+    expect({
+      gesture: gesture.includes('App.instance.exitProject()'),
+      bootstrap: nodeGraphContext.includes('new NodeGraphEditor({})'),
+      editorDocument: editorDocument.includes('EditorSettings.instance')
+    }).toEqual({ gesture: true, bootstrap: true, editorDocument: true });
   });
 });
 
@@ -156,38 +176,51 @@ describe('AC2 — openExternal survives on exactly one explicitly labelled contr
   });
 });
 
-describe('AC3 — the gesture reads the editor before it closes it', () => {
+describe('AC3 — the gesture stashes the landing before it closes the project', () => {
   /**
    * 🔴 `exitProject` notifies `'exitEditor'` SYNCHRONOUSLY, which routes and disposes the
-   * ProjectModel. Both reads therefore have to happen first — afterwards the project id is gone
-   * and the canvas is disposed, and the restore would silently never fire. Order is the whole
-   * correctness argument, so it is asserted as order.
+   * ProjectModel and mounts `ProjectsPage`. The stash therefore has to happen first, or the
+   * launcher reads an empty one and lands on Projects. Order is the whole correctness argument,
+   * so it is asserted as order.
    */
-  it('remembers the place and the landing BEFORE exitProject', () => {
-    const remember = gesture.indexOf('rememberEditorPlace(');
+  it('stashes the landing BEFORE exitProject', () => {
     const stash = gesture.indexOf('stashLauncherLanding(');
     const exit = gesture.indexOf('App.instance.exitProject()');
 
-    expect(remember).toBeGreaterThan(-1);
     expect(stash).toBeGreaterThan(-1);
     expect(exit).toBeGreaterThan(stash);
-    expect(exit).toBeGreaterThan(remember);
-  });
-
-  it('and it reads the component off the live canvas, not off a stale copy', () => {
-    expect(gesture).toContain('NodeGraphContextTmp.nodeGraph?.activeComponent?.name');
   });
 
   /**
-   * ⚠️ A stashed name that no longer resolves — renamed or deleted while you were away — must
-   * draw nothing. Restoring the first component instead would look like a restore and be a guess.
+   * 🔴 **This is the row that replaced four that passed on dead code.** The gesture used to
+   * `rememberEditorPlace(...)` and the bootstrap used to `restoreEditorPlace(currentInstance)`,
+   * and this file asserted both source strings were present — which they were, and which proved
+   * nothing. Driving AC3 on 2026-08-22 showed `useSwitchToDefaultComponent`
+   * (`UseSetupNodeGraph.ts:26`) runs after the node-graph bootstrap effect and switches to the
+   * default unconditionally, so that restore was overwritten on **every** open.
+   *
+   * ⚠️ So the assertion is inverted: the door must NOT grow its own restore back. The real one
+   * is `EditorDocument`'s, pinned below.
    */
-  it('and a name that no longer resolves restores nothing', () => {
-    expect(gesture).toContain('if (!component) return;');
+  it('and does NOT carry a second, weaker copy of the restore', () => {
+    expect(gesture).not.toContain('rememberEditorPlace');
+    expect(gesture).not.toContain('restoreEditorPlace');
+    expect(nodeGraphContext).not.toContain('restoreEditorPlace');
   });
 
-  it('the restore is actually called from the node graph’s bootstrap', () => {
-    expect(nodeGraphContext).toContain('restoreEditorPlace(currentInstance);');
+  /**
+   * 🔴 The restore AC3 actually promises, pinned where it lives. `EditorDocument` writes
+   * `selectedComponentName` on every `activeComponentChanged` and reads it back on open — keyed
+   * by `ProjectModel.id`, resolved by name, and **persisted**, so it survives a restart and
+   * covers every exit route rather than this one door.
+   *
+   * ⚠️ Graded from source because the subject is a hook in a tree this repo's jest cannot mount;
+   * the consequence is graded by the drive, which is what AC3 asks for.
+   */
+  it('the component you were on is restored by EditorDocument, and that is what makes AC3 true', () => {
+    expect(editorDocument).toContain("EditorSettings.instance.setMerge(ProjectModel.instance.id, { selectedComponentName: model.fullName })");
+    expect(editorDocument).toContain('if (settings.selectedComponentName) {');
+    expect(editorDocument).toContain('nodeGraph.switchToComponent(component, { replaceHistory: true });');
   });
 });
 

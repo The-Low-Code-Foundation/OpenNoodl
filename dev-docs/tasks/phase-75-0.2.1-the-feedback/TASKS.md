@@ -118,7 +118,16 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
   audit, AC3 and the editor narrowing** (`e17ee460`) — the panel is now a door (Discussions, thread
   pane, profile pane, TUT-004's tutorials) and the four community sections live on the launcher.
   **AC3 was ruled**: the router disposes the project, so the door says *"closes your project"* and
-  reopening restores the component you were on. ⬜ **Left: AC1, AC5, AC6, AC7 — and a drive.**
+  reopening restores the component you were on. ✅ **AC3 DRIVEN 2026-08-22** — label, real close
+  (`ProjectModel.instance` → `undefined`), Community landing, canvas restored; the ordinary exit is
+  the control that lands on **Projects**. 🔴 **The drive deleted half the mechanism**: mutation arms
+  plus an instrumented `switchToComponent` showed `restoreEditorPlace` was overwritten on **every**
+  open by `useSwitchToDefaultComponent` (`UseSetupNodeGraph.ts:26`), and the restore AC3 promises is
+  `EditorDocument`'s persisted `selectedComponentName` — older, per-project, and on every exit
+  route. `rememberEditorPlace`/`takeEditorPlace`/`restoreEditorPlace` removed; the landing half
+  stays. ⚠️ **Its spec asserted the source text of the dead call and passed** — replaced with an
+  absence row and an `EditorDocument` pin, both mutation-checked. ⬜ **Left: AC1, AC5, AC6, AC7,
+  and AC4's live-Bench half (🧭 Richard).**
   🔴 Revises **NAT-008 AC1's rail half** (withdrawn; AC2's pane stays) and **NAT-005's panel** · ⬜ NAT-004 ·
   🧭 NAT-014 AC2/4/7 · 🟡 TUT-004 (the drive; ⚠️ its AC1 loses the section it was positioned
   against when the narrowing lands)

@@ -1,20 +1,27 @@
 /**
- * NAT-012 AC3 — what the editor remembers while you are away at the launcher.
+ * NAT-012 AC3 — where the launcher lands when a door in the editor sends you there.
  *
  * The ruling (Richard, 2026-08-22) is that going to the launcher **closes the project**, the
  * control says so, and reopening puts you back on the component you were on. This file grades the
- * remembering; the label is graded in `panel-is-a-door.test.ts` beside it.
+ * landing; the label is graded in `panel-is-a-door.test.ts` beside it.
+ *
+ * 🔴 **The place half was deleted by the drive, not descoped.** This file used to grade a
+ * `rememberEditorPlace` / `takeEditorPlace` pair. Driving AC3 on 2026-08-22 showed the pair never
+ * affected what the reader saw — `useSwitchToDefaultComponent` (`UseSetupNodeGraph.ts:26`)
+ * overwrote its restore on every open, and the restore AC3 asks for is `EditorDocument`'s
+ * persisted `selectedComponentName`, which predates this task. Those specs all passed on code
+ * with no consequence, which is the reason AC3 says the claim is **driven**. What the ordinary
+ * exit control does is now the arm that keeps this file honest: it closes the project too and
+ * lands on **Projects**, so a landing that survived its own read would be visible immediately.
  *
  * ⚠️ `launcherHandoff.ts` imports **nothing**, which is why this can be a direct-import spec at
- * all — the gesture half (`leaveForLauncher.ts`) pulls in `App`, `ProjectModel` and the node graph
- * and is graded from source there.
+ * all — the gesture half (`leaveForLauncher.ts`) pulls in `App` and `ProjectModel` and is graded
+ * from source there.
  */
 
 import {
-  rememberEditorPlace,
   resetLauncherHandoff,
   stashLauncherLanding,
-  takeEditorPlace,
   takeLauncherLanding
 } from '../../src/editor/src/utils/launcher/launcherHandoff';
 
@@ -47,79 +54,5 @@ describe('the landing page is a one-shot request, not a preference', () => {
     stashLauncherLanding('community');
     stashLauncherLanding('learning');
     expect(takeLauncherLanding()).toBe('learning');
-  });
-});
-
-describe('the place is remembered per project', () => {
-  it('gives back the component that project was left on', () => {
-    rememberEditorPlace('proj-a', 'Pages/Home');
-    expect(takeEditorPlace('proj-a')).toBe('Pages/Home');
-  });
-
-  /**
-   * 🔴 Two projects open in one session — leave one for the launcher, open the other — must not
-   * cross. This is the whole reason the store is a Map keyed by project id and not a single slot.
-   */
-  it('and never hands one project the other project’s place', () => {
-    rememberEditorPlace('proj-a', 'Pages/Home');
-    rememberEditorPlace('proj-b', 'Pages/Settings');
-
-    expect({ a: takeEditorPlace('proj-a'), b: takeEditorPlace('proj-b') }).toEqual({
-      a: 'Pages/Home',
-      b: 'Pages/Settings'
-    });
-  });
-
-  it('is consumed, so reopening a third time does not drag you back two opens', () => {
-    rememberEditorPlace('proj-a', 'Pages/Home');
-    takeEditorPlace('proj-a');
-    expect(takeEditorPlace('proj-a')).toBeUndefined();
-  });
-
-  /**
-   * ⚠️ Leaving with no component open is a real state — the canvas opens with none and you can
-   * close the last one. A falsy name must CLEAR rather than store, or the reader is returned to a
-   * component they had deliberately navigated away from.
-   */
-  it('an empty name clears the entry instead of storing a falsy key', () => {
-    rememberEditorPlace('proj-a', 'Pages/Home');
-    rememberEditorPlace('proj-a', undefined);
-    expect(takeEditorPlace('proj-a')).toBeUndefined();
-  });
-
-  it('a project with no id is a no-op at both ends, not a crash', () => {
-    expect(() => rememberEditorPlace(undefined, 'Pages/Home')).not.toThrow();
-    expect(takeEditorPlace(undefined)).toBeUndefined();
-  });
-
-  it('remembers the newest place when the same project is left twice', () => {
-    rememberEditorPlace('proj-a', 'Pages/Home');
-    rememberEditorPlace('proj-a', 'Pages/Settings');
-    expect(takeEditorPlace('proj-a')).toBe('Pages/Settings');
-  });
-});
-
-describe('the two facts are independent', () => {
-  /**
-   * A door that stashes a landing but no place (nothing was open) and a project reopened without
-   * ever having gone to the launcher are both ordinary. Neither read may be conditioned on the
-   * other having happened.
-   */
-  it('taking the landing does not consume the place', () => {
-    stashLauncherLanding('community');
-    rememberEditorPlace('proj-a', 'Pages/Home');
-
-    takeLauncherLanding();
-
-    expect(takeEditorPlace('proj-a')).toBe('Pages/Home');
-  });
-
-  it('and taking the place does not consume the landing', () => {
-    stashLauncherLanding('community');
-    rememberEditorPlace('proj-a', 'Pages/Home');
-
-    takeEditorPlace('proj-a');
-
-    expect(takeLauncherLanding()).toBe('community');
   });
 });

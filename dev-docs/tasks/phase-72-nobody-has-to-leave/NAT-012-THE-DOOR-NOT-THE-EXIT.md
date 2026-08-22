@@ -63,6 +63,47 @@ project, and (1) would have put a keep-flag through the twenty lines that previo
 white-screen bug. So AC3 is met by **the control saying what it does** and **reopening putting you
 back on the component you were on** — not by keeping the project alive across the route.
 
+### 🔴 DRIVEN 2026-08-22 — AC3 passes, and half the code written for it was DEAD
+
+The drive (fixture `nat012-drive`, two components) confirmed the door end to end: the label reads
+*"Community home — closes your project"*, `ProjectModel.instance` goes **`undefined`**, the
+launcher lands on **Community**, and reopening puts the canvas back on `/Probe`. The control that
+makes the landing mean anything is the ordinary exit — *"Back to projects"* closes the project too
+and lands on **Projects**.
+
+🔴 **But the restore was not this task's.** The reopen-restores-your-component row passed with the
+mechanism starved, so it was mutated three ways:
+
+| Arm | What was changed | Canvas on reopen |
+|---|---|---|
+| baseline | nothing | `/Probe` |
+| steal the stash | `takeEditorPlace(id)` called from the launcher (returned `"/Probe"`) | **`/Probe` anyway** |
+| starve the other candidate | `selectedComponentName` cleared, stash left intact | **`/App`** |
+
+Instrumenting `switchToComponent` named the winner. **Two calls on every open, in this order:**
+
+1. `restoreEditorPlace` (`leaveForLauncher.ts` ← `NodeGraphContext.tsx`) → the stashed name
+2. **`useSwitchToDefaultComponent` (`UseSetupNodeGraph.ts:26`) → the default, unconditionally**
+3. (normally) `EditorDocument.tsx:432` → `selectedComponentName`, `replaceHistory: true`
+
+So (1) was **always** overwritten by (2), and the restore AC3 promises is (3) — which predates
+NAT-012, is keyed by the same `ProjectModel.id`, resolves by the same `getComponentWithName`,
+applies the same `replaceHistory: true`, and is **persisted to `editorSettings.json`**, so it
+survives an editor restart and covers *every* exit route rather than this one door.
+
+✅ **`rememberEditorPlace` / `takeEditorPlace` / `restoreEditorPlace` are therefore deleted**, with
+the reasoning kept in `launcherHandoff.ts`. The landing half stays — it is the only fact nothing
+else knows, and the ordinary-exit control proves it load-bearing.
+
+🔴 **The spec could not have caught this**, and that is the lesson worth carrying: it asserted the
+*source text* `restoreEditorPlace(currentInstance);` was present. It was, and it meant nothing.
+Its replacement asserts the door does **not** grow a second copy back, and pins `EditorDocument`
+as the mechanism — both with mutation arms, and both beside a known-firing arm, because they read
+files the old arm did not cover.
+
+⚠️ **Still unpaid: AC4's other half** — posting a real question to the live Bench from a signed-in
+editor. Richard's call, deliberately undriven.
+
 ⚠️ **AC3's wording therefore no longer describes what is built.** "Does not lose your project"
 is false by ruling; "does not lose your place" is what survives, and it is now a *restore*
 obligation rather than a *persistence* one. The criterion is rewritten below to match the ruling
@@ -117,12 +158,14 @@ community page."* Leaving your **project** for the launcher is fine. Leaving the
    your browser" control, for the D6 long tail and for things the editor genuinely should not host
    (a video call, a payment). 🔴 An audit lists every remaining call site and the reason it is
    still there. A call site nobody can justify is deleted.
-3. ✅ **Ruled 2026-08-22 — rewritten to the ruling.** Going from the rail panel to the launcher
+3. ✅ **Ruled 2026-08-22, DRIVEN 2026-08-22 — done.** Going from the rail panel to the launcher
    home **closes the project, says so before it does, and puts you back where you were when you
    reopen.** The control names the consequence (not "Community" alone), and reopening the project
    restores the component you had open. 🔴 The old wording — *"does not lose your project or your
    place"* — was written before anybody read `router.tsx:154–210` and asked for a persistence the
-   router does not offer; it is kept here only so the change is legible.
+   router does not offer; it is kept here only so the change is legible. 🔴 **And the restore is
+   `EditorDocument`'s, not this task's** — the drive above found the code written for it was
+   overwritten on every open and deleted it.
 4. `AskAboutNodeDialog` no longer ends at a browser: asking opens the thread in the editor.
 5. **D6 is answered and visible.** Orgs, assignments and shelf items either have editor surfaces or
    have honest hand-offs — never a dead end and never a silent jump to Chrome.
