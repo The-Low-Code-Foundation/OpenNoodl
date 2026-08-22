@@ -1,93 +1,91 @@
 # Phase 75 — next session
 
-**State as of 2026-08-22 (session 3).** T0 closed; FB-008, FB-004 and **FB-020** done, specced
-and committed; FB-002's web half committed on the platform. Read `TASKS.md` first — it carries
-T0's answer and a **baseline you must not re-derive**.
+**State as of 2026-08-22 (session 4).** The rulings queue is **empty of its four big items** —
+D6, D7, R-templates and R-chat all landed this session and are recorded. Both unowned red gates
+are closed. FB-019's mandatory sweep is done and **it revises the task's own AC1**. Read
+`TASKS.md` first; it carries the measurements you must not re-derive.
 
 ## What changed this session
 
-- **FB-020 ✅ closed and driven (`64bd02b3`).** 🔴 **The filed diagnosis was wrong, and the
-  correction is the transferable part.** All three ranked candidates were ways the *click* might
-  be swallowed (prime suspect: a design-mode `inspector.ts` listener leak). One drive killed all
-  three: `input.checked` true, `_internal.checked` true, `Checked` output propagating — **and the
-  box pixel-identical.** The click always worked; nothing *drew* a tick. **No listener leak, and
-  no other control is implicated by it** — anything that still says otherwise is stale.
-  Fixed in `Checkbox.tsx` (default tick), `RadioButton.tsx` (AC4: same defect from the other
-  side, plus the dot was painted on every button in the group) and `checkbox.ts` (the
-  `props.checked` desync). Viewer suite **945 / 74 suites**, typecheck clean.
-- **FB-004 ✅ driven.** The `overflow: hidden` clipping worry is disproved by measurement, not
-  argument: a 1400px probe grows the tab root and `ContentArea` scrolls (687/1800).
+- **Four rulings settled (`378ef2c4`).** Recorded in `phase-72/README.md` §4 (D6, D7), in this
+  phase's README table, and in each task file's header.
+  - **D6 — launcher home in the web's tabs, editor door only.** Unblocks FB-006 + NAT-012;
+    build them in one tranche. 🔴 **It narrows Richard's own D21** — name D21 in the diff or a
+    later session reads the shrinking rail panel as a regression.
+  - **D7 — edit-own + delete-unanswered.** Report/flag and hide-after-answers were **declined**.
+    ⚠️ That leaves **FB-005 and FB-013 with no moderation posture**, and both were ruled *in* on
+    the same day. Do not infer one from D7; it was ruled on the bench.
+  - **R-templates — curated first.** A share button files a submission; Richard publishes.
+    ECO-002's G3 stays shut, licences stay parked.
+  - **R-chat — 🔴 OVERRULED: chat ships.** UNI-011's argument is **superseded by a decision, not
+    answered**, so it stays quoted and the risk it named is still live. FB-014 gains a second
+    corpus. Scoping doc first.
+- **Both red gates closed (`9ecec25`, nodegx-community).** Token drift synced; `uni022` AC4
+  fixed — the filed diagnosis was wrong again. Suite **1277 / 0**.
+- **FB-019 sweep done (`9636681a`)** over all 92 `project.json` files, scripts kept beside the
+  task. It corrects the filed diagnosis three ways; detail in the task file and `TASKS.md`.
 
 ## First moves, in order
 
-1. **Put the rulings to Richard in one sitting** — now the top of the list, unchanged and still
-   blocking Tier 2/4: D6 (FB-006 is the written proposal), D7 (FB-001), R-templates (FB-005),
-   R-chat (FB-013, both sides quoted), plus the carried ones: FIX-026 (a)/(b), FIX-027 14/15/16
-   + 22, tsfixme baseline, prod `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31**), the
-   15 lessons' prose. Three smaller ones raised since:
-   - **Discord's row in the `?` menu** — kept for now; removing it is one line.
-   - **`/rfps` search and closed briefs** — FB-002 gave the Bench's default a search yield and
-     deliberately did *not* give `/rfps` one. Same question, his call.
-   - **The checkbox's new default tick** — it is deliberately conservative (an author icon, an
-     author image, or Enable Icon off all still win). Worth him seeing it once.
-2. **Two red gates nobody owns, both pre-existing, both real** (details in `TASKS.md`):
-   - `npm run tokens:sync` in `nodegx-community` — the vendored `colors.css` has drifted from
-     the editor's by 6 tokens. ⚠️ Its *probes* fail too, so it reports one drift, not five;
-     sync, then re-run before believing anything.
-   - `uni022-syllabus` AC4 — `api/v1/me/path/project/route.ts` hardcodes a lesson slug.
-3. **The rest of Tier 1b**: FB-019 (two confirmed runtime bugs + Jordan's §2.2 aliasing
-   investigation; sweep examples/lessons for dimension-port connections before changing
-   coercion), then FB-018/FB-021/FB-015; FB-017 → FB-016 → FB-022 for the panel/canvas trio.
-   **FB-002's editor half** slots in here too — a type widening plus a client-side filter.
-   ⚠️ FB-019 and FB-021 are the two most likely to want a drive; the queue was clear all of this
-   session, but **ask before assuming, and do not reap**.
-4. **Quick wins with no rulings**: the build-the-caller family — FB-007, FB-010, FB-003.
+1. **FB-006 + NAT-012 as one tranche** — D6 is ruled and this is the biggest unblocked thing.
+   FB-006 does the launcher tab restructure (AC1–AC4), NAT-012 the navigation model and the
+   editor narrowing. ⚠️ Reuse the shared `@noodl-core-ui/components/community` vocabulary; a
+   second copy of the row/section primitives is the drift shape this repo keeps hitting.
+2. **FB-001** — D7 is ruled, and scope 1–3 of the task file is exactly what he chose. Four
+   derived-from-disk platform gates fire on the new PATCH/DELETE routes; `npm run build` first
+   or the real-HTTP file self-skips.
+3. **FB-019 implementation.** The sweep changed what to build: **keep the merge**, fix only the
+   no-stored-unit case, on **all three** registration paths. AC1/AC2 are already rewritten.
+   🔴 **Drive an image-cropper pan first** — the six broken connections are predicted from
+   source and nobody has watched one fail.
+4. **Quick wins with no rulings**: FB-007, FB-010, FB-003 — the build-the-caller family.
+5. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
+   `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — nine days), the 15 lessons' prose,
+   Discord's row in the `?` menu, `/rfps` search, the checkbox's new default tick.
 
 ## Standing traps for this phase
 
-- 🔴 **A green suite grades nothing until you revert the fix and count the reds.** FB-020's 14
-  specs were all green; reverting the three fixes gave **4** red, so ten were passing either way
-  — and two of those *claimed* to be grading the fix. They asserted a colour against the whole
-  markup, where the wrapper's border carries the same value. Scoped to the mark's own element,
-  the revert gives **6**. Do the revert pass on anything that ships a fix.
-- 🔴 **Borders are stored per side — `borderTopColor`, never the `borderColor` shorthand.**
-  Reading the shorthand yields `undefined` and falls through to `currentColor`: correct-looking
-  on a light page, invisible on a dark one, and green in both the drive and the first spec run.
-- 🔴 **A control arm is what turns "nothing happened" into a measurement.** FB-020's fixture
-  carried a checkbox with a configured `checked` state; it turned red on the same click that left
-  the bare one still. Without it, a dead mechanism and a missing default read identically.
-- ⚠️ **`scroll-behavior: smooth` makes a same-eval `scrollTop` read lie**, and it lies *toward*
-  the bug: `scrollHeight 1800 / clientHeight 687 / scrollTop 0` reads as content that refuses to
-  scroll. Measure the scroll position in a second CDP call.
-- ⚠️ **The launcher's recents file is a real user file the running editor owns.** Prepending a
-  fixture to `~/Library/Application Support/NodeGX/recently_opened_project.json` is how you open
-  one without the native dialog — but the editor's `store()` clobbers your write whenever it
-  saves its in-memory list. Write it only while the editor is idle on the launcher, then reload.
-- **Community suite baseline, 2026-08-22 after `npm run build`: 1274 specs, 7 pre-existing
-  failures** (6 token drift + 1 syllabus). **Compare by name, never by count**, and re-measure
-  rather than quoting this.
-- Platform suite: `npm run build` first or the real-HTTP file self-skips; Postgres is 55432;
-  four derived-from-disk gates + the `/v1` envelope contract fire on any new route/column.
-- Viewer package jest is `testEnvironment: node`, but **`renderToStaticMarkup` renders hooks
-  fine** — the core-ui `Icon`/`require.context` trap does *not* apply to the viewer's own
-  `IconGlyph`, so no sibling-module extraction is needed there.
-- ⚠️ **`NAT-011` carries an uncommitted AC7** (FB-004's reconciliation AC), beside **older
-  uncommitted edits from a previous session** in the same file. Left uncommitted rather than
-  sweeping somebody else's work into a commit. Several other phase-72 files, and the whole of
-  phase-65/70/71, are untracked for the same reason — check with whoever owns them first.
-- `COMMUNITY_URL` is a hardcoded constant — local platform drives need the one-line edit,
-  reverted after.
-- Shared checkout: commit by pathspec, never stage; `git log -5 -- <path>` before overwriting any
-  shared file; never `git stash`.
-- Three FB tasks **revise met ACs** — name the revised AC in the diff or a later session reads the
-  change as a regression. FB-004 → UNI-007 AC1 is done and named; FB-009 → UNI-022 and FB-011 →
-  UNI-016 are still ahead. FB-002 revised `uni013-slice5`'s section counts, named in its commit.
+- 🔴 **THE FILED DIAGNOSIS HAS NOW BEEN WRONG THREE TIMES RUNNING** — FB-020 (the click always
+  worked; nothing drew a tick), `uni022` AC4 (the "hardcoded slug" was a comment), FB-019 (the
+  merge is the feature, not the bug; the named failure has zero instances and an unnamed third
+  path has six). **Read the code the task file points at before believing what it says about it.**
+- 🔴 **A gate can report N failures for one defect.** The drift check's five known-bad probes
+  assert an exact difference *count*, so one real drift makes all five red. Fix the real one and
+  re-run before believing you have five problems. Same family as a green suite grading nothing,
+  pointing the other way.
+- 🔴 **Narrowing what a sweep reads needs control arms, and one must be a mutation.** AC4 now
+  ignores comments; three arms prove it still sees code, and hardcoding the slug in the route's
+  real code was checked to still fail. A stripper that mis-parses a string literal deletes real
+  code from the sweep — the hole shaped like the defect, 6th instance.
+- 🔴 **A port NAME is not a port TYPE.** The FB-019 sweep matched by name and reported 189 hits;
+  7 were `Expression.width`, and one of those was about to be written up as a shipped prefab
+  hitting the bug. Split by target node type before quoting any total.
+- 🔴 **Revert the fix and count the reds** (carried from session 3, still the rule).
+- ⚠️ **Borders are stored per side** — `borderTopColor`, never the `borderColor` shorthand.
+- ⚠️ **`scroll-behavior: smooth` makes a same-eval `scrollTop` read lie**, and toward the bug.
+- ⚠️ **The launcher's recents file is a real user file the running editor owns** — write it only
+  while the editor is idle on the launcher, then reload.
+- **Community suite, 2026-08-22 after the fixes: 1277 specs, 0 failures.** Compare **by name**,
+  and re-measure rather than quoting this.
+- ⚠️ **Two community commits are unshipped**: `9ecec25` (tokens + gates) and `fd695ae` (FB-002's
+  web half). nexus-1 is still `8d40b63`. Deploying changes the live site's dark inks and the
+  Bench's default list — **Richard's call, ask before deploying.**
+- Platform: `npm run build` first; Postgres 55432; four derived-from-disk gates plus the `/v1`
+  envelope contract fire on any new route or column.
+- Viewer jest is `testEnvironment: node`, but `renderToStaticMarkup` renders hooks fine — the
+  core-ui `Icon`/`require.context` trap does not apply to the viewer's own `IconGlyph`.
+- ⚠️ **`NAT-011` still carries an uncommitted AC7** beside older uncommitted edits from a
+  previous session, and phase-65/70/71 are untracked — somebody else's work; check before
+  sweeping any of it into a commit.
+- Shared checkout: **commit by pathspec, never stage**; `git log -5 -- <path>` before overwriting
+  a shared file; never `git stash`.
 
 ## Drive fixtures on disk
 
-`fb020-drive` (diagnosis: bare / visual-state control / labelled) and `fb020b-drive` (fix: A bare,
-B author checked-state, C Enable Icon off, D bare radio group, E author fill colour — B, C and E
-are the regression arms). Both are in the launcher's recent list; the editor genuinely opened them.
+`fb020-drive` and `fb020b-drive` (A bare, B author checked-state, C Enable Icon off, D bare radio
+group, E author fill colour — B, C and E are the regression arms). Both are in the launcher's
+recent list. **FB-019 will want a new one**: a Group with a never-set Width fed a bare number,
+plus a sibling whose Width *is* set — the population-A control that must not change.
 
 ## End every session
 

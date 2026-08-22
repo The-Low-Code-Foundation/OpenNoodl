@@ -32,8 +32,14 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
   `Checkbox.tsx` (default tick), `RadioButton.tsx` (AC4 — same defect, plus the dot was painted on
   every button in the group) and `checkbox.ts` (the `props.checked` desync). 14 specs, 6 of which
   go red on the unfixed code.
-- ⬜ **FB-019** — structured-port silent failures: fix the dimension asymmetry, warn the rest
-  (M/L) — **two confirmed bugs + Jordan's §2.2 aliasing investigation**
+- 🟡 **FB-019** — structured-port silent failures (M/L). **The corpus sweep scope (1) required is
+  DONE (`9636681a`) and it revises AC1/AC2.** Three findings: the asymmetry is **three-way**
+  (`inputCss` coerces, `inputProps` deletes the prop, `inputs` computes `NaN`) and the task named
+  only two; **removing the stale-unit merge would break 34 live connections** including the shipped
+  `toggle-switch`, so the merge stays and only the no-stored-unit case is fixed; and **the filed
+  bug 2 has zero instances** in 92 projects while the unnamed third path has six, in two shipped
+  library modules. 🔴 Predicted from source — **drive one image-cropper pan before claiming those
+  modules are broken.** Implementation, scope 2–5 and Jordan's §2.2 all still open.
 - ⬜ **FB-018** — the binding chip everywhere; say which value wins; check the §3 regression
   claim (M)
 - ⬜ **FB-021** — gated ports render disabled with their reason (M)
@@ -67,18 +73,28 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
   superseded, not withdrawn. Pulls in FB-014's 2nd corpus and reopens D7's posture gap
 - ⬜ **FB-014** — search that survives renames (pgvector, design + prototype only) (M)
 
-## Found while working, owned by nobody (2026-08-22)
+## Found while working, owned by nobody — ✅ BOTH CLOSED 2026-08-22 (`9ecec25`, nodegx-community)
 
-- 🔴 **The community repo's vendored `colors.css` has drifted from the editor's canonical copy —
-  6 tokens.** `tests/uni013-token-drift.test.ts` is red (6 failures) and says what to do:
-  `npm run tokens:sync`. It was red before this session's changes and is unrelated to them; the
-  gate is working, nobody has run it. ⚠️ Sync then re-run: a drift check whose *probes* also fail
-  is reporting one drift, not five.
-- 🔴 **`tests/uni022-syllabus.test.ts` AC4 is red**: `src/app/api/v1/me/path/project/route.ts`
-  hardcodes the lesson slug `"your-creature-on-screen"`, and that AC's whole point is that
-  adding a lesson touches no `.ts` file. Pre-existing, unrelated, real.
-- **Community suite baseline, 2026-08-22, after `npm run build`: 1274 specs, 7 pre-existing
-  failures** (6 token drift + 1 syllabus). Compare **by name**, never by count.
+- ✅ **Token drift — synced.** The vendored `colors.css` was 6 tokens behind the editor's
+  canonical copy: **FIX-028** (2026-08-21) raised the dark theme's inks after Richard's *"everything
+  looks disabled"*. `npm run tokens:sync` cleared all six. ⚠️ **The gate reported SIX failures for
+  ONE drift** — its five known-bad probes assert an exact difference *count*, so a real drift
+  pollutes every one of them. Read the probe failures as downstream, not as five more problems.
+  🔴 **The sync moved two values `tests/uni013-contrast.test.ts` PINS** (`fg-highlight` → `#ffffff`,
+  `--site-fg-secondary` → `#c4cedb`, both dark-arm only). The pins were right to fire; they are
+  updated deliberately with the reason in the diff. **Every AA ratio row passed unchanged.**
+- ✅ **`uni022-syllabus` AC4 — and the filed diagnosis was wrong.** The route does **not** hardcode
+  a lesson slug: the slug is in its **header comment**, explaining FIX-027 bug 21, and nothing about
+  adding a lesson requires editing it. The file already makes exactly this argument for its own D17
+  sweep (`pageProse`) and AC4 simply did not use it. Fixed with `withoutCommentBlocks`, **its bound
+  stated** (trailing `//` deliberately kept in scope — a stripper that mis-parses a string literal
+  deletes real code from the sweep and turns a hardcoded slug green), **three control arms**, and a
+  mutation check: hardcoding the slug in the route's real code still fails AC4 with one offender.
+- **Community suite, 2026-08-22 after the fixes: 1277 specs, 0 failures** (was 1274 / 7; +3 is the
+  new control arms). Compare **by name**, never by count, and re-measure rather than quoting this.
+- ⚠️ **Not deployed.** `9ecec25` and FB-002's `fd695ae` are committed and unshipped — nexus-1 is
+  still stamped `8d40b63`. The dark theme's inks and the answered-filter default both change on the
+  live site when somebody deploys; that is Richard's call, not a side effect of a gate fix.
 
 ## Carried from phase 74 (work lives in `phase-74-0.2.0-bug-fixes/`)
 
