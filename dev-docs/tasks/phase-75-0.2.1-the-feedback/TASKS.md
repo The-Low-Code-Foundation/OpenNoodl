@@ -113,4 +113,9 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 ## Adjacent (stay in their phases; 0.2.1 leans on them)
 
 - 🟡 NAT-009 — needs its view + a drive · ⬜ NAT-010 · ⬜ NAT-011 (gains FB-004's
-  reconciliation AC) · 🔒 NAT-012 (D6) · ⬜ NAT-004 · 🧭 NAT-014 AC2/4/7 · 🟡 TUT-004 (the drive)
+  reconciliation AC) · 🟡 **NAT-012 — unblocked and started 2026-08-22**: ✅ AC4 (asking opens the
+  thread in the editor, `39404361`), AC2's audit taken, and 🔴 **AC3 turns out to be a ROUTER
+  task** — going to the launcher disposes the project, so it needs a ruling (keep the project, or
+  accept the close and label it). The editor narrowing, AC1/AC5/AC6/AC7 still open · ⬜ NAT-004 ·
+  🧭 NAT-014 AC2/4/7 · 🟡 TUT-004 (the drive; ⚠️ its AC1 loses the section it was positioned
+  against when the narrowing lands)
