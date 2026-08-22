@@ -102,3 +102,35 @@ Two tabs, `Installed lessons` and `Your path`, in `views/Learning.tsx` using the
 `ContentArea` — is reasoned about, not seen. The `Tabs` root is `height: 100%; overflow: hidden`,
 which resolves to `auto` under an auto-height parent; that is an argument, and this repo's
 recorded rule is *drive it, do not reason about it*.
+
+---
+
+## Driven — 2026-08-22 (session 3)
+
+Built and specced in session 2 but **never seen**; the open worry was that the segmented `Tabs`
+root (`height: 100%; overflow: hidden`) inside a scrolling `ContentArea` would clip a lesson grid
+taller than the window. That was an argument, so it got measured instead.
+
+At the default window (1368×781), Learning tab:
+
+- Tab strip renders at `top: 80`, 33px tall; **`Installed lessons` is the active tab on arrival**
+  and its shelf starts at `top: 133`. AC1 holds — the shelf is the first thing on the tab, no
+  scrolling.
+- `Your path` is one click away and opens on the `truth` sentence, above the numbered steps. AC2
+  holds.
+- **The clipping worry is unfounded, and now measured rather than reasoned about.** Injecting a
+  1400px probe into the tab content grew `Tabs-module__Root` from 352 → 1752 and left
+  `ContentArea` at `clientHeight 687 / scrollHeight 1800` — it scrolls, nothing is cut off.
+  `height: 100%` under an auto-height parent resolves to `auto`, exactly as the argument said,
+  but the argument is not why we now believe it.
+
+🔴 **A trap that nearly produced the opposite conclusion.** `ContentArea` has
+`scroll-behavior: smooth`, so `el.scrollTop = 9999` **animates** — reading `scrollTop` back in the
+same eval returns `0`. That reads as "overflowing content that refuses to scroll", which is
+precisely the bug being looked for. Read in a *second* CDP call it was 500. Same family as the
+existing "a React write is invisible in the same eval" note: **measure a scroll in a separate
+call, or record a false positive.**
+
+⚠️ Minor, not fixed here: the segmented tab buttons carry **no `aria-selected`** (and no
+`role="tab"`), so the active tab is conveyed by class alone. Worth folding into whichever task
+picks up launcher a11y rather than spot-fixing in a drive.

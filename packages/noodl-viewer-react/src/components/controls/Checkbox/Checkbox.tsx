@@ -98,6 +98,55 @@ export function Checkbox(props: CheckboxProps) {
     return null;
   }
 
+  /**
+   * FB-020. A fresh checkbox drew nothing at all when it was ticked, and two users
+   * independently reported that as "the box cannot be checked".
+   *
+   * Nothing was broken: the click lands, `checkedChanged` fires, the `Checked` output
+   * goes true. There was simply no mark on screen, because all three things that could
+   * have drawn one are off by default — the real `<input>` is `opacity: 0`
+   * (assets/style.css), `iconIconSource` ships no default so `_renderIcon` returns null,
+   * and `setVisualStates(['checked'])` only applies parameters an author has already
+   * configured. A brand new node has none.
+   *
+   * So the box draws its own tick when it has no icon of its own to draw. It takes the
+   * border colour, so it reads against whatever the box is styled as; an author icon or
+   * a configured checked state still wins, and turning Enable Icon off is still taken as
+   * "no mark, I am styling this myself".
+   */
+  function _renderDefaultCheck() {
+    if (!checked) return null;
+    if (props.iconSourceType === 'image' && props.iconImageSource !== undefined) return null;
+    if (props.iconSourceType === 'icon' && props.iconIconSource !== undefined) return null;
+
+    return (
+      <svg
+        aria-hidden="true"
+        data-ndl-default-check="true"
+        viewBox="0 0 16 16"
+        style={{
+          width: props.iconSize,
+          height: props.iconSize,
+          position: 'absolute',
+          pointerEvents: 'none',
+          // ⚠️ The border is stored per side — `borderTopColor`, never `borderColor`. Reading the
+          // shorthand yields undefined and the tick silently falls through to `currentColor`,
+          // which is the page's text colour: black here by luck, invisible on a dark page.
+          color: props.styles.checkbox?.borderTopColor || props.styles.checkbox?.borderColor || 'currentColor'
+        }}
+      >
+        <path
+          d="M3.5 8.5l3 3 6-6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
   const checkbox = (
     <div
       ref={noodlRootRef(props.noodlNode)}
@@ -105,7 +154,7 @@ export function Checkbox(props: CheckboxProps) {
       style={inputWrapperStyle}
       noodl-style-tag="checkbox"
     >
-      {props.useIcon ? _renderIcon() : null}
+      {props.useIcon ? _renderIcon() || _renderDefaultCheck() : null}
       <input
         type="checkbox"
         {...inputProps}

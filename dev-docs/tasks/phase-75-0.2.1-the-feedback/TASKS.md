@@ -9,7 +9,10 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
   `0cbd716` handover was stale and **no deploy is needed**. `community.nodegx.io` and
   `nodegx.io` both 200. ⚠️ The mail-drain refusal is therefore still ahead of us, not behind.
 - ✅ **FB-008** — the community link in the editor's ?-menu (S)
-- ✅ **FB-004** — the Learning tab in two tabs; path stops eating the page (S) — ⚠️ **undriven**
+- ✅ **FB-004** — the Learning tab in two tabs; path stops eating the page (S) — ✅ **driven
+  08-22**: shelf first with no scrolling, path one click away, and the `overflow: hidden` clipping
+  worry disproved by measurement (a 1400px probe scrolls, nothing cut). ⚠️ Tab buttons carry no
+  `aria-selected` — unowned.
 - 🟡 **FB-002** — web half done (default + still searchable); **editor mirror open**, and the
   task file now says why it is cheaper than filed (`accepted` is already on the wire)
 
@@ -21,8 +24,14 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 
 ## Tier 1b — the test-user batches (filed 08-22; no rulings needed)
 
-- ⬜ **FB-020** — the checkbox that cannot be checked (S/M) — **a broken control in a shipped
-  release; first, and its diagnosis may implicate every control (design-mode listener leak)**
+- ✅ **FB-020** — the checkbox that cannot be checked (S/M) — **done 08-22, driven.** 🔴 The
+  filed diagnosis was wrong: **the click always worked** (`input.checked`, `_internal.checked` and
+  the `Checked` output all went true) — nothing *drew* a tick, because the real `<input>` is
+  `opacity: 0`, no default icon source ships, and visual states apply only author-configured
+  parameters. **No design-mode listener leak; no other control is implicated by it.** Fixed in
+  `Checkbox.tsx` (default tick), `RadioButton.tsx` (AC4 — same defect, plus the dot was painted on
+  every button in the group) and `checkbox.ts` (the `props.checked` desync). 14 specs, 6 of which
+  go red on the unfixed code.
 - ⬜ **FB-019** — structured-port silent failures: fix the dimension asymmetry, warn the rest
   (M/L) — **two confirmed bugs + Jordan's §2.2 aliasing investigation**
 - ⬜ **FB-018** — the binding chip everywhere; say which value wins; check the §3 regression

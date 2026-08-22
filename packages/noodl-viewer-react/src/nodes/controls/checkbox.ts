@@ -38,7 +38,12 @@ const CheckBoxNode = {
 
     this.props.checkedChanged = (checked) => {
       const changed = this._internal.checked !== checked;
-      this._internal.checked = checked;
+      // FB-020. The user-click path used to leave `props.checked` behind, unlike the `checked`
+      // input setter and `setCheckedByAction`, which both write it. The tick then survived only
+      // as the component's local state, so any remount re-seeded that state from a stale `false`
+      // — and because `_internal.checked` was still true, the next click computed `changed` as
+      // false and fired nothing at all. A box that had been ticked once could go quiet.
+      this.props.checked = this._internal.checked = checked;
       if (changed) {
         this.flagOutputDirty('checked');
         this.sendSignalOnOutput('onChange');
