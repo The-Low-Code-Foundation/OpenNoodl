@@ -71,6 +71,16 @@ export interface LearningSectionProps {
    * all rather than an explanation of something the user cannot do.
    */
   onInstall?: () => void;
+  /**
+   * Draw the section's own `<h2>`. FB-004 put this section behind a tab whose
+   * label already names it, and a heading repeating the tab you just clicked is
+   * noise. Defaults to `true`: every other host still gets the heading, which is
+   * why UNI-007's render specs are untouched by this.
+   *
+   * ⚠️ It suppresses the *title only*, not the head row — the count and the
+   * button beside it are controls, not decoration.
+   */
+  showTitle?: boolean;
 }
 
 const PROVENANCE_LABEL: Record<LearningProvenance, string> = {
@@ -90,7 +100,7 @@ const STATE_LABEL: Record<LearningCardState, string> = {
   completed: 'Completed'
 };
 
-export function LearningSection({ lessons, onOpen, onReset, onInstall }: LearningSectionProps) {
+export function LearningSection({ lessons, onOpen, onReset, onInstall, showTitle = true }: LearningSectionProps) {
   // 🔴 An empty section renders only when there is something to *do* in it.
   //
   // The first instinct here was "never show an empty shelf", and for a shelf
@@ -105,7 +115,7 @@ export function LearningSection({ lessons, onOpen, onReset, onInstall }: Learnin
   return (
     <section className={css['Root']} data-test="launcher-learning-section">
       <div className={css['HeadRow']}>
-        <h2 className={css['Title']}>Learning</h2>
+        {showTitle && <h2 className={css['Title']}>Learning</h2>}
         {lessons.length > 0 && (
           <span className={css['Count']}>
             {lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'}
@@ -164,7 +174,13 @@ function LearningCard({
         </p>
       ) : (
         <>
-          <div className={css['ProgressTrack']} role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+          <div
+            className={css['ProgressTrack']}
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
             <div className={css['ProgressFill']} style={{ width: `${percent}%` }} />
           </div>
 
@@ -175,8 +191,7 @@ function LearningCard({
 
           {typeof lesson.score === 'number' && (
             <p className={css['Score']} data-test="learning-score">
-              Scored {clampPercent(lesson.score)}%
-              {lesson.gradedBy === 'human' ? ' — reviewed by a person' : ''}
+              Scored {clampPercent(lesson.score)}%{lesson.gradedBy === 'human' ? ' — reviewed by a person' : ''}
             </p>
           )}
 

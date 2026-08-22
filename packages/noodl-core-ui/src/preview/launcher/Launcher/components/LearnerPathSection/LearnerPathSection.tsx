@@ -99,6 +99,16 @@ export interface LearnerPathSectionProps {
   projecting?: string | null;
   /** A sentence about the last projection attempt — D10's refusal arrives here. */
   projectionNote?: string | null;
+  /**
+   * Draw the section's own `<h2>`. FB-004 put this section behind a tab whose
+   * label already names it, and a heading repeating the tab you just clicked is
+   * noise. Defaults to `true`: every other host still gets the heading, which is
+   * why UNI-007's render specs are untouched by this.
+   *
+   * ⚠️ It suppresses the *title only*, not the head row — the count and the
+   * button beside it are controls, not decoration.
+   */
+  showTitle?: boolean;
 }
 
 export function LearnerPathSection({
@@ -109,7 +119,8 @@ export function LearnerPathSection({
   onSignIn,
   onProject,
   projecting,
-  projectionNote
+  projectionNote,
+  showTitle = true
 }: LearnerPathSectionProps) {
   // 🔴 `hidden` is D15 and draws NOTHING — not a heading, not an empty state, not a sign-in.
   // A pupil whose school switched the community off must not learn from this screen that
@@ -119,7 +130,7 @@ export function LearnerPathSection({
   return (
     <section className={css['Root']} data-test="learner-path-section" data-state={surface.state}>
       <div className={css['HeadRow']}>
-        <h2 className={css['Title']}>Your path</h2>
+        {showTitle && <h2 className={css['Title']}>Your path</h2>}
         {surface.state === 'path' && (
           <span className={css['Count']}>
             {surface.total} {surface.total === 1 ? 'lesson' : 'lessons'} · {surface.duration}

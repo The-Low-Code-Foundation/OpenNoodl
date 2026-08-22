@@ -10,3 +10,15 @@
 .Root {
   padding: 28px 32px 20px;
 }
+
+/**
+ * FB-004's tab strip.
+ *
+ * `Tabs`' root is a flex column (button row, then content), so a `gap` here is
+ * what separates the strip from the section under it — there is no margin to
+ * reach for, and reaching into `Tabs.module.scss`'s hashed class names from
+ * another module is not possible anyway.
+ */
+.Tabs {
+  gap: 20px;
+}
