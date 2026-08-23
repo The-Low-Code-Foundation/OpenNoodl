@@ -49,6 +49,7 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 - ⬜ **FB-016** — box-model overlay, transform-origin crosshair, radius-following highlight
   (M/L)
 - ⬜ **FB-022** — drag-to-scrub numeric fields (M/L; after FB-017/018 land in the same rows)
+- 🔴 **FB-023** — [the pool that forgets how to read a date](FB-023-THE-POOL-THAT-FORGETS-HOW-TO-READ-A-DATE.md) (S to fix, the CHOICE is a ruling) — **found by driving FB-001, 2026-08-23.** Once the editor's Community panel has called `/api/v1/community/home`, the shared `apiSql()` pool reads `timestamptz` as a **string**: thread reads **500 (13/20 measured)** and — worse — an **edit is REFUSED as `400 "that could not be posted"`**, blaming the user for text that is fine. Platform, not FB-001. The web and the suite are both immune, which is why it survived; only the editor mixes `/community/home` and `/bench/threads/:id` on one long-lived pool. ✅ Giving drizzle its own pool clears both symptoms (measured, then reverted)
 - (FB-012 gains the CSS-basics lesson + the accumulating-state bar — tracked there)
 
 ## Tier 2 — unblocked 2026-08-22 (D6, D7 ruled)

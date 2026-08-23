@@ -1,5 +1,90 @@
 # Phase 75 — next session
 
+**State as of 2026-08-23 (session 10).** Session 10 did **one** thing and it took the whole
+session: it **drove FB-001 on both surfaces**. The verbs work. The drive also found a platform
+defect that blocked it for most of the session and that is now **FB-023** — read that first,
+because it is bigger than FB-001.
+
+## What session 10 found
+
+- ✅ **FB-001 — DRIVEN, BOTH SURFACES. The task is done.** Full tables in the task file.
+  Web: the controls appear for the author and for nobody else (signed-out, non-author and
+  somebody-else's-thread all draw **no `.post-controls` node at all**); Edit fetches the real
+  **source**, saves, and the page comes back with the new body and an "edited" marker;
+  Delete cancels cleanly, refuses an **answered** thread **in the server's own sentence**, and
+  really removes an unanswered one (database: gone, **0 orphan posts**).
+  Editor: the same three arms disagree the same way, and **the first editor bench WRITE ever
+  driven** — composer pre-filled from source, saved, `updated_at` stamped; then Delete, thread
+  gone, pane back to the list by itself. ⚠️ **NAT-012 AC4's other half is closed by this too.**
+- 🔴 **FB-023 — THE PLATFORM STOPS BEING ABLE TO READ A DATE, AND SAYS IT IS YOUR POST'S FAULT.**
+  New task file, **open, not fixed**. Once the panel has called `/api/v1/community/home`, the
+  shared `apiSql()` pool reads `timestamptz` as a **string**. Thread reads **500 (13 of 20
+  measured)**; and the write path does not crash — a perfectly good edit comes back
+  **`400 "that could not be posted"`**. A 500 announces itself; this one **blames the user**,
+  who would rewrite their text forever.
+  - 🔴 **Why nothing caught it: the two immune populations are the two we always measure.** The
+    web uses a fresh `createSql()` per request; the suite uses `freshDb()` + `resetApiSql()`.
+    **Only the editor** mixes `/community/home` and `/bench/threads/:id` on one long-lived pool.
+  - ✅ **The control that cracked it**: driving the **web page and the API route against the
+    SAME thread**. Page 200, route 500, same row — which ruled out the data and named the pool.
+  - ⚠️ **The mechanism is UNDER-CLAIMED in the file on purpose.** An early "connections born
+    under drizzle" model was **disproved** by a `max=1` run. What is solid: drizzle on the shared
+    pool is what does it, and giving drizzle its own pool clears **both** symptoms (measured,
+    then reverted — the repo is clean).
+- 🔴 **A DRIVE ARM READ CORRECT AND WAS VACUOUS, AND ONLY A LOAD SIGNAL CAUGHT IT.** The first
+  pass read *"somebody else's thread → no Edit, no Delete — correct"*. The pane was actually on
+  its **error arm**: no verbs because there was **no thread**. A failed read and a correctly
+  verb-less post are **identical** in `hasEdit: false`. ✅ Every row of the editor table now
+  carries a `loaded` column, and the rows mean nothing without it. Same family as session 8's
+  `[data-panel-id]` lesson, one layer up: **ask what ELSE produces this reading.**
+- ⚠️ **Found by driving, owned by nobody: the editor DELETES WITHOUT ASKING.** The web calls
+  `window.confirm` first; `useCommunityThread.ts:373` fires the DELETE on click. D7 declined a
+  soft delete, so the row really goes and takes its posts. Verb parity (D15) holds; **the
+  safeguard is not mirrored**, and no spec could catch it — `editFor` grades which verbs are
+  *offered*, never what happens between the click and the request. 🧭 **Richard's call.**
+- ⚠️ **I nearly filed a harness artifact as a product bug.** The first 500 came right after I
+  re-seeded *underneath a running server* — the documented stale-pool trap. Restarting "fixed"
+  it, which **fitted** and would have closed the investigation; the next thread failed anyway.
+  🔴 **A reading that FITS is not one that EXCLUDES** — the restart only ever tested thread A.
+
+### FB-001's first move next session
+
+**None — it is done.** What is left from this drive is **FB-023**, and the confirm-step ruling.
+
+## First moves, in order
+
+1. 🔴 **FB-023** — the defect above. It is live on every editor that opens the Community panel.
+   Pick a fix (the file lists four; #1 and #2 are the real candidates) and note **AC3's trap**:
+   a `freshDb()` spec **cannot reproduce this**, which is exactly why it survived. ⚠️ And AC2's
+   arm — "not 500" would pass on the **400** that makes this worth fixing.
+2. 🧭 **The confirm-step ruling** — does the editor's Delete grow a confirmation, or is the
+   asymmetry with the web recorded as chosen?
+3. **FB-019 implementation** — the sweep already revised AC1/AC2: keep the merge, fix only the
+   no-stored-unit case, on **all three** registration paths. 🔴 **Drive an image-cropper pan
+   first** — the six broken connections are predicted from source and nobody has watched one fail.
+4. **Quick wins with no rulings**: FB-007, FB-010, FB-003 — the build-the-caller family.
+5. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
+   `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — eight days), the 15 lessons' prose,
+   Discord's row in the `?` menu, `/rfps` search.
+
+## How to drive the community platform (session 10's harness — reuse it)
+
+- **Its own database**, so a suite run cannot wipe it and it cannot wipe a suite:
+  `DATABASE_URL=postgres://nodegx:nodegx@localhost:55432/nodegx_community_fb001drive`.
+  🔴 **Re-seed BEFORE starting the server, never underneath a running one** — dropping the schema
+  under a live pool is the stale-OID trap and it reads as a product 500.
+- `npm run build` then `npx next start -p 3200`.
+- **The editor against it**: patch `window.fetch` in the renderer to rewrite
+  `https://community.nodegx.io` → `http://localhost:3200` **and swap the bearer**. 🔴 Swapping the
+  header is what makes it unnecessary to touch
+  `~/Library/Application Support/NodeGX/nodegx.community.session.json`, which holds **Richard's
+  real live credential** for the real site. Back it up anyway. ⚠️ The patch survives the
+  launcher→editor transition, and clients capture `fetch` at construction, so **patch before the
+  panel mounts**.
+- Sessions are minted by inserting a `sessions` row with `hashSessionToken(token)`.
+- ⚠️ `window.confirm` **blocks** the evaluate that clicked it — fire the click without awaiting
+  and answer `Page.javascriptDialogOpening`.
+
 **State as of 2026-08-23 (session 9).** Session 9 committed session 8's uncommitted AC7 work
 (`9902bf61`) and then built **FB-001** end to end — both surfaces, on Richard's ruling. Nothing
 is driven. Read *"What session 9 found"*, then session 8's notes, which still stand.
@@ -189,8 +274,8 @@ first; it carries the measurements you must not re-derive.
 1. ~~Drive NAT-012's AC3~~ — ✅ session 7. ~~NAT-012 AC7~~ — ✅ **session 8**.
    ⚠️ **AC4's other half is still open**: posting a real question to the live Bench from a
    signed-in editor. Richard's call.
-2. ~~**FB-001** build~~ — ✅ **session 9, both surfaces.** What is left is **the drive** (see
-   above), which is the same drive NAT-012 AC4's other half needs.
+2. ~~**FB-001** build~~ — ✅ session 9. ~~**the drive**~~ — ✅ **session 10, both surfaces**, and
+   it closed NAT-012 AC4's other half with it.
 3. **FB-019 implementation** — the sweep already revised AC1/AC2: keep the merge, fix only the
    no-stored-unit case, on **all three** registration paths. 🔴 **Drive an image-cropper pan
    first** — the six broken connections are predicted from source and nobody has watched one fail.

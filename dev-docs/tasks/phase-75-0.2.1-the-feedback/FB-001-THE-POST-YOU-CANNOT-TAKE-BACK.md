@@ -142,3 +142,107 @@ using when he filed it.
   session 8's 291 / 4741 — **+1 suite / +18 specs**, both `fb-001/editverbs.test.ts`.
 - `typecheck:editor`, `typecheck:editor-tests`: 0. `typecheck:core-ui`: **44 pre-existing
   `TS2307`**, unchanged, nothing else.
+
+---
+
+## ✅ DRIVEN — 2026-08-23, session 10. Both surfaces.
+
+**Status: BUILT AND DRIVEN.** Both halves were watched end to end against a live platform
+(`next start` on :3200, its own database `nodegx_community_fb001drive` on 55432, three seeded
+threads). The verbs work. The drive also found **one defect that is not FB-001's** and which
+blocked it for most of the session — see the next section, it is the more important finding.
+
+### The fixture, and why three threads
+
+| thread | author | state | what it is an arm for |
+|---|---|---|---|
+| **A** | `fb001author` (the driver) | unanswered | the happy path for BOTH verbs |
+| **B** | `fb001author` | **answered by `fb001other`** | delete must be refused / withdrawn |
+| **C** | `fb001other` | unanswered | **the control**: not my post, no verbs |
+
+### The web half — `PostControls`, driven in headless Chrome over CDP
+
+Read states, structurally (`.post-controls` is **absent** when not the author, so the marker is
+the read — never innerText):
+
+| arm | `.post-controls` | buttons |
+|---|---|---|
+| A, **signed out** (control) | **0** | — |
+| A, signed in as **non-author** (control) | **0** | — |
+| A, signed in as **author** | 1 | `Edit`, `Delete` |
+| B (answered), as author | 1 | `Edit`, `Delete` |
+| C, somebody else's, as author (control) | **0** | — |
+
+- ✅ **Edit** — `Edit` fetches the **source** (`ORIGINAL BODY A…`, the markdown, not a
+  reconstruction), the textarea takes a rewrite, `Save changes` PATCHes and the page reloads
+  showing the new body, the old body **gone**, and an **"edited"** marker. Confirmed in the
+  database: body replaced and `updated_at > created_at`.
+- ✅ **Delete, three arms.** The `confirm` text is
+  *"Delete this question? It will be gone for good, and only works while nobody has answered."*
+  - **cancel** → nothing happens: still on the thread, no error, controls intact;
+  - **answered thread, accepted** → the server's own sentence is shown:
+    *"somebody has answered this thread, so it is part of their record too and cannot be
+    deleted"* — AC2's requirement that the refusal **names why**, driven;
+  - **unanswered, accepted** → gone, redirected to `/bench`, and the list no longer shows it.
+    Database: the thread row and its post are both gone, **0 orphan posts** (the cascade holds).
+
+### The editor half — and the first bench WRITE ever driven
+
+⚠️ **NAT-012 AC4's other half is now closed too**: this is the first time any editor bench write
+has been watched, not just the edit verbs.
+
+Driven against the same live platform by patching `window.fetch` in the renderer to rewrite
+`https://community.nodegx.io` → `localhost:3200` and swap the bearer. 🔴 **Richard's real
+credential file was never touched** — `~/Library/Application Support/NodeGX/nodegx.community.session.json`
+holds a live token for the real site; the header swap in the patch is what made touching it
+unnecessary. (It was backed up first regardless.)
+
+| thread | **loaded** | Edit | Delete | matches `editFor` |
+|---|---|---|---|---|
+| A — mine, unanswered | ✅ | ✅ | ✅ | both verbs |
+| B — mine, **answered by another** | ✅ | ✅ | **✗** | Delete **withdrawn**, not drawn-and-refused |
+| C — somebody else's | ✅ | ✗ | ✗ | no verbs |
+
+- ✅ **Edit** — the composer **replaces** the body (not added beneath it), pre-filled with the
+  fetched source; `Save changes` → composer closes, new body drawn, old gone, "edited" shown,
+  verbs restored. Database confirms body replaced and `updated_at` stamped.
+- ✅ **Delete** — the thread goes, the pane returns to the list by itself (`onBack` on success,
+  as the hook argues), and the list has two threads. Database: gone, **0 orphans**.
+
+- 🔴 **THE "loaded" COLUMN IS LOAD-BEARING AND THE FIRST RUN OF THIS TABLE WAS VACUOUS.** An
+  early pass read thread C as *"no Edit, no Delete — correct, not the author"*. It was actually
+  a **failed read**: the pane was on its error arm and there were no verbs because there was no
+  thread. A failed read and a correctly verb-less thread are **identical** in `hasEdit: false`.
+  The rows above only mean something because each carries a known-firing signal that the thread
+  really rendered. Same family as session 8's `[data-panel-id]` lesson, one layer up.
+
+### ⚠️ Found by driving, and owned by nobody: the editor deletes WITHOUT ASKING
+
+The web calls `window.confirm` before deleting; **the editor's `onDelete`
+(`hooks/useCommunityThread.ts:373`) fires the DELETE immediately on click.** D7 declined a soft
+delete, so the row really goes and takes its posts with it — this is the one irreversible verb
+in the pane, and on the editor it is one stray click away with no step in between.
+
+Verb parity (D15) is satisfied — both surfaces offer the same verbs. **The safeguard is not
+mirrored**, and nothing said it had to be, which is why no spec caught it: `editFor` grades
+*which verbs are offered*, never what happens between the click and the request. 🔴 **Richard's
+call**: either the editor grows a confirm step, or the asymmetry is recorded as chosen.
+
+### What is still not driven
+
+- The **409 refusal inside the editor**. It cannot be reached by clicking: the editor
+  *withdraws* Delete once somebody else has answered rather than drawing it and refusing, which
+  is the documented choice. The refusal line is graded by spec only.
+- The **web** was driven signed-in via a minted session row, not through the real device flow.
+
+### Measurements — 2026-08-23, session 10
+
+- **Community suite, after `npm run build` on the reverted tree: 54 files / 1313 specs, 0
+  failures** — *identical* to session 9's, which is the check that the drive's local patches
+  (a `toPost` coercion, then a `mirror.ts` pool isolation) were both fully reverted. The
+  `nodegx-community` working tree is clean at `080a4f1`.
+- **No editor code was changed this session**, so `tests-unit` stands at session 9's
+  **292 / 4759 / 0**. Nothing was rebuilt to make the drive work; the only editor-side
+  intervention was a renderer `fetch` patch applied at runtime.
+- The drive ran against its own database (`nodegx_community_fb001drive` on 55432), so nothing
+  it did touched the suite's `nodegx_community`.
