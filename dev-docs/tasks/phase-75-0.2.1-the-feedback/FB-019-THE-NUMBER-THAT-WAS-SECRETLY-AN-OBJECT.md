@@ -1,11 +1,13 @@
 # FB-019 — the number that was secretly an object
 
-**Filed:** 2026-08-22, test-user session, item 4. **Status: ⬜ open — and DRIVEN 2026-08-23
-(session 12), which falsified both of the silent-failure bugs this file was built around. Richard's
-report stands; the diagnosis under it does not. What is left is a legibility task, not a runtime
-one.** Size: was M/L, now **S/M**. 🔴 **Read "THE DRIVE" below before anything above it — the
-Ground truth and sweep sections are the pre-drive reading and two of their claims are wrong.**
-Size: M/L.
+**Filed:** 2026-08-22, test-user session, item 4. **Status: 🟡 open — AC3 CLOSED 2026-08-23
+(session 13); scope (3) is the remainder.** Session 12's drive falsified both of the
+silent-failure bugs this file was built around; session 13 drove the third claim, AC3's icon arm,
+and **that one was real** — fixed and re-driven. Richard's report stands; two thirds of the
+diagnosis under it did not. What is left is a legibility task, not a runtime one.
+Size: was M/L, now **S**. 🔴 **Read "THE DRIVE" and "THE ICON DRIVE" below before anything above
+them — the Ground truth and sweep sections are the pre-drive reading and several of their claims
+are wrong.**
 
 > *"Some ports are a bit tricky and look like they should take a number input, but they
 > actually need like a JSON input? Like the icon node… you can't just input the string icon
@@ -234,6 +236,88 @@ either seam. If Jordan's margin/corner-radius report is aliasing, it is somewher
 visual states are the unexamined candidates.
 
 
+## 🆕 THE ICON DRIVE, 2026-08-23 (session 13) — AC3 IS REAL, AND IT IS THE FIRST ONE THAT WAS
+
+Three predicted-from-source claims have now been driven in this file. Two were fiction. **This
+one is true**, and it was driven before it was fixed, as the handover insisted.
+
+### The fixture, and why it needed three arms
+
+One `/App`, three `Icon` nodes, and a Function node whose output type is **left unset** — which
+is the whole trick: the `outtype-` enum offers String/Boolean/Number/Object/Date/Array/Color/
+Signal and **no `*`**, so a `*` output is what you get by *not* choosing
+(`simplejavascript.ts:699`, `type: declaredType || '*'`). Verified live off the running editor:
+the wire's source port really is `{name:'out-icon', type:'*'}` into `{name:'iconIconSource',
+type:'icon'}`.
+
+| arm | `iconIconSource` | rendered (measured) |
+|---|---|---|
+| **A** subject | the string `'account_circle'`, over the `*` wire | 🔴 `<span class="" style="font-size:40px; color:rgb(255,0,0); line-height:1"></span>` |
+| **B** control | `{class:'material-icons', code:'account_circle'}` | ✅ `<span class="material-icons">account_circle</span>` |
+| **C** control | never set | ✅ **no span at all** |
+
+🔴 **Arm C is what makes arm A a defect rather than a non-event.** An undrawable value does not
+degrade to "nothing" — it produces an **empty, styled span that still takes its `iconSize` in
+layout**. Read `props.iconIconSource` off the React fibre to close the loop: the string
+`'account_circle'`, `typeof 'string'`. Arm A's span existing at all *is* the proof the value
+arrived; a function that never ran would have rendered arm C.
+
+### And it is silent in all three places one would look
+
+- **The cast table**: 0 of 16 rows have `icon` in their `to` — nothing casts to icon, ever. Read
+  live, ⚠️ **with a control**: the first read of `typecasts` was taken before a project was open
+  and reported `string→number: false`, which is *wrong*. A cast-table reading on an unloaded
+  library is vacuous and reads exactly like a refusal.
+- **The connection warning**: a control pair on the same wire, varying only the source type —
+  `string → icon` raises *"Target port of type icon cannot be connected to a source port of type
+  string"*; `* → icon` raises **nothing**, and restoring `*` makes the silence come back. That is
+  by design: `unconvertedCast` returns `null` for `*` because "a wire out of an undeclared output
+  is not evidence of anything".
+- **The console**: nothing, in the viewer or `.logs/dev.log`.
+
+### 🔴 Why scope (4) was resolved to WARN and not to COERCE
+
+Scope (4) says pick coercion "unless the sweep finds a reason not to". **It did.**
+`iconValueForGlyph` (`shared/utils/iconsets.ts:153`) builds a glyph's value as
+`{class: set.iconClass, code: glyph, codeAsClass: set.codeAsClass}` — **two of the three fields
+come from the installed set's manifest**, and only `code` comes from the glyph name. A bare
+string carries the name and nothing else, so any coercion must guess which set it belongs to,
+and the shipped conventions want opposite fields (Material Icons wants the name in `code`; a
+class-per-glyph set wants it among the classes). The task's suggested
+`{codeAsClass:true, class:s}` is wrong for both. **Guessing renders a blank glyph again, having
+reported success** — a worse defect, because it looks handled.
+
+### What was built
+
+- `components/visual/Icon/iconSourceProblem.ts` — the predicate and the sentence.
+- The `icon` branch in `defineRegularInputProp` (`react-component-node.ts`): reports via
+  `setDiagnostic` and **drops** the value, so an undrawable value renders like arm C.
+  At the port, not in `IconGlyph`: here the port has a name and the node an id, it runs once per
+  *set* rather than once per render, and `setDiagnostic` is a setter, so the statement that
+  raises the warning is the one that clears it.
+- ✅ **Driven after the fix, same fixture**: arm A → **no span**, `totalWarnings` **0 → 1**,
+  message *"Icon Source expects an icon, received a string (account_circle). Nothing will be
+  drawn — pick the glyph with the icon picker, or wire an object of the shape {class, code}…"*.
+  Arm B unchanged. Then the function was made to emit `{class:'material-icons',code:'search'}`
+  over **the same wire**: warning back to **0** and arm A **drew the glyph**. That last step is
+  the one that proves the fix does not refuse the legitimate use — a Function node emitting a
+  proper icon object is a real thing to do, which is why refusing the *wire* would have been wrong.
+- `tests/fb-019-icon-source-diagnostic.test.tsx` — 20 rows. **Mutation-checked twice**: disabling
+  the port branch reds **2** (ARM A and the no-empty-span consequence arm); making the predicate
+  accept everything reds **7**. The other rows are regression arms and correctly stay green —
+  ⚠️ an earlier draft "killed" 4, but two of those were red only because the harness never got
+  called, which overstates the count; they now grade *no message raised*, which is true either way.
+- ✅ **Provably inert for what ships**: 76 `iconIconSource` parameters across 97 `project.json`
+  files, **all 76 accepted, 0 would warn**. ⚠️ Bound: that is *parameters*; wired values cannot be
+  swept statically, and are the population this exists for.
+
+### 🆕 Scope (4)'s second half was already done
+
+The **Enable Icon** copy Jordan §7 complained about — *"add one from the library panel, a folder
+with a manifest.json"* — **is not in the source**. `useIcon` reads *"Shows an icon on this
+element"*, and every icon port's description is builder-facing. Same shape as AC1: an item in
+this file describing something that already ships. Nothing to build.
+
 ## Scope
 
 1. **Fix the runtime asymmetry** (the actual bugs): `dimension`/units-`number` inputs coerce a
@@ -282,9 +366,13 @@ visual states are the unexamined candidates.
   because `defaultUnit` differs per port. AC2 is now: **the editor says which unit a bare number
   will land in, at the port**, so the two are distinguishable without reading the viewer source.
   That makes AC2 a restatement of scope (3), which is the whole task now.
-- AC3 (⚠️ **the last predicted-from-source claim in this file, and two of two such claims here
-  turned out to be fiction — DRIVE IT BEFORE FIXING IT**): string → icon input draws the glyph (or the refusal warns, per the (4) decision) —
-  never an empty span with no diagnostic.
+- AC3 — ✅ **DRIVEN, THEN FIXED, THEN RE-DRIVEN (2026-08-23, session 13). DONE.** It was the last
+  predicted-from-source claim here and the **only one of the three that was real**. A string
+  reaching an icon port via a `*` output rendered an empty styled span with no diagnostic
+  anywhere; it now renders nothing and raises a warning at the node naming the value and the
+  shape. Resolved to **warn, not coerce** — see *THE ICON DRIVE* for why a bare string cannot be
+  coerced correctly. ⚠️ The remaining icon work is scope (3)'s: saying the shape at the port
+  *before* the author wires it, which this does not do.
 - AC4: every structured type in the table above either casts losslessly, coerces with a defined
   rule, or warns — asserted as a cardinality sweep over the cast table so a new structured type
   can't ship into the silent gap (a gate hole shaped like the defect is a recorded 4× trap).

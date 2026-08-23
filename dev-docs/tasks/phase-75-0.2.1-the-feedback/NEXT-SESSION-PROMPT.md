@@ -1,5 +1,96 @@
 # Phase 75 — next session
 
+**State as of 2026-08-23 (session 13).** Session 13 did what session 12's handover put first:
+it **drove FB-019 AC3's icon arm before fixing it**. Unlike the two before it, **this claim was
+true** — the empty span is real. It is now fixed, re-driven, specced and committed, and AC3 is
+closed. Read *"What session 13 found"*, then session 12's notes, which still stand.
+
+## What session 13 found
+
+### ✅ FB-019 AC3 — THE FIRST PREDICTED-FROM-SOURCE CLAIM IN THIS FILE THAT WAS REAL
+
+Three have now been driven; **two were fiction, this one was not**. The lesson is not "trust the
+file again" — it is that the drive is what tells them apart, and it cost about an hour.
+
+- ✅ **The defect, measured.** Three `Icon` nodes, one Function node with its output type **left
+  unset** (the `outtype-` enum offers no `*`, so *not choosing* is how you get one). A string
+  `'account_circle'` over that `*` wire rendered
+  `<span class="" style="font-size:40px; color:rgb(255,0,0)"></span>` — **present, styled, empty**.
+- 🔴 **The third arm is what made it a defect.** A never-set icon port renders **no span at all**.
+  So an undrawable value does *not* degrade to "nothing"; it leaves a styled box that still takes
+  its `iconSize` in layout. Without arm C the reading would have been "no icon either way, so what".
+- ✅ **Silent in all three places one would look**: 0 of 16 cast-table rows target `icon`; the
+  connection warning stays quiet for a `*` source by design; nothing in the console or `dev.log`.
+- 🔴 **A CAST-TABLE READING TAKEN BEFORE A PROJECT IS OPEN IS VACUOUS AND LOOKS LIKE A REFUSAL.**
+  The first read reported `string→number: false` — wrong. `NodeLibrary.library` holds only
+  `{colors}` until a project loads. ✅ **The control caught it**: a pair that is *known* true.
+- ✅ **Resolved to WARN, not coerce — and the reason is in the source.** `iconValueForGlyph` builds
+  a glyph value as `{class: set.iconClass, code: glyph, codeAsClass: set.codeAsClass}`: **two of
+  three fields come from the installed set's manifest**. A bare string carries only the glyph name,
+  so coercion must guess the set, and the two shipped conventions want opposite fields. The task's
+  suggested `{codeAsClass:true, class:s}` is wrong for both. **Guessing renders a blank glyph
+  again, having reported success.**
+- ✅ **Fixed at the port, not in `IconGlyph`**: an `icon` branch in `defineRegularInputProp` that
+  `setDiagnostic`s and **drops** the value. At the port the name and node id are known, it runs
+  once per *set* not per render, and `setDiagnostic` is a setter so the raise clears itself.
+- ✅ **Re-driven**: arm A → no span, warnings **0 → 1**, message names the value and the shape.
+  Then the same wire made to carry `{class:'material-icons', code:'search'}` → warning back to
+  **0** and the glyph **drew**. 🔴 That last step is why refusing the *wire* would have been wrong:
+  a Function emitting a proper icon object is legitimate, and `*`→icon is the only route it has.
+- ✅ **20 specs, mutation-checked twice** (2 reds for the port branch, 7 for the predicate).
+  ⚠️ An earlier draft "killed 4" — two were red only because the harness was never called, which
+  **overstates a mutation count**; they now grade *no message raised*, true either way.
+- ✅ **Provably inert**: 76 `iconIconSource` parameters across 97 `project.json` files, all 76
+  accepted. ⚠️ Bound: *parameters*; wired values cannot be swept statically.
+- 🆕 **Scope (4)'s other half was already done** — the "manifest.json / library panel" copy on
+  **Enable Icon** is not in the source. Same shape as AC1: an item describing what already ships.
+
+## First moves, in order
+
+1. **FB-019 scope (3)** — say the wire shape at the port, in the connection popup and the Ports
+   tab. This is now the whole of FB-019 and needs no ruling. It is what makes `300 → 300%` and
+   the icon union legible *before* someone wires them, which neither drive's fix does.
+2. **Quick wins with no rulings**: FB-007, FB-010, FB-003 — the build-the-caller family.
+3. ⚠️ **Banked from session 12, still undriven**: `registerInput` writes `{value, type}` where
+   every reader wants `unit` — latent, but a dynamically registered units port has a default the
+   merge cannot see.
+4. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
+   `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — eight days), the 15 lessons' prose,
+   Discord's row in the `?` menu, `/rfps` search.
+
+## Gates, this tree
+
+- `noodl-viewer-react` jest: **75 suites / 965 specs / 0 failures** (mine is +1 suite / +20 specs).
+- `@noodl/runtime` jest: **140 suites / 2543 specs / 0 failures** — unchanged from session 12.
+- `lessons:check` clean; `typecheck:viewer` clean.
+- Community suite and editor `tests-unit` **not re-run** — nothing touched either. Session 11's
+  figures stand: 55/1321/0 and 292/4763/0.
+- `test:ci` **not re-run** (swap was at 10.2G/11.2G all session; a full run alone was not safe).
+  🔴 **Re-measure rather than quoting any handover.**
+
+## Driving, session 13's additions
+
+- ✅ **A `*` output is what you get by NOT choosing an output type.** The `outtype-<name>` enum has
+  no `*` entry; the editor's dynamic-port builder reads `parameters['outtype-'+label] || '*'`. So
+  a fixture that needs a `*` source just omits the parameter.
+- ✅ **The warnings instrument**: `graph.evaluateConnectionHealth(con)` computes,
+  `WarningsModel.instance.getWarnings({component, connection})` reads,
+  `getTotalNumberOfWarnings()` is the cheap scalar. ⚠️ **`getConnectionHealth` is a different
+  function with a different argument shape** (`sourceId`/`sourcePort`, not `fromId`/`fromProperty`)
+  and throws on a stored connection — it reads, it does not compute.
+- ✅ **A control pair on one wire**: monkeypatch the source node's `getPort` to return a different
+  `type`, re-evaluate, read, restore. Varies exactly one thing and restores the original reading.
+- 🔴 **`forEachNode` stops on a truthy return** — `types.push(n.type)` returns a number, so the
+  walk stopped at node 1 and dumped its entire listener graph (255KB). Use `findNodeWithId`.
+- 🔴 **`npm run cdp -- reload --target=viewer` killed the viewer and reloaded the EDITOR**, closing
+  the project. Expected per the memory index; costs a re-open, so take the DOM reading first.
+- ⚠️ **A launcher card can be off-screen** (y≈5800): tag the leaf by text, `scrollIntoView`, then
+  read the rect in a **separate** eval before clicking.
+- Fixture: `fb019-icon` in this session's scratchpad — three arms plus the `*`-output Function.
+  ⚠️ Registered in the launcher's recents and pointing at a scratchpad that will be cleaned up;
+  rebuild rather than trusting the row. The authoring script is small — three `net.noodl.visual.icon`
+  nodes and one `JavaScriptFunction` with `scriptOutputs` and no `outtype-`.
+
 **State as of 2026-08-23 (session 12).** Session 12 did the thing session 11's handover put first:
 it **drove an image-cropper pan before believing FB-019**. The pan works. Both of FB-019's
 silent-failure bugs are fiction, the task shrank from M/L to S/M, and the one thing that needed

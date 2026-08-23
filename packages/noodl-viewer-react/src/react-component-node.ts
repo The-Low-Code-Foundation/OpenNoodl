@@ -25,6 +25,7 @@ import type {
   VisualStateDefinition
 } from '@noodl/types';
 
+import { iconSourceProblem } from './components/visual/Icon/iconSourceProblem';
 import DOMBoundingBoxObserver from './dom-boundingbox-oberver';
 import Layout, { type ParentLayout } from './layout';
 import mergeDeep from './mergedeep';
@@ -586,10 +587,44 @@ function isTokenReference(value: unknown): value is string {
   return typeof value === 'string' && value.startsWith('var(');
 }
 
+/** Diagnostic key namespace for an icon port that was handed something it cannot draw. */
+const ICON_SOURCE_DIAGNOSTIC = 'visual/icon-source-not-an-icon';
+
+/** A port type is a bare string or `{ name }`; this is the name, or `null`. */
+function portTypeNameOf(type: unknown): string | null {
+  if (!type) return null;
+  const name = typeof type === 'string' ? type : (type as { name?: string }).name;
+  return typeof name === 'string' ? name.toLowerCase() : null;
+}
+
 function defineRegularInputProp(input: ReactInputPropDefinition, name: string) {
   if (!input.type) throw new Error(`input ${name} is missing a type`);
 
-  if ((input.type as PortType).units) {
+  // FB-019 AC3. An icon port is the one structured type with no cast row of its own, so the
+  // only value that can arrive over a wire comes from a `*` output and has been checked by
+  // nobody. Reported at the port rather than in `IconGlyph`: here the port has a name and the
+  // node has an id, the check runs once per set instead of once per render, and `setDiagnostic`
+  // is a setter — the statement that raises the warning is the one that clears it.
+  if (portTypeNameOf(input.type) === 'icon') {
+    input.set = function (value) {
+      const props = input.propPath ? this.props[input.propPath] : this.props;
+      const problem = iconSourceProblem(value, input.displayName || name);
+      this.setDiagnostic(ICON_SOURCE_DIAGNOSTIC + '/' + name, problem);
+
+      // Dropped rather than passed on, so a value the renderer cannot draw behaves like a port
+      // that was never set — an empty span still takes its `iconSize` in layout, which is the
+      // half of this defect that looks like a rendering bug rather than a wiring one.
+      if (value !== undefined && !problem) {
+        props[name] = value;
+      } else {
+        delete props[name];
+      }
+      if (input.onChange) {
+        input.onChange.call(this, value);
+      }
+      this.forceUpdate();
+    };
+  } else if ((input.type as PortType).units) {
     input.set = function (value) {
       const props = input.propPath ? this.props[input.propPath] : this.props;
       // AIB-001: see the matching guard in the inputCss loop below. Here the
