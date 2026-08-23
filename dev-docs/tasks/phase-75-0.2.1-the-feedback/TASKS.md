@@ -32,14 +32,18 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
   `Checkbox.tsx` (default tick), `RadioButton.tsx` (AC4 — same defect, plus the dot was painted on
   every button in the group) and `checkbox.ts` (the `props.checked` desync). 14 specs, 6 of which
   go red on the unfixed code.
-- 🟡 **FB-019** — structured-port silent failures (M/L). **The corpus sweep scope (1) required is
-  DONE (`9636681a`) and it revises AC1/AC2.** Three findings: the asymmetry is **three-way**
-  (`inputCss` coerces, `inputProps` deletes the prop, `inputs` computes `NaN`) and the task named
-  only two; **removing the stale-unit merge would break 34 live connections** including the shipped
-  `toggle-switch`, so the merge stays and only the no-stored-unit case is fixed; and **the filed
-  bug 2 has zero instances** in 92 projects while the unnamed third path has six, in two shipped
-  library modules. 🔴 Predicted from source — **drive one image-cropper pan before claiming those
-  modules are broken.** Implementation, scope 2–5 and Jordan's §2.2 all still open.
+- ✅ **FB-019** — structured ports say what they take (was M/L, delivered S). **CLOSED 2026-08-23.**
+  Three sessions of driving reduced it to a legibility task: **two of the three filed silent
+  failures were fiction** (the cropper pans; a never-set Width renders), the third was real and was
+  fixed (`be2921a5` — an icon port warns instead of drawing an empty span), and what survived was
+  the asymmetry underneath the report — `300` into Padding Left is `300px`, into Width is `300%`,
+  because `defaultUnit` differs per port. Scope (3) says so at the port, on both surfaces
+  (`31f95a63`), driven. 🔴 **The editor had been saying it for years on every units port EXCEPT
+  `dimension`** — i.e. except Width and Height, the two that were reported — and an absence
+  assertion found a **third copy** of the same rule in the version-control conflict list with a
+  `units[0]`-vs-`defaultUnit` defect as well. ⚠️ **Left open deliberately**: scope (5) (Jordan's
+  aliasing report — variants and visual states unexamined), and a **latent** never-set failure on
+  `Columns`' two breakpoint ports, which corrects session 12's closure of AC1 as "already ships".
 - ⬜ **FB-018** — the binding chip everywhere; say which value wins; check the §3 regression
   claim (M)
 - ⬜ **FB-021** — gated ports render disabled with their reason (M)

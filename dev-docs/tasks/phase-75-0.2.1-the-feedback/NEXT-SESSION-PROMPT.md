@@ -1,5 +1,114 @@
 # Phase 75 — next session
 
+**State as of 2026-08-23 (session 14).** Session 14 built and drove **FB-019 scope (3)** — the
+task's whole remainder — and **FB-019 is now closed**. The drive found that the editor had been
+saying the missing thing for years on every units port *except the two that were reported*, and an
+absence assertion found a third copy of the same rule with a second defect in it. Read *"What
+session 14 found"*, then session 13's notes, which still stand.
+
+## What session 14 found
+
+### ✅ FB-019 scope (3) / AC2 — BUILT, DRIVEN ON BOTH SURFACES, CLOSED (`31f95a63`)
+
+- 🔴 **THE HOLE WAS IN A FEATURE, AND IT WAS EXACTLY THE SHAPE OF THE COMPLAINT.**
+  `NodeLibrary.getAnnotatedPortName` has annotated units ports with their unit for years — the
+  connection popup is its only caller. Its guard read `nameForPortType(type) === 'number' &&
+  type.units !== undefined`, and **`dimension` is declared by exactly two ports: `width` and
+  `height`.** So the popup said `Min Width (%)`, `Pad Left (px)`, `Margin Left (px)`,
+  `Rotation (deg)` — and **nothing** on the two ports Richard named. Seventh recorded
+  "hole shaped like the defect", and the first in a *feature* rather than a checker.
+  ✅ **Worse than plain silence**: the annotation on the neighbours is what makes the silence on
+  Width read as *"Width has no unit"*.
+- 🔴 **AN ABSENCE ASSERTION FOUND A THIRD COPY NOBODY HAD LOOKED AT.** The spec row asserting the
+  old guard text was *gone* went red on `formatParameterValue` (`nodelibrary.ts:319`) — same
+  `dimension` hole, **plus** a bare-number fallback reading `units[0]` where the runtime reads
+  `defaultUnit`. Those disagree on **6 of 104** declarations, so a stored bare `50` on
+  `transformOriginX` displayed as `50px` while the viewer rendered `50%`. ⚠️ Its only callers are
+  the **version-control conflict list**, which is why neither defect was ever reported — and why
+  that half is **specced, not driven**. ✅ All three copies now share one predicate
+  (`isUnitsPortType`) and one accessor (`declaredUnit`).
+- ✅ **The sentence is computed, not looked up.** A wire cannot carry a unit, so the landing unit is
+  (1) the author's stored unit, else (2) the seed `initializeDefaultValues` wrote — which needs
+  **both** `defaultUnit` **and** a declared `default`.
+- 🔴 **CASE 3 IS DELIBERATELY UNSTATED, AND IT CORRECTS A CLOSED AC.** 14 of 104 declarations have
+  `defaultUnit` and **no `default`**, and they disagree: the `inputCss` ones (margins, min/max,
+  `fontSize`) are coerced a second time at `react-component-node.ts:1925`, but **`Columns`' two
+  breakpoint ports are `inputProps`, where a value with no `.value` is deleted** (`:635`). The
+  editor cannot see which path a port is on. ⚠️ **So session 12's closure of AC1 as
+  *"already ships"* was too broad** — the never-set + bare-number failure is **latent, not
+  absent**, on those two ports (0 instances in 97 `project.json` files). Left open on purpose.
+- ⚠️ **`WIRE_FORMAT_LEGEND` could NOT be reused as scope (3) suggested** — it tells the AI author
+  *"a bare number means the FIRST unit listed"*, wrong on the same six declarations. The UI copy
+  uses `defaultUnit`, which is what `nodedefinition.ts:171` actually reads. **The legend is still
+  wrong and was not edited** (it is prompt text; changing it is its own measurement).
+
+### The drive
+
+- 🔴 **CHECKED FIRST, BECAUSE EVERYTHING RESTED ON IT: `port.default` DOES reach the editor.**
+  Live off `getPorts('input')`: `width.default = 100`, `paddingLeft.default = 0`, and
+  **`marginLeft` has no `default` key at all** — so the reading discriminates rather than fits.
+  Without this the whole feature would have been vacuous in the real app and green in the suite.
+- **Ports tab**, one Group, **35 of 220** rows carry a line: Width *"lands here as **300%**"*,
+  Pad Left *"**300px**"*, Margin Left names **no** unit, Transform Origin X says **`%`** though
+  `units[0]` is `px`; Background Color and Clip Content say **nothing**.
+- ✅ **The strongest arm — one node, two identical declarations.** Group B's `width` is stored as
+  `{150, px}` and its `height` was never set: same type, same units, same `defaultUnit`, and the
+  lines say **300px** and **300%**. Varying exactly one thing (the stored parameter) flips the
+  answer — the merge made visible, which no source-text spec could have shown.
+- **Popup**: `Width (%)` / `Height (%)` now appear beside the unchanged neighbours, and Text's
+  plain-`number` `Width` **output** correctly still gets **no** annotation — three readings of one
+  port name in one DOM.
+
+### Two driving traps that each produced a convincing false reading
+
+- 🔴 **`connectionPopups.close()` REMOVES NOTHING, so a second popup leaves 4 bars in the DOM.**
+  `bars[1]` was still the *first* popup's, so Group B read `Width (%)` and looked like a broken
+  stored-unit branch. ✅ **Count the bars before indexing them.**
+- 🔴 **Popup row labels contain a NON-BREAKING SPACE (char 160)** before the annotation, so
+  `innerText === 'Margin Left (px)'` never matches. Three probes read *"NO ROW"* and looked exactly
+  like three ports with no shape line. ✅ Normalise ` ` before comparing.
+
+## First moves, in order
+
+1. **Quick wins with no rulings**: FB-007, FB-010, FB-003 — the build-the-caller family. FB-019 is
+   closed, so these are the top of the queue.
+2. ⚠️ **FB-019's two deliberate remainders**, if anyone wants them: scope (5) (Jordan's
+   margin/corner-radius aliasing — **variants and visual states are the unexamined candidates**),
+   and `Columns`' two breakpoint ports above.
+3. ⚠️ **Banked from session 12, still undriven**: `registerInput` writes `{value, type}` where every
+   reader wants `unit` — latent, but a dynamically registered units port has a default the merge
+   cannot see.
+4. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
+   `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — eight days), the 15 lessons' prose,
+   Discord's row in the `?` menu, `/rfps` search.
+
+## Gates, this tree
+
+- Editor `tests-unit`: **293 suites / 4790 specs / 0 failures** (session 11: 292/4763 ⇒ **+1 suite /
+  +27 specs**, all `property-editor/portWireShape.test.ts`). Reconciles exactly.
+- `typecheck:editor` and `typecheck:editor-tests` clean.
+- **Nine mutations, all red, control green** — listed in the task file.
+- `noodl-viewer-react` / `@noodl/runtime` jest, community suite, `lessons:check`: **not re-run** —
+  nothing touched them. Sessions 11–13's figures stand.
+- `test:ci` **not re-run** (a full run alone was not safe beside a peer session).
+  🔴 **Re-measure rather than quoting any handover.**
+
+## Session notes
+
+- ⚠️ **A peer session (`opennoodl-78`) was live in this checkout all session** and confirmed it had
+  nothing running before the launch. Source edits were announced to it up front; it committed
+  nothing. `AskAboutNodeDialog.module.scss` is **theirs** and is still uncommitted in the tree —
+  do not sweep it.
+- Fixture: `fb019-shape` in this session's scratchpad — a copy of `fix012-drive` plus a Group with
+  `width` set to `{150,px}` and an Icon node. ⚠️ Registered in the launcher's recents and pointing
+  at a scratchpad that will be cleaned up; rebuild rather than trusting the row. The authoring is
+  ~15 lines of Python over `project.json`.
+- ✅ **Reaching editor modules over CDP**: `window.webpackChunknoodl_editor.push([[id], {}, r => {
+  window.__wreq = r; }])` captures `__webpack_require__`; `__wreq.m` lists every module by source
+  path. That is how `portWireShape` was called directly on real ports before any UI was read.
+- 🔴 **`n.type` on a graph node is the type MODEL, not a string** — `n.typename` is the string.
+  Comparing `n.type === 'Group'` silently matched nothing and serialising it dumped 157KB.
+
 **State as of 2026-08-23 (session 13).** Session 13 did what session 12's handover put first:
 it **drove FB-019 AC3's icon arm before fixing it**. Unlike the two before it, **this claim was
 true** — the empty span is real. It is now fixed, re-driven, specced and committed, and AC3 is
