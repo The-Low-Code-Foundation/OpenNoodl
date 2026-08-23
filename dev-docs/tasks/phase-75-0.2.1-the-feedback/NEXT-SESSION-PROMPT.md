@@ -1,5 +1,152 @@
 # Phase 75 — next session
 
+**State as of 2026-08-23 (session 16).** Session 16 built, specced and **drove FB-010 over real
+HTTP** — the account page, so anybody can have a profile at all. **FB-010 is closed**, and with
+it the blocker session 15 left: *"Offer coaching"* now works for a real account. A mutation found
+a hole in **this session's own spec**, shaped exactly like the defect it was written to catch.
+Read *"What session 16 found"*, then session 15's notes, which still stand.
+
+## What session 16 found
+
+### ✅ FB-010 — BUILT, SPECCED, DRIVEN, CLOSED (`nodegx-community`, migration `0019`)
+
+A `/settings` page, `POST /api/v1/me/profile`, a sessions list with revoke, and eight drawn
+avatars. Full detail in the task file; the findings worth carrying:
+
+- 🔴 **THE BUG WAS NOT THE 404 — IT WAS THAT WE SENT YOU TO IT.** `publicProfile()` answering
+  `null` is UNI-003 working: private, hidden and never-created are one answer so `/u/<handle>`
+  cannot enumerate accounts. What was wrong is that `layout.tsx` linked every signed-in person to
+  their own page while **no account could leave the never-created state** — `upsertProfile` had
+  existed since UNI-003 with a trigger and six constraints and **no caller outside tests**. The
+  header now points at `/settings` until you publish. ✅ The three-states-one-404 property is
+  **unchanged and driven over all four states**.
+- 🔴 **AC3's SCOPE ASSUMED A DISTINCTION THE SCHEMA DID NOT HAVE.** *"List web + editor grants"* —
+  but `redeemDeviceAuthorization` mints an editor grant by calling `createSession(sql, accountId)`,
+  **the same function with the same arguments the OAuth callback uses**. The rows were identical in
+  every column. Added `sessions.origin`. ⚠️ `default 'web'` mislabels editor grants minted before
+  this deploy and **nothing can tell them apart retroactively** — that is the finding, not a
+  shortcut.
+- 🔴 **A MUTATION FOUND A HOLE IN MY OWN SPEC, SHAPED LIKE THE DEFECT.** The row asserting *"the
+  fallback names THIS route's act"* called `profileRefusalResponse` **directly** with the right
+  string — testing that the function returns its argument, not which argument the **route** passes.
+  Setting the route's noun to FB-003's exact defect (*"that response could not be sent"*) left all
+  24 rows green. ✅ **New rule: to test a caller's CHOICE of argument, you must drive the caller.**
+  Reaching the fallback needed a **NUL byte** in a text field — the only untagged error available.
+- 🔴 **A REFUSAL SENTENCE WAS WRITTEN FALSE; THE MIGRATION CAUGHT IT.** `profile_avatar_url_scheme`
+  (`^https://`) and `profile_link_url_scheme` (`^https?://`) share one `unsafe-url` tag and **do
+  not agree**. *"Links must start with https://"* would have told somebody refused for a plain-http
+  link to do what they had already done. ✅ Both regexes are now re-derived from `0003` in a spec.
+- 🔴 **THE AVATAR IS A KEY, NOT A URL, AND THE OBVIOUS ALTERNATIVE IS AN OPEN REDIRECT.** Relaxing
+  the https-only regex to admit `^/` also admits **`//evil.example/x`**, which every browser fetches
+  off-site. A key can carry no scheme and no host.
+- ✅ **`.avatar.sm` HAD NO SIZE RULE** — only `.avatar.placeholder.sm` did, complete for as long as
+  every small disc was a gradient initial. An `<img class="avatar sm">` would have drawn at **88px
+  in a list row**. Same family as FB-019's units hole: a rule total until a new case exists.
+- ✅ **NAT-007's CONSENT COPY BECAME FALSE ON PURPOSE, AND ITS CONTROL PREDICTED IT.** The spec
+  asserting no `/account|/settings` route existed carried the note *"the day somebody adds
+  `/account` this fails, and the copy should change with it."* It did. The copy names both doors
+  now and the absence assertion is **inverted, not deleted**.
+- ✅ **SESSION MANAGEMENT IS DELIBERATELY NOT D15-GATED**, with a spec that goes red if somebody
+  tidies it into `serveCommunityWrite`: a read-only minor holds no write capability and must still
+  be able to sign a lost machine out. **Driven**: minor gets 404 on the profile route, **200** on
+  their own sessions list.
+- ⚠️ **AC2 NAMED A SURFACE THAT HAS NO DISC.** The bench draws **no avatar anywhere** (measured);
+  its author line is text. The four surfaces that DO draw one now share one `personFigure` helper,
+  with a census row that fails if a fifth is added inline. Putting a disc on the bench is a design
+  change and is left open.
+
+### The drive (real HTTP, own database, no browser)
+
+One account with **zero profile rows** — the state a real sign-up produces, per session 15's
+fixture lesson.
+
+| arm | before | after one POST |
+|---|---|---|
+| `GET /u/nia-drive` | **404** | **200** + name, experience, `<img src="/avatars/harbour.svg">` |
+| header link | `/settings` | `/u/nia-drive` |
+| `POST /community/coaching` | **403** *"needs a profile"* | **201** `listed:false` |
+
+- ✅ **FB-003's blocker lifted over the wire.** `listed:false` is correct — D8's bar is a separate
+  gate, which is FB-003's own design.
+- ✅ **AC3 through the REAL device flow**: begin → approve → redeem; `current` **flips** depending
+  on which token asks; the editor token worked, was revoked **from the web** (204), then resolved
+  to `viewer: null` while the web session survived. 🔴 `/api/v1/me` answers **200 with a null
+  viewer** when signed out — a status-only reading would have said *"still works."*
+- ✅ **D15 with a known-firing control**: minor → 404, **no row created**, no leak; adult → 200.
+
+## First moves, in order
+
+1. **FB-007** — the editor uploads the capture it already takes. ⚠️ Needs a **recorded display
+   decision** (scope 2 reverses NAT-008's *"the editor fetches no remote image"*) and the E7
+   platform half verified live. ⚠️ FB-010 deliberately did **not** put `avatarKey` or `experience`
+   on `personProfile` in `apisurfaces.ts`, so the mirror still has its flat disc — FB-007 is where
+   that decision gets made, not a side effect.
+2. ⚠️ **DEPLOY.** nexus-1 is at `0860426` and is now **three** commits behind (FB-003, FB-010, and
+   this session's docs). Richard's call.
+3. ⚠️ **FB-010's remainders**: the form is not driven in a **browser** (server HTML, both routes
+   over real HTTP and the 1.76 kB bundle are); AC2's bench disc; no avatar upload (D7 moderation
+   surface, scope said defaults only).
+4. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
+   `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — eight days), the 15 lessons' prose,
+   Discord's row in the `?` menu, `/rfps` search.
+
+### 🔴 SIX GATES WENT RED ON THE FIRST FULL RUN, AFTER THE FEATURE SPEC WAS GREEN
+
+The FB-010 spec was 24/24 and twelve mutations were red **before** the full suite had ever seen
+these changes. Not enough:
+
+- 🔴 **ONE WAS A REAL DEFECT MY OWN SPEC COULD NOT CATCH.** Adding `p.avatar_key` to the shared
+  `OFFER_COLUMNS` broke `offersFor` and `getOffer` — **`missing FROM-clause entry for table "p"`**
+  — because only `listOffers` gets a `profiles` join (from `OFFER_LISTABLE`); the other two carry
+  their own FROM clause. My spec exercises `listOffers` and never calls the other two.
+  ✅ **A shared column list is only shared if every FROM clause under it has the same tables.**
+- ✅ **The other five are CENSUS gates and all did their job**: `db-schema-drift` (the Drizzle
+  schema must mirror the SQL), `uni011` (a D15 verdict per route), `uni013-slice5` (a page is an
+  archetype or a written reason), `uni019` (reachability per page), `nat006` (the API mapper).
+- 🔴 **`nat006` FORCED A DECISION, NOT A FIX.** Its *"the mapper drops exactly what the page never
+  printed"* is a **set difference** with the comment *"so a field added to either side has to be
+  considered here"*. ✅ Published `avatarKey` — an exception would have weakened a working rule,
+  and it is **not** NAT-008's reversal (that is about what the editor FETCHES AND DRAWS; a slug is
+  strictly less than the real remote `avatarUrl` the API has published since UNI-003).
+- ⚠️ **RUN THE FULL SUITE BEFORE BELIEVING A GREEN FEATURE SPEC.** A feature spec grades the
+  feature; only the corpus grades what the feature did to everything else.
+
+## Gates, this tree
+
+- Community suite: **57 files / 1384 specs / 0 failures** (s15: 56/1360) — **+1 file / +24 specs,
+  exactly the new spec file; the entries added to five other gates are DATA, not rows. Reconciles
+  exactly.** `npm run typecheck` clean.
+  **Twelve mutations, all red**, including the one that forced the vacuous fallback row to be
+  rewritten. 🔴 **Re-measure rather than quoting this line.**
+- ⚠️ **`npm run lint` still DOES NOT RUN, for anyone** — `next lint`, deprecated in Next 15, prompts
+  interactively. Not caused by this session.
+- **Editor** `tests-unit`, `noodl-viewer-react`, `@noodl/runtime`, `test:ci`: **not run** — nothing
+  in this session touched the editor repo except one task file.
+
+## Session notes
+
+- **Databases left behind**: `nodegx_community_fb010` (specs) and `nodegx_community_fb010drive`
+  (the drive — migrated and driven, with `nia-drive` public + listed and `pupil-drive` a read-only
+  minor). Reusable; rebuild rather than trusting them.
+- ✅ **The drive harness is session 15's, unchanged and it works**: `npm run build`, then
+  `npx next start -p 3200` against a `DATABASE_URL` of its own, sessions minted by inserting a
+  `sessions` row with `sha256(token)`, `curl` with a bearer. ⚠️ Kill it with
+  `lsof -ti :3200 -sTCP:LISTEN`, never the bare form.
+- 🔴 **A BACKTICK INSIDE A TAGGED TEMPLATE LITERAL TERMINATES IT.** Writing an SQL comment as
+  `` -- the `case when` … `` inside a `` sql`…` `` block is a **syntax error** — **three times**
+  this session (`profiles.ts`, `coaching.ts` twice). Prose in SQL strings gets no backticks.
+- 🔴 **PIPING A SUITE TO `tail` COSTS THE FAILURE LIST** — the memory index says so and this session
+  paid for it anyway: the first run reported `7 failed` and the output held only the last one.
+  Redirect to a file.
+- ⚠️ **`--site-fg-primary` DOES NOT EXIST.** Three new CSS rules used it with a `currentColor`
+  fallback and would have silently rendered the fallback forever. The real token is
+  `--theme-color-fg-default`; the error role is `--site-fg-alert`, which `uni013-contrast.test.ts`
+  already measures — *"a role added without a pair in that table is a colour nobody measured."*
+- A peer session (`opennoodl-78`) was live in this checkout; **every source edit this session was in
+  `nodegx-community`**, which it was not working in. The only OpenNoodl change is documentation.
+- ⚠️ **The orphaned `AskAboutNodeDialog.module.scss` fix is STILL uncommitted** and still belongs to
+  neither of us — mtime `2026-08-20 15:41`. Untouched again this session. Richard's call.
+
 **State as of 2026-08-23 (session 15).** Session 15 built, specced and **drove FB-003 over real
 HTTP** — the two composers, so somebody other than Richard can ask for work or offer to do it.
 **FB-003 is closed.** The drive found a defect the task file, the spec fixtures and sixteen green
