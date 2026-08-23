@@ -5,7 +5,7 @@ import { NodeLibrary } from '@noodl-models/nodelibrary';
 
 import css from '../ConnectionPopup.module.scss';
 import { DOCS_POPUP_MARGIN, DocsPopupPlacement, placeDocsPopup } from '../docsPopupPlacement';
-import { type PortDirection, portTypeSentenceHtml } from '../portCopy';
+import { type PortDirection, portTypeSentenceHtml, portWireShapeHtml } from '../portCopy';
 
 /**
  * SPR-003 §4 (F94) — the port explainer, placed next to the port it explains.
@@ -55,6 +55,12 @@ export interface DocsPopupProps {
   /** The catalog's prose for this port. Absent for the 35% of ports it has none for. */
   body?: string;
   /**
+   * FB-019 scope (3) — what shape a value fed to this port has to have. Only the
+   * structured types produce one; see `portWireShape.ts`, which the Ports tab
+   * shares so the two surfaces cannot say different things about one port.
+   */
+  wireShape?: { shape: string; body: string };
+  /**
    * `getConnectionStatus`'s own sentence, when this port refused the wire being
    * dragged. Names both port types, which is what makes it useful to somebody
    * debugging a custom module — and useless as the *only* thing a beginner is
@@ -65,7 +71,7 @@ export interface DocsPopupProps {
   anchor?: DOMRect;
 }
 
-export function DocsPopup({ name, type, typeName, direction, body, refusal, anchor }: DocsPopupProps) {
+export function DocsPopup({ name, type, typeName, direction, body, wireShape, refusal, anchor }: DocsPopupProps) {
   const enums = typeof type === 'object' && type !== null && type.name === 'enum' ? type.enums : undefined;
 
   const resolvedTypeName = typeName || NodeLibrary.nameForPortType(type);
@@ -89,6 +95,14 @@ export function DocsPopup({ name, type, typeName, direction, body, refusal, anch
    * and it cannot drift.
    */
   const typeSentence = portTypeSentenceHtml(resolvedTypeName, direction || 'input');
+
+  /*
+   * FB-019 scope (3). Below the type sentence and above the port's own prose:
+   * the type sentence says what a wire *is* (a moment, or a standing value), this
+   * says what shape the value has to have, and only then does the catalog say
+   * what the port means. Three answers to three different questions, narrowing.
+   */
+  const wireShapeSentence = portWireShapeHtml(wireShape);
 
   const ref = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<DocsPopupPlacement | undefined>(undefined);
@@ -126,7 +140,13 @@ export function DocsPopup({ name, type, typeName, direction, body, refusal, anch
           surface — ⚠️ not by opacity. BLD-005 swept that on composited pixels and
           found no value that both reads as secondary and clears AA in light
           mode, which is the binding theme. */}
-      {typeSentence ? <div className={css.docsTypeSentence} dangerouslySetInnerHTML={{ __html: typeSentence }} /> : null}
+      {typeSentence ? (
+        <div className={css.docsTypeSentence} dangerouslySetInnerHTML={{ __html: typeSentence }} />
+      ) : null}
+
+      {wireShapeSentence ? (
+        <div className={css.docsWireShape} dangerouslySetInnerHTML={{ __html: wireShapeSentence }} />
+      ) : null}
 
       {body ? <div className={css.docsBody} dangerouslySetInnerHTML={{ __html: body }} /> : null}
 

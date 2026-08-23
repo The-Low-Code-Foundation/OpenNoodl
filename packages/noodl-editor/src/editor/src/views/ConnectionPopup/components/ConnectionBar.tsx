@@ -61,6 +61,10 @@ function _getPorts(type, model /* NodeGraphNode */) {
         // deliberately import-free — it takes the type *name* as data rather
         // than reaching for the library singleton to compute it.
         typeName: NodeLibrary.nameForPortType(p.type),
+        // FB-019 scope (3): the declared default is half of what decides the unit a
+        // bare number lands in — `initializeDefaultValues` seeds nothing without one
+        // — so it has to survive this whitelist. See `portWireShape.ts`.
+        default: p.default,
         plug: p.plug,
         section: type,
         parent: model
@@ -333,9 +337,7 @@ export function ConnectionBar(props: TSFixme) {
    * instead" drew no wire. `isConfidentRedirect` is now the single condition
    * behind both the verb and the behaviour, so they cannot disagree again.
    */
-  const confidentRedirect = sourceTypeName
-    ? isConfidentRedirect(sourceTypeName, alternatives, primaryPortName)
-    : false;
+  const confidentRedirect = sourceTypeName ? isConfidentRedirect(sourceTypeName, alternatives, primaryPortName) : false;
 
   const onRefusalClicked = () => {
     if (!confidentRedirect) return; // The offer is advisory, and says so.
@@ -401,12 +403,12 @@ export function ConnectionBar(props: TSFixme) {
   const emptyMessage = !showsEmptyState
     ? undefined
     : searchTerm
-      ? props.type === 'from'
-        ? "Can't find any outputs"
-        : "Can't find any inputs"
-      : props.type === 'from'
-        ? 'This node has no outputs'
-        : 'This node has no inputs';
+    ? props.type === 'from'
+      ? "Can't find any outputs"
+      : "Can't find any inputs"
+    : props.type === 'from'
+    ? 'This node has no outputs'
+    : 'This node has no inputs';
 
   return (
     <div

@@ -207,6 +207,31 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* FB-019 scope (3) — "what shape does this port take". Same size and colour as
+   `.Accepts` on purpose: the two are the same register of annotation, and a
+   third weight in a read-only column reads as a third kind of thing. */
+.WireShape {
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.WireShapeLabel {
+  color: var(--theme-color-fg-default-shy);
+  font-weight: var(--font-weight-medium);
+}
+
+.WireShapeCode {
+  color: var(--theme-color-fg-highlight);
+  font-family: var(--font-family-code);
+}
+
+.WireShapeBody {
+  color: var(--theme-color-fg-muted);
+}
+
 .Connections {
   display: flex;
   flex-wrap: wrap;

@@ -9,6 +9,10 @@ import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
 // of it. Nothing else about the filter changed.
 import { evaluateDynamicPortsCondition } from '@noodl-models/nodelibrary/dynamicPortRules';
 import type { NodeLibraryProjectSettings } from '@noodl-models/nodelibrary/NodeLibraryData';
+// FB-019 scope (3): the one predicate for "is this a port whose value carries a
+// unit", shared with the connection popup's shape sentence and the Ports tab so
+// the three cannot disagree about which ports they are talking about.
+import { declaredUnit, isUnitsPortType } from '@noodl-models/nodelibrary/portWireShape';
 import { UnknownNodeType } from '@noodl-models/nodelibrary/UnknownNodeType';
 
 import Model from '../../../../shared/model';
@@ -264,15 +268,32 @@ export class NodeLibrary extends Model {
       (port.displayName ? port.displayName : port.name) +
       (port.tab && port.tab.label ? ' (' + port.tab.label + ')' : '');
 
-    // Annotate an number port with units with the current unit
-    if (NodeLibrary.nameForPortType(port.type) === 'number' && port.type.units !== undefined) {
+    /*
+     * Annotate a port whose value carries a unit with the unit it is currently in.
+     *
+     * 🔴 FB-019: this used to read `nameForPortType(port.type) === 'number'`, which excluded
+     * `dimension` — and `dimension` is declared by exactly two ports, **Width and Height**. So
+     * every units-typed `number` in the popup said its unit (`Min Width (%)`, `Pad Left (px)`,
+     * `Margin Left (px)`) and the two ports a builder reaches for first said nothing. That is
+     * the reported defect — *"the node width or something, you have to input a JSON"* — sitting
+     * inside the editor's own annotation, as a hole shaped like the complaint.
+     *
+     * ⚠️ This answers a **different question** from the shape sentence in the port explainer,
+     * and the two may legitimately differ. This says what unit the port is in *now*, falling
+     * back to `defaultUnit`. `portWireShape`'s sentence says what unit a bare number arriving
+     * **over a wire** will land in, and declines to guess for a port that declares no `default`
+     * — because nothing is seeded for one, and whether it is coerced anyway depends on a
+     * registration path the editor cannot see. Only the predicate is shared.
+     */
+    if (isUnitsPortType(port.type)) {
       const haveUnit = node.parameters[port.name] !== undefined && node.parameters[port.name].unit !== undefined;
-      return (
-        displayName +
-        '<span class="portname-annotation-unit">&nbsp;(' +
-        (haveUnit ? node.parameters[port.name].unit : port.type.defaultUnit) +
-        ')<span>'
-      );
+      const unit = haveUnit ? node.parameters[port.name].unit : declaredUnit(port.type);
+      // ⚠️ `dimension` is admitted by name alone, so a module could declare one with no
+      // `defaultUnit`. Both shipped declarations have one; an annotation reading "(undefined)"
+      // would be the widening making things worse than the hole it closed.
+      if (unit) {
+        return displayName + '<span class="portname-annotation-unit">&nbsp;(' + unit + ')<span>';
+      }
     }
 
     return displayName;
@@ -292,12 +313,23 @@ export class NodeLibrary extends Model {
       if (e === undefined) return;
 
       return e.label ? e.label : e;
-    }
+    } else if (isUnitsPortType(port.type)) {
 
-    // If the value has a unit, format it
-    else if (NodeLibrary.nameForPortType(port.type) === 'number' && port.type.units !== undefined) {
-      if (value.unit !== undefined) return value.value + '' + value.unit;
-      else return value + '' + port.type.units[0];
+    /*
+     * If the value has a unit, format it.
+     *
+     * 🔴 FB-019 found this as the **third** copy of "is this a units port", and it had two
+     * defects the other two did not. It excluded `dimension` — so a Width in a merge-conflict
+     * list rendered as `[object Object]` rather than `100%` — and its bare-number fallback read
+     * `units[0]` where the runtime reads `defaultUnit`. Those disagree on six declarations, of
+     * which `transformOriginX` is one: a stored bare `50` was shown as `50px` while the viewer
+     * rendered it at `50%`. Both now come from the shared accessors.
+     *
+     * ⚠️ Every caller of this is the version-control conflict list (`NodeGraphNode.ts:1088`,
+     * `VariantModel.ts:350`), which is why neither defect was ever reported.
+     */
+      if (value && value.unit !== undefined) return value.value + '' + value.unit;
+      return value + '' + (declaredUnit(port.type) || '');
     }
 
     return value;

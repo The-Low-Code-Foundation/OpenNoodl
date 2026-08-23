@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { NodeLibrary } from '@noodl-models/nodelibrary';
+import { portWireShape } from '@noodl-models/nodelibrary/portWireShape';
 
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 
@@ -13,6 +14,17 @@ import { DocsPopup } from './DocsPopup';
 const _shouldShowDocsForPort = {}; // Ugly fix for not showing duplicate docs on ports
 
 export function PortItem(props: TSFixme) {
+  /*
+   * FB-019 scope (3) — what this port takes, for the structured types. Read from
+   * the node's stored parameter as well as the declaration, because an author who
+   * picked a unit in the property panel keeps it whatever the port declares
+   * (`Node.setInputValue` merges a bare number into the stored object).
+   */
+  const wireShape = portWireShape(
+    props.port,
+    props.port?.parent?.parameters ? props.port.parent.parameters[props.port.name] : undefined
+  );
+
   const ref = useRef(null);
   const [showDocs, setShowDocs] = useState(false);
   const [docs, setDocs] = useState<string | undefined>(undefined);
@@ -67,7 +79,17 @@ export function PortItem(props: TSFixme) {
       // (`scrollIntoView` on selection) and the popup follows the node, so a
       // rect taken earlier can already be stale by the time the docs arrive.
       setDocsAnchor(ref.current ? ref.current.getBoundingClientRect() : undefined);
-      setShowDocs(Boolean(d) || portTypeSentence(p.typeName, p.section === 'from' ? 'output' : 'input') !== undefined);
+      /*
+       * FB-019 scope (3): a wire shape is on its own sufficient reason to open
+       * the explainer. Without this clause a units port that the catalog has no
+       * entry for would compute a shape sentence and never render it — the same
+       * shape of hole SIG-004 found here, one field along.
+       */
+      setShowDocs(
+        Boolean(d) ||
+          portTypeSentence(p.typeName, p.section === 'from' ? 'output' : 'input') !== undefined ||
+          wireShape !== undefined
+      );
     });
   };
 
@@ -119,6 +141,7 @@ export function PortItem(props: TSFixme) {
             typeName={p.typeName}
             direction={p.section === 'from' ? 'output' : 'input'}
             body={docs}
+            wireShape={wireShape}
             refusal={p.disabled ? p.message : undefined}
             anchor={docsAnchor}
           />

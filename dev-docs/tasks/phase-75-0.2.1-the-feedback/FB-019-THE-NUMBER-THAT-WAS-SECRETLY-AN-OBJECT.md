@@ -1,7 +1,8 @@
 # FB-019 — the number that was secretly an object
 
-**Filed:** 2026-08-22, test-user session, item 4. **Status: 🟡 open — AC3 CLOSED 2026-08-23
-(session 13); scope (3) is the remainder.** Session 12's drive falsified both of the
+**Filed:** 2026-08-22, test-user session, item 4. **Status: ✅ CLOSED 2026-08-23 (session 14).**
+AC3 closed session 13; **scope (3) / AC2 built and driven session 14** — see *SAYING THE SHAPE*
+at the end, which is the last thing that happened and includes a correction to a closed AC. Session 12's drive falsified both of the
 silent-failure bugs this file was built around; session 13 drove the third claim, AC3's icon arm,
 and **that one was real** — fixed and re-driven. Richard's report stands; two thirds of the
 diagnosis under it did not. What is left is a legibility task, not a runtime one.
@@ -318,6 +319,136 @@ with a manifest.json"* — **is not in the source**. `useIcon` reads *"Shows an 
 element"*, and every icon port's description is builder-facing. Same shape as AC1: an item in
 this file describing something that already ships. Nothing to build.
 
+## ✅ SAYING THE SHAPE, 2026-08-23 (session 14) — SCOPE (3) / AC2, BUILT AND DRIVEN
+
+Scope (3) was the whole remainder: *"the connection popup and the Ports tab show the wire shape
+for structured types, so 'what do I feed this' is answerable without reading source."*
+
+### 🔴 The editor was already saying it — for every units port except the two that were reported
+
+`NodeLibrary.getAnnotatedPortName` has annotated a units port with its current unit for years, and
+the connection popup is its only caller. Its guard read
+`nameForPortType(port.type) === 'number' && port.type.units !== undefined`. **`dimension` is
+declared by exactly two ports: `width` and `height`.** So the popup labelled `Min Width (%)`,
+`Pad Left (px)`, `Margin Left (px)` and `Rotation (deg)` — and said nothing at all on the two
+ports Richard named.
+
+🔴 **That is the seventh recorded "gate with a hole shaped like the defect", and the first where
+the hole was in a *feature* rather than a checker.** The complaint reads as *"nothing tells you
+this port is different"*; the truth was *"everything tells you except this port"*, which is worse,
+because the annotation on its neighbours is what makes the silence on Width read as "Width has no
+unit".
+
+### 🔴 And there was a THIRD copy of the rule, found by an absence assertion
+
+The spec row asserting the old guard text was **gone** went red on a line nobody had looked at:
+`formatParameterValue` (`nodelibrary.ts:319`) carried the same predicate — same `dimension` hole —
+**plus a second defect**: its bare-number fallback read `port.type.units[0]` where the runtime
+reads `defaultUnit`. Those disagree on **6 of 104** units declarations (`transformOriginX`,
+`transformOriginY`, and four deprecated Checkbox/Radio ports), so a stored bare `50` on
+`transformOriginX` was displayed as `50px` while the viewer rendered it at `50%`.
+⚠️ **Every caller is the version-control conflict list**, which is why neither defect was ever
+reported — and why this half is **specced, not driven**.
+
+✅ All three now go through one predicate (`isUnitsPortType`) and one unit accessor
+(`declaredUnit`), in `models/nodelibrary/portWireShape.ts`.
+
+### The sentence, and why it is computed rather than looked up
+
+A wire cannot carry a unit; `setInputValue` merges a bare number into whatever `{value, unit}` the
+port already holds. So the landing unit is a property of **the port and its current value**:
+
+1. the author's stored unit, if the property panel has one — always wins;
+2. otherwise the seed `initializeDefaultValues` wrote, which needs **both** `defaultUnit` **and**
+   a declared `default` — it returns early when there is no `default`.
+
+🔴 **Case 3 — `defaultUnit` with no `default` — is deliberately left unstated.** 14 of the 104
+declarations are in it and they do **not** agree: the `inputCss` ones (margins, min/max, `fontSize`)
+are coerced to `defaultUnit` a second time at `react-component-node.ts:1925`, while **`Columns`'
+two breakpoint ports are `inputProps`, where a value with no `.value` field is deleted**
+(`:635`). The editor cannot see which path a port is on, so naming a unit would be right about
+twelve ports and wrong about two.
+
+⚠️ **That is a correction to AC1's closure.** Session 12 closed AC1 as *"already ships"* on the
+strength of the seeder. The seeder only fires for a port that declares a `default`, so the
+never-set + bare-number failure the task was filed on **does still exist** — on `Columns`' `Medium
+Below` and `Small Below`, and on any future units port added to `inputProps` without a `default`.
+Population is 2 ports, 0 instances in 97 `project.json` files; it is a latent hole, not a live
+defect, and it is left open deliberately rather than closed by a guess.
+
+⚠️ **The task suggested reusing `WIRE_FORMAT_LEGEND`'s words. It could not be done**: that legend
+tells the AI author *"a bare number means the FIRST unit listed"*, which is wrong on the same six
+declarations. The UI copy uses `defaultUnit`, which is what `nodedefinition.ts:171` reads.
+
+### The drive — real ports, in the running editor
+
+⚠️ **First: `port.default` DOES survive into the editor.** Everything above rests on it and
+nothing had checked. Read live off `getPorts('input')`: `width.default = 100`,
+`paddingLeft.default = 0`, and **`marginLeft` has no `default` key at all** — so the reading
+discriminates rather than fitting.
+
+**The Ports tab**, one Group node, 35 of 220 rows carry a shape line:
+
+| port | line |
+|---|---|
+| **Width** | `Takes {value, unit}` … *a plain 300 lands here as **300%*** |
+| **Pad Left** | `Takes {value, unit}` … *a plain 300 lands here as **300px*** |
+| Margin Left (no `default`) | *the unit comes from this port* — **no unit named** |
+| Transform Origin X | ***300%*** — `defaultUnit`, though `units[0]` is `px` |
+| Background Color, Clip Content | **no line** (controls) |
+
+🔴 **The strongest arm is one node with two identical declarations.** On Group B, `width` is stored
+as `{150, px}` and `height` was never set — same type, same units, same `defaultUnit`:
+
+| port | stored | line says |
+|---|---|---|
+| Width | `{value:150, unit:'px'}` | lands as **300px** |
+| Height | none | lands as **300%** |
+
+Varying exactly one thing — the stored parameter — flips the answer. That is the merge made
+visible, and it is what a source-text spec could not have shown.
+
+**The connection popup**: `Width (%)` and `Height (%)` now appear where they had no annotation at
+all, beside the unchanged `Min Width (%)` / `Margin Left (px)` / `Background Color`. Hovering gives
+the same sentence as the tab. Three readings of one port name in one DOM:
+
+| bar | node | label |
+|---|---|---|
+| Group A, `width` never set | dimension | `Width (%)` |
+| Group B, `width` = `{150,px}` | dimension | `Width (px)` |
+| Text's `Width` **output** | plain `number` | `Width` — **no annotation**, correctly |
+
+⚠️ **A stale popup nearly produced a false negative.** `connectionPopups.close()` removes nothing,
+so opening a second popup left **4 bars** in the DOM and `bars[1]` was still Group A's. The first
+reading said `Width (%)` on the node whose width is `px` and looked like a broken stored-unit
+branch. **Count the bars before indexing them.**
+
+⚠️ And the row labels contain a **non-breaking space** (char 160) before the annotation, so
+`innerText === 'Margin Left (px)'` never matches. Normalise before comparing — three probes read
+"NO ROW" and looked like three ports with no shape line.
+
+### Gates
+
+- Editor `tests-unit`: **293 suites / 4790 specs / 0 failures** (+1 suite / +27 specs, all mine).
+- `typecheck:editor` and `typecheck:editor-tests` clean.
+- **Nine mutations, all red, control green**: the guard narrowed back to `'number'`; the conflict
+  list back to `units[0]`; `declaredUnit` preferring `units[0]`; `isUnitsPortType` dropping
+  `dimension`; `landingUnit` reading `units[0]`; dropping the `default` requirement; the whole
+  feature returning `undefined`; `ConnectionBar` not carrying `default`; `PortsTab` not passing the
+  stored parameter.
+
+### Left open, deliberately
+
+- ⚠️ **Scope (5)** — Jordan's margin/corner-radius aliasing report. Session 12 narrowed it (both
+  writers copy); **variants and visual states remain the unexamined candidates**. Untouched here.
+- ⚠️ **AC1's latent hole** above: `Columns`' two breakpoint ports.
+- ⚠️ **AIB-001's `WIRE_FORMAT_LEGEND`** still says "the FIRST unit listed" and is wrong on six
+  declarations. Not edited — it is the AI-authoring prompt and changing prompt text is a separate
+  measurement.
+- ⚠️ **Density**: a Group now carries 35 shape lines in the Ports tab. FB-017 is about the
+  *Properties* tab, so there is no conflict today, but this is the surface to watch if that
+  complaint ever widens.
+
 ## Scope
 
 1. **Fix the runtime asymmetry** (the actual bugs): `dimension`/units-`number` inputs coerce a
@@ -366,6 +497,7 @@ this file describing something that already ships. Nothing to build.
   because `defaultUnit` differs per port. AC2 is now: **the editor says which unit a bare number
   will land in, at the port**, so the two are distinguishable without reading the viewer source.
   That makes AC2 a restatement of scope (3), which is the whole task now.
+  ✅ **DONE 2026-08-23 (session 14), and driven on both surfaces** — see *SAYING THE SHAPE*.
 - AC3 — ✅ **DRIVEN, THEN FIXED, THEN RE-DRIVEN (2026-08-23, session 13). DONE.** It was the last
   predicted-from-source claim here and the **only one of the three that was real**. A string
   reaching an icon port via a `*` output rendered an empty styled span with no diagnostic

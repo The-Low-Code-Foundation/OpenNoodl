@@ -7,6 +7,7 @@ import {
   omitHiddenPorts,
   PORT_CONDITION_FILTER_MODES
 } from '@noodl-models/nodelibrary/portConnectivity';
+import { portWireShape, type PortWireShape } from '@noodl-models/nodelibrary/portWireShape';
 
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
@@ -14,13 +15,7 @@ import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
 import { connectablePortTypes, TypecastRule } from '../../portTypes';
 import { getPortConnections, PortConnectionRef } from '../../utils';
 import css from './PortsTab.module.scss';
-import {
-  isValuePort,
-  portValueKey,
-  type PortValueMap,
-  type PortValueRef,
-  type PortValuesStatus
-} from './portValues';
+import { isValuePort, portValueKey, type PortValueMap, type PortValueRef, type PortValuesStatus } from './portValues';
 import { usePortValues } from './usePortValues';
 
 /**
@@ -78,6 +73,11 @@ interface PortRow {
   isSignal: boolean;
   /** False for an `allowEditOnly` port: a setting the canvas will not wire. */
   isConnectable: boolean;
+  /**
+   * FB-019 scope (3) — what this port takes, for the structured types whose
+   * answer is not their own type name. `undefined` for every ordinary port.
+   */
+  wireShape?: PortWireShape;
   description?: string;
   connections: PortConnectionRef[];
 }
@@ -135,6 +135,13 @@ function buildRows(model: NodeGraphNode, direction: 'input' | 'output'): PortGro
       typeLabel: typeLabelFor(port.type),
       isSignal: typeName === 'signal',
       isConnectable: isPortConnectable(port),
+      /*
+       * The stored parameter is passed because it is what decides the answer: an
+       * author who has picked a unit in the property panel keeps it, whatever the
+       * port declares. `model.parameters` is the same object the panel writes, so
+       * the `parametersChanged` subscription below already re-renders this.
+       */
+      wireShape: portWireShape(port, model.parameters ? model.parameters[port.name] : undefined),
       description:
         typeof port.description === 'string' && port.description.trim() !== '' ? port.description : undefined,
       connections: getPortConnections(model, port.name, direction)
@@ -247,6 +254,22 @@ function PortRowView({ row, direction, value }: { row: PortRow; direction: 'inpu
       )}
 
       {Boolean(row.description) && <p className={css['Description']}>{row.description}</p>}
+
+      {/*
+       * FB-019 scope (3). Between the description (what the port *means*) and
+       * "Accepts …" (which *types* can reach it) sits the question neither
+       * answers and which is the one that was actually asked: what shape does
+       * the value have. It is placed here rather than beside the type chip so
+       * the type/value adjacency above stays intact.
+       */}
+      {Boolean(row.wireShape) && (
+        <p className={css['WireShape']}>
+          <span className={css['WireShapeLabel']}>Takes</span>{' '}
+          <code className={css['WireShapeCode']}>{row.wireShape.shape}</code>{' '}
+          <span className={css['WireShapeBody']}>{row.wireShape.body}</span>
+        </p>
+      )}
+
       {Boolean(accepts) && (
         <p className={css['Accepts']}>
           <span className={css['AcceptsLabel']}>{accepts.verb}</span> {accepts.types}

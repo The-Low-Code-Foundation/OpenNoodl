@@ -66,11 +66,7 @@ export interface PortTypeSentence {
 
 /** Minimal, HTML-entity-escaping. Port names come from the library, not a user. */
 export function escapeHtml(value: string): string {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /**
@@ -130,6 +126,25 @@ export function portTypeSentence(typeName: string | undefined, direction: PortDi
   if (typeName === 'signal') return SIGNAL_SENTENCE;
   if (typeName === '*') return undefined;
   return VALUE_SENTENCE[direction];
+}
+
+/**
+ * FB-019 scope (3) — the wire *shape* sentence, as HTML for the explainer.
+ *
+ * ⚠️ Kept here rather than inlined in `DocsPopup` for this file's own reason:
+ * every sentence the popup says about what a wire is lives in one module, so
+ * the Ports tab and the popup cannot be reworded independently. The sentence
+ * itself is computed by `portWireShape.ts`, which is import-free and shared with
+ * the tab; this is only the markup, and the escaping.
+ *
+ * `shape` is escaped like everything else here even though it comes from a
+ * literal table: the reason the header gives for escaping port names — "the
+ * library is trusted" is the assumption a custom module breaks — applies just as
+ * well to a shape phrase built from a module's declared units.
+ */
+export function portWireShapeHtml(shape: { shape: string; body: string } | undefined): string | undefined {
+  if (!shape) return undefined;
+  return '<strong>Takes ' + escapeHtml(shape.shape) + '</strong> ' + escapeHtml(shape.body);
 }
 
 /** The type sentence as one HTML string, lead bolded. */

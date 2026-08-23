@@ -334,6 +334,30 @@
   border-bottom: none;
 }
 
+/* FB-019 scope (3) — the wire *shape*, between what a wire is and what the port
+   means. Same rule-and-spacing treatment as `.docsTypeSentence` because it sits
+   in the same band of the popup; the `<strong>` lead is the shape itself, which
+   is the part a reader is scanning for. */
+.docsWireShape {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-color-fg-default-contrast);
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+    font-family: var(--font-family-code);
+  }
+}
+
+.docsWireShape:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
 /* SIG-001 §4: `getConnectionStatus`'s own sentence, which names both port types.
    It is the *detail* — last, and set smaller — because it is written for someone
    already debugging port types, and it was the only thing the editor was
