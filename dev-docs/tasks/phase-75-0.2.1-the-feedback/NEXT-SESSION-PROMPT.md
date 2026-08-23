@@ -97,8 +97,19 @@ session 14 found"*, then session 13's notes, which still stand.
 
 - ⚠️ **A peer session (`opennoodl-78`) was live in this checkout all session** and confirmed it had
   nothing running before the launch. Source edits were announced to it up front; it committed
-  nothing. `AskAboutNodeDialog.module.scss` is **theirs** and is still uncommitted in the tree —
-  do not sweep it.
+  nothing that overlaps.
+- 🔴 **AN ORPHANED FIX HAS BEEN UNCOMMITTED IN THE TREE SINCE 08-20 AND BELONGS TO NEITHER OF US.**
+  `AskAboutNodeDialog.module.scss` — a finished, fully-commented 24-line fix whose own comment reads
+  *"Measured 2026-08-19"*. **`BaseDialog` paints its surface with `::after` at `inset: 0`, which
+  resolves against the padding box**, so a dialog taller than its `max-height` goes see-through for
+  the scrolled remainder (measured: 700.9px painted against 858px of content). The composer is the
+  only dialog tall enough to notice; the fix is local, and its comment says a shared fix in
+  `noodl-core-ui` would cover every dialog but wants a visual pass first.
+  🔴 **Both live sessions independently concluded it was the other's**, because each read its own
+  opening `git status` and saw a file it had not touched. ✅ **The field that settles it is the
+  mtime — `2026-08-20 15:41`, predating both sessions.** A status snapshot shows presence, never
+  authorship. **Do not sweep it into an unrelated commit**; `opennoodl-78` has surfaced it to
+  Richard, and it is his call whether it lands.
 - Fixture: `fb019-shape` in this session's scratchpad — a copy of `fix012-drive` plus a Group with
   `width` set to `{150,px}` and an Icon node. ⚠️ Registered in the launcher's recents and pointing
   at a scratchpad that will be cleaned up; rebuild rather than trusting the row. The authoring is
