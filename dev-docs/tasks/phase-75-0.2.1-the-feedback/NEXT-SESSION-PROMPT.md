@@ -1,5 +1,56 @@
 # Phase 75 — next session
 
+**State as of 2026-08-23 (session 8).** Session 8 built and drove **NAT-012 AC7** — the rail icon
+for a D15-refused viewer. The predicted hole was real, and the drive found a **second** one nobody
+had predicted. Read *"What session 8 found"*, then session 7's notes, which still stand.
+
+## What session 8 found
+
+- ✅ **NAT-012 AC7 — BUILT AND DRIVEN, both viewer states, they disagree on every row.**
+  Registration in `router.setup.ts` stays synchronous and unconditional; a gate
+  (`utils/community/communityRailGate.ts`) resolves `/api/v1/me` and **unregisters afterwards**.
+  That choice came straight out of the task's own trap: making one of eleven registrations late is
+  a change to everybody's boot, and this way nothing waits on the network.
+  - `mirrorview.ts` gained **`refusesCommunitySurface(me)`** and `composeMirror` now calls it —
+    one reading of D15 for two consumers (the panel's contents, the panel's existence).
+  - ⚠️ **Signed out is never refused**: `/api/v1/me` answers 401 → `unauthenticated` with no
+    token, never `absent`. That is what makes a gate safe to install at all.
+  - 🔴 **No re-register, deliberately.** Inside a mounted editor the session can only go
+    signed-out → signed-in — `signOutOfCommunity`'s only caller is on the **launcher**, which AC3
+    established closes the project. If an in-editor sign-out is ever added, this fails quietly;
+    the note is in the module.
+- 🔴 **THE REMOVAL LEAKED IN THREE PLACES AND ONLY TWO WERE PREDICTED.** The 08-22 table was
+  right that a naive `items.splice` leaves the panel drawing. It was not the end of it:
+
+  | # | where | kept | found by |
+  |---|---|---|---|
+  | 1 | `SidebarModel.items` | the rail icon | predicted |
+  | 2 | `SidebarModel.panels[id]` + `activeId` | the constructed, active panel | predicted |
+  | 3 | 🔴 **`SidePanel`'s own React state** | the **mounted** panel | **DRIVING** |
+
+  `SidePanel` renders every panel it has ever opened and hides the rest with `display: none`, and
+  had **no removal path at all** — nothing could be unregistered before, so nothing ever needed
+  one. `views/SidePanel/prunePanels.ts` is the fix.
+- 🔴 **And the third leak looked CORRECT, which is why it is the one worth remembering.** With
+  the model unregistered the mounted panel rendered *empty* — but only because `CommunityPanel`
+  asks D15 itself and returns `null`. The surface's absence was resting on the **second** reading
+  of the refusal; change that self-mask and a refused viewer gets the whole surface back with no
+  icon, every rail-shaped test still green. Meanwhile the mounted panel kept `useCommunityMirror`
+  polling three endpoints **once a minute** for a viewer told the community does not exist.
+  ⚠️ **The measurement that nearly missed it read innerText.** An empty panel and an absent one
+  are identical in text and opposite in meaning — **read `[data-panel-id]`**.
+- ✅ **The naive fix was re-run LIVE as a control**, against the same drawing panel: rail icon
+  **absent**, `getPanelComponent` **true**, `activeId` still **`community`**, panel still
+  **drawing**. So the 08-22 table reproduces, and the instrument can tell the two fixes apart
+  rather than passing on either.
+- ⚠️ **`uni-001`'s session-reader gate caught the new reader and made it answer for itself.**
+  That gate works — it went red on a module it had never seen, and the row was only added after
+  the question ("what does this read withhold?") was answered. Answer: nothing; it is the clearest
+  case in that table of an account making the editor do **less**.
+- ⚠️ **Not driven**: the *install-time* refusal from a cold boot (persisting a fetch patch across
+  a reload). `resolveCommunityRail()` — the exact function bootstrap calls — was driven in both
+  states; the cold-boot refusal is covered by spec only.
+
 **State as of 2026-08-22 (session 7).** Session 7 did **one** thing: it drove NAT-012's AC3, and
 the drive deleted half the mechanism AC3 shipped with (`f50efe73`). Read *"What session 7 found"*
 below before touching NAT-012, then the session-6 notes, which still stand.
@@ -82,23 +133,18 @@ first; it carries the measurements you must not re-derive.
 
 ## First moves, in order
 
-1. ~~Drive NAT-012's AC3~~ — ✅ **done, session 7** (`f50efe73`). ⚠️ **AC4's other half is still
-   open**: posting a real question to the live Bench from a signed-in editor. Richard's call.
-2. **NAT-012 AC7** — the rail icon for a D15-refused viewer. `SidebarModel.register` is
-   synchronous at setup for **every** panel; the fix is shared editor bootstrap, and it must be
-   driven with a refused account **and a permitted control beside it**. The two states must
-   *disagree*. 🔴 **Start from the measured table in NAT-012 AC7** — the naive unregister leaves
-   the panel drawing, and a rail-only drive passes on it. `me().community.surface === 'absent'`
-   (`mirrorview.ts:125`) is the signal; `useCommunityMirror` is where it is read today.
-3. **FB-001** — D7 is ruled, scope 1–3 of the task file is what he chose. Four derived-from-disk
+1. ~~Drive NAT-012's AC3~~ — ✅ session 7. ~~NAT-012 AC7~~ — ✅ **session 8**.
+   ⚠️ **AC4's other half is still open**: posting a real question to the live Bench from a
+   signed-in editor. Richard's call.
+2. **FB-001** — D7 is ruled, scope 1–3 of the task file is what he chose. Four derived-from-disk
    platform gates fire on the new PATCH/DELETE routes; `npm run build` first or the real-HTTP file
    self-skips.
-4. **FB-019 implementation** — the sweep already revised AC1/AC2: keep the merge, fix only the
+3. **FB-019 implementation** — the sweep already revised AC1/AC2: keep the merge, fix only the
    no-stored-unit case, on **all three** registration paths. 🔴 **Drive an image-cropper pan
    first** — the six broken connections are predicted from source and nobody has watched one fail.
-5. **Quick wins with no rulings**: FB-007, FB-010, FB-003 — the build-the-caller family.
-6. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
-   `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — nine days), the 15 lessons' prose,
+4. **Quick wins with no rulings**: FB-007, FB-010, FB-003 — the build-the-caller family.
+5. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
+   `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — eight days), the 15 lessons' prose,
    Discord's row in the `?` menu, `/rfps` search.
 
 ## Standing traps for this phase
@@ -112,6 +158,16 @@ first; it carries the measurements you must not re-derive.
   🆕 **And the same applies to a task file's own AC wording**: NAT-012 AC3 asked for a persistence
   the router does not offer, so it was *rewritten to the ruling* rather than left as a bar nothing
   would ever clear.
+- 🔴 **AN EMPTY SURFACE AND AN ABSENT ONE ARE IDENTICAL IN TEXT AND OPPOSITE IN MEANING.**
+  Session 8's near-miss: a refused viewer's Community panel was read as gone because its text was
+  empty, when in fact it was **mounted and polling** — it drew nothing only because the component
+  self-masks. ✅ **Read the structural marker (`[data-panel-id]`), never innerText**, and when a
+  thing is supposed to be gone, ask *gone from what* — the model, the rail, the DOM, or the React
+  tree are four different populations and this defect lived in the fourth.
+- 🔴 **A SECOND READING OF A REFUSAL IS A FIX WAITING TO LAND ON ONE OF THEM.** `mirrorview.ts`
+  warned about this in its own header and it is what made AC7's third leak dangerous rather than
+  merely untidy. When two layers must obey one policy, **export the predicate** and let both call
+  it — AC7 did, with `refusesCommunitySurface`.
 - 🔴 **A narrowing shrinks a checker's population silently.** When an anchor disappears, the fix is
   to **follow the subject**, not delete the row — a claim whose population quietly shrank is how a
   gate goes quiet without going red. ⚠️ And when you repoint it to a new file, **prove the checker
@@ -131,15 +187,22 @@ first; it carries the measurements you must not re-derive.
 - ⚠️ **`scroll-behavior: smooth` makes a same-eval `scrollTop` read lie**, and toward the bug.
 - ⚠️ **The launcher's recents file is a real user file the running editor owns** — write it only
   while the editor is idle on the launcher, then reload.
-- **Editor `tests-unit`, 2026-08-22 after `f50efe73`: 290 suites / 4720 specs, 0 failures.**
-  Reconciled **by name** against the 4723 baseline: **−8** from `launcher-handoff.test.ts`
-  (12 → 4, the deleted place half), **+5** from the phase-65 peer's `tests-unit/lib-006` suite,
-  which landed in `ed3e0f4d` *after* that baseline was taken. Older reading, for the arithmetic:
-  ⚠️ **That is `tests-unit` ALONE.** `npx jest -c jest.config.js` with no path also runs
-  `tests-main` (19 more suites) and reports **308 / 4987** — reconcile against disk before
-  believing either. `typecheck:editor` and `typecheck:editor-tests` both 0; `typecheck:core-ui`
-  reports **44 pre-existing `TS2307`**, unchanged and not yours. Compare **by name**, and
-  re-measure rather than quoting this.
+- ✅ **`test:ci` 2026-08-23 (session 8 tree): 2849 specs, **4** failures — all `AIX-006 style
+  vocabulary`.** Ran alone, completed (2849 spec-starts, the full count); ⚠️ **exit was 1, which
+  is what the clean floor does too** — the reading is the failure *names*. Compared by name against
+  08-19's 10-failure floor: this is a strict **subset** of it (the 4 AIX-006 rows). The other six —
+  2× AI model registry, 1× AIX-011, 3× SUB-011 expression params — **passed this run**, which is
+  the order-dependence the seed note warns about, not a fix. **Nothing new, and nothing in the
+  sidebar / panel / community area.** ⚠️ The log carries ~6,700 `10000 listeners` warnings from the
+  legacy `shared/model.js`; pre-existing and unrelated.
+- **Editor `tests-unit`, 2026-08-23 (session 8 tree): 291 suites / 4741 specs, 0 failures.**
+  Reconciles exactly against session 7's 290 / 4720: **+1 suite / +21 specs**, both
+  `nat-012/community-rail-gate.test.ts`. ⚠️ **That is `tests-unit` ALONE.** `npx jest -c
+  jest.config.js` with no path also runs `tests-main` and reports **310 / 5005** — the difference
+  is a stable **19 suites / 264 specs**, which is the number to reconcile against, not the older
+  `308 / 4987` (that was taken when `tests-unit` was 289 / 4723). `typecheck:editor` and
+  `typecheck:editor-tests` both 0; `typecheck:core-ui` reports **44 pre-existing `TS2307`**,
+  unchanged and not yours. Compare **by name**, and re-measure rather than quoting this.
 - ⚠️ **Two community commits are still unshipped**: `9ecec25` (tokens + gates) and `fd695ae`
   (FB-002's web half). nexus-1 is still `8d40b63`. Deploying changes the live site's dark inks and
   the Bench's default list — **Richard's call, ask before deploying.**

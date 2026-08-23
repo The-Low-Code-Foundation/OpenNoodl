@@ -17,6 +17,7 @@ import { PanelModeSlotProvider } from '@noodl-core-ui/components/sidebar/PanelHe
 
 import { RAIL_WIDTH, useSidePanelLayoutContext } from '../../pages/EditorPage/useSidePanelLayout';
 import { showContextMenuInPopup } from '../ShowContextMenuInPopup';
+import { prunePanels } from './prunePanels';
 import css from './SidePanel.model.scss';
 
 export function SidePanel() {
@@ -120,6 +121,39 @@ export function SidePanel() {
       SidebarModel.instance.off(group);
     };
   }, []);
+
+  /**
+   * 🔴 NAT-012 AC7 — DROP A PANEL THIS COMPONENT HAS MOUNTED ONCE IT IS NO LONGER REGISTERED.
+   *
+   * ⚠️ **Found by driving, 2026-08-23, and it is a third place the removal leaks.**
+   * `SidebarModel.unregister` takes the rail entry, the model's constructed panel and the active
+   * id — and it still could not get the surface off the screen, because **this component keeps
+   * its own copy**. `panels` above is React state that is only ever *added* to: on
+   * `activeChanged`, on node selection, and wholesale on hot reload or an error-boundary retry.
+   * Nothing has ever removed an entry, because until now nothing could be unregistered.
+   *
+   * Measured live against a refused viewer, before this effect existed: the model read
+   * `registered: false` and `getPanelComponent('community'): undefined`, while the DOM still had
+   * `[data-panel-id="community"]` mounted at `display: none`.
+   *
+   * 🔴 **It LOOKED correct, and that is the dangerous part.** The mounted panel rendered empty —
+   * but only because `CommunityPanel` asks D15 itself and returns `null`. So the surface's
+   * absence was resting on the *second* reading of the refusal, which is the arrangement
+   * `mirrorview.ts` warns about in its own header: if that self-mask ever changed, a refused
+   * viewer would get the whole surface back with no icon on it — the original defect, restored,
+   * with every rail-shaped test still green.
+   *
+   * ⚠️ And it is not only hypothetical: a mounted `CommunityPanel` keeps `useCommunityMirror`
+   * running, which polls `/me`, `/home` and `/threads` once a minute — three requests a minute
+   * to a community the platform has told us this viewer may not know exists.
+   *
+   * Keyed on the registered ids rather than on `items`, because `getVisibleItems()` returns a
+   * fresh array on every call and would make this effect run on every render.
+   */
+  const registeredIds = items.map((x) => x.id).join(',');
+  useEffect(() => {
+    setPanels((prev) => prunePanels(prev, (id) => Boolean(SidebarModel.instance.getPanel(id))));
+  }, [registeredIds]);
 
   /**
    * PNL-009: panels that cannot take a detached mode.

@@ -87,6 +87,15 @@ function createPanel(type: string, args: { [key: string]: unknown }): () => Reac
 
 const getExperimentalSettingsKey = (item: SidebarItem) => `experimental.panel.${item.id}`;
 
+/**
+ * Where the rail goes when whatever was showing stops being available — a node is deselected
+ * (`hidePanels`) or the active panel is removed outright ({@link SidebarModel.unregister}).
+ *
+ * PNL-008 established the value: `components` is registered for the frontend and the backend
+ * graph both, which is what the retired `cloud-functions` branch was not.
+ */
+const FALLBACK_PANEL_ID = 'components';
+
 export enum SidebarModelEvent {
   /** Occurs when a new panel is added. */
   itemsChanged = 'itemsChanged',
@@ -261,6 +270,75 @@ export class SidebarModel extends Model<SidebarModelEvent, SidebarModelEventEven
   }
 
   /**
+   * NAT-012 AC7 — take a panel back off the rail, and take the SURFACE with it.
+   *
+   * 🔴 **THE OBVIOUS REMOVAL HAS A HOLE SHAPED LIKE THE DEFECT, AND IT WAS MEASURED BEFORE THIS
+   * WAS WRITTEN.** The experimental-panel branch in the constructor already removes an item the
+   * only way that looked necessary — splice `items`, notify `itemsChanged`. Run exactly that
+   * against a live, *active* Community panel and the rail icon does disappear, while
+   * `activeId` stays `'community'`, `panels['community']` stays registered, and **the panel
+   * itself keeps drawing**. That is the inverse of what D15 asks for: a refused viewer handed
+   * the surface with no icon on it.
+   *
+   * So removal is three things, not one:
+   *
+   *  1. splice `items` — the rail entry, which is all the old path did;
+   *  2. `delete panels[id]` — the CONSTRUCTED panel. {@link getActive} reads `panels`, not
+   *     `items`, so a surviving entry here is a surface with no way to close it;
+   *  3. when the removed panel is the active one, **switch away** — to `components`, for
+   *     PNL-008's reason (it is registered for both graphs, and it is what `hidePanels`
+   *     already falls back to).
+   *
+   * ⚠️ `previousActiveId` is cleared too when it names the removed panel, or `hidePanels()`
+   * switches *back* to it the next time a node is deselected — the same hole, reached by a
+   * different door.
+   *
+   * ⚠️ `activeId` is cleared **before** the fallback switch rather than after, so that
+   * {@link switch}'s `activeId === id` early return cannot leave the model pointing at a panel
+   * that no longer exists, and so that a fallback which itself fails to build leaves *nothing*
+   * active rather than the thing we just removed.
+   *
+   * Idempotent: unregistering an id that was never registered does nothing and notifies nobody.
+   *
+   * @param id The panel id.
+   */
+  public unregister(id: string): void {
+    const index = this.items.findIndex((x) => x.id === id);
+    const experimentalIndex = this.experimentalItems.findIndex((x) => x.id === id);
+    if (index < 0 && experimentalIndex < 0) {
+      return;
+    }
+
+    if (index >= 0) {
+      this.items.splice(index, 1);
+    }
+
+    // ⚠️ The experimental list as well, when the panel is on it. Leaving the descriptor there
+    // means a later settings toggle re-`push`es it into `items` — a resurrection nothing would
+    // have checked the viewer for.
+    if (experimentalIndex >= 0) {
+      this.experimentalItems.splice(experimentalIndex, 1);
+    }
+
+    delete this.panels[id];
+
+    if (this.previousActiveId === id) {
+      this.previousActiveId = undefined;
+    }
+
+    const wasActive = this.activeId === id;
+    if (wasActive) {
+      this.activeId = undefined;
+    }
+
+    this.notifyListeners(SidebarModelEvent.itemsChanged);
+
+    if (wasActive) {
+      this.switch(FALLBACK_PANEL_ID);
+    }
+  }
+
+  /**
    *
    * @param id The panel id.
    * @returns
@@ -355,7 +433,7 @@ export class SidebarModel extends Model<SidebarModelEvent, SidebarModelEventEven
        * both graphs now — it is registered, and it is what the frontend branch
        * always did.
        */
-      this.switch('components');
+      this.switch(FALLBACK_PANEL_ID);
     }
   }
 

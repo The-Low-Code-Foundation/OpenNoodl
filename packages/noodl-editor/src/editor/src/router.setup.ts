@@ -37,6 +37,7 @@ import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
 // import { DataLineagePanel } from './views/panels/DataLineagePanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
 import { CommunityPanel, CommunityPanel_ID } from './views/panels/CommunityPanel';
+import { installCommunityRailGate } from './utils/community/communityRailGate';
 import { DocsPanel, DocsPanel_ID } from './views/panels/DocsPanel';
 import { ExecutionHistoryPanel } from './views/panels/ExecutionHistoryPanel';
 import { WorkflowsPanel, WorkflowsPanel_ID } from './views/panels/WorkflowsPanel';
@@ -65,6 +66,13 @@ export interface SetupEditorOptions {
    */
   lessonNeedsDatabase?: boolean;
 }
+
+/**
+ * NAT-012 AC7 — the live rail gate's unsubscribe, so a hot reload replaces it rather than
+ * stacking a second one behind the first. Module scope because `installSidePanel` is the thing
+ * that runs twice, and a handle inside it would be re-created along with everything else.
+ */
+let stopCommunityRailGate: (() => void) | undefined;
 
 export function installSidePanel({ isLesson, lessonNeedsDatabase }: SetupEditorOptions) {
   const appRegistry = AppRegistry.instance;
@@ -283,6 +291,19 @@ export function installSidePanel({ isLesson, lessonNeedsDatabase }: SetupEditorO
     icon: IconName.Users,
     panel: CommunityPanel
   });
+
+  // 🔴 NAT-012 AC7 — and then take it back off, if D15 refuses this viewer.
+  //
+  // The registration above is unconditional and stays that way (D21 ships the panel; making one
+  // entry in this list wait on a network read is a change to everybody's boot). The gate resolves
+  // `/api/v1/me` and unregisters, which is the ONLY direction reachable from inside the editor —
+  // the argument is in `communityRailGate.ts`.
+  //
+  // ⚠️ Stopping the previous gate is load-bearing: this whole function runs again on every hot
+  // reload of this module (`EditorPage.tsx` resets `SidebarModel` and calls it), so without this
+  // every reload would leave another live `onCommunityChanged` subscription behind.
+  stopCommunityRailGate?.();
+  stopCommunityRailGate = installCommunityRailGate();
 
   SidebarModel.instance.register({
     experimental: true,

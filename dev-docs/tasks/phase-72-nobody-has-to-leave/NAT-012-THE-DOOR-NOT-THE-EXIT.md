@@ -172,48 +172,134 @@ community page."* Leaving your **project** for the launcher is fine. Leaving the
 6. D15 holds across the whole navigation graph: there is **no path** by which a refused viewer
    reaches a drawn community surface. This is a reachability claim over routes, so it is derived
    from the code and **driven**, not asserted from a component test.
-7. 🔴 **The rail icon is not drawn for a viewer D15 refused.** ⚠️ **Measured 2026-08-22, before
-   anything was built — the obvious fix has a hole shaped like the defect.** `SidebarModel`
-   already owns a removal path (the experimental-panel toggle, `sidebarmodel.tsx:181–184`):
-   splice from `items`, notify `itemsChanged`. Running exactly that against a **live, active**
-   Community panel in the editor reads:
+7. ✅ **DONE 2026-08-23 — the rail icon is not drawn for a viewer D15 refused, and neither is
+   the panel.** Built and driven; the two viewer states disagree on every row. What follows is
+   what the work found, because the removal turned out to leak in **three** places, not one.
 
-   | | |
-   |---|---|
-   | rail icon gone | ✅ `true` |
-   | `activeId` | 🔴 still `'community'` |
-   | `panels['community']` | 🔴 still registered |
-   | the panel itself | 🔴 **still drawing** |
+### ✅ AC7 — built and driven, 2026-08-23
 
-   So "unregister on viewer resolution" alone hands a refused viewer **the surface with no icon**,
-   which is the inverse of D15. The removal needs three things: splice `items`, `delete
-   panels[id]`, and — when `activeId === id` — switch away, to `components` for PNL-008's reason.
-   🔴 **And the drive must read the PANEL, not the rail**: a drive that checks only for the missing
-   icon passes on this bug. (For a refused viewer `CommunityPanel` returns `null` of its own
-   accord, so the surface is masked — which is what would let this ship unnoticed.)
-    `SidebarModel.instance.register` at
-   [`router.setup.ts:262`](../../../packages/noodl-editor/src/editor/src/router.setup.ts) is
-   synchronous at setup with no async predicate, so today every account gets a Community door —
-   including the org-minor whose school switched the community off, who then finds a blank panel
-   behind it. D15 says the surface is **ABSENT**, web *and* editor. Registration therefore has to
-   learn a viewer, which means either a late/async registration or an unregister on viewer
-   resolution — 🔴 **and whichever it is, drive it with a refused account and a permitted control
-   beside it.** The two states must *disagree*; a spec where both draw nothing proves nothing.
+**The shape of it.** Registration in `router.setup.ts` stays synchronous and unconditional (D21
+ships the panel; making one entry in an eleven-panel list wait on a network read is a change to
+everybody's boot). A gate then resolves the viewer and takes it back:
+
+- `utils/community/communityRailGate.ts` — `resolveCommunityRail()` reads the session, asks
+  `/api/v1/me`, and unregisters if D15 refuses. `installCommunityRailGate()` wraps it in an
+  `onCommunityChanged('session')` subscription and is installed from `installSidePanel`, which
+  **stops the previous gate first** — that function re-runs on every hot reload of `router.setup`.
+- `mirrorview.ts` gained **`refusesCommunitySurface(me)`**, and `composeMirror` now calls it. 🔴
+  One reading of D15, two consumers — the panel's contents and the panel's existence. That file's
+  own header warns that two sources for one refusal is where a fix lands on only one of them, and
+  a drift between these two is *precisely* a surface with no icon, or an icon with no surface.
+- ⚠️ **Signed out is NOT refused, and that is the whole safety of it.** `/api/v1/me` answers
+  **401 → `unauthenticated`** with no token, never `absent`, so a signed-out viewer keeps the
+  panel D21 promised them. `refusesCommunitySurface` requires `ok` **and** `surface === 'absent'`.
+
+**🔴 Only one direction is reachable, and there is deliberately no re-register.** Inside a mounted
+editor the session can only go signed-out → signed-in: `signIntoCommunity` has an in-editor caller
+(`AskAboutNodeDialog`), and `signOutOfCommunity` has exactly one caller anywhere —
+`useCommunityAccount`, on the **launcher**, which AC3 established closes the project and unmounts
+all of this. So the viewer can become refused while the editor is open and cannot become permitted
+again. ⚠️ **If an in-editor sign-out is ever added this is wrong and it fails quietly**; the note
+is in the module.
+
+### 🔴 The removal leaked in THREE places, and only the first was predicted
+
+The task file's measured table (2026-08-22) said the naive splice leaves the panel drawing. That
+was right, and it was not the end of it.
+
+| # | where | what it kept | how found |
+|---|---|---|---|
+| 1 | `SidebarModel.items` | the rail icon | predicted, measured 08-22 |
+| 2 | `SidebarModel.panels[id]` + `activeId` | the **constructed, active panel** | predicted, measured 08-22 |
+| 3 | 🔴 `SidePanel`'s own `panels` React state | the **mounted panel** | **found by DRIVING, 08-23** |
+
+`SidebarModel.unregister` now does the first two (plus clearing `previousActiveId`, or
+`hidePanels()` switches back into the hole through a different door). The third could not be
+reached from the model at all: **`SidePanel` keeps its own copy**, added to on `activeChanged` and
+never removed from, because until now nothing could be unregistered. `views/SidePanel/prunePanels.ts`
+is the fix, called from an effect keyed on the registered ids.
+
+🔴 **The third leak LOOKED correct, which is the dangerous part.** With the model unregistered the
+mounted panel rendered *empty* — but only because `CommunityPanel` asks D15 itself and returns
+`null`. The surface's absence was resting on the **second** reading of the refusal: change that
+self-mask and a refused viewer gets the whole surface back with no icon on it, every rail-shaped
+test still green. And it was not merely hypothetical — a mounted `CommunityPanel` keeps
+`useCommunityMirror` polling `/me`, `/home` and `/threads` **once a minute**, for a viewer the
+platform has said may not know the community exists.
+
+### The drive, 2026-08-23 — `nat012-drive`, both viewer states
+
+Signed in live as `@richardosborne14` (a real permitted account); the refused arm is the real gate
+code fed D15's refusal on `/api/v1/me`, because no refused account exists to test with. **Only the
+platform's answer was varied** — same editor, same session, same instrument.
+
+| row | permitted | refused |
+|---|---|---|
+| `SidebarModel` registered | `true` | ✅ `false` |
+| `getPanelComponent('community')` | `true` | ✅ `false` |
+| `activeId` | `community` | ✅ `components` |
+| rail icon `[data-test=community-panel]` | present | ✅ absent |
+| `[data-panel-id=community]` **mounted** | present | ✅ **absent** |
+| panel drawing | `true` | ✅ `false` |
+
+🔴 **And the control that makes the table mean anything.** The naive splice (`items.splice` +
+notify, nothing else) was run live against the same drawing panel:
+
+| row | after naive splice |
+|---|---|
+| rail icon | **absent** ← a rail-only drive PASSES here |
+| `getPanelComponent` | 🔴 `true` |
+| `activeId` | 🔴 `community` |
+| panel drawing | 🔴 **`true`** |
+
+That reproduces the 08-22 table exactly, live, and proves the instrument can tell the two fixes
+apart rather than passing on either.
+
+⚠️ **Not driven**: the *install-time* refusal from a cold boot. The bootstrap path was exercised
+with a permitted viewer (the panel correctly stayed) and `resolveCommunityRail()` — the exact
+function bootstrap calls — was driven refused and permitted; persisting a fetch patch across a
+reload is what was not done. The refused-at-install case is covered by spec.
+
+### Specs — `tests-unit/nat-012/community-rail-gate.test.ts`, 21 rows
+
+Mutation arms **measured, not estimated** (two of the first guesses were wrong, and one row was
+vacuous on its first draft — both recorded in the file's header):
+
+| mutation | reds |
+|---|---|
+| `unregister` a no-op | 9 |
+| `unregister` reduced to the naive body | 5 |
+| drop only `delete panels[id]` | 2 |
+| drop only the switch-away | 2 |
+| drop only the `previousActiveId` clear | 1 |
+| 🔴 the gate unregisters **unconditionally** (both states agree) | 4 |
+| `prunePanels` is the identity | 2 |
+| `prunePanels` always returns a fresh object | 1 |
+
+⚠️ **`uni-001`'s session-reader gate caught the new reader** and made it answer for itself before
+the row was added — the gate works. The answer: this is the clearest case in that table of an
+account making the editor do **less**, never more.
 
 ## Traps
 
 - 🔴 **A route is outside every sweep.** P67 learned this the expensive way: ruling that a place
   behaves does not check that it does, and a route-shaped surface is invisible to component specs.
   Derive the surface list **from disk** and drive it.
-- 🔴 **The icon fix is a registration-order change, and the rail is not the only thing that reads
-  it.** AC7 moved here from phase 67b on 2026-08-19; it was previously ruled out-of-scope for this
-  task, and the reason it now belongs is that navigation cannot claim D15 reachability while the
-  entry point itself ignores it. ⚠️ But `SidebarModel.register` is called at setup for **every**
-  panel — making one registration conditional or late is a change to shared editor bootstrap, not
-  a community change. Check what else depends on registration order and panel ids existing by the
-  time the rail draws.
+- ✅ **The icon fix was NOT a registration-order change in the end** (2026-08-23). AC7 moved here
+  from phase 67b on 2026-08-19; the trap warned that `SidebarModel.register` runs at setup for
+  **every** panel, so making one registration conditional or late is a change to shared editor
+  bootstrap. That warning is what chose the design: registration stays synchronous and
+  unconditional for all eleven panels, and the viewer's refusal **unregisters afterwards**. Nothing
+  waits on the network, and no other panel's boot moved. ⚠️ The cost is a visible window — a
+  refused viewer sees the icon until `me()` answers — accepted rather than hidden, because the
+  alternative leaks the whole rail's timing to the network. Driven: with the panel removed, the
+  remaining 21 registrations and ordinary panel switching are unaffected.
 - ⚠️ **The tab ships even when empty** (D21 reversed D16). Navigation must not reintroduce a
   gate — no "unlock the community when…", no hidden nav entries pending a threshold.
-- ⚠️ **Conditional UI in this editor goes through `mounted`, not `visible`** — a navigation model
-  that hides panels by CSS keeps them alive, and a `BaseDialog` renders twice. Any spec counting
-  what is on screen has to know both.
+- 🔴 **Conditional UI in this editor goes through `mounted`, not `visible` — AND THIS TRAP FIRED,
+  2026-08-23.** It is the third leak in the AC7 table above: `SidePanel` renders every panel it has
+  ever opened and hides the inactive ones with `display: none`, so unregistering a panel in the
+  model left it **mounted and polling**. ⚠️ It also nearly hid itself, because the mounted panel
+  rendered *empty* — a reading of "is anything drawn?" said yes-it-is-gone while the component was
+  alive. **Read `[data-panel-id]`, not innerText**: an empty panel and an absent one look identical
+  from the text, and they are opposite answers. A `BaseDialog` still renders twice.

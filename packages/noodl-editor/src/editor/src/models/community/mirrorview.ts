@@ -107,6 +107,26 @@ function healthFrom(threshold: ThresholdResponse | null): HealthReading | null {
 }
 
 /**
+ * 🔴 **D15's refusal, in one place, because there are now TWO things that have to obey it.**
+ *
+ * {@link composeMirror} asks this to decide whether the panel draws anything, and NAT-012 AC7's
+ * rail gate asks it to decide whether the panel is on the rail at all. ⚠️ Those are the same
+ * fact and they must not become two readings of it — the header's own warning about `home` ("two
+ * sources for one refusal is the arrangement where a fix lands on one of them") applies with
+ * more force here, because the two consumers live in different layers and a drift between them
+ * is exactly a surface with no icon, or an icon with no surface.
+ *
+ * ⚠️ **`me` must be `ok` for this to be true**, and that is the whole of the signed-out case:
+ * `/api/v1/me` answers **401 → `unauthenticated`** when there is no token, never `absent`, so a
+ * signed-out viewer is never refused and keeps the panel D21 promised them. (`absent` here is
+ * reserved for the platform *saying* the surface does not exist for this account — the org-minor
+ * whose school switched the community off.)
+ */
+export function refusesCommunitySurface(me: Read<MeResponse> | undefined): boolean {
+  return me?.outcome === 'ok' && me.value.community.surface === 'absent';
+}
+
+/**
  * The whole panel, as data.
  *
  * 🔴 **`absent` is checked FIRST and on `me` alone.** D15's refusal is a fact about the viewer,
@@ -122,7 +142,7 @@ function healthFrom(threshold: ThresholdResponse | null): HealthReading | null {
 export function composeMirror(inputs: MirrorInputs): MirrorView {
   const { me, home, forum, session } = inputs;
 
-  if (me?.outcome === 'ok' && me.value.community.surface === 'absent') {
+  if (refusesCommunitySurface(me)) {
     return { surface: 'hidden' };
   }
 
