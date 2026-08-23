@@ -1,8 +1,11 @@
 # FB-019 — the number that was secretly an object
 
-**Filed:** 2026-08-22, test-user session, item 4. **Status: ⬜ open — and the research Richard
-asked for is done: his memory was right, and it's worse. Two silent-failure bugs plus a UX
-gap.** Size: M/L.
+**Filed:** 2026-08-22, test-user session, item 4. **Status: ⬜ open — and DRIVEN 2026-08-23
+(session 12), which falsified both of the silent-failure bugs this file was built around. Richard's
+report stands; the diagnosis under it does not. What is left is a legibility task, not a runtime
+one.** Size: was M/L, now **S/M**. 🔴 **Read "THE DRIVE" below before anything above it — the
+Ground truth and sweep sections are the pre-drive reading and two of their claims are wrong.**
+Size: M/L.
 
 > *"Some ports are a bit tricky and look like they should take a number input, but they
 > actually need like a JSON input? Like the icon node… you can't just input the string icon
@@ -68,13 +71,19 @@ nothing, but this is an approximation of the type table, not the type table.
 
 ### There are THREE registration paths, not the two the task was written around
 
+🔴 **THE LAST TWO ROWS OF THIS TABLE ARE WRONG — MEASURED 2026-08-23.** Both "❌ no"s are
+"✅ yes", via a seeder in a different file (`initializeDefaultValues`), and both failure
+columns are wrong with them. Kept as filed so the correction has something to point at; the
+measured table is under *THE DRIVE*.
+
 | Declared with | Lands in | What a **bare number** does | Declared `default` applied? |
 |---|---|---|---|
 | `addInputCss` (padding, margin, `fontSize`, `borderRadius`, `borderWidth`, gaps, min/max) | `inputCss` | ✅ coerced to `{value, defaultUnit}` — `react-component-node.ts:1889` | ✅ yes, `:827` |
 | `addInputProps` (`width`, `height`, `iconSize`, `iconSpacing`) | `inputProps` → `defineRegularInputProp` | 🔴 `value.value` is undefined → **`delete props[name]`** — `:592–605` | ❌ **no** |
 | `addInputs` (`transformX`, `transformY`, `transformRotation`) | `inputs` | 🔴 the port's own `set` computes `value.value + value.unit` → **`NaN`** — `node-shared-port-definitions.ts:406–457` | ❌ **no** |
 
-🔴 **The third path is a silent failure the task did not name, and it is the one with instances.**
+🔴 ~~**The third path is a silent failure the task did not name, and it is the one with instances.**~~
+**FALSE — measured 2026-08-23.** `transformX` renders `300px`; the cropper pans. See *THE DRIVE*.
 The `default: 0` on `transformX` never reaches `_inputValues` — the default loop at `:827` runs
 over `inputCss` **only** — so there is nothing for `setInputValue`'s merge to find a unit on, and
 the custom setter builds `translate(NaN…)`, which the browser drops without an error.
@@ -101,7 +110,9 @@ port's default unit instead of vanishing (`inputProps`) or becoming `NaN` (`inpu
 `50%`-then-`300` case stays `300%` **by design**, and scope (3)'s job of *saying the shape at the
 port* is what makes that legible rather than surprising.
 
-**B — 8 connections carry a bare number into a port with NO stored value: broken today.**
+**B — ~~8 connections carry a bare number into a port with NO stored value: broken today.~~**
+🔴 **MEASURED 2026-08-23: population B is EMPTY. None of them is broken.** The counts below are
+also wrong (4 across two modules, not 6). Kept as filed; see *THE DRIVE*.
 🔴 **Not the failure that was filed.** Bug 2 as written (never-set + bare number → the
 `inputProps` branch deletes the prop) has **zero instances** in 92 projects. Six of the eight are
 on the third path, in **two shipped library modules**:
@@ -120,6 +131,108 @@ setter paths; nobody has watched an image cropper fail to pan. **Drive one befor
 modules are broken** — the FB-020 lesson is that a filed mechanism can be wrong in exactly this
 way, and the control arm here is a sibling connection whose parameter *is* set, which must keep
 working across the same fix.
+
+## 🔴 THE DRIVE, 2026-08-23 (session 12) — BOTH SILENT FAILURES ARE FICTION
+
+Session 11's handover made this the first move: *"drive an image-cropper pan first — the six broken
+connections are predicted from source and nobody has watched one fail."* Done. **They do not fail.**
+The image cropper pans, and so does every other arm the task predicted was broken.
+
+### Drive 1 — the image cropper pans
+
+Fixture: the shipped prefab's own project, copied out of `library/prefabs/image-cropper`, with an
+`/App` that places `Internal Components/Panning Control` exactly as `Image Cropper` does (400×300
+arena, clip on, a 680×384 image). Nothing in the module was modified.
+
+| reading | on load | after a 12-step drag of +100x / +30y |
+|---|---|---|
+| `img.style.transform` | `translateX(-140px) translateY(-42px)` | `translateX(-40px) translateY(-12px)` |
+| `img.style.width` (**control**) | `680px` | `680px` |
+
+−140 → −40 and −42 → −12 are the drag deltas exactly. The predicted `translate(NaN…)` never
+appeared. ✅ **The control is on the same node and the same tick**: `refreshView()` emits
+`ImageXpos` and `ImageWidth` from adjacent lines, into `transformX` (no stored parameter) and
+`width` (stored `{100,'px'}`). The task expected these two to disagree. They agree.
+
+### Drive 2 — all three registration paths, one node each, measured
+
+Second fixture (`fb019-widths`): one `Expression` emitting a bare `300` fanned into five arms.
+🔴 **Re-read off disk afterwards to be sure "never set" still held** — opening a project rewrites
+it, and a `width` written in on open would have invalidated the whole table. It did not; A/D/E
+still carry no such parameter.
+
+| arm | path | stored value | **measured** | task file predicted |
+|---|---|---|---|---|
+| A `width` | `inputProps` | **none** | **`300%`** (2964px) | 🔴 *"prop deleted — the node silently loses its width entirely"* |
+| B `width` | `inputProps` | `{150,'px'}` | `300px` — merge fires | merge fires ✅ |
+| C `width` | `inputProps` | `{40,'%'}` | `300%` — merge fires | merge fires ✅ |
+| D `paddingLeft` | `inputCss` | **none** | `300px` | coerces ✅ |
+| E `transformX` | `inputs` | **none** | **`translateX(300px)`** | 🔴 *"the custom setter builds `translate(NaN…)`"* |
+
+**Bug 2 and the "third path" bug do not exist.** Both were derived from the premise that a declared
+`default` never reaches `_inputValues`, and that premise is false.
+
+### Why the source reading was wrong — the seeder nobody grepped for
+
+The task file reasoned from `react-component-node.ts:827`, whose default loop really does run over
+`inputCss` only. That is the **React viewer's** style loop, and it is not the only one.
+`initializeDefaultValues` (`nodedefinition.ts:161–180`) runs at node creation (`:537`) over
+`metadata.inputs` — **every** input, all three paths — and writes
+
+```js
+defaultValues[name] = { unit: type.defaultUnit, value: defaultValue };   // note: `unit`
+```
+
+`width` declares `default: 100`, `transformX` declares `default: 0`. So `_inputValues` holds a unit
+for both **before any wire fires**, and `setInputValue`'s merge (`node.ts:384`) always finds one.
+
+✅ **The exclusion, not just the fit**: for arm A to read `300%`, `value` must already have been
+`{value:300, unit:'%'}` at `defineRegularInputProp`'s setter. Only the merge builds that, and only
+a `unit` key arms the merge. The one other writer of `_inputValues`, `Node.prototype.registerInput`
+(`node.ts:130–140`), writes `{ value, type: defaultUnit }` — **the wrong key** — so it could not
+have produced this reading, and node creation does not call it anyway (`node._inputs =
+Object.create(inputs)`, `:506`).
+
+🔴 **A latent defect banked in passing**: `registerInput`'s `type:` where every reader wants `unit:`.
+Harmless today because the React path never reaches it; it means any port registered *dynamically*
+with a units type has a default the merge cannot see. Not driven, not in scope here.
+
+### So the population is empty, and the counts were also wrong
+
+**Population B is not "8 connections broken today". It is zero.** Six of the eight were the
+transform ones, and arm E plus drive 1 show them working; the task file already conceded the other
+two were fine. The per-module counts were off as well — `grep`ped by `toProperty` over both
+projects:
+
+| module | task file | actual |
+|---|---|---|
+| `image-cropper` | 4, *"in both `/#Image Cropper/Image Cropper` and its `Internal Components/Panning Control`"* | **2**, both in `Panning Control`; `Image Cropper` has **0** |
+| `panning-and-zooming-control` | 2 | 2, in its own `Panning Control` |
+
+### What IS real, and it is the whole task now
+
+🔴 **The asymmetry Richard reported is confirmed — with a different cause than the one filed.**
+Arm A and arm D are the same node, the same wire, the same `300`, and they land as **`300%`** and
+**`300px`**. The task blamed *coerces vs deletes*; the measurement says both coerce, and they
+differ only because `width`'s `defaultUnit` is `%` while padding's is `px`. Nothing anywhere says so.
+
+That makes **scope (3) — say the shape at the port — the entire remaining runtime story**, and
+scope (1) mostly finished before it was written. AC1's revised clause (*"a bare number into a
+never-set Width renders at `defaultUnit` instead of the prop being deleted"*) **is already the
+behaviour**. 🔴 Building it would be this phase's standing trap for the sixth time: *before building
+a mechanism, grep for the one that already exists.*
+
+⚠️ **Still unobserved, and now the only predicted-from-source claim left in this task**: AC3's icon
+arm — a string reaching `IconGlyph` via a `*` output rendering an empty span. Needs a fixture with a
+`*`-typed output carrying a string into `iconIconSource`; not built this session. Given that two of
+two silent failures in this file turned out to be fiction, **drive it before fixing it.**
+
+⚠️ **Scope (5)'s aliasing hypothesis is narrowed, not settled.** Both writers copy: the merge does
+`Object.assign({}, currentInputValue)` with a comment saying why, and `initializeDefaultValues`
+builds a fresh object per node per port. So no `{value, unit}` object is shared between two ports by
+either seam. If Jordan's margin/corner-radius report is aliasing, it is somewhere else — variants and
+visual states are the unexamined candidates.
+
 
 ## Scope
 
@@ -155,17 +268,22 @@ working across the same fix.
 
 ## Acceptance criteria
 
-- AC1 (**REVISED 2026-08-22 by the sweep above — the original clause would have broken 34 live
-  connections**): bare number → a **never-set** `Width` renders at `defaultUnit` instead of the
-  prop being deleted; the same value into a never-set `Pos X` renders instead of becoming `NaN`;
-  and a port that **does** store a unit keeps merging, so `{0, '%'}` driven from a wire stays
-  percent. Graded with all three shapes, plus a control arm from population A (a stored-unit
-  connection that must not change) — a fix that re-units the shipped `toggle-switch` is a
-  regression, not a pass.
-- AC2: padding, Width **and Pos X** now behave identically for the same connected value — the
-  asymmetry is three-way (`inputCss` / `inputProps` / `inputs`), and all three arms are asserted
-  on one node.
-- AC3: string → icon input draws the glyph (or the refusal warns, per the (4) decision) —
+- AC1 (**REVISED TWICE. 2026-08-22 by the sweep; 2026-08-23 by the drive, which found the
+  behaviour it asks for ALREADY SHIPS**): ⚠️ **Nothing to build.** A bare number into a never-set
+  `Width` already renders at `defaultUnit`, a never-set `Pos X` already renders, and a stored unit
+  already keeps merging — measured on all three paths, table under *THE DRIVE*. ✅ **What AC1 is
+  now**: a **characterisation test** pinning those five arms, so the seeding in
+  `initializeDefaultValues` cannot be removed by someone tidying `registerInput`'s duplicate. It
+  must fail if the seeder is deleted — mutation-check it, because a spec over behaviour that is
+  already correct is exactly the spec that passes on anything.
+- AC2 (**REVISED 2026-08-23**): ~~padding, Width and Pos X now behave identically~~ — they already
+  produce a value on all three paths. 🔴 **The real asymmetry, and the one Richard hit, is that
+  they do not produce the SAME value**: `300` into padding is `300px`, into Width is `300%`,
+  because `defaultUnit` differs per port. AC2 is now: **the editor says which unit a bare number
+  will land in, at the port**, so the two are distinguishable without reading the viewer source.
+  That makes AC2 a restatement of scope (3), which is the whole task now.
+- AC3 (⚠️ **the last predicted-from-source claim in this file, and two of two such claims here
+  turned out to be fiction — DRIVE IT BEFORE FIXING IT**): string → icon input draws the glyph (or the refusal warns, per the (4) decision) —
   never an empty span with no diagnostic.
 - AC4: every structured type in the table above either casts losslessly, coerces with a defined
   rule, or warns — asserted as a cardinality sweep over the cast table so a new structured type

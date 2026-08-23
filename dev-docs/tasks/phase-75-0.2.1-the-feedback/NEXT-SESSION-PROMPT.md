@@ -1,5 +1,107 @@
 # Phase 75 — next session
 
+**State as of 2026-08-23 (session 12).** Session 12 did the thing session 11's handover put first:
+it **drove an image-cropper pan before believing FB-019**. The pan works. Both of FB-019's
+silent-failure bugs are fiction, the task shrank from M/L to S/M, and the one thing that needed
+building was a test to keep the accident that saves it. Read *"What session 12 found"*, then
+session 11's notes, which still stand.
+
+## What session 12 found
+
+### 🔴 FB-019 — THE DIAGNOSIS WAS RIGHT ABOUT THE MECHANISM AND WRONG ABOUT WHETHER IT FIRES
+
+That is the sixth wrong filed diagnosis in a row, and a **new shape**: the file described the
+failure path correctly, line by line, and never grepped for the guard that prevents it.
+
+- ✅ **The cropper pans.** Shipped prefab, unmodified, 400×300 arena, 680×384 image:
+  `translateX(-140px) translateY(-42px)` on load, and a +100/+30 drag moves it to
+  `translateX(-40px) translateY(-12px)` — the deltas exactly. Predicted `translate(NaN…)`: absent.
+- ✅ **The control was built into the module.** `refreshView()` emits `ImageXpos` and `ImageWidth`
+  from adjacent lines into `transformX` (**no** stored parameter) and `width` (stored `{100,'px'}`)
+  **on the same node, same tick**. The task expected them to disagree. They agree.
+- ✅ **Then all three registration paths on one node**, one `Expression` emitting a bare `300`:
+
+  | arm | path | stored | measured | task file said |
+  |---|---|---|---|---|
+  | `width` | `inputProps` | **none** | **`300%`** | *prop deleted, width lost* 🔴 |
+  | `width` | `inputProps` | `{150,'px'}` | `300px` ✅ | merge fires ✅ |
+  | `paddingLeft` | `inputCss` | **none** | `300px` ✅ | coerces ✅ |
+  | `transformX` | `inputs` | **none** | **`translateX(300px)`** | *`NaN`* 🔴 |
+
+- 🔴 **The seeder nobody grepped for.** The file reasoned from `react-component-node.ts:827`, whose
+  default loop really does cover `inputCss` only — but that is the **React viewer's style loop**,
+  not the only one. `initializeDefaultValues` (`nodedefinition.ts:161–180`, called at `:537`) runs
+  over **every** input on all three paths and writes `{ unit: type.defaultUnit, value: default }`.
+  `width` declares `default: 100`, `transformX` declares `default: 0` — so `_inputValues` holds a
+  unit **before any wire fires** and `setInputValue`'s merge always finds one.
+- ✅ **Excluded, not merely fitted.** For a never-set `width` to read `300%`, the value must already
+  have been `{value:300, unit:'%'}` at the setter; only the merge builds that, and only a `unit`
+  key arms it. The other writer of `_inputValues`, `registerInput` (`node.ts:130–140`), writes
+  `type:` — **the wrong key** — and node creation does not call it anyway
+  (`_inputs = Object.create(inputs)`).
+- ✅ **And the mutation says so in the defect's own words.** Comment out that one call and the suite
+  reports `width` → `undefined`, `transformX` → **`NaN`**: *exactly* the two failures FB-019 was
+  filed on. The prediction was a correct description of the unguarded code.
+- 🔴 **Population B is EMPTY** — not "8 connections broken today". The counts were wrong too:
+  `image-cropper` has **2** transform connections (both in `Panning Control`; `Image Cropper`
+  itself has **0**), not 4 across two components.
+- ✅ **What survives, and it is now the whole task**: the asymmetry Richard reported is **real**,
+  with a different cause. `300` into padding is `300px`; `300` into Width is `300%` — same node,
+  same wire, same number — because `defaultUnit` differs per port. Not "coerces vs deletes".
+  **Scope (3), say the shape at the port, is the remaining runtime story.**
+- ✅ **Built: `packages/noodl-runtime/test/fb-019-units-default-seeding.test.ts`** (6 rows). AC1's
+  revised clause turned out to describe behaviour that **already ships**, so building it would have
+  been this phase's standing trap again; the test pins the seeder instead so it cannot be removed
+  by someone tidying `registerInput`'s duplicate. Mutation-checked: first three rows red, last
+  three green — correctly, they are the arms that do not depend on the seeder.
+- ⚠️ **Scope (5)'s aliasing hypothesis is narrowed, not settled.** Both writers copy — the merge
+  does `Object.assign({}, …)` with a comment saying why, and the seeder builds a fresh object per
+  node per port. If Jordan's margin/corner-radius report is aliasing, it is elsewhere; **variants
+  and visual states are the unexamined candidates.**
+- ⚠️ **Banked, not driven**: `registerInput` writes `{value, type}` where every reader wants `unit`.
+  Latent — the React path never reaches it — but a units port registered *dynamically* has a
+  default the merge cannot see.
+
+## First moves, in order
+
+1. 🔴 **FB-019 AC3 — the icon arm, and DRIVE IT BEFORE FIXING IT.** It is the last
+   predicted-from-source claim in that file, and **two of two** such claims in it were fiction.
+   The claim: a string reaching `IconGlyph` via a `*` output renders an empty span silently.
+   Needs a fixture with a `*`-typed output carrying a string into `iconIconSource` — not built this
+   session, and the fiddly part is finding a node with a `*` output that emits a string.
+2. **FB-019 scope (3)** — say the wire shape at the port. This is now the task's centre of gravity,
+   and it is what makes `300 → 300%` legible rather than surprising. No ruling needed.
+3. **Quick wins with no rulings**: FB-007, FB-010, FB-003 — the build-the-caller family.
+4. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
+   `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — eight days), the 15 lessons' prose,
+   Discord's row in the `?` menu, `/rfps` search.
+
+## Gates, this tree
+
+- `@noodl/runtime` jest: **140 suites / 2543 specs / 0 failures** (mine is +1 suite / +6 specs).
+- Community suite and editor `tests-unit` **not re-run this session** — nothing touched either.
+  Session 11's figures stand: 55/1321/0 and 292/4763/0.
+- `test:ci` **not re-run**. 🔴 **Re-measure rather than quoting the handover.**
+
+## Driving, session 12's additions
+
+- ✅ **A project can be put in front of the launcher without a native file dialog**:
+  `LocalProjectsModel.instance.openProjectFromFolder(dir)` through webpack's require registers it,
+  then click its card. `leaveForLauncher('projects')` (`utils/launcher/leaveForLauncher.ts`) goes
+  back without hunting for a UI control.
+- 🔴 **`npm run cdp -- click` takes the FIRST match, and a launcher card's name span shares its
+  class with every other card.** That opened the wrong project (`nat012-drive`) and looked like a
+  successful drive. ✅ Find the element by text, `setAttribute('data-x','t')`, click **that**.
+- ✅ `npm run cdp -- drag "x,y" "x,y" --target=viewer` works and is how the pan was driven; the
+  harness has a `drag` command, which the run-editor skill's command list does not mention.
+- 🔴 **Re-read the fixture off disk AFTER driving.** The whole table depended on three ports being
+  *never set*, and opening a project rewrites it — a `width` written in on open would have
+  invalidated everything. Checked: it did not.
+- Fixtures in this session's scratchpad (not the repo): `fb019-drive` (the cropper prefab's own
+  project with an `/App` that places `Panning Control`) and `fb019-widths` (the five-arm table).
+  ⚠️ **Both are registered in the launcher's recents now** and point at a scratchpad that will be
+  cleaned up; rebuild rather than trusting the rows.
+
 **State as of 2026-08-23 (session 11).** Session 11 fixed **FB-023**, **deployed the platform to
 nexus-1**, and built + drove the **editor's delete confirmation**. Three things closed; read
 *"What session 11 found"*, then session 10's notes, which still stand.
