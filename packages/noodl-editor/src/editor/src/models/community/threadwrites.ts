@@ -35,6 +35,7 @@
 
 import type {
   CommunityPostAccept,
+  CommunityPostEdit,
   CommunityReplyBox
 } from '@noodl-core-ui/components/community';
 
@@ -261,3 +262,169 @@ export function acceptFailureLine(write: Write<unknown>): string | null {
       return 'The community could not be reached, so this answer was not accepted.';
   }
 }
+
+// ── FB-001: editing your own post, and withdrawing your own thread ─────────────────────────
+
+/**
+ * What the host knows about editing, on this thread, right now.
+ *
+ * ⚠️ `failure` is per POST rather than per thread, for {@link AcceptOffer}'s reason: one
+ * refusal drawn against every post would tell three people's posts about one person's failure.
+ */
+export type EditOffer = {
+  /** The post whose composer is open, or null. Only ever one at a time. */
+  editingPostId: string | null;
+  /** The draft, which is the HOST's state — `renderElements.ts` cannot evaluate a hook. */
+  draft: string;
+  /** The post whose save or delete is in flight. */
+  pendingPostId: string | null;
+  failure: { postId: string; line: string } | null;
+  onEdit: (postId: string) => void;
+  onDraftChange: (next: string) => void;
+  onSave: (postId: string) => void;
+  onCancel: () => void;
+  onDelete: () => void;
+};
+
+/**
+ * FB-001 — the edit/delete affordance for one post, or `null`.
+ *
+ * The order of the refusals is the argument, exactly as {@link acceptFor}'s is:
+ *
+ * 1. **No host wiring → nothing.** A story or a read-only spec passes no offer.
+ * 2. 🔴 **Not the author → nothing DRAWN.** Not a disabled verb with a reason: somebody
+ *    reading another person's post is not being refused anything, and a greyed "Edit" under a
+ *    stranger's words reads as a permission they lost. ⚠️ Decided on HANDLES, which is all
+ *    `/v1/me` gives a client — `isAsker`'s note applies verbatim, including that this decides
+ *    only whether a verb is DRAWN. `editPost`'s `[bench-edit-not-author]` is the truth.
+ * 3. **Delete is offered on the QUESTION only.** D7 ruled *delete own thread*; an answerer
+ *    withdrawing their answer out of somebody else's thread is a verb nobody has ruled on, and
+ *    a client is a bad place to invent one.
+ * 4. 🔴 **And not once somebody else has answered.** The platform refuses it with a 409 whose
+ *    sentence is worth reading, so this is NOT a case of hiding a refusal the person should
+ *    see — the verb is withdrawn because D7 declined hide-after-answers, making the refusal
+ *    permanent rather than a state that might change. ⚠️ Read off `answers.length` and the
+ *    accepted flag, which is what this client can see; the platform re-decides it against
+ *    "posts by another account", and the two can disagree in exactly one direction — a thread
+ *    where the ONLY answers are the asker's own. That draws no verb here and would have been
+ *    permitted; the cost is a delete the author has to do on the web, which is the safe
+ *    direction for a disagreement to fall.
+ */
+export function editFor(input: {
+  thread: ThreadDetail;
+  post: ThreadPost;
+  isQuestion: boolean;
+  viewerIsAsker: boolean;
+  /** Whether the viewer wrote THIS post — for an answer, that is not `viewerIsAsker`. */
+  viewerIsAuthor: boolean;
+  offer?: EditOffer | null;
+}): CommunityPostEdit | null {
+  const { thread, post, isQuestion, viewerIsAsker, viewerIsAuthor, offer } = input;
+  if (!offer) return null;
+  if (!viewerIsAuthor) return null;
+
+  const editing = offer.editingPostId === post.id;
+  const busy = offer.pendingPostId === post.id;
+
+  const deletable =
+    isQuestion &&
+    viewerIsAsker &&
+    thread.answers.length === 0 &&
+    thread.acceptedPostId === null &&
+    !thread.accepted;
+
+  return {
+    editLabel: 'Edit',
+    onEdit: () => offer.onEdit(post.id),
+    remove: deletable
+      ? {
+          label: 'Delete',
+          busyLabel: 'Deleting…',
+          busy,
+          onRemove: offer.onDelete
+        }
+      : null,
+    composer: editing
+      ? {
+          label: 'Your post',
+          value: offer.draft,
+          onChange: offer.onDraftChange,
+          onSave: () => offer.onSave(post.id),
+          onCancel: offer.onCancel,
+          saveLabel: busy ? 'Saving…' : 'Save changes',
+          // 🔴 The SAME two functions the answer composer uses, so the client's idea of
+          // `bench_post_body_shape` cannot fork between the two boxes that send a body.
+          canSave: canSendAnswer(offer.draft),
+          blockedReason: draftRefusal(offer.draft),
+          busy
+        }
+      : null,
+    error: offer.failure?.postId === post.id ? offer.failure.line : null
+  };
+}
+
+/**
+ * Whether this viewer wrote this post.
+ *
+ * ⚠️ `isAsker`'s note applies unchanged — handles, case-insensitively, because
+ * `author_account_id` is published by nothing (NAT-006 removed it) and this decides only what
+ * is drawn.
+ */
+export function isPostAuthor(me: Read<MeResponse> | undefined, post: ThreadPost): boolean {
+  if (me?.outcome !== 'ok') return false;
+  const viewer = me.value.viewer?.handle;
+  if (!viewer || !post.authorHandle) return false;
+  return viewer.toLowerCase() === post.authorHandle.toLowerCase();
+}
+
+/**
+ * What a failed edit says.
+ *
+ * 🔴 **EVERY ARM SAYS THE TEXT IS STILL THERE**, which is AC4's rule applied to the verb that
+ * needs it more: an answer that fails to send loses something the person can retype from
+ * memory, and an edit that fails loses a rewrite of something they can no longer see, because
+ * the composer replaced it. ⚠️ `absent` does not narrate — a 404 here is *this post is not
+ * there for you*, and `docs/API.md` §4 forbids rendering that as a permission.
+ */
+export function editFailureLine(write: Write<unknown>): string | null {
+  switch (write.outcome) {
+    case 'ok':
+      return null;
+    case 'unauthenticated':
+      return 'Your session has expired, so this edit was not saved. Sign in to the community again — your text is still here.';
+    case 'absent':
+      return 'This post is not available any more, so the edit was not saved. Your text is still here.';
+    case 'refused':
+      return `The community did not accept this: ${write.detail} Your text is still here.`;
+    case 'unreachable':
+      return 'The community could not be reached, so this edit was not saved. Your text is still here — try again when you are back on the network.';
+  }
+}
+
+/**
+ * What a failed delete says.
+ *
+ * ⚠️ Nothing is "still here" to reassure anybody about — there is no typed text at stake, so
+ * these are shorter, exactly as {@link acceptFailureLine} is. 🔴 The `refused` arm is the one
+ * that carries real information and it is the whole of AC2's promise that *the refusal for an
+ * answered thread names why*: `[bench-delete-answered]` reaches a caller as *"somebody has
+ * answered this thread, so it is part of their record too and cannot be deleted"*, in the
+ * platform's own words.
+ */
+export function deleteFailureLine(write: Write<unknown>): string | null {
+  switch (write.outcome) {
+    case 'ok':
+      return null;
+    case 'unauthenticated':
+      return 'Your session has expired, so this thread was not deleted. Sign in to the community again.';
+    case 'absent':
+      return 'This thread is not available any more.';
+    case 'refused':
+      return `The community did not accept that: ${write.detail}`;
+    case 'unreachable':
+      return 'The community could not be reached, so this thread was not deleted.';
+  }
+}
+
+/** What a successful edit says, before the re-read lands. */
+export const EDIT_SAVED_LINE = 'Saved. Re-reading the thread…';

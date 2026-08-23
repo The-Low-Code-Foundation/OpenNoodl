@@ -42,7 +42,14 @@ import {
 
 import type { MeResponse, Read, ThreadAttachment, ThreadDetail, ThreadPost } from './communityapi';
 import type { PostBlock } from './postbody';
-import { acceptFor, isAsker, type AcceptOffer } from './threadwrites';
+import {
+  acceptFor,
+  editFor,
+  isAsker,
+  isPostAuthor,
+  type AcceptOffer,
+  type EditOffer
+} from './threadwrites';
 
 export type { CommunityThreadState, CommunityThreadDetailView };
 
@@ -192,6 +199,8 @@ export type ThreadViewInputs = {
    * case. A spec grading the read half passes nothing and gets exactly the screen it graded before.
    */
   accept?: AcceptOffer | null;
+  /** FB-001 — the host's edit/delete wiring, or nothing. See {@link ThreadViewOptions.edit}. */
+  edit?: EditOffer | null;
   /**
    * 🔴 What this editor session posted to this thread, if anything.
    *
@@ -228,6 +237,22 @@ export type ThreadViewOptions = {
   accept?: AcceptOffer | null;
   /** 🔴 Decided ONCE per thread, in `threadDetailView`, never per post. See {@link isAsker}. */
   viewerIsAsker?: boolean;
+  /**
+   * FB-001 — what the host can do about editing and deleting, or nothing at all.
+   *
+   * ⚠️ Absent for every host that has not wired the writes, exactly like {@link accept}, and
+   * `editFor` draws no verb in that case — so a spec grading the read half gets the screen it
+   * graded before.
+   */
+  edit?: EditOffer | null;
+  /**
+   * FB-001 — the viewer, for deciding which posts are theirs.
+   *
+   * 🔴 **Per POST, which is why this is here and `viewerIsAsker` is not enough.** The asker
+   * owns the QUESTION; an answerer owns their own answer while being nobody's asker. One flag
+   * would have offered an answerer Edit on the question, or nothing on their own words.
+   */
+  me?: Read<MeResponse> | undefined;
 };
 
 function postView(
@@ -258,6 +283,15 @@ function postView(
       isQuestion,
       viewerIsAsker: options.viewerIsAsker === true,
       offer: options.accept
+    }),
+    // FB-001 — and `editFor` says no for every post but the viewer's own. See its refusals.
+    edit: editFor({
+      thread,
+      post,
+      isQuestion,
+      viewerIsAsker: options.viewerIsAsker === true,
+      viewerIsAuthor: isPostAuthor(options.me, post),
+      offer: options.edit
     })
   };
 }
@@ -309,7 +343,12 @@ export function composeThreadView(inputs: ThreadViewInputs): CommunityThreadStat
   const options = (thread: ThreadDetail): ThreadViewOptions => ({
     pullFor,
     accept: inputs.accept,
-    viewerIsAsker: isAsker(me, thread)
+    viewerIsAsker: isAsker(me, thread),
+    edit: inputs.edit,
+    // FB-001 — `me` goes through so `editFor` can ask per POST who wrote it. ⚠️ NOT resolved
+    // to a boolean here the way `viewerIsAsker` is: that one is a fact about the THREAD and is
+    // therefore the same for every post, and ownership is not.
+    me
   });
 
   if (read?.outcome === 'ok') {

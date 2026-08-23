@@ -1224,3 +1224,72 @@
     border-radius: 2px;
   }
 }
+
+/*
+ * FB-001 — the author's own verbs on their own post.
+ *
+ * 🔴 Declares no colour of its own beyond the roles this file already uses: the quiet verbs
+ * take the same muted ink as `PostWhen`, and Save reuses `AcceptButton` outright rather than
+ * introducing a second affirmative button style to this panel.
+ */
+.PostEditRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.PostEditQuiet {
+  background: none;
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 2px;
+  padding: 3px 8px;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.PostEditQuiet:hover {
+  color: var(--theme-color-fg-highlight);
+  border-color: var(--theme-color-primary);
+}
+
+.PostEditQuiet:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.PostEditor {
+  margin: 8px 0;
+}
+
+.PostEditorLabel {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+}
+
+.PostEditorBox {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 2px;
+  background: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-default);
+  font-family: var(--font-family-code, monospace);
+  font-size: 11px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.PostEditorBox:focus {
+  border-color: var(--theme-color-primary);
+  outline: none;
+}
+
+.PostEditorBlocked {
+  margin: 4px 0 0;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+}

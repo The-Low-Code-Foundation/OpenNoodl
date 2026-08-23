@@ -20,6 +20,7 @@ export type {
   CommunityAttachmentPort,
   CommunityAttachmentView,
   CommunityPostAccept,
+  CommunityPostEdit,
   CommunityPostView,
   CommunityReplyBox,
   CommunityThreadDetailView,

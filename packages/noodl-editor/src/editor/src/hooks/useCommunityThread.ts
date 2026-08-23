@@ -39,7 +39,13 @@ import {
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 import { readCommunitySession, type CommunitySession } from '@noodl-models/community/communitysession';
 import { composeThreadView, type PullOffer } from '@noodl-models/community/threadview';
-import { acceptFailureLine, canSendAnswer, composeReplyBox } from '@noodl-models/community/threadwrites';
+import {
+  acceptFailureLine,
+  canSendAnswer,
+  composeReplyBox,
+  deleteFailureLine,
+  editFailureLine
+} from '@noodl-models/community/threadwrites';
 
 import type { CommunityReplyBox, CommunityThreadState } from '@noodl-core-ui/components/community';
 import { notifyCommunityChanged } from '../models/community/communitychanged';
@@ -115,6 +121,13 @@ export function useCommunityThread(options: { pullFor?: PullOffer } = {}): Commu
   // ── AC6, accepting ──────────────────────────────────────────────────────────────────────
   const [acceptPending, setAcceptPending] = useState<string | null>(null);
   const [acceptFailure, setAcceptFailure] = useState<{ postId: string; line: string } | null>(null);
+
+  // ── FB-001, editing and deleting your own ───────────────────────────────────────────────
+  /** The post whose composer is open. Only ever one — two open boxes is two drafts to lose. */
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [editPending, setEditPending] = useState<string | null>(null);
+  const [editFailure, setEditFailure] = useState<{ postId: string; line: string } | null>(null);
 
   const openThread = useCallback((id: string) => {
     // ⚠️ Cleared rather than left, so re-opening a thread never shows the previous one's posts
@@ -280,6 +293,105 @@ export function useCommunityThread(options: { pullFor?: PullOffer } = {}): Commu
     [threadId, acceptPending, session]
   );
 
+  /**
+   * FB-001 — open the composer on one of your own posts.
+   *
+   * 🔴 **THE SOURCE IS FETCHED, NOT RECONSTRUCTED.** The thread payload carries `blocks`; the
+   * markdown that produced them is served only by `postSource`, to its author. Filling the box
+   * by re-serialising blocks would be a second, lossy markdown writer — and every edit would
+   * silently rewrite the person's formatting on save.
+   *
+   * ⚠️ A failure here opens NOTHING and says so, rather than opening an empty box: a composer
+   * pre-filled with nothing, saved, would replace the post with nothing.
+   */
+  const onEdit = useCallback(
+    (postId: string) => {
+      if (threadId === null || editPending !== null) return;
+      setEditPending(postId);
+      setEditFailure(null);
+
+      const client = clientFor(session);
+      void client.postSource(threadId, postId).then((read) => {
+        setEditPending(null);
+        if (read.outcome !== 'ok') {
+          // ⚠️ `absent` is not narrated as a permission — see `editFailureLine`'s note. Here it
+          // means the post is not there for us, which is what this says.
+          setEditFailure({
+            postId,
+            line:
+              read.outcome === 'absent'
+                ? 'This post could not be opened for editing.'
+                : 'The community could not be reached, so this post could not be opened for editing.'
+          });
+          return;
+        }
+        setEditDraft(read.value.body);
+        setEditingPostId(postId);
+      });
+    },
+    [threadId, editPending, session]
+  );
+
+  /** FB-001 AC1 — save the edit. */
+  const onSaveEdit = useCallback(
+    (postId: string) => {
+      if (threadId === null || editPending !== null) return;
+      setEditPending(postId);
+      setEditFailure(null);
+
+      const client = clientFor(session);
+      void client.editPost(threadId, postId, editDraft).then((write) => {
+        setEditPending(null);
+        const line = editFailureLine(write);
+        if (line) {
+          // 🔴 THE COMPOSER STAYS OPEN AND THE DRAFT IS NOT CLEARED. AC4's rule, and it bites
+          // harder here than on an answer: the body this replaced is no longer on screen, so
+          // closing the box would lose a rewrite the person cannot see to retype.
+          setEditFailure({ postId, line });
+          return;
+        }
+        setEditingPostId(null);
+        setEditDraft('');
+        // The post's words come from the thread, so a re-read is the only honest way to draw
+        // them. ⚠️ `read` is not blanked — `onAccept`'s reason, one screen up.
+        setGeneration((n) => n + 1);
+        // An edited body changes the excerpt the list surface draws.
+        notifyCommunityChanged('threads');
+      });
+    },
+    [threadId, editPending, editDraft, session]
+  );
+
+  /**
+   * FB-001 AC2 — withdraw the thread.
+   *
+   * 🔴 **`onBack` on success, because the thread this pane is showing no longer exists.**
+   * Leaving the pane open would re-read into a 404 and land on the `gone` arm, which is the
+   * screen for *somebody else removed this* — a person who has just deleted their own thread
+   * being told it is unavailable reads as a failure.
+   */
+  const onDelete = useCallback(() => {
+    if (threadId === null || editPending !== null) return;
+    setEditPending(threadId);
+    setEditFailure(null);
+
+    const client = clientFor(session);
+    void client.deleteThread(threadId).then((write) => {
+      setEditPending(null);
+      const line = deleteFailureLine(write);
+      if (line) {
+        // ⚠️ Filed against the QUESTION's post id, because that is where the Delete verb is
+        // drawn — a refusal keyed to the thread id would match no post and draw nowhere.
+        const questionId = read?.outcome === 'ok' ? read.value.question.id : null;
+        if (questionId) setEditFailure({ postId: questionId, line });
+        return;
+      }
+      // The list is a different hook with a different cache; it cannot know the thread is gone.
+      notifyCommunityChanged('threads');
+      onBack();
+    });
+  }, [threadId, editPending, session, read, onBack]);
+
   if (threadId === null) return { pane: null, openThread };
 
   const state = composeThreadView({
@@ -288,7 +400,24 @@ export function useCommunityThread(options: { pullFor?: PullOffer } = {}): Commu
     cached: THREAD_CACHE.get(threadId) ?? null,
     pullFor: options.pullFor,
     posted,
-    accept: { pendingPostId: acceptPending, failure: acceptFailure, onAccept }
+    accept: { pendingPostId: acceptPending, failure: acceptFailure, onAccept },
+    edit: {
+      editingPostId,
+      draft: editDraft,
+      pendingPostId: editPending,
+      failure: editFailure,
+      onEdit,
+      onDraftChange: setEditDraft,
+      onSave: onSaveEdit,
+      // ⚠️ Cancel clears the draft as well as closing the box. Keeping it would restore a stale
+      // rewrite the next time the composer opened, over a body that may have changed since.
+      onCancel: () => {
+        setEditingPostId(null);
+        setEditDraft('');
+        setEditFailure(null);
+      },
+      onDelete
+    }
   });
 
   return {

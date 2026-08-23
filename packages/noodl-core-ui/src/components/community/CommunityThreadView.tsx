@@ -99,6 +99,52 @@ export type CommunityPostAccept = {
 };
 
 /**
+ * FB-001 — the author's own two verbs on their own post.
+ *
+ * > *"Right now in the community I can't edit or delete the questions I added to the bench."*
+ *
+ * 🔴 **ONE FIELD FOR TWO VERBS, because they are one affordance: "this post is mine".** Edit
+ * is offered on any post its author wrote; delete is a THREAD verb — D7 ruled *delete own
+ * thread*, not own post — so {@link remove} is non-null only on the question, and only while
+ * the platform would accept it. `threadwrites.ts` decides both; this renders what it is given.
+ *
+ * ⚠️ **Like {@link CommunityPostAccept}, this component re-derives NOTHING.** It does not
+ * compare handles and does not know who the viewer is. A renderer that worked out ownership
+ * from the author line would be a second copy of a rule whose owner is `editPost`'s
+ * `[bench-edit-not-author]`, in a layer that cannot see `author_account_id` at all.
+ *
+ * 🔴 **{@link composer} is the same shape as the reply box's composer arm and for the same
+ * reason**: `value` is the HOST's state, because `renderElements.ts` cannot evaluate a
+ * component that calls a hook, and every criterion here is a claim about what was drawn.
+ */
+export type CommunityPostEdit = {
+  /** Opens the composer. Fetching the markdown source is the host's job — see `postSource`. */
+  editLabel: string;
+  onEdit: () => void;
+  /** Non-null only on the question, for its author. `null` on every answer. */
+  remove: { label: string; busyLabel: string; busy: boolean; onRemove: () => void } | null;
+  /**
+   * Non-null while this post is open for editing. When it is, the body is REPLACED by it —
+   * a post showing its rendered blocks and an edit box at once is two versions of the same
+   * words on screen, and the reader has to work out which one they are changing.
+   */
+  composer: {
+    label: string;
+    value: string;
+    onChange: (next: string) => void;
+    onSave: () => void;
+    onCancel: () => void;
+    saveLabel: string;
+    canSave: boolean;
+    /** ⚠️ Non-null only when there is something worth saying — `CommunityReplyBox`'s rule. */
+    blockedReason: string | null;
+    busy: boolean;
+  } | null;
+  /** The platform's own words about the last attempt on THIS post. */
+  error: string | null;
+};
+
+/**
  * NAT-007 AC4 — how this screen offers to answer.
  *
  * 🔴 **Two arms, because there are two honest answers and they are not the same shape.** Before
@@ -163,6 +209,13 @@ export type CommunityPostView = {
    * thread has an accepted answer nothing here offers to move it. See `threadwrites.ts`.
    */
   accept?: CommunityPostAccept | null;
+  /**
+   * FB-001 — *"I can't edit or delete the questions I added to the bench."*
+   *
+   * ⚠️ Absent on every post but your own, which is the ordinary case. See
+   * {@link CommunityPostEdit}.
+   */
+  edit?: CommunityPostEdit | null;
 };
 
 export type CommunityThreadDetailView = {
@@ -311,11 +364,53 @@ function Post({
         {isQuestion && <span className={css['PostAsked']}>asked</span>}
       </header>
 
-      <CommunityPostBody blocks={post.blocks} density={density} onOpenLink={onOpenLink} />
+      {/* 🔴 FB-001 — the composer REPLACES the body rather than sitting under it. Two copies of
+          the same words on one screen leaves the reader working out which one they are
+          editing, and the attachments go with it: D7's scope is the BODY, so a composer that
+          drew them would imply they are part of what is being changed. */}
+      {post.edit?.composer ? (
+        <div className={css['PostEditor']}>
+          <label className={css['PostEditorLabel']} htmlFor={`edit-${post.id}`}>
+            {post.edit.composer.label}
+          </label>
+          <textarea
+            id={`edit-${post.id}`}
+            className={css['PostEditorBox']}
+            value={post.edit.composer.value}
+            rows={10}
+            onChange={(event) => post.edit!.composer!.onChange(event.target.value)}
+          />
+          {post.edit.composer.blockedReason && (
+            <p className={css['PostEditorBlocked']}>{post.edit.composer.blockedReason}</p>
+          )}
+          <div className={css['PostEditRow']}>
+            <button
+              type="button"
+              className={css['AcceptButton']}
+              onClick={post.edit.composer.onSave}
+              disabled={!post.edit.composer.canSave || post.edit.composer.busy}
+            >
+              {post.edit.composer.saveLabel}
+            </button>
+            <button
+              type="button"
+              className={css['PostEditQuiet']}
+              onClick={post.edit.composer.onCancel}
+              disabled={post.edit.composer.busy}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <CommunityPostBody blocks={post.blocks} density={density} onOpenLink={onOpenLink} />
 
-      {post.attachments.map((attachment) => (
-        <Attachment key={attachment.id} attachment={attachment} />
-      ))}
+          {post.attachments.map((attachment) => (
+            <Attachment key={attachment.id} attachment={attachment} />
+          ))}
+        </>
+      )}
 
       {/* 🔴 NAT-007 AC6. The verb is drawn UNDER the answer it is about, never in a toolbar at the
           top of the thread: "accept" is a claim about one post, and a control that floated free of
@@ -338,6 +433,35 @@ function Post({
             </p>
           )}
         </div>
+      )}
+
+      {/* 🔴 FB-001 — under the post they change, for `accept`'s reason one block up: a verb
+          that floated free of the words it refers to is how somebody edits the post above the
+          one they read. ⚠️ Hidden while the composer is open — its own Save and Cancel are
+          the verbs then, and an "Edit" button beside them would be a third thing to press. */}
+      {post.edit && !post.edit.composer && (
+        <div className={css['PostEditRow']}>
+          <button type="button" className={css['PostEditQuiet']} onClick={post.edit.onEdit}>
+            {post.edit.editLabel}
+          </button>
+          {post.edit.remove && (
+            <button
+              type="button"
+              className={css['PostEditQuiet']}
+              onClick={post.edit.remove.onRemove}
+              disabled={post.edit.remove.busy}
+            >
+              {post.edit.remove.busy ? post.edit.remove.busyLabel : post.edit.remove.label}
+            </button>
+          )}
+        </div>
+      )}
+      {/* ⚠️ Outside the row above, so a refusal is still drawn while the composer is open —
+          which is exactly when a save has just failed and the text is still in the box. */}
+      {post.edit?.error && (
+        <p className={css['AcceptError']} role="alert">
+          {post.edit.error}
+        </p>
       )}
     </article>
   );

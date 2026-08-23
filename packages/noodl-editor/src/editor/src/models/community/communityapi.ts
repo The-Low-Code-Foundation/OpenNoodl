@@ -1144,24 +1144,105 @@ export class CommunityApiClient {
   }
 
   /**
+   * FB-001 AC1 — edit a post you wrote. `PATCH`, 200.
+   *
+   * 🔴 **THE ROUTE DECIDES WHO MAY, and this method sends for anybody who asks** — the same
+   * split {@link acceptAnswer} argues, for the same reason: NAT-006 removed
+   * `author_account_id` from every read payload, so the editor cannot see who wrote a post
+   * and any client-side check is a guess about handles. A guess is a fine reason to hide a
+   * button and a terrible reason to be the only check. `editPost` in the platform's
+   * `bench.ts` raises `[bench-edit-not-author]` before touching the row.
+   *
+   * ⚠️ A non-author gets `refused` with the platform's sentence, NOT `absent` — a 403,
+   * because the post demonstrably exists. `absent` stays reserved for D15's 404.
+   */
+  editPost(threadId: string, postId: string, body: string): Promise<Write<{ editedAt: string }>> {
+    return this.write<{ editedAt: string }>(
+      'PATCH',
+      `/api/v1/bench/threads/${encodeURIComponent(threadId)}/posts/${encodeURIComponent(postId)}`,
+      { body }
+    );
+  }
+
+  /**
+   * FB-001 — the markdown SOURCE of your own post, so the composer has something to edit.
+   *
+   * 🔴 A `Read`, not a `Write`, because it is one — and it is the reason this verb needs a
+   * route at all: the thread payload carries `blocks`, never the markdown, so there is
+   * nothing in what the editor has already fetched that an edit box could be filled with.
+   *
+   * ⚠️ **`absent` here means "not yours", not only "D15 refused you"**, and the two are
+   * deliberately one answer: the platform serves this to the author alone and gives everybody
+   * else `notFound()`'s bytes. A caller must therefore not narrate `absent` as an error.
+   */
+  postSource(threadId: string, postId: string): Promise<Read<{ body: string }>> {
+    return this.get<{ body: string }>(
+      `/api/v1/bench/threads/${encodeURIComponent(threadId)}/posts/${encodeURIComponent(postId)}`
+    );
+  }
+
+  /**
+   * FB-001 AC2 — withdraw a thread you asked, while nobody else has answered. `DELETE`, 204.
+   *
+   * 🔴 **`Write<void>`, and the 204 branch in {@link write} is what makes it work.** An empty
+   * body is not JSON; without that branch a successful delete comes back `unreachable` and
+   * the person is told the community is down about a thread that is already gone.
+   *
+   * ⚠️ **An answered thread answers `refused` with a 409 and a sentence worth showing**:
+   * *"somebody has answered this thread, so it is part of their record too"*. D7 declined
+   * hide-after-answers, so that refusal is final — and a caller that swallowed the detail
+   * would leave a person pressing a button that will never work, with no reason given.
+   */
+  deleteThread(threadId: string): Promise<Write<void>> {
+    return this.write<void>(
+      'DELETE',
+      `/api/v1/bench/threads/${encodeURIComponent(threadId)}`,
+      undefined
+    );
+  }
+
+  /**
    * ⚠️ Not a `get()` with a method parameter. The two differ in more than the verb — a body,
    * a content type, a distinct outcome union and a 401 branch — and threading four
    * conditionals through one function to save a dozen lines is how the read path acquires a
    * bug that only the write path can trigger.
    */
-  private async post<T>(path: string, body: unknown): Promise<Write<T>> {
-    const headers: Record<string, string> = {
-      accept: 'application/json',
-      'content-type': 'application/json'
-    };
+  private post<T>(path: string, body: unknown): Promise<Write<T>> {
+    return this.write<T>('POST', path, body);
+  }
+
+  /**
+   * 🆕 FB-001 GENERALISED `post()` INTO THIS, and the argument the header makes against
+   * folding the READ path in does not apply here.
+   *
+   * That note says a `get()` with a method parameter would thread four conditionals through
+   * one function, because a read and a write differ in a body, a content type, an outcome
+   * union and a 401 branch. `PATCH` differs from `POST` in **none** of those — same body,
+   * same headers, same `Write<T>`, same status table — so a second copy of that table is
+   * exactly the *"one edit away from disagreeing with itself"* arrangement `bench-http.ts`
+   * warns about, and this file has already found three holes in that table one status at a
+   * time. One copy, three verbs.
+   *
+   * ⚠️ `DELETE` passes `undefined` for the body and sends none.
+   */
+  private async write<T>(
+    method: 'POST' | 'PATCH' | 'DELETE',
+    path: string,
+    body: unknown
+  ): Promise<Write<T>> {
+    const headers: Record<string, string> = { accept: 'application/json' };
+    // ⚠️ No `content-type` when there is no body. A DELETE announcing it is sending JSON and
+    // then sending nothing is a request the platform reads as a malformed body — and
+    // `apiwrite.ts`'s `bodyOptional` accepts the EMPTY body, not a broken one.
+    if (body !== undefined) headers['content-type'] = 'application/json';
     if (this.token) headers.authorization = `Bearer ${this.token}`;
 
     let response: Response;
     try {
       response = await this.doFetch(`${this.baseUrl}${path}`, {
         headers,
-        method: 'POST',
-        body: JSON.stringify(body)
+        method,
+        ...(body === undefined ? {} : { body: JSON.stringify(body) })
       });
     } catch (err) {
       return { outcome: 'unreachable', status: null, detail: String(err) };
@@ -1222,6 +1303,14 @@ export class CommunityApiClient {
     if (!response.ok) {
       return { outcome: 'unreachable', status: response.status, detail: `HTTP ${response.status}` };
     }
+    // 🔴 FB-001 — 204 HAS NO BODY, AND WITHOUT THIS IT READS AS AN OUTAGE. `DELETE
+    // /bench/threads/:id` answers `204` with nothing, `response.json()` throws on empty, and
+    // the catch below reports `unreachable` — so a delete that SUCCEEDED would tell the
+    // person the community could not be reached, and they would press it again on a thread
+    // that is already gone. This is the same hole the header counts three times for 429, 409
+    // and 413, found once more by the caller that needed it.
+    if (response.status === 204) return { outcome: 'ok', value: undefined as T };
+
     try {
       return { outcome: 'ok', value: (await response.json()) as T };
     } catch (err) {
