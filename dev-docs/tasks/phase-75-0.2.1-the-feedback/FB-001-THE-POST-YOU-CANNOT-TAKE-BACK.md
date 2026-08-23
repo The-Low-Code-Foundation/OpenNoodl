@@ -216,17 +216,60 @@ unnecessary. (It was backed up first regardless.)
   The rows above only mean something because each carries a known-firing signal that the thread
   really rendered. Same family as session 8's `[data-panel-id]` lesson, one layer up.
 
-### ⚠️ Found by driving, and owned by nobody: the editor deletes WITHOUT ASKING
+### ✅ RULED AND BUILT (session 11): the editor asks before it withdraws
 
-The web calls `window.confirm` before deleting; **the editor's `onDelete`
-(`hooks/useCommunityThread.ts:373`) fires the DELETE immediately on click.** D7 declined a soft
-delete, so the row really goes and takes its posts with it — this is the one irreversible verb
-in the pane, and on the editor it is one stray click away with no step in between.
+**Found by driving in session 10, owned by nobody then; Richard ruled for the confirm step on
+2026-08-23 and it is built and driven (`0679ccc7`).**
 
-Verb parity (D15) is satisfied — both surfaces offer the same verbs. **The safeguard is not
-mirrored**, and nothing said it had to be, which is why no spec caught it: `editFor` grades
-*which verbs are offered*, never what happens between the click and the request. 🔴 **Richard's
-call**: either the editor grows a confirm step, or the asymmetry is recorded as chosen.
+The web calls `window.confirm` before deleting; the editor's `onDelete` fired the DELETE
+immediately on click. D7 declined a soft delete, so the row really goes and takes its posts with
+it — it was the one irreversible verb in the pane, one stray click away with no step in between.
+
+🔴 **Why no spec caught it, and this is the reusable half.** Verb parity (D15) was satisfied —
+both surfaces offered the same verbs. `editFor` grades **which verbs are offered**, never what
+happens *between the click and the request*. A whole family of specs was watching the wrong
+half-second.
+
+**What was built.** `DialogLayerModel.instance.showConfirm` rather than `window.confirm`: a
+native modal would sit outside the editor's own chrome, and `createDialogLayer()` runs once in
+`router.tsx`'s `componentDidMount` for **both** routes — so one implementation covers the panel
+and the launcher tab, which matters because one hook draws both.
+
+⚠️ **`editPending` moved into the request path (`deleteNow`), not the click.** Setting it when
+the dialog opens would leave the pane spinning forever on a cancel — and cancelling is the
+*common* case for a confirmation, so that bug would have been the one people met most.
+
+⚠️ **`deleteNow` is declared BEFORE `onDelete`.** `onDelete` names it in a dependency array,
+which React evaluates on every render rather than on click, so the other order throws
+`Cannot access 'deleteNow' before initialization` the first time the pane draws. Caught by
+reading the code, not by the type checker.
+
+#### The drive, both surfaces (2026-08-23, local platform, own database)
+
+| arm | launcher tab | in-editor panel |
+|---|---|---|
+| click **Delete** | dialog shown, **0 requests sent** | dialog shown, **0 requests sent** |
+| click **Cancel** | dialog gone, **0 DELETE**, still on the thread, verb back to `Delete` (not stuck on `Deleting…`), **row still in the database** | same, **row still in the database** |
+| reopen → **Confirm** | **exactly one DELETE**, pane back on the list, **0 rows, 0 orphan posts** | **exactly one DELETE**, pane back on the list, **0 rows, 0 orphan posts** |
+
+- ✅ **The known-firing control that mattered**: before concluding "the dialog does not appear",
+  `showConfirm` was fired directly through webpack's require and **did** render — which is what
+  ruled out the dialog layer and pointed at the click delivery instead.
+- 🔴 **And that was the real fault: a hand-rolled `Input.dispatchMouseEvent` over a fresh
+  WebSocket reported `clicked` and did nothing.** The button hit-tested correctly at those exact
+  coordinates and its React `onClick` was verifiably the new code. `npm run cdp -- click` on the
+  same selector worked first time. ⚠️ **A CDP click that reports success is not a click** — the
+  memory's input trap, met again in a new shape.
+- ⚠️ `BaseDialog` renders every dialog twice; the buttons read `["Cancel","Delete","Cancel","Delete"]`
+  until filtered with `:not([class*=MeasuringContainer])`.
+
+#### The guard, and what it is honestly worth
+
+Four rows in `tests-unit/fb-001/editverbs.test.ts`, **3 red on the pre-change hook** (the fourth
+is a non-vacuity row and is meant to stay green). They read **source**, which this phase has
+shown passes on dead code — so they are a regression guard, not evidence. What they do catch is
+the specific way this regresses: somebody re-inlining the request onto the click. The evidence is
+the drive above.
 
 ### What is still not driven
 

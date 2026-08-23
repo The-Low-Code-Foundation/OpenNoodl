@@ -1,87 +1,106 @@
 # Phase 75 — next session
 
-**State as of 2026-08-23 (session 11).** Session 11 did **one** thing: it took **FB-023** from
-"open, mechanism under-claimed, four candidate fixes" to **fixed, driven, and specced** — and on
-the way it found that the filed diagnosis was **wrong about which routes were affected**, in a way
-that would have made the obvious fix a non-fix. Read *"What session 11 found"*, then session 10's
-notes, which still stand.
+**State as of 2026-08-23 (session 11).** Session 11 fixed **FB-023**, **deployed the platform to
+nexus-1**, and built + drove the **editor's delete confirmation**. Three things closed; read
+*"What session 11 found"*, then session 10's notes, which still stand.
 
 ## What session 11 found
 
-- ✅ **FB-023 — FIXED, DRIVEN, SPECCED.** Platform `0860426` in `nodegx-community`. The task file
-  carries the full tables. What is worth carrying forward:
-- 🔴 **THE MECHANISM WAS ONE `grep` AWAY THE WHOLE TIME, AND THE FILE HAD MARKED IT "NOT
-  ISOLATED".** `drizzle()` **mutates the postgres.js client you hand it** — five lines in
+### FB-023 — fixed, driven, specced (`nodegx-community` `0860426`)
+
+- 🔴 **THE MECHANISM WAS ONE `grep` AWAY, AND THE FILE HAD MARKED IT "NOT ISOLATED".**
+  `drizzle()` **mutates the postgres.js client you hand it** — five lines in
   `drizzle-orm/postgres-js/driver.js` set the parsers for timestamptz/date/time/timestamp to
-  identity, permanently, because Drizzle maps dates itself. Every later raw `` sql`…` `` on that
-  client then reads a date as a **string**.
-  - 🔴 **The second half is why it read as flakiness.** postgres.js resolves `parser: parsers[type]`
-    **once**, at Describe time, and caches it **per connection**. Statements prepared *before* the
-    mutation keep working forever. That single fact explains the "3-cycle", the `max=1` run that
-    "disproved" the first model, and every probe that "did not reproduce cleanly".
-  - ✅ **The lesson: when a mechanism will not isolate, read the dependency's source.** The file
-    had a careful, honest under-claim where a `sed -n` on `node_modules` had the answer.
-- 🔴 **THE POPULATION WAS WRONG, AND IT MADE A LISTED FIX CANDIDATE A NON-FIX.** The file said
-  `/api/v1/community/home` was *"the only `/api/v1` route that wraps the shared pool in Drizzle"*.
-  It is not: `serveCommunityRead` hands `apiSql()` to **every** read route, and `listArticles` /
-  `getArticle` call `createDb` too. Driven on a virgin pool, **all three** routes score **20/20**
-  failures against a **0/20** control. **The editor draws TUT-004's tutorials**, so candidate #2
-  ("drop Drizzle from `communityHome`") would have left it exactly as broken — and looked fixed.
-  ✅ **Before trusting "X is the only caller", grep the helper that supplies X's argument.**
-- 🔴 **A WARM-UP CONTROL DOES NOT OBSERVE THIS BUG — IT PREVENTS IT.** Session 10 measured 13/20;
-  session 11's first tutorials arm measured **0/20 and read as "tutorials is innocent"**. Both
-  because a "20 reads first, to show it works" arm had already prepared that statement on every
-  connection while the parsers were still good. The real number is **20/20** on a virgin pool.
-  ⚠️ **A control that touches the subject can immunise it.** New shape, worth remembering.
-- ✅ **The fix is structural: `createDb()` now takes no client at all** — the trap was the
-  parameter, and three of its four call sites had fallen into it. Plus a guard row: nothing outside
-  `src/db/index.ts` may call `drizzle()`.
-  - 🔴 **Candidate #4 (coerce the date in `toPost`) would have been the worst outcome on the list**
-    — it fixes the one call site that *throws* and leaves every silently-wrong one, with the only
-    alarm switched off.
-- 🔴 **MY OWN SPEC HAD A VACUOUS ROW, CAUGHT ONLY BY MUTATION.** *"the date survives as a Date"*
-  read the test's own `freshDb()` client — which no route ever poisons — so it **passed on the
-  broken code while appearing to assert the mechanism**. Repointed at `apiSql()`. The file is
-  8 rows, **7 red on the reverted code**; the 8th is a forward guard and is meant to stay green.
-- ⚠️ **AC4's silent population is real but its consequence was nil, and that is measured, not
-  assumed.** Every raw Date read on a Drizzle-touched client returns a string — including the
-  homepage's and tutorials pages' own module-scope pools. But five web pages rendered
-  **byte-identical** before and after the fix (only Next's build id differed). **Bound: five pages,
-  signed out, one seed.** A signed-in render and the org pages are unchecked.
+  identity, permanently. Every later raw `` sql`…` `` on that client reads a date as a **string**.
+  - 🔴 **Why it read as flakiness**: postgres.js resolves `parser: parsers[type]` **once**, at
+    Describe time, and caches it **per connection**. Statements prepared *before* the mutation
+    keep working. That one fact explains the 3-cycle, the `max=1` run that "disproved" the first
+    model, and every probe that would not reproduce.
+  - ✅ **Lesson: when a mechanism will not isolate, read the DEPENDENCY'S source.**
+- 🔴 **THE POPULATION WAS WRONG, AND IT MADE A LISTED FIX A NON-FIX.** The file named
+  `/community/home` as the only poisoning route. `serveCommunityRead` hands `apiSql()` to **every**
+  read route, and both tutorials routes also reach `createDb`. On a virgin pool **all three** score
+  **20/20** failures against a **0/20** control. The editor draws TUT-004's tutorials, so candidate
+  #2 would have left it broken *and looked fixed*. ✅ **Grep the helper that supplies the argument.**
+- 🔴 **A WARM-UP CONTROL DOES NOT OBSERVE THIS BUG — IT PREVENTS IT.** Session 10's 13/20 and
+  session 11's first tutorials arm reading **0/20 ("innocent")** were both artifacts of reading a
+  thread before the poisoner ran. ⚠️ **A control that touches the subject can immunise it.**
+- ✅ **Fix is structural: `createDb()` takes no client** — the trap was the parameter, and 3 of its
+  4 call sites had fallen in. Guard row: only `src/db/index.ts` may call `drizzle(`.
+- 🔴 **My own spec had a vacuous row**, caught only by mutation: *"the date survives as a Date"*
+  read the test's own `freshDb()` client, **which no route ever poisons**, so it passed on broken
+  code while appearing to assert the mechanism. Repointed at `apiSql()`. 8 rows, **7 red on the
+  reverted code**.
+
+### ✅ DEPLOYED to nexus-1 — the four unshipped commits are live
+
+`8d40b63` → **`0860426`**, at 2026-08-23T11:26:35Z. Neighbours **200 → 200** on all three
+(`nodegx.io`, `nexus.digitalbricks.io`, `digitalbricks.io`); sign-in 302s; backup and restore-check
+green. ✅ **Verified on the live site, not just by the deploy script**: after hitting *both*
+poisoning routes, 12 consecutive live thread reads returned **200 — 0/12 failures** (pre-fix that
+was 12/12). This also shipped FB-002's web half and the token/gate sync, so the live site's dark
+inks and the Bench's default list changed as expected.
+
+### ✅ The editor now asks before it withdraws (`0679ccc7`)
+
+Richard ruled for the confirm step. `DialogLayerModel.showConfirm`, not `window.confirm` — the
+layer is created once in `router.tsx` for **both** routes, so one implementation covers the panel
+and the launcher tab. Driven on **both**: click Delete → dialog, **0 requests**; Cancel → thread
+still in the database and the verb back to `Delete`; Confirm → **exactly one DELETE**, back on the
+list, **0 orphan posts**.
+
+- 🔴 **`editPending` moved into the request path, not the click** — setting it when the dialog
+  opens leaves the pane spinning forever on a cancel, which is the *common* case.
+- 🔴 **`deleteNow` must be declared BEFORE `onDelete`** — a dependency array is evaluated on every
+  render, so the other order throws `Cannot access 'deleteNow' before initialization` on first draw.
+- 🔴 **A HAND-ROLLED CDP CLICK REPORTED SUCCESS AND DID NOTHING.** `Input.dispatchMouseEvent` over
+  a fresh WebSocket, at coordinates that hit-tested correctly, on a button whose React `onClick`
+  was verifiably the new code — nothing happened, twice. **`npm run cdp -- click` worked first
+  time.** ⚠️ Use the harness's `click`; tag the target with a `data-*` attribute when the selector
+  is not unique. The near-miss: this looked exactly like "my code does not run".
+- ✅ **The control that cracked it** was firing `showConfirm` directly through webpack's require —
+  it rendered, which ruled out the dialog layer and pointed at click delivery.
 
 ## First moves, in order
 
-1. 🧭 **The confirm-step ruling (carried from session 10)** — the editor's Delete fires the
-   request on click (`useCommunityThread.ts:373`); the web calls `window.confirm` first. D7
-   declined a soft delete, so the row really goes and takes its posts. **Does the editor grow a
-   confirmation, or is the asymmetry recorded as chosen?** Richard's call.
-2. 🧭 **Deploy, or keep holding.** nexus-1 is still `8d40b63`. **Four** platform commits are now
-   unshipped: `9ecec25` (tokens + gates), `fd695ae` (FB-002's web half), `080a4f1` (FB-001) and
-   `0860426` (FB-023). ⚠️ FB-023 is a **live defect on every editor that opens the Community
-   panel**, which is an argument for shipping sooner than the others would justify alone.
-   Deploying also changes the live site's dark inks and the Bench's default list — **ask first.**
-3. **FB-019 implementation** — the sweep already revised AC1/AC2: keep the merge, fix only the
+1. **FB-019 implementation** — the sweep already revised AC1/AC2: keep the merge, fix only the
    no-stored-unit case, on **all three** registration paths. 🔴 **Drive an image-cropper pan
    first** — the six broken connections are predicted from source and nobody has watched one fail.
-4. **Quick wins with no rulings**: FB-007, FB-010, FB-003 — the build-the-caller family.
-5. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
+2. **Quick wins with no rulings**: FB-007, FB-010, FB-003 — the build-the-caller family.
+3. ⚠️ **AC4's unchecked remainder from FB-023.** Every raw Date read on a Drizzle-touched client
+   returned a string, including the homepage's and tutorials pages' own module-scope pools. Five
+   pages rendered **byte-identical** pre/post fix, so the consequence was nil — but that bound is
+   **five pages, signed out, one seed**. A signed-in render and the org pages are unchecked.
+4. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
    `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — eight days), the 15 lessons' prose,
    Discord's row in the `?` menu, `/rfps` search.
 
-## Driving the platform (session 11's harness — it is cheaper than session 10's)
+## Gates, this tree
 
-For anything about the **pool**, you do not need the editor at all — two curl arms against a built
-server separate it. 🔴 **Each arm needs a FRESH SERVER**, because the pool is process-wide and one
-arm's reads inoculate the next.
+- Community suite: **55 files / 1321 specs / 0 failures** (s9: 54/1313 ⇒ +1/+8, the FB-023 file).
+  `npm run typecheck` clean.
+- Editor `tests-unit`: **292 suites / 4763 specs / 0 failures** (s10: 292/4759 ⇒ +4, the confirm
+  rows). `typecheck:editor` clean.
+- `test:ci` **not re-run this session** — last known floor is session 8's (4 AIX-006 failures, a
+  strict subset of 08-19's 10). 🔴 **Re-measure rather than quoting this.**
 
-- Own database: `DATABASE_URL=postgres://nodegx:nodegx@localhost:55432/nodegx_community_fb023drive`
-  (exists, migrated, seeded). A second, `…_fb023spec`, exists for suite runs.
-- `npm run build` then `npx next start -p 3200`. Kill with
-  `lsof -ti :3200 -sTCP:LISTEN` — 🔴 **never bare `lsof -ti :3200`**, which matches clients too.
-- Signed-out reads work (`D14` consequence 4), so AC1 needs no session at all. For a write, mint
-  one: insert a `sessions` row with `sha256(token)` as `token_hash`.
-- ⚠️ **`git apply` a saved patch, not `git stash`**, when you need to flip between fixed and broken
-  builds for a control pair. Session 11 flipped four times.
+## Driving, session 11's additions
+
+- **For pool questions you do not need the editor**: two curl arms against a built server separate
+  it. 🔴 **Each arm needs a FRESH SERVER** — the pool is process-wide and one arm's reads inoculate
+  the next.
+- Databases exist: `nodegx_community_fb023drive` (migrated + seeded) and `…_fb023spec`.
+- 🔴 **To patch `fetch` before the app's clients capture it**, use CDP
+  `Page.addScriptToEvaluateOnNewDocument` + `Page.reload`. Patching after boot does **nothing** —
+  `CommunityApiClient` binds `globalThis.fetch` in its constructor, and the panel silently keeps
+  talking to the **live** site. ⚠️ That is the dangerous failure: check `__fb023log` is non-empty
+  and the data is local **before** clicking anything destructive.
+- ✅ Back up `~/Library/Application Support/NodeGX/nodegx.community.session.json` (Richard's real
+  live credential) even when you do not intend to touch it; swapping the bearer in the fetch patch
+  is what makes touching it unnecessary. Verified unchanged by md5 afterwards.
+- ⚠️ `lsof -ti :3200 -sTCP:LISTEN` to kill a server; **never the bare form**, which matches clients.
+- ⚠️ An empty element's `innerText` is `''`, so `el.innerText || '(none)'` reports `(none)` for a
+  layer that **exists and is empty** — that cost a wrong conclusion about the dialog layer.
 
 **State as of 2026-08-23 (session 10).** Session 10 did **one** thing and it took the whole
 session: it **drove FB-001 on both surfaces**. The verbs work. The drive also found a platform

@@ -49,13 +49,18 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 - ⬜ **FB-016** — box-model overlay, transform-origin crosshair, radius-following highlight
   (M/L)
 - ⬜ **FB-022** — drag-to-scrub numeric fields (M/L; after FB-017/018 land in the same rows)
-- ✅ **FB-023** — [the pool that forgets how to read a date](FB-023-THE-POOL-THAT-FORGETS-HOW-TO-READ-A-DATE.md) — **FIXED AND DRIVEN, session 11** (`nodegx-community` `0860426`). `drizzle()` **mutates the client you hand it**, setting the date parsers to identity forever, so every later raw `sql` read on the shared `apiSql()` pool returned a **string**: thread reads **500**, and an edit came back **`400 "that could not be posted"`** — blaming the author for text that was fine. 🔴 **The filed population was wrong: THREE routes poisoned the pool** (`/community/home` and **both tutorials routes**, all via `serveCommunityRead`'s shared pool), each **20/20** on a virgin pool against control **0/20** — so the file's fix candidate #2 was a **non-fix**, and the editor draws tutorials too. ✅ Fixed structurally: **`createDb()` takes no client**, because the trap was the parameter. 8-row regression file, **7 red on the reverted code**. ⚠️ **Not deployed.**
+- ✅ **FB-023** — [the pool that forgets how to read a date](FB-023-THE-POOL-THAT-FORGETS-HOW-TO-READ-A-DATE.md) — **FIXED AND DRIVEN, session 11** (`nodegx-community` `0860426`). `drizzle()` **mutates the client you hand it**, setting the date parsers to identity forever, so every later raw `sql` read on the shared `apiSql()` pool returned a **string**: thread reads **500**, and an edit came back **`400 "that could not be posted"`** — blaming the author for text that was fine. 🔴 **The filed population was wrong: THREE routes poisoned the pool** (`/community/home` and **both tutorials routes**, all via `serveCommunityRead`'s shared pool), each **20/20** on a virgin pool against control **0/20** — so the file's fix candidate #2 was a **non-fix**, and the editor draws tutorials too. ✅ Fixed structurally: **`createDb()` takes no client**, because the trap was the parameter. 8-row regression file, **7 red on the reverted code**. ⚠️ **Not deployed.** **✅ DEPLOYED to nexus-1 2026-08-23** (`8d40b63`→`0860426`, neighbours 200→200); **verified live: 0/12 failures after both poisoners.**
 - (FB-012 gains the CSS-basics lesson + the accumulating-state bar — tracked there)
 
 ## Tier 2 — unblocked 2026-08-22 (D6, D7 ruled)
 
-- ⬜ **FB-001** — edit and delete your own bench post (M) — **D7 ruled 08-22: edit-own +
-  delete-unanswered, no report/flag, no hide.** Build the smallest honest version
+- ✅ **FB-001** — edit and delete your own bench post — **DONE.** D7 ruled 08-22: edit-own +
+  delete-unanswered, no report/flag, no hide. Built s9 (`080a4f1` + `e3c52fbe`), **driven on both
+  surfaces s10**, and **s11 gave the editor a confirmation step** (`0679ccc7`):
+  `DialogLayerModel.showConfirm`, driven on both surfaces — click Delete → dialog with **0
+  requests**, Cancel → the row survives and the verb resets, Confirm → **exactly one** DELETE and
+  **0 orphan posts**. 🔴 `editFor` and D15 grade which verbs are *offered*, so neither could ever
+  have caught a missing confirm — a whole family of specs was watching the wrong half-second.
 - ✅ **FB-006** — the launcher half **done 2026-08-22**: the community page is the web's tabs
   (**Bench · Tutorials · Replays · People**), one section at a time, chrome outside them, a lead
   per tab. Built, specced (28 new assertions across two files), **driven in both themes**, and
