@@ -1,5 +1,116 @@
 # Phase 75 — next session
 
+**State as of 2026-08-23 (session 15).** Session 15 built, specced and **drove FB-003 over real
+HTTP** — the two composers, so somebody other than Richard can ask for work or offer to do it.
+**FB-003 is closed.** The drive found a defect the task file, the spec fixtures and sixteen green
+specs had all walked past, and it is on the **most likely path through the feature**. Read *"What
+session 15 found"*, then session 14's notes, which still stand.
+
+## What session 15 found
+
+### ✅ FB-003 — BUILT, SPECCED, DRIVEN, CLOSED (`nodegx-community` `67df2b1`)
+
+Two POSTs added to the routes that already served the GETs, and one client island
+(`src/components/BoardComposer.tsx`) holding both composers. **An API caller and not a server
+action**, on `ApproveForm.tsx`'s recorded argument and because AC1 is literally that a request
+posted on the web reaches the **editor's** NAT-009 client without either being redeployed.
+
+- 🔴 **THE DRIVE FOUND WHAT NOTHING ELSE COULD, AND IT WAS THE COMMON CASE.**
+  **`coaching_offers.account_id` references `profiles`, not `accounts`** (`0004…sql:255`). So an
+  account with **no profile row cannot create an offer at all** — and that is *every* account a
+  real sign-up produces, because `upsertProfile` has no caller in `src/`. It answered the generic
+  **`"that offer could not be created"`**, which is precisely the default `board-http.ts` exists
+  to prevent. Now `[offer-needs-profile]`, a **403 naming the precondition**.
+- 🔴 **THE SPEC FIXTURE IS WHAT HID IT.** `makeUnlistedBuilder` creates an account **with** a
+  profile and no evidence — the *below-the-bar* case. A real sign-up has **no profile row**, a
+  different refusal entirely. ✅ **New rule: when a fixture builds the subject, ask which state
+  of the subject PRODUCTION actually produces.** The below-the-bar arm was green and honest and
+  simply about somebody who does not exist yet.
+- ✅ **The control that settled it**: the *same* profile-less account posts an RFP happily (201),
+  because `rfps.poster_account_id` references `accounts`. One account, two verbs, opposite
+  answers — driven over HTTP, not just specced.
+- ✅ **Creating an offer and being ADVERTISED are two events.** `listOffers` gates on D8's bar;
+  `createOffer` gates on neither. The route returns `listed`, computed by a predicate **shared
+  with `listOffers`** — a second copy would agree the day it was written and drift the first time
+  the bar moved. Three states, all driven: **403**, **201 `listed:false`**, **201 `listed:true`**.
+- 🔴 **Two more refusal-layer defects.** `boardRefusalResponse`'s default said *"that **response**
+  could not be sent"* — it would have told somebody who posted a **request** that their response
+  failed. And **`[rfp-response-cap]` names two different failures** (cap spent vs cap not
+  positive); unreachable today because no route lets a poster set a cap, recorded rather than
+  "fixed" with something nothing can exercise.
+- ✅ **There is no rate band and no budget vocabulary.** The scope asked for both; the schema has
+  `price_cents`/`currency`/`duration_minutes`, and `budget_band` is free text with a length check.
+  Derived from the schema per the task's own NAT-008 trap, and a spec row asserts the budget
+  sentence names no band.
+- ✅ **D15 by construction**: two new `WRITE_CAPABILITIES`, which is what makes them governed —
+  `d15-visibility` quantifies over that list and **grew four rows by itself**.
+  🔴 `gateFor` copies `serveCommunityWrite`'s **order** on purpose: measured live, signed-out is
+  `surface=present, viewer=NO, postRfp=False` and org-minor is `surface=ABSENT` — **identical in
+  capabilities, opposite in treatment**.
+- ⚠️ **One mutation survived and it is an EQUIVALENT MUTANT**, not a hole: swapping the `surface`
+  and `viewer` checks changes nothing, because `apiviewer.ts:97` makes `viewer === null` imply
+  `surface === 'present'`. ✅ **The invariant is now the assertion** — a mutation that breaks it
+  turns the row red, so the ordering becomes load-bearing exactly when it starts to matter.
+- 🔴 **A `useRouter` in the island made `renderToStaticMarkup` THROW** — *"invariant expected app
+  router to be mounted"* — so `uni023`'s read-path row failed **to run** rather than failing.
+  ✅ Fixed structurally: the gate is a separate component from the form, so the server render
+  returns `null` before anything touches the router. Same family as the memory index's
+  *"a THROWING HOOK ⇒ fails TO RUN"*.
+
+## First moves, in order
+
+1. 🔴 **FB-010 — and session 15 turned it from "nice" into a BLOCKER.** *"Offer coaching"* now
+   exists and **refuses every real account**, correctly and by name, because there is nowhere to
+   create a profile. FB-003 built the door; FB-010 is the key. Its AC1/AC2 are unchanged;
+   ⚠️ its AC3 (revoking an editor grant from the web) still makes
+   `nat007-device-consent.test.tsx`'s absence assertion false **on purpose**.
+2. **FB-007** — the editor uploads the capture it already takes. ⚠️ It needs a **recorded display
+   decision** (scope 2 reverses NAT-008's "the editor fetches no remote image") and the E7
+   platform half verified live before any editor work can be driven.
+3. ⚠️ **FB-003's two deliberate remainders**: **AC4's editor half** — `POST_A_REQUEST_LINE` has
+   **no UI consumer**, so there is no click to redirect and a path constant would have been a
+   23rd *build-the-caller* committed on purpose; whoever builds NAT-009's board UI wants `/rfps`.
+   And **the form is not driven in a browser** — server HTML, the capability payload, every
+   `gateFor` branch and both routes over real HTTP are, but hydration rendering is spec + bundle
+   presence only.
+4. ⚠️ **DEPLOY.** `67df2b1` is committed and unshipped; nexus-1 is still at `0860426`. Two
+   sessions of community work are now waiting behind a deploy that is Richard's call.
+5. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
+   `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — eight days), the 15 lessons' prose,
+   Discord's row in the `?` menu, `/rfps` search.
+
+## Gates, this tree
+
+- Community suite: **56 files / 1360 specs / 0 failures** (session 11: 55/1321). **+34** the new
+  `fb003-composers.test.ts`, **+1** `uni023`, **+4** generated by
+  `describe.each(WRITE_CAPABILITIES)`. **Reconciles exactly** — and the +4 is the D15 gate doing
+  the job it was built for, with nobody writing a row.
+- `npm run typecheck` clean. **Twelve mutations, all red.**
+- ⚠️ **`npm run lint` DOES NOT RUN, for anyone.** It is `next lint`, deprecated in Next 15, and it
+  **prompts interactively** for an ESLint configuration instead of linting. Not caused by this
+  session; worth knowing before anyone quotes it as a passing gate.
+- **Editor** `tests-unit`, `noodl-viewer-react`, `@noodl/runtime`, `test:ci`: **not run** —
+  nothing in this session touched the editor repo except documentation.
+  🔴 **Re-measure rather than quoting any handover.**
+
+## Session notes
+
+- **Databases left behind**: `nodegx_community_fb003` (specs) and `nodegx_community_fb003drive`
+  (the drive — migrated *and seeded*, with `nia-drive`, `sam-below` and `pupil-drive` accounts
+  already in the three states). Reusable; rebuild rather than trusting them.
+- ✅ **Driving this platform needs no editor and no browser**: `npm run build` then
+  `npx next start -p 3200` against a `DATABASE_URL` of its own, sessions minted by inserting a
+  `sessions` row with `sha256(token)`, and `curl` with a bearer. That reaches every route.
+  ⚠️ **Kill it with `lsof -ti :3200 -sTCP:LISTEN`**, never the bare form.
+- ⚠️ **`psql -tAc` prints the command tag as well as the row** — `insert … returning id` gave an
+  id with `INSERT 0 1` glued to it, which produced a bearer token that looked like a session and
+  answered **400**. Use `-tAqc … | head -1`.
+- ⚠️ **The orphaned `AskAboutNodeDialog.module.scss` fix is STILL uncommitted** in the editor tree
+  and still belongs to neither of us — mtime `2026-08-20 15:41`. Untouched this session. It is
+  Richard's call.
+- A peer session (`opennoodl-78`) was live in this checkout; this session's source edits were all
+  in **`nodegx-community`**, which it was not working in.
+
 **State as of 2026-08-23 (session 14).** Session 14 built and drove **FB-019 scope (3)** — the
 task's whole remainder — and **FB-019 is now closed**. The drive found that the editor had been
 saying the missing thing for years on every units port *except the two that were reported*, and an
