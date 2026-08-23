@@ -195,7 +195,16 @@ produces, which is the fixture trap session 15 recorded.
   minted before this deploy. Nothing can tell them apart retroactively.
 - ⚠️ **No avatar upload** — scope said defaults only in v1, and an upload is a moderation
   surface (D7) plus an object-store key.
-- **Not deployed.** nexus-1 is still at `0860426`, now **three** commits behind.
+- ✅ **DEPLOYED 2026-08-23** on Richard's instruction. `0860426` → **`eaa19c6`**, stamped
+  `2026-08-23T17:36:40Z`. Migration `0019` applied on production (`already applied: 18`,
+  `applied: 0019_fb010_the_account_page.sql`). Neighbours **200 → 200** on all three
+  (`nodegx.io`, `nexus.digitalbricks.io`, `digitalbricks.io`); sign-in 302s to GitHub; backup
+  and restore-check green. This also shipped FB-003, which had been sitting unreleased.
+  ✅ **Verified live rather than trusting the deploy script**, which checks the site and not the
+  feature: `/settings` **200** rendering *"Your account"* and a sign-in link carrying
+  `?next=%2Fsettings`, with **zero form controls signed out**; `/avatars/harbour.svg` **200
+  `image/svg+xml`**; `/api/v1/me/sessions` **401** signed out; the device consent copy now says
+  *"or remove it from your account"* and the phrase **"only place" is gone**.
 
 ## Gates
 

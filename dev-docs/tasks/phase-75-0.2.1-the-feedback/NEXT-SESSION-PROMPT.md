@@ -81,8 +81,12 @@ fixture lesson.
    platform half verified live. ⚠️ FB-010 deliberately did **not** put `avatarKey` or `experience`
    on `personProfile` in `apisurfaces.ts`, so the mirror still has its flat disc — FB-007 is where
    that decision gets made, not a side effect.
-2. ⚠️ **DEPLOY.** nexus-1 is at `0860426` and is now **three** commits behind (FB-003, FB-010, and
-   this session's docs). Richard's call.
+2. ✅ **DEPLOYED — nothing is waiting.** Richard called it at the end of session 16: `0860426` →
+   **`eaa19c6`**, migration `0019` applied on production, neighbours **200 → 200**, backup and
+   restore-check green. **FB-003 shipped with it.** ✅ Verified live rather than trusting the
+   deploy script (which checks the site, not the feature): `/settings` 200 with no form controls
+   signed out, `/avatars/*.svg` 200, `/api/v1/me/sessions` 401, and the consent copy's *"only
+   place"* gone. 🔴 **`main` on the host is now AHEAD of anything a handover quotes — re-read.**
 3. ⚠️ **FB-010's remainders**: the form is not driven in a **browser** (server HTML, both routes
    over real HTTP and the 1.76 kB bundle are); AC2's bench disc; no avatar upload (D7 moderation
    surface, scope said defaults only).
