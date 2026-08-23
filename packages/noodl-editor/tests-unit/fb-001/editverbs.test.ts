@@ -20,6 +20,9 @@
  *
  * @module noodl-editor/tests-unit/fb-001/editverbs
  */
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 import type { MeResponse, Read, ThreadDetail, ThreadPost, Write } from '@noodl-models/community/communityapi';
 import {
   deleteFailureLine,
@@ -330,5 +333,61 @@ describe('FB-001 — what a failure says', () => {
     for (const write of outcomes) {
       expect(deleteFailureLine(write)!.toLowerCase()).not.toContain('still here');
     }
+  });
+});
+
+/**
+ * FB-001 AC2, the gesture — the editor asks before it withdraws.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🔴 WHAT THIS BLOCK IS, AND HONESTLY WHAT IT IS NOT.
+ *
+ * The web has always called `window.confirm` before deleting; the editor fired the DELETE
+ * straight off the click, so one surface was a gesture safer than the other. D15's verb parity
+ * could not catch that and neither can `editFor` — both grade which verbs are *offered*, and
+ * this is about what happens between the click and the request.
+ *
+ * ⚠️ These rows read SOURCE, which this phase has repeatedly shown passes on dead code. They
+ * are a regression guard, not evidence the confirmation works: the evidence is the drive
+ * (2026-08-23, both surfaces — the dialog appears with no request sent, Cancel leaves the
+ * thread in the database, Confirm sends exactly one DELETE and the pane returns to the list).
+ * What they DO catch is somebody re-inlining the request onto the click, which is the specific
+ * way this regresses.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+describe('AC2 — the editor asks before it withdraws', () => {
+  const source = readFileSync(
+    join(__dirname, '../../src/editor/src/hooks/useCommunityThread.ts'),
+    'utf8'
+  );
+
+  // Non-vacuity: if the file moves or is renamed, these rows must not quietly read `false`.
+  it('the hook is where it is expected to be', () => {
+    expect(source.length).toBeGreaterThan(1000);
+    expect(source).toContain('deleteThread');
+  });
+
+  it('the click opens a confirmation rather than sending the request', () => {
+    const onDelete = source.slice(source.indexOf('const onDelete = useCallback'));
+    const body = onDelete.slice(0, onDelete.indexOf('}, ['));
+    expect(body).toContain('showConfirm');
+    // 🔴 The whole rule: no request may be reachable from the click itself.
+    expect(body).not.toContain('deleteThread');
+  });
+
+  it('the request lives behind the confirmation, and is the only copy', () => {
+    expect(source.match(/client\.deleteThread\(/g)).toHaveLength(1);
+    const deleteNow = source.slice(source.indexOf('const deleteNow = useCallback'));
+    expect(deleteNow.slice(0, deleteNow.indexOf('}, ['))).toContain('client.deleteThread(');
+  });
+
+  /**
+   * ⚠️ `editPending` must be set by the request path, NOT by the click. Setting it when the
+   * dialog opens leaves the pane spinning forever on a cancel — and cancelling is the common
+   * case for a confirmation, so that bug would be the one users met most.
+   */
+  it('the pane is not put in a pending state merely by asking', () => {
+    const onDelete = source.slice(source.indexOf('const onDelete = useCallback'));
+    expect(onDelete.slice(0, onDelete.indexOf('}, ['))).not.toContain('setEditPending');
   });
 });

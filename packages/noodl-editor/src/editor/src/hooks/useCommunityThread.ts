@@ -46,15 +46,17 @@ import {
   deleteFailureLine,
   editFailureLine
 } from '@noodl-models/community/threadwrites';
+import { DialogLayerModel } from '@noodl-models/DialogLayerModel';
 
 import type { CommunityReplyBox, CommunityThreadState } from '@noodl-core-ui/components/community';
+
+import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import { notifyCommunityChanged } from '../models/community/communitychanged';
 import {
   COMMUNITY_THREAD_EVENT,
   clearPendingCommunityThread,
   takePendingCommunityThread
 } from '../utils/community/communityThreadRequest';
-import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 
 /**
  * Threads read this session, newest read wins.
@@ -363,34 +365,75 @@ export function useCommunityThread(options: { pullFor?: PullOffer } = {}): Commu
   );
 
   /**
-   * FB-001 AC2 — withdraw the thread.
+   * FB-001 AC2 — withdraw the thread. The request, once it has been agreed to.
    *
    * 🔴 **`onBack` on success, because the thread this pane is showing no longer exists.**
    * Leaving the pane open would re-read into a 404 and land on the `gone` arm, which is the
    * screen for *somebody else removed this* — a person who has just deleted their own thread
    * being told it is unavailable reads as a failure.
+   *
+   * ⚠️ Declared BEFORE `onDelete` and not after it. `onDelete` names it in a dependency array,
+   * which is evaluated on every render rather than on click, so the other order throws
+   * `Cannot access 'deleteNow' before initialization` the first time the pane draws.
+   */
+  const deleteNow = useCallback(
+    (id: string) => {
+      setEditPending(id);
+      setEditFailure(null);
+
+      const client = clientFor(session);
+      void client.deleteThread(id).then((write) => {
+        setEditPending(null);
+        const line = deleteFailureLine(write);
+        if (line) {
+          // ⚠️ Filed against the QUESTION's post id, because that is where the Delete verb is
+          // drawn — a refusal keyed to the thread id would match no post and draw nowhere.
+          const questionId = read?.outcome === 'ok' ? read.value.question.id : null;
+          if (questionId) setEditFailure({ postId: questionId, line });
+          return;
+        }
+        // The list is a different hook with a different cache; it cannot know the thread is gone.
+        notifyCommunityChanged('threads');
+        onBack();
+      });
+    },
+    [session, read, onBack]
+  );
+
+  /**
+   * FB-001 AC2 — the gesture: ask, and only then withdraw.
+   *
+   * 🔴 ASK FIRST, AND THE REQUEST DOES NOT LEAVE UNTIL THE ANSWER IS YES.
+   *
+   * D7 declined a soft delete, so this really removes the row and takes its posts with it —
+   * there is no undo anywhere to reach for afterwards. The web half has always called
+   * `window.confirm` here; until this existed the editor fired the DELETE straight off the
+   * click, so the same verb was one gesture safer on one surface than the other.
+   *
+   * 🔴 D15's verb parity could never have caught that. It is about which verbs a viewer is
+   * *offered*, and `editFor` grades exactly that — what happens between the click and the
+   * request is outside every spec in the family.
+   *
+   * ⚠️ `DialogLayerModel` rather than `window.confirm`: a native modal would sit outside the
+   * editor's own chrome, and the layer is created once in `router.tsx` for **both** routes —
+   * so this works on the launcher tab as well as in the panel, which matters because one hook
+   * draws both.
+   *
+   * ⚠️ `editPending` is set inside `deleteNow`, not before the dialog opens. Setting it early
+   * would leave the pane spinning forever on a cancel, and cancelling is the common case for a
+   * confirmation.
    */
   const onDelete = useCallback(() => {
     if (threadId === null || editPending !== null) return;
-    setEditPending(threadId);
-    setEditFailure(null);
 
-    const client = clientFor(session);
-    void client.deleteThread(threadId).then((write) => {
-      setEditPending(null);
-      const line = deleteFailureLine(write);
-      if (line) {
-        // ⚠️ Filed against the QUESTION's post id, because that is where the Delete verb is
-        // drawn — a refusal keyed to the thread id would match no post and draw nowhere.
-        const questionId = read?.outcome === 'ok' ? read.value.question.id : null;
-        if (questionId) setEditFailure({ postId: questionId, line });
-        return;
-      }
-      // The list is a different hook with a different cache; it cannot know the thread is gone.
-      notifyCommunityChanged('threads');
-      onBack();
+    DialogLayerModel.instance.showConfirm({
+      id: 'community-thread-delete',
+      title: 'Delete this question?',
+      text: 'It will be gone for good, along with its answers. This only works while nobody has answered.',
+      confirmText: 'Delete',
+      onConfirm: () => deleteNow(threadId)
     });
-  }, [threadId, editPending, session, read, onBack]);
+  }, [threadId, editPending, deleteNow]);
 
   if (threadId === null) return { pane: null, openThread };
 
