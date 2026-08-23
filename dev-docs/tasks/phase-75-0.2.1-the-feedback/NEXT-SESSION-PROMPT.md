@@ -1,5 +1,58 @@
 # Phase 75 — next session
 
+**State as of 2026-08-23 (session 9).** Session 9 committed session 8's uncommitted AC7 work
+(`9902bf61`) and then built **FB-001** end to end — both surfaces, on Richard's ruling. Nothing
+is driven. Read *"What session 9 found"*, then session 8's notes, which still stand.
+
+## What session 9 found
+
+- ✅ **FB-001 — BUILT, BOTH SURFACES, UNDRIVEN.** Platform **`080a4f1`** in `nodegx-community`,
+  editor **`e3c52fbe`** here. Full detail is in the task file; the findings worth carrying:
+- 🔴 **A BAN DID NOT REACH THE NEW EDIT VERB, AND NOTHING ABOVE THE DATABASE WOULD HAVE.**
+  `bench_posts_author_eligible` is **`BEFORE INSERT`** — complete for as long as a post could
+  only be created. `communityGate` refuses D15's `absent` (a school switch, not a ban), and
+  `serveCommunityWrite`'s capability check reads `communityVisibility`, whose viewer kinds are
+  anonymous / individual / org_minor — **a banned account is an `individual` holding every write
+  capability**. Shipping the edit verb without migration `0018` would have turned a ban from
+  *"you may not post"* into *"you may not post anything NEW"*.
+  - 🔴 **And the obvious fix inverted the rule.** A plain `BEFORE UPDATE` gate refuses
+    `upholdReport`'s hide, making a banned account's posts **the only ones a moderator cannot
+    hide**. `when (new.body is distinct from old.body)` is the whole guard. ✅ The spec row that
+    catches a "simplification" is *"a moderator can still hide a banned account's post"*.
+  - ✅ **The general shape: WHEN YOU ADD THE FIRST WRITE OF A NEW KIND TO A TABLE, ASK WHICH
+    TRIGGERS FIRE ON IT.** Every rule that table has was written when only one verb existed.
+- 🔴 **`api-malformed-id.test.ts` HAD A HOLE SHAPED LIKE THE TASK.** It discovered routes by their
+  `[…Id]` segments and drove only **`GET` and `POST`** — so a `PATCH`-only route was discovered,
+  driven **zero** times, and passed. The non-vacuity floor (`driven >= 9`) is met by the GETs
+  alone, so the count could not catch it. ✅ Widened to four verbs **and given a row asserting the
+  ARM** — at least one route of each mutating verb in scope — because narrowing `VERBS` back
+  would otherwise go quiet rather than red. Mutation-verified both ways.
+- ⚠️ **`/api/v1/me` NESTS THE HANDLE UNDER `viewer`, AND READING IT FLAT FAILS SILENTLY.** The
+  first web control read `body.handle`; `undefined === handle` is false, so the buttons simply
+  never appeared and nothing threw. ✅ Caught by reading the ROUTE, not the component — and pinned
+  by a spec asserting **both** halves (`viewer.handle` is it, **and there is no top-level one**).
+- ✅ **Richard ruled scope 3: the editor gets the SAME verbs**, not a browser hand-off. The
+  argument that decided it: the editor already asks, answers and accepts, so the complaint
+  reproduced inside it exactly.
+- ⚠️ **`expect(v, msg)` is vitest-only** — it cost a jest suite that failed *to run* rather than
+  failing. Same trap the memory index carries; it bites in `tests-unit`, not in the community repo.
+
+- ⚠️ **`uni023`'s "no client island" claim was an EXACT LIST OF ONE, and FB-001 made it two.**
+  ✅ Kept exact and given **a reason per entry** rather than relaxed to `toContain` — widening
+  it would have retired the rule instead of restating it. ✅ **And the arm that replaces the
+  count**: `PostControls` renders **nothing** in a static render, so the read path is
+  byte-for-byte unchanged. Mutation-verified (`useState(true)` ⇒ that row alone goes red).
+  The real rule is *reading never asks for anything*; an exact count was a cheap proxy for it.
+
+### FB-001's first move next session
+
+🔴 **DRIVE IT — neither surface has been.** 34 platform rows and 18 editor rows are green and
+this phase's standing lesson is that a spec asserting a mechanism passes on dead code.
+⚠️ **The editor drive and NAT-012 AC4's other half are ONE drive**, not two: both need a
+signed-in editor against the live platform. Undriven specifically: the web `PostControls`
+(`/me` fetch → source fetch → save → `confirm` + delete + redirect), and the editor pane placing
+the verbs at all.
+
 **State as of 2026-08-23 (session 8).** Session 8 built and drove **NAT-012 AC7** — the rail icon
 for a D15-refused viewer. The predicted hole was real, and the drive found a **second** one nobody
 had predicted. Read *"What session 8 found"*, then session 7's notes, which still stand.
@@ -136,9 +189,8 @@ first; it carries the measurements you must not re-derive.
 1. ~~Drive NAT-012's AC3~~ — ✅ session 7. ~~NAT-012 AC7~~ — ✅ **session 8**.
    ⚠️ **AC4's other half is still open**: posting a real question to the live Bench from a
    signed-in editor. Richard's call.
-2. **FB-001** — D7 is ruled, scope 1–3 of the task file is what he chose. Four derived-from-disk
-   platform gates fire on the new PATCH/DELETE routes; `npm run build` first or the real-HTTP file
-   self-skips.
+2. ~~**FB-001** build~~ — ✅ **session 9, both surfaces.** What is left is **the drive** (see
+   above), which is the same drive NAT-012 AC4's other half needs.
 3. **FB-019 implementation** — the sweep already revised AC1/AC2: keep the merge, fix only the
    no-stored-unit case, on **all three** registration paths. 🔴 **Drive an image-cropper pan
    first** — the six broken connections are predicted from source and nobody has watched one fail.
@@ -187,6 +239,10 @@ first; it carries the measurements you must not re-derive.
 - ⚠️ **`scroll-behavior: smooth` makes a same-eval `scrollTop` read lie**, and toward the bug.
 - ⚠️ **The launcher's recents file is a real user file the running editor owns** — write it only
   while the editor is idle on the launcher, then reload.
+- ✅ **Community suite, 2026-08-23 (session 9 tree, after `npm run build`): 54 files / 1313
+  specs, 0 failures.** ⚠️ The real-HTTP `uni015-bench-http` file **ran** (8 tests) rather than
+  self-skipping, which is what the build buys. Editor `tests-unit`: **292 / 4759 / 0** — +1
+  suite / +18 specs on session 8's 291 / 4741, both `fb-001/editverbs.test.ts`.
 - ✅ **`test:ci` 2026-08-23 (session 8 tree): 2849 specs, **4** failures — all `AIX-006 style
   vocabulary`.** Ran alone, completed (2849 spec-starts, the full count); ⚠️ **exit was 1, which
   is what the clean floor does too** — the reading is the failure *names*. Compared by name against
