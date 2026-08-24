@@ -54,7 +54,8 @@ is the copy with no machinery behind it.
 
 # ✅ RULED AND BUILT — 2026-08-24 (session 18)
 
-**Status: done, web-side only. ⚠️ Not deployed.** `nodegx-community`, one commit.
+**Status: done, web-side only. ✅ DEPLOYED to nexus-1 2026-08-24 (s19), `acd4a9a`.**
+`nodegx-community`, one commit.
 
 ## 🔴 THE PROPOSED DECISION ABOVE WAS BACKWARDS, AND THE REPORT SAYS SO IN TWO WAYS
 
@@ -236,3 +237,40 @@ declarations into shared selectors (`.port,.portlist{display:flex;min-width:0}`)
 - `npx tsc --noEmit`: clean.
 - `npm run build`: clean. Built CSS carries `portlist` and **zero** `nodefig`.
 - `npm run check:css`: 1 violation, pre-existing and attributed above.
+
+## The deploy, 2026-08-24 (session 19)
+
+Deployed from a **pristine `git clone` of `acd4a9a` on `main`**, not from the shared checkout —
+the tree was clean, so `ops/deploy.sh` would not have refused, but the refusal is checked once at
+the start and the rsync happens minutes later, and *"my tree is clean"* has a lifetime measured in
+minutes on a checkout more than one session writes to. The clone's rsync payload was verified
+byte-identical to the working tree first (`diff -rq` under the script's own excludes), so this
+cost nothing and removed the race.
+
+🔴 **The deploy script's verify would have passed on the OLD renderer.** It curls `/` for a 200,
+the Caddy admin API for the host, sign-in for a 302, and the backup/outbox timers — **nothing that
+reads a thread page**. A renderer change is exactly the class of deploy where *"deployed."* and
+*"the reader sees it"* are independent facts.
+
+**Measured on production bytes**, both live threads, before and after:
+
+| signal | before | after |
+|---|---|---|
+| `nodefig` | 14 | **0** |
+| `portlist` | 0 | **2** |
+| `port-dir` | 0 | **20** |
+| `<li class="port">` | — | **10** |
+| `<span class="port-dir">(input)</span>` | — | **5** |
+| `<span class="port-dir">(output)</span>` | — | **5** |
+
+✅ The before-column is a real control, not a formality: the old renderer was demonstrably live on
+both threads, so the after-column cannot be a page that never had an excerpt. ✅ **Outputs are
+counted separately from inputs on purpose** — mutation 1 (keep one `filter`, drop the other) leaves
+a tidy list with every output missing, and a total-rows count alone would not catch it.
+
+✅ Both linked stylesheets **200**, and the rules are in `7c58972fe32fc910.css` in exactly the
+merged shape this file warns grep under-reports:
+`.capture-shot,.portlist{background:…}` and `.port,.portlist{display:flex;min-width:0}`.
+✅ Neighbours `nodegx.io`, `nexus.digitalbricks.io`, `digitalbricks.io`: **200 → 200**.
+✅ Migrations: `already applied: 19, applied: nothing`. Stamp read back off the host: `acd4a9a62a51`
+on `main`, `dirty: false`.
