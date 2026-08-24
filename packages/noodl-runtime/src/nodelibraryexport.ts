@@ -19,6 +19,8 @@ interface ExportedPort {
   default?: unknown;
   index?: unknown;
   tooltip?: unknown;
+  /** FB-015 — a shape hint shown in the empty field, for a port whose value has a syntax. */
+  placeholder?: unknown;
   tab?: unknown;
   popout?: unknown;
   allowVisualStates?: unknown;
@@ -183,6 +185,9 @@ function formatPort(portName: string, portData: Record<string, unknown>, plugTyp
   }
   if (portData.tooltip) {
     port.tooltip = portData.tooltip;
+  }
+  if (portData.placeholder) {
+    port.placeholder = portData.placeholder;
   }
   if (portData.tab) {
     port.tab = portData.tab;

@@ -19,6 +19,8 @@ export interface PropertyPanelBaseInputProps<ValueType = string | number> {
   dataIdentifier?: string;
   /** Rendered as data-type (the legacy color input carried data-type="color") */
   dataType?: string;
+  /** Shape hint shown while the field is empty — FB-015, driven by the port's own metadata. */
+  placeholder?: string;
 
   onChange?: (value: ValueType) => void;
   onClick?: MouseEventHandler<HTMLInputElement>;
@@ -45,6 +47,7 @@ export function PropertyPanelBaseInput({
 
   dataIdentifier,
   dataType,
+  placeholder,
 
   onChange,
   onClick,
@@ -72,6 +75,7 @@ export function PropertyPanelBaseInput({
       value={value === null ? '' : value}
       data-identifier={dataIdentifier}
       data-type={dataType}
+      placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       onClick={onClick}
       onMouseEnter={onMouseEnter}

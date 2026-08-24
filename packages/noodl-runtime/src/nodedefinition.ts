@@ -87,6 +87,18 @@ function registerInput(object: SharedInputs, metadata: NodeMetadata, name: strin
     // descriptions NDA-003 wrote on the Variables nodes — about the very contract that task
     // established — reached no reader at all. Same shape as this phase's other inert fields.
     description: input.description,
+    // FB-015 — the shape hint the property panel shows in an empty field.
+    //
+    // 🔴 THIS LIST IS A SECOND FILTER, EARLIER THAN `formatPort`, and it is the one that catches
+    // people out. ERG-004 fixed a hand-copied duplicate *inside* `nodelibraryexport` and wrote up
+    // the lesson there; nothing recorded that a field also has to be named HERE, before the export
+    // ever sees the port. A field declared on the node definition and added to `formatPort` alone
+    // reaches the editor as `undefined`, with both halves of the code looking correct.
+    //
+    // Input-only, deliberately: an output port renders no editable field, so a placeholder on one
+    // has no reader. That matches `default`, `tab`, `popout` and `allowVisualStates`, which are
+    // already input-only here — it is the established shape, not a new asymmetry.
+    placeholder: input.placeholder,
     tab: input.tab,
     popout: input.popout,
     allowVisualStates: input.allowVisualStates,

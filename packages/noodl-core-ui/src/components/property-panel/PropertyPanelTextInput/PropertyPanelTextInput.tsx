@@ -14,6 +14,7 @@ export function PropertyPanelTextInput({
   isChanged,
   isConnected,
   dataIdentifier,
+  placeholder,
 
   onChange
 }: PropertyPanelTextInputProps) {
@@ -39,6 +40,7 @@ export function PropertyPanelTextInput({
       isChanged={isChanged}
       isConnected={isConnected}
       dataIdentifier={dataIdentifier}
+      placeholder={placeholder}
       onChange={(value) => setDisplayedInputValue(String(value))}
       onBlur={(e) => handleUpdate(displayedInputValue)}
       onKeyDown={(e) => e.key === 'Enter' && handleUpdate(displayedInputValue)}

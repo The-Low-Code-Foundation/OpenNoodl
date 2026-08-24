@@ -120,7 +120,8 @@ export function PropertyPanelInput({
   onReset,
   connectionLabel,
   onConnectionClick,
-  dataIdentifier
+  dataIdentifier,
+  placeholder
 }: PropertyPanelInputProps) {
   const Input = useMemo(() => {
     switch (inputType) {
@@ -215,6 +216,12 @@ export function PropertyPanelInput({
         properties={properties}
         // @ts-expect-error
         dataIdentifier={dataIdentifier}
+        // FB-015 — the port's shape hint. 🔴 This hand-off is an explicit prop list, not a
+        // spread, so a prop that exists on `PropertyPanelInputProps` still arrives nowhere
+        // unless it is named here. It is the fourth such list on the path from a node
+        // definition to the field, and the third that silently dropped this one.
+        // @ts-expect-error
+        placeholder={placeholder}
       />
     );
   };

@@ -1100,7 +1100,10 @@ div.lesson-content::-webkit-scrollbar-thumb {
   width: 250px;
   height: 420px;
   background-color: var(--theme-color-bg-3);
-  overflow-y: auto;
+  /* FB-015: a column, so the action footer sits below a list that scrolls on its own rather
+     than being pushed off the bottom of a fixed-height box. */
+  display: flex;
+  flex-direction: column;
 }
 
 .content-picker-list-item {
@@ -1127,7 +1130,10 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .content-picker-items {
-  height: 390px;
+  /* Was a hardcoded 390px (420 minus the 30px header). Now it takes whatever the header and the
+     optional footer leave. `min-height: 0` is what lets a flex child actually scroll. */
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .content-picker-header-label {
@@ -1137,6 +1143,55 @@ div.lesson-content::-webkit-scrollbar-thumb {
   height: 30px;
   line-height: 30px;
   padding-left: 10px;
+}
+
+/* FB-015 — the picker's three no-rows states: still looking, nothing matches, nothing here.
+   Muted body text on the picker's own ground, so it reads as an explanation and not as an item
+   somebody could click by mistake. */
+.content-picker-message,
+.content-picker-empty {
+  padding: 12px 10px;
+  color: var(--theme-color-fg-muted);
+  line-height: 1.5;
+}
+
+.content-picker-empty-message {
+  color: var(--theme-color-fg-default);
+  margin-bottom: 6px;
+}
+
+.content-picker-empty-hint {
+  margin-bottom: 12px;
+}
+
+/* The always-visible footer: routes out of the picker, whether or not it has anything in it. */
+.content-picker-actions {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border-top: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+}
+
+.content-picker-empty-action {
+  display: block;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  text-align: left;
+  cursor: pointer;
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-highlight);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+
+.content-picker-actions .content-picker-empty-action:last-child {
+  margin-bottom: 0;
+}
+
+.content-picker-empty-action:hover {
+  background-color: var(--theme-color-bg-2);
 }
 
 .content-picker-group-label {

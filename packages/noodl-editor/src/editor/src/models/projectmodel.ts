@@ -4,6 +4,7 @@ import { filesystem, platform } from '@noodl/platform';
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 import { verifyJsonFile } from '@noodl-utils/verifyJson';
+import { shouldDescendIntoProjectDirectory } from '@noodl-utils/projectDirectoryWalk';
 
 import Model from '../../../shared/model';
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
@@ -974,6 +975,9 @@ export class ProjectModel extends Model {
           if (args && args.ignoreFullPath && args.ignoreFullPath.indexOf(fileEntry.fullPath) !== -1) continue; // Ignore files if specifed
 
           if (fileEntry.isDirectory) {
+            // FB-015 AC3 — installed dependencies and tooling state are not the author's files.
+            if (!shouldDescendIntoProjectDirectory(fileEntry.name)) continue;
+
             // Recurse into directory
             dirs++;
             _this._listFilesInDirectory(

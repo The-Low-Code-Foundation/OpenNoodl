@@ -81,6 +81,9 @@ export class BasicType extends TypeView {
       label: this.displayName,
       value: displayValue,
       dataIdentifier: this.name,
+      // FB-015 AC4 — a shape hint from the port's own metadata, so the field says what goes in it
+      // while it is empty. Only ports that declare one get anything.
+      placeholder: this.port?.placeholder,
       inputType: mapTypeToInputType(firstType(this.type)),
       properties: undefined, // No special properties needed for basic types
       isChanged: !this.isDefault,

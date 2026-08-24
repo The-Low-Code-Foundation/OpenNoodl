@@ -886,6 +886,15 @@ export interface InputPortDefinition {
   popout?: unknown;
   index?: number;
   tooltip?: PortTooltip;
+  /**
+   * FB-015 — a shape hint shown in the property-panel field while it is empty, for a port whose
+   * value has a *syntax* rather than just a value. `Image.srcSet` is the case that motivated it:
+   * a raw HTML `srcset` list, with no picker and nothing on screen saying what one looks like.
+   *
+   * Not a default and not a description: it is never committed, and it disappears as soon as the
+   * author types. Copied to the editor by `nodelibraryexport.formatPort`.
+   */
+  placeholder?: string;
   /** Defaults to `true`. Set `false` to keep the port out of the editor entirely. */
   exportToEditor?: boolean;
   /** Higher priority inputs are applied first within one update. Defaults to `0`. */
@@ -1279,6 +1288,11 @@ export interface InputPortMetadata {
   exportToEditor: boolean;
   inputPriority: number;
   tooltip?: PortTooltip;
+  /**
+   * FB-015 — copied verbatim from the authored port. Input-only: an output port renders no
+   * editable field, so `OutputPortMetadata` deliberately has no counterpart.
+   */
+  placeholder?: string;
   /** Copied verbatim from the authored port. See {@link PortTab}. */
   tab?: PortTab;
   popout?: unknown;
