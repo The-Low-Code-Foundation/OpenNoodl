@@ -50,8 +50,10 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 - ✅ **FB-015** — [the empty box called Source](FB-015-THE-EMPTY-BOX-CALLED-SOURCE.md) — **DONE, DRIVEN in the real editor 2026-08-24 (s21). All five ACs.** The picker told an author with no images exactly what it told one whose loader had silently returned early: a blank panel. Four states now (items · *Looking…* · *nothing matches* · the empty state naming both routes), one shared component with per-type copy, and an **Import image…** that copies into `assets/` — created on demand — then reloads the list. 🔴 **The platform's `makeUniquePath` could not be used**: it appends after the extension, so `logo.png-1` would not appear in the picker that imported it. 🔴 **The drive found what 32 green specs could not — the Import button only existed while the picker was EMPTY**, so a second image could never be imported; every spec arm had rendered an empty picker. Actions are a permanent footer now. AC3's walk skips `node_modules` and dotfolders **by path segment** (DEP-008's `pre.gitlab-assets` lesson), which also fixes both halves of the import flow. 🔴 **AC4 was the big one: a port's `placeholder` crosses FIVE hand-written field lists between a node definition and the field, and FOUR were dropping it** — `nodedefinition.registerInput`, `InputPortMetadata`, `PropertyPanelInput` and `PropertyPanelTextInput`. ⚠️ **ERG-004 documented `formatPort` and only `formatPort`**, which runs third; each intermediate state read as *done* from the source and the drive is what separated them. **38 editor + 6 runtime specs, 21 mutations all red**; `test:main` **319/5137/0**, runtime **2560/0**, viewer **965/0**. ⚠️ **Not deployed — editor-side, ships with the app.**
 - 🟡 **FB-017** — basics-first panel + per-node view state. **s22 `879f2f4c`: collapse revived,
   two tiers, badge, per-node scroll (a pre-existing defect — restore read the wrong element).
-  Left: the property filter (AC7), the corner-radius hint (AC4), and the panel width, now
-  measured at 312px vs 346px across two selections**
+  s23 `7f8ca477`: the property filter (AC7), a search that never persists expansion, and a
+  `position: sticky` that was inert. Left: the corner-radius hint (AC4) and 🔴 the panel width —
+  312px vs 346px, now THREE symptoms of one `.sidebar-property-editor` cause, worth taking
+  together**
   (L; revives STYLE-004's deferral)
 - ⬜ **FB-016** — box-model overlay, transform-origin crosshair, radius-following highlight
   (M/L)

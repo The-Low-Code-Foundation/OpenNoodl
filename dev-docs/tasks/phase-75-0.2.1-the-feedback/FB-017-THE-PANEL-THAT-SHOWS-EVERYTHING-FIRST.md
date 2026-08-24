@@ -1,8 +1,8 @@
 # FB-017 — the panel that shows everything first
 
-**Filed:** 2026-08-22, test-user session, item 2.3. **Status: 🟡 partly done — scopes 1, 2, 3
-and the scroll half of 5 built, specced and driven in session 22 (`879f2f4c`). Scopes 4, 7 and
-the panel-width half of 5 remain.** Size: L.
+**Filed:** 2026-08-22, test-user session, item 2.3. **Status: 🟡 partly done — scopes 1, 2, 3,
+7 and the scroll half of 5 built, specced and driven (sessions 22–23). Scope 4 and the
+panel-width half of 5 remain.** Size: L.
 
 > *"Rearrange the visual nodes' props, in a way that a new user initially ONLY sees the basics
 > they would need on a daily basis, like position, margins, padding, width height, alignment,
@@ -195,3 +195,121 @@ good one for classification completeness, not a census of what renders.
   done. `Source Set` sits in the `Image` group, which is a subject group and therefore basic.
   Demoting one port inside a basic group is exactly the per-port tiering Ruling 1 rejected — so
   it needs either its own group or a decision to accept a split heading. **Richard's call.**
+
+
+---
+
+# Session 23 — AC7, the property filter
+
+**AC7 ✅.** `propertyPanelFilter.ts` (pure), `PropertyFilterInput.tsx`, a `NoMatchesNotice` in
+`PropertyGroups.tsx`, and the wiring in `Ports.renderGroups`. 29 new specs.
+
+## What shipped
+
+- **`propertyPanelFilter.ts`** — normalisation, matching, group filtering, and the threshold that
+  decides whether the box is offered at all. Pure, no imports, no React.
+- **`PropertyFilterInput.tsx`** — a module of its own *because* `SearchInput` reaches `Icon`, and
+  `Icon` makes a spec in this runner fail **to run**. `groupHeading.test.tsx` imports from
+  `PropertyGroups.tsx`, so putting the search chrome there would have taken 94 existing
+  assertions down silently.
+- **`Ports.ts`** — the raw query joins the render hash, the box is offered on row count, and
+  expansion is overridden transiently while searching.
+
+## 🔴 Ruling 3 — a search NEVER writes to persisted expansion
+
+A hit inside the collapsed `Advanced CSS` has to open it. Opening it via
+`propertyPanelViewState.setExpanded` would write a *searching keystroke* into the builder's
+persisted preferences — so every node they selected afterwards, in every session after this one,
+would open with Advanced CSS expanded because they once looked for `transform origin`. The tier
+split would erode itself one search at a time.
+
+So `Ports._filterExpansion` is a transient map, non-null exactly while a filter is active. Absent
+an entry a group reads expanded; entries are groups the builder collapsed *during* the search,
+which is worth honouring until the box is cleared. **Driven both ways** — see the table below.
+
+## 🔴 The fixture that proved a rule it could not actually test
+
+The module matches a query against the row label, the **port name**, and the **group name**. The
+first draft justified the group-name rule with `Margin and padding` — "the rows are `Left`,
+`Right`, `Top`, `Bottom`, so typing `margin` finds nothing". **That is false.** The real ports are
+`marginLeft` labelled `Margin Left`: the word is on every row twice.
+
+The spec fixture was invented to match the wrong claim, so **deleting the group-name branch left
+all 24 assertions green**. Only mutating the source found it. Fixtures are now read from
+`node-shared-port-definitions.ts` (58 shared CSS ports, 14 groups), and the rule is defended by
+the groups that actually need it:
+
+| Match path | Groups that need it, measured |
+| --- | --- |
+| port **name** | `Placement` — rows are `transformX`/`transformRotation`, labelled `Pos X`/`Rotation` |
+| **group** name | `Style`, `Alignment`, `Dimensions`, `Layout`, `Placement`, `Dimension Constraints` |
+
+`Style` is the sharpest: its rows are `Opacity`, `Blend Mode`, `Visible`, `zIndex`, so a builder
+typing the word in the heading above them would have been told there is no such thing.
+
+⚠️ **All 10 mutations are now caught** (M1–M10). The first sweep of that check measured *nothing*
+— a `cd` inside the helper broke the relative jest config path, so every run errored and printed
+no summary line, which read exactly like a pass.
+
+## 🔴 The third appearance of one defect: `position: sticky` was inert
+
+The filter box was written sticky, because the properties it reaches are mostly at the *bottom* of
+the panel. **Driven: with `top: 0` set, scrolling the panel to 400 put the box's top at −16px** —
+straight off screen. Sticky binds to the nearest scrolling ancestor, and between the box and the
+real scroller sit `.sidebar-property-editor` (`overflow-y: auto`) and `.sidebar-panel`
+(`overflow: hidden`). The first captures the sticky and pins it to a scrollport **that never
+scrolls**.
+
+That is the *same element, same reason* as session 22's scroll-restore defect, and the same flex
+chain AC6's panel-width half is stuck in — three symptoms, one cause. A genuinely fixed filter
+header has to live **outside `.sidebar-panel`, above the `ScrollArea` in `index.tsx`**, which is
+the shared sidebar layout session AC6 is waiting on. The dead declaration is removed rather than
+shipped looking like it works.
+
+## What the drive proved that 29 green specs could not
+
+Fixture `fb017-drive`, Group `…0030` (47 rows), dark and light.
+
+| Claim | Measured |
+| --- | --- |
+| AC7 core | `Dimension Constraints` invisible inside collapsed `Advanced CSS` → typed `width` → **revealed**, `aria-expanded` false→true |
+| AC7 restore | Escape → 16 headings, Advanced CSS collapsed, 22 rows — **identical to baseline** |
+| Ruling 3 | filter expanded the section while `editorSettings` stayed `{}` through a 6s settle |
+| Ruling 3 control | a **real heading click** wrote `{"Advanced CSS": true}` in the same window, and collapsing back **deleted the entry** |
+| Override | forced open → collapsed by hand → next keystroke **stayed collapsed**, still unpersisted |
+| Threshold, both arms | Group 47 rows → **1** box; `Number` node 8 rows → **0** boxes |
+| Empty state | `zzzz` → notice naming the query, box still reachable, `0 properties match` announced |
+| Contrast | dark 11.47 / 9.24 / 14.71 / 9.24 · light 7.49 / 6.18 / 16.26 / 6.18 — all > 4.5:1 |
+
+## ⚠️ Harness corrections, session 23
+
+1. 🔴 **Never write `input.value` directly on a React-controlled input.** It updates React's value
+   tracker, so the *next* legitimate `input` event is deduped and `onChange` **never fires**. It
+   cost two false readings here: a panel that looked stuck filtered, and a "clear" that did
+   nothing. Use `cdp -- type`, or the native-setter + `dispatchEvent` pair — and never both.
+2. 🔴 **`editorSettings.json` nests everything under a `settings` key**, and **writes
+   asynchronously**. Reading the top level returns `null` for every key, which reads exactly like
+   "nothing was persisted" — it invalidated this session's first absence check. Settle-loop on the
+   file, and always pair an absence with a known-firing control.
+3. ⚠️ **`cdp -- type` appends** to the existing value; it does not replace it.
+4. ⚠️ **A DOM attribute used as a click target does not survive a re-render** — re-tag before
+   every click, or the second click silently lands on nothing.
+5. ⚠️ **`cdp -- reload` closes the project** and returns to the launcher.
+
+## Found while working, owned by nobody
+
+- ⚠️ **A `Number` node draws a top-level group literally called `ADVANCED`**, expanded, beside the
+  synthetic `Advanced CSS`. Correct under Ruling 2 (unknown → basic) and harmless, but the tier
+  vocabulary now has two different things called "advanced" on screen. Worth a look by whoever
+  revisits `propertyPanelTiers.ts`.
+- ⚠️ **`width`/`height` are absent from the panel** on a `contentSize` Group — spliced by
+  `applyPortConditionsFilterForNode` in `ModelProxy.getPorts`, *before* `Ports._getPorts`. That is
+  FB-021's territory, and it is why the filter cannot reach a gated port either way.
+
+## Still not done
+
+- ⬜ **AC4 — the corner-radius-on-Image hint.** Untouched; still wants a measured list of
+  offenders rather than an open-ended system.
+- 🔴 **AC6's other half — the panel width.** Unchanged from session 22, and now with a third
+  symptom (sticky) pointing at the same `.sidebar-property-editor` / `.sidebar-panel` chain.
+- ⚠️ **Scope 2's "demote Source Set to the advanced tier"** — still Richard's call, unchanged.
