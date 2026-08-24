@@ -24,6 +24,61 @@ ratio"). **Status: ⬜ open — the behaviour is real and confirmed; no coverage
   further: a **gated port renders present-and-disabled with its reason**, e.g. *"Width is not
   driveable while Size Mode is Content"*, with the gating control one click away.
 
+### 🔴 Corrected 2026-08-24 (session 20) — the premise above is inverted, measured
+
+The ground truth says `sizeMode` "gates whether the dimension ports exist at all" and that in the
+connection panel "the port simply isn't offered". **Both are wrong, and the truth is worse.** The
+port is fully live everywhere except the Properties panel.
+
+`addDynamicInputPorts` (`node-shared-port-definitions.ts:154`) pushes a group with **no `name`**, so
+`nodelibraryexport.ts:148` defaults it to **`conditionalports/basic`**. And `basic` is not the mode
+that removes a port — `portConnectivity.ts` already writes this down: `extended` means *"not on the
+node at all"*, while a plain rule "only suppresses the **property row** — the port still exists and a
+wire to it stays valid."
+
+Measured on the shipped catalog (`noodl-types/src/node-catalog.json`, 175 types):
+
+| gate mode | gated **input** ports | meaning |
+|---|---|---|
+| `basic` | **328** | port exists, wire survives, value delivered — panel row hidden |
+| `extended` | **21** | genuinely absent from the node |
+
+So the population this task serves is **328 ports that are live-but-hidden**, not a handful that
+don't exist. Width/Height are `basic`.
+
+Driven 2026-08-24 on `NodeGX test projects/fb021-drive` (five Groups, one selector for every arm):
+
+| node | `sizeMode` | `width` wired | Width row | Height row | Min Width row | chips |
+|---|---|---|---|---|---|---|
+| 0010 | `explicit` | **yes** | ✅ shown | shown | shown | `Bound to Number · Value` |
+| 0020 | `explicit` (control) | no | shown | shown | shown | — |
+| 0030 | `contentSize` | no | 🔴 **absent** | absent | shown | — |
+| 0040 | `contentSize` | **yes** | 🔴 **absent** | absent | shown | 🔴 **none** |
+| 0050 | `contentSize` (control) | no | absent | absent | shown | — |
+
+1. **The wire survives.** `isPortConnected('width','target')` is `true` on 0040 after a load — so
+   `isConnectionValid`, which asks with `['extended']`, does not drop it. The value reaches the
+   runtime and `layout.ts:66-75` then assigns neither axis under `contentSize`: **delivered, then
+   discarded.**
+2. **0040 and 0050 are indistinguishable in the Properties panel** — a live wire and no wire at all
+   render identically. That is AC3, and it is the *central* case rather than an edge one, because
+   every wire into a gated `basic` port is in this state.
+3. **The port IS offered.** In the **Ports tab** — which filters with `PORT_CONDITION_FILTER_MODES`
+   `['extended']`, *the same scope the connection popup uses* — the **input** `Width` (type
+   `dimension`, *"Width of the element; how the value is read depends on Size Mode"*) is listed for
+   0040 while it is in `contentSize`, and correctly reads `from …` there versus *"Nothing drives this
+   yet"* on unwired 0050.
+   ⚠️ The **output** `Width` (*"…actually ended up with after layout"*) is listed too and reads
+   almost identically; an earlier pass here nearly graded the output row as proof about the input.
+   Separate INPUTS from OUTPUTS before believing any row.
+
+**What this changes.** Scope 1 stands, but the generated sentence must not say the port does not
+exist — under `basic` it does, and its value is being thrown away, which is a different and more
+alarming thing to tell an author. **Scope 2 is inverted**: the popup already offers the port, so the
+work there is to mark it inert, not to start showing it. 🔴 **Undecided, needs Richard**: whether a
+`basic`-gated port should stay wireable at all, or whether the popup should refuse it the way
+refused connections already explain themselves.
+
 ## Scope
 
 1. In the properties panel: a port removed by a `dynamicports` condition renders as a
