@@ -111,3 +111,56 @@ refused connections already explain themselves.
   declaration the runtime uses.
 - Jordan's §2.2 ("margin and position manipulate the same underlying number") is NOT this
   task — it's FB-019's investigation item. Don't merge them on superficial resemblance.
+
+---
+
+## 🔴 The FB-017 constraint — verified at source 2026-08-24, and RE-ADDED after being lost twice
+
+⚠️ **Recorded here, in the task file, and deliberately not in the phase handover.** This finding was
+relayed to a live session twice (both times to a mistaken identity, both dropped), then written into
+`NEXT-SESSION-PROMPT.md` — where a concurrent rewrite of that file discarded it before the commit
+that was meant to preserve it. **Three delivery mechanisms, three losses.** The task file is the
+only record that is not competing with anyone else's edits.
+
+### FB-017's property filter cannot see gated ports — in either direction
+
+`modelProxy.getPorts` (`views/panels/propertyeditor/models/modelProxy.ts:76`):
+
+```js
+let ports = [].concat(source.getPorts(filter));
+// Apply ports condition filter
+const portFilter = NodeLibrary.instance.applyPortConditionsFilterForNode(this);
+portFilter.forEach((portname) => {
+  const idx = ports.findIndex((p) => p.name === portname);
+  if (idx !== -1) ports.splice(idx, 1);
+});
+```
+
+The gated port is spliced out **before** `Ports._getPorts()` runs, so it never becomes a view, and
+FB-017's filter only ever sees `group.views`. **No conflict with FB-017** (shipped `879f2f4c`,
+`c93ae426`, AC7 `7f8ca477`): its filter can neither hide these ports nor reveal them.
+
+### 🔴 The precondition, which fails silently
+
+If FB-021 reveals gated ports, the filter picks them up for free — **but only if each revealed row
+is a real view carrying `name`/`displayName`**, not merely a decorated element. `Ports.ts:237`
+builds `portsByName` keyed on `port.name`, and the render loop reads `v.name`:
+
+```js
+const el = describePortElement(v.render(), v.name ? portsByName.get(v.name) : undefined);
+const gate = typeName && v.name ? gateForPort(typeName, v.name, target) : undefined;
+els.push(gate ? decoratePortElement(el, gate, target, v.name) : el);
+```
+
+A revealed row without a `name` renders, then is invisible to the filter, to `portsByName` **and**
+to gate decoration — three misses, no error anywhere.
+
+### ✅ A seam that may already do most of the work
+
+`Ports.ts:243` calls `portDecoration.ts` *"the one place every row's element passes through,
+whatever class produced it"*. BCN-010's backend gate already renders there as `{effective, reason}`,
+and ERG-004's port descriptions hang off the same seam. This task's proposed
+*"Width is not driveable while Size Mode is Content"* is that same shape — a gate plus a reason.
+
+⚠️ **Unexamined, and the real design question**: whether to stop splicing at `modelProxy`, or to
+keep the splice and mark the port instead. Nobody has looked.
