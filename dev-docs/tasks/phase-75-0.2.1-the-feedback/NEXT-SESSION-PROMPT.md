@@ -1,136 +1,122 @@
 # Phase 75 — next session
 
-**State as of 2026-08-24 (session 19).** Session 19 **deployed FB-011 to nexus-1 and verified it
-as a reader sees it**, then **built, specced and drove FB-018** — the binding-chip rollout that
-had been stalled at five row classes for three phases. **Both closed.** nexus-1 now serves
-`acd4a9a`; nothing is ahead of the box. Read *"What session 19 found"*, then session 18's notes,
-which still stand.
+**State as of 2026-08-24 (session 21).** Session 21 **built, specced and drove FB-015** — the
+image picker's empty state, an import path into `assets/`, the walk that stopped offering your
+dependencies' images as your own, and Source Set's placeholder. **Closed, all five ACs.**
+`df672c91`. Read *"What session 21 found"*, then session 19's notes below, which still stand.
 
-## What session 19 found
+⚠️ **This checkout is busy.** Session 21 counted **five live sessions** via `ls -l /tmp/cc-socks/`
+(one socket per session, addressable as `uds:/tmp/cc-socks/<pid>.sock`). `ListAgents` showed only
+two of the five. **FB-021 belongs to another live session** — its file carries uncommitted edits
+that name themselves *"session 20"*, and they are deliberately left uncommitted here.
 
-### 🔴 THE DEPLOY SCRIPT'S VERIFY WOULD HAVE PASSED ON THE OLD RENDERER
+## What session 21 found
 
-`ops/deploy.sh` curls `/` for a 200, the Caddy admin API for the host, sign-in for a 302, and the
-backup/outbox timers. **Nothing reads a thread page.** A renderer change is exactly the class of
-deploy where *"deployed."* and *"the reader sees it"* are independent facts, and FB-011 was
-entirely a renderer change.
+### 🔴 A PORT'S METADATA CROSSES FIVE HAND-WRITTEN FIELD LISTS, AND FOUR DROPPED IT
 
-Measured on production bytes, both live threads, before and after: `nodefig` **14 → 0**,
-`portlist` **0 → 2**, `port-dir` **0 → 20**, ten `<li class="port">` with **five `(input)` and
-five `(output)`** spans. ✅ **The before-column is a real control**, not a formality — it proves
-the old renderer was live on those threads, so the after-column cannot be a page that never had
-an excerpt. ✅ **Outputs counted separately from inputs on purpose**: s18's mutation 1 (keep one
-`filter`, drop the other) leaves a tidy list with every output missing, and a total-rows count
-would not catch it.
+Adding `placeholder` to a port — AC4, nominally the small half of the task — meant naming it in
+`nodedefinition.registerInput`, `InputPortMetadata`, `nodelibraryexport.formatPort`,
+`PropertyPanelInput`'s explicit prop hand-off, and `PropertyPanelTextInput`'s. Only list 3 was
+already correct after the obvious edit.
 
-✅ **Deployed from a pristine `git clone` of `acd4a9a`**, not the shared checkout. The tree was
-clean so the script would not have refused — but the refusal is checked once at the start and the
-rsync happens minutes later, and *"my tree is clean"* has a lifetime measured in minutes here. The
-clone's payload was verified byte-identical first (`diff -rq` under the script's own excludes), so
-it cost nothing.
+⚠️ **ERG-004 documented list 3 and only list 3.** Its note in `nodelibraryexport.ts` explains at
+length how a hand-copied duplicate deleted every output-port description in the library, and
+concludes by delegating "so the same trap is not set for the next field". The trap was set four
+more times in four other files. **`formatPort` is the famous list, not the first one** — list 1
+runs earlier and drops the field before the export can see it.
 
-⚠️ **FB-003's stamp is now measured, not relayed** — `eaa19c6c…` read off
-`/etc/nodegx-community/deployed.json` over SSH. s18 could not (no key); the key is
-`~/.ssh/nexus_hetzner` and it works.
+🔴 **Every intermediate state read as *done* from the source.** Two files both correct, field
+arriving `undefined`. Only the drive separated them. If you add a port field, expect five edits and
+verify at the field, not at the export.
 
-### 🔴 FB-018 — THE ROLLOUT STALLED BECAUSE NOTHING RECORDED THAT IT HAD
+### 🔴 THE DRIVE FOUND WHAT 32 GREEN SPECS COULD NOT
 
-The chip reached 5 of 36 row classes and stopped three phases ago. *"The chip is rolled out"* and
-*"the chip is rolled out to five of thirty-six"* were **the same sentence** as far as the repo was
-concerned. Now 16 chip and the other 20 carry a written reason, graded against the dispatch chain
-parsed out of `Ports.ts`.
+The Import button lived inside the empty state. Import the first image → the empty state goes away
+→ **the Import button goes with it**, and a second image can never be imported. Every spec arm had
+rendered an *empty* picker, so the broken state was the one nothing looked at. Actions are a
+permanent `ContentPicker` footer now, with three specs over non-empty and filtered-to-nothing.
 
-✅ **One seam, not ten components.** The ten rows that are not `PropertyPanelInput` already wrapped
-themselves in `PropertyPanelRow`; the chip went there. Four bespoke implementations would have
-been four more chances to drift — which is how a rollout reaches five and stops.
+✅ **AC3 was measured beside a known-firing signal.** 7 image files on disk, 3 listed — the two in
+`assets/` plus `my.node_modules.backup/mine.png`. The lookalike folder proves segment matching
+rather than substring; the two thumbnailed rows prove the walk *works*, so the four absent ones are
+excluded rather than a loader that found nothing. "0 items" alone fits both readings.
 
-🔴 **Writing `exception` on a row that plainly COULD chip meets the AC's letter by lying.** Hence
-three kinds: 16 `chip`, 3 structural `exception`, **17 `deferred`, each named**. 🔴 **And the
-pinned deferred list first computed itself from the table it constrains** — a derived list grows
-silently to match, so marking a new row `deferred` would keep the "pinned" test green while the
-debt grew. It is a literal now. **A list derived from the thing it constrains pins nothing.**
+### ⚠️ TWO INSTRUMENT TRAPS, BOTH NEW
 
-### 🔴 THE DRIVE NEARLY REPORTED THE WRONG THING THREE TIMES
-
-1. **The selector encoded the property under test.** The row-finder required a label with
-   `children.length === 0` — true on a connected row, **false on a changed unconnected one,
-   because the reset dot is a child of the label**. The control arm returned *"no Width label"*,
-   which reads exactly like *"the control has no Width row"*. ✅ **Both arms re-measured with one
-   selector**; no row is compared against a row read by a different instrument.
-2. **Two rows honestly drew no chip and that was CORRECT** — the fixture wired `source`/`icon`
-   when the real ports are **`src`/`iconIconSource`**. 🔴 **`isPortConnected('source')` still
-   answered `true`**: the connection record exists whether or not the port does. An absent chip
-   means *"the feature failed"* and *"there was nothing to show"* in identical bytes.
-3. **The connection reader was dead** — `ng.model.connections` returned `[]` for **all five nodes,
-   including the one visibly displaying "Bound to Number · Value"**. The contradiction is the only
-   reason it was caught. ✅ Use `node.isPortConnected(port,'target')` — the accessor the panel uses.
+1. **`cdp reload` does not recreate the viewer webview.** `http://localhost:8574/` is what runs
+   `nodelibraryexport`, and it survives an editor reload holding the node library it loaded
+   minutes earlier. Two *"the change did not work"* readings were that. `reload --target=viewer` is
+   the already-known trap (it reloads the editor); reload the webview target over raw CDP.
+2. **A native file dialog needs a TRUSTED click.** `<input type=file>.click()` requires transient
+   user activation, so `el.click()` from `Runtime.evaluate` opens nothing — indistinguishable from
+   an unwired button. `Input.dispatchMouseEvent` + `Page.setInterceptFileChooserDialog` +
+   `DOM.setFileInputFiles`, all on **one** connection. The driver is in session 21's scratchpad
+   pattern and is the only thing in this repo that answers a native dialog.
 
 ## First moves, in order
 
-1. **FB-021** (M, editor-side) — gated ports render present-and-disabled with their reason. Its
-   AC3 reuses FB-018's chip, which now exists on every row type it needs. ⚠️ **`SizeModeType` is
-   deliberately `deferred` in `connectedRowPolicy.ts` and the reason is FB-021's**: it is the
-   *gate*, not a gated port, and chipping it would hide the control that explains why Width and
-   Height are disabled. Decide it there.
-2. **FB-015** (M) — the image picker empty state. **FB-017 (L)** revives STYLE-004's deferral and
-   is worth scoping before starting.
-3. **FB-016** (M/L) and **FB-022** (M/L, wants FB-017/018 in the same rows first).
-4. ⚠️ **Deliberate remainders**: FB-011's AC1 is superseded — reopening it is *"give the composer
-   a second rendering"*, a real decision. FB-007's composer is still not driven in a browser, and
+1. **FB-017** (L) — basics-first panel + per-node view state. It revives STYLE-004's deferral and
+   is worth scoping before starting. FB-015's scope 3 deliberately left *"demote Source Set to the
+   advanced tier"* to it, referenced rather than duplicated.
+2. **FB-016** (M/L) — box-model overlay, transform-origin crosshair, radius-following highlight.
+3. **FB-022** (M/L) — drag-to-scrub numeric fields; wants FB-017 in the same rows first.
+4. ⚠️ **FB-021 is somebody else's right now.** Check `/tmp/cc-socks/` before touching it.
+5. ⚠️ **Deliberate remainders**: FB-011's AC1 is superseded — reopening it is *"give the composer a
+   second rendering"*, a real decision. FB-007's composer is still not driven in a browser, and
    `apisurfaces.ts`' `personProfile` still has its flat disc — **still nobody's decision**.
-5. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
+   FB-015's `getInspectInfo` change is specced by neither suite and not driven (it needs a running
+   preview); its two middle editor hops are covered by the drive alone, since both components call
+   hooks and `tests-unit` cannot render them.
+6. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
    `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — one week), the 15 lessons' prose,
    Discord's row in the `?` menu, `/rfps` search.
 
 ## Found while working, owned by nobody
 
-- ⚠️ **`getConnectionSourceLabel` returned nothing for the checkbox row**, so it chips as a
-  generic *"Connected"* while Width and Color name their sources. That is the documented fallback
-  behaving as designed, **not** an FB-018 regression — but two `Number` sources resolving
-  differently is worth one look. Not chased.
-- 🔴 **`npm run check:css` in `nodegx-community` still has ONE violation and it is still not
-  ours**: `--site-avatar-ink`'s literal, added in `d205b47` (UNI-013) and re-pointed by NAT-003.
-  ⚠️ **Left alone deliberately** — the justification has to be NAT-003's, and writing one for a
-  decision this session did not make is how an allow-list becomes a rubber stamp.
+- ⚠️ **`FileSystem.chooseFile` had zero callers and an ignored `options` parameter**, so any caller
+  would have got a JSON-only dialog whatever it asked for. It honours `options.accept` now,
+  defaulting to the old behaviour. The 24th *build the caller*.
+- ⚠️ **`getConnectionSourceLabel` returns nothing for the checkbox row** (s19's finding, unchased).
+- ⚠️ **`npm run check:css` in `nodegx-community` still has ONE violation and it is still not ours**:
+  `--site-avatar-ink`'s literal, added in `d205b47` (UNI-013), re-pointed by NAT-003. Left alone
+  deliberately — the justification has to be NAT-003's.
 - ⚠️ **The editor mirror never renders port DIRECTION** (`attachmentPorts` returns it,
-  `CommunityThreadView` uses it only as a React key). Pre-existing and unchanged.
-- ⚠️ **A whole-tree textual repoint reaches build output.** `grep -rl … | while read` rewrote
-  `src/editor/index.bundle.js.map`, a gitignored artefact containing the import string. Harmless —
-  webpack regenerates it — but on a *tracked* artefact it would not have been.
-- ⚠️ **The orphaned `AskAboutNodeDialog.module.scss` fix is STILL uncommitted**, still belongs to
-  neither session, **not touched**. Richard's call. Same for the phase-70/71/72 working files.
+  `CommunityThreadView` uses it only as a React key). Pre-existing.
+- ⚠️ **The orphaned `AskAboutNodeDialog.module.scss` fix is STILL uncommitted**, belongs to no
+  session, **not touched** for the third session running. Richard's call. Same for the phase-70/71/72
+  working files.
 
-## Gates, this tree (OpenNoodl, `cline-dev`)
+## Gates, this tree (OpenNoodl, `cline-dev`) — 🔴 re-measure, never quote
 
-- `npm run test:main`: **315 files / 5099 specs / 0 failures** (includes FB-018's 2 files, 18
-  specs).
-- `tests-unit/fb-018/`: **18/18**, **11 mutations red, none survived, none compile-failed**.
-- `npx tsc` via `typecheck:editor`: **0 errors** — and the instrument was **proved to see these
-  files** by planting a type error in `PickerTextInput.tsx` (2 errors) and removing it (0).
-- `typecheck:core-ui`: **44 errors, all `TS2307` module-resolution, all pre-existing**, none in a
-  file this session touched.
+- `npm run test:main`: **319 files / 5137 specs / 0 failures** (FB-015: 4 files, 38 specs).
+  ⚠️ `bld-004/reasoningChannel` failed **once** under load — *"nothing arrived for 0 seconds"* —
+  and passed 8/8 alone and in the clean run. A timing-sensitive stall detector, not a regression.
+- `noodl-runtime`: **141 passed / 1 skipped, 2560 specs, 0 failures** (FB-015: 1 file, 6 specs).
+- `noodl-viewer-react`: **75 files / 965 specs / 0 failures**.
+- `typecheck:editor` / `:viewer` / `:runtime` / `:editor-tests` / `:mcp`: **0 errors**.
+  `typecheck:core-ui`: **44**, all `TS2307`, all pre-existing, none in a touched file.
+- ✅ The typechecker was **proved to see the new files** by planting an error in each
+  (editor 2 → 0, viewer 1 → 0).
 - **Not run** — nothing touched them: `test:ci` (the Electron suite), `noodl-core-ui`'s own suite,
-  the whole `nodegx-community` side. 🔴 **Re-measure rather than quoting this line.**
+  the whole `nodegx-community` side.
 
 ## Gates, `nodegx-community`
 
-Unchanged from session 18 and **not re-run** — this session only deployed the existing `acd4a9a`:
-58 files / 1398 specs / 0 failures, `tsc` clean, `build` clean, `check:css` 1 pre-existing
-violation.
+Unchanged since session 18 and **not re-run**: 58 files / 1398 specs / 0 failures, `tsc` clean,
+`build` clean, `check:css` 1 pre-existing violation. nexus-1 serves `acd4a9a`; nothing is ahead of
+the box. **FB-015 is editor-side and does not deploy** — it ships with the app.
 
 ## Session notes
 
-- ✅ **The editor drive harness works.** `npm run dev:debug -- --quiet` writes **no `.logs/dev.log`
-  at all** — the skill's `until grep … dev.log` loop never fires. Go straight to
-  `npm run cdp -- health` once an `Electron . --dev` process appears.
+- ✅ **The drive harness works as session 19 described it.** `npm run dev:debug -- --quiet` writes
+  no `.logs/dev.log`; go straight to `npm run cdp -- health` once an `Electron . --dev` process
+  appears. `__nodeGraphEditor` was the live graph again.
 - ✅ **Open a project by path**: back up `~/Library/Application Support/NodeGX/
-  recently_opened_project.json`, prepend a row, `cdp reload`, click
-  `[data-test=launcher-project-card]`. Remove the row **after** `dev:stop`. Done; the file is
-  restored (56 rows, as found).
-- ✅ **`__nodeGraphEditor` was the live graph this time** and `NodeGraphContextTmp` did not exist —
-  the opposite of what the memory index warns. Check both.
-- ✅ **`dev:stop` spared the peer's `render-from-disk.js` on port 8901** and all six MCP servers —
-  verified by `ps` after, not assumed. A `dev:stop -- --list` dry run beforehand had already shown
-  it was not a target.
-- Fixture kept: `NodeGX test projects/fb018-drive` (subject + unconnected control + one row per
-  chipped family, with the **corrected** port names).
+  recently_opened_project.json` (a `{recentProjects: [...]}` dict, ~3.7 MB of thumbnails), prepend
+  a row, `cdp reload`, click `[data-test=launcher-project-card]`. Remove the row after `dev:stop`.
+  Done; restored to **56 rows**, as found.
+- ✅ **`dev:stop` spared 14 MCP/peer helpers** across both teardowns — verified by `ps` after, not
+  assumed. ⚠️ A **launching** stack is invisible to `dev:stop --list` for ~75s, so "clean" at
+  launch time is not proof nobody else is starting up. Announce the launch *and* the completion.
+- Fixture kept: `NodeGX test projects/fb015-drive` — two Image nodes, images planted in
+  `node_modules/`, `.cache/`, `.git/` and a `my.node_modules.backup/` lookalike.
