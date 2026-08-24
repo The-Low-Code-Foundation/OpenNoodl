@@ -2,9 +2,33 @@
    Property editor
    ------------------------------------------------------------------- */
 
+/* 🔴 FB-017 AC6 — THESE TWO ELEMENTS WERE SCROLL CONTAINERS THAT NEVER SCROLLED,
+   and that one fact produced three separate defects across three sessions.
+
+   `.sidebar-property-editor` carried `overflow: hidden auto`. Its content has never
+   overflowed it (the panel sits inside `ScrollArea`, whose `.Container` is
+   `min-height: 100%` and simply grows), so its `scrollTop` was permanently 0 — which
+   is what made the panel's scroll-restore read, store and restore nothing for as
+   long as the panel has been inside a `ScrollArea`, and what made the AC7 filter
+   header's `position: sticky` inert: sticky binds to the nearest scrollport, and
+   this was it.
+
+   `.sidebar-panel` is the second one, for the same reason (`overflow: hidden`); it
+   is opted out through the `property-editor-shell` modifier below rather than
+   globally, because `componentports.ts` wears the same class.
+
+   Measured 2026-08-25 on `fb017-drive`, Group `…0030`, at `scrollTop: 400`: with
+   only one of the two cleared the filter box's top was still **-16px** — off the
+   screen. With both cleared it sits at **277px**, which is exactly the real
+   scrollport's own top. Neither half is sufficient alone, which is why the earlier
+   reading looked like "sticky cannot work here". */
 .sidebar-property-editor {
-  overflow: hidden auto;
+  overflow: visible;
   height: 100%;
+}
+
+.sidebar-panel.property-editor-shell {
+  overflow: visible;
 }
 
 /* UIX-011: was a `-webkit-mask-image` of editor/reset-to-default.svg tinted by
@@ -285,25 +309,32 @@
 
 /* FB-017 AC7 — the property filter.
 
-   🔴 NOT `position: sticky`, and that was measured rather than assumed. Sticky binds to
-   the nearest scrolling ancestor, and between this box and the panel's real scroller
-   (`ScrollArea`'s root) sit `.sidebar-property-editor` (`overflow-y: auto`) and
-   `.sidebar-panel` (`overflow: hidden`). The first of those captures the sticky and pins
-   it to a scrollport that NEVER SCROLLS — its content has never overflowed it. Driven
-   2026-08-24: with `top: 0` set, scrolling the panel to 400 put this box's top at -16px,
-   i.e. straight off the screen. The declaration did nothing but look like it worked.
+   ⚠️ THIS COMMENT USED TO SAY "NOT `position: sticky`", and the reasoning was right at
+   the time: session 23 drove it and measured this box at -16px with the panel scrolled
+   to 400, so the declaration was removed rather than shipped looking like it worked.
+   What that session read as "sticky cannot work here without re-parenting the box above
+   the `ScrollArea`" was really "TWO ancestors capture it and only one had been named".
+   Both are now opted out at the top of this file, and the box is sticky again — driven,
+   see the rule below.
 
-   ⚠️ That is the third appearance of one defect. FB-017's scroll restore read the same
-   element for the same reason (it has `overflow-y: auto` and never overflows, so its
-   `scrollTop` is permanently 0), and AC6's panel-width half is stuck in the same flex
-   chain. A genuinely fixed filter header has to live OUTSIDE `.sidebar-panel`, above the
-   `ScrollArea` in `index.tsx` — which is the shared sidebar layout work AC6 is waiting on,
-   not a tail-end CSS tweak. Until then the box scrolls with its rows, honestly.
-
-   It still sits on the panel ground so it reads as chrome rather than as a first row. */
+   It sits on the panel ground so it reads as chrome rather than as a first row. */
 .property-filter {
   padding: 4px 0 10px 0;
   background-color: var(--theme-color-bg-1);
+
+  /* ✅ Sticky, and this time it was measured working rather than assumed. Session 23
+     removed a `position: sticky` from here after driving it and finding it inert —
+     correctly, because at that point two ancestors above still captured it (see the
+     header above this file's first rule). With both of them opted out, the box pins
+     to the real scrollport: driven at `scrollTop: 400`, top = 277 = the scrollport's
+     own top, against -16 before.
+
+     It matters most where the filter is most useful: the properties it reaches are
+     mostly at the BOTTOM of a long panel, so a header that scrolls away is a header
+     you cannot clear without scrolling back. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 /* The match count is for screen readers only — the surviving rows are the sighted

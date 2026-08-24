@@ -1,10 +1,38 @@
+/* FB-017 AC6 — the panel's content column must not change width with the
+ * selection. Two separate causes lived in these seventeen lines, both measured
+ * in the running editor on 2026-08-24 against the `fb017-drive` fixture.
+ *
+ * 🔴 (a) `overflow-y: overlay` HAS BEEN DEAD SINCE CHROMIUM DROPPED IT, and it
+ * read as the opposite of what it did. An overlay scrollbar takes no space; the
+ * computed value here is `auto`, so this scrollbar has always taken 12px out of
+ * the content. Measured: a `Number` node (8 rows, no vertical overflow) gave the
+ * property column **324px**; every node tall enough to scroll gave **312px**. So
+ * the column jumped 12px on most selection changes, and the one declaration a
+ * reader would check said it could not. `scrollbar-gutter: stable` reserves the
+ * track whether or not it is drawn — the same trade `BasePanel.module.scss`
+ * already makes for its own scroller, for the same reason.
+ *
+ * 🔴 (b) `.Container` is a ROW flex container, so its child is a flex item with
+ * `min-width: auto` — i.e. it may not shrink below its own min-content width.
+ * Any panel whose content has an unshrinkable run therefore *widens the column*
+ * and overflows this scroller sideways. Measured on an `Image`: the property
+ * column grew to **346px** inside a 312px scrollport and `scrollLeft` reached
+ * **33.5** — a horizontal scrollbar in a component that declares vertical
+ * scrolling only, and 34px of every row off the right-hand edge. `min-width: 0`
+ * is what makes the child fill the scrollport instead of dictating it.
+ *
+ * ⚠️ (b) does not silence a panel that genuinely needs horizontal room: this
+ * element still computes `overflow-x: auto` (one axis non-visible forces the
+ * other), so content wider than the child still scrolls. What it stops is the
+ * *column itself* being sized by its content.
+ */
 .Root {
   flex: 1;
   position: relative;
   width: 100%;
   height: 100%;
   overflow-y: auto;
-  overflow-y: overlay;
+  scrollbar-gutter: stable;
   z-index: 0;
 }
 
@@ -13,4 +41,10 @@
   width: 100%;
   min-height: 100%;
   display: flex;
+
+  /* See (b) above. Stated on the children because the automatic minimum size is
+     a property of the flex ITEM, not of the container. */
+  > * {
+    min-width: 0;
+  }
 }
