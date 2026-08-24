@@ -1,149 +1,131 @@
 # Phase 75 — next session
 
-**State as of 2026-08-24 (session 22).** Session 22 **built, specced and drove the core of
-FB-017** — the two-tier property panel, the collapse mechanism that was dead code with a live
-reader, the badge that stops a folded group hiding, and a **pre-existing scroll defect that had
-been reading the wrong element since the panel moved inside a `ScrollArea`**. `879f2f4c`.
-FB-017 is **🟡 partly done**: AC1/2/3/5 and the scroll half of AC6. Read *"What session 22
-found"*, then session 21's notes, which still stand.
+**State as of 2026-08-24 (session 23).** Session 23 **closed FB-017's AC7** — the property
+filter, including the ruling that a search must never write to persisted expansion, and a
+`position: sticky` that was **inert and is now removed**. `7f8ca477`. FB-017 is now **🟡 AC4 and
+the panel-width half of AC6 only**. Read *"What session 23 found"*, then FB-017's own file, then
+session 22's notes, which still stand.
 
-⚠️ **This checkout is busy.** Three live sessions at teardown (`ls -l /tmp/cc-socks/`):
-`3878`, `39469` (owns FB-021), and mine. Session 21 counted five and two of those are gone.
-**`ListAgents` still shows only some of them** — it showed 2 of 3. FB-021's file carries another
-session's uncommitted edits; leave them.
+⚠️ **This checkout is busy.** Three live sessions (`ls -l /tmp/cc-socks/`): `3878` (FB-023),
+`39469` (FB-021, **alive, task file uncommitted — leave those edits**), and mine. **`ListAgents`
+showed 2 of 3 again.** Both reachable peers confirmed idle at teardown.
 
-## What session 22 found
+## What session 23 found
 
-### 🔴 THE PANEL'S SCROLL RESTORE HAS BEEN READING AN ELEMENT THAT CANNOT SCROLL
+### 🔴 A SEARCH MUST NEVER WRITE TO PERSISTED EXPANSION
 
-`Ports.renderGroups` has always carried *"remember the scrolling so a re-render doesn't reset the
-scroll position"*, via `this.el.parentElement.parentElement`. That lands on
-`.sidebar-property-editor` — `overflow-y: auto`, but its content never overflows it, so
-`scrollHeight === clientHeight` and `scrollTop` is permanently `0`. **The real scroller is
-`ScrollArea`'s root, six levels up.** It has been reading 0, storing 0 and restoring nothing.
+A hit inside the collapsed `Advanced CSS` has to open it. Doing that through
+`propertyPanelViewState.setExpanded` would write a *searching keystroke* into the builder's
+preferences — every node selected afterwards, in every later session, would open with Advanced CSS
+expanded because they once looked for `transform origin`. **The tier split would erode itself one
+search at a time.** `Ports._filterExpansion` is transient; a group collapsed *during* a search is
+honoured until the box is cleared. Driven both ways against a known-firing control.
 
-Jordan §4 filed this as a missing feature. It was a broken one. ⚠️ **A fixed hop count is what
-made it silent** — two `parentElement`s cannot fail, they arrive somewhere else after someone
-wraps the panel. It walks for the property now (`scrollContainer()`).
+### 🔴 A FIXTURE PROVED A RULE IT COULD NOT TEST — AND ONLY MUTATION FOUND IT
 
-⚠️ **My first repair failed the same silent way and the drive caught it too.** The listener bound
-only inside `if (scrollTop)`, never true on a first render — and `instance.render()` runs *before*
-`setInstance` mounts the `ScrollArea`, so `this.el` has no parent at that moment. **A panel that
-opens at the top looks identical whether the offset was restored as 0 or never stored.**
-`settleScroll` retries for 5 frames.
+The filter matches label, port **name**, and **group** name. The group-name rule was justified in
+prose with `Margin and padding` — *"the rows are Left/Right/Top/Bottom, so typing margin finds
+nothing"*. **False.** The real ports are `marginLeft` labelled `Margin Left`: the word is on every
+row twice. The fixture was invented to fit the wrong claim, so **deleting the group-name branch
+left all 24 assertions green.**
 
-### 🔴 TIER IS KEYED BY GROUP NAME, AND THE DEFAULT IS BASIC — BOTH AGAINST AC3 AS WRITTEN
+✅ Fixtures now read from `node-shared-port-definitions.ts` (58 shared CSS ports, 14 groups). The
+groups that genuinely need the rule: `Style`, `Alignment`, `Dimensions`, `Layout`, `Placement`,
+`Dimension Constraints`. All 10 mutations caught.
 
-Two deviations, both argued in the module and the task file, both reversible in one line:
+⚠️ **The first mutation sweep measured nothing** — a `cd` inside the helper broke the relative
+jest config path, so every run errored and printed no summary line, which read exactly like a pass.
 
-1. **Group name, not a per-port `tier` field.** A per-port tier lets a group straddle both tiers,
-   so `Margin and padding` would render as a heading twice. Also: a new port field crosses the
-   **five hand-written lists** that dropped FB-015's `placeholder` four times in session 21.
-   `group` already survives that pipeline — it is what the panel groups by today.
-2. **Unknown group → BASIC, not advanced.** Of 58 groups on 29 visual nodes, 22 are shared CSS;
-   the rest are the node's **subject** (`Image` holds Source, `Text` holds Text).
-   Advanced-by-default buries a node's reason for existing, and does it to exactly the nodes the
-   file has never seen — every kit and third-party node. AC3's real worry is silent rot, and that
-   is answered by a **sweep** instead: the spec fails if a group carried by 3+ visual nodes is
-   unclassified, **and** fails the other way if a rule matches nothing.
+### 🔴 THREE SYMPTOMS, ONE CAUSE — AND THE THIRD IS NOW MEASURED
 
-### ⚠️ THE CATALOG IS NOT THE PANEL'S POPULATION
+`position: sticky` on the filter box was **inert**. Driven: with `top: 0`, scrolling the panel to
+400 put the box's top at **−16px**. Sticky binds to the nearest scrolling ancestor, and
+`.sidebar-property-editor` (`overflow-y: auto`, **never overflows**) captures it and pins it to a
+scrollport that never scrolls.
 
-`node-catalog.json` gives a `Group` node 18 groups; the live panel draws 15. `Focus`,
-`Scroll To Element` and `Scroll To Index` are signal/action groups that never get property rows.
-The AC3 sweep is a good proxy for *classification completeness*, not a census of what renders —
-and dynamic ports are already a documented blind spot in `PORT-GROUP-VOCABULARY.md`.
-
-⚠️ FB-017's own ground-truth note says a `Group` has **19** groups. Measured: **18**.
-
-### ⚠️ TWO HARNESS CORRECTIONS TO SESSION 21'S NOTES
-
-1. **`npm run dev:debug` must NOT be launched with `&` inside `run_in_background`.** Doing both
-   makes the outer shell exit and orphan the stack — it reparents to PID 1, survives, and
-   **cannot be attributed to any session**. A peer walked the chain and told me. Use the
-   harness's backgrounding alone.
-2. **`cdp click` takes a SELECTOR, not coordinates**, and it scrolls the target into view first
-   (it reported `210,717` for an element whose rect said `y=1774`). Also: **a launcher showing
-   `0` project cards is usually still loading** — it read 0 then 57 from the same selector.
-   `recently_opened_project.json` rows need `id` and `latestAccessed`, not just a path.
+That is the **same element and the same reason** as session 22's scroll-restore defect, and the
+same flex chain **AC6's panel-width half** is stuck in. A real fixed filter header must live
+**outside `.sidebar-panel`, above the `ScrollArea` in `index.tsx`** — which is the shared sidebar
+layout session AC6 is already waiting on. **Whoever takes AC6 should take all three at once.**
 
 ## First moves, in order
 
-1. **FB-017's remainder** — three separable pieces, in cost order:
-   - **AC7, the property filter.** Untouched. The tier machinery is in place for it: a hit inside
-     a collapsed group needs `propertyPanelViewState.setExpanded(name, true)` and nothing else.
-   - 🔴 **AC6's other half, the panel width.** Now **measured, not reported**: Group `0030` →
-     **312px**, Image `0032` → **346px**. Cause is `min-width: auto` on the flex chain above
-     `.sidebar-panel`, so the panel is content-driven and overflows its own `ScrollArea`
-     (Container 312, Root 324, panel 346). **Left deliberately** — it is shared sidebar layout
-     behind *every* registered panel, and `min-width: 0` there needs every panel driven before it
-     can be believed. That is a session, not a tail-end one-liner.
-   - **AC4, the corner-radius-on-Image hint.** Untouched; still wants a measured list of
-     offenders, not an open-ended system.
-2. ⚠️ **Scope 2's "demote Source Set to the advanced tier"** (FB-015 deferred it here) is **not
-   done and needs Richard.** `Source Set` sits in the `Image` group, which is a subject group and
-   therefore basic. Demoting one port inside a basic group is exactly the per-port tiering
-   Ruling 1 rejected — so it needs its own group, or a decision to accept a split heading.
-3. **FB-016** (M/L) — box-model overlay, transform-origin crosshair, radius-following highlight.
-   ⚠️ It now has a neighbour: `Placement` (transform origin, rotation, scale) is **inside
-   `Advanced CSS`** as of `879f2f4c`, which is where FB-016's crosshair would be reached from.
-4. **FB-022** (M/L) — drag-to-scrub numeric fields; wants FB-017's rows settled first.
-5. ⚠️ **FB-021 is session 20's.** I messaged them about the overlap: their fix has to surface a
-   gated port *in the rows I restructured*, and `countActivePorts`/`PortActivityProbe` in
-   `propertyPanelTiers.ts` is the seam that stops a gated port hiding inside a collapsed group.
-   No reply by teardown.
-6. ⚠️ **Deliberate remainders, unchanged from s21**: FB-011's AC1 superseded; FB-007's composer
-   still not driven in a browser; `apisurfaces.ts`' `personProfile` flat disc — **still nobody's
-   decision**.
-7. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
-   `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31** — one week), the 15 lessons' prose,
+1. 🔴 **AC6's panel-width half, now the highest-value item in FB-017** — it has grown from one
+   symptom to three, all in the `.sidebar-panel` / `.sidebar-property-editor` chain. Session 22's
+   measurement stands: Group `0030` → **312px**, Image `0032` → **346px**; cause is
+   `min-width: auto` on the flex chain, so the panel is content-driven. `min-width: 0` needs
+   **every registered panel driven** before it can be believed. That is the session.
+2. **AC4, the corner-radius-on-Image hint** — untouched, still wants a measured list of offenders
+   rather than an open-ended system.
+3. ⚠️ **Scope 2's "demote Source Set to the advanced tier"** — **still needs Richard**, unchanged.
+   `Source Set` is in the `Image` subject group, so demoting one port is exactly the per-port
+   tiering Ruling 1 rejected.
+4. **FB-016** (M/L) — box-model overlay, transform-origin crosshair. ⚠️ `Placement` is inside
+   `Advanced CSS` as of `879f2f4c`, and is now also reachable by typing `transform`.
+5. **FB-022** (M/L) — drag-to-scrub numerics; FB-017's rows are now settled.
+6. ⚠️ **FB-021 is session 20's.** Overlap **measured and closed**: `ModelProxy.getPorts` splices
+   condition-filtered ports out *before* `Ports._getPorts`, so a gated port never becomes a view
+   and the filter can neither hide nor reveal one. Precondition relayed to them via `3878`: if
+   FB-021 reveals those rows, each must be a **real view carrying `name`/`displayName`**, not only
+   a decorated element, or the filter will not reach it.
+7. ⚠️ **Deliberate remainders, unchanged**: FB-011 AC1 superseded; FB-007's composer undriven in a
+   browser; `apisurfaces.ts`' `personProfile` flat disc — **still nobody's decision**.
+8. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
+   `ANTHROPIC_API_KEY` (⚠️ intro pricing ends **2026-08-31 — one week**), the 15 lessons' prose,
    Discord's row in the `?` menu, `/rfps` search.
 
 ## Found while working, owned by nobody
 
-- ⚠️ **The scroll defect above is pre-existing and was never anyone's task** — it is fixed now,
-  but nothing else in the editor that counts `parentElement` hops has been audited. It is worth
-  one grep: a fixed hop count through a shell someone else owns is the shape of the bug.
-- ⚠️ **`getConnectionSourceLabel` returns nothing for the checkbox row** (s19, unchased).
-- ⚠️ **`npm run check:css` in `nodegx-community` still has ONE violation and it is still not
-  ours** — `--site-avatar-ink`'s literal from `d205b47` (UNI-013), re-pointed by NAT-003.
-- ⚠️ **The editor mirror never renders port DIRECTION** (`attachmentPorts` returns it,
-  `CommunityThreadView` uses it only as a React key). Pre-existing.
-- ⚠️ **The orphaned `AskAboutNodeDialog.module.scss` fix is STILL uncommitted** — fourth session
-  running, belongs to no session, **not touched**. Richard's call. Same for the phase-70/71/72
-  working files.
+- ⚠️ **A `Number` node draws a top-level group literally called `ADVANCED`**, expanded, beside the
+  synthetic `Advanced CSS`. Correct under Ruling 2 but the vocabulary now shows two different
+  "advanced" things. For whoever revisits `propertyPanelTiers.ts`.
+- ⚠️ **The `AskAboutNodeDialog.module.scss` fix is STILL uncommitted — fifth session running**,
+  belongs to no session, not touched. Richard's call. Same for the phase-70/71/72 working files.
+- ⚠️ Unchanged and unchased: `getConnectionSourceLabel` returns nothing for the checkbox row;
+  `check:css` in `nodegx-community` has one pre-existing non-ours violation; the editor mirror
+  never renders port DIRECTION.
+
+## ⚠️ Harness corrections, session 23 — all cost a false reading
+
+1. 🔴 **Never write `input.value` directly on a React-controlled input.** It updates React's value
+   tracker, so the next legitimate `input` event is deduped and **`onChange` never fires**. Cost
+   two false readings: a panel that looked stuck filtered, and a "clear" that did nothing. Use
+   `cdp -- type`, or native-setter + `dispatchEvent` — never both.
+2. 🔴 **`editorSettings.json` nests everything under a `settings` key, and writes ASYNCHRONOUSLY.**
+   Reading the top level returns `null` for every key, which reads exactly like "nothing
+   persisted" — it invalidated this session's first absence check. Settle-loop the file, and
+   always pair an absence with a known-firing control.
+3. ⚠️ **`cdp -- type` APPENDS**; it does not replace.
+4. ⚠️ **A DOM attribute used as a click target does not survive a re-render** — re-tag before every
+   click or the second click lands on nothing.
+5. ⚠️ **`cdp -- reload` closes the project** and returns to the launcher.
 
 ## Gates, this tree (OpenNoodl, `cline-dev`) — 🔴 re-measure, never quote
 
-Measured at `879f2f4c`, after the final `Ports.ts` edit:
+Measured at `7f8ca477`, after the final CSS edit:
 
-- `npm run test:main`: **322 files / 5181 specs / 0 failures** (FB-017: 3 files, 44 specs).
-  Exactly s21's 319/5137 plus this task — no drift, no flakes this run.
+- `npm run test:main`: **323 files / 5210 specs / 0 failures**. Exactly s22's 322/5181 plus this
+  task (+1 file, +29 specs) — no drift, no flakes.
 - `typecheck:editor` / `:editor-tests` / `:viewer` / `:runtime` / `:mcp`: **0 errors**.
-- ✅ The typechecker was **proved to see the new files** by planting an error in each
-  (3 → 0).
-- ✅ The tier module was **proved to be live in the running editor** by counting its symbols in
-  the served bundle (`curl http://localhost:8080/src/editor/index.bundle.js`) — worth repeating,
-  because it is how I separated "the fix is wrong" from "the fix is not loaded".
-- **Not run** — nothing touched them: `test:ci` (Electron suite), `noodl-runtime`,
-  `noodl-viewer-react`, `noodl-core-ui`, the whole `nodegx-community` side. ⚠️ `typecheck:core-ui`
-  not run either; s21 measured 44 pre-existing `TS2307`.
+- ✅ Typechecker **proved to see both new files** (2 planted → 0).
+- ✅ The filter's judgements **proved to be gradeable**: 10 source mutations, 10 caught.
+- **Not run** — nothing touched them: `test:ci` (Electron), `noodl-runtime`, `noodl-viewer-react`,
+  `noodl-core-ui`, all of `nodegx-community`. ⚠️ `typecheck:core-ui` not run; s21 measured 44
+  pre-existing `TS2307`.
 
 ## Gates, `nodegx-community`
 
 Unchanged since session 18 and **not re-run**: 58 files / 1398 specs / 0 failures, `tsc` clean,
 `build` clean, `check:css` 1 pre-existing violation. nexus-1 serves `acd4a9a`. **FB-017 is
-editor-side and does not deploy** — it ships with the app.
+editor-side and does not deploy.**
 
 ## Session notes
 
-- ✅ **Drive harness**: `npm run dev:debug -- --quiet` (no `&`), wait for `9222` to LISTEN, then
-  `npm run cdp -- health`. `__nodeGraphEditor` was the live graph again.
-- ✅ **Selecting a node headlessly**: `ed.selectNode(view)` wants a **view**, not a model —
-  passing `ed.model.roots[n]` throws in `getNodePanelName`. Get views from `ed.forEachNode`,
-  ⚠️ **which stops on a truthy return**, so the callback must assign and return nothing.
-- ✅ **`dev:stop` spared 8 MCP/peer helpers** — verified by `ps` after, not assumed. Announced
-  launch and teardown to the one reachable peer.
+- ✅ **Drive harness**: `npm run dev:debug -- --quiet` (no `&`), wait for `9222` LISTEN, then
+  `cdp -- health`. Editor webpack took **93s**.
+- ✅ **`dev:stop` spared all 3 peers' MCP helpers** — verified by `ps` after, not assumed, and
+  independently confirmed by `3878`. Announced launch and teardown to both reachable peers.
 - ✅ **Restored as found**: `recently_opened_project.json` back to **56 rows**; theme back to dark.
-- Fixture kept: `NodeGX test projects/fb017-drive` (a copy of `fb018-drive`) — a Group with four
-  visual children; `cssClassName` and `blockTouch` set on node `…0030` to make the badge draw.
+  ⚠️ `propertyPanel.groupExpansion` left as `{}` (= the shipping default, Advanced CSS collapsed);
+  I never read the correct path before touching it, so I cannot claim I restored a prior value.
+- Fixture kept: `NodeGX test projects/fb017-drive`.
