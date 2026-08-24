@@ -16,6 +16,7 @@ export { CommunityPostBody } from './CommunityPostBody';
 export type { CommunityPostBodyProps } from './CommunityPostBody';
 export { CommunityThreadView } from './CommunityThreadView';
 export type {
+  CommunityAttachmentImage,
   CommunityAttachmentPull,
   CommunityAttachmentPort,
   CommunityAttachmentView,

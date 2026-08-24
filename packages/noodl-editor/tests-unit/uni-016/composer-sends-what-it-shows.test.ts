@@ -109,12 +109,45 @@ describe('property 1 — the string shown is the string sent', () => {
     expect(askQuestionCall(mutated)).not.toContain('body: question.body,');
   });
 
+  /**
+   * 🔴 **FB-007 RE-AIMED THIS ROW, AND THE DISTINCTION IT NOW DRAWS IS THE WHOLE PROPERTY.**
+   *
+   * It used to read `attachments: artifacts` — a literal, which went red the moment the post
+   * path gained the upload. The honest question that raised is whether
+   * `withCaptureImage(artifacts, uploaded)` is the *"second derivation here"* the row exists to
+   * forbid. It is not, and the reason is worth writing down rather than asserting past:
+   *
+   * - It is **not a rebuild**. `artifacts` is still the single `buildNodeArtifacts` call, and
+   *   the transform is a named shared function in the same module, graded in `fb-007/`.
+   * - It **cannot touch what was shown**. It adds one field to the capture payload, and that
+   *   field is the server's own answer to the upload — a value that did not and could not
+   *   exist when the composer drew the preview.
+   * - It is **total on null**, so every path with no picture sends byte-identical attachments.
+   *
+   * ⚠️ The row is therefore tightened rather than loosened. A weaker `toContain('artifacts')`
+   * would pass on `attachments: rebuildFrom(artifacts)`, which is precisely the defect — so the
+   * expectation is the exact whole expression, with a control proving a rebuild is caught.
+   */
   it('the attachments come from the shared builder, not from a second derivation here', () => {
     const call = askQuestionCall(source);
-    expect(call).toContain('attachments: artifacts');
+    expect(call).toContain('attachments: withCaptureImage(artifacts, uploaded)');
     // And `artifacts` is `buildNodeArtifacts` over the composed type and the ticked set —
     // `nodeartifact.ts` is where that is graded, and this is the line that routes to it.
     expect(source).toContain('buildNodeArtifacts({ nodeType: question.nodeType');
+    // 🔴 Exactly ONE call to the builder. Two would be the rebuild this row forbids, and it is
+    // the shape FB-007 could most easily have taken — passing the image ref into a second
+    // `buildNodeArtifacts` at post time, which would silently show one payload and send another.
+    expect(source.split('buildNodeArtifacts(').length - 1).toBe(1);
+  });
+
+  it('NEGATIVE CONTROL — a POST that rebuilds the attachments is caught', () => {
+    const mutated = source.replace(
+      'attachments: withCaptureImage(artifacts, uploaded)',
+      'attachments: buildNodeArtifacts({ nodeType: focus.typename, environment, attachment })'
+    );
+    expect(mutated).not.toBe(source);
+    expect(askQuestionCall(mutated)).not.toContain('attachments: withCaptureImage(artifacts, uploaded)');
+    expect(mutated.split('buildNodeArtifacts(').length - 1).toBe(2);
   });
 });
 
@@ -157,10 +190,19 @@ describe('property 2 — AC5, the browser hand-off survives', () => {
 
 describe('the capture is still written to disk on both routes', () => {
   /**
-   * ⚠️ Not a nicety. A `capture` attachment carries dimensions and consent and **no image**,
-   * because blob storage is owned by no task — so the PNG in the asker's Documents folder is
-   * the only copy of the picture that exists. Dropping it on the signed-in route would make
-   * posting lose something copy-and-open keeps.
+   * ⚠️ Not a nicety — and **FB-007 CHANGED THE REASON WITHOUT CHANGING THE ROW**, which is why
+   * this comment is rewritten rather than the assertion deleted.
+   *
+   * It used to be that a `capture` attachment carried dimensions and consent and **no image**,
+   * because blob storage was owned by no task, so the PNG in the asker's Documents folder was
+   * the only copy of the picture that existed. It is not any more: the post path uploads it.
+   *
+   * 🔴 The count still has to be two, for a reason that is now AC3's. The upload can fail — and
+   * *"capture hosting is not configured"* is a **supported state** on any deployment without a
+   * bucket, not a fault — and the question posts anyway when it does. The local copy is what
+   * that degraded post degrades **to**. Dropping it here would take the fallback away at
+   * exactly the moment it is needed, which is a worse version of the bug this row was
+   * originally written to prevent.
    */
   it('saveCaptureNextTo is called on the post path as well as the hand-off path', () => {
     const occurrences = source.split('saveCaptureNextTo(capture.data)').length - 1;

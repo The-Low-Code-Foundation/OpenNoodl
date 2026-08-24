@@ -843,6 +843,34 @@
   min-width: 0;
 }
 
+/*
+ * FB-007 — the capture, in a rail that is nothing like as wide as the screen it photographed.
+ *
+ * 🔴 `max-width: 100%` AND `height: auto`, AND NEITHER IS OPTIONAL. The `<img>` carries the
+ * SENDER'S intrinsic dimensions as attributes — Richard's own report quotes `1976 × 626` — and
+ * they are there on purpose, to reserve the right box before the bytes arrive. Without the
+ * max-width that is also what it DRAWS at, in a panel a few hundred pixels wide; with the
+ * max-width alone the height attribute still applies and the picture is squashed. This is the
+ * same shape as FB-010's `.avatar.sm`, which had no size rule for as long as every small disc
+ * happened to be a gradient: a rule that is complete until a new case exists.
+ *
+ * ⚠️ `display: block` because an inline image sits on the text baseline and leaves a few
+ * pixels of descender gap under it that reads as a broken border.
+ */
+.AttachmentImage {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 0 var(--spacing-1);
+  /* ⚠️ A literal, because this file has NO radius token to reach for. `--border-radius-sm`
+     is the name that suggests itself and it is defined nowhere in this repo — it would have
+     rendered as no radius at all, silently, forever. Every other radius here is written out. */
+  border-radius: 4px;
+  /* The picture is a screenshot of an app; a border is what keeps its own chrome from reading
+     as this panel's chrome. */
+  border: 1px solid var(--theme-color-bg-3);
+}
+
 .AttachmentWithheld,
 .AttachmentNote {
   margin: 0 0 var(--spacing-1);

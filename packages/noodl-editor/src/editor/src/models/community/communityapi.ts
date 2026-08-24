@@ -19,7 +19,7 @@
  * from its caller — because a module that starts its own interval is one an editor cannot
  * stop without knowing about it.
  */
-import type { PostAttachment } from './nodeartifact';
+import type { CaptureImageRef, PostAttachment } from './nodeartifact';
 import { parsePostBody, readPostBlocks, type Block, type PostBlock } from './postbody';
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -1110,6 +1110,114 @@ export class CommunityApiClient {
     attachments?: PostAttachment[];
   }): Promise<Write<AskAccepted>> {
     return this.post<AskAccepted>('/api/v1/bench/threads', input);
+  }
+
+  /**
+   * FB-007 — upload the capture's bytes, and receive the reference that may name them.
+   *
+   * ═══════════════════════════════════════════════════════════════════════════════
+   * 🔴 **THE ONLY METHOD ON THIS CLIENT THAT DOES NOT SEND JSON, AND THE PLATFORM CHOSE THAT
+   * DELIBERATELY.** `POST /api/v1/bench/captures` takes a raw PNG as the whole body — not
+   * multipart, which would need a parser for one field, and not base64 in a JSON envelope,
+   * which is the very thing the separate route exists to avoid: `MAX_PAYLOAD_BYTES` is 32 KB
+   * against a screenshot of two to five megabytes, a third larger again once base64'd, read
+   * back out of a `jsonb` column every time anybody opens the thread.
+   *
+   * 🔴 **AND IT IS WHY {@link write} IS NOT REUSED.** That helper's first act is
+   * `JSON.stringify(body)`; a `Uint8Array` through it becomes the string `{"0":137,"1":80,…}`,
+   * which the platform sniffs, finds no PNG magic in, and refuses as *"that is not a PNG"* —
+   * a message about the image that would in fact be about the transport.
+   *
+   * ⚠️ **The status table below is `write`'s on purpose, and one line short of it on purpose
+   * too.** 400/403/413 are refusals with the platform's own sentence — too large, not a PNG,
+   * D15 says you may not upload — and the composer shows them. **502 and 503 fall through to
+   * `unreachable`, which is correct rather than an omission**: *the capture could not be
+   * stored* and *capture hosting is not configured* are both our problem and both retryable,
+   * and neither is anything the asker can act on. This file's header counts three times that
+   * a status defaulted to `unreachable` and should not have (429, 409, 413); this is the case
+   * where the default is the right answer, said out loud so the count stays honest.
+   * ═══════════════════════════════════════════════════════════════════════════════
+   */
+  async uploadCapture(base64Png: string): Promise<Write<CaptureImageRef>> {
+    const headers: Record<string, string> = {
+      accept: 'application/json',
+      'content-type': 'image/png'
+    };
+    if (this.token) headers.authorization = `Bearer ${this.token}`;
+
+    // ⚠️ `Buffer` rather than `atob`, and it is available on both sides that run this: the
+    // editor's renderer is `nodeIntegration: true`, and `tests-unit` is jest on Node.
+    // `nodesharecontext.ts` already decodes the same string the same way to write it to disk.
+    // 🔴 COPIED INTO AN ARRAYBUFFER THIS FUNCTION OWNS, AND THE COPY IS NOT CEREMONY.
+    // `Buffer.from(string, 'base64')` returns a view into Node's SHARED POOL for small
+    // allocations, so `buf.buffer` is an eight-kilobyte slab holding this capture and whatever
+    // else was allocated near it. Handing that to `fetch` as the body would upload the slab —
+    // the wrong length, and other memory with it. `byteOffset`/`byteLength` slicing is the
+    // other correct answer; a fresh buffer is the one that cannot be got subtly wrong later.
+    let bytes: ArrayBuffer;
+    try {
+      const decoded = Buffer.from(base64Png, 'base64');
+      bytes = new ArrayBuffer(decoded.byteLength);
+      new Uint8Array(bytes).set(decoded);
+    } catch (err) {
+      return { outcome: 'unreachable', status: null, detail: `capture could not be decoded: ${String(err)}` };
+    }
+    // 🔴 A refusal, not an upload of nothing. `Buffer.from` does not throw on a malformed
+    // base64 string — it decodes what it can and silently returns a SHORTER buffer, empty in
+    // the worst case. Posting that would spend the round trip to be told it is not a PNG.
+    if (bytes.byteLength === 0) {
+      return { outcome: 'unreachable', status: null, detail: 'the capture decoded to no bytes' };
+    }
+
+    let response: Response;
+    try {
+      response = await this.doFetch(`${this.baseUrl}/api/v1/bench/captures`, {
+        headers,
+        method: 'POST',
+        body: bytes
+      });
+    } catch (err) {
+      return { outcome: 'unreachable', status: null, detail: String(err) };
+    }
+
+    if (response.status === 401) return { outcome: 'unauthenticated' };
+    if (response.status === 404) return { outcome: 'absent' };
+    if (response.status === 400 || response.status === 403 || response.status === 413) {
+      const detail = await response
+        .json()
+        .then((payload: { error?: string }) => payload?.error ?? `HTTP ${response.status}`)
+        .catch(() => `HTTP ${response.status}`);
+      return { outcome: 'refused', detail };
+    }
+    if (!response.ok) {
+      return { outcome: 'unreachable', status: response.status, detail: `HTTP ${response.status}` };
+    }
+
+    let body: Partial<CaptureImageRef>;
+    try {
+      body = (await response.json()) as Partial<CaptureImageRef>;
+    } catch (err) {
+      return { outcome: 'unreachable', status: response.status, detail: `bad JSON: ${String(err)}` };
+    }
+    // 🔴 CHECKED, NOT CAST, AND THE KEY-WITHOUT-A-GRANT CASE IS THE REASON. A 200 whose body
+    // lost the grant — a proxy that rewrote it, a platform half-deployed — would otherwise
+    // produce a reference the composer happily puts in the payload, and the post would be
+    // refused in full with *"the image reference needs a key and a grant"*. Degrading here
+    // costs the picture; passing it on costs the question.
+    if (typeof body?.key !== 'string' || typeof body?.grant !== 'string') {
+      return { outcome: 'unreachable', status: response.status, detail: 'the upload answered no key and grant' };
+    }
+    return {
+      outcome: 'ok',
+      value: {
+        key: body.key,
+        grant: body.grant,
+        // ⚠️ Ours when the platform does not say, because the intake requires a positive
+        // number and refuses the whole post without one.
+        bytes: typeof body.bytes === 'number' && body.bytes > 0 ? body.bytes : bytes.byteLength,
+        contentType: typeof body.contentType === 'string' ? body.contentType : 'image/png'
+      }
+    };
   }
 
   /** UNI-016 — answer, on the same terms. An answer may carry a graph of its own. */

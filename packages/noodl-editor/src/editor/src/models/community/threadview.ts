@@ -31,6 +31,7 @@ import {
   metaLine,
   relativeTime,
   replyLatency,
+  type CommunityAttachmentImage,
   type CommunityAttachmentPort,
   type CommunityAttachmentPull,
   type CommunityAttachmentView,
@@ -40,6 +41,7 @@ import {
   type PostBlock as CoreUiPostBlock
 } from '@noodl-core-ui/components/community';
 
+import { COMMUNITY_URL } from './communityorigin';
 import type { MeResponse, Read, ThreadAttachment, ThreadDetail, ThreadPost } from './communityapi';
 import type { PostBlock } from './postbody';
 import {
@@ -168,6 +170,65 @@ export function threadMeta(thread: ThreadDetail, now?: number): string | null {
 // ── The view ──────────────────────────────────────────────────────────────────
 
 /**
+ * FB-007 AC4 — the capture, as something the mirror can actually draw.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🔴 **THIS IS WHERE NAT-008'S "THIS EDITOR FETCHES NO REMOTE IMAGE" IS REVERSED, NARROWLY,
+ * AND IT IS A RULING RATHER THAN A DRIFT.** Richard ruled it on 2026-08-24, against the filed
+ * report that opened FB-007: *"in community in the launcher, you can't see the screen capture
+ * on the bench posts, even though it says there is one."*
+ *
+ * `peopleview.ts` declines `avatarUrl` and the reasoning there is **unchanged and still right**.
+ * What that reasoning actually rests on is the sentence *"the URL is a string a stranger put on
+ * their profile"* — an arbitrary host, chosen by somebody else, fetched by a window running
+ * `nodeIntegration: true, contextIsolation: false`, telling whoever answers it that this editor
+ * opened this profile at this moment from this IP. **Every clause of that is false here:**
+ *
+ * - The host is {@link COMMUNITY_URL}, our own compile-time constant. No payload contributes to
+ *   it, so no stranger can point this anywhere.
+ * - The path is built from the attachment's **id**, not from `payload.image.key` — so even a row
+ *   naming a key outside the captures prefix (the platform refuses to store one, but rows
+ *   predate both refusals) cannot steer the request. The key is read for its PRESENCE and
+ *   nothing else.
+ * - The route is the app's own, applies D15 and the thread's visibility to the bytes, and is
+ *   already fetched by every reader of the web thread.
+ *
+ * ⚠️ **The cost, stated rather than hidden — the same way `peopleview.ts` states its own.** This
+ * is one image class from one host, and it is the *only* remote image the editor fetches. A
+ * second one is a new decision and must be argued here, not appended.
+ *
+ * ⚠️ **`width`/`height` are the SENDER'S** and are used only to reserve the right box. A wrong
+ * pair costs a reflow; it cannot make anything render other than what the route served. The web
+ * `Attachment.tsx` says the same about the same two numbers.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+export function attachmentImage(attachment: ThreadAttachment): CommunityAttachmentImage | null {
+  // 🔴 `capture` ONLY. The platform verifies an image reference on every kind and the web
+  // renders one on this kind alone; a mirror that drew an `image` off a `graph_fragment` would
+  // be the one reader inventing a surface nothing else has.
+  if (attachment.kind !== 'capture') return null;
+  if (!attachment.id) return null;
+
+  const image = attachment.payload.image;
+  if (typeof image !== 'object' || image === null || Array.isArray(image)) return null;
+  // ⚠️ The presence of a *key* is the signal, not its value — see the header. Every capture
+  // posted before FB-007 shipped has no `image` and stays a complete attachment that draws its
+  // dimensions, which is why nothing had to be migrated on either side.
+  if (typeof (image as Record<string, unknown>).key !== 'string') return null;
+
+  const width = Number(attachment.payload.width);
+  const height = Number(attachment.payload.height);
+  return {
+    src: `${COMMUNITY_URL}/api/v1/bench/attachments/${encodeURIComponent(attachment.id)}/image`,
+    width: Number.isFinite(width) && width > 0 ? width : null,
+    height: Number.isFinite(height) && height > 0 ? height : null,
+    // Not decorative — it carries the question, and nothing here knows what is IN the picture.
+    // The same sentence the web serves, for the same reason.
+    alt: 'Screen capture attached to this question'
+  };
+}
+
+/**
  * How the host offers to pull an attachment into a project — NAT-015.
  *
  * ⚠️ A function rather than a flag, because the answer is per attachment: a `graph_fragment`
@@ -227,6 +288,7 @@ function attachmentView(attachment: ThreadAttachment, pullFor?: PullOffer): Comm
     ports: attachmentPorts(attachment),
     withheldLine: withheldLine(attachment),
     note: attachment.note,
+    image: attachmentImage(attachment),
     pull: pullFor ? pullFor(attachment) : null
   };
 }

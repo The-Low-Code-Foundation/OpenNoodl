@@ -77,7 +77,7 @@ import { CommunityApiClient, type Write } from '@noodl-models/community/communit
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 import { readCommunitySession, type CommunitySession } from '@noodl-models/community/communitysession';
 import { signIntoCommunity, type SignInProgress } from '@noodl-models/community/communitysignin';
-import { buildNodeArtifacts } from '@noodl-models/community/nodeartifact';
+import { buildNodeArtifacts, withCaptureImage, type CaptureImageRef } from '@noodl-models/community/nodeartifact';
 import { GraphExcerpt } from '@noodl-models/community/nodeexcerpt';
 import { LibraryPorts } from '@noodl-models/community/nodeexcerpt';
 import { SharablePortRef, saveCaptureNextTo } from '@noodl-models/community/nodesharecontext';
@@ -125,7 +125,13 @@ const ASK_SECTION = 'help';
 type PostState =
   | { phase: 'idle' }
   | { phase: 'posting' }
-  | { phase: 'posted'; threadId: string; pointsAwarded: number }
+  /**
+   * ⚠️ FB-007 AC3 — `imageMissed` is a field on the SUCCESS state, and that pairing is the
+   * criterion rather than a convenience. *The question posted and the picture did not* is one
+   * outcome, not two, and holding it as a second `failed` state would either replace a success
+   * with a failure or leave the two rendered as contradicting each other.
+   */
+  | { phase: 'posted'; threadId: string; pointsAwarded: number; imageMissed: string | null }
   | { phase: 'failed'; message: string };
 
 /**
@@ -302,19 +308,56 @@ export function AskAboutNodeDialog({
   );
 
   /**
-   * UNI-016 — the post.
+   * UNI-016 — the post. FB-007 — with the picture in it.
    *
-   * ⚠️ The capture is still written to the asker's Documents folder on this path too, and
-   * that is not an oversight: a `capture` attachment carries its dimensions and its consent
-   * record and **no image**, because blob storage is owned by no task. Until it is, the file
-   * on disk is the only copy of the picture there is, and dropping it here would make the
-   * signed-in route lose something the signed-out route keeps.
+   * ⚠️ The capture is still written to the asker's Documents folder on this path too, and the
+   * reason has CHANGED rather than gone away. It used to be that the file on disk was the only
+   * copy of the picture there was, because blob storage was owned by no task. It now is not —
+   * but the upload can fail, the deployment can have no bucket, and AC3 says the question still
+   * posts when it does. The local copy is what that degraded post degrades *to*, so dropping it
+   * here would take the fallback away at exactly the moment it is needed.
+   *
+   * 🔴 **THE ORDER IS DISK, THEN UPLOAD, THEN POST, AND IT IS NOT ARBITRARY.** The write to the
+   * asker's own machine cannot fail in a way that should stop them asking a question, and it is
+   * the cheapest of the three. Doing it first means every later failure still leaves them
+   * holding the picture.
    */
   async function postToBench(token: string) {
     setPostState({ phase: 'posting' });
     if (capture && includeCapture) setSavedTo(await saveCaptureNextTo(capture.data));
 
     const client = new CommunityApiClient({ baseUrl: COMMUNITY_URL, token });
+
+    // 🔴 FB-007 AC2 — the ONLY source of an image reference is the upload's own answer, and the
+    // grant is why. The platform mints an HMAC over the key and the uploading account precisely
+    // because a composer free to name any key could name one it watched somebody else receive.
+    // There is no other assignment to `uploaded` in this function and no constructor for the
+    // type in this repo, which is what makes *"the editor sends only keys it was granted"* a
+    // fact about the code rather than an intention.
+    let uploaded: CaptureImageRef | null = null;
+    let imageMissed: string | null = null;
+    if (capture && includeCapture) {
+      const upload = await client.uploadCapture(capture.data);
+      if (upload.outcome === 'ok') {
+        uploaded = upload.value;
+      } else {
+        // 🔴 AC3 — THE QUESTION IS NOT ABANDONED FOR THE PICTURE, and this branch is the whole
+        // of that criterion. A failed upload used to be unimaginable and is now the ordinary
+        // case on any deployment without a bucket (`objectStoreConfig()` returns null and the
+        // route answers 503 — supported, not broken). Returning here would eat a question
+        // somebody had already written, over an attachment.
+        //
+        // ⚠️ The learner is TOLD, and told the true thing: the refusals worth acting on
+        // (too large, not a PNG, D15) carry the platform's own sentence through
+        // `describeWriteFailure`, and the rest say the picture did not attach without
+        // inventing a cause.
+        imageMissed =
+          upload.outcome === 'refused'
+            ? `The screenshot was not attached — ${upload.detail}`
+            : 'The screenshot could not be uploaded, so the question posted without it.';
+      }
+    }
+
     const result = await client.askQuestion({
       section: ASK_SECTION,
       // 🔴 The same two values the `<pre>` below renders. Not recomposed, not re-derived —
@@ -322,14 +365,19 @@ export function AskAboutNodeDialog({
       // travel beside it rather than instead of it.
       title: question.title,
       body: question.body,
-      attachments: artifacts
+      // ⚠️ FB-007 — a TRANSFORM of the artifacts that were shown, not a rebuild. The image
+      // reference is the one thing in the payload that did not exist when the composer drew
+      // it, because it comes back from the server; `withCaptureImage` is total on the null
+      // case, so every path that has no picture sends exactly what it always sent.
+      attachments: withCaptureImage(artifacts, uploaded)
     });
 
     if (result.outcome === 'ok') {
       setPostState({
         phase: 'posted',
         threadId: result.value.threadId,
-        pointsAwarded: result.value.pointsAwarded
+        pointsAwarded: result.value.pointsAwarded,
+        imageMissed
       });
       return;
     }
@@ -565,6 +613,10 @@ export function AskAboutNodeDialog({
                   ? `Posted — ${postState.pointsAwarded} points.`
                   : 'Posted.'}
               </Text>
+              {/* 🔴 FB-007 AC3 — drawn UNDER the success and never instead of it. The question
+                  landed; one attachment did not, and a learner who is not told will go to the
+                  web expecting the picture they ticked to be there. */}
+              {postState.imageMissed && <Text textType={TextType.Shy}>{postState.imageMissed}</Text>}
               <PrimaryButton
                 label="Open the thread"
                 variant={PrimaryButtonVariant.MutedOnLowBg}
@@ -581,8 +633,21 @@ export function AskAboutNodeDialog({
           {/*
             🔴 Shown here and nowhere in the payload. The path names this machine and usually the
             project; `formatShareAttachment` publishes the picture's size and never its location.
+
+            🔴 **FB-007 — AND THE SENTENCE HAD TO SPLIT, BECAUSE HALF OF IT STOPPED BEING TRUE.**
+            *"drag it into your post"* was a complete instruction while the picture could reach
+            the web no other way. On the route that now uploads it, telling somebody to drag a
+            file into a post that already has the image is telling them to do a thing twice —
+            the same defect FB-010 found in a refusal sentence that named the wrong scheme, and
+            it is here for the same reason: the copy outlived the behaviour it described.
           */}
-          {savedTo && <Text textType={TextType.Shy}>{`Capture saved to ${savedTo} — drag it into your post.`}</Text>}
+          {savedTo && (
+            <Text textType={TextType.Shy}>
+              {postState.phase === 'posted' && postState.imageMissed === null && capture && includeCapture
+                ? `Capture saved to ${savedTo}.`
+                : `Capture saved to ${savedTo} — drag it into your post.`}
+            </Text>
+          )}
         </VStack>
       </Box>
     </CoreBaseDialog>

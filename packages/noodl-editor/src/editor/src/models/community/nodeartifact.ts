@@ -115,6 +115,66 @@ export interface PostAttachment {
   note?: string | null;
 }
 
+/**
+ * FB-007 — what `POST /api/v1/bench/captures` hands back, and the only thing that may become
+ * an `image` on a payload.
+ *
+ * 🔴 **`grant` IS NOT OURS TO INVENT, AND THAT IS THE WHOLE SHAPE OF THIS TYPE.** The platform's
+ * `captureupload.ts` mints the key *and* an HMAC over `capture-grant:<key>:<accountId>`, precisely
+ * because the obvious design — upload returns a key, the composer puts that key in the payload —
+ * lets anybody put ANY key in a payload, including one they watched somebody else receive, and the
+ * thread would then render a stranger's screenshot under their name. So there is no constructor
+ * for this type in the editor: a value of it comes back from {@link CommunityApiClient.uploadCapture}
+ * or it does not exist, which is what makes AC2's claim — *the editor sends only keys it was
+ * granted* — a property of the type rather than a promise in a comment.
+ *
+ * ⚠️ `bytes` is COSMETIC on the wire (the platform's own note says so: the grant covers the key
+ * and the account, not the size, and the image route serves the length the object store reports).
+ * It is carried because the intake requires the field, not because anything downstream trusts it.
+ */
+export interface CaptureImageRef {
+  key: string;
+  grant: string;
+  bytes: number;
+  contentType: string;
+}
+
+/**
+ * FB-007 — put the server's image reference on the capture attachment, and nowhere else.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🔴 **A SEPARATE FUNCTION RATHER THAN A FIELD ON {@link NodeArtifactInput}, AND THE REASON IS
+ * THE ORDER OF EVENTS.** The artifacts are built while the composer renders — that is UNI-011
+ * AC2's *"the string shown IS the string sent"*, and the memo that holds them is what makes it
+ * true. The upload cannot happen then: it is the one action that leaves the machine, and AC3's
+ * second sentence is *"nothing leaves the machine before the user posts."* So the image reference
+ * arrives strictly later than the thing it belongs to, and the honest shape is a transform applied
+ * to what was already shown rather than a rebuild that could quietly show one thing and send
+ * another.
+ *
+ * ⚠️ **Total on the no-image case, and that is the common path forever.** A question with no
+ * capture, a capture the user untickeed, an upload that failed, a deployment with no bucket — all
+ * four return the attachments unchanged, and a `capture` payload with no `image` is a complete,
+ * legal attachment that the web renders as its dimensions. `acceptCaptureImage` treats absent as
+ * the normal case for exactly the same reason.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+export function withCaptureImage(
+  attachments: PostAttachment[],
+  image: CaptureImageRef | null | undefined
+): PostAttachment[] {
+  if (!image) return attachments;
+  return attachments.map((attachment) =>
+    // 🔴 `kind === 'capture'` and not "the last one" or "the one with a `width`". The platform
+    // verifies an image reference on EVERY kind, deliberately, because *"a `graph_fragment` has
+    // no business carrying an `image`"* — so an editor that attached one to the excerpt would
+    // have its whole post refused rather than quietly drop the picture.
+    attachment.kind === 'capture'
+      ? { ...attachment, payload: { ...attachment.payload, image: { ...image } } }
+      : attachment
+  );
+}
+
 export interface NodeArtifactInput {
   /**
    * 🔴 The BUCKETED type — `NodeQuestion.nodeType`, never `focus.typename`.
@@ -204,10 +264,14 @@ export function buildNodeArtifacts(input: NodeArtifactInput): PostAttachment[] {
       appVersion,
       os
     };
-    // 🔴 No image and no path. `saveCaptureNextTo` still writes the PNG to the asker's
-    // Documents folder, and where it went is a fact about their machine. UNI-016 records
-    // blob storage as owned by no task; when it lands, an `image_url` is the whole change
-    // and nothing here has to move.
+    // 🔴 STILL NO IMAGE **HERE**, and after FB-007 that is a statement about this function
+    // rather than about the feature. The picture is uploaded on the post path and the
+    // reference is put on by {@link withCaptureImage}, because it does not exist yet at the
+    // moment this runs — see that function for why the order is the design.
+    //
+    // ⚠️ And no path, which is unchanged and is the older rule: `saveCaptureNextTo` writes the
+    // PNG to the asker's Documents folder, and where it went is a fact about their machine.
+    // `redact` exists to keep exactly that out of anything outbound.
     attachments.push({ kind: 'capture', payload: capture as unknown as Record<string, unknown> });
   }
 

@@ -61,6 +61,24 @@ export type CommunityAttachmentPull = {
 /** One published port, already turned into words by the host. */
 export type CommunityAttachmentPort = { name: string; direction: string; value: string };
 
+/**
+ * FB-007 AC4 — a capture the host has decided may be drawn.
+ *
+ * 🔴 **THE HOST DECIDES, AND THIS COMPONENT DOES NOT RE-DERIVE IT.** `src` is a finished
+ * absolute URL; there is no base, no key and no path-building here. That is the same split
+ * every other field on {@link CommunityAttachmentView} uses, and it matters more for this one:
+ * *may this editor fetch a remote image at all* is NAT-008's ruling, narrowly reversed for this
+ * one class by `threadview.ts`'s `attachmentImage`, which is where the argument is written down.
+ * A renderer that composed the URL itself would be a second place that decision lived.
+ */
+export type CommunityAttachmentImage = {
+  src: string;
+  /** The SENDER's dimensions, used only to reserve the box. `null` when they were not sent. */
+  width: number | null;
+  height: number | null;
+  alt: string;
+};
+
 export type CommunityAttachmentView = {
   id: string;
   /** "Node excerpt", "Screenshot", "Graph fragment" — never a raw wire `kind`. */
@@ -74,6 +92,8 @@ export type CommunityAttachmentView = {
    */
   withheldLine: string | null;
   note: string | null;
+  /** FB-007 — the picture, when there is one and the host says it may be fetched. */
+  image?: CommunityAttachmentImage | null;
   pull?: CommunityAttachmentPull | null;
 };
 
@@ -302,6 +322,20 @@ function Attachment({ attachment }: { attachment: CommunityAttachmentView }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {/* 🔴 FB-007 — ABOVE the withheld line and the note, because those two describe the
+          picture. The consent record reading "3 port values were not shared" sits under the
+          thing it is about, which is the same order the web thread uses. */}
+      {attachment.image && (
+        <img
+          className={css['AttachmentImage']}
+          src={attachment.image.src}
+          width={attachment.image.width ?? undefined}
+          height={attachment.image.height ?? undefined}
+          alt={attachment.image.alt}
+          loading="lazy"
+        />
       )}
 
       {attachment.withheldLine && <p className={css['AttachmentWithheld']}>{attachment.withheldLine}</p>}
