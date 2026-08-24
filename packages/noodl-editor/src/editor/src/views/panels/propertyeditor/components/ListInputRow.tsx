@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { BindingChip } from '@noodl-core-ui/components/property-panel/BindingChip/BindingChip';
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
+import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput/PropertyPanelRow';
 
 import Tooltip from '../../../../reactcomponents/tooltip';
 import css from './ListInputRow.module.scss';

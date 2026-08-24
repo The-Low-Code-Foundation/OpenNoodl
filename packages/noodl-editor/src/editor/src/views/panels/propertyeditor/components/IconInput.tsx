@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
+import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput/PropertyPanelRow';
 
 import type { IconSetValue } from '../../../../../../shared/utils/iconsets';
 import { IconGlyphPreview } from './IconGlyphPreview';
@@ -17,6 +17,16 @@ export interface IconInputProps {
   value?: IconValue;
 
   isChanged?: boolean;
+  /**
+   * FB-018. `IconType` computed this and then never passed it — so an icon port
+   * driven by a connection was the one row that showed NOTHING at all, not even
+   * the outline the other unchipped rows had.
+   */
+  isConnected?: boolean;
+  /** The source driving this port, for the binding chip. */
+  connectionLabel?: string;
+  /** Click-to-navigate to the driving node. */
+  onConnectionClick?: () => void;
   dataIdentifier?: string;
 
   /** Open the icon picker popout. `anchor` is the thumbnail element. */
@@ -28,9 +38,26 @@ export interface IconInputProps {
  * The icon property row: a label plus a clickable thumbnail box that shows
  * the currently selected icon and opens the icon picker popout.
  */
-export function IconInput({ label, value, isChanged, dataIdentifier, onOpenPicker, onReset }: IconInputProps) {
+export function IconInput({
+  label,
+  value,
+  isChanged,
+  isConnected,
+  connectionLabel,
+  onConnectionClick,
+  dataIdentifier,
+  onOpenPicker,
+  onReset
+}: IconInputProps) {
   return (
-    <PropertyPanelRow label={label} isChanged={isChanged} onReset={onReset}>
+    <PropertyPanelRow
+      label={label}
+      isChanged={isChanged}
+      onReset={onReset}
+      isConnected={isConnected}
+      connectionLabel={connectionLabel}
+      onConnectionClick={onConnectionClick}
+    >
       <div
         className="sidebar-panel-dark-input"
         data-identifier={dataIdentifier}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { PropertyPanelBaseInput } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
+import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput/PropertyPanelRow';
 
 export interface ColorInputProps {
   label: string;
@@ -12,6 +12,10 @@ export interface ColorInputProps {
 
   isChanged?: boolean;
   isConnected?: boolean;
+  /** FB-018: the source driving this port, for the binding chip. */
+  connectionLabel?: string;
+  /** FB-018: click-to-navigate to the driving node. */
+  onConnectionClick?: () => void;
 
   onCommit: (text: string) => void;
   /** Click on the color thumbnail — opens the color picker */
@@ -30,6 +34,8 @@ export function ColorInput({
   resolvedColor,
   isChanged,
   isConnected,
+  connectionLabel,
+  onConnectionClick,
   onCommit,
   onOpenColorPicker,
   onOpenStylePicker,
@@ -51,7 +57,14 @@ export function ColorInput({
   }
 
   return (
-    <PropertyPanelRow label={label} isChanged={isChanged} onReset={onReset}>
+    <PropertyPanelRow
+      label={label}
+      isChanged={isChanged}
+      onReset={onReset}
+      isConnected={isConnected}
+      connectionLabel={connectionLabel}
+      onConnectionClick={onConnectionClick}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
         <PropertyPanelBaseInput
           type="text"

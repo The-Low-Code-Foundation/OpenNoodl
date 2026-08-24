@@ -3,7 +3,7 @@ import { createRoot, Root } from 'react-dom/client';
 
 import { NumberUnitInput } from '../components/NumberUnitInput';
 import { TypeView } from '../TypeView';
-import { getEditType } from '../utils';
+import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
 
 function parseNumberWithUnit(stringValue, permittedUnits) {
   let value = parseFloat(stringValue);
@@ -93,6 +93,8 @@ export class Dimension extends TypeView {
         units: this.type.units || [],
         isChanged: !this.isDefault,
         isConnected: this.isConnected,
+        connectionLabel: this.isConnected ? getConnectionSourceLabel(this.parent.model, this.name) : undefined,
+        onConnectionClick: this.isConnected ? getConnectionSourceNavigate(this.parent.model, this.name) : undefined,
         dataIdentifier: this.name,
         showFixed: true,
         isFixed: !!this.isFixed,

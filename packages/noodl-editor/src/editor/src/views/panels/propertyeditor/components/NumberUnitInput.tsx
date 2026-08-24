@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { PropertyPanelBaseInput } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
+import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput/PropertyPanelRow';
 import { PropertyPanelSelectInput } from '@noodl-core-ui/components/property-panel/PropertyPanelSelectInput';
 
 export interface NumberUnitInputProps {
@@ -13,6 +13,10 @@ export interface NumberUnitInputProps {
 
   isChanged?: boolean;
   isConnected?: boolean;
+  /** FB-018: the source driving this port, for the binding chip. */
+  connectionLabel?: string;
+  /** FB-018: click-to-navigate to the driving node. */
+  onConnectionClick?: () => void;
   dataIdentifier?: string;
 
   /** Dimension rows show the Fixed checkbox when the unit is % */
@@ -35,6 +39,8 @@ export function NumberUnitInput({
   units,
   isChanged,
   isConnected,
+  connectionLabel,
+  onConnectionClick,
   dataIdentifier,
   showFixed,
   isFixed,
@@ -60,7 +66,17 @@ export function NumberUnitInput({
   }
 
   return (
-    <PropertyPanelRow label={label} isChanged={isChanged} onReset={onReset}>
+    // FB-018 AC1 — this is the row the test user hit. Width was a fully editable
+    // field with a 1px outline while a connection drove it, so typing a width
+    // rendered and then reverted, and nothing on screen explained why.
+    <PropertyPanelRow
+      label={label}
+      isChanged={isChanged}
+      onReset={onReset}
+      isConnected={isConnected}
+      connectionLabel={connectionLabel}
+      onConnectionClick={onConnectionClick}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
         <PropertyPanelBaseInput
           type="text"

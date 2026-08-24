@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { PropertyPanelBaseInput } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
+import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput/PropertyPanelRow';
 
 export interface PickerTextInputProps {
   label: string;
@@ -9,6 +9,10 @@ export interface PickerTextInputProps {
 
   isChanged?: boolean;
   isConnected?: boolean;
+  /** FB-018: the source driving this port, for the binding chip. */
+  connectionLabel?: string;
+  /** FB-018: click-to-navigate to the driving node. */
+  onConnectionClick?: () => void;
 
   /** Commit the typed value (blur / Enter, only when actually changed) */
   onCommit: (value: string) => void;
@@ -31,6 +35,8 @@ export function PickerTextInput({
   value,
   isChanged,
   isConnected,
+  connectionLabel,
+  onConnectionClick,
   onCommit,
   onOpenPicker,
   onFilter,
@@ -51,7 +57,14 @@ export function PickerTextInput({
   }
 
   return (
-    <PropertyPanelRow label={label} isChanged={isChanged} onReset={onReset}>
+    <PropertyPanelRow
+      label={label}
+      isChanged={isChanged}
+      onReset={onReset}
+      isConnected={isConnected}
+      connectionLabel={connectionLabel}
+      onConnectionClick={onConnectionClick}
+    >
       <PropertyPanelBaseInput
         type="text"
         value={displayedValue}

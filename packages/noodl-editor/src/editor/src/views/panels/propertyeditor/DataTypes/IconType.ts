@@ -4,7 +4,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { IconInput, IconValue } from '../components/IconInput';
 import IconPicker from '../iconpicker';
 import { TypeView } from '../TypeView';
-import { getEditType } from '../utils';
+import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
 
 export class IconType extends TypeView {
   el: TSFixme;
@@ -55,6 +55,9 @@ export class IconType extends TypeView {
         label: this.displayName,
         value: this.value as IconValue | undefined,
         isChanged: !this.isDefault,
+        isConnected: this.isConnected,
+        connectionLabel: this.isConnected ? getConnectionSourceLabel(this.parent.model, this.name) : undefined,
+        onConnectionClick: this.isConnected ? getConnectionSourceNavigate(this.parent.model, this.name) : undefined,
         dataIdentifier: this.name,
         onOpenPicker: (anchor: HTMLElement) => this.openPicker(anchor),
         onReset: () => {

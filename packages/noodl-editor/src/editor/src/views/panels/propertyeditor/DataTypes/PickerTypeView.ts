@@ -4,6 +4,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { ContentPicker, ContentPickerItem } from '../components/ContentPicker';
 import { PickerTextInput } from '../components/PickerTextInput';
 import { TypeView } from '../TypeView';
+import { getConnectionSourceLabel, getConnectionSourceNavigate } from '../utils';
 
 /**
  * Base for the property rows that pair a text input with a picker popout
@@ -39,6 +40,8 @@ export abstract class PickerTypeView extends TypeView {
         value: current.value ?? '',
         isChanged: !this.isDefault,
         isConnected: this.isConnected,
+        connectionLabel: this.isConnected ? getConnectionSourceLabel(this.parent.model, this.name) : undefined,
+        onConnectionClick: this.isConnected ? getConnectionSourceNavigate(this.parent.model, this.name) : undefined,
         dataIdentifier: this.name,
         onCommit: (value: string) => this.commit(value),
         onOpenPicker: (anchor: HTMLElement) => this.openPicker(anchor),
