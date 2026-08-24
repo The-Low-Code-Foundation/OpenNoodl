@@ -197,16 +197,90 @@
 }
 
 /* Section title (UIX-004): uppercase micro-label, muted, with wide tracking —
-   the mock's section rhythm. Reads as a divider label, not body text. */
+   the mock's section rhythm. Reads as a divider label, not body text.
+
+   FB-017 made it a real <button>: the collapse mechanism existed as a live reader
+   with no writer, so every group was permanently expanded. The reset below is what
+   keeps a button looking like the divider label it has always been — a heading that
+   suddenly grew a button's chrome would read as an action on the node, not as a
+   disclosure of the section. */
 .property-group-label {
   display: flex;
   align-items: center;
+  width: 100%;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
   color: var(--theme-color-fg-muted);
   font-size: 10.5px;
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.07em;
   text-transform: uppercase;
   margin-bottom: 10px;
+}
+
+.property-group-label:hover {
+  color: var(--theme-color-fg-default);
+}
+
+/* Keyboard reachability is the point of the button — so the focus ring has to be
+   visible. `:focus-visible` rather than `:focus` keeps it off the pointer path. */
+.property-group-label:focus-visible {
+  outline: 1px solid var(--theme-color-primary);
+  outline-offset: 2px;
+  color: var(--theme-color-fg-default);
+}
+
+/* The disclosure triangle. A text glyph rather than an icon component, following
+   `VariantSelector` — see PropertyGroups.tsx for why this module stays icon-free. */
+.property-group-chevron {
+  flex-shrink: 0;
+  display: inline-block;
+  width: 8px;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--theme-color-fg-default-shy);
+  transform: rotate(-90deg);
+  transition: transform 100ms ease-out;
+  pointer-events: none;
+}
+
+.property-group-chevron.is-expanded {
+  transform: rotate(0deg);
+}
+
+.property-group-name {
+  min-width: 0;
+}
+
+/* FB-017 AC2: what a collapsed section is still doing. Pushed to the trailing edge
+   so the eye can scan a column of counts without reading the headings. */
+.property-group-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: 7px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+/* The nested groups inside `Advanced CSS`. Indented so the folded headings read as
+   belonging to the section rather than as siblings of the basics above it, and with
+   the last child's divider suppressed — the super-group draws its own. */
+.property-group-children {
+  padding-left: 10px;
+  border-left: 1px solid var(--theme-color-border-default);
+}
+
+.property-group-children .property-group:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 /* Panel header (PAR-002, mock `.props-head`): column layout — name row +

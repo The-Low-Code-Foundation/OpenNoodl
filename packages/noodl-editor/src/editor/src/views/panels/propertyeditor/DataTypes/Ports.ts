@@ -2,18 +2,21 @@ import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
 import { NodeLibrary } from '@noodl-models/nodelibrary';
-import { listPortTypeFor } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
 import { capabilityProbes, gateForPort, resolveGateTarget, type GateTarget } from '@noodl-utils/capability-gating';
 import { decoratePortElement } from '@noodl-utils/capability-gating/portDecoration';
 import { describePortElement } from '@noodl-utils/portDescription';
 
-import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
+import { listPortTypeFor } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
+
 import View from '../../../../../../shared/ListenableView';
+import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 import PopupLayer from '../../../popuplayer';
 import { CodeEditorType } from '../CodeEditor';
 import { PropertyGroups, PropertyGroupModel } from '../components/PropertyGroups';
 import { ModelProxy } from '../models/modelProxy';
 import { PagesType } from '../Pages';
+import { ADVANCED_CSS_GROUP, countActivePorts, orderPropertyGroups } from '../propertyPanelTiers';
+import { propertyPanelViewState } from '../propertyPanelViewState';
 import { getEditType } from '../utils';
 import { AlignToolsType } from './AlignTools/AlignToolsType';
 import { BasicType } from './BasicType';
@@ -36,6 +39,14 @@ import { MarginPaddingType } from './MarginPaddingType';
 import { NumberWithUnits } from './NumberWithUnits';
 import { PopoutGroup } from './PopoutGroup';
 import { PropListType } from './PropListType';
+import { QuerySortingType } from './QuerySortingType';
+import { ResizingType } from './ResizingType';
+import { SizeModeType } from './SizeModeType';
+import { StringListType } from './StringList/StringListType';
+import { TabGroup } from './TabGroup';
+import { TextAreaType } from './TextAreaType';
+import { TextStyleType } from './TextStyleType';
+import { VariableType } from './VariableType';
 import {
   WorkflowBackoffType,
   WorkflowCasesType,
@@ -47,16 +58,6 @@ import {
   WorkflowValidateType,
   WorkflowValueType
 } from './WorkflowTypes';
-import { QuerySortingType } from './QuerySortingType';
-import { ResizingType } from './ResizingType';
-import { SizeModeType } from './SizeModeType';
-import { StringListType } from './StringList/StringListType';
-import { TabGroup } from './TabGroup';
-import { TextAreaType } from './TextAreaType';
-import { TextStyleType } from './TextStyleType';
-import { VariableType } from './VariableType';
-
-const groupExpansions = {};
 
 type Port = {
   popout?: TSFixme;
@@ -68,6 +69,9 @@ type Port = {
   type?: string;
 };
 
+/** How many frames to keep looking for the panel's scroller before giving up. */
+const SCROLL_BIND_ATTEMPTS = 5;
+
 export class Ports extends View {
   model: ModelProxy;
   popout: TSFixme;
@@ -76,6 +80,9 @@ export class Ports extends View {
   _portsHash: TSFixme;
   views: TSFixme = [];
   _toolsType: TSFixme;
+  /** The element {@link bindScrollTracking} last attached to, so the listener can be moved. */
+  _scrollTrackedEl: HTMLElement | undefined;
+  _onScroll: (() => void) | undefined;
   groups: TSFixme[];
   el: HTMLElement;
   private root: Root | null = null;
@@ -225,6 +232,126 @@ export class Ports extends View {
     }
     return els;
   }
+  /**
+   * Bind scroll tracking and restore the offset, once the panel is actually in the DOM.
+   *
+   * 🔴 This runs on a short retry rather than a single `setTimeout(0)`, and that is the whole
+   * reason scroll memory works at all. `index.tsx` builds the view with
+   * `new PropertyEditorView(props); instance.render()` and only *then* calls `setInstance`,
+   * which is the state update that mounts the `Frame` and the `ScrollArea` around it. So the
+   * first `renderGroups` for a newly selected node runs while `this.el` has no parent at all —
+   * `scrollContainer()` finds nothing, and a listener bound there would be bound to nothing.
+   *
+   * The previous attempt bound only inside `if (scrollTop)`, which is never true on a first
+   * render, so the listener was never attached and nothing was ever recorded to restore. ⚠️ That
+   * failed *silently and identically* to the pre-existing defect it was meant to fix: a panel
+   * that opens at the top looks the same whether the offset was restored as `0` or never stored.
+   *
+   * Bounded at {@link SCROLL_BIND_ATTEMPTS}, because a panel that has not mounted after a few
+   * frames is one that is not going to.
+   */
+  settleScroll(scrollTop: number, attempt = 0): void {
+    setTimeout(
+      () => {
+        this.bindScrollTracking();
+
+        const target = this.scrollContainer();
+        if (target) {
+          if (scrollTop) target.scrollTop = scrollTop;
+        } else if (attempt < SCROLL_BIND_ATTEMPTS) {
+          this.settleScroll(scrollTop, attempt + 1);
+        }
+      },
+      attempt === 0 ? 0 : 50
+    );
+  }
+
+  /**
+   * The element that actually scrolls this panel.
+   *
+   * 🔴 FB-017 found the existing scroll-restore reading the wrong element, and it had been wrong
+   * for as long as the panel has been inside a `ScrollArea`. The code below used to say
+   * `this.el.parentElement.parentElement`, which lands on `.sidebar-property-editor` — that
+   * carries `overflow-y: auto` but its content never overflows it, so its `scrollHeight` equals
+   * its `clientHeight` and its `scrollTop` is permanently `0`. The real scroller is
+   * `ScrollArea`'s root, six levels up, mounted by `index.tsx` around the legacy `Frame`.
+   *
+   * So "remember the scrolling so a re-render doesn't reset the scroll position" has been reading
+   * `0`, storing `0`, and restoring nothing — which is exactly the symptom Jordan reported as the
+   * single costliest thing about the panel. ⚠️ A fixed hop count is what made it silent: two
+   * `parentElement`s cannot fail, they just arrive somewhere else after someone wraps the panel.
+   * This walks for the property instead of counting levels.
+   */
+  scrollContainer(): HTMLElement | undefined {
+    let el = this.el ? this.el.parentElement : null;
+
+    while (el) {
+      const overflowY = getComputedStyle(el).overflowY;
+      if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 1) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Start recording this panel's scroll offset, once there is something to record it on.
+   *
+   * Bound lazily from `renderGroups` rather than in `render`, because the scroller is not this
+   * view's element and does not exist — or does not yet overflow — when `el` is created. Bound
+   * against the specific element it was found on, so a `ScrollArea` replaced underneath the panel
+   * moves the listener rather than leaving it on a detached node.
+   */
+  bindScrollTracking(): void {
+    const scroller = this.scrollContainer();
+    if (!scroller || scroller === this._scrollTrackedEl) return;
+
+    if (this._scrollTrackedEl && this._onScroll) {
+      this._scrollTrackedEl.removeEventListener('scroll', this._onScroll);
+    }
+
+    this._onScroll = () => propertyPanelViewState.setScroll(this.nodeId(), scroller.scrollTop);
+    this._scrollTrackedEl = scroller;
+    scroller.addEventListener('scroll', this._onScroll);
+  }
+
+  /**
+   * The selected node's id — the key FB-017 remembers a scroll offset under.
+   *
+   * `this.model` is a `ModelProxy`; the id lives on the `NodeGraphNode` it wraps. Optional all
+   * the way down because the ports view is also built for things that are not graph nodes (the
+   * component-inputs editors), and a missing id must mean "remember nothing" rather than throw.
+   */
+  nodeId(): string | undefined {
+    return this.model && this.model.model ? this.model.model.id : undefined;
+  }
+
+  /**
+   * How many of a group's ports are connected or set — FB-017 AC2's badge.
+   *
+   * Counted from the *views*, because that is the set of ports the group actually drew: a port
+   * filtered out by `_getPorts` (a capability gate, an `allowConnectionsOnly` object type) has
+   * no row to be hidden, so counting it would report activity the builder cannot go and find.
+   *
+   * ⚠️ `TabGroup` views stand in for several ports at once and carry no `name`, so they
+   * contribute nothing here rather than a wrong number. A tab group inside a collapsed section
+   * is the one case the badge under-reports, and under-reporting is the safe direction: the
+   * badge exists to say "look in here", never to certify that there is nothing to find.
+   */
+  countActiveInGroup(group: TSFixme): number {
+    const names: string[] = [];
+    for (const view of group.views || []) {
+      if (view && typeof view.name === 'string') names.push(view.name);
+    }
+
+    return countActivePorts(names, {
+      isConnected: (name) => Boolean(this.model && this.model.isPortConnected(name)),
+      isSet: (name) => Boolean(this.model) && this.model.parameters[name] !== undefined
+    });
+  }
+
   renderGroups() {
     if (!this.root) return; // not rendered yet
 
@@ -247,9 +374,17 @@ export class Ports extends View {
     this._portsHash = _portsHash;
 
     //remember the scrolling so a re-render doesn't reset the scroll position
-    let scrollTop = 0;
-    if (this.el.parentElement) {
-      scrollTop = this.el.parentElement.parentElement.scrollTop;
+    //
+    // FB-017 / Jordan §4: falling back to the node's *remembered* offset is what makes a
+    // reselect land where the builder left it. A re-render mid-session measures a live
+    // scroller and reads the same number back; a fresh selection measures a panel that has
+    // just been rebuilt at 0, and this is the only place that knows better.
+    this.bindScrollTracking();
+
+    const scroller = this.scrollContainer();
+    let scrollTop = scroller ? scroller.scrollTop : 0;
+    if (!scrollTop) {
+      scrollTop = propertyPanelViewState.getScroll(this.nodeId());
     }
 
     const groups = this.getViewGroupsFromPorts();
@@ -257,29 +392,40 @@ export class Ports extends View {
     // If only one group then don't render group sections
     const showHeaders = !(groups.length === 1 && groups[0].name === 'Other');
 
-    const groupModels: PropertyGroupModel[] = groups.map((g) => {
-      if (groupExpansions.hasOwnProperty(g.name)) {
-        g.isExpanded = groupExpansions[g.name];
-      }
+    // FB-017: two tiers. `orderPropertyGroups` decides which groups fold into `Advanced CSS`
+    // and puts the rest in Richard's order — the node's own subject headings first, then the
+    // shared CSS basics. See `propertyPanelTiers.ts` for the ruling and why it is keyed by
+    // group name rather than by a per-port `tier` field.
+    const { basic, advanced } = orderPropertyGroups(groups);
 
-      return {
-        name: g.name,
-        isExpanded: g.isExpanded,
-        els: this.renderParams(g.views)
-      };
+    const toModel = (g): PropertyGroupModel => ({
+      name: g.name,
+      isExpanded: propertyPanelViewState.isExpanded(g.name),
+      // AC2: a collapsed group still reports how much of it is live, so folding CSS away
+      // cannot become a new hiding place for FB-018's confusion.
+      activeCount: this.countActiveInGroup(g),
+      els: this.renderParams(g.views)
     });
 
-    this.root.render(React.createElement(PropertyGroups, { groups: groupModels, showHeaders }));
+    this.root.render(
+      React.createElement(PropertyGroups, {
+        groups: basic.map(toModel),
+        advancedGroups: advanced.map(toModel),
+        isAdvancedExpanded: propertyPanelViewState.isExpanded(ADVANCED_CSS_GROUP),
+        showHeaders,
+        onToggleGroup: (groupName: string, isExpanded: boolean) => {
+          propertyPanelViewState.setExpanded(groupName, isExpanded);
+          // The ports have not changed, so `renderGroups`'s hash guard would refuse the
+          // re-render that draws the new state. Clearing it is what makes the click visible.
+          this._portsHash = undefined;
+          this.renderGroups();
+        }
+      })
+    );
 
     //and now the rendering is done. In case any scrolling was done, set the scrolling again.
     //React commits asynchronously, so this has to wait for the rows to be in the DOM.
-    if (scrollTop) {
-      setTimeout(() => {
-        if (this.el.parentElement) {
-          this.el.parentElement.parentElement.scrollTop = scrollTop;
-        }
-      }, 0);
-    }
+    this.settleScroll(scrollTop);
   }
   render() {
     this._portsHash = undefined; // Clear cache
