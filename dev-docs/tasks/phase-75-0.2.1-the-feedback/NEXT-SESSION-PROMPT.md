@@ -81,9 +81,14 @@ layout session AC6 is already waiting on. **Whoever takes AC6 should take all th
    building on them.**
    ✅ The AC7 overlap is **measured and closed**: `ModelProxy.getPorts` splices condition-filtered
    ports out *before* `Ports._getPorts`, so a gated port never becomes a view and the filter can
-   neither hide nor reveal one. Precondition, also in the phase handover at `627bd8c4`: if FB-021
-   reveals those rows, each must be a **real view carrying `name`/`displayName`**, not only a
-   decorated element, or the filter will not reach it.
+   neither hide nor reveal one. 🔴 **The precondition lives in FB-021's own task file
+   (`dce7e65a`), NOT here** — it was lost three times before it landed there, once to a concurrent
+   rewrite of *this* file. In short: if FB-021 reveals those rows, each must be a **real view
+   carrying `name`/`displayName`**, not only a decorated element, or the filter will not reach it;
+   the seam is `portDecoration.ts` and the splice is `modelProxy.ts:76`.
+
+   ⚠️ **This handover is a CONTENDED record — two sessions edit it in a night.** A finding that
+   must survive belongs in the task file, which nobody else is editing. See the note below.
 7. ⚠️ **Deliberate remainders, unchanged**: FB-011 AC1 superseded; FB-007's composer undriven in a
    browser; `apisurfaces.ts`' `personProfile` flat disc — **still nobody's decision**.
 8. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
@@ -97,6 +102,13 @@ layout session AC6 is already waiting on. **Whoever takes AC6 should take all th
   "advanced" things. For whoever revisits `propertyPanelTiers.ts`.
 - ⚠️ **The `AskAboutNodeDialog.module.scss` fix is STILL uncommitted — fifth session running**,
   belongs to no session, not touched. Richard's call. Same for the phase-70/71/72 working files.
+- 🔴 **A shared file + `git commit <pathspec>` loses an insert with nobody being careless.** A peer
+  wrote a section to this handover; I rewrote the whole file; their pathspec commit then captured
+  **what was on disk at commit time** — my restructure, under their name, without their insert.
+  ✅ **A pathspec commit is not a snapshot of what you wrote.** Re-read a shared file immediately
+  before writing it, prefer surgical edits to whole-file writes, and **verify your commit is in
+  `HEAD` afterwards rather than assuming**. That finding was lost **three times** — twice to a
+  mistaken peer identity, once to this.
 - 🔴 **The orphaning has a named cause now, and it is not laziness.** FB-021's analysis sat
   uncommitted for a day because **both parties agreed it mattered and each treated delivery as the
   other's**. The same symmetry is what has kept `AskAboutNodeDialog.module.scss` orphaned for five
