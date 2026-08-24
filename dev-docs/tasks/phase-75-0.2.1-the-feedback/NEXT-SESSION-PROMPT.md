@@ -6,9 +6,18 @@ filter, including the ruling that a search must never write to persisted expansi
 the panel-width half of AC6 only**. Read *"What session 23 found"*, then FB-017's own file, then
 session 22's notes, which still stand.
 
-⚠️ **This checkout is busy.** Three live sessions (`ls -l /tmp/cc-socks/`): `3878` (FB-023),
-`39469` (FB-021, **alive, task file uncommitted — leave those edits**), and mine. **`ListAgents`
-showed 2 of 3 again.** Both reachable peers confirmed idle at teardown.
+⚠️ **Peers, and a correction that matters more than the census.** Sockets at teardown
+(`ls -l /tmp/cc-socks/`): `3878` (FB-023), `39469`, and mine.
+
+🔴 **`39469` is `trybeup-prod-c0` — a DIFFERENT PROJECT in a different checkout.** It is not an
+OpenNoodl session and never was. It was misidentified as "session 20, owner of FB-021" by
+inferring identity from a socket timestamp, and three messages were routed to it and dropped.
+**`ListAgents` had printed the project name the whole time and it was set aside because the start
+time fitted.** A reading that fits is not one that excludes.
+
+✅ **The rule: the socket census tells you HOW MANY and HOW TO REACH; only `ListAgents` tells you
+WHICH PROJECT.** Do not attribute a task to a socket. ⚠️ MCP process args cannot save you either —
+every session's MCP servers run from *OpenNoodl's* `electron/dist` whatever project they are on.
 
 ## What session 23 found
 
@@ -63,11 +72,18 @@ layout session AC6 is already waiting on. **Whoever takes AC6 should take all th
 4. **FB-016** (M/L) — box-model overlay, transform-origin crosshair. ⚠️ `Placement` is inside
    `Advanced CSS` as of `879f2f4c`, and is now also reachable by typing `transform`.
 5. **FB-022** (M/L) — drag-to-scrub numerics; FB-017's rows are now settled.
-6. ⚠️ **FB-021 is session 20's.** Overlap **measured and closed**: `ModelProxy.getPorts` splices
-   condition-filtered ports out *before* `Ports._getPorts`, so a gated port never becomes a view
-   and the filter can neither hide nor reveal one. Precondition relayed to them via `3878`: if
-   FB-021 reveals those rows, each must be a **real view carrying `name`/`displayName`**, not only
-   a decorated element, or the filter will not reach it.
+6. 🔴 **FB-021 is UNOWNED and available** — there is no live session 20; see the census note
+   above. Its file now carries **an ended session's measured correction, committed at `13ecc573`
+   as theirs and unverified by me**: a `sizeMode`-gated port is *not* absent. `basic` suppresses
+   only the property row, so **328 gated input ports on the shipped catalog are live, wireable,
+   and have their value delivered then discarded** — against 21 genuinely-absent `extended` ones.
+   That inverts the task's own ground truth and its scope 2. **Re-check those numbers before
+   building on them.**
+   ✅ The AC7 overlap is **measured and closed**: `ModelProxy.getPorts` splices condition-filtered
+   ports out *before* `Ports._getPorts`, so a gated port never becomes a view and the filter can
+   neither hide nor reveal one. Precondition, also in the phase handover at `627bd8c4`: if FB-021
+   reveals those rows, each must be a **real view carrying `name`/`displayName`**, not only a
+   decorated element, or the filter will not reach it.
 7. ⚠️ **Deliberate remainders, unchanged**: FB-011 AC1 superseded; FB-007's composer undriven in a
    browser; `apisurfaces.ts`' `personProfile` flat disc — **still nobody's decision**.
 8. **Still needing Richard**: FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
@@ -81,6 +97,12 @@ layout session AC6 is already waiting on. **Whoever takes AC6 should take all th
   "advanced" things. For whoever revisits `propertyPanelTiers.ts`.
 - ⚠️ **The `AskAboutNodeDialog.module.scss` fix is STILL uncommitted — fifth session running**,
   belongs to no session, not touched. Richard's call. Same for the phase-70/71/72 working files.
+- 🔴 **The orphaning has a named cause now, and it is not laziness.** FB-021's analysis sat
+  uncommitted for a day because **both parties agreed it mattered and each treated delivery as the
+  other's**. The same symmetry is what has kept `AskAboutNodeDialog.module.scss` orphaned for five
+  sessions. ✅ **Respecting someone's task boundary means not deciding FOR them — it does not mean
+  declining to TELL them.** Deferring a decision is right; withholding a measurement is not, and a
+  finding costs nothing to receive.
 - ⚠️ Unchanged and unchased: `getConnectionSourceLabel` returns nothing for the checkbox row;
   `check:css` in `nodegx-community` has one pre-existing non-ours violation; the editor mirror
   never renders port DIRECTION.
