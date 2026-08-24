@@ -283,6 +283,67 @@
   padding-bottom: 0;
 }
 
+/* FB-017 AC7 — the property filter.
+
+   🔴 NOT `position: sticky`, and that was measured rather than assumed. Sticky binds to
+   the nearest scrolling ancestor, and between this box and the panel's real scroller
+   (`ScrollArea`'s root) sit `.sidebar-property-editor` (`overflow-y: auto`) and
+   `.sidebar-panel` (`overflow: hidden`). The first of those captures the sticky and pins
+   it to a scrollport that NEVER SCROLLS — its content has never overflowed it. Driven
+   2026-08-24: with `top: 0` set, scrolling the panel to 400 put this box's top at -16px,
+   i.e. straight off the screen. The declaration did nothing but look like it worked.
+
+   ⚠️ That is the third appearance of one defect. FB-017's scroll restore read the same
+   element for the same reason (it has `overflow-y: auto` and never overflows, so its
+   `scrollTop` is permanently 0), and AC6's panel-width half is stuck in the same flex
+   chain. A genuinely fixed filter header has to live OUTSIDE `.sidebar-panel`, above the
+   `ScrollArea` in `index.tsx` — which is the shared sidebar layout work AC6 is waiting on,
+   not a tail-end CSS tweak. Until then the box scrolls with its rows, honestly.
+
+   It still sits on the panel ground so it reads as chrome rather than as a first row. */
+.property-filter {
+  padding: 4px 0 10px 0;
+  background-color: var(--theme-color-bg-1);
+}
+
+/* The match count is for screen readers only — the surviving rows are the sighted
+   answer, and a number beside the box would be chrome that case does not need. Not
+   `display: none`, which would take it out of the accessibility tree along with the
+   `aria-live` announcement that is the entire point of it. */
+.property-filter-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* What an empty result says. A panel that has gone blank reads as a panel that has
+   broken — see `NoMatchesNotice`. */
+.property-filter-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 8px;
+  text-align: center;
+}
+
+.property-filter-empty-title {
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.property-filter-empty-hint {
+  color: var(--theme-color-fg-muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
 /* Panel header (PAR-002, mock `.props-head`): column layout — name row +
    type-chip — on the panel ground with a hairline below. */
 .property-header-bar {

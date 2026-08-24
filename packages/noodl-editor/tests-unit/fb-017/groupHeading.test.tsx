@@ -13,7 +13,7 @@
  */
 import React from 'react';
 
-import { GroupHeading } from '../../src/editor/src/views/panels/propertyeditor/components/PropertyGroups';
+import { GroupHeading, NoMatchesNotice } from '../../src/editor/src/views/panels/propertyeditor/components/PropertyGroups';
 import { byClass, render, text } from '../support/renderElements';
 
 const heading = (props: Partial<React.ComponentProps<typeof GroupHeading>> = {}) =>
@@ -90,5 +90,36 @@ describe('the badge — FB-017 AC2', () => {
   it('says nothing when a collapsed group holds nothing set', () => {
     expect(byClass(heading({ isExpanded: false, activeCount: 0 }), 'property-group-badge').length).toBe(0);
     expect(byClass(heading({ isExpanded: false, activeCount: undefined }), 'property-group-badge').length).toBe(0);
+  });
+});
+
+/**
+ * FB-017 AC7 — the notice that stands in for an empty panel.
+ *
+ * Hook-free like `GroupHeading` above, so this runner evaluates the real element tree. What it
+ * cannot see is that `PropertyGroups` reaches for it on the right condition — that branch sits
+ * above `RowHost`, which throws here, and is the drive's to prove.
+ */
+describe('when a filter matches nothing', () => {
+  it('says so rather than leaving the panel blank', () => {
+    const tree = render(<NoMatchesNotice query="zzz" />);
+    expect(text(tree)).toContain('No properties match');
+  });
+
+  /**
+   * The most common reason for no matches is a typo in the box rather than an absent property, so
+   * the query is named back to the builder.
+   */
+  it('names the query back, so a typo is visible in the answer', () => {
+    expect(text(render(<NoMatchesNotice query="bordr" />))).toContain('bordr');
+  });
+
+  /**
+   * ⚠️ The hint has to name `Advanced CSS` specifically: a builder who searched for something the
+   * tier split folded away needs to know the panel still has it, not just that this query failed.
+   */
+  it('points at the tier the search was reaching into', () => {
+    const hint = byClass(render(<NoMatchesNotice query="zzz" />), 'property-filter-empty-hint')[0];
+    expect(text(hint)).toContain('Advanced CSS');
   });
 });

@@ -27,6 +27,11 @@ export interface PropertyGroupsProps {
   isAdvancedExpanded?: boolean;
   /** When false the rows are rendered without group chrome (the single "Other" group case) */
   showHeaders: boolean;
+  /**
+   * FB-017 AC7: the active property filter, or empty. Used only to explain an empty result —
+   * the filtering itself happens in `propertyPanelFilter.ts` before the groups arrive here.
+   */
+  filterQuery?: string;
   /** Called with the group name and the state it should move to. */
   onToggleGroup?: (groupName: string, isExpanded: boolean) => void;
 }
@@ -101,6 +106,27 @@ export function GroupHeading({
   );
 }
 
+/**
+ * What the panel says when a filter matches nothing.
+ *
+ * 🔴 A panel that has gone blank is indistinguishable from a panel that has broken, and this one
+ * has just hidden every property a builder can see — including the tier headings that would
+ * otherwise prove it is still alive. The notice names the query back, because the most common
+ * reason for no matches is a typo in the box rather than an absent property.
+ *
+ * Exported for the `tests-unit` runner: it calls no hooks, so `renderElements` can evaluate it.
+ */
+export function NoMatchesNotice({ query }: { query: string }) {
+  return (
+    <div className="property-filter-empty">
+      <span className="property-filter-empty-title">No properties match “{query}”</span>
+      <span className="property-filter-empty-hint">
+        Clear the filter to see this node’s properties, including the ones under Advanced CSS.
+      </span>
+    </div>
+  );
+}
+
 function Group({
   group,
   onToggleGroup
@@ -134,13 +160,21 @@ export function PropertyGroups({
   advancedGroups,
   isAdvancedExpanded = false,
   showHeaders,
+  filterQuery,
   onToggleGroup
 }: PropertyGroupsProps) {
+  const hasAdvanced = Boolean(advancedGroups && advancedGroups.length);
+
+  // Checked before the `showHeaders` branch below, because a node whose ports all sit in one
+  // unnamed group can still be filtered down to nothing — and that branch would answer it with
+  // an empty row host, which is the blank panel this notice exists to prevent.
+  if (filterQuery && !groups.length && !hasAdvanced) {
+    return <NoMatchesNotice query={filterQuery} />;
+  }
+
   if (!showHeaders) {
     return <RowHost els={groups[0] ? groups[0].els : []} />;
   }
-
-  const hasAdvanced = Boolean(advancedGroups && advancedGroups.length);
 
   // The super-group's badge is the sum of what is folded inside it, so a collapsed
   // `Advanced CSS` still reports that something in there is driving the screen — the count is

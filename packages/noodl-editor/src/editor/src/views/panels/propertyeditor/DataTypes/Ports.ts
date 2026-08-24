@@ -12,9 +12,11 @@ import View from '../../../../../../shared/ListenableView';
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 import PopupLayer from '../../../popuplayer';
 import { CodeEditorType } from '../CodeEditor';
+import { PropertyFilterInput } from '../components/PropertyFilterInput';
 import { PropertyGroups, PropertyGroupModel } from '../components/PropertyGroups';
 import { ModelProxy } from '../models/modelProxy';
 import { PagesType } from '../Pages';
+import { countFilterableRows, filterGroups, isFilterActive, shouldOfferFilter } from '../propertyPanelFilter';
 import { ADVANCED_CSS_GROUP, countActivePorts, orderPropertyGroups } from '../propertyPanelTiers';
 import { propertyPanelViewState } from '../propertyPanelViewState';
 import { getEditType } from '../utils';
@@ -80,6 +82,23 @@ export class Ports extends View {
   _portsHash: TSFixme;
   views: TSFixme = [];
   _toolsType: TSFixme;
+  /** FB-017 AC7: the raw text in the filter box. Empty means the tier view. */
+  _filterQuery = '';
+  /**
+   * Expansion overrides that live only as long as the current filter.
+   *
+   * 🔴 Non-null exactly while a filter is active, and that is what makes AC7's "clearing the
+   * filter restores the tier view" true rather than approximately true. A hit inside `Advanced
+   * CSS` has to open it, but opening it by calling `propertyPanelViewState.setExpanded` would
+   * write a searching keystroke into the builder's persisted preferences — so the next node they
+   * select, and every session after it, would open with Advanced CSS expanded because they once
+   * looked for `transform origin`. The tier split would erode itself one search at a time.
+   *
+   * Absent an entry a group reads as expanded, since a query's hits must be visible. Present
+   * entries are the ones the builder collapsed *during* the search, which is them saying "not
+   * that one" and is worth honouring until the box is cleared.
+   */
+  _filterExpansion: Record<string, boolean> | null = null;
   /** The element {@link bindScrollTracking} last attached to, so the listener can be moved. */
   _scrollTrackedEl: HTMLElement | undefined;
   _onScroll: (() => void) | undefined;
@@ -312,7 +331,14 @@ export class Ports extends View {
       this._scrollTrackedEl.removeEventListener('scroll', this._onScroll);
     }
 
-    this._onScroll = () => propertyPanelViewState.setScroll(this.nodeId(), scroller.scrollTop);
+    this._onScroll = () => {
+      // ⚠️ A filtered panel is a different document: its offsets are measured against a handful
+      // of surviving rows and mean nothing once the box is cleared. Recording one would replace
+      // the offset the builder actually left the node at — so the search reads the scroll memory
+      // and never writes to it.
+      if (this._filterExpansion) return;
+      propertyPanelViewState.setScroll(this.nodeId(), scroller.scrollTop);
+    };
     this._scrollTrackedEl = scroller;
     scroller.addEventListener('scroll', this._onScroll);
   }
@@ -352,6 +378,44 @@ export class Ports extends View {
     });
   }
 
+  /**
+   * Whether a group draws open right now — the persisted preference, or the search's override.
+   *
+   * While a filter is active every group reads as expanded unless the builder has collapsed it
+   * during this search, because a hit the query found and the panel then hid is worse than no
+   * filter at all. See {@link _filterExpansion} for why this is not simply written through to
+   * `propertyPanelViewState`.
+   */
+  isGroupExpanded(groupName: string): boolean {
+    if (this._filterExpansion) {
+      return Object.prototype.hasOwnProperty.call(this._filterExpansion, groupName)
+        ? this._filterExpansion[groupName]
+        : true;
+    }
+
+    return propertyPanelViewState.isExpanded(groupName);
+  }
+
+  /**
+   * Take a new query from the filter box.
+   *
+   * The override map is created and destroyed on the *transitions* into and out of an active
+   * filter, not on every keystroke — otherwise a group the builder collapsed mid-search would
+   * spring back open on the next character they typed.
+   */
+  setFilterQuery(value: string): void {
+    const wasActive = isFilterActive(this._filterQuery);
+    const nowActive = isFilterActive(value);
+
+    this._filterQuery = value;
+
+    if (nowActive !== wasActive) {
+      this._filterExpansion = nowActive ? {} : null;
+    }
+
+    this.renderGroups();
+  }
+
   renderGroups() {
     if (!this.root) return; // not rendered yet
 
@@ -363,7 +427,11 @@ export class Ports extends View {
       // not changed, and `renderGroups` returns early. Subscribe To Changes on
       // Directus is exactly that case: it paints closed-because-unprobed and
       // then a real answer arrives ~200ms later.
-      capabilities: this.capabilitySignature()
+      capabilities: this.capabilitySignature(),
+      // 🔴 The RAW query, not whether it is active. The filter box is a controlled input rendered
+      // from this very call, so a keystroke that does not change the hash is a keystroke that
+      // never reaches the box — type a space and the panel would appear frozen.
+      filter: this._filterQuery
     };
 
     const _portsHash = JSON.stringify(inputData);
@@ -383,14 +451,23 @@ export class Ports extends View {
 
     const scroller = this.scrollContainer();
     let scrollTop = scroller ? scroller.scrollTop : 0;
-    if (!scrollTop) {
+    if (!scrollTop && !isFilterActive(this._filterQuery)) {
       scrollTop = propertyPanelViewState.getScroll(this.nodeId());
     }
 
-    const groups = this.getViewGroupsFromPorts();
+    const allGroups = this.getViewGroupsFromPorts();
 
     // If only one group then don't render group sections
-    const showHeaders = !(groups.length === 1 && groups[0].name === 'Other');
+    //
+    // 🔴 Both of these read the UNFILTERED groups, deliberately. Deciding either against the
+    // surviving rows would let the panel's chrome change shape as a builder types: filtering down
+    // to two rows would take the filter box away from under the cursor, and filtering down to one
+    // group would drop every heading — including the one naming the group the hit was found in,
+    // which is the answer to "where did this property live".
+    const showHeaders = !(allGroups.length === 1 && allGroups[0].name === 'Other');
+    const offerFilter = shouldOfferFilter(allGroups);
+
+    const groups = offerFilter ? filterGroups(allGroups, this._filterQuery) : allGroups;
 
     // FB-017: two tiers. `orderPropertyGroups` decides which groups fold into `Advanced CSS`
     // and puts the rest in Richard's order — the node's own subject headings first, then the
@@ -400,7 +477,7 @@ export class Ports extends View {
 
     const toModel = (g): PropertyGroupModel => ({
       name: g.name,
-      isExpanded: propertyPanelViewState.isExpanded(g.name),
+      isExpanded: this.isGroupExpanded(g.name),
       // AC2: a collapsed group still reports how much of it is live, so folding CSS away
       // cannot become a new hiding place for FB-018's confusion.
       activeCount: this.countActiveInGroup(g),
@@ -408,19 +485,36 @@ export class Ports extends View {
     });
 
     this.root.render(
-      React.createElement(PropertyGroups, {
-        groups: basic.map(toModel),
-        advancedGroups: advanced.map(toModel),
-        isAdvancedExpanded: propertyPanelViewState.isExpanded(ADVANCED_CSS_GROUP),
-        showHeaders,
-        onToggleGroup: (groupName: string, isExpanded: boolean) => {
-          propertyPanelViewState.setExpanded(groupName, isExpanded);
-          // The ports have not changed, so `renderGroups`'s hash guard would refuse the
-          // re-render that draws the new state. Clearing it is what makes the click visible.
-          this._portsHash = undefined;
-          this.renderGroups();
-        }
-      })
+      React.createElement(
+        React.Fragment,
+        null,
+        offerFilter &&
+          React.createElement(PropertyFilterInput, {
+            value: this._filterQuery,
+            matchCount: countFilterableRows(groups),
+            onChange: (value: string) => this.setFilterQuery(value)
+          }),
+        React.createElement(PropertyGroups, {
+          groups: basic.map(toModel),
+          advancedGroups: advanced.map(toModel),
+          isAdvancedExpanded: this.isGroupExpanded(ADVANCED_CSS_GROUP),
+          showHeaders,
+          filterQuery: isFilterActive(this._filterQuery) ? this._filterQuery : undefined,
+          onToggleGroup: (groupName: string, isExpanded: boolean) => {
+            if (this._filterExpansion) {
+              // Transient while searching — see the field's note. Writing this to settings would
+              // persist a keystroke as a preference.
+              this._filterExpansion[groupName] = isExpanded;
+            } else {
+              propertyPanelViewState.setExpanded(groupName, isExpanded);
+            }
+            // The ports have not changed, so `renderGroups`'s hash guard would refuse the
+            // re-render that draws the new state. Clearing it is what makes the click visible.
+            this._portsHash = undefined;
+            this.renderGroups();
+          }
+        })
+      )
     );
 
     //and now the rendering is done. In case any scrolling was done, set the scrolling again.
