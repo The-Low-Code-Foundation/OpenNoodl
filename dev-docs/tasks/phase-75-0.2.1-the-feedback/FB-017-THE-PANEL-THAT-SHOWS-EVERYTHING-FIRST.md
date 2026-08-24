@@ -1,8 +1,9 @@
 # FB-017 — the panel that shows everything first
 
-**Filed:** 2026-08-22, test-user session, item 2.3. **Status: 🟡 partly done — scopes 1, 2, 3,
-7 and the scroll half of 5 built, specced and driven (sessions 22–23). Scope 4 and the
-panel-width half of 5 remain.** Size: L.
+**Filed:** 2026-08-22, test-user session, item 2.3. **Status: 🟡 nearly done — scopes 1, 2, 3, 5
+and 7 built, specced and driven (sessions 22–24); AC1/2/3/5/6/7 all closed. Only scope 4 (AC4, the
+corner-radius hint) remains, plus scope 2's `Source Set` demotion, which is Richard's call.**
+Size: L.
 
 > *"Rearrange the visual nodes' props, in a way that a new user initially ONLY sees the basics
 > they would need on a daily basis, like position, margins, padding, width height, alignment,
@@ -313,3 +314,121 @@ Fixture `fb017-drive`, Group `…0030` (47 rows), dark and light.
 - 🔴 **AC6's other half — the panel width.** Unchanged from session 22, and now with a third
   symptom (sticky) pointing at the same `.sidebar-property-editor` / `.sidebar-panel` chain.
 - ⚠️ **Scope 2's "demote Source Set to the advanced tier"** — still Richard's call, unchanged.
+
+---
+
+# Session 24 — AC6's second half, and the one cause behind all three symptoms
+
+**AC6 ✅ (both halves). AC7's filter header is now genuinely sticky.** `ScrollArea.module.scss`,
+`BindingChip.module.scss`, `propertyeditor.css`, `propertyeditor.ts`. CSS only, plus one class name.
+
+## 🔴 First: what session 22's numbers were actually measuring
+
+Session 22 filed *"the panel width moves with selection — Group `0030` → 312px, Image `0032` →
+346px"* and scoped the fix as *"shared sidebar layout used by every registered panel… a session's
+work"*. **Re-measured before touching anything, and the framing was wrong in the way that matters:**
+
+| Element | Group `0030` | Image `0032` |
+| --- | --- | --- |
+| `FrameDivider` / `SideNavigation .Root` | 380 | 380 |
+| `SideNavigation .Panel` — **the side panel** | **327** | **327** |
+| `.sidebar-panel` / `.sidebar-property-editor` — **the property column** | 312 | **346** |
+
+**The side panel does not move on selection, and has not since FIX-009** grouped `components`,
+`PropertyEditor` and `PortEditor` into one `selection-slot` width key. 312 and 346 are the *content
+column inside* a fixed panel — and 346 in a 312 scrollport means the column was **overflowing its
+own scroller sideways**: `scrollLeft` reached **33.5**, so 34px of every row sat off the right-hand
+edge with a horizontal scrollbar under a component that declares vertical scrolling only.
+
+⚠️ **A second census that will mislead the next reader too.** Driving all 13 rail panels gives
+navPanel widths of 327 / 339 / 379 / 399 / 419 / 459 / 559. Those are **declared `defaultWidth`s**
+at each `register()` call (340, 380, 400, 420, 460, 560, minus a 1px border), not content-driven
+anything. `editor-sidebar-widths` was **absent** from `editorSettings.json` at the time, so nothing
+was persisted and nothing needed to be.
+
+## 🔴 The one cause, and why it made three different-looking defects
+
+Four elements in the chain declare a non-`visible` overflow. **Two of them are scroll containers
+whose content has never overflowed them**, because the panel sits inside `ScrollArea`, whose
+`.Container` is `min-height: 100%` and simply grows to fit. A scroll container that cannot scroll
+is invisible in every way except its side effects — and it has three:
+
+| Symptom | Filed as | Actually |
+| --- | --- | --- |
+| Scroll position never restored (s22) | a missing feature (Jordan §4) | `scrollTop` read from `.sidebar-property-editor`, permanently `0` |
+| `position: sticky` inert (s23) | "sticky cannot work without re-parenting" | captured by the same element **and** by `.sidebar-panel` |
+| Column width moves with selection | "shared sidebar layout, a whole session" | two independent CSS defects, both local |
+
+## What shipped
+
+1. **`ScrollArea.module.scss` — `scrollbar-gutter: stable`, and `overflow-y: overlay` deleted.**
+   🔴 That declaration has been dead since Chromium dropped `overlay`, and it read as the *opposite*
+   of what it did: an overlay scrollbar takes no space, this one always took 12px. Measured: a
+   `Number` node (8 rows, no vertical overflow) gave the column **324px**; every node tall enough to
+   scroll gave **312px**. So the column jumped 12px on most selection changes, and the one
+   declaration a reader would check said it could not.
+2. **`ScrollArea.module.scss` — `min-width: 0` on `.Container`'s children.** `.Container` is a *row*
+   flex container, so its child carried `min-width: auto` and could not shrink below its own
+   min-content width. That is what let the column dictate its width instead of filling the
+   scrollport. Stated on the children because the automatic minimum size is a property of the flex
+   **item**.
+3. **`BindingChip.module.scss` — `max-width: 100%`.** The chip is `inline-flex`, so its `flex: 1`
+   does nothing in `PropertyPanelInput`'s block `.InputContainer` and it sized to its full `nowrap`
+   source name (244px). It was the single run of content wide enough to widen the whole column. With
+   a ceiling the `text-overflow: ellipsis` it already declared finally has something to bite on; the
+   full source stays reachable through the chip's `title`.
+4. **`.sidebar-property-editor` → `overflow: visible`, and `.sidebar-panel.property-editor-shell`
+   likewise** (a modifier, because `componentports.ts` wears the same class and is not part of this
+   measurement). Then **`position: sticky` restored on `.property-filter`.**
+
+## What the drive proved
+
+Fixture `fb017-drive`, 9 nodes, dark and light.
+
+| Claim | Before | After |
+| --- | --- | --- |
+| Column width across 9 nodes | **312 / 324 / 346** | **312 for all nine** |
+| Image `0032` horizontal scroll | `scrollLeft` **33.5** | **0** |
+| Side panel width across the same 9 | 327 (already constant) | 327 |
+| Same, at the 240px floor (divider dragged) | — | **224 for all**, `hscroll` 0 |
+| 🔴 **Control at that floor**: the two declarations reverted *in place* | **346 in a 224 port, `scrollLeft` 121.5** | restored → 224 / 0 |
+| Filter header at `scrollTop: 400` | top **−16px** (off screen) | top **277 = the scrollport's own top** |
+| ⚠️ …with only `.sidebar-property-editor` cleared | — | **still −16.** Neither half is sufficient alone |
+| AC7 filter still works | — | `transform origin` → 2 rows, Advanced CSS `aria-expanded` false→true; cleared → **20 headings / 39 rows / collapsed**, identical to baseline |
+| Ruling 3 still holds | — | `propertyPanel.groupExpansion` **`{}`** through the whole search |
+| Scroll restore still works | — | 600 → other node **0** → back **600** |
+| Every registered panel | baseline captured | **unchanged**, see below |
+
+**All 22 registered panels driven** — 13 from the rail, 8 more (`PortEditor`, the 7 `backend-*`
+surfaces) through `SidebarModel.switch`, plus the `Ports` tab. Every navPanel width, every rendered
+text length and every clip count identical to the pre-change baseline, except the intended 12px
+gutter (Explain/Build `364→352`, Community `344→332`). Problems was already scrolling, so it did not
+move at all.
+
+⚠️ **No spec.** The defect is layout — jsdom computes none of it, and a `toContain` over the CSS
+source would pass on a declaration that had been deleted from the cascade. The evidence is the drive
+above, including a control pair that varies *only* the two declarations in the running editor.
+
+## Found while working, owned by nobody
+
+- 🔴 **`SidebarModel.switch('PortEditor')` crashes the panel** — `TypeError: Cannot read properties
+  of undefined (reading 'on')` at `componentports.tsx:387`, caught by the `ErrorBoundary`. Pre-existing
+  and not user-reachable (the panel has no rail icon and is only opened by `switchToNode`), but it
+  means `PortEditor` is the one registered panel this session could not drive **in its real state** —
+  the fixture has no component with ports (`fix012-drive` does).
+- ⚠️ **The Settings panel clips two rows** — `.property-label-col` at `154` client / `278` scroll.
+  Pre-existing, unchanged by this work, and Settings has no `ScrollArea` so it is a different chain.
+
+## ⚠️ Harness corrections, session 24
+
+1. 🔴 **A stale `data-*` click tag sends the click to the FIRST match in document order.** Tagging a
+   second element without clearing the first meant `cdp click` reported success at coordinates
+   belonging to the *page root*. Clear every `[data-drive]` before tagging. (Same family as s23's
+   note 4, but the failure is louder: the click lands somewhere real.)
+2. 🔴 **A programmatic `scrollTop =` does not reliably deliver its `scroll` event in an occluded
+   renderer.** The listener was bound and correct; the recorded offset simply never updated, which
+   reads exactly like a broken feature. `el.dispatchEvent(new Event('scroll'))` proved the binding
+   in one call. **Cost: ten minutes chasing a regression that did not exist.**
+3. ⚠️ **A CSS-module edit does not hot-reload here** — `[HMR] Nothing hot updated`, then measurements
+   identical to the baseline in every digit. **Check the computed style before believing a null
+   result**; `cdp reload` + re-open the project is the fix.
