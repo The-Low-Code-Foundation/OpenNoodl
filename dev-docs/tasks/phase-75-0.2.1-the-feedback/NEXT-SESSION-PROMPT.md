@@ -61,28 +61,33 @@ all 25, and all 26 are inconsistent with their own stated intent."*
 
 ## First moves, in order
 
-1. **FB-021 scope 2 — the connection panel.** 🔴 **Needs Richard first**: should a `basic`-gated port
-   stay wireable at all, or should the popup refuse it the way refused connections already explain
-   themselves? The popup already *offers* these ports, so the work is to mark them inert, not to
-   start showing them. Everything else in FB-021 is closed and committed.
+1. ✅ **FB-021 scope 2 + the canvas — RULED by Richard (s31), scoped, NOT started.** *Mark, do not
+   hide*: a `basic`-gated port stays offered in the popup and is drawn inert with its reason. And the
+   wire into it gets **dashed, amber** — reached by raising a warning, **not** by a new dash pattern.
+   🔴 **The full shape and its blocker are in the task file, read it before starting**:
+   `evaluateConnectionHealth` already dashes a wire whose port is gone, and its check reads
+   `isConditionalPortValid(…, ['extended'])` — so the `basic` case, the whole subject of FB-021, is
+   **explicitly excluded**. 🔴 **But nothing re-evaluates health on a parameter change**, so the
+   warning is stale by construction until a trigger is added, and it needs a *guard* (only when the
+   changed parameter gates something on that node) because `setParameter` is hot. ⚠️ **The drive must
+   flip the control on a graph that ALREADY has the wire** — constructing the graph and reading it
+   once passes on a broken implementation.
 2. **FB-023** — was being worked by `3878`; check with it before starting.
 3. ⚠️ **The 9 `#js` ports keep the original defect** — on an Icon with a wire into `iconImageSource`
    the value is still delivered and discarded silently. Reaching them means parsing the JS
    expression, which `dynamicPortRules.ts`' header argues against by name.
 4. ⚠️ **Deliberate remainders, unchanged**: FB-011 AC1 superseded; FB-007's composer undriven in a
    browser; `apisurfaces.ts`' `personProfile` flat disc.
-5. **Still needing Richard**: FB-021's dead-wire colour (below); FB-017 scope 2's `Source Set`
+5. **Still needing Richard**: FB-017 scope 2's `Source Set`
    demotion; FIX-026 (a)/(b); FIX-027 14/15/16 + 22; tsfixme baseline; prod `ANTHROPIC_API_KEY`
    (⚠️ **intro pricing ends 2026-08-31 — six days**); the 15 lessons' prose; Discord's row in the
    `?` menu; `/rfps` search.
 
 ## Found while working, owned by nobody
 
-- 🧭 **NEW, a design call not a defect**: FB-021's dead-wire line and its reason line are the same
-  amber and **co-occur on one row**. Should the dead wire become louder — `--theme-color-danger`
-  exists and is red in both themes? The capability-gating precedent argues *against* red (*"this is
-  information, not an error"*), but that was said about a port that **cannot** work, not one that is
-  working and being thrown away.
+- ✅ **RULED (s31)**: the property panel's dead-wire line stays as it is; the loudness question was
+  answered on the **canvas** instead — dashed and amber, via a warning. Red keeps meaning *"cannot
+  work at all"*.
 - 🔴 **NEW**: `ModelProxy.isPortConnected` drops its `type` argument for the whole property panel
   (above). Latent, unreached on any fixture, and it touches 25 row types when fixed.
 - ⚠️ **FB-021's highlight is still verified as a class and a focus, never as pixels.** Nobody has
