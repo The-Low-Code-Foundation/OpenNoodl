@@ -193,3 +193,219 @@ and ERG-004's port descriptions hang off the same seam. This task's proposed
 
 ⚠️ **Unexamined, and the real design question**: whether to stop splicing at `modelProxy`, or to
 keep the splice and mark the port instead. Nobody has looked.
+
+---
+
+## ✅ BUILT, SPECCED AND DRIVEN — 2026-08-25 (session 30). AC1–AC4 met.
+
+The design question this file left open — *"stop splicing at `modelProxy`, or keep the splice and
+mark the port instead"* — is answered: **stop splicing, for the ports whose condition can be put
+into a sentence.** Everything else follows from that.
+
+### What ships
+
+| file | what it does |
+|---|---|
+| `models/nodelibrary/portGateReason.ts` (new) | derives the sentence; **narrates, never decides** |
+| `utils/portGate.ts` (new) | draws the row, and AC3's jump |
+| `models/nodelibrary/dynamicPortRules.ts` | exports `tokenizeCondition` — one tokenizer, two readers |
+| `propertyeditor/models/modelProxy.ts` | `getPorts` keeps + marks instead of splicing |
+| `propertyeditor/DataTypes/Ports.ts` | `renderParams` wraps the row; `focusGatePort` travels |
+| `styles/propertyeditor/propertyeditor.css` | shares `.property-capability-gated`'s visual language |
+
+`applyPortConditionsFilterForNode` is still the **only** thing that decides which ports are off.
+`portGateReason.ts` is handed that answer and asked only *what would switch them back on* — so the
+task's "don't fork a second source of truth" trap is structurally impossible to trip, not merely
+avoided.
+
+### The corpus, re-measured — and the number this file has been quoting is the wrong kind
+
+`npm run catalog:check` reports **"Committed catalog is up to date"**, so these are facts about
+what ships, not about a stale snapshot.
+
+| | ports | |
+|---|---|---|
+| explained outright | 320 | `<param> <op> <value>` against a declared port |
+| recovered | 18 | `range`, once an always-false disjunct is dropped |
+| **explained** | **338** | |
+| refused — `#js` | 9 | the deliberate remainder |
+| refused — unhideable | 2 | `icon`'s `iconSourceType`/`iconSize` |
+
+🔴 **349 is the count of gate-ABLE ports, not of gated ones.** It asks *"if this port were switched
+off, could the row explain itself?"* of every port in every conditional group. At runtime only the
+ports whose condition currently **fails** are hidden — a subset. This file's earlier "328 live-but-
+hidden ports" is that same counterfactual, and any statement of the form "328 ports are hidden right
+now" over-reports. The population is right; the tense is not.
+
+⚠️ **The 2 are not a gap.** `icon.ts` calls `addIconInputs(IconNode, { hideEnableIconInput: true })`,
+so the node never registers the `useIcon` port its own condition asks about — `useIcon NOT SET` is
+therefore always true and the real filter never hides those ports at all. Graded with the **real
+evaluator**, not by arguing it.
+
+### 🔴 Two defects the specs could not see, both found in the first ten minutes of driving
+
+Consistent with sessions 28 and 29: the suite was green through both.
+
+1. **AC3 did nothing on the one node this task was filed about.** `focusGatePort` focused
+   `el.querySelector('input, select, textarea, button')`. That is right for the twenty-odd rows
+   built on `PropertyPanelInput` — and `Size Mode` renders `SizeModeInput`, which is **`div`s and
+   `span`s and nothing else**: measured live, `focusables: 0`, `tagCensus: [DIV, SPAN]`. The jump
+   ran, scrolled, found nothing, and left `document.activeElement` on `BODY`.
+   ⚠️ **Note how narrowly this missed being caught**: `focusGatePort`'s own comment already warned
+   that a `data-identifier` selector would fail on `SizeModeType`. The *focus* step then failed on
+   the same node for the adjacent reason. **Knowing a class is unusual is not checking every step
+   against it.** Fixed by `revealGateTarget`: focus the row itself when nothing inside can take
+   focus, and **always draw a highlight** — focusing a `div` produces no visible change at all.
+2. **The sentence named the control twice.** `width` is gated by
+   `sizeMode = explicit OR sizeMode = contentHeight OR sizeMode NOT SET`, and the row read *"Width
+   applies when Size Mode is Explicit or Content Height or Size Mode is not set."* Every word true,
+   and unreadable. Now: *"Width applies when Size Mode is Explicit or Content Height, or is not
+   set."*
+
+### 🔴 And two of my own specs passed for the wrong reason — found by mutation, not by review
+
+18 deliberately-broken implementations were run against the suite. Sixteen killed rows that named
+the defect. **Two killed nothing:**
+
+- Deleting the `#js` guard in `parseCondition` changed nothing, because every `#js` condition that
+  ships tokenises with the expression's first word in the *operator* slot, so the clause check
+  refuses it anyway. ✅ The guard is **explicit rather than load-bearing for today's corpus** —
+  worth knowing before someone simplifies it away. Pinned with `'#js = 1'`, the one body that would
+  otherwise parse.
+- Flipping the `NOT SET` guard changed nothing, because my test declared **neither** parameter, so
+  the clause list emptied and the module refused by a different path entirely. Declaring the other
+  clause's port is what makes the guard the only thing left that can refuse.
+
+21 mutants now, all killing rows. **A mutant that kills nothing is the finding, not a formality.**
+
+### Driven on a copy of `fb021-drive`, 5 arms, each read in its own eval
+
+⚠️ The first probe selected all five nodes inside **one** `eval` and reported identical results for
+all of them — `selectNode` and the panel rebuild are async, so one eval reads one stale DOM. The
+five-arms-look-the-same reading was the probe, not the feature. Same trap as *"a write is invisible
+in the same eval"*.
+
+| node | `sizeMode` | `width` wired | Width row | dead-wire line |
+|---|---|---|---|---|
+| 0020 | `explicit` (control) | no | ✅ normal, editable | — |
+| 0030 | `contentSize` | no | 🔒 gated + reason | no |
+| 0040 | `contentSize` | **yes** | 🔒 gated + reason | ✅ **yes** |
+| 0050 | `contentSize` (control) | no | 🔒 gated + reason | no |
+
+**0040 and 0050 are now distinguishable** — that was AC3's central case, and the thing session 20
+recorded as identical.
+
+- **AC1** — clicking `Explicit` on the real `SizeModeInput`: gated rows 18 → 16, `width`/`height`
+  ungated, and the Width row **stays in place** (still rendered, no longer wrapped).
+- **AC2** — the sweep above, over the shipped catalog, with cardinalities asserted.
+- **AC3** — "Show Size Mode" now lands: `activeElement` **is** the Size Mode row,
+  `class="property-port-gate-target"`, `tabindex="-1"`. The gating control was in a **collapsed
+  group**, which the jump opens first.
+- **AC4** — the gated row keeps `group: 'Dimensions'`, which `tierForGroup` reports **basic**
+  (`ADVANCED_CSS_GROUPS` is a denylist). It cannot be hidden again by the tiering.
+
+✅ **The peer's prediction, confirmed**: because a revealed row is a real view carrying
+`name`/`displayName`, **FB-017's property filter now finds it** — typing `width` on a `contentSize`
+Group surfaces the gated Width row, which could not happen before.
+
+✅ **The `#js` remainder, observed rather than assumed**: on the Icon node only `iconImageSource` is
+hidden-with-no-reason (its condition is currently false); `iconIconSource`, `iconColor`,
+`iconSourceType` and `iconSize` all render normally. Checked beside a known-firing control
+(`visible` has a view) so the absence is a reading and not a broken probe.
+
+### Still open, and honestly
+
+- 🔴 **The 9 `#js` ports keep the original defect.** On an Icon with a wire into `iconImageSource`
+  the value is still delivered and discarded with nothing said. Parsing the expression is the
+  "escape hatch until it is code in JSON" `dynamicPortRules.ts` warns against; the count is
+  asserted so a tenth cannot arrive unnoticed.
+- 🔴 **Scope 2 (the connection panel) is NOT done.** This session is scopes 1, 3 and 4. The popup
+  already *offers* gated ports (session 20 measured that), so the work there is to mark them inert
+  — and it still needs **Richard's ruling**: should a `basic`-gated port stay wireable at all?
+- ⚠️ **The highlight was verified as a class and a focus, not as pixels.** Nobody has looked at the
+  outline against both themes.
+- ⚠️ **Only `Group` was driven.** The other 174 types are covered by the catalog sweep, which grades
+  sentences and not rendering.
+
+### 🔴 Session 31 — the two amber rules are the same amber, and the comment said otherwise
+
+Read while checking, before committing, whether the tokens this feature names actually exist. They
+do. What does not exist is the **difference between two of them**.
+
+`colors.css:483` says it in its own words — *"`notice` is the legacy name for warning and aliases
+onto it"* — and defines `--theme-color-notice: var(--theme-color-warning)`. The light block
+(`:root[data-theme='light']`, line 631) overrides `--theme-color-warning` and **does not** restate
+`notice`, so the alias holds there too. **The two tokens are the same colour in both themes.**
+
+FB-021 draws its two lines with those two tokens, and the comment beside the second one claimed the
+choice was doing work: *"Not dimmed, and **warning rather than notice**: a value is arriving and
+being discarded."* On screen the hue is identical. Worse than the token being cosmetic is **where
+these two land**: `portGate.ts` appends both to the same `wrapper`, so on a gated port that is also
+wired an author sees two 2px amber rules stacked directly on top of each other, one of which is
+meant to read as more serious.
+
+🔴 **The second claim in the same comment was wrong in a way that would survive a source read.** It
+said the dead-wire line is *"OUTSIDE `.property-port-gated-control` on purpose … must not be dimmed
+along with the control"*. It is outside — and **so is the reason line**; both are siblings of the
+control, not children. Being outside distinguishes neither. The distinction that does ship is one
+step of opacity: `.85` on the reason block, full on the dead wire. Small, real, and not what the
+comment named.
+
+⚠️ **And the paragraph above it had the comparison inverted.** *"Only the accent differs"* — the
+accent is the one thing that does **not** differ from `.property-capability-reason`, which resolves
+to the same amber. The two features differ by their bottom margin, 6px against 8px.
+
+✅ **Fixed as comments only.** Three corrections in `propertyeditor.css`, no rule changed. The token
+choice itself is left alone deliberately: **FB-017's `.property-structural-hint` already documents
+this exact aliasing** and keeps the distinct token so the two can be separated later without
+editing the rule. That convention is right and FB-021 now follows it honestly rather than claiming
+a distinction it does not have.
+
+🔴 **The lesson is the one this phase keeps relearning.** Session 30's drive verified the highlight
+*as a class and a focus, never as pixels* — this file said so — and a claim about **colour** sat
+three lines away from it, unchecked, phrased confidently. A comment asserting a visual difference is
+a claim about rendering, and reading the source back proves only that the token name is spelled the
+way the comment spells it. **Resolve the token before believing the sentence.**
+
+⚠️ **Left for Richard, a design call, not a defect**: given the two lines co-occur, should the dead
+wire actually become visually louder — `--theme-color-danger` exists and is red in both themes? The
+capability-gating precedent argues *against* red ("this is information, not an error"), but that
+argument was made about a port that **cannot** work, not one that is working and being thrown away.
+Unchanged pending a ruling.
+
+### ✅ Session 31 — the missing `'target'` argument, answered: it could never have mattered here
+
+Session 30 left this as an unowned worry: *"the dead-wire line is drawn from `isPortConnected(name)`
+with no direction argument — everywhere else in this panel passes `'target'`. It reads correctly on
+the fixture; nobody has constructed a node where the two answers differ."*
+
+**Nobody could have.** `Ports.model` is a `ModelProxy` (declared at `Ports.ts:82`), the DataTypes'
+`parent` is that same Ports view, and `ModelProxy.isPortConnected` is declared
+
+```ts
+isPortConnected(name) {           // modelProxy.ts:65 — one parameter
+  … return this.model.isPortConnected(name);
+}
+```
+
+It **takes no second parameter and forwards none**. So all ~25 `parent.model.isPortConnected(p.name,
+'target')` call sites in `DataTypes/` are passing `'target'` into a function that discards it, and
+every row in this panel has always been reading the untyped from-**or**-to answer. FB-021's call is
+byte-for-byte different and behaviourally identical. ✅ **No defect, and no change made** — adding
+`'target'` at `Ports.ts:379` would have been pure cargo cult, matching the other 25 in appearance
+while changing nothing, and making the real problem harder to see.
+
+🔴 **The real finding is one level up, and it is not FB-021's.** The panel's evident intent — only
+an *inbound* wire counts — is honoured **nowhere**, because the proxy's signature drops it.
+`NodeGraphNode.isPortConnected(portname, type?)` treats a missing `type` as *"source or target"*
+(`NodeGraphNode.ts:270`), so a port plugged `input/output` and wired only **outbound** reports
+connected to every row in this panel. For FB-021 specifically that would put *"a value is arriving
+and being discarded"* under a port where nothing is arriving. Unreached on any fixture so far, and
+left alone deliberately: fixing the proxy signature changes the connection chip on 25 row types at
+once (FB-018's surface), which is a change that must be driven, not slipped into a CSS-comment
+session. **Filed here because it now has an explanation rather than a shrug.**
+
+⚠️ Note the shape of this one for the phase's collection: the source text read as *"FB-021 is
+inconsistent with 25 neighbours"*, and the truth was *"FB-021 matches all 25 in behaviour, and all
+26 are inconsistent with their own stated intent."* **A difference in argument lists is not a
+difference in behaviour until the callee's signature is read.**
