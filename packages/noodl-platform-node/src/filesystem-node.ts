@@ -328,36 +328,93 @@ export class FileSystemNode implements IFileSystem {
       JSZip.loadAsync(blob)
         .then((zip) => extractZipToFolder(zip, path))
         .then(() => callback({ result: 'success' }))
-        .catch((e) =>
-          callback({ result: 'failure', message: e instanceof Error ? e.message : undefined })
-        );
+        .catch((e) => callback({ result: 'failure', message: e instanceof Error ? e.message : undefined }));
     }
 
-    return new Promise((resolve, reject) => {
-      // Make sure the folder is empty
-      const isEmpty = this.isDirectoryEmpty(to);
+    /**
+     * 🔴 **`isDirectoryEmpty` is `async`, and this guard used to read its
+     * PROMISE.** `const isEmpty = this.isDirectoryEmpty(to)` without `await`
+     * yields a Promise, a Promise is always truthy, and so `!isEmpty` was always
+     * false: the "folder must be empty" refusal below **could not fire**, and had
+     * not since it was written. An archive would extract straight over whatever
+     * was already in the target.
+     *
+     * ⚠️ **The one reachable caller was masked.** `unzipIntoDirectory` performs
+     * the same check itself, correctly awaited, before it calls this — so the
+     * dead guard cost nothing through that route and everything through a direct
+     * call, which is exactly what `TemplateRegistry.download` does.
+     *
+     * The check has to happen outside the executor because it is asynchronous;
+     * a `new Promise(async (resolve, reject) => …)` would swallow a throw from
+     * the awaited call instead of rejecting.
+     */
+    return this.isDirectoryEmpty(to).then((isEmpty) => {
       if (!isEmpty) {
-        reject({ result: 'failure', message: 'Folder must be empty' });
-        return;
+        return Promise.reject({ result: 'failure', message: 'Folder must be empty' });
       }
 
-      // Load zip file from URL
-      // @ts-ignore XMLHttpRequest
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', url, true);
-      xhr.responseType = 'blob';
-      xhr.onload = function (_e) {
-        unzipToFolder(to, this.response, function (r) {
-          if (r.result !== 'success') {
-            reject({ result: 'failure', message: r.message ?? 'Failed to extract' });
-            _this.removeDirRecursive(to);
-            return;
-          }
+      return new Promise<void>((resolve, reject) => {
+        // Load zip file from URL
+        // @ts-ignore XMLHttpRequest
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.responseType = 'blob';
+        xhr.onload = function (_e) {
+          unzipToFolder(to, this.response, function (r) {
+            if (r.result !== 'success') {
+              reject({ result: 'failure', message: r.message ?? 'Failed to extract' });
+              _this.removeDirRecursive(to);
+              return;
+            }
 
-          resolve();
-        });
-      };
-      xhr.send();
+            resolve();
+          });
+        };
+
+        /**
+         * 🔴 **Without these, a transport failure settles this promise NEVER.**
+         *
+         * `onload` fires for an HTTP *response*, including a 404 — that case was
+         * already handled, badly but finitely: the error body reaches JSZip, which
+         * refuses it, and the caller gets 'Failed to extract'. What never fired was
+         * the case with no response at all — offline, DNS failure, connection
+         * refused, a `file://` URL that does not exist. `onerror` is the event for
+         * those, and there was no handler, so `await filesystem.unzipUrl(...)`
+         * simply never returned.
+         *
+         * ⚠️ **That is a hang on a reachable path, not a theoretical one.**
+         * `unzipIntoDirectory` awaits this function and has four callers —
+         * `modulelibrarymodel.installModule`/`installPrefab`, `LessonsProjectModel`,
+         * `LocalProjectsModel` and `EditorPage._importProject`. Installing a module
+         * from the library with the network down left the editor waiting forever,
+         * and `unzipIntoDirectory`'s own try/catch was dead code for that case
+         * because nothing ever rejected.
+         *
+         * ✅ The three events are spelled out rather than folded into one handler:
+         * they are genuinely different failures, and NAT-013's trap — *"a refused
+         * connection and a timeout are different measurements"* — is the reason to
+         * keep them distinguishable in the message a user reads.
+         *
+         * ⚠️ **The target directory is left alone here, unlike the extract failure
+         * above.** Nothing was written, and this function did not create it — the
+         * caller did, and the caller's contract is that it hands over an empty
+         * directory. Removing somebody else's directory on a failed download is a
+         * second bug waiting for the day a caller passes something it still wants.
+         */
+        const failed = (message: string) => reject({ result: 'failure', message });
+
+        xhr.onerror = function (_e) {
+          failed(`Could not download the archive at ${url}. The network may be unavailable.`);
+        };
+        xhr.ontimeout = function (_e) {
+          failed(`Timed out downloading the archive at ${url}.`);
+        };
+        xhr.onabort = function (_e) {
+          failed(`The download of ${url} was cancelled.`);
+        };
+
+        xhr.send();
+      });
     });
   }
 
