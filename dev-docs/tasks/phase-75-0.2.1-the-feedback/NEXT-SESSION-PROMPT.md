@@ -1,13 +1,14 @@
 # Phase 75 — next session
 
-**State as of 2026-08-25 (session 25).** Session 25 **closed FB-017 AC4**, and with it **FB-017
+**State as of 2026-08-25 (session 26).** Session 25 **closed FB-017 AC4**, and with it **FB-017
 itself** — all seven acceptance criteria are done. The only thing left in that task is scope 2's
-`Source Set` demotion, which is Richard's call and always was. Read *"What session 25 found"*, then
-pick from *"First moves"*.
+`Source Set` demotion, which is Richard's call and always was. **Session 26 paid the owed `test:ci`
+gate, verified FB-021's disputed population, and discharged FB-016 scope 5's open precondition — it
+wrote no product code.** Read *"What session 25 found"*, then pick from *"First moves"*.
 
-⚠️ **One gate is owed.** `test:ci` was started and killed in its webpack phase because the machine
-was not quiet. It is the gate this change most wants. See *Gates* below — that is the first thing
-to do if you land on a quiet machine.
+✅ **The owed gate is paid.** Session 26 ran `test:ci` on a quiet machine: **2849 specs / 4
+failures**, all in a family the floor already had, no new names. See *Gates* below — and read the
+caveat there before quoting the number.
 
 ⚠️ **Peers.** Sockets at teardown (`ls -l /tmp/cc-socks/`): `3878`, `39469`, `47493` (me).
 `ListAgents` — **and only `ListAgents`** — names them: `3878` is **opennoodl-78**, this checkout;
@@ -68,20 +69,29 @@ two forms.
 
 ## First moves, in order
 
-1. 🔴 **Run `test:ci` on a quiet machine** and compare by name against the 08-19 floor (2849 specs /
-   10 failures). Check `vm.swapusage` and `ps -r` first — *alone on the checkout is not alone on the
-   machine*. Completion is the **summary line**, never `$?`.
+1. ✅ **DONE (session 26) — `test:ci` is paid.** 2849 specs / 4 failures, no new names. Full
+   readout and its caveat in *Gates* below. **Nothing here is owed any more; start at 2.**
 2. **FB-016** (M/L) — box-model overlay, transform-origin crosshair. ⚠️ `Placement` is inside
    `Advanced CSS` as of `879f2f4c` and is reachable by typing `transform`.
+   ✅ **Scope 5's open precondition is discharged** (session 26, `4629dceb`): Jordan's element really
+   does round, so there is no upstream render bug to file — the square outline is the overlay.
+   🔴 But **do not mirror `border-radius` unconditionally**: in the *container* case the corner
+   genuinely is square, because the child paints over it. Mirror it only where the element actually
+   clips — itself if replaced (`<img>`), otherwise only under a clipping `overflow`.
 3. **FB-022** (M/L) — drag-to-scrub numerics. FB-017's rows are settled, its column no longer moves,
    and the geometry is stable to build against.
-4. 🔴 **FB-021 is UNOWNED and available.** Its file carries an ended session's measured correction
-   (`13ecc573`, theirs, unverified by me): a `sizeMode`-gated port is *not* absent — `basic`
-   suppresses only the property row, so **328 gated input ports on the shipped catalog are live,
-   wireable, and have their value delivered then discarded**, against 21 genuinely-absent `extended`
-   ones. That inverts the task's own ground truth. **Re-check those numbers before building on
-   them.** The AC7 overlap is measured and closed; the precondition lives in FB-021's own task file
-   (`dce7e65a`), not here. Seam: `portDecoration.ts`; splice: `modelProxy.ts:76`.
+4. **FB-021 is UNOWNED and available — and its numbers are now verified** (session 26, `4629dceb`),
+   so the "re-check before building" warning is discharged. A `sizeMode`-gated port is *not* absent:
+   `basic` suppresses only the property row, so **328 gated input ports on the shipped catalog are
+   live, wireable, and have their value delivered then discarded**, against 21 genuinely-absent
+   `extended` ones. Re-derived from the artefacts: 328 + 21 = 349 counted fresh from
+   `node-catalog.json`, the default-to-basic at `nodelibraryexport.ts:150` and the semantics at
+   `portConnectivity.ts:28-29` both verbatim. **Build on them.**
+   🔴 Two traps recorded in the task file: **21 is the group count AND the port count by
+   coincidence** (count ports, never groups — it will diverge), and **all 21 `extended` ports are on
+   data/logic nodes, none visual**, so every gated port an author meets while laying out a page is
+   in the 328. The AC7 overlap is measured and closed; the precondition lives in FB-021's own task
+   file (`dce7e65a`), not here. Seam: `portDecoration.ts`; splice: `modelProxy.ts:76`.
 5. ⚠️ **Deliberate remainders, unchanged**: FB-011 AC1 superseded; FB-007's composer undriven in a
    browser; `apisurfaces.ts`' `personProfile` flat disc — still nobody's decision.
 6. **Still needing Richard**: FB-017 scope 2's `Source Set` demotion (it sits in the `Image` subject
@@ -137,10 +147,18 @@ follows is the working form of each, not a claim that any of it is new.
 - `npm run test:main`: **325 files / 5240 specs / 0 failures**, exit 0. Session 24's floor was
   323 / 5210; the difference is exactly the 2 files and 30 specs added here.
 - `npm run typecheck:editor`: **0 errors**, exit 0.
-- 🔴 **`test:ci` NOT RUN** — started, then killed in its webpack phase. VM at 66% CPU, a foreign
-  `pytest` at 48%, load 5.65, **1,116M of 13,312M swap free**. Under that you get `freshDb`
-  timeouts and scattered reds that read exactly like regressions in this work. **This is the first
-  move above.**
+- ✅ **`test:ci` RUN 2026-08-25 10:13→10:26 (session 26), the owed gate is paid**:
+  `Jasmine: 2849 specs, 4 failures (failed).` Seed **49062**.
+  **Spec count is identical to the 08-19 floor (2849), and all 4 failures are `AIX-006 style
+  vocabulary` — a family the floor already carried 4 of. No new failure name; nothing in FB-017's
+  area.** The floor's other six (2× AI model registry, 1× AIX-011, 3× SUB-011) passed, and they
+  **ran** — 6 / 60 / 16 spec-starts respectively, checked, because an absence proves nothing without
+  a known-firing signal beside it.
+  🔴 **Do NOT quote 4 as the new floor.** Different seed (49062 vs 39393), and those six are exactly
+  the seed-sensitive ones; a seed reproduces an order, it never measures a floor. The honest
+  statement is *no regression*, not *six fixed*.
+  ⚠️ **The `test-results.json` on disk was from 08-23 08:54, two days stale.** It was deleted before
+  the run. Left alone it reads as a clean pass — delete it every time and require a fresh mtime.
 - Not run, nothing touched them: `typecheck:core-ui`, `noodl-runtime`, `noodl-viewer-react`, all of
   `nodegx-community`.
 
