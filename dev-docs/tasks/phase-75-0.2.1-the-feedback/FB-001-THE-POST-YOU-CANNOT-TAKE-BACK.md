@@ -289,3 +289,22 @@ the drive above.
   intervention was a renderer `fetch` patch applied at runtime.
 - The drive ran against its own database (`nodegx_community_fb001drive` on 55432), so nothing
   it did touched the suite's `nodegx_community`.
+
+### ✅ `test:ci` now covers the confirmation — measured 2026-08-25, by another session
+
+The confirm step (`0679ccc7`) shipped with `tests-unit` and `typecheck:editor` green but **without**
+a `test:ci` run; the handover recorded that gate as not-re-measured. It has since been measured on a
+tree containing it:
+
+**`Jasmine: 2849 specs, 4 failures`, seed `49062`, run 10:13–10:26 on 2026-08-25** (session 25, for
+FB-017 AC4 — this task was simply along for the ride). Spec count identical to the 08-19 floor;
+all four failures are `AIX-006 style vocabulary`, a family the floor already carried. **No new
+failure names, and nothing in the community/sidebar/dialog area.**
+
+⚠️ **Not a new floor**, and the reason is worth keeping: different seed (`49062` vs `39393`), and
+the floor's other six failures — 2× AI model registry, 1× AIX-011, 3× SUB-011 expression params —
+are the known seed-sensitive ones. ✅ That session checked they had actually **run** rather than
+been skipped (16 / 60 / 6 spec-starts), which is the check that separates *a real pass* from
+*a pass that never executed*.
+
+⚠️ The only commit inside the run window was `4629dceb`, docs-only, so it cannot affect the reading.
