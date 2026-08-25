@@ -16,7 +16,8 @@ function LessonItem({
   isComplete,
   isSelected,
   stepWidth,
-  performActions
+  performActions,
+  lessonFinished
 }) {
   const ref = useRef();
   const popoutRef = useRef();
@@ -35,7 +36,8 @@ function LessonItem({
   useEffect(() => {
     const decision = instructionOpenDecision(instructionState.current, {
       isSelected,
-      hasPopupContent: Boolean(popupContent)
+      hasPopupContent: Boolean(popupContent),
+      lessonFinished
     });
     instructionState.current = decision.next;
 
@@ -49,7 +51,7 @@ function LessonItem({
       scrollIntoView();
       performActions();
     }
-  }, [isSelected, popupContent]);
+  }, [isSelected, popupContent, lessonFinished]);
 
   //check if popup should be shown
   useEffect(() => {

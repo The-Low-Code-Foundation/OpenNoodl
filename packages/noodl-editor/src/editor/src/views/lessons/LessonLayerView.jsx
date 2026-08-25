@@ -8,7 +8,7 @@ const { describeStepCheck } = require('./lessonconditioncopy');
 
 require('./LessonLayerView.css');
 
-function LessonLayerView({ steps, currentStepIndex, check }) {
+function LessonLayerView({ steps, currentStepIndex, check, completion }) {
   if (!steps) return null; //steps are probably still being fetched
 
   const currentStep = steps && steps[currentStepIndex];
@@ -64,6 +64,7 @@ function LessonLayerView({ steps, currentStepIndex, check }) {
   return (
     <div className="lesson-bottombar">
       {errorMsg}
+      {completion ? <LessonCompletion completion={completion} /> : null}
       <div className="lesson-steps-row">
         <div className="lesson-steps">
           {steps.map((step, i) => {
@@ -89,6 +90,7 @@ function LessonLayerView({ steps, currentStepIndex, check }) {
                 isComplete={step.isComplete}
                 stepWidth={step.width}
                 performActions={() => performActions(step.actions)}
+                lessonFinished={Boolean(completion)}
               />
             );
           })}
@@ -157,6 +159,62 @@ function LessonCheckControl({ check, looking }) {
           {check.summary}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/*
+ * FIX-027 §19 and §20 — the completion moment.
+ *
+ * 🔴 **§19: it was a property of how the last step was authored.** `loadSteps` gives a step a
+ * popup button only when it grades nothing, so a lesson ending on a narrative step got an
+ * `EXIT LESSON` and a lesson ending on a graded card — *State on a page* — got nothing at all.
+ * The learner satisfied the final condition and the bar simply stopped changing. This banner is
+ * drawn from `isLessonFinished`, which knows both shapes, so the moment no longer depends on
+ * what the author happened to put last.
+ *
+ * 🔴 **§20: exit was the only thing offered.** Reset existed — on the launcher card — and was
+ * unreachable from the one place a learner has just proved they might want another go.
+ *
+ * ⚠️ **The refusal is TEXT, not a `title` attribute.** A disabled button suppresses pointer
+ * events, so a native tooltip on one is a message that may never be delivered; and the whole
+ * point of §20's warning is that this control must not fail silently in front of someone who
+ * has just finished. The reason is rendered beside the button where it cannot be missed.
+ *
+ * ⚠️ **The steps stay on screen underneath.** Finishing is not leaving, and a learner who wants
+ * to re-read step 3 before deciding should not have to choose between that and the banner.
+ */
+function LessonCompletion({ completion }) {
+  const { title, reset, onExit } = completion;
+  const canReset = reset && reset.available;
+
+  return (
+    <div className="lesson-complete" data-test="lesson-complete">
+      <div className="lesson-complete-said">
+        <div className="lesson-complete-headline" data-test="lesson-complete-headline">
+          {title ? `Nice work — you've finished "${title}".` : "Nice work — you've finished this lesson."}
+        </div>
+        {reset && !reset.available && reset.reason ? (
+          <div className="lesson-complete-reason" data-test="lesson-complete-reason">
+            {reset.reason}
+          </div>
+        ) : null}
+      </div>
+      <div className="lesson-complete-actions">
+        {reset ? (
+          <button
+            className="lesson-complete-button"
+            data-test="lesson-complete-reset"
+            disabled={!canReset}
+            onClick={canReset ? reset.onReset : undefined}
+          >
+            START AGAIN
+          </button>
+        ) : null}
+        <button className="lesson-complete-button primary" data-test="lesson-complete-exit" onClick={onExit}>
+          EXIT LESSON
+        </button>
+      </div>
     </div>
   );
 }

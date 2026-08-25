@@ -85,7 +85,7 @@ import { useLearnerPath } from '../../hooks/useLearnerPath';
 import { useCommunityPeople } from '@noodl-hooks/useCommunityPeople';
 import { useCommunityThread } from '@noodl-hooks/useCommunityThread';
 
-import { takeLauncherLanding } from '@noodl-utils/launcher/launcherHandoff';
+import { takeLauncherLanding, takeLessonReset } from '@noodl-utils/launcher/launcherHandoff';
 
 import { useCommunityAccount } from './useCommunityAccount';
 import { useConnectAgent } from './useConnectAgent';
@@ -227,6 +227,26 @@ function showLoadFailureToast(projectName: string | undefined, projectDir?: stri
     title: `Couldn't load "${projectName || 'project'}"`,
     actions
   });
+}
+
+/**
+ * Run a lesson reset and say what happened, in one sentence per outcome.
+ *
+ * Shared by the launcher card's *Reset* button and by FIX-027 §20's *Start again*, which arrives
+ * from inside a finished lesson via `launcherHandoff`. 🔴 **One body on purpose**: the two
+ * gestures differ only in what they ask beforehand, and letting them differ in what they *say*
+ * afterwards is how a repair path grows two personalities.
+ *
+ * ⚠️ The title is read **before** the reset. `repairFrom` rewrites the register entry, and a
+ * sentence naming the lesson is worth more than one naming an id.
+ */
+function performLessonReset(lessonId: string): void {
+  const entry = LearningFolderModel.instance.get(lessonId);
+  if (!entry) return;
+
+  const outcome = LearningFolderModel.instance.reset(lessonId);
+  if (outcome.result === 'reset') ToastLayer.showSuccess(`"${entry.title}" is back to its starting state`);
+  else ToastLayer.showError(outcome.reason);
 }
 
 export function ProjectsPage(props: ProjectsPageProps) {
@@ -477,9 +497,27 @@ export function ProjectsPage(props: ProjectsPageProps) {
       return;
     }
 
-    const outcome = LearningFolderModel.instance.reset(lessonId);
-    if (outcome.result === 'reset') ToastLayer.showSuccess(`"${entry.title}" is back to its starting state`);
-    else ToastLayer.showError(outcome.reason);
+    performLessonReset(lessonId);
+  }, []);
+
+  /**
+   * FIX-027 §20 — the second half of *Start again*, pressed at the lesson's completion moment.
+   *
+   * 🔴 **The reset happens here because here is where the project is closed.** The control that
+   * asked is inside the lesson, where `Learning/<slug>/` is the open project and a live
+   * `ProjectModel` would write its graph back over the fresh copy. See `launcherHandoff.ts`.
+   *
+   * ⚠️ **No confirm and no availability check** — both already happened, in the lesson, before
+   * the learner was moved. Asking again here would be asking someone who has just been thrown
+   * out of a lesson whether they meant it.
+   *
+   * ⚠️ `takeLessonReset` is **consumed on read**, which is what makes React 18's double-invoked
+   * effect harmless: the second call gets `undefined` and resets nothing. For a destructive
+   * action that is a safety property, not tidiness.
+   */
+  useEffect(() => {
+    const lessonId = takeLessonReset();
+    if (lessonId) performLessonReset(lessonId);
   }, []);
 
   // Listen for GitHub auth state changes

@@ -61,3 +61,34 @@ export function stepFlowAction(input: StepFlowInput): StepFlowAction {
   if (!hasCurrentStep || !hasConditions || !isComplete) return 'render';
   return index < stepCount - 1 ? 'advance' : 'render';
 }
+
+/**
+ * Has the learner finished the lesson?
+ *
+ * ───────────────────────────────────────────────────────────────────────────────
+ * 🔴 FIX-027 §19 — THE COMPLETION MOMENT EXISTED ONLY BY ACCIDENT, FOR ONE SHAPE OF LESSON.
+ *
+ * `loadSteps` adds an `EXIT LESSON` button when `shouldButtonRender = !step.conditions`, so a
+ * lesson that ends on a *narrative* step said something and a lesson that ends on a *graded*
+ * step said nothing at all. *Log a thing* ends on a popup and got a button; *State on a page*
+ * ends on a graded card and the learner simply ran out of steps. The moment was a property of
+ * how the last step happened to be authored.
+ *
+ * ✅ **So it is decided here, from the same three facts `stepFlowAction` already takes**, and it
+ * is deliberately the same input type: the two answers must not be able to disagree about which
+ * step is last. Read together they partition the end of a lesson — `stepFlowAction` never
+ * advances past the final step, and this says the learner is standing on it and done.
+ *
+ * 🔴 **The two shapes finish differently, and collapsing them is the bug this replaces.**
+ *
+ * - A **graded** last step is finished when its conditions hold. Arriving is not finishing.
+ * - A **narrative** last step has nothing to satisfy, so *arriving is* finishing. `refresh()`
+ *   sets `isComplete = false` on every conditionless step, so asking `isComplete` here would
+ *   report *Log a thing* unfinished forever — the exact inverse of §19's own bug.
+ */
+export function isLessonFinished(input: StepFlowInput): boolean {
+  const { hasCurrentStep, hasConditions, isComplete, index, stepCount } = input;
+  if (!hasCurrentStep || stepCount <= 0) return false;
+  if (index !== stepCount - 1) return false;
+  return hasConditions ? isComplete : true;
+}

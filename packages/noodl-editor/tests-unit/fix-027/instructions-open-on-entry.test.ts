@@ -107,3 +107,63 @@ describe('a dismissal sticks', () => {
     expect(instructionDismissed({ wasSelected: true, dismissed: false }).wasSelected).toBe(true);
   });
 });
+
+/**
+ * FIX-027 §19 — a finished lesson does not open instructions over its own completion banner.
+ *
+ * 🔴 **Found by driving, and the reason it matters is not tidiness.** `PopupLayer` puts a
+ * full-screen blocker behind every popout. With the last step's instructions open,
+ * `document.elementFromPoint` at the middle of the completion banner returned
+ * `popup-layer-blocker` — the banner was dimmed and its *Start again* / *Exit lesson* buttons
+ * were behind it. This is the arm for a learner **re-entering a lesson they already finished**,
+ * where the entry edge fires a moment after the banner is drawn; the layer closes an
+ * already-open popout separately, on the edge into completion, because neither path can cover
+ * the other.
+ */
+describe('§19 — the entry edge is suppressed once the lesson is over', () => {
+  it('🔴 does NOT open instructions when entering a step in a finished lesson', () => {
+    const decision = instructionOpenDecision(INITIAL_INSTRUCTION_STATE, {
+      isSelected: true,
+      hasPopupContent: true,
+      lessonFinished: true
+    });
+    expect(decision.open).toBe(false);
+  });
+
+  it('the known-firing control: the SAME entry opens when the lesson is not finished', () => {
+    // Without this row, the assertion above would also pass if the entry edge had stopped
+    // firing for some unrelated reason — it would be measuring nothing.
+    const decision = instructionOpenDecision(INITIAL_INSTRUCTION_STATE, {
+      isSelected: true,
+      hasPopupContent: true,
+      lessonFinished: false
+    });
+    expect(decision.open).toBe(true);
+  });
+
+  it('omitting the flag entirely behaves as "not finished" — every existing caller is unchanged', () => {
+    expect(
+      instructionOpenDecision(INITIAL_INSTRUCTION_STATE, { isSelected: true, hasPopupContent: true }).open
+    ).toBe(true);
+  });
+
+  it('🔴 suppression is not a dismissal — undoing the work and returning still shows the step', () => {
+    // The learner never put anything away. Recording a dismissal here would silence the step
+    // for the rest of the session, which is §17's bug arriving by a different door.
+    const entered = instructionOpenDecision(INITIAL_INSTRUCTION_STATE, {
+      isSelected: true,
+      hasPopupContent: true,
+      lessonFinished: true
+    });
+    expect(entered.next.dismissed).toBe(false);
+
+    // Leave the step, come back with the lesson no longer complete.
+    const left = instructionOpenDecision(entered.next, { isSelected: false, hasPopupContent: true });
+    const back = instructionOpenDecision(left.next, {
+      isSelected: true,
+      hasPopupContent: true,
+      lessonFinished: false
+    });
+    expect(back.open).toBe(true);
+  });
+});

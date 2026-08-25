@@ -294,6 +294,31 @@ export type ResetLessonOutcome =
   /** Nothing was touched — the source could not be re-pulled, so the installed copy stands. */
   | { result: 'unavailable'; reason: string };
 
+/**
+ * Whether {@link LearningFolderModel.reset} would run, asked *without* running it.
+ *
+ * 🔴 **FIX-027 §20 needs this, and a second copy of the rule would have been the bug.** The
+ * completion moment offers a *Start again* control, and a control that offers a destructive
+ * action it cannot perform fails the learner at the worst possible moment — so it has to know
+ * the answer before it draws itself. The wrong way to get one is to re-state "local source, and
+ * the path still exists" at the call site: that sentence would then live in two places and drift
+ * apart on the first edit. So {@link LearningFolderModel.canReset} is the *only* statement of it
+ * and `reset()` is its first caller.
+ *
+ * ⚠️ **It is still not a guarantee.** The bundle can go between the ask and the press, which is
+ * why `reset()` re-asks rather than trusting a caller's earlier answer — the source is checked
+ * before anything is deleted, and that rule is unchanged.
+ *
+ * ⚠️ **A string discriminant, matching {@link ResetLessonOutcome} beside it.** This repo's
+ * `tsconfig.json` sets no `strict`, so `strictNullChecks` is off and a *boolean* discriminant
+ * does not narrow a union — a caller reading `.reason` after checking `.available` would not
+ * compile. Discovered by writing the specs, which is what they are for.
+ */
+export type ResetAvailability =
+  | { result: 'available' }
+  /** Why not, in the learner's terms. The same sentence `reset` would have refused with. */
+  | { result: 'unavailable'; reason: string };
+
 // ─── Id rules ───────────────────────────────────────────────────────────────
 
 /**
@@ -624,20 +649,47 @@ export class LearningFolderModel extends Model {
    * when they are already stuck.
    */
   reset(id: string): ResetLessonOutcome {
+    const entry = this.read().find((e) => e.id === id);
+    if (!entry) return { result: 'unavailable', reason: `No lesson called "${id}" is installed.` };
+
+    // 🔴 Asked again here even when a control already asked: the bundle can disappear between
+    // the two, and "the source is checked before anything is deleted" is this method's rule
+    // rather than its caller's. See {@link canReset} for why the check itself lives there.
+    const availability = this.canReset(id);
+    if (availability.result !== 'available') return { result: 'unavailable', reason: availability.reason };
+
+    // Narrowed by `canReset`, which refuses every non-local source above.
+    const source = entry.source as Extract<LearningSource, { kind: 'local' }>;
+    return this.repairFrom(entry, source.path);
+  }
+
+  /**
+   * Would {@link reset} run? The one statement of the two things that stop it.
+   *
+   * 🔴 **A platform lesson is re-pulled over the network**, which is asynchronous and belongs to
+   * whatever holds the client — so this module cannot do it and does not pretend to. It says so
+   * rather than reporting a generic failure, and `lessonplatforminstall.resetLessonFromPlatform`
+   * is the function that CAN: it fetches, stages, and comes back through {@link resetFrom}.
+   * ⚠️ **That function has no caller in `src/` as of 2026-08-25** — the launcher's Reset calls
+   * this method, and the community panel's own header says resetting is the Learning section's
+   * business, so each surface points at the other and neither re-pulls. The sentence below
+   * therefore names the *fact* (it came from the platform, and re-pulling needs the network)
+   * rather than sending the learner to a door that does not open yet. See FIX-027 §20.
+   *
+   * ⚠️ The second refusal is FIX-026's whole subject: `Learning/<slug>/` **is** the learner's
+   * working copy, so the only pristine source is `entry.source.path`, and for `state-on-a-page`
+   * that is a `/tmp` path a reboot deletes.
+   */
+  canReset(id: string): ResetAvailability {
     const { fs } = this.deps;
     const entry = this.read().find((e) => e.id === id);
     if (!entry) return { result: 'unavailable', reason: `No lesson called "${id}" is installed.` };
 
-    // 🔴 A platform lesson is re-pulled over the network, which is asynchronous and belongs to
-    // whatever holds the client — so this method cannot do it and does not pretend to. It says
-    // so rather than reporting a generic failure, and `lessonplatforminstall.resetFromPlatform`
-    // is the caller that CAN: it fetches, stages, and comes back through {@link resetFrom}.
-    // ⚠️ The two paths share {@link repairFrom} below, so "reset keeps the project identity" is
-    // one rule and not two.
     if (entry.source.kind !== 'local') {
       return {
         result: 'unavailable',
-        reason: 'This lesson came from NodeGX Community. Resetting it needs the community panel, which fetches a fresh copy.'
+        reason:
+          'This lesson came from NodeGX Community, so starting it again means downloading a fresh copy — which this editor cannot do yet.'
       };
     }
 
@@ -648,7 +700,7 @@ export class LearningFolderModel extends Model {
       };
     }
 
-    return this.repairFrom(entry, entry.source.path);
+    return { result: 'available' };
   }
 
   /**

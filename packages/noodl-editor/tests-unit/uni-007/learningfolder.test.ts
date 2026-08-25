@@ -369,12 +369,18 @@ describe('resetting a lesson', () => {
     expect(fs.files.get('/data/Learning/make-a-group/project.json')).toBe('{"components":["their work"]}');
   });
 
-  // ⚠️ TUT-004 changed the SENTENCE and not the rule. This method still refuses a platform
-  // lesson, for the reason it always did — it is synchronous, has no network, and must stay
-  // loadable in plain Node. What changed is that "the platform is not connected yet" stopped
-  // being true: `lessonplatforminstall.resetFromPlatform` fetches and comes back through
-  // `resetFrom`, so the honest sentence now points at the panel instead of at an absence.
-  it('refuses to reset a platform lesson HERE, and points at the caller that can', async () => {
+  // ⚠️ TUT-004 changed the SENTENCE and not the rule, and FIX-027 §20 changed it back for the
+  // same kind of reason. This method still refuses a platform lesson because it is synchronous,
+  // has no network, and must stay loadable in plain Node. What TUT-004 assumed — that the
+  // community panel would re-pull — is **not true in the shipped editor**:
+  // `lessonplatforminstall.resetLessonFromPlatform` exists, is specced, and has **no caller in
+  // `src/`** (checked 2026-08-25). Meanwhile `models/community/tutorialsview.ts` says resetting
+  // "is the Learning section's business", and the Learning section calls this method. Each
+  // surface pointed at the other. So the sentence now names the fact rather than a door.
+  //
+  // 🔴 This assertion is the one that must fail if a future edit sends the learner to the panel
+  // again without wiring the fetch: it asserts the sentence does **not** name a surface.
+  it('refuses to reset a platform lesson, without sending the learner to a door that does not open', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
     await model.install({
@@ -386,7 +392,8 @@ describe('resetting a lesson', () => {
     const outcome = model.reset('make-a-group');
     expect(outcome.result).toBe('unavailable');
     if (outcome.result !== 'unavailable') return;
-    expect(outcome.reason).toMatch(/community panel/);
+    expect(outcome.reason).toMatch(/NodeGX Community/);
+    expect(outcome.reason).not.toMatch(/community panel/);
     // 🔴 And it left the installed copy standing — the whole point of refusing rather than
     // deleting first. A reset is the button someone presses when they are already stuck.
     expect(fs.files.get('/data/Learning/make-a-group/project.json')).toBe('{"components":[]}');
@@ -395,6 +402,73 @@ describe('resetting a lesson', () => {
   it('reports an unknown lesson instead of throwing', () => {
     const { model } = makeModel();
     expect(model.reset('nope').result).toBe('unavailable');
+  });
+});
+
+/**
+ * FIX-027 §20 — asking whether reset would run, without running it.
+ *
+ * 🔴 **The completion moment needs the answer BEFORE it draws a button.** A *Start again*
+ * control that offers a destructive action it cannot perform fails the learner at the one
+ * moment they have just succeeded, so it has to know. The wrong way to get one is to re-state
+ * "local source, and the path is still there" at the call site — the same fact in two places
+ * drifts apart on the first edit, which is FIX-026's own recorded warning about
+ * `lessonprotection`.
+ *
+ * ✅ **So these rows assert AGREEMENT, not just each answer.** Every case checks `canReset` and
+ * `reset` against each other: if a future edit teaches one of them a third refusal, the pair
+ * disagrees and this fails. Grading them separately would let exactly that through.
+ */
+describe('FIX-027 §20 — canReset answers for reset, and cannot drift from it', () => {
+  it('says yes when the local bundle is still there, and reset then runs', async () => {
+    const { model, fs } = makeModel();
+    stageBundle(fs, '/bundles/groups', goodManifest());
+    await model.install({ bundleDir: '/bundles/groups', provenance: 'local' });
+
+    expect(model.canReset('make-a-group')).toEqual({ result: 'available' });
+    // 🔴 The agreement half: the permission and the act must be about the same world.
+    expect(model.reset('make-a-group').result).toBe('reset');
+  });
+
+  it('🔴 says no — with the SAME sentence reset refuses with — once the bundle has gone', async () => {
+    const { model, fs } = makeModel();
+    stageBundle(fs, '/bundles/groups', goodManifest());
+    await model.install({ bundleDir: '/bundles/groups', provenance: 'local' });
+    // FIX-026's case, exactly: `state-on-a-page` was installed from a `/tmp` path.
+    fs.removeDirectoryRecursive('/bundles/groups');
+
+    const availability = model.canReset('make-a-group');
+    expect(availability.result).toBe('unavailable');
+    if (availability.result === 'available') return;
+
+    const outcome = model.reset('make-a-group');
+    expect(outcome.result).toBe('unavailable');
+    if (outcome.result !== 'unavailable') return;
+    expect(outcome.reason).toBe(availability.reason);
+    // And nothing was touched, which is what makes the refusal safe to act on.
+    expect(fs.files.get('/data/Learning/make-a-group/project.json')).toBe('{"components":[]}');
+  });
+
+  it('says no for a platform lesson, and agrees with reset about why', async () => {
+    const { model, fs } = makeModel();
+    stageBundle(fs, '/bundles/groups', goodManifest());
+    await model.install({
+      bundleDir: '/bundles/groups',
+      provenance: 'curated',
+      source: { kind: 'platform', url: 'https://community.nodegx.io/lessons/groups' }
+    });
+
+    const availability = model.canReset('make-a-group');
+    expect(availability.result).toBe('unavailable');
+    if (availability.result === 'available') return;
+
+    const outcome = model.reset('make-a-group');
+    expect(outcome.result === 'unavailable' && outcome.reason).toBe(availability.reason);
+  });
+
+  it('says no for a lesson that is not installed at all', () => {
+    const { model } = makeModel();
+    expect(model.canReset('nope').result).toBe('unavailable');
   });
 });
 

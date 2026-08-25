@@ -14,9 +14,12 @@ import { liveLessonEvalContext } from './lessons/lessonevalconditions.live';
 import { databaseRefusal, evalConditionsWithContext, isCollectionCondition } from './lessons/lessonevalconditions';
 import type { LessonDatabaseSnapshot } from './lessons/lessonevalconditions';
 import LessonLayerView from './lessons/LessonLayerView';
-import { stepFlowAction } from './lessons/lessonstepflow';
+import { isLessonFinished, stepFlowAction } from './lessons/lessonstepflow';
 import PopupLayer from './popuplayer';
 import { publishRunningLesson } from '../models/lessonprotection';
+import { stashLessonReset } from '@noodl-utils/launcher/launcherHandoff';
+import { leaveForLauncher } from '@noodl-utils/launcher/leaveForLauncher';
+import { ToastLayer } from './ToastLayer/ToastLayer';
 
 /**
  * UNI-007 slice 4 — what the "check my work" control is showing.
@@ -31,6 +34,28 @@ interface ILessonCheckState {
   summary?: string;
   unavailable?: boolean;
   complete?: boolean;
+}
+
+/**
+ * FIX-027 §19/§20 — what the bottom bar shows once the lesson is over.
+ *
+ * ⚠️ `reset` is present whenever the lesson is one this editor could in principle start again —
+ * i.e. it is installed in the Learning folder. Whether it can *actually* run is `available`, and
+ * a refusal carries the register's own sentence rather than a second wording of it. A **hosted**
+ * lesson has no register entry at all and gets no control, which is the same rule "check my
+ * work" follows: absent when the concept does not apply, disabled-with-a-reason when it applies
+ * and cannot run.
+ */
+interface ILessonCompletion {
+  /** The lesson's title, when there is a register entry to read one from. */
+  title?: string;
+  reset?: {
+    available: boolean;
+    /** Why not. Only set when `available` is false. */
+    reason?: string;
+    onReset: () => void;
+  };
+  onExit: () => void;
 }
 
 interface ILessonStep {
@@ -81,6 +106,8 @@ export class LessonLayer {
   database: LessonDatabaseSnapshot | undefined;
   /** The poll that keeps {@link database} fresh, running only while a data step is active. */
   databaseTimer: NodeJS.Timeout | undefined;
+  /** FIX-027 §19 — whether this run of the lesson has already reached its completion moment. */
+  private completionAnnounced = false;
   databaseReading = false;
 
   constructor() {
@@ -109,6 +136,9 @@ export class LessonLayer {
 
     this.model = model;
     this.learningLessonId = learningLessonId();
+    // A layer instance is reused across lessons; a flag left set would swallow the popout-close
+    // on the next lesson's completion moment.
+    this.completionAnnounced = false;
 
     this.model.on(
       'instructionsChanged',
@@ -164,6 +194,8 @@ export class LessonLayer {
     const props = {
       steps: this.steps,
       currentStepIndex: this.model.index,
+      // FIX-027 §19/§20 — absent until the lesson is over, so the bar is unchanged until then.
+      completion: this.steps ? this._completion() : undefined,
       onMoveToNextStep: () => {
         this.model.next();
       },
@@ -328,21 +360,157 @@ export class LessonLayer {
      * that module before changing this — including why the count comes from the model rather
      * than from `this.steps`.
      */
-    const action = stepFlowAction({
-      hasCurrentStep: !!currentStep,
-      hasConditions: !!(currentStep && currentStep.conditions && currentStep.conditions.length),
-      isComplete: !!(currentStep && currentStep.isComplete),
-      index: this.model.index,
-      stepCount: this.model.numberOfLessons ?? 0
-    });
+    const action = stepFlowAction(this._flowInput());
 
     if (action === 'advance') {
       //jump to the next step if all conditions are completed.
       //This will tigger the "instrcuctionsChanged" event on the model wich re-renders the lessons
       this.model.next();
     } else {
+      this._clearTheWayForCompletion();
       this.div && this._renderReact();
     }
+  }
+
+  /**
+   * FIX-027 §19 — get the finished step's own instructions out of the way, **once**.
+   *
+   * 🔴 **Found by driving, and it is not a cosmetic overlap.** An open popout puts
+   * `PopupLayer`'s full-screen blocker over the editor (`popup-layer.has-popouts.dim`, z-index
+   * 10). Measured on *State on a page*: with the last step's instructions open,
+   * `document.elementFromPoint` at the middle of the completion banner returned
+   * `popup-layer-blocker` — so the banner was **dimmed and its two buttons were behind a
+   * blocker**, on the very screen §20 exists to make actionable. §17's edge rule opens those
+   * instructions when the learner enters the step, so this is the ordinary path to the end of a
+   * graded lesson, not a corner.
+   *
+   * ✅ The instructions are also simply *stale*: they say what to do on a step that is done.
+   * `hidePopouts(true)` runs each popout's `onClose`, which is what `LessonItem` uses to record
+   * a dismissal — so the step stays dismissed rather than reopening on the next render.
+   *
+   * ⚠️ **On the EDGE into completion, never on every refresh.** `refresh()` runs on every
+   * `Model.*` event; closing popouts from all of them would shut instructions the learner had
+   * deliberately re-opened to re-read, over and over. That is §17's own lesson pointed the other
+   * way, and it is the failure a naive `if (finished) hidePopouts()` produces. The flag re-arms
+   * when the lesson is no longer finished, so undoing work and finishing again works.
+   */
+  private _clearTheWayForCompletion(): void {
+    const finished = isLessonFinished(this._flowInput());
+    if (!finished) {
+      this.completionAnnounced = false;
+      return;
+    }
+    if (this.completionAnnounced) return;
+    this.completionAnnounced = true;
+    PopupLayer.instance.hidePopouts(true);
+  }
+
+  /**
+   * The three facts both end-of-lesson answers are built from.
+   *
+   * 🔴 **One statement, two readers.** `stepFlowAction` decides whether to advance and
+   * {@link isLessonFinished} decides whether to say "you have finished"; if they could disagree
+   * about which step is last, the bar could advance past a step it had just congratulated the
+   * learner for — or congratulate them on a step it was about to leave. The count comes from the
+   * *model*, not from `this.steps`, for the reason `lessonstepflow.ts` records.
+   */
+  private _flowInput() {
+    const currentStep = this.steps?.[this.model.index];
+    return {
+      hasCurrentStep: !!currentStep,
+      hasConditions: !!(currentStep && currentStep.conditions && currentStep.conditions.length),
+      isComplete: !!(currentStep && currentStep.isComplete),
+      index: this.model.index,
+      stepCount: this.model.numberOfLessons ?? 0
+    };
+  }
+
+  /**
+   * FIX-027 §19/§20 — the completion moment, or `undefined` while there is still lesson left.
+   *
+   * ⚠️ **Availability is read here, on every render, rather than cached when the lesson opened.**
+   * A learner can finish a lesson an hour after starting it, and the `/tmp` bundle
+   * *State on a page* was installed from can vanish inside that hour (FIX-026). A control drawn
+   * from a stale answer is exactly the failure §20 exists to prevent.
+   */
+  private _completion(): ILessonCompletion | undefined {
+    if (!isLessonFinished(this._flowInput())) return undefined;
+
+    const onExit = () => {
+      PopupLayer.instance.hideModal();
+      PopupLayer.instance.hidePopouts(true);
+      App.instance.exitProject();
+    };
+
+    const id = this.learningLessonId;
+    // A hosted lesson has no register entry, so there is nothing to reset and no control —
+    // the same rule "check my work" follows. It still gets a completion moment and a way out.
+    const entry = id ? LearningFolderModel.instance.get(id) : undefined;
+    if (!id || !entry) return { onExit };
+
+    const availability = LearningFolderModel.instance.canReset(id);
+
+    return {
+      title: entry.title,
+      reset: {
+        available: availability.result === 'available',
+        reason: availability.result === 'available' ? undefined : availability.reason,
+        onReset: () => this._onStartAgain(id, entry.title)
+      },
+      onExit
+    };
+  }
+
+  /**
+   * The lesson *Start again* would restart, or `undefined` when there is nothing to offer.
+   *
+   * ⚠️ Used by the popup path, which must decide at parse time whether to draw a button at all.
+   * The banner keeps its own live read instead, because it re-renders on every refresh and can
+   * therefore afford the more honest answer; both go through {@link _onStartAgain}, which
+   * re-asks before acting.
+   */
+  private _startAgainTarget(): { id: string; title: string } | undefined {
+    const id = this.learningLessonId;
+    if (!id) return undefined;
+    const entry = LearningFolderModel.instance.get(id);
+    if (!entry) return undefined;
+    if (LearningFolderModel.instance.canReset(id).result !== 'available') return undefined;
+    return { id, title: entry.title };
+  }
+
+  /**
+   * *Start again*: throw this copy of the lesson away and come back to a fresh one.
+   *
+   * 🔴 **It closes the project, and it says so before it acts.** The reset cannot run while the
+   * lesson is open — `Learning/<slug>/` *is* the open project — so the gesture is stash, leave,
+   * and reset at the launcher. `launcherHandoff.ts` carries the argument. The obligation to say
+   * "this closes the project" is `leaveForLauncher`'s and is discharged in this sentence.
+   *
+   * ⚠️ **Availability is re-asked here even though the button is only enabled when it holds.**
+   * The bundle can go between the render and the press, and the learner would then be moved to
+   * the launcher for a reset that refuses — a refusal delivered after the cost of it has already
+   * been paid. This one is delivered before, in the lesson, with nothing changed.
+   */
+  private _onStartAgain(lessonId: string, title: string): void {
+    const availability = LearningFolderModel.instance.canReset(lessonId);
+    if (availability.result !== 'available') {
+      ToastLayer.showError(availability.reason);
+      return;
+    }
+
+    if (
+      !confirm(
+        `Start "${title}" again?\n\nThis closes the lesson and replaces your copy of it with a fresh one. ` +
+          `Anything you built inside it is lost.`
+      )
+    ) {
+      return;
+    }
+
+    stashLessonReset(lessonId);
+    PopupLayer.instance.hideModal();
+    PopupLayer.instance.hidePopouts(true);
+    leaveForLauncher('learning');
   }
 
   _onNextClick() {
@@ -352,6 +520,13 @@ export class LessonLayer {
   }
 
   loadSteps() {
+    /*
+     * FIX-027 §20 — whether the last step's popup should carry a *Start again* beside its exit.
+     * Absent for a hosted lesson (no register entry to reset) and for one this editor cannot
+     * re-pull, which is the same absent-vs-disabled rule the banner follows.
+     */
+    const startAgain = this._startAgainTarget();
+
     const steps = this.model.lessons.map((instructionsHTML, stepIndex) => {
       const stepElement = document.createElement('div');
       stepElement.innerHTML = instructionsHTML;
@@ -442,6 +617,27 @@ export class LessonLayer {
         if (shouldButtonRender) {
           //this is a step with only a popup. Add a next button.
           const buttonContainer = root.querySelector('.popup-content-wrapper');
+
+          /*
+           * 🔴 FIX-027 §20 — `EXIT LESSON` USED TO BE THE ONLY THING OFFERED HERE.
+           *
+           * A lesson ending on a narrative step — *Log a thing* does — shows that step as a
+           * screen-centre **modal**, so the completion banner in the bar below is behind its
+           * dimmer. Measured while driving: `document.elementFromPoint` over the banner's
+           * *Start again* returned `popup-layer dim`, and the modal's own buttons were exactly
+           * `['EXIT LESSON']`. So the moment a learner has just finished offered them one door
+           * and it led out of the lesson. The banner covers §19's shape, where there is no
+           * popup at all; this covers §20's, where the popup **is** the completion moment.
+           *
+           * ⚠️ Availability is read here, at parse time, only to decide whether to draw the
+           * control — `_onStartAgain` re-asks before it acts, because `loadSteps` runs on
+           * `instructionsFetched` and a bundle can go in between.
+           */
+          if (isLastStep && startAgain) {
+            buttonContainer.appendChild(
+              createPopupButton('START AGAIN', () => this._onStartAgain(startAgain.id, startAgain.title))
+            );
+          }
 
           const buttonToAppend = !isLastStep
             ? createPopupButton('NEXT', () => {

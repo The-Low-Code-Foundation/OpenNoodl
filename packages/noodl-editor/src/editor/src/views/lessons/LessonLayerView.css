@@ -360,3 +360,90 @@
   flex-direction: column;
   justify-content: space-between;
 }
+
+/* FIX-027 §19/§20 — the completion moment, above the step strip.
+
+   🔴 **THIS WAS `--theme-color-secondary-dim` AND IT FAILED AA BY A LOT.** Picked by its name,
+   on the reasoning that the one moment a lesson congratulates the learner should not look like
+   the eight steps before it. Measured in the running editor, that token is `rgb(139,149,161)` —
+   a *light* grey, not a dimmed dark one — so the headline came out at **3.04:1** and the refusal
+   sentence at **1.91:1**. The sentence explaining why *Start again* is switched off was the
+   least readable thing on the bar.
+
+   ✅ So the surface is `--theme-color-bg-3`, the tone `--theme-color-fg-highlight` and
+   `--theme-color-fg-muted` are designed against — the same pairing `.lesson-check` uses — and
+   the "something changed" signal moved to a primary rule along the top, which carries it
+   without touching the text contrast. A token name is not a colour; only a measurement is. */
+.lesson-complete {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 2px solid var(--theme-color-primary);
+  background-color: var(--theme-color-bg-3);
+}
+
+/* `min-width: 0` for the same reason `.lesson-steps` needs it — the refusal sentence is a whole
+   sentence, and without this it would push the buttons off the bar rather than wrap. */
+.lesson-complete-said {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lesson-complete-headline {
+  font-size: 13px;
+  line-height: 17px;
+  font-weight: var(--font-weight-bold);
+  color: var(--theme-color-fg-highlight);
+}
+
+/* Why *Start again* is switched off. Quiet, but present — see `LessonLayerView.jsx` for why
+   this is text rather than a `title` on the disabled button. */
+.lesson-complete-reason {
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--theme-color-fg-muted);
+}
+
+.lesson-complete-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+}
+
+/* Same metrics as `.lesson-check-button`, deliberately: these are the same kind of control on
+   the same bar, and two button sizes in one strip is the sort of drift a shared class avoids
+   but a copied one does not. Kept separate only because the default here is the QUIET one —
+   `START AGAIN` is destructive and must not be the brightest thing on the bar. */
+.lesson-complete-button {
+  flex-shrink: 0;
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-highlight);
+  border: none;
+  height: 24px;
+  padding: 0 12px;
+  font-weight: var(--font-weight-bold);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.lesson-complete-button:hover:not(:disabled) {
+  background-color: var(--theme-color-bg-3);
+}
+
+.lesson-complete-button.primary {
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
+}
+
+.lesson-complete-button.primary:hover:not(:disabled) {
+  background-color: var(--theme-color-primary-highlight);
+}
+
+.lesson-complete-button:disabled {
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-muted);
+  cursor: default;
+}

@@ -93,7 +93,51 @@ export function takeLauncherLanding(): LauncherLandingPage | undefined {
   return landing;
 }
 
+let pendingLessonReset: string | undefined;
+
+/**
+ * Ask the launcher to reset a lesson once the project it belongs to is **closed**.
+ *
+ * ───────────────────────────────────────────────────────────────────────────────
+ * 🔴 FIX-027 §20 — WHY *START AGAIN* CANNOT RESET FROM INSIDE THE LESSON.
+ *
+ * `LearningFolderModel.repairFrom` deletes `Learning/<slug>/` and copies a fresh bundle over
+ * it. At the completion moment that directory is **the open project**: `ProjectModel.instance`
+ * holds the whole graph in memory and saves it back to those files. Reset it in place and the
+ * live model is the newer writer — it either puts the learner's finished work straight back
+ * over the fresh copy, or interleaves with the copy and leaves neither. The learner pressed a
+ * button labelled *Start again* and got a corrupted lesson.
+ *
+ * ✅ So the gesture is: decide, close, **then** reset. `App.exitProject` routes to `'projects'`,
+ * which disposes the ProjectModel; the launcher mounts with nothing holding the directory and
+ * performs the reset there. This is the same one-fact-in-memory hand-off as
+ * {@link stashLauncherLanding} above and for the same reason — the span is one editor session,
+ * the setter is a click that happened seconds ago, and the read clears it.
+ *
+ * ⚠️ **Stashing is not deciding.** The caller has already asked
+ * `LearningFolderModel.canReset` and already confirmed with the learner, because a refusal or a
+ * change of mind *after* they have been thrown out of the lesson is not a graceful refusal. The
+ * register still re-checks before it deletes anything; that rule is `reset`'s and stays there.
+ */
+export function stashLessonReset(lessonId: string): void {
+  pendingLessonReset = lessonId;
+}
+
+/**
+ * Claim the lesson to reset, once.
+ *
+ * 🔴 **Consumed on read**, exactly as {@link takeLauncherLanding} is: a second mount of the
+ * launcher must not reset the lesson again. Resetting is destructive, so "at most once per
+ * request" is a safety property here and not only tidiness.
+ */
+export function takeLessonReset(): string | undefined {
+  const id = pendingLessonReset;
+  pendingLessonReset = undefined;
+  return id;
+}
+
 /** Test-only: drop the stash, so one spec's request cannot leak into the next. */
 export function resetLauncherHandoff(): void {
   pendingLanding = undefined;
+  pendingLessonReset = undefined;
 }
