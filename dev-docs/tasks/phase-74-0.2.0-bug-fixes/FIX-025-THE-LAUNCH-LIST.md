@@ -3,7 +3,7 @@
 **Filed:** 2026-08-20, from Richard, using the app. **Worked:** 2026-08-20 → 08-21.
 
 Twelve reports in one list, spanning the Blockly canvas, the launcher, the editor rail, the
-community mirror, the learning surfaces and the community platform. **Twelve are closed** — six of
+community mirror, the learning surfaces and the community platform. **Twelve are closed** — seven of
 them confirmed in a running editor, and bug 6 proved in production on 2026-08-21. One (11b) has a
 second half deliberately left, scoped as `FIX-026`. **Driving them turned up a thirteenth bug,
 which 11a had just made reachable** — see the drive section.
@@ -68,7 +68,7 @@ with the double cast and `string` without it.
 | 10 | Long step description overflows, can't scroll | `LessonLayerView.css` | ✅ |
 | 11a | "State on a page" Caption step won't complete | `lessonevalconditions.ts` | ✅ |
 | 11b | Protection against wrecking the tutorial | `lessonprotection.ts` | ⚠️ half |
-| 12 | Wrong-typed wire into a Visual Function is silent | `connectionCoercion.ts` | ✅ |
+| 12 | Wrong-typed wire into a Visual Function is silent | `connectionCoercion.ts` | ✅ **DRIVEN 08-25** |
 | **13** | **Finishing a lesson blanked the lesson bar** — found by driving 11a | `lessonstepflow.ts` | ✅ |
 
 ### 11a — the shipped lesson had never been completable
@@ -251,10 +251,88 @@ today, gone on the next reboot. So restore either stands on the same footing as 
 refuses with the same wording when the bundle has gone, or the installer has to keep a snapshot
 — which is a decision, not an implementation detail, and is why this is a task and not a patch.
 
+## ✅ Bug 12 — DRIVEN 2026-08-25, and the drive found a defect on its own surface
+
+The fixture is a Visual Function whose block program declares three inputs — `count` as
+`number`, `flag` as `boolean`, `label` as `string` — with a Text Input's `onTextChanged`
+(a `string` output) wired into **all three**. One source, three targets, one health pass:
+two of them are the pairs `UNCONVERTED` lists and the third is the control.
+
+✅ **`detectIO` was run headlessly on the workspace before the editor was ever launched** and
+printed exactly those three ports and types, so a silent readout could not later be blamed on
+a fixture that never published the ports. The canvas then showed the same three.
+
+| surface | `count` (string→number) | `flag` (string→boolean) | `label` (string→string) |
+|---|---|---|---|
+| `WarningsModel` | `con-type-unconverted` | `con-type-unconverted` | **none** |
+| wire on the canvas | **dashed** | **dashed** | **solid** |
+| hover tooltip | the sentence | the sentence | none |
+| Warnings panel | listed, *"At connection between Field (Text) and VF (count)"* | listed | — |
+
+🔴 **The control is the point, not decoration.** `label` is fed by the *same output* in the
+*same pass* as two wires that did warn, so its silence is the rule declining — not the pass
+never running. Total warnings read **2**, and the toolbar badge read **2** beside it.
+
+✅ **The live gesture too, not just the file.** Removing the `count` wire dropped the total to
+**1 immediately**; re-adding it brought it back to **2**, and the wire back to dashed.
+
+⚠️ **It takes two seconds.** `EVALUATE_HEALTH_DEBOUNCE_MS` is 2000 (the urgent lane is 50 ms and
+this warning is deliberately not on it), so a builder who drags a wrong-typed wire sees nothing
+at all for two seconds. Measured: absent at +0.5 s, present at +4 s. That is the existing lazy
+lane working as designed and is **not** a defect — but it is worth knowing that Richard's
+original *"it didn't throw an error"* has a two-second window in which that is still true.
+
+### 🔴 The defect the drive found: the tooltip put one word on each line
+
+Hovering the wire produced the right sentence in the wrong shape:
+
+```
+This connects a
+string
+to a
+number
+port, and the text arrives as text — …
+```
+
+`.popup-layer-tooltip-content` was `display: flex; flex-direction: column`. **A flex container
+has no inline formatting context**, so every child is blockified — each `<strong>` *and each
+bare run of text between them* becomes its own flex item on its own line. Measured in the
+running editor: `getComputedStyle(strong).display === 'block'`.
+
+⚠️ **Never specific to this warning.** `con-type-mismatch` builds its message the same way
+(`'…type <strong>' + name + '</strong> cannot be connected…'`), so every type warning has
+hovered like this since it was written. The new sentence is just long enough to be unmissable.
+
+✅ Fixed to `display: block`, which costs nothing: every structured tooltip this container is
+given is already block-level markup — `<h3>`, `<p>` and `.popup-layer-image-row`, all built by
+`noodl-viewer-react/src/tooltips.ts` — so they stack exactly as before. Re-measured live after
+HMR: `strong` is `inline`, the tooltip is **one line of prose**, 1074 px wide inside a 1368 px
+viewport. The Warnings panel was always correct and is unchanged.
+
+🔴 **And the two right surfaces are why this was nearly missed.** The dash was right, the panel
+was right, and the model held the correct string. Reading any one of those would have closed
+the bug. **Only the third surface was wrong, and only rendering it showed that.**
+
+`tests-unit/fix-025/tooltip-renders-inline-markup.test.ts` guards it — 4 specs, and
+mutation-checked: restoring `display: flex` fails it. It grades the stylesheet rather than a
+render because neither runner can render this rule (jest is `testEnvironment: 'node'`; the
+jasmine renderer suite does not load the editor stylesheet), and it carries a known-flex
+fixture so *"no violation found"* cannot quietly mean *"the rule was never located"*.
+
 ## What the drive did NOT cover
 
-- **Bug 5** (signed-out intake questions) — checking it means signing out of Richard's live
-  community session on this machine. Not done. Bug 4's signed-*in* half is confirmed.
-- **Bug 12** (`con-type-unconverted`) — specced, not driven; it needs a wrong-typed wire dragged
-  into a Visual Function.
-- **Bug 7** (mirror reply) — specced, not driven; it needs a real answered thread.
+- **Bug 5** (signed-out intake questions) — ⚠️ **less open than this line used to read.** The
+  render decision is already specced and guarded: `tests-unit/uni-007/learnerpath-render.test.tsx`
+  has *"🔴 does NOT draw the options — an unanswerable form reads as a broken one"*, plus the
+  question-count assertion and a no-sign-in-door control. What is unseen is only the **live
+  signed-out launcher**, and seeing it still means signing out of Richard's live community
+  session on this machine. Not done, and not worth his session.
+- **Bug 7** (mirror reply) — specced, not driven; it needs a real answered thread. ⚠️ And there
+  is a **second cause of the same sentence that the editor fix cannot reach**: the platform
+  sends `firstReplyMinutes: null` on a thread with `replyCount: 1`, and
+  `communityMeta.ts:98` turns `null` minutes into *"no reply yet"* unconditionally, so an
+  answered thread reads unanswered **on every surface, web included**. 🔴 **Do not patch
+  `replyLatency` to check `replyCount` without deciding the other half**: its own docstring
+  says `null` minutes is what the health readout counts as `unreplied`, so the tab's count is
+  wrong by the same data and fixing only the row would leave the two disagreeing. Unowned, and
+  it is a decision rather than a patch.
