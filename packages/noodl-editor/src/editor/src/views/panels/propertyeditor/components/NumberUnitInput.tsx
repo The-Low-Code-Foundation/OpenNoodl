@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { PropertyPanelBaseInput } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
 import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput/PropertyPanelRow';
 import { PropertyPanelSelectInput } from '@noodl-core-ui/components/property-panel/PropertyPanelSelectInput';
+import { ScrubBinding, useDragToScrub } from '@noodl-core-ui/components/property-panel/scrub';
 
 export interface NumberUnitInputProps {
   label: string;
@@ -33,6 +34,15 @@ export interface NumberUnitInputProps {
   /** FB-016 scope 4 — the transform-origin crosshair is drawn while this field holds focus. */
   onFocus?: () => void;
   onBlur?: () => void;
+
+  /**
+   * FB-022 — drag-to-scrub on the **value half only**.
+   *
+   * 🔴 The unit stays a dropdown and a scrub never touches it. A gesture that could change
+   * `px` to `%` would be silently reinterpreting the number under a different meaning, which
+   * is the coercion question FB-019 owns and settled the other way.
+   */
+  scrub?: ScrubBinding;
 }
 
 export function NumberUnitInput({
@@ -53,9 +63,14 @@ export function NumberUnitInput({
   onFixedToggle,
   onReset,
   onFocus,
-  onBlur
+  onBlur,
+  scrub
 }: NumberUnitInputProps) {
   const [displayedValue, setDisplayedValue] = useState(value ?? '');
+  // ⚠️ A scrub does not go through `commitIfChanged`. That path goes to the view's
+  // `updateValue`, which reaches `parent.setParameter` and therefore records an undo entry
+  // every time — one per pixel, if a drag were routed through it.
+  const dragToScrub = useDragToScrub(scrub);
 
   const hasUnitChoice = (units?.length ?? 0) > 1;
   const staticUnit = unit || units?.[0] || '';
@@ -89,8 +104,10 @@ export function NumberUnitInput({
           value={displayedValue}
           isChanged={isChanged}
           isConnected={isConnected}
+          isScrubbable={Boolean(scrub)}
           dataIdentifier={dataIdentifier}
           onChange={(text) => setDisplayedValue(String(text))}
+          onMouseDown={dragToScrub.onMouseDown}
           onFocus={() => onFocus && onFocus()}
           onBlur={() => {
             commitIfChanged();

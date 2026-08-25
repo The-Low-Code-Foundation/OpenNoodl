@@ -4,6 +4,8 @@ import { createRoot, Root } from 'react-dom/client';
 import { NumberUnitInput } from '../components/NumberUnitInput';
 import { TypeView } from '../TypeView';
 import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
+import { commitScrub, writeScrubStep } from './scrubCommit';
+import { scrubSpecForPortType, scrubStartValue } from './scrubPolicy';
 
 function parseNumberWithUnit(stringValue, permittedUnits) {
   let value = parseFloat(stringValue);
@@ -34,6 +36,8 @@ export class Dimension extends TypeView {
   isPercent: boolean;
   el: TSFixme;
   private root: Root | null = null;
+  /** What the parameter held when the current scrub began; `undefined` between gestures. */
+  private scrubStartParameter: TSFixme = undefined;
 
   static fromPort(args) {
     const view = new Dimension();
@@ -99,6 +103,7 @@ export class Dimension extends TypeView {
         showFixed: true,
         isFixed: !!this.isFixed,
         isPercent: this.isPercent,
+        scrub: this.scrubBinding(),
         onCommit: (text: string) => this.updateValue(text, this.unit),
         onUnitChange: (unit: string, currentText: string) => this.updateValue(currentText, unit),
         onFixedToggle: () => {
@@ -115,6 +120,64 @@ export class Dimension extends TypeView {
         }
       })
     );
+  }
+
+  /**
+   * FB-022 — the drag-to-scrub binding for this row, or `undefined` when this port type is
+   * not a draggable number.
+   *
+   * ⚠️ **Rebuilt on every render, deliberately.** `value` is the number the *next* gesture
+   * starts from, and the row re-renders after every live write during a drag — a binding
+   * memoised across renders would hand the second gesture the first one's origin.
+   *
+   * 🔴 `isConnected` is handed to the policy even though `PropertyPanelRow` already replaces
+   * the whole control with FB-018's binding chip while a connection drives the port — so
+   * structurally there is no field to press. Two independent mechanisms, deliberately: see
+   * `ScrubPortState` for why one of them being enough is not a reason to have only one.
+   */
+  private scrubBinding() {
+    const spec = scrubSpecForPortType(this.type, this.unit, { isConnected: this.isConnected });
+    if (!spec) return undefined;
+
+    return {
+      step: spec.step,
+      value: scrubStartValue(this.numberWithUnits, this.port?.default),
+      onScrubBegin: () => {
+        this.scrubStartParameter = this.parent.model.getParameter(this.name);
+      },
+      onScrub: (value: number) => this.writeScrubbedValue(value),
+      onScrubEnd: (value: number) => {
+        this.writeScrubbedValue(value);
+        commitScrub({
+          model: this.parent.model,
+          name: this.name,
+          startValue: this.scrubStartParameter,
+          finalValue: this.scrubbedParameter(value),
+          label: `change ${this.displayName}`
+        });
+        this.scrubStartParameter = undefined;
+        this.refreshFromModel();
+      }
+    };
+  }
+
+  /**
+   * What this row stores for a scrubbed number.
+   *
+   * ⚠️ `isFixed` is carried through, not recomputed. It is a third field on the same
+   * parameter and dropping it would turn a drag on a percentage width into a silent
+   * un-ticking of the Fixed checkbox beside it.
+   */
+  private scrubbedParameter(value: number) {
+    return { value, unit: this.unit ? this.unit : this.type.defaultUnit, isFixed: this.isFixed };
+  }
+
+  /** One live step of a drag — `model.setParameter`, never `parent.setParameter`. See AC1. */
+  private writeScrubbedValue(value: number) {
+    writeScrubStep(this.parent.model, this.name, this.scrubbedParameter(value));
+    this.numberWithUnits = this.parent.model.getParameter(this.name);
+    this.isDefault = false;
+    this.renderReact();
   }
 
   private updateValue(text: string, fallbackUnit: string) {

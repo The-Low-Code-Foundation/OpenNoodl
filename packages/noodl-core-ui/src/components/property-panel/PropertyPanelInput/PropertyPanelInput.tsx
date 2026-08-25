@@ -30,6 +30,7 @@ import {
   PropertyPanelTextRadioInput,
   PropertyPanelTextRadioProperties
 } from '@noodl-core-ui/components/property-panel/PropertyPanelTextRadioInput';
+import { ScrubBinding } from '@noodl-core-ui/components/property-panel/scrub';
 import { Slot } from '@noodl-core-ui/types/global';
 
 import css from './PropertyPanelInput.module.scss';
@@ -99,6 +100,15 @@ export interface PropertyPanelInputProps extends Omit<PropertyPanelBaseInputProp
   connectionLabel?: string;
   /** Optional click-to-navigate handler on the binding chip. */
   onConnectionClick?: () => void;
+
+  /**
+   * FB-022 — drag-to-scrub for a `Number` row, built by the row from the port type.
+   *
+   * 🔴 Reaches the field only through the explicit hand-off in `renderInput` below, and only
+   * on the `Number` branch. It is deliberately not spread onto every input type: a `scrub`
+   * arriving on a select or a checkbox would be a prop nothing reads, which reads as coverage.
+   */
+  scrub?: ScrubBinding;
 }
 
 export function PropertyPanelInput({
@@ -121,7 +131,8 @@ export function PropertyPanelInput({
   connectionLabel,
   onConnectionClick,
   dataIdentifier,
-  placeholder
+  placeholder,
+  scrub
 }: PropertyPanelInputProps) {
   const Input = useMemo(() => {
     switch (inputType) {
@@ -222,6 +233,12 @@ export function PropertyPanelInput({
         // definition to the field, and the third that silently dropped this one.
         // @ts-expect-error
         placeholder={placeholder}
+        // FB-022. Only the Number branch has a `scrub` prop to read; every other input type
+        // ignores it. 🔴 It is named here for the reason the note above records — this list
+        // is the fourth hand-off on the path from a node definition to the field, and a prop
+        // that is not named here arrives nowhere however correctly the row built it.
+        // @ts-expect-error
+        scrub={inputType === PropertyPanelInputType.Number ? scrub : undefined}
       />
     );
   };

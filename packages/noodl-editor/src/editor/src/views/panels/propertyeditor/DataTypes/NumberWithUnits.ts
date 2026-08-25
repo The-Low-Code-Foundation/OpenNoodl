@@ -5,6 +5,8 @@ import { NumberUnitInput } from '../components/NumberUnitInput';
 import { transformOriginFocus } from '../transformOriginFocus';
 import { TypeView } from '../TypeView';
 import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
+import { commitScrub, writeScrubStep } from './scrubCommit';
+import { scrubSpecForPortType, scrubStartValue } from './scrubPolicy';
 
 function parseNumberWithUnit(stringValue, permittedUnits) {
   let value = parseFloat(stringValue);
@@ -33,6 +35,8 @@ export class NumberWithUnits extends TypeView {
   numberWithUnits: TSFixme;
   el: TSFixme;
   private root: Root | null = null;
+  /** What the parameter held when the current scrub began; `undefined` between gestures. */
+  private scrubStartParameter: TSFixme = undefined;
 
   static fromPort(args) {
     const view = new NumberWithUnits();
@@ -98,6 +102,7 @@ export class NumberWithUnits extends TypeView {
         // turn anything on.
         onFocus: () => transformOriginFocus.focus(this.name),
         onBlur: () => transformOriginFocus.blur(this.name),
+        scrub: this.scrubBinding(),
         onCommit: (text: string) => this.updateValue(text, this.unit),
         onUnitChange: (unit: string, currentText: string) => this.updateValue(currentText, unit),
         onReset: () => {
@@ -109,6 +114,67 @@ export class NumberWithUnits extends TypeView {
         }
       })
     );
+  }
+
+  /**
+   * FB-022 — the drag-to-scrub binding for this row, or `undefined` when this port type is
+   * not a draggable number.
+   *
+   * ⚠️ **Rebuilt on every render, deliberately.** `value` is the number the *next* gesture
+   * starts from, and the row re-renders after every live write during a drag — a binding
+   * memoised across renders would hand the second gesture the first one's origin.
+   *
+   * 🔴 `isConnected` is handed to the policy even though `PropertyPanelRow` already replaces
+   * the whole control with FB-018's binding chip while a connection drives the port — so
+   * structurally there is no field to press. Two independent mechanisms, deliberately: see
+   * `ScrubPortState` for why one of them being enough is not a reason to have only one.
+   */
+  private scrubBinding() {
+    const spec = scrubSpecForPortType(this.type, this.unit, { isConnected: this.isConnected });
+    if (!spec) return undefined;
+
+    return {
+      step: spec.step,
+      value: scrubStartValue(this.numberWithUnits, this.port?.default),
+      onScrubBegin: () => {
+        // 🔴 The stored parameter, not the resolved number: `undefined` here means the port
+        // was on its default, and undoing a drag that began there must leave it on its
+        // default rather than pinning the default as an explicit value.
+        this.scrubStartParameter = this.parent.model.getParameter(this.name);
+      },
+      onScrub: (value: number) => this.writeScrubbedValue(value),
+      onScrubEnd: (value: number) => {
+        this.writeScrubbedValue(value);
+        commitScrub({
+          model: this.parent.model,
+          name: this.name,
+          startValue: this.scrubStartParameter,
+          finalValue: this.scrubbedParameter(value),
+          label: `change ${this.displayName}`
+        });
+        this.scrubStartParameter = undefined;
+        this.refreshFromModel();
+      }
+    };
+  }
+
+  /** What this row stores for a scrubbed number. The unit is carried through untouched. */
+  private scrubbedParameter(value: number) {
+    return { value, unit: this.unit ? this.unit : this.type.defaultUnit };
+  }
+
+  /**
+   * One live step of a drag.
+   *
+   * ⚠️ Goes to `model.setParameter` and **not** to `parent.setParameter`, which hard-codes
+   * `{ undo: true }` — routing a drag through it would push an undo entry per mousemove,
+   * which is the thing AC1 exists to prevent.
+   */
+  private writeScrubbedValue(value: number) {
+    writeScrubStep(this.parent.model, this.name, this.scrubbedParameter(value));
+    this.numberWithUnits = this.parent.model.getParameter(this.name);
+    this.isDefault = false;
+    this.renderReact();
   }
 
   private updateValue(text: string, fallbackUnit: string) {

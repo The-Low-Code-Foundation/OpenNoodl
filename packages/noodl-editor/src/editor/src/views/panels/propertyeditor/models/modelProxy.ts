@@ -72,6 +72,24 @@ export class ModelProxy {
   off(group) {
     return this.model.off(group);
   }
+  /**
+   * FB-022 — completes the listener facade `on`/`off` already start.
+   *
+   * 🔴 **Found by driving, not by a spec.** Every row that reaches this proxy treats it as the
+   * node: it subscribes through `on` here, and `NodeGraphNode.setParameter`'s own undo closures
+   * fire `modelParameterUndo`/`modelParameterRedo` on the *node* to make the panel rebuild. A
+   * caller holding the proxy had no way to do the same — `notifyListeners` simply was not here,
+   * so an undo restored the value in the model and left the field on screen showing the old
+   * one. That is exactly what FB-022's first drive saw: `width` reverted to 160 in the project
+   * and the input still read 220.
+   *
+   * Forwarding to `this.model` is the whole fix, and it is correct rather than convenient:
+   * `on` already registers against the node, so this reaches the same listeners the node's own
+   * notifications do.
+   */
+  notifyListeners(event: string, ...args: unknown[]) {
+    return this.model.notifyListeners(event, ...args);
+  }
 
   getPorts(filter?: 'input' | TSFixme) {
     const source: NodeGraphNode = this.editMode === 'variant' ? this.model.variant : this.model;

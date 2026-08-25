@@ -11,6 +11,8 @@ import { PropertyPanelInputWithExpressionModal } from '../components/PropertyPan
 import { TypeView } from '../TypeView';
 import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
 import { expressionProps } from './expressionProps';
+import { commitScrub, writeScrubStep } from './scrubCommit';
+import { scrubSpecForPortType, scrubStartValue } from './scrubPolicy';
 
 function firstType(type) {
   return NodeLibrary.nameForPortType(type);
@@ -29,6 +31,8 @@ function mapTypeToInputType(type: string): PropertyPanelInputType {
 export class BasicType extends TypeView {
   el: TSFixme;
   private root: Root | null = null;
+  /** What the parameter held when the current scrub began; `undefined` between gestures. */
+  private scrubStartParameter: TSFixme = undefined;
 
   static fromPort(args) {
     const view = new BasicType();
@@ -88,6 +92,7 @@ export class BasicType extends TypeView {
       properties: undefined, // No special properties needed for basic types
       isChanged: !this.isDefault,
       isConnected: this.isConnected,
+      scrub: this.scrubBinding(isExprMode),
       // PAR-002 binding chip: name the driving connection ("Node · Port");
       // clicking selects the source node on the canvas.
       connectionLabel: this.isConnected ? getConnectionSourceLabel(this.parent.model, this.name) : undefined,
@@ -124,6 +129,63 @@ export class BasicType extends TypeView {
     };
 
     this.root.render(React.createElement(PropertyPanelInputWithExpressionModal, props));
+  }
+
+  /**
+   * FB-022 — the drag-to-scrub binding for this row, or `undefined` when the port is not a
+   * draggable number.
+   *
+   * This row serves both `string` and `number` ports, and `scrubSpecForPortType` is what
+   * separates them: a text field gets no binding because its type says so, not because
+   * anything here tests `inputType`.
+   *
+   * 🔴 **Expression mode and connection are both gates, and neither is cosmetic.** In
+   * expression mode the stored parameter is an `{ expression, fallback }` object and the
+   * control is an `ExpressionInput`, not a number — a drag would overwrite the expression
+   * with a literal, silently destroying what the author wrote. Both live in the policy rather
+   * than here so they are gradeable in a runner that cannot render this row; see
+   * `ScrubPortState`.
+   */
+  private scrubBinding(isExpressionMode: boolean) {
+    const spec = scrubSpecForPortType(this.type, undefined, {
+      isConnected: this.isConnected,
+      isExpressionMode
+    });
+    if (!spec) return undefined;
+
+    return {
+      step: spec.step,
+      value: scrubStartValue(this.parent.model.getParameter(this.name), this.port?.default),
+      onScrubBegin: () => {
+        this.scrubStartParameter = this.parent.model.getParameter(this.name);
+      },
+      onScrub: (value: number) => this.writeScrubbedValue(value),
+      onScrubEnd: (value: number) => {
+        this.writeScrubbedValue(value);
+        commitScrub({
+          model: this.parent.model,
+          name: this.name,
+          startValue: this.scrubStartParameter,
+          finalValue: value,
+          label: `change ${this.displayName}`
+        });
+        this.scrubStartParameter = undefined;
+        this.renderReact();
+      }
+    };
+  }
+
+  /**
+   * One live step of a drag.
+   *
+   * ⚠️ `model.setParameter`, not `parent.setParameter` — the latter hard-codes
+   * `{ undo: true, label: 'edit parameter' }`, so a drag routed through it would push an undo
+   * entry per mousemove. AC1 is the whole gesture as one entry.
+   */
+  private writeScrubbedValue(value: number) {
+    writeScrubStep(this.parent.model, this.name, value);
+    this.isDefault = false;
+    this.renderReact();
   }
 
   dispose() {

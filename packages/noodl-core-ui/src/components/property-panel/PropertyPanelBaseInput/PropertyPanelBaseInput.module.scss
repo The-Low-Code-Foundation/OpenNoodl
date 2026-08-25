@@ -59,6 +59,15 @@
     text-align: center;
   }
 
+  /* FB-022 — a field whose number can be dragged says so on hover, and only there.
+     ⚠️ `:not(:focus)`: once the field is focused the caret is the thing the pointer is
+     placing, and an `ew-resize` cursor over a text caret says the click will not do what
+     it is about to do. Scrubbing still works while focused — this is about what the
+     pointer promises, not what it can do. */
+  &.is-scrubbable:not(:focus) {
+    cursor: ew-resize;
+  }
+
   /* Mock `.input.num`: numeric values in mono, centered. */
   &.is-numeric,
   &[type='number'] {
