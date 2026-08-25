@@ -124,9 +124,11 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
   mutation check: hardcoding the slug in the route's real code still fails AC4 with one offender.
 - **Community suite, 2026-08-22 after the fixes: 1277 specs, 0 failures** (was 1274 / 7; +3 is the
   new control arms). Compare **by name**, never by count, and re-measure rather than quoting this.
-- ⚠️ **Not deployed.** `9ecec25` and FB-002's `fd695ae` are committed and unshipped — nexus-1 is
-  still stamped `8d40b63`. The dark theme's inks and the answered-filter default both change on the
-  live site when somebody deploys; that is Richard's call, not a side effect of a gate fix.
+- ✅ **CORRECTED 2026-08-25 (s31) — both ARE deployed; this line was stale.** `9ecec25` and
+  FB-002's `fd695ae` are **ancestors of `acd4a9a`** (`git merge-base --is-ancestor`, measured), and
+  `acd4a9a..main` is **empty** — nothing in `nodegx-community` is waiting to ship. The `8d40b63`
+  stamp above was overtaken on 08-23/24. ⚠️ The ancestry is measured locally; the *stamp* on the box
+  is relayed from s19's SSH read, not re-measured this session — re-read it before any deploy claim.
 
 ## Carried from phase 74 (work lives in `phase-74-0.2.0-bug-fixes/`)
 
