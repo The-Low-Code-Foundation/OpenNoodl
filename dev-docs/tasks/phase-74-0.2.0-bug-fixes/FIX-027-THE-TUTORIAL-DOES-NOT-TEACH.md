@@ -7,7 +7,7 @@ cause makes a shipped lesson impossible to complete. Two more (21, 22) came from
 Sibling of `FIX-025-THE-LAUNCH-LIST.md`, which fixed thirteen. This is the batch after it, and it
 is the same shape as FIX-025's 11a: **a lesson that was shipped and never completed by anybody.**
 
-**Closed so far: 21 (fixed) and 17 (fixed and driven, 2026-08-25); 18 partly.**
+**Closed so far: 21 (fixed); 17, 19 and 20 (fixed and driven, 2026-08-25); 18 partly.**
 
 ---
 
@@ -62,8 +62,8 @@ an `openPanel` action and unlock on demand. **Pick one deliberately.**
 | 16 | The lesson says *"the Data panel"*; the rail says *Backend Services*, and Data is inside it | `log-a-thing/lesson.json` step 1 | **A** |
 | 17 | A task step never shows its instructions until you click it | `LessonLayerView.jsx:83` | B — ✅ **FIXED + DRIVEN 08-25** |
 | 18 | 🟡 **PARTLY FIXED** — the count was a cap artefact and the sentence blamed the learner; both fixed. ✅ **The gate now exists** (`lessons:check`, self-tested, in CI). 🔴 **The `state-on-a-page` bundle is still open** — it ships from nowhere either checkout can see | shipped bundle + `lessoncheck.ts:346` | C |
-| 19 | No completion moment at all when the last step is a graded card | `lessonlayer2.ts:441` | D |
-| 20 | When there *is* a completion popup, its only action is EXIT LESSON — no reset | `lessonlayer2.ts:450` | D |
+| 19 | No completion moment at all when the last step is a graded card | `lessonlayer2.ts:441` | D — ✅ **FIXED + DRIVEN 08-25** |
+| 20 | When there *is* a completion popup, its only action is EXIT LESSON — no reset | `lessonlayer2.ts:450` | D — ✅ **FIXED + DRIVEN 08-25** |
 | 21 | ✅ **FIXED** — *"Explain this for me"* 404s every time; it has never worked for anybody | `me/path/project/route.ts:54` + `useLearnerPath.ts` | E |
 | 22 | Answering the three intake questions barely changes the path | `curriculum.json` + `pathing.ts` | E |
 
@@ -279,6 +279,83 @@ whose source bundle has gone. See `FIX-026-PUT-IT-BACK.md`: for *State on a page
 `/tmp` path. **A "Reset" button offered at the completion moment must handle the refusal**, or it
 will fail in front of the learner at the worst moment.
 
+#### ✅ FIXED AND DRIVEN 2026-08-25
+
+**The moment is decided, not authored.** `isLessonFinished` (`views/lessons/lessonstepflow.ts`)
+sits beside `stepFlowAction` and takes the same `StepFlowInput`, so the two cannot disagree about
+which step is last. 🔴 **The two lesson shapes finish by opposite rules and collapsing them is
+the bug this replaces**: a graded last step finishes when its conditions hold, a narrative one
+finishes on arrival — and `refresh()` sets `isComplete = false` on every conditionless step, so a
+rule that simply asked `isComplete` would report *Log a thing* unfinished forever while looking
+correct against the graded lesson, which is the one anybody would check.
+
+**Two surfaces, because the two lessons end differently and neither covers the other.**
+
+| lesson | last step | surface | driven |
+|---|---|---|---|
+| *State on a page* | graded card, **0 popup buttons** | the bar's completion banner | ✅ |
+| *Log a thing* | narrative, shown as a screen-centre **modal** | `START AGAIN` beside `EXIT LESSON` in the modal | ✅ |
+
+🔴 **The modal is why the banner alone was not enough, and it was measured, not assumed.** On
+*Log a thing*, `document.elementFromPoint` over the banner's *Start again* returned
+`popup-layer dim` and the modal's own buttons were exactly `['EXIT LESSON']` — §20's defect
+verbatim. A banner behind a dimmer is not an offer.
+
+**The refusal.** `LearningFolderModel.canReset` is the one statement of "would reset run", and
+`reset()` is its first caller — a second copy of "local source, and the path is still there" at
+the call site is the drift FIX-026 warns about. Driven on *State on a page*, whose `/tmp` bundle
+is **gone on this machine today**: the control renders disabled, with no click handler, and the
+reason as **visible text** beside it. ⚠️ Text rather than a `title` attribute on purpose — a
+disabled button suppresses pointer events, so a native tooltip there is a message that may never
+arrive, which is precisely the failure this section exists to prevent.
+
+**`Start again` closes the project before it resets, and that is load-bearing.** `repairFrom`
+deletes `Learning/<slug>/` and copies a fresh bundle over it, and at the completion moment that
+directory **is the open project** — a live `ProjectModel` would write its graph back over the
+fresh copy. So the id is stashed (`launcherHandoff.stashLessonReset`), `leaveForLauncher` closes
+and routes, and `ProjectsPage` performs the reset on mount, sharing one `performLessonReset` body
+with the launcher card's own Reset button. Consumed on read, so React 18's double-invoked effect
+cannot reset twice.
+
+**Driven end to end on *Log a thing*** (its bundle still exists, so this is the *available* arm):
+confirm → project closed → landed on Learning → **progress `{stepIndex: 3}` → cleared**,
+directory checksum `37b065ce…` → `ec79c31d…`, project identity `log-a-thing` **kept** through
+`repairFrom`, and the card's own button changed from *Continue* to *Start*. The cancel path was
+driven first on both surfaces: the confirm names both consequences and nothing changes.
+
+#### 🔴 What driving found that reading could not: the completion moment was behind a BLOCKER
+
+`PopupLayer` puts a full-screen dimmer behind every popout. §17 opens a step's instructions on
+the edge into it — so on a graded last step the learner finished with those instructions still
+open, and `document.elementFromPoint` at the middle of the banner returned **`popup-layer-blocker`**:
+the banner was dimmed and both its buttons were unclickable.
+
+⚠️ **Two orderings, two fixes, and neither covers the other.**
+
+- Finishing *in place*: the popout is already open, so the layer closes it on the **edge** into
+  completion (`_clearTheWayForCompletion`). Driven: 1 popout → 0, blocker cleared, and
+  `elementFromPoint` at the button then returned the button.
+- **Re-entering a lesson already finished**: the banner is drawn first and §17's entry edge would
+  open instructions over it a moment later. The close cannot reach a popout that does not exist
+  yet, so `instructionOpenDecision` gained `lessonFinished` and suppresses the open. Driven from
+  a cold launcher: **0 popouts, no `has-popouts`**, banner topmost at all three points.
+- ⚠️ **On the edge, never on every refresh.** `refresh()` runs on every `Model.*` event; closing
+  popouts from all of them would shut instructions the learner deliberately re-opened — §17's own
+  lesson pointed the other way.
+- ⚠️ **Still open, and inherent to popouts rather than to this banner:** if the learner *manually*
+  re-opens a finished step's instructions, the blocker covers the banner again until they dismiss
+  it. Measured. That is how every popout in the editor behaves, and one click clears it.
+
+#### 🔴 And a contrast failure I introduced by reading a token NAME
+
+The banner was `--theme-color-secondary-dim`, chosen because the one moment a lesson
+congratulates someone should not look like the eight steps before it. Measured live, that token
+is **`rgb(139,149,161)` — a *light* grey**: headline **3.04:1**, and the refusal sentence
+**1.91:1**. The sentence explaining why *Start again* was switched off was the least readable
+thing on the bar. Moved to `--theme-color-bg-3`, the tone the fg tokens are designed against, with
+the state signal on a primary rule along the top. Re-measured in **both themes** — dark
+10.84 / 6.81 / 5.85 / 6.94, light 13.33 / 5.07 / 4.61 / 4.57. **A token name is not a colour.**
+
 ---
 
 ## Acceptance
@@ -294,8 +371,10 @@ will fail in front of the learner at the worst moment.
    half was measured against a `refresh()` count of 7, not against a quiet screen.
 5. `state-on-a-page` validates clean, and a lesson bundle carrying validator **errors** cannot
    ship.
-6. Finishing a lesson says so, and offers both *reset* and *exit* — with reset refusing gracefully
-   when it cannot run.
+6. ✅ **MET, driven 2026-08-25.** Finishing a lesson says so, and offers both *reset* and *exit* —
+   with reset refusing gracefully when it cannot run. Both lesson shapes, both arms of the
+   refusal, and the reset round-trip verified on disk. See §19/§20 above, including the blocker
+   and the contrast failure the drive found.
 7. *"Explain this for me"* returns a projection for a step on the learner's own path — 🔴 **driven
    against production once**, because it has never succeeded and a spec would only prove the two
    sides agree with each other. And a refusal says something to the learner instead of only to the
