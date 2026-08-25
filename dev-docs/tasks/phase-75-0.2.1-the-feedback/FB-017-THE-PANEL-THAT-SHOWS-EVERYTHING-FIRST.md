@@ -1,9 +1,9 @@
 # FB-017 — the panel that shows everything first
 
-**Filed:** 2026-08-22, test-user session, item 2.3. **Status: 🟡 nearly done — scopes 1, 2, 3, 5
-and 7 built, specced and driven (sessions 22–24); AC1/2/3/5/6/7 all closed. Only scope 4 (AC4, the
-corner-radius hint) remains, plus scope 2's `Source Set` demotion, which is Richard's call.**
-Size: L.
+**Filed:** 2026-08-22, test-user session, item 2.3. **Status: 🟢 all seven acceptance criteria
+closed — scopes 1–5 and 7 built, specced and driven (sessions 22–25). AC4 closed in session 25.
+The only thing left in this task is scope 2's `Source Set` demotion, which is Richard's call and
+was never anyone else's to make.** Size: L.
 
 > *"Rearrange the visual nodes' props, in a way that a new user initially ONLY sees the basics
 > they would need on a daily basis, like position, margins, padding, width height, alignment,
@@ -432,3 +432,206 @@ above, including a control pair that varies *only* the two declarations in the r
 3. ⚠️ **A CSS-module edit does not hot-reload here** — `[HMR] Nothing hot updated`, then measurements
    identical to the baseline in every digit. **Check the computed style before believing a null
    result**; `cdp reload` + re-open the project is the fix.
+
+---
+
+# Session 25 — AC4, and the offender that was named the wrong way round
+
+**AC4 ✅. FB-017 is closed apart from Richard's `Source Set` call.** New:
+`propertyPanelHints.ts` (pure), `utils/portHint.ts` (the row wrapper), three edits to
+`DataTypes/Ports.ts`, one CSS rule. 30 new specs, plus a drive over a six-node fixture.
+
+## 🔴 First: the named offender does not reproduce, and the real one is its parent
+
+Scope 4 names *"corner radius on an Image without clipping"*. Before building anything, that was
+measured by hit-testing the corner pixel of a 200×200 box with a 40px radius in the editor's own
+renderer (`document.elementFromPoint` at 3px in from the top-left; the centre of every box was
+sampled too as a positive control, and hit the child in all five rows):
+
+| Case | corner pixel hits | centre |
+| --- | --- | --- |
+| `<img>` carrying the radius itself, nothing clipping | **not the image** — it is rounded | child |
+| control: the same `<img>` at radius `0` | the image | child |
+| a parent with the radius, `overflow: visible`, square child | **the child** — square corner | child |
+| the same parent at `overflow: hidden` | neither — it is rounded | child |
+| control: the same parent at radius `0`, `overflow: visible` | the child | child |
+
+`border-radius` clips a replaced element's own content with no help from `overflow`, and an `Image`
+node renders as a bare `<img>` carrying the style (`Image.tsx`). **So corner radius on an Image
+works, on its own, with nothing clipping anything.** What fails is a *container* whose children
+paint over its rounded corners — and the reporter met that through an Image inside a Group.
+
+⚠️ Two controls are what make that readable rather than a guess: the radius-`0` rows prove the
+instrument reports a hit when there is one, and the centre column proves the child was hittable
+throughout, so "the corner missed" is about the corner and not about a broken fixture.
+
+**The port that needs the hint is on the parent.** AC4's wording is satisfied by the arm it asks
+for — radius set, not clipped, hint; clipped, no hint — but the subject is the container.
+
+## The offender set, measured against the catalog rather than reasoned about
+
+`node-catalog.json`: **14 node types carry `borderRadius`, 3 carry `clip`, and the only overlap is
+`Group`.** Twelve of the fourteen declare `allowChildren: false` and so can never reach this state.
+The two that can:
+
+| Node | children | `Clip Content` |
+| --- | --- | --- |
+| `Group` | yes | yes — and it defaults to **off**, so the defect is the *default* state |
+| `Button` | yes | **no such port**; `Button.tsx` puts `props.children` straight in the `<button>` |
+
+That second row is why the message has two forms. Telling a Button author to switch on a control
+their node does not have is the dead end `portDecoration.ts` already names as a build failure.
+
+⚠️ **The other offender scope 4 names — "transform on a statically-positioned element" — is not
+real here either.** `layout.ts`'s `Layout.align` ends
+`style.transform = transform + (style.transform || '')`: an alignment transform is *prepended* to
+the author's, never substituted, in every position mode. It is not in the list, and the list is
+closed at one.
+
+## 🔴 The seam the obvious implementation would have missed
+
+The two wrappers already on `Ports.renderParams` key off `v.name`, and copying that would have
+shipped a feature that draws nothing. The five corner-radius ports declare `tab: { group:
+'corners' }`, so `getViewGroupsFromPorts` folds them into a **`TabGroup`** and pushes that into
+`this.views` — **and a `TabGroup` has no `name`.** A per-port wrapper reaches none of them. It
+would have compiled, passed a pure-logic suite, and put a note on screen exactly never: the ninth
+entry in this repo's "hole shaped like the defect" list, caught only by reading
+`getViewGroupsFromPorts` before writing the wrapper. Hence `portNamesForView` — a view speaks for
+its own port *and* for any it holds.
+
+## 🔴 The second thing that would have shipped broken: the panel never re-renders
+
+`renderGroups` hashes the **port list**, and `clip` gates no ports, so flipping it changes nothing
+the hash can see. There is no `parametersChanged` listener on the panel either —
+`WorkflowTypes.ts:508` records that in as many words. So a hint applied only at render time appears
+no earlier than the *next selection*: the author who has just typed a corner radius and is staring
+at the panel would never see it, which is the entire flow this feature exists for.
+
+A full re-render is not the fix — `borderRadius` is a typed number field, and rebuilding the panel
+under a focused input takes the focus with it. So `applyPortHint` is idempotent (it removes any
+note it finds before adding one) and `Ports.refreshHints` re-applies it **in place**, on a watch
+list of seven parameters, finding its targets by an attribute the render pass left behind.
+
+## What shipped
+
+1. **`propertyPanelHints.ts`** — pure. `hintsForNode` keyed on the node's own state, not a list of
+   type names: `allowChildren: false` nodes cannot hold children, so "has children" already
+   excludes the twelve non-offenders and keeps working for kit nodes this file has never seen.
+   `isChildClipped` covers both routes off `Group.tsx` — `clip`, and native scroll's
+   `overflow: auto`, which clips to the radius just as well. ⚠️ `nativeScroll` defaults to **true**.
+2. **`utils/portHint.ts`** — `portNamesForView`, and an idempotent `applyPortHint` used by both the
+   render path and the live refresh.
+3. **`DataTypes/Ports.ts`** — `structuralHints()` (which asks the **node** for `hasPort`, not the
+   already-filtered `_getPorts()`, because the two messages turn on "no such port" vs "hidden"),
+   the `renderParams` call, and two narrow subscriptions: `parametersChanged` filtered to the seven,
+   and `nodeAttached`/`nodeDetached` for a child dragged in or out.
+4. **`propertyeditor.css`** — one rule, deliberately the same shape and typography as
+   `.property-capability-reason`. ⚠️ `--theme-color-notice` currently *aliases*
+   `--theme-color-warning`, so the two rules are the same hue today; the separate token is so they
+   can diverge later without touching this rule.
+
+## What the drive proved
+
+Fixture `NodeGX test projects/ac4-drive`, six roots built to separate the arms from the controls.
+
+| Node | radius | children | clip | note | |
+| --- | --- | --- | --- | --- | --- |
+| R1 | 40px | 1 | off | **1** | **AC4 arm 1** |
+| R2 | 40px | 1 | **on** | **0** | **AC4 arm 2** |
+| R3 | 40px | **0** | off | 0 | control — nothing can overflow |
+| R4 | **none** | 1 | off | 0 | control — nothing to warn about |
+| R5 `Image` | 40px | 0 | — | 0 | the named case, correctly quiet |
+| R6 `Button` | 40px | 1 | no port | **1** | and with the *other* sentence |
+
+R6's note reads *"This node has no Clip Content option — round the child instead, or put it in a
+Group that clips."* — the variant, not the Group one.
+
+**The live half, with an instrument that can tell a re-render from an in-place edit.** The host
+element was stamped with a `data-stamp` attribute before each change; a rebuilt panel loses the
+stamp, an in-place update keeps it.
+
+| Action | note | host element |
+| --- | --- | --- |
+| R1 selected | 1 | stamped |
+| **real click** on the Clip Content checkbox → `clip: true` | **0** | **same element, stamp intact** |
+| clicked again → `clip: false` | **1**, correct text | same element, stamp intact |
+| R4 (no radius) → set a radius with the panel open | **0 → 1** | same element, stamp intact |
+| 🔴 focus test: caret in the `borderRadius` field, then `clip` flipped | 1 → 0 | `activeElement` **unchanged**, caret still at 2, value still `40` |
+| AC7 filter still works: typed `corner` | **1**, under the single `Corner Radius` heading | — |
+| filter cleared | 16 headings, as before | — |
+
+**Contrast, both themes** (composited through the rule's own `opacity: 0.85` onto the panel
+background, not read off the token):
+
+| Theme | text | background | ratio |
+| --- | --- | --- | --- |
+| dark | `rgb(193,200,208)` | `rgb(33,41,50)` | **8.71:1** |
+| light | `rgb(101,111,122)` | `rgb(255,255,255)` | **5.09:1** |
+
+Both clear 4.5:1, which is the bar that applies — it is 10px text.
+
+## Specs
+
+**30, all green.** `tests-unit/fb-017/propertyPanelHints.test.ts` (18) has AC4's two arms, the five
+ways it must not fire, both message variants, and a sweep over `node-catalog.json` that fails if
+`Group` ever stops being the only node that both rounds and clips.
+`tests-unit/property-editor/portHint.test.ts` (12) is the `TabGroup` case stated as a test, plus
+the idempotence and removal the live refresh depends on.
+
+⚠️ **The messages are asserted by what they say, not against the exported constant.** Handing the
+expected string in as an input and reading it back grades nothing — and it was this task's own
+session 22 that put that entry on the traps list.
+
+⚠️ **The catalog sweep can only check the port half.** `node-catalog.json` carries no
+`allowChildren`, so "which of these can hold a child" is not derivable there; that half was read
+from `react-component-node.ts:908` (it defaults to `true`) and is recorded in the module header
+rather than asserted.
+
+## Found while working, owned by nobody
+
+- ⚠️ **A radius arriving over a connection gets no hint**, deliberately. The panel knows a port is
+  connected, not what value it carries, so a hint there would be a guess — and a false hint tells
+  an author their corners are broken when they are not. Same for `overflow` set through Advanced
+  CSS or a `cssClassName`, which is not visible from the graph at all.
+- ⚠️ **The `scrollEnabled: true, nativeScroll: false` branch is read, not driven.** That path takes
+  `renderIScroll`, which wraps the children and leaves the root at `overflow: visible` — no CSS
+  anywhere sets `overflow` on `.scroll-wrapper-internal`. So the hint *does* draw there, which
+  looks right, but it is the one branch nobody has watched. If that is wrong, a scroll-enabled
+  Group with a radius gets a note it should not have.
+
+## ⚠️ Harness notes, session 25
+
+1. ✅ **There is no editor global, but there is a module registry.**
+   `window.webpackChunknoodl_editor.push([[key], {}, (r) => (window.__wreq = r)])` hands back
+   webpack's require, and `__wreq.c['./src/editor/src/contexts/NodeGraphContext/NodeGraphContext.tsx']
+   .exports.NodeGraphContextTmp.nodeGraph` is the live `NodeGraphEditor`. `ed.findNodeWithId(id)`
+   then `ed.selectNode(view)` selects a node without touching the canvas — 2,502 modules are
+   reachable this way. ⚠️ `selectNode` wants the **editor node**, not the model node; passing the
+   model throws inside `selectionActions`.
+2. ✅ **`ThemeManager` is exported as the instance, not the class.** `T.instance` is undefined and
+   `T.prototype` is empty; call `ThemeManager.setMode('light')` on the export directly.
+3. ✅ **A fixture can be opened without the native dialog** by prepending a row to
+   `~/Library/Application Support/NodeGX/recently_opened_project.json` and reloading the renderer.
+   Back the file up first — it is 3.7MB, almost all of it base64 thumbnails.
+4. ⚠️ **Stamping a DOM node is how you tell an in-place update from a re-render.** Everything else
+   about the two looks identical from a selector query, and the whole design here turns on which
+   one happened.
+
+## Gates, session 25
+
+Measured on this tree, not quoted from a handover:
+
+- `npm run test:main`: **325 files / 5240 specs / 0 failures**, exit 0. Session 24's floor was
+  323 / 5210; this adds exactly the 2 files and 30 specs written here, so there is no drift and
+  no flake hiding in the difference.
+- `npm run typecheck:editor`: **0 errors**, exit 0.
+- 🔴 **`test:ci` was NOT run, and it is the one gate this change genuinely wants** — `Ports.ts`
+  is covered by `tests/nodegraph/propertyeditor.js`, and `renderParams` and `bindModel` were both
+  edited. It was started and **deliberately killed in its webpack phase**: the machine had a VM at
+  66% CPU, another project's `pytest` at 48%, load 5.65, and **1,116M of 13,312M swap free**. Under
+  that, `freshDb` timeouts and scattered reds read exactly like regressions in this work. ⚠️ *Alone
+  on the checkout is not alone on the machine.* **Whoever picks this up next should run it on a
+  quiet machine and compare failures by name against the 08-19 floor** (2849 specs / 10 failures),
+  not by count.
+- Not run, nothing touched them: `typecheck:core-ui`, `noodl-runtime`, `noodl-viewer-react`, all of
+  `nodegx-community`. **FB-017 is editor-side and does not deploy.**
