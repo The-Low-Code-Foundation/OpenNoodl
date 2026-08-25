@@ -27,6 +27,9 @@ if (typeof window !== 'undefined' && window.NoodlEditor) {
 
       if (window.NoodlEditorHighlightAPI.highlighter) {
         window.NoodlEditorHighlightAPI.highlighter.setWindowSelected(enabled);
+        // FB-016 — the box model overlay is design mode's, and only design mode's. Selection is
+        // pushed across this bridge in preview mode too, so the highlighter cannot infer it.
+        window.NoodlEditorHighlightAPI.highlighter.setDesignMode(enabled);
       }
     }
   };
@@ -37,6 +40,7 @@ if (typeof window !== 'undefined' && window.NoodlEditor) {
       this.highlighter = highlighter;
 
       this.highlighter.setWindowSelected(window.NoodlEditorInspectorAPI.enabled);
+      this.highlighter.setDesignMode(window.NoodlEditorInspectorAPI.enabled);
     },
     selectNode(nodeId) {
       this.highlighter.deselectNodes();

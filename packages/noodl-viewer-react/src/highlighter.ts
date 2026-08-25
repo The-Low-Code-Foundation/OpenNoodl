@@ -1,3 +1,11 @@
+import {
+  BoxModelOverlay,
+  clipsAtRadius,
+  overlayRadii,
+  radiiToCss,
+  readCornerRadii,
+  type RectLike
+} from './box-model-overlay';
 import type { ReactNodeInstance } from './react-component-node';
 
 /** The slice of `NoodlRuntime` the highlighter reaches for. */
@@ -28,6 +36,21 @@ export class Highlighter {
   isUpdatingHighlights: boolean;
   highlightRootDiv: HTMLDivElement;
   windowBorderDiv: HTMLDivElement;
+  /**
+   * FB-016 — the box model, drawn for one element at a time.
+   *
+   * Owned here rather than created per highlighted node: two chips saying the same thing cover
+   * the content the author is trying to read, and the hovered node and the selected node are
+   * usually the same element anyway.
+   */
+  boxOverlay: BoxModelOverlay;
+  /**
+   * 🔴 **The box model draws in design mode only, and this flag is the whole of that gate.**
+   * `NoodlEditorHighlightAPI.selectNode` is called whenever the editor's selection changes —
+   * in preview mode too — so without it, clicking a node in the graph would drop a chip of CSS
+   * facts over a running app nobody asked to inspect.
+   */
+  designMode: boolean;
 
   constructor(noodlRuntime: HighlighterRuntime) {
     this.highlightedNodes = new Map();
@@ -35,6 +58,7 @@ export class Highlighter {
     this.noodlRuntime = noodlRuntime;
 
     this.isUpdatingHighlights = false;
+    this.designMode = false;
 
     //create the div that holds the highlight and selection UI
     const div = document.createElement('div');
@@ -48,6 +72,8 @@ export class Highlighter {
     div.style.pointerEvents = 'none';
     document.body.appendChild(div);
     this.highlightRootDiv = div;
+
+    this.boxOverlay = new BoxModelOverlay(div);
 
     this.windowBorderDiv = this.createHighlightDiv();
     this.windowBorderDiv.style.position = 'absolute';
@@ -84,8 +110,21 @@ export class Highlighter {
     }*/
   }
 
+  /**
+   * Follows `NoodlEditorInspectorAPI.setEnabled`, which is design mode itself (DES-001).
+   */
+  setDesignMode(enabled: boolean): void {
+    this.designMode = enabled;
+    if (!enabled) {
+      this.boxOverlay.clear();
+    }
+  }
+
   updateHighlights(): void {
     const items = Array.from(this.highlightedNodes.entries()).concat(Array.from(this.selectedNodes.entries()));
+
+    let focus: { element: HTMLElement; computed: CSSStyleDeclaration; rect: RectLike } | null = null;
+    let focusIsHovered = false;
 
     for (const item of items) {
       const domNode = item[0].getDOMElement && item[0].getDOMElement();
@@ -108,6 +147,33 @@ export class Highlighter {
       highlight.style.transform = `translateX(${rect.x}px) translateY(${rect.y}px)`;
       highlight.style.width = rect.width + 'px';
       highlight.style.height = rect.height + 'px';
+
+      // FB-016 scope 5 — a rectangle drawn over a rounded element is what one test user read as
+      // *"corner radius rendered as a box outline — possible render bug"*. `outline` follows
+      // `border-radius`, so rounding the div rounds the teal line with it.
+      const computed = window.getComputedStyle(domNode);
+      highlight.style.borderRadius = radiiToCss(
+        overlayRadii({
+          radii: readCornerRadii(computed),
+          borderRect: rect,
+          clips: clipsAtRadius(domNode.tagName, computed),
+          childRects: childRects(domNode)
+        })
+      );
+
+      // The hovered node wins the box model; a selection keeps it once the pointer has left for
+      // the properties panel, which is exactly when an author is changing the numbers it explains.
+      const hovered = this.highlightedNodes.has(item[0]);
+      if (!focus || (hovered && !focusIsHovered)) {
+        focus = { element: domNode, computed, rect };
+        focusIsHovered = hovered;
+      }
+    }
+
+    if (this.designMode && focus) {
+      this.boxOverlay.update(focus.element, focus.computed, focus.rect);
+    } else {
+      this.boxOverlay.clear();
     }
 
     this.isUpdatingHighlights = this.highlightedNodes.size > 0 || this.selectedNodes.size > 0;
@@ -191,6 +257,17 @@ export class Highlighter {
     }
     this.selectedNodes.clear();
   }
+}
+
+/** Only element children can paint over a corner, and only the first few are worth asking. */
+function childRects(element: HTMLElement): RectLike[] {
+  const rects: RectLike[] = [];
+  const children = element.children;
+  const count = Math.min(children.length, 40);
+  for (let i = 0; i < count; i++) {
+    rects.push(children[i].getBoundingClientRect());
+  }
+  return rects;
 }
 
 function getNodes(noodlRuntime: HighlighterRuntime, nodeId: string): ReactNodeInstance[] {
