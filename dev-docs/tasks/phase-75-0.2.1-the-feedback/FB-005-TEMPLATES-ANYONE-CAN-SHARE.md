@@ -3,6 +3,8 @@
 **Filed:** 2026-08-22, from Richard's item 4. **Status: ⬜ OPEN — R-templates ruled 2026-08-22:
 CURATED FIRST.** Size: L+. Slice before starting.
 
+📋 **The slice exists: [FB-005-SCOPE.md](FB-005-SCOPE.md) (2026-08-25).** Take **T1** first — it is independent of every ruling below. 🔴 Read §1 before anything else: the sweep bullet below is wrong, and the correction changes where the work is.
+
 ✅ **R-templates, as ruled:** Richard publishes; a share button **files a submission, it does not
 publish**. Same posture as tutorial curation. 🔴 This is *not* Richard's item 4 as written — he asked
 for "just let anyone upload anything" and ruled against his own phrasing, so **ECO-002's G3 gate
@@ -18,10 +20,16 @@ ruling opens uploads. Ratings/categories/search are still in scope over the cura
 
 ## What exists (swept 2026-08-22) — and why "shouldn't be complicated" needs qualifying
 
-- **There is no template mechanism in the product at all.** `handleCreateProjectConfirm`
-  hardcodes `projectTemplate: ''`; P70's README: *"there is no template picker in the product,
-  only style presets."* MCP `create_project` writes its own skeleton and skips templates
-  entirely (P70 memory).
+- 🔴 **WRONG, corrected 2026-08-25 — see [FB-005-SCOPE.md](FB-005-SCOPE.md) §1.** ~~There is no
+  template mechanism in the product at all.~~ There is a complete one — `TemplateRegistry`, an
+  `ITemplateProvider` interface and **four** providers — and it is **unreachable**.
+  `templateRegistry.list()` has **zero callers**, so there is no picker; `handleCreateProjectConfirm`
+  hardcodes `projectTemplate: ''`, which is falsy, so the registry's download branch never runs.
+  Every new project is in fact created *from* a template (`embedded://hello-world`), via a direct
+  `new EmbeddedTemplateProvider()` that bypasses the registry. ⚠️ The dead path also contains a
+  **hang** (no `xhr.onerror`) and a Windows path bug. Still true: P70's README (*"there is no
+  template picker in the product, only style presets"*) and MCP `create_project` skipping
+  templates entirely.
 - **ECO-002** (`phase-20-ecosystem/ECO-002-MARKETPLACE.md`) is the marketplace spec — **gated on
   G3 (community critical mass)**. Richard asking for it is evidence toward the gate, but opening
   it is a ruling, not a drift.
