@@ -322,8 +322,21 @@ floor merely cries wolf; this one goes quiet.
 **A reading that FITS is not one that EXCLUDES.**
 
 ⚠️ `AIX-011 criterion 7 — createPlanDocWriter on real files` is a **timing** flake (undo writes
-settled on a 30 ms `setTimeout` a loaded runner loses), never one of the ten. It ran and passed
-here; expect it to come and go with machine load rather than treating its absence as a fix.
+settled on a 30 ms `setTimeout`), never one of the ten. It ran and passed here; treat its absence
+as luck rather than as a fix.
+
+🔴 **NARROWED 2026-08-25 — "a loaded runner loses it" is TOO BROAD, falsified by prediction.**
+That characterisation was carried over from the floor note and I restated it as a forecast: with
+`CoreSimulator/simdisk` **pinning a full core at 100%**, I told session 29 in advance that a fifth
+failure would likely be this flake, and that it should be read as the simulator rather than as
+FB-022. **It did not fire** — `2849 / 4` at seed `48211`, all `AIX-006`, with the core still
+pinned. So the flake **survives at least one core-pinned run**, and CPU saturation alone is not its
+trigger. Its actual trigger is unidentified; disk or memory pressure remain untested.
+
+✅ **Worth recording precisely because the prediction failed.** A forecast that cannot fail teaches
+nothing when it fits; this one could, did, and narrowed a claim that three sessions had been
+repeating. The floor itself held across two seeds today (`26506`, `48211`) — so the failure was in
+my model of the flake, not in the floor.
 
 ✅ That session checked the previously-failing specs had actually **run** rather than been skipped
 (16 / 60 / 6 spec-starts) — the check that separates *a real pass* from *a pass that never
