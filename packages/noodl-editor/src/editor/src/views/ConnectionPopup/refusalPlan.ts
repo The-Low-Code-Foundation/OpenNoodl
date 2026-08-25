@@ -133,6 +133,50 @@ export function dominantReason(ports: readonly PlannablePort[]): RefusalReason {
 }
 
 /**
+ * Split a refused set into the ports that are **switched off** and the rest.
+ *
+ * ## Why this exists, and it was a drive that found it
+ *
+ * FB-021 scope 2 was built, unit-specced and committed before this: a gated port
+ * is marked inert with its own reason, `refusedGroupSummary` says *"N ports
+ * switched off by a setting"* for it, and that branch even sits above the signal
+ * test so the more specific fact wins. Every one of those parts is correct on its
+ * own, and the composition was still wrong.
+ *
+ * 🔴 Driven on a `Group` in `contentSize` with a string output in flight, the
+ * folded block held **8 gated ports and one type-mismatched `Focus`**. Mixed, so
+ * {@link dominantReason} answers `'other'` — deliberately, and rightly for two
+ * kinds of *refusal* — and the summary rendered **"9 ports this wire can't
+ * reach"** over eight ports the wire reaches perfectly well.
+ *
+ * That is the precise sentence FB-021 exists to prevent. `gated` is not a vaguer
+ * refusal, it is the opposite claim: every other reason means *the wire will not
+ * be made*, and this one means it **will be made and then ignored**. Melting the
+ * two together sends an author hunting a type error that is not there — Jordan's
+ * reading, four times.
+ *
+ * So the two never share a summary. They are different statements about different
+ * things, and one line cannot be true of both.
+ *
+ * ⚠️ Deliberately **not** solved by making `gated` win in `dominantReason`: that
+ * would put *"switched off by a setting"* over the type-mismatched row instead,
+ * which is the same defect pointing the other way.
+ *
+ * Order is `refused` first, then `gated`: it leaves a set with no gated ports
+ * rendering exactly as it did, and the wire-refusals are what a builder mid-drag
+ * asked about.
+ */
+export function partitionGated(ports: readonly PlannablePort[]): {
+  refused: PlannablePort[];
+  gated: PlannablePort[];
+} {
+  const refused: PlannablePort[] = [];
+  const gated: PlannablePort[] = [];
+  for (const p of ports) (p.reason === 'gated' ? gated : refused).push(p);
+  return { refused, gated };
+}
+
+/**
  * The type name to describe a set of refused ports by, or `undefined` when they
  * do not share one.
  *

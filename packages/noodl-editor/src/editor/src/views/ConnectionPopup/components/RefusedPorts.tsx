@@ -7,7 +7,7 @@ import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon'
 
 import css from '../ConnectionPopup.module.scss';
 import { refusedGroupSummary } from '../portCopy';
-import { dominantReason, dominantTypeName, type PlannablePort } from '../refusalPlan';
+import { dominantReason, dominantTypeName, partitionGated, type PlannablePort } from '../refusalPlan';
 import { PortItem } from './PortItem';
 
 /**
@@ -31,6 +31,14 @@ import { PortItem } from './PortItem';
  *
  * So `ConnectionBar` keeps the per-group block for mixed groups and folds every
  * fully-refused group into a single instance of this at the end of the list.
+ *
+ * ## Why one instance can render two lines
+ *
+ * FB-021 — a **switched-off** port is in this list without being refused, and no
+ * single summary is true of both kinds at once. `partitionGated` splits them and
+ * each half gets its own line. Both call sites inherit that by construction,
+ * which is why the split lives here rather than in `ConnectionBar`: a mixed
+ * *group* has the same defect as the mixed folded block.
  */
 export interface RefusedPortsProps {
   /**
@@ -50,6 +58,37 @@ export interface RefusedPortsProps {
 }
 
 export function RefusedPorts({ ports, colors, canRedirect, onRefusalClicked, showGroupNames }: RefusedPortsProps) {
+  /*
+   * FB-021 — two blocks, never one summary over both. See `partitionGated` for
+   * what a drive found here: a `gated` port is not refused at all, so the generic
+   * *"N ports this wire can't reach"* that a mixed set falls back to is false
+   * about it in the exact way this task was filed about.
+   *
+   * ⚠️ The redirect is withheld from the gated block on purpose. `canRedirect`
+   * offers *a different wire*, which is the right answer when this one is refused
+   * and the wrong one when it is legal — the port comes back by changing the
+   * setting the row names, not by wiring somewhere else.
+   */
+  const { refused, gated } = partitionGated(ports);
+
+  if (!refused.length && !gated.length) return null;
+
+  return (
+    <>
+      <RefusedBlock
+        ports={refused}
+        colors={colors}
+        canRedirect={canRedirect}
+        onRefusalClicked={onRefusalClicked}
+        showGroupNames={showGroupNames}
+      />
+      <RefusedBlock ports={gated} colors={colors} showGroupNames={showGroupNames} />
+    </>
+  );
+}
+
+/** One summary line and the rows behind it. The body this component has always had. */
+function RefusedBlock({ ports, colors, canRedirect, onRefusalClicked, showGroupNames }: RefusedPortsProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (!ports.length) return null;

@@ -639,10 +639,119 @@ distinguish; `getWarningsForRef` matches and cannot say why it matched nothing. 
 enumerating reader over the matching one**, and when a reading says "broken", re-read it with a
 different instrument before believing it.
 
-### ⬜ Still not driven: scope 2, the popup
+### ~~⬜ Still not driven: scope 2, the popup~~ → ✅ DRIVEN 2026-08-25 (session 34)
 
-The `ConnectionBar` half is built and unit-specced but **has not been opened in a running editor**.
+The `ConnectionBar` half was built and unit-specced but had **not been opened in a running editor**.
 Its two load-bearing placements (after the status pass, outside the source-port guard) are exactly
-the kind of thing that reads correct and behaves wrong, and neither is covered by the copy specs.
+the kind of thing that reads correct and behaves wrong, and neither was covered by the copy specs.
 ⚠️ The catalog sweep grades *sentences*, not rendering — the same gap `.property-port-gate-target`
 still has.
+
+---
+
+## ✅ 2026-08-25 (session 34) — scope 2 DRIVEN, and the drive found a defect
+
+Real stack, real `Group`, a copy of `fb020-drive` opened from the renderer. The wire
+(`String.value → Group.width`) existed **before** `Size Mode` was touched, and the popup was opened
+by the ordinary route: `interaction.draggingConnection = {fromNode, toNode, popupOpen: true}` then
+`editor.openConnectionPanels()` — the two lines `InteractionController`'s `mouseup` runs.
+
+### Both entry paths, and the control
+
+⚠️ The two placements the commit calls load-bearing map onto the popup's two states exactly:
+**STEP 2 before a source port is picked** is `sourcePort === undefined` (outside the guard), and
+**after picking one** is the state where `getConnectionStatus` has run (the mark applied last).
+
+| `Size Mode` | popup state | `Width` / `Height` | rest of the node |
+|---|---|---|---|
+| `explicit` — **control** | STEP 2, no source port | **enabled**, in `Dimensions` | 30 other ports gated by *their* settings |
+| `explicit` — **control** | source port = `value` | **enabled** | + `Focus` refused, `type-mismatch` |
+| `contentSize` | STEP 2, no source port | **refused**, `reason: 'gated'` | the group's summary goes 6 → **8** |
+| `contentSize` | source port = `value` | **refused**, mark survives | `Focus` still refused for its own reason |
+| back to `explicit` | source port = `value` | **enabled again** | mark lifts |
+
+✅ **All four claims the specs could not reach are now observed.** The port is *listed*, not hidden
+(Richard's *"mark, do not hide"*); the mark appears with **no wire in flight**, so the guard
+placement is right; it **survives** the status pass, so the ordering is right; and it **lifts** when
+the gating parameter changes back, so the popup reads the live parameter rather than a constant.
+
+✅ **The status pass demonstrably ran** in the source-port arm — `Focus` appears refused there and
+not in the no-source arm. Without that row, "the mark survived" and "the pass never happened" would
+be the same reading. **A control that shows the thing you fear ran.**
+
+✅ The sentence renders, from `portGateReason` via `PortItem` → `DocsPopup`:
+> Width applies when Size Mode is Explicit or Content Height, or is not set.
+
+✅ Bonus, visible in the same frame: the canvas wire into `width` is drawn **dashed** — session 33's
+`con-target-port-gated` half, live beside this one.
+
+### 🔴 The defect the drive found: two correct functions composing into the forbidden sentence
+
+Mid-drag, the fully-refused groups fold into **one** block. With `Size Mode` at `contentSize` that
+block held **8 gated ports and one type-mismatched `Focus`** — a mixed set, so `dominantReason`
+answered `'other'` (deliberately, and rightly, for two kinds of *refusal*) and the summary read
+
+> **"9 ports this wire can't reach"**
+
+over eight ports the wire reaches perfectly well. **That is the exact sentence this task exists to
+prevent**, and it is the one the commit message singles out: *"the generic line is not a vaguer
+version of the gated one, it is the opposite claim… would send an author hunting a type error that
+is not there — Jordan's reading, four times."*
+
+🔴 **Every part was green.** `refusedGroupSummary('gated')` is right and specced. `dominantReason` is
+right and specced. The `gated` branch even sits above the signal test, with a mutant proving the
+ordering. The defect is in the **composition**, which no unit spec addressed — and it is only
+visible on the surface that is **shown before anything is expanded**, so an author who never opens
+the block reads nothing but the false line.
+
+⚠️ It is **not** fixable by letting `gated` win in `dominantReason`: that puts *"switched off by a
+setting"* over the type-mismatched row instead — the same defect pointing the other way.
+
+**The fix.** `partitionGated` in `refusalPlan.ts`, applied inside `RefusedPorts`, which now renders
+up to two summary blocks. The split lives in the component rather than in `ConnectionBar` because
+**both** call sites have the defect — a mixed *group* as much as the folded block.
+
+✅ **Both halves gained.** After the fix the same drag reads:
+
+| block | before | after |
+|---|---|---|
+| the type-mismatched `Focus` | *(melted in)* | **"1 signal input · a moment, not a value"** |
+| the 8 gated ports | *(melted in)* | **"8 ports switched off by a setting"** |
+| the two together | **"9 ports this wire can't reach"** | *(never rendered)* |
+
+`Focus` had lost its own honest wording to the merge too. **A summary over a mixed set was making
+both halves less true, not one.**
+
+⚠️ **One behaviour change beyond the summary, and it is UNDRIVEN**: the gated block is not given
+`canRedirect`. Offering *a different wire* is the right answer when this one is refused and the
+wrong one when it is legal — the port comes back by changing the setting the row names. The fixture
+here produced no confident redirect (`offer.actionable` false), so **no row in either block was a
+redirect and the distinction was never exercised**. Reaching it needs a source whose type exactly
+matches a primary port, e.g. a `String` output at a `Button`.
+
+### 🔴 A second finding: `refusalHeadline` has NO production caller
+
+`grep -rn refusalHeadline packages/` returns `portCopy.ts` (the definition) and **two test files**.
+Nothing in `src/` calls it. So FB-021's `'This port is switched off by another setting.'` branch —
+and the spec asserting it — grade **dead code**, and so do the three pre-existing SIG-001 headlines
+beside it. The sentence a user actually reads comes from `p.message` through `PortItem` →
+`DocsPopup`'s `docsRefusal`, which the drive confirmed renders.
+
+⚠️ Not fixed here. Wiring the headline in changes the explainer for **every** refusal reason —
+SIG-001's surface, four headlines at once — which needs its own drive, not a slipped-in line.
+✅ **The shape worth carrying: a spec can be green, mutation-checked, and still grade a function
+nothing calls.** `refusalHeadline` was mutation-checked in session 33 *within itself*; a mutant that
+changes an unreachable function's output still fails its spec. **Mutation testing proves the spec
+reads the function; only a caller-grep proves the function reaches the user.**
+
+### Gates
+
+- `npm run typecheck:editor` — **0 errors**, after the fix and the new spec.
+- `npm run test:main` — **336 files / 5444 specs / 0 failures** (was 335/5438; +1 file, +6 specs).
+- `npm run test:ci` — see the phase handover; run alone, on this tree.
+- **Mutation-checked**: reverting `partitionGated` to the pre-fix single block (everything into
+  `refused`) fails **3** of the 6 new specs, including the one asserting the generic line never
+  appears. The mutant is the defect as driven, so the spec grades the real thing.
+- ⚠️ **Undriven, by construction of the fixture**: the mixed-*group* case (a group with connectable
+  ports *and* both kinds of refusal). Every group on a `Group` node was homogeneous. It is the same
+  component and the same partition, and the spec covers the composition — but it was not seen.
