@@ -2,6 +2,7 @@ import { isEqual } from 'underscore';
 
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
+import { partitionGatedPorts, reasonsForGatedPorts } from '@noodl-models/nodelibrary/portGateReason';
 
 /**
  * The model proxy is used to simulate different models for different interaction states / default values etc
@@ -97,11 +98,24 @@ export class ModelProxy {
     let ports = [].concat(source.getPorts(filter));
 
     // Apply ports condition filter
+    //
+    // FB-021 — the splice this used to be is what made Jordan ask "where is
+    // width?" four times. A `conditionalports/basic` rule does not remove the
+    // port (see `portConnectivity.ts`, and `portGateReason.ts`'s header for the
+    // measurement): the port is live, a wire to it survives a reload and
+    // delivers its value, and the layout then throws that value away. Removing
+    // the row made a live-but-ignored port and an absent one look identical.
+    //
+    // So a port whose condition can be put into a sentence is **kept and
+    // marked**; `Ports.renderParams` draws it as a disabled row carrying that
+    // sentence. One that cannot be explained is spliced out exactly as before —
+    // `portDecoration.ts`'s rule, that a dead control with no reason reads as
+    // broken rather than as switched off, applies here unchanged.
     const portFilter = NodeLibrary.instance.applyPortConditionsFilterForNode(this);
-    portFilter.forEach((portname) => {
-      const idx = ports.findIndex((p) => p.name === portname);
-      if (idx !== -1) ports.splice(idx, 1);
-    });
+    if (portFilter.length) {
+      const reasons = reasonsForGatedPorts(source.type && source.type.dynamicports, portFilter, ports);
+      ports = partitionGatedPorts(ports, portFilter, reasons);
+    }
 
     // Apply filter for allowVisualStates
     if (this.visualState !== undefined && this.visualState !== 'neutral') {

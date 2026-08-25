@@ -721,3 +721,97 @@
   line-height: 1.35;
   opacity: 0.85;
 }
+
+/* FB-021 — a port a `dynamicports` condition has switched off.
+
+   Same shape as `.property-capability-gated` above, and that is deliberate: an author who has
+   met one of these has learned to read "dimmed control, coloured rule, short sentence" as
+   "this is off, and here is why". Two visual languages for one idea would be a second thing to
+   learn for no gain. Note what that costs: `.property-capability-reason` resolves to the same
+   amber this does, so the two features are currently indistinguishable by colour and differ only
+   in their bottom margin. That is the intended trade — one language, learned once — but it does
+   mean nothing here is telling an author which of the two kinds of "off" they are looking at
+   except the sentence itself, so the sentence carries that weight alone.
+
+   ⚠️ Both the reason line and the dead-wire line are siblings of `.property-port-gated-control`,
+   not children of it (see `portGate.ts`), so neither is dimmed by its opacity. An earlier version
+   of this comment claimed being outside the control distinguished the dead-wire line; it does not,
+   because the reason line is outside it too. What actually separates them on screen is one step of
+   opacity — `.85` on the reason, full on the dead wire — and that is the whole of it today. */
+.property-port-gated {
+  display: block;
+}
+
+.property-port-gated-control {
+  pointer-events: none;
+  opacity: 0.35;
+  filter: saturate(0.4);
+}
+
+.property-port-gate-reason {
+  margin: 2px 8px 6px 8px;
+  padding-left: 6px;
+  border-left: 2px solid var(--theme-color-notice);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
+/* A real button rather than a styled span: this is the one interactive thing in a row that is
+   otherwise inert, and it has to be reachable by keyboard for the same reason every other
+   control in this panel is. */
+.property-port-gate-link {
+  display: inline;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--theme-color-primary);
+  font-size: 10px;
+  line-height: 1.35;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.property-port-gate-link:hover,
+.property-port-gate-link:focus-visible {
+  color: var(--theme-color-primary-highlight);
+}
+
+/* Full opacity, unlike the reason line above it: a value is arriving and being discarded, which
+   is the more alarming of the two states and is the one thing here that must not read as faded.
+
+   ⚠️ The token is `warning` and the reason line's is `notice`, but `--theme-color-notice` aliases
+   `--theme-color-warning` (colors.css:483, which says so in as many words), so the two rules are
+   the SAME amber on screen — in both themes. The separate token is kept for the reason FB-017's
+   `.property-structural-hint` gives above: it lets the two be told apart later without editing
+   this rule. It is not a difference an author can see today, and a change here that means to make
+   one louder than the other has to move a colour, not just a token name. */
+.property-port-gate-dead-wire {
+  margin: 0 8px 8px 8px;
+  padding-left: 6px;
+  border-left: 2px solid var(--theme-color-warning);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+/* FB-021 AC3 — where the author just landed.
+
+   🔴 Not decoration. `SizeModeInput` — the gating control in the motivating case — is built
+   from `div`s with no focusable element in it, so focus alone produces no visible change
+   whatsoever. Without this rule, "Show Size Mode" scrolls silently and the author is left
+   looking for something that never announced itself. */
+.property-port-gate-target {
+  outline: 2px solid var(--theme-color-primary);
+  outline-offset: 1px;
+  border-radius: 2px;
+  transition: outline-color 220ms ease-out;
+}
+
+.property-port-gate-target:focus,
+.property-port-gate-target:focus-visible {
+  outline: 2px solid var(--theme-color-primary);
+}

@@ -2,9 +2,11 @@ import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
 import { NodeLibrary } from '@noodl-models/nodelibrary';
+import { GATED_PORT_REASON_KEY, type PortGateReason } from '@noodl-models/nodelibrary/portGateReason';
 import { capabilityProbes, gateForPort, resolveGateTarget, type GateTarget } from '@noodl-utils/capability-gating';
 import { decoratePortElement } from '@noodl-utils/capability-gating/portDecoration';
 import { describePortElement } from '@noodl-utils/portDescription';
+import { applyPortGate, revealGateTarget } from '@noodl-utils/portGate';
 import { applyPortHint, hintPortsOf, portNamesForView, HINT_PORTS_ATTRIBUTE } from '@noodl-utils/portHint';
 
 import { listPortTypeFor } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
@@ -300,6 +302,43 @@ export class Ports extends View {
     });
   }
 
+  /**
+   * FB-021 AC3 — travel to the control that switched a port off.
+   *
+   * 🔴 Through `this.views`, and deliberately **not** through the `data-identifier` selector
+   * `_tryPropertyPanelInputInteraction` uses. That attribute is set by `PropertyPanelBaseInput`,
+   * and the gating control in the motivating case — `Size Mode` — is a `SizeModeType` rendering
+   * a bespoke `SizeModeInput` that sets no such attribute. A selector-based jump would have
+   * compiled, specced green against a `BasicType` fixture, and done nothing on the one node the
+   * task was filed about. Every `TypeView`, bespoke or not, assigns a real element to `el`.
+   *
+   * The gate may be inside a folded group — `Size Mode` is not, but `Border Style` gating nine
+   * of `range`'s ports is — so the group is opened first. That re-renders, which rebuilds every
+   * view, so the element has to be found *again* afterwards rather than captured before.
+   */
+  focusGatePort(gatePortName: string): void {
+    const viewFor = () => this.views.find((v) => portNamesForView(v).indexOf(gatePortName) !== -1);
+
+    const view = viewFor();
+    if (!view) return;
+
+    const groupName = view.group || 'Other';
+    if (!this.isGroupExpanded(groupName)) {
+      if (this._filterExpansion) this._filterExpansion[groupName] = true;
+      else propertyPanelViewState.setExpanded(groupName, true);
+      // The port list has not changed, so the hash guard would refuse the re-render that draws
+      // the open group — the same clearing `onToggleGroup` does.
+      this._portsHash = undefined;
+      this.renderGroups();
+    }
+
+    // React commits asynchronously, so a row that has just been re-rendered is not in the DOM
+    // yet. Same reason `settleScroll` and `_tryPropertyPanelInputInteraction` both defer.
+    setTimeout(() => {
+      revealGateTarget((viewFor() || ({} as TSFixme)).el as TSFixme);
+    }, 1);
+  }
+
   /** Render a group's views (and their child views) and collect their elements. */
   renderParams(views): TSFixme[] {
     const els = [];
@@ -329,10 +368,21 @@ export class Ports extends View {
       const el = describePortElement(v.render(), v.name ? portsByName.get(v.name) : undefined);
       const gate = typeName && v.name ? gateForPort(typeName, v.name, target) : undefined;
       const decorated = gate ? decoratePortElement(el, gate, target, v.name) : el;
+      // FB-021 — a port a `dynamicports` condition has switched off. The reason travels on the
+      // port object itself (`ModelProxy.getPorts` put it there), so this is a lookup and not a
+      // second evaluation of the condition: `applyPortConditionsFilterForNode` remains the only
+      // thing that decides, and this only draws what it decided.
+      const switchedOff: PortGateReason | undefined = v.name
+        ? (portsByName.get(v.name) || {})[GATED_PORT_REASON_KEY]
+        : undefined;
+      const gated = applyPortGate(decorated as TSFixme, switchedOff, {
+        isConnected: Boolean(v.name && this.model.isPortConnected(v.name)),
+        onFocusGate: switchedOff ? () => this.focusGatePort(switchedOff.gatePortName) : undefined
+      });
       // FB-017 AC4. Last, so the note sits under the gate's reason rather than inside the
       // dimmed control — and keyed by `portNamesForView`, because the corner-radius ports
       // arrive folded into a nameless `TabGroup`.
-      els.push(applyPortHint(decorated, portNamesForView(v), hints, HINTABLE_PORTS));
+      els.push(applyPortHint(gated as TSFixme, portNamesForView(v), hints, HINTABLE_PORTS));
     }
     return els;
   }
