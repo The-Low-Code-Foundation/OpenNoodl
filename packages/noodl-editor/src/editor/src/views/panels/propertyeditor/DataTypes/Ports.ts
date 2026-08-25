@@ -5,6 +5,7 @@ import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { capabilityProbes, gateForPort, resolveGateTarget, type GateTarget } from '@noodl-utils/capability-gating';
 import { decoratePortElement } from '@noodl-utils/capability-gating/portDecoration';
 import { describePortElement } from '@noodl-utils/portDescription';
+import { applyPortHint, hintPortsOf, portNamesForView, HINT_PORTS_ATTRIBUTE } from '@noodl-utils/portHint';
 
 import { listPortTypeFor } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
 
@@ -17,6 +18,7 @@ import { PropertyGroups, PropertyGroupModel } from '../components/PropertyGroups
 import { ModelProxy } from '../models/modelProxy';
 import { PagesType } from '../Pages';
 import { countFilterableRows, filterGroups, isFilterActive, shouldOfferFilter } from '../propertyPanelFilter';
+import { hintsForNode, HINTABLE_PORTS, HINT_INPUT_PARAMETERS } from '../propertyPanelHints';
 import { ADVANCED_CSS_GROUP, countActivePorts, orderPropertyGroups } from '../propertyPanelTiers';
 import { propertyPanelViewState } from '../propertyPanelViewState';
 import { getEditType } from '../utils';
@@ -151,6 +153,27 @@ export class Ports extends View {
       this
     );
 
+    // FB-017 AC4. Narrow on purpose: `parametersChanged` fires on every committed edit on the
+    // panel, and only these few can change a hint's answer. Everything else is ignored rather
+    // than re-derived.
+    model.on(
+      'parametersChanged',
+      (args) => {
+        if (args && HINT_INPUT_PARAMETERS.has(args.name)) this.refreshHints();
+      },
+      this
+    );
+
+    // A child dragged into or out of the selected node changes whether anything can overflow it.
+    model.owner &&
+      model.owner.on(
+        ['nodeAttached', 'nodeDetached'],
+        () => {
+          this.refreshHints();
+        },
+        this
+      );
+
     model.on(
       ['modelParameterUndo', 'modelParameterRedo'],
       () => {
@@ -223,6 +246,60 @@ export class Ports extends View {
     }
   }
 
+  /**
+   * FB-017 AC4 — the structural hints that apply to the selected node, keyed by port name.
+   *
+   * 🔴 `hasPort` deliberately asks the **node** and not `_getPorts()`. `_getPorts()` is already
+   * filtered — by `applyPortConditionsFilterForNode` in `ModelProxy.getPorts`, by the popout
+   * split, and by `allowVisualStates` when a state is selected. A port missing from that list has
+   * been *hidden*; a port missing from the node has never existed. The hint's two sentences turn
+   * on exactly that difference, so reading the filtered list would tell a `Group` author their
+   * node has no Clip Content the moment a condition folded the row away.
+   *
+   * Children come from `this.model.model` rather than the proxy: a variant has no children of its
+   * own, and it is the instance on the canvas whose corners the author is looking at.
+   */
+  private structuralHints(): Map<string, string> {
+    const node = this.model && this.model.model;
+    if (!node) return new Map();
+
+    try {
+      return hintsForNode({
+        getParameter: (name) => this.model.getParameter(name),
+        hasPort: (name) => node.getPort(name, 'input') !== undefined,
+        childCount: node.children ? node.children.length : 0
+      });
+    } catch (e) {
+      // A panel that cannot work out a hint must still render its ports — the same rule
+      // `capabilityTarget` follows one method up.
+      return new Map();
+    }
+  }
+
+  /**
+   * Bring the notes already on screen into line with the node's current state.
+   *
+   * 🔴 In place, and not through `renderGroups`. Two reasons, and both are load-bearing:
+   *
+   * 1. `renderGroups` would return early anyway. Its hash is built from the *port list*, and
+   *    `clip` gates no ports, so flipping it changes nothing the hash can see.
+   * 2. Rebuilding the rows under a focused `borderRadius` field takes the focus with it — and
+   *    typing a radius is precisely when this hint needs to appear.
+   *
+   * Finds its targets by the attribute `applyPortHint` left behind, so nothing here needs to know
+   * which row class or tab group ended up holding the port.
+   */
+  private refreshHints(): void {
+    if (!this.el) return;
+
+    const hints = this.structuralHints();
+    const hosts = this.el.querySelectorAll(`[${HINT_PORTS_ATTRIBUTE}]`);
+
+    hosts.forEach((host: HTMLElement) => {
+      applyPortHint(host, hintPortsOf(host.getAttribute(HINT_PORTS_ATTRIBUTE)), hints, HINTABLE_PORTS);
+    });
+  }
+
   /** Render a group's views (and their child views) and collect their elements. */
   renderParams(views): TSFixme[] {
     const els = [];
@@ -236,6 +313,10 @@ export class Ports extends View {
     const portsByName = new Map<string, TSFixme>();
     for (const port of this._getPorts()) portsByName.set(port.name, port);
 
+    // FB-017 AC4: computed once per group render rather than per row — every row on one node
+    // resolves against the same node state, and the answer is an empty map in the normal case.
+    const hints = this.structuralHints();
+
     for (const j in views) {
       const v = views[j];
       v.childViews && v.childViews.forEach((v) => v.render()); // Render any child views first
@@ -247,7 +328,11 @@ export class Ports extends View {
       // `portDescription.ts`.
       const el = describePortElement(v.render(), v.name ? portsByName.get(v.name) : undefined);
       const gate = typeName && v.name ? gateForPort(typeName, v.name, target) : undefined;
-      els.push(gate ? decoratePortElement(el, gate, target, v.name) : el);
+      const decorated = gate ? decoratePortElement(el, gate, target, v.name) : el;
+      // FB-017 AC4. Last, so the note sits under the gate's reason rather than inside the
+      // dimmed control — and keyed by `portNamesForView`, because the corner-radius ports
+      // arrive folded into a nameless `TabGroup`.
+      els.push(applyPortHint(decorated, portNamesForView(v), hints, HINTABLE_PORTS));
     }
     return els;
   }

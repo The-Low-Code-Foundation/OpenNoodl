@@ -702,3 +702,22 @@
 .property-capability-gated[data-capability-state='degraded'] .property-capability-reason {
   border-left-color: var(--theme-color-notice-dim);
 }
+
+/* FB-017 AC4 — a property that is set but cannot take effect for a structural reason.
+   Deliberately the same shape as `.property-capability-reason` above: a short sentence under
+   the control with a coloured rule beside it. Same typography too, because that pairing has
+   already shipped and been read in both themes; only the token differs.
+
+   ⚠️ `--theme-color-notice` currently aliases `--theme-color-warning` (colors.css:483), so the
+   two rules are the same hue on screen today. The separate token is the point: a gate says
+   "this backend cannot do that", a hint says "this will not apply the way the node is arranged"
+   and leaves the control fully live. Those can be told apart later without editing this rule. */
+.property-structural-hint {
+  margin: 2px 8px 8px 8px;
+  padding-left: 6px;
+  border-left: 2px solid var(--theme-color-notice);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 1.35;
+  opacity: 0.85;
+}
