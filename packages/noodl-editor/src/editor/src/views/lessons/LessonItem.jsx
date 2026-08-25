@@ -3,6 +3,11 @@ const { useEffect, useRef, useState } = require('react');
 const React = require('react');
 const { default: useOnUnmount } = require('../../hooks/useOnUnmount');
 const PopupLayer = require('../popuplayer').default;
+const {
+  INITIAL_INSTRUCTION_STATE,
+  instructionDismissed,
+  instructionOpenDecision
+} = require('./lessoninstructionopen');
 
 function LessonItem({
   itemContent,
@@ -10,7 +15,6 @@ function LessonItem({
   hasNextButton,
   isComplete,
   isSelected,
-  showPopupWhenSelected,
   stepWidth,
   performActions
 }) {
@@ -19,11 +23,26 @@ function LessonItem({
 
   const [showPopup, setShowPopup] = useState(false);
 
+  /**
+   * FIX-027 §17 — whether this step has already shown its own instructions, and whether the
+   * learner has put them away. A ref, not state: the decision is read during an effect and must
+   * not itself cause a render, and it has to survive the re-renders `refresh()` fires on every
+   * `Model.*` event. See `lessoninstructionopen.ts` for why the trigger is the *transition* into
+   * a step rather than the render.
+   */
+  const instructionState = useRef(INITIAL_INSTRUCTION_STATE);
+
   useEffect(() => {
+    const decision = instructionOpenDecision(instructionState.current, {
+      isSelected,
+      hasPopupContent: Boolean(popupContent)
+    });
+    instructionState.current = decision.next;
+
     //scroll into view when selected, and check if popup should be shown
     const scrollIntoView = async () => {
       await scrollToElement(ref.current);
-      showPopupWhenSelected && setShowPopup(true);
+      decision.open && setShowPopup(true);
     };
 
     if (isSelected) {
@@ -53,6 +72,10 @@ function LessonItem({
       offsetY: -8,
       manualClose: hasNextButton,
       onClose: () => {
+        // FIX-027 §17: closing has to be REMEMBERED. Without this the next re-render — and
+        // `refresh()` fires one on every `Model.*` event — reads as a fresh entry and re-opens
+        // what the learner just dismissed.
+        instructionState.current = instructionDismissed(instructionState.current);
         setShowPopup(false);
         ipcRenderer.send('viewer-show');
       }

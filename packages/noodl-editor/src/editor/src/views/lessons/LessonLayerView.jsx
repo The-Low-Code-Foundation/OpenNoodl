@@ -69,8 +69,16 @@ function LessonLayerView({ steps, currentStepIndex, check }) {
           {steps.map((step, i) => {
             if (!step.itemContent) return null;
 
-            const hasConditions = step.conditions && step.conditions.length ? true : false;
+            /*
+              🔴 FIX-027 §17 — `showPopupWhenSelected={hasConditions === false}` used to live
+              here, and it is why the steps that tell a learner what to do were the only ones
+              that never said it: every *task* has conditions, so every task was excluded.
 
+              The flag is gone rather than inverted. `LessonItem` now asks
+              `instructionOpenDecision` instead, which opens on the *edge* into a step and
+              remembers a dismissal — the two things a flag read on every render cannot express.
+              See `lessoninstructionopen.ts` for why an unconditional flip is worse than the bug.
+            */
             return (
               <LessonItem
                 key={i}
@@ -80,7 +88,6 @@ function LessonLayerView({ steps, currentStepIndex, check }) {
                 isSelected={currentStepIndex === i}
                 isComplete={step.isComplete}
                 stepWidth={step.width}
-                showPopupWhenSelected={hasConditions === false}
                 performActions={() => performActions(step.actions)}
               />
             );

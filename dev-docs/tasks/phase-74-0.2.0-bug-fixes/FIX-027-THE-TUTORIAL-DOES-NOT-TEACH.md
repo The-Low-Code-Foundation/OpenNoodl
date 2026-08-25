@@ -7,6 +7,8 @@ cause makes a shipped lesson impossible to complete. Two more (21, 22) came from
 Sibling of `FIX-025-THE-LAUNCH-LIST.md`, which fixed thirteen. This is the batch after it, and it
 is the same shape as FIX-025's 11a: **a lesson that was shipped and never completed by anybody.**
 
+**Closed so far: 21 (fixed) and 17 (fixed and driven, 2026-08-25); 18 partly.**
+
 ---
 
 ## 🔴 The headline: *Log a thing* is unfinishable, and the editor tells you to use a panel it disabled
@@ -58,7 +60,7 @@ an `openPanel` action and unlock on demand. **Pick one deliberately.**
 | 14 | *Log a thing* cannot be completed — its first task needs a panel the lesson disables | `router.setup.ts:339` | **A** |
 | 15 | A disabled rail item does not say why it is disabled | `SideNavigation.tsx:70` | **A** |
 | 16 | The lesson says *"the Data panel"*; the rail says *Backend Services*, and Data is inside it | `log-a-thing/lesson.json` step 1 | **A** |
-| 17 | A task step never shows its instructions until you click it | `LessonLayerView.jsx:83` | B |
+| 17 | A task step never shows its instructions until you click it | `LessonLayerView.jsx:83` | B — ✅ **FIXED + DRIVEN 08-25** |
 | 18 | 🟡 **PARTLY FIXED** — the count was a cap artefact and the sentence blamed the learner; both fixed. ✅ **The gate now exists** (`lessons:check`, self-tested, in CI). 🔴 **The `state-on-a-page` bundle is still open** — it ships from nowhere either checkout can see | shipped bundle + `lessoncheck.ts:346` | C |
 | 19 | No completion moment at all when the last step is a graded card | `lessonlayer2.ts:441` | D |
 | 20 | When there *is* a completion popup, its only action is EXIT LESSON — no reset | `lessonlayer2.ts:450` | D |
@@ -87,6 +89,51 @@ automatically."*
 
 ⚠️ Dismissal itself already works for a task step: `manualClose: hasNextButton`
 (`LessonItem.jsx:71`) is false there, so the popout closes on an outside click.
+
+#### ✅ FIXED AND DRIVEN 2026-08-25
+
+The flag is **gone, not inverted**. `LessonItem` now asks a pure function —
+`views/lessons/lessoninstructionopen.ts`, in its own module for the same reason
+`lessonstepflow.ts` is: `LessonItem.jsx` reaches `PopupLayer`, `ipcRenderer` and the DOM, so
+nothing in it is gradeable, while the rule that was wrong is a decision over four booleans.
+
+The rule: open on the **edge** into a step — `isSelected && !wasSelected` — on a step that has
+instructions and that the learner has not dismissed. `instructionDismissed` records a closing and
+deliberately leaves `wasSelected` alone, because dismissing is not leaving: clearing it would make
+the very next render look like a fresh entry and re-open what was just closed.
+
+**Driven in the installed *Log a thing*, all three halves of acceptance criterion 4:**
+
+| | what was done | reading |
+|---|---|---|
+| opens | opened the lesson from the launcher | step 1 *Add the Visual Function* — a **task**, so silent before — opened its own instructions, *"Add a Visual Function node to the canvas and rename it to Check the entry…"* |
+| dismisses | clicked outside the popout | closed |
+| **stays** dismissed | three real `setParameter` writes | **`refresh()` ran 7 times** and it did not come back |
+| next step | `model.next()` | step index 1 → 2, *Teach it to decide*, and **its** instructions opened by themselves |
+
+🔴 **The `refresh()` count is the point of that third row.** "The popup stayed closed" and "nothing
+re-rendered" are the same observation, and only one of them means the fix works. `refresh` was
+wrapped and counted, so the silence is measured against a signal known to have fired **seven
+times** — which is exactly the path the naive flag-flip would have re-opened on.
+
+⚠️ **And nothing but running the app could have checked the wiring.** `LessonItem.jsx` and
+`LessonLayerView.jsx` are `.jsx`; `packages/noodl-editor/tsconfig.json` does not set `allowJs`, so
+**no typecheck gate compiles either file**, and the jasmine suite's `tests/lessons/` covers
+`lessonevalconditions`, `lessonformat` and `worked-lesson` — not the views. Webpack is the only
+thing that reads them. A broken `require('./lessoninstructionopen')` would have passed every gate
+in this repo and failed for the learner.
+
+✅ Graded by `tests-unit/fix-027/instructions-open-on-entry.test.ts` — 9 specs, **mutation-checked
+three ways**: drop the transition edge (the naive flip) → the re-render row fails; drop the
+`dismissed` check → the come-back row fails; clear `wasSelected` on dismissal → its own row fails.
+Each restores byte-identical. The come-back assertion carries a **control** proving re-entry still
+opens an *undismissed* step, so "stays shut on return" cannot quietly mean "never opens on return".
+
+⚠️ **Driven against Richard's own installed lesson**, because that is the only place either lesson
+exists. `~/Library/Application Support/NodeGX/Learning` was copied first and restored after —
+**57 files, checksum `c346394c…` before and after**, so his progress and the lesson's project files
+are exactly as he left them. Anyone driving a lesson again should do the same; opening one writes
+to it, and `model.next()` advances his progress for real.
 
 ### 18 — the 21 problems are in the lesson we shipped, not in the learner's work
 
@@ -242,8 +289,9 @@ will fail in front of the learner at the worst moment.
 3. Lesson prose names surfaces as the UI names them, and there is a check that fails when it does
    not. (The prose is authored text; a spelling of "Data panel" that no rail carries is exactly
    what `lessonbundleverify` exists to catch.)
-4. Entering a lesson, and completing a step, shows the next step's instructions **once**, and they
-   can be dismissed and stay dismissed.
+4. ✅ **MET, driven 2026-08-25.** Entering a lesson, and completing a step, shows the next step's
+   instructions **once**, and they can be dismissed and stay dismissed. See §17 — the dismissal
+   half was measured against a `refresh()` count of 7, not against a quiet screen.
 5. `state-on-a-page` validates clean, and a lesson bundle carrying validator **errors** cannot
    ship.
 6. Finishing a lesson says so, and offers both *reset* and *exit* — with reset refusing gracefully
