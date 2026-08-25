@@ -1,10 +1,16 @@
 # Phase 75 — next session
 
-**State as of 2026-08-25 (session 37).** Richard's brief is still **speed: keep knocking out phase
+**State as of 2026-08-25 (session 38).** Richard's brief is still **speed: keep knocking out phase
 75**, so this file leads with the queue. Take the top unblocked item; dip into the rest when it bites.
 
-**Committed this session:** queue item 1 — **both functions that reached nobody now reach
-somebody**, built, specced and driven in a real editor.
+**Committed this session (`8db05e4d`):** queue item 1 — **FB-014's design phase**, with a measured
+prototype. 🔴 **It ends in a recommendation NOT to launch**, and the reason is the corpus, not the
+mechanism. Read the two blocks under the queue before re-opening it.
+
+🧭 **One thing is now waiting on Richard that was not before:** FB-014's external-processor
+option pair (local embedding model vs hosted API). It is **not a cost question** — both are
+single-digit dollars — it is whether bench posts go to a new data processor. See
+[FB-014-DESIGN.md](FB-014-DESIGN.md) → AC3.
 
 ⚠️ **Peers.** `3878` is **opennoodl-78**, this checkout. Other names are other projects.
 🔴 **`SendMessage` to a cross-session peer needs the `[ref]`** — the bare name is rejected with the
@@ -14,9 +20,15 @@ ref in the error, so just re-send.
 
 | # | item | size | state |
 |---|---|---|---|
-| 1 | **FB-014** search that survives renames | **M** | design + prototype only, pgvector |
-| 2 | **FB-005** templates | **S then L+** | **scope doc first** — that doc is the unblocked part |
-| 3 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** Pulls in FB-014's 2nd corpus |
+| 1 | **FB-005** templates | **S then L+** | **scope doc first** — that doc is the unblocked part |
+| 2 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** ⚠️ Its corpus does not exist either — see below |
+| 3 | *(cheap, unowned)* **bench search ANDs its terms** | **S** | found by FB-014; **2/22 even in perfect vocabulary**. Real users, real miss |
+
+✅ **FB-014 is off the queue** — design phase done, AC1 + AC3 met, AC2 shown to be impossible.
+
+⚠️ **Read this before starting FB-013.** FB-014 measured the bench: **3 posts, 2 threads, 1,369
+chars**. Chat would be a *second* corpus that does not exist yet. The ruling to build it stands and
+is Richard's — but do not carry over the assumption that either feature has content to work on.
 
 ✅ **The "two functions that reach nobody" item is CLOSED.** Both are wired, specced at the
 *caller*, and driven. Detail below — read it before touching either surface.
@@ -25,7 +37,64 @@ ref in the error, so just re-send.
 ✅ **FIX-025 is fully driven** bar two items that are not ours to unblock (§5 needs Richard signed
 *out* of his live community session; §7 needs a real answered thread *and* a platform data fix).
 
-## ✅ Item 1, closed: the two functions now reach somebody
+## ✅ Item 1, closed: FB-014's design phase — and why it says *don't ship*
+
+Full write-up in **[FB-014-DESIGN.md](FB-014-DESIGN.md)**; the harness that produced every number
+is `fb014/` beside it and **reproduces from the repo** (verified end to end after the move).
+
+🔴 **The bench holds 3 posts.** So AC2 — *"the prototype runs against a copy of real bench data"* —
+**cannot be met**, and no engineering fixes that. Semantic search is a solution to a problem this
+corpus does not have yet. The mechanism was measured anyway, against **real pre-rename product
+prose recovered from git** (the node catalog at `1f31d24f^`, 155 documents) and **29 real renames**
+mined from its own 98-commit history.
+
+🔴 **The number worth carrying, whatever happens to pgvector:** with an old-vocabulary control
+holding corpus, documents and k constant, the renames cost the **search we already ship**
+**73% → 18%** recall on keyword queries. Vectors take it to **91% @10**. ✅ And **hybrid beats
+vector-only on the control** (17/22 vs 11/22 @1), so RRF is the right answer rather than a hedge.
+
+✅ **pgvector is cheaper to get than the task feared** — `postgresql-16-pgvector` 0.6.0 is already
+an Ubuntu `noble/universe` candidate on nexus-1's configured mirror. No third-party repo. The whole
+DDL was **replayed on pgvector 0.5.1** — older than prod's — so nothing in the design postdates
+what prod can install. ⚠️ Dev needs a compose image change (alpine → Debian: **recreate the volume**,
+musl and glibc collate text differently).
+
+## 🔴 The finding of this session: THREE OF MY OWN MEASUREMENTS WERE FICTION FIRST
+
+Each was green, plausible, and wrong. None would have been caught by re-reading the code.
+
+1. **A 100k-row latency table over 100,000 copies of ONE vector.** Postgres hoisted an
+   uncorrelated scalar subquery and evaluated it once. `count(distinct vec)` = **1**. An HNSW index
+   over a single repeated point measures nothing; the honest figure is **5.5× higher**. ✅ **Assert
+   the data is what you think before timing it** — one `count(distinct)`.
+2. **An index build that exited 0 twice without building anything.** Once backgrounded (exit 0,
+   empty log), once starved by Docker's 64 MB `/dev/shm`. Both times `EXPLAIN` said **Parallel Seq
+   Scan** while I was about to write down an HNSW number. ✅ **The plan line is the only proof an
+   index was used.** `pg_indexes` is the second.
+3. **`nomic-embed-text` scored without its required task prefix.** It needs
+   `search_document:`/`search_query:`. Without them it read as *"the bigger model is worse"* — I
+   had measured **my own omission** and nearly filed it as a property of the model. ✅ **A model
+   comparison is only a comparison once each model runs the way its authors say to run it.**
+
+## 🔴 Second: THE CONTROL READ ~ZERO, AND WOULD HAVE FLATTERED THE RESULT
+
+The first eval used conversational queries. FTS matched **2/22 even in the era's own vocabulary** —
+so a miss on today's words proved nothing. `websearch_to_tsquery` **ANDs bare terms**, and a 9-word
+query matches almost nothing. ✅ Adding keyword-style queries gave the control something to say
+(**73%**), and only then did the 18% mean anything.
+
+⚠️ **That defect is real and shipped**: anyone typing a sentence into the bench search gets
+nothing. It is **queue item 3** — cheap, independent of pgvector, and nobody owns it.
+
+## 🔴 Third: TOKEN LENGTH, NOT CHARACTER LENGTH, BREAKS AN EMBEDDING WINDOW
+
+Whole-document embedding failed on **6 of 155** at **1070–2193 chars** while a **6000-char**
+document passed. This product's text (port identifiers, enum values, doc URLs) tokenises at roughly
+**half** the chars-per-token of prose. 🔴 **Two of the six were ground-truth documents** — dropping
+a failed embed silently would have scored the retriever on a corpus with the answers removed, and
+looked green doing it.
+
+## ✅ Item closed earlier: the two functions now reach somebody
 
 **`refusalHeadline`** — `ConnectionBar` derives it, `DocsPopup` renders it above the detail
 sentence. 🔴 **The derivation went into `refusalPlan.ts`, not the component.** That module exists
@@ -77,7 +146,9 @@ gets `token: null`, and the re-pull goes out the same. That is recorded in the r
 three new behavioural assertions (not gated / token read once / a control proving the checker can
 see a gate on that file at all).
 
-**Blocked on Richard, do not start:** FB-012 and FB-009 (both need *content*), FB-017 scope 2's
+**Blocked on Richard, do not start:** 🆕 **FB-014's external-processor option pair** (local
+embedding model vs hosted API — *not* a cost question; see [FB-014-DESIGN.md](FB-014-DESIGN.md)
+→ AC3), FB-012 and FB-009 (both need *content*), FB-017 scope 2's
 `Source Set`, FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod `ANTHROPIC_API_KEY`
 (⚠️ **intro pricing ends 2026-08-31 — six days**), the 15 lessons' prose, Discord's row in the `?`
 menu, `/rfps` search.
@@ -222,6 +293,11 @@ old prototype. `npm run cdp -- reload` and re-open, then re-wrap; budget ~20s pe
 
 ## Gates, this tree (OpenNoodl, `cline-dev`) — 🔴 re-measure, never quote
 
+⚠️ **Session 38 ran NO gates, deliberately, and the figures below are session 37's.** It changed
+**no source** — the commit is markdown plus python under `dev-docs/`, and `lint` is scoped to
+`packages/noodl-editor/src` while nothing in `package.json` references `dev-docs` at all. So no
+gate was implicated. **Do not read the numbers below as re-confirmed on 08-25.**
+
 - `npm run test:main`: **340 files / 5495 specs / 0 failures** (was 339/5478; +1 file, +17 specs).
 - `npm run typecheck:editor`: **0 errors**, three times.
 - `npm run tokens:css`: clean — 319 stylesheets. ⚠️ **It cannot see a contrast failure**; see above.
@@ -239,6 +315,15 @@ old prototype. `npm run cdp -- reload` and re-open, then re-wrap; budget ~20s pe
   this, which is what they are for.
 
 ## Still open, owned by nobody
+
+- 🆕 🔴 **The bench search ANDs its terms.** `websearch_to_tsquery` requires *every* bare word, so a
+  conversational query matches **2/22 documents even in perfect vocabulary**. Anyone typing a
+  sentence into the bench search gets nothing. Cheap (`plainto_tsquery` + ranking, or OR-ing terms),
+  independent of pgvector, measured by FB-014's control. **Queue item 3.**
+- 🆕 ⚠️ **`Set Record Properties` → `Update Record` (2026-08-01) created a live name collision** with
+  the pre-existing `noodl.byob.UpdateRecord`. Two nodes now answer to one name in the picker and the
+  catalog. Found by FB-014's rename mining; excluded from its eval because a query for that name has
+  two honest answers.
 
 - ⚠️ **A manually re-opened popout still covers the completion banner.** Inherent to popouts.
 - 🔴 **FB-002's selected pill is 1.16:1 against the panel** — the active fill, and 1.24:1 between
