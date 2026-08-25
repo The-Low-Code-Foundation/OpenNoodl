@@ -28,7 +28,7 @@ function tempDir(): string {
 }
 
 /**
- * `download()` writes `JSON.stringify(projectContent)`, so the file on disk is a
+ * `install()` writes `JSON.stringify(projectContent)`, so the file on disk is a
  * `ProjectContent` — the provider's own published output type. Reading it as one
  * means a field these specs assert on cannot be renamed without a compile error.
  */
@@ -78,8 +78,8 @@ describe('EmbeddedTemplateProvider', () => {
   });
 
   it('handles embedded:// urls and nothing else', async () => {
-    expect(await provider.canDownload('embedded://hello-world')).toBe(true);
-    expect(await provider.canDownload('https://example.com/template.zip')).toBe(false);
+    expect(await provider.canInstall('embedded://hello-world')).toBe(true);
+    expect(await provider.canInstall('https://example.com/template.zip')).toBe(false);
   });
 
   it('registers the hello-world template', () => {
@@ -89,16 +89,16 @@ describe('EmbeddedTemplateProvider', () => {
 
   it('rejects an unknown template rather than writing an empty project', async () => {
     const dir = tempDir();
-    await expectAsync(provider.download('embedded://does-not-exist', dir)).toBeRejected();
+    await expectAsync(provider.install('embedded://does-not-exist', dir)).toBeRejected();
   });
 
-  describe('download("embedded://hello-world")', () => {
+  describe('install("embedded://hello-world")', () => {
     let dir: string;
     let project: ProjectContent;
 
     beforeEach(async () => {
       dir = tempDir();
-      await provider.download('embedded://hello-world', dir);
+      await provider.install('embedded://hello-world', dir);
       project = readProject(dir);
     });
 
@@ -211,8 +211,8 @@ describe('EmbeddedTemplateProvider', () => {
     const dirA = tempDir();
     const dirB = tempDir();
     try {
-      await provider.download('embedded://hello-world', dirA);
-      await provider.download('embedded://hello-world', dirB);
+      await provider.install('embedded://hello-world', dirA);
+      await provider.install('embedded://hello-world', dirB);
       const a = readProject(dirA);
       const b = readProject(dirB);
 

@@ -1,21 +1,16 @@
 import { ITemplateProvider, TemplateItem, TemplateListFilter } from './template';
-import { platform, filesystem } from '@noodl/platform';
-
-export interface TemplateDownloadOptions {
-  templateUrl: string;
-  // silent?: boolean;
-}
 
 /**
+ * The set of places a new project can come from.
+ *
  * @example List templates
  * ```ts
  *  const templates = await templateRegistry.list({});
  * ```
  *
- * @example Download a template
+ * @example Create a project from one
  * ```ts
- *  const templateUrl = "https:://my-template.url/template.zip";
- *  const zipPath = await templateRegistry.download({ templateUrl });
+ *  await templateRegistry.install('embedded://hello-world', projectDirectory);
  * ```
  */
 export class TemplateRegistry {
@@ -24,8 +19,7 @@ export class TemplateRegistry {
   public async list(options: TemplateListFilter): Promise<ReadonlyArray<TemplateItem>> {
     let collection: TemplateItem[] = [];
 
-    for (let index = 0; index < this.providers.length; index++) {
-      const provider = this.providers[index];
+    for (const provider of this.providers) {
       try {
         const response = await provider.list(options);
         if (response.length > 0) {
@@ -41,46 +35,32 @@ export class TemplateRegistry {
   }
 
   /**
-   * Download a project template.
+   * Materialise `templateUrl` into `destination`, using the first provider that claims it.
+   *
+   * 🔴 **A provider that claims a URL and then fails is not retried by the next one.**
+   * The version this replaced wrapped the claim *and* the install in one `try/catch`
+   * and swallowed both, so a template that failed halfway through fell out of the loop
+   * and the caller was told `Cannot find a valid template provider` — a message about
+   * the wrong thing entirely, at the one moment somebody needed to know what broke.
+   * A failed claim skips the provider; a failed install is the answer.
    */
-  public async download({ templateUrl }: TemplateDownloadOptions): Promise<string> {
-    const templateDir = platform.getUserDataPath() + '/projecttemplates';
-
-    const templateName = templateUrl.replace(/[:\/?=]/g, '-');
-    const templatePath = templateDir + '/' + templateName;
-    const templateZipPath = templatePath + '-unzipped';
-
-    if (!filesystem.exists(templateZipPath)) {
-      // Make sure we have the template folder
-      await filesystem.makeDirectory(templateDir);
-
-      // Download the template
-      await this.downloadViaProvider(templateUrl, templatePath);
-
-      // Unzip
-      await filesystem.makeDirectory(templateZipPath);
-      await filesystem.unzipUrl(templatePath, templateZipPath);
-    }
-
-    return templateZipPath;
-  }
-
-  private async downloadViaProvider(templateUrl: string, destination: string) {
-    for (let index = 0; index < this.providers.length; index++) {
-      const provider = this.providers[index];
+  public async install(templateUrl: string, destination: string): Promise<void> {
+    for (const provider of this.providers) {
+      let claims = false;
       try {
-        if (await provider.canDownload(templateUrl)) {
-          await provider.download(templateUrl, destination, () => {
-            // TODO: Handle progress (not something we did in the older version)
-          });
-          return;
-        }
+        claims = await provider.canInstall(templateUrl);
       } catch (error) {
-        console.error(`Error when downloading template via '${provider.name}' provider`);
+        console.error(`Provider '${provider.name}' could not say whether it handles '${templateUrl}'`);
         console.error(error);
+        continue;
+      }
+
+      if (claims) {
+        await provider.install(templateUrl, destination);
+        return;
       }
     }
 
-    throw new Error(`Cannot find a valid template provider for: '${templateUrl}'`);
+    throw new Error(`No template provider handles '${templateUrl}'`);
   }
 }

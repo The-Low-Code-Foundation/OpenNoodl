@@ -53,9 +53,7 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
         desc: template.description,
         category: template.category,
         iconURL: template.thumbnail || '',
-        projectURL: `embedded://${id}`,
-        useCloudServices: false,
-        cloudServicesTemplateURL: undefined
+        projectURL: `embedded://${id}`
       });
     }
 
@@ -67,21 +65,24 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
    * @param url - The template URL to check
    * @returns True if URL starts with "embedded://"
    */
-  async canDownload(url: string): Promise<boolean> {
+  async canInstall(url: string): Promise<boolean> {
     return url.startsWith('embedded://');
   }
 
   /**
-   * "Download" (copy) the template to the destination directory
+   * Write the template into the destination **project directory**.
    *
-   * Note: For embedded templates, we write the project.json directly
-   * rather than copying files from disk.
+   * Nothing is fetched and nothing is unzipped: an embedded template is a
+   * TypeScript object bundled with the editor, so this instantiates it and
+   * writes one `project.json`. This method was called `download` until FB-005
+   * T1, which is how it came to be driven by a registry that then tried to
+   * unzip its output — see `ITemplateProvider` for the full account.
    *
    * @param url - Template URL (e.g., "embedded://hello-world")
-   * @param destination - Destination directory path
+   * @param destination - Destination project directory
    * @returns Promise that resolves when template is written
    */
-  async download(url: string, destination: string): Promise<void> {
+  async install(url: string, destination: string): Promise<void> {
     // Extract template ID from URL
     const templateId = url.replace('embedded://', '');
 

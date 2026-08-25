@@ -1050,7 +1050,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
                 props.route.router.route({ to: 'editor', project });
               });
           },
-          { name, path, projectTemplate: '' }
+          { name, path }
         );
       } catch (error) {
         setPendingPresetId(null);
