@@ -21,7 +21,7 @@ sql=["drop table if exists docs cascade;",
      "create index docs_search_idx on docs using gin (body_tsv);"]
 for d in docs:
     sql.append(f"insert into docs (id,title,body) values ({q(d['id'])},{q(d['title'])},{q(d['body'])});")
-for model in ['all-minilm','nomic-embed-text']:
+for model in ['all-minilm','nomic-embed-text','bge-m3','bge-m3-512','bge-m3-384']:
     e=json.load(open(f'{HERE}/emb-{model}.json')); dim=e['dims']; t='emb_'+model.replace('-','_')
     sql += [f"drop table if exists {t};",
             f"create table {t} (kind text not null, ref_id text not null, chunk_seq int not null, "

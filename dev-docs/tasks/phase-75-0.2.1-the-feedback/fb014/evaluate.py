@@ -49,14 +49,18 @@ def rank_of(lst,target):
     return lst.index(target)+1 if target in lst else None
 
 results={}
-for model,table in [('all-minilm','emb_all_minilm'),('nomic-embed-text','emb_nomic_embed_text')]:
-    emb=json.load(open(f'{HERE}/emb-{model}.json'))
+ARMS=[('all-minilm','emb_all_minilm',False),('nomic-embed-text','emb_nomic_embed_text',False),
+      ('bge-m3','emb_bge_m3',False),('bge-m3 +instr','emb_bge_m3',True),
+      ('bge-m3-512','emb_bge_m3_512',False),('bge-m3-384','emb_bge_m3_384',False)]
+for model,table,use_instr in ARMS:
+    emb=json.load(open(f'{HERE}/emb-{model.split()[0]}.json'))
+    QK='queries_instr' if use_instr else 'queries'
     rows=[]
     for e in EVAL:
         row={'doc':e['doc'],'fam':e['fam'],'renamed':e['renamed']}
         for era in ('q_new','q_old','kw_new','kw_old'):
             qt=e[era]
-            f=fts_all(qt); v=vec_all(table,emb['queries'][qt]); h=rrf(f,v)
+            f=fts_all(qt); v=vec_all(table,emb[QK][qt]); h=rrf(f,v)
             row[era]={'fts_today': e['doc'] in f, 'fts_ranked':rank_of(f,e['doc']),
                       'vector':rank_of(v,e['doc']), 'hybrid':rank_of(h,e['doc']),
                       'fts_matched_n':len(f)}

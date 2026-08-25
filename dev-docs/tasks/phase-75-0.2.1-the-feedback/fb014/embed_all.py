@@ -52,29 +52,33 @@ def windows(text):
         i+=TARGET-OVERLAP
     return out
 
-for model in ['all-minilm','nomic-embed-text']:
-    out=f'{HERE}/emb-{model}.json'
-    if os.path.exists(out):
-        print(f'{model}: cached'); continue
-    raw(model,'warmup')
-    docs=json.load(open(f'{HERE}/corpus.json'))
-    t0=time.time(); dv={}; nchunks=0; nsplit=0
-    dpre,qpre=PREFIX.get(model,('',''))
-    for d in docs:
-        vecs=[]
-        for w in windows(dpre+f"{d['title']}\n{d['body']}"):
-            got=embed_fit(model,w)
-            if len(got)>1: nsplit+=1
-            vecs.extend(got)
-        dv[d['id']]=vecs; nchunks+=len(vecs)
-    corpus_ms=(time.time()-t0)*1000
-    qv={}; t1=time.time()
-    for e in EVAL:
-        for k in ('q_new','q_old','kw_new','kw_old'):
-            if e[k] not in qv: qv[e[k]]=raw(model,qpre+e[k])
-    q_ms=(time.time()-t1)*1000
-    json.dump({'docs':dv,'queries':qv,'dims':len(qv[next(iter(qv))]),'corpus_ms':corpus_ms,
-               'n_docs':len(docs),'n_chunks':nchunks,'query_ms':q_ms,'n_queries':len(qv)},open(out,'w'))
-    print(f'{model}: dims={len(qv[next(iter(qv))])}  {len(docs)} docs -> {nchunks} chunks '
-          f'({nsplit} needed adaptive halving) in {corpus_ms/1000:.1f}s '
-          f'= {corpus_ms/nchunks:.0f} ms/chunk; {len(qv)} queries {q_ms/len(qv):.0f} ms each')
+def main():
+    for model in ['all-minilm','nomic-embed-text']:
+        out=f'{HERE}/emb-{model}.json'
+        if os.path.exists(out):
+            print(f'{model}: cached'); continue
+        raw(model,'warmup')
+        docs=json.load(open(f'{HERE}/corpus.json'))
+        t0=time.time(); dv={}; nchunks=0; nsplit=0
+        dpre,qpre=PREFIX.get(model,('',''))
+        for d in docs:
+            vecs=[]
+            for w in windows(dpre+f"{d['title']}\n{d['body']}"):
+                got=embed_fit(model,w)
+                if len(got)>1: nsplit+=1
+                vecs.extend(got)
+            dv[d['id']]=vecs; nchunks+=len(vecs)
+        corpus_ms=(time.time()-t0)*1000
+        qv={}; t1=time.time()
+        for e in EVAL:
+            for k in ('q_new','q_old','kw_new','kw_old'):
+                if e[k] not in qv: qv[e[k]]=raw(model,qpre+e[k])
+        q_ms=(time.time()-t1)*1000
+        json.dump({'docs':dv,'queries':qv,'dims':len(qv[next(iter(qv))]),'corpus_ms':corpus_ms,
+                   'n_docs':len(docs),'n_chunks':nchunks,'query_ms':q_ms,'n_queries':len(qv)},open(out,'w'))
+        print(f'{model}: dims={len(qv[next(iter(qv))])}  {len(docs)} docs -> {nchunks} chunks '
+              f'({nsplit} needed adaptive halving) in {corpus_ms/1000:.1f}s '
+              f'= {corpus_ms/nchunks:.0f} ms/chunk; {len(qv)} queries {q_ms/len(qv):.0f} ms each')
+
+if __name__ == '__main__':
+    main()

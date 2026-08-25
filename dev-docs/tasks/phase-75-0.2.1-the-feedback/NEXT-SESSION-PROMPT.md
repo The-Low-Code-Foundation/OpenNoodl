@@ -7,10 +7,12 @@
 prototype. 🔴 **It ends in a recommendation NOT to launch**, and the reason is the corpus, not the
 mechanism. Read the two blocks under the queue before re-opening it.
 
-🧭 **One thing is now waiting on Richard that was not before:** FB-014's external-processor
-option pair (local embedding model vs hosted API). It is **not a cost question** — both are
-single-digit dollars — it is whether bench posts go to a new data processor. See
-[FB-014-DESIGN.md](FB-014-DESIGN.md) → AC3.
+🧭 **One thing is now waiting on Richard that was not before:** FB-014's option pair. Richard
+supplied a **DeepInfra key for `BAAI/bge-m3`** and it was measured on the same corpus as the
+others — **it wins** (68%/91% keyword, **91% conversational**, **100% on the control**) at
+**£0.14 per 100k posts**. 🔴 **But 843 ms per query** vs `all-minilm`'s 14 ms. So the question is
+no longer *which model* or *what it costs*: it is **whether bench posts may go to a third-party
+processor at all**. See [FB-014-DESIGN.md](FB-014-DESIGN.md) → AC3.
 
 ⚠️ **Peers.** `3878` is **opennoodl-78**, this checkout. Other names are other projects.
 🔴 **`SendMessage` to a cross-session peer needs the `[ref]`** — the bare name is rejected with the

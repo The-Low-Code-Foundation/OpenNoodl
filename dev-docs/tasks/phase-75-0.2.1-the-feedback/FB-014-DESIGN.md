@@ -63,46 +63,90 @@ one line in the compose comment when this lands.
 
 Two candidates were run end to end on the same corpus and the same queries.
 
-| | `all-minilm` | `nomic-embed-text` |
+Three candidates, all run end to end on the same corpus, the same chunking and the same queries.
+**`BAAI/bge-m3` was Richard's suggestion (2026-08-25), hosted on DeepInfra**, and it wins.
+
+| | `all-minilm` | `nomic-embed-text` | **`bge-m3`** |
+|---|---|---|---|
+| Where it runs | local (Ollama) | local (Ollama) | **hosted (DeepInfra)** |
+| Dimensions | 384 | 768 | **1024** |
+| Model size | 45 MB | 274 MB | ~2.2 GB (568 M params) |
+| Context window | 512 tok | 8192 tok | **8192 tok** |
+| Embed, per 900-char chunk | **33 ms** | 48 ms | 86 ms (batched 32) |
+| **Per single query** | **14 ms** | 22 ms | 🔴 **843 ms** |
+| Storage, 296 chunks | 1160 kB | 2536 kB | 4128 kB |
+| Rename-recall, keyword @1 | 55 % | 36 % | **68 %** |
+| Rename-recall, keyword @5 | 82 % | 50 % | **91 %** |
+| **Conversational query @5** | 77 % | 45 % | **91 %** |
+| Control (era's words) @5 | 91 % | 55 % | **100 %** |
+
+✅ **`bge-m3` is better than both local models on every accuracy row**, and by a wide margin on the
+one that matters most operationally: **conversational queries**. A person typing *"which output
+fires when the http request is done"* gets **5 %** from the search we ship, **77 %** from
+`all-minilm`, and **91 %** from `bge-m3`. It also scores **100 %** on the control — every
+ground-truth document found, in its own vocabulary.
+
+⚠️ **Between the two local models, the small one still wins** — `all-minilm` (384d, 45 MB) beats
+`nomic-embed-text` (768d) on every row. Dimensionality is not quality here.
+
+🔴 **But see the latency row, because it decides the shape of the design** — §2b.
+
+🔴 **Task prefixes cut BOTH ways, and guessing is wrong in both directions.**
+`nomic-embed-text` **requires** a prefix (`search_document: ` / `search_query: `); without it it
+scored 27 %/50 %, and I was one edit from recording *"the bigger model is worse"* when what I had
+measured was **my own missing prefix**. So for `bge-m3` I measured a prefixed arm too rather than
+trusting its card — and the card was right: **the instruction prefix makes `bge-m3` worse**,
+68 % → 55 % @1 on keyword queries and **91 % → 68 % @5 on conversational** ones.
+
+✅ **So the rule is not "add a prefix", it is "run each model the way its own authors say to".**
+One model needs one, the next is damaged by one, and the check costs two minutes.
+
+## 2b. Latency — the row that actually shapes the design
+
+🔴 **A single `bge-m3` query round trip is 843 ms** (median of 12, p95 874 ms, min 809 ms, from
+this machine). `all-minilm` locally is **14 ms**. That is a **60× difference on the query path**,
+and it is network and queueing rather than compute — batching 32 chunks amortised to 86 ms each,
+so the ~800 ms is per-*request* overhead that a search box pays every time.
+
+**This splits the decision in two, and the two halves have different answers:**
+
+| | what it needs | verdict |
 |---|---|---|
-| Dimensions | **384** | 768 |
-| Model size | 45 MB | 274 MB |
-| Embed, per 900-char chunk | **33 ms** | 48 ms |
-| Embed, per query | **14 ms** | 22 ms |
-| Storage, 296 chunks | 1160 kB + 600 kB index | 2536 kB |
-| Rename-recall @10 (see §4) | **91 %** | 59 % |
+| **Write path** (embed on post-create, backfill) | throughput, batching, can be async and retried | ✅ **843 ms is irrelevant.** It is off the user's critical path entirely — the post is already saved. |
+| **Query path** (someone types in the search box) | interactivity | 🔴 **843 ms is most of the budget.** Postgres contributes ~3 ms; the model contributes 99 % of the wait. |
 
-✅ **`all-minilm` wins on this corpus on every axis** — smaller, faster, and substantially more
-accurate. That is not the usual direction and is worth stating plainly: the 768-dimension model
-is worse here, on short technical text dense with identifiers.
+✅ **The hybrid design absorbs this better than a vector-only one would**: FTS returns in **0.14 ms**
+and can paint the page immediately, with vector results merged in when they land. That is a real
+argument for RRF beyond the accuracy one — the fast half is also the cheap half.
 
-🔴 **The first run of this comparison was wrong, and the way it was wrong is the lesson.**
-`nomic-embed-text` **requires a task prefix** (`search_document: ` on documents,
-`search_query: ` on queries). Without it, it scored 27 %/50 % — and I was one edit away from
-recording *"the bigger model is worse"* when what I had measured was **my own missing prefix**.
-With the prefix it improves to 36 %/59 % and still loses. A model comparison is only a
-comparison once each model is run the way its authors say to run it.
+⚠️ **Running `bge-m3` locally on nexus-1 is probably not the escape hatch.** It is **568 M
+parameters (~2.2 GB fp32)** against a box with **3.0 GB available and 2 vCPU**, shared with three
+live sites. **Unmeasured** — I did not install an inference runtime on a production host to find
+out — but the parameter count alone makes it a poor fit, and CPU inference at that size would very
+likely be slower than the 843 ms network call it was meant to avoid.
 
-### Cost, and why it is not the deciding factor
+### Cost — now measured, not estimated
 
-The corpus token volume, projected from the **measured** mean bench post (456 chars) and the
-**measured** worst-case tokenisation density on this product's text (1070 chars exceeded a
-512-token window ⇒ ≤ 2.09 chars/token):
+DeepInfra publishes **$0.010 / 1M tokens** for `bge-m3` (read off its model page 2026-08-25).
+The endpoint returns exact token counts, so the density here is **measured, not a heuristic**:
+**52,621 tokens over 175,193 chars = 0.300 tok/char**, i.e. **~137 tokens per mean bench post**.
 
-| corpus | chars | tokens (worst observed density) |
+| corpus | tokens | one-off backfill |
 |---|---|---|
-| 1,000 posts | 456 k | ~0.22 M |
-| 10,000 posts | 4.56 M | ~2.18 M |
-| 100,000 posts | 45.6 M | ~21.8 M |
+| 1,000 posts | 0.14 M | **$0.001** |
+| 10,000 posts | 1.37 M | **$0.014** |
+| 100,000 posts | 13.7 M | **$0.137** |
 
-At **any** per-token rate a hosted embeddings API plausibly charges, a full backfill of a
-100,000-post bench is a **single-digit-dollar** one-off, and incremental embedding on post-create
-is noise. ✅ **Cost does not decide this.** Which means the choice in §2 of the task collapses to
-a question that was never really about money — see the option pair in AC3 below.
+And on the query side: **14 tokens per search ⇒ 1,000,000 searches costs $0.14.**
+
+✅ **Fourteen pence to embed a hundred thousand posts, and fourteen pence for a million searches.**
+Cost is not a consideration at any scale this product will reach. ⚠️ It also means the earlier
+character-based estimate in this doc's first draft (≤ 2.09 chars/token, a worst-case bound) was
+**2.2× too pessimistic** — the measured figure is 3.33 chars/token.
 
 ### Where it computes
 
-Both models ran through Ollama on this laptop. On nexus-1 the constraint is real and measured:
+The two local models ran through Ollama on this laptop; `bge-m3` ran on DeepInfra. On nexus-1 the constraint is real and measured:
 **2 vCPU, 3819 MB RAM (3027 MB available), 33 GB free disk.** `all-minilm` at 45 MB resident is
 comfortable; the per-chunk cost will be worse than 33 ms on two shared cores, and that number is
 **not measured on the box** — installing an inference runtime on a host serving three live sites
@@ -177,6 +221,47 @@ Conversational queries (*"which output fires when the http request is done"*) ma
 defect about **query parsing**, and crediting it to renames would have been wrong. Adding
 keyword-style queries — what a search box actually receives — gave the control something to say.
 
+### All six arms, one table
+
+Corpus 155 documents, 22 queries, k as shown. **`fts_today` is the search we ship: 18 % on keyword
+queries in today's words, 5 % on conversational ones.**
+
+| arm | kw @1 | kw @5 | hybrid @1 | **sentence @1** | **sentence @5** | sentence @10 | control kw @5 |
+|---|---|---|---|---|---|---|---|
+| `all-minilm` (384d, local) | 55 % | 82 % | 55 % | **55 %** | 77 % | 86 % | 91 % |
+| `nomic-embed-text` (768d, local) | 36 % | 50 % | 41 % | 18 % | 45 % | 55 % | 55 % |
+| **`bge-m3` (1024d, hosted)** | **68 %** | **91 %** | **73 %** | 41 % | **91 %** | **95 %** | **100 %** |
+| `bge-m3` + instruction prefix | 55 % | 91 % | 55 % | 27 % | 68 % | 77 % | 100 % |
+| `bge-m3` truncated to 512d | **68 %** | **91 %** | **73 %** | 41 % | **91 %** | 91 % | **100 %** |
+| `bge-m3` truncated to 384d | **68 %** | **91 %** | **73 %** | 36 % | 77 % | 86 % | **100 %** |
+
+⚠️ **`bge-m3` is not uniformly better, and the exception is worth naming: `all-minilm` ranks the
+right answer FIRST more often on conversational queries** (55 % vs 41 % @1). `bge-m3` overtakes it
+decisively by @5 (91 % vs 77 %) and @10 (95 % vs 86 %). **So the choice depends on the UI**: for a
+search box showing five or ten results, `bge-m3`; for something that surfaces exactly one answer,
+the gap closes and `all-minilm` is arguably ahead. This bench shows a result list, so `bge-m3`.
+
+### Truncating `bge-m3` — a lever that turns out not to be worth pulling
+
+The endpoint honours OpenAI's `dimensions` parameter (32–8192) and **re-normalises to unit length**
+after truncating (measured: L2 = 1.0000 at 1024, 512 and 384), so cosine stays well-defined.
+
+- **512d is free on accuracy** — identical to 1024d everywhere except sentence @10 (91 % vs 95 %).
+- 🔴 **384d costs 14 points on conversational queries @5** (77 % vs 91 %) — right back to
+  `all-minilm`'s number on the axis `bge-m3` was chosen for.
+
+The reason to want 384d was storage, and **it does not survive contact with the TOAST threshold**:
+
+| dims | bytes/vector | storage | measured |
+|---|---|---|---|
+| 384 | 1544 | **inline** | 480 kB main fork, 8 kB toast |
+| **512** | **2056** | 🔴 **TOASTed — misses the ~2032 B threshold by 24 bytes** | 32 kB main, 848 kB toast |
+| 1024 | 4104 | TOASTed | 32 kB main, 1648 kB toast |
+
+✅ **So the only dimension that avoids TOAST is the one that costs real accuracy.** 512d halves the
+TOAST volume without touching recall and is the sensible fallback if storage ever bites; **384d is
+not worth it**. Default to **1024d**.
+
 ### Results — `all-minilm`, keyword queries, 155-document corpus, 22 queries
 
 | retriever | the era's words (**control**) | today's words |
@@ -218,14 +303,24 @@ backgrounded command that exited 0 with an empty log, once with Docker's 64 MB `
 starving the parallel build. Both times `EXPLAIN` said **Parallel Seq Scan** while I was about to
 write down an HNSW number. **The plan line is the only proof the index was used.**
 
-### Storage and build cost at 100k chunks (384 dimensions)
+### Storage and build cost at 100k chunks — both dimensions, measured
 
-| | |
-|---|---|
-| Table | 156 MB |
-| HNSW index | **195 MB** — larger than the table |
-| Total | ~351 MB |
-| Index build, single-threaded, `maintenance_work_mem=400MB` | **62 s** |
+| | **384d** (`all-minilm`) | **1024d** (`bge-m3`) |
+|---|---|---|
+| Heap + TOAST | 156 MB (all inline) | **533 MB** (6 MB heap, **527 MB TOAST**) |
+| HNSW index | 195 MB | **781 MB** |
+| **Total** | **~351 MB** | 🔴 **~1.31 GB** |
+| Index build, single-threaded | **62 s** | **2 m 46 s** |
+| Query latency via HNSW (plan-confirmed) | 2.93 ms | **2.41 ms** |
+
+🔴 **1.31 GB is 43 % of nexus-1's available RAM (3.0 GB)** if you want the index in page cache —
+on a box already serving three sites. Disk is fine (33 GB free); memory is the constraint. **At
+100k posts, drop to 512d** (roughly halves it) rather than accepting a cold index.
+⚠️ At the bench's *actual* size this is irrelevant: 296 chunks is **4 MB**.
+
+⚠️ **Measure storage with `pg_total_relation_size`, not `pg_relation_size`.** The latter reports
+only the main fork, and at 1024d the vectors are **all in TOAST** — it read **5888 kB** for a table
+holding 533 MB. A 90× understatement that looks like a plausible number.
 
 ⚠️ **HNSW build warns past ~28,374 tuples** at a default `maintenance_work_mem` — *"hnsw graph no
 longer fits into maintenance_work_mem ... Building will take significantly more time."* On a
@@ -241,45 +336,63 @@ an argument for building either.
 
 ---
 
-## AC3 — the external-processor question, for Richard
+## AC3 — the option pair, for Richard
 
-This is the one item the task says must **not** be decided by default, and the measurements have
-changed its shape: **it is not a cost question.** A full backfill is single-digit dollars at any
-plausible rate. Both options are affordable. They differ on where user-written text goes.
+**Richard supplied a DeepInfra key for `BAAI/bge-m3` on 2026-08-25**, so option B is no longer
+hypothetical — it has been measured on the same corpus as the others. That changed what the
+question is about. **It is not cost** (14p per 100,000 posts) and it is **no longer accuracy in
+doubt** (`bge-m3` wins). It is now **query latency vs a new data processor**.
 
 🔴 **Anthropic does not sell a standalone embeddings endpoint** — the API surface is Messages,
-Batches, Files, Token Counting and Models. So "use the key we already have" is not an option, and
-prod has **no `ANTHROPIC_API_KEY`** anyway.
+Batches, Files, Token Counting and Models. So "reuse the key we have" was never available, and
+prod holds no `ANTHROPIC_API_KEY` in any case.
 
-### Option A — local model on nexus-1
+### Option A — local `all-minilm` on nexus-1
 
-- ✅ **No new data processor.** Bench text never leaves the box. D9's DPA posture and the
-  data-inventory census are untouched; nothing to add to either.
-- ✅ No per-call cost, no API key to hold, no vendor to go down.
-- ⚠️ **CPU on a shared box** — 2 vCPU serving three live sites. `all-minilm` is 45 MB and embeds
-  a chunk in 33 ms *on this laptop*; the nexus-1 figure is **not measured** and must be before
-  committing.
-- ⚠️ ~350 MB more disk at 100k chunks, and an inference runtime to install and keep patched.
+- ✅ **No new data processor.** Bench text never leaves the box; D9's DPA posture and the
+  data-inventory census are untouched.
+- ✅ **14 ms per query.** Search feels instant.
+- ✅ 45 MB model, ~351 MB at 100k chunks — comfortable on a 3.8 GB box.
+- ⚠️ **13–14 points less accurate** (55 %/82 % vs 68 %/91 % on keyword queries), and **91 % → 77 %
+  on conversational queries @5** — the ones people actually type.
+- ⚠️ CPU on a shared box; the 33 ms/chunk figure is from this laptop, **not measured on nexus-1**.
 
-### Option B — hosted embeddings API
+### Option B — hosted `bge-m3` (DeepInfra)
 
-- ✅ No CPU or memory on the box; better models available than anything that fits in 45 MB.
+- ✅ **The best results measured here by a clear margin**, and **100 % on the control** — every
+  ground-truth document found in its own vocabulary.
+- ✅ **$0.137 to embed 100,000 posts; $0.14 per million searches.** Measured, not estimated.
+- ✅ 8192-token window, so chunking becomes a choice rather than a requirement.
+- 🔴 **843 ms per query** (median of 12; p95 874 ms). Sixty times Option A. Postgres contributes
+  ~2.4 ms of that — **the model is 99 % of the wait.**
 - 🔴 **A new external processor for user-written content.** Every bench post — questions people
-  write about their own projects — is sent to a third party. That fires D9's DPA posture *and*
-  the data-inventory census, and it is a commitment about other people's words, not a config
-  default.
-- ⚠️ A new key to hold on a box that currently holds none, and a vendor whose outage degrades
-  posting.
+  write about their own projects — goes to a third party. That fires D9's DPA posture *and* the
+  data-inventory census. ⚠️ **Note this eval sent no user data**: the corpus is the public node
+  catalog, and the bench's 3 posts were never uploaded.
+- ⚠️ A key to hold on a box that currently holds none, and a vendor whose outage degrades search.
+- ⚠️ **1.31 GB at 100k chunks** (43 % of available RAM) unless truncated to 512d.
 
-**The measured recommendation is Option A**, and the reason is that the usual argument for B —
-better models — did not survive contact with this corpus: the 45 MB local model **beat** the
-768-dimension one by 32 points. B buys quality this corpus does not appear to reward, at the
-price of a data-protection commitment. ⚠️ But A's box-side latency is unmeasured, so the honest
-form is: *A, subject to measuring it on nexus-1 first.*
+### The latency objection has a real answer, if you want one
 
-**This is Richard's call, not mine.**
+✅ **Hybrid absorbs it.** FTS returns in **0.14 ms** and can paint results immediately; the vector
+half merges in when it lands ~840 ms later. The user sees something instantly and sees it get
+better — which is how a lot of search already behaves. That is an argument for RRF beyond accuracy.
 
----
+⚠️ **Option C — `bge-m3` locally — is probably not the escape hatch.** 568 M parameters (~2.2 GB)
+against 3.0 GB available and 2 vCPU, shared with three live sites. **Unmeasured** (I did not
+install an inference runtime on a production host), but the size alone makes it likely to be
+*slower* than the 843 ms call it would replace.
+
+### My reading
+
+**Option B, with hybrid rendering to hide the latency, and 1024d** — because the measurements
+moved every objection except the data one: cost is pennies, accuracy is decisively better, and
+the 843 ms is maskable. **The data-processor question is the only real question left, and it is a
+commitment about other people's words, so it is yours and not mine.**
+
+⚠️ If the answer is *"no third parties"*, Option A is a perfectly serviceable feature — 82 % @5 on
+keyword queries against the 18 % we ship today is still a large improvement. Nothing here is
+blocked on choosing B.
 
 ## Recommendation
 
@@ -289,10 +402,16 @@ form is: *A, subject to measuring it on nexus-1 first.*
 2. ✅ Land the dev-side pieces when convenient — compose image swap (with the musl/glibc note),
    the `embeddings` table, the chunker, and the hybrid query — all behind a flag, all proven to
    run on a pgvector older than prod's.
-3. 🧭 **Put the option pair above to Richard**, so the answer exists before it is needed.
+3. 🧭 **One question for Richard, and it is not the one the task expected:** not *which model*
+   (`bge-m3` wins on the numbers) and not *what it costs* (14p per 100k posts) — but **whether
+   bench posts may go to a third-party processor at all.** See AC3.
 4. ⏸ **Revisit when the bench has a corpus.** The trigger is content, not code. A reasonable
    threshold: when FTS starts *failing people* — which needs enough posts for a rename to hide
    one.
+
+⚠️ **One thing IS worth doing now, and it is not this task**: the bench search matches **2/22 even
+in perfect vocabulary** because `websearch_to_tsquery` ANDs bare terms. That defect is live, affects
+the people using the bench today, needs no pgvector, and is a few lines.
 
 ---
 
@@ -308,6 +427,14 @@ form is: *A, subject to measuring it on nexus-1 first.*
 - 🔴 **`Set Record Properties → Update Record` created a live name collision** with
   `noodl.byob.UpdateRecord`. Two nodes now answer to one name in the picker and the catalog.
   Unowned; filed here because the rename mining found it.
+- 🆕 🔴 **A task prefix is model-specific and guessing is wrong in both directions.**
+  `nomic-embed-text` **needs** one; `bge-m3` is **damaged** by one (91 % → 68 % on conversational
+  queries @5). The rule is *run each model the way its own authors say to*, and checking is minutes.
+- 🆕 🔴 **`pg_relation_size` understated a 533 MB table as 5888 kB** — at 1024 dimensions every
+  vector lives in TOAST, and the main fork is nearly empty. Use `pg_total_relation_size`.
+- 🆕 ⚠️ **The TOAST threshold sits between 384 and 512 dimensions** (~2032 bytes; 384d = 1544 B
+  inline, 512d = 2056 B TOASTed — it misses by **24 bytes**). So the only dimension that keeps
+  vectors inline is also the only one that costs real accuracy.
 - 🔴 **Token length, not character length, is what breaks an embedding window** — and this
   product's identifier-dense text breaks it at **half** the character count of ordinary prose.
 
@@ -320,7 +447,9 @@ dev-docs/tasks/phase-75-0.2.1-the-feedback/fb014/
   evalset.py    22 queries x 4 phrasings, with the old-vocabulary control
   embed_all.py  embed corpus + queries with both models (adaptive chunking)
   load.py       load into pgvector, build HNSW
-  evaluate.py   the four retrievers, the numbers above
+  embed_deepinfra.py  the bge-m3 arm (hosted). READS DEEPINFRA_API_KEY FROM THE ENVIRONMENT.
+                      BGE_DIMS=512 to test a truncated variant.
+  evaluate.py   the four retrievers x six arms, the numbers above
 ```
 
 Needs a pgvector Postgres on 55433 and Ollama with `all-minilm` and `nomic-embed-text`:
@@ -329,7 +458,11 @@ Needs a pgvector Postgres on 55433 and Ollama with `all-minilm` and `nomic-embed
 docker run -d --name fb014-pgvector -e POSTGRES_USER=nodegx -e POSTGRES_PASSWORD=nodegx \
   -e POSTGRES_DB=fb014 -p 55433:5432 pgvector/pgvector:pg16
 ollama pull all-minilm && ollama pull nomic-embed-text
+export DEEPINFRA_API_KEY=...        # for the bge-m3 arm only
 ```
+
+🔴 **The key is read from the environment and is never written to disk or committed.** A key in a
+repo is a key you have to rotate.
 
 ⚠️ **Deliberately its own container on 55433, not the community dev DB on 55432** — that one is
 alpine (no pgvector) and a peer may be running the suite against it.
