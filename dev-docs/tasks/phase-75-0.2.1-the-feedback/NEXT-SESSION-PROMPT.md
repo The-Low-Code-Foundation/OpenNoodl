@@ -107,7 +107,13 @@ two forms.
   `check:css` in `nodegx-community` has one pre-existing non-ours violation; the editor mirror never
   renders port DIRECTION.
 
-## ✅ Harness gains, session 25 — each of these saves a session
+## ⚠️ Harness — and a correction about it
+
+🔴 **Three things this session "discovered" were already written down, and re-deriving them cost
+about forty minutes.** The driving index says *read before a drive*; it was not read first. The
+module-registry route, `selectNode` taking the view node, and opening a project by writing the
+recents store are all already recorded. **Read the driving index before the next drive.** What
+follows is the working form of each, not a claim that any of it is new.
 
 1. ✅ **There is no editor global, but there IS a module registry.**
    `window.webpackChunknoodl_editor.push([[key], {}, (r) => (window.__wreq = r)])` returns webpack's
