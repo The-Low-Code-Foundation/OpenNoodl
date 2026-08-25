@@ -506,3 +506,86 @@ parameter write off the timer.
 5. Scope 2's popup half: mark the offered port inert with the same sentence.
 6. ⚠️ **The drive has to flip the control on a graph that already has the wire** — building the
    graph and reading it once would pass on a broken implementation.
+
+---
+
+## 2026-08-25 (session 33) — scope 2 and the canvas, BUILT. ⬜ Not yet driven.
+
+### 🔴 FIRST: the premise of the section above is WRONG, and the work was much smaller for it
+
+Session 31 recorded *"nothing re-evaluates connection health when a parameter changes"*, concluded
+the warning would be **stale by construction**, and scoped a new trigger plus a guard to keep it off
+`setParameter`'s hot path. **That trigger already exists.** The chain, read end to end:
+
+```
+node.setParameter(...)
+  → NodeGraphNode.notifyListeners('parametersChanged', …)      NodeGraphNode.ts:740/754/1307
+  → EventDispatcher.instance.notifyListeners('Model.' + event)  shared/model.js:76  ← the global bridge
+  → NodeGraphModel.bindModels' listener on 'Model.parametersChanged'
+  → scheduleUpdateTypes()  → 1 ms →  updateTypes()  →  scheduleEvaluateHealth()   → 2 s → the pass
+```
+
+🔴 **The error was a bounded query reporting its bound.** The grep was `parameterChanged`; the event
+is **`parametersChanged`**. One letter, and it turned a three-line change into a scoped M with a
+performance guard. ✅ *`model.js:76` broadcasts **every** model event globally as `Model.<event>`* is
+the fact worth carrying: if a model notifies it, the dispatcher has it.
+
+**Consequences for the plan above:** items **1, 2, 4, 5, 6 stand**; item **3 (the parameter-change
+trigger and its gating guard) is deleted** — it would have been a second scheduler racing the one
+already there, which is the `a-check-in-a-second-pipeline-is-a-duplicate-first` shape. And the
+FB-022 hot-path worry dissolves: `updateTypes` **already** runs on every parameter write today, so
+this warning adds no scheduling cost at all, only work inside a pass that was happening anyway.
+
+### What was built
+
+**The canvas half** — `NodeGraphModel.evaluateConnectionHealth`, a new `con-target-port-gated`
+statement, symmetric with `con-no-target-port` directly above it: the port **is** on the node
+(`targetPort` present) but `isConditionalPortValid(node, port, ['basic'])` is **false**. Message
+from `portGateReason.reasonsForGatedPorts` — the module that already owns the sentence, so the wire
+and the property row cannot drift into two accounts. `level: 'warning'`, `showGlobally: true`, and
+**no new dash pattern**: `getConnectionHealth` turns any unhealthy verdict into `setLineDash([5])`
+in every paint path. Deliberately **not** in `UNRESOLVED_PORT_WARNING_KEYS`, per item 4.
+
+**Scope 2** — `ConnectionBar._getPorts` asks the filter a *second* time at `['basic']`, and marks
+what comes back `disabled` / `reason: 'gated'` / `message: <the sentence>`. Richard's *"mark, do not
+hide"* lands on machinery that was already built and already styled: SIG-001's refusal vocabulary,
+`PortItem`'s disabled state and `RefusedPorts`' collapsing summary. No new UI.
+
+🔴 **Two placements in that pass are load-bearing, and both are counter-intuitive:**
+- **After** the `getConnectionStatus` loop, because a gated port is normally perfectly connectable
+  — `p.disabled = !status.connectable` would wipe the mark. The defect *is* that the wire is legal.
+- **Outside** the `if (sourcePort !== undefined)` guard, because that loop only runs while a wire is
+  in flight; opening the popup with no drag would otherwise list a switched-off port as ordinary.
+
+⚠️ **`refusedGroupSummary`'s new branch sits ABOVE its `targetTypeName === 'signal'` test.** A gated
+signal port would otherwise be summarised *"a moment, not a value"* — true about signals, wrong
+about why that row is inert. **Ordering is the only thing holding it**, so a spec pins it, and a
+mutant that moves the branch below the signal test **fails that spec** (verified, not assumed).
+
+🔴 **And the generic line is not a vaguer version of the gated one, it is the opposite claim.**
+Every other `RefusalReason` means *the wire will not be made*; `gated` means it **will be made and
+then ignored**. *"N ports this wire can't reach"* would send an author hunting a type error that is
+not there — Jordan's reading, four times.
+
+### Gates
+
+- `npm run typecheck:editor` — **0 errors**.
+- `npm run test:main` — **335 files / 5438 specs / 0 failures**.
+- `npm run test:ci` — **2849 specs / 4 failures, THE FLOOR, matched BY NAME** (all four
+  `AIX-006 style vocabulary`). ✅ **Default ceiling, run alone on an idle machine, on committed
+  code** — this is the re-measure FB-002's session owed and did not take. Completed 18:26.
+  ⚠️ Taken **before** the FB-021 edits landed; it grades the FB-002 commit, not this one.
+- **Mutation-checked**, 1 mutant, 1 killed (the ordering above).
+- 🔴 The completion notification said *"exit code 0"* while the log's last line was `EXIT=1` and the
+  summary line said `4 failures`. **Sixth session.** The summary line is the only honest readout.
+
+### ⬜ Left: the drive, and it is the one that matters
+
+⚠️ **Everything above is reading plus unit specs.** The trigger claim in particular — that a
+parameter change already reaches health — is **read from source, not observed**, and it is exactly
+the claim whose failure mode is a warning that is stale in both directions.
+
+**The drive, per item 7:** wire something into `width` on a `Group`, **then** flip `Size Mode` to
+`Content Size`, wait out the 2 s debounce, and see the wire go dashed with the sentence; flip back
+and see it go solid. 🔴 **Building the graph and reading it once would pass on a broken
+implementation**, because construction fires the other triggers.

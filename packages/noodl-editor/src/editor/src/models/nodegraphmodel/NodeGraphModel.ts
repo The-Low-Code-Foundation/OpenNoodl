@@ -8,6 +8,8 @@ import { UndoQueue } from '@noodl-models/undo-queue-model';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 import { guid } from '@noodl-utils/utils';
 
+import { reasonsForGatedPorts } from '@noodl-models/nodelibrary/portGateReason';
+
 import Model from '../../../../shared/model';
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { unconvertedCast } from './connectionCoercion';
@@ -776,6 +778,72 @@ export class NodeGraphModel extends Model {
             message: "Target port doesn't exist.",
             showGlobally: true,
             level: 'error'
+          }
+        : undefined
+    );
+
+    /**
+     * FB-021 — the wire into a port that is SWITCHED OFF rather than missing.
+     *
+     * Richard: *"maybe make it dotted for a port that can't work? That's what happens when a
+     * port is deleted at the moment and the connector is still there."* The precedent he is
+     * remembering is the statement directly above, and this is the case it excludes.
+     *
+     * 🔴 **The `['extended']` scope above is the whole gap.** `portConnectivity.ts` spells the
+     * two apart: `extended` means *"not on the node at all"*, while an unnamed group — which
+     * `nodelibraryexport.ts:146` defaults to `conditionalports/basic` — *"only suppresses the
+     * property row; the port still exists and a wire to it stays valid."* So a `basic`-gated
+     * port is live, accepts the wire, delivers the value, and the consumer then ignores it:
+     * **328 input ports on the shipped catalog are in that state**, against 21 `extended` ones.
+     * `modelProxy` hid the row and this function left the wire solid — one defect, two surfaces.
+     *
+     * ⚠️ `level: 'warning'`, ruled by Richard, and it is not a hedge: the wire is *valid* and
+     * its value is *ignored*, which is a different thing from the deleted port above. Red keeps
+     * meaning "this cannot work at all". The dash comes free either way — `getConnectionHealth`
+     * turns any unhealthy verdict into `setLineDash([5])` in every paint path, which is why
+     * this deliberately adds **no fourth dash pattern** to the three `restoreWireDash` already
+     * warns are barely distinguishable.
+     *
+     * ✅ **Nothing new has to trigger this, and that is measured rather than assumed.**
+     * `setParameter` → `notifyListeners('parametersChanged')` → `model.js:76`'s global bridge
+     * → `Model.parametersChanged` (bound in `bindModels`) → `scheduleUpdateTypes` → 1 ms →
+     * `updateTypes` → `scheduleEvaluateHealth` → this function, 2 s later. So flipping the
+     * control that gates the port re-evaluates the wire on the path that already exists, and
+     * FB-022's 13-writes-per-60px-drag is coalesced by the debounce that is already there.
+     *
+     * 🔴 A prior session recorded the opposite — *"nothing re-evaluates health on a parameter
+     * change"* — from `grep parameterChanged`, which **misses `parametersChanged`**. The
+     * conclusion that followed (a new trigger, guarded against the hot path) would have been a
+     * second scheduler racing the first. **A bounded query reports its bound.**
+     *
+     * ⚠️ Deliberately NOT added to `UNRESOLVED_PORT_WARNING_KEYS`. That list is what *ports
+     * arriving* can clear, and it arms FIX-007's 50 ms urgent lane; this warning is cleared by
+     * a parameter, on the lazy lane above, and putting it there would fire the fast path for a
+     * condition `instancePortsChanged` cannot change.
+     */
+    const gatedReason =
+      targetPort && targetNode && !NodeLibrary.instance.isConditionalPortValid(targetNode, c.toProperty, ['basic'])
+        ? reasonsForGatedPorts(targetNode.type && targetNode.type.dynamicports, [c.toProperty], targetNode.getPorts())
+            .get(c.toProperty)
+        : undefined;
+    WarningsModel.instance.setWarning(
+      { component: this.owner, connection: c, key: 'con-target-port-gated' },
+      gatedReason
+        ? {
+            /*
+             * One explanation, from the module that already owns it. `portGateReason` narrates
+             * the same declaration the property row narrates, so the wire and the panel cannot
+             * drift into two different accounts of why the port is off — and a port whose
+             * condition that module refuses to put words to raises nothing here either, which
+             * is BCN-010's rule: a mark with no reason reads as "broken", not as "switched off".
+             */
+            message:
+              'This wire is delivering a value the node ignores: <strong>' +
+              gatedReason.gateLabel +
+              '</strong> has switched this port off. ' +
+              gatedReason.sentence,
+            showGlobally: true,
+            level: 'warning'
           }
         : undefined
     );

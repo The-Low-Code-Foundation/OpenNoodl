@@ -53,6 +53,16 @@ export type RefusalReason =
   | 'type-mismatch'
   /** This exact wire already exists. */
   | 'duplicate'
+  /**
+   * FB-021 — the port is on the node and currently **switched off** by a sibling
+   * parameter (`conditionalports/basic`).
+   *
+   * 🔴 The odd one out in this list, and the reason it needs its own branches
+   * below: every other reason means *the wire will not be made*. This one means
+   * the wire **would be made, and then ignored** — so the generic *"can't
+   * reach"* line is not a vaguer version of it, it is the opposite claim.
+   */
+  | 'gated'
   /** Refused, with no reason the popup recognises. */
   | 'other';
 
@@ -167,6 +177,8 @@ export function portTypeSentenceHtml(typeName: string | undefined, direction: Po
  */
 export function refusalHeadline(reason: RefusalReason, sourceTypeName: string, targetTypeName: string): string {
   if (reason === 'duplicate') return 'Already connected.';
+  // FB-021, and ahead of the signal line for the reason `refusedGroupSummary` gives.
+  if (reason === 'gated') return 'This port is switched off by another setting.';
   if (targetTypeName === 'signal') return 'Signal inputs are moments, not values.';
   return (
     'A <strong>' +
@@ -190,6 +202,18 @@ export function refusedGroupSummary(count: number, reason: RefusalReason, target
 
   if (reason === 'duplicate') {
     return count + ' already connected';
+  }
+
+  /*
+   * FB-021 — 🔴 BEFORE the `signal` check, deliberately.
+   *
+   * The two tests below are about the wire being refused; this one is about the port being
+   * switched off, and a gated port that happens to be a `signal` would otherwise be summarised
+   * as *"a moment, not a value"* — a true sentence about signals and the wrong explanation of
+   * why this row is inert. Order is the only thing keeping the more specific fact on top.
+   */
+  if (reason === 'gated') {
+    return count + ' port' + plural + ' switched off by a setting';
   }
 
   if (targetTypeName === 'signal') {

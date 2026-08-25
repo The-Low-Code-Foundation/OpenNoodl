@@ -10,6 +10,7 @@ import {
   PORT_CONDITION_FILTER_MODES,
   type PortLike
 } from '@noodl-models/nodelibrary/portConnectivity';
+import { reasonsForGatedPorts } from '@noodl-models/nodelibrary/portGateReason';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 
@@ -47,13 +48,36 @@ function _getPorts(type, model /* NodeGraphNode */) {
   const hidden = NodeLibrary.instance.applyPortConditionsFilterForNode(model, PORT_CONDITION_FILTER_MODES);
   const ports = omitHiddenPorts(declared, hidden);
 
+  /*
+   * FB-021 scope 2 — Richard: *"the more there's visual feedback the less grief I'll get from
+   * confused non-tech builders."* **Mark, do not hide.**
+   *
+   * ⚠️ These ports are NOT in `hidden` above and never were: that filter runs at
+   * `['extended']`, which means *"not on the node at all"*, and a `basic` gate leaves the port
+   * present and wirable. So this list already offered them, silently — you could draw the wire,
+   * it would be saved, and the node would ignore the value. Scope 2 is about saying so.
+   *
+   * Asked at `['basic']` rather than with no modes: `undefined` is the *wider* filter and would
+   * fold the `extended` ports back in, which are a different fact with a different sentence
+   * (they are gone, not switched off) and are already handled by their absence.
+   */
+  const gateHidden = NodeLibrary.instance.applyPortConditionsFilterForNode(model, ['basic']);
+  const gateReasons = reasonsForGatedPorts(model.type && model.type.dynamicports, gateHidden, declared);
+
   for (const i in ports) {
     const p = ports[i];
 
     if (isPortConnectable(p)) {
+      const gate = gateReasons.get(p.name);
       models.push({
         name: p.name,
         group: p.group,
+        /*
+         * The sentence, kept on the row so the status loop below can re-assert the mark after
+         * `getConnectionStatus` has had its say. A gated port is usually perfectly connectable
+         * — that is the entire defect — so `p.disabled = !status.connectable` would clear it.
+         */
+        gateSentence: gate ? gate.sentence : undefined,
         displayName: (p.displayName || p.name) + (p.tab && p.tab.label ? '(' + p.tab.label + ')' : ''), // Show the tab label in the connection editor
         annotatedName: NodeLibrary.instance.getAnnotatedPortName(model, p),
         type: p.type,
@@ -231,6 +255,31 @@ export function ConnectionBar(props: TSFixme) {
       }
     });
   }
+
+  /*
+   * FB-021 scope 2 — the gate mark, applied last and outside the `sourcePort` guard.
+   *
+   * 🔴 Both of those placements are load-bearing:
+   *
+   *  - **Last**, because a gated port is normally *connectable*, so the pass above writes
+   *    `p.disabled = false` over anything set earlier. Being switched off is a fact about the
+   *    port, not about the wire being dragged at it, so it wins.
+   *  - **Outside the guard**, because that pass only runs while a wire is in flight. Opening the
+   *    popup on a node with no drag would otherwise list a switched-off port as ordinary — which
+   *    is the state this whole task was filed about.
+   *
+   * ⚠️ It overwrites `reason` on a port that is *also* refused for another cause (a gated signal
+   * input dragged at from a value output, say). That is the intended precedence: the other
+   * refusals explain why *this wire* is wrong, and this one explains why the *port* is inert —
+   * fix the setting and the port comes back, at which point the ordinary refusal is what the
+   * author needs to read next.
+   */
+  ports.forEach((p) => {
+    if (!p.gateSentence) return;
+    p.disabled = true;
+    p.reason = 'gated';
+    p.message = p.gateSentence;
+  });
 
   /*
    * SIG-001 — group ports, and stop deleting the refused ones.
