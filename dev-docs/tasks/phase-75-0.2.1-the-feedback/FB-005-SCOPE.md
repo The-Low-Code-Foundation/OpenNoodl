@@ -148,28 +148,81 @@ Ordered so each step is shippable and the earliest ones are independent of any f
 
 | # | slice | size | depends on |
 |---|---|---|---|
-| **T1** | **Settle `templateRegistry`** — dead code; its hang is already fixed (§2a) | **S** | nothing |
+| **T1** | ✅ **DONE (s40)** — zip transport deleted, registry made reachable, AC1 met | **S** | — |
 | **T2** | Platform: `project_templates` + list/detail/bundle routes | **M** | nothing |
 | **T3** | Editor: "New project from a template" in the create wizard | **M** | T2 |
 | **T4** | Categories + text search over the curated set | **S–M** | T2, ⚠️ see below |
 | **T5** | "Share as template" — files a **submission**, does not publish | **M** | T2, R-templates |
 | **T6** | Star ratings | **M** | 🔒 needs a ruling; see §5 |
 
-**T1 is the one to take first** and it is independent of everything else. Two options:
+✅ **T1 is done (2026-08-26, session 40).** The recommended option was taken — the zip path is
+deleted and the provider interface kept — but the sweep found the deletion was only half of it.
 
-- ✅ **Recommended: delete the zip path and keep the provider interface.** Remove
-  `TemplateRegistry.download`'s download/unzip/cache, `HttpTemplateProvider`,
-  `NoodlDocsTemplateProvider` and the unregistered `LocalTemplateProvider`; keep
-  `ITemplateProvider`, `EmbeddedTemplateProvider` and `list()`, which T3 will call. ⚠️ **The hang
-  is already fixed and is no longer a reason for this option** (§2a); what deletion buys is the
-  Windows path bug, the never-refreshing cache, the misleading "no provider" message, and ~4 files
-  nothing reaches — and T3 wants none of it, because §3 says the transport is jsonb over the
-  community API, not zips.
-- Alternative: keep it and fix it (take a local-file path properly, version the cache key —
-  `onerror` is already done). ⚠️ Only worth it if someone still wants templates from an arbitrary HTTP origin —
-  which R-templates has ruled against for now.
+🔴 **The root cause was a contract, and it is worth carrying out of this task.**
+`ITemplateProvider.download`'s own doc comment read *"@param destination The destination we will
+save the ZIP file"*, and `TemplateRegistry.download` was written against exactly that: fetch a zip
+to a path, unzip it next door. The only implementation ever reached — `EmbeddedTemplateProvider` —
+writes a `project.json` **into a directory**. Two opposite contracts, both
+`(url: string, destination: string) => Promise<void>`, so nothing in the type system had anything
+to say and the registry would have tried to unzip a directory. **A type signature is not a
+contract.** The method is now `install`, the contract is written on the interface, and the rename
+is what makes the change loud enough that a future provider cannot implement the old semantics
+silently.
 
-⚠️ **T4 inherits a known defect.** FB-014 measured that the platform's FTS helper uses
+**What shipped:**
+
+- ❌ Deleted: `HttpTemplateProvider`, `NoodlDocsTemplateProvider`, `LocalTemplateProvider`,
+  `TemplateRegistry.download`'s download/unzip/cache, `ProgressCallback`, and the never-read
+  `useCloudServices`/`cloudServicesTemplateURL` fields on `TemplateItem`.
+- ✅ `TemplateRegistry.install(url, destination)`, which resolves a provider by `canInstall` and
+  **does not swallow a failed install**. The version it replaces wrapped the claim and the install
+  in one `try/catch`, so a provider that claimed a URL and then failed fell out of the loop and the
+  caller was told `Cannot find a valid template provider` — a message about the wrong thing, at the
+  one moment somebody needed to know what actually broke.
+- ✅ `models/template/createFromTemplate.ts` — the seam. `newProject` cannot be graded by a spec
+  (it reaches `electron-store`, `@noodl/git`, and an `_addProject` that writes into Richard's real
+  launcher list), so the decisions moved to a module plain-Node jest can drive. Precedent:
+  `refusalPlan.ts`, s37.
+- ✅ `newProject` has **one branch**. `resolveTemplateUrl` turns the wizard's `''` — and a missing
+  argument — into `DEFAULT_PROJECT_TEMPLATE`, so "no template" and "the default template" stopped
+  being two code paths that had drifted apart.
+
+🔴 **Two live defects came out of it, neither of them the one T1 was about.**
+
+1. **`newProject` is not awaited by its caller**, so any rejection was an unhandled promise
+   rejection: the launcher's *"Creating new project"* activity toast was never hidden and `fn` was
+   never called. A user creating a project into a location they cannot write to watched a spinner
+   belonging to a creation that had already stopped. It now returns a **string-discriminated**
+   outcome and `fn()` is called on every path. ⚠️ Same shape as s39's `unzipUrl` hang, one layer up:
+   **the failure that was handled was the fast one**.
+2. **A failed agent configuration destroyed a correctly installed project.** `writeAgentConfigFor`
+   was awaited in the same unguarded run as the template, so an unwritable `.mcp.json` refused the
+   whole creation — a file `backfillProjectAgentConfig` writes again the next time the project is
+   opened. It is now outside the guard and non-fatal.
+
+⚠️ **Left deliberately:** a refusal leaves the (empty) project directory behind. Deleting a
+directory the caller chose is the more destructive of the two mistakes, and the one caller passes a
+`makeUniquePath`. AC2's *"a refusal leaves nothing on disk"* belongs to T2/T3, where a partial
+install of a multi-file bundle is a real possibility rather than a hypothetical.
+
+✅ **The spec grades the chain, not the registry** — `tests-unit/fb-005/template-install-path.test.ts`,
+27 specs. AC1 says it outright: a spec over `TemplateRegistry` alone would have been green through
+the entire outage. So it asserts `ProjectsPage` → `newProject` → `createProjectFromTemplate` →
+`templateRegistry.install` as a **caller-grep made executable**, with comments stripped (the doc
+comment names `templateRegistry` while explaining the outage) and two controls: a comment-only
+phrase proving the stripper works in both directions, and a neighbouring method proving the body
+extractor discriminates rather than returning the whole file.
+
+🔴 **The body extractor was wrong on its first run and said `newProject` called nothing.**
+`indexOf('{', start)` finds the **parameter list** — `options: { name?: string; ... }` is an inline
+object type — so brace-matching returned the type literal. It walks the parentheses first now. ⚠️
+Had the control not been there, that would have read as *"the wiring is missing"* on correct code.
+
+✅ **Six mutants, each killed by its own spec and no other**: the registry bypass restored, the
+default dropped, POL-006's ordering reversed, the swallowed install error restored, the fatal agent
+config restored, and a `download()` alias re-added to the registry.
+
+⚠️ **T4 still inherits a known defect.** FB-014 measured that the platform's FTS helper uses
 `websearch_to_tsquery`, which **ANDs bare terms** — a conversational query matched 2/22 documents
 even in perfect vocabulary. That is queue item 3, unowned. **A template search built on the same
 helper is born with the same bug.** Fix item 3 first, or T4 ships a search that only answers

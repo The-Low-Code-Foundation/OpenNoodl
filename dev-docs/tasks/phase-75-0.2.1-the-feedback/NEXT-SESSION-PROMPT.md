@@ -1,289 +1,114 @@
 # Phase 75 — next session
 
-**State as of 2026-08-25 (session 39).** Richard's brief is still **speed: keep knocking out phase
+**State as of 2026-08-26 (session 40).** Richard's brief is still **speed: keep knocking out phase
 75**, so this file leads with the queue. Take the top unblocked item; dip into the rest when it bites.
 
-**Committed this session (`7e1690ce`, `85a4387e`):** queue item 1 — **FB-005's scope doc**
-([FB-005-SCOPE.md](FB-005-SCOPE.md)) — plus **two real fixes it turned up on the way**, in
-`unzipUrl`. Read §1 and §2a of the scope doc before touching templates.
+**Committed this session:** queue item 1 — **FB-005 T1**, the template registry settled. AC1 met.
+The zip transport and its three providers are gone, `newProject` has one branch and it goes through
+`templateRegistry`, and two live defects turned up on the way that had nothing to do with templates.
+Read **[FB-005-SCOPE.md](FB-005-SCOPE.md) §4** before touching T2.
 
-⚠️ **Session 38 was still running when this session started** (its `3de0dcdb` landed at 23:25, mine
-at 23:43). No task overlap — it was finishing FB-014, I took item 1 — but **both sessions wrote the
-same memory files**, so treat mtimes there with suspicion.
-
-🧭 **One thing is now waiting on Richard that was not before:** FB-014's option pair. Richard
-supplied a **DeepInfra key for `BAAI/bge-m3`** and it was measured on the same corpus as the
-others — **it wins** (68%/91% keyword, **91% conversational**, **100% on the control**) at
-**£0.14 per 100k posts**. 🔴 **But 843 ms per query** vs `all-minilm`'s 14 ms. So the question is
-no longer *which model* or *what it costs*: it is **whether bench posts may go to a third-party
-processor at all**. See [FB-014-DESIGN.md](FB-014-DESIGN.md) → AC3.
-
-⚠️ **Peers.** `3878` is **opennoodl-78**, this checkout. Other names are other projects.
-🔴 **`SendMessage` to a cross-session peer needs the `[ref]`** — the bare name is rejected with the
-ref in the error, so just re-send.
+⚠️ **Peers.** `ListAgents` showed four other `opennoodl-*` sessions during this one. They are other
+projects, **but every one of them runs its MCP server from *this* checkout's
+`node_modules/electron/dist`**, so a sweep from any of them can match a `test:ci` electron. Nothing
+went wrong this session; the run completed clean.
 
 ## The queue — unblocked, cheapest-first. Take the top one.
 
 | # | item | size | state |
 |---|---|---|---|
-| 1 | **FB-005 T1** — settle `templateRegistry` | **S** | ✅ **scope doc DONE.** T1 is sliced, independent of every ruling, and needs an option picked — see below |
-| 2 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** ⚠️ Its corpus does not exist either — see below |
-| 3 | *(cheap, unowned)* **bench search ANDs its terms** | **S** | found by FB-014; **2/22 even in perfect vocabulary**. Real users, real miss |
+| 1 | *(cheap, unowned)* **bench search ANDs its terms** | **S** | 🔴 **now the cheapest thing on the board, and T4 is blocked behind it.** `websearch_to_tsquery` in `nodegx-community/src/lib/bench.ts`; **2/22 even in perfect vocabulary**. Real users, real miss |
+| 2 | **FB-005 T2** — platform `project_templates` + list/detail/bundle routes | **M** | ✅ **unblocked** — T1 done, the editor side has a seam that takes a new provider. 🔴 **4 gates guard a new `/api/v1` route** (P73) and a **CHECK constraint passes on NULL** (TUT-004) |
+| 3 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** ⚠️ Its corpus does not exist either — FB-014 measured the bench at **3 posts, 2 threads, 1,369 chars** |
 
-✅ **FB-014 is off the queue** — design phase done, AC1 + AC3 met, AC2 shown to be impossible.
+✅ **FB-014 is off the queue** — design phase done, AC1 + AC3 met, AC2 shown to be impossible. Its
+external-processor question is with Richard.
 
-## ✅ Item 1, closed: FB-005's scope doc — and the task file's premise was wrong
+## ✅ Item 1, closed: FB-005 T1 — and the root cause was a contract, not a bug
 
-Full slice in **[FB-005-SCOPE.md](FB-005-SCOPE.md)** (six slices, T1 first). The headline is a
-correction, and it is the kind only a caller-grep finds.
+Full account in **[FB-005-SCOPE.md](FB-005-SCOPE.md) §4**. The recommended option was taken —
+delete the zip path, keep the provider interface — but deletion was only half of it.
 
-🔴 **FB-005 says *"there is no template mechanism in the product at all."* There is a complete
-one, and it is unreachable.** `TemplateRegistry`, `ITemplateProvider` and **four** providers.
-`templateRegistry.list()` has **zero callers**, so there is no picker and never was;
-`newProject`'s **one** caller (`ProjectsPage.tsx:1021`) passes the literal `projectTemplate: ''`,
-which is falsy, so the registry branch never executes. ✅ Every new project *is* made from a
-template — `embedded://hello-world`, via a direct `new EmbeddedTemplateProvider()` that **bypasses
-the registry**. ⚠️ `models/template/README.md` documents a recipe no caller performs.
+🔴 **`ITemplateProvider.download`'s own doc comment read *"@param destination The destination we
+will save the ZIP file"*, and its one reachable implementation wrote a `project.json` into a
+directory.** Both are `(url: string, destination: string) => Promise<void>`. The compiler had
+nothing to say, and `TemplateRegistry.download` — written against the documented meaning — would
+have tried to unzip a directory. **A type signature is not a contract.** The method is now
+`install`, the contract is written on the interface, and the *rename* is the part that matters: it
+is the only thing that stops a future provider satisfying the old meaning silently.
 
-✅ **The recommendation: do not build FB-005 on `templateRegistry`. Build it on TUT-004.** The
-tutorial-bundle transport ships end to end — `tutorial_bundles` (jsonb payload, structural CHECKs
-at publish, 8 MiB cap), `/api/v1/community/tutorials/[slug]/bundle`, and `lessonplatforminstall.ts`
-doing fetch → stage → score → install → record. 🔴 **And its curation model — `articles` has no
-author column, every tutorial is editorial — IS R-templates' curated-first ruling, already built.**
+**What shipped.** Deleted: `HttpTemplateProvider`, `NoodlDocsTemplateProvider`, the unregistered
+`LocalTemplateProvider`, `TemplateRegistry.download`'s download/unzip/cache, `ProgressCallback`,
+and the never-read `useCloudServices`/`cloudServicesTemplateURL` fields. Added:
+`TemplateRegistry.install`, which **does not swallow a failed install** — the version it replaces
+wrapped the claim and the install in one `try/catch`, so a provider that claimed a URL and then
+failed fell out of the loop and the caller was told *"Cannot find a valid template provider"*, a
+message about the wrong thing entirely. And `models/template/createFromTemplate.ts`, the seam:
+`newProject` reaches `electron-store`, `@noodl/git` and an `_addProject` that writes into
+**Richard's real launcher list**, so it cannot be driven by a spec — the decisions moved to a module
+plain-Node jest can. Precedent: `refusalPlan.ts`, s37.
 
-🔴 **Where the analogy breaks, measured:** `stageBundleFiles` takes `Record<string, string>`, so a
-template carrying its own images or fonts **cannot travel that transport**. Smaller than it sounds
-— `installStarterAssets` already gives every project Inter and 1998 Lucide glyphs — so **v1 should
-be text-only by construction**, refused at publish. That is an engineering call, not Richard's.
+✅ **`newProject` now has one branch.** `resolveTemplateUrl` turns the wizard's `''` — and a missing
+argument — into `DEFAULT_PROJECT_TEMPLATE`, so *"no template"* and *"the default template"* stopped
+being two code paths that had drifted apart. That drift **was** the outage: the `''` made the
+registry branch unreachable, and the `else` reached the embedded provider directly.
 
-⚠️ **T4 (search) inherits queue item 3's defect.** A template search built on the same FTS helper
-is born ANDing its terms. Fix item 3 first or T4 ships a keyword-only search.
+## 🔴 The finding of this session: TWO LIVE DEFECTS, NEITHER OF THEM THE ONE T1 WAS ABOUT
 
-## 🔴 The finding of this session: A DEAD PATH'S BUG WAS LIVE IN A REACHABLE ONE
+Both were found by writing the seam, not by reading the code.
 
-I nearly filed `unzipUrl`'s missing `xhr.onerror` as *"a bug in dead code, deleted by T1"*. It is
-not. `filesystem.unzipUrl` has **two** callers and the second is reachable — `unzipIntoDirectory`,
-which has **four** callers of its own including `modulelibrarymodel.installModule`/`installPrefab`.
-**Installing a module or prefab from the library with the network down hung the editor forever**,
-and `unzipIntoDirectory`'s own `try/catch` was dead code for that case because nothing ever
-rejected.
+1. 🔴 **`newProject` is not awaited by its caller.** `ProjectsPage` calls it callback-style, so any
+   rejection was an **unhandled promise rejection**: the launcher's *"Creating new project"*
+   activity toast was never hidden and `fn` was never called. **Create a project into a location
+   you cannot write to and the launcher spins forever** on a creation that had already stopped.
+   ⚠️ **Note the shape — it is s39's `unzipUrl` hang one layer up.** The failure that *was* handled
+   was the fast, in-band one (`!project` from `projectFromDirectory`); the thrown one was not.
+   ✅ It now returns a **string-discriminated** outcome and `fn()` is called on every path.
+2. 🔴 **A failed agent configuration destroyed a correctly installed project.**
+   `writeAgentConfigFor` was awaited in the same unguarded run as the template, so an unwritable
+   `.mcp.json` refused the whole creation — a file `backfillProjectAgentConfig` writes again the
+   next time the project is opened. Now outside the guard and non-fatal.
 
-⚠️ **Note the shape, because it is why nobody found it: a 404 was handled.** `onload` fires with an
-error body, JSZip refuses it, the caller gets "Failed to extract". Only the *no-response* case —
-offline, DNS, refused connection — hung. **Testing the fast failure proves the fast failure**;
-NAT-013 already wrote that trap down and it arrived here anyway.
+⚠️ **Left deliberately:** a refusal leaves the (empty) project directory behind. Deleting a
+directory the caller chose is the more destructive of the two mistakes and the one caller passes a
+`makeUniquePath`. AC2's *"a refusal leaves nothing on disk"* belongs to T2/T3, where a partial
+install of a multi-file bundle is real rather than hypothetical.
 
-✅ Fixed with `onerror`/`ontimeout`/`onabort` **spelled out separately**, so a timeout does not read
-as a dead network.
+## 🔴 Second: MY OWN SOURCE-ANALYSIS INSTRUMENT SAID "THE WIRING IS MISSING" ON CORRECT CODE
 
-🔴 **Second defect, same function, found on the way: a guard that could not fire.**
-`const isEmpty = this.isDirectoryEmpty(to)` dropped the `await` on an **`async`** method, so the
-"Folder must be empty" check tested a **Promise** — always truthy. ⚠️ The one reachable caller
-masked it by doing the same check itself, correctly; a direct caller (`TemplateRegistry.download`)
-got nothing. ✅ **Checked whether this is a class rather than a one-off: it is a one-off.**
-`isDirectoryEmpty` is the only `Promise<boolean>` on `IFileSystem`, and the other two call sites use
-the *other*, callback-style `FileSystem.instance` API correctly.
+AC1 is explicit that a spec over `TemplateRegistry` alone *"stays green through exactly the outage
+we are in now"* — and it would have. So
+`tests-unit/fb-005/template-install-path.test.ts` asserts the **chain**: `ProjectsPage` →
+`newProject` → `createProjectFromTemplate` → `templateRegistry.install`. A caller-grep made
+executable. **27 specs, all green; 6 mutants, each killed by its own spec and no other.**
 
-✅ **5 specs**, `packages/noodl-platform-node/tests/filesystem-unzip-transport.test.ts`, with a
-**known-firing control** that drives a real archive through the fake transport and asserts files
-land on disk — a fake XHR reaching nothing would have graded nothing. **Both fixes
-mutation-tested**: reverting each reddens exactly its own spec and no other.
+🔴 **The body extractor was wrong on its first run.** To prove `newProject` *calls* the registry
+rather than merely importing it — it imported it throughout the outage — the spec brace-matches the
+method body. `indexOf('{', afterSignature)` finds the **parameter list**: `options: { name?: string;
+… }` is an inline object type, so it returned the type literal and both wiring assertions failed on
+code that was right. ✅ **Walk the parentheses to the end of the parameter list first.** The control
+that caught it is now shipped: a neighbouring method that must come back *without* the symbol,
+proving the extractor discriminates rather than returning the whole file.
 
-⚠️ **Two claims in the scope doc are readings of code, not measurements, and are marked as such:**
-`unzipUrl` passing a *local path* to an XHR works on macOS only because the renderer's origin is
-`file:///` (`main.js:444`) and a POSIX path starts with `/`; **on Windows it should miss**, and
-there is no Windows machine here to prove it.
+⚠️ **And the strip-comments control had to be re-anchored.** It first asserted that
+`EmbeddedTemplateProvider` appears in the raw source and not in the stripped one — but the bypass
+this file exists to forbid would contain that identifier too, so the control fired for **two**
+different reasons and stopped being a control. It anchors on a **comment-only phrase** now.
+Stripping matters here: `newProject`'s own doc comment names `templateRegistry` while explaining the
+outage, so an unstripped grep passes on the prose.
 
-⚠️ **Read this before starting FB-013.** FB-014 measured the bench: **3 posts, 2 threads, 1,369
-chars**. Chat would be a *second* corpus that does not exist yet. The ruling to build it stands and
-is Richard's — but do not carry over the assumption that either feature has content to work on.
+## Gates — session 40 ran all three, this tree, `cline-dev`
 
-✅ **The "two functions that reach nobody" item is CLOSED.** Both are wired, specced at the
-*caller*, and driven. Detail below — read it before touching either surface.
+🔴 **Re-measure, never quote.** These are s40's own runs, after the change.
 
-✅ **FIX-027 §17, §19 and §20 are CLOSED** — built, driven, acceptance criteria 4 and 6 met.
-✅ **FIX-025 is fully driven** bar two items that are not ours to unblock (§5 needs Richard signed
-*out* of his live community session; §7 needs a real answered thread *and* a platform data fix).
-
-## ✅ Item 1, closed: FB-014's design phase — and why it says *don't ship*
-
-Full write-up in **[FB-014-DESIGN.md](FB-014-DESIGN.md)**; the harness that produced every number
-is `fb014/` beside it and **reproduces from the repo** (verified end to end after the move).
-
-🔴 **The bench holds 3 posts.** So AC2 — *"the prototype runs against a copy of real bench data"* —
-**cannot be met**, and no engineering fixes that. Semantic search is a solution to a problem this
-corpus does not have yet. The mechanism was measured anyway, against **real pre-rename product
-prose recovered from git** (the node catalog at `1f31d24f^`, 155 documents) and **29 real renames**
-mined from its own 98-commit history.
-
-🔴 **The number worth carrying, whatever happens to pgvector:** with an old-vocabulary control
-holding corpus, documents and k constant, the renames cost the **search we already ship**
-**73% → 18%** recall on keyword queries. Vectors take it to **91% @10**. ✅ And **hybrid beats
-vector-only on the control** (17/22 vs 11/22 @1), so RRF is the right answer rather than a hedge.
-
-✅ **pgvector is cheaper to get than the task feared** — `postgresql-16-pgvector` 0.6.0 is already
-an Ubuntu `noble/universe` candidate on nexus-1's configured mirror. No third-party repo. The whole
-DDL was **replayed on pgvector 0.5.1** — older than prod's — so nothing in the design postdates
-what prod can install. ⚠️ Dev needs a compose image change (alpine → Debian: **recreate the volume**,
-musl and glibc collate text differently).
-
-## 🔴 The finding of this session: THREE OF MY OWN MEASUREMENTS WERE FICTION FIRST
-
-Each was green, plausible, and wrong. None would have been caught by re-reading the code.
-
-1. **A 100k-row latency table over 100,000 copies of ONE vector.** Postgres hoisted an
-   uncorrelated scalar subquery and evaluated it once. `count(distinct vec)` = **1**. An HNSW index
-   over a single repeated point measures nothing; the honest figure is **5.5× higher**. ✅ **Assert
-   the data is what you think before timing it** — one `count(distinct)`.
-2. **An index build that exited 0 twice without building anything.** Once backgrounded (exit 0,
-   empty log), once starved by Docker's 64 MB `/dev/shm`. Both times `EXPLAIN` said **Parallel Seq
-   Scan** while I was about to write down an HNSW number. ✅ **The plan line is the only proof an
-   index was used.** `pg_indexes` is the second.
-3. **`nomic-embed-text` scored without its required task prefix.** It needs
-   `search_document:`/`search_query:`. Without them it read as *"the bigger model is worse"* — I
-   had measured **my own omission** and nearly filed it as a property of the model. ✅ **A model
-   comparison is only a comparison once each model runs the way its authors say to run it.**
-
-## 🔴 Second: THE CONTROL READ ~ZERO, AND WOULD HAVE FLATTERED THE RESULT
-
-The first eval used conversational queries. FTS matched **2/22 even in the era's own vocabulary** —
-so a miss on today's words proved nothing. `websearch_to_tsquery` **ANDs bare terms**, and a 9-word
-query matches almost nothing. ✅ Adding keyword-style queries gave the control something to say
-(**73%**), and only then did the 18% mean anything.
-
-⚠️ **That defect is real and shipped**: anyone typing a sentence into the bench search gets
-nothing. It is **queue item 3** — cheap, independent of pgvector, and nobody owns it.
-
-## 🔴 Third: TOKEN LENGTH, NOT CHARACTER LENGTH, BREAKS AN EMBEDDING WINDOW
-
-Whole-document embedding failed on **6 of 155** at **1070–2193 chars** while a **6000-char**
-document passed. This product's text (port identifiers, enum values, doc URLs) tokenises at roughly
-**half** the chars-per-token of prose. 🔴 **Two of the six were ground-truth documents** — dropping
-a failed embed silently would have scored the retriever on a corpus with the answers removed, and
-looked green doing it.
-
-## ✅ Item closed earlier: the two functions now reach somebody
-
-**`refusalHeadline`** — `ConnectionBar` derives it, `DocsPopup` renders it above the detail
-sentence. 🔴 **The derivation went into `refusalPlan.ts`, not the component.** That module exists
-because two earlier halves of this same UI rotted in `ConnectionBar`, which needs the node library
-singleton and a drag in flight, so no spec can construct it. A third rule in there would have been
-the same mistake a third time.
-
-**`resetLessonFromPlatform`** — `canReset` gained a **third arm, `'needs-network'`**: a *yes* that
-the synchronous register cannot act on. `models/lessonreset.ts` routes it to the fetch and
-`ProjectsPage.repullFromPlatform` supplies the client. 🔴 **A string discriminant, not a boolean —
-this repo sets no `strict`.** Every surface that decides whether to *offer* Start again now asks
-`isResetOffered`, never `=== 'available'`: that literal was correct with two arms and silently
-became "hide the button for every Community lesson" when the third arrived.
-
-⚠️ **Left open, and it is inherent rather than sloppy:** a learner whose network is down is told so
-**at the launcher, after** the lesson has closed. Whether the platform is reachable cannot be
-answered on disk, and the reset can only run once the project is closed. `resetLessonFromPlatform`
-guarantees nothing was deleted, so they land on an intact lesson with the card's Reset one press
-away — but the confirm now says *"downloaded from NodeGX Community"* so the trip is not a surprise.
-
-## 🔴 The finding of this session: A CALLER-GREP IS A GATE NOTHING ELSE PERFORMS
-
-Both functions were **green, specced, and in one case mutation-checked** — while reaching nobody.
-`resetLessonFromPlatform` had **two** spec files and every row passed throughout the entire period
-the feature did not exist. FB-021 already recorded the shape and it is worth restating: *mutation
-testing proves the spec reads the function; only a caller-grep proves the function reaches a user.*
-
-✅ **So the new specs grade the CHOICE, not the function** — `refusalHeadlineFor` and
-`resetLesson`, both of which fail if the wiring is pulled out. A spec that only exercised
-`resetLessonFromPlatform` would have stayed green through the whole outage, and did.
-
-## 🔴 Second: TWO DEFECTS MY OWN SPECS FOUND IN MY OWN FIX
-
-1. **`|| ''` for a missing source type** rendered *"A `<strong></strong>` output cannot drive a
-   number input"*. I had argued the case was unreachable. **An argument about reachability is not
-   a guarantee about output.** Fixed in `refusalHeadline`, which owns the branching — in the caller
-   it would have had to restate which reasons need a source type, and the copies would drift.
-2. **`!== 'available'`** in `reset()` would have refused with `reason: undefined` — a toast reading
-   "undefined" at the one moment a learner is already stuck — because the new arm carries no
-   `reason`. The compiler then caught the *same shape* in a neighbouring spec whose guard stopped
-   narrowing. Spell the arms out when a union grows.
-
-## ⚠️ The session-readers gate has a rule, and it is not "add the row"
-
-`uni-001/session-readers.test.ts` went red because `ProjectsPage.tsx` now reads the community
-session. Its comment forbids making it green without first answering *does this change what the
-editor can do without an account?* **Answer: no** — the read is unconditional, a signed-out editor
-gets `token: null`, and the re-pull goes out the same. That is recorded in the row, and backed by
-three new behavioural assertions (not gated / token read once / a control proving the checker can
-see a gate on that file at all).
-
-**Blocked on Richard, do not start:** 🆕 **FB-014's external-processor option pair** (local
-embedding model vs hosted API — *not* a cost question; see [FB-014-DESIGN.md](FB-014-DESIGN.md)
-→ AC3), FB-012 and FB-009 (both need *content*), FB-017 scope 2's
-`Source Set`, FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod `ANTHROPIC_API_KEY`
-(⚠️ **intro pricing ends 2026-08-31 — six days**), the 15 lessons' prose, Discord's row in the `?`
-menu, `/rfps` search.
-
-✅ **Nothing is waiting to deploy.** ⚠️ The *stamp on the box* is still relayed from s19's SSH read —
-re-read it before any deploy claim.
-
-## 🔴 The finding of this session: THE COMPLETION MOMENT WAS BEHIND A BLOCKER
-
-The banner rendered correctly, said the right sentence, and its two buttons **could not be
-clicked**. `PopupLayer` puts a full-screen dimmer behind every popout, and FIX-027 §17 — last
-session's own fix — opens a step's instructions on the edge into it. So a learner finishing a
-graded last step had those instructions still open over the bar.
-
-`document.elementFromPoint` at the middle of the banner returned **`popup-layer-blocker`**.
-
-✅ **Carry this: a surface is not delivered until you ask what is ON TOP OF IT.** Reading the DOM,
-the props, or `innerText` all said the banner was there and correct. Only a hit-test found that it
-was unreachable. `elementFromPoint` at the centre of every control you add is two lines and it is
-now the cheapest check I know for "did this actually arrive".
-
-⚠️ **And two orderings needed two fixes.** Finishing *in place* leaves a popout already open → the
-layer closes it on the **edge** into completion. **Re-entering an already-finished lesson** draws
-the banner first and the entry edge opens instructions a moment *later* → `instructionOpenDecision`
-gained `lessonFinished`. **The close cannot reach a popout that does not exist yet, and the
-suppression cannot close one that is already open.** Neither covers the other; I nearly shipped
-only the first.
-
-⚠️ Still open and **inherent to popouts, not to this banner**: a learner who *manually* re-opens a
-finished step's instructions buries the banner again until they dismiss it. Measured. Every popout
-in the editor behaves this way and one click clears it.
-
-## 🔴 Second: A TOKEN NAME IS NOT A COLOUR — I introduced a 1.91:1
-
-I put the banner on `--theme-color-secondary-dim`, reasoning that the one moment a lesson
-congratulates someone should not look like the eight steps before it. **That token is
-`rgb(139,149,161)` — a *light* grey.** Headline **3.04:1**; the refusal sentence **1.91:1**. The
-sentence explaining why *Start again* was switched off was the least readable thing on the bar.
-
-✅ Moved to `--theme-color-bg-3`, the tone the fg tokens are designed against (the pairing
-`.lesson-check` already uses), with the state signal on a primary rule along the top. Re-measured
-in **both themes**: dark 10.84 / 6.81 / 5.85 / 6.94, light 13.33 / 5.07 / 4.61 / 4.57.
-
-⚠️ `tokens:css` passes on this — it checks that a `var(--…)` **names a defined property**, not that
-the pairing is legible. It would have passed the 1.91:1 too.
-
-## ✅ What §19/§20 actually needed, in case it is revisited
-
-- **The moment is decided, not authored.** `isLessonFinished` sits beside `stepFlowAction` in
-  `lessonstepflow.ts` and takes the **same input type**, so the two cannot disagree about which
-  step is last. 🔴 The two lesson shapes finish by **opposite** rules: a graded last step finishes
-  when its conditions hold; a narrative one finishes **on arrival**, because `refresh()` sets
-  `isComplete = false` on every conditionless step. A rule that just asked `isComplete` would
-  report *Log a thing* unfinished forever **while looking correct against the graded lesson** —
-  the one anybody would check.
-- **Two surfaces, because the two shipped lessons end differently.** *State on a page* ends on a
-  graded card with **0 popup buttons** → the bar's banner. *Log a thing* ends on a narrative step
-  shown as a screen-centre **modal**, whose buttons were exactly `['EXIT LESSON']` → `START AGAIN`
-  goes in the modal. A banner behind a modal dimmer is not an offer.
-- **One statement of "can this reset".** `LearningFolderModel.canReset`, with `reset()` as its
-  first caller. The specs assert the **agreement** — same sentence from both — not each answer
-  separately, so a third refusal taught to one of them fails the pair.
-- 🔴 **`Start again` closes the project BEFORE it resets.** `repairFrom` deletes
-  `Learning/<slug>/` and copies a fresh bundle over it, and at the completion moment that
-  directory **is the open project** — a live `ProjectModel` would write its graph back over the
-  fresh copy. Stash the id, `leaveForLauncher`, reset on the launcher's mount. Consumed on read,
-  so React 18's double-invoked effect cannot reset twice.
+- `npm run typecheck:editor`: **0 errors**.
+- `npm run test:main`: **341 files / 5522 specs / 0 failures** (was 340/5495; +1 file, +27 specs).
+- `npm run test:ci`: **`Jasmine: 2849 specs, 4 failures`** — the recorded floor, **all four AIX-006,
+  by name**. ⚠️ Quoted from the summary line, not `$?`: the compound exited **0** while the log's
+  own tail says `lerna ERR! npm run test:ci exited 1`. Both halves of that trap fired in one run.
+  ⚠️ It needed **~11 minutes** and outlived a 600 s tool timeout — background it and poll `pgrep`.
+- `npm run test:platform` was **not** run — nothing under `@noodl/platform-node` changed.
+- `npm run tokens:css` was **not** run — no stylesheet changed.
 
 ## Driving — what worked, exactly
 
@@ -359,23 +184,13 @@ the next call.
 ⚠️ **HMR did not pick up a new method on `LessonLayer.prototype`** — the live instance keeps its
 old prototype. `npm run cdp -- reload` and re-open, then re-wrap; budget ~20s per cycle.
 
-## Gates, this tree (OpenNoodl, `cline-dev`) — 🔴 re-measure, never quote
+## Gate *traps* carried forward — the figures are in the s40 section above
 
-✅ **Session 39 ran `test:platform`** — **5 suites / 27 passed / 3 skipped / 0 failures**, exit 0,
-summary line quoted rather than `$?` (was 4 suites / 22 before this session's new spec file). That
-is the gate covering `@noodl/platform-node`, which is where s39's fix landed. 🔴 **s39 did NOT run
-`test:ci`, `test:main` or `typecheck:editor`** — it changed no editor source, but `filesystem-node.ts`
-is imported by the editor, so **the next session that touches the editor should run them**.
-
-⚠️ **Session 38 ran NO gates, deliberately, and the figures below are session 37's.** It changed
-**no source** — the commit is markdown plus python under `dev-docs/`, and `lint` is scoped to
-`packages/noodl-editor/src` while nothing in `package.json` references `dev-docs` at all. So no
-gate was implicated. **Do not read the numbers below as re-confirmed on 08-25.**
-
-- `npm run test:main`: **340 files / 5495 specs / 0 failures** (was 339/5478; +1 file, +17 specs).
-- `npm run typecheck:editor`: **0 errors**, three times.
-- `npm run tokens:css`: clean — 319 stylesheets. ⚠️ **It cannot see a contrast failure**; see above.
-- `npm run test:ci`: see the session's own note below — **quote the summary line, never `$?`**.
+🔴 **Figures older than the s40 section are superseded; the traps below are not.**
+✅ For reference, `test:platform` was **5 suites / 27 passed / 3 skipped / 0 failures** at s39, and
+`tokens:css` clean over 319 stylesheets at s37. Neither was implicated by s40's change.
+⚠️ **`tokens:css` cannot see a contrast failure** — it checks that a `var(--…)` names a defined
+property, nothing more. It would have passed the 1.91:1 this phase shipped.
 - 🔴 **`tsc -p packages/noodl-editor/tsconfig.tests-main.json` is NOT a gate and reports 31 errors**
   — unchanged, none ours. It is only ts-jest's `tsconfig`; no npm script or workflow runs it.
 - 🔴 **No gate in this repo compiles `LessonItem.jsx` or `LessonLayerView.jsx`.** They are `.jsx`,
@@ -386,7 +201,7 @@ gate was implicated. **Do not read the numbers below as re-confirmed on 08-25.**
   **boolean discriminant does not narrow a union**. `ResetAvailability` started as
   `{available:true} | {available:false; reason}` and a caller reading `.reason` would not compile.
   Use a **string** discriminant, as `ResetLessonOutcome` beside it already does. The specs found
-  this, which is what they are for.
+  this, which is what they are for. 🆕 s40's `CreateFromTemplateOutcome` follows the same rule.
 
 ## Still open, owned by nobody
 
