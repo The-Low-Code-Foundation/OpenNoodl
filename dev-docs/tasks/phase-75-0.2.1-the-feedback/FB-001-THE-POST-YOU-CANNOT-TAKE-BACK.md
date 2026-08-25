@@ -296,15 +296,37 @@ The confirm step (`0679ccc7`) shipped with `tests-unit` and `typecheck:editor` g
 a `test:ci` run; the handover recorded that gate as not-re-measured. It has since been measured on a
 tree containing it:
 
-**`Jasmine: 2849 specs, 4 failures`, seed `49062`, run 10:13–10:26 on 2026-08-25** (session 25, for
+**`Jasmine: 2849 specs, 4 failures`, seed `49062`, run 10:13–10:26 on 2026-08-25** (session 26, for
 FB-017 AC4 — this task was simply along for the ride). Spec count identical to the 08-19 floor;
 all four failures are `AIX-006 style vocabulary`, a family the floor already carried. **No new
 failure names, and nothing in the community/sidebar/dialog area.**
 
-⚠️ **Not a new floor**, and the reason is worth keeping: different seed (`49062` vs `39393`), and
-the floor's other six failures — 2× AI model registry, 1× AIX-011, 3× SUB-011 expression params —
-are the known seed-sensitive ones. ✅ That session checked they had actually **run** rather than
-been skipped (16 / 60 / 6 spec-starts), which is the check that separates *a real pass* from
-*a pass that never executed*.
+🔴 **CORRECTED — the paragraph that stood here was wrong, and wrong in the dangerous direction.**
+It said the floor's other six failures were *"the known seed-sensitive ones"* and that this run
+therefore proved nothing about them. They were not seed luck: **they were fixed on 2026-08-21**, by
+`dae76da8` (the shipped fx expression form → 3× `SUB-011`), `a46b52ba` (a gateway user's default
+model → 2× `AI model registry`) and `ea402850` (the D13 double-report → 1× `AIX-011 AAQ-005`).
+`4c038fa7` recorded the measurement the same afternoon — *"2849 specs, 6 failures… the 3× SUB-011
+and 2× AI model registry are gone by name"*.
+
+✅ **So the floor is 4 — all `AIX-006 style vocabulary` — and has been since 08-21.** The `10` this
+file compared against was already four days stale when it was written.
+
+🔴 **Why that matters more than an ordinary error: a stale-HIGH floor HIDES regressions.** Quoting
+10 means six genuinely new failures could land and still read as *under the floor*. A stale-low
+floor merely cries wolf; this one goes quiet.
+
+⚠️ **And the reasoning error is one this phase keeps repeating: when failures VANISH, read
+`git log` before crediting the seed.** Seed-sensitivity explained the observation — and so did
+"somebody fixed them". Both fitted; only the commit log discriminated, and nobody looked.
+**A reading that FITS is not one that EXCLUDES.**
+
+⚠️ `AIX-011 criterion 7 — createPlanDocWriter on real files` is a **timing** flake (undo writes
+settled on a 30 ms `setTimeout` a loaded runner loses), never one of the ten. It ran and passed
+here; expect it to come and go with machine load rather than treating its absence as a fix.
+
+✅ That session checked the previously-failing specs had actually **run** rather than been skipped
+(16 / 60 / 6 spec-starts) — the check that separates *a real pass* from *a pass that never
+executed*.
 
 ⚠️ The only commit inside the run window was `4629dceb`, docs-only, so it cannot affect the reading.
