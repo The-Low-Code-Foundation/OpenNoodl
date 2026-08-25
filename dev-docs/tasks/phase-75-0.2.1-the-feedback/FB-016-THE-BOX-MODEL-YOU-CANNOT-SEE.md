@@ -55,6 +55,22 @@ readable on the viewer side where the highlight div already lives:
    verify Jordan's case actually renders rounded while fixing it, and file separately if it
    truly doesn't.
 
+   ✅ **That verification is already done — 2026-08-25, session 26 confirming session 25's
+   measurement.** It does not need repeating, and there is nothing to file separately. Hit-testing
+   the corner pixel of a 200×200 box at 40px radius in the editor's own renderer (recorded in full
+   in FB-017): an `<img>` carrying the radius itself, with nothing clipping it, **does not answer at
+   its corner** — it is genuinely rounded — while the same `<img>` at radius `0` does, and every
+   box's centre answered throughout. **Jordan's element rounds; the square outline on top of it is
+   the overlay, exactly as suspected.** So scope 5 is a pure overlay fix with no upstream render bug
+   behind it, and the radius to copy is the one on the element itself.
+   ⚠️ **But do not copy the radius from the element in every case.** The same measurement found the
+   opposite arrangement — a *container* with the radius and a square child at `overflow: visible` —
+   answers **the child** at the corner: the corner really is square there, because the child paints
+   over it. An overlay that blindly mirrors `border-radius` would round itself against a corner that
+   is visibly square and start a *second* class of false report. Mirror the radius only where the
+   element actually clips: itself if it is replaced (`<img>`), otherwise only under a clipping
+   `overflow`.
+
 ## Acceptance criteria
 
 - AC1: hovering in design mode shows margin/padding/content regions with values; matches

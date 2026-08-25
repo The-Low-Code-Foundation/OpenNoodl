@@ -46,6 +46,35 @@ Measured on the shipped catalog (`noodl-types/src/node-catalog.json`, 175 types)
 So the population this task serves is **328 ports that are live-but-hidden**, not a handful that
 don't exist. Width/Height are `basic`.
 
+#### ✅ Re-verified independently 2026-08-25 (session 26) — the numbers hold, on three legs
+
+The handover asked for these to be re-checked before anyone builds on them. **They are correct.**
+Re-derived from the artefacts, not from this file:
+
+| leg | checked against | result |
+|---|---|---|
+| the count | `node-catalog.json`, 175 types, counted fresh | **328 basic + 21 extended = 349**, exact |
+| the default | `nodelibraryexport.ts:150` | `name: dp.name \|\| 'conditionalports/basic'` — verbatim |
+| the meaning | `portConnectivity.ts:28-29` | `extended` = *"the port is not on the node at all"*; a plain rule *"only suppresses the property row"* — verbatim |
+
+✅ **The catalog does carry the gate mode**, so this is checkable without reading the viewer source:
+`declaredPortGroups[].name`. 135 groups are **unnamed** (→ `basic`) and carry **328** input ports;
+**21** groups are named `conditionalports/extended` and carry **21**. Two other named group kinds
+exist — `expand/basic` (2) and `namedports/list` (7) — and they carry **0 input ports each**, which
+is the only reason the basic/extended split is a clean partition of all 349. A future catalog entry
+under either name would break that silently.
+
+🔴 **A conflation to avoid when re-running this: 21 is both the group count and the port count, by
+coincidence.** Every `extended` group happens to hold exactly one input port today; every `basic`
+group averages 2.4. Deriving the port population from group counts reproduces the right number now
+and the wrong one later. **Count ports, never groups.**
+
+⚠️ **All 21 `extended` ports are on data/logic nodes** — `DbModel2`, `Model2`, `SetModelProperties`,
+`For Each`, `Static Data`, `noodl.cloud.response` and siblings (`modelId`, `repeaterComponent`,
+`template`, `json`/`csv`, `params`). **Not one is a visual or layout port.** So every gated port an
+author meets while laying a page out — Width, Height, the border and scroll families — is in the
+328. The motivating complaint is squarely in the majority case, not an edge of it.
+
 Driven 2026-08-24 on `NodeGX test projects/fb021-drive` (five Groups, one selector for every arm):
 
 | node | `sizeMode` | `width` wired | Width row | Height row | Min Width row | chips |
