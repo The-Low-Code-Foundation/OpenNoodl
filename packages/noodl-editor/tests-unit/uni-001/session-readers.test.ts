@@ -362,8 +362,13 @@ describe('AC4 — and the sections NAT-012 moved to the launcher withhold nothin
    * whatever they report.
    */
   it('the checker can SEE a gate on this file — the mutation arm', () => {
-    const gated = communityPage.replace('<CommunitySection', '{view.viewer && (<CommunitySection');
-    expect(isGated(gated, 'title="Bench"', VIEWER_OPENER)).toBe(true);
+    // ⚠️ The anchor was `title="Bench"` until FB-002. The Bench stopped being a `CommunitySection`
+    // when it grew a filter — its pills belong inside the card and above the rows, which that
+    // component cannot express — so the heading is now plain markup and the mount is the stable
+    // anchor. 🔴 The spec did not silently pass when the old one vanished: `isGated` threw, which
+    // is the whole reason this file can be trusted after a rename.
+    const gated = communityPage.replace('<CommunityBenchView', '{view.viewer && (<CommunityBenchView');
+    expect(isGated(gated, '<CommunityBenchView', VIEWER_OPENER)).toBe(true);
   });
 
   it('and on the real source, nothing on the page is viewer-gated at all', () => {
@@ -378,8 +383,9 @@ describe('AC4 — and the sections NAT-012 moved to the launcher withhold nothin
       tutorials: isGated(communityPage, 'title="Tutorials"', VIEWER_OPENER),
       replays: isGated(communityPage, 'title="Replays"', VIEWER_OPENER),
       // The bench came with them as a tab rather than a heading — FB-006. Named so this row
-      // reads as the whole of what the launcher draws, not a leftover pair.
-      bench: isGated(communityPage, 'title="Bench"', VIEWER_OPENER)
+      // reads as the whole of what the launcher draws, not a leftover pair. ⚠️ FB-002 changed
+      // the anchor; see the mutation arm above for why.
+      bench: isGated(communityPage, '<CommunityBenchView', VIEWER_OPENER)
     }).toEqual({ tutorials: false, replays: false, bench: false });
   });
 });

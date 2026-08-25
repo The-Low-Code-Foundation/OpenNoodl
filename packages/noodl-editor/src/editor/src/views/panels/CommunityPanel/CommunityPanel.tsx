@@ -93,14 +93,10 @@ import { platform } from '@noodl/platform';
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 
 import {
+  CommunityBenchView,
   CommunityDensity,
   CommunityProfileView,
-  CommunityRow,
-  CommunitySectionBody,
-  CommunityThreadView,
-  metaLine,
-  relativeTime,
-  replyLatency
+  CommunityThreadView
 } from '@noodl-core-ui/components/community';
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -134,7 +130,7 @@ function openCommunity(): void {
 }
 
 export function CommunityPanel() {
-  const { view, isRefreshing, refresh } = useCommunityMirror();
+  const { view, isRefreshing, refresh, selectBenchFilter } = useCommunityMirror();
   // NAT-007 — the same hook the launcher tab uses. See `useCommunityThread` for why the open/
   // closed state and the cache are shared rather than duplicated per surface.
   const { pane, openThread } = useCommunityThread();
@@ -229,29 +225,24 @@ export function CommunityPanel() {
 
       <ScrollArea>
         <Box hasYSpacing UNSAFE_style={{ width: '100%' }}>
+          {/* 🔴 FB-002 AC3/AC4 — the same list the launcher tab draws, from the same view model
+              and the same composer, at panel density. The empty line, the row meta and the four
+              states all moved into `CommunityBenchView` unchanged; what is new is the pair of
+              pills above them and the default that puts answered questions behind one of them.
+
+              ⚠️ The rail holds its OWN `benchState` — two mounts, two `useCommunityMirror`s — so
+              AC4 is an agreement about the default and the vocabulary, not one shared cursor.
+              Changing that would mean lifting the hook out of both surfaces, which is a bigger
+              change than the defect asks for and is written up in the task file. */}
           <Section title="Discussions" variant={SectionVariant.Panel} hasGutter>
-            <CommunitySectionBody
-              state={view.threads}
-              emptyLine="Questions asked from the editor land here. Right-click any node and choose “Ask about this node”."
-              onRetry={refresh}
+            <CommunityBenchView
+              view={view.bench}
               density={CommunityDensity.Panel}
-            >
-              {(threads) =>
-                threads.map((thread) => (
-                  <CommunityRow
-                    key={thread.id}
-                    density={CommunityDensity.Panel}
-                    title={thread.title}
-                    // AC2. Both fields were in the view model from the first commit and neither
-                    // surface drew either. 🔴 `no reply yet` is the row worth scanning for, and
-                    // the one the health readout above counts as `unreplied`.
-                    meta={metaLine([relativeTime(thread.createdAt), replyLatency(thread.firstReplyMinutes)])}
-                    // AC1 — in place. `openExternal` is no longer the primary action here.
-                    onClick={() => openThread(thread.id)}
-                  />
-                ))
-              }
-            </CommunitySectionBody>
+              onSelectFilter={selectBenchFilter}
+              // AC1 — in place. `openExternal` is no longer the primary action here.
+              onOpenThread={openThread}
+              onRetry={refresh}
+            />
           </Section>
 
           {/* 🔴 TUT-004 — the tutorials you can install into THIS project. ⚠️ Its AC1 positioned

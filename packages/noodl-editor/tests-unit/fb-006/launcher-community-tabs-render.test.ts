@@ -22,6 +22,7 @@ import {
 import { COMMUNITY_TABS, type CommunityTabId } from '@noodl-core-ui/preview/launcher/Launcher/views/communityTabs';
 
 import { byClass, render, stripComments, text, walk } from '../support/renderElements';
+import { benchFrom, forumOf, threadOf } from '../support/benchFixture';
 
 const CORE_UI = join(__dirname, '../../../noodl-core-ui/src');
 
@@ -38,7 +39,9 @@ function shown(overrides: Partial<Extract<CommunityMirrorView, { surface: 'shown
     surface: 'shown',
     viewer: { handle: 'rosborne' },
     standing: { points: 120, badges: 2 },
-    threads: { state: 'items', items: [{ id: 't1', title: THREAD_TITLE, createdAt: ago(3 * HOUR), firstReplyMinutes: 41 }] },
+    bench: benchFrom(
+      forumOf([threadOf({ id: 't1', title: THREAD_TITLE, createdAt: ago(3 * HOUR), firstReplyMinutes: 41 })])
+    ),
     articles: { state: 'items', items: [{ slug: 'a1', title: ARTICLE_TITLE, summary: 'Static Data into a For Each.', kind: 'tutorial' }] },
     replays: { state: 'items', items: [{ slug: 'r1', title: REPLAY_TITLE, heldOn: ago(200 * HOUR), videoUrl: null, description: 'The logic node.' }] },
     health: {

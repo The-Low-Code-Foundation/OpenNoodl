@@ -50,6 +50,7 @@ import classNames from 'classnames';
 import React, { useState } from 'react';
 
 import {
+  CommunityBenchView,
   CommunityDirectoryView,
   CommunityProfileView,
   CommunityRow,
@@ -58,10 +59,10 @@ import {
   absoluteDate,
   kindLabel,
   metaLine,
-  relativeTime,
-  replyLatency
+  relativeTime
 } from '@noodl-core-ui/components/community';
 import type {
+  CommunityBenchViewModel,
   CommunityDirectoryViewModel,
   CommunityProfileState,
   CommunityReplyBox,
@@ -87,17 +88,17 @@ import { communityTabs, type CommunityTabId } from '@noodl-core-ui/preview/launc
  */
 export type { CommunitySectionState };
 
-/**
- * ⚠️ **`externalId` was here and the platform has never sent it** — retired 2026-08-19 with the
- * declaration in `communityapi.ts`, which says what it cost. Both surfaces built a browser URL
- * out of it and opened `/bench/undefined`.
- */
-export type CommunityThreadRow = {
-  id: string;
-  title: string;
-  createdAt: string;
-  firstReplyMinutes: number | null;
-};
+/*
+  ⚠️ **`CommunityThreadRow` was declared here** until FB-002 and is now `CommunityBenchRow`, in
+  `components/community/CommunityBenchView.tsx` — next to the component that draws it, because the
+  Bench grew a filter and the row grew the `accepted` field that filter reads. Both consumers
+  import it from the vocabulary barrel; a re-export here would be the third spelling of one type,
+  which is the copy this file's header warns about.
+
+  ⚠️ **`externalId` was on that type and the platform has never sent it** — retired 2026-08-19 with
+  the declaration in `communityapi.ts`, which says what it cost. Both surfaces built a browser URL
+  out of it and opened `/bench/undefined`.
+*/
 
 export type CommunityArticleRow = { slug: string; title: string; summary: string | null; kind: string };
 
@@ -134,7 +135,12 @@ export type CommunityMirrorView =
       standing: { points: number; badges: number } | null;
       replays: CommunitySectionState<CommunityReplayRow>;
       articles: CommunitySectionState<CommunityArticleRow>;
-      threads: CommunitySectionState<CommunityThreadRow>;
+      /**
+       * FB-002 — the Bench, with its own filter, counts and bound line rather than a bare
+       * section state. See `mirrorview.composeBench`: the rows and both pill counts come out of
+       * one call, so a count cannot disagree with what clicking it gives you.
+       */
+      bench: CommunityBenchViewModel;
       health: CommunityHealthReading | null;
     };
 
@@ -198,6 +204,16 @@ export interface LauncherCommunityHostState {
   thread?: LauncherCommunityThreadPane | null;
   /** NAT-007 — the thread's own id. Opens it IN PLACE; see {@link thread}. */
   onOpenThread?: (threadId: string) => void;
+  /**
+   * FB-002 — which Bench pill the reader chose. The key is a `BenchState`
+   * (`'waiting' | 'solved'`), kept a `string` here because this package cannot import the
+   * editor's model and `CommunityFilterPill.key` is what it arrives as.
+   *
+   * ⚠️ Optional for the reason {@link onOpenThread} is, and with the same consequence: a host
+   * that does not wire it draws pills that do nothing. `useCommunityMirror` wires it, and both
+   * surfaces take their pane from there.
+   */
+  onSelectBenchFilter?: (key: string) => void;
   /**
    * NAT-008 — the directory.
    *
@@ -276,6 +292,7 @@ export function CommunityTab({
   activeTab,
   onSelectTab,
   onOpenThread,
+  onSelectBenchFilter,
   onOpenArticle,
   onOpenReplay,
   onOpenCommunity
@@ -384,27 +401,31 @@ export function CommunityTab({
       {plan.active && <p className={css['Lead']}>{plan.active.lead}</p>}
 
       {plan.active?.id === 'bench' && (
-        <CommunitySection
-          title="Bench"
-          showTitle={alone}
-          state={view.threads}
-          emptyLine="Questions asked from the editor land here. Right-click any node and choose “Ask about this node”."
-          onRetry={onRefresh}
-        >
-          {(threads) =>
-            threads.map((thread) => (
-              <CommunityRow
-                key={thread.id}
-                title={thread.title}
-                // AC2. Both of these were in the view model from the first commit and neither was
-                // drawn. 🔴 `firstReplyMinutes === null` is "no reply yet" — the row worth scanning
-                // for, and the one the health readout counts as `unreplied`.
-                meta={metaLine([relativeTime(thread.createdAt), replyLatency(thread.firstReplyMinutes)])}
-                onClick={() => onOpenThread?.(thread.id)}
-              />
-            ))
-          }
-        </CommunitySection>
+        /*
+          🔴 FB-002 — the card is drawn here rather than through `CommunitySection`, for the
+          reason the People tab below gives in full: the filter pills belong INSIDE the card and
+          above the rows, and `CommunitySection` renders the body itself. The count it would have
+          drawn is `view.bench.summary`, which says "3 of 12 questions" — a more honest number on
+          a filtered list than a bare item count.
+
+          ⚠️ The empty line, the row meta and the four states are all unchanged; they moved into
+          `CommunityBenchView` so that the rail panel draws exactly the same list.
+        */
+        <section className={css['Section']}>
+          <div className={css['SectionCard']}>
+            {alone && (
+              <div className={css['SectionHead']}>
+                <h3 className={css['SectionTitle']}>Bench</h3>
+              </div>
+            )}
+            <CommunityBenchView
+              view={view.bench}
+              onSelectFilter={(key) => onSelectBenchFilter?.(key)}
+              onOpenThread={(threadId) => onOpenThread?.(threadId)}
+              onRetry={onRefresh}
+            />
+          </div>
+        </section>
       )}
 
       {plan.active?.id === 'tutorials' && (

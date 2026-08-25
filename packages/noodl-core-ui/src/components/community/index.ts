@@ -41,6 +41,12 @@ export type {
   CommunityDirectoryViewProps,
   CommunityFilterPill
 } from './CommunityDirectoryView';
+export { CommunityBenchView } from './CommunityBenchView';
+export type {
+  CommunityBenchRow,
+  CommunityBenchView as CommunityBenchViewModel,
+  CommunityBenchViewProps
+} from './CommunityBenchView';
 export { CommunityProfileView } from './CommunityProfileView';
 export type {
   CommunityBadgeView,

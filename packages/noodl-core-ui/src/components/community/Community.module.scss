@@ -1004,7 +1004,13 @@
 
 /* ── The directory ─────────────────────────────────────────────────────────────────────── */
 
-.Directory {
+/*
+  ⚠️ FB-002 — the Bench list carries the SAME controls-inside-the-card arrangement as the
+  directory, so it shares the gutter rule below rather than restating it. Two selectors, one
+  set of numbers: a second copy is a second thing to keep in step with `.Body`'s padding.
+*/
+.Directory,
+.Bench {
   display: block;
 }
 
@@ -1027,12 +1033,14 @@
 .ChipRow,
 .DirectorySummary,
 .DirectoryBound {
-  .Directory.is-density-page & {
+  .Directory.is-density-page &,
+  .Bench.is-density-page & {
     padding-left: var(--spacing-3-5);
     padding-right: var(--spacing-3-5);
   }
 
-  .Directory.is-density-panel & {
+  .Directory.is-density-panel &,
+  .Bench.is-density-panel & {
     padding-left: var(--spacing-3);
     padding-right: var(--spacing-3);
   }

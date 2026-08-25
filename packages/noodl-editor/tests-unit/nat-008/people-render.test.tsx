@@ -30,6 +30,7 @@ import { threadDetailView } from '@noodl-models/community/threadview';
 import { CommunityDensity } from '@noodl-core-ui/components/community';
 
 import { byClass, render, text, walk } from '../support/renderElements';
+import { benchFrom, forumOf } from '../support/benchFixture';
 
 const noop = () => undefined;
 
@@ -301,7 +302,7 @@ describe('NAT-008 — D15 draws nothing, with a permitted control beside it', ()
         standing: null,
         replays: { state: 'empty' },
         articles: { state: 'empty' },
-        threads: { state: 'empty' },
+        bench: benchFrom(forumOf([])),
         health: null
       },
       isRefreshing: false,
@@ -354,7 +355,7 @@ describe('NAT-008 — D15 draws nothing, with a permitted control beside it', ()
         standing: null,
         replays: { state: 'empty' },
         articles: { state: 'empty' },
-        threads: { state: 'empty' },
+        bench: benchFrom(forumOf([])),
         health: null
       },
       isRefreshing: false,

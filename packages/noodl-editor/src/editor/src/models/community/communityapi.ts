@@ -193,7 +193,42 @@ export type ForumThread = {
   title: string;
   createdAt: string;
   firstReplyMinutes: number | null;
+  /**
+   * FB-002 — a thread with an accepted answer. `accepted_post_id` being non-null on the
+   * platform, which is the platform's definition of *answered* and is **not** "has any reply":
+   * `replyCount` and `firstReplyMinutes` both move without this ever becoming true.
+   *
+   * 🔴 **Verified on the wire, not read off the platform's source.** The header above records
+   * what the alternative cost twice, so: `curl https://community.nodegx.io/api/v1/community/threads`
+   * on 2026-08-25 answered `200` with two rows carrying all eight fields `mirrorThreads` sends,
+   * one `"accepted":true` and one `"accepted":false`.
+   *
+   * ⚠️ **The other three — `section`, `authorHandle`, `replyCount` — are on the wire and stay
+   * undeclared, deliberately.** Nothing draws them. This file's two scars are both fields that
+   * were *declared* and then read as `undefined` or drawn by nobody; a field declared here is a
+   * promise that something downstream keeps, so the list gets one when something needs one.
+   */
+  accepted: boolean;
 };
+
+/**
+ * 🔴 **What `threads()` can see, and therefore what any filter over it is filtering.**
+ *
+ * `mirrorThreads` calls `listThreads(sql, { limit: 100 })` and sends a bare `{threads: [...]}`
+ * — no total, no `nextOffset`, nothing to follow. So unlike `readDirectory`, which walks the
+ * people endpoint's pages to the end, this client cannot walk anything: it gets the 100 newest
+ * threads and that is the whole population every client-side count is computed over.
+ *
+ * ⚠️ **This number is a copy of the platform's, and nothing checks that they agree.** If the
+ * platform *raises* its limit we simply hold more than we claim, which is harmless. If it
+ * *lowers* it, `composeBench` would stop drawing its bound line while the list really is
+ * partial — the silent half of the failure. The honest fix is for the route to send the window
+ * it used; until it does, this constant is the assumption, written down where the filter that
+ * depends on it can see it.
+ *
+ * @see `nodegx-community/src/lib/mirror.ts` — `mirrorThreads`
+ */
+export const MIRROR_THREAD_WINDOW = 100;
 
 /**
  * 🔴 **THE `{forum: 'absent'}` ARM IS GONE, 2026-08-19, and it was found by driving rather than

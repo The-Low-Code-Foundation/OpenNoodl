@@ -1376,6 +1376,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
               { ...communityThread.pane, onOpenPerson: communityPeople.openPerson }
             : null,
           onOpenThread: communityThread.openThread,
+          // FB-002 AC3 — the Bench pills. The default is the hook's, so this tab and the editor's
+          // rail panel open on the same list for the same account (AC4).
+          onSelectBenchFilter: communityMirror.selectBenchFilter,
           // NAT-008 AC1/AC2. ⚠️ `people` is `null` when D15 refused this viewer, which the tab
           // draws as nothing at all — see `LauncherCommunityHostState.people`.
           people: communityPeople.people,

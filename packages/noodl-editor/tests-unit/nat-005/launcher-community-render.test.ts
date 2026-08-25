@@ -43,6 +43,7 @@ import {
 import type { CommunityTabId } from '@noodl-core-ui/preview/launcher/Launcher/views/communityTabs';
 
 import { byClass, render, stripComments, text, walk } from '../support/renderElements';
+import { benchFrom, forumOf, threadOf } from '../support/benchFixture';
 
 const CORE_UI = join(__dirname, '../../../noodl-core-ui/src');
 
@@ -51,9 +52,11 @@ const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
 
+// ⚠️ FB-002 — both WAITING, so the default filter shows both and every count below still counts
+// what it counted before. The filter's own behaviour is graded in `fb-002/`, not here.
 const THREADS = [
-  { id: 't1', title: 'Why does my For Each render one row?', createdAt: ago(3 * DAY), firstReplyMinutes: 41 },
-  { id: 't2', title: 'Deploy writes twice', createdAt: ago(2 * HOUR), firstReplyMinutes: null }
+  threadOf({ id: 't1', title: 'Why does my For Each render one row?', createdAt: ago(3 * DAY), firstReplyMinutes: 41 }),
+  threadOf({ id: 't2', title: 'Deploy writes twice', createdAt: ago(2 * HOUR), firstReplyMinutes: null })
 ];
 const ARTICLES = [{ slug: 'a1', title: 'Wiring a repeater', summary: 'Static Data into a For Each.', kind: 'tutorial' }];
 const REPLAYS = [{ slug: 'r1', title: 'Weekly call', heldOn: ago(9 * DAY), videoUrl: null, description: 'The logic node.' }];
@@ -70,7 +73,7 @@ function shown(overrides: Partial<Extract<CommunityMirrorView, { surface: 'shown
     surface: 'shown',
     viewer: { handle: 'rosborne' },
     standing: { points: 120, badges: 2 },
-    threads: { state: 'items', items: THREADS },
+    bench: benchFrom(forumOf(THREADS)),
     articles: { state: 'items', items: ARTICLES },
     replays: { state: 'items', items: REPLAYS },
     health: HEALTH,
@@ -142,12 +145,14 @@ describe('AC5 — D15 refused this viewer, so the tab draws NOTHING', () => {
 // ── AC1: the four states ──────────────────────────────────────────────────────────────────
 
 describe('AC1 — the four section states are still four, and still distinguishable', () => {
-  const of = (state: CommunityMirrorView extends never ? never : any) => draw(shown({ threads: state }));
+  // ⚠️ FB-002 — the four states are now the four values of the READ the editor holds, put through
+  // the real composer. `loading` is `undefined` because that is literally what "not asked yet" is.
+  const of = (read: Parameters<typeof benchFrom>[0]) => draw(shown({ bench: benchFrom(read) }));
 
-  const loading = of({ state: 'loading' });
-  const items = of({ state: 'items', items: THREADS });
-  const empty = of({ state: 'empty' });
-  const unreachable = of({ state: 'unreachable', detail: 'ENOTFOUND community.nodegx.io' });
+  const loading = of(undefined);
+  const items = of(forumOf(THREADS));
+  const empty = of(forumOf([]));
+  const unreachable = of({ outcome: 'unreachable', status: 0, detail: 'ENOTFOUND community.nodegx.io' });
 
   it('every one of the four draws something', () => {
     for (const tree of [loading, items, empty, unreachable]) expect(tree).not.toBeNull();
@@ -203,7 +208,7 @@ describe('AC1 — the four section states are still four, and still distinguisha
 // ── AC3: emptyLine ────────────────────────────────────────────────────────────────────────
 
 describe('AC3 — emptyLine is required and per-section', () => {
-  const nothing = shown({ threads: { state: 'empty' }, articles: { state: 'empty' }, replays: { state: 'empty' } });
+  const nothing = shown({ bench: benchFrom(forumOf([])), articles: { state: 'empty' }, replays: { state: 'empty' } });
   const LIST_TABS: CommunityTabId[] = ['bench', 'tutorials', 'replays'];
   // FB-006: one empty section per tab rather than three down one page.
   const emptyLines = LIST_TABS.map((tab) => byClass(on(tab, nothing), 'StateLine').map((n) => n.ownText));
@@ -258,10 +263,9 @@ describe('AC2 — rows draw the metadata the old UI threw away', () => {
     const broken = on(
       'bench',
       shown({
-        threads: {
-          state: 'items',
-          items: [{ id: 'b', title: 'A thread', createdAt: 'not a date', firstReplyMinutes: -1 }]
-        }
+        bench: benchFrom(
+          forumOf([threadOf({ id: 'b', title: 'A thread', createdAt: 'not a date', firstReplyMinutes: -1 })])
+        )
       })
     );
     expect(text(broken)).not.toContain('NaN');
@@ -352,7 +356,7 @@ describe('a row is operable without a mouse', () => {
   });
 
   it('and so are the retry link and the two page buttons', () => {
-    const unreachable = draw(shown({ threads: { state: 'unreachable', detail: 'ETIMEDOUT' } }));
+    const unreachable = draw(shown({ bench: benchFrom({ outcome: 'unreachable', status: 0, detail: 'ETIMEDOUT' }) }));
     for (const cls of ['RetryButton', 'GhostButton', 'OutlineButton']) {
       const found = byClass(unreachable, cls);
       expect([cls, found.length > 0, found.every((n) => n.type === 'button')]).toEqual([cls, true, true]);
@@ -377,8 +381,15 @@ describe('🔴 the rail panel and the launcher tab draw the SAME components', ()
     // found: the launcher drew titles while throwing away every field the rail had too.
     for (const [name, source] of [['panel', panel], ['tab', tab]] as const) {
       expect([name, source.includes("@noodl-core-ui/components/community")]).toEqual([name, true]);
-      expect([name, source.includes('CommunityRow')]).toEqual([name, true]);
+      // 🔴 FB-002 — the Bench list is now ONE component on both surfaces rather than two spellings
+      // of the same rows, which is the arrangement that let its filter be added in one place. This
+      // is a stronger claim than the old `includes('CommunityRow')`: `CommunityBenchView` is where
+      // the row AND the four states now live for this list.
+      expect([name, source.includes('CommunityBenchView')]).toEqual([name, true]);
     }
+    // ⚠️ The tab still names the row itself, for tutorials and replays — those lists have no
+    // filter and no composite. The rail draws neither section, so it no longer names it.
+    expect(tab.includes('CommunityRow')).toBe(true);
   });
 
   it('and neither has grown a second copy of the four-state switch', () => {

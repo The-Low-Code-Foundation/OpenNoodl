@@ -31,7 +31,12 @@ import {
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 import { readCommunitySession, type CommunitySession } from '@noodl-models/community/communitysession';
 
-import { composeMirror, type MirrorView } from '@noodl-models/community/mirrorview';
+import {
+  BENCH_DEFAULT_STATE,
+  composeMirror,
+  type BenchState,
+  type MirrorView
+} from '@noodl-models/community/mirrorview';
 import { onCommunityChanged } from '../models/community/communitychanged';
 
 const POLL_EVERY_MS = 60_000;
@@ -41,7 +46,20 @@ export type CommunityMirror = {
   /** True while a refresh is in flight, so the button can say so. */
   isRefreshing: boolean;
   refresh: () => void;
+  /**
+   * FB-002 — choose a Bench pill.
+   *
+   * ⚠️ Takes a `string` because that is what `CommunityFilterPill.key` is by the time a click
+   * comes back from core-ui, and it is validated here rather than cast: an unknown key leaves the
+   * selection alone. A cast would make a typo in a `data-test` selector look like a working
+   * filter that happens to show nothing.
+   */
+  selectBenchFilter: (key: string) => void;
 };
+
+function isBenchState(key: string): key is BenchState {
+  return key === 'waiting' || key === 'solved';
+}
 
 export function useCommunityMirror(): CommunityMirror {
   /** `undefined` = the store has not answered · `null` = answered, signed out. */
@@ -50,10 +68,22 @@ export function useCommunityMirror(): CommunityMirror {
   const [home, setHome] = useState<Read<CommunityHome> | undefined>(undefined);
   const [forum, setForum] = useState<Read<ForumState> | undefined>(undefined);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  /**
+   * FB-002 — which Bench pill is on, for this mount.
+   *
+   * 🔴 **Not persisted, and not shared between the rail panel and the launcher tab.** AC4 asks
+   * the two surfaces to show *the same default for the same account*, which they do because they
+   * both start here. Sharing the live cursor would mean lifting this hook above both, and a
+   * remembered filter is a different promise from a defaulted one — see the task file.
+   */
+  const [benchState, setBenchState] = useState<BenchState>(BENCH_DEFAULT_STATE);
   /** Bumped by `refresh()`, to re-read the store and re-pull. */
   const [generation, setGeneration] = useState(0);
 
   const refresh = useCallback(() => setGeneration((n) => n + 1), []);
+  const selectBenchFilter = useCallback((key: string) => {
+    if (isBenchState(key)) setBenchState(key);
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -119,8 +149,9 @@ export function useCommunityMirror(): CommunityMirror {
   useEffect(() => onCommunityChanged(() => refresh()), [refresh]);
 
   return {
-    view: composeMirror({ me, home, forum, session: session === undefined ? undefined : session }),
+    view: composeMirror({ me, home, forum, session: session === undefined ? undefined : session, benchState }),
     isRefreshing,
-    refresh
+    refresh,
+    selectBenchFilter
   };
 }

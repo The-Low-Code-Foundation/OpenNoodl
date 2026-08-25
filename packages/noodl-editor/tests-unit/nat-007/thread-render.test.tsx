@@ -33,6 +33,7 @@ import {
 } from '@noodl-core-ui/preview/launcher/Launcher/views/Community';
 
 import { byClass, render, stripComments, text, walk } from '../support/renderElements';
+import { benchFrom, forumOf, threadOf } from '../support/benchFixture';
 
 const SRC = join(__dirname, '../../src/editor/src');
 
@@ -387,10 +388,9 @@ describe('AC1 — the launcher tab opens a thread in place', () => {
     surface: 'shown',
     viewer: { handle: 'rosborne' },
     standing: null,
-    threads: {
-      state: 'items',
-      items: [{ id: 't-uuid', title: 'A thread', createdAt: '2026-08-16T12:00:00.000Z', firstReplyMinutes: null }]
-    },
+    bench: benchFrom(
+      forumOf([threadOf({ id: 't-uuid', title: 'A thread', createdAt: '2026-08-16T12:00:00.000Z', firstReplyMinutes: null })])
+    ),
     articles: { state: 'empty' },
     replays: { state: 'empty' },
     health: null
@@ -465,7 +465,10 @@ describe('AC1 — the rail panel opens a thread in place', () => {
 
   it('a thread row no longer opens a browser', () => {
     expect(source).not.toContain('/bench/');
-    expect(source).toContain('openThread(thread.id)');
+    // ⚠️ FB-002 moved the row itself into `CommunityBenchView`, so the panel no longer spells
+    // out the click — it hands `openThread` to the component that draws the row. Same fact,
+    // one level up; `expect(source).toContain('openThread(thread.id)')` was the old spelling.
+    expect(source).toContain('onOpenThread={openThread}');
   });
 
   it('draws the shared thread view, at panel density', () => {
