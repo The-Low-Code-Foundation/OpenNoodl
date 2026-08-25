@@ -409,3 +409,47 @@ session. **Filed here because it now has an explanation rather than a shrug.**
 inconsistent with 25 neighbours"*, and the truth was *"FB-021 matches all 25 in behaviour, and all
 26 are inconsistent with their own stated intent."* **A difference in argument lists is not a
 difference in behaviour until the callee's signature is read.**
+
+## 🔴 RICHARD'S RULING, 2026-08-25 (session 31) — scope 2, and the canvas
+
+**Scope 2 (the connection panel):** *"I dunno, I guess the more there's visual feedback the less
+grief I'll get from confused non-tech builders?"* → **mark, do not hide.** A `basic`-gated port stays
+offered in the popup and is drawn inert with its reason, rather than being removed from it. Consistent
+with scopes 1/3/4, which keep the row and explain it.
+
+**The canvas:** *"maybe make it dotted for a port that can't work? That's what happens when a port is
+deleted at the moment and the connector is still there."*
+
+✅ **The precedent he is remembering is real, and it is reached by a route we can reuse exactly.**
+A deleted port makes `getPort()` return undefined, `evaluateConnectionHealth` raises
+`con-no-target-port`, `getConnectionHealth` returns `{healthy: false}`, and both paint sites plus
+`restoreWireDash` set `setLineDash([5])`. Dashed wire, with a message.
+
+🔴 **And the gated case was deliberately excluded from that check.** The same statement reads
+
+```js
+!targetPort || !NodeLibrary.instance.isConditionalPortValid(targetNode, c.toProperty, ['extended'])
+```
+
+`['extended']` only. A `conditionalports/extended` port is genuinely not on the node and already
+warns; a `conditionalports/basic` port — **the entire subject of FB-021** — is live, discards its
+value, and is **not** covered. That is the same defect this task was filed about, on the other
+surface: `modelProxy` hid the row, and `evaluateConnectionHealth` leaves the wire solid.
+
+### The shape of the work, when it is taken
+
+- A sibling key (`con-target-port-gated`) raised in `evaluateConnectionHealth` when the target port
+  **exists**, is valid under `extended`, and is currently switched off by a `basic` condition.
+- The message comes from `portGateReason.ts`, which already produces the sentence — narrating once
+  more rather than forking a second explanation.
+- ⚠️ **No new dash pattern.** `restoreWireDash`'s header already warns that three meanings live on
+  `setLineDash` (`[5]` unhealthy, `[6,4]` `Deleted`, `[7,4]` error edge) and they are barely
+  distinguishable; the health route gets the dash for free, in every paint path, with no fourth.
+- ⚠️ **Open, and the one thing still needing Richard**: `level: 'error'` (red, identical to a broken
+  wire) or `level: 'warning'` (amber, advisory)? The wire is not *invalid* — it is valid and ignored
+  — which argues for `warning`; the value being silently discarded argues for `error`.
+- ⚠️ **Check `UNRESOLVED_PORT_WARNING_KEYS` before adding the key.** It lists the two warnings that
+  *ports arriving* may clear, and its comment is deliberate about what is excluded. A gated port's
+  warning is cleared by a **parameter change**, not by ports arriving, so it likely does **not**
+  belong in that list — but FIX-007's urgent lane is keyed on it, so this needs deciding rather than
+  assuming.
