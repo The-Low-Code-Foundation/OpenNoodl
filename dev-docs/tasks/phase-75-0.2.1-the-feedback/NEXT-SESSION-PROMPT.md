@@ -1,10 +1,10 @@
 # Phase 75 — next session
 
-**State as of 2026-08-25 (session 36).** Richard's brief is still **speed: keep knocking out phase
+**State as of 2026-08-25 (session 37).** Richard's brief is still **speed: keep knocking out phase
 75**, so this file leads with the queue. Take the top unblocked item; dip into the rest when it bites.
 
-**Committed this session:** FIX-027 **19 + 20** — the completion moment — built and driven, plus
-the two defects the drive found (a blocker over the banner, and a contrast failure I introduced).
+**Committed this session:** queue item 1 — **both functions that reached nobody now reach
+somebody**, built, specced and driven in a real editor.
 
 ⚠️ **Peers.** `3878` is **opennoodl-78**, this checkout. Other names are other projects.
 🔴 **`SendMessage` to a cross-session peer needs the `[ref]`** — the bare name is rejected with the
@@ -14,24 +14,68 @@ ref in the error, so just re-send.
 
 | # | item | size | state |
 |---|---|---|---|
-| 1 | **Two functions that reach nobody** | **S** | `refusalHeadline` *and* 🆕 `resetLessonFromPlatform`; see below |
-| 2 | **FB-014** search that survives renames | **M** | design + prototype only, pgvector |
-| 3 | **FB-005** templates | **S then L+** | **scope doc first** — that doc is the unblocked part |
-| 4 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** Pulls in FB-014's 2nd corpus |
+| 1 | **FB-014** search that survives renames | **M** | design + prototype only, pgvector |
+| 2 | **FB-005** templates | **S then L+** | **scope doc first** — that doc is the unblocked part |
+| 3 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** Pulls in FB-014's 2nd corpus |
+
+✅ **The "two functions that reach nobody" item is CLOSED.** Both are wired, specced at the
+*caller*, and driven. Detail below — read it before touching either surface.
 
 ✅ **FIX-027 §17, §19 and §20 are CLOSED** — built, driven, acceptance criteria 4 and 6 met.
 ✅ **FIX-025 is fully driven** bar two items that are not ours to unblock (§5 needs Richard signed
 *out* of his live community session; §7 needs a real answered thread *and* a platform data fix).
 
-🆕 **Item 1 is now TWO functions, and they are the same shape.** `refusalHeadline` has four
-headlines and no caller in `src/`. **`lessonplatforminstall.resetLessonFromPlatform` is the
-same** — specced in two test files, imported by nothing in `src/`. Worse, it was *load-bearing in
-a sentence*: `reset()` used to tell a learner "Resetting it needs the community panel", while
-`models/community/tutorialsview.ts:26` says resetting "is the Learning section's business" and the
-Learning section calls `reset()`. **Each surface pointed at the other and neither re-pulled.** The
-sentence is now honest (it names the fact, not a door), and `uni-007/learningfolder.test.ts`
-asserts it does **not** name a surface. Wiring the fetch is the actual fix and is still open —
-`useTutorialInstall.ts` already builds the `PlatformInstallDeps` it needs.
+## ✅ Item 1, closed: the two functions now reach somebody
+
+**`refusalHeadline`** — `ConnectionBar` derives it, `DocsPopup` renders it above the detail
+sentence. 🔴 **The derivation went into `refusalPlan.ts`, not the component.** That module exists
+because two earlier halves of this same UI rotted in `ConnectionBar`, which needs the node library
+singleton and a drag in flight, so no spec can construct it. A third rule in there would have been
+the same mistake a third time.
+
+**`resetLessonFromPlatform`** — `canReset` gained a **third arm, `'needs-network'`**: a *yes* that
+the synchronous register cannot act on. `models/lessonreset.ts` routes it to the fetch and
+`ProjectsPage.repullFromPlatform` supplies the client. 🔴 **A string discriminant, not a boolean —
+this repo sets no `strict`.** Every surface that decides whether to *offer* Start again now asks
+`isResetOffered`, never `=== 'available'`: that literal was correct with two arms and silently
+became "hide the button for every Community lesson" when the third arrived.
+
+⚠️ **Left open, and it is inherent rather than sloppy:** a learner whose network is down is told so
+**at the launcher, after** the lesson has closed. Whether the platform is reachable cannot be
+answered on disk, and the reset can only run once the project is closed. `resetLessonFromPlatform`
+guarantees nothing was deleted, so they land on an intact lesson with the card's Reset one press
+away — but the confirm now says *"downloaded from NodeGX Community"* so the trip is not a surprise.
+
+## 🔴 The finding of this session: A CALLER-GREP IS A GATE NOTHING ELSE PERFORMS
+
+Both functions were **green, specced, and in one case mutation-checked** — while reaching nobody.
+`resetLessonFromPlatform` had **two** spec files and every row passed throughout the entire period
+the feature did not exist. FB-021 already recorded the shape and it is worth restating: *mutation
+testing proves the spec reads the function; only a caller-grep proves the function reaches a user.*
+
+✅ **So the new specs grade the CHOICE, not the function** — `refusalHeadlineFor` and
+`resetLesson`, both of which fail if the wiring is pulled out. A spec that only exercised
+`resetLessonFromPlatform` would have stayed green through the whole outage, and did.
+
+## 🔴 Second: TWO DEFECTS MY OWN SPECS FOUND IN MY OWN FIX
+
+1. **`|| ''` for a missing source type** rendered *"A `<strong></strong>` output cannot drive a
+   number input"*. I had argued the case was unreachable. **An argument about reachability is not
+   a guarantee about output.** Fixed in `refusalHeadline`, which owns the branching — in the caller
+   it would have had to restate which reasons need a source type, and the copies would drift.
+2. **`!== 'available'`** in `reset()` would have refused with `reason: undefined` — a toast reading
+   "undefined" at the one moment a learner is already stuck — because the new arm carries no
+   `reason`. The compiler then caught the *same shape* in a neighbouring spec whose guard stopped
+   narrowing. Spell the arms out when a union grows.
+
+## ⚠️ The session-readers gate has a rule, and it is not "add the row"
+
+`uni-001/session-readers.test.ts` went red because `ProjectsPage.tsx` now reads the community
+session. Its comment forbids making it green without first answering *does this change what the
+editor can do without an account?* **Answer: no** — the read is unconditional, a signed-out editor
+gets `token: null`, and the re-pull goes out the same. That is recorded in the row, and backed by
+three new behavioural assertions (not gated / token read once / a control proving the checker can
+see a gate on that file at all).
 
 **Blocked on Richard, do not start:** FB-012 and FB-009 (both need *content*), FB-017 scope 2's
 `Source Set`, FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod `ANTHROPIC_API_KEY`
@@ -104,7 +148,35 @@ the pairing is legible. It would have passed the 1.91:1 too.
 
 ## Driving — what worked, exactly
 
-✅ **Everything in last session's driving section still holds.** New this session:
+✅ **Everything in last session's driving section still holds.** New this session (s37), driving the
+**connection popup**, which is harder to reach than most surfaces:
+
+🔴 **Stage the drag instead of aiming at connector pixels.** `window.__nodeGraphEditor` is live;
+`ed.connectionPopups` is on it. Set `ed.interaction.draggingConnection = {fromNode, toNode}` (node
+*views* from `ed.forEachNode`, which ⚠️ **stops on a truthy return** — push in a statement, never
+`return out.push(...)`) then call `ed.connectionPopups.open()`. Real components, real props, no
+canvas arithmetic. `open()` is inside a `setTimeout`, so wait ~2s.
+
+⚠️ **The target panel is INERT until a source port is picked** — that is the product's design, not a
+blocker. Before picking, the only refusals are `gated` ones (the gate pass runs outside the drag
+guard); after picking, the two folded blocks appear. Both are worth measuring; they exercise
+different `refusalHeadline` branches.
+
+🔴 **Half the DOM is a measuring copy.** `[class*=refusedSummary]` returned **12 nodes, 4 real** —
+the duplicates sit at `y≈1317` in a window `781` tall. Filter to `r.top>=0 && r.bottom<=innerHeight`
+*and* re-query immediately before clicking; the list reflows under you between evals. The real rows
+carry `aria-expanded`; the measuring copies do not, which is the cheaper discriminator.
+
+✅ **`elementFromPoint` again, and it earned its place twice** — once catching that the target
+panel's own disabled overlay was on top (correct behaviour), once confirming a row was reachable
+after a reflow had moved it. ⚠️ Guard for `null` before `el.contains(top)`; it throws otherwise.
+
+✅ **Hover via a dispatched `mouseover`,** not `cdp drag` — a real press on a refused row fires the
+**redirect** and edits the project. `new MouseEvent('mouseover',{bubbles:true})` reaches React's
+root listener; then wait ~2s for the async catalog lookup before reading `.popup-small-docs`.
+
+⚠️ **`cdp click` wants a selector, not `"x,y"`.** Tag the element in an eval
+(`el.setAttribute('data-drive','x')`) and click `[data-drive=x]`.
 
 🔴 **`document.elementFromPoint` at the centre of every control you add.** See above. The two-line
 version that found it:
@@ -150,7 +222,7 @@ old prototype. `npm run cdp -- reload` and re-open, then re-wrap; budget ~20s pe
 
 ## Gates, this tree (OpenNoodl, `cline-dev`) — 🔴 re-measure, never quote
 
-- `npm run test:main`: **339 files / 5478 specs / 0 failures** (was 338/5457; +1 file, +21 specs).
+- `npm run test:main`: **340 files / 5495 specs / 0 failures** (was 339/5478; +1 file, +17 specs).
 - `npm run typecheck:editor`: **0 errors**, three times.
 - `npm run tokens:css`: clean — 319 stylesheets. ⚠️ **It cannot see a contrast failure**; see above.
 - `npm run test:ci`: see the session's own note below — **quote the summary line, never `$?`**.
@@ -168,7 +240,6 @@ old prototype. `npm run cdp -- reload` and re-open, then re-wrap; budget ~20s pe
 
 ## Still open, owned by nobody
 
-- **Two functions that reach nobody** — queue item 1 above.
 - ⚠️ **A manually re-opened popout still covers the completion banner.** Inherent to popouts.
 - 🔴 **FB-002's selected pill is 1.16:1 against the panel** — the active fill, and 1.24:1 between
   the active and inactive label, while the border is **identical** in both states. Every individual

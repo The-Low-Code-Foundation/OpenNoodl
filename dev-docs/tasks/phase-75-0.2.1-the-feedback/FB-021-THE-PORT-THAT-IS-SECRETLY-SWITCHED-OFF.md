@@ -744,6 +744,37 @@ nothing calls.** `refusalHeadline` was mutation-checked in session 33 *within it
 changes an unreachable function's output still fails its spec. **Mutation testing proves the spec
 reads the function; only a caller-grep proves the function reaches the user.**
 
+#### ✅ WIRED AND DRIVEN, session 37 (2026-08-25)
+
+Done as its own piece of work with its own drive, as this section asked. `ConnectionBar` derives the
+headline in a **third** pass — after both existing ones, so FB-021's deliberate gate precedence is
+inherited rather than restated — and `DocsPopup` renders it above `docsRefusal`, which drops its own
+top border so the pair reads as one answer with its detail under it.
+
+🔴 **The derivation lives in `refusalPlan.ts`, not in the component.** That module exists because two
+earlier halves of this UI rotted exactly here: reachable only from `ConnectionBar`, which needs the
+node library singleton and a drag in flight, so nothing grades it. Putting a third rule back into the
+component would have been the same mistake a third time.
+
+Driven on a `Group` with a signal output in flight, both branches on screen:
+
+| branch | headline rendered | detail beneath it |
+|---|---|---|
+| `signal-rule` | *A **signal** output cannot drive a **string** input.* | *Can only connect signal output to signal input* |
+| `gated` | *This port is switched off by another setting.* | *Pointer Events Enabled applies when…* |
+
+The gated row does **not** say "cannot drive" — FB-021's whole subject, now checked on the rendered
+surface rather than only in a spec. Contrast measured live: dark **11.19** (strong 12.59), light
+**10.66** (strong 14.75). ⚠️ `tokens:css` passes either way; it checks that a `var(--…)` names a
+defined property, not that a pairing is legible.
+
+🔴 **And a spec caught the fix's own defect.** The first draft passed `''` for a missing source type
+on the argument that a refused port with no drag is unreachable, and rendered
+*"A **&lt;strong&gt;&lt;/strong&gt;** output cannot drive a number input"* — a sentence with a hole
+where its subject goes. **An argument about reachability is not a guarantee about output.** The check
+belongs in `refusalHeadline`, which owns the branching; in the caller it would have had to restate
+which reasons need a source type, and the two copies would disagree on the fifth reason.
+
 ### Gates
 
 - `npm run typecheck:editor` — **0 errors**, after the fix and the new spec.
