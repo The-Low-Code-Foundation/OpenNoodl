@@ -1,11 +1,15 @@
 # Phase 75 — next session
 
-**State as of 2026-08-25 (session 38).** Richard's brief is still **speed: keep knocking out phase
+**State as of 2026-08-25 (session 39).** Richard's brief is still **speed: keep knocking out phase
 75**, so this file leads with the queue. Take the top unblocked item; dip into the rest when it bites.
 
-**Committed this session (`8db05e4d`):** queue item 1 — **FB-014's design phase**, with a measured
-prototype. 🔴 **It ends in a recommendation NOT to launch**, and the reason is the corpus, not the
-mechanism. Read the two blocks under the queue before re-opening it.
+**Committed this session (`7e1690ce`, `85a4387e`):** queue item 1 — **FB-005's scope doc**
+([FB-005-SCOPE.md](FB-005-SCOPE.md)) — plus **two real fixes it turned up on the way**, in
+`unzipUrl`. Read §1 and §2a of the scope doc before touching templates.
+
+⚠️ **Session 38 was still running when this session started** (its `3de0dcdb` landed at 23:25, mine
+at 23:43). No task overlap — it was finishing FB-014, I took item 1 — but **both sessions wrote the
+same memory files**, so treat mtimes there with suspicion.
 
 🧭 **One thing is now waiting on Richard that was not before:** FB-014's option pair. Richard
 supplied a **DeepInfra key for `BAAI/bge-m3`** and it was measured on the same corpus as the
@@ -22,11 +26,73 @@ ref in the error, so just re-send.
 
 | # | item | size | state |
 |---|---|---|---|
-| 1 | **FB-005** templates | **S then L+** | **scope doc first** — that doc is the unblocked part |
+| 1 | **FB-005 T1** — settle `templateRegistry` | **S** | ✅ **scope doc DONE.** T1 is sliced, independent of every ruling, and needs an option picked — see below |
 | 2 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** ⚠️ Its corpus does not exist either — see below |
 | 3 | *(cheap, unowned)* **bench search ANDs its terms** | **S** | found by FB-014; **2/22 even in perfect vocabulary**. Real users, real miss |
 
 ✅ **FB-014 is off the queue** — design phase done, AC1 + AC3 met, AC2 shown to be impossible.
+
+## ✅ Item 1, closed: FB-005's scope doc — and the task file's premise was wrong
+
+Full slice in **[FB-005-SCOPE.md](FB-005-SCOPE.md)** (six slices, T1 first). The headline is a
+correction, and it is the kind only a caller-grep finds.
+
+🔴 **FB-005 says *"there is no template mechanism in the product at all."* There is a complete
+one, and it is unreachable.** `TemplateRegistry`, `ITemplateProvider` and **four** providers.
+`templateRegistry.list()` has **zero callers**, so there is no picker and never was;
+`newProject`'s **one** caller (`ProjectsPage.tsx:1021`) passes the literal `projectTemplate: ''`,
+which is falsy, so the registry branch never executes. ✅ Every new project *is* made from a
+template — `embedded://hello-world`, via a direct `new EmbeddedTemplateProvider()` that **bypasses
+the registry**. ⚠️ `models/template/README.md` documents a recipe no caller performs.
+
+✅ **The recommendation: do not build FB-005 on `templateRegistry`. Build it on TUT-004.** The
+tutorial-bundle transport ships end to end — `tutorial_bundles` (jsonb payload, structural CHECKs
+at publish, 8 MiB cap), `/api/v1/community/tutorials/[slug]/bundle`, and `lessonplatforminstall.ts`
+doing fetch → stage → score → install → record. 🔴 **And its curation model — `articles` has no
+author column, every tutorial is editorial — IS R-templates' curated-first ruling, already built.**
+
+🔴 **Where the analogy breaks, measured:** `stageBundleFiles` takes `Record<string, string>`, so a
+template carrying its own images or fonts **cannot travel that transport**. Smaller than it sounds
+— `installStarterAssets` already gives every project Inter and 1998 Lucide glyphs — so **v1 should
+be text-only by construction**, refused at publish. That is an engineering call, not Richard's.
+
+⚠️ **T4 (search) inherits queue item 3's defect.** A template search built on the same FTS helper
+is born ANDing its terms. Fix item 3 first or T4 ships a keyword-only search.
+
+## 🔴 The finding of this session: A DEAD PATH'S BUG WAS LIVE IN A REACHABLE ONE
+
+I nearly filed `unzipUrl`'s missing `xhr.onerror` as *"a bug in dead code, deleted by T1"*. It is
+not. `filesystem.unzipUrl` has **two** callers and the second is reachable — `unzipIntoDirectory`,
+which has **four** callers of its own including `modulelibrarymodel.installModule`/`installPrefab`.
+**Installing a module or prefab from the library with the network down hung the editor forever**,
+and `unzipIntoDirectory`'s own `try/catch` was dead code for that case because nothing ever
+rejected.
+
+⚠️ **Note the shape, because it is why nobody found it: a 404 was handled.** `onload` fires with an
+error body, JSZip refuses it, the caller gets "Failed to extract". Only the *no-response* case —
+offline, DNS, refused connection — hung. **Testing the fast failure proves the fast failure**;
+NAT-013 already wrote that trap down and it arrived here anyway.
+
+✅ Fixed with `onerror`/`ontimeout`/`onabort` **spelled out separately**, so a timeout does not read
+as a dead network.
+
+🔴 **Second defect, same function, found on the way: a guard that could not fire.**
+`const isEmpty = this.isDirectoryEmpty(to)` dropped the `await` on an **`async`** method, so the
+"Folder must be empty" check tested a **Promise** — always truthy. ⚠️ The one reachable caller
+masked it by doing the same check itself, correctly; a direct caller (`TemplateRegistry.download`)
+got nothing. ✅ **Checked whether this is a class rather than a one-off: it is a one-off.**
+`isDirectoryEmpty` is the only `Promise<boolean>` on `IFileSystem`, and the other two call sites use
+the *other*, callback-style `FileSystem.instance` API correctly.
+
+✅ **5 specs**, `packages/noodl-platform-node/tests/filesystem-unzip-transport.test.ts`, with a
+**known-firing control** that drives a real archive through the fake transport and asserts files
+land on disk — a fake XHR reaching nothing would have graded nothing. **Both fixes
+mutation-tested**: reverting each reddens exactly its own spec and no other.
+
+⚠️ **Two claims in the scope doc are readings of code, not measurements, and are marked as such:**
+`unzipUrl` passing a *local path* to an XHR works on macOS only because the renderer's origin is
+`file:///` (`main.js:444`) and a POSIX path starts with `/`; **on Windows it should miss**, and
+there is no Windows machine here to prove it.
 
 ⚠️ **Read this before starting FB-013.** FB-014 measured the bench: **3 posts, 2 threads, 1,369
 chars**. Chat would be a *second* corpus that does not exist yet. The ruling to build it stands and
@@ -294,6 +360,12 @@ the next call.
 old prototype. `npm run cdp -- reload` and re-open, then re-wrap; budget ~20s per cycle.
 
 ## Gates, this tree (OpenNoodl, `cline-dev`) — 🔴 re-measure, never quote
+
+✅ **Session 39 ran `test:platform`** — **5 suites / 27 passed / 3 skipped / 0 failures**, exit 0,
+summary line quoted rather than `$?` (was 4 suites / 22 before this session's new spec file). That
+is the gate covering `@noodl/platform-node`, which is where s39's fix landed. 🔴 **s39 did NOT run
+`test:ci`, `test:main` or `typecheck:editor`** — it changed no editor source, but `filesystem-node.ts`
+is imported by the editor, so **the next session that touches the editor should run them**.
 
 ⚠️ **Session 38 ran NO gates, deliberately, and the figures below are session 37's.** It changed
 **no source** — the commit is markdown plus python under `dev-docs/`, and `lint` is scoped to
