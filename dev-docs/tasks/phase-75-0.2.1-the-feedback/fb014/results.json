@@ -1,0 +1,1458 @@
+{
+ "all-minilm": [
+  {
+   "doc": "Logic Builder",
+   "fam": "total",
+   "renamed": "Logic Builder -> Visual Function (2026-08-12)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 5,
+    "hybrid": 5,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 3,
+    "hybrid": 1,
+    "fts_matched_n": 1
+   }
+  },
+  {
+   "doc": "Logic Builder",
+   "fam": "total",
+   "renamed": "Logic Builder -> Visual Function (2026-08-12)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 4,
+    "hybrid": 4,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 5,
+    "hybrid": 5,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 47,
+    "hybrid": 47,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   }
+  },
+  {
+   "doc": "NewDbModelProperties",
+   "fam": "total",
+   "renamed": "Create New Record -> Create Record (2026-08-01)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 10,
+    "hybrid": 10,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 9,
+    "hybrid": 9,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": true,
+    "fts_ranked": 2,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 4
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 2,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "net.noodl.HTTP",
+   "fam": "outcome",
+   "renamed": "HTTP success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 2,
+    "fts_matched_n": 1
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 3
+   }
+  },
+  {
+   "doc": "net.noodl.user.LogIn",
+   "fam": "outcome",
+   "renamed": "LogIn success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 2,
+    "vector": 2,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "net.noodl.user.SignUp",
+   "fam": "outcome",
+   "renamed": "SignUp success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 2,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 8
+   }
+  },
+  {
+   "doc": "net.noodl.user.LogOut",
+   "fam": "outcome",
+   "renamed": "LogOut success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "net.noodl.user.RequestMagicLink",
+   "fam": "outcome",
+   "renamed": "RequestMagicLink success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 1
+   }
+  },
+  {
+   "doc": "CloudFunction2",
+   "fam": "outcome",
+   "renamed": "CloudFunction2 success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 2,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "Upload File",
+   "fam": "outcome",
+   "renamed": "Upload File success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 2,
+    "fts_matched_n": 1
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 3
+   }
+  },
+  {
+   "doc": "Open File Picker",
+   "fam": "outcome",
+   "renamed": "Open File Picker success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "Sign File URL",
+   "fam": "outcome",
+   "renamed": "Sign File URL success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "noodl.cloud.sendemail",
+   "fam": "outcome",
+   "renamed": "sendemail sent -> done, failed -> failure (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 5,
+    "hybrid": 5,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 4,
+    "hybrid": 4,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 3,
+    "hybrid": 3,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 2,
+    "hybrid": 1,
+    "fts_matched_n": 1
+   }
+  },
+  {
+   "doc": "noodl.cloud.response",
+   "fam": "outcome",
+   "renamed": "response sent -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 3,
+    "hybrid": 3,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 3,
+    "hybrid": 3,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 2,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "Event Sender",
+   "fam": "outcome",
+   "renamed": "Event Sender sent -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 3,
+    "hybrid": 3,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   }
+  },
+  {
+   "doc": "Unique Id",
+   "fam": "outcome",
+   "renamed": "Unique Id generated -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 1
+   }
+  },
+  {
+   "doc": "SetModelProperties",
+   "fam": "outcome",
+   "renamed": "SetModelProperties stored -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 16,
+    "hybrid": 16,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 21,
+    "hybrid": 21,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 10,
+    "hybrid": 2,
+    "fts_matched_n": 3
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 15,
+    "hybrid": 17,
+    "fts_matched_n": 7
+   }
+  },
+  {
+   "doc": "net.noodl.SetComponentObjectProperties",
+   "fam": "outcome",
+   "renamed": "SetComponentObjectProperties stored -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": true,
+    "fts_ranked": 2,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 3
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 3,
+    "fts_matched_n": 2
+   },
+   "kw_new": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 3
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 3,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "CollectionNew",
+   "fam": "outcome",
+   "renamed": "CollectionNew created -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 17,
+    "hybrid": 17,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 13,
+    "hybrid": 13,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 7,
+    "hybrid": 7,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 11,
+    "hybrid": 11,
+    "fts_matched_n": 0
+   }
+  },
+  {
+   "doc": "NewModel",
+   "fam": "outcome",
+   "renamed": "NewModel created -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 1
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 3
+   }
+  },
+  {
+   "doc": "AddDbModelRelation",
+   "fam": "outcome",
+   "renamed": "AddDbModelRelation relationAdded -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 3,
+    "hybrid": 3,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   }
+  },
+  {
+   "doc": "DeleteDbModelProperties",
+   "fam": "outcome",
+   "renamed": "DeleteDbModelProperties deleted -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 9,
+    "hybrid": 9,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 5,
+    "hybrid": 5,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 2,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 4
+   }
+  }
+ ],
+ "nomic-embed-text": [
+  {
+   "doc": "Logic Builder",
+   "fam": "total",
+   "renamed": "Logic Builder -> Visual Function (2026-08-12)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 39,
+    "hybrid": 39,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 5,
+    "hybrid": 1,
+    "fts_matched_n": 1
+   }
+  },
+  {
+   "doc": "Logic Builder",
+   "fam": "total",
+   "renamed": "Logic Builder -> Visual Function (2026-08-12)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 46,
+    "hybrid": 46,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 32,
+    "hybrid": 32,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 15,
+    "hybrid": 15,
+    "fts_matched_n": 0
+   }
+  },
+  {
+   "doc": "NewDbModelProperties",
+   "fam": "total",
+   "renamed": "Create New Record -> Create Record (2026-08-01)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": true,
+    "fts_ranked": 2,
+    "vector": null,
+    "hybrid": 4,
+    "fts_matched_n": 4
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": null,
+    "hybrid": 2,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "net.noodl.HTTP",
+   "fam": "outcome",
+   "renamed": "HTTP success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 1
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": null,
+    "hybrid": 3,
+    "fts_matched_n": 3
+   }
+  },
+  {
+   "doc": "net.noodl.user.LogIn",
+   "fam": "outcome",
+   "renamed": "LogIn success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 5,
+    "hybrid": 5,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 4,
+    "hybrid": 4,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 4,
+    "hybrid": 4,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 2,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "net.noodl.user.SignUp",
+   "fam": "outcome",
+   "renamed": "SignUp success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 2,
+    "vector": 1,
+    "hybrid": 2,
+    "fts_matched_n": 8
+   }
+  },
+  {
+   "doc": "net.noodl.user.LogOut",
+   "fam": "outcome",
+   "renamed": "LogOut success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "net.noodl.user.RequestMagicLink",
+   "fam": "outcome",
+   "renamed": "RequestMagicLink success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 2,
+    "hybrid": 1,
+    "fts_matched_n": 1
+   }
+  },
+  {
+   "doc": "CloudFunction2",
+   "fam": "outcome",
+   "renamed": "CloudFunction2 success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 2,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "Upload File",
+   "fam": "outcome",
+   "renamed": "Upload File success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 2,
+    "fts_matched_n": 1
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 3
+   }
+  },
+  {
+   "doc": "Open File Picker",
+   "fam": "outcome",
+   "renamed": "Open File Picker success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 7,
+    "hybrid": 7,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 6,
+    "hybrid": 6,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "Sign File URL",
+   "fam": "outcome",
+   "renamed": "Sign File URL success -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 8,
+    "hybrid": 8,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 9,
+    "hybrid": 2,
+    "fts_matched_n": 2
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 7,
+    "hybrid": 7,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 8,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "noodl.cloud.sendemail",
+   "fam": "outcome",
+   "renamed": "sendemail sent -> done, failed -> failure (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 19,
+    "hybrid": 19,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 9,
+    "hybrid": 9,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 6,
+    "hybrid": 6,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 6,
+    "hybrid": 1,
+    "fts_matched_n": 1
+   }
+  },
+  {
+   "doc": "noodl.cloud.response",
+   "fam": "outcome",
+   "renamed": "response sent -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 3,
+    "hybrid": 3,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 3,
+    "hybrid": 3,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "Event Sender",
+   "fam": "outcome",
+   "renamed": "Event Sender sent -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 3,
+    "hybrid": 3,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 2,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   }
+  },
+  {
+   "doc": "Unique Id",
+   "fam": "outcome",
+   "renamed": "Unique Id generated -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 1
+   }
+  },
+  {
+   "doc": "SetModelProperties",
+   "fam": "outcome",
+   "renamed": "SetModelProperties stored -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": null,
+    "hybrid": 3,
+    "fts_matched_n": 3
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 7
+   }
+  },
+  {
+   "doc": "net.noodl.SetComponentObjectProperties",
+   "fam": "outcome",
+   "renamed": "SetComponentObjectProperties stored -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": true,
+    "fts_ranked": 2,
+    "vector": 3,
+    "hybrid": 1,
+    "fts_matched_n": 3
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 3,
+    "hybrid": 3,
+    "fts_matched_n": 2
+   },
+   "kw_new": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": 1,
+    "hybrid": 1,
+    "fts_matched_n": 3
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 2,
+    "hybrid": 3,
+    "fts_matched_n": 2
+   }
+  },
+  {
+   "doc": "CollectionNew",
+   "fam": "outcome",
+   "renamed": "CollectionNew created -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   }
+  },
+  {
+   "doc": "NewModel",
+   "fam": "outcome",
+   "renamed": "NewModel created -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": null,
+    "hybrid": 1,
+    "fts_matched_n": 1
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 1,
+    "vector": null,
+    "hybrid": 1,
+    "fts_matched_n": 3
+   }
+  },
+  {
+   "doc": "AddDbModelRelation",
+   "fam": "outcome",
+   "renamed": "AddDbModelRelation relationAdded -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 27,
+    "hybrid": 27,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 25,
+    "hybrid": 25,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": null,
+    "hybrid": null,
+    "fts_matched_n": 0
+   }
+  },
+  {
+   "doc": "DeleteDbModelProperties",
+   "fam": "outcome",
+   "renamed": "DeleteDbModelProperties deleted -> done (2026-08-02)",
+   "q_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 48,
+    "hybrid": 48,
+    "fts_matched_n": 0
+   },
+   "q_old": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 47,
+    "hybrid": 47,
+    "fts_matched_n": 0
+   },
+   "kw_new": {
+    "fts_today": false,
+    "fts_ranked": null,
+    "vector": 12,
+    "hybrid": 12,
+    "fts_matched_n": 0
+   },
+   "kw_old": {
+    "fts_today": true,
+    "fts_ranked": 2,
+    "vector": 14,
+    "hybrid": 3,
+    "fts_matched_n": 4
+   }
+  }
+ ]
+}

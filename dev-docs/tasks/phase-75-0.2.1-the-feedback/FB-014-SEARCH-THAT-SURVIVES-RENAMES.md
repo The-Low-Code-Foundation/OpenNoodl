@@ -1,7 +1,22 @@
 # FB-014 — search that survives renames
 
-**Filed:** 2026-08-22, from Richard's item 13's second half. **Status: ⬜ open — design +
-prototype only, not a launch.** Size: M. Independent of R-chat (the bench benefits regardless).
+**Filed:** 2026-08-22, from Richard's item 13's second half. **Status: 🟢 DESIGN PHASE DONE
+2026-08-25 (s38) — see [FB-014-DESIGN.md](FB-014-DESIGN.md).** Size: M. Independent of R-chat.
+
+> 🔴 **AC2 CANNOT BE MET AS WRITTEN, and that is the finding.** *"the prototype runs against a
+> copy of real bench data"* — **the bench holds 3 posts** (2 threads, 1,369 chars total, read off
+> nexus-1 on 08-25). Semantic search is a solution to a problem this corpus does not have yet.
+>
+> ✅ **AC1 and AC3 are met**: scope 1–5 answered with measurements, and the external-processor
+> question is put to Richard as a written option pair. The prototype runs — against a corpus of
+> **real pre-rename product prose** recovered from git, because there was no bench data to run it
+> against.
+>
+> 🔴 **The number that matters, measured against a working control:** the renames cost the
+> *shipped* search **73% → 18%** recall on keyword queries. Vectors recover it to **91% @10**.
+> That first figure is true today and is worth knowing whether or not this ever ships.
+>
+> ⛔ **Recommendation: build behind a flag, do not launch.** Revisit when the bench has a corpus.
 
 > *"Maybe consider Postgres vector DB stuff for quick and easy vector searching of posts in the
 > future? For both the bench and the chat. Will make it way easier to find relevant posts even
