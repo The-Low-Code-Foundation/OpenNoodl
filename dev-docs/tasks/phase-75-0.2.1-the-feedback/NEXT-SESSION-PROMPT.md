@@ -6,9 +6,10 @@ itself** — all seven acceptance criteria are done. The only thing left in that
 gate, verified FB-021's disputed population, and discharged FB-016 scope 5's open precondition — it
 wrote no product code.** Read *"What session 25 found"*, then pick from *"First moves"*.
 
-✅ **The owed gate is paid.** Session 26 ran `test:ci` on a quiet machine: **2849 specs / 4
-failures**, all in a family the floor already had, no new names. See *Gates* below — and read the
-caveat there before quoting the number.
+✅ **The owed gate is paid, and it is clean.** Session 26 ran `test:ci`: **2849 specs / 4 failures**,
+all `AIX-006`, no new names. 🔴 **And the floor everyone quotes is wrong: it is 4, not 10** — the
+other six were fixed deliberately on 08-21 and the stale number would have hidden up to six
+regressions. See *Gates*.
 
 ⚠️ **Peers.** Sockets at teardown (`ls -l /tmp/cc-socks/`): `3878`, `39469`, `47493` (me).
 `ListAgents` — **and only `ListAgents`** — names them: `3878` is **opennoodl-78**, this checkout;
@@ -154,9 +155,19 @@ follows is the working form of each, not a claim that any of it is new.
   area.** The floor's other six (2× AI model registry, 1× AIX-011, 3× SUB-011) passed, and they
   **ran** — 6 / 60 / 16 spec-starts respectively, checked, because an absence proves nothing without
   a known-firing signal beside it.
-  🔴 **Do NOT quote 4 as the new floor.** Different seed (49062 vs 39393), and those six are exactly
-  the seed-sensitive ones; a seed reproduces an order, it never measures a floor. The honest
-  statement is *no regression*, not *six fixed*.
+  🔴 **THE FLOOR IS 4, AND HAS BEEN SINCE 08-21 — the "10" everyone compares against is stale by
+  four days and I nearly relayed it forward.** The six did not draw kindly; they were **fixed, on
+  purpose**, and the repo says so: `dae76da8` (the fx expression form → SUB-011 ×3), `a46b52ba`
+  (a gateway user's default model → AI model registry ×2), `ea402850` (the D13 double-report, which
+  also freed AIX-006's repair rounds), and `4c038fa7` recording the measurement — *"2849 specs, 6
+  failures. The 3× SUB-011 and 2× AI model registry are gone by name."*
+  ⚠️ **`4c038fa7`'s sixth was never one of the ten**: `AIX-011 criterion 7 — createPlanDocWriter`
+  settles async undo writes on a fixed **30 ms `setTimeout`** that a loaded runner loses. It is a
+  timing fragility, to be fixed **at the constant, not at the assertion**. It ran here (31 specs)
+  and passed. Expect it to come and go with machine load; it is not a regression.
+  🔴 **Why this is worth more than the run itself: a stale-HIGH floor hides regressions.** Comparing
+  against 10 means six real failures could land and still read as "under the floor". Compare against
+  **4**, by name, and treat a fifth name as yours.
   ⚠️ **The `test-results.json` on disk was from 08-23 08:54, two days stale.** It was deleted before
   the run. Left alone it reads as a clean pass — delete it every time and require a fresh mtime.
 - Not run, nothing touched them: `typecheck:core-ui`, `noodl-runtime`, `noodl-viewer-react`, all of
