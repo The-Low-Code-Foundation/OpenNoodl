@@ -1,9 +1,10 @@
 # Phase 75 — next session
 
-**State as of 2026-08-25 (session 31).** FB-021 scopes 1/3/4 are **built, driven, gated and
-committed** (`2edc6946`, `7e0f4564`). Richard's brief for the next sessions is **speed: keep
-knocking out phase 75**. So this file leads with the queue. Read *"The queue"*, take the top
-unblocked item, and only dip into the rest when it bites.
+**State as of 2026-08-25 (session 33).** Richard's brief is still **speed: keep knocking out phase
+75**, so this file leads with the queue. Take the top unblocked item; dip into the rest when it bites.
+
+**Committed this session:** `6eaa6655` FB-002 (driven, both surfaces) · `cd6a7a86` FB-021 canvas +
+scope 2 (canvas half driven).
 
 ⚠️ **Peers.** `3878` is **opennoodl-78**, this checkout. Other names are other projects.
 🔴 **`SendMessage` to a cross-session peer needs the `[ref]`** — the bare name is rejected with the
@@ -13,130 +14,148 @@ ref in the error, so just re-send.
 
 | # | item | size | state |
 |---|---|---|---|
-| 1 | **FB-002 editor mirror** | **S** | web half done; task file says it is **cheaper than filed** — `accepted` is already on the wire |
-| 2 | **FIX-025 §5/§7/§12** (phase-74 dir) | **S/M** | **already built** — it needs only the editor drive |
-| 3 | **FB-021 scope 2 + the canvas** | **M** | ✅ RULED + fully scoped s31, blocker understood — see below |
-| 4 | **FIX-027 17, 19, 20** (phase-74 dir) | **S/M** | ⬜ unblocked, no ruling needed |
-| 5 | **FB-014** search that survives renames | **M** | design + prototype only, pgvector |
-| 6 | **FB-005** templates | **S then L+** | **scope doc first** — that doc is the unblocked part |
-| 7 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** Pulls in FB-014's 2nd corpus |
+| 1 | **FB-021 scope 2 — the popup drive** | **XS** | ⬜ built + specced + committed; **never opened in a running editor** |
+| 2 | **FIX-025 §5/§7/§12** (phase-74 dir) | **S/M** | **already built** — needs only the editor drive |
+| 3 | **FIX-027 17, 19, 20** (phase-74 dir) | **S/M** | ⬜ unblocked, no ruling needed |
+| 4 | **FB-014** search that survives renames | **M** | design + prototype only, pgvector |
+| 5 | **FB-005** templates | **S then L+** | **scope doc first** — that doc is the unblocked part |
+| 6 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** Pulls in FB-014's 2nd corpus |
 
-**Blocked on Richard, do not start:** FB-012 and FB-009 (both need *content* from him), FB-017
-scope 2's `Source Set`, FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod
-`ANTHROPIC_API_KEY` (⚠️ **intro pricing ends 2026-08-31 — six days**), the 15 lessons' prose,
-Discord's row in the `?` menu, `/rfps` search.
+**Blocked on Richard, do not start:** FB-012 and FB-009 (both need *content*), FB-017 scope 2's
+`Source Set`, FIX-026 (a)/(b), FIX-027 14/15/16 + 22, tsfixme baseline, prod `ANTHROPIC_API_KEY`
+(⚠️ **intro pricing ends 2026-08-31 — six days**), the 15 lessons' prose, Discord's row in the `?`
+menu, `/rfps` search.
 
-✅ **Nothing is waiting to deploy.** `nodegx-community` `acd4a9a..main` is **empty** and both
-commits TASKS.md called unshipped are ancestors of it (measured s31; that line is now corrected).
-⚠️ The *stamp on the box* is relayed from s19's SSH read — re-read it before any deploy claim.
+✅ **Nothing is waiting to deploy.** ⚠️ The *stamp on the box* is still relayed from s19's SSH read —
+re-read it before any deploy claim.
 
-## Queue item 3 in full — FB-021 scope 2 + the canvas (ruled s31)
+## Queue item 1 in full — what is actually left on FB-021
 
-**Richard's ruling.** Scope 2: *"the more there's visual feedback the less grief I'll get from
-confused non-tech builders"* → **mark, do not hide**; a `basic`-gated port stays offered in the
-connection popup, drawn inert with its reason. The canvas: *"make it dotted for a port that can't
-work — that's what happens when a port is deleted"*. Level ruled **amber `warning`**, not `error`:
-the wire is valid and its value ignored, so red keeps meaning *"cannot work at all"*.
+The canvas half is **done and driven in both directions** (table in the task file). What is left is
+small and specific: **open the connection popup on a `Group` whose `Size Mode` is `Content Size`**
+and confirm `width` is drawn inert, with the sentence, and *still listed* — Richard's *"mark, do not
+hide"*.
 
-✅ **His instinct maps onto machinery that already exists** — and finding it exposed **the same
-defect on a second surface**. `evaluateConnectionHealth` already dashes a wire whose port is gone,
-via `con-no-target-port` → `getConnectionHealth` → `setLineDash([5])`. Its check reads
+🔴 **Two placements are the whole risk, and neither is covered by the copy specs:**
+- the gate mark is applied **after** the `getConnectionStatus` loop (a gated port is normally
+  *connectable*, so `p.disabled = !status.connectable` would wipe it);
+- and **outside** the `if (sourcePort !== undefined)` guard (that loop only runs mid-drag, so
+  opening the popup with no wire in flight would otherwise show the port as ordinary).
 
-```js
-!targetPort || !NodeLibrary.instance.isConditionalPortValid(targetNode, c.toProperty, ['extended'])
+Both read correct and are exactly the shape that behaves wrong. ⚠️ Check **both** entry paths:
+with a wire being dragged, and with none.
+
+## ✅ The `test:ci` floor is re-measured, and the s32 debt is closed
+
+`npm run test:ci` — **2849 specs / 4 failures**, all four `AIX-006 style vocabulary`, **matched by
+name**. **Default ceiling, run alone on an idle machine, on committed code.** Completed 18:26.
+⚠️ It grades the **FB-002** commit; the FB-021 edits landed after it and have **not** had a `test:ci`.
+
+🔴 **Do not reach for `NOODL_TEST_TIMEOUT_MINUTES`.** s32 did and it was wrong. "Idle" is the
+**pageout delta**, not swap-used — this session read **10 pages / 5 s** while swap still showed
+11.7 G of 13.3 G used, and the run completed inside the default ceiling on the first attempt.
+
+## 🔴 The trap that cost the most this session: THE PROBE WAS BROKEN, TWICE
+
+Both times the false reading said *"the feature does not work"*, and both times it was believed for
+minutes before being re-read with a different instrument.
+
+1. **FB-002.** The two live threads are **indistinguishable by row text** — same title, and both
+   render `no reply yet` because `firstReplyMinutes` is null on the accepted one too. So *"the pill
+   flips and the row does not change"* looked exactly like a dead filter. ✅ Settled by reading the
+   React **key**, which carries `thread.id`.
+2. **FB-021.** `getWarningsForRef` returns a **wrapper**; `w.message || String(w)` rendered both an
+   absence and a present warning as `[object Object]`, and "tightening" the reader to `.warning`
+   then made a **real** warning read as `null`. ✅ `getAllWarningsForComponent` showed it plainly.
+
+✅ **The rule: prefer the ENUMERATING reader over the MATCHING one.** A matching reader cannot say
+*why* it matched nothing — refused and never-asked look identical. And check that a probe can tell
+the two answers apart **before** trusting either.
+
+## 🔴 A bounded query reports its bound — one letter cost an M
+
+Session 31 recorded *"nothing re-evaluates connection health when a parameter changes"* and scoped a
+new trigger with a hot-path guard. **The trigger already existed.** The grep was `parameterChanged`;
+the event is **`parametersChanged`**.
+
+```
+setParameter → notifyListeners('parametersChanged') → shared/model.js:76 broadcasts
+'Model.' + event globally → NodeGraphModel.bindModels → scheduleUpdateTypes → updateTypes
+→ scheduleEvaluateHealth (2 s)
 ```
 
-and `portConnectivity.ts` spells out the scope: `extended` = *"not on the node at all"*; an unnamed
-group defaults to `basic` and *"only suppresses the property row"*. **So the `basic` case — all of
-FB-021 — is explicitly excluded from the canvas check.** `modelProxy` hid the row;
-`evaluateConnectionHealth` leaves the wire solid.
+✅ **`model.js:76` broadcasts EVERY model event as `Model.<event>`.** If a model notifies it, the
+dispatcher has it — worth knowing before scoping any "nothing listens for X" work.
 
-🔴 **It is NOT a one-liner: nothing re-evaluates health on a parameter change.** Triggers are
-`Model.instancePortsChanged` (gated on `hasUnresolvedPortWarning`), `typeRenamed`, module
-registration, variant changes. `grep parameterChanged` finds **no** path to health. A gated port's
-state is a function of a **sibling parameter**, the one input health never watches — so the warning
-is stale in both directions until a trigger is added. ⚠️ **It would have looked correct on any
-fixture that BUILDS a graph**, because construction fires the other triggers; only flipping the
-control *after* the wire exists exposes it. Same shape as FB-017's *"the panel never re-renders on a
-parameter change"*.
-
-**Shape, in order** (full version in the task file):
-1. `con-target-port-gated` — port **is** on the node (`['extended']` valid) but **switched off**
-   (`['basic']` invalid). Symmetric with the existing statement.
-2. Message from `portGateReason.ts`; `level: 'warning'`, `showGlobally: true`.
-3. The parameter-change trigger **with a guard** — only when the changed parameter gates something
-   on that node's type. 🔴 `setParameter` is hot (**13 writes in one 60px drag**, FB-022) and
-   FIX-007's comment is deliberate about keeping common paths off that timer.
-4. **NOT** in `UNRESOLVED_PORT_WARNING_KEYS` — that list is what *ports arriving* can clear; this is
-   cleared by a parameter, and adding it arms FIX-007's urgent lane wrongly.
-5. The popup half: mark the offered port inert with the same sentence.
-6. ⚠️ **No new dash pattern.** `restoreWireDash`'s header warns three meanings already live on
-   `setLineDash` (`[5]` unhealthy, `[6,4]` `Deleted`, `[7,4]` error) and are barely distinguishable.
-   The health route gets the dash free, in every paint path.
-7. ⚠️ **The drive must flip the control on a graph that ALREADY has the wire.**
-
-## The traps that cost the most rework — read before building, not after
+## Other traps worth keeping
 
 - 🔴 **A green suite is not a working feature, and a passing spec is not a spec that tested
-  anything.** Three sessions closed on *"only the drive found it"*; s31 adds *"the review found what
-  the drive did not"*. ✅ **Drive it, then read the diff back.** s30's mutation pass found **2 of 18
-  mutants killing ZERO rows** — both specs passing by a path unrelated to the guard they named.
-  **A mutant that kills nothing is the finding.**
-- 🔴 **Resolve a token before believing a sentence about colour.** `--theme-color-notice` **aliases**
-  `--theme-color-warning` (`colors.css:483`, which says so) in **both** themes. A comment asserting a
-  visual difference is a claim about *rendering*; reading the source back only proves the token is
-  spelled as the comment spells it.
-- 🔴 **A difference in argument lists is not a difference in behaviour until the callee is read.**
-  `ModelProxy.isPortConnected(name)` **takes one parameter and forwards none**, so ~25 `DataTypes/`
-  sites passing `'target'` pass it into a discard. ⚠️ Latent, unowned: the panel's intent that only
-  *inbound* wires count is honoured **nowhere**; fixing it moves FB-018's chip on 25 row types.
-- 🔴 **Completion is the summary line, never an exit code.** A notification claimed *"suite
-  completion, exit code 0"* while the pid was alive and its output file was **empty** — fourth
-  session running. ✅ Poll with `until grep -qE "Jasmine: [0-9]+ specs"` **that also breaks on the
-  pid dying**, so a crash cannot read as "still running".
+  anything.** ✅ Drive it, then read the diff back. **A mutant that kills nothing is the finding.**
+- 🔴 **Completion is the summary line, never an exit code.** Two notifications this session said
+  *"exit code 0"*: one over a 7-byte `EXIT=1` log with no summary (measured nothing), one over a
+  real `4 failures` run. **Sixth session.** ✅ Poll with `until grep -qE "Jasmine: [0-9]+ specs"`
+  that also breaks on the pid dying.
+- 🔴 **Resolve a token before believing a sentence about colour**; `--theme-color-notice` **aliases**
+  `--theme-color-warning` in both themes.
 - 🔴 **Compare failures BY NAME, never by count**, and never quote a floor without re-measuring.
+- 🔴 `grep` for anything themed or bundled hits **`index.bundle.js`** — scope to `src/**` or the
+  answer is a stale build. Cost a detour this session on `getConnectionHealth`.
 
-## Driving — the corrections that cost real time
+## Driving — what worked, exactly
 
-- 🔴 **A probe that selects several nodes in ONE `eval` reads one stale DOM** — five arms came back
-  identical and looked like a catastrophic bug. ✅ Select and read in **separate calls**.
-- 🔴 **`window.__pv`-style handles do not survive `cdp reload`** — every field reads `null`, which
-  looks exactly like a feature that stopped working. Re-acquire, then re-read.
-- ⚠️ **The pencil `ModeSegmentedButton` selector is stateful** — `[aria-pressed=false]` selects *the
-  other* mode, so re-running a snippet toggles back out. Read the pair, assert which one you want.
-- ✅ **`projectFromDirectory` (`models/projectmodel.editor`) opens a project WITHOUT touching the
-  recents list** — better than the launcher path, and nothing to clean up after.
-- ✅ **Prove a gate sees your files by planting errors** — 4 planted → exactly 4 reported. One minute.
-- ✅ **`postcss` is resolvable from the repo root**; one `node -e` parse validates a stylesheet edit
-  properly. 🔴 grep for `--theme-color-*` hits the **built bundles** — scope to `*.css`/`*.scss`;
-  the truth is `packages/noodl-core-ui/src/styles/custom-properties/colors.css`.
-- ✅ **`dev:stop` reported 25 processes and spared all 8 MCP helpers** — verified by `ps` after.
+✅ **The full open-a-project sequence from the renderer**, since no editor global exists and
+`require()` fails on the webpack aliases:
+
+```js
+let wr; window.webpackChunknoodl_editor.push([['probe'+Date.now()],{},r=>wr=r]);   // module registry
+// wr.c is the loaded-module cache — scan exports for what you need
+LocalProjectsModel.instance.openProjectFromFolder(dir)   // registers it
+  → loadProject(entry) → router.route({to:'editor', project})
+```
+The router is found by walking fibers from `#root` for `memoizedProps.route.router` — **3 nodes in**.
+🔴 **`projectFromDirectory` alone does NOT open a project**: it builds a `ProjectModel` and nothing
+routes. ✅ Clean up with `removeProject(id)` + delete the copy.
+
+- ✅ **Drive a COPY.** Both drives did; both cleaned up; `dev:stop` reported **27 processes** and
+  spared all **8** MCP helpers, twice.
+- ✅ **A graph built programmatically is a fine fixture** — `NodeGraphNode.fromJSON` +
+  `graph.addRoot` + `graph.addConnection`, then `setParameter` through the ordinary path.
+  🔴 Build the wire **first**, then flip the control; constructing after the flip passes on a
+  broken implementation.
+- ⚠️ **The eval context persists variables** — a second `const bench = …` throws
+  `Identifier already declared`. Wrap probes in an IIFE.
+- ⚠️ `cdp click` takes a **selector only**; there is no `--text` flag, and passing one silently
+  clicks the first match instead.
 
 ## Gates, this tree (OpenNoodl, `cline-dev`) — 🔴 re-measure, never quote
 
-- `npm run test:ci`: ✅ **2849 specs / 4 failures — THE FLOOR**, all four `AIX-006 style vocabulary`,
-  matched by name. Completed 2026-08-25 15:13:30, run alone.
-- `npm run test:main`: **333 files / 5380 specs / 0 failures**. ⚠️ One first-run failure in
-  `tests-unit/bld-004/reasoningChannel.test.ts` (stall-timer race) was **green 3/3 in isolation and
-  on the full re-run — a flake**.
-- `npm run typecheck:editor`: **0 errors**, proved to see the changed files by planting.
-- `npm run catalog:check`: **clean**, 175 node types. Cheapest freshness proof in the repo (4 s) —
-  run it before quoting any catalog-derived number.
-- 🔴 **`npm run typecheck:core-ui` is a PRE-EXISTING DIRTY GATE: 44 errors, none ours.** Do not
-  quote it as passing.
-- Not run, nothing touched them: `typecheck:viewer`, `noodl-runtime`, all of `nodegx-community`
-  (**58 files / 1398 specs / 0 failures** as of s18, not re-run).
+- `npm run test:ci`: **2849 / 4 — THE FLOOR**, all `AIX-006`, by name. Default ceiling, alone,
+  committed code, 18:26. ⚠️ Predates the FB-021 commit.
+- `npm run test:main`: **335 files / 5438 specs / 0 failures**, after FB-021.
+- `npm run typecheck:editor`: **0 errors**, after FB-021.
+- `npm run catalog:check`: clean, 175 node types. Cheapest freshness proof in the repo (4 s).
+- 🔴 **`npm run typecheck:core-ui` is a PRE-EXISTING DIRTY GATE: 44 errors, none ours.**
+- Not run, nothing touched them: `typecheck:viewer`, `noodl-runtime`, all of `nodegx-community`.
 
 ## Still open, owned by nobody
 
-- ⚠️ **`.property-port-gate-target`'s outline is unmeasured in either theme** — verified as a class
-  and a focus, never as pixels.
+- 🔴 **FB-002's selected pill is 1.16:1 against the panel** — the active fill, and 1.24:1 between the
+  active and inactive label, while the border is **identical** in both states. Every individual
+  label passes AA (7.9–8.5:1); *which pill is on* does not. **Text contrast is not the same
+  measurement as state visibility.** It is NAT-008's shared `.FilterPill`, so the **people directory
+  has the same invisible selection**. ✅ Cheapest real fix: move the state onto the **border**, the
+  one edge already at 3.57:1 — not a brighter fill. ⚠️ Must be measured in **both** themes.
+- ⚠️ **The platform sends `firstReplyMinutes: null` on a thread with `replyCount: 1`**, so the
+  accepted thread reads *"no reply yet"* on every surface, web included. Unowned.
+- ⚠️ **`MIRROR_THREAD_WINDOW = 100` is a copy of the platform's limit and nothing checks it.** If the
+  platform *lowers* its limit the bound line silently stops drawing while the list really is
+  partial. Three lines in `nodegx-community`'s `mirror.ts` + `route.ts` to send the window it used.
+- ⚠️ `.property-port-gate-target`'s outline and `.Bench`'s gutter are both unmeasured in pixels.
 - ⚠️ **Only `Group` was driven** for FB-021; the other 174 types are covered by the catalog sweep,
-  which grades *sentences* and not *rendering*.
-- ⚠️ FB-022's crosshair settled by mechanism, not pixels; `user-select: none` confirmed *set*, never
-  confirmed to prevent a painted selection; **one commit in three dropped focus, uncharacterised**;
-  FB-016's auto-margin branch never exercised in a running app.
-- ⚠️ **`AskAboutNodeDialog.module.scss` uncommitted — twelfth session.** Belongs to no session;
+  which grades *sentences*, not rendering.
+- ⚠️ FB-022's crosshair settled by mechanism, not pixels; **one commit in three dropped focus,
+  uncharacterised**; FB-016's auto-margin branch never exercised in a running app.
+- ⚠️ **`AskAboutNodeDialog.module.scss` uncommitted — thirteenth session.** Belongs to no session;
   Richard's call. Same for the phase-70/71/72 working files and the phase-50/68 notes.
 - The highlighter's disposal bug: a **selected** node whose element has gone is never removed from
   `selectedNodes`, so it is revisited and `remove()`d every frame.

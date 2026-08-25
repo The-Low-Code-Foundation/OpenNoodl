@@ -589,3 +589,60 @@ the claim whose failure mode is a warning that is stale in both directions.
 `Content Size`, wait out the 2 s debounce, and see the wire go dashed with the sentence; flip back
 and see it go solid. 🔴 **Building the graph and reading it once would pass on a broken
 implementation**, because construction fires the other triggers.
+
+### ✅ DRIVEN — the canvas half, 2026-08-25 (session 33)
+
+Real stack, real `Group`, and the graph was built **first** so that the flip happened on a wire
+that already existed — the one ordering item 7 insists on.
+
+Fixture: a `String` node's `value` wired into a `Group`'s `width`, then `setParameter('sizeMode', …)`
+through the ordinary model path, reading after the 2 s debounce each time.
+
+| `Size Mode` | `isConditionalPortValid(…,['basic'])` | `con-target-port-gated` | `con-no-target-port` | `getConnectionHealth` |
+|---|---|---|---|---|
+| *(unset)* — **control** | true | 0 | 0 | — |
+| `contentSize` | **false** | **1**, level `warning` | 0 | `{healthy:false}` + the sentence |
+| `explicit` (flipped back) | true | **0 — cleared** | 0 | `{healthy:true}` |
+
+✅ **The trigger claim is now observed, not read.** Flipping the control after the wire existed
+raised the warning, and flipping back cleared it — **not stale in either direction**, which is
+precisely what session 31 predicted would fail. The `Model.parametersChanged` chain carries it.
+
+✅ **The dash is reached, and by the route that was supposed to reach it.** `getConnectionHealth`
+asks `WarningsModel.getWarnings({component, connection})` **key-agnostically** — any warning on the
+wire makes it unhealthy — so the new key needed no registration anywhere and inherits
+`setLineDash([5])` in every paint path. No fourth dash pattern, as ruled.
+
+✅ The message renders as intended:
+> This wire is delivering a value the node ignores: **Size Mode** has switched this port off.
+> Width applies when Size Mode is Explicit or Content Height, or is not set.
+
+✅ `con-no-target-port` stays at **0** throughout — the new warning does not double-report with the
+deleted-port error, which was the risk in making the two statements symmetric.
+
+### 🔴 TWICE in one session, the PROBE was the broken thing, not the code
+
+Both times the false reading said *"the feature does not work"*, and both times it was believed for
+several minutes:
+
+1. **`getWarningsForRef({component, connection, key})` returned a wrapper whose `.warning` was
+   `undefined`** while the warning was really there — visible immediately in
+   `getAllWarningsForComponent`. The first probe printed `w.message || String(w)`, so an
+   **absence** and a **wrapper** both rendered as `[object Object]`, and a real warning read as
+   null once the reader was "tightened" to `.warning`.
+2. FB-002's two threads render identically, so *"the pill flips and the row does not change"*
+   looked exactly like a dead filter.
+
+✅ **The rule both cases point at: a probe must be able to tell the two answers apart, and that is a
+property to check BEFORE trusting either answer.** `getAllWarningsForComponent` enumerates and can
+distinguish; `getWarningsForRef` matches and cannot say why it matched nothing. **Prefer the
+enumerating reader over the matching one**, and when a reading says "broken", re-read it with a
+different instrument before believing it.
+
+### ⬜ Still not driven: scope 2, the popup
+
+The `ConnectionBar` half is built and unit-specced but **has not been opened in a running editor**.
+Its two load-bearing placements (after the status pass, outside the source-port guard) are exactly
+the kind of thing that reads correct and behaves wrong, and neither is covered by the copy specs.
+⚠️ The catalog sweep grades *sentences*, not rendering — the same gap `.property-port-gate-target`
+still has.
