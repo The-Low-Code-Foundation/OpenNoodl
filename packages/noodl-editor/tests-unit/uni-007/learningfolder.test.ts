@@ -19,8 +19,10 @@
  */
 
 import {
+  isResetOffered,
   isSafeLessonId,
   LearningFolderModel,
+  RESET_NEEDS_NETWORK_REASON,
   slugifyLessonId
 } from '../../src/editor/src/models/learningfolder';
 import type {
@@ -369,17 +371,17 @@ describe('resetting a lesson', () => {
     expect(fs.files.get('/data/Learning/make-a-group/project.json')).toBe('{"components":["their work"]}');
   });
 
-  // ⚠️ TUT-004 changed the SENTENCE and not the rule, and FIX-027 §20 changed it back for the
-  // same kind of reason. This method still refuses a platform lesson because it is synchronous,
-  // has no network, and must stay loadable in plain Node. What TUT-004 assumed — that the
-  // community panel would re-pull — is **not true in the shipped editor**:
-  // `lessonplatforminstall.resetLessonFromPlatform` exists, is specced, and has **no caller in
-  // `src/`** (checked 2026-08-25). Meanwhile `models/community/tutorialsview.ts` says resetting
-  // "is the Learning section's business", and the Learning section calls this method. Each
-  // surface pointed at the other. So the sentence now names the fact rather than a door.
+  // ⚠️ **The rule here has never changed, only the sentence.** This method still refuses a
+  // platform lesson because it is synchronous, has no network, and must stay loadable in plain
+  // Node. What changed on 2026-08-25 is that something else finally does the job:
+  // `ProjectsPage.performLessonReset` routes `canReset`'s `'needs-network'` arm to
+  // `lessonplatforminstall.resetLessonFromPlatform`, which until then existed, was specced
+  // twice, and reached nobody — while `tutorialsview.ts` said resetting was "the Learning
+  // section's business" and the Learning section called *this* method. Each pointed at the other.
   //
-  // 🔴 This assertion is the one that must fail if a future edit sends the learner to the panel
-  // again without wiring the fetch: it asserts the sentence does **not** name a surface.
+  // 🔴 The assertion still stands and still matters: the sentence must name the FACT and never a
+  // surface to go to. A refusal that sends the learner somewhere else is the defect, whether or
+  // not the fetch is wired.
   it('refuses to reset a platform lesson, without sending the learner to a door that does not open', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
@@ -439,7 +441,10 @@ describe('FIX-027 §20 — canReset answers for reset, and cannot drift from it'
 
     const availability = model.canReset('make-a-group');
     expect(availability.result).toBe('unavailable');
-    if (availability.result === 'available') return;
+    // ⚠️ `!== 'unavailable'`, not `=== 'available'`. Once `'needs-network'` joined the union the
+    // old guard stopped narrowing to the arm that carries `reason`, and the compiler said so —
+    // which is the same shape of mistake `reset` itself had to be spelled out arm-by-arm to avoid.
+    if (availability.result !== 'unavailable') return;
 
     const outcome = model.reset('make-a-group');
     expect(outcome.result).toBe('unavailable');
@@ -449,7 +454,22 @@ describe('FIX-027 §20 — canReset answers for reset, and cannot drift from it'
     expect(fs.files.get('/data/Learning/make-a-group/project.json')).toBe('{"components":[]}');
   });
 
-  it('says no for a platform lesson, and agrees with reset about why', async () => {
+  /*
+   * FIX-027 §20 — 🔴 A PLATFORM LESSON IS A *YES* THAT THIS METHOD CANNOT ACT ON.
+   *
+   * The two facts are separate and both have to hold, which is why they are asserted together:
+   *
+   *  - `canReset` answers `'needs-network'`, and {@link isResetOffered} reads that as **offer
+   *    the button** — because the launcher now re-pulls. While this arm did not exist, the
+   *    completion moment hid *Start again* on every Community lesson;
+   *  - `reset` — synchronous, no client — still refuses, and refuses with the shared sentence
+   *    rather than a second wording of it.
+   *
+   * ⚠️ The previous version of this row asserted `canReset` was `'unavailable'`. That was true
+   * and is the thing that changed; it is replaced rather than added to, because a spec asserting
+   * both would be asserting a contradiction.
+   */
+  it('🔴 says a platform lesson CAN be started again — and reset, which has no network, still cannot', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
     await model.install({
@@ -459,11 +479,34 @@ describe('FIX-027 §20 — canReset answers for reset, and cannot drift from it'
     });
 
     const availability = model.canReset('make-a-group');
-    expect(availability.result).toBe('unavailable');
-    if (availability.result === 'available') return;
+    expect(availability.result).toBe('needs-network');
+    // The half that decides whether a button is drawn at all.
+    expect(isResetOffered(availability)).toBe(true);
 
     const outcome = model.reset('make-a-group');
-    expect(outcome.result === 'unavailable' && outcome.reason).toBe(availability.reason);
+    expect(outcome.result).toBe('unavailable');
+    if (outcome.result !== 'unavailable') return;
+    // 🔴 The shared constant, not a copy of the words. Two surfaces refuse with this.
+    expect(outcome.reason).toBe(RESET_NEEDS_NETWORK_REASON);
+    // ⚠️ And `reason` is a real sentence, not `undefined` printed into a toast — which is what a
+    // `!== 'available'` test would have produced the moment this third arm arrived.
+    expect(outcome.reason).toEqual(expect.any(String));
+    expect(outcome.reason).not.toMatch(/undefined/);
+    // Nothing was deleted on the way to refusing.
+    expect(fs.files.get('/data/Learning/make-a-group/project.json')).toBe('{"components":[]}');
+  });
+
+  it('offers the control for a local lesson and withholds it only from a real refusal', async () => {
+    const { model, fs } = makeModel();
+    stageBundle(fs, '/bundles/groups', goodManifest());
+    await model.install({ bundleDir: '/bundles/groups', provenance: 'local' });
+
+    expect(isResetOffered(model.canReset('make-a-group'))).toBe(true);
+
+    // FIX-026's case — the bundle has gone, and this is the one answer that hides the button.
+    fs.removeDirectoryRecursive('/bundles/groups');
+    expect(isResetOffered(model.canReset('make-a-group'))).toBe(false);
+    expect(isResetOffered(model.canReset('never-installed'))).toBe(false);
   });
 
   it('says no for a lesson that is not installed at all', () => {

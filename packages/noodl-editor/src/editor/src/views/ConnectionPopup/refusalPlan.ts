@@ -10,9 +10,13 @@
  * and the group priority the node declares. Neither needs React, the node
  * library singleton, or a drag in progress.
  *
- * Import-free, so `tests-unit/connection-popup/refusalPlan.test.ts` grades the
- * ranking against a Text Input-shaped port list rather than by dragging a wire
- * at the right node and squinting.
+ * Dependency-free apart from `portCopy` — which is itself import-free — so
+ * `tests-unit/connection-popup/refusalPlan.test.ts` grades the ranking against a
+ * Text Input-shaped port list rather than by dragging a wire at the right node
+ * and squinting. ⚠️ Keep it that way: the moment this reaches the node library
+ * singleton or React, every rule in it goes back to being reachable only from a
+ * running editor, which is the state SIG-001 found all three halves of the
+ * refusal UI in.
  *
  * ## The rule being modelled
  *
@@ -24,7 +28,7 @@
  * module on the right side of that disagreement by construction.
  */
 
-import type { RefusalReason } from './portCopy';
+import { refusalHeadline, type RefusalReason } from './portCopy';
 
 export type { RefusalReason };
 
@@ -130,6 +134,40 @@ export function dominantReason(ports: readonly PlannablePort[]): RefusalReason {
   for (const p of ports) reasons.add(p.reason || 'other');
   if (reasons.size === 1) return ports[0]?.reason || 'other';
   return 'other';
+}
+
+/**
+ * The headline a refused row shows above `getConnectionStatus`'s sentence, or `undefined` for a
+ * row that refused nothing.
+ *
+ * ## Why the decision is here and not in the component
+ *
+ * `refusalHeadline` shipped with SIG-001, four branches, and **no caller in `src/`** — so every
+ * refused port explained itself with only the type-checker's sentence, which
+ * `.docsRefusal`'s own comment describes as "written for someone already debugging port types".
+ * That is the third half of this UI to have been built and never run, after the disabled row
+ * style and the `message` tooltip, and all three were reachable only from `ConnectionBar` —
+ * a component with no spec, because it needs the node library singleton and a drag in progress.
+ *
+ * 🔴 So the *decision* lives here, where a spec can call it, and the component keeps only the
+ * assignment. This is the same move `dominantReason` and `partitionGated` are already here for,
+ * made for the same reason: a rule that only a running editor can reach is a rule that can stop
+ * running without anything going red.
+ *
+ * ⚠️ `sourceTypeName` is absent when the popup is open with **no wire in flight**. That is not a
+ * degenerate case — it is the ordinary one for a gated port, which is refused by the port's own
+ * settings rather than by a drag, and whose headline names no types at all. It is passed through
+ * as `undefined` rather than coerced: `refusalHeadline` owns the one branch that needs it and
+ * says the category-free sentence when it is missing. An earlier draft passed `''` here on the
+ * argument that the case was unreachable, and a spec produced *"A <strong></strong> output
+ * cannot drive…"* — an argument about reachability is not a guarantee about output.
+ */
+export function refusalHeadlineFor(
+  port: Pick<PlannablePort, 'disabled' | 'reason' | 'typeName'>,
+  sourceTypeName: string | undefined
+): string | undefined {
+  if (!port.disabled) return undefined;
+  return refusalHeadline(port.reason || 'other', sourceTypeName, port.typeName);
 }
 
 /**

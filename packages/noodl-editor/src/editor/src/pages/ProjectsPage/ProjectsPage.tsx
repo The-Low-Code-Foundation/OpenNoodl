@@ -49,6 +49,10 @@ import {
 import { App } from '../../models/app';
 import { DialogLayerModel } from '../../models/DialogLayerModel';
 import { LearningFolderModel } from '../../models/learningfolder';
+import type { ResetLessonOutcome } from '../../models/learningfolder';
+import { resetLessonFromPlatform } from '../../models/lessonplatforminstall';
+import { stagingFs, stagingRoot } from '../../models/lessonplatformstaging';
+import { resetLesson } from '../../models/lessonreset';
 import { formatBundleScorecard } from '../../models/lessonbundleverify';
 import { describeInstallCheck } from '../../models/lessoninstallpolicy';
 import { attachLearningLesson } from '../../models/learninglesson';
@@ -78,7 +82,9 @@ import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 import { UpdateManager } from '../../views/UpdateManager';
 import { LauncherSettingsDialog, LauncherSettingsSection } from './LauncherSettingsDialog';
 import { LAST_PROJECT_LOCATION_KEY, pickProjectLocation } from './projectLocationMemory';
+import { CommunityApiClient } from '@noodl-models/community/communityapi';
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
+import { readCommunitySession } from '@noodl-models/community/communitysession';
 
 import { useCommunityMirror } from '@noodl-hooks/useCommunityMirror';
 import { useLearnerPath } from '../../hooks/useLearnerPath';
@@ -240,13 +246,40 @@ function showLoadFailureToast(projectName: string | undefined, projectDir?: stri
  * ⚠️ The title is read **before** the reset. `repairFrom` rewrites the register entry, and a
  * sentence naming the lesson is worth more than one naming an id.
  */
-function performLessonReset(lessonId: string): void {
+async function performLessonReset(lessonId: string): Promise<void> {
   const entry = LearningFolderModel.instance.get(lessonId);
   if (!entry) return;
 
-  const outcome = LearningFolderModel.instance.reset(lessonId);
+  const outcome = await resetLesson(lessonId, {
+    register: LearningFolderModel.instance,
+    repull: repullFromPlatform
+  });
   if (outcome.result === 'reset') ToastLayer.showSuccess(`"${entry.title}" is back to its starting state`);
   else ToastLayer.showError(outcome.reason);
+}
+
+/**
+ * FIX-027 §20 — the launcher's half of *Start again*: a client, a staging directory, a toast.
+ *
+ * 🔴 **This is `resetLessonFromPlatform`'s first caller.** It existed, was specced twice over,
+ * and reached nobody — see `models/lessonreset.ts`, which now owns the *choice* between the two
+ * resets so that something other than a running editor can grade it. What is left here is the
+ * part that genuinely needs the launcher: the network client, and the fact that a reset can only
+ * happen once the project is **closed** (`launcherHandoff.ts`).
+ *
+ * ⚠️ The token, for the same reason `useTutorialInstall` builds its client with one: D15 answers
+ * 404 to an org-minor, so an anonymous client would report a lesson the learner installed
+ * yesterday as gone from the platform.
+ */
+function repullFromPlatform(lessonId: string): Promise<ResetLessonOutcome> {
+  return readCommunitySession().then((session) =>
+    resetLessonFromPlatform(lessonId, {
+      register: LearningFolderModel.instance,
+      source: new CommunityApiClient({ baseUrl: COMMUNITY_URL, token: session?.token ?? null }),
+      fs: stagingFs(),
+      stagingRoot: stagingRoot()
+    })
+  );
 }
 
 export function ProjectsPage(props: ProjectsPageProps) {
@@ -497,7 +530,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
       return;
     }
 
-    performLessonReset(lessonId);
+    void performLessonReset(lessonId);
   }, []);
 
   /**
@@ -517,7 +550,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
    */
   useEffect(() => {
     const lessonId = takeLessonReset();
-    if (lessonId) performLessonReset(lessonId);
+    if (lessonId) void performLessonReset(lessonId);
   }, []);
 
   // Listen for GitHub auth state changes

@@ -142,6 +142,7 @@ export function PortItem(props: TSFixme) {
             direction={p.section === 'from' ? 'output' : 'input'}
             body={docs}
             wireShape={wireShape}
+            refusalHeadline={p.disabled ? p.refusalHeadline : undefined}
             refusal={p.disabled ? p.message : undefined}
             anchor={docsAnchor}
           />

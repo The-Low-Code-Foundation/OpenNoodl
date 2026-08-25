@@ -316,8 +316,47 @@ export type ResetLessonOutcome =
  */
 export type ResetAvailability =
   | { result: 'available' }
+  /**
+   * FIX-027 §20 — re-pullable, but the fresh copy is on the network.
+   *
+   * 🔴 **This is a yes, not a no.** {@link LearningFolderModel.reset} still cannot act on it —
+   * it is synchronous, has no client, and this module must stay loadable in plain Node — but
+   * `lessonplatforminstall.resetLessonFromPlatform` can, and the launcher now calls it. A
+   * surface deciding whether to *offer* Start again wants {@link isResetOffered}; a surface
+   * about to *perform* it must route this arm to the async path.
+   *
+   * ⚠️ Carries no `reason`, deliberately. There is nothing to apologise for at decision time,
+   * and the only honest sentence about the network is one written *after* trying to reach it —
+   * which is `resetLessonFromPlatform`'s to write, not this method's to guess.
+   */
+  | { result: 'needs-network' }
   /** Why not, in the learner's terms. The same sentence `reset` would have refused with. */
   | { result: 'unavailable'; reason: string };
+
+/**
+ * What a synchronous caller says when it meets {@link ResetAvailability} `'needs-network'`.
+ *
+ * 🔴 One constant because two surfaces refuse with it and a spec asserts they **agree**. It
+ * names the fact — this came from the platform and a fresh copy is a download — and it
+ * deliberately does **not** name a surface to go to: the door that opens is the launcher's own
+ * *Start again*, and telling someone to go somewhere else is the defect FIX-027 §20 recorded.
+ */
+export const RESET_NEEDS_NETWORK_REASON =
+  'This lesson came from NodeGX Community, so starting it again means downloading a fresh copy. ' +
+  'That has to happen from the launcher, and nothing was changed here.';
+
+/**
+ * Would a *Start again* control do anything? The one statement of "offer it".
+ *
+ * 🔴 Both non-`unavailable` arms are a yes, and every surface that draws the control must ask
+ * through here rather than testing `=== 'available'`. That comparison was correct while there
+ * were two arms and silently became "hide the button for every platform lesson" when the third
+ * arrived — a wrong answer that type-checks, which is the whole reason this predicate exists
+ * instead of a literal at each call site.
+ */
+export function isResetOffered(availability: ResetAvailability): boolean {
+  return availability.result !== 'unavailable';
+}
 
 // ─── Id rules ───────────────────────────────────────────────────────────────
 
@@ -656,7 +695,13 @@ export class LearningFolderModel extends Model {
     // the two, and "the source is checked before anything is deleted" is this method's rule
     // rather than its caller's. See {@link canReset} for why the check itself lives there.
     const availability = this.canReset(id);
-    if (availability.result !== 'available') return { result: 'unavailable', reason: availability.reason };
+    // ⚠️ Spelled out arm by arm rather than `!== 'available'`. That test was right for two arms
+    // and, the moment a third one carrying no `reason` appeared, would have refused with
+    // `reason: undefined` — a toast reading "undefined" at the one moment a learner is stuck.
+    if (availability.result === 'needs-network') {
+      return { result: 'unavailable', reason: RESET_NEEDS_NETWORK_REASON };
+    }
+    if (availability.result === 'unavailable') return { result: 'unavailable', reason: availability.reason };
 
     // Narrowed by `canReset`, which refuses every non-local source above.
     const source = entry.source as Extract<LearningSource, { kind: 'local' }>;
@@ -667,14 +712,16 @@ export class LearningFolderModel extends Model {
    * Would {@link reset} run? The one statement of the two things that stop it.
    *
    * 🔴 **A platform lesson is re-pulled over the network**, which is asynchronous and belongs to
-   * whatever holds the client — so this module cannot do it and does not pretend to. It says so
-   * rather than reporting a generic failure, and `lessonplatforminstall.resetLessonFromPlatform`
-   * is the function that CAN: it fetches, stages, and comes back through {@link resetFrom}.
-   * ⚠️ **That function has no caller in `src/` as of 2026-08-25** — the launcher's Reset calls
-   * this method, and the community panel's own header says resetting is the Learning section's
-   * business, so each surface points at the other and neither re-pulls. The sentence below
-   * therefore names the *fact* (it came from the platform, and re-pulling needs the network)
-   * rather than sending the learner to a door that does not open yet. See FIX-027 §20.
+   * whatever holds the client — so this module cannot do it and does not pretend to. It answers
+   * `'needs-network'`, and `lessonplatforminstall.resetLessonFromPlatform` is the function that
+   * CAN: it fetches, stages, and comes back through {@link resetFrom}.
+   *
+   * ✅ **That function has a caller as of 2026-08-25**: `ProjectsPage.performLessonReset` routes
+   * this arm to it. Until then it existed, was specced, and reached nobody, while this method
+   * refused every platform lesson and `models/community/tutorialsview.ts` said resetting was
+   * "the Learning section's business" — each surface pointing at the other, neither re-pulling.
+   * ⚠️ The pairing is the thing to keep: a third arm here with no route in the launcher puts the
+   * button back on a door that does not open. See FIX-027 §20.
    *
    * ⚠️ The second refusal is FIX-026's whole subject: `Learning/<slug>/` **is** the learner's
    * working copy, so the only pristine source is `entry.source.path`, and for `state-on-a-page`
@@ -686,11 +733,9 @@ export class LearningFolderModel extends Model {
     if (!entry) return { result: 'unavailable', reason: `No lesson called "${id}" is installed.` };
 
     if (entry.source.kind !== 'local') {
-      return {
-        result: 'unavailable',
-        reason:
-          'This lesson came from NodeGX Community, so starting it again means downloading a fresh copy — which this editor cannot do yet.'
-      };
+      // 🔴 A *yes* since FIX-027 §20 wired the fetch. This method still cannot perform it; what
+      // changed is that something now can, so hiding the control would be the stale answer.
+      return { result: 'needs-network' };
     }
 
     if (!fs.exists(entry.source.path)) {

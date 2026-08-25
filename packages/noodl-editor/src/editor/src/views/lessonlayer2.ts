@@ -6,7 +6,7 @@ import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 import KeyboardHandler, { KeyboardCommand } from '@noodl-utils/keyboardhandler';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
-import { LearningFolderModel } from '../models/learningfolder';
+import { isResetOffered, LearningFolderModel } from '../models/learningfolder';
 import { checkMyWork, liveCheckMyWorkDeps, summariseSubmission } from '../models/lessoncheck';
 import { ProjectModel } from '../models/projectmodel';
 import { liveLessonDatabaseSnapshot } from '../models/lessondatabase.live';
@@ -453,8 +453,13 @@ export class LessonLayer {
     return {
       title: entry.title,
       reset: {
-        available: availability.result === 'available',
-        reason: availability.result === 'available' ? undefined : availability.reason,
+        // FIX-027 §20 — `isResetOffered`, never `=== 'available'`. A platform lesson answers
+        // `'needs-network'`, which is a yes the launcher can act on; testing for the literal
+        // would switch this button off for every lesson installed from Community.
+        available: isResetOffered(availability),
+        // ⚠️ Only the refusing arm carries a sentence. `'needs-network'` deliberately does not:
+        // there is nothing to apologise for until something has actually tried the network.
+        reason: availability.result === 'unavailable' ? availability.reason : undefined,
         onReset: () => this._onStartAgain(id, entry.title)
       },
       onExit
@@ -474,7 +479,7 @@ export class LessonLayer {
     if (!id) return undefined;
     const entry = LearningFolderModel.instance.get(id);
     if (!entry) return undefined;
-    if (LearningFolderModel.instance.canReset(id).result !== 'available') return undefined;
+    if (!isResetOffered(LearningFolderModel.instance.canReset(id))) return undefined;
     return { id, title: entry.title };
   }
 
@@ -493,15 +498,30 @@ export class LessonLayer {
    */
   private _onStartAgain(lessonId: string, title: string): void {
     const availability = LearningFolderModel.instance.canReset(lessonId);
-    if (availability.result !== 'available') {
+    if (availability.result === 'unavailable') {
       ToastLayer.showError(availability.reason);
       return;
     }
 
+    /*
+     * ⚠️ FIX-027 §20 — the one refusal that CANNOT be delivered before the learner leaves.
+     *
+     * Everything else this method guards against is answerable on disk, so the paragraph above
+     * refuses in the lesson with nothing changed. Whether the platform is reachable is not: the
+     * only way to find out is to ask it, and asking belongs to the launcher, after the project
+     * is closed. So a platform lesson says *download* here rather than implying the fresh copy
+     * is already on the machine — and if the fetch then fails, `resetLessonFromPlatform`
+     * guarantees nothing was deleted, the learner lands on an intact lesson, and the card's own
+     * Reset is one press away. That is a worse moment than refusing early and a much better one
+     * than a half-reset lesson.
+     */
+    const needsDownload = availability.result === 'needs-network';
+
     if (
       !confirm(
-        `Start "${title}" again?\n\nThis closes the lesson and replaces your copy of it with a fresh one. ` +
-          `Anything you built inside it is lost.`
+        `Start "${title}" again?\n\nThis closes the lesson and replaces your copy of it with a fresh one` +
+          (needsDownload ? ', downloaded from NodeGX Community' : '') +
+          `. Anything you built inside it is lost.`
       )
     ) {
       return;

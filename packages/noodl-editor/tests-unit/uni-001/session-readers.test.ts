@@ -146,9 +146,11 @@ const ALLOWED: Record<string, string> = {
   'noodl-editor/src/editor/src/models/lessoncheck.ts':
     'UNI-006 bridge: read ONLY inside liveSubmitAssignment, to hand an ASSIGNED lesson to the org that set it. Withholds nothing — grading, installing, resetting, progress and feedback are untouched, and an entry can only carry an assignment if an account obtained it, so there is nothing for an account-less editor to be refused. Asserted structurally below',
   'noodl-editor/src/editor/src/hooks/useTutorialInstall.ts':
-    'TUT-004 tutorials: the token is a BEARER HEADER on two reads the platform serves to strangers — `/api/v1/community/tutorials` and its `/bundle`, both of which the web page serves to anyone. Withholds nothing, and the account makes the editor do LESS rather than more: the token exists so D15 can refuse an org-minor whose school switched the community off, which is a school policy and not a paywall. Installing, scoring, resetting and the Learning folder never see a session at all — the whole decision layer is `tutorialsview.ts`, which takes a read and a set of slugs. Asserted structurally below',
+    'TUT-004 tutorials: the token is a BEARER HEADER on two reads the platform serves to strangers — `/api/v1/community/tutorials` and its `/bundle`, both of which the web page serves to anyone. Withholds nothing, and the account makes the editor do LESS rather than more: the token exists so D15 can refuse an org-minor whose school switched the community off, which is a school policy and not a paywall. Installing, scoring and the Learning folder never see a session at all — the whole decision layer is `tutorialsview.ts`, which takes a read and a set of slugs. ⚠️ **Resetting** used to be in that list and no longer is: FIX-027 §20 gave `resetLessonFromPlatform` its first caller, in the launcher, which builds a client the same way and for the same reason. The *decision* still sees no session — it moved to `models/lessonreset.ts`, asserted below. Asserted structurally below',
   'noodl-editor/src/editor/src/utils/community/communityRailGate.ts':
     'NAT-012 AC7 rail gate: the token is a BEARER HEADER on `/api/v1/me`, read to decide whether D15 REFUSES this viewer the community surface. 🔴 Withholds nothing, and it is the clearest case in this table of an account making the editor do LESS rather than more — the read exists only so an org-minor whose school switched the community off is not handed a door onto a blank panel. A session-less editor is NEVER refused: `/api/v1/me` answers 401 → `unauthenticated` with no token, and `refusesCommunitySurface` requires `ok` + `surface === \'absent\'`, so signing out can only ever ADD the panel back. Asserted behaviourally in `nat-012/community-rail-gate.test.ts`, which pairs the refused and permitted viewers in one test so a gate that removed the panel for everybody would fail (measured: 4 reds)',
+  'noodl-editor/src/editor/src/pages/ProjectsPage/ProjectsPage.tsx':
+    'FIX-027 §20 re-pulling a lesson: the token is a BEARER HEADER on the same public `/bundle` read `useTutorialInstall` already installs from, built in `repullFromPlatform` when a learner presses *Start again* on a lesson that came from Community. 🔴 **The question this column demands, answered before the row was added: does it withhold anything from someone with no account? No.** The read is unconditional and there is no branch on its result — a session-less editor gets `token: null` and the re-pull goes out exactly the same, because `/bundle` is what the web page serves to a stranger. As everywhere else in this table the account can only make the editor do LESS: the header is there so D15 can answer 404 to an org-minor whose school switched the community off. ⚠️ The reset happens HERE rather than in the lesson only because the project must be closed before its directory is replaced (`launcherHandoff.ts`) — a lifecycle constraint, not an account one. The DECISION of which reset to run sees no session at all: it is `models/lessonreset.ts`, asserted below. Asserted structurally below',
   'noodl-editor/src/editor/src/hooks/useLearnerPath.ts':
     'UNI-007 AC1 intake and path: the token is a BEARER HEADER on the path read, and the INTAKE read — the questions themselves — is not session-gated at all, because `GET /api/v1/me/intake` takes no token by design. Withholds nothing: a path is a fact that does not exist for a person with no account, in the same way `standing` does not, and no capability the editor had before this surface moved behind a session. Asserted structurally below'
 };
@@ -650,6 +652,10 @@ describe('AC4 — installing a tutorial is not behind an account', () => {
     'models/community/tutorialsview.ts',
     'models/lessonplatforminstall.ts',
     'models/learningfolder.ts',
+    // FIX-027 §20 — the module that CHOOSES between the two resets. It takes the register and a
+    // re-pull function, so there is no branch in it where an account could decide whether a
+    // learner may start a lesson again.
+    'models/lessonreset.ts',
     'views/panels/CommunityPanel/Tutorials.tsx'
   ];
 
@@ -664,6 +670,33 @@ describe('AC4 — installing a tutorial is not behind an account', () => {
     // path that no longer exists. `useTutorialInstall` genuinely does read it.
     const hook = stripComments(readFileSync(join(EDITOR_SRC, 'hooks/useTutorialInstall.ts'), 'utf8'));
     expect(hook).toContain('readCommunitySession');
+  });
+
+  /*
+   * FIX-027 §20 — the re-pull, added 2026-08-25. Same shape of claim as the install above.
+   *
+   * 🔴 The interesting arm is the SECOND one: a learner with no account must still be able to
+   * start a Community lesson again. If the re-pull were ever moved inside a `{session && …}`
+   * guard, the button would silently do nothing for exactly the people least able to work out
+   * why — and every other spec in this repo would stay green.
+   */
+  it('🔴 the re-pull is not inside any session branch — a signed-out learner can still start again', () => {
+    const page = stripComments(readFileSync(join(EDITOR_SRC, 'pages/ProjectsPage/ProjectsPage.tsx'), 'utf8'));
+    expect(isGated(page, 'resetLessonFromPlatform(lessonId')).toBe(false);
+    expect(isGated(page, 'performLessonReset(lessonId)')).toBe(false);
+  });
+
+  it('and the token is read once, to build a client, and nowhere else', () => {
+    // Counted, not eyeballed — a second use is a second place a decision could hide.
+    const page = stripComments(readFileSync(join(EDITOR_SRC, 'pages/ProjectsPage/ProjectsPage.tsx'), 'utf8'));
+    expect(page.split('session?.token').length - 1).toBe(1);
+  });
+
+  it('🔴 control: the checker CAN see a gate on this page — otherwise the row above proves nothing', () => {
+    // The known-firing arm for the two assertions above, on the same file, through the same
+    // helper. Without it "not gated" is indistinguishable from "the needle was never found".
+    const mutated = 'const x = 1;\n{session && (\n  resetLessonFromPlatform(lessonId, {})\n)}';
+    expect(isGated(mutated, 'resetLessonFromPlatform(lessonId')).toBe(true);
   });
 
   it('the install action in the panel is not inside any session branch', () => {

@@ -175,11 +175,27 @@ export function portTypeSentenceHtml(typeName: string | undefined, direction: Po
  * row useful to someone debugging a custom module's port types (SIG-001 §4's
  * warning). This is what goes above it.
  */
-export function refusalHeadline(reason: RefusalReason, sourceTypeName: string, targetTypeName: string): string {
+export function refusalHeadline(
+  reason: RefusalReason,
+  sourceTypeName: string | undefined,
+  targetTypeName: string
+): string {
   if (reason === 'duplicate') return 'Already connected.';
   // FB-021, and ahead of the signal line for the reason `refusedGroupSummary` gives.
   if (reason === 'gated') return 'This port is switched off by another setting.';
   if (targetTypeName === 'signal') return 'Signal inputs are moments, not values.';
+  /*
+   * ⚠️ The last branch is the ONLY one that names the source type, so it is the only one that
+   * can be asked without one — and a spec found it doing so, rendering *"A <strong></strong>
+   * output cannot drive a number input"*: a sentence with a hole where the fact should be.
+   *
+   * 🔴 The check belongs here and not in the caller. `refusalHeadlineFor` would have had to
+   * restate "which reasons need a source type", i.e. re-derive the branching above, and the two
+   * copies would answer differently the first time a fifth reason is added. This says the
+   * category-free thing instead, in the same words `refusedGroupSummary` uses for a set it
+   * cannot attribute — refused, and not guessing why.
+   */
+  if (!sourceTypeName) return "This wire can't reach this port.";
   return (
     'A <strong>' +
     escapeHtml(sourceTypeName) +

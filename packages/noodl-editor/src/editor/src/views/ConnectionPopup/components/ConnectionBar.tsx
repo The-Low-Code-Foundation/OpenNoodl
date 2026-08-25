@@ -23,7 +23,8 @@ import {
   isConfidentRedirect,
   orderGroups,
   OTHER_GROUP,
-  rankAlternatives
+  rankAlternatives,
+  refusalHeadlineFor
 } from '../refusalPlan';
 import { answersTimingIntent } from '../searchIntent';
 import { PortGroup } from './PortGroup';
@@ -279,6 +280,34 @@ export function ConnectionBar(props: TSFixme) {
     p.disabled = true;
     p.reason = 'gated';
     p.message = p.gateSentence;
+  });
+
+  /*
+   * SIG-001 §4 — the headline that goes *above* `message`, and the third half of
+   * this UI that had never run.
+   *
+   * `refusalHeadline` has existed since SIG-001 with four branches, a spec file
+   * and **no caller**, so every refused port explained itself with only
+   * `getConnectionStatus`'s sentence — *"Type mismatch a source port of type
+   * string cannot be connected to a target port with type signal"*. That is the
+   * string `.docsRefusal` is set small and last for, in its own words, "written
+   * for someone already debugging port types". It was the only thing the editor
+   * said to anyone else.
+   *
+   * 🔴 **A third pass, not a line inside either of the two above.** Both of them
+   * write `reason`, and the gate pass deliberately overwrites the first — so a
+   * headline computed in either would be the one the *other* pass then
+   * contradicted. Deriving it here, after both have settled, means the precedence
+   * FB-021 established is inherited rather than restated, and there is exactly
+   * one writer of this field.
+   *
+   * ⚠️ `sourceTypeName` is only defined while a wire is in flight. With no drag
+   * the passes above cannot refuse anything, so the only refusals that reach here
+   * are `gated` ones — whose headline names neither type. The `|| ''` is what
+   * that argument is worth in code, not a default anybody reads.
+   */
+  ports.forEach((p) => {
+    p.refusalHeadline = refusalHeadlineFor(p, sourceTypeName);
   });
 
   /*

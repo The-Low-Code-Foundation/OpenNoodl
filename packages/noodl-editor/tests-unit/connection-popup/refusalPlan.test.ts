@@ -14,7 +14,8 @@ import {
   dominantTypeName,
   OTHER_GROUP,
   type PlannablePort,
-  rankAlternatives
+  rankAlternatives,
+  refusalHeadlineFor
 } from '../../src/editor/src/views/ConnectionPopup/refusalPlan';
 
 function port(partial: Partial<PlannablePort> & { name: string }): PlannablePort {
@@ -189,5 +190,97 @@ describe('SIG-001 §5 — when the offer may promise a wire', () => {
     // `label` is present but did not win — promising it would connect a port the
     // ranking did not choose.
     expect(isConfidentRedirect('number', [variant, label], 'label')).toBe(false);
+  });
+});
+
+/**
+ * SIG-001 §4 — 🔴 THE HEADLINE THAT REACHED NOBODY FOR A WHOLE PHASE.
+ *
+ * `refusalHeadline` was written with four branches and a spec file, and had **no caller in
+ * `src/`**: `ConnectionBar` never derived it and `DocsPopup` never rendered it, so a refused row
+ * said only `getConnectionStatus`'s sentence — *"Type mismatch a source port of type string
+ * cannot be connected to a target port with type signal"* — to every beginner who met one.
+ *
+ * That is the third piece of this UI found built-but-unreachable, and the previous two were
+ * caught the same way: something only a running editor could reach. So the derivation is a
+ * function here, and these rows are what would go red if the wiring were pulled out again.
+ *
+ * ⚠️ **What these rows cannot prove.** They grade the *decision*, not the pixels. There is no
+ * jsdom in this project (`testEnvironment: 'node'`), so nothing here renders `DocsPopup` and
+ * nothing here proves the headline is on screen, above the detail, and legible. That needs a
+ * drive.
+ */
+describe('SIG-001 §4 — the refusal headline, as ConnectionBar derives it', () => {
+  const signalInput = port({ name: 'Do', typeName: 'signal', disabled: true, reason: 'signal-rule' });
+
+  it('🔴 says nothing at all about a port that refused nothing', () => {
+    // The guard that keeps every enabled row free of a refusal sentence. Without it the popup
+    // would explain a refusal that did not happen on all ~90 connectable ports of a Text Input.
+    expect(refusalHeadlineFor(port({ name: 'text', typeName: 'string' }), 'string')).toBeUndefined();
+    // Explicitly false, not merely absent — `disabled` is written by three separate passes.
+    expect(refusalHeadlineFor(port({ name: 'text', typeName: 'string', disabled: false }), 'string')).toBeUndefined();
+  });
+
+  it('leads with the signal rule when a value is dragged at a signal input', () => {
+    expect(refusalHeadlineFor(signalInput, 'string')).toBe('Signal inputs are moments, not values.');
+  });
+
+  it('names both types when one value type cannot drive another', () => {
+    const headline = refusalHeadlineFor(
+      port({ name: 'width', typeName: 'number', disabled: true, reason: 'type-mismatch' }),
+      'string'
+    );
+    // ⚠️ Asserted as a whole string rather than by `toContain`, which would pass on a sentence
+    // that named the two types in the wrong order — the one detail that makes it wrong advice.
+    expect(headline).toBe('A <strong>string</strong> output cannot drive a <strong>number</strong> input.');
+  });
+
+  it('🔴 says switched-off, not refused, for a gated port — with no wire in flight at all', () => {
+    // The case that has no `sourceTypeName` to give: a gated port is inert because of the node's
+    // own settings, and `ConnectionBar` marks it outside the drag guard. A headline that needed
+    // the source type would be empty or wrong here, which is FB-021's whole subject.
+    const gated = port({ name: 'contentSize', typeName: 'string', disabled: true, reason: 'gated' });
+    expect(refusalHeadlineFor(gated, undefined)).toBe('This port is switched off by another setting.');
+    // And it does not mistakenly claim a type problem.
+    expect(refusalHeadlineFor(gated, undefined)).not.toMatch(/cannot drive/);
+  });
+
+  it('🔴 does not print an empty type name when there is no source port', () => {
+    /*
+     * A refused port with no drag in flight should not be reachable, and this row exists because
+     * "should not be reachable" is an argument, not a guarantee. The first draft passed `''` for
+     * the missing source type and this assertion caught it rendering *"A <strong></strong>
+     * output cannot drive a number input"* — a sentence with a hole where its subject goes.
+     *
+     * ✅ The answer is the category-free refusal, not a malformed one and not silence: the row
+     * is still inert and still has to say so.
+     */
+    const orphan = port({ name: 'width', typeName: 'number', disabled: true, reason: 'type-mismatch' });
+    const headline = refusalHeadlineFor(orphan, undefined);
+    expect(headline).not.toMatch(/<strong><\/strong>/);
+    expect(headline).toBe("This wire can't reach this port.");
+  });
+
+  it('falls back to a category-free refusal rather than guessing one', () => {
+    // `asRefusalReason` turns an unrecognised model reason into `'other'`; a port that somehow
+    // carries none at all must land in the same place rather than throwing.
+    const noReason = port({ name: 'width', typeName: 'number', disabled: true });
+    expect(refusalHeadlineFor(noReason, 'string')).toBe(
+      'A <strong>string</strong> output cannot drive a <strong>number</strong> input.'
+    );
+  });
+
+  it('escapes a type name rather than letting it into the markup', () => {
+    // The sentence is rendered with `dangerouslySetInnerHTML`, and a custom module names its own
+    // port types — so this is the boundary, not a formality.
+    const nasty = port({ name: 'x', typeName: '<img onerror=1>', disabled: true, reason: 'type-mismatch' });
+    const headline = refusalHeadlineFor(nasty, 'string');
+    expect(headline).toContain('&lt;img onerror=1&gt;');
+    expect(headline).not.toContain('<img');
+  });
+
+  it('says already connected without reference to types', () => {
+    const dup = port({ name: 'text', typeName: 'string', disabled: true, reason: 'duplicate' });
+    expect(refusalHeadlineFor(dup, 'string')).toBe('Already connected.');
   });
 });

@@ -32,6 +32,7 @@ import { composeTutorials, noteForOutcome, type TutorialsView } from '@noodl-mod
 import { LearningFolderModel } from '@noodl-models/learningfolder';
 import { installTutorialFromPlatform, slugFromBundleUrl } from '@noodl-models/lessonplatforminstall';
 import type { PlatformInstallDeps } from '@noodl-models/lessonplatforminstall';
+import { stagingFs, stagingRoot } from '@noodl-models/lessonplatformstaging';
 
 export type TutorialsPane = {
   view: TutorialsView;
@@ -49,37 +50,6 @@ function installedSlugs(register: LearningFolderModel): Set<string> {
     if (slug) out.add(slug);
   }
   return out;
-}
-
-/**
- * The staging root.
- *
- * ⚠️ **Beside the Learning folder and never inside it.** `LearningFolderModel.list` reads every
- * directory under its root as a lesson, so a staging directory in there would appear in the
- * launcher as a half-installed lesson for as long as an install took — and permanently if one
- * crashed.
- */
-function stagingRoot(): string {
-  /* eslint-disable @typescript-eslint/no-var-requires */
-  const { platform } = require('@noodl/platform');
-  const nodePath = require('path');
-  /* eslint-enable @typescript-eslint/no-var-requires */
-  return nodePath.join(platform.getUserDataPath(), 'LearningStaging');
-}
-
-function stagingFs() {
-  /* eslint-disable @typescript-eslint/no-var-requires */
-  const nodeFs = require('node:fs');
-  const nodePath = require('path');
-  /* eslint-enable @typescript-eslint/no-var-requires */
-  return {
-    exists: (p: string) => nodeFs.existsSync(p),
-    makeDirectory: (p: string) => nodeFs.mkdirSync(p, { recursive: true }),
-    removeDirectoryRecursive: (p: string) => nodeFs.rmSync(p, { recursive: true, force: true }),
-    writeFile: (p: string, contents: string) => nodeFs.writeFileSync(p, contents, 'utf8'),
-    join: (...parts: string[]) => nodePath.join(...parts),
-    dirname: (p: string) => nodePath.dirname(p)
-  };
 }
 
 export function useTutorialInstall(): TutorialsPane {

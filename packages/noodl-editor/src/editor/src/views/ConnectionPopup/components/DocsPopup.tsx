@@ -61,17 +61,38 @@ export interface DocsPopupProps {
    */
   wireShape?: { shape: string; body: string };
   /**
+   * SIG-001 §4 — why this port refused, in the builder's terms, above the detail.
+   *
+   * Built by `ConnectionBar` from `refusalHeadline`, because the source type is a
+   * fact about the drag and nothing between here and there has any other reason
+   * to know it. Absent on a port that refused nothing — and absent on a refused
+   * port only if `reason` never reached it, which is the one case where saying
+   * nothing beats guessing a category.
+   */
+  refusalHeadline?: string;
+  /**
    * `getConnectionStatus`'s own sentence, when this port refused the wire being
    * dragged. Names both port types, which is what makes it useful to somebody
    * debugging a custom module — and useless as the *only* thing a beginner is
-   * told, which is what it was.
+   * told, which is what it was until {@link DocsPopupProps.refusalHeadline}
+   * arrived above it.
    */
   refusal?: string;
   /** Bounding box of the port row being hovered. */
   anchor?: DOMRect;
 }
 
-export function DocsPopup({ name, type, typeName, direction, body, wireShape, refusal, anchor }: DocsPopupProps) {
+export function DocsPopup({
+  name,
+  type,
+  typeName,
+  direction,
+  body,
+  wireShape,
+  refusalHeadline,
+  refusal,
+  anchor
+}: DocsPopupProps) {
   const enums = typeof type === 'object' && type !== null && type.name === 'enum' ? type.enums : undefined;
 
   const resolvedTypeName = typeName || NodeLibrary.nameForPortType(type);
@@ -149,6 +170,14 @@ export function DocsPopup({ name, type, typeName, direction, body, wireShape, re
       ) : null}
 
       {body ? <div className={css.docsBody} dangerouslySetInnerHTML={{ __html: body }} /> : null}
+
+      {/* SIG-001 §4 — the headline, then the detail. ⚠️ One rule above the pair,
+          not one between them: they are two halves of a single answer, and a
+          second border would read as two unrelated notes. `.docsRefusal` drops
+          its own top border when it follows this. */}
+      {refusalHeadline ? (
+        <div className={css.docsRefusalHeadline} dangerouslySetInnerHTML={{ __html: refusalHeadline }} />
+      ) : null}
 
       {refusal ? <div className={css.docsRefusal} dangerouslySetInnerHTML={{ __html: refusal }} /> : null}
     </div>,

@@ -358,6 +358,30 @@
   border-bottom: none;
 }
 
+/* SIG-001 §4: why the port refused, in the builder's terms — the line that was
+   written, styled around, and never rendered until `ConnectionBar` began deriving
+   it. It leads the pair, so it takes the rule and the larger size; the sentence
+   below it is the footnote, not this.
+
+   ⚠️ Colours are `.docsTypeSentence`'s, deliberately reused rather than chosen.
+   That pairing already ships in this popup, on this surface, measured in both
+   themes — and `tokens:css` would pass a token that merely *exists*, so picking a
+   new one here would be an unmeasured claim. Same reason it is not red: phase 23
+   keeps red for danger, and a refused connection is a category being explained,
+   not a mistake the builder made. */
+.docsRefusalHeadline {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--theme-color-border-default);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-color-fg-default-contrast);
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
 /* SIG-001 §4: `getConnectionStatus`'s own sentence, which names both port types.
    It is the *detail* — last, and set smaller — because it is written for someone
    already debugging port types, and it was the only thing the editor was
@@ -371,6 +395,14 @@
   font-size: 11px;
   line-height: 1.4;
   color: var(--theme-color-fg-default-contrast);
+}
+
+/* The headline already drew the rule for both. Two borders 6px apart would read
+   as two unrelated notes rather than one answer with its detail under it. */
+.docsRefusalHeadline + .docsRefusal {
+  margin-top: 2px;
+  padding-top: 0;
+  border-top: none;
 }
 
 .docsEnumValue {
