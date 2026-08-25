@@ -1,66 +1,58 @@
 # Phase 75 — next session
 
-**State as of 2026-08-25 (session 28).** Session 27 built and drove FB-016 scopes 1/2/3/5.
-**Session 28 built and drove scope 4, the transform-origin crosshair, and FB-016 is now CLOSED** —
-all five scopes ship, AC1–AC4 met. Read *"What session 28 found"*, then pick from *"First moves"*.
+**State as of 2026-08-25 (session 29).** Session 28 closed FB-016. **Session 29 built, specced and
+drove FB-022 — drag-to-scrub — and it is CLOSED, AC1–AC5.** Read *"What session 29 found"*, then
+pick from *"First moves"*.
 
-⚠️ **Peers.** `3878` is **opennoodl-78**, this checkout; idle and cooperative all session, and it
-volunteered a machine reading before the drive without being asked. `39469` is `trybeup-prod-c0`, a
-different project. A socket census tells you HOW MANY and HOW TO REACH; only `ListAgents` tells you
-WHICH PROJECT.
+⚠️ **Peers.** `3878` is **opennoodl-78**, this checkout — idle and cooperative all session, and it
+volunteered a machine reading before both `test:ci` runs without being asked. `39469` is
+`trybeup-prod-c0`, a different project. A socket census tells you HOW MANY and HOW TO REACH; only
+`ListAgents` tells you WHICH PROJECT. 🔴 **`SendMessage` to a cross-session peer needs the `[ref]`**
+— the bare name is rejected with the ref in the error, so just re-send.
 
-## What session 28 found
+## What session 29 found
 
-### 🔴 THE SCREENSHOT CHANGED THE DESIGN TWICE AGAIN — same as session 27, one layer up
+### 🔴 A GREEN SUITE OF 83 SPECS MISSED TWO DEFECTS. THE DRIVE FOUND BOTH IN TEN MINUTES.
 
-1. **`getComputedStyle` answers the *used* value, and on an untouched element that lies about
-   provenance.** The label read `transform-origin: 180px 30px` for an element whose origin had
-   **never been set**, and the second line restated the same two numbers. ✅ **There is no
-   provenance to read** — computed style cannot say whether a declaration came from a stylesheet or
-   from CSS's own initial value — so it is settled **by value**: an origin resolving to the centre
-   of the box behaves as the default whoever wrote it. ✅ **And drop a derived line when the source
-   line already IS the derivation.**
-2. **The crosshair's label was covering the box-model fact chip**, hiding `width`, `height` and half
-   the alignment sentence. 🔴 **When you add a second floating annotation, the obstacle is the
-   FIRST one, not the element.** Proved the fix fired rather than assuming it: reconstructed the
-   un-nudged spot in the running app (`WOULD_HAVE_OVERLAPPED: true`) and the label had moved.
+Both were *individually plausible everywhere you looked*, which is why nothing caught them.
 
-### 🔴 TWO `cdp click`s ARE NOT A TAB — and it read as a product defect
+1. **The fake was MORE CAPABLE than the real object.** `scrubCommit`'s spec used a fake node with
+   `notifyListeners`. The thing it stands for — **`ModelProxy`, not `NodeGraphNode`** — did not
+   have it. The first real undo threw, and the field kept showing the dragged value while the
+   project held the old one. ✅ **A fake can always be given a method; only the real source can
+   say whether it exists.** The guard now parses `modelProxy.ts` and checks the methods
+   `commitScrub` calls are declared.
+2. **A default declared as a STRING is a type the declaration and its reader can disagree about
+   silently.** `transformOriginX` declares `default: '50'`. My reader took `number` only, so a
+   +30px drag wrote **30** into a field that had been showing **50** — the panel stringifies
+   whatever it gets, so the display was right the whole time. Across the 33 scrubbable ports:
+   **14 number / 5 string / 14 absent**, and ⚠️ **three of the five strings are `'Auto'`**, so
+   coercion had to be *rejecting* too. 🔴 **It fails as a plausible value, never as an error.**
 
-The first P7 reading recorded a genuine crosshair blink. Driven as two separate `cdp click`
-invocations, each opening and closing its own CDP connection, the window's OS focus churns in the
-gap and `blur`/`focus` land in **different tasks**, so a debounce that is correct for a real tab
-fires. ✅ **Isolating the gesture in ONE eval** (window holding OS focus) gave `blur:X` → `focus:Y`
-in one task and **zero mutations** on the element under test. Both readings are true and answer
-different questions — say which one you drove. Now in the driving index.
+### ⚠️ A THIRD STRING DEFAULT LIVES OUTSIDE THE CORPUS I BUILT
 
-### 🔴 A SPEC ROW PASSED AGAINST A DELIBERATELY BROKEN IMPLEMENTATION
+The AC4 corpus is the **shared mixins only**. A peer's prompt to widen the check found
+`visual/circle.ts` giving `size` (type `number`) `default: '100'`. **A per-node port is invisible
+to a shared-mixin sweep.** There is now a grep over the whole viewer source beside it.
 
-Three wrong candidates were built and run against the suite; each died on a different row. **One row
-died on none**: the zoomed-page arm used `50% 50%`, and a percentage of the scaled rect and of the
-unscaled layout box are the same fraction of the same element, so the zoom factor **cancels**.
-Rewritten with a pixel origin. ⚠️ **Never use a percentage to test a scale** — ratios, fractions and
-midpoints all silently survive a missing factor. **Starving the candidate is the only thing that
-found it.**
+### ✅ What starving the candidates was worth
 
-### ⚠️ And one prediction whose NUMBER was wrong while its CLAIM held
-
-P6 predicted the origin would land at "the top-centre of the bounding box" — true for a **square**,
-and the fixture element is 360×60. The falsifier (*"lands at `rect.x, rect.y` ⇒ the naive
-implementation"*) is what settled it. **Write falsifiers, not just expected values.**
+18 deliberately-broken implementations, each killed on rows that name the right defect —
+**including the documented `UndoActionGroup` `ptr = 0` trap** (constructor `do`/`undo` form pushes
+fine and then never fires). 🔴 **But one mutant killed ZERO rows and that was the real finding**:
+making `writeScrubStep` record undo *per pixel* — the exact defect AC1 exists to prevent — changed
+nothing, because the fake ignored the third argument. **The suite was green and meaningless.**
 
 ## First moves, in order
 
-1. **FB-022** (M/L) — drag-to-scrub numerics. FB-017's rows are settled and its geometry stable, and
-   FB-016 no longer competes for the same files. ⚠️ **It will touch `NumberUnitInput.tsx`, which now
-   carries `onFocus`/`onBlur`** — scrubbing must not fight the crosshair's focus tracker; a scrub
-   that steals focus from a transform-origin field will drop the crosshair mid-drag.
-2. **FB-021 is UNOWNED and its numbers are verified** (session 26, `4629dceb`). A `sizeMode`-gated
-   port is *not* absent: `basic` suppresses only the property row, so **328 gated input ports on the
+1. **FB-021** (M) — gated ports render disabled with their reason. **UNOWNED, numbers verified**
+   (s26, `4629dceb`). `basic` suppresses only the property row, so **328 gated input ports on the
    shipped catalog are live, wireable, and have their value delivered then discarded**, against 21
-   genuinely-absent `extended` ones. 🔴 Two traps in its task file: **21 is the group count AND the
-   port count by coincidence** (count ports, never groups), and **all 21 `extended` ports are on
+   genuinely-absent `extended` ones. 🔴 Two traps in its file: **21 is the group count AND the port
+   count by coincidence** (count ports, never groups), and **all 21 `extended` ports are on
    data/logic nodes, none visual**. Seam: `portDecoration.ts`; splice: `modelProxy.ts:76`.
+   ⚠️ **`modelProxy.ts` now has a `notifyListeners` forwarder** (FB-022) — read it before editing.
+2. **FB-023** — was being worked by `3878` this session; check with it before starting.
 3. ⚠️ **Deliberate remainders, unchanged**: FB-011 AC1 superseded; FB-007's composer undriven in a
    browser; `apisurfaces.ts`' `personProfile` flat disc.
 4. **Still needing Richard**: FB-017 scope 2's `Source Set` demotion; FIX-026 (a)/(b); FIX-027
@@ -69,77 +61,87 @@ implementation"*) is what settled it. **Write falsifiers, not just expected valu
 
 ## Found while working, owned by nobody
 
-- ⚠️ **One commit in three dropped focus, and it is NOT characterised.** Committing `50 → 0` into
-  `Transform Origin X` left `document.activeElement` as `BODY`. The next two commits kept focus, and
-  the input node was proved identical across the commit (a `data-marker` attribute survived,
-  `sameNodeAfterCommit: true`). The obvious hypothesis — "the first parameter ever set on a node
-  rebuilds the panel" — **was tested on the sibling port and did not reproduce**. One observation.
+- ⚠️ **FB-022's crosshair interaction is settled by MECHANISM, not by pixels.** In Design mode the
+  viewer frame has **zero rendered elements**, so `[data-noodl-transform-origin]` stayed
+  `display: none` throughout — including in the control reading before any focus. What was
+  measured is that the field keeps focus and `transformOriginFocus.focused` still holds the port.
+  🔴 **Driving the crosshair needs the app RUNNING, which is a different mode from the one the
+  property panel lives in.** Nobody has driven those two together.
+- ⚠️ **`user-select: none` was confirmed *set* during a drag and restored after, but never
+  confirmed to visibly prevent a selection being painted.** Same for a mouseup genuinely outside
+  the OS window — document listeners make it work in principle and it was not observed.
+- ⚠️ **One commit in three dropped focus and is still NOT characterised** (s28, unchanged). The
+  obvious hypothesis was tested on the sibling port and did not reproduce. One observation.
 - ⚠️ **The auto-margin branch of FB-016's alignment fact is still written, specced and never
-  exercised in a running app** (unchanged from session 27) — `Layout.align` uses `auto` margins only
-  when the parent lays out in a **row**, and the fixture's parent is a column.
-- ⚠️ **The viewer bundle does not hot-reload** (confirmed again): a change to `noodl-viewer-react/src`
-  needs an editor reload **and a reopen of the project**. Budget two reload cycles per viewer change.
-- ⚠️ **`Transform Origin X/Y` are inside `Placement` inside `Advanced CSS`, and BOTH are collapsed.**
-  The group headers report a zero-sized box while collapsed, so you cannot click your way in from
-  the inside out. ✅ **Type into the `Filter properties` input instead** — `transform` reveals all
-  six transform rows at once.
+  exercised in a running app** — `Layout.align` uses `auto` margins only when the parent lays out
+  in a **row**, and the fixture's parent is a column.
+- ⚠️ **`AskAboutNodeDialog.module.scss` is STILL uncommitted — tenth session running.** Belongs to
+  no session; Richard's call. Same for the phase-70/71/72 working files.
 - The highlighter's disposal bug is untouched: a **selected** node whose element has gone is never
   removed from `selectedNodes`, so it is revisited and `remove()`d every frame.
-- ⚠️ **`AskAboutNodeDialog.module.scss` is STILL uncommitted — ninth session running.** Belongs to
-  no session; Richard's call. Same for the phase-70/71/72 working files.
 - Unchanged and unchased: `SidebarModel.switch('PortEditor')` crashes the panel; the Settings panel
   clips two rows; a `Number` node draws a group literally called `ADVANCED` beside the synthetic
   `Advanced CSS`; `getConnectionSourceLabel` returns nothing for the checkbox row; `check:css` in
   `nodegx-community` has one pre-existing non-ours violation.
 
-## ⚠️ Harness
+## ⚠️ Harness — three corrections from this session
 
-- ✅ **Read the driving index BEFORE the drive.** Every recipe held: launch, the recents store, the
-  card click, the module registry, tagging an element before clicking it.
-- 🔴 **`--quiet` suppresses the `launching Electron` line entirely.** Do not wait for it — poll
-  `curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/src/editor/index.bundle.js` for
-  `200` and then `npm run cdp -- health`. A `000` means the dev middleware is wedged.
-- 🔴 **`ng.nodes` does not exist; the view nodes are `ng.roots`** (`NodeGraphContextTmp.nodeGraph`).
-  Walking `ng.nodes` returns an empty list, which reads exactly like "the project did not open".
-- ⚠️ **`cdp type` INSERTS at the cursor, it does not replace.** Typing `0` into a field showing `50`
-  gives `500`. To replace: native-setter write + an `input` event + a dispatched `keydown` Enter,
-  which commits **without** blurring (the crosshair stays up).
-- ✅ **A real `cdp click` is what gives the window OS focus** — needed before any focus-driven
-  handler is believed. `document.hasFocus()` first, always.
-- ✅ **`dev:stop` spared all 10 MCP helpers** (5 sessions × 2) — verified by `ps` after, not assumed.
-  Launch and teardown both announced to `3878`.
+- 🔴 **`test-results.json` is at `packages/noodl-editor/tests/`, NOT `packages/noodl-editor/`.**
+  The "delete it before the run" precaution was aimed at the wrong path and was a **no-op**. Both
+  runs were read from the **summary line** plus a fresh mtime instead.
+- ⚠️ **`window.NodeGraphContextTmp` is NOT a window global — and that is not a correction to the
+  older note, which never said it was.** That note reaches it through the **module cache**. I probed
+  the wrong container, got `undefined`, and nearly filed it as the note being wrong. 🔴 **Checking
+  the wrong container is not evidence against a claim.** Plain `window.__nodeGraphEditor` was the
+  live editor here (one project, no AI preview canvas); the older note's warning is about the state
+  *after* a preview canvas renders. ✅ Settle it by `ed.el.getBoundingClientRect()` — 0×0 = detached.
+  `ed.forEachNode(cb)` returns on truthy; `ed.selectNode` wants a VIEW, not a model.
+- 🔴 **The editor opens in PREVIEW; the property panel needs the pencil `ModeSegmentedButton`**
+  (`button[class*=ModeSegmentedButton][aria-pressed=false]`). And ⚠️ **`Transform Origin X/Y` are
+  inside collapsed groups reporting a 0×0 box** — ✅ type `transform` into the **`Filter
+  properties`** input (there are two `SearchInput`s; the other is `Filter components`).
+- ✅ **`cdp drag "<x,y>" "<x,y>" [steps]` exists** and is the only correct way to drive a gesture —
+  press, 12 moves at 16ms, release, **on one connection**. Two `cdp click`s are not a gesture.
+- ✅ **To read the undo queue live**: rebuild the webpack require
+  (`webpackChunknoodl_editor.push([[Symbol()],{},r=>req=r])`), then
+  `req('./src/editor/src/models/undo-queue-model.ts').UndoQueue.instance`. `window.__req` is absent.
+- ⚠️ **A backgrounded `npm run test:ci` reports "completed, exit code 0" within ~90 seconds** — that
+  is the `nohup` wrapper, not the suite. Hit twice this session. **Poll for the summary line.**
 
 ## Gates, this tree (OpenNoodl, `cline-dev`) — 🔴 re-measure, never quote
 
-- `packages/noodl-viewer-react` jest: **80 files / 1071 specs / 0 failures**. ✅ The floor *without*
-  this session's two files was measured the same afternoon by ignoring them: **78 / 1012**, which is
-  **identical to session 27's recorded floor**, so the delta is exactly `2 suites / 59 specs`.
-- `npm run test:main`: **326 files / 5253 specs / 0 failures**, against session 27's 325 / 5240 —
-  exactly the one new `tests-unit/fb-016` file and its 13 specs.
-- `npm run typecheck:viewer`: **0 errors**. `npm run typecheck:editor`: **0 errors**.
-- ✅ **`test:ci` RUN 2026-08-25 12:19→12:31**: `Jasmine: 2849 specs, 4 failures (failed).` Seed
-  **99506**. All four are `AIX-006 style vocabulary`, **by name** — the same four at seeds 49062
-  (s26) and 75572 (s27). **Spec count identical; no new name.**
-  🔴 **THE FLOOR IS 4, NOT THE 10 STILL QUOTED IN OLDER FILES** — the other six were fixed on
-  purpose on 08-21 (`dae76da8`, `a46b52ba`, `ea402850`, recorded in `4c038fa7`).
-  ⚠️ **`test-results.json` was deleted before the run and came back with a fresh mtime.** Completion
-  was read from the **summary line**; the background-task notification's "exit code 0" describes the
-  `nohup` wrapper and means nothing either way.
-- Not run, nothing touched them: `typecheck:core-ui`, `noodl-runtime`, all of `nodegx-community`.
+- `npm run test:main`: **331 files / 5338 specs / 0 failures** (s28: 326 / 5253) — the five new
+  `tests-unit/fb-022` files and their 85 specs.
+- ✅ **`test:ci` RUN TWICE, both after and before the drive's fixes**: 13:06→13:19 seed **26506**,
+  and 13:41→13:54 seed **48211**. Both `Jasmine: 2849 specs, 4 failures (failed).` All four
+  `AIX-006 style vocabulary`, **by name** — same four as s26/s27/s28. **The floor is 4, not the 10
+  still quoted in older files.** Two seeds in one afternoon now stand behind it.
+  ⚠️ A peer predicted a possible fifth (`AIX-011 criterion 7`, the 30ms flake) because an iOS
+  simulator was pinning a core. **It did not fire** — so that flake survives at least one
+  core-pinned run, and *"a loaded runner loses it"* is too broad. The trigger is unidentified.
+- `npm run typecheck:editor`: **0 errors**, and **proved to see the four new files** by planting 4
+  errors (4 reported, naming exactly them) and removing them.
+- 🔴 **`npm run typecheck:core-ui` is a PRE-EXISTING DIRTY GATE: 44 errors, none of them mine.**
+  `@noodl-viewer-cloud/execution-history` resolution, VersionControlPanel, AiSettings. ⚠️ Its only
+  "scrub" hit is `main/src/execution-history/scrub.ts`, an unrelated file sharing the word. **Do
+  not quote this gate as passing.**
+- Not run, nothing touched them: `typecheck:viewer`, `typecheck:core-ui` fixes, `noodl-runtime`,
+  all of `nodegx-community`.
 
 ## Gates, `nodegx-community`
 
 Unchanged since session 18 and **not re-run**: 58 files / 1398 specs / 0 failures, `tsc` clean,
-`build` clean, `check:css` 1 pre-existing violation. nexus-1 serves `acd4a9a`. **FB-016 is
-viewer-side and does not deploy.**
+`build` clean, `check:css` 1 pre-existing violation. nexus-1 serves `acd4a9a`. **FB-022 is
+editor-side and does not deploy.**
 
 ## Session notes
 
-- ✅ **Drive harness**: `npm run dev:debug -- --quiet` (background), poll port 8080 for `200`, then
-  `cdp -- health`. First compile took ~3 min at load ~5 and swap 12.4G/13.3G.
-- ✅ **Restored as found**: the recents file's `fb016-drive` row removed after `dev:stop`, and the
-  `transformOriginX/Y` parameters the drive wrote onto node `A wide 100%` stripped back out of the
-  fixture's `project.json`. The fixture is as session 27 left it.
-- Fixture: **`NodeGX test projects/fb016-drive`** — `A wide 100%` … `F margins+padding` plus the five
-  radius arms. For scope 4 the useful node is **`D centred (control)`** (160×60), because it has no
-  transform parameters at all and is therefore the arm that exposes the default-wording question.
+- ✅ **Drive harness**: `npm run dev:debug -- --quiet` (background), poll
+  `curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/src/editor/index.bundle.js` for
+  `200`, then `npm run cdp -- health`. First compile took ~90s on a warm tree.
+- ✅ **Prove your code is loaded**: `curl …/index.bundle.js | grep -o SYM | wc -l` — used three
+  times this session, including to confirm each hot fix had compiled before re-driving.
+- ✅ **Restored as found**: drove a **copy** (`fb022-drive`), deleted it afterwards; the recents row
+  removed after `dev:stop`; the real `fb016-drive` fixture untouched (mtime still 12:19:47).
+- ✅ **`dev:stop` reported 25 processes and spared all 8 MCP helpers** — verified by `ps` after, not
+  assumed. Launch and both `test:ci` runs announced to `3878`, teardown too.
