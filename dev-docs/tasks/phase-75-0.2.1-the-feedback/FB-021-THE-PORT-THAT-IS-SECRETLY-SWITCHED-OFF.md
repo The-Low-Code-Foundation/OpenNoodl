@@ -453,3 +453,56 @@ surface: `modelProxy` hid the row, and `evaluateConnectionHealth` leaves the wir
   warning is cleared by a **parameter change**, not by ports arriving, so it likely does **not**
   belong in that list — but FIX-007's urgent lane is keyed on it, so this needs deciding rather than
   assuming.
+
+### 🔴 …and the reason it is NOT a one-liner: the warning would be STALE BY CONSTRUCTION
+
+`level: 'warning'` ruled by Richard (session 31): the wire is valid and its value ignored, so amber
+rather than the red a deleted port earns. Red stays meaning *"this cannot work at all"*.
+
+Then the check that matters. **Nothing re-evaluates connection health when a parameter changes.**
+The complete list of triggers, read from `NodeGraphModel`'s constructor and `projectmodel.ts:193`:
+
+| trigger | note |
+|---|---|
+| `Model.instancePortsChanged` | urgent lane, **gated on `hasUnresolvedPortWarning`** |
+| `typeRenamed` | |
+| `moduleRegistered` / `moduleUnregistered` / `libraryUpdated` | via `scheduleUpdateTypes` |
+| `Model.variantAdded` / `Deleted` / `Renamed` | |
+
+`grep -rn "parameterChanged" .../models` returns **nothing** on a path to health. Every other
+connection warning is keyed on facts that only *those* events change — a port existing, a type
+name, a port's type. **A gated port is different: its state is a function of a sibling parameter's
+value**, and that is the one input health never watches.
+
+So the new warning would be **wrong in both directions until an unrelated event happened to fire**:
+flip `Size Mode` to `Content Size` and the wire stays solid; flip it back and the wire stays dashed.
+⚠️ This is the same failure the panel had before FB-017 AC4 — *"the panel never re-renders on a
+parameter change"* — arriving on the canvas for exactly the same reason. It would have shipped
+looking correct on any fixture built by *constructing* a graph, because construction fires the other
+triggers; only flipping the control **after** the wire exists exposes it.
+
+#### The trigger needs a guard, not just a hook
+
+🔴 `setParameter` is **hot**: FB-022 measured **13 model writes in one 60px drag**. A naive
+`parameterChanged → scheduleEvaluateHealth()` schedules a graph-wide pass on every one. The 2 s
+debounce coalesces them, but the existing code is deliberate about not letting a common path arm
+that timer at all — FIX-007's comment says so about ports arriving for a hundred healthy nodes.
+
+✅ **Mirror `hasUnresolvedPortWarning`**: schedule only when the changed parameter actually **gates
+something on that node's type** — i.e. it appears as the left-hand side of a `dynamicports`
+condition. `parseCondition`/`tokenizeCondition` already extract that, so the predicate is a lookup
+over the node's own `dynamicports` and needs no new parsing. Cheap, and it keeps every ordinary
+parameter write off the timer.
+
+#### Shape, in order
+
+1. `con-target-port-gated` in `evaluateConnectionHealth`, raised when the port **is** on the node
+   (`isConditionalPortValid(node, port, ['extended'])` true) but **is switched off**
+   (`isConditionalPortValid(node, port, ['basic'])` false) — symmetric with the existing statement.
+2. Message from `portGateReason.ts`; `level: 'warning'`, `showGlobally: true`.
+3. The parameter-change trigger with the gating-parameter guard above.
+4. **NOT** in `UNRESOLVED_PORT_WARNING_KEYS` — that list is the warnings *ports arriving* can clear,
+   and this one is cleared by a parameter. Adding it would arm FIX-007's urgent lane wrongly.
+5. Scope 2's popup half: mark the offered port inert with the same sentence.
+6. ⚠️ **The drive has to flip the control on a graph that already has the wire** — building the
+   graph and reading it once would pass on a broken implementation.
