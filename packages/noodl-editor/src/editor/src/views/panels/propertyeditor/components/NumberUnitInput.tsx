@@ -30,6 +30,9 @@ export interface NumberUnitInputProps {
   onUnitChange: (unit: string, currentText: string) => void;
   onFixedToggle?: () => void;
   onReset?: () => void;
+  /** FB-016 scope 4 — the transform-origin crosshair is drawn while this field holds focus. */
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export function NumberUnitInput({
@@ -48,7 +51,9 @@ export function NumberUnitInput({
   onCommit,
   onUnitChange,
   onFixedToggle,
-  onReset
+  onReset,
+  onFocus,
+  onBlur
 }: NumberUnitInputProps) {
   const [displayedValue, setDisplayedValue] = useState(value ?? '');
 
@@ -86,7 +91,11 @@ export function NumberUnitInput({
           isConnected={isConnected}
           dataIdentifier={dataIdentifier}
           onChange={(text) => setDisplayedValue(String(text))}
-          onBlur={() => commitIfChanged()}
+          onFocus={() => onFocus && onFocus()}
+          onBlur={() => {
+            commitIfChanged();
+            onBlur && onBlur();
+          }}
           onKeyDown={(e) => e.key === 'Enter' && commitIfChanged()}
         />
         {/* FH-014. About half the unit-bearing ports declare exactly one unit

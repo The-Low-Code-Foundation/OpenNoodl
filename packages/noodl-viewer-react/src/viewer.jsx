@@ -50,6 +50,16 @@ if (typeof window !== 'undefined' && window.NoodlEditor) {
       } else if (window.NoodlEditorInspectorAPI.enabled) {
         this.highlighter.setWindowSelected(true);
       }
+    },
+    /**
+     * FB-016 scope 4 — the crosshair follows focus on the editor's transform-origin field, and
+     * only the editor can know that. Everything else in the overlay is inferable from the DOM the
+     * viewer already has; this one fact is not, so it is pushed.
+     */
+    setTransformOriginFocus(enabled) {
+      if (this.highlighter) {
+        this.highlighter.setTransformOriginFocus(enabled);
+      }
     }
   };
 }

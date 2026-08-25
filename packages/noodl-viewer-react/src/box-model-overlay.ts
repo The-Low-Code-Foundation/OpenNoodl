@@ -611,6 +611,20 @@ export class BoxModelOverlay {
     this.root.style.display = 'none';
   }
 
+  /**
+   * Where the fact chip currently is, or `null` when nothing is drawn.
+   *
+   * FB-016 scope 4 — the transform-origin crosshair carries its own label, and both it and this
+   * chip want to sit beside the same element. The first drive of the crosshair put one squarely on
+   * top of the other and made the box facts unreadable, so the crosshair asks where this one is
+   * and stays out of its way.
+   */
+  chipRect(): RectLike | null {
+    if (this.root.style.display === 'none') return null;
+    const rect = this.chip.getBoundingClientRect();
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  }
+
   dispose(): void {
     this.root.remove();
   }

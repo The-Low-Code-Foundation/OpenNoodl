@@ -25,6 +25,10 @@ import { NodeGraphEditor } from '../../nodegrapheditor';
 import { remeasureNodeGraphCanvas } from '../../nodegrapheditor/CanvasDOMBindings';
 import { panelHoldsCanvasSelection } from '../../nodegrapheditor/EditorEventBindings';
 import { ScopePlanStrip } from '../../panels/AiAuthoringPanel/ScopePlanStrip';
+import {
+  TRANSFORM_ORIGIN_FOCUS_EVENT,
+  transformOriginFocus
+} from '../../panels/propertyeditor/transformOriginFocus';
 import { showContextMenuInPopup } from '../../ShowContextMenuInPopup';
 import { BENCH_MOUNT_EVENT } from '../../VisualCanvas/benchRequest';
 import { useCanvasView } from './hooks/UseCanvasView';
@@ -184,6 +188,12 @@ function EditorDocument() {
       canvasView?.setNodeSelected(selectedNodeId);
       ipcRenderer.send('viewer-select-node', selectedNodeId);
     }
+
+    // FB-016 scope 4 — a new selection rebuilds the properties panel, which is exactly the case
+    // where a focused input is unmounted without ever firing `blur`. The rows hand their focus
+    // back on dispose; this is the belt to that pair of braces, and it is also simply correct:
+    // the crosshair described the node that is no longer selected.
+    transformOriginFocus.reset();
   }, [selectedNodeId, canvasView, previewMode]);
 
   const onRouteChanged = useCallback(
@@ -244,6 +254,23 @@ function EditorDocument() {
     );
 
     EventDispatcher.instance.on('viewer-refresh', () => canvasView?.refresh(), eventGroup);
+
+    /**
+     * FB-016 scope 4 — relay focus on the transform-origin fields to whichever preview is showing.
+     *
+     * Both destinations are written for the same reason `onExitDesignMode` writes both: the docked
+     * preview is a `CanvasView` in this renderer, the detached one is a `CanvasView` in another,
+     * and this effect does not know which exists. `setTransformOriginFocus` is idempotent at the
+     * far end, so sending to a preview that is not there costs nothing.
+     */
+    EventDispatcher.instance.on(
+      TRANSFORM_ORIGIN_FOCUS_EVENT,
+      (enabled: boolean) => {
+        canvasView?.setTransformOriginFocus(enabled);
+        ipcRenderer.send('viewer-transform-origin-focus', enabled);
+      },
+      eventGroup
+    );
 
     /**
      * BEN-004 — the bench is a mode of the *docked* preview surface (R1), so

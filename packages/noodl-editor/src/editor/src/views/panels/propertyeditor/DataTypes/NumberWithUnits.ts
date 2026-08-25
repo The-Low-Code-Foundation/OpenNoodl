@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
 import { NumberUnitInput } from '../components/NumberUnitInput';
+import { transformOriginFocus } from '../transformOriginFocus';
 import { TypeView } from '../TypeView';
 import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
 
@@ -92,6 +93,11 @@ export class NumberWithUnits extends TypeView {
         connectionLabel: this.isConnected ? getConnectionSourceLabel(this.parent.model, this.name) : undefined,
         onConnectionClick: this.isConnected ? getConnectionSourceNavigate(this.parent.model, this.name) : undefined,
         dataIdentifier: this.name,
+        // FB-016 scope 4 — the crosshair's trigger. `isTransformOriginPort` filters inside the
+        // tracker, so every number-with-units row can report focus and only the two that matter
+        // turn anything on.
+        onFocus: () => transformOriginFocus.focus(this.name),
+        onBlur: () => transformOriginFocus.blur(this.name),
         onCommit: (text: string) => this.updateValue(text, this.unit),
         onUnitChange: (unit: string, currentText: string) => this.updateValue(currentText, unit),
         onReset: () => {
@@ -135,6 +141,11 @@ export class NumberWithUnits extends TypeView {
   }
 
   dispose() {
+    // ⚠️ React does not fire `blur` on an input it unmounts, so a panel rebuilt under the
+    // author's cursor would leave the crosshair on with nothing focused. Handing the focus back
+    // here is the only place that always runs.
+    transformOriginFocus.release(this.name);
+
     if (this.root) {
       this.root.unmount();
       this.root = null;

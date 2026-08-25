@@ -337,6 +337,19 @@ export class CanvasView extends View {
     this.renderReact();
   }
 
+  /**
+   * FB-016 scope 4 — tell the running app that the author is editing a transform origin.
+   *
+   * This is the only part of the overlay the viewer cannot infer for itself: everything else it
+   * says is read off the DOM it is already drawing over, but focus lives here, in the properties
+   * panel, in another process.
+   */
+  setTransformOriginFocus(enabled: boolean) {
+    this.tryWebviewCall(() => {
+      this.webview.executeJavaScript(`NoodlEditorHighlightAPI.setTransformOriginFocus(${enabled})`);
+    });
+  }
+
   setNodeSelected(nodeId: string) {
     this.selectedNodeId = nodeId;
     this.tryWebviewCall(() => {
