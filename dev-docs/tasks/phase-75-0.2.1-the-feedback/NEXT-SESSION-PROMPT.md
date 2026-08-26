@@ -20,70 +20,51 @@ Deploy health, all from the run itself: neighbours `200 → 200` on all three
 `302 → github.com`; capture hosting ✅; off-site backup ✅ 19.5h old with a ✅ restore check from
 08-23; outbox drain ✅ with an empty backlog.
 
-## 🔴 READ THIS FIRST: one open decision, and it is Richard's
+## ✅ Both s50 decisions are TAKEN and SHIPPED — nothing is owed here
 
-`ops/deploy.sh` was changed this session so that a `HETZNER_S3_*` key present on the host but
-absent from the laptop is **kept** rather than blanked. **The justification for that change was
-wrong**, and the change is still in.
+Richard ruled on both open items the same session. Live commit is **`fab1aac`**.
 
-- **What was claimed:** the laptop carried **0 of 5** Hetzner keys, so the next deploy would blank
-  them and take capture hosting dark.
-- **What is true:** it carries **4 of 5** (the 5th is derived). The measurement used
-  `grep -oE '^[A-Z_]+='` — a character class with **no digits**, against keys that all contain a
-  `3`. Nothing caught it until the deploy printed `using this laptop's HETZNER_S3_* keys`.
-- ⚠️ **Production is behaviourally UNCHANGED by the fix today.** The laptop has the keys, so
-  "laptop wins" produces byte-identical output to the old script. The change is **inert** until a
-  laptop actually lacks a key.
+### 1. The `deploy.sh` fallback was REVERTED
 
-🔒 **The decision owed:** the original blanking was **deliberate**, commented, and had a real
-purpose — deleting a key from the laptop **is** a working revocation, and this change takes it
-away (the host's copy wins instead). Every deploy now prints which side won, which makes the trade
-visible rather than silent, but it is still a trade.
+`ops/deploy.sh` is **byte-identical to `2609137`** (md5 `0659d394…`, checked rather than assumed).
+The laptop is the source of truth again, so deleting a key from the secrets file is once more how
+a key is revoked from the host.
 
-**Two honest options — pick one:**
+⚠️ **Why it was ever added:** a measurement said the laptop carried **0 of 5** `HETZNER_S3_*` keys.
+It carries **4 of 5**. The probe was `grep -oE '^[A-Z_]+='` — a character class with **no digits**,
+against keys that all contain a `3`. ✅ The case is still covered, pinned the *other* way, and the
+spec **fails against the fallback build**, so it discriminates.
 
-| | |
-|---|---|
-| **keep it** | latent robustness: the keys are optional, so a laptop *can* lack one; the loud readout defuses the staleness concern |
-| **revert the behaviour** | restores revocation-by-deletion; keep the harness `existingHostEnv` option and re-point the three specs at the old behaviour |
+### 2. 🔴 The off-site dumps were UNENCRYPTED — now fixed AND proven
 
-Full write-up, including the correction and what is *not* proven, in
-[FB-005-SCOPE.md](FB-005-SCOPE.md) §4g.
+Three separate defects, each hiding the next:
 
-⚠️ **Also still true from s49: `origin/main` is far behind local `main`** on `nodegx-community`
-(now 14 commits). Production tracks the *working tree*, not the remote, so *deployed* and *pushed*
-remain independent facts.
+1. **`install-backup.sh` blanked the passphrase on every deploy.** It branches on whether *S3
+   credentials* were passed; the laptop had the keys but no passphrase, so it took the
+   credentials-**present** branch and rewrote `backup.env` whole. Its preserve branch — cited in
+   its own header as proof it *"NEVER DESTROYS A CONFIGURED DESTINATION"* — was **unreachable** for
+   that value. ✅ The passphrase is now recovered *before* the branching, independent of the S3 keys.
+2. **No test had ever executed one line of that script.** The `ssh` stub answered
+   `*install-backup.sh*` with a canned `"backup wiring: ok"`. ✅ It now runs for real.
+3. 🔴 **Turning encryption on then BROKE the backup, worse than the bug.** `ProtectHome=true` /
+   `ProtectSystem=strict` meant gpg could not create `~/.gnupg`; the dump succeeded, gpg died, and
+   **the upload never happened** — `offsite: "none"`. `restore-check.sh` had the identical flaw.
+   ✅ Both now set `GNUPGHOME` somewhere writable.
 
-## 🔴 FOUND WHILE VERIFYING: the off-site database dumps are UNENCRYPTED
-
-Not caused by this deploy, and **not new** — but nothing had looked, and it concerns production
-data sitting in a third party's object store.
+✅ **Proven end to end on the live host, by hand, not inferred:**
 
 | | |
 |---|---|
-| `BACKUP_ENCRYPT_PASSPHRASE` on nexus-1 | 🔴 **EMPTY** |
-| `BACKUP_ENCRYPT_PASSPHRASE` in `~/nodegx-community-deploy.env` | 🔴 **absent** |
-| the 08-26 00:00 dump, **19.5h BEFORE this deploy** | `encrypted=False` |
-| where those dumps go | Hetzner S3, `nodegx/nodegx-community/…` |
+| backup service | ✅ `encrypted: true`, `offsite: ok`, object `…202119.dump.**gpg**` |
+| restore check, from the **encrypted off-site copy** | ✅ **56 tables restored vs 56 live** |
 
-✅ **The timestamp is what clears this deploy of causing it** — the pre-deploy dump the verify
-section printed was already unencrypted, so the state predates 19:30Z.
+⚠️ 🔴 **THE PASSPHRASE IS THE ONLY THING THAT CAN DECRYPT THESE DUMPS.** It is in
+`~/nodegx-community-deploy.env` (backed up to `…env.bak-20260826`) and on the host. **It belongs in
+a password manager.** Losing it makes every encrypted backup unrecoverable — a worse failure than
+the one just fixed.
 
-**The mechanism, and it repeats on every deploy:** `ops/deploy.sh` reads the passphrase from the
-laptop secrets file, which does not have it, and passes an empty value to `install-backup.sh`.
-Because the *S3 keys* are present, that script takes its **credentials-present** branch and
-rewrites `backup.env` wholesale — including `BACKUP_ENCRYPT_PASSPHRASE=` — every single time. The
-`elif [ -f "$BACKUP_ENV" ]` preserve branch never runs, so the passphrase cannot survive a deploy
-even if someone sets it on the host by hand.
-
-⚠️ **This is the exact hazard the `APP_S3_*` split in `ops/deploy.sh` was built to avoid** — and it
-turns out to be not merely theoretical but *already realised*, by a different route.
-
-🔒 **Richard's call, and deliberately not acted on here:** setting a passphrase changes whether the
-existing off-site chain can be restored, so it is not a change to make unattended. If it is wanted,
-the honest shape is `BACKUP_ENCRYPT_PASSPHRASE` in the secrets file **plus** a fresh restore check
-against a dump written after the change — ⚠️ the current ✅ restore check (08-23) proves only that
-the *unencrypted* path restores.
+⚠️ **`origin/main` is far behind local `main`** on `nodegx-community` (now 16 commits). Production
+tracks the *working tree*, not the remote, so *deployed* and *pushed* remain independent facts.
 
 ## The queue — cheapest-first. Take the top one.
 
@@ -98,21 +79,28 @@ the *unencrypted* path restores.
 ## 🔴 Findings worth carrying out of s50
 
 1. **A hand-rolled character class is a bound that cannot report itself.** `[A-Z_]` excludes
-   digits; the four keys it returned were exactly the digit-free names, so the output was **short,
-   tidy, internally consistent and wrong**. Unlike `head -20` there is no truncation marker at all.
-   ✅ **Run the complement** — `grep -vE '<pattern>' file` — before a regex inventory authorises
-   work, and *especially* before it authorises overruling someone's deliberate decision.
-2. ✅ **A readout that names WHICH SIDE WON is worth more than one that says `ok`.** The line that
-   caught the error above was added *by the change being justified*; a plain `✅ ok` would have
-   sailed straight past. Prefer *"using X"* / *"keeping Y"* over a green tick.
-3. ⚠️ **The naive form of the fix would have been worse than the bug.** Falling the S3 values back
-   to the host makes `install-backup.sh` take its *credentials-present* branch and rewrite
-   `backup.env` with an **empty `BACKUP_ENCRYPT_PASSPHRASE`** — a value that lives in that file and
-   nowhere else. The `APP_S3_*` split exists solely to prevent that, and is load-bearing.
-4. ⚠️ **`ops/deploy.sh` runs entirely over SSH, which auto mode's classifier hard-blocks.** A
-   narrow allow rule now lives in OpenNoodl's `.claude/settings.local.json` (gitignored): the SSH
-   key is pinned, and the deploy script is pinned to `~/nodegx-community-deploy-clone/ops/deploy.sh`
-   — **so deploy from that path**, cloned fresh, as the clean-tree refusal intends.
+   digits, and the keys it *did* return were exactly the digit-free names — so the output was
+   short, tidy, internally consistent and **wrong**. Unlike `head -20` there is no truncation
+   marker at all. ✅ **Run the complement** — `grep -vE '<pattern>' file` — before an inventory
+   authorises work, and especially before it authorises overruling a deliberate decision. (Run on
+   the secrets file afterwards: 4 unmatched lines, all comments. Two seconds.)
+2. 🔴 **A stub that says `ok` is asserting an outcome; a stub that redirects paths is enabling an
+   execution.** The canned `"backup wiring: ok"` meant `install-backup.sh` had **never run** under
+   test, and a real production defect sat behind that one line. **The tell is grammatical.**
+3. ⚠️ **Un-canning it went wrong twice, each time producing a green test of the WRONG path** —
+   running `bash <script>` directly dropped the credentials `deploy.sh` passes as an env **prefix
+   on the command string**, and `/etc/systemd/system` was hard-coded. ✅ Rewrite and `eval` the
+   command string; never reconstruct the invocation.
+4. 🔴 **Switching on a safety feature is a change, and its first run is a test.** Enabling
+   encryption moved the failure from *"readable by whoever holds the bucket"* to *"there is no
+   backup"* — and the deploy's verify section would not have said so, because it reports the
+   **last** backup, which was 20h old and green. ✅ Force one run and read the **artefact**; then
+   prove the **inverse** operation (restore), because a passphrase that encrypts but cannot decrypt
+   looks identical to a working one until it is needed.
+5. ⚠️ **`ops/deploy.sh` runs entirely over SSH, which auto mode's classifier hard-blocks.** A
+   narrow allow rule lives in OpenNoodl's `.claude/settings.local.json` (gitignored): the SSH key
+   is pinned, and the deploy script is pinned to `~/nodegx-community-deploy-clone/ops/deploy.sh`
+   — **so deploy from that path**, re-cloned fresh each time, as the clean-tree refusal intends.
 
 ## Carried forward, unchanged
 
@@ -136,12 +124,15 @@ the *unencrypted* path restores.
 
 | gate | result |
 |---|---|
-| `nodegx-community` full suite | ✅ **62 files, 1537 tests** — the summary line, not the exit code |
+| `nodegx-community` full suite | ✅ **62 files, 1538 tests, `VITEST_EXIT=0`** — unpiped, so the exit code is the suite's own |
 | `nodegx-community` `tsc --noEmit` | ✅ clean |
-| new regression spec vs **unfixed** script | ✅ **FAILS** — known-good and known-broken disagree |
-| `ops/deploy.sh` end-to-end, real host | ✅ exit 0, neighbours `200 → 200` |
-| `npm run test:ci` (OpenNoodl) | ❌ **not run** — no OpenNoodl source changed this session; the recorded rule is that it is only meaningful **run alone on the machine**. Inherited unchanged from s47–s49 rather than paid here. |
+| revert spec vs the **fallback** build | ✅ **FAILS** — it discriminates |
+| passphrase spec vs the **unfixed** script | ✅ **FAILS**, with nexus-1's exact state as its message |
+| `ops/deploy.sh` end-to-end, real host | ✅ ×3, neighbours `200 → 200` every time |
+| backup + restore-check, forced on the live host | ✅ encrypted, uploaded, restored, 56 = 56 |
+| `npm run test:ci` (OpenNoodl) | ❌ **not run** — no OpenNoodl source changed; only meaningful **run alone on the machine**. Inherited from s47–s49 rather than paid here. |
 
-⚠️ **`test:ci`'s exit code is not the signal — the summary line is.** This session hit the same
-shape from the other direction: a suite piped to `tail` reported **exit 0 from `tail`**, not from
-vitest. Both readings came from the summary line instead.
+🔴 **Two exit-code lessons this session, from opposite directions.** A suite piped to `tail`
+reported **`tail`'s** exit 0, not vitest's — so every reading here came from the **summary line**.
+And a `systemctl start` that returned cleanly still left `state: "failed"` in the status JSON, so
+the backup was read from **the artefact**, never from the invocation.
