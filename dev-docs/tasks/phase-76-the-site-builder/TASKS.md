@@ -38,8 +38,8 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
 
 ## Tier 2 — the template
 
-- 🟡 **SB-004** — [the site is records](SB-004-THE-SITE-IS-RECORDS.md) — **DESIGNED s2, not yet
-  authored.** Five classes (Page/Section/Theme/SiteSettings/ContactMessage), nav derived not stored;
+- 🟡 **SB-004** — [the site is records](SB-004-THE-SITE-IS-RECORDS.md) — **DESIGNED s2, publish flow
+  AUTHORED through both MCP doors.** Five classes (Page/Section/Theme/SiteSettings/ContactMessage), nav derived not stored;
   the ACL *is* the publication state and `published` is its queryable mirror, written only by
   `publishPage`; three endpoints over three helpers composed through `Run Tasks`, the cloud
   runtime's only iteration primitive. Grounded on measurements, not assumptions: classes auto-create
@@ -47,7 +47,11 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   wirable read-write booleans, and **an absent ACL means public**. 🔴 **F2 — `devOpen` disables
   row-level ACL (`aclFor`) but NOT collection permissions (`checkClp` has no such branch), so a
   local drive can show a plausible refusal while never exercising the published/draft boundary at
-  all.** Left: author it through the MCP surface.
+  all.** `site/SetSectionAccess` + `publishPage` authored s2 through `create_component` **and**
+  `create_plan`/`stage`/`apply` — **s1's plan-door debt closed**. ⚠️ A green authoring run is not
+  evidence the invariant holds: the door returns `dynamic-port-skipped` over exactly the ACL
+  parameters, and says so. Left: `duplicatePage`, `submitContactForm`, two helpers, the real
+  backend run.
 - ⬜ **SB-005** — the admin panel (editor, image upload, theme, live preview via realtime)
 - ⬜ **SB-006** — the public site
 - ⬜ **SB-007** — it ships as a template (via FB-005's registry — consume, don't re-spec).
@@ -79,7 +83,7 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
 
 ## Tier 3 — found while building
 
-- ⬜ **SB-009** — [a component named in a parameter is named nowhere any gate looks](SB-009-A-COMPONENT-NAMED-IN-A-PARAMETER.md)
+- ⬜ **SB-009** — [a component named in a parameter is not checked by the authored gate](SB-009-A-COMPONENT-NAMED-IN-A-PARAMETER.md)
   — **MEASURED s2, not fixed.** A cloud `Run Tasks` naming a nonexistent helper, or a browser
   component across the runtime boundary, is accepted `0/0/0` and written to disk; the two
   known-firing controls beside it (`wrong-runtime-node`, `repeater-template-unresolved`) prove the
@@ -101,3 +105,9 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   phase-75 peer's in-flight uncommitted work ('data-app' vs 'Data app'), not ours. ⚠️ `test:ci`
   not run (peer was using it; my editor changes are covered by tests-unit validation 52/0 —
   next session should ride a solo `test:ci` window before calling the editor half proven).
+- **s2 (2026-08-26)** — **SB-004 designed and its publish flow authored** (see the entry above and
+  the task file's §6a); **SB-009 filed** from a 4-arm probe. The peer's `test:ci` held the machine
+  for the first hour, so the probe waited rather than contaminating their run. Two corrections made
+  in-session and recorded where they were made: the Run Tasks item channel (Component Inputs *as
+  well as* Component Object) and SB-009's over-strong "nowhere any gate looks" — a live-editor check
+  does exist for the browser case, and is inert for cloud. noodl-mcp 60/684 green.

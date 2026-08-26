@@ -1,4 +1,4 @@
-# SB-009 — A component named in a parameter is named nowhere any gate looks
+# SB-009 — A component named in a parameter is not checked by the authored gate
 
 **Status: ⬜ OPEN — measured, not fixed.** Found while designing SB-004 (2026-08-26 s2), filed
 rather than absorbed because the fix is wider than SB-004's scope: it touches twelve ports across
@@ -12,6 +12,21 @@ known-firing controls, run green s2.
 A component can be named two ways. As a **node type** (`/Card` as an instance) — gated. As the
 value of a **`component`-typed parameter** (`Run Tasks`' `taskTemplate`, `Show Popup`'s `target`,
 the seven `repeaterComponent` ports) — gated for exactly one of the thirteen such ports.
+
+⚠️ **Correction to this file's first draft, which claimed "nowhere any gate looks".** One check does
+exist for `taskTemplate` existence: `checkTemplateContract`
+(`runtasks-template-contract.ts:154-170`) warns "The task template … does not exist". It does not
+rescue the authored case, and for SB-004's case it never runs at all:
+
+| where | `taskTemplate` exists? | runtime matches? |
+|---|---|---|
+| editor, **browser** graph, live | ✅ `checkTemplateContract` | ❌ |
+| editor, **cloud** graph | ❌ — `runtasks.ts:918-921` returns unless `editorConnection.isRunningLocally()`, and the cloud runtime never connects to an editor | ❌ |
+| **authored write gate** (MCP + editor gate) | ❌ **measured below** | ❌ **measured below** |
+
+So the check that exists is a live-editor warning on a node a human is looking at, in the one
+runtime SB-004 does not use. The cloud case — a cloud function composed of cloud helpers — has
+nothing anywhere.
 
 - `checkRepeaterTemplate` opens `if (node.type !== REPEATER_TYPE) continue`
   (`validation/repeaterTemplate.ts:186`; `REPEATER_TYPE = 'For Each'`, `:82`). Its two resolution

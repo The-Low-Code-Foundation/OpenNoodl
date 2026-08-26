@@ -1,8 +1,11 @@
 # SB-004 — The site is records
 
-**Status: 🟡 DESIGNED s2 (2026-08-26), not yet authored.** The data model, the ACL matrix and the
-publish/duplicate/contact flows below are settled against measured backend behaviour (§1). What
-remains is authoring them through the MCP surface — SB-004's other half, and the phase's dogfood.
+**Status: 🟡 DESIGNED + publish flow AUTHORED s2 (2026-08-26).** The data model, the ACL matrix and
+the flows below are settled against measured backend behaviour (§1). The publish flow —
+`site/SetSectionAccess` + `publishPage` — is authored through **both** MCP doors and green
+(`noodl-mcp/tests/sb004Authoring.test.ts`); **this closes s1's debt that the plan door had never
+driven a cloud target end to end.** Left: `duplicatePage`, `submitContactForm`, the three remaining
+helpers, and a real backend run (§7).
 
 Depends on SB-001/002/003 (all ✅ s1). Feeds SB-005 (admin panel), SB-006 (public site), SB-008
 (the drive). Canonical prose model: `dev-docs/reference/BACKEND-AUTHORING-MODEL.md`.
@@ -132,9 +135,17 @@ SB-003 they 404 rather than 500 and never appear in the permissions listing.
 
 | helper | job |
 |---|---|
-| `site/SetRecordAccess` | one `Update Record` carrying the two ACL rules; the unit of the invariant |
-| `site/CopySectionToPage` | one `Create Record` cloning a section onto a new page id |
+| `site/SetSectionAccess` | the `Run Tasks` template: one `Update Record` carrying the two ACL rules for one section |
+| `site/CopySectionToPage` | the `Run Tasks` template for duplicate: one `Create Record` cloning a section onto a new page id |
 | `site/ContactRecipient` | the Settings-component idiom (as `Stripe/Settings` does): `SiteSettings` + `Secret`, out comes the recipient |
+
+⚠️ **One helper cannot serve two collections, and this is a real limit on the idiom.** `Update
+Record`'s `collectionName` is registered as an **edit-only** enum of the project's classes
+(`get_node_type` `runtimeBehavior`, s2) — a parameter, never a wire. So the "set the access rules on
+this record" step cannot be written once and pointed at `Page` and `Section` in turn: the page's own
+ACL is written by an `Update Record` in the endpoint's own graph, and only the per-section write is
+a helper. Composition by component instance is bounded by which ports are edit-only, which is worth
+saying out loud in SB-002's doctrine.
 
 **`Run Tasks` is the composition primitive.** It is the only iteration the cloud runtime has, it
 takes a **component** as its `taskTemplate` and a Template Contract (`Do` in; `Success`/`Failure`/
@@ -143,12 +154,22 @@ on. So `publishPage` is: Request → `Query Records`(Section where page = pageId
 (template `site/SetRecordAccess`) → `Update Record`(the Page itself) → Response. This is D2's
 "composition by component instance" in its literal form, and it is why D2 can stay deferred.
 
-⚠️ **One mechanic is genuinely unsettled and must be read, not guessed, before authoring**: the
-catalog says each item "becomes one task and is passed to it as a record", which is the
-`Component Object` shape — so it is *not yet established how a task template receives a value that
-is constant across tasks* (here: `isPublic`). If it cannot, the items array is built with
-`Array Map` so each entry carries its own `isPublic`, which is expressible in the cloud vocabulary
-and costs one node. Settle it from `runtasks` source at authoring time.
+✅ **The task-template mechanic, settled by reading s2 (`runtasks.ts:393-432`).**
+`createTaskComponent` instantiates the template with `{ _forEachModel: model, _forEachNode: this }`
+— the `Component Object` mechanism — **and then also pushes the item onto Component Inputs**:
+`Id`/`id` get the model id, and every key of the item that matches a **declared** component input
+is set on it (`:419-432`). So both channels work, and a worker written the ordinary way — Component
+Inputs in, Component Outputs signals out — is correct. This is what the `data-run-tasks-batch`
+example teaches, and the example is right.
+
+What follows for this design is unchanged, because only *the item's own keys* are pushed:
+**there is still no channel for a value that is constant across tasks.** `isPublic` cannot be
+handed to the helper separately; the items array is built with `Array Map` so each entry carries
+its own `isPublic` beside its `objectId`. One node, and a requirement rather than a preference.
+
+The template contract itself is four port names matched by string, defaulting to `Do` / `Success` /
+`Failure` / `Error` and overridable per node (`runtasks-template-contract.ts`). `Error` is optional
+by design and its absence is deliberately never warned about.
 
 ## 6. Findings this session
 
@@ -199,6 +220,34 @@ in the browser bundle. The vehicle is instead `noodl-mcp/tests/helpers.ts` → `
 `src` over a real in-memory MCP client — the actual tool surface, current code. Another instance of
 `a-stale-mcp-dist-hides-a-merged-vocabulary-field`.
 
+## 6a. What authoring it actually taught (s2)
+
+Both doors, on the real server: `create_component` for each component, and `create_plan` → two
+`stage_plan_operation` calls → `apply_plan` for the pair in one plan. Both land under the
+editor-canonical `__cloud__/…` registry key, typed `cloud`, with the component file's `path`
+carrying the `#` — **asserted by key and by `path`, never through `store.resolve`** (SB-001's trap).
+
+Three things the door caught that reading had not:
+
+1. **A `stringlist` is one comma-separated STRING, not an array** — `params: ['pageId','publish']`
+   is rejected, because the editor calls `.split(',')` on it. The rejection suggested
+   `"pageId,publish"` verbatim. Worth teaching in SB-002's doctrine: the Request node's interface is
+   the port an agent gets wrong first.
+2. 🔴 **`Array Map` cannot carry a constant either.** Its only inputs are `items` / `mapScript` /
+   `refresh`, so its script closes over nothing — `nonexistent-port` on `isPublic`. Combined with
+   §5's finding that `Run Tasks` pushes only the item's own keys, **the per-item payload must be
+   assembled in a `JavaScriptFunction`**, which is also what doctrine §8 wants (once a step needs
+   code, all of it in one code node). This is now the shape in the spec.
+3. **`RunTasks`' ports are static on purpose and therefore checked**; the record nodes' are not.
+
+🔴 **And the honest limit, which the door says out loud: the ACL configuration is unverified.** Every
+run returns `dynamic-port-skipped` infos naming exactly the parameters that carry the security
+model — `collectionName`, `acl-admin-*`, `acl-world-*`, `ptype-*`/`preq-*` — because those ports are
+generated from the class schema and cannot be seen in the catalog. The message is careful about
+this and says the node is *"unverified by that check rather than verified as correct"*. So a green
+authoring run means the graph is well-formed; **it is not evidence that the publication invariant
+holds.** Only §7's real-backend run can be that, which is the second reason F2 matters.
+
 ## 7. Acceptance
 
 1. The five classes exist with the §2 fields, created by first write — no migration step anywhere.
@@ -219,6 +268,12 @@ in the browser bundle. The vehicle is instead `noodl-mcp/tests/helpers.ts` → `
 
 - **s2 (2026-08-26)** — model designed and grounded (§1: cloud vocabulary from the catalog,
   auto-schema from `_ensureTable`, ACL vocabulary from `_getACL`, absent-ACL-is-public from
-  `canAccessRecord`, the CLP/ACL asymmetry from `aclFor` vs `checkClp`). Four findings, F1 and F2
-  new and sharp. Authoring not started; F1's probe written and unrun (peer held `test:ci` for the
-  session's first hour).
+  `canAccessRecord`, the CLP/ACL asymmetry from `aclFor` vs `checkClp`). F1 confirmed by a 4-arm
+  probe with two known-firing controls and filed as **SB-009**; F2 is the sharp one.
+  **Publish flow authored through both doors and green** (§6a) — s1's plan-door debt closed.
+  noodl-mcp 60 suites / 684 green.
+  ⚠️ **One correction made mid-session:** §5 first recorded, from `runtasks.ts:393-408`, that a task
+  template receives its item *only* through `Component Object`. Reading on to `:419-432` showed the
+  item is also pushed onto matching **Component Inputs**, which is what the `data-run-tasks-batch`
+  example teaches and what this spec now uses. The half that survived — no channel for a per-task
+  constant — is the half the design depends on, and it was re-derived, not assumed.
