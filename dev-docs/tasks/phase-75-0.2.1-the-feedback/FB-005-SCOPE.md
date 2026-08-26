@@ -663,7 +663,7 @@ token touches every surface in the editor. **Richard's.**
 
 ---
 
-## 4d. 🟡 T5, session 45 — the queue is built and specced; **the button is not**
+## 4d. ✅ T5, session 45 — the queue, built and specced. **The button is §4e, session 46.**
 
 **Read the state honestly before anything else: AC5 is met and measured, and "Share as template"
 is not yet a thing a person can click.** Everything a share needs exists and is graded — the
@@ -874,6 +874,153 @@ run after changing a shared type.
 - **No total cap on pending rows per account.** The partial unique index stops the same person
   filing the same slug twice; a distinct slug each time is one character apart. At 8 MiB a row that
   is a storage cost, bounded only by the rate limit. **Recorded as a gap, not fixed.**
+
+## 4e. ✅ T5's second half, session 46 — **the button exists, and driving it found FIVE defects**
+
+**AC5 is now met by something a person can click.** The kebab on every launcher project card
+carries *"Share as template…"*, it opens a five-field dialog, and the dialog files a submission
+through the seam session 45 built. 🔴 **Every one of the five defects below was invisible to the
+fb-005 specs and visible within minutes of driving the real app** — which is the whole of why
+the previous session left this open rather than closing it badly.
+
+**What shipped in OpenNoodl:**
+
+- **`models/template/shareTemplateForm.ts`** — the decisions: the opening draft, what may be sent,
+  and the sentence for every arm of `ShareAsTemplateOutcome`. Pure, and graded by 49 specs.
+- **`pages/ProjectsPage/useShareTemplate.ts`** — the caller: a session token, the real filesystem,
+  and the fact that a share reads a directory belonging to a project row.
+- **`noodl-core-ui/.../ShareTemplateModal`** — markup and `onChange`, and nothing else.
+- **`Projects.tsx` / `Launcher.tsx` / `LauncherContext.tsx`** — the kebab entry and the plumbing.
+
+🔴 **The split is forced rather than chosen.** The dialog draws `Modal`, `TextInput` and `TextArea`,
+all of which reach `common/Icon`, and `Icon.tsx` uses webpack's `require.context`, which ts-jest
+rejects at type-check time. **A rule written in the dialog is a rule no spec in this repository can
+load** — so every rule lives in `shareTemplateForm.ts`, and the dialog is verified by being driven.
+
+### 🔴 Defect 1: a `Select` inside a `Modal` closes the `Modal`. The form could not be completed.
+
+Picking a category **closed the whole dialog**, reproducibly. Measured cause: `Select` renders its
+options through `BaseDialog` into `dialog-layer-portal-target` — a portal **outside** the modal's
+DOM subtree. `BaseDialog` dismisses when a gesture starts and ends outside `visibleDialogRef`
+(`isOutsideDialog`), and an option in that portal is outside it by that test.
+
+⚠️ **This dialog is the FIRST `Modal` in the editor to contain a `Select`** — swept, one hit, and it
+is mine. The combination had no instance, so nothing was broken until there was one.
+🔴 **The underlying defect is `BaseDialog`'s and is NOT fixed here**: `isOutsideDialog` is the
+dismissal rule of every dialog in the editor, and changing it is a change to all of them. **Recorded
+as unowned.** The dialog instead draws both vocabularies inline, which it should have done anyway.
+
+### 🔴 Defect 2: a radio `name` is document-global, so `BaseDialog`'s double render put TWELVE radios in ONE group
+
+Replacing the `Select`s with native radios produced a second, stranger failure: a pick appeared to
+take and then flapped back. **Measured: 12 inputs under one `name`** — six from the visible copy and
+six from the hidden `MeasuringContainer` copy, each unchecking its twin while React's controlled
+`checked` fought the browser's group behaviour.
+
+⚠️ **This is the recorded `BaseDialog`-renders-everything-twice trap in a place the recorded form
+does not cover.** The known statement is about *querying* the DOM — filter out `MeasuringContainer`.
+This is about a **browser-global namespace**: `name` is document-scoped, so the ghost copy is not
+merely an extra node to skip, it is a **participant**. 🔴 **A `name` derived from a prop cannot fix
+it** — both copies get the same props, which is the point of the measuring copy. `useId` can,
+because the two copies are two component instances at different positions in the tree.
+
+### 🔴 Defect 3: `.DS_Store` was withheld only at the project ROOT, and the symptom was not a leak
+
+`NEVER_SHARED` matched a non-directory rule by **exact project-relative path**. That is right for
+`.mcp.json`, which only ever exists at the root, and wrong for `.DS_Store`, which Finder writes into
+**every directory it opens**. Walking 25 real projects found **seven** nested ones
+(`components/.DS_Store`, `components/Pages/.DS_Store`) that the rule could not see.
+
+⚠️ **And the visible symptom was the opposite of the obvious one.** A `.DS_Store` is binary, so each
+one landed in `binaries` and **refused the whole share** — a project that could not be shared, with
+a message naming a file its author had never heard of. 🔴 **Every one of the 20 existing specs was
+green through it, because every fixture put `.DS_Store` at the root.** Fixed with a `basename` rule,
+two mutants killed, and the control asserts the exact-path rule stayed exact.
+
+### 🔴 Defect 4, and the one with a ruling attached: 11 of 25 real projects CANNOT BE SHARED
+
+Running the collector over the 25 real projects on this machine — the *corpus that exists*, not
+fixtures — measured the verdict each would get:
+
+| verdict | count |
+|---|---|
+| **OK** | 13 |
+| **binaries — refused** | **11** |
+| no-manifest (a backup folder, correctly refused) | 1 |
+
+🔴 **Not one was too big.** The blocker is the text-only transport, and **42 of the 46 blocking files
+are `.ttf`/`.woff2` inside `noodl_modules/`** — the editor's own kit modules (`inter`,
+`lucide-icons`). Only 4 are `.png`. So the button, as first built, refuses **44% of real projects**
+with a sentence about images, for a folder full of fonts the author never chose.
+
+⚠️ **`.DS_Store` accounted for 7 of the original 58 and fixing it changed the tally by zero** — the
+same projects also carry fonts. A true fix that moves no number is worth saying out loud.
+
+### ✅ The ruling, and why it is not "drop the awkward folder": **exclude only what the editor puts back**
+
+**Richard, 2026-08-26, on being shown the 44%:** *"in theory exclude modules, but like node modules,
+there should be an easy way to do an equivalent of npm install to install the missing modules, with
+the user being asked to approve any that are 'community' modules or whatever. Don't leave people
+with a half working template."*
+
+🔴 **The restore he asked for already exists for the case that matters, and already runs.**
+`createProjectFromTemplate` calls `installStarterAssets` **after** `installTemplate`, and
+`installStarterAssets` never overwrites — its own comment says why: *"a template that ships its own
+font or icon set keeps it"*. `inter` and `lucide-icons` are **bundled inside the editor**
+(`src/assets/starter-project/`, plus the editor's own Inter), not downloaded. So a template with no
+`noodl_modules/inter` is written to disk and then given one, **byte for byte, with no network and
+nothing for the installer to approve.** Nothing is half-working, and no approval flow is owed for
+these two because they are not community content — they are NodeGX's own files.
+
+**So `RESTORED_ON_INSTALL` is DERIVED FROM `STARTER_ASSETS`**, not written out beside it. The rule
+that governs it is stated on the constant and is the whole of why the exclusion is legitimate:
+🔴 **a module may go on that list ONLY IF THE EDITOR CAN PUT IT BACK.**
+
+| | shareable | refused |
+|---|---|---|
+| before | 13 / 25 | **11** (42 of 46 files were starter-module fonts) |
+| after | **19 / 25** | 5 |
+
+⚠️ **The remaining five are refused correctly** and the residue is the author's own content:
+`fonts/Roboto/*.ttf` dropped into a project by hand, and real `assets/*.png`. Nothing can restore
+those, so a text-only transport must refuse them rather than ship a template missing a third of
+itself. **That is the transport's limit, and it is the next task, not this one.**
+
+### 🔴 What is still owed, and it is Richard's ask minus the half that was free
+
+- **A restore for a module that is NOT a starter asset.** There is no record to restore from:
+  `kit-provenance.json` has **no `builtin`/`starter` arm** and is not written for starter assets at
+  all; `inter` is not a library entry, so it cannot be installed through the library browser;
+  `listNodeKits` filters on a manifest with a `main`, which neither starter module has, so **they
+  never appear in the Kits panel**. And **nothing in the product detects a missing module** — the
+  scanner reports what is there, never what should be.
+- **The approval step for community modules.** Owed the moment the first non-starter module is
+  excluded, which this change deliberately does not do.
+- **`.cache/cached-thumb.png` was checked and is NOT ours** — no editor code writes a project-level
+  `.cache`. A fixture from another session's drive. Recorded because "looks like editor state" was
+  the obvious wrong conclusion.
+
+### 🔴 Defect 5, found by pressing the button: **the platform half of FB-005 IS NOT DEPLOYED**
+
+The real send was driven end to end and came back `absent`. Probing `community.nodegx.io` directly:
+
+| route | | |
+|---|---|---|
+| `/api/v1/community/threshold` | **200** | the control — the host is up and serving `/api/v1/community/*` |
+| `/api/v1/community/templates` | **404** | T3's shelf, session 43 |
+| `/api/v1/community/templates/submissions` | **404** | T5's queue, session 45 |
+
+The editor's **authorised** request and an anonymous probe agree. 🔴 **Production predates FB-005 T3
+entirely** — T3, T4 and T5's platform halves are committed and undeployed, so the picker's community
+provider and the whole share path reach nothing in production today. ⚠️ *Deployed is not committed*, in
+the direction that is easier to miss: everything is merged, every spec is green, and none of it is
+live. **The curated shelf is empty because there is no shelf.**
+
+⚠️ **And it improved a sentence.** `absent` used to read *"Sharing is not available on this
+account"* — which blamed somebody's account for a deployment gap. `absent` now has **four** causes
+(D15 refusing an account, a missing template, a draft, and a route that was never deployed) and the
+client cannot tell them apart, so the sentence names them as possibilities instead of asserting one.
+🔴 **A sentence that asserts a cause the code cannot know is worse than one that does not.**
 
 ## 5. What is still Richard's to rule — narrowed by the sweep
 

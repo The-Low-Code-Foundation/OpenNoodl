@@ -16,6 +16,7 @@ import {
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
 import type { LauncherLearnerPath } from '@noodl-core-ui/preview/launcher/Launcher/components/LearnerPathSection';
+import type { ShareTemplateModalProps } from '@noodl-core-ui/preview/launcher/Launcher/components/ShareTemplateModal';
 import type { LauncherLearningData } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
 import { usePersistentTab } from '@noodl-core-ui/preview/launcher/Launcher/hooks/usePersistentTab';
@@ -57,6 +58,10 @@ export interface LauncherProps {
   onDeleteProject?: (projectId: string) => void;
   onMigrateProject?: (projectId: string) => void;
   onOpenReadOnly?: (projectId: string) => void;
+
+  /** FB-005 T5 — the kebab entry and the dialog it opens. See `LauncherContext` for the split. */
+  onShareAsTemplate?: (projectId: string) => void;
+  shareTemplateModal?: ShareTemplateModalProps | null;
 
   // Lessons (Learn tab)
   lessons?: LauncherLessonData[];
@@ -251,6 +256,8 @@ export function Launcher({
   onDeleteProject,
   onMigrateProject,
   onOpenReadOnly,
+  onShareAsTemplate,
+  shareTemplateModal,
   lessons,
   onStartLesson,
   onRestartLesson,
@@ -412,6 +419,8 @@ export function Launcher({
         onDeleteProject,
         onMigrateProject,
         onOpenReadOnly,
+        onShareAsTemplate,
+        shareTemplateModal,
         lessons,
         onStartLesson,
         onRestartLesson,

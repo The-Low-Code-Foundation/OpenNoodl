@@ -1,251 +1,134 @@
 # Phase 75 — next session
 
-**State as of 2026-08-26 (session 45).** Richard's brief is still **speed: keep knocking out phase
-75**, so this file leads with the queue. Take the top unblocked item; dip into the rest when it
-bites.
+**State as of 2026-08-26 (session 47).** Richard's brief is still **speed: keep knocking out phase
+75**, so this file leads with the queue.
 
-**Committed this session:** queue item 1 — **FB-005 T5**, the submission queue. 🟡 **It is not
-closed, and the gap is named rather than glossed**: the table, the route, the capability, the
-promotion caller, the editor-side collector and the client method all exist and are graded — but
-**"Share as template" is not yet a thing a person can click.** The dialog and the menu entry that
-call `shareAsTemplate` are the remaining half, and they are **the top item below**.
+**Landed this session:** queue item 1 — **FB-005 T5's button.** *"Share as template…"* is on every
+launcher project card's kebab, it opens a five-field dialog, and it was **driven end to end in the
+running app**. ✅ That closes the "build the caller" half s45 deliberately left open.
 
-🔴 **Two findings worth carrying**, both in §4d of [FB-005-SCOPE.md](FB-005-SCOPE.md):
-a share written the obvious way **would have uploaded `.mcp.json`** — absolute paths out of the
-author's home directory — to a public shelf; and **`0020`'s alphabetical constraint-order defect
-reproduced itself in `0021`**, caught only because the spec asserts the constraint *name*.
+🔴 **AND THE DRIVE FOUND FIVE DEFECTS THAT 226 GREEN SPECS COULD NOT SEE — plus the real blocker.**
+All in §4e of [FB-005-SCOPE.md](FB-005-SCOPE.md). The blocker first, because it changes the queue:
 
-⚠️ **Peers.** A peer was actively writing phase-76 (`SB-004`, `SB-009`, `TASKS.md`, and two
-`noodl-mcp` test files) throughout this session — mtimes confirmed it, one minute old at the start.
-**Nothing in those paths was touched.** No editor was launched and `test:ci` was not run, so
-neither shield was exercised.
-🔴 **The platform suite resets the schema, and peers share the Postgres instance.** This session
-used its own database — `nodegx_community_fb005t5` via `DATABASE_URL` — rather than the default
-`nodegx_community`. ⚠️ **`_s45`, `_s46`, `_s48` and `_s49` already existed**, so session-numbered
-database names are not free; name yours for the task.
+## 🔴 READ THIS FIRST: the platform half of FB-005 is NOT DEPLOYED
 
-## The queue — unblocked, cheapest-first. Take the top one.
+The real send came back `absent`. Probed directly:
+
+| `community.nodegx.io` | | |
+|---|---|---|
+| `/api/v1/community/threshold` | **200** | the control — the host is up, serving `/api/v1/community/*` |
+| `/api/v1/community/templates` | **404** | T3's shelf, session 43 |
+| `/api/v1/community/templates/submissions` | **404** | T5's queue, session 45 |
+
+The editor's **authorised** request and an anonymous probe agree. **Production predates FB-005 T3
+entirely.** T3, T4 and T5's platform halves are merged, specced, gated — and **not live**. So the
+create wizard's community provider and the whole share path reach nothing today, and *"the curated
+shelf is empty"* is not a content problem: **there is no shelf.**
+
+⚠️ *Deployed is not committed*, in the direction that is easier to miss — everything green, nothing
+live. 🔴 **Nothing in this repo's gates can see it.** Deploying `nodegx-community` is now the
+highest-value item in FB-005 and it is **not an OpenNoodl change**.
+
+## The queue — cheapest-first. Take the top one.
 
 | # | item | size | state |
 |---|---|---|---|
-| 1 | **FB-005 T5 — the SHARE BUTTON** | **S–M** | 🔴 **now the top item, and it is the "build the caller" half.** The seam is done, typed and specced; what is missing is a dialog (five fields) and the entry point that opens it. ⚠️ **Drive it** — an undriven dialog is how this phase's findings keep arriving |
+| 1 | **Deploy `nodegx-community`** | **?** | 🔴 **Unblocks T2–T5 at once.** Not a code task — the code is written. Until it happens the share button, the community picker and the shelf are all correct and all reach a 404 |
 | 2 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** ⚠️ Its corpus does not exist either — FB-014 measured the bench at **3 posts, 2 threads, 1,369 chars** |
-| 3 | **FB-005 T6** — star ratings | **M** | 🔒 **still needs a ruling.** ⚠️ **The recommendation's precondition is now closer, not met**: T5 can *accept* third-party templates, but none exists and nothing in the product can file one until item 1 lands |
+| 3 | **A binary-capable template transport** | **M–L** | 🆕 **Now measured, not speculative: 5 of 25 real projects still cannot be shared**, and the residue is the author's own `fonts/*.ttf` and `assets/*.png`. See §4e |
+| 4 | **FB-005 T6** — star ratings | **M** | 🔒 **still needs a ruling**, and its precondition moved further away: nothing can reach the queue until item 1 |
 
-### ✅ Two rulings landed mid-session, and a defect they exposed
+## The five defects the drive found — the reusable half
 
-1. **Licences: `CC0-1.0`, `MIT`, `other`** — `Apache-2.0` dropped. **A template is not a library**:
-   nobody depends on one, it is copied and becomes the installer's own code. Apache's patent/NOTICE
-   machinery is for libraries and nobody honours it on a starter project. 🔴 **Copyleft is excluded
-   on purpose and must stay excluded** — a GPL template would put its terms on the app somebody
-   builds from it. That is why the vocabulary is **closed**.
-2. **Richard owns the queue (`richardosborne14`), and is now told** — a `template_submitted`
-   notification naming what arrived, how big, under what terms, and the command that reads it.
-   ⚠️ It **cannot fail the submission**, and the cost of that is stated: a swallowed failure means a
-   submission nobody hears about, so `promote-template-submission.ts list` stays the source of truth.
+1. 🔴 **A `Select` inside a `Modal` CLOSES the `Modal`.** `Select` portals its options into
+   `dialog-layer-portal-target`, **outside** the modal's subtree; `BaseDialog` dismisses when a
+   gesture starts and ends outside `visibleDialogRef`. ⚠️ **This dialog was the first `Modal` in the
+   editor to contain a `Select`** — swept, one hit. **The `BaseDialog` defect is UNOWNED and not
+   fixed**: `isOutsideDialog` is every dialog's dismissal rule.
+2. 🔴 **A radio `name` is DOCUMENT-GLOBAL, so `BaseDialog`'s double render put 12 radios in ONE
+   group** — six ghosts, six real, each unchecking its twin. ⚠️ **The known form of this trap is
+   about *querying* (filter out `MeasuringContainer`); this is about a browser-global namespace,
+   where the ghost is a PARTICIPANT rather than an extra node to skip.** A `name` from a prop cannot
+   fix it — both copies get the same props. `useId` can.
+3. 🔴 **`.DS_Store` was withheld only at the project ROOT.** Finder writes one per directory; 25 real
+   projects had **seven** nested ones. ⚠️ **The symptom was not a leak** — each is binary, so it
+   landed in `binaries` and **refused the whole share**. All 20 existing specs were green through
+   it, because every fixture put `.DS_Store` at the root.
+4. 🔴 **11 of 25 real projects could not be shared at all** — measured over the corpus that exists,
+   not fixtures. Not size: **42 of 46 blocking files were `.ttf`/`.woff2` under `noodl_modules/`.**
+5. 🔴 **The `absent` sentence blamed the account for a deployment gap.** It said *"Sharing is not
+   available on this account"*; the cause was a route that was never deployed. **`absent` has four
+   causes and the client cannot tell them apart**, so it now names them as possibilities.
+   ⚠️ **A sentence that asserts a cause the code cannot know is worse than one that does not.**
 
-🔴 **AND ASKING THE FIRST QUESTION FOUND A DEFECT THE FIRST PASS HAD SHIPPED: the licence died at
-promotion.** `0021` required an attestation, checked it and stored it; `project_templates` had
-nowhere to put it, so a third-party template reached the shelf with **no discoverable terms**.
-Every spec passed — the submission stored it, the promotion published, and nothing asserted the
-second still knew what the first had been told. ⚠️ **A field is not carried just because both ends
-of the wire have one.** `0022` carries it, and `null` now means *"we published it"* rather than
-*"unknown"* — so `attested_licence is not null` is the "came from outside" predicate.
+### ✅ Richard's ruling on defect 4, and why it did not need new machinery
 
-### 🔴 Three things now sitting with Richard
+**Richard, 08-26:** *"in theory exclude modules, but like node modules, there should be an easy way
+to do an equivalent of npm install… Don't leave people with a half working template."*
 
-1. ✅ ~~Nobody owns the queue~~ — **ANSWERED: Richard, `richardosborne14`**, and wired.
-   ⚠️ **What is still true**: the bottleneck is now *visible* (the submitter sees their status, a
-   decline carries a reason, and the owner is emailed) but it is still **one person**. D8's
-   *"the board looks dead because Richard was busy"* is mitigated, not removed.
-2. ✅ ~~The licence vocabulary~~ — **RULED: `CC0-1.0`, `MIT`, `other`.** ⚠️ The reasoning is what
-   constrains future additions — see above; **copyleft must stay out.**
-3. **THREE OF THE EIGHT 0.2.1 TEMPLATES STILL HAVE NO HONEST CATEGORY.** `pixel-game`,
-   `interactive-fiction` and `shared-canvas` are none of the six. ⚠️ **T5 inherited the vocabulary
-   rather than fixing it**, which is the honest thing for a queue feeding that shelf — but it means
-   a submission whose category cannot be named is **mis-filed at the door**. Unchanged from s44:
-   the fix is a platform migration plus a ruling.
-4. **`--theme-color-border-default` is 1.07:1 dark / 1.15:1 light against the panel**, and a
-   `TemplateCard`'s background equals the panel (1.00:1) — so T3's unselected card has an
-   effectively invisible boundary. Unchanged from s44. ⚠️ Changing that token touches every
-   surface in the editor.
+🔴 **The restore already exists and already runs.** `createProjectFromTemplate` calls
+`installStarterAssets` **after** `installTemplate`, and it never overwrites. `inter` and
+`lucide-icons` are **bundled inside the editor**, so a template that omits them is given them back
+byte-for-byte, no network, nothing to approve — they are NodeGX's files, not community content.
 
-## 🟡 Item 1, half-closed: FB-005 T5 — the queue is built; the button is not
+**`RESTORED_ON_INSTALL` is DERIVED from `STARTER_ASSETS`** so the two cannot drift, and the rule on
+it is the whole justification: **a module may be excluded ONLY IF THE EDITOR CAN PUT IT BACK.**
+Result: **13/25 → 19/25 shareable.**
 
-**In `nodegx-community`:** `0021_fb005_template_submissions.sql` (a **separate table**, because
-`0020`'s header said it would be), `src/lib/templatesubmissions.ts`, `POST`/`GET
-/api/v1/community/templates/submissions`, the `submitTemplate` write capability, and
-`scripts/promote-template-submission.ts` — `list`, `show`, `promote`, `decline`.
+🔴 **What is still owed of Richard's ask:** a restore for a **non-starter** module, and the approval
+step for community ones. Nothing to restore from today — `kit-provenance.json` has **no
+`builtin`/`starter` arm** and is not written for starter assets; `inter` is not a library entry at
+all; `listNodeKits` filters on a manifest with a `main`, which neither starter module has, so **they
+never appear in the Kits panel**; and **nothing in the product detects a missing module.**
 
-**In OpenNoodl:** `models/template/shareAsTemplate.ts` — the seam, behind two narrow host
-interfaces so plain-Node jest can drive it — and `CommunityApiClient.submitTemplate` /
-`.submissions`. 🔴 **There is deliberately no `publishTemplate`, and a spec asserts its absence**:
-this editor can reach no route that publishes a template, and a method named otherwise would be a
-promise the client cannot keep.
+## Gates — session 47
 
-### 🔴 The finding: a share would have uploaded `.mcp.json`
+- `tests-unit/fb-005/share-template-form.test.ts` — **49 specs**, new. **6 mutants, 6 killed.**
+- `tests-unit/fb-005/template-submission.test.ts` — **20 → 27**, the `.DS_Store` and
+  `RESTORED_ON_INSTALL` guards. **2 mutants on the `.DS_Store` fix, both killed.**
+- `tests-unit/uni-001/session-readers.test.ts` — **50 → 56.** 🔴 **See the trap below.**
+- `npm run test:main` — **346 files / 5732 specs / 0 failures.** Reconciles exactly: s45's
+  345/5670, +1 file/+49, +7, +6. ⚠️ **`bld-004/reasoningChannel` went red twice under load and green
+  alone both times** — a 250 ms timing flake, not a regression.
+- `typecheck:editor` **0**; `typecheck:editor-tests` **0**.
+- ⚠️ **`typecheck:core-ui` is 44 and that is the DOCUMENTED BASELINE** — `pr.yml:65` says so in
+  as many words. Mine added none; all 44 are `TS2307` alias resolution in files nobody touched.
+- `npm run test:ci` — see the tail of this file; run alone, and read the **summary line**.
 
-`readBundleDirectory` on the platform says of itself *"skips nothing silently"* — right for a
-publisher pointed at a prepared directory. **"Share as template" points at the project somebody is
-working in right now.** The editor writes `.mcp.json` into every project it creates or opens, that
-file holds **absolute paths into the author's home directory and into their install of NodeGX**,
-and `agentConfig.ts` already gitignores it with the reason written out.
+## 🔴 The trap worth carrying: a new session reader owes the UNI-001 sweep
 
-A template is that failure **with an audience** — uploaded to a public shelf, written onto the disk
-of everybody who installs it. `NEVER_SHARED` withholds it, plus `.git/`, `.nodegx/`,
-`node_modules/`, `.env*` and `.DS_Store`. ⚠️ **Every exclusion is REPORTED, not dropped silently**:
-a hazard list is a hypothesis, so a person must be able to see what stayed behind — including the
-day it withholds something they wanted.
+`useShareTemplate.ts` calls `readCommunitySession`, and `session-readers.test.ts` went red on the
+next full run. **Its rule says do NOT add the row to make it green — answer the question first.**
 
-### 🔴 The second finding: `0020`'s constraint-order defect, reproduced in `0021`
+🔴 **And this is the FIRST ROW in that table whose answer to *"what does it WITHHOLD?"* is not
+simply "nothing".** Every row above reads a token as a bearer header on something the platform
+serves to strangers; this one reads it for a **write**, and the send button is off while signed out.
+⚠️ **What makes that not principle 1's failure is that no capability MOVED behind the session** —
+filing a submission did not exist for anybody before T5, and cannot exist without an account on the
+platform side either (`submitTemplate` is a checked capability; `submitter_account_id` is
+`not null`). The account is not buying back something an account-less editor lost; it is **who the
+act is by**. Six structural specs assert the offer never disappears: the kebab entry is guarded on
+the **handler**, the dialog opens signed out, and the decision layer is handed a **boolean**.
 
-Postgres evaluates a table's CHECK constraints **in constraint-NAME order**.
-`..._review_timestamp` sorts before `..._status_known`, and written symmetrically the timestamp
-rule refuses an unknown status too — so somebody who typed `'approved'` was told their review
-**timestamp** was wrong. A true statement about a rule they had not broken.
+## Carried forward, unchanged
 
-✅ Fixed with `0020`'s guard in a different costume: phrase the rule so an unknown status falls
-through to the constraint that owns it. 🔴 **An assertion that the insert merely THREW would have
-been green on it.** ⚠️ **And a third instance, on the spec itself** — the control for that fix, an
-`accepted` row with no timestamp, first reported `..._published_link`, which sorts earlier still.
-**A test row must be valid in every other respect or it measures the wrong constraint.**
+Everything in the s45 file that is not superseded above still holds — the three `0021` findings, the
+licence-at-promotion defect, the three repo sweeps a new platform table owes, the category
+vocabulary gap (`pixel-game`, `interactive-fiction`, `shared-canvas` have no honest category), and
+the contrast items (`--theme-color-border-default` at 1.07:1; FB-002's selected pill at 1.16:1).
 
-### 🔴 The third finding, and the one to carry: a new table and a new route owe THREE repo sweeps
+⚠️ **New, small, unowned:** the dialog's content is **693 px in a 525 px viewport** at 1368×781, so
+the licence question — the most consequential field — is the one below the fold.
+⚠️ **`.cache/cached-thumb.png` was checked and is NOT ours**; no editor code writes a project-level
+`.cache`. Recorded because "looks like editor state" was the obvious wrong conclusion.
 
-**Register a new artefact in `nodegx-community` in all three, or the suite is red while your own
-file is green:**
+## Driving traps met this session
 
-| sweep | what it demands |
-|---|---|
-| `db-schema-drift` | the table declared in the **Drizzle mirror** (`src/db/schema.ts`) |
-| `uni005-data-inventory` | every free-text column **classified** — and `minor-refused` needs an **executed probe** |
-| `uni011-mirror-api` | a **D15 verdict recipe** for every route on disk |
-
-✅ **AC6 named the census explicitly and it was still missed.** The lesson is **run the whole
-suite, not the file you wrote** — 35/35 green beside three red sweeps is what unfinished work looks
-like when you only look where you were working.
-
-⚠️ **The new probe is the only one in that census whose mechanism is CODE, not a constraint** — the
-database would accept a pupil's row; `serveCommunityWrite`'s capability check is what refuses it.
-So it drives the **real route**, with **`read_only`** (an `off` minor is refused by `communityGate`
-before the capability is consulted — a different gate), and asserts **nothing was stored**.
-
-### 🔴 The guard worth knowing about: promotion refuses a slug already on the shelf
-
-`publishProjectTemplate` **upserts on slug**. A promotion written the obvious way would let a
-stranger overwrite a live template by proposing its name — bumping its version, replacing its
-payload — and **the shelf would look unchanged in the list**. `replaceExisting` is how a deliberate
-replacement is still possible. Both arms specced, including that ours is untouched after the
-refusal.
-
-## Gates — session 45
-
-- `tests/fb005-template-submissions.test.ts` — **35 specs, 0 failures**, against
-  `nodegx_community_fb005t5`.
-- `tests/fb005-project-templates.test.ts` — **42, unchanged**, re-run after `0021` to prove the new
-  migration applies cleanly and changed nothing on the shelf.
-- `tests-unit/fb-005/template-submission.test.ts` — **20 specs**; `fb-005` totals **170**.
-- `npm run test:main` — **345 files / 5670 specs / 0 failures**; **+1 file, 20 specs mine**.
-  🔴 **s44's note said 5649, which would make it +21.** Only this session's commit touched
-  editor sources or tests (`git log fe9bade4..HEAD`), so the prior tree held **5650** and the
-  inherited figure was one short. ⚠️ **The s43 97-vs-107 shape, recurring — and this time the
-  wrong note was one I wrote earlier today.** Reconcile against the source, never a note.
-- **9 mutants, 9 killed.** ⚠️ One survived first, and the finding was **the unasserted field, not
-  the mutant**: a fourth entry in `MANIFESTS` is invisible to the accept/reject decision (a files
-  map is keyed by **files**, so it never holds a bare `components` key) but changes the `looked`
-  list a refusal shows, which nothing graded.
-- **Full platform suite — 61 files / 1508 tests / 0 failures.** 🔴 **It was 3 RED on the first run
-  while my own file was 35/35 green** — see below. ✅ The +8 over the first pass is exactly the
-  four licence and four notification specs.
-- `typecheck:editor` **0**; `typecheck:editor-tests` **0**; platform `tsc --noEmit` **0**.
-- ⚠️ **`npm run test:ci` was NOT run this session** — a peer was live in the checkout throughout.
-  T5 adds no jasmine spec and nothing renders a share dialog, so the expectation is s44's
-  **2856 specs / 4 failures, all `AIX-006 style vocabulary`, by name**. 🔴 **Expectation, not a
-  measurement.** Run it alone before believing it.
-
-## Still open, owned by nobody
-
-- 🆕 🔴 **No UI files a submission.** The top queue item.
-- 🆕 ⚠️ **No admin surface for the queue.** `listPendingTemplateSubmissions` has no route on
-  purpose — a page listing strangers' unpublished projects needs its visibility rules right before
-  it has a user. The script is the reader.
-- 🆕 ⚠️ **No total cap on pending submissions per account.** The partial unique index stops the same
-  person filing the same slug twice; a distinct slug each time is one character apart. At 8 MiB a
-  row that is a storage cost, bounded only by the write rate limit.
-- 🆕 ⚠️ **The two size caps do not measure the same quantity.** `pg_column_size` is TOAST-compressed
-  storage; the route's 8 MiB is JSON bytes on the wire. Matching the numbers is a stated
-  approximation, not a shared constant.
-- ✅ **The launcher's "Templates" tab** — phase 76's. **Still inert.**
-- 🔴 **No web `/templates` page.** Every other content type has one under `src/app/`. Unowned, and
-  it is the surface Richard's original ask most obviously describes. ⚠️ A server-side template
-  search is **born with `websearch_to_tsquery`'s AND bug** — T4 did not fix it, it simply never
-  reaches it.
-- ⚠️ **`ProjectCreationWizard`'s comment says the provider is keyed on `isVisible`; the code passes
-  a constant `key`.** Harmless today; it describes a mechanism that is not there.
-- ⚠️ **`0017`'s `tutorial_bundle_has_solution` is unguarded** and correct only by constraint-name
-  order. 🆕 **Now the fourth member of that family** — see §4d. Not fixable in place; the ledger
-  checksums applied migrations.
-- ⚠️ **`body_tsv`, its GIN index and its trigger still serve no reader.** **Richard's call.**
-- ⚠️ **`benchList` parses the markdown of every visible post** in the 200-thread window on every
-  request. Free at 3 posts; first thing to cache when the Bench has content.
-- ⚠️ **Node names that are stopwords** — `For Each`, `Not`, `And`, `Or`. T4's matcher has the same
-  hazard in miniature: its stopword rescue is **all-or-nothing**, so `for each` searches for
-  `each`.
-- ⚠️ **`Set Record Properties` → `Update Record` (2026-08-01) created a live name collision** with
-  `noodl.byob.UpdateRecord`.
-- 🔴 **FB-002's selected pill is 1.16:1 against the panel** — NAT-008's shared `.FilterPill`, so the
-  people directory has the same invisible selection. The cheapest real fix is to move the state to
-  the **border**.
-- ⚠️ Two small things FB-021 leaves undriven: the gated block is no longer given `canRedirect`, and
-  the **mixed-group** case.
-- ⚠️ **The platform sends `firstReplyMinutes: null` on a thread with `replyCount: 1`.** FIX-025 §7's
-  second cause. 🔴 Do not patch `replyLatency` without deciding the other half.
-- ⚠️ **`MIRROR_THREAD_WINDOW = 100` is a copy of the platform's limit and nothing checks it.**
-- ⚠️ `.property-port-gate-target`'s outline and `.Bench`'s gutter are unmeasured in pixels.
-- ⚠️ **Only `Group` was driven** for FB-021; the other 174 types are covered by the catalog sweep,
-  which grades *sentences*, not rendering.
-- ⚠️ FB-022's crosshair settled by mechanism, not pixels; **one commit in three dropped focus,
-  uncharacterised**; FB-016's auto-margin branch never exercised in a running app.
-- ⚠️ **`AskAboutNodeDialog.module.scss` uncommitted — twentieth session.** Belongs to no session;
-  Richard's call. Same for the phase-70/71/72 working files and the phase-50/68 notes.
-- The highlighter's disposal bug: a **selected** node whose element has gone is never removed from
-  `selectedNodes`, so it is revisited and `remove()`d every frame.
-- Unchased: `SidebarModel.switch('PortEditor')` crashes the panel; Settings clips two rows; a
-  `Number` node draws a group literally called `ADVANCED` beside the synthetic `Advanced CSS`;
-  `getConnectionSourceLabel` returns nothing for the checkbox row; `check:css` in `nodegx-community`
-  has one pre-existing non-ours violation.
-- ⚠️ **Pre-existing, not ours**: the projects page logs `Encountered two children with the same key`
-  for one project id, and `feed.json` 404s.
-- ⚠️ **A wire warning is silent for two seconds after you draw it.** `EVALUATE_HEALTH_DEBOUNCE_MS`
-  is 2000 and the urgent lane is 50.
-- ⚠️ **A tooltip has no `max-width`,** so a long health message draws a very wide box — 1074 px in a
-  1368 px window.
-
-## Gate *traps* carried forward
-
-🔴 **Figures older than the s45/s44 sections are superseded; the traps below are not.**
-✅ For reference, `test:platform` was **5 suites / 27 passed / 3 skipped / 0 failures** at s39.
-⚠️ **`tokens:css` cannot see a contrast failure** — it checks that a `var(--…)` names a defined
-property, nothing more.
-- 🆕 🔴 **The platform suite is DESTRUCTIVE** — `freshDb` → `resetSchema` drops and recreates. Peers
-  share the Docker Postgres on **55432**. Use your own database via `DATABASE_URL`, and **do not
-  assume a session-numbered name is free** — `_s45`, `_s46`, `_s48`, `_s49` already existed.
-- 🆕 ⚠️ **`npx jest` from the repo ROOT reports `Tests: 0 total` and a failed suite** — it is the
-  wrong config, not a broken spec. Run it from `packages/noodl-editor`. This is the
-  **fails-to-run-reads-as-a-smaller-suite** trap wearing a new hat.
-- 🆕 🔴 **A literal NUL in a source file makes `grep` treat the whole file as binary and skip it.**
-  `shareAsTemplate.ts` and its spec reason about NULs and therefore write them as `\u0000`
-  escapes. Anything testing binary detection must do the same.
-- 🔴 **`tsc -p packages/noodl-editor/tsconfig.tests-main.json` is NOT a gate and reports 31 errors**
-  — unchanged, none ours.
-- 🔴 **No gate in this repo compiles `LessonItem.jsx` or `LessonLayerView.jsx`.** They are `.jsx`,
-  `tsconfig.json` has no `allowJs`, and neither is in the jasmine tests graph.
-- ⚠️ **This repo's `tsconfig.json` sets no `strict`**, so a **boolean discriminant does not narrow a
-  union**. Use a **string** discriminant, as `ShareAsTemplateOutcome` and
-  `CreateFromTemplateOutcome` do.
-- 🔴 **`test:ci`'s exit code lies.** Completion is the `Jasmine: N specs` summary line, never `$?`.
-  The floor is **4**, all `AIX-006 style vocabulary`, **by name**. ⚠️ `AIX-011 criterion 7` is a
-  30 ms flake if it appears. Check the **pageout delta** (`vm_stat` twice, 5s apart) before
-  starting; never raise `NOODL_TEST_TIMEOUT_MINUTES`.
-- ⚠️ **A jest suite that fails TO RUN reads as a smaller, passing suite.** **Reconcile the count
-  against the previous run** and against the **source**, not against a note.
+- 🔴 **`npm run cdp -- click` uses `document.querySelector`, which returns `BaseDialog`'s
+  MeasuringContainer copy FIRST.** A click on anything inside a `Modal` lands on the ghost's
+  coordinates **and still reports success**. ✅ Tag the non-measuring copy with a `data-drive`
+  attribute and click that.
+- 🔴 **`elementCentre` calls `scrollIntoView` and reads `getBoundingClientRect` in the SAME eval**,
+  so the coordinates are the pre-scroll ones. ✅ **Click twice** — the second reads settled geometry.
+- ⚠️ **A DOM read taken immediately after a click can predate React's re-render.** Two reads
+  disagreed and the second was right; it cost a wrong hypothesis.

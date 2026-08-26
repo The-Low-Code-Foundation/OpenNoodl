@@ -36,6 +36,8 @@
  * @module noodl-editor/models/template/shareAsTemplate
  */
 
+import { STARTER_ASSETS } from './starterAssets';
+
 /**
  * Paths that never leave the machine in a template, and why.
  *
@@ -48,7 +50,23 @@
  * not travel*, and they overlap only at `.mcp.json`. Importing would tie a security rule to a
  * convenience one and make a later edit to either silently change the other.
  */
-export const NEVER_SHARED: readonly { path: string; directory: boolean; why: string }[] = [
+export const NEVER_SHARED: readonly {
+  path: string;
+  directory: boolean;
+  /**
+   * Match the file's NAME in any directory rather than its path from the project root.
+   *
+   * 🔴 **Added because a drive measured the defect rather than because somebody thought of it.**
+   * The exact-path rule below is right for `.mcp.json`, which only ever exists at the root — and
+   * wrong for `.DS_Store`, which Finder writes into **every directory it opens**. Over 25 real
+   * projects the walk found **seven** nested ones (`components/.DS_Store`,
+   * `components/Pages/.DS_Store`), none of which the root-only rule could see. Each landed in
+   * `binaries` and refused the whole share, so the visible symptom was not a leak but a project
+   * that could not be shared for a reason nobody would guess.
+   */
+  basename?: boolean;
+  why: string;
+}[] = [
   {
     path: '.mcp.json',
     directory: false,
@@ -66,8 +84,52 @@ export const NEVER_SHARED: readonly { path: string; directory: boolean; why: str
     directory: false,
     why: 'Environment secrets. A template that carried one would publish it.',
   },
-  { path: '.DS_Store', directory: false, why: 'Finder metadata.' },
+  { path: '.DS_Store', directory: false, basename: true, why: 'Finder metadata.' },
 ];
+
+/**
+ * Modules left out of a template **because the editor puts them back**, not because they are unsafe.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🔴 **A DIFFERENT KIND OF EXCLUSION FROM `NEVER_SHARED`, AND CONFLATING THE TWO WOULD BE THE BUG.**
+ * That list is about harm — `.mcp.json` must not reach a stranger's disk. This one is about a
+ * transport limit, and it is only allowed to exist because **the omission is undone on install**.
+ *
+ * `createProjectFromTemplate` calls `installStarterAssets` *after* `installTemplate`, and
+ * `installStarterAssets` never overwrites — its own comment says why: *"a template that ships its
+ * own font or icon set keeps it"*. So a template with no `noodl_modules/inter` is written to disk
+ * and then given one, **from the editor's own bundle, byte for byte, with no network and nothing
+ * for the installer to approve**. These are not community content; they are the editor's files.
+ *
+ * ⚠️ **THE RULE THAT DECIDES WHAT MAY GO ON THIS LIST: it may contain a module ONLY IF THE EDITOR
+ * CAN PUT IT BACK.** Anything else would hand somebody a template that renders wrong, which is
+ * worse than refusing to share it. That is why this is DERIVED FROM `STARTER_ASSETS` rather than
+ * written out — the two cannot drift, because they are one list. Adding a starter module extends
+ * this automatically; removing one shrinks it, in the same commit.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * 🔴 **What this does NOT cover, measured: a third-party module still refuses the share.** Over 25
+ * real projects, 42 of the 46 files blocking a share were `.ttf`/`.woff2` under
+ * `noodl_modules/inter` and `noodl_modules/lucide-icons` — which this fixes. A module somebody
+ * installed from the library, or dropped in by hand, has **no record to restore from**
+ * (`kit-provenance.json` has no `builtin` arm and is not written for starter assets, and nothing
+ * in the product detects a missing module), so it travels — and if it is binary, the share is
+ * refused. **That refusal is the honest one**: a transport that cannot carry it should say so
+ * rather than quietly ship a template missing a third of itself.
+ */
+export const RESTORED_ON_INSTALL: readonly string[] = Array.from(
+  new Set(
+    STARTER_ASSETS.map((asset) => asset.to)
+      .filter((to) => to.startsWith('noodl_modules/'))
+      // The module DIRECTORY, which is what a walk meets — `noodl_modules/inter/Inter-Bold.ttf`
+      // becomes `noodl_modules/inter`.
+      .map((to) => to.split('/').slice(0, 2).join('/'))
+  )
+);
+
+/** Why a starter module stayed behind — and the half of the sentence that matters is the second. */
+const RESTORED_WHY =
+  'Part of NodeGX rather than of your project. It is added back automatically when somebody creates a project from this template.';
 
 /**
  * ⚠️ `.env.local`, `.env.production` and friends, which the exact-name rule above cannot catch.
@@ -79,17 +141,30 @@ const ENV_FILE = /(^|\/)\.env(\.|$)/;
 /** Does this project-relative path stay on the machine? */
 export function isNeverShared(path: string): boolean {
   if (ENV_FILE.test(path)) return true;
-  return NEVER_SHARED.some((rule) =>
-    rule.directory ? path === rule.path || path.startsWith(`${rule.path}/`) : path === rule.path,
-  );
+  if (isRestoredOnInstall(path)) return true;
+  return NEVER_SHARED.some((rule) => matches(rule, path));
+}
+
+/** Is this path inside a module the editor reinstalls? See {@link RESTORED_ON_INSTALL}. */
+export function isRestoredOnInstall(path: string): boolean {
+  return RESTORED_ON_INSTALL.some((dir) => path === dir || path.startsWith(`${dir}/`));
+}
+
+/** One rule against one project-relative path. Directory prefix, bare name, or exact path. */
+function matches(rule: { path: string; directory: boolean; basename?: boolean }, path: string): boolean {
+  if (rule.directory) return path === rule.path || path.startsWith(`${rule.path}/`);
+  if (rule.basename) return path === rule.path || path.endsWith(`/${rule.path}`);
+  return path === rule.path;
 }
 
 /** Why a path was withheld, for the sentence the UI shows. */
 export function whyNeverShared(path: string): string {
   if (ENV_FILE.test(path)) return 'Environment secrets. A template that carried one would publish it.';
-  return NEVER_SHARED.find((rule) =>
-    rule.directory ? path === rule.path || path.startsWith(`${rule.path}/`) : path === rule.path,
-  )?.why ?? 'Excluded from templates.';
+  if (isRestoredOnInstall(path)) return RESTORED_WHY;
+  // ⚠️ The SAME predicate as `isNeverShared`, called rather than restated — the two answered
+  // slightly different questions when they were two copies, which is how a path gets withheld
+  // with the fallback reason beside it.
+  return NEVER_SHARED.find((rule) => matches(rule, path))?.why ?? 'Excluded from templates.';
 }
 
 /**

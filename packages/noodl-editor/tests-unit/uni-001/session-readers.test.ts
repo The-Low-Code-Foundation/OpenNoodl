@@ -153,6 +153,8 @@ const ALLOWED: Record<string, string> = {
     'FIX-027 §20 re-pulling a lesson: the token is a BEARER HEADER on the same public `/bundle` read `useTutorialInstall` already installs from, built in `repullFromPlatform` when a learner presses *Start again* on a lesson that came from Community. 🔴 **The question this column demands, answered before the row was added: does it withhold anything from someone with no account? No.** The read is unconditional and there is no branch on its result — a session-less editor gets `token: null` and the re-pull goes out exactly the same, because `/bundle` is what the web page serves to a stranger. As everywhere else in this table the account can only make the editor do LESS: the header is there so D15 can answer 404 to an org-minor whose school switched the community off. ⚠️ The reset happens HERE rather than in the lesson only because the project must be closed before its directory is replaced (`launcherHandoff.ts`) — a lifecycle constraint, not an account one. The DECISION of which reset to run sees no session at all: it is `models/lessonreset.ts`, asserted below. Asserted structurally below',
   'noodl-editor/src/editor/src/models/template/PlatformTemplateProvider.ts':
     'FB-005 T3 the curated template shelf: the token is a BEARER HEADER on two reads the platform serves to strangers — `/api/v1/community/templates` and its `/bundle`, whose route header says so outright (*"Signed out is fine, and the D15 gate still runs"*). 🔴 **The question this column demands, answered before the row was added: what does it WITHHOLD? Nothing.** There is no branch on the session — `readCommunitySession()` is read only to build the client, a session-less editor gets `token: null`, and both reads go out identically. The account can only make the editor do LESS, as everywhere else in this table: the header exists so D15 can answer 404 to an org-minor whose school switched the community off. ⚠️ **And the whole feature survives a null session anyway** — `EmbeddedTemplateProvider` is compiled into the editor and is first in the registry, so a signed-out, offline builder still gets a template picker with a template in it. Asserted structurally below',
+  'noodl-editor/src/editor/src/pages/ProjectsPage/useShareTemplate.ts':
+    'FB-005 T5 sharing a project as a template: the token builds the client for `POST /api/v1/community/templates/submissions`. 🔴 **THIS IS THE FIRST ROW IN THIS TABLE WHOSE ANSWER TO "what does it WITHHOLD?" IS NOT SIMPLY "nothing", AND IT IS RECORDED RATHER THAN GLOSSED.** Every row above reads a token as a bearer header on something the platform serves to strangers; this one reads it for a WRITE, and the send button is off while signed out. ⚠️ **What makes that not principle 1\'s failure is that no capability MOVED behind the session.** Filing a submission did not exist for anybody before T5, and it cannot exist without an account on the platform side either: `submitTemplate` is a checked write capability and `project_template_submissions.submitter_account_id` is `not null` — a submission with nobody attached is a row the database refuses, and a decline with no one to tell is a queue that is a black hole. So the account does not buy back something an account-less editor lost; it is who the act is BY. 🔴 **And the offer never disappears**: the kebab entry is guarded on the handler and not on a session, the dialog opens signed out, every field works, and `whySendIsOff` names the fix in a sentence — a feature that comes and goes with a session is the failure this table exists to prevent, and this is deliberately not that. ⚠️ The decision layer sees no session at all: `shareTemplateForm.ts` decides what may be sent and what every outcome says, and the whole of what it may know about an account is a BOOLEAN — the arrangement `useCommunityThread` uses for the hand-off. Asserted structurally below.',
   'noodl-editor/src/editor/src/hooks/useLearnerPath.ts':
     'UNI-007 AC1 intake and path: the token is a BEARER HEADER on the path read, and the INTAKE read — the questions themselves — is not session-gated at all, because `GET /api/v1/me/intake` takes no token by design. Withholds nothing: a path is a fact that does not exist for a person with no account, in the same way `standing` does not, and no capability the editor had before this surface moved behind a session. Asserted structurally below'
 };
@@ -716,6 +718,58 @@ describe('AC4 — installing a tutorial is not behind an account', () => {
  * because the first provider in the registry is compiled into the editor. The account cannot
  * withhold a template picker; at most it changes how many rows are in one.
  */
+describe('AC4 — sharing a template gates the ACT and nothing else, proven against the real source', () => {
+  const hook = stripComments(readFileSync(join(EDITOR_SRC, 'pages/ProjectsPage/useShareTemplate.ts'), 'utf8'));
+  const rules = stripComments(readFileSync(join(EDITOR_SRC, 'models/template/shareTemplateForm.ts'), 'utf8'));
+  const seam = stripComments(readFileSync(join(EDITOR_SRC, 'models/template/shareAsTemplate.ts'), 'utf8'));
+  const view = stripComments(
+    readFileSync(join(PACKAGES, 'noodl-core-ui/src/preview/launcher/Launcher/views/Projects.tsx'), 'utf8')
+  );
+
+  it('control: the hook really does read the session — the known-firing arm', () => {
+    // Without this, every absence below passes for a module that reads nothing.
+    expect(readsTheSession(hook)).toBe(true);
+    expect(hook).toContain('readCommunitySession');
+  });
+
+  it('the token is used once, to build a client, and nowhere else', () => {
+    // ⚠️ Counted rather than eyeballed. One client is built, so the expected count is one, and a
+    // second would be a second place a decision could hide.
+    expect(hook.split('session?.token').length - 1).toBe(1);
+  });
+
+  it('🔴 the OFFER is not behind the session — the entry is guarded on the handler', () => {
+    // The failure this table exists to prevent is a feature that appears and disappears with a
+    // session. The menu entry is present whenever a host supplies one, which the editor always
+    // does; Storybook, which has no host, simply has no entry.
+    expect(view).toContain('if (onShareAsTemplate) {');
+    expect(readsTheSession(view)).toBe(false);
+    expect(view).not.toContain('isSignedIn');
+  });
+
+  it('🔴 and the dialog OPENS signed out — `open` is not inside a session branch', () => {
+    // Somebody signed out can still read what sharing would do, see the licences on offer and
+    // find out what it would leave on their machine. What they cannot do is send it.
+    expect(isGated(hook, 'setDraft(draftForProject(next.projectName))')).toBe(false);
+  });
+
+  it('the module that decides what may be sent never sees a session — it is handed a BOOLEAN', () => {
+    // 🔴 The load-bearing claim, and the arrangement `useCommunityThread` uses for the hand-off:
+    // a boolean is the whole of what the decision layer may know about an account.
+    expect(readsTheSession(rules)).toBe(false);
+    expect(rules).not.toContain('token');
+    expect(rules).toContain('isSignedIn: boolean');
+    expect(READERS).not.toContain('noodl-editor/src/editor/src/models/template/shareTemplateForm.ts');
+  });
+
+  it('and what LEAVES THE MACHINE is decided with no credential in the room at all', () => {
+    // `shareAsTemplate.ts` owns `NEVER_SHARED` — the rule that keeps `.mcp.json` off a public
+    // shelf. It is a decision about a disk, and a session has no business anywhere near it.
+    expect(readsTheSession(seam)).toBe(false);
+    expect(READERS).not.toContain('noodl-editor/src/editor/src/models/template/shareAsTemplate.ts');
+  });
+});
+
 describe('AC4 — the template shelf withholds nothing, proven against the real source', () => {
   const provider = stripComments(
     readFileSync(join(EDITOR_SRC, 'models/template/PlatformTemplateProvider.ts'), 'utf8')

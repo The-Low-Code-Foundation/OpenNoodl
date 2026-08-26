@@ -99,8 +99,10 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 
 ## Tier 4 — new scope (rulings landed 08-22; scoping docs first)
 
-- 🟡 **FB-005** — templates, **curated first** (L+) — **T1–T4 done; T5 BUILT BUT UNREACHABLE** — **R-templates ruled 08-22**: share files a
-  submission, Richard publishes. G3 stays shut. 🔴 **Licences are NO LONGER parked** — T5 makes an attested licence a required field of the act, because a submission is third-party code (P69). ⚠️ **T5's remaining half is the BUTTON**: the queue, the route, the capability, the promotion script and the editor seam all exist and are graded, and **nothing in the product can file a submission** until a dialog calls `shareAsTemplate`. ✅ **Scope doc done s39**
+- 🟡 **FB-005** — templates, **curated first** (L+) — **T1–T5 BUILT; the blocker is now DEPLOYMENT** — **R-templates ruled 08-22**: share files a
+  submission, Richard publishes. G3 stays shut. 🔴 **Licences are NO LONGER parked** — T5 makes an attested licence a required field of the act, because a submission is third-party code (P69).
+  ✅ **T5's button landed s46** — *"Share as template…"* on every launcher project card, a five-field dialog, driven end to end. **Five defects found by driving, none visible to 226 green specs** — see [FB-005-SCOPE.md](FB-005-SCOPE.md) §4e.
+  🔴 **AND THE DRIVE FOUND THE REAL BLOCKER: the platform half of FB-005 IS NOT DEPLOYED.** `community.nodegx.io` answers **404** to `/api/v1/community/templates` *and* `/templates/submissions` while `/threshold` answers **200** — production predates T3 entirely. T3, T4 and T5's platform halves are merged, specced and **not live**, so the picker's community provider and the whole share path reach nothing today. **The curated shelf is empty because there is no shelf.** ✅ **Scope doc done s39**
   ([FB-005-SCOPE.md](FB-005-SCOPE.md)); ✅ **T1 CLOSED s40, AC1 met** — the zip transport and its
   three providers are deleted, `newProject` has one branch and it goes through `templateRegistry`,
   and `tests-unit/fb-005/template-install-path.test.ts` (27 specs, 6 mutants killed) grades the

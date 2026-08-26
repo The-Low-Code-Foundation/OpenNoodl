@@ -33,6 +33,7 @@ import { LauncherLessonData } from '@noodl-core-ui/preview/launcher/Launcher/Lau
 
 import { useEventListener } from '../../hooks/useEventListener';
 import { useProjectTemplates } from '../../hooks/useProjectTemplates';
+import { useShareTemplate } from './useShareTemplate';
 import type { AuthoringPlan } from '../../models/AiAssistant/authoring/plan';
 import { provisionSummary } from '../../models/AiAssistant/authoring/plan';
 import {
@@ -336,6 +337,19 @@ export function ProjectsPage(props: ProjectsPageProps) {
    * still an account a person can have.
    */
   const community = useCommunityAccount();
+
+  /**
+   * FB-005 T5 — "Share as template". 🔴 **This is the caller `shareAsTemplate` shipped without**:
+   * the seam, the client method, the platform table and the promotion script all landed in
+   * session 45 with nothing in the product able to reach them.
+   */
+  const shareTemplate = useShareTemplate({
+    baseUrl: COMMUNITY_URL,
+    // ⚠️ `phase === 'signed-in'` and not `Boolean(session)` — `unknown` is "the store has not
+    // answered yet", and treating it as signed out would tell somebody with an account to sign in
+    // on the first frame. The same distinction `useCommunityAccount`'s header makes.
+    isSignedIn: community.state.phase === 'signed-in'
+  });
   // UNI-011 / D21 — the community TAB's data. ⚠️ A different fact from `community` above:
   // that one is who you are, this one is what the community contains.
   const communityMirror = useCommunityMirror();
@@ -1351,6 +1365,33 @@ export function ProjectsPage(props: ProjectsPageProps) {
   /**
    * Handle "Open Read-Only" button click - opens legacy project without migration
    */
+  /**
+   * FB-005 T5 — open the share dialog against one project row.
+   *
+   * ⚠️ **The directory comes from `LocalProjectsModel`, not from the card**, matching
+   * `handleMigrateProject`: the card's `localPath` is a copy made when the list was built, and the
+   * thing being read here is a folder on disk that a share will walk file by file.
+   *
+   * 🔴 A project with no retained directory is a row pointing at nothing — it is refused HERE
+   * rather than being carried into the dialog, because the dialog's refusals are all about the
+   * *contents* of a folder and "there is no folder" is not one of them.
+   */
+  const handleShareAsTemplate = useCallback(
+    (projectId: string) => {
+      const project = LocalProjectsModel.instance.getProjects().find((p) => p.id === projectId);
+      if (!project || !project.retainedProjectDirectory) {
+        ToastLayer.showError('Cannot share this project: its folder could not be found.');
+        return;
+      }
+      shareTemplate.open({
+        projectId,
+        projectName: project.name,
+        projectDir: project.retainedProjectDirectory
+      });
+    },
+    [shareTemplate]
+  );
+
   const handleOpenReadOnly = useCallback(
     async (projectId: string) => {
       const projects = LocalProjectsModel.instance.getProjects();
@@ -1408,6 +1449,8 @@ export function ProjectsPage(props: ProjectsPageProps) {
         onDeleteProject={handleDeleteProject}
         onMigrateProject={handleMigrateProject}
         onOpenReadOnly={handleOpenReadOnly}
+        onShareAsTemplate={handleShareAsTemplate}
+        shareTemplateModal={shareTemplate.modal}
         lessons={lessons}
         onStartLesson={handleStartLesson}
         onRestartLesson={handleRestartLesson}

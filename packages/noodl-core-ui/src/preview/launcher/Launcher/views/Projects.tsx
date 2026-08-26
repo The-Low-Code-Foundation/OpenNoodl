@@ -24,6 +24,7 @@ import {
   LauncherSearchBar,
   useLauncherSearchBar
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherSearchBar';
+import { ShareTemplateModal } from '@noodl-core-ui/preview/launcher/Launcher/components/ShareTemplateModal';
 import { ProjectSettingsModal } from '@noodl-core-ui/preview/launcher/Launcher/components/ProjectSettingsModal';
 import { useProjectOrganization } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useProjectOrganization';
 import { useLauncherContext } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
@@ -61,6 +62,8 @@ export function Projects({}: ProjectsViewProps) {
     onDeleteProject,
     onMigrateProject,
     onOpenReadOnly,
+    onShareAsTemplate,
+    shareTemplateModal,
     connectAgent,
     community
   } = useLauncherContext();
@@ -152,6 +155,17 @@ export function Projects({}: ProjectsViewProps) {
       { label: 'Move to folder...', onClick: () => onMoveToFolder(project) },
       { label: 'Open project settings', onClick: () => onOpenProjectSettings(project.id) }
     ];
+
+    /**
+     * FB-005 T5 — the entry point a template submission did not have.
+     *
+     * 🔴 **Guarded on the handler, not on a sign-in state.** Storybook has no host, so no entry;
+     * the editor always supplies one, and *signed out* is answered inside the dialog rather than
+     * by hiding the offer — a feature that appears and disappears with a session reads as broken.
+     */
+    if (onShareAsTemplate) {
+      items.push({ label: 'Share as template…', onClick: () => onShareAsTemplate(project.id) });
+    }
 
     // React 17 projects keep the migrate / read-only capability the old expandable
     // runtime banner used to offer — moved into the kebab so the card stays compact.
@@ -251,6 +265,10 @@ export function Projects({}: ProjectsViewProps) {
               {/* ⚠️ Stays once there are projects, for the same reason the card above it does —
                   and because this is where the signed-in chip and the sign-out live. */}
               {community && <CommunityAccountCard variant={CommunityAccountVariant.Row} {...community} />}
+
+              {/* FB-005 T5. Rendered beside the settings modal and for the same reason: it is
+                  a dialog about one project, opened from that project's kebab. */}
+              {shareTemplateModal && <ShareTemplateModal {...shareTemplateModal} />}
 
               <ProjectSettingsModal
                 isVisible={selectedProjectId !== null}

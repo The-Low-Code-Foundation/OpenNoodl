@@ -14,6 +14,7 @@ import type { LauncherCommunityHostState } from './views/Community';
 import type { LauncherLearnerPath } from './components/LearnerPathSection';
 import type { LauncherLearningData } from './components/LearningSection';
 import { LauncherProjectData } from './components/LauncherProjectCard';
+import type { ShareTemplateModalProps } from './components/ShareTemplateModal';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from './hooks/useGitHubRepos';
 
 // ⚠️ `'learn'` and `'learning'` are two different pages and the near-identical
@@ -81,6 +82,19 @@ export interface LauncherContextValue {
   onDeleteProject?: (projectId: string) => void;
   onMigrateProject?: (projectId: string) => void;
   onOpenReadOnly?: (projectId: string) => void;
+
+  /**
+   * FB-005 T5 — "Share as template" on a project's kebab, and the dialog it opens.
+   *
+   * ⚠️ **Two fields, not one.** `onShareAsTemplate` is the launcher asking the host to begin;
+   * `shareTemplateModal` is the host's whole dialog state, already turned into props. The host
+   * owns it because every decision behind it (what may be sent, what each outcome says) lives in
+   * `noodl-editor`, which this package may not import — the split `useProjectTemplates` uses.
+   *
+   * Absent in Storybook, where the menu entry simply does not appear.
+   */
+  onShareAsTemplate?: (projectId: string) => void;
+  shareTemplateModal?: ShareTemplateModalProps | null;
 
   // Lessons (Learn tab)
   lessons?: LauncherLessonData[];
