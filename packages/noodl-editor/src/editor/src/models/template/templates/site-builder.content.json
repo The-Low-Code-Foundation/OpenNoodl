@@ -1,0 +1,4820 @@
+{
+  "name": "Site Builder",
+  "version": "4",
+  "rootComponent": "/App",
+  "components": [
+    {
+      "name": "/App",
+      "graph": {
+        "roots": [
+          {
+            "id": "app_root",
+            "type": "Group",
+            "children": [
+              {
+                "id": "app_router",
+                "type": "Router",
+                "children": [],
+                "label": "Main router",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "name": "Main",
+                  "pages": {
+                    "startPage": "/Pages/Site",
+                    "routes": [
+                      "/Pages/Site",
+                      "/Pages/PageEditor",
+                      "/Pages/ThemeEditor",
+                      "/Pages/Admin",
+                      "/Pages/Setup"
+                    ]
+                  }
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "App",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "explicit",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "height": {
+                "value": 100,
+                "unit": "%"
+              }
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [],
+        "visualRoots": [
+          "app_root"
+        ]
+      }
+    },
+    {
+      "name": "/Site/NavLink",
+      "graph": {
+        "roots": [
+          {
+            "id": "link",
+            "type": "Text",
+            "children": [],
+            "label": "Nav link",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "as": "span",
+              "text": "Page",
+              "marginRight": 16
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The page record",
+            "x": 290,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "id",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "title",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "slug",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "goPage",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "To that page",
+            "x": 290,
+            "y": 160,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Site"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs",
+            "fromProperty": "title",
+            "toId": "link",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs",
+            "fromProperty": "slug",
+            "toId": "goPage",
+            "toProperty": "pm-slug"
+          },
+          {
+            "fromId": "link",
+            "fromProperty": "onClick",
+            "toId": "goPage",
+            "toProperty": "navigate"
+          }
+        ],
+        "visualRoots": [
+          "link"
+        ]
+      }
+    },
+    {
+      "name": "/Site/SectionView",
+      "graph": {
+        "roots": [
+          {
+            "id": "section",
+            "type": "Group",
+            "children": [
+              {
+                "id": "image",
+                "type": "Image",
+                "children": [],
+                "label": "Section image",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "sizeMode": "explicit",
+                  "objectFit": "cover",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 320,
+                    "unit": "px"
+                  },
+                  "visible": false
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "body",
+                "type": "Text",
+                "children": [],
+                "label": "Section body",
+                "x": 100,
+                "y": 280,
+                "parameters": {
+                  "as": "p",
+                  "visible": false
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "One section",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "as": "section",
+              "flexDirection": "column",
+              "paddingTop": 32,
+              "paddingBottom": 32,
+              "rowGap": 16
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-2",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The section record",
+            "x": 350,
+            "y": 280,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "id",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "kind",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "order",
+                "plug": "output",
+                "type": "number"
+              },
+              {
+                "name": "data",
+                "plug": "output",
+                "type": "*"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "unpack",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "What this kind shows",
+            "x": 350,
+            "y": 160,
+            "parameters": {
+              "functionScript": "const kind = Inputs.kind || 'richText';\nconst d = Inputs.data || {};\nconst body = d.body || '';\nconst image = (d.image && d.image.url) || '';\nOutputs.showImage = image !== '' && (kind === 'hero' || kind === 'gallery');\nOutputs.showBody = body !== '' && kind !== 'gallery';\nOutputs.body = body;\nOutputs.image = image;\nOutputs.weight = (kind === 'hero' || kind === 'cta') ? 'var(--font-bold)' : 'var(--font-normal)';\nOutputs.size = kind === 'hero' ? 'var(--text-3xl)' : 'var(--text-base)';"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-2",
+            "fromProperty": "kind",
+            "toId": "unpack",
+            "toProperty": "in-kind"
+          },
+          {
+            "fromId": "inputs-2",
+            "fromProperty": "data",
+            "toId": "unpack",
+            "toProperty": "in-data"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-image",
+            "toId": "image",
+            "toProperty": "src"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-showImage",
+            "toId": "image",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-body",
+            "toId": "body",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-showBody",
+            "toId": "body",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-weight",
+            "toId": "body",
+            "toProperty": "fontWeight"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-size",
+            "toId": "body",
+            "toProperty": "fontSize"
+          }
+        ],
+        "visualRoots": [
+          "section"
+        ]
+      }
+    },
+    {
+      "name": "/Site/ContactForm",
+      "graph": {
+        "roots": [
+          {
+            "id": "form",
+            "type": "Group",
+            "children": [
+              {
+                "id": "heading",
+                "type": "Text",
+                "children": [],
+                "label": "Contact heading",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "as": "h2",
+                  "text": "Get in touch",
+                  "fontWeight": "var(--font-bold)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "nameField",
+                "type": "net.noodl.controls.textinput",
+                "children": [],
+                "label": "Your name",
+                "x": 100,
+                "y": 280,
+                "parameters": {
+                  "useLabel": true,
+                  "label": "Your name"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "emailField",
+                "type": "net.noodl.controls.textinput",
+                "children": [],
+                "label": "Your email",
+                "x": 100,
+                "y": 400,
+                "parameters": {
+                  "useLabel": true,
+                  "label": "Your email",
+                  "type": "email"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "messageField",
+                "type": "net.noodl.controls.textinput",
+                "children": [],
+                "label": "Your message",
+                "x": 100,
+                "y": 520,
+                "parameters": {
+                  "useLabel": true,
+                  "label": "Your message",
+                  "type": "textArea"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "sendButton",
+                "type": "net.noodl.controls.button",
+                "children": [],
+                "label": "Send",
+                "x": 100,
+                "y": 640,
+                "parameters": {
+                  "label": "Send"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "sent",
+                "type": "Text",
+                "children": [],
+                "label": "The one confirmation",
+                "x": 100,
+                "y": 760,
+                "parameters": {
+                  "text": "Thanks — your message has been sent.",
+                  "visible": false
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "refused",
+                "type": "Text",
+                "children": [],
+                "label": "The one refusal",
+                "x": 100,
+                "y": 880,
+                "parameters": {
+                  "text": "That message could not be sent.",
+                  "visible": false
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Contact form",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "as": "section",
+              "flexDirection": "column",
+              "rowGap": 12,
+              "paddingTop": 24,
+              "paddingBottom": 24
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-3",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "Which page this was sent from",
+            "x": 350,
+            "y": 1000,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "pageSlug",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "gather",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Hold the message until it is complete",
+            "x": 350,
+            "y": 280,
+            "parameters": {
+              "functionScript": "const name = Inputs.name || \"\";\nconst email = Inputs.email || \"\";\nconst message = Inputs.message || \"\";\nif (name === '' || email === '' || message === '') return;\nOutputs.name = name;\nOutputs.email = email;\nOutputs.message = message;\nOutputs.pageSlug = Inputs.pageSlug || '';\nOutputs.go();"
+            },
+            "ports": [
+              {
+                "name": "out-go",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "send",
+            "type": "CloudFunction2",
+            "children": [],
+            "label": "submitContactForm",
+            "x": 350,
+            "y": 1120,
+            "parameters": {
+              "function": "submitContactForm"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "sentGate",
+            "type": "Condition",
+            "children": [],
+            "label": "Show the confirmation",
+            "x": 350,
+            "y": 760,
+            "parameters": {
+              "condition": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "refusedGate",
+            "type": "Condition",
+            "children": [],
+            "label": "Show the refusal",
+            "x": 350,
+            "y": 880,
+            "parameters": {
+              "condition": true
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "nameField",
+            "fromProperty": "onTextChanged",
+            "toId": "gather",
+            "toProperty": "in-name"
+          },
+          {
+            "fromId": "emailField",
+            "fromProperty": "onTextChanged",
+            "toId": "gather",
+            "toProperty": "in-email"
+          },
+          {
+            "fromId": "messageField",
+            "fromProperty": "onTextChanged",
+            "toId": "gather",
+            "toProperty": "in-message"
+          },
+          {
+            "fromId": "inputs-3",
+            "fromProperty": "pageSlug",
+            "toId": "gather",
+            "toProperty": "in-pageSlug"
+          },
+          {
+            "fromId": "sendButton",
+            "fromProperty": "onClick",
+            "toId": "gather",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "gather",
+            "fromProperty": "out-name",
+            "toId": "send",
+            "toProperty": "in-name"
+          },
+          {
+            "fromId": "gather",
+            "fromProperty": "out-email",
+            "toId": "send",
+            "toProperty": "in-email"
+          },
+          {
+            "fromId": "gather",
+            "fromProperty": "out-message",
+            "toId": "send",
+            "toProperty": "in-message"
+          },
+          {
+            "fromId": "gather",
+            "fromProperty": "out-pageSlug",
+            "toId": "send",
+            "toProperty": "in-pageSlug"
+          },
+          {
+            "fromId": "gather",
+            "fromProperty": "out-go",
+            "toId": "send",
+            "toProperty": "call"
+          },
+          {
+            "fromId": "send",
+            "fromProperty": "done",
+            "toId": "sentGate",
+            "toProperty": "eval"
+          },
+          {
+            "fromId": "sentGate",
+            "fromProperty": "result",
+            "toId": "sent",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "send",
+            "fromProperty": "failure",
+            "toId": "refusedGate",
+            "toProperty": "eval"
+          },
+          {
+            "fromId": "refusedGate",
+            "fromProperty": "result",
+            "toId": "refused",
+            "toProperty": "visible"
+          }
+        ],
+        "visualRoots": [
+          "form"
+        ]
+      }
+    },
+    {
+      "name": "/Site/Nav",
+      "graph": {
+        "roots": [
+          {
+            "id": "bar",
+            "type": "Group",
+            "children": [
+              {
+                "id": "links",
+                "type": "For Each",
+                "children": [],
+                "label": "One link per page in the nav",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "templateType": "explicit",
+                  "template": "/Site/NavLink"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Navigation",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "as": "nav",
+              "flexDirection": "row",
+              "alignItems": "center",
+              "paddingTop": 16,
+              "paddingBottom": 16
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "pages",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "Pages in the navigation",
+            "x": 350,
+            "y": 160,
+            "parameters": {
+              "collectionName": "Page",
+              "visualFilter": {
+                "combinator": "and",
+                "rules": [
+                  {
+                    "property": "showInNav",
+                    "operator": "equal to",
+                    "value": true
+                  }
+                ]
+              },
+              "visualSort": [
+                {
+                  "property": "navOrder",
+                  "order": "ascending"
+                }
+              ]
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "pages",
+            "fromProperty": "items",
+            "toId": "links",
+            "toProperty": "items"
+          }
+        ],
+        "visualRoots": [
+          "bar"
+        ]
+      }
+    },
+    {
+      "name": "/Pages/Site",
+      "graph": {
+        "roots": [
+          {
+            "id": "page",
+            "type": "Page",
+            "children": [
+              {
+                "id": "shell",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "nav",
+                    "type": "/Site/Nav",
+                    "children": [],
+                    "label": "Navigation",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {},
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "header",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "siteName",
+                        "type": "Text",
+                        "children": [],
+                        "label": "Site name",
+                        "x": 220,
+                        "y": 520,
+                        "parameters": {
+                          "as": "span",
+                          "fontWeight": "var(--font-semibold)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "pageTitle",
+                        "type": "Text",
+                        "children": [],
+                        "label": "Page title",
+                        "x": 220,
+                        "y": 640,
+                        "parameters": {
+                          "as": "h1",
+                          "fontWeight": "var(--font-bold)",
+                          "fontSize": "var(--text-3xl)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "Header",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "as": "header",
+                      "flexDirection": "column",
+                      "rowGap": 4
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "sectionList",
+                    "type": "For Each",
+                    "children": [],
+                    "label": "One view per section",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "templateType": "explicit",
+                      "template": "/Site/SectionView"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "contactWrap",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "contact",
+                        "type": "/Site/ContactForm",
+                        "children": [],
+                        "label": "Contact form",
+                        "x": 220,
+                        "y": 1000,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "Contact form, when the page asked for one",
+                    "x": 160,
+                    "y": 880,
+                    "parameters": {
+                      "flexDirection": "column",
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "notFound",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Not found",
+                    "x": 160,
+                    "y": 1120,
+                    "parameters": {
+                      "as": "p",
+                      "text": "That page could not be found.",
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Page shell",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "flexDirection": "column",
+                  "paddingTop": 24,
+                  "paddingLeft": 24,
+                  "paddingRight": 24,
+                  "maxWidth": {
+                    "value": 960,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Site",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "title": "Site",
+              "urlPath": "{slug}"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "pageInputs",
+            "type": "PageInputs",
+            "children": [],
+            "label": "The slug from the URL",
+            "x": 470,
+            "y": 1000,
+            "parameters": {
+              "pathParams": "slug"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "settings",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "SiteSettings (one row)",
+            "x": 470,
+            "y": 1120,
+            "parameters": {
+              "collectionName": "SiteSettings"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "readSettings",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Read the settings row",
+            "x": 470,
+            "y": 520,
+            "parameters": {
+              "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.homeSlug = first.homeSlug || 'home';"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "resolveSlug",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The slug to show",
+            "x": 470,
+            "y": 40,
+            "parameters": {
+              "functionScript": "if (Inputs.homeSlug === undefined) return;\nconst fromUrl = Inputs.slug === undefined || Inputs.slug === null ? '' : String(Inputs.slug);\nconst slug = fromUrl === '' ? Inputs.homeSlug : fromUrl;\nif (slug === '') return;\nOutputs.slug = slug;\nOutputs.ready();"
+            },
+            "ports": [
+              {
+                "name": "out-ready",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "pageQuery",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "The page with this slug",
+            "x": 470,
+            "y": 1240,
+            "parameters": {
+              "runOnChange-collectionName": false,
+              "runOnChange-querySettings": false,
+              "collectionName": "Page",
+              "visualFilter": {
+                "combinator": "and",
+                "rules": [
+                  {
+                    "property": "slug",
+                    "operator": "equal to",
+                    "input": "slug"
+                  }
+                ]
+              }
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "readPage",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Read the page record",
+            "x": 470,
+            "y": 640,
+            "parameters": {
+              "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows[0];\nconst d = row ? row.data || row : undefined;\nOutputs.missing = d === undefined;\nOutputs.title = d ? d.title || '' : '';\nOutputs.seoDescription = d ? d.seoDescription || '' : '';\nOutputs.slug = d ? d.slug || '' : '';\nif (d === undefined) return;\nOutputs.pageId = row.getId ? row.getId() : (d.objectId || '');\nOutputs.found();"
+            },
+            "ports": [
+              {
+                "name": "out-found",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "sections",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "This page's sections",
+            "x": 470,
+            "y": 760,
+            "parameters": {
+              "runOnChange-collectionName": false,
+              "runOnChange-querySettings": false,
+              "collectionName": "Section",
+              "visualFilter": {
+                "combinator": "and",
+                "rules": [
+                  {
+                    "property": "pageId",
+                    "operator": "equal to",
+                    "input": "pageId"
+                  }
+                ]
+              },
+              "visualSort": [
+                {
+                  "property": "order",
+                  "order": "ascending"
+                }
+              ]
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "readSections",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Is there a contact section",
+            "x": 470,
+            "y": 880,
+            "parameters": {
+              "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nOutputs.hasContact = rows.some(function (r) {\n  const d = r.data || r;\n  return d.kind === 'contact';\n});"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "theme",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "Theme (one row)",
+            "x": 470,
+            "y": 1360,
+            "parameters": {
+              "collectionName": "Theme"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "applyTheme",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The theme record, as CSS variables",
+            "x": 470,
+            "y": 1480,
+            "parameters": {
+              "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) root.style.setProperty('--primary', t.colorPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.fontFamily) root.style.fontFamily = t.fontFamily;"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "seo",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The document title",
+            "x": 470,
+            "y": 1600,
+            "parameters": {
+              "functionScript": "if (!Inputs.title) return;\nif (!Noodl || !Noodl.SEO) return;\nNoodl.SEO.setTitle(Inputs.title);"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "settings",
+            "fromProperty": "items",
+            "toId": "readSettings",
+            "toProperty": "in-rows"
+          },
+          {
+            "fromId": "settings",
+            "fromProperty": "fetched",
+            "toId": "readSettings",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "readSettings",
+            "fromProperty": "out-siteName",
+            "toId": "siteName",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "pageInputs",
+            "fromProperty": "pm-slug",
+            "toId": "resolveSlug",
+            "toProperty": "in-slug"
+          },
+          {
+            "fromId": "readSettings",
+            "fromProperty": "out-homeSlug",
+            "toId": "resolveSlug",
+            "toProperty": "in-homeSlug"
+          },
+          {
+            "fromId": "page",
+            "fromProperty": "didMount",
+            "toId": "resolveSlug",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "resolveSlug",
+            "fromProperty": "out-slug",
+            "toId": "pageQuery",
+            "toProperty": "qp-slug"
+          },
+          {
+            "fromId": "pageQuery",
+            "fromProperty": "items",
+            "toId": "readPage",
+            "toProperty": "in-rows"
+          },
+          {
+            "fromId": "pageQuery",
+            "fromProperty": "fetched",
+            "toId": "readPage",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "readPage",
+            "fromProperty": "out-title",
+            "toId": "pageTitle",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "readPage",
+            "fromProperty": "out-missing",
+            "toId": "notFound",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "readPage",
+            "fromProperty": "out-seoDescription",
+            "toId": "page",
+            "toProperty": "description"
+          },
+          {
+            "fromId": "readPage",
+            "fromProperty": "out-title",
+            "toId": "seo",
+            "toProperty": "in-title"
+          },
+          {
+            "fromId": "readPage",
+            "fromProperty": "out-pageId",
+            "toId": "sections",
+            "toProperty": "qp-pageId"
+          },
+          {
+            "fromId": "sections",
+            "fromProperty": "items",
+            "toId": "sectionList",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "sections",
+            "fromProperty": "items",
+            "toId": "readSections",
+            "toProperty": "in-rows"
+          },
+          {
+            "fromId": "sections",
+            "fromProperty": "fetched",
+            "toId": "readSections",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "readSections",
+            "fromProperty": "out-hasContact",
+            "toId": "contactWrap",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "readPage",
+            "fromProperty": "out-slug",
+            "toId": "contact",
+            "toProperty": "pageSlug"
+          },
+          {
+            "fromId": "theme",
+            "fromProperty": "items",
+            "toId": "applyTheme",
+            "toProperty": "in-rows"
+          },
+          {
+            "fromId": "theme",
+            "fromProperty": "fetched",
+            "toId": "applyTheme",
+            "toProperty": "run"
+          }
+        ],
+        "visualRoots": [
+          "page"
+        ]
+      }
+    },
+    {
+      "name": "/Admin/SectionRow",
+      "graph": {
+        "roots": [
+          {
+            "id": "row",
+            "type": "Group",
+            "children": [
+              {
+                "id": "kindText",
+                "type": "Text",
+                "children": [],
+                "label": "Kind",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "fontWeight": "var(--font-semibold)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "bodyField",
+                "type": "net.noodl.controls.textinput",
+                "children": [],
+                "label": "Body",
+                "x": 100,
+                "y": 280,
+                "parameters": {
+                  "useLabel": true,
+                  "label": "Body",
+                  "type": "textArea"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "preview",
+                "type": "Image",
+                "children": [],
+                "label": "Image preview",
+                "x": 100,
+                "y": 400,
+                "parameters": {},
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "pickButton",
+                "type": "net.noodl.controls.button",
+                "children": [],
+                "label": "Choose image",
+                "x": 100,
+                "y": 520,
+                "parameters": {
+                  "label": "Choose image"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "saveButton",
+                "type": "net.noodl.controls.button",
+                "children": [],
+                "label": "Save",
+                "x": 100,
+                "y": 640,
+                "parameters": {
+                  "label": "Save"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "deleteButton",
+                "type": "net.noodl.controls.button",
+                "children": [],
+                "label": "Delete",
+                "x": 100,
+                "y": 760,
+                "parameters": {
+                  "label": "Delete"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "One section",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "flexDirection": "column",
+              "paddingTop": 8,
+              "paddingBottom": 8
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-4",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The section record",
+            "x": 350,
+            "y": 160,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "id",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "kind",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "order",
+                "plug": "output",
+                "type": "number"
+              },
+              {
+                "name": "data",
+                "plug": "output",
+                "type": "*"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "unpack-2",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Read the body and image out of data",
+            "x": 350,
+            "y": 280,
+            "parameters": {
+              "functionScript": "const d = Inputs.data || {};\nOutputs.body = d.body || '';\nOutputs.image = (d.image && d.image.url) || '';"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "picker",
+            "type": "Open File Picker",
+            "children": [],
+            "label": "Choose an image",
+            "x": 350,
+            "y": 520,
+            "parameters": {
+              "acceptedFileTypes": "image/*"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "upload",
+            "type": "Upload File",
+            "children": [],
+            "label": "Upload it",
+            "x": 350,
+            "y": 880,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "merge",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Fold the edits back into data",
+            "x": 350,
+            "y": 400,
+            "parameters": {
+              "functionScript": "if (Inputs.data === undefined) return;\nconst next = Object.assign({}, Inputs.data);\nif (Inputs.body !== undefined) next.body = Inputs.body;\nif (Inputs.image !== undefined && Inputs.image !== null) next.image = Inputs.image;\nOutputs.data = next;\nOutputs.built();"
+            },
+            "ports": [
+              {
+                "name": "out-built",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "save",
+            "type": "SetDbModelProperties",
+            "children": [],
+            "label": "Save this section",
+            "x": 350,
+            "y": 1000,
+            "parameters": {
+              "collectionName": "Section",
+              "idSource": "explicit",
+              "storeProperties": "specified"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "remove",
+            "type": "DeleteDbModelProperties",
+            "children": [],
+            "label": "Delete this section",
+            "x": 350,
+            "y": 760,
+            "parameters": {
+              "collectionName": "Section",
+              "idSource": "explicit"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "outputs",
+            "type": "Component Outputs",
+            "children": [],
+            "label": "Tell the editor something changed",
+            "x": 350,
+            "y": 1120,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-4",
+            "fromProperty": "kind",
+            "toId": "kindText",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-4",
+            "fromProperty": "data",
+            "toId": "unpack-2",
+            "toProperty": "in-data"
+          },
+          {
+            "fromId": "unpack-2",
+            "fromProperty": "out-body",
+            "toId": "bodyField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "unpack-2",
+            "fromProperty": "out-image",
+            "toId": "preview",
+            "toProperty": "src"
+          },
+          {
+            "fromId": "pickButton",
+            "fromProperty": "onClick",
+            "toId": "picker",
+            "toProperty": "open"
+          },
+          {
+            "fromId": "picker",
+            "fromProperty": "file",
+            "toId": "upload",
+            "toProperty": "file"
+          },
+          {
+            "fromId": "picker",
+            "fromProperty": "done",
+            "toId": "upload",
+            "toProperty": "upload"
+          },
+          {
+            "fromId": "upload",
+            "fromProperty": "cloudFile",
+            "toId": "merge",
+            "toProperty": "in-image"
+          },
+          {
+            "fromId": "inputs-4",
+            "fromProperty": "data",
+            "toId": "merge",
+            "toProperty": "in-data"
+          },
+          {
+            "fromId": "bodyField",
+            "fromProperty": "onTextChanged",
+            "toId": "merge",
+            "toProperty": "in-body"
+          },
+          {
+            "fromId": "saveButton",
+            "fromProperty": "onClick",
+            "toId": "merge",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "upload",
+            "fromProperty": "done",
+            "toId": "merge",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "inputs-4",
+            "fromProperty": "id",
+            "toId": "save",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "merge",
+            "fromProperty": "out-data",
+            "toId": "save",
+            "toProperty": "prop-data"
+          },
+          {
+            "fromId": "merge",
+            "fromProperty": "out-built",
+            "toId": "save",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "inputs-4",
+            "fromProperty": "id",
+            "toId": "remove",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "deleteButton",
+            "fromProperty": "onClick",
+            "toId": "remove",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "save",
+            "fromProperty": "done",
+            "toId": "outputs",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "remove",
+            "fromProperty": "done",
+            "toId": "outputs",
+            "toProperty": "Changed"
+          }
+        ],
+        "visualRoots": [
+          "row"
+        ]
+      }
+    },
+    {
+      "name": "/Pages/PageEditor",
+      "graph": {
+        "roots": [
+          {
+            "id": "page-2",
+            "type": "Page",
+            "children": [
+              {
+                "id": "shell-2",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "heading-2",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Heading",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "text": "Edit page",
+                      "fontWeight": "var(--font-bold)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "titleField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Title",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Title"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "slugField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Slug",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Slug"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "seoField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "SEO description",
+                    "x": 160,
+                    "y": 640,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Search description",
+                      "type": "textArea"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "navOrderField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Nav order",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Navigation order",
+                      "type": "number"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "showInNavBox",
+                    "type": "net.noodl.controls.checkbox",
+                    "children": [],
+                    "label": "Show in navigation",
+                    "x": 160,
+                    "y": 880,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Show in navigation"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "saveButton-2",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Save",
+                    "x": 160,
+                    "y": 1000,
+                    "parameters": {
+                      "label": "Save page"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "addRow",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "kindPicker",
+                        "type": "net.noodl.controls.options",
+                        "children": [],
+                        "label": "Section kind",
+                        "x": 220,
+                        "y": 1240,
+                        "parameters": {
+                          "useLabel": true,
+                          "label": "Kind"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "addButton",
+                        "type": "net.noodl.controls.button",
+                        "children": [],
+                        "label": "Add",
+                        "x": 220,
+                        "y": 1360,
+                        "parameters": {
+                          "label": "Add section"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "Add a section",
+                    "x": 160,
+                    "y": 1120,
+                    "parameters": {
+                      "flexDirection": "row",
+                      "alignItems": "center"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "sectionList-2",
+                    "type": "For Each",
+                    "children": [],
+                    "label": "One row per section",
+                    "x": 160,
+                    "y": 1480,
+                    "parameters": {
+                      "templateType": "explicit",
+                      "template": "/Admin/SectionRow"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "backButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Back",
+                    "x": 160,
+                    "y": 1600,
+                    "parameters": {
+                      "label": "Back to pages"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Editor",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "flexDirection": "column",
+                  "paddingTop": 24,
+                  "paddingLeft": 24,
+                  "paddingRight": 24
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Edit page",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "title": "Edit page",
+              "urlPath": "admin/page/{pageId}"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "kindItems",
+            "type": "Static Data",
+            "children": [],
+            "label": "The five section kinds",
+            "x": 470,
+            "y": 1240,
+            "parameters": {
+              "type": "json",
+              "json": "[{\"Label\":\"Hero\",\"Value\":\"hero\"},{\"Label\":\"Rich text\",\"Value\":\"richText\"},{\"Label\":\"Gallery\",\"Value\":\"gallery\"},{\"Label\":\"Contact\",\"Value\":\"contact\"},{\"Label\":\"Call to action\",\"Value\":\"cta\"}]"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "pageInputs-2",
+            "type": "PageInputs",
+            "children": [],
+            "label": "Which page",
+            "x": 470,
+            "y": 1720,
+            "parameters": {
+              "pathParams": "pageId"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "hold",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Hold the page id",
+            "x": 470,
+            "y": 40,
+            "parameters": {
+              "functionScript": "if (Inputs.pageId === undefined || Inputs.pageId === '') return;\nOutputs.pageId = Inputs.pageId;\nOutputs.ready();"
+            },
+            "ports": [
+              {
+                "name": "out-ready",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "record",
+            "type": "DbModel2",
+            "children": [],
+            "label": "The page being edited",
+            "x": 470,
+            "y": 400,
+            "parameters": {
+              "collectionName": "Page",
+              "idSource": "explicit"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "save-2",
+            "type": "SetDbModelProperties",
+            "children": [],
+            "label": "Save the page fields",
+            "x": 470,
+            "y": 520,
+            "parameters": {
+              "collectionName": "Page",
+              "idSource": "explicit",
+              "storeProperties": "specified"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "sections-2",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "This page's sections",
+            "x": 470,
+            "y": 1480,
+            "parameters": {
+              "runOnChange-collectionName": false,
+              "runOnChange-querySettings": false,
+              "collectionName": "Section",
+              "visualFilter": {
+                "combinator": "and",
+                "rules": [
+                  {
+                    "property": "pageId",
+                    "operator": "equal to",
+                    "input": "pageId"
+                  }
+                ]
+              }
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "addSection",
+            "type": "NewDbModelProperties",
+            "children": [],
+            "label": "Add a section to this page",
+            "x": 470,
+            "y": 1360,
+            "parameters": {
+              "collectionName": "Section",
+              "accessControl": [
+                {
+                  "id": "admin",
+                  "label": "Admin"
+                }
+              ],
+              "acl-admin-target": "role",
+              "acl-admin-role": "admin",
+              "acl-admin-read": true,
+              "acl-admin-write": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goBack",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "Back to the list",
+            "x": 470,
+            "y": 1600,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Admin"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "kindItems",
+            "fromProperty": "items",
+            "toId": "kindPicker",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "pageInputs-2",
+            "fromProperty": "pm-pageId",
+            "toId": "hold",
+            "toProperty": "in-pageId"
+          },
+          {
+            "fromId": "page-2",
+            "fromProperty": "didMount",
+            "toId": "hold",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "hold",
+            "fromProperty": "out-pageId",
+            "toId": "record",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "hold",
+            "fromProperty": "out-ready",
+            "toId": "record",
+            "toProperty": "fetch"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-title",
+            "toId": "titleField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-slug",
+            "toId": "slugField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-seoDescription",
+            "toId": "seoField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-navOrder",
+            "toId": "navOrderField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "record",
+            "fromProperty": "prop-showInNav",
+            "toId": "showInNavBox",
+            "toProperty": "checked"
+          },
+          {
+            "fromId": "hold",
+            "fromProperty": "out-pageId",
+            "toId": "save-2",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "titleField",
+            "fromProperty": "onTextChanged",
+            "toId": "save-2",
+            "toProperty": "prop-title"
+          },
+          {
+            "fromId": "slugField",
+            "fromProperty": "onTextChanged",
+            "toId": "save-2",
+            "toProperty": "prop-slug"
+          },
+          {
+            "fromId": "seoField",
+            "fromProperty": "onTextChanged",
+            "toId": "save-2",
+            "toProperty": "prop-seoDescription"
+          },
+          {
+            "fromId": "navOrderField",
+            "fromProperty": "onTextChanged",
+            "toId": "save-2",
+            "toProperty": "prop-navOrder"
+          },
+          {
+            "fromId": "showInNavBox",
+            "fromProperty": "checked",
+            "toId": "save-2",
+            "toProperty": "prop-showInNav"
+          },
+          {
+            "fromId": "saveButton-2",
+            "fromProperty": "onClick",
+            "toId": "save-2",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "hold",
+            "fromProperty": "out-pageId",
+            "toId": "sections-2",
+            "toProperty": "qp-pageId"
+          },
+          {
+            "fromId": "hold",
+            "fromProperty": "out-pageId",
+            "toId": "addSection",
+            "toProperty": "prop-pageId"
+          },
+          {
+            "fromId": "kindPicker",
+            "fromProperty": "value",
+            "toId": "addSection",
+            "toProperty": "prop-kind"
+          },
+          {
+            "fromId": "sections-2",
+            "fromProperty": "count",
+            "toId": "addSection",
+            "toProperty": "prop-order"
+          },
+          {
+            "fromId": "addButton",
+            "fromProperty": "onClick",
+            "toId": "addSection",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "addSection",
+            "fromProperty": "done",
+            "toId": "sections-2",
+            "toProperty": "storageFetch"
+          },
+          {
+            "fromId": "sectionList-2",
+            "fromProperty": "Changed",
+            "toId": "sections-2",
+            "toProperty": "storageFetch"
+          },
+          {
+            "fromId": "sections-2",
+            "fromProperty": "items",
+            "toId": "sectionList-2",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "backButton",
+            "fromProperty": "onClick",
+            "toId": "goBack",
+            "toProperty": "navigate"
+          }
+        ],
+        "visualRoots": [
+          "page-2"
+        ]
+      }
+    },
+    {
+      "name": "/Admin/PageRow",
+      "graph": {
+        "roots": [
+          {
+            "id": "row-2",
+            "type": "Group",
+            "children": [
+              {
+                "id": "rowTitle",
+                "type": "Text",
+                "children": [],
+                "label": "Title",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "fontWeight": "var(--font-semibold)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "rowSlug",
+                "type": "Text",
+                "children": [],
+                "label": "Slug",
+                "x": 100,
+                "y": 280,
+                "parameters": {},
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "rowStatus",
+                "type": "Text",
+                "children": [],
+                "label": "Draft or published",
+                "x": 100,
+                "y": 400,
+                "parameters": {
+                  "text": "Draft"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "editButton",
+                "type": "net.noodl.controls.button",
+                "children": [],
+                "label": "Edit",
+                "x": 100,
+                "y": 520,
+                "parameters": {
+                  "label": "Edit"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "publishButton",
+                "type": "net.noodl.controls.button",
+                "children": [],
+                "label": "Publish",
+                "x": 100,
+                "y": 640,
+                "parameters": {
+                  "label": "Publish"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "unpublishButton",
+                "type": "net.noodl.controls.button",
+                "children": [],
+                "label": "Unpublish",
+                "x": 100,
+                "y": 760,
+                "parameters": {
+                  "label": "Unpublish"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "duplicateButton",
+                "type": "net.noodl.controls.button",
+                "children": [],
+                "label": "Duplicate",
+                "x": 100,
+                "y": 880,
+                "parameters": {
+                  "label": "Duplicate"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "One page",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "flexDirection": "row",
+              "alignItems": "center",
+              "paddingTop": 8,
+              "paddingBottom": 8
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-5",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The page record",
+            "x": 350,
+            "y": 160,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "id",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "title",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "slug",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "published",
+                "plug": "output",
+                "type": "boolean"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "status",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Draft or published, as a word",
+            "x": 350,
+            "y": 400,
+            "parameters": {
+              "functionScript": "Outputs.label = Inputs.published === true ? 'Published' : 'Draft';"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "publish",
+            "type": "CloudFunction2",
+            "children": [],
+            "label": "publishPage(publish: true)",
+            "x": 350,
+            "y": 640,
+            "parameters": {
+              "function": "publishPage",
+              "in-publish": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "unpublish",
+            "type": "CloudFunction2",
+            "children": [],
+            "label": "publishPage(publish: false)",
+            "x": 350,
+            "y": 760,
+            "parameters": {
+              "function": "publishPage",
+              "in-publish": false
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "duplicate",
+            "type": "CloudFunction2",
+            "children": [],
+            "label": "duplicatePage",
+            "x": 350,
+            "y": 880,
+            "parameters": {
+              "function": "duplicatePage"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goEdit",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "Open the page editor",
+            "x": 350,
+            "y": 520,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/PageEditor"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "outputs-2",
+            "type": "Component Outputs",
+            "children": [],
+            "label": "Tell the list something changed",
+            "x": 350,
+            "y": 1000,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-5",
+            "fromProperty": "title",
+            "toId": "rowTitle",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-5",
+            "fromProperty": "slug",
+            "toId": "rowSlug",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-5",
+            "fromProperty": "published",
+            "toId": "status",
+            "toProperty": "in-published"
+          },
+          {
+            "fromId": "status",
+            "fromProperty": "out-label",
+            "toId": "rowStatus",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "inputs-5",
+            "fromProperty": "id",
+            "toId": "publish",
+            "toProperty": "in-pageId"
+          },
+          {
+            "fromId": "inputs-5",
+            "fromProperty": "id",
+            "toId": "unpublish",
+            "toProperty": "in-pageId"
+          },
+          {
+            "fromId": "inputs-5",
+            "fromProperty": "id",
+            "toId": "duplicate",
+            "toProperty": "in-pageId"
+          },
+          {
+            "fromId": "inputs-5",
+            "fromProperty": "id",
+            "toId": "goEdit",
+            "toProperty": "pm-pageId"
+          },
+          {
+            "fromId": "publishButton",
+            "fromProperty": "onClick",
+            "toId": "publish",
+            "toProperty": "call"
+          },
+          {
+            "fromId": "unpublishButton",
+            "fromProperty": "onClick",
+            "toId": "unpublish",
+            "toProperty": "call"
+          },
+          {
+            "fromId": "duplicateButton",
+            "fromProperty": "onClick",
+            "toId": "duplicate",
+            "toProperty": "call"
+          },
+          {
+            "fromId": "editButton",
+            "fromProperty": "onClick",
+            "toId": "goEdit",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "publish",
+            "fromProperty": "done",
+            "toId": "outputs-2",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "unpublish",
+            "fromProperty": "done",
+            "toId": "outputs-2",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "duplicate",
+            "fromProperty": "done",
+            "toId": "outputs-2",
+            "toProperty": "Changed"
+          }
+        ],
+        "visualRoots": [
+          "row-2"
+        ]
+      }
+    },
+    {
+      "name": "/Pages/ThemeEditor",
+      "graph": {
+        "roots": [
+          {
+            "id": "page-3",
+            "type": "Page",
+            "children": [
+              {
+                "id": "shell-3",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "heading-3",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Heading",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "text": "Theme and settings",
+                      "fontWeight": "var(--font-bold)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "siteNameField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Site name",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Site name"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "homeSlugField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Home slug",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Home page slug"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "settingsButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Save settings",
+                    "x": 160,
+                    "y": 640,
+                    "parameters": {
+                      "label": "Save settings"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "tokensHeading",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Tokens heading",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "text": "Theme",
+                      "fontWeight": "var(--font-semibold)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "primaryField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Primary colour",
+                    "x": 160,
+                    "y": 880,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Primary colour"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "backgroundField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Background colour",
+                    "x": 160,
+                    "y": 1000,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Background colour"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "textField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Text colour",
+                    "x": 160,
+                    "y": 1120,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Text colour"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "fontField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Font family",
+                    "x": 160,
+                    "y": 1240,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Font family"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "themeButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Save theme",
+                    "x": 160,
+                    "y": 1360,
+                    "parameters": {
+                      "label": "Save theme"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "backButton-2",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Back",
+                    "x": 160,
+                    "y": 1480,
+                    "parameters": {
+                      "label": "Back to pages"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Editor",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "flexDirection": "column",
+                  "paddingTop": 24,
+                  "paddingLeft": 24,
+                  "paddingRight": 24
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Theme and settings",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "title": "Theme and settings",
+              "urlPath": "admin/theme"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "settings-2",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "SiteSettings (one row)",
+            "x": 410,
+            "y": 1600,
+            "parameters": {
+              "collectionName": "SiteSettings"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "theme-2",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "Theme (one row)",
+            "x": 410,
+            "y": 1720,
+            "parameters": {
+              "collectionName": "Theme"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "readSettings-2",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Read the settings row",
+            "x": 410,
+            "y": 400,
+            "parameters": {
+              "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.homeSlug = first.homeSlug || 'home';"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "readTheme",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Read the theme tokens",
+            "x": 410,
+            "y": 880,
+            "parameters": {
+              "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nOutputs.primary = t.colorPrimary || '';\nOutputs.background = t.colorBackground || '';\nOutputs.text = t.colorText || '';\nOutputs.font = t.fontFamily || '';"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "buildTokens",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The four tokens, as one object",
+            "x": 410,
+            "y": 1000,
+            "parameters": {
+              "functionScript": "Outputs.tokens = {\n  colorPrimary: Inputs.primary || '',\n  colorBackground: Inputs.background || '',\n  colorText: Inputs.text || '',\n  fontFamily: Inputs.font || ''\n};\nOutputs.built();"
+            },
+            "ports": [
+              {
+                "name": "out-built",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "saveSettings",
+            "type": "SetDbModelProperties",
+            "children": [],
+            "label": "Save the settings row",
+            "x": 410,
+            "y": 520,
+            "parameters": {
+              "collectionName": "SiteSettings",
+              "idSource": "explicit",
+              "storeProperties": "specified"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "saveTheme",
+            "type": "SetDbModelProperties",
+            "children": [],
+            "label": "Save the theme row",
+            "x": 410,
+            "y": 1840,
+            "parameters": {
+              "collectionName": "Theme",
+              "idSource": "explicit",
+              "storeProperties": "specified"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goBack-2",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "Back to the list",
+            "x": 410,
+            "y": 1480,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Admin"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "settings-2",
+            "fromProperty": "items",
+            "toId": "readSettings-2",
+            "toProperty": "in-rows"
+          },
+          {
+            "fromId": "settings-2",
+            "fromProperty": "fetched",
+            "toId": "readSettings-2",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "readSettings-2",
+            "fromProperty": "out-siteName",
+            "toId": "siteNameField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "readSettings-2",
+            "fromProperty": "out-homeSlug",
+            "toId": "homeSlugField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "theme-2",
+            "fromProperty": "items",
+            "toId": "readTheme",
+            "toProperty": "in-rows"
+          },
+          {
+            "fromId": "theme-2",
+            "fromProperty": "fetched",
+            "toId": "readTheme",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-primary",
+            "toId": "primaryField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-background",
+            "toId": "backgroundField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-text",
+            "toId": "textField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "readTheme",
+            "fromProperty": "out-font",
+            "toId": "fontField",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "settings-2",
+            "fromProperty": "firstItemId",
+            "toId": "saveSettings",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "siteNameField",
+            "fromProperty": "onTextChanged",
+            "toId": "saveSettings",
+            "toProperty": "prop-siteName"
+          },
+          {
+            "fromId": "homeSlugField",
+            "fromProperty": "onTextChanged",
+            "toId": "saveSettings",
+            "toProperty": "prop-homeSlug"
+          },
+          {
+            "fromId": "settingsButton",
+            "fromProperty": "onClick",
+            "toId": "saveSettings",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "primaryField",
+            "fromProperty": "onTextChanged",
+            "toId": "buildTokens",
+            "toProperty": "in-primary"
+          },
+          {
+            "fromId": "backgroundField",
+            "fromProperty": "onTextChanged",
+            "toId": "buildTokens",
+            "toProperty": "in-background"
+          },
+          {
+            "fromId": "textField",
+            "fromProperty": "onTextChanged",
+            "toId": "buildTokens",
+            "toProperty": "in-text"
+          },
+          {
+            "fromId": "fontField",
+            "fromProperty": "onTextChanged",
+            "toId": "buildTokens",
+            "toProperty": "in-font"
+          },
+          {
+            "fromId": "themeButton",
+            "fromProperty": "onClick",
+            "toId": "buildTokens",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "theme-2",
+            "fromProperty": "firstItemId",
+            "toId": "saveTheme",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "buildTokens",
+            "fromProperty": "out-tokens",
+            "toId": "saveTheme",
+            "toProperty": "prop-tokens"
+          },
+          {
+            "fromId": "buildTokens",
+            "fromProperty": "out-built",
+            "toId": "saveTheme",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "backButton-2",
+            "fromProperty": "onClick",
+            "toId": "goBack-2",
+            "toProperty": "navigate"
+          }
+        ],
+        "visualRoots": [
+          "page-3"
+        ]
+      }
+    },
+    {
+      "name": "/Pages/Admin",
+      "graph": {
+        "roots": [
+          {
+            "id": "page-4",
+            "type": "Page",
+            "children": [
+              {
+                "id": "shell-4",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "heading-4",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Heading",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "text": "Pages",
+                      "fontWeight": "var(--font-bold)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "newRow",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "newTitle",
+                        "type": "net.noodl.controls.textinput",
+                        "children": [],
+                        "label": "New title",
+                        "x": 220,
+                        "y": 520,
+                        "parameters": {
+                          "useLabel": true,
+                          "label": "Title"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "newSlug",
+                        "type": "net.noodl.controls.textinput",
+                        "children": [],
+                        "label": "New slug",
+                        "x": 220,
+                        "y": 640,
+                        "parameters": {
+                          "useLabel": true,
+                          "label": "Slug"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "newButton",
+                        "type": "net.noodl.controls.button",
+                        "children": [],
+                        "label": "Create",
+                        "x": 220,
+                        "y": 760,
+                        "parameters": {
+                          "label": "New page"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "New page",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "flexDirection": "row",
+                      "alignItems": "center"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "list",
+                    "type": "For Each",
+                    "children": [],
+                    "label": "One row per page",
+                    "x": 160,
+                    "y": 880,
+                    "parameters": {
+                      "templateType": "explicit",
+                      "template": "/Admin/PageRow"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "themeLink",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Theme and settings",
+                    "x": 160,
+                    "y": 1000,
+                    "parameters": {
+                      "label": "Theme and settings"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Panel",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "flexDirection": "column",
+                  "paddingTop": 24,
+                  "paddingLeft": 24,
+                  "paddingRight": 24
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Pages",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "title": "Pages",
+              "urlPath": "admin/pages"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "pages-2",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "Every page, draft and published",
+            "x": 470,
+            "y": 880,
+            "parameters": {
+              "collectionName": "Page"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "create",
+            "type": "NewDbModelProperties",
+            "children": [],
+            "label": "Create a draft page",
+            "x": 470,
+            "y": 520,
+            "parameters": {
+              "collectionName": "Page",
+              "accessControl": [
+                {
+                  "id": "admin",
+                  "label": "Admin"
+                }
+              ],
+              "acl-admin-target": "role",
+              "acl-admin-role": "admin",
+              "acl-admin-read": true,
+              "acl-admin-write": true,
+              "prop-published": false,
+              "prop-showInNav": true,
+              "prop-navOrder": 0
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goTheme",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "To the theme editor",
+            "x": 470,
+            "y": 1000,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/ThemeEditor"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "pages-2",
+            "fromProperty": "items",
+            "toId": "list",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "newTitle",
+            "fromProperty": "onTextChanged",
+            "toId": "create",
+            "toProperty": "prop-title"
+          },
+          {
+            "fromId": "newSlug",
+            "fromProperty": "onTextChanged",
+            "toId": "create",
+            "toProperty": "prop-slug"
+          },
+          {
+            "fromId": "newButton",
+            "fromProperty": "onClick",
+            "toId": "create",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "create",
+            "fromProperty": "done",
+            "toId": "pages-2",
+            "toProperty": "storageFetch"
+          },
+          {
+            "fromId": "list",
+            "fromProperty": "Changed",
+            "toId": "pages-2",
+            "toProperty": "storageFetch"
+          },
+          {
+            "fromId": "themeLink",
+            "fromProperty": "onClick",
+            "toId": "goTheme",
+            "toProperty": "navigate"
+          }
+        ],
+        "visualRoots": [
+          "page-4"
+        ]
+      }
+    },
+    {
+      "name": "/Pages/Setup",
+      "graph": {
+        "roots": [
+          {
+            "id": "page-5",
+            "type": "Page",
+            "children": [
+              {
+                "id": "shell-5",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "heading-5",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Heading",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "text": "Claim this site",
+                      "fontWeight": "var(--font-bold)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "blurb",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Blurb",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "text": "Create the owner account and enter the setup token from your backend configuration."
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "emailField-2",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Email",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Email",
+                      "type": "email"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "passwordField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Password",
+                    "x": 160,
+                    "y": 640,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Password",
+                      "type": "password"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "tokenField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Setup token",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Setup token",
+                      "type": "password"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "claimButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Claim",
+                    "x": 160,
+                    "y": 880,
+                    "parameters": {
+                      "label": "Claim this site"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "claimRefusal",
+                    "type": "Text",
+                    "children": [],
+                    "label": "The one refusal",
+                    "x": 160,
+                    "y": 1000,
+                    "parameters": {
+                      "text": "This site cannot be claimed.",
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "signupRefusal",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Signup refusal",
+                    "x": 160,
+                    "y": 1120,
+                    "parameters": {
+                      "text": "That account could not be created.",
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Form",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "flexDirection": "column",
+                  "paddingTop": 24,
+                  "paddingLeft": 24,
+                  "paddingRight": 24
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Set up this site",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "title": "Set up this site",
+              "urlPath": "admin/setup"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "signup",
+            "type": "net.noodl.user.SignUp",
+            "children": [],
+            "label": "Create the owner account",
+            "x": 410,
+            "y": 520,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "hold-2",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Hold the token until the account exists",
+            "x": 410,
+            "y": 760,
+            "parameters": {
+              "functionScript": "if (Inputs.token === undefined || Inputs.token === null) return;\nOutputs.token = Inputs.token;\nOutputs.go();"
+            },
+            "ports": [
+              {
+                "name": "out-go",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "claim",
+            "type": "CloudFunction2",
+            "children": [],
+            "label": "claimSite",
+            "x": 410,
+            "y": 1240,
+            "parameters": {
+              "function": "claimSite"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "claimGate",
+            "type": "Condition",
+            "children": [],
+            "label": "Show the refusal",
+            "x": 410,
+            "y": 1000,
+            "parameters": {
+              "condition": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "signupGate",
+            "type": "Condition",
+            "children": [],
+            "label": "Show the signup refusal",
+            "x": 410,
+            "y": 1120,
+            "parameters": {
+              "condition": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goAdmin",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "Into the panel",
+            "x": 410,
+            "y": 1360,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Admin"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "emailField-2",
+            "fromProperty": "onTextChanged",
+            "toId": "signup",
+            "toProperty": "email"
+          },
+          {
+            "fromId": "emailField-2",
+            "fromProperty": "onTextChanged",
+            "toId": "signup",
+            "toProperty": "username"
+          },
+          {
+            "fromId": "passwordField",
+            "fromProperty": "onTextChanged",
+            "toId": "signup",
+            "toProperty": "password"
+          },
+          {
+            "fromId": "claimButton",
+            "fromProperty": "onClick",
+            "toId": "signup",
+            "toProperty": "signup"
+          },
+          {
+            "fromId": "tokenField",
+            "fromProperty": "onTextChanged",
+            "toId": "hold-2",
+            "toProperty": "in-token"
+          },
+          {
+            "fromId": "signup",
+            "fromProperty": "done",
+            "toId": "hold-2",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "hold-2",
+            "fromProperty": "out-token",
+            "toId": "claim",
+            "toProperty": "in-setupToken"
+          },
+          {
+            "fromId": "hold-2",
+            "fromProperty": "out-go",
+            "toId": "claim",
+            "toProperty": "call"
+          },
+          {
+            "fromId": "claim",
+            "fromProperty": "done",
+            "toId": "goAdmin",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "claim",
+            "fromProperty": "failure",
+            "toId": "claimGate",
+            "toProperty": "eval"
+          },
+          {
+            "fromId": "claimGate",
+            "fromProperty": "result",
+            "toId": "claimRefusal",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "signup",
+            "fromProperty": "failure",
+            "toId": "signupGate",
+            "toProperty": "eval"
+          },
+          {
+            "fromId": "signupGate",
+            "fromProperty": "result",
+            "toId": "signupRefusal",
+            "toProperty": "visible"
+          }
+        ],
+        "visualRoots": [
+          "page-5"
+        ]
+      }
+    },
+    {
+      "name": "/#__cloud__/site/SetSectionAccess",
+      "graph": {
+        "roots": [
+          {
+            "id": "inputs-6",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The section, and whether it goes public",
+            "x": 40,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "objectId",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "isPublic",
+                "plug": "output",
+                "type": "boolean"
+              },
+              {
+                "name": "Do",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "write",
+            "type": "SetDbModelProperties",
+            "children": [],
+            "label": "Write the section access rules",
+            "x": 40,
+            "y": 160,
+            "parameters": {
+              "collectionName": "Section",
+              "idSource": "explicit",
+              "storeProperties": "specified",
+              "accessControl": [
+                {
+                  "id": "admin",
+                  "label": "Admin"
+                },
+                {
+                  "id": "world",
+                  "label": "World"
+                }
+              ],
+              "acl-admin-target": "role",
+              "acl-admin-role": "admin",
+              "acl-admin-read": true,
+              "acl-admin-write": true,
+              "acl-world-target": "everyone",
+              "acl-world-write": false
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "outputs-3",
+            "type": "Component Outputs",
+            "children": [],
+            "label": "Task result",
+            "x": 40,
+            "y": 280,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Success",
+                "plug": "input",
+                "type": "signal"
+              },
+              {
+                "name": "Failure",
+                "plug": "input",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-6",
+            "fromProperty": "objectId",
+            "toId": "write",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "inputs-6",
+            "fromProperty": "isPublic",
+            "toId": "write",
+            "toProperty": "acl-world-read"
+          },
+          {
+            "fromId": "inputs-6",
+            "fromProperty": "Do",
+            "toId": "write",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "write",
+            "fromProperty": "done",
+            "toId": "outputs-3",
+            "toProperty": "Success"
+          },
+          {
+            "fromId": "write",
+            "fromProperty": "failure",
+            "toId": "outputs-3",
+            "toProperty": "Failure"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/#__cloud__/site/CopySectionToPage",
+      "graph": {
+        "roots": [
+          {
+            "id": "inputs-7",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "One section, and the page it is being copied onto",
+            "x": 40,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "kind",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "order",
+                "plug": "output",
+                "type": "number"
+              },
+              {
+                "name": "data",
+                "plug": "output",
+                "type": "*"
+              },
+              {
+                "name": "newPageId",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "Do",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "link-2",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The page this copy belongs to",
+            "x": 40,
+            "y": 160,
+            "parameters": {
+              "functionScript": "Outputs.pageId = Inputs.newPageId;\nOutputs.built();"
+            },
+            "ports": [
+              {
+                "name": "out-built",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "create-2",
+            "type": "NewDbModelProperties",
+            "children": [],
+            "label": "Write the copied section",
+            "x": 40,
+            "y": 280,
+            "parameters": {
+              "collectionName": "Section",
+              "accessControl": [
+                {
+                  "id": "admin",
+                  "label": "Admin"
+                }
+              ],
+              "acl-admin-target": "role",
+              "acl-admin-role": "admin",
+              "acl-admin-read": true,
+              "acl-admin-write": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "outputs-4",
+            "type": "Component Outputs",
+            "children": [],
+            "label": "Task result",
+            "x": 40,
+            "y": 400,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Success",
+                "plug": "input",
+                "type": "signal"
+              },
+              {
+                "name": "Failure",
+                "plug": "input",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-7",
+            "fromProperty": "newPageId",
+            "toId": "link-2",
+            "toProperty": "in-newPageId"
+          },
+          {
+            "fromId": "inputs-7",
+            "fromProperty": "Do",
+            "toId": "link-2",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "link-2",
+            "fromProperty": "out-pageId",
+            "toId": "create-2",
+            "toProperty": "prop-pageId"
+          },
+          {
+            "fromId": "inputs-7",
+            "fromProperty": "kind",
+            "toId": "create-2",
+            "toProperty": "prop-kind"
+          },
+          {
+            "fromId": "inputs-7",
+            "fromProperty": "order",
+            "toId": "create-2",
+            "toProperty": "prop-order"
+          },
+          {
+            "fromId": "inputs-7",
+            "fromProperty": "data",
+            "toId": "create-2",
+            "toProperty": "prop-data"
+          },
+          {
+            "fromId": "link-2",
+            "fromProperty": "out-built",
+            "toId": "create-2",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "create-2",
+            "fromProperty": "done",
+            "toId": "outputs-4",
+            "toProperty": "Success"
+          },
+          {
+            "fromId": "create-2",
+            "fromProperty": "failure",
+            "toId": "outputs-4",
+            "toProperty": "Failure"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/#__cloud__/site/ContactRecipient",
+      "graph": {
+        "roots": [
+          {
+            "id": "inputs-8",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "Ask for the address",
+            "x": 40,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Fetch",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "settings-3",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "SiteSettings (one row)",
+            "x": 40,
+            "y": 160,
+            "parameters": {
+              "collectionName": "SiteSettings"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "fallback",
+            "type": "noodl.cloud.secret",
+            "children": [],
+            "label": "CONTACT_RECIPIENT_EMAIL",
+            "x": 40,
+            "y": 280,
+            "parameters": {
+              "name": "CONTACT_RECIPIENT_EMAIL"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "pick",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Settings first, then the secret",
+            "x": 40,
+            "y": 400,
+            "parameters": {
+              "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst address = first.contactRecipient || Inputs.fallback;\nif (address) {\n  Outputs.recipient = address;\n  Outputs.ready();\n} else {\n  Outputs.failed();\n}"
+            },
+            "ports": [
+              {
+                "name": "out-ready",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "out-failed",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "outputs-5",
+            "type": "Component Outputs",
+            "children": [],
+            "label": "The address",
+            "x": 40,
+            "y": 520,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "recipient",
+                "plug": "input",
+                "type": "string"
+              },
+              {
+                "name": "Ready",
+                "plug": "input",
+                "type": "signal"
+              },
+              {
+                "name": "Failure",
+                "plug": "input",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-8",
+            "fromProperty": "Fetch",
+            "toId": "settings-3",
+            "toProperty": "storageFetch"
+          },
+          {
+            "fromId": "settings-3",
+            "fromProperty": "fetched",
+            "toId": "fallback",
+            "toProperty": "fetch"
+          },
+          {
+            "fromId": "settings-3",
+            "fromProperty": "items",
+            "toId": "pick",
+            "toProperty": "in-rows"
+          },
+          {
+            "fromId": "fallback",
+            "fromProperty": "value",
+            "toId": "pick",
+            "toProperty": "in-fallback"
+          },
+          {
+            "fromId": "fallback",
+            "fromProperty": "completed",
+            "toId": "pick",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "settings-3",
+            "fromProperty": "failure",
+            "toId": "outputs-5",
+            "toProperty": "Failure"
+          },
+          {
+            "fromId": "pick",
+            "fromProperty": "out-recipient",
+            "toId": "outputs-5",
+            "toProperty": "recipient"
+          },
+          {
+            "fromId": "pick",
+            "fromProperty": "out-ready",
+            "toId": "outputs-5",
+            "toProperty": "Ready"
+          },
+          {
+            "fromId": "pick",
+            "fromProperty": "out-failed",
+            "toId": "outputs-5",
+            "toProperty": "Failure"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/#__cloud__/publishPage",
+      "graph": {
+        "roots": [
+          {
+            "id": "req",
+            "type": "noodl.cloud.request",
+            "children": [],
+            "label": "publishPage(pageId, publish)",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "params": "pageId,publish",
+              "ptype-pageId": "string",
+              "preq-pageId": true,
+              "ptype-publish": "boolean",
+              "preq-publish": true,
+              "allowNoAuth": false
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "prep",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Hold the request until both parameters are here",
+            "x": 40,
+            "y": 160,
+            "parameters": {
+              "functionScript": "if (Inputs.pageId === undefined || Inputs.isPublic === undefined) return;\nOutputs.pageId = Inputs.pageId;\nOutputs.isPublic = Inputs.isPublic;\nOutputs.ready();"
+            },
+            "ports": [
+              {
+                "name": "out-ready",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "sections-3",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "This page's sections",
+            "x": 40,
+            "y": 280,
+            "parameters": {
+              "runOnChange-collectionName": false,
+              "runOnChange-querySettings": false,
+              "collectionName": "Section",
+              "visualFilter": {
+                "combinator": "and",
+                "rules": [
+                  {
+                    "property": "pageId",
+                    "operator": "equal to",
+                    "input": "pageId"
+                  }
+                ]
+              }
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "withFlag",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Carry isPublic onto every item",
+            "x": 40,
+            "y": 400,
+            "parameters": {
+              "functionScript": "if (Inputs.sections === undefined || Inputs.isPublic === undefined) return;\nconst flag = Inputs.isPublic;\nOutputs.tasks = (Inputs.sections || []).map((s) => ({ objectId: s.id, isPublic: flag }));\nOutputs.built();"
+            },
+            "ports": [
+              {
+                "name": "out-built",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "tasks",
+            "type": "RunTasks",
+            "children": [],
+            "label": "Set access on every section",
+            "x": 40,
+            "y": 520,
+            "parameters": {
+              "taskTemplate": "/#__cloud__/site/SetSectionAccess",
+              "stopOnFailure": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "page-6",
+            "type": "SetDbModelProperties",
+            "children": [],
+            "label": "Write the page: mirror + access rules",
+            "x": 40,
+            "y": 640,
+            "parameters": {
+              "collectionName": "Page",
+              "idSource": "explicit",
+              "storeProperties": "specified",
+              "accessControl": [
+                {
+                  "id": "admin",
+                  "label": "Admin"
+                },
+                {
+                  "id": "world",
+                  "label": "World"
+                }
+              ],
+              "acl-admin-target": "role",
+              "acl-admin-role": "admin",
+              "acl-admin-read": true,
+              "acl-admin-write": true,
+              "acl-world-target": "everyone",
+              "acl-world-write": false
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "res",
+            "type": "noodl.cloud.response",
+            "children": [],
+            "label": "Answer",
+            "x": 40,
+            "y": 760,
+            "parameters": {
+              "params": "pageId,published"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "req",
+            "fromProperty": "pm-pageId",
+            "toId": "prep",
+            "toProperty": "in-pageId"
+          },
+          {
+            "fromId": "req",
+            "fromProperty": "pm-publish",
+            "toId": "prep",
+            "toProperty": "in-isPublic"
+          },
+          {
+            "fromId": "req",
+            "fromProperty": "receive",
+            "toId": "prep",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "prep",
+            "fromProperty": "out-pageId",
+            "toId": "sections-3",
+            "toProperty": "qp-pageId"
+          },
+          {
+            "fromId": "sections-3",
+            "fromProperty": "items",
+            "toId": "withFlag",
+            "toProperty": "in-sections"
+          },
+          {
+            "fromId": "prep",
+            "fromProperty": "out-isPublic",
+            "toId": "withFlag",
+            "toProperty": "in-isPublic"
+          },
+          {
+            "fromId": "sections-3",
+            "fromProperty": "fetched",
+            "toId": "withFlag",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "withFlag",
+            "fromProperty": "out-tasks",
+            "toId": "tasks",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "withFlag",
+            "fromProperty": "out-built",
+            "toId": "tasks",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "tasks",
+            "fromProperty": "completed",
+            "toId": "page-6",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "prep",
+            "fromProperty": "out-pageId",
+            "toId": "page-6",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "prep",
+            "fromProperty": "out-isPublic",
+            "toId": "page-6",
+            "toProperty": "prop-published"
+          },
+          {
+            "fromId": "prep",
+            "fromProperty": "out-isPublic",
+            "toId": "page-6",
+            "toProperty": "acl-world-read"
+          },
+          {
+            "fromId": "prep",
+            "fromProperty": "out-pageId",
+            "toId": "res",
+            "toProperty": "pm-pageId"
+          },
+          {
+            "fromId": "prep",
+            "fromProperty": "out-isPublic",
+            "toId": "res",
+            "toProperty": "pm-published"
+          },
+          {
+            "fromId": "page-6",
+            "fromProperty": "done",
+            "toId": "res",
+            "toProperty": "send"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/#__cloud__/duplicatePage",
+      "graph": {
+        "roots": [
+          {
+            "id": "req-2",
+            "type": "noodl.cloud.request",
+            "children": [],
+            "label": "duplicatePage(pageId)",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "params": "pageId",
+              "ptype-pageId": "string",
+              "preq-pageId": true,
+              "allowNoAuth": false
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "prep-2",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Hold the request until the page id is here",
+            "x": 40,
+            "y": 160,
+            "parameters": {
+              "functionScript": "if (Inputs.pageId === undefined) return;\nOutputs.pageId = Inputs.pageId;\nOutputs.ready();"
+            },
+            "ports": [
+              {
+                "name": "out-ready",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "source",
+            "type": "DbModel2",
+            "children": [],
+            "label": "The page being copied",
+            "x": 40,
+            "y": 280,
+            "parameters": {
+              "collectionName": "Page",
+              "idSource": "explicit"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "newProps",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Name the copy",
+            "x": 40,
+            "y": 400,
+            "parameters": {
+              "functionScript": "const title = Inputs.title || 'Untitled';\nconst slug = Inputs.slug || 'page';\nOutputs.title = 'Copy of ' + title;\nOutputs.slug = slug + '-copy-' + Math.random().toString(36).slice(2, 8);\nOutputs.built();"
+            },
+            "ports": [
+              {
+                "name": "out-built",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "copy",
+            "type": "NewDbModelProperties",
+            "children": [],
+            "label": "Create the draft copy",
+            "x": 40,
+            "y": 520,
+            "parameters": {
+              "collectionName": "Page",
+              "prop-published": false,
+              "prop-publishedAt": null,
+              "accessControl": [
+                {
+                  "id": "admin",
+                  "label": "Admin"
+                }
+              ],
+              "acl-admin-target": "role",
+              "acl-admin-role": "admin",
+              "acl-admin-read": true,
+              "acl-admin-write": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "afterCopy",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The copy exists — now go and find what to put on it",
+            "x": 40,
+            "y": 640,
+            "parameters": {
+              "functionScript": "if (Inputs.sourcePageId === undefined || Inputs.newPageId === undefined) return;\nOutputs.sourcePageId = Inputs.sourcePageId;\nOutputs.newPageId = Inputs.newPageId;\nOutputs.ready();"
+            },
+            "ports": [
+              {
+                "name": "out-ready",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "sections-4",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "The source page's sections",
+            "x": 40,
+            "y": 760,
+            "parameters": {
+              "runOnChange-collectionName": false,
+              "runOnChange-querySettings": false,
+              "collectionName": "Section",
+              "visualFilter": {
+                "combinator": "and",
+                "rules": [
+                  {
+                    "property": "pageId",
+                    "operator": "equal to",
+                    "input": "pageId"
+                  }
+                ]
+              }
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "tasks-2",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "One task per section, each carrying the new page id",
+            "x": 40,
+            "y": 880,
+            "parameters": {
+              "functionScript": "if (Inputs.sections === undefined || Inputs.newPageId === undefined) return;\nconst pageId = Inputs.newPageId;\nOutputs.tasks = (Inputs.sections || []).map((s) => {\n  const d = s.data || s;\n  return { kind: d.kind, order: d.order, data: d.data, newPageId: pageId };\n});\nOutputs.built();"
+            },
+            "ports": [
+              {
+                "name": "out-built",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "run",
+            "type": "RunTasks",
+            "children": [],
+            "label": "Copy every section",
+            "x": 40,
+            "y": 1000,
+            "parameters": {
+              "taskTemplate": "/#__cloud__/site/CopySectionToPage",
+              "stopOnFailure": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "res-2",
+            "type": "noodl.cloud.response",
+            "children": [],
+            "label": "Answer with the new page id",
+            "x": 40,
+            "y": 1120,
+            "parameters": {
+              "params": "pageId"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "req-2",
+            "fromProperty": "pm-pageId",
+            "toId": "prep-2",
+            "toProperty": "in-pageId"
+          },
+          {
+            "fromId": "req-2",
+            "fromProperty": "receive",
+            "toId": "prep-2",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "prep-2",
+            "fromProperty": "out-pageId",
+            "toId": "source",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "prep-2",
+            "fromProperty": "out-ready",
+            "toId": "source",
+            "toProperty": "fetch"
+          },
+          {
+            "fromId": "source",
+            "fromProperty": "prop-title",
+            "toId": "newProps",
+            "toProperty": "in-title"
+          },
+          {
+            "fromId": "source",
+            "fromProperty": "prop-slug",
+            "toId": "newProps",
+            "toProperty": "in-slug"
+          },
+          {
+            "fromId": "source",
+            "fromProperty": "fetched",
+            "toId": "newProps",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "newProps",
+            "fromProperty": "out-title",
+            "toId": "copy",
+            "toProperty": "prop-title"
+          },
+          {
+            "fromId": "newProps",
+            "fromProperty": "out-slug",
+            "toId": "copy",
+            "toProperty": "prop-slug"
+          },
+          {
+            "fromId": "prep-2",
+            "fromProperty": "out-pageId",
+            "toId": "copy",
+            "toProperty": "sourceObjectId"
+          },
+          {
+            "fromId": "newProps",
+            "fromProperty": "out-built",
+            "toId": "copy",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "prep-2",
+            "fromProperty": "out-pageId",
+            "toId": "afterCopy",
+            "toProperty": "in-sourcePageId"
+          },
+          {
+            "fromId": "copy",
+            "fromProperty": "id",
+            "toId": "afterCopy",
+            "toProperty": "in-newPageId"
+          },
+          {
+            "fromId": "copy",
+            "fromProperty": "done",
+            "toId": "afterCopy",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "afterCopy",
+            "fromProperty": "out-sourcePageId",
+            "toId": "sections-4",
+            "toProperty": "qp-pageId"
+          },
+          {
+            "fromId": "sections-4",
+            "fromProperty": "items",
+            "toId": "tasks-2",
+            "toProperty": "in-sections"
+          },
+          {
+            "fromId": "afterCopy",
+            "fromProperty": "out-newPageId",
+            "toId": "tasks-2",
+            "toProperty": "in-newPageId"
+          },
+          {
+            "fromId": "sections-4",
+            "fromProperty": "fetched",
+            "toId": "tasks-2",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "tasks-2",
+            "fromProperty": "out-tasks",
+            "toId": "run",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "tasks-2",
+            "fromProperty": "out-built",
+            "toId": "run",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "afterCopy",
+            "fromProperty": "out-newPageId",
+            "toId": "res-2",
+            "toProperty": "pm-pageId"
+          },
+          {
+            "fromId": "run",
+            "fromProperty": "completed",
+            "toId": "res-2",
+            "toProperty": "send"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/#__cloud__/submitContactForm",
+      "graph": {
+        "roots": [
+          {
+            "id": "req-3",
+            "type": "noodl.cloud.request",
+            "children": [],
+            "label": "submitContactForm(name, email, message, pageSlug)",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "params": "name,email,message,pageSlug",
+              "ptype-name": "string",
+              "preq-name": true,
+              "ptype-email": "string",
+              "preq-email": true,
+              "ptype-message": "string",
+              "preq-message": true,
+              "ptype-pageSlug": "string",
+              "preq-pageSlug": false,
+              "allowNoAuth": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "recipient",
+            "type": "/#__cloud__/site/ContactRecipient",
+            "children": [],
+            "label": "Who the mail goes to",
+            "x": 40,
+            "y": 160,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "save-3",
+            "type": "NewDbModelProperties",
+            "children": [],
+            "label": "Record the message",
+            "x": 40,
+            "y": 280,
+            "parameters": {
+              "collectionName": "ContactMessage",
+              "prop-handled": false,
+              "accessControl": [
+                {
+                  "id": "admin",
+                  "label": "Admin"
+                }
+              ],
+              "acl-admin-target": "role",
+              "acl-admin-role": "admin",
+              "acl-admin-read": true,
+              "acl-admin-write": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "compose",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The message body",
+            "x": 40,
+            "y": 400,
+            "parameters": {
+              "functionScript": "Outputs.subject = 'New enquiry from ' + (Inputs.name || 'a visitor');\nOutputs.text = [\n  'From: ' + (Inputs.name || '') + ' <' + (Inputs.email || '') + '>',\n  'Page: ' + (Inputs.pageSlug || '(unknown)'),\n  '',\n  Inputs.message || ''\n].join('\\n');\nOutputs.built();"
+            },
+            "ports": [
+              {
+                "name": "out-built",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "mail",
+            "type": "noodl.cloud.sendemail",
+            "children": [],
+            "label": "Tell the site owner",
+            "x": 40,
+            "y": 520,
+            "parameters": {
+              "template": "none"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "res-3",
+            "type": "noodl.cloud.response",
+            "children": [],
+            "label": "Answer the visitor",
+            "x": 40,
+            "y": 640,
+            "parameters": {
+              "params": "received"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "req-3",
+            "fromProperty": "receive",
+            "toId": "recipient",
+            "toProperty": "Fetch"
+          },
+          {
+            "fromId": "req-3",
+            "fromProperty": "receive",
+            "toId": "compose",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "req-3",
+            "fromProperty": "pm-name",
+            "toId": "compose",
+            "toProperty": "in-name"
+          },
+          {
+            "fromId": "req-3",
+            "fromProperty": "pm-email",
+            "toId": "compose",
+            "toProperty": "in-email"
+          },
+          {
+            "fromId": "req-3",
+            "fromProperty": "pm-message",
+            "toId": "compose",
+            "toProperty": "in-message"
+          },
+          {
+            "fromId": "req-3",
+            "fromProperty": "pm-pageSlug",
+            "toId": "compose",
+            "toProperty": "in-pageSlug"
+          },
+          {
+            "fromId": "req-3",
+            "fromProperty": "pm-name",
+            "toId": "save-3",
+            "toProperty": "prop-name"
+          },
+          {
+            "fromId": "req-3",
+            "fromProperty": "pm-email",
+            "toId": "save-3",
+            "toProperty": "prop-email"
+          },
+          {
+            "fromId": "req-3",
+            "fromProperty": "pm-message",
+            "toId": "save-3",
+            "toProperty": "prop-message"
+          },
+          {
+            "fromId": "req-3",
+            "fromProperty": "pm-pageSlug",
+            "toId": "save-3",
+            "toProperty": "prop-pageSlug"
+          },
+          {
+            "fromId": "recipient",
+            "fromProperty": "Ready",
+            "toId": "save-3",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "recipient",
+            "fromProperty": "Failure",
+            "toId": "save-3",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "recipient",
+            "fromProperty": "recipient",
+            "toId": "mail",
+            "toProperty": "to"
+          },
+          {
+            "fromId": "compose",
+            "fromProperty": "out-subject",
+            "toId": "mail",
+            "toProperty": "subject"
+          },
+          {
+            "fromId": "compose",
+            "fromProperty": "out-text",
+            "toId": "mail",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "save-3",
+            "fromProperty": "done",
+            "toId": "mail",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "mail",
+            "fromProperty": "completed",
+            "toId": "res-3",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "save-3",
+            "fromProperty": "failure",
+            "toId": "res-3",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "compose",
+            "fromProperty": "out-built",
+            "toId": "res-3",
+            "toProperty": "pm-received"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/#__cloud__/claimSite",
+      "graph": {
+        "roots": [
+          {
+            "id": "req-4",
+            "type": "noodl.cloud.request",
+            "children": [],
+            "label": "claimSite(setupToken)",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "params": "setupToken",
+              "ptype-setupToken": "string",
+              "preq-setupToken": true,
+              "allowNoAuth": false
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "secret",
+            "type": "noodl.cloud.secret",
+            "children": [],
+            "label": "SITE_SETUP_TOKEN",
+            "x": 40,
+            "y": 160,
+            "parameters": {
+              "name": "SITE_SETUP_TOKEN"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "settings-4",
+            "type": "DbCollection2",
+            "children": [],
+            "label": "Has this site been claimed?",
+            "x": 40,
+            "y": 280,
+            "parameters": {
+              "collectionName": "SiteSettings"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "gate",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Token matches AND site unclaimed",
+            "x": 40,
+            "y": 400,
+            "parameters": {
+              "functionScript": "if (Inputs.expected === undefined || Inputs.supplied === undefined) return;\nconst expected = Inputs.expected || '';\nconst supplied = Inputs.supplied || '';\n// Constant-time compare. A plain === leaks the matching prefix length\n// through timing, and this is the one door in the template that mints\n// an admin — the three extra lines are cheaper than the argument.\nlet diff = expected.length ^ supplied.length;\nconst n = Math.max(expected.length, supplied.length);\nfor (let i = 0; i < n; i++) {\n  diff |= (expected.charCodeAt(i) || 0) ^ (supplied.charCodeAt(i) || 0);\n}\n// An empty expected token is never a match: an unprovisioned secret\n// must not let a caller in with an empty string.\nconst tokenOk = expected.length > 0 && diff === 0;\nif (tokenOk && Inputs.unclaimed === true) {\n  Outputs.claimed = true;\n  Outputs.ok();\n} else {\n  Outputs.denied();\n}"
+            },
+            "ports": [
+              {
+                "name": "out-ok",
+                "plug": "output",
+                "type": "signal"
+              },
+              {
+                "name": "out-denied",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "grant",
+            "type": "noodl.cloud.addusertorole",
+            "children": [],
+            "label": "Make the caller an admin",
+            "x": 40,
+            "y": 520,
+            "parameters": {
+              "role": "admin",
+              "createRole": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "mark",
+            "type": "NewDbModelProperties",
+            "children": [],
+            "label": "Write the SiteSettings singleton — the site is now claimed",
+            "x": 40,
+            "y": 640,
+            "parameters": {
+              "collectionName": "SiteSettings",
+              "prop-siteName": "My site",
+              "prop-homeSlug": "home",
+              "accessControl": [
+                {
+                  "id": "admin",
+                  "label": "Admin"
+                },
+                {
+                  "id": "world",
+                  "label": "World"
+                }
+              ],
+              "acl-admin-target": "role",
+              "acl-admin-role": "admin",
+              "acl-admin-read": true,
+              "acl-admin-write": true,
+              "acl-world-target": "everyone",
+              "acl-world-read": true,
+              "acl-world-write": false
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "res-4",
+            "type": "noodl.cloud.response",
+            "children": [],
+            "label": "Claimed",
+            "x": 40,
+            "y": 760,
+            "parameters": {
+              "params": "claimed"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "deny",
+            "type": "noodl.cloud.response",
+            "children": [],
+            "label": "Refused",
+            "x": 40,
+            "y": 880,
+            "parameters": {
+              "status": "failure",
+              "errorMessage": "This site cannot be claimed."
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "req-4",
+            "fromProperty": "receive",
+            "toId": "secret",
+            "toProperty": "fetch"
+          },
+          {
+            "fromId": "secret",
+            "fromProperty": "done",
+            "toId": "settings-4",
+            "toProperty": "storageFetch"
+          },
+          {
+            "fromId": "secret",
+            "fromProperty": "value",
+            "toId": "gate",
+            "toProperty": "in-expected"
+          },
+          {
+            "fromId": "req-4",
+            "fromProperty": "pm-setupToken",
+            "toId": "gate",
+            "toProperty": "in-supplied"
+          },
+          {
+            "fromId": "settings-4",
+            "fromProperty": "isEmpty",
+            "toId": "gate",
+            "toProperty": "in-unclaimed"
+          },
+          {
+            "fromId": "settings-4",
+            "fromProperty": "fetched",
+            "toId": "gate",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "gate",
+            "fromProperty": "out-ok",
+            "toId": "grant",
+            "toProperty": "add"
+          },
+          {
+            "fromId": "req-4",
+            "fromProperty": "userId",
+            "toId": "grant",
+            "toProperty": "userId"
+          },
+          {
+            "fromId": "grant",
+            "fromProperty": "done",
+            "toId": "mark",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "grant",
+            "fromProperty": "unchanged",
+            "toId": "mark",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "gate",
+            "fromProperty": "out-claimed",
+            "toId": "res-4",
+            "toProperty": "pm-claimed"
+          },
+          {
+            "fromId": "mark",
+            "fromProperty": "done",
+            "toId": "res-4",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "secret",
+            "fromProperty": "failure",
+            "toId": "deny",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "settings-4",
+            "fromProperty": "failure",
+            "toId": "deny",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "gate",
+            "fromProperty": "out-denied",
+            "toId": "deny",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "grant",
+            "fromProperty": "failure",
+            "toId": "deny",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "mark",
+            "fromProperty": "failure",
+            "toId": "deny",
+            "toProperty": "send"
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {
+    "htmlTitle": "Site Builder",
+    "navigationPathType": "path"
+  }
+}

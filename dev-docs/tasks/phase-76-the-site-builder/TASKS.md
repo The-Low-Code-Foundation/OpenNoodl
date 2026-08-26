@@ -156,7 +156,50 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   ✅ **F8 does not block the browser half**, contrary to the s6 handover: `site/ContactRecipient` is
   where the recipient lives and the form names no recipient. What F8 blocks is the claim that a
   submitted message *reaches* anyone — SB-004 §7's territory, still open.
-- ⬜ **SB-007** — it ships as a template (via FB-005's registry — consume, don't re-spec).
+- ✅ **SB-007** — [it ships as a template](SB-007-IT-SHIPS-AS-A-TEMPLATE.md) — **DONE s9.**
+  On the embedded shelf as `embedded://site-builder`, category `site`, and its content is
+  **generated from the components the door writes** — `npm run template:site-builder`
+  (`scripts/generate-site-template.ts` → `noodl-mcp/tests/sb007Template.ts` →
+  `…/templates/site-builder.content.json`, 19 components, 191 nodes). **22 specs**
+  (`noodl-mcp/tests/sb007Template.test.ts`) + **12** (`noodl-editor/tests-unit/sb-007/`),
+  6 mutants graded.
+  🔴 **The task's real content was the component five sessions never authored.** Every
+  prior run authored into `tests/fixtures/demo-app`, which already holds an `App` with a
+  `Router` named `Main` — and `ROUTER = 'Main'` in SB-005 is a reference to *that fixture's
+  node*, which eleven `RouterNavigate` nodes point at. Into a clean skeleton the door
+  writes every page, **succeeds on every one, and registers nothing**:
+  `pageRegistration.ts` treats a router-less project as legitimate, so `registeredPages` is
+  simply **absent from the payload** — no diagnostic, no field to notice missing. Measured
+  as a one-edge arm: **18 components / 5 pages / 5 green writes / 0 registered** against
+  **19 / 5 / 5 / 5**, everything else held. So the `App` shell is part of the product and is
+  authored through the same door.
+  🔴 **The template is generated, and the drift gate is byte equality over the whole
+  artefact.** Hand-writing the graphs would twin four suites at once. Regeneration is
+  deterministic because id remapping, auto-placement and page registration are all
+  functions of the authoring order; the three per-write fields that are not (`created`,
+  `modifiedBy`, component `id`) are dropped so the comparison can be over *all* of it
+  rather than a chosen part. Graded: editing `sb006Components.ts` without regenerating
+  reddens with the line, both strings, and the command.
+  🔴 **F22 — `instantiateContent` missed a field that names node ids, and it was missed
+  because nothing had one. FIXED.** It regenerates node ids and rewrites connections but
+  not `graph.visualRoots`; `hello-world` is hand-written with none, and it was the only
+  embedded template. Every v2-door component carries one — **12 dangling ids measured in
+  an installed project before the fix**. ⚠️ The near-miss: a rewrite matching *any* string
+  equal to an old id would have corrupted eight parameters here (`as: 'section'`,
+  `as: 'nav'`, `as: 'header'`, five `flexDirection: 'row'`) — graph ids and HTML element
+  names come from one small vocabulary. Cost is bounded: `NodeGraphModel` re-derives
+  `visualRoots` on save, so the window is install → first save, and every reader taking
+  the file at face value is in it.
+  ✅ Also checked over the shipped artefact, none of it checkable over the component sets:
+  the router is named what all eleven navigates ask for, lists every page, opens on
+  `/Pages/Site` (F17); reference closure for instance types, repeater templates and
+  **routed** navigate targets (the gap `pageRegistration.ts` names in its own header —
+  `checkNavigation` resolves against component *names*, not registration); and F14's tie
+  re-read as segment counts over both panels in one router.
+  🧭 **SB-015 filed**: the policy this template cannot carry.
+  ⬜ Nothing has opened it in the editor, and nothing has deployed a project made from it.
+  **Relayed from the FB-005 T3 session, 2026-08-26 (uncommitted in the shared checkout at relay
+  time — verify by commit, not by this note):** reusable pieces exist — `hooks/useProjectTemplates.ts`
   **Relayed from the FB-005 T3 session, 2026-08-26 (uncommitted in the shared checkout at relay
   time — verify by commit, not by this note):** reusable pieces exist — `hooks/useProjectTemplates.ts`
   (`TemplateGalleryState`), `TemplateStepBody` (hook-free, jest-renderable), and
@@ -213,6 +256,23 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   still UNMEASURED**; SSG is still not a claim this template can make.
 
 ## Tier 3 — found while building
+
+- ⬜ **SB-015** — [a template cannot carry its own permissions](SB-015-A-TEMPLATE-CANNOT-CARRY-ITS-OWN-PERMISSIONS.md)
+  — **DERIVED s9 from the shipped defaults, not driven.** SB-004 §4's policy is
+  `security.json` in a **backend's** data directory; SB-007 ships a **project** directory,
+  and there is no field, no file and no `provisionBackend` path that carries one to the
+  other. So a new project from this template has nineteen graphs assuming that table and a
+  backend with `defaultSecurityConfig()` — and it fails **two opposite ways**:
+  🔴 **locally nothing is enforced** (`devOpen: true` + loopback disables row-level ACL
+  entirely, which is *why* SB-008 kept a dev-open twin: the same draft renders), and
+  🔴 **deployed nothing is visible** (a non-loopback bind with `devOpen` on refuses to
+  start; set it false with `collections: {}` and `Page.find` falls back to `authenticated`,
+  so the public site serves the public nothing). **Each failure looks like the other's
+  fix**, and somebody who hits the second and reaches for the first has turned the boundary
+  off. 🧭 Three shapes (a project-side policy file provisioning applies / the permissions
+  panel deriving a proposal from the graph / a documented manual step), and which is
+  Richard's. ⬜ Not driven — the companion drive to SB-008, one config apart, in the state a
+  real first user is in.
 
 - ⬜ **SB-013** — [a singleton written twice](SB-013-A-SINGLETON-WRITTEN-TWICE.md) — **MEASURED s8
   (SB-008 F21), not fixed.** One `claimSite` leaves **two identical `SiteSettings` rows**, 11 ms
@@ -438,3 +498,36 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   ⚠️ **Deliberately not done**: `BACKEND_DOCTRINE_MD` (`prompts/backend.ts`, editor source) does not
   carry rule 3's new second half. The text is written in the reference doc and can be lifted — same
   shape as s4's omission that s5 closed.
+- **s9 (2026-08-26)** — **SB-007 DONE. Tier 2 is closed and the phase has a shipped template.**
+  `embedded://site-builder`, category `site`, into FB-005's registry without re-speccing any of it —
+  a `*.template.ts`, one map line, and a JSON blob that is **generated**
+  (`npm run template:site-builder`) rather than typed beside the component sets. **22 + 12 specs, 6
+  mutants graded.** noodl-mcp **63 suites / 769**, editor jest **347 / 5751**, `typecheck:mcp`,
+  `typecheck:editor` and `typecheck:editor-tests` all exit **0** (run unpiped).
+  🔴 **The finding is the component nobody had ever authored.** Five sessions built eighteen
+  components into a fixture that already contained the nineteenth. Authored into a clean skeleton
+  the door writes five pages, succeeds five times and registers **none** — `pageRegistration.ts`
+  rules a router-less project legitimate, so the answer is an **absent key**, which is the one shape
+  no reader notices. Measured as a one-edge arm against its control (18/5/5/**0** vs 19/5/5/**5**),
+  because "nothing registered" has a dozen causes that are not the missing router.
+  🔴 **F22 — the id rewrite had a hole shaped like the feature that never existed.**
+  `instantiateContent` rewrites connections and not `graph.visualRoots`; `hello-world` has none, and
+  it was the only embedded template, so twelve dangling ids landed the moment a door-written template
+  arrived. **Measured red before the fix**, fixed structurally — a string-matching rewrite would have
+  corrupted eight parameters, because `as: 'section'` and `flexDirection: 'row'` collide with node
+  ids drawn from the same small vocabulary.
+  🧭 **SB-015 filed**: SB-004 §4's policy is a backend artefact and a template is a project
+  directory, so the shipped graphs meet `defaultSecurityConfig()` — **unenforced locally, invisible
+  deployed**, each failure looking like the other's fix. Derived from source and cited; **not
+  driven**.
+  ⚠️ The first full noodl-mcp run showed 2 reds in `projectOwnsBackend.test.ts`; it was **run
+  concurrently with the editor's 347-suite jest**. Alone: 12/12. Re-run of the full suite alone:
+  **63/769 green.** Attributed as contention, not a regression — and recorded rather than dropped.
+  ✅ **`test:ci` RUN SOLO** — editor source changed (`EmbeddedTemplateProvider.ts`, plus a new
+  template module and a 143 KB JSON that webpack compiles into the bundle), so it was genuinely in
+  scope. Summary line: **`Jasmine: 2856 specs, 4 failures (failed)`**, seed 89171, all four
+  `AIX-006 style vocabulary` **by name** — the recorded floor, so F22 and the new template cost
+  nothing. ⚠️ The compound exited **1**, which is what a clean floor does; the summary line is the
+  signal, never `$?`. **No debt carried into the next session.**
+  ⚠️ **Still deliberately not done**, carried from s8: `BACKEND_DOCTRINE_MD` does not carry rule 3's
+  second half.

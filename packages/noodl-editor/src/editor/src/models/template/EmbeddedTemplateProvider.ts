@@ -11,6 +11,7 @@
 import { ITemplateProvider, TemplateItem } from '../../utils/forge/template/template';
 import { ProjectContent, NodeDefinition, ProjectTemplate } from './ProjectTemplate';
 import { helloWorldTemplate } from './templates/hello-world.template';
+import { siteBuilderTemplate } from './templates/site-builder.template';
 
 /**
  * Generate a fresh unique node id (UUID v4-ish, matching the editor's format).
@@ -32,7 +33,10 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
    * New templates should be added here
    */
   private templates: Map<string, ProjectTemplate> = new Map([
-    ['hello-world', helloWorldTemplate]
+    ['hello-world', helloWorldTemplate],
+    // SB-007. ⚠️ Its `content` is a generated JSON blob — `npm run
+    // template:site-builder` — not a hand-written graph like `hello-world`'s.
+    ['site-builder', siteBuilderTemplate]
     // Add more templates here as they are created
   ]);
 
@@ -118,12 +122,29 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
   /**
    * Turn a template's declarative content into a concrete, ready-to-save project:
    *  - deep-clones the content so the shared template object is never mutated;
-   *  - regenerates every node id (recursively through children) and rewrites any
-   *    connections that reference them, so two projects created from the same
-   *    template don't share node UUIDs;
+   *  - regenerates every node id (recursively through children) and rewrites
+   *    **every** field that references one — connections and `graph.visualRoots`
+   *    — so two projects created from the same template don't share node UUIDs;
    *  - resolves the `rootComponent` name into a top-level `rootNodeId` pointing at
    *    that component's first root node, so the home component is set deterministically
    *    without depending on the NodeLibrary being loaded.
+   *
+   * 🔴 **`visualRoots` was missed until SB-007, and it was missed because nothing
+   * had one.** `hello-world` is a hand-written graph with no `visualRoots` at
+   * all, and it was the only embedded template for the whole life of this class,
+   * so the field had no population to be wrong about. Every component a v2 door
+   * writes carries one (`reconstructLegacyComponent` restores it from
+   * `nodes.json`), and the Site Builder template brought twelve of them at once —
+   * measured as twelve dangling ids in an installed project before this loop
+   * existed. `lessonstarter.ts:341` checks the same class of defect on a
+   * different artefact, in the same words.
+   *
+   * ⚠️ **The rewrite is structural, and that is not fussiness.** A pass that
+   * replaced any string matching an old id would corrupt eight parameters in this
+   * one template: `as: 'section'`, `as: 'nav'`, `as: 'header'` and five
+   * `flexDirection: 'row'` all collide with a node id, because the ids a graph
+   * author picks and the HTML element names a Group takes come from the same
+   * small vocabulary. Only fields that are *declared* to hold ids are touched.
    *
    * @param content - The template's declarative content
    * @returns A fresh project content object safe to serialize
@@ -152,6 +173,14 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
       for (const connection of component.graph?.connections || []) {
         if (connection.fromId && idMap.has(connection.fromId)) connection.fromId = idMap.get(connection.fromId);
         if (connection.toId && idMap.has(connection.toId)) connection.toId = idMap.get(connection.toId);
+      }
+
+      // The second field that names node ids. `ComponentGraph` does not declare
+      // it — it is canvas state that arrives through the v2 round trip — so it is
+      // read off the graph rather than through the interface.
+      const graph = component.graph as (typeof component.graph & { visualRoots?: string[] }) | undefined;
+      if (graph?.visualRoots) {
+        graph.visualRoots = graph.visualRoots.map((id) => idMap.get(id) ?? id);
       }
     }
 
