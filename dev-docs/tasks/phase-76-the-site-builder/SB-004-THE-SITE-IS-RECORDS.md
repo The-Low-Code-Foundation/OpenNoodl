@@ -2,12 +2,13 @@
 
 **Status: 🟡 AUTHORING COMPLETE s3 (2026-08-26); the real backend run is what remains.** The data
 model, the ACL matrix and the flows below are settled against measured backend behaviour (§1). **All
-six components — three endpoints and three helpers — are authored through the MCP doors and green**
-(`noodl-mcp/tests/sb004Authoring.test.ts`, 13 specs; noodl-mcp 60 suites / 694). s2 closed the debt
+seven components — four endpoints and three helpers — are authored through the MCP doors and green**
+(`noodl-mcp/tests/sb004Authoring.test.ts`, 15 specs; noodl-mcp 60 suites / 696). s2 closed the debt
 that the plan door had never driven a cloud target end to end; s3 finished the set and, while
-finishing it, found two defects in the *already-authored* publish flow that no gate can see (§6 F5).
-Left: **only §7's real-backend run**, which is the first thing that can say the publication invariant
-holds.
+finishing it, found two defects in the *already-authored* publish flow that no gate can see (§6 F5)
+and the missing `admin` role that made the whole template un-authorable (**F7**, now fixed by
+`claimSite` on Richard's fail-closed ruling). Left: **only §7's real-backend run**, which is the
+first thing that can say the publication invariant holds.
 
 Depends on SB-001/002/003 (all ✅ s1). Feeds SB-005 (admin panel), SB-006 (public site), SB-008
 (the drive). Canonical prose model: `dev-docs/reference/BACKEND-AUTHORING-MODEL.md`.
@@ -51,7 +52,7 @@ Five, plus one derived thing that is deliberately not a class.
 | `Page` | `title` String · `slug` String · `published` Boolean · `publishedAt` Date · `navOrder` Number · `showInNav` Boolean · `seoDescription` String | admin panel (content); **`published` only ever by `publishPage`** |
 | `Section` | `page` Pointer→Page · `kind` String · `order` Number · `data` Object | admin panel |
 | `Theme` | singleton row: `tokens` Object · `name` String | admin panel |
-| `SiteSettings` | singleton row: `siteName` · `homeSlug` · `contactRecipient` | admin panel |
+| `SiteSettings` | singleton row: `siteName` · `homeSlug` · ~~`contactRecipient`~~ (F8) | **first written by `claimSite`**, then the admin panel |
 | `ContactMessage` | `name` · `email` · `message` · `pageSlug` · `handled` Boolean | **only `submitContactForm`**, as system |
 
 **Navigation is derived, never stored** — a query for published pages with `showInNav`, ordered by
@@ -125,7 +126,8 @@ collection rule can express.
 the record of who wrote in from being cleared through the API at all.
 
 Function `call` rules: `publishPage` and `duplicatePage` → `role:admin`; `submitContactForm` →
-`public`.
+`public`; **`claimSite` → `authenticated`** — any signed-in user may attempt it, and the setup token
+plus the unclaimed check are what actually decide (§6 F7).
 
 🔴 **And the template must PROVISION `admin`, because nothing else does** — see §6 F7. `role:admin`
 is a row in `_Role`, not a built-in, and the backend-admin *token* is a different principal
@@ -297,6 +299,69 @@ which §2 and §4 do not currently have.
 no seeded role exists and that `signup` cannot create one. The refusal itself is a §7 assertion, and
 a good one — it fails in exactly the direction that would otherwise read as "the permissions work".
 
+### ✅ F7 has a graph-level fix, and the node was built for this exact case
+
+`Add User To Role` (`noodl.cloud.addusertorole`, in the 84) carries a **`Create Role If Missing`**
+port. `SystemRoles.ts:203-213` honours it: absent the flag an unknown role is a `role/not-found`
+failure that *names* the role; with it, `roles.ensure(name)` creates the role and the membership and
+audits both (`AUDIT_SYSTEM_ROLE_CREATE`). The node's own header says why the port exists — *"a
+function deployed to a fresh backend where nobody has opened the Permissions panel yet"*, which is
+precisely this template. It is off by default so a typo cannot mint a role no rule names.
+
+So the template needs **no admin token, no `/admin/*` route and no manual step**: one small cloud
+function, `claimSite`, does it. The shape falls out of nodes already in this design:
+
+> Request (**auth required**, no params) → `Query Records`(SiteSettings) → *is it empty?* →
+> `Add User To Role`(role `admin`, userId ← the Request node's **`userId`** output, `createRole` on)
+> → `Create Record`(SiteSettings singleton, which is what marks the site claimed) → Response.
+
+Three things make this the right shape rather than a convenient one:
+
+- **The caller is the grantee.** `Add User To Role` refuses to fall back to the caller by design, so
+  the id comes from the Request node's `userId` output — the session the backend resolved, not a
+  parameter a caller can choose. The owner signs up through the ordinary public `signup` first, so
+  this function never touches a password and `Create User` is not needed.
+- **`Unchanged` is not a failure**, by explicit contract, so a re-run is not a red.
+- **Claimed-ness is a record**, so the door closes permanently on first use and closing it needs no
+  new state.
+
+✅ **RULING (Richard, s3): gate on BOTH — unclaimed AND a `SITE_SETUP_TOKEN` secret, failing
+closed.** The window is real — a backend deployed publicly and not yet claimed is otherwise one call
+away from anybody becoming its admin — and unclaimed-only is **check-then-write, not atomic**, so
+two simultaneous claims can both pass. The secret closes both holes, because `Secret` fires
+`failure` when the token is not provisioned rather than yielding an empty string, so an
+un-provisioned backend **refuses instead of opening**. The cost is one provisioning step before a
+site can be claimed, and that is the right trade for the one door that mints an admin.
+
+**Authored s3** (`sb004Authoring.test.ts`), with the structural safety properties asserted and
+**five mutants graded** — grantee from a parameter, the unclaimed condition dropped, the gate run
+before the query returns, `createRole` silently off, and the unprovisioned-secret path failing open.
+Each is killed by the assertion naming it. Three further choices, each load-bearing:
+
+- **The refusals are indistinguishable.** Every failing path — bad token, already claimed, secret
+  missing, grant refused, write refused — reaches one `status: 'failure'` Response with one message.
+  Distinct messages would make this endpoint answer *"is this site claimed yet?"* to anyone asking.
+- **`isEmpty` is documented true *before the first query runs*.** So the gate is triggered by
+  `fetched` and nothing earlier; an "unclaimed" reading taken too early is indistinguishable from a
+  real one, and it fails open. This is the same shape as
+  `assert-an-absence-with-a-known-firing-signal-beside-it`.
+- **`Unchanged` is wired to success, not failure** — being already in the role is the post-condition
+  already holding, by that node's explicit contract, and it is reachable (a role created by hand
+  with the owner in it, and no `SiteSettings` row yet).
+
+**F8 — ⚠️ `contactRecipient` cannot live in the `SiteSettings` row.** §4 gives `SiteSettings`
+`find`/`get: public` because the public site reads `siteName`/`homeSlug`, so that row is
+world-readable and §2 currently puts the owner's email address in it. `claimSite` therefore writes
+only `siteName` and `homeSlug`. `site/ContactRecipient` already prefers the row and falls back to a
+`Secret`; the fix is to invert that — the address comes from the secret, and the row keeps only
+things a visitor may see. **Left for Richard**, because it changes §2's field list.
+
+**F9 — ⚠️ an authored node id is a request, not a handle.** The door makes node ids unique across the
+**project**: `claimSite`'s `settings` node was written to disk as `settings-2`, because
+`site/ContactRecipient` already had a node called `settings`. Anything reading the written graph
+must resolve nodes by type or label, never by the id it sent — and cross-component references built
+from remembered ids will not survive. Found by an assertion that expected its own id back.
+
 ## 6a. What authoring it actually taught (s2)
 
 Both doors, on the real server: `create_component` for each component, and `create_plan` → two
@@ -377,6 +442,10 @@ questions.
    `devOpen: true` is not evidence for any ACL claim and must not be recorded as one.
 8. **The run drives the components this task authored**, reconstructed from disk — not hand-written
    twins of them. See §7a: a twin bundle would measure a copy and leave the artefact untested.
+9. **`claimSite` mints `role:admin` on a backend that has never had it**, and refuses — with the
+   same answer every time — when the token is wrong, when the token is **unprovisioned**, and when
+   the site is already claimed. The unprovisioned arm is the one that must not be skipped: it is the
+   difference between failing closed and failing open.
 
 ## 7a. How §7 runs (scoped s3, not yet built)
 
@@ -430,6 +499,14 @@ The harness exists; the bridge into it is the part that needed finding.
   `admin` role nothing creates, read from source) and **§7a**, which scopes the real run: the
   harness exists, and `reconstructLegacyComponent` is pure enough to feed it the components the MCP
   door actually wrote rather than twins of them.
+  **Then, on Richard's ruling, `claimSite`** — F7's fix and the seventh component. The first admin is
+  minted by `Add User To Role`'s `Create Role If Missing`, gated on **both** an unclaimed site and a
+  `SITE_SETUP_TOKEN` secret, so an unprovisioned backend fails **closed**. Five mutants graded on the
+  safety properties (grantee from a parameter; the unclaimed condition dropped; the gate run before
+  the query returns; `createRole` off; the unprovisioned-secret path failing open). Two more
+  findings fell out of building it: **F8** — `contactRecipient` cannot sit in a world-readable
+  `SiteSettings` row, which is Richard's to rule on — and **F9** — the door makes node ids unique
+  across the project, so an authored id is a request, not a handle. Final: noodl-mcp **60 / 696**.
   ⚠️ **One correction made mid-session:** §5 first recorded, from `runtasks.ts:393-408`, that a task
   template receives its item *only* through `Component Object`. Reading on to `:419-432` showed the
   item is also pushed onto matching **Component Inputs**, which is what the `data-run-tasks-batch`

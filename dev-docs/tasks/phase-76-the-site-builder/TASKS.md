@@ -38,11 +38,11 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
 
 ## Tier 2 — the template
 
-- 🟡 **SB-004** — [the site is records](SB-004-THE-SITE-IS-RECORDS.md) — **DESIGNED s2; ALL SIX
+- 🟡 **SB-004** — [the site is records](SB-004-THE-SITE-IS-RECORDS.md) — **DESIGNED s2; ALL SEVEN
   COMPONENTS AUTHORED s3, both doors. Only §7's real backend run remains.**
   Five classes (Page/Section/Theme/SiteSettings/ContactMessage), nav derived not stored;
   the ACL *is* the publication state and `published` is its queryable mirror, written only by
-  `publishPage`; three endpoints over three helpers composed through `Run Tasks`, the cloud
+  `publishPage`; four endpoints over three helpers composed through `Run Tasks`, the cloud
   runtime's only iteration primitive. Grounded on measurements, not assumptions: classes auto-create
   on first write (`_ensureTable`), the graph's ACL vocabulary is exactly `*`/user/`role:` with
   wirable read-write booleans, and **an absent ACL means public**. 🔴 **F2 — `devOpen` disables
@@ -50,8 +50,8 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   local drive can show a plausible refusal while never exercising the published/draft boundary at
   all.** `site/SetSectionAccess` + `publishPage` authored s2 through `create_component` **and**
   `create_plan`/`stage`/`apply` — **s1's plan-door debt closed**. **s3 finished the set**:
-  `duplicatePage`, `submitContactForm`, `site/CopySectionToPage`, `site/ContactRecipient`
-  (13 specs; noodl-mcp 60/694). 🔴 **F5 — s2's own publish flow was wrong twice, and both are LEGAL
+  `duplicatePage`, `submitContactForm`, `site/CopySectionToPage`, `site/ContactRecipient`, and
+  `claimSite` (15 specs; noodl-mcp 60/696). 🔴 **F5 — s2's own publish flow was wrong twice, and both are LEGAL
   graphs**: the section query carried no filter (it would have flipped ACLs on *every* Section in
   the site) and the Response wired none of its declared params (200 with `{}`). Fixed and pinned by
   disk-level assertions, 4 mutants graded — a fix nothing grades is one the next author drops.
@@ -60,12 +60,19 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   invariant holds: the door returns `dynamic-port-skipped` over exactly the ACL parameters, and says
   so. 🔴 **F7 — nothing creates the `admin` role that every rule in §3/§4 names**; the backend-admin
   *token* is a different principal, `role:<name>` is a `_Role` row, and `signup` cannot grant one —
-  so the template as specified is un-authorable until it provisions. Left: **the real backend run,
-  and nothing else** — scoped in §7a (harness exists; `reconstructLegacyComponent` is pure, so the
-  run can drive the components the MCP door wrote rather than twins).
+  so the template as specified was un-authorable. ✅ **FIXED s3 by `claimSite`**, the seventh
+  component: `Add User To Role`'s `Create Role If Missing` mints the role in-graph (no admin token,
+  no `/admin/*` route), gated on **both** an unclaimed site and a `SITE_SETUP_TOKEN` secret so an
+  unprovisioned backend fails **closed** — Richard's ruling; 5 mutants graded on the safety
+  properties. ⚠️ **F8 — `contactRecipient` cannot live in the world-readable `SiteSettings` row**
+  (🧭 Richard's, changes §2's field list). ⚠️ **F9 — the door makes node ids unique across the
+  PROJECT**, so an authored id is a request, not a handle; read written graphs by type, never by the
+  id you sent. Left: **the real backend run, and nothing else** — scoped in §7a (harness exists;
+  `reconstructLegacyComponent` is pure, so the run can drive the components the MCP door wrote
+  rather than twins).
 - ⬜ **SB-005** — the admin panel (editor, image upload, theme, live preview via realtime).
-  🔴 **Inherits SB-004 F7**: this is where the `admin` role gets provisioned (create the role, put
-  the owner in it), or nothing in the template can write anything.
+  ✅ **SB-004 F7 is handled in the backend** by `claimSite`; SB-005 owns its *front* — a first-run
+  screen that takes the setup token, signs the owner up, and calls it.
 - ⬜ **SB-006** — the public site
 - ⬜ **SB-007** — it ships as a template (via FB-005's registry — consume, don't re-spec).
   **Relayed from the FB-005 T3 session, 2026-08-26 (uncommitted in the shared checkout at relay
@@ -139,5 +146,7 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   queried every Section in the site and answered with an empty body. Both are legal graphs, so no
   gate could have caught either; both are now pinned by assertions on the files on disk, each graded
   by a mutant. **F6** answers a question SB-005/006 need: a plan can hold a helper and its caller.
-  SB-009 gained arms E/E′. noodl-mcp **60 suites / 694** green, `typecheck` clean; no editor or
-  runtime source touched, so `test:ci` was not re-run (nothing in its scope changed).
+  SB-009 gained arms E/E′. Then, on Richard's ruling, **`claimSite`** — F7's fix, gated fail-closed
+  on an unclaimed site AND a `SITE_SETUP_TOKEN` secret, 5 mutants graded; building it turned up
+  **F8** and **F9**. noodl-mcp **60 suites / 696** green, `typecheck` clean; no editor or runtime
+  source touched, so `test:ci` was not re-run (nothing in its scope changed).

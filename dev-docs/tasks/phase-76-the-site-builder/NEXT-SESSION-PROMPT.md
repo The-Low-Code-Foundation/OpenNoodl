@@ -1,19 +1,19 @@
 # Phase 76 — next session
 
 Read `TASKS.md` here first, then `SB-004-THE-SITE-IS-RECORDS.md`. In that file the three sections
-that matter now are **§1** (the measured ground everything rests on), **§6 F2/F7** (the two traps
-that can make a passing run mean nothing), and **§7a** (how the next piece of work actually runs —
-scoped last session, not built). The canonical backend model is
+that matter now are **§1** (the measured ground everything rests on), **§6 F2** (the trap that can
+make a passing run mean nothing) and **§6 F7** (the `admin` role, and `claimSite` which now mints
+it), and **§7a** (how the next piece of work actually runs — scoped last session, not built). The canonical backend model is
 `dev-docs/reference/BACKEND-AUTHORING-MODEL.md`. Before authoring any cloud component, read SB-001's
 "Doctrine traps".
 
 ## Where s3 left it (2026-08-26)
 
-**SB-004's authoring is finished.** All six components — three endpoints and three helpers — are
-authored through the MCP doors and green: `noodl-mcp/tests/sb004Authoring.test.ts`, 13 specs,
-noodl-mcp **60 suites / 694**, `typecheck` clean. s3 added `duplicatePage`, `submitContactForm`,
-`site/CopySectionToPage`, `site/ContactRecipient`, and drove the contact pair through the plan door
-as well as `create_component`. Committed as `02206e0a`.
+**SB-004's authoring is finished.** All seven components — four endpoints and three helpers — are
+authored through the MCP doors and green: `noodl-mcp/tests/sb004Authoring.test.ts`, 15 specs,
+noodl-mcp **60 suites / 696**, `typecheck` clean. s3 added `duplicatePage`, `submitContactForm`,
+`site/CopySectionToPage`, `site/ContactRecipient` and **`claimSite`**, and drove the contact pair
+through the plan door as well as `create_component`.
 
 **The session's real finding was about s2's own work.** Reading `Query Records` and `Response`
 closely enough to author `duplicatePage` showed the *already-green* publish flow was wrong twice
@@ -39,14 +39,20 @@ references" — *one spelling of the same reference goes unresolved*, which name
 exercised. It inverts once this template's own `security.json` lands: with `Page.find: 'public'`
 there is nothing left to refuse, and a loopback backend serves **every draft** to anonymous callers.
 
-🔴 **F7 (§6), new in s3.** **Nothing creates the `admin` role that every rule in §3 and §4 names.**
-`principal.kind === 'admin'` is the backend-admin *credential* (the `secrets.json` bearer) and
-bypasses everything; `role:admin` is a row in `_Role` joined through `_Join_users__Role`, there is
-no built-in role of any name, and `signup` is a rule about who may sign up — it cannot grant one. So
-the template as specified is **un-authorable** on a fresh deploy: `Page.create: 'role:admin'`
-refuses the site owner and the draft ACL grants nobody. Read from source, not yet from a run — and
-the run should assert the un-provisioned refusal, because that failure otherwise reads as "the
-permissions work".
+✅ **F7 (§6), found and fixed in s3.** Nothing created the `admin` role that every rule in §3 and §4
+names — `principal.kind === 'admin'` is the backend-admin *credential*, `role:admin` is a `_Role`
+row, and they share a word and nothing else — so the template was **un-authorable** on a fresh
+deploy. The fix is **`claimSite`**, a seventh component, and it needs no admin token and no
+`/admin/*` route: `Add User To Role` carries `Create Role If Missing`, which
+`SystemRoles.ts:203-213` honours with `roles.ensure(name)`.
+
+**Richard's ruling: gate on BOTH, failing closed** — an unclaimed site (no `SiteSettings` row) AND a
+matching `SITE_SETUP_TOKEN` secret. `Secret` fires `failure` when unprovisioned rather than yielding
+an empty string, so a backend with no token **refuses instead of opening**; unclaimed-only would
+have been check-then-write and not atomic. The grantee is the caller, taken from the Request node's
+`userId` output — never a parameter. Five mutants graded on exactly those properties.
+⚠️ §7 must still assert the un-provisioned refusal: that failure otherwise reads as "the permissions
+work".
 
 ## Next work, in order
 
@@ -72,12 +78,22 @@ permissions work".
    - ⚠️ A function runs with `masterKey`, so its own writes bypass both layers. Test the invariant
      from the **outside** — an anonymous and a non-admin caller reading over HTTP — never from the
      function's own view.
-2. **SB-005/006** (admin panel, public site). SB-005 owns F7's provisioning step.
+2. **SB-005/006** (admin panel, public site). SB-005 owns `claimSite`'s *front*: a first-run screen
+   that takes the setup token, signs the owner up, and calls it.
+   🧭 **F8 is Richard's and blocks SB-006's contact section**: `SiteSettings` is world-readable
+   (§4 gives it `find`/`get: public`, because the public site reads `siteName`), so
+   `contactRecipient` cannot live in that row. `claimSite` writes only `siteName`/`homeSlug`; the
+   fix is to make `site/ContactRecipient` take the address from the `Secret` alone, which changes
+   §2's field list.
 3. **SB-007** (ship embedded), **SB-008** (the drive — same `devOpen: false` requirement).
 4. **SB-009** whenever it fits; its blocking promotion needs a corpus sweep, not an argument.
 
 ## Traps that will bite here specifically
 
+- 🔴 **An authored node id is a request, not a handle (F9).** The door makes node ids unique across
+  the **project** — `claimSite`'s `settings` node landed as `settings-2`, because
+  `site/ContactRecipient` already had one by that name. Read a written graph by node **type** or
+  label, never by the id you sent.
 - **`Create Record`'s `sourceObjectId` is a LOCAL model-scope read, not a backend fetch**
   (`newdbmodelpropertiesnode.ts:106`). An unfetched source seeds `{}` **in silence**.
 - **A Pointer is a tagged object on the wire** and `prop-<field>` stores it verbatim. Write a bare id

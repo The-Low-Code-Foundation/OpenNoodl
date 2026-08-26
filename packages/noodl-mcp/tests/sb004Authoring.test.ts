@@ -115,6 +115,27 @@ const ADMIN_ONLY_RULES = {
 };
 
 /**
+ * `SiteSettings` is read by the PUBLIC site (§4 gives it `find`/`get: public`),
+ * so its row carries a world READ rule as well as the admin rule — unlike a
+ * draft Page, whose whole point is that the world rule arrives only on publish.
+ *
+ * 🔴 See §6 F8: this is why `contactRecipient` must not live in this row.
+ */
+const SITE_SETTINGS_RULES = {
+  accessControl: [
+    { id: 'admin', label: 'Admin' },
+    { id: 'world', label: 'World' }
+  ],
+  'acl-admin-target': 'role',
+  'acl-admin-role': 'admin',
+  'acl-admin-read': true,
+  'acl-admin-write': true,
+  'acl-world-target': 'everyone',
+  'acl-world-read': true,
+  'acl-world-write': false
+};
+
+/**
  * "The sections of this page", as Query Records actually expresses it.
  *
  * Read out of the runtime rather than guessed: `getStorageFilter`
@@ -676,6 +697,166 @@ const CONTACT_WIRES = [
   { fromId: 'compose', fromProperty: 'out-built', toId: 'res', toProperty: 'pm-received' }
 ];
 
+// ── claimSite: the function that makes the first admin (§6 F7) ───────────────
+
+/**
+ * F7's fix. Every rule in §3 and §4 names `role:admin`, and **nothing creates
+ * it** — `role:<name>` is a `_Role` row, the backend-admin principal is a
+ * credential, and they share a word and nothing else. A fresh deploy of this
+ * template is un-authorable until somebody mints the role.
+ *
+ * ✅ No admin token and no `/admin/*` route are needed, because
+ * `Add User To Role` carries **`Create Role If Missing`** and
+ * `SystemRoles.ts:203-213` honours it with `roles.ensure(name)`. The node's own
+ * header names this exact case: *"a function deployed to a fresh backend where
+ * nobody has opened the Permissions panel yet."* It is off by default so a typo
+ * cannot mint a role no rule grants through — here it is deliberately on.
+ *
+ * **The gate is two independent conditions, and it FAILS CLOSED** (Richard's
+ * ruling, s3):
+ *
+ *  1. a `SITE_SETUP_TOKEN` secret must match. `Secret` fires `failure` when the
+ *     secret is not provisioned — *"a missing credential is loud here rather
+ *     than an empty string that becomes a 401 from somebody else an hour
+ *     later"* — so an unprovisioned backend refuses rather than opening.
+ *  2. the site must be unclaimed, i.e. no `SiteSettings` row.
+ *
+ * ⚠️ (2) alone is check-then-write and **not atomic**; (1) is what actually
+ * closes the window, which is why it is not optional.
+ *
+ * The grantee is the CALLER, taken from the Request node's `userId` output —
+ * the session the backend resolved, never a parameter. `Add User To Role`
+ * refuses to fall back to the caller by design, and this is the honest way to
+ * supply it: the owner signs up through the ordinary public `signup` first, so
+ * this function never handles a password.
+ */
+const CLAIM_NODES = [
+  {
+    id: 'req',
+    type: 'noodl.cloud.request',
+    label: 'claimSite(setupToken)',
+    parameters: {
+      params: 'setupToken',
+      'ptype-setupToken': 'string',
+      'preq-setupToken': true,
+      // Auth required: the whole function is "make the CALLER an admin", so
+      // there has to be a caller. `userId` is blank for an unauthenticated
+      // request, and a blank user id is a Failure on the grant node.
+      allowNoAuth: false
+    }
+  },
+  {
+    id: 'secret',
+    type: 'noodl.cloud.secret',
+    label: 'SITE_SETUP_TOKEN',
+    parameters: { name: 'SITE_SETUP_TOKEN' }
+  },
+  {
+    id: 'settings',
+    type: 'DbCollection2',
+    label: 'Has this site been claimed?',
+    parameters: { collectionName: 'SiteSettings' }
+  },
+  {
+    id: 'gate',
+    type: 'JavaScriptFunction',
+    label: 'Token matches AND site unclaimed',
+    parameters: {
+      functionScript:
+        "const expected = Inputs.expected || '';\n" +
+        "const supplied = Inputs.supplied || '';\n" +
+        '// Constant-time compare. A plain === leaks the matching prefix length\n' +
+        '// through timing, and this is the one door in the template that mints\n' +
+        '// an admin — the three extra lines are cheaper than the argument.\n' +
+        'let diff = expected.length ^ supplied.length;\n' +
+        'const n = Math.max(expected.length, supplied.length);\n' +
+        'for (let i = 0; i < n; i++) {\n' +
+        '  diff |= (expected.charCodeAt(i) || 0) ^ (supplied.charCodeAt(i) || 0);\n' +
+        '}\n' +
+        '// An empty expected token is never a match: an unprovisioned secret\n' +
+        '// must not let a caller in with an empty string.\n' +
+        'const tokenOk = expected.length > 0 && diff === 0;\n' +
+        'if (tokenOk && Inputs.unclaimed === true) {\n' +
+        '  Outputs.claimed = true;\n' +
+        '  Outputs.ok();\n' +
+        '} else {\n' +
+        '  Outputs.denied();\n' +
+        '}'
+    }
+  },
+  {
+    id: 'grant',
+    type: 'noodl.cloud.addusertorole',
+    label: 'Make the caller an admin',
+    parameters: {
+      role: 'admin',
+      // 🔴 Deliberately on, and this is the only node in the template that
+      // turns it on: without it the very first call fails `role/not-found` on
+      // a backend where the role has never existed, which is every backend
+      // this template is deployed to.
+      createRole: true
+    }
+  },
+  {
+    id: 'mark',
+    type: 'NewDbModelProperties',
+    label: 'Write the SiteSettings singleton — the site is now claimed',
+    parameters: {
+      collectionName: 'SiteSettings',
+      'prop-siteName': 'My site',
+      'prop-homeSlug': 'home',
+      ...SITE_SETTINGS_RULES
+    }
+  },
+  {
+    id: 'res',
+    type: 'noodl.cloud.response',
+    label: 'Claimed',
+    parameters: { params: 'claimed' }
+  },
+  {
+    id: 'deny',
+    type: 'noodl.cloud.response',
+    label: 'Refused',
+    parameters: {
+      status: 'failure',
+      // One message for every refusal path on purpose: "wrong token" and
+      // "already claimed" must not be distinguishable, or this endpoint
+      // answers "is this site claimed yet?" to anyone who asks.
+      errorMessage: 'This site cannot be claimed.'
+    }
+  }
+];
+
+const CLAIM_WIRES = [
+  // The secret first, so an unprovisioned backend never reaches the query.
+  { fromId: 'req', fromProperty: 'receive', toId: 'secret', toProperty: 'fetch' },
+  { fromId: 'secret', fromProperty: 'done', toId: 'settings', toProperty: 'storageFetch' },
+  { fromId: 'secret', fromProperty: 'value', toId: 'gate', toProperty: 'in-expected' },
+  { fromId: 'req', fromProperty: 'pm-setupToken', toId: 'gate', toProperty: 'in-supplied' },
+  // ⚠️ `isEmpty` is documented as true BEFORE the first query has run, so the
+  // gate must be triggered by `fetched` and never by anything earlier — an
+  // "unclaimed" reading taken too early is indistinguishable from a real one.
+  { fromId: 'settings', fromProperty: 'isEmpty', toId: 'gate', toProperty: 'in-unclaimed' },
+  { fromId: 'settings', fromProperty: 'fetched', toId: 'gate', toProperty: 'run' },
+  { fromId: 'gate', fromProperty: 'out-ok', toId: 'grant', toProperty: 'add' },
+  { fromId: 'req', fromProperty: 'userId', toId: 'grant', toProperty: 'userId' },
+  // `done` AND `unchanged`: already being in the role is the post-condition
+  // already holding, by explicit contract, so a re-run must not go red. It is
+  // reachable — a role created by hand, with the owner already in it, and no
+  // SiteSettings row yet.
+  { fromId: 'grant', fromProperty: 'done', toId: 'mark', toProperty: 'store' },
+  { fromId: 'grant', fromProperty: 'unchanged', toId: 'mark', toProperty: 'store' },
+  { fromId: 'gate', fromProperty: 'out-claimed', toId: 'res', toProperty: 'pm-claimed' },
+  { fromId: 'mark', fromProperty: 'done', toId: 'res', toProperty: 'send' },
+  // Every way this can refuse, into the one indistinguishable answer.
+  { fromId: 'secret', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'settings', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'gate', fromProperty: 'out-denied', toId: 'deny', toProperty: 'send' },
+  { fromId: 'grant', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'mark', fromProperty: 'failure', toId: 'deny', toProperty: 'send' }
+];
+
 /** Print whatever the door said, so a rejection is evidence rather than a red. */
 function say(label: string, res: { isError: boolean; data: Either & StageResponse }): void {
   const readable = res.data?.error?.details?.readable;
@@ -741,7 +922,11 @@ function expectEveryResponseParameterWired(dir: string, key: string): void {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
-    expect(declared.length).toBeGreaterThan(0);
+    // A `status: 'failure'` Response answers with `errorMessage` and legitimately
+    // declares no parameters. A success Response that declares none is the F5
+    // defect — a 200 with an empty body — so only that case is required to
+    // carry something.
+    if (node.parameters?.status !== 'failure') expect(declared.length).toBeGreaterThan(0);
     for (const name of declared) {
       const wired = wires.connections.some((c) => c.toId === node.id && c.toProperty === `pm-${name}`);
       expect(`${name}:${wired}`).toBe(`${name}:true`);
@@ -905,6 +1090,83 @@ describe('SB-004: duplicate and contact, through create_component', () => {
     expect(hasRequest('__cloud__/submitContactForm')).toBe(true);
     expect(hasRequest('__cloud__/site/CopySectionToPage')).toBe(false);
     expect(hasRequest('__cloud__/site/ContactRecipient')).toBe(false);
+  });
+
+  it('authors claimSite: the function that mints the first admin (F7)', async () => {
+    const res = await call<Either>(session, 'create_component', {
+      path: '#__cloud__/claimSite',
+      nodes: CLAIM_NODES,
+      connections: CLAIM_WIRES
+    });
+    say('endpoint: claimSite', res);
+    expect(res.isError).toBe(false);
+    expectLandedAsCloud(dir, '__cloud__/claimSite');
+    expectEveryResponseParameterWired(dir, '__cloud__/claimSite');
+  });
+
+  /**
+   * The properties that make `claimSite` safe are all structural, so they can
+   * be asserted here rather than only in §7's run — and they are the ones a
+   * later edit would quietly break.
+   */
+  it('gates claimSite on BOTH conditions, fails closed, and grants only the caller', () => {
+    const graph = readJson<GraphFile>(dir, 'components/__cloud__/claimSite/nodes.json');
+    const wires = readJson<WireFile>(dir, 'components/__cloud__/claimSite/connections.json');
+
+    // 🔴 Resolve by TYPE, never by the id that was sent. The door makes node ids
+    // unique across the PROJECT, so `settings` here was written as `settings-2`
+    // — `site/ContactRecipient` already had a node by that name. An authored id
+    // is a request, not a handle (§6 F9). Every type below appears exactly once
+    // in this component, and `single` asserts that rather than assuming it.
+    const single = (type: string) => {
+      const found = graph.nodes.filter((n) => n.type === type);
+      expect(`${type}:${found.length}`).toBe(`${type}:1`);
+      return found[0];
+    };
+    const responses = graph.nodes.filter((n) => n.type === 'noodl.cloud.response');
+    const ids = {
+      req: single('noodl.cloud.request').id,
+      secret: single('noodl.cloud.secret').id,
+      settings: single('DbCollection2').id,
+      gate: single('JavaScriptFunction').id,
+      grant: single('noodl.cloud.addusertorole').id,
+      mark: single('NewDbModelProperties').id,
+      deny: responses.find((n) => n.parameters?.status === 'failure')?.id
+    };
+    const byId = (id?: string) => graph.nodes.find((n) => n.id === id);
+    const node = (name: keyof typeof ids) => byId(ids[name]);
+    const wired = (to: keyof typeof ids, toProperty: string) =>
+      wires.connections.find((c) => c.toId === ids[to] && c.toProperty === toProperty);
+    const from = (c?: { fromId: string }) => (c ? (Object.keys(ids) as Array<keyof typeof ids>).find((k) => ids[k] === c.fromId) : undefined);
+
+    // 1. Both gate conditions reach the decision.
+    expect(from(wired('gate', 'in-expected'))).toBe('secret');
+    expect(from(wired('gate', 'in-unclaimed'))).toBe('settings');
+
+    // 2. Fail closed: the secret is fetched FIRST, and its failure answers a
+    //    refusal rather than falling through to the grant.
+    expect(from(wired('secret', 'fetch'))).toBe('req');
+    expect(from(wired('settings', 'storageFetch'))).toBe('secret');
+
+    // 3. `isEmpty` is true before the first query runs, so the gate must be
+    //    triggered by `fetched` — never by anything that could arrive earlier.
+    expect(wired('gate', 'run')?.fromProperty).toBe('fetched');
+
+    // 4. The grantee is the resolved session, NOT a request parameter. If this
+    //    ever reads `pm-…`, anybody may name anybody.
+    expect(wired('grant', 'userId')?.fromProperty).toBe('userId');
+    expect(node('grant')?.parameters?.role).toBe('admin');
+    expect(node('grant')?.parameters?.createRole).toBe(true);
+
+    // 5. Only the gate's OK branch can reach the grant.
+    const intoGrant = wires.connections.filter((c) => c.toId === ids.grant && c.toProperty === 'add');
+    expect(intoGrant.map((c) => `${from(c)}.${c.fromProperty}`)).toEqual(['gate.out-ok']);
+
+    // 6. One indistinguishable refusal: a caller must not be able to tell
+    //    "wrong token" from "already claimed". Every failing node reaches it.
+    expect(node('deny')?.parameters?.status).toBe('failure');
+    const denials = wires.connections.filter((c) => c.toId === ids.deny && c.toProperty === 'send');
+    expect(denials.map(from).sort()).toEqual(['gate', 'grant', 'mark', 'secret', 'settings']);
   });
 
   it('copies only the source page\'s sections, and both endpoints answer with a body', () => {
