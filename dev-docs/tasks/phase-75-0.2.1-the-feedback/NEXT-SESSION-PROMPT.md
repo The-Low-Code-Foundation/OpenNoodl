@@ -54,6 +54,37 @@ Full write-up, including the correction and what is *not* proven, in
 (now 14 commits). Production tracks the *working tree*, not the remote, so *deployed* and *pushed*
 remain independent facts.
 
+## 🔴 FOUND WHILE VERIFYING: the off-site database dumps are UNENCRYPTED
+
+Not caused by this deploy, and **not new** — but nothing had looked, and it concerns production
+data sitting in a third party's object store.
+
+| | |
+|---|---|
+| `BACKUP_ENCRYPT_PASSPHRASE` on nexus-1 | 🔴 **EMPTY** |
+| `BACKUP_ENCRYPT_PASSPHRASE` in `~/nodegx-community-deploy.env` | 🔴 **absent** |
+| the 08-26 00:00 dump, **19.5h BEFORE this deploy** | `encrypted=False` |
+| where those dumps go | Hetzner S3, `nodegx/nodegx-community/…` |
+
+✅ **The timestamp is what clears this deploy of causing it** — the pre-deploy dump the verify
+section printed was already unencrypted, so the state predates 19:30Z.
+
+**The mechanism, and it repeats on every deploy:** `ops/deploy.sh` reads the passphrase from the
+laptop secrets file, which does not have it, and passes an empty value to `install-backup.sh`.
+Because the *S3 keys* are present, that script takes its **credentials-present** branch and
+rewrites `backup.env` wholesale — including `BACKUP_ENCRYPT_PASSPHRASE=` — every single time. The
+`elif [ -f "$BACKUP_ENV" ]` preserve branch never runs, so the passphrase cannot survive a deploy
+even if someone sets it on the host by hand.
+
+⚠️ **This is the exact hazard the `APP_S3_*` split in `ops/deploy.sh` was built to avoid** — and it
+turns out to be not merely theoretical but *already realised*, by a different route.
+
+🔒 **Richard's call, and deliberately not acted on here:** setting a passphrase changes whether the
+existing off-site chain can be restored, so it is not a change to make unattended. If it is wanted,
+the honest shape is `BACKUP_ENCRYPT_PASSPHRASE` in the secrets file **plus** a fresh restore check
+against a dump written after the change — ⚠️ the current ✅ restore check (08-23) proves only that
+the *unencrypted* path restores.
+
 ## The queue — cheapest-first. Take the top one.
 
 | # | item | size | state |
