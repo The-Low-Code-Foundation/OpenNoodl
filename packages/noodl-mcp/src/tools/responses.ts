@@ -108,6 +108,14 @@ export interface ProjectInfoResponse {
    */
   designDoctrine?: string;
   /**
+   * SB-002 — the backend doctrine, verbatim from the same family of shared
+   * modules. Same read-write gate. Exists because the frontend guidance
+   * actively misleads on cloud graphs ("a component's interface is a Component
+   * Inputs node" is false for a cloud function), and because the surface
+   * budget gate rules the `instructions` channel out.
+   */
+  backendDoctrine?: string;
+  /**
    * CN-003 — the project's own node kits, and what reading them produced.
    *
    * **Omitted entirely for a project with no `noodl_modules` directory**, which

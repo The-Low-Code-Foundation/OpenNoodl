@@ -367,6 +367,12 @@ export {
 // model measurably reads. Same containment rule: `prompts/traps` imports nothing.
 export { AUTHORING_TRAPS } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/traps';
 
+// SB-002, same containment rule again: the backend idiom the prefab library
+// already practices, taught nowhere until phase 76. A result field rather than
+// `instructions` prose — the surface budget gate measures instructions, and a
+// result rides free (see the module header).
+export { BACKEND_DOCTRINE_MD } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/backend';
+
 // ─── Project review (AIX-010) ─────────────────────────────────────────────────
 // The pure half of the docs retrofit only. `review/assembleProject`,
 // `review/pageMap`, `review/selection` and `review/prompts` import nothing

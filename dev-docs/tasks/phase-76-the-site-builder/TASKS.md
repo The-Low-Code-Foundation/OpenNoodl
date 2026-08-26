@@ -21,8 +21,15 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   blocking; gate parity preserved); `looksLikePageComponent` cloud-safe; AWP-002 pins all four
   types. 10-spec suite, mutation-graded; MCP 57/675/0. ⚠️ Plan door with a cloud target: pieces
   tested, end-to-end drive is SB-004's dogfood.
-- ⬜ **SB-002** — the backend has a vocabulary too (MCP instructions + docs teach the prefab idiom;
-  ⚠️ measure token budget on the wire — three budgets)
+- ✅ **SB-002** — the backend has a vocabulary too — **DONE s1.** `BACKEND_DOCTRINE_MD`
+  (`prompts/backend.ts`, imports nothing, same containment rule as the other doctrines) rides
+  `get_project_info` as `backendDoctrine` beside `authoringDoctrine` — a result field because the
+  surface budget gate measures `instructions` and a result rides free (`toolDisclosure` green
+  before and after proves the surface did not grow). Carries the one correction that matters: a
+  cloud FUNCTION's interface is the Request node's `params`, **NOT Component Inputs** (helpers use
+  Component Inputs — the frontend doctrine was actively misleading here). Specced over real stdio
+  (verbatim bytes + read-only omission + claim census). Canonical prose model stays
+  `dev-docs/reference/BACKEND-AUTHORING-MODEL.md`, referenced from the module header.
 - ✅ **SB-003** — [a helper is not an endpoint](SB-003-A-HELPER-IS-NOT-AN-ENDPOINT.md) — **DONE
   s1.** Helpers 404 identically to nonexistent names, write no execution record, vanish from the
   permissions listing/status; mutation-graded spec over real HTTP; full backend suite 102/1094/0.
@@ -54,5 +61,14 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
 
 ## Session log
 
-- **s1 (2026-08-26)** — phase opened. Code maps commissioned for the MCP authoring path and the
-  backend function boundary.
+- **s1 (2026-08-26)** — phase opened; both code maps run (recorded in SB-001/SB-003 files).
+  **SB-003 done** (`2ac993c5`): helper components 404 on every path, vanish from the permissions
+  listing, mutation-graded spec, backend suite 102/1094/0; name rule resolved by measurement
+  (nested names legitimate, every caller encodes). **SB-001 done** (`e47c7ac7`): `pathToLegacyName`
+  delegates to the importer's `toLegacyName`; create door normalises + cross-checks type;
+  `checkRuntimeContext` in the shared gate (`wrong-runtime-node`); AWP-002 pins all four types;
+  MCP 57/675/0. **SB-002 done**: `backendDoctrine` on `get_project_info`, zero surface-budget
+  spend. ⚠️ Editor unit suite carried ONE red both runs: `fb-005/template-shelf.test.ts` — the
+  phase-75 peer's in-flight uncommitted work ('data-app' vs 'Data app'), not ours. ⚠️ `test:ci`
+  not run (peer was using it; my editor changes are covered by tests-unit validation 52/0 —
+  next session should ride a solo `test:ci` window before calling the editor half proven).

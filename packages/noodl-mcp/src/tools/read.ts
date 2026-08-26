@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { describeComponent } from '../describe';
 import {
   AUTHORING_TRAPS,
+  BACKEND_DOCTRINE_MD,
   DECOMPOSITION_DOCTRINE_MD,
   DESIGN_DOCTRINE_MD,
   isComponentRef,
@@ -164,7 +165,12 @@ export function registerReadTools(server: McpServer, binding: ProjectBinding, op
               // this project has measured.
               authoringTraps: AUTHORING_TRAPS,
               authoringDoctrine: DECOMPOSITION_DOCTRINE_MD,
-              designDoctrine: DESIGN_DOCTRINE_MD
+              designDoctrine: DESIGN_DOCTRINE_MD,
+              // SB-002 — the backend idiom, in the same channel and for the
+              // same measured reason. The instructions cannot carry it (surface
+              // budget) and it corrects a claim the two doctrines above make
+              // that is false on a cloud graph.
+              backendDoctrine: BACKEND_DOCTRINE_MD
             }
           : {}),
         // CN-003 — absent unless there is something to report; see `kitsReport`.
