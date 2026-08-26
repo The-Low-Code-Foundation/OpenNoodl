@@ -190,9 +190,14 @@ value. `parameterValues.component` is `nameTypeFormat('component')` (`parameterV
 that SB-001 just brought "to parity" is not — and the uncovered port is precisely the one SB-004's
 whole composition idiom flows through. This is the tenth instance of
 `a-gate-can-have-a-hole-shaped-like-the-defect`.
-**Status: predicted from source; 4-arm probe written (`noodl-mcp/tests/sb004RunTasksTemplate.test.ts`,
-two known-firing controls) — ⏳ not yet run, the phase-75 peer held the machine.** Do not treat as
-confirmed until the arms print.
+**Status: ✅ CONFIRMED by measurement s2** — `noodl-mcp/tests/sb004RunTasksTemplate.test.ts`, four
+arms. Both controls fired (`wrong-runtime-node`; `repeater-template-unresolved`), and both probes —
+a nonexistent helper and a browser component across the boundary — were accepted `0/0/0` and
+written to disk. **Filed as its own task, [SB-009](SB-009-A-COMPONENT-NAMED-IN-A-PARAMETER.md)**,
+because the fix spans 12 uncovered ports across 8 node types and its blocking promotion needs a
+corpus sweep. ⚠️ SB-009 also records the correction to this paragraph's reach: a live-editor check
+(`checkTemplateContract`) *does* warn on a missing template for **browser** graphs, and is inert for
+cloud — so "the authored door" is the accurate scope, not "every gate".
 
 **F2 — 🔴 the two enforcement layers are not switched together, and the asymmetry flatters a drive.**
 `devOpenActive` (= `devOpen && loopback`, default `devOpen: true`) appears in exactly one decision:

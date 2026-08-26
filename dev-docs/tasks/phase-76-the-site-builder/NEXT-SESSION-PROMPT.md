@@ -13,6 +13,11 @@ s1's debt**: the plan door had never driven a cloud target end to end, and now i
 components landing under the editor-canonical `__cloud__/…` key (asserted by registry key and the
 component file's `path`, never `store.resolve`).
 
+✅ **s1's other debt is also closed**: `test:ci` ran solo on a clear machine —
+`Jasmine: 2856 specs, 4 failures (failed)`, all four `AIX-006 style vocabulary`, which is the
+recorded floor. SB-001's validation/navigation changes cost nothing. Note the compound exited **1**,
+exactly as a clean floor does; the summary line is the signal.
+
 **SB-009 filed** — a component named through a `component`-typed *parameter* is unchecked by the
 authored gate. Measured, not argued: a cloud `Run Tasks` naming a nonexistent helper, or a browser
 component across the runtime boundary, is accepted `0 errors / 0 warnings / 0 infos` and written to

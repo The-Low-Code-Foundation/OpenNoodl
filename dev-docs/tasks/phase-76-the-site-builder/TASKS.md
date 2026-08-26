@@ -111,3 +111,7 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   in-session and recorded where they were made: the Run Tasks item channel (Component Inputs *as
   well as* Component Object) and SB-009's over-strong "nowhere any gate looks" — a live-editor check
   does exist for the browser case, and is inert for cloud. noodl-mcp 60/684 green.
+  ✅ **s1's `test:ci` debt CLOSED**: ran solo on a clear machine, summary line
+  **`Jasmine: 2856 specs, 4 failures (failed)`** — all four `AIX-006 style vocabulary`, i.e. the
+  recorded floor, so SB-001's validation/navigation changes cost nothing. (Read the summary line,
+  not `$?`: the compound exited **1**, which is what the clean floor also does.)
