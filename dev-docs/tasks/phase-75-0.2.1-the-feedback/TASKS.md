@@ -99,7 +99,7 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 
 ## Tier 4 — new scope (rulings landed 08-22; scoping docs first)
 
-- 🟡 **FB-005** — templates, **curated first** (L+) — **T1+T2+T3 done, T4 next** — **R-templates ruled 08-22**: share files a
+- 🟡 **FB-005** — templates, **curated first** (L+) — **T1–T4 done, T5 next** — **R-templates ruled 08-22**: share files a
   submission, Richard publishes. G3 stays shut; licences stay parked. ✅ **Scope doc done s39**
   ([FB-005-SCOPE.md](FB-005-SCOPE.md)); ✅ **T1 CLOSED s40, AC1 met** — the zip transport and its
   three providers are deleted, `newProject` has one branch and it goes through `templateRegistry`,
@@ -140,6 +140,27 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
   canonical everywhere, including embedded templates, so `hello-world` moved from the prose title
   `'Getting Started'` to `starter` and a spec enforces it. Phase 76's template ships embedded with
   `site`. T4 also waited on the search item — ✅ **UNBLOCKED**, see FB-024 (and note the item's premise was wrong: the AND was in a function nothing calls)
+  ✅ **T4 CLOSED s44, AC4 met** — `templateFilter.ts` narrows the shelf by category and by text,
+  and `filterTemplates` produces **the rows and the pill counts from one pass over one predicate**
+  (`facets.ts`' rule: two producers of one number is where they drift). **150 specs, 14 mutants
+  killed, driven live.** ✅ **The measurement: `10/10` recall with terms ORed against `5/10` for the
+  ANDed control** over one corpus and one query set — the *difference* is the evidence, because one
+  author wrote both corpus and queries. ⚠️ **The corpus is a fixture**: the shelf still holds one
+  row, so this grades the matcher, not the shelf. 🔴 **The ruling left a defect at the surface it
+  was made for**: the category vocabulary went to machine slugs on 08-26 and nothing turned them
+  back into words, so the card drew the literal string `starter` at a person — and T3's own spec
+  had **asserted the slug was drawn**. 🔴 **Three of Richard's eight 0.2.1 templates have no honest
+  category** — `pixel-game`, `interactive-fiction` and `shared-canvas` are none of the six, so the
+  CHECK forces them into `starter` and that pill becomes a bin. **Richard's: a migration plus a
+  ruling.** 🔴 **A second mutant survived in a spec that named a mechanism it never reached** —
+  deleting the all-terms-first sort left *"answering every term outranks answering one of them"*
+  green, because that query also won on raw score; rebuilt with a query where the two mechanisms
+  disagree. ⚠️ **Measured live in both themes**: the active pill's *fill* is **1.16:1 dark /
+  1.11:1 light** against the panel — FB-002's shipped defect exactly — which is why the state is on
+  the **border** (4.80:1 / 4.14:1) and in **text**. ⚠️ **Found, not ours**:
+  `--theme-color-border-default` is **1.07:1 / 1.15:1** against the panel and a card's background
+  equals the panel's, so **T3's unselected `TemplateCard` has an invisible boundary too** — a
+  design-token decision, Richard's.
 - ⬜ **FB-013** — chat (L) — 🔴 **R-chat ruled 08-22: OVERRULED, build it.** UNI-011's argument is
   superseded, not withdrawn. Pulls in FB-014's 2nd corpus and reopens D7's posture gap
 - 🟢 **FB-014** — [search that survives renames](FB-014-SEARCH-THAT-SURVIVES-RENAMES.md) (M) — **DESIGN PHASE DONE 2026-08-25 (s38), [FB-014-DESIGN.md](FB-014-DESIGN.md); AC1+AC3 met, AC2 impossible.** 🔴 **The bench holds 3 posts** (2 threads, 1,369 chars, read off nexus-1) — *"a copy of real bench data"* does not exist, so the mechanism was measured against **real pre-rename product prose recovered from git** instead: the node catalog at `1f31d24f^`, 155 documents, and **29 real renames** mined from its own 98-commit history (`Success→Done` across ~15 nodes, `Logic Builder→Visual Function`). 🔴 **The finding is about the search we already ship**: with an old-vocabulary control holding everything else constant, the renames cost it **73% → 18%** recall on keyword queries; vectors recover it to **91% @10**, and **hybrid beats vector-only on the control** (17/22 vs 11/22 @1), so RRF is the answer rather than a hedge. ✅ **pgvector needs no third-party repo on prod** — `postgresql-16-pgvector` 0.6.0 is already a candidate from `noble/universe` on the Hetzner mirror; the whole DDL was **replayed on pgvector 0.5.1** to prove nothing postdates it. ✅ **`BAAI/bge-m3` (Richard's suggestion, hosted on DeepInfra) WINS** — 68%/91% on keyword queries vs `all-minilm`'s 55%/82%, **91% vs 77% on the conversational queries people actually type**, and **100% on the control**. 🔴 **But 843 ms per query against `all-minilm`'s 14 ms** — Postgres is 2.4 ms of that, so the model is 99% of the wait; hybrid hides it by painting FTS results (0.14 ms) first. 🔴 **A task prefix is model-specific and guessing is wrong BOTH ways**: `nomic-embed-text` *needs* one (without it I measured my own omission and nearly filed it as "the bigger model is worse"); `bge-m3` is *damaged* by one (91%→68%). ⚠️ **Truncating `bge-m3` is a lever not worth pulling** — 512d is free on accuracy but **misses the TOAST threshold by 24 bytes**, and 384d (the only inline size) costs 14 points on conversational queries. ⚠️ **`pg_relation_size` reported a 533 MB table as 5888 kB** because at 1024d every vector is in TOAST. 🔴 **Chunking is mandatory for a non-obvious reason**: whole-document embedding fails on 6/155 at **1070–2193 chars while a 6000-char document passes** — the window is spent in **tokens**, and two of the six were ground-truth documents, so dropping them silently would have scored the retriever on a corpus with the answers removed. 🔴 **Two of my own measurements were fiction before they were fixed** — a 100k-row latency table that Postgres hoisted into **100,000 copies of one vector** (`count(distinct)` = 1; the honest HNSW figure is **5.5× higher**, 2.93 ms median), and an index build that **exited 0 twice without building anything** while `EXPLAIN` said *Parallel Seq Scan*. ⛔ **Recommendation: build behind a flag, do not launch** — the trigger is content, not code. 🧭 **AC3 is with Richard, and the measurements sharpened it**: cost is **£0.14 per 100k posts and £0.14 per million searches** (measured tokens x DeepInfra's published $0.010/1M — not an estimate), and accuracy is no longer in doubt. **The only real question left is whether bench posts may go to a third-party processor at all.** ⚠️ This eval sent **no user data** — the corpus is the public node catalog and the bench's 3 posts were never uploaded. Also found, unowned: **`websearch_to_tsquery` ANDs bare terms**, so a conversational query matches **2/22 even in perfect vocabulary**, and **`Set Record Properties→Update Record` collides** with `noodl.byob.UpdateRecord`.

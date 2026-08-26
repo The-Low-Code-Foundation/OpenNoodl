@@ -151,7 +151,7 @@ Ordered so each step is shippable and the earliest ones are independent of any f
 | **T1** | ✅ **DONE (s40)** — zip transport deleted, registry made reachable, AC1 met | **S** | — |
 | **T2** | ✅ **DONE (s42)** — `project_templates`, three routes, a publisher, AC3 met | **M** | — |
 | **T3** | ✅ **DONE (s43)** — the picker, a second provider, AC2 met | **M** | — |
-| **T4** | Categories + text search over the curated set | **S–M** | T2, ⚠️ see below |
+| **T4** | ✅ **DONE (s44)** — categories, sentence-tolerant search, AC4 met | **S–M** | T2 |
 | **T5** | "Share as template" — files a **submission**, does not publish | **M** | T2, R-templates |
 | **T6** | Star ratings | **M** | 🔒 needs a ruling; see §5 |
 
@@ -469,11 +469,197 @@ caught it, not the exit code.
 
 ---
 
-⚠️ **T4 still inherits a known defect.** FB-014 measured that the platform's FTS helper uses
-`websearch_to_tsquery`, which **ANDs bare terms** — a conversational query matched 2/22 documents
-even in perfect vocabulary. That is queue item 3, unowned. **A template search built on the same
-helper is born with the same bug.** Fix item 3 first, or T4 ships a search that only answers
-single keywords.
+✅ **RESOLVED BY NOT INHERITING IT (s44).** The warning below stood: FB-014 measured the
+platform's FTS helper ANDing bare terms, so a template search built on it would have been born
+with the same bug. **T4 does not touch the platform.** The search is client-side over a shelf
+already fetched whole, and it applies `searchThreads`' fix — OR the terms, let the ranking supply
+precision — from the start. §4c measures the two arms side by side: **10/10 ORed, 5/10 ANDed.**
+
+🔴 **The platform defect is untouched and still owned by nobody.** The day a web `/templates` page
+or a server-side filter is built, it is born with it. That is queue item 3, unchanged.
+
+---
+
+## 4c. ✅ T4, closed 2026-08-26 (session 44) — categories, a search that answers a sentence, and a card that had been drawing a machine slug at a person
+
+**What shipped**, all in OpenNoodl:
+
+- **`ProjectCreationWizard/steps/templateFilter.ts`** — the whole of T4's logic, pure and
+  exported. `filterTemplates(items, filter)` returns **the rows and the pills from one pass over
+  one predicate**, which is `facets.ts`' rule imported wholesale: *"a facet count comes from a
+  `group by` and the list comes from a `where`; two producers of one number is exactly where they
+  drift."* A pill's `count` is `matches()` re-run over the filter that pill's own click would
+  produce — the text query held, the category dimension swapped.
+- **`TEMPLATE_CATEGORY_LABELS` + `categoryLabel()`** — `starter` → *Starter*, `data-app` →
+  *Data app*, with an unknown slug falling through to itself (`ORIGIN_LABELS`' rule).
+- **The filter bar in `TemplateStepBody`** — a search box and a pill row, **still hook-free**, with
+  `filter`/`onFilterChange` **optional** so T3's three-argument call site keeps working.
+- **A fourth screen.** *"There are no templates"* and *"nothing here matches what you typed"* are
+  now different sentences with different remedies, told apart by `isFilterActive` rather than by
+  the row count.
+- **`tests-unit/fb-005/template-search.test.ts`** — 43 specs, including the AC4 measurement.
+
+### 🔴 The finding the ruling left behind: the card was drawing `starter` at a person
+
+The category vocabulary was ruled to the platform's on 2026-08-26 — right for a CHECK constraint,
+and **nothing turned the slugs back into words on the way to a screen**. `TemplateCard-tag`
+rendered `{item.category}` verbatim, so from that ruling until this session the picker drew the
+literal string `starter`, and would have drawn `data-app`. It is the ruling's cost, paid at the
+one surface the ruling was made *for*, and T3's own spec had **asserted the slug was drawn** —
+a spec written against the defect, in good faith, one session earlier.
+
+✅ Both directions now: the label is drawn **and** the slug is not. A `toContain('Data app')`
+alone stays green if both are rendered side by side.
+
+### 🔴 The second finding: three of Richard's eight templates have no honest category
+
+`0020`'s vocabulary — `starter`, `data-app`, `dashboard`, `site`, `form`, `integration` — was
+written before the 0.2.1 template roster existed. Run the roster through it (phase 76 README §1:
+site builder → personal landing page → pixel game; then storefront, membership hub, data
+dashboard, interactive fiction, shared pixel canvas) and **`pixel-game`, `interactive-fiction` and
+`shared-canvas` are none of the six.** The CHECK constraint forces them into `starter`, and a pill
+labelled **Starter** holding a game, a story engine and a shared canvas is not a filter, it is a
+bin.
+
+⚠️ **Not fixed here — it is a platform migration plus a ruling, both Richard's.** Recorded as an
+executable note in `template-search.test.ts` §2, which goes red the day the vocabulary grows.
+
+### 🔴 The third finding: a mutant survived, and again the defect was in the SPEC
+
+Same shape as T3's `indexOf`, one layer over. A spec named *"answering every term outranks
+answering one of them"* asserted that `personal landing page` puts Personal Landing Page first.
+A mutant **deleting the `matchedAll` clause from the sort survived it** — because for that query
+the intended row also wins on raw score. The spec was green for a mechanism it never touched.
+
+✅ Fixed with a query built so the two mechanisms **disagree**: `site bio` scores Site Builder and
+Personal Landing Page at **exactly 3 each** (`site` is one's title at weight 3 and the other's
+category at weight 2; `bio` is only the second's summary at weight 1), so score cannot separate
+them and shelf order would put the wrong one first. Only `matchedAll` puts the row that answered
+the whole query on top. The mutant is killed by it.
+
+🔴 **The general rule, restated**: a spec that passes is not a spec that grades the thing in its
+name. Both survivors this phase were found by mutating the mechanism the name claimed.
+
+### ✅ AC4: the measurement, and what it is worth
+
+`recall — ORed terms (shipped): 10/10; ANDed terms (control): 5/10; rank-1: 10/10`
+
+Ten queries typed as sentences, over a ten-row corpus built from Richard's own roster.
+
+🔴 **The absolute figure is worth nothing and the DIFFERENCE is the measurement.** One author
+wrote both the corpus and the queries, and an author who wants 100% recall gets it by writing the
+summaries to match. So the identical corpus and the identical queries are run through a
+**known-broken arm** — every term must match, which is what `websearch_to_tsquery` does to a bare
+sentence — and it retrieves **half**. The five it loses are exactly the multi-word ones
+(*"a website my client can edit themselves"*, *"how do I let people sign up and log in"*), and it
+keeps the ones that were already keywords, which is why the defect survived so long elsewhere.
+**Two arms that agreed would have measured nothing.**
+
+⚠️ **Honest scope: this grades the MATCHER, not the shelf.** The published shelf holds **one row**,
+because the platform half is undeployed. When there are real rows, re-run §4 over them — 52 green
+specs over fixtures once shipped two defects that one pass over the real corpus found.
+
+**The old-vocabulary control** (FB-014's shape): `hello-world`'s category was the prose string
+*"Getting Started"* until 2026-08-26. Searching `getting started` no longer reaches a row through
+its category — proved by a `starter` row whose text never says "start" (`pixel-game`) **not** being
+returned — while `hello-world`, whose summary says *"to start from nothing"*, still is. 🔴 The
+second half is load-bearing: **a control that returns nothing proves nothing**, and without it the
+first assertion is satisfied by a search that is simply broken.
+
+### Decisions taken inside T4, each reversible and each stated
+
+1. **The filtering is IN MEMORY, in the client, over rows already fetched whole.** `facets.ts`'
+   choice and `facets.ts`' stated limit: the shelf is curated and small by construction, and the
+   day it is thousands of rows this becomes a `where` and a `group by` on the platform.
+2. 🔴 **NO server-side `?q=`/`?category=` was added, and the omission is the point.** FB-005 exists
+   because four providers were registered, typechecked and reached by nobody. A filter on
+   `listProjectTemplates` with no caller would be that finding committed again, in the same task
+   that was opened to clean it up. It goes in the day a caller exists — the web `/templates` page,
+   or a shelf too large to send whole.
+3. **Terms are ORed and the ranking supplies precision** — `searchThreads`' trade, client-side.
+   ANDing five words against a twelve-word summary matches nothing, ever.
+4. **Pills come from the rows PRESENT, not from the vocabulary.** A pill promising zero is a dead
+   click; an unknown category still gets one, or a platform row with a new category is reachable
+   only by not filtering at all. ⚠️ The **active** pill survives a zero count — it is the only way
+   back out of the state the person is looking at.
+5. **The filter is local `useState` in `TemplateStep`, not a `WizardState` field.** The wizard's
+   state is the answers the creation is built from; a search box is how somebody looked for one.
+   Putting it in `WizardState` would carry it into `ReviewStep`'s props and every literal.
+6. **`onFilterChange` optional.** Phase 76's SB-007 names `TemplateStepBody` as a piece to reuse;
+   a required prop here would have broken that call site before it was written.
+7. **No `fileCount` on a card.** T3 flagged it as "T4's business" — but a size is not a way to
+   narrow a shelf, and widening `TemplateItem` on both providers is its own change.
+
+### The drive — what the running app showed
+
+✅ Full path driven: `New project` → *Start from a Template* → basics → picker. All four screens
+**observed live**, not inferred:
+
+- The bar renders: `Search templates`, `All (1) ✓`, `Starter (1)` — **labels, not slugs**, and the
+  card's tag reads **Starter**.
+- Typing `dashboard` → the `Starter` pill **disappears** (count 0, not active), `All (0) ✓`
+  survives, and the screen says *"No templates match that search. Clear filters"* — **not** the
+  empty-shelf sentence. `Clear filters` restores box, pills and row.
+- 🔴 **A ten-word sentence of which only one term appears in the document still finds it**:
+  *"I want a blank app to start a dashboard from"* returns Hello World. An AND matcher returns
+  zero. That is AC4's claim, observed in the product rather than in a fixture.
+- Selecting the card and then filtering it out draws *"The template you chose is not in this list.
+  It is still selected. Show it"* — beside, not instead of, the community-outage notice.
+- Clicking `Starter (1)` moves the ✓ and `aria-pressed` onto it and off `All`.
+
+### Contrast, measured live in BOTH themes
+
+| pair | dark | light | verdict |
+|---|---|---|---|
+| **active pill BORDER vs panel** | **4.80:1** | **4.14:1** | ✅ the state, carried properly |
+| active pill text vs its own fill | 8.46:1 | 6.14:1 | ✅ |
+| inactive pill text vs its own fill | 9.82:1 | 6.80:1 | ✅ |
+| search field text vs field | 9.82:1 | 6.80:1 | ✅ |
+| **active pill FILL vs panel** | **1.16:1** | **1.11:1** | 🔴 which is why nothing depends on it |
+
+🔴 **That last row is FB-002's shipped defect, reproduced exactly** — and it is the measurement
+that justifies the design rather than a claim about it. Had the active state been a background
+colour, this surface would have shipped the same invisible selection the people directory has. It
+is on the **border** and in the **text** (`✓`), so neither ratio can take it away.
+
+⚠️ **A pre-existing finding fell out of the same pass, and it is NOT T4's**:
+`--theme-color-border-default` measures **1.07:1 dark / 1.15:1 light** against the panel, and the
+card's background is **identical** to the panel (1.00:1). So an **unselected `TemplateCard` — T3's,
+shipped — has an effectively invisible boundary**, as does an inactive pill. WCAG 1.4.11 wants
+3:1 for a control's boundary. The fix is a design-token decision, not a T4 edit, and changing the
+token touches every surface in the editor. **Richard's.**
+
+### ⚠️ What T4 deliberately does NOT include
+
+- **No web `/templates` page.** Still unowned, and still the surface Richard's original ask most
+  obviously describes. T4 narrows the shelf **in the editor**, which is the only place the shelf
+  is drawn today.
+- **No launcher "Templates" tab.** Phase 76's, unchanged — and T4 touched neither `Templates.tsx`
+  nor `LauncherHeader.tsx`. ⚠️ **It is still inert as of this commit.**
+- 🔴 **No fix for the queue-item-3 defect on the platform.** It did not need one: the AND-ing lives
+  in `websearch_to_tsquery`, and T4's search never reaches the platform. **The defect is untouched
+  and still owned by nobody** — the day a `/templates` page or a server-side filter is built, it is
+  born with it.
+
+### Gates, session 44
+
+- `tests-unit/fb-005/` — **150 specs, 0 failures** across four files. Reconciles exactly:
+  **107 at HEAD + 43 new**, and the 107 was verified by counting `git show HEAD:` rather than
+  trusting a note. ⚠️ The **NEXT-SESSION-PROMPT for s43 said 97** and the scope file said 107; the
+  scope file was right.
+- `npm run test:main` — **344 files / 5649 specs / 0 failures**. ⚠️ **Only +1 file / +43 specs is
+  mine**; the rest of the delta against s43's 342/5592 is two peer commits (SB-001, SB-002) that
+  landed mid-session.
+- **14 mutants, 14 killed** — after the one above survived and its spec was rebuilt. Run with `-t`
+  filtered to the single spec, so *"killed by its own spec"* is measured and *"and by no other"* is
+  **not**. Pristine copies restored by `copyfile`, both files `md5`-verified identical afterwards.
+- `typecheck:editor` **0**; `typecheck:editor-tests` **0**; `typecheck:core-ui` **44, all `TS2307`
+  alias resolution, none ours** — unchanged from s43.
+- `npm run tokens:css` — clean over **320** stylesheets. ⚠️ Blind to every ratio in the table above.
+- 🔴 **`npm run test:ci` — `Jasmine: 2856 specs, 4 failures`, ALL FOUR `AIX-006 style vocabulary`,
+  by name. The clean floor.** ⚠️ **2856 is s43's count unchanged**, which is the right answer: T4
+  added **no** jasmine spec, and no jasmine spec reads a template category or renders `TemplateStep`
+  (checked by grep both ways). ~26 minutes. The summary line is the verdict, never `$?`.
 
 ---
 
@@ -514,9 +700,12 @@ Still genuinely open:
 - **AC3** — the payload's structural rules are enforced **at publish, in the database**, in the
   style of `tutorial_bundle_has_manifest`. 🔴 Each CHECK begins with `jsonb_exists` — a CHECK
   constraint **passes on NULL**, which TUT-004 measured the hard way.
-- **AC4** — categories and text search work over the curated set, and the search answers a
-  **sentence**, not only a keyword (i.e. queue item 3 is fixed first or fixed here). State the
-  measured recall, with an old-vocabulary control, the way FB-014 did.
+- **AC4** — ✅ **MET (s44).** Categories and text search work over the curated set, and the
+  search answers a **sentence**: `10/10` recall ORed against `5/10` for the ANDed control over one
+  corpus and one query set, with the old-vocabulary control (`getting started`) measured in both
+  directions. ⚠️ **The corpus is a fixture** — the published shelf holds one row — so the figure
+  grades the matcher, not the shelf. Queue item 3 was **not fixed**; it was **not inherited**,
+  because nothing in T4 reaches the platform's FTS helper.
 - **AC5** — "Share as template" files a submission and **publishes nothing**; the submitted
   template is invisible on the public shelf until Richard promotes it. A spec asserts the
   invisibility from a *second* account, not from the submitter's.

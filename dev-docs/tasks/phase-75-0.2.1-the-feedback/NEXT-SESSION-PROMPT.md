@@ -1,238 +1,179 @@
 # Phase 75 — next session
 
-**State as of 2026-08-26 (session 43).** Richard's brief is still **speed: keep knocking out phase
+**State as of 2026-08-26 (session 44).** Richard's brief is still **speed: keep knocking out phase
 75**, so this file leads with the queue. Take the top unblocked item; dip into the rest when it
 bites.
 
-**Committed this session:** queue item 1 — **FB-005 T3**, "New project from a template". The create
-wizard has a fourth mode, `PlatformTemplateProvider` serves the community shelf, and
-`templateRegistry.list()` has **its first caller in the product** — which is what T1's whole
-finding was about. 🔴 **A defect that only the running app could find**: one refusal sentence served
-two different questions. Read **[FB-005-SCOPE.md](FB-005-SCOPE.md) §4b** before touching T4.
+**Committed this session:** queue item 1 — **FB-005 T4**, categories and a search that answers a
+sentence. The picker has a facet bar and a search box, `filterTemplates` produces **the rows and
+the pill counts from one pass over one predicate**, and the card stopped drawing a machine slug at
+a person. 🔴 **Two findings worth carrying**, both in §4c of
+[FB-005-SCOPE.md](FB-005-SCOPE.md): the category ruling left a defect at the very surface it was
+made for, and **a second spec was found naming a mechanism it never reached** — same shape as s43's
+`indexOf`, caught the same way, by a mutant.
 
-⚠️ **Peers.** Seven sessions held sockets at the start of this one; four coordinated directly. The
-editor drive and `test:ci` were both announced and both ran clean. ✅ **Correction from a peer,
-verified at source and worth carrying**: `dev:stop` does **not** kill another session's running
-`test:ci` — `NEVER_SWEEP` shields the suite *and* its npm/lerna ancestor. It **does** sweep another
-session's **editor stack**. `pkill` remains the one genuinely unshielded route.
+⚠️ **Peers.** Six sessions held sockets; four answered the launch announcement directly and all
+confirmed idle. The editor drive and `test:ci` were both announced and both ran clean.
+✅ **Carried forward and re-confirmed by two peers independently**: `dev:stop` does **not** kill
+another session's running `test:ci` — `NEVER_SWEEP` shields the suite *and* its npm/lerna ancestor.
+It **does** sweep another session's **editor stack**. `pkill` remains the one unshielded route.
+🆕 **`dev:stop --list` immediately before a teardown is the instrument** — a peer's pre-flight
+"9222 is free" is only true outside the ~75s window in which a launching stack is invisible.
 
 ## The queue — unblocked, cheapest-first. Take the top one.
 
 | # | item | size | state |
 |---|---|---|---|
-| 1 | **FB-005 T4** — categories + text search over the curated set | **S–M** | ✅ **now the top item.** `category` exists in `0020` with a fixed vocabulary and `TEMPLATE_CATEGORIES` mirrors it. 🔴 **Two problems come with it — read both below before scoping** |
+| 1 | **FB-005 T5** — "Share as template" files a **submission** | **M** | ✅ **now the top item.** Unblocked by T2; needs the submission table R-templates' posture requires. 🔴 **A submission is third-party code** — P69's *"20/20 ≠ fit to publish"* is the trap, and D-moderation (§5.2) has no named owner |
 | 2 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** ⚠️ Its corpus does not exist either — FB-014 measured the bench at **3 posts, 2 threads, 1,369 chars** |
-| 3 | **FB-005 T5** — "Share as template" files a **submission** | **M** | unblocked by T2; needs the submission table R-templates' posture requires |
+| 3 | **FB-005 T6** — star ratings | **M** | 🔒 **needs a ruling.** Recommendation stands: defer until T5 has produced third-party templates to rate — a star system over a shelf we authored is us rating ourselves |
 
-### 🔴 PHASE 76 IS RUNNING IN PARALLEL AND OWNS THE TEMPLATES TAB — READ THIS FIRST
+### 🔴 Two things now sitting with Richard, both surfaced by T4
 
-**Richard opened phase 76 on 2026-08-26**, in another session, to **add the first template to the
-Templates tab**. That takes two items off this file's "unowned" list and puts a **live collision
-surface** in their place. Coordinate before writing, not after.
+1. **THREE OF THE EIGHT 0.2.1 TEMPLATES HAVE NO HONEST CATEGORY.** `0020`'s vocabulary —
+   `starter`, `data-app`, `dashboard`, `site`, `form`, `integration` — was written before the
+   roster existed. Run the roster through it (site builder → personal landing page → pixel game;
+   then storefront, membership hub, data dashboard, interactive fiction, shared pixel canvas) and
+   **`pixel-game`, `interactive-fiction` and `shared-canvas` are none of the six.** The CHECK
+   constraint forces them into `starter`, and a pill labelled **Starter** holding a game, a story
+   engine and a shared canvas is not a filter, it is a bin. **The fix is a platform migration plus
+   a ruling.** Recorded as an executable note in `template-search.test.ts` §2, which reddens the
+   day the vocabulary grows. ⚠️ **Phase 76's site-builder template is unaffected** — it ships
+   `site`, which is in the vocabulary.
+2. **`--theme-color-border-default` IS 1.07:1 DARK / 1.15:1 LIGHT AGAINST THE PANEL**, and a
+   `TemplateCard`'s background is **identical** to the panel (1.00:1). So **T3's unselected
+   template card — already shipped — has an effectively invisible boundary**, as does an inactive
+   filter pill. WCAG 1.4.11 wants 3:1 for a control's boundary. ⚠️ **Not a T4 edit**: changing that
+   token touches every surface in the editor. Same family as FB-002's 1.16:1 pill.
 
-**What phase 76 will find, and must not rebuild.** T3 shipped the plumbing a templates *gallery*
-needs, and all of it is reusable outside the wizard:
-
-| it wants | it already exists | where |
-|---|---|---|
-| the rows, from every provider | `useProjectTemplates(enabled)` → `TemplateGalleryState` | `noodl-editor/src/editor/src/hooks/useProjectTemplates.ts` |
-| rows **plus** the providers that failed | `templateRegistry.listing({})` | `utils/forge/template/template-registry.ts` |
-| a card list with loading / empty / short-shelf states | `TemplateStepBody` (pure, no context) | `.../ProjectCreationWizard/steps/TemplateStep.tsx` |
-| the row and gallery types | `TemplateChoice`, `TemplateGalleryState` | exported from `ProjectCreationWizard/index.ts` |
-
-🔴 **Call `listing()`, never `list()`, on a surface a person looks at.** `list()` swallows a
-provider's failure, so a community outage is indistinguishable from an empty shelf.
-🔴 **`TemplateStepBody` is deliberately hook-free** so the plain-Node runner can evaluate it. Keep
-it that way if you lift it — that split is what makes the three states gradeable.
-
-**Which half of "the first template" phase 76 means changes everything, and the two are not close:**
-
-- **An EMBEDDED template** (compiled into the editor): a new `models/template/templates/*.template.ts`
-  plus one line in `EmbeddedTemplateProvider`'s map. ✅ It appears in the picker **immediately**,
-  offline, no platform. ⚠️ Its `category` is **free text**, which is the vocabulary clash below.
-- **A PLATFORM template** (published to the community shelf): `scripts/publish-project-template.ts`
-  against a Postgres holding `0020`. 🔴 **The editor cannot see it until the platform is deployed** —
-  nexus-1 has neither the migration nor the routes, and `COMMUNITY_URL` is a hardcoded constant with
-  no env override, so there is no way to point the editor at a local platform without editing it.
-
-⚠️ **Collision surfaces**, both untouched by T3 and both likely phase 76's:
-`noodl-core-ui/.../Launcher/views/Templates.tsx` and `LauncherHeader.tsx`. T3 touched neither.
-✅ T3's files are listed in §4b of [FB-005-SCOPE.md](FB-005-SCOPE.md); `ProjectsPage.tsx` is the only
-shared file, and T3's edit there is five lines.
-
-### 🔴 Two things T4 inherits, and neither is search
-
-1. **THE LAUNCHER SHIPS A "Templates" TAB THAT SAYS "COMING SOON"** —
-   `noodl-core-ui/.../Launcher/views/Templates.tsx` renders *"Project templates will be displayed
-   here. This feature is coming soon!"*, and `LauncherHeader` lists it beside Projects, Community,
-   Learning and GitHub. It has been inert the whole time, and **a working picker three clicks inside
-   "New project" beside a dead tab called Templates reads as broken**. ✅ **Now phase 76's** — but T4
-   is also a browse surface, so **agree who draws that tab before either of you draws it**.
-   ⚠️ Same shape AIX-012 named: *present, offered, inert*.
-2. ✅ **THE CATEGORY VOCABULARY IS SETTLED — ruled 2026-08-26 with phase 76, and already applied.**
-   The **platform's** vocabulary is canonical, including for templates compiled into the editor:
-   `starter`, `data-app`, `dashboard`, `site`, `form`, `integration`. It was free text, and
-   `hello-world` said `'Getting Started'` — drawn live in the picker this session, beside nothing
-   else, which is what a T4 facet bar would have inherited. **`hello-world` is now `starter`.**
-   ⚠️ **The type cannot hold this** — `category` is a plain `string` and the vocabulary is a CHECK
-   constraint in another repository. `EMBEDDED_TEMPLATE_CATEGORIES` in
-   `tests-unit/fb-005/template-shelf.test.ts` is the enforcement, and it is a **third copy** whose
-   drift cost is written down beside it: a platform-side addition reddens that file loudly, which
-   is cheaper than the ruling quietly not existing. Phase 76's site-builder template ships
-   **embedded** with `site`.
-
-⚠️ Also still true unless phase 76 changes it: **the shelf is empty**, so T4's search would be
-searching one embedded row. Publishing to the community half needs a local Postgres —
-`DATABASE_URL=… npx tsx scripts/publish-project-template.ts <slug> <projectDir> <category> "<summary>" --publish`.
-
-## ✅ Item 1, closed: FB-005 T3 — the picker `list()` was built for
+## ✅ Item 1, closed: FB-005 T4 — categories and a search that answers a sentence
 
 **What shipped**, all in OpenNoodl:
 
-- **`models/template/PlatformTemplateProvider.ts`** — the second `ITemplateProvider` ever to run and
-  the first that fetches. `community://<slug>` is an **identifier the registry resolves**, never an
-  address anything dereferences.
-- **`communityapi.templates()` / `templateBundle()`**, with `readBundlePayload` **extracted** out of
-  `tutorialBundle` — the rules in it are all safety rules, and a second hand-written copy is one
-  where the missing rule is the one an attacker chose.
-- **`TemplateRegistry.listing()`** — rows tagged by provider, plus the providers that failed.
-- **The wizard's `'template'` mode** — `basics → template → review`, **no preset step**.
-- **`hooks/useProjectTemplates.ts`** — `list()`'s first product caller, gated on the wizard being
-  open so the launcher makes no community request on cold start.
-- **AC2**: a refusal removes the project directory **only when this code created it**.
-  `directoryExists` is asked **before** `makeDirectory` — that ordering is the whole precondition.
+- **`ProjectCreationWizard/steps/templateFilter.ts`** — pure, exported, and the **one producer**.
+  A pill's `count` is the predicate re-run over the filter that pill's own click would produce, so
+  a count that lied would require the function to disagree with itself inside one pass.
+- **`TEMPLATE_CATEGORY_LABELS` / `categoryLabel()`** — `data-app` → *Data app*, unknown slugs
+  falling through to themselves.
+- **The filter bar in `TemplateStepBody`** — **still hook-free**, with `filter`/`onFilterChange`
+  **optional** so T3's call site (and phase 76's SB-007) keeps working untouched.
+- **A fourth screen** — *"no templates"* and *"nothing matches what you typed"* are different
+  sentences with different remedies, told apart by `isFilterActive`, not by the row count.
 
-### 🔴 The finding: one refusal sentence served two different questions
+### 🔴 The finding: the ruling left a defect at the surface it was made for
 
-`refusalSentence(read)` mapped an outcome to a sentence, and both `list` and `install` called it.
-With the platform undeployed, opening the picker logged:
+The category vocabulary was ruled to the platform's machine slugs on 2026-08-26 — right for a
+CHECK constraint — and **nothing turned them back into words on the way to a screen**. The card
+rendered `{item.category}` verbatim, so from the ruling until this session the picker drew the
+literal string `starter`. **T3's own spec asserted the slug was drawn**, in good faith, one session
+earlier. Both directions are asserted now: the label is drawn *and* the slug is not.
 
-> `Error: that template is no longer on the community shelf`
+### 🔴 The second finding: a spec named a mechanism it never reached
 
-A sentence about **a template**, in a refusal where **no template was named**. A 404 on
-`/templates` means the shelf could not be read; a 404 on `/templates/x/bundle` means *x* is gone.
+A mutant deleting the all-terms-matched clause from the ranking **survived** a spec called
+*"answering every term outranks answering one of them"* — because for that query the intended row
+also wins on raw score. ✅ Rebuilt with `site bio`, a query where the two mechanisms **disagree**:
+both candidates score exactly 3, so score cannot separate them and shelf order would put the wrong
+one first.
 
-⚠️ **No spec could have caught it.** Both arms are `absent`, both are refusals, and every assertion
-available — *it threw*, *it refused*, *it did not narrate permission* — is green on either wording.
-**The instrument that found it was the running app**, at the first moment the code met a platform
-that answers 404. Fixed with a `subject` parameter; re-measured live:
-`Error: the community shelf is not available to this editor`.
+🔴 **The rule, now twice in one phase**: a spec that passes is not a spec that grades the thing in
+its name. Both survivors were found by mutating the mechanism the *name* claimed, not the one the
+assertion happened to touch.
 
-### Decisions taken inside T3, each reversible and each stated
+### ✅ AC4: the measurement, and what it is worth
 
-1. **`'template'` is a MODE, not a step inside `guided`** — a template ships its own look, and the
-   preset step exists to choose one. `setPendingPresetId` maps the untouched default `'modern'` to
-   `null`, so template mode applies **no** preset rather than one nobody picked.
-2. **`PlatformTemplateProvider.list` THROWS on a failed read** instead of returning `[]`. An empty
-   array and a failed read are the same length; returning `[]` makes an outage look like curation.
-3. **The embedded provider is FIRST.** Order does not decide installs — it decides row order, and
-   the first card should be the one that draws with no network.
-4. **No `fileCount` on a picker row.** Rows arrive as `TemplateItem`, which the embedded provider
-   also fills and which has no such field. T2's rejected `installable`, in mirror image.
-5. **The selected card is marked in TEXT** (`✓ Selected`) as well as colour. Measured: border
-   carries the state at **4.46:1 dark / 3.61:1 light**; the fill alone would be **1.16:1 / 1.11:1**,
-   which is FB-002's shipped defect exactly.
-6. **`TemplateStepBody` split out of `TemplateStep`** so the plain-Node runner can evaluate it. The
-   three states are **rendered and read**, not grepped.
+`recall — ORed terms (shipped): 10/10; ANDed terms (control): 5/10; rank-1: 10/10`
+
+🔴 **The absolute figure is worth nothing; the DIFFERENCE is the measurement.** One author wrote
+both the corpus and the queries, so the same corpus and the same queries are run through a
+known-broken arm (every term must match — what `websearch_to_tsquery` does to a bare sentence) and
+it retrieves **half**. The five it loses are exactly the multi-word ones; it keeps the ones that
+were already keywords, which is why the defect survived so long elsewhere.
+
+⚠️ **This grades the MATCHER, not the shelf** — the published shelf holds one row. **Re-run it over
+real rows when they exist.**
+
+**Old-vocabulary control** (FB-014's shape): `getting started` no longer reaches a row through its
+category — proved by a `starter` row whose text never says "start" *not* being returned — while
+`hello-world`, whose summary says *"to start from nothing"*, still is. 🔴 The second half is
+load-bearing: **a control that returns nothing proves nothing.**
+
+### Decisions taken inside T4, each reversible and each stated
+
+1. **In-memory filtering**, `facets.ts`' choice and its stated limit — the shelf is curated and
+   small by construction; the day it is thousands of rows this becomes a `where` and a `group by`.
+2. 🔴 **NO server-side `?q=`/`?category=` was added.** FB-005 exists *because* four providers were
+   registered, typechecked and reached by nobody — a platform filter with no caller would be that
+   finding committed again inside the task opened to clean it up.
+3. **Terms ORed, ranking supplies precision** — `searchThreads`' trade, client-side.
+4. **Pills come from the rows PRESENT, not the vocabulary** — a pill promising zero is a dead click,
+   and an unknown category still gets one. ⚠️ The **active** pill survives a zero count; it is the
+   only way back out.
+5. **The filter is local `useState` in `TemplateStep`, not a `WizardState` field** — the wizard's
+   state is the answers the creation is built from; a search box is how somebody looked for one.
 
 ## Driving — what worked, exactly
 
-✅ **Everything in the previous sessions' driving sections still holds.** New this session:
+✅ **Everything in the previous sessions' driving sections still holds**, including the native
+value-setter trick for React-controlled inputs and wrapping every `cdp eval` in `{…}`. New:
 
-- ✅ **The full wizard path drives cleanly**: `New project` → *Start from a Template* → basics →
-  picker → Review → *Create Project* → a project that opens with Home and App and a canvas.
-- 🔴 **The picker's short-shelf path was exercised for real** — `community.nodegx.io` answers 404,
-  the provider threw, `TemplateRegistry.listing` recorded it, and the screen drew *"Some templates
-  could not be loaded (Community), so this list may be short."* beside the embedded row. **That is
-  where the refusal-sentence defect appeared.**
-- 🔴 **Setting a React-controlled input via CDP fights React.** `type` inserts at whatever selection
-  React thinks exists, so a field already holding text ends up with fragments interleaved
-  (`"T3 Template Driverag"`). ✅ **What worked**: the native value setter plus a bubbled `input`
-  event —
-  `Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el, v); el.dispatchEvent(new Event('input',{bubbles:true}))`.
-- 🔴 **`Delete project` opens a NATIVE dialog and CDP goes dead** — every subsequent `eval` hangs
-  until the tool timeout. There is no way back through CDP. ✅ **Tear down with `dev:stop` and clean
-  up by hand**: the directory, plus the entry in `recently_opened_project.json` and the key in
-  `project_runtime_cache.json` under `~/Library/Application Support/NodeGX/`. Verified restored
-  (55 → 54 projects).
-- ⚠️ **`cdp eval` shares one global scope across calls** — a second `const b` is
-  `SyntaxError: Identifier 'b' has already been declared`. Wrap each eval in `{…}`.
-- ⚠️ **`button:has-text(...)` is not a selector.** Tag the element in an `eval`
-  (`el.setAttribute('data-drive','x')`) and click `[data-drive='x']`.
+- ✅ **All four picker screens observed live**, not inferred: the bar (`All (1) ✓`, `Starter (1)`,
+  labels not slugs), the no-match sentence with `Clear filters`, the selection-hidden notice, and
+  the pill toggle moving `aria-pressed`.
+- 🔴 **A ten-word sentence of which only ONE term appears in the document still finds it** —
+  *"I want a blank app to start a dashboard from"* returns Hello World. An AND matcher returns
+  zero. AC4's claim, observed in the product rather than in a fixture.
+- ⚠️ **`data-theme` can be flipped straight on `document.documentElement`** for a contrast pass, but
+  the read must be a **second `eval`** — the write is invisible in the same one.
+- ⚠️ **CSS-module class names are hashed in the running app**, so `[class*=TemplateFilter-pill]`
+  works and an exact class selector does not. In the jest runner they resolve to themselves.
 
-## Gates — session 43
+## Gates — session 44
 
-- `tests-unit/fb-005/` — **97 specs, 0 failures** (T1's 27 unchanged + T3's 70).
-- `npm run test:main` — **342 files / 5592 specs / 0 failures** (s40: 341 / 5522 / 0). The extra
-  suite is the new file; the counts reconcile.
-- 🔴 **`tests-unit/uni-001/session-readers.test.ts` refused the new session reader** until its
-  third-column question was answered. `PlatformTemplateProvider` is now recorded, with a structural
-  block asserting the token is used **once**, neither read is gated, the hook that decides what is
-  drawn never sees a session, and **the picker still has a provider with no account and no network**.
-- `npm run tokens:css` — clean over **320** stylesheets (s37: 319). ⚠️ Still blind to contrast.
-- `typecheck:editor` **0**; `typecheck:editor-tests` **0** — it caught the three `WizardState`
-  literals needing the new field. `typecheck:core-ui` **44 errors, all `TS2307` alias resolution,
-  none ours** — pre-existing.
-- **13 mutants, all killed** — but **one survived first, and it was a hole in the spec, not in the
-  code.** See below. ⚠️ Run with **`-t` filtered to one spec**, so *"killed by its own spec"* is
-  measured and *"and by no other"* is **not**. Pristine copies restored by `copyfile`, every file
-  **`md5`-verified identical** afterwards.
-- 🔴 **`test:ci` — `Jasmine: 2856 specs, 4 failures`, ALL FOUR `AIX-006 style vocabulary`, by name.**
-  ✅ **The clean floor.** The count reconciles exactly: **2849 + 7**, the seven jasmine specs this
-  session added to `tests/models/ProjectCreationWizard.test.ts`. ⚠️ The run took **~25 minutes**,
-  not the ~11 the older notes quote. `COMPOUND_EXIT=1`, which is what the clean floor also exits —
-  the summary line is the verdict.
-  ⚠️ **Honest scope**: its webpack bundle was built before the last two edits (the category string
-  and a doc comment). **No jasmine spec reads a template category** — checked by grep, both for
-  `EmbeddedTemplate.test.ts` and for the string across `tests/`.
-
-### 🔴 The mutant that survived: `indexOf(a) < indexOf(b)` PASSES WHEN `a` IS ABSENT
-
-The AC2 precondition spec asserted `order.indexOf('directoryExists') < order.indexOf('makeDirectory')`.
-A mutant that **deleted the `directoryExists` call outright** left it out of the array, so `indexOf`
-returned **-1**, and **`-1 < 0` is true**. The spec passed on code that never asked the question at
-all — which is precisely the thing it exists to detect.
-
-✅ **The fix is two lines**: `expect(order).toContain(…)` for **both** entries, *then* the ordering.
-🔴 **Check every ordering assertion in this phase for the same shape.** The rule: an `indexOf`
-comparison is an ordering test only once both operands are known to be present; until then it is a
-presence test that silently answers "yes" to absence. ⚠️ The earlier 10-mutant run missed it because
-that mutant *moved* the call rather than *removing* it — **a weaker mutant made a broken instrument
-look sound.**
-
-### 🔴 Gate trap met this session
-
-**A jest suite that fails TO RUN reads as a smaller, passing suite.** A straight apostrophe inside a
-single-quoted TS string made ts-jest reject the new spec: the run reported `1 failed, 1 passed` and
-**`Tests: 27 passed, 27 total`** — a green Tests line over 56 specs that never executed.
-**Reconciling the count against the previous run caught it; the exit code did not.**
+- `tests-unit/fb-005/` — **150 specs, 0 failures** across four files. Reconciles exactly:
+  **107 at HEAD + 43 new**, and the 107 was verified with `git show HEAD:` rather than trusted from
+  a note. ⚠️ **The s43 prompt said 97 and the s43 scope file said 107** — the scope file was right.
+- `npm run test:main` — **344 files / 5649 specs / 0 failures.** ⚠️ **Only +1 file / +43 specs is
+  mine**; the rest of the delta against s43's 342/5592 is two peer commits (SB-001, SB-002).
+- **14 mutants, 14 killed** — after the survivor above was found and its spec rebuilt. Run with
+  `-t` filtered to one spec, so *"killed by its own spec"* is measured and *"and by no other"* is
+  **not**. Pristine copies restored by `copyfile`, both files `md5`-verified identical.
+- `typecheck:editor` **0**; `typecheck:editor-tests` **0**; `typecheck:core-ui` **44, all `TS2307`
+  alias resolution, none ours** — unchanged.
+- `npm run tokens:css` — clean over **320** stylesheets. ⚠️ Blind to every ratio measured above.
+- 🔴 **`npm run test:ci` — `Jasmine: 2856 specs, 4 failures`, all four `AIX-006 style vocabulary`,
+  by name — the clean floor.** ⚠️ **2856 is s43's count unchanged, and that is correct**: T4 added no
+  jasmine spec and none renders `TemplateStep`. ~26 min. **The summary line is the verdict, never
+  `$?`.**
 
 ## Still open, owned by nobody
 
-- ✅ **The launcher's "Templates" tab** — **now phase 76's**, see above. Still inert as of this commit.
-- ✅ **Two category vocabularies in one picker** — **RULED and applied 2026-08-26**: the platform's
-  vocabulary is canonical everywhere; `hello-world` moved from `'Getting Started'` to `starter`.
-- 🆕 🔴 **`ProjectCreationWizard`'s comment says the provider is keyed on `isVisible`; the code
-  passes a constant `key`.** Harmless today — the component returns `null` when hidden, so React
-  unmounts it and state resets anyway — but the comment describes a mechanism that is not there,
-  and the next person to rely on it will rely on the wrong one.
+- 🆕 🔴 **The category vocabulary cannot express three of the eight 0.2.1 templates** — see above.
+- 🆕 ⚠️ **`--theme-color-border-default` at 1.07:1 / 1.15:1**, and an unselected `TemplateCard`
+  whose background equals its panel — see above.
+- ✅ **The launcher's "Templates" tab** — phase 76's. **Still inert as of this commit.**
 - 🔴 **No web `/templates` page.** Every other content type has one under `src/app/` — tutorials,
   replays, people, rfps, coaching, bench. Unowned, and it is the surface Richard's original ask
-  ("filter by categories, text search") most obviously describes.
-- 🆕 ⚠️ **`0017`'s `tutorial_bundle_has_solution` is unguarded** and correct only by constraint-name
-  order. Not fixable in place — the ledger checksums applied migrations.
-- ⚠️ **`body_tsv`, its GIN index and its trigger still serve no reader.** FB-024 made the live search
-  cover bodies, so the column's only prospective caller is FB-014. **Richard's call.**
+  most obviously describes. ⚠️ **It is also where queue item 3 would bite**: T4 did not fix
+  `websearch_to_tsquery`'s AND, it simply never reaches it. A server-side template search is born
+  with that bug.
+- 🆕 ⚠️ **`ProjectCreationWizard`'s comment says the provider is keyed on `isVisible`; the code
+  passes a constant `key`.** Harmless today, but it describes a mechanism that is not there.
+- 🆕 ⚠️ **`0017`'s `tutorial_bundle_has_solution` is unguarded** and correct only by
+  constraint-name order. Not fixable in place — the ledger checksums applied migrations.
+- ⚠️ **`body_tsv`, its GIN index and its trigger still serve no reader.** **Richard's call.**
 - ⚠️ **`benchList` parses the markdown of every visible post in the 200-thread window on every
   request.** Free at 3 posts; first thing to cache when the Bench has content.
-- ⚠️ **Node names that are stopwords** — `For Each`, `Not`, `And`, `Or`.
+- ⚠️ **Node names that are stopwords** — `For Each`, `Not`, `And`, `Or`. 🆕 **T4's matcher has the
+  same hazard in miniature**: its stopword rescue is **all-or-nothing**, so `for each` searches for
+  `each`. Harmless over titles and summaries, **not** harmless over a node catalogue — the line to
+  change first if that matcher is ever pointed at one.
 - ⚠️ **`Set Record Properties` → `Update Record` (2026-08-01) created a live name collision** with
   `noodl.byob.UpdateRecord`.
-- ⚠️ **A manually re-opened popout still covers the completion banner.** Inherent to popouts.
 - 🔴 **FB-002's selected pill is 1.16:1 against the panel** — NAT-008's shared `.FilterPill`, so the
-  people directory has the same invisible selection. ✅ Cheapest real fix: move the state onto the
-  **border**, already at 3.57:1 — **which is exactly what T3's template card does**, measured at
-  4.46:1 dark / 3.61:1 light. ⚠️ Measure in **both** themes.
+  people directory has the same invisible selection. ✅ **T4 re-measured the same shape on its own
+  new pill and got 1.16:1 dark / 1.11:1 light**, which is why nothing there depends on fill. The
+  cheapest real fix for FB-002 is the same one: move the state to the **border**.
 - ⚠️ Two small things FB-021 leaves undriven: the gated block is no longer given `canRedirect`, and
   the **mixed-group** case.
 - ⚠️ **The platform sends `firstReplyMinutes: null` on a thread with `replyCount: 1`.** FIX-025 §7's
@@ -243,7 +184,7 @@ single-quoted TS string made ts-jest reject the new spec: the run reported `1 fa
   which grades *sentences*, not rendering.
 - ⚠️ FB-022's crosshair settled by mechanism, not pixels; **one commit in three dropped focus,
   uncharacterised**; FB-016's auto-margin branch never exercised in a running app.
-- ⚠️ **`AskAboutNodeDialog.module.scss` uncommitted — eighteenth session.** Belongs to no session;
+- ⚠️ **`AskAboutNodeDialog.module.scss` uncommitted — nineteenth session.** Belongs to no session;
   Richard's call. Same for the phase-70/71/72 working files and the phase-50/68 notes.
 - The highlighter's disposal bug: a **selected** node whose element has gone is never removed from
   `selectedNodes`, so it is revisited and `remove()`d every frame.
@@ -260,10 +201,10 @@ single-quoted TS string made ts-jest reject the new spec: the run reported `1 fa
 
 ## Gate *traps* carried forward
 
-🔴 **Figures older than the s43/s42 sections are superseded; the traps below are not.**
+🔴 **Figures older than the s44/s43 sections are superseded; the traps below are not.**
 ✅ For reference, `test:platform` was **5 suites / 27 passed / 3 skipped / 0 failures** at s39.
 ⚠️ **`tokens:css` cannot see a contrast failure** — it checks that a `var(--…)` names a defined
-property, nothing more. It would have passed the 1.91:1 this phase shipped.
+property, nothing more. It would have passed every 1.1:1 ratio T4 measured.
 - 🔴 **`tsc -p packages/noodl-editor/tsconfig.tests-main.json` is NOT a gate and reports 31 errors**
   — unchanged, none ours.
 - 🔴 **No gate in this repo compiles `LessonItem.jsx` or `LessonLayerView.jsx`.** They are `.jsx`,
@@ -274,3 +215,7 @@ property, nothing more. It would have passed the 1.91:1 this phase shipped.
   The floor is **4**, all `AIX-006 style vocabulary`, **by name** — not the 10 in older notes.
   ⚠️ `AIX-011 criterion 7` is a 30 ms flake if it appears. Check the **pageout delta** (`vm_stat`
   twice, 5s apart), not swap-used, before starting; never raise `NOODL_TEST_TIMEOUT_MINUTES`.
+- ⚠️ **A jest suite that fails TO RUN reads as a smaller, passing suite** (s43). **Reconcile the
+  count against the previous run**; the exit code will not tell you. 🆕 **And reconcile it against
+  the source, not against a note** — the s43 prompt's 97 was wrong where the s43 scope file's 107
+  was right, and only `git show HEAD:` settled it.
