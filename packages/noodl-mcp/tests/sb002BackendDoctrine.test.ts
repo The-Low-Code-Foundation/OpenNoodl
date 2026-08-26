@@ -55,4 +55,37 @@ describe('SB-002 — the backend doctrine reaches the agent', () => {
     // The one-sentence model.
     expect(BACKEND_DOCTRINE_MD).toContain('A workflow orchestrates; a cloud function computes');
   });
+
+  it('carries the four rules SB-004 §7 measured on a deployed graph', () => {
+    // Each of these was green through BOTH authoring doors and broken once
+    // deployed, so nothing but this text stands between an agent and shipping
+    // one. Asserted claim by claim rather than on the heading, because a
+    // heading survives a rewrite that drops the rule under it.
+
+    // The shared cause — no editor connection out there.
+    expect(BACKEND_DOCTRINE_MD).toContain('isRunningLocally()');
+
+    // 1. Undeclared signal ports are dead (a 30s timeout, not an error).
+    expect(BACKEND_DOCTRINE_MD).toContain('"name": "out-ok", "plug": "output", "type": "signal"');
+    expect(BACKEND_DOCTRINE_MD).toContain('30-second timeout');
+
+    // 2. A signal does not promise the values beside it arrived.
+    expect(BACKEND_DOCTRINE_MD).toContain('A signal is not a promise');
+    expect(BACKEND_DOCTRINE_MD).toContain('=== undefined');
+    expect(BACKEND_DOCTRINE_MD).toContain('runOnValueChange');
+
+    // 3. A query fetches once, unfiltered, at graph-build time — and the fix
+    //    is wrong on a query that has no filter parameter (SB-004's own
+    //    correction: applied to an unfiltered one it read a claimed site as
+    //    unclaimed), so the counter-rule has to travel with the rule.
+    expect(BACKEND_DOCTRINE_MD).toContain('fetches once, unfiltered');
+    expect(BACKEND_DOCTRINE_MD).toContain('"runOnChange-collectionName": false');
+    expect(BACKEND_DOCTRINE_MD).toContain('Do the opposite for');
+    expect(BACKEND_DOCTRINE_MD).toContain('isEmpty');
+
+    // 4. `points to` widens instead of failing; the String fallback is named.
+    expect(BACKEND_DOCTRINE_MD).toContain('points to');
+    expect(BACKEND_DOCTRINE_MD).toContain('widens instead of failing');
+    expect(BACKEND_DOCTRINE_MD).toContain('plain id String');
+  });
 });

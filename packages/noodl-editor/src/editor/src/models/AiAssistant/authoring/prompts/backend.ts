@@ -21,6 +21,17 @@
  * beside `authoringDoctrine`, the channel LAS-007 measured as the one a model
  * actually reads (what arrives gets read; what must be fetched does not).
  *
+ * ## The four runtime rules
+ *
+ * SB-004 §7 deployed seven MCP-authored components to a real backend and drove
+ * them from the outside. Four defects turned up that BOTH authoring doors had
+ * passed, and they share a cause: a deployed backend has no editor connection,
+ * and much of the runtime's helpfulness is behind `isRunningLocally()`. They
+ * are in §"Four things a deployed graph does not do the way the canvas does"
+ * because this text is the first thing an agent authoring a cloud function
+ * reads; without them every such component is broken in at least one of four
+ * ways, and rule 1's failure mode is a thirty-second 504 rather than an error.
+ *
  * Same containment rule as `decomposition.ts`: this module imports NOTHING, so
  * `noodl-mcp/src/editor-deps.ts` can re-export it and both clients carry the
  * same bytes. The canonical prose model is
@@ -81,6 +92,50 @@ a workflow step calls its function IN PROCESS with no session, so a step-called 
 \`Allow Unauthenticated\` ticked (the panel rule cannot fix a failing step); and a function holding
 the system user/role nodes (\`noodl.cloud.createuser\`, \`noodl.cloud.addusertorole\`…) with no
 call rule falls back to that checkbox — which, ticked, is account creation for the open internet.
+
+## Four things a deployed graph does not do the way the canvas does
+
+Every one of these was found by running an MCP-authored cloud function on a real backend, and every
+one was green through both authoring doors first. They share a cause worth stating on its own: **a
+deployed backend has no editor connection**, and a surprising amount of the runtime's helpfulness is
+behind \`isRunningLocally()\`.
+
+**1. Declare a code node's custom signal outputs, or they are dead.** \`Outputs.done()\` is a call,
+and it resolves only if \`out-done\` is on the node as a \`signal\` port. The editor derives those
+ports by parsing the script and saves what it derived; the MCP door derives nothing. So an authored
+\`JavaScriptFunction\` needs them written out —
+\`"ports": [{ "name": "out-ok", "plug": "output", "type": "signal" }]\` beside the
+\`functionScript\`. Undeclared, the script throws mid-run, no Response node is reached, and the
+caller waits out the 30-second timeout. The built-in \`success\`/\`failure\` outcome outputs are
+declared on the node type and always work — which is why this is invisible until you name your own
+signal.
+
+**2. A signal is not a promise that the values beside it have arrived.** Values are queued per input
+name and drained a pass at a time, so a node triggered by one producer's signal can run before
+another producer's value reaches it. A code node fed by **two** producers must therefore guard:
+\`if (Inputs.items === undefined || Inputs.flag === undefined) return;\`. Returning is safe and
+cheap — \`runOnValueChange\` is ticked by default, so a late value re-runs the node by itself.
+**Acting on the incomplete first run is what cannot be undone.** Better still, prefer a chain to a
+fan-out, so every consumer's values are at least one hop older than its trigger. ⚠️ This is why
+\`receive\` is not the universal answer: it fires once every parameter output on the **Request node**
+has updated, and says nothing about when those values reach a node three hops away.
+
+**3. A \`Query Records\` node fetches once, unfiltered, when the graph is built.**
+\`collectionName\` and \`visualFilter\` are parameters, and setting either schedules a fetch. That
+first query has no \`qp-\` value, a rule with an undefined value is *dropped* rather than failed, and
+a dropped rule is no \`where\` — every row in the class, delivered on \`fetched\` before your request
+has done anything. For a query **with** a filter parameter, switch off the implicit triggers and
+leave \`Do\` unwired, so the filter value arriving is the only trigger:
+\`"runOnChange-collectionName": false, "runOnChange-querySettings": false\`. ⚠️ **Do the opposite for
+an unfiltered query** — with those boxes off and no load-time fetch, the \`isEmpty\` output is never
+flagged and reads \`true\` for a collection that has rows in it.
+
+**4. \`points to\` cannot narrow anything from a cloud function, and it widens instead of failing.**
+It is the one operator that needs the collection schema, the schema cache is never populated in the
+cloud runtime, and the translator's refusal is reported through the editor connection that is not
+there. The query then runs with no filter at all. **Use a plain id String and \`equal to\` for a link
+a cloud function has to filter on.** Pointers are fine to write and fine to read back; it is
+filtering on one that does not work here.
 
 ## Which one do I reach for?
 
