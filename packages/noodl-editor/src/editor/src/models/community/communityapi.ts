@@ -246,6 +246,15 @@ export type TemplateSummary = {
   category: string;
   version: number;
   fileCount: number;
+  /**
+   * FB-005 T5 — the terms, when the template came from somebody else.
+   *
+   * 🔴 **`null` MEANS "WE PUBLISHED IT", NOT "UNKNOWN".** The platform sets this only through the
+   * submission queue, so a null is the curated batch, whose licence we assert because we wrote
+   * the templates. A card rendering *"licence: unknown"* over our own shelf would be wrong in the
+   * one direction that matters.
+   */
+  attestedLicence: string | null;
   updatedAt: string;
 };
 
@@ -263,6 +272,13 @@ function readTemplateSummary(raw: unknown): TemplateSummary | null {
     category: typeof r.category === 'string' ? r.category : '',
     version: typeof r.version === 'number' ? r.version : 1,
     fileCount: typeof r.fileCount === 'number' ? r.fileCount : 0,
+    // 🔴 FB-005 T5. `null` is MEANINGFUL and is not "missing": the platform sets this only on a
+    // template that came from a third party through the submission queue, so a null means **we**
+    // published it and asserted its terms ourselves. A card that rendered "licence: unknown" for
+    // the curated batch would be wrong in the one direction that matters.
+    // ⚠️ An older platform sends no field at all, which reads as null here — indistinguishable,
+    // and harmlessly so: both mean "no third-party attestation to show".
+    attestedLicence: typeof r.attestedLicence === 'string' ? r.attestedLicence : null,
     updatedAt: typeof r.updatedAt === 'string' ? r.updatedAt : ''
   };
 }

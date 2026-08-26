@@ -759,14 +759,22 @@ every other respect or it measures the wrong constraint.
   (`nodegx_community_fb005t5`) because `resetSchema` is destructive and peers share the instance.
 - `tests/fb005-project-templates.test.ts` — **42, unchanged**, re-run after `0021` to prove the new
   migration applies cleanly and changed nothing on the shelf.
-- `tests-unit/fb-005/template-submission.test.ts` — **21 specs, 0 failures.**
+- `tests-unit/fb-005/template-submission.test.ts` — **20 specs, 0 failures**; the `fb-005`
+  directory totals **170** across five files.
+  🔴 **MEASURED, AND IT CORRECTS A FIGURE THIS SESSION ITSELF PUBLISHED EARLIER AS 21.**
 - **9 mutants, 9 killed.** ⚠️ One SURVIVED first: adding a fourth entry to `MANIFESTS` was invisible
   to every assertion, because the accept/reject decision cannot see it (a files map is keyed by
   **files**, so it never holds a bare `components` key) — but `looked` is **user-facing text** and
   nothing graded it. The finding was the unasserted field, not the mutant.
 - `typecheck:editor` **0**; `typecheck:editor-tests` **0**; platform `tsc --noEmit` **0**.
-- `npm run test:main` — **345 files / 5670 specs / 0 failures**; **+1 file / +21 specs, all mine**.
-- **Full platform suite — 61 files / 1500 tests / 0 failures.**
+- `npm run test:main` — **345 files / 5670 specs / 0 failures**; **+1 file, and 20 specs of it
+  are mine (counted, not inferred)**. ⚠️ s44's note recorded **5649**, which would make the
+  delta 21. `git log fe9bade4..HEAD -- packages/noodl-editor` shows **only this session's
+  commit** touched editor sources or tests, so the prior tree held **5650** and the inherited
+  figure was one short. **The s43 97-vs-107 discrepancy, recurring.** Reconcile a count against
+  the source, never against a note — including a note written this session.
+- **Full platform suite — 61 files / 1508 tests / 0 failures.** ✅ +8 against the first pass's
+  1500, which is exactly the four licence and four notification specs — reconciled, not assumed.
 
 ### 🔴 The third finding, and it is the most reusable: a new table and a new route owe THREE repo sweeps
 
@@ -794,6 +802,68 @@ gate), and asserts **nothing was stored** as well as the 404.
 ⚠️ **`review_note` is `platform-content`, not `minor-refused`** — it is written by a reviewer
 through a script and reachable from no route at all. The class is about who *can* write, and the
 honest answer there is nobody holding a session token.
+
+### ✅ T5 second pass — two rulings from Richard, and a defect the first pass shipped
+
+🔴 **THE LICENCE DIED AT PROMOTION, AND NO SPEC NOTICED.** `0021` made a submitter attest a
+licence, required it, checked it against a vocabulary and stored it — and `project_templates` had
+nowhere to put it, so `promoteTemplateSubmission` dropped it between the two tables. A third-party
+template reached the public shelf with **no discoverable terms at all**: P69's defect with an extra
+step in front of it, the question asked, answered, recorded and then binned.
+
+⚠️ **It was found by being asked what the vocabulary should be, not by a test.** Every spec passed —
+the submission stored the licence, the promotion published the template, and nothing asserted that
+the second still knew what the first had been told. 🔴 **A field is not carried just because both
+ends of the wire have one.**
+
+`0022` fixes it: `project_templates.attested_licence`, carried by `publishProjectTemplate` and
+supplied only by `promoteTemplateSubmission` — and surfaced on **all three readers**, the bundle
+most of all, because that is the moment the files land on somebody's disk and become theirs to ship.
+
+- 🔴 **`null` MEANS "PUBLISHED BY US", not "unknown".** The curated batch has no third party to
+  attest anything, and R-templates' ruling is that we assert the licence for what we wrote. So
+  `attested_licence is not null` is exactly the predicate for *"this came from outside"* — more
+  useful than a boolean, and the reason the column is nullable rather than backfilled with a name
+  somebody else's column was for.
+- ⚠️ **A republish TAKES the new licence where it leaves visibility alone.** The asymmetry is
+  deliberate: visibility is a decision about the shelf a republish must not silently reverse; the
+  licence is a fact about the **payload**, and a republish replaces the payload. Keeping the old
+  licence beside new files is the worst of both.
+
+**Ruling 1 — the vocabulary, 2026-08-26: `CC0-1.0`, `MIT`, `other`.** `Apache-2.0` dropped. The
+argument decides what may be added later: **a template is not a library.** Nobody depends on one;
+it is copied and becomes the installer's own code, so the test is *"can somebody build a business
+on this without reading anything?"* Apache-2.0's patent grant and NOTICE obligations are library
+machinery nobody honours on a starter project, and an unhonoured obligation on a public shelf is
+worse than one never offered. 🔴 **Copyleft is excluded on purpose and must stay excluded** — a GPL
+template would place its terms on the app somebody builds from it, inverting the shelf's promise.
+That is why the vocabulary is **closed** rather than free text.
+
+**Ruling 2 — Richard owns the queue (`richardosborne14`), and is now told.** §5.2's question is
+answered. 🔴 **A named owner who is never told and a black hole are the same thing in practice**, so
+`0022` adds a `template_submitted` notification carrying what arrived, how big, under what terms,
+and the exact command that reads it.
+
+- ⚠️ **It cannot fail the submission.** A person who successfully shared their project must not be
+  told it failed because our mail configuration is wrong. 🔴 **This is T1's finding available again
+  immediately, in the other direction** — there, a failed agent config destroyed a correctly
+  installed project because it was awaited in the same unguarded run.
+- 🔴 **The cost is stated rather than hidden**: a swallowed failure means a submission nobody hears
+  about. `promote-template-submission.ts list` stays the source of truth, and a spec asserts the
+  queue is readable with no notification sent.
+- ⚠️ **A constant, not an env var.** An unset env var makes the notification silently do nothing —
+  the black hole this closes. A wrong constant is greppable.
+- ⚠️ **Its own `template_submission_id` column, never a reuse of `submission_id`** (which means an
+  *assignment* submission): sharing one would let the biconditional pass while the foreign key
+  pointed into the wrong table.
+- ⚠️ **The enums are renamed and re-created, not extended** — `0008` measured that
+  `alter type … add value` followed by a use in the same transaction is refused, and `migrate.ts`
+  runs each file in one.
+
+⚠️ **Two more sweep registrations were owed and caught**: `project_template_licence_known` had no
+refusal code (the T2 sweep), and three editor fixtures had to gain the new field —
+`typecheck:editor` passed while `typecheck:editor-tests` would have caught it, which is the gate to
+run after changing a shared type.
 
 ### ⚠️ What T5 deliberately does NOT include
 

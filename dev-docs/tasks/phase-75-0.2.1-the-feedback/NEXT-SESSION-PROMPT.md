@@ -32,16 +32,34 @@ database names are not free; name yours for the task.
 | 2 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** ⚠️ Its corpus does not exist either — FB-014 measured the bench at **3 posts, 2 threads, 1,369 chars** |
 | 3 | **FB-005 T6** — star ratings | **M** | 🔒 **still needs a ruling.** ⚠️ **The recommendation's precondition is now closer, not met**: T5 can *accept* third-party templates, but none exists and nothing in the product can file one until item 1 lands |
 
+### ✅ Two rulings landed mid-session, and a defect they exposed
+
+1. **Licences: `CC0-1.0`, `MIT`, `other`** — `Apache-2.0` dropped. **A template is not a library**:
+   nobody depends on one, it is copied and becomes the installer's own code. Apache's patent/NOTICE
+   machinery is for libraries and nobody honours it on a starter project. 🔴 **Copyleft is excluded
+   on purpose and must stay excluded** — a GPL template would put its terms on the app somebody
+   builds from it. That is why the vocabulary is **closed**.
+2. **Richard owns the queue (`richardosborne14`), and is now told** — a `template_submitted`
+   notification naming what arrived, how big, under what terms, and the command that reads it.
+   ⚠️ It **cannot fail the submission**, and the cost of that is stated: a swallowed failure means a
+   submission nobody hears about, so `promote-template-submission.ts list` stays the source of truth.
+
+🔴 **AND ASKING THE FIRST QUESTION FOUND A DEFECT THE FIRST PASS HAD SHIPPED: the licence died at
+promotion.** `0021` required an attestation, checked it and stored it; `project_templates` had
+nowhere to put it, so a third-party template reached the shelf with **no discoverable terms**.
+Every spec passed — the submission stored it, the promotion published, and nothing asserted the
+second still knew what the first had been told. ⚠️ **A field is not carried just because both ends
+of the wire have one.** `0022` carries it, and `null` now means *"we published it"* rather than
+*"unknown"* — so `attested_licence is not null` is the "came from outside" predicate.
+
 ### 🔴 Three things now sitting with Richard
 
-1. 🆕 **NOBODY IS NAMED AS THE PERSON WHO CLEARS THE SUBMISSION QUEUE.** §5.2 has said so since the
-   design and T5 **cannot** settle it — a schema cannot name an owner. What T5 refused to do is
-   pretend the question is answered by shipping a queue with no reader: the submitter can see their
-   own row's status, and a decline cannot be recorded without a reason. **The bottleneck is visible
-   from the side that suffers it; it is not fixed.**
-2. 🆕 **THE LICENCE VOCABULARY IS A PRODUCT DECISION.** `MIT`, `Apache-2.0`, `CC0-1.0`, `other` —
-   where **`other` means *"I wrote this and I will agree terms with you"***, a real answer somebody
-   may honestly need to give. Richard may want different words; **it is one migration.**
+1. ✅ ~~Nobody owns the queue~~ — **ANSWERED: Richard, `richardosborne14`**, and wired.
+   ⚠️ **What is still true**: the bottleneck is now *visible* (the submitter sees their status, a
+   decline carries a reason, and the owner is emailed) but it is still **one person**. D8's
+   *"the board looks dead because Richard was busy"* is mitigated, not removed.
+2. ✅ ~~The licence vocabulary~~ — **RULED: `CC0-1.0`, `MIT`, `other`.** ⚠️ The reasoning is what
+   constrains future additions — see above; **copyleft must stay out.**
 3. **THREE OF THE EIGHT 0.2.1 TEMPLATES STILL HAVE NO HONEST CATEGORY.** `pixel-game`,
    `interactive-fiction` and `shared-canvas` are none of the six. ⚠️ **T5 inherited the vocabulary
    rather than fixing it**, which is the honest thing for a queue feeding that shelf — but it means
@@ -126,15 +144,19 @@ refusal.
   `nodegx_community_fb005t5`.
 - `tests/fb005-project-templates.test.ts` — **42, unchanged**, re-run after `0021` to prove the new
   migration applies cleanly and changed nothing on the shelf.
-- `tests-unit/fb-005/template-submission.test.ts` — **21 specs, 0 failures.**
-- `npm run test:main` — **345 files / 5670 specs / 0 failures.** ✅ **Reconciles exactly**: s44 was
-  344/5649, so **+1 file / +21 specs, all mine**.
+- `tests-unit/fb-005/template-submission.test.ts` — **20 specs**; `fb-005` totals **170**.
+- `npm run test:main` — **345 files / 5670 specs / 0 failures**; **+1 file, 20 specs mine**.
+  🔴 **s44's note said 5649, which would make it +21.** Only this session's commit touched
+  editor sources or tests (`git log fe9bade4..HEAD`), so the prior tree held **5650** and the
+  inherited figure was one short. ⚠️ **The s43 97-vs-107 shape, recurring — and this time the
+  wrong note was one I wrote earlier today.** Reconcile against the source, never a note.
 - **9 mutants, 9 killed.** ⚠️ One survived first, and the finding was **the unasserted field, not
   the mutant**: a fourth entry in `MANIFESTS` is invisible to the accept/reject decision (a files
   map is keyed by **files**, so it never holds a bare `components` key) but changes the `looked`
   list a refusal shows, which nothing graded.
-- **Full platform suite — 61 files / 1500 tests / 0 failures.** 🔴 **It was 3 RED on the first run
-  while my own file was 35/35 green** — see below.
+- **Full platform suite — 61 files / 1508 tests / 0 failures.** 🔴 **It was 3 RED on the first run
+  while my own file was 35/35 green** — see below. ✅ The +8 over the first pass is exactly the
+  four licence and four notification specs.
 - `typecheck:editor` **0**; `typecheck:editor-tests` **0**; platform `tsc --noEmit` **0**.
 - ⚠️ **`npm run test:ci` was NOT run this session** — a peer was live in the checkout throughout.
   T5 adds no jasmine spec and nothing renders a share dialog, so the expectation is s44's

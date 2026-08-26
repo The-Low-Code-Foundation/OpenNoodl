@@ -92,6 +92,33 @@ export function whyNeverShared(path: string): string {
   )?.why ?? 'Excluded from templates.';
 }
 
+/**
+ * The licences a submitter may attest, **ruled by Richard 2026-08-26**.
+ *
+ * 🔴 **A THIRD COPY OF THE VOCABULARY, AND IT IS HERE ONLY SO A DIALOG DOES NOT INVENT A FOURTH.**
+ * The platform's `0021` CHECK constraint is the gate and `ATTESTED_LICENCES` in
+ * `templatesubmissions.ts` is the platform's own copy; both refuse anything not on the list, and
+ * the route's 400 names the permitted values. So this array cannot make an illegal submission
+ * legal — what it does is let the editor draw the right radio buttons instead of a free-text box.
+ *
+ * ⚠️ **If these ever disagree, the platform wins and the user sees a refusal naming the list.**
+ * That is a worse experience than agreement but not a broken one, which is the property that makes
+ * a third copy affordable here where it would not be for a rule that decides where files land.
+ *
+ * 🔴 **The reasoning, because it decides what may be added:** a template is not a library — nobody
+ * depends on one, it is copied and becomes the installer's own code. `CC0-1.0` leaves them owing
+ * nothing; `MIT` is for an author who wants their notice kept; `other` means *"I wrote this and I
+ * will agree terms with you"*. `Apache-2.0` was dropped (patent/NOTICE machinery nobody honours on
+ * a starter project), and **copyleft is excluded on purpose** — a GPL template would put its terms
+ * on the app somebody builds from it. ⚠️ `CC0-1.0` is first because a UI renders the recommended
+ * answer first.
+ */
+export const SHAREABLE_LICENCES = [
+  { value: 'CC0-1.0', label: 'CC0 — anyone can do anything with it, no attribution needed' },
+  { value: 'MIT', label: 'MIT — anyone can use it, keeping my copyright notice' },
+  { value: 'other', label: 'Something else — I wrote it and I will agree terms with you' }
+] as const;
+
 /** The half of `@noodl/platform`'s filesystem this module reads. Narrow, so a spec can supply it. */
 export interface TemplateReadFs {
   listDirectory(path: string): Promise<{ name: string; fullPath: string; isDirectory: boolean }[]>;

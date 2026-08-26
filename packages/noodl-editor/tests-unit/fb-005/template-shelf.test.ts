@@ -94,6 +94,10 @@ describe('templateItemFor', () => {
     category: 'data-app',
     version: 3,
     fileCount: 41,
+    // FB-005 T5. ⚠️ `null` because this fixture is a CURATED row — one we published — and null is
+    // what the platform stores for those. A third-party template carries the licence its
+    // submitter attested.
+    attestedLicence: null,
     updatedAt: '2026-08-26T00:00:00.000Z'
   };
 
@@ -212,6 +216,7 @@ describe('PlatformTemplateProvider.list', () => {
                 category: 'starter',
                 version: 1,
                 fileCount: 2,
+                attestedLicence: null,
                 updatedAt: ''
               }
             ]
@@ -602,6 +607,11 @@ describe('CommunityApiClient.templates', () => {
       category: 'starter',
       version: 2,
       fileCount: 9,
+      // 🔴 FB-005 T5, and this assertion is worth more than it looks: the PAYLOAD above carries no
+      // `attestedLicence` field at all — it is an older platform's response — and the reader turns
+      // that into `null` rather than `undefined`. Both mean "no third-party attestation to show",
+      // which is why the two are safe to conflate here and nowhere that decides visibility.
+      attestedLicence: null,
       updatedAt: 'z'
     });
   });
