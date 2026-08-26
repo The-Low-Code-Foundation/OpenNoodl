@@ -65,9 +65,21 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   ⚠️ Acceptance 5 is met on the row, not the mail (no SMTP in the run); acceptance 2's "admin path"
   is the REST API as the owner, because SB-005's panel does not exist yet — see §7.
 
-- ⬜ **SB-005** — the admin panel (editor, image upload, theme, live preview via realtime).
+- ⬜ **SB-005** — [the admin panel](SB-005-THE-ADMIN-PANEL.md) — **SCOPED s5, not built.** Five
+  surfaces in build order, §1 measured against a live MCP server from `src`.
   ✅ **SB-004 F7 is handled in the backend** by `claimSite`; SB-005 owns its *front* — a first-run
   screen that takes the setup token, signs the owner up, and calls it.
+  🔴 **The claim this task owes** is §7's closing warning: acceptance 2 is currently held on a
+  stand-in (the REST API as the owner), so no spec in this phase can yet tell a panel that sets the
+  draft ACL from one that does not.
+  ✅ **The browser vocabulary has everything the panel needs** (127 types) and two things that looked
+  like blockers are not: `Page` is missing from every catalog listing an author would use, but the
+  write door **refuses** a page component without it by name (`page-without-page-node`, with a *did
+  you mean*), so the cost is one round-trip; and `CloudFunction2`'s dynamic `in-`/`out-` parameters
+  are registered on the **parameter** path as well as the wire path (`nodescope.ts:203`), so this is
+  *not* the browser twin of F10 and doctrine rule 1 must not be over-applied to it.
+  ⚠️ **Only rules 2 and 3 cross the runtime boundary unchanged**; rule 4 is assumed-not-applicable
+  and **unmeasured** — SB-005 §2 says do not record it as answered.
 - ⬜ **SB-006** — the public site
 - ⬜ **SB-007** — it ships as a template (via FB-005's registry — consume, don't re-spec).
   **Relayed from the FB-005 T3 session, 2026-08-26 (uncommitted in the shared checkout at relay
@@ -183,3 +195,20 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   in noodl-editor source, and editing it puts `test:ci` back in scope — a peer held the machine with
   a live editor stack. First item for the next session; the text is already written in the reference
   doc and can be lifted.
+- **s5 (2026-08-26)** — **s4's deliberate omission CLOSED** (`8ce12a3c`): `BACKEND_DOCTRINE_MD` now
+  carries §"Four things a deployed graph does not do the way the canvas does", lifted from the
+  reference doc, including the counter-rule SB-004's own correction turned on (rule 3's fix is wrong
+  on a query with no filter parameter). `sb002BackendDoctrine` gained a claim census over the four
+  rules, asserted claim by claim rather than on the heading; **two mutants graded** (inverting the
+  unfiltered-query counter-rule, dropping the declared-ports example). ⚠️ Worth knowing: the
+  pre-existing verbatim-over-stdio spec passes under **both** mutants — it measures transport, not
+  content. Surface budget untouched (`toolDisclosure`: 8255 tokens / 20 tools, 25 under).
+  Then **SB-005 scoped** (see its file); nothing authored.
+  Final: noodl-mcp **60 / 697**, `typecheck:mcp` and `typecheck:editor` both exit 0 (run unpiped —
+  a piped `$?` is `tail`'s).
+  ⚠️ **`test:ci` NOT run — a peer's editor stack held the machine for the whole session** (webpack +
+  `start-electron-dev.js`, still live at close). The debt is **bounded, not discharged**: nothing in
+  `noodl-editor` imports `prompts/backend.ts` — its only consumer is `noodl-mcp/src/editor-deps.ts` —
+  so the sole path from this change to `test:ci` is compilation, which `typecheck:editor` covers. That
+  is a bound on the risk, not a pass. **Next session should ride a solo window before calling the
+  editor half proven**, exactly as s1→s2 did.
