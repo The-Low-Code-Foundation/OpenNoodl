@@ -58,8 +58,14 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   ✅ **F6 — one plan can hold a helper AND its caller**: staging resolves an unapplied sibling,
   measured beside a known-firing refusal. ⚠️ A green authoring run is still not evidence the
   invariant holds: the door returns `dynamic-port-skipped` over exactly the ACL parameters, and says
-  so. Left: **the real backend run, and nothing else.**
-- ⬜ **SB-005** — the admin panel (editor, image upload, theme, live preview via realtime)
+  so. 🔴 **F7 — nothing creates the `admin` role that every rule in §3/§4 names**; the backend-admin
+  *token* is a different principal, `role:<name>` is a `_Role` row, and `signup` cannot grant one —
+  so the template as specified is un-authorable until it provisions. Left: **the real backend run,
+  and nothing else** — scoped in §7a (harness exists; `reconstructLegacyComponent` is pure, so the
+  run can drive the components the MCP door wrote rather than twins).
+- ⬜ **SB-005** — the admin panel (editor, image upload, theme, live preview via realtime).
+  🔴 **Inherits SB-004 F7**: this is where the `admin` role gets provisioned (create the role, put
+  the owner in it), or nothing in the template can write anything.
 - ⬜ **SB-006** — the public site
 - ⬜ **SB-007** — it ships as a template (via FB-005's registry — consume, don't re-spec).
   **Relayed from the FB-005 T3 session, 2026-08-26 (uncommitted in the shared checkout at relay

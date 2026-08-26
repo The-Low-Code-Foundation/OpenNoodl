@@ -127,6 +127,13 @@ the record of who wrote in from being cleared through the API at all.
 Function `call` rules: `publishPage` and `duplicatePage` → `role:admin`; `submitContactForm` →
 `public`.
 
+🔴 **And the template must PROVISION `admin`, because nothing else does** — see §6 F7. `role:admin`
+is a row in `_Role`, not a built-in, and the backend-admin *token* is a different principal
+entirely. Two calls with the admin credential do it — `POST /admin/roles {name:'admin'}`, then
+`POST /admin/roles/:name/users {userId}` — and until they have run, every rule in this table and
+every ACL in §3 grants nobody. This belongs in the template's first-run path (SB-005), and §7 should
+assert the un-provisioned state refuses, so the step cannot be quietly dropped.
+
 ## 5. The functions, in the §1 composition idiom
 
 **Endpoints** — `/#__cloud__/…` with a `noodl.cloud.request` node. Their interface is the Request
@@ -268,6 +275,28 @@ Measured s3, and it matters for SB-005/006, which are helpers-plus-callers all t
 `details.newErrors`; `stage_plan_operation` returns only `details.readable` prose
 (`planTools.ts:795-801`). The code is in the line, not in a field.
 
+**F7 — 🔴 nothing creates the `admin` role, and every rule in §3 and §4 names it.**
+Read from source s3 while scoping §7's run, and it is a hole in *this design*, not in the backend.
+
+`role:<name>` and backend-admin authority are two different things that share a word.
+`principal.kind === 'admin'` is the **credential** — the bearer token minted into
+`<dataDir>/secrets.json` — and it bypasses everything: `canAccessRecord` returns `true` for it
+(`model.ts:706`), `checkClp` lets it through (`:541`, `:615`), and `aclFor` returns `undefined` for
+it (`state.ts:288`). `role:admin`, which is what §3's ACLs and §4's table actually say, is a row in
+`_Role` joined to a user through `_Join_users__Role` (`state.ts:305-320`). **Nothing seeds it.**
+There is no built-in role of any name, and `signup` in `security.json` is a rule about *who may
+sign up* (`model.ts:278`, `:457-462`) — it cannot grant one.
+
+So a fresh deploy of this template, exactly as §4 specifies it, is **un-authorable**: no user holds
+`admin`, so `Page.create: 'role:admin'` refuses the site owner, and the `role:admin` ACL on a draft
+grants nobody. Only the admin *token* can touch anything, and that is not a thing an admin panel
+holds. The template therefore needs a **provisioning step** — create the role, put the owner in it —
+which §2 and §4 do not currently have.
+
+⚠️ **Scope of this claim.** It is derived from source, not yet from a run: what is measured is that
+no seeded role exists and that `signup` cannot create one. The refusal itself is a §7 assertion, and
+a good one — it fails in exactly the direction that would otherwise read as "the permissions work".
+
 ## 6a. What authoring it actually taught (s2)
 
 Both doors, on the real server: `create_component` for each component, and `create_plan` → two
@@ -346,6 +375,41 @@ questions.
    never through `store.resolve` (SB-001's trap).
 7. Verification of 2–4 runs with **`devOpen: false`** over a real SQLite engine (F2). A run with
    `devOpen: true` is not evidence for any ACL claim and must not be recorded as one.
+8. **The run drives the components this task authored**, reconstructed from disk — not hand-written
+   twins of them. See §7a: a twin bundle would measure a copy and leave the artefact untested.
+
+## 7a. How §7 runs (scoped s3, not yet built)
+
+The harness exists; the bridge into it is the part that needed finding.
+
+- **Boot.** `new BackendService({ dataDir, port: 0, … })` then `await service.start()`; the URL is
+  `started.listen.url`. `allowEphemeral` **defaults to `false`** (`config.ts:81`) and no test in the
+  suite overrides it, so passing nothing already yields a real SQLite engine. Write
+  `<dataDir>/security.json` with `devOpen: false` **before** `start()`, and assert
+  `started.security.enforced === true` — that assertion is what makes F2's trap visible rather than
+  assumed. HTTP helpers: `nodegx-backend/tests/helpers/http.ts` (`httpClient`, `adminHeaders`).
+- **The closest working precedent is `tests/cloud-system-roles.test.ts`** — `devOpen: false`, a cloud
+  function called over HTTP, and a row that a reader 404s on until a role is granted. It is the
+  template to copy, including its role-granting (which F7 says this template needs anyway).
+- 🔴 **Deploy the REAL components.** A cloud function is registered by dropping a
+  `*.workflow.json` bundle (`{components, settings, metadata}`) into `<dataDir>/workflows/`, where a
+  component is the **legacy nested `graph.roots` shape** — not the v2 split files the MCP door
+  writes. The converter is pure and already re-exported for exactly this:
+  `reconstructLegacyComponent` / `unflattenNodes` (`noodl-editor/src/editor/src/io/ProjectImporter.ts:82`,
+  `:185`), re-exported by `noodl-mcp/src/editor-deps.ts:250-258`, with zero runtime imports — no
+  `ProjectModel`, no `NodeLibrary`, no Electron. `noodl-mcp/tests/roundtrip.test.ts` is a working
+  template for calling it from plain jest. So §7 can author through the MCP door and then run *what
+  the door wrote*, which is the difference between testing this task's output and testing a
+  paraphrase of it (`measure-the-artefact-before-believing-the-task-file`).
+  ⚠️ `visualRoots` is a fixed point through that converter (`editor-deps.ts:243-249`) — irrelevant
+  for cloud components, which have no visual tree, but do not reuse the bridge for a page.
+- ⚠️ **Two gaps the precedents do not cover**, so budget for them: no existing backend test puts a
+  Record node (`NewDbModelProperties`/`SetDbModelProperties`/`DbCollection2`) inside a cloud
+  function at all, and none drives a project directory end to end. Both are new ground, and the
+  first is where §6b's Pointer question (finding 2) gets settled.
+- ⚠️ A cloud function runs with `masterKey` (`service.ts:490-500`), so **its own writes bypass both
+  layers**. The invariant is therefore tested from the *outside*: an anonymous and a non-admin
+  caller reading `Page`/`Section` over HTTP, never the function's own view.
 
 ## 8. Session log
 
@@ -362,7 +426,10 @@ questions.
   **F6**: a plan can hold a helper and its caller, measured beside a known-firing refusal arm.
   SB-009 gained its other half: the same helper, checked as a node type and unchecked as a
   parameter, asserted by diagnostic **code** in one file. noodl-mcp 60 suites / **694** green,
-  `typecheck` clean. §7 is untouched — nothing here is evidence for the invariant.
+  `typecheck` clean. §7 is untouched — nothing here is evidence for the invariant. Also **F7** (the
+  `admin` role nothing creates, read from source) and **§7a**, which scopes the real run: the
+  harness exists, and `reconstructLegacyComponent` is pure enough to feed it the components the MCP
+  door actually wrote rather than twins of them.
   ⚠️ **One correction made mid-session:** §5 first recorded, from `runtasks.ts:393-408`, that a task
   template receives its item *only* through `Component Object`. Reading on to `:419-432` showed the
   item is also pushed onto matching **Component Inputs**, which is what the `data-run-tasks-batch`
