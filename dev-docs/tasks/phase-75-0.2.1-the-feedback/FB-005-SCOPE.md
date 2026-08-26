@@ -663,6 +663,148 @@ token touches every surface in the editor. **Richard's.**
 
 ---
 
+## 4d. 🟡 T5, session 45 — the queue is built and specced; **the button is not**
+
+**Read the state honestly before anything else: AC5 is met and measured, and "Share as template"
+is not yet a thing a person can click.** Everything a share needs exists and is graded — the
+table, the route, the capability, the promotion caller, the editor-side collector and the client
+method. What is missing is the dialog and the menu entry that call `shareAsTemplate`. 🔴 **That is
+this phase's own "build the caller" finding, left open deliberately rather than closed badly**: a
+five-field dialog written blind and never driven would be the *appearance* of a caller, and the
+one thing worse than an unreachable mechanism is one that looks reachable.
+
+**What shipped in `nodegx-community`:**
+
+- **`0021_fb005_template_submissions.sql`** — `project_template_submissions`, a **separate table**,
+  because `0020`'s header said it would be: *"so that 'submitted' and 'published' cannot be one
+  column somebody flips by accident."* It has the `submitter_account_id` that `project_templates`
+  deliberately refuses to have, and R-templates' enforcement survives intact — the write route
+  reaches this table and nothing it calls can reach the shelf.
+- **`src/lib/templatesubmissions.ts`** — submit, list-your-own, the reviewer's queue, the bundle a
+  reviewer reads, promote, decline, withdraw. Path safety **imported** from `tutorialbundles.ts`,
+  third caller.
+- **`POST`/`GET /api/v1/community/templates/submissions`** — `submitTemplate` is a **checked**
+  write capability, so an org-owned minor reads `notFound()`, and `d15-visibility.test.ts`
+  quantifies over the list so it was governed the day it was added.
+- **`scripts/promote-template-submission.ts`** — `list`, `show`, `promote`, `decline`. The half a
+  queue is useless without.
+
+**What shipped in OpenNoodl:**
+
+- **`models/template/shareAsTemplate.ts`** — the seam, behind two narrow host interfaces so plain
+  Node jest can drive it. `createFromTemplate.ts`'s arrangement, in the opposite direction.
+- **`CommunityApiClient.submitTemplate` / `.submissions`** — named for what they do. There is
+  deliberately **no `publishTemplate`**, and a spec asserts its absence.
+
+### 🔴 The finding that matters most: a share would have uploaded `.mcp.json`
+
+`readBundleDirectory` on the platform says of itself *"skips nothing silently"*, which is right for
+a publisher pointed at a prepared directory. **"Share as template" points at the project somebody is
+working in right now.** The editor writes `.mcp.json` into every project it creates or opens, that
+file holds **absolute paths into the author's home directory and into their install of NodeGX**, and
+`agentConfig.ts` already adds it to the project's own `.gitignore` with the reason written out — a
+committed one *"arrives on a colleague's laptop as a registration that points at nothing."*
+
+A template is that failure **with an audience**: uploaded to a public shelf and written onto the
+disk of everybody who installs it. `NEVER_SHARED` withholds it, along with `.git/`, `.nodegx/`,
+`node_modules/`, `.env*` and `.DS_Store`, and ⚠️ **every exclusion is REPORTED rather than dropped
+silently** — a hazard list is a hypothesis, so a person must be able to see what stayed behind.
+
+### 🔴 The second finding: the alphabetical constraint-order defect, reproduced in `0021`
+
+`0020` found it and wrote it down: postgres evaluates a table's CHECK constraints **in constraint-
+NAME order**, so the rule that fires first is not the rule the caller broke. **It happened again,
+in the new table, in this session** — `..._review_timestamp` sorts before `..._status_known`, and
+written symmetrically the timestamp rule refuses an unknown status too. Somebody who typed
+`'approved'` was told their review **timestamp** was wrong: a true statement about a rule they had
+not broken.
+
+✅ Fixed with `0020`'s guard in a different costume — phrase the rule so an unknown status falls
+through to the constraint that owns it. 🔴 **An assertion that the insert merely THREW would have
+been green on it.** It was caught because the spec asserts `err.constraint` by name, which is
+TUT-004's rule and now has three instances in this one family.
+
+⚠️ **And a third, on the spec itself**: the control for that fix — an `accepted` row with no
+timestamp — first reported `..._published_link`, which sorts earlier still. A row must be valid in
+every other respect or it measures the wrong constraint.
+
+### Decisions taken inside T5, each reversible and each stated
+
+1. 🔴 **A licence is a REQUIRED field of the act**, not a checkbox in one client's UI, so a second
+   client cannot skip it. §5's *"the licence question returns the moment T5 lands"* is answered
+   rather than parked. ⚠️ **Not a boolean** — `0020` decision 4's argument against an always-true
+   field applies exactly. `MIT`, `Apache-2.0`, `CC0-1.0`, `other`, where **`other` means *"I wrote
+   this and I will agree terms with you"*** — a real answer, better recorded than coerced into MIT
+   by a form with no honest option. **The vocabulary is Richard's to change; it is one migration.**
+2. **Promotion is a SCRIPT, not an admin route.** AC5 says *"until Richard promotes it"*, and the
+   cheapest honest reading is that promotion needs a **database credential**. An admin route needs
+   an authorisation model nobody has decided.
+3. 🔴 **Promotion refuses a slug already on the shelf** unless told to replace. `publishProjectTemplate`
+   **upserts**, so the obvious implementation would let a stranger overwrite a live template by
+   proposing its name — and the shelf would look unchanged in the list. Both arms specced.
+4. **The submitter can read their own queue**, and a decline **cannot be recorded without a reason**
+   (a biconditional CHECK). D8 ruled moderation reactive because *"an approval queue only one person
+   can clear is a bottleneck"*; a template is code that runs on somebody else's machine rather than
+   speech, so T5 builds the queue anyway — and the obligation that comes with it is that the
+   bottleneck is **visible from the side that suffers it**.
+5. **The route's byte cap is 8 MiB, not `MAX_WRITE_BYTES`.** The wrapper's 64 KiB default was
+   derived from an RFP response message; a project is not a message, and a real template would have
+   been refused with a 413 naming a number nobody could derive from the product. ⚠️ The two caps do
+   **not measure the same quantity** — `pg_column_size` is compressed storage, this is JSON bytes on
+   the wire — so matching the numbers is a stated approximation, not a shared constant.
+
+### Gates, session 45
+
+- `tests/fb005-template-submissions.test.ts` — **35 specs, 0 failures**, against a private database
+  (`nodegx_community_fb005t5`) because `resetSchema` is destructive and peers share the instance.
+- `tests/fb005-project-templates.test.ts` — **42, unchanged**, re-run after `0021` to prove the new
+  migration applies cleanly and changed nothing on the shelf.
+- `tests-unit/fb-005/template-submission.test.ts` — **21 specs, 0 failures.**
+- **9 mutants, 9 killed.** ⚠️ One SURVIVED first: adding a fourth entry to `MANIFESTS` was invisible
+  to every assertion, because the accept/reject decision cannot see it (a files map is keyed by
+  **files**, so it never holds a bare `components` key) — but `looked` is **user-facing text** and
+  nothing graded it. The finding was the unasserted field, not the mutant.
+- `typecheck:editor` **0**; `typecheck:editor-tests` **0**; platform `tsc --noEmit` **0**.
+- `npm run test:main` — **345 files / 5670 specs / 0 failures**; **+1 file / +21 specs, all mine**.
+- **Full platform suite — 61 files / 1500 tests / 0 failures.**
+
+### 🔴 The third finding, and it is the most reusable: a new table and a new route owe THREE repo sweeps
+
+**`fb005-template-submissions.test.ts` was 35/35 green while three repo-wide sweeps were red.** A
+new artefact in `nodegx-community` must also be registered in:
+
+| sweep | what it demands |
+|---|---|
+| `db-schema-drift` | the table declared in the **Drizzle mirror** (`src/db/schema.ts`) |
+| `uni005-data-inventory` | every free-text column **classified** — and a `minor-refused` row needs an **executed probe**, not a classification |
+| `uni011-mirror-api` | a **D15 verdict recipe** for every route on disk |
+
+✅ **AC6 named the census explicitly and I still missed it.** The lesson is not "read the AC" — it
+is **run the whole suite, not the file you wrote**. A green new spec beside three red sweeps is the
+exact shape of work that looks finished.
+
+🔴 **And the probe is the sharpest of the three.** `uni005` does not accept a classification; it
+demands the claim be **executed**. ⚠️ Mine is **the only probe in that file whose mechanism is CODE
+rather than a constraint** — the database would happily accept a pupil's submission row, because
+nothing in `0021` mentions `accounts.kind` and adding such a constraint would be inventing a rule
+D15 already expresses. So it drives **the real route**, with a **`read_only`** minor (an `off` one
+is refused by `communityGate` *before* the capability is consulted, which would measure a different
+gate), and asserts **nothing was stored** as well as the 404.
+
+⚠️ **`review_note` is `platform-content`, not `minor-refused`** — it is written by a reviewer
+through a script and reachable from no route at all. The class is about who *can* write, and the
+honest answer there is nobody holding a session token.
+
+### ⚠️ What T5 deliberately does NOT include
+
+- 🔴 **The UI.** See the top of this section. The seam is built and graded; the dialog and the menu
+  entry are not, and **nothing in the product files a submission today.**
+- **No admin surface.** `listPendingTemplateSubmissions` has no route — a page listing strangers'
+  unpublished projects needs visibility rules got right before it has a user.
+- **No total cap on pending rows per account.** The partial unique index stops the same person
+  filing the same slug twice; a distinct slug each time is one character apart. At 8 MiB a row that
+  is a storage cost, bounded only by the rate limit. **Recorded as a gap, not fixed.**
+
 ## 5. What is still Richard's to rule — narrowed by the sweep
 
 Two of the task file's four questions are now answered by precedent rather than by decision:

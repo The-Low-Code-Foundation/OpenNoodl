@@ -99,8 +99,8 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 
 ## Tier 4 — new scope (rulings landed 08-22; scoping docs first)
 
-- 🟡 **FB-005** — templates, **curated first** (L+) — **T1–T4 done, T5 next** — **R-templates ruled 08-22**: share files a
-  submission, Richard publishes. G3 stays shut; licences stay parked. ✅ **Scope doc done s39**
+- 🟡 **FB-005** — templates, **curated first** (L+) — **T1–T4 done; T5 BUILT BUT UNREACHABLE** — **R-templates ruled 08-22**: share files a
+  submission, Richard publishes. G3 stays shut. 🔴 **Licences are NO LONGER parked** — T5 makes an attested licence a required field of the act, because a submission is third-party code (P69). ⚠️ **T5's remaining half is the BUTTON**: the queue, the route, the capability, the promotion script and the editor seam all exist and are graded, and **nothing in the product can file a submission** until a dialog calls `shareAsTemplate`. ✅ **Scope doc done s39**
   ([FB-005-SCOPE.md](FB-005-SCOPE.md)); ✅ **T1 CLOSED s40, AC1 met** — the zip transport and its
   three providers are deleted, `newProject` has one branch and it goes through `templateRegistry`,
   and `tests-unit/fb-005/template-install-path.test.ts` (27 specs, 6 mutants killed) grades the

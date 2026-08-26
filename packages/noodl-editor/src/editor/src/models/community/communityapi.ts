@@ -1151,6 +1151,31 @@ export type AskAccepted = { threadId: string; postId: string; pointsAwarded: num
 /** `POST /api/v1/bench/threads/:id/posts`, 201. */
 export type AnswerAccepted = { postId: string; pointsAwarded: number };
 
+/**
+ * A row of `GET /api/v1/community/templates/submissions` — FB-005 T5.
+ *
+ * ⚠️ **`reviewNote` is nullable and is the point of the row.** A decline that reached nobody is
+ * the failure mode D8 names; this field is how it reaches somebody.
+ *
+ * 🔴 **There is no payload and no reviewer here, and neither is an omission.** The platform's
+ * mapper drops both — who reviewed a submission is an internal fact, and the files are already on
+ * the submitter's own disk. A mirror that typed fields the API does not send is a client one
+ * release away from disagreeing with the web, which is the thing D14 made this file to prevent.
+ */
+export type TemplateSubmissionRow = {
+  id: string;
+  proposedSlug: string;
+  title: string;
+  summary: string;
+  category: string;
+  attestedLicence: string;
+  status: string;
+  fileCount: number;
+  reviewNote: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+};
+
 export type ClientOptions = {
   /**
    * Where the platform lives — `community.nodegx.io`.
@@ -1930,6 +1955,54 @@ export class CommunityApiClient {
     );
     if (read.outcome !== 'ok') return read;
     return readBundlePayload(read.value?.item);
+  }
+
+  /**
+   * FB-005 T5 — file a template SUBMISSION. **This does not publish anything.**
+   *
+   * 🔴 **THE NAME IS `submitTemplate` AND NOT `publishTemplate`, AND THAT IS LOAD-BEARING RATHER
+   * THAN PEDANTIC.** The platform has no route this editor can reach that publishes a template:
+   * `POST /templates/submissions` writes a row in a separate table, and promotion is a script run
+   * with a database credential. A method called `publishTemplate` would be a promise this client
+   * cannot keep, and the first caller to believe it would tell somebody their template was live.
+   *
+   * ⚠️ **`status` COMES BACK AND IS ALWAYS `'pending'`.** It is typed rather than dropped because
+   * it is the API saying, in the response to the act, that the act was not a publication — the one
+   * thing a person must not conclude from a 201 here.
+   *
+   * ⚠️ The client still decides nothing. Every rule — the slug's shape, the category and licence
+   * vocabularies, the manifest, text-only, the size — belongs to `0021` and to the route, and
+   * `shareAsTemplate.ts` checks the ones worth checking before an upload so a refusal arrives
+   * before the wait rather than after it.
+   */
+  submitTemplate(input: {
+    proposedSlug: string;
+    title: string;
+    summary: string;
+    category: string;
+    attestedLicence: string;
+    files: Record<string, string>;
+  }): Promise<Write<{ submissionId: string; status: string }>> {
+    return this.post<{ submissionId: string; status: string }>(
+      '/api/v1/community/templates/submissions',
+      input
+    );
+  }
+
+  /**
+   * FB-005 T5 — **your own** submissions and what became of them.
+   *
+   * 🔴 This is the half that keeps the queue from being a black hole. D8 ruled moderation reactive
+   * because *"an approval queue only one person can clear is a bottleneck that grows with
+   * success"*; T5 builds one anyway, because a template is code that runs on somebody else's
+   * machine rather than speech — so the obligation that comes with it is that a submitter can see
+   * whether theirs was looked at, and read the reason if it was declined.
+   *
+   * ⚠️ Signed out this is an empty list rather than a 401, which is the platform's choice and not
+   * a failure to authenticate: reading works signed out everywhere on this surface.
+   */
+  submissions(): Promise<Read<{ items: TemplateSubmissionRow[] }>> {
+    return this.get<{ items: TemplateSubmissionRow[] }>('/api/v1/community/templates/submissions');
   }
 
   threshold(): Promise<Read<ThresholdResponse>> {
