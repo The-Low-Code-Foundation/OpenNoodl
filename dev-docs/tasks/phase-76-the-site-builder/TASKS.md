@@ -65,21 +65,41 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   ⚠️ Acceptance 5 is met on the row, not the mail (no SMTP in the run); acceptance 2's "admin path"
   is the REST API as the owner, because SB-005's panel does not exist yet — see §7.
 
-- ⬜ **SB-005** — [the admin panel](SB-005-THE-ADMIN-PANEL.md) — **SCOPED s5, not built.** Five
-  surfaces in build order, §1 measured against a live MCP server from `src`.
-  ✅ **SB-004 F7 is handled in the backend** by `claimSite`; SB-005 owns its *front* — a first-run
-  screen that takes the setup token, signs the owner up, and calls it.
-  🔴 **The claim this task owes** is §7's closing warning: acceptance 2 is currently held on a
-  stand-in (the REST API as the owner), so no spec in this phase can yet tell a panel that sets the
-  draft ACL from one that does not.
-  ✅ **The browser vocabulary has everything the panel needs** (127 types) and two things that looked
-  like blockers are not: `Page` is missing from every catalog listing an author would use, but the
-  write door **refuses** a page component without it by name (`page-without-page-node`, with a *did
-  you mean*), so the cost is one round-trip; and `CloudFunction2`'s dynamic `in-`/`out-` parameters
-  are registered on the **parameter** path as well as the wire path (`nodescope.ts:203`), so this is
-  *not* the browser twin of F10 and doctrine rule 1 must not be over-applied to it.
-  ⚠️ **Only rules 2 and 3 cross the runtime boundary unchanged**; rule 4 is assumed-not-applicable
-  and **unmeasured** — SB-005 §2 says do not record it as answered.
+- 🟡 **SB-005** — [the admin panel](SB-005-THE-ADMIN-PANEL.md) — **BUILT s6. Structurally complete
+  and mutation-graded; behaviourally UNMEASURED.** Six browser components through the real door
+  (`noodl-mcp/tests/sb005Components.ts`), **21 specs / 9 mutants**
+  (`noodl-mcp/tests/sb005AdminPanel.test.ts`). Acceptance 1–5 met; **6 is SB-008's and is UNMET** —
+  it is listed rather than quietly counted as met by the structural ones.
+  🔴 **A green authoring run means well-formed and nothing else** — the phase's own lesson, three
+  times over. What building it measured (§7), each item having changed a graph:
+  **rule 2 does not bite `CloudFunction2`/`Query Records`** (both defer through
+  `scheduleAfterInputsHaveUpdated`; F11 was about a *producer* emitting signal and value in two
+  passes, not about signals);
+  **rule 3 does not transfer whole** — a JS output publishes only when it CHANGES
+  (`simplejavascript.ts:162`), so a panel's refresh MUST be a `storageFetch` wire, and acceptance 4
+  was rewritten around the half that is load-bearing;
+  **a new rule the draft did not have** — an `Update Record` must carry NO access rules, or saving a
+  title on a *published* page rewrites its ACL to draft-only while `published` stays `true`;
+  and **acceptance 3 refined** — creation may state `published: false` beside the draft ACL (as
+  `duplicatePage` does); an *update* is what makes mirror and ACL disagree.
+  ⚠️ Near-miss worth carrying: `options.items` as a comma string is a **static** `array` port, so no
+  `dynamic-port-skipped` info covers it and the door was silent — it would have thrown on render.
+  A static port carrying a structured value is a gap no diagnostic here names.
+  ⚠️ **Rule 4 is still UNMEASURED**; nothing filters on a Pointer. Do not record it as answered.
+
+  ✅ **The claim the task owed is now held on the real path.** SB-004 §7 wrote its rows through the
+  REST API as the owner because this panel did not exist, so no spec could tell a panel that sets the
+  draft ACL from one that does not. `Create Record` for `Page` and for `Section` now carries the rule
+  as parameters, asserted rule by rule against SB-004's own constant and graded by two mutants —
+  including the subtle one an author actually writes, an `accessControl` list whose rule parameters
+  are missing, which builds **no ACL at all**. ⚠️ That is the *authored* claim; whether the row
+  written at run time carries it is still SB-008's.
+  ✅ Carried from s5's grounding, both still true: `Page` is invisible to every catalog listing an
+  author would use but the write door refuses a page component without it by name, so the cost was
+  one round-trip (and, in the event, none — every page here was built around a `Page` node);
+  and `CloudFunction2`'s `in-`/`out-` parameters register on the **parameter** path
+  (`nodescope.ts:203`), which is what lets one endpoint serve a Publish and an Unpublish button as
+  two constants with no wires.
 - ⬜ **SB-006** — the public site
 - ⬜ **SB-007** — it ships as a template (via FB-005's registry — consume, don't re-spec).
   **Relayed from the FB-005 T3 session, 2026-08-26 (uncommitted in the shared checkout at relay
@@ -113,6 +133,19 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   re-litigate what §7 measured.
 
 ## Tier 3 — found while building
+
+- ⬜ **SB-012** — [three spellings of a component name](SB-012-THREE-SPELLINGS-OF-A-COMPONENT-NAME.md)
+  — **MEASURED s6, worked around in SB-005, not fixed.** `RouterNavigate.target` and
+  `For Each.template` **are** checked at the door (blocking, with a *did you mean*) — but only
+  against what is **already on disk**, unlike a node `type`, which SB-004 §6 F6 measured as resolving
+  against an unapplied sibling in the same plan. So **an app whose pages link to each other cannot be
+  authored in one pass by either door**: a real panel's dependency graph has genuine cycles and no
+  topological order exists. Found the first time this phase built something with more than two pages.
+  ⚠️ Fails closed and names its own fix, so nothing ships broken; the cost is a round-trip per cycle
+  edge. Workaround in SB-005: create with the links omitted, then `update_component` to restore them,
+  with a known-firing control proving the create pass really refuses. 🧭 Which of three fixes
+  (resolve siblings / downgrade to warning / a plural create) is Richard's — the task file argues
+  against the middle one.
 
 - ⬜ **SB-010** — [the script ports the authored door does not write](SB-010-THE-SCRIPT-PORTS-THE-DOOR-DOES-NOT-WRITE.md)
   — **MEASURED s4, worked around in SB-004, not fixed.** The MCP door does not derive a
@@ -212,3 +245,28 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   so the sole path from this change to `test:ci` is compilation, which `typecheck:editor` covers. That
   is a bound on the risk, not a pass. **Next session should ride a solo window before calling the
   editor half proven**, exactly as s1→s2 did.
+  ✅ **CLOSED in s6 by relay** — see the s6 entry.
+- **s6 (2026-08-26)** — **SB-005 BUILT** (see its entry above and the task file's §6–§7): six browser
+  components through the real MCP door, `noodl-mcp/tests/sb005Components.ts` + a 21-spec suite with
+  **9 mutants graded**. Acceptance 1–5 met; **6 is SB-008's and left explicitly UNMET**.
+  Four mechanisms were measured *before* anything was authored, and every one of them changed a
+  graph — rule 2 does not bite `CloudFunction2`/`Query Records` (both defer through
+  `scheduleAfterInputsHaveUpdated`); a JS output publishes only on **change**, so a panel's refresh
+  must be a `storageFetch` wire; `For Each` delivers `id` plus same-named fields to an item
+  component's declared inputs; and an update with **no** access rules leaves the stored ACL alone,
+  which turned into a new invariant rule and a mutant. Two acceptance criteria were rewritten on
+  those measurements rather than worked around.
+  **SB-012 filed** from a navigation-cycle rejection: the two `component`-typed references this panel
+  uses are checked at the door but only against what is on disk, so a mutually-linked set of pages
+  cannot be authored in one pass by either door. Worked around with a documented two-pass authoring
+  order and a known-firing control.
+  ⚠️ Near-miss recorded rather than buried: `options.items` as a comma string is a **static** `array`
+  port that no `dynamic-port-skipped` info covers — the door was silent and the page would have
+  thrown on render. Caught by reading `Select.tsx`, not by any gate.
+  Final: noodl-mcp **61 suites / 718**, `typecheck:mcp` and `typecheck:editor` both exit 0 (unpiped;
+  `typecheck:mcp` is the stricter and caught 20 errors the editor's config passed).
+  ✅ **s5's `test:ci` debt CLOSED, by relay rather than by this session's own run.** A peer
+  (`Build share template dialog…`) rode a solo window and reported the summary line verbatim:
+  **`Jasmine: 2856 specs, 4 failures (failed)`**, all four `AIX-006 style vocabulary` by name, on a
+  tree including `8ce12a3c` — the recorded floor. ⚠️ Attributed as a relayed *measurement*, not a
+  verdict. s6 itself moved nothing in `test:ci`'s scope (two new noodl-mcp test files, four docs).
