@@ -150,7 +150,7 @@ Ordered so each step is shippable and the earliest ones are independent of any f
 |---|---|---|---|
 | **T1** | ✅ **DONE (s40)** — zip transport deleted, registry made reachable, AC1 met | **S** | — |
 | **T2** | ✅ **DONE (s42)** — `project_templates`, three routes, a publisher, AC3 met | **M** | — |
-| **T3** | Editor: "New project from a template" in the create wizard | **M** | ✅ T2 done — **next** |
+| **T3** | ✅ **DONE (s43)** — the picker, a second provider, AC2 met | **M** | — |
 | **T4** | Categories + text search over the curated set | **S–M** | T2, ⚠️ see below |
 | **T5** | "Share as template" — files a **submission**, does not publish | **M** | T2, R-templates |
 | **T6** | Star ratings | **M** | 🔒 needs a ruling; see §5 |
@@ -310,6 +310,145 @@ insert threw would have been green on the defect.
 - **No thumbnail column.** `TemplateItem.iconURL` exists editor-side, but a `thumbnail_url` here is
   `articles.project_url`'s hazard again — free text on an arbitrary host — and a binary in the
   payload is the decision §3 parks. A card draws a title, a category and a file count.
+
+## 4b. ✅ T3, closed 2026-08-26 (session 43) — the picker `list()` was built for, and a sentence about the wrong subject
+
+**What shipped**, all in OpenNoodl:
+
+- **`models/template/PlatformTemplateProvider.ts`** — the second `ITemplateProvider` that has ever
+  run, and the first that fetches anything. `community://<slug>` is an **identifier the registry
+  resolves**, not an address anything dereferences — the base URL is decided once, from
+  `communityorigin`, so the picker's rows are not fetchable URLs held in React state
+  (`TutorialSummary`'s stated rule, one shelf over).
+- **`communityapi.templates()` / `templateBundle()`** — and `readBundlePayload` **extracted** out of
+  `tutorialBundle` rather than copied, because the rules in it are all safety rules (one bad entry
+  refuses the whole bundle; a non-string is refused; a parse failure is `unreachable`, never
+  `absent`). ⚠️ The *cross-repo* copy of the path check stays deliberate; this is the opposite
+  case, two callers in one process.
+- **`TemplateRegistry.listing()`** — items **tagged with the provider that supplied them**, plus the
+  providers that could not answer. 🔴 **It exists because a short shelf and a broken shelf are the
+  same array.** `list()` keeps its old shape and drops the failures; a surface a user looks at must
+  not call it.
+- **The wizard's fourth mode.** `'template'` → `basics` → `template` → `review`. **No preset step**:
+  a template ships its own look, and `setPendingPresetId` maps the untouched default `'modern'` to
+  `null`, so a template-mode creation applies no preset at all. The Review screen shows a
+  **Template** row *instead of* the Style row — naming a preset nobody chose and which will never
+  be applied is the one thing that screen must not do.
+- **`hooks/useProjectTemplates.ts`** — `templateRegistry.list()`'s **first caller in the product**,
+  which is T1's whole finding closed. Gated on the wizard being open, so the launcher makes no
+  community request on cold start.
+
+**AC2 is met**: `createProjectFromTemplate` now removes the project directory on a refusal —
+**only when it created it**. `directoryExists` is asked **before** `makeDirectory`, which is the
+entire precondition; T1's "leave it behind" argument was right and is now the *reason for the
+guard* rather than a reason to do nothing. The provider buys the other half by fetching and
+checking the **whole** bundle before writing one byte, so a refused template writes nothing at all.
+
+### 🔴 The finding: one refusal sentence served two different questions
+
+`refusalSentence` mapped an outcome to a sentence, and both `list` and `install` called it. With
+the platform undeployed, opening the picker logged:
+
+> `Error: that template is no longer on the community shelf`
+
+— a sentence about **a template**, in a refusal where **no template was named**. A 404 on
+`/templates` means the shelf could not be read; a 404 on `/templates/x/bundle` means *x* is gone.
+Two different facts, one string. It now takes a `subject`.
+
+⚠️ **No spec could have caught it, and the reason generalises.** Both arms are `absent`, both are
+refusals, and every available assertion — *it threw*, *it refused*, *it did not narrate
+permission* — is green on either wording. **The instrument that found it was the running app**,
+at the first moment the code met a platform that answers 404. Re-measured live after the fix:
+`Error: the community shelf is not available to this editor`.
+
+### Decisions taken inside T3, each reversible and each stated
+
+1. **`'template'` is a MODE, not a step inside `guided`** — see the preset argument above.
+2. **`PlatformTemplateProvider.list` THROWS on a failed read** rather than returning `[]`. An empty
+   array and a failed read are the same length, and `listing()` can only report a short shelf if the
+   provider says so. Returning `[]` would make an outage look like curation.
+3. **The embedded provider is FIRST in the registry.** Order does not decide installs (no two
+   providers claim each other's scheme) — it decides the picker's row order, and the first card
+   should be the one that draws with no network.
+4. **No `fileCount` on a picker row**, though the platform sends one. Rows reach the screen as
+   `TemplateItem`, which the *embedded* provider also fills and which has no such field; an optional
+   field only one of two sources can populate is T2's rejected `installable` in mirror image.
+   Widening `TemplateItem` is the honest way to add it, and that is T4's business.
+5. **The selected card is marked in TEXT** (`✓ Selected`) as well as in colour. Measured: the border
+   carries the state at **4.46:1 dark / 3.61:1 light** between selected and unselected, and the fill
+   alone would be **1.16:1 / 1.11:1** — which is FB-002's shipped defect exactly.
+6. **`TemplateStepBody` is split out of `TemplateStep`** so the plain-Node runner can evaluate it —
+   `views/Community.tsx`'s precedent. The three states (loading / empty / rows) are **rendered and
+   read**, not grepped.
+
+### ⚠️ What T3 deliberately does NOT include
+
+- 🔴 **No curated template content, so the community half has never installed a REAL template.** The
+  shelf is still empty and the platform is still undeployed. ✅ **Narrowed this session**:
+  `tests-unit/fb-005/template-install-over-http.test.ts` drives the provider through a real
+  `http.Server` and a real `CommunityApiClient` onto a real temporary directory — so the wire and
+  the disk are no longer stubbed, and the traversal refusal is proved to leave nothing behind on an
+  actual filesystem. ⚠️ **What is still a claim rather than a measurement is the ENVELOPE**: that
+  server answers the shape `nodegx-community` is believed to produce. The platform's own four route
+  gates drive the real handlers with seeded rows; **no gate in either repo covers the two meeting.** **The drive exercised the embedded provider end to end** —
+  picker → Review → Create → a project that opens and renders — and it exercised the *community*
+  provider's failure path for real, against a live 404.
+- **No editor "Templates" tab.** The launcher has shipped one saying *"coming soon"* the whole
+  time (`noodl-core-ui/.../Launcher/views/Templates.tsx`). ✅ **Phase 76, opened 2026-08-26 in a
+  parallel session, owns it** — *"add the first template to the templates tab"*. 🔴 **T3's plumbing
+  is what it should draw with**: `useProjectTemplates(enabled)` for the rows,
+  `templateRegistry.listing({})` for rows-plus-failures (never `list()`, which hides an outage as
+  an empty shelf), and `TemplateStepBody` — deliberately hook-free so a plain-Node runner can
+  evaluate it. ⚠️ **T3 touched neither `Templates.tsx` nor `LauncherHeader.tsx`**, so the only file
+  the two phases share is `ProjectsPage.tsx`, where T3's edit is five lines.
+
+### 🔴 The second finding: a mutant survived, and the defect was in the SPEC
+
+The AC2 precondition — *"`directoryExists` is asked before `makeDirectory`"* — was asserted as
+`order.indexOf('directoryExists') < order.indexOf('makeDirectory')`. A mutant that **deleted the
+`directoryExists` call outright** left it out of the array, `indexOf` returned **-1**, and
+**`-1 < 0` is true**. The spec passed on code that never asked the question — the one thing it
+exists to detect.
+
+✅ Fixed by asserting `toContain` for **both** entries first. 🔴 **The general rule**: an `indexOf`
+comparison is an ordering test only once both operands are known present; until then it is a
+presence test that silently answers *yes* to absence.
+
+⚠️ **And the reason it survived this session rather than shipping**: an earlier 10-mutant run had
+this same spec down as killed, because that mutant **moved** the call instead of **removing** it.
+**A weaker mutant made a broken instrument look sound** — which is the failure the mutant set exists
+to prevent, one level up.
+
+### Gates, session 43
+
+- `tests-unit/fb-005/` — **107 specs, 0 failures** across three files (T1's 27 unchanged, plus T3's
+  74 and a 6-spec integration file driven over a **real socket onto a real disk**).
+- 🔴 **`npm run test:ci` — `Jasmine: 2856 specs, 4 failures`, all four `AIX-006 style vocabulary`,
+  by name. The clean floor.** The count reconciles exactly: **2849 + 7**, this session's seven added
+  jasmine specs. ⚠️ ~25 minutes, not the ~11 older notes quote. `COMPOUND_EXIT=1` — which the clean
+  floor also exits, so the summary line is the verdict.
+- **13 mutants, 13 killed** (after the survivor above was fixed).
+- `npm run test:main` — **342 files / 5592 specs / 0 failures** (s40: 341 / 5522 / 0). ⚠️ The new
+  file accounts for the extra suite; the counts reconcile.
+- 🔴 **`tests-unit/uni-001/session-readers.test.ts` caught the new session reader and refused it**
+  until the question in its third column was answered. `PlatformTemplateProvider` is now a recorded
+  reader with a structural assertion block: the token is used **once**, neither read is gated, the
+  hook that decides what is drawn never sees a session, **and the picker still has a provider with
+  no account and no network** — which is a stronger form of "withholds nothing" than any other row
+  in that table can claim.
+- `npm run tokens:css` — clean over **320** stylesheets (s37: 319; the new one is counted).
+  ⚠️ It still cannot see a contrast failure — the selection ratios above were measured by hand.
+- `npx tsc` — `typecheck:editor` **0 errors**; `typecheck:editor-tests` **0 errors** (it caught the
+  three `WizardState` literals that needed the new field). `typecheck:core-ui` reports **44**
+  errors, **all `TS2307` alias resolution, none ours** — pre-existing.
+
+### Gate *trap* met this session
+
+⚠️ **A jest suite that fails TO RUN reads as a smaller, passing suite.** A straight apostrophe
+inside a single-quoted TS string in the new spec made ts-jest reject the file: the run reported
+`2 total, 1 passed, 1 failed` and **`Tests: 27 passed, 27 total`** — a green-looking Tests line
+over 56 specs that never executed. **Reconciling the count against the previous run** is what
+caught it, not the exit code.
 
 ### Gates, session 42
 

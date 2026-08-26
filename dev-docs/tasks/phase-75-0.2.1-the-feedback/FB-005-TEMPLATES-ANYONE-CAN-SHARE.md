@@ -3,7 +3,9 @@
 **Filed:** 2026-08-22, from Richard's item 4. **Status: ⬜ OPEN — R-templates ruled 2026-08-22:
 CURATED FIRST.** Size: L+. Slice before starting.
 
-📋 **The slice exists: [FB-005-SCOPE.md](FB-005-SCOPE.md) (2026-08-25).** Take **T1** first — it is independent of every ruling below. 🔴 Read §1 before anything else: the sweep bullet below is wrong, and the correction changes where the work is.
+📋 **The slice exists: [FB-005-SCOPE.md](FB-005-SCOPE.md) (2026-08-25).** ✅ **T1 (s40), T2 (s42) and T3 (s43) are closed — AC1, AC2 and AC3 are met. T4 is next.** 🔴 Read §1 before anything else: the sweep bullet below is wrong, and the correction changes where the work is.
+
+🔴 **What is now true and was not**: a builder can start a new project from a template, through a picker, from the launcher. What is still **not** true is that anybody has published one — the community shelf is empty and the platform is undeployed, so the *curated* half of R-templates has a mechanism and no content.
 
 ✅ **R-templates, as ruled:** Richard publishes; a share button **files a submission, it does not
 publish**. Same posture as tutorial curation. 🔴 This is *not* Richard's item 4 as written — he asked
