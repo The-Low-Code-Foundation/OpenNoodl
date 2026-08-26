@@ -1,7 +1,17 @@
 # FB-013 — the chat we argued against
 
-**Filed:** 2026-08-22, from Richard's item 13. **Status: ⬜ OPEN — R-chat ruled 2026-08-22: OVERRULED,
-build it.** Size: L (scoping doc first, S).
+**Filed:** 2026-08-22, from Richard's item 13. **Status: 🟡 C1 + C2 BUILT AND SPECCED (session 51)
+— R-chat ruled 2026-08-22: OVERRULED, build it.** Size: L.
+
+📋 **The scoping doc the ruling asked for exists: [FB-013-SCOPE.md](FB-013-SCOPE.md) (2026-08-26).**
+Read §1 before anything else — the risk UNI-011 predicted was measured this session and it went the
+argument's way, which is what the design in §2 is built against.
+
+✅ **C1 (schema + lib) and C2 (routes) are done, session 51.** `0024_fb013_chat.sql`, `src/lib/chat.ts`,
+`src/lib/chat-http.ts`, and the five routes under `/api/v1/community/chat`. **22 specs, 6 mutants
+all killed.** The three repo sweeps a new table and route owe are paid: Drizzle mirror,
+`uni005` census with an **executed** probe, and `uni011` D15 verdict recipes for both routes.
+🔒 **Left: C3 (web tab), C4 (launcher tab), C5 (moderation verbs — needs R-chat-mod).**
 
 🔴 **R-chat, as ruled:** UNI-011's written argument (*"a forum flatters low volume; chat punishes
 it"*) is **superseded by a decision, not answered by a counter-argument** — it stays quoted below
