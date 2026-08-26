@@ -672,7 +672,26 @@ export enum DiagnosticCode {
    * setup script with no declared surface is unusual but legal, so this advises
    * and never rejects a write.
    */
-  UnrunnableScriptNode = 'unrunnable-script-node'
+  UnrunnableScriptNode = 'unrunnable-script-node',
+  /**
+   * SB-001: a node authored into a component whose runtime cannot register it —
+   * a browser-only node (`Text`, `Group`, `Page`…) in a `/#__cloud__/` graph, a
+   * cloud-only node (`noodl.cloud.request`…) in a browser graph, or a component
+   * instance placed across the `/#__cloud__/` boundary.
+   *
+   * The editor's interactive surfaces enforce this everywhere a human authors —
+   * the node picker (`createnodeindex.ts`), paste (`EditorClipboard.ts`),
+   * extraction (`ExtractToComponent.ts`) — and the write gates enforced it
+   * nowhere, so an agent could put `noodl.cloud.request` on a page and get a
+   * clean report. The consequence is never a diagnostic at run time: the wrong
+   * runtime simply has no such node ("Can't find component model"), so the graph
+   * silently does nothing where that node should act.
+   *
+   * Warning severity with an `AUTHORED_BLOCKING_WARNINGS` entry — the
+   * `UnresolvedNavigation` shape: blocking for a graph an agent just wrote,
+   * while `validate:project` over a hand-authored corpus stays advisory.
+   */
+  WrongRuntimeNode = 'wrong-runtime-node'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────

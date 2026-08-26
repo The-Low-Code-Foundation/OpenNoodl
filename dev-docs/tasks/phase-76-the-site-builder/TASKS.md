@@ -14,8 +14,13 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
 
 ## Tier 1 — enablement
 
-- ⬜ **SB-001** — the cloud component Claude can write (MCP authors `/#__cloud__/`; runtime-context
-  check in validate; AWP-002 conformance)
+- ✅ **SB-001** — [the cloud component Claude can write](SB-001-THE-CLOUD-COMPONENT-CLAUDE-CAN-WRITE.md)
+  — **BUILT + SPECCED s1.** The README's finding 3 was half-wrong: `toPathForm` was fine, the bare
+  `pathToLegacyName` was the leak — now delegates to the importer's `toLegacyName`. Type/path
+  cross-check at the door; `checkRuntimeContext` in the SHARED gate (`wrong-runtime-node`,
+  blocking; gate parity preserved); `looksLikePageComponent` cloud-safe; AWP-002 pins all four
+  types. 10-spec suite, mutation-graded; MCP 57/675/0. ⚠️ Plan door with a cloud target: pieces
+  tested, end-to-end drive is SB-004's dogfood.
 - ⬜ **SB-002** — the backend has a vocabulary too (MCP instructions + docs teach the prefab idiom;
   ⚠️ measure token budget on the wire — three budgets)
 - ✅ **SB-003** — [a helper is not an endpoint](SB-003-A-HELPER-IS-NOT-AN-ENDPOINT.md) — **DONE

@@ -22,6 +22,7 @@
  */
 
 import { DiagnosticCode, type Diagnostic, type Severity } from './diagnostics';
+import { CLOUD_COMPONENT_PREFIX } from './runtimeContext';
 
 /**
  * Navigate nodes whose `target` is a component name. Both declare it as a
@@ -132,6 +133,11 @@ const PAGE_NAME_PATTERNS = [/__page__/i, /(^|\/)pages\//i];
  * one-fact-in-two-places class this phase has already paid for twice.
  */
 export function looksLikePageComponent(legacyName: string): boolean {
+  // SB-001 — a cloud component is never a page, whatever its segments say. The
+  // name patterns are substring tests, so "/#__cloud__/Pages Utils/x" would
+  // otherwise read as routed — and every caller of this function (the page-shape
+  // check, `componentIsPage`, plan apply's router registration) would act on it.
+  if (legacyName.startsWith(CLOUD_COMPONENT_PREFIX)) return false;
   return PAGE_NAME_PATTERNS.some((pattern) => pattern.test(legacyName));
 }
 

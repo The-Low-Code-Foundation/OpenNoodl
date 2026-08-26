@@ -65,6 +65,7 @@ import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE
 import { checkParameterValues } from './parameterValues';
 import { checkRepeaterTemplate } from './repeaterTemplate';
 import { checkResponsiveArrangement } from './responsiveArrangement';
+import { checkRuntimeContext } from './runtimeContext';
 import { checkTypographyHierarchy } from './typographyHierarchy';
 
 /**
@@ -257,7 +258,14 @@ export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   // rendering at 170px under a clean report. Zero of the 204 `Image` nodes in
   // either corpus are affected, so this promotion cannot fire on the population
   // §5 already taught correctly.
-  DiagnosticCode.InertDimension
+  DiagnosticCode.InertDimension,
+  // SB-001 — a node the component's runtime cannot register. For a graph an
+  // agent just wrote there is no benign reading: the wrong runtime has no such
+  // node, so the graph silently does nothing where it should act — the exact
+  // "clean report over a dead graph" shape every promotion above answers. Kept
+  // a warning rather than an error so `validate:project` over hand-authored
+  // corpora stays advisory, per the file's standing convention.
+  DiagnosticCode.WrongRuntimeNode
 ]);
 
 /** Whether a diagnostic rejects an authored submission. */
@@ -441,7 +449,12 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     // FIX-007 §2 — the wire the port rule is right to skip and nothing else could see.
     ...checkFunctionNodePorts(nodes, { component, wires, catalog }),
     // FIX-006 §3 — a Script node that runs once at load and can never be re-entered.
-    ...checkScriptNodeRunnable(nodes, { component })
+    ...checkScriptNodeRunnable(nodes, { component }),
+    // SB-001 — a node the component's runtime cannot register. Unconditional,
+    // because everything it reads is already here: the component's runtime is
+    // its name and the catalog carries `availableIn`. Unknown types are skipped
+    // inside the check — `UnknownNodeType`/`NodeUncheckable` own those.
+    ...checkRuntimeContext(nodes, { component, catalog })
   ];
 }
 

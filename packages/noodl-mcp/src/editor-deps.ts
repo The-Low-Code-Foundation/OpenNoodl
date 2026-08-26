@@ -248,7 +248,11 @@ export { legacyNameToPath, inferComponentType } from '../../noodl-editor/src/edi
 // is a **fixed point for `visualRoots`** (absent in, absent out) and the structural
 // diff alone is blind to F43. Verified by running it, 2026-08-08. That is why
 // AWP-002 §2's reader-agreement check exists and is not optional.
-export { reconstructLegacyComponent, unflattenNodes } from '../../noodl-editor/src/editor/src/io/ProjectImporter';
+export {
+  reconstructLegacyComponent,
+  toLegacyName,
+  unflattenNodes
+} from '../../noodl-editor/src/editor/src/io/ProjectImporter';
 export { buildComponentV2Files } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
 export type { ComponentV2Files } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
 export type { LegacyComponent, LegacyNode } from '../../noodl-editor/src/editor/src/io/ProjectExporter';

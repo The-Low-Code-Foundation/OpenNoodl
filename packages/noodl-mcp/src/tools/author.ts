@@ -24,7 +24,7 @@ import {
 import { ToolError } from '../errors';
 import type { ComponentFiles, UpdateOperation } from '../graph';
 import { applyOperations, reconcileHierarchy } from '../graph';
-import { pathToLegacyName, validateComponentPath } from '../paths';
+import { pathToLegacyName, toPathForm, validateComponentPath } from '../paths';
 import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
 import type { NodeIdRemap } from '../project/nodeIds';
 import { deconflictNodeIds, remapNote } from '../project/nodeIds';
@@ -446,20 +446,45 @@ export function registerAuthorTools(
         allow_unknown_types?: boolean;
       }) => {
         const store = binding.require();
-        const pathError = validateComponentPath(args.path);
+        // SB-001 — normalise before validating, the same door discipline
+        // `create_plan` has always had (`planTools.ts` runs every target through
+        // `toPathForm`). Before this, "#__cloud__/X" passed validation verbatim
+        // and became a registry key the editor's `legacyNameToPath` would never
+        // mint — the next editor save wrote to "__cloud__/X" and orphaned the
+        // MCP-made directory.
+        const path = toPathForm(args.path);
+        const pathError = validateComponentPath(path);
         if (pathError) throw new ToolError('invalid-argument', pathError);
-        if (store.resolve(args.path)) {
-          throw new ToolError('already-exists', `Component "${args.path}" already exists. Use update_component.`);
+        if (store.resolve(path)) {
+          throw new ToolError('already-exists', `Component "${path}" already exists. Use update_component.`);
         }
 
-        const legacyName = pathToLegacyName(args.path);
+        const legacyName = pathToLegacyName(path);
+        // SB-001 — a component's runtime is its path; a `type` that disagrees
+        // writes metadata whose destiny is the other bundle. Rejected rather
+        // than silently corrected, with the repair in the message.
+        const isCloudPath = legacyName.startsWith('/#__cloud__/');
+        if (args.type === 'cloud' && !isCloudPath) {
+          throw new ToolError(
+            'invalid-argument',
+            `type "cloud" needs a path under "#__cloud__/" — "${path}" would ship in the browser bundle. ` +
+              `Create it as "#__cloud__/${path}" (or drop the type to make a browser component).`
+          );
+        }
+        if (args.type && args.type !== 'cloud' && isCloudPath) {
+          throw new ToolError(
+            'invalid-argument',
+            `"${path}" is under "#__cloud__/", which makes it a cloud component — type "${args.type}" ` +
+              'contradicts that. Drop the type or pass "cloud".'
+          );
+        }
         const reconciled = reconcileHierarchy(normalizeAuthoredNodes(args.nodes));
         if (reconciled.errors.length > 0) {
           throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
         }
 
         const assembled = assembleCreateFiles({
-          path: args.path,
+          path,
           legacyName,
           type: args.type,
           nodes: reconciled.nodes,
@@ -475,12 +500,12 @@ export function registerAuthorTools(
         // than to detect one. See `project/nodeIds.ts`.
         const { files: candidate, remapped } = deconflictNodeIds(store, legacyName, assembled);
 
-        const validation = validateCandidate(store, args.path, candidate, undefined, {
+        const validation = validateCandidate(store, path, candidate, undefined, {
           allowUnknownTypes: args.allow_unknown_types
         });
-        if (!validation.ok) rejectWith(validation, `create_component "${args.path}"`, examples);
+        if (!validation.ok) rejectWith(validation, `create_component "${path}"`, examples);
 
-        const { revision } = store.writeComponent(args.path, candidate, { expectNew: true });
+        const { revision } = store.writeComponent(path, candidate, { expectNew: true });
         // AAQ-005: a page component is not a page until a Router lists it. The
         // editor's apply has done this since AAQ-001; this door did not, so
         // every page Claude Code created was unreachable. After the write, so
@@ -489,7 +514,7 @@ export function registerAuthorTools(
         const isPage = componentIsPage(legacyName, candidate);
         const registration = isPage ? registerPages(store, [legacyName]) : undefined;
         const payload: CreateComponentResponse = {
-          created: args.path,
+          created: path,
           legacyName,
           type: candidate.component.type,
           revision,

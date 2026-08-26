@@ -192,8 +192,24 @@ describe('AWP-002 — MCP output must survive the editor’s own round trip', ()
       ]
     });
 
+    // SB-001 — the fourth component type, through the same real door. The path
+    // is given in the '#' spelling on purpose: the door must normalise it to
+    // the editor-canonical registry key while the stored legacy name keeps the
+    // '#' the bundle split reads.
+    await call(session, 'create_component', {
+      path: '#__cloud__/Send Welcome',
+      description: 'A cloud function — Request in, Response out.',
+      nodes: [
+        { id: 'cf-req', type: 'noodl.cloud.request', parameters: { allowNoAuth: true } },
+        { id: 'cf-res', type: 'noodl.cloud.response' }
+      ],
+      connections: [{ fromId: 'cf-req', fromProperty: 'receive', toId: 'cf-res', toProperty: 'send' }]
+    });
+
     fixtures = [
-      ...['Pages/Settings', 'Components/Card', 'Components/Calc'].map((p) => readComponent(dir, p, `authored:${p}`)),
+      ...['Pages/Settings', 'Components/Card', 'Components/Calc', '__cloud__/Send Welcome'].map((p) =>
+        readComponent(dir, p, `authored:${p}`)
+      ),
       ...registryPaths(REPLAY).map((p) => readComponent(REPLAY, p, `replay-deepseek:${p}`))
     ];
   });
@@ -208,17 +224,16 @@ describe('AWP-002 — MCP output must survive the editor’s own round trip', ()
    * it asserts its own census. `13` is DeepSeek V4 Pro's session-8 artefact: 12
    * components plus `App`.
    */
-  it('loads the fixtures it claims to — 3 authored live, 13 from the replay project', () => {
-    expect(fixtures.filter((f) => f.label.startsWith('authored:'))).toHaveLength(3);
+  it('loads the fixtures it claims to — 4 authored live, 13 from the replay project', () => {
+    expect(fixtures.filter((f) => f.label.startsWith('authored:'))).toHaveLength(4);
     expect(fixtures.filter((f) => f.label.startsWith('replay-deepseek:'))).toHaveLength(13);
     expect(fixtures.every((f) => (f.nodes.nodes ?? []).length > 0)).toBe(true);
 
-    // ⚠️ `cloud` is the fourth component type AWP-002 §3 asks for and it is NOT
-    // covered here: `inferComponentType` derives it from a `__cloud__` path
-    // segment, which `create_component` does not mint. Recorded rather than
-    // quietly omitted — a gate that bounds its own coverage must say so.
+    // SB-001 closed the hole the previous revision of this assertion recorded:
+    // `create_component` now mints `__cloud__/` paths, so all four component
+    // types AWP-002 §3 asks for go through the round trip.
     const types = new Set(fixtures.map((f) => f.component.type));
-    expect([...types].sort()).toEqual(['page', 'root', 'visual']);
+    expect([...types].sort()).toEqual(['cloud', 'page', 'root', 'visual']);
   });
 
   describe('§1 structural — the round trip must be a fixed point', () => {

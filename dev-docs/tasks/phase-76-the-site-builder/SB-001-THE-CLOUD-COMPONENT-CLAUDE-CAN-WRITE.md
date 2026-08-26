@@ -1,6 +1,8 @@
 # SB-001 — The cloud component Claude can write
 
-**Status: OPEN, mapped s1 (2026-08-26).** Findings 3–4 of the phase README §3, corrected below.
+**Status: ✅ BUILT + SPECCED s1 (2026-08-26).** Findings 3–4 of the phase README §3, corrected
+below. Not yet dogfooded through the plan door with a cloud target — SB-004 authors the site
+builder's backend *with* this surface and is the drive that proves it end to end.
 
 ## The map corrected the README
 
@@ -66,6 +68,35 @@ same-runtime rule, `createnodeindex.ts:96-99`).
    `:214-221` (it was written as exactly this tripwire). `gateParity` + `vocabularyParity` stay
    green.
 
+## What shipped (s1)
+
+1. `pathToLegacyName` now **delegates to the importer's `toLegacyName`** (re-exported through
+   `editor-deps`), reaching its reconstruction branch by passing a component file with no stored
+   `path`. One source, no drift; fixes all six plan sites and `create_component` at once.
+2. `create_component` normalises `path` through `toPathForm` before validating (the plan door's
+   existing discipline), and rejects a `type` that disagrees with the path's destiny — both
+   directions, repair named in the message.
+3. **`checkRuntimeContext`** (`validation/runtimeContext.ts`) added as the shared gate's newest
+   precondition — unconditional, since the component's runtime is its name and the catalog carries
+   `availableIn`. New `DiagnosticCode.WrongRuntimeNode`, blocking via `AUTHORED_BLOCKING_WARNINGS`
+   (the `UnresolvedNavigation` shape: blocks authored writes, advisory on corpora). Checks catalog
+   nodes AND component instances across the `/#__cloud__/` boundary (strict prefix —
+   `componentRuntimeOf`, exported from the same module). Unknown types skipped: `UnknownNodeType` /
+   `NodeUncheckable` own those.
+4. `looksLikePageComponent` returns false for `/#__cloud__/` names — a cloud component whose
+   segments matched the page patterns would otherwise have been router-registered by every caller
+   (page-shape check, `componentIsPage`, plan apply).
+5. AWP-002 gate now authors a **fourth fixture** through the real door (`#__cloud__/Send Welcome`,
+   given in the '#' spelling on purpose) and pins `['cloud','page','root','visual']` — the ⚠️
+   coverage-bound comment it replaced was written as exactly this tripwire.
+
+Evidence: `tests/sb001CloudAuthoring.test.ts` — 10 specs (identity pair, canonical registry key
+asserted **by key, not through `resolve`** — its lenient fallback masks half-fixes; helper +
+function both mintable; five rejection arms; a browser control). **Mutation-graded**: reverting
+`pathToLegacyName` to `'/' + path` reddens exactly the 5 reconstruction arms. Full `noodl-mcp`
+suite 57/675/0 including `gateParity`, `vocabularyParity`, `toolDisclosure` (no budget spend —
+nothing added to schema prose or instructions); editor validation units 52/0.
+
 ## ⚠️ Doctrine traps for SB-002 (and any cloud guidance)
 
 - **A cloud function's interface is the `params` string on its `noodl.cloud.request` node, NOT a
@@ -82,4 +113,6 @@ same-runtime rule, `createnodeindex.ts:96-99`).
 
 ## Session log
 
-- **s1 (2026-08-26)** — mapped (Explore, verified file:lines). Plan above; not started.
+- **s1 (2026-08-26)** — mapped (Explore, verified file:lines), then built, specced,
+  mutation-graded, committed. Left open: the plan door with a cloud target has every shared piece
+  tested but no end-to-end drive — SB-004 is that drive.
