@@ -1332,6 +1332,119 @@ branch — which is the weaker kind of evidence, and is recorded here as such.
 
 ---
 
+## 4h. ✅ Both rulings taken — the revert, and the backup encryption
+
+🔒 **Richard ruled on both open items from §4g, 2026-08-26.**
+
+### 1. The `deploy.sh` fallback is REVERTED
+
+`ops/deploy.sh` is now **byte-identical to `2609137`** (md5 `0659d394…`, checked against the
+original rather than assumed). The laptop is the source of truth again, and deleting a key from
+the secrets file is once more a working revocation.
+
+✅ **The case is still covered — pinned the other way.** The harness's `existingHostEnv` option is
+kept, and the three specs now assert the *intended* behaviour:
+
+| spec | pins |
+|---|---|
+| **BLANKS a host key the laptop no longer carries** | deletion IS the revocation |
+| **OVERWRITES a stale host value** | a rotated key lands rather than losing to the incumbent |
+
+🔴 **The first was run against the fallback build and FAILED** (`expected 'DATABASE_URL=…' not to
+contain 'revoked-bucket'`). It discriminates; it is not merely green.
+
+### 2. 🔴 The off-site dumps were UNENCRYPTED, and the harness could not have seen it
+
+| | |
+|---|---|
+| `BACKUP_ENCRYPT_PASSPHRASE` on nexus-1 | 🔴 **EMPTY** |
+| the dump 19.5h **before** the s50 deploy | `encrypted=False` |
+| lines of `install-backup.sh` executed by any test, before today | 🔴 **zero** |
+
+**The mechanism.** `ops/install-backup.sh` branches on whether **S3 credentials** were passed.
+The laptop carries the S3 keys but had no passphrase, so every deploy took the
+credentials-**present** branch and rewrote `backup.env` whole — writing the passphrase back as
+empty each time. Its `elif [ -f "$BACKUP_ENV" ]` preserve branch, the one its header cites as
+proof it *"NEVER DESTROYS A CONFIGURED DESTINATION"*, was **unreachable for the passphrase**. A
+passphrase set by hand on the host could not have survived a single deploy.
+
+✅ **The fix decouples them:** the passphrase is recovered from the existing file *before* the
+branching, so it no longer depends on whether S3 keys happen to be present. The environment still
+wins when it supplies one, so it can be rotated.
+
+### 🔴 The harness hole this exposed, which is the more reusable finding
+
+The `ssh` stub answered `*install-backup.sh*` with a canned `"  backup wiring: ok"`. **So that
+script had never executed a single statement under test** — and the blanking sat behind that line,
+green, for as long as the file has existed. It is
+[[a-gate-can-have-a-hole-shaped-like-the-defect]] in ops clothing.
+
+✅ **The stub now runs it for real**, with `ENV_DIR` / `UNIT_DIR` made overridable and
+`apt-get`/`systemctl`/`chown` shadowed on PATH.
+
+⚠️ **Two things went wrong while wiring that up, and both would have produced a passing test of the
+wrong thing:**
+
+1. **The first version ran `bash <script>` directly and dropped the credentials.** `deploy.sh`
+   passes them as an **env prefix on the command string** (`OFFSITE_BUCKET=… bash …`), so the
+   script took its *no-credentials* branch — exercising the opposite path while looking correct.
+   ✅ The stub now rewrites and `eval`s the string rather than replacing it.
+2. **`/etc/systemd/system` was hard-coded**, so the run died at unit-writing. Now `UNIT_DIR`.
+
+🔴 **The control:** the passphrase spec was run against the unfixed script and **FAILED** — and its
+failure message is nexus-1's exact state.
+
+### 🔴 TURNING ENCRYPTION ON BROKE THE BACKUP, AND THE BREAK WAS WORSE THAN THE BUG
+
+Forcing the first encrypted run is what found it. It did not quietly succeed:
+
+```
+state "failed" · 496464 bytes dumped · 56 tables · offsite "none"
+gpg: Fatal: can't create directory '/root/.gnupg': Read-only file system
+```
+
+The unit sets `ProtectHome=true` and `ProtectSystem=strict` with
+`ReadWritePaths=${BACKUP_DIR}`, so `/root` is read-only and **gpg's very first act fails**.
+
+🔴 **The shape is the point: the dump SUCCEEDS, gpg dies, `die` runs, and the upload never
+happens.** So switching encryption on converted a working *unencrypted* off-site backup into **no
+off-site backup at all** — strictly worse than the state being fixed, and it would have run that
+way every night. ⚠️ `ops/restore-check.sh` had the **identical** flaw and would have failed the
+same way on the first encrypted object, so the check that exists to catch this would have gone
+down with it.
+
+✅ Both now set `GNUPGHOME` somewhere writable — `backup.sh` a `mktemp -d` (`PrivateTmp=true`,
+removed on both the success and failure paths), `restore-check.sh` `$WORK/gnupg`, which its
+existing EXIT trap already removes.
+
+✅ **The reusable lesson: a safety feature switched on is a change like any other, and its first
+run is a test.** Enabling it moved the failure from *"the data is readable by whoever holds the
+bucket"* to *"there is no data"*. Nothing in the deploy's verify section would have said so —
+it reports the **last** backup's status, and the last good one was 20 hours old and unencrypted.
+
+### ✅ PROVEN, not merely configured
+
+Both forced by hand after the fix, on the live host:
+
+| step | result |
+|---|---|
+| `nodegx-community-backup.service` | ✅ `Result=success` — `encrypted: true`, `offsite: ok` |
+| the object that went off-site | `nodegx_community-20260826-202119.dump.**gpg**` |
+| `nodegx-community-restorecheck.service` | ✅ `Result=success` |
+| the restore, from the **encrypted off-site copy** | ✅ **56 tables restored vs 56 live** |
+
+🔴 **That is the whole chain exercised end to end** — dump → encrypt → upload → download →
+decrypt → `pg_restore` → table-count comparison against the live database — rather than a config
+file that merely *looks* right. The passphrase is proven to decrypt what it encrypted, which is
+the one property a backup passphrase has to have and the one that cannot be checked by reading.
+
+⚠️ **The passphrase is the only thing that can decrypt these dumps.** It is in
+`~/nodegx-community-deploy.env` (backed up to `…env.bak-20260826`) and on the host. **It belongs in
+a password manager** — losing it makes every encrypted backup unrecoverable, which is a worse
+failure than the one being fixed.
+
+---
+
 ## 5. What is still Richard's to rule — narrowed by the sweep
 
 Two of the task file's four questions are now answered by precedent rather than by decision:
