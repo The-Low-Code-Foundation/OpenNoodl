@@ -102,19 +102,25 @@ world-readable from the instant `Page.find` goes public. **Create Record for `Pa
 (`nodegx-backend/src/security/state.ts:5-9`) — unlike `secrets.json`, which is machine-local. So
 the template can and must ship this table.
 
+A rule is `public` | `authenticated` | `nobody` | `role:<name>`, or an array of those
+(`model.ts:63-75`, `validateRuleValue`).
+
 | collection | find | get | create | update | delete |
 |---|---|---|---|---|---|
-| `Page` | public | public | authenticated | authenticated | authenticated |
-| `Section` | public | public | authenticated | authenticated | authenticated |
-| `Theme` | public | public | authenticated | authenticated | authenticated |
-| `SiteSettings` | public | public | authenticated | authenticated | authenticated |
-| `ContactMessage` | authenticated | authenticated | **nobody** | authenticated | authenticated |
+| `Page` | public | public | `role:admin` | `role:admin` | `role:admin` |
+| `Section` | public | public | `role:admin` | `role:admin` | `role:admin` |
+| `Theme` | public | public | `role:admin` | `role:admin` | `role:admin` |
+| `SiteSettings` | public | public | `role:admin` | `role:admin` | `role:admin` |
+| `ContactMessage` | `role:admin` | `role:admin` | **nobody** | `role:admin` | **nobody** |
 
-`authenticated` at the write ops with a `role:admin`-only ACL is belt and braces: the CLP keeps
-anonymous out, the ACL keeps signed-in non-admins out. `ContactMessage.create: 'nobody'` closes the
-browser's direct door — the row is only ever written by `submitContactForm` running as system —
-while `find`/`get` stay `authenticated` so the admin panel can list messages through an ordinary
-query rather than needing a fourth function.
+`role:<name>` is available at the collection layer, so the writes say `role:admin` directly rather
+than `authenticated` leaning on the ACL to finish the job. The row-level ACL is still load-bearing
+and not redundant — it is what separates *published from draft* on the public read path, which no
+collection rule can express.
+
+`ContactMessage.create: 'nobody'` closes the browser's direct door: the row is only ever written by
+`submitContactForm`, which bypasses both layers because it runs as system. `delete: 'nobody'` keeps
+the record of who wrote in from being cleared through the API at all.
 
 Function `call` rules: `publishPage` and `duplicatePage` → `role:admin`; `submitContactForm` →
 `public`.
