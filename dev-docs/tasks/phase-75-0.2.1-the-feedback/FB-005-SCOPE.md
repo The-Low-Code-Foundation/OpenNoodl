@@ -149,8 +149,8 @@ Ordered so each step is shippable and the earliest ones are independent of any f
 | # | slice | size | depends on |
 |---|---|---|---|
 | **T1** | ✅ **DONE (s40)** — zip transport deleted, registry made reachable, AC1 met | **S** | — |
-| **T2** | Platform: `project_templates` + list/detail/bundle routes | **M** | nothing |
-| **T3** | Editor: "New project from a template" in the create wizard | **M** | T2 |
+| **T2** | ✅ **DONE (s42)** — `project_templates`, three routes, a publisher, AC3 met | **M** | — |
+| **T3** | Editor: "New project from a template" in the create wizard | **M** | ✅ T2 done — **next** |
 | **T4** | Categories + text search over the curated set | **S–M** | T2, ⚠️ see below |
 | **T5** | "Share as template" — files a **submission**, does not publish | **M** | T2, R-templates |
 | **T6** | Star ratings | **M** | 🔒 needs a ruling; see §5 |
@@ -221,6 +221,114 @@ Had the control not been there, that would have read as *"the wiring is missing"
 ✅ **Six mutants, each killed by its own spec and no other**: the registry bypass restored, the
 default dropped, POL-006's ordering reversed, the swallowed install error restored, the fatal agent
 config restored, and a `download()` alias re-added to the registry.
+
+## 4a. ✅ T2, closed 2026-08-26 (session 42) — and a CHECK constraint that RAISED instead of refusing
+
+**What shipped**, all in `nodegx-community`:
+
+- `0020_fb005_project_templates.sql` — `project_templates`: a **standalone** table, not a
+  `tutorial_bundles` with a different `kind`. A tutorial bundle hangs off `articles` because a
+  tutorial **is** an article; a template has no prose to hang off, and giving it an empty article
+  would mean teaching `listArticles` to hide half its rows — which is how a list ends up right on
+  one page and wrong on the other. ⚠️ **No author column**, and the absence is R-templates'
+  enforcement rather than a policy sentence: there is nothing for a write route to fill.
+- `src/lib/projecttemplates.ts` — publish, list, detail, bundle. Path safety is **imported** from
+  `tutorialbundles.ts`, not re-implemented; a second copy of the rule that decides where files land
+  is the last place drift is affordable.
+- Three routes under `/api/v1/community/templates`, matching TUT-004's shape exactly.
+- `scripts/publish-project-template.ts` — the caller. ⚠️ **This is the half a table is useless
+  without**, and building it is what P67's "build the caller" lesson keeps buying. `readBundleDirectory`
+  was extracted out of `publish-tutorial-bundle.ts` rather than copied.
+
+**AC3 is met and AC2 is now T3's.** The payload's structural rules are enforced at publish, in the
+database, in `tutorial_bundle_has_manifest`'s style, every one of them beginning with `jsonb_exists`.
+
+### 🔴 The finding: a CHECK constraint can RAISE rather than refuse, and the order is alphabetical
+
+`project_template_files_are_text` was written as
+`check (not jsonb_path_exists(payload, '$.files.keyvalue() ? (@.value.type() != "string")'))`.
+
+**`.keyvalue()` applied to anything that is not an object RAISES** — *"jsonpath item method
+.keyvalue() can only be applied to an object"* — rather than returning false. And **postgres
+evaluates a table's CHECK constraints in constraint-NAME order**, which puts `..._files_are_text`
+before `..._has_files` alphabetically. So a payload whose `files` was an **array** was refused by a
+jsonpath internal error before the constraint whose job that case is ever ran.
+
+| what a publisher got | before | after |
+|---|---|---|
+| `{files: ["a.json"]}` | `err.constraint` **undefined**, message *"...keyvalue() can only be applied to an object"* | **`project_template_has_files`** |
+| `{files: {"a.json": 5}}` | `project_template_files_are_text` | unchanged |
+| `{files: {...}}` all text | accepted | unchanged |
+
+The row was refused either way, so nothing unsafe was ever stored. What was broken is the **message**:
+`refusals.ts` maps constraint *names*, and there is no name on a raised error — so it reached the
+caller raw, naming nothing they could act on. Fixed with a `jsonb_typeof(...) is distinct from 'object'`
+guard, which hands the array case back to the constraint that owns it.
+
+🔴 **`0017`'s `tutorial_bundle_has_solution` carries the same unguarded expression and is correct
+today only by alphabetical luck** — `tutorial_bundle_has_files` sorts before it and returns false
+first. ⚠️ It **cannot be edited**: the migration ledger stores a checksum, and changing an applied
+migration is the mistake that file's own header calls the most expensive available here. A
+constraint added to that table with a name sorting before `has_files` would expose it.
+
+⚠️ **The instrument is what found it.** `expect(err.constraint).toBe(...)` — TUT-004's rule, that
+*"some constraint fired"* cannot tell a working guard from a missing one. An assertion that the
+insert threw would have been green on the defect.
+
+### Decisions taken inside T2, each reversible and each stated
+
+1. **Text-only payloads, refused at publish** — §3's recommended arm, taken.
+2. **A fixed category vocabulary in DDL** (`starter`, `data-app`, `dashboard`, `site`, `form`,
+   `integration`), `0011`'s pattern for `articles`. ⚠️ It is a **product** decision and Richard may
+   want different words; it is one migration to change. `TEMPLATE_CATEGORIES` in TS is a second copy,
+   and the spec reads the vocabulary out of `pg_get_constraintdef` and compares the **sets**, both
+   directions — a value in TS but not SQL is a publish that dies, a value in SQL but not TS is a
+   category no reader can name.
+3. **The manifest rule is `ProjectFormatDetector.detect()` restated**, not invented: a payload must
+   carry `nodegx.project.json`, `components/_registry.json` or `project.json`. ⚠️ `components/`
+   **alone** is refused, because the detector scores it 1 against its own threshold of 2 — so it
+   would install into a directory the editor answers `unknown` for.
+4. **No `installable` flag**, unlike `tutorialSummary`. The payload is `not null` and the row **is**
+   the bundle, so the flag could only ever read true — and an always-true field is one a client
+   eventually branches on for the wrong reason.
+5. **Detail carries `paths`, not `body`.** A template has no prose; what a detail route can honestly
+   add is *what is in it*. A manifest of paths answers "page or app" for a few hundred bytes.
+6. 🔴 **Omitting `publishedAt` on a republish leaves the row where it was.** Written the obvious way
+   — `published_at = excluded.published_at` — pushing a new version of a **live** template with the
+   field left out would take it off the shelf as a side effect of fixing a typo in it. Absent means
+   *leave it alone*; an explicit `null` is still a working unpublish. Both arms specced.
+7. **No `readTemplates` capability was added.** `READ_CAPABILITIES` is what a *client* reads to
+   decide what to draw and **nothing dispatches on it** — the gate these routes pass is
+   `communityGate`, which refuses the whole surface. Adding a fourth entry no consumer reads is
+   P73 s3's shape: a new case in a shared vocabulary admitted by every consumer that dispatches on
+   absence from a list.
+
+### ⚠️ What T2 deliberately does NOT include
+
+- **No curated template content.** The shelf is empty; `publish-project-template.ts` is how it gets
+  filled, and authoring the first batch is content work T3 needs, not schema work T2 owed.
+- **No thumbnail column.** `TemplateItem.iconURL` exists editor-side, but a `thumbnail_url` here is
+  `articles.project_url`'s hazard again — free text on an arbitrary host — and a binary in the
+  payload is the decision §3 parks. A card draws a title, a category and a file count.
+
+### Gates, session 42
+
+- `tests/fb005-project-templates.test.ts` — **42 specs, 0 failures**.
+- The four route gates, all green **with the new routes discovered from disk**:
+  `nat006-api-contract` + `uni011-mirror-api` **38 passed**; `uni005-data-inventory` +
+  `db-schema-drift` **83 passed**.
+- `npx tsc --noEmit` — **0 errors**.
+- **8 mutants, all killed**, each by the spec named beside it: `has_files` loses its `jsonb_exists`;
+  `files_are_text` loses its `typeof` guard; `has_manifest` forgets the legacy spelling; the SQL
+  vocabulary gains a value TS has not; the bundle forgets `published_at is not null`; a republish
+  always decides visibility; `nonTextEntries` returns `[]`; a constraint loses its refusal code.
+  ⚠️ **Measured with `-t` filtered to the one spec, so "killed by its own spec" is established and
+  "and by no other" is NOT** — the full file was green before and after, which is a weaker claim.
+  Pristine copies were restored by `copyfile` and all three files `md5`-verified identical.
+- `check:css` not run — no stylesheet changed. **No OpenNoodl gate was run or implicated**: the
+  change is entirely in `nodegx-community`.
+
+---
 
 ⚠️ **T4 still inherits a known defect.** FB-014 measured that the platform's FTS helper uses
 `websearch_to_tsquery`, which **ANDs bare terms** — a conversational query matched 2/22 documents
