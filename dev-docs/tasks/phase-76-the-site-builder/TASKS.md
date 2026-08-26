@@ -38,38 +38,33 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
 
 ## Tier 2 — the template
 
-- 🟡 **SB-004** — [the site is records](SB-004-THE-SITE-IS-RECORDS.md) — **DESIGNED s2; ALL SEVEN
-  COMPONENTS AUTHORED s3, both doors. Only §7's real backend run remains.**
-  Five classes (Page/Section/Theme/SiteSettings/ContactMessage), nav derived not stored;
-  the ACL *is* the publication state and `published` is its queryable mirror, written only by
-  `publishPage`; four endpoints over three helpers composed through `Run Tasks`, the cloud
-  runtime's only iteration primitive. Grounded on measurements, not assumptions: classes auto-create
-  on first write (`_ensureTable`), the graph's ACL vocabulary is exactly `*`/user/`role:` with
-  wirable read-write booleans, and **an absent ACL means public**. 🔴 **F2 — `devOpen` disables
-  row-level ACL (`aclFor`) but NOT collection permissions (`checkClp` has no such branch), so a
-  local drive can show a plausible refusal while never exercising the published/draft boundary at
-  all.** `site/SetSectionAccess` + `publishPage` authored s2 through `create_component` **and**
-  `create_plan`/`stage`/`apply` — **s1's plan-door debt closed**. **s3 finished the set**:
-  `duplicatePage`, `submitContactForm`, `site/CopySectionToPage`, `site/ContactRecipient`, and
-  `claimSite` (15 specs; noodl-mcp 60/696). 🔴 **F5 — s2's own publish flow was wrong twice, and both are LEGAL
-  graphs**: the section query carried no filter (it would have flipped ACLs on *every* Section in
-  the site) and the Response wired none of its declared params (200 with `{}`). Fixed and pinned by
-  disk-level assertions, 4 mutants graded — a fix nothing grades is one the next author drops.
-  ✅ **F6 — one plan can hold a helper AND its caller**: staging resolves an unapplied sibling,
-  measured beside a known-firing refusal. ⚠️ A green authoring run is still not evidence the
-  invariant holds: the door returns `dynamic-port-skipped` over exactly the ACL parameters, and says
-  so. 🔴 **F7 — nothing creates the `admin` role that every rule in §3/§4 names**; the backend-admin
-  *token* is a different principal, `role:<name>` is a `_Role` row, and `signup` cannot grant one —
-  so the template as specified was un-authorable. ✅ **FIXED s3 by `claimSite`**, the seventh
-  component: `Add User To Role`'s `Create Role If Missing` mints the role in-graph (no admin token,
-  no `/admin/*` route), gated on **both** an unclaimed site and a `SITE_SETUP_TOKEN` secret so an
-  unprovisioned backend fails **closed** — Richard's ruling; 5 mutants graded on the safety
-  properties. ⚠️ **F8 — `contactRecipient` cannot live in the world-readable `SiteSettings` row**
-  (🧭 Richard's, changes §2's field list). ⚠️ **F9 — the door makes node ids unique across the
-  PROJECT**, so an authored id is a request, not a handle; read written graphs by type, never by the
-  id you sent. Left: **the real backend run, and nothing else** — scoped in §7a (harness exists;
-  `reconstructLegacyComponent` is pure, so the run can drive the components the MCP door wrote
-  rather than twins).
+- ✅ **SB-004** — [the site is records](SB-004-THE-SITE-IS-RECORDS.md) — **DONE s4. The invariant is
+  measured.** All seven components authored through both MCP doors, deployed to a real SQLite
+  backend with **`devOpen: false`**, and driven over HTTP from the outside — anonymous and non-admin
+  callers, never the function's own view (`nodegx-backend/tests/sb004-publication-invariant.test.ts`,
+  **29 specs**; backend **103/1123**, noodl-mcp **60/696**, both typechecks clean). Acceptance 1–9
+  all met; §7 carries a table of what each one actually turned up.
+  🔴 **The run found four defects that both authoring doors had passed, and every one of them shipped
+  a broken template:**
+  **F10** — a `JavaScriptFunction`'s custom signal outputs are DEAD once deployed unless the graph
+  declares them as ports (the derivation is behind `isRunningLocally()`); `claimSite` threw
+  `Outputs.ok is not a function` and **504'd after 30s**.
+  **F11** — a signal is not a promise that the values beside it arrived; values drain one input per
+  update pass, so a *correct* setup token was refused and `duplicatePage` copied 1 of 2 sections.
+  **F12** — a Query Records node fetches ONCE, UNFILTERED, at graph-build time, and that result is
+  what the graph acts on: **publishing one page opened every Section on the site**, with the correct
+  filter sitting on disk. F5's defect by a second road no authored assertion can see.
+  **F13** — `points to` cannot narrow from a cloud function and **widens instead of failing**
+  (no schema in the cloud runtime; the refusal is reported through the absent editor connection).
+  §2's unhedged bet lost; the String fallback §2 itself named is taken — `Section.pageId`.
+  All four fixed, four mutants graded. F10 and F12/F13 are **core gaps, not template gaps**, filed as
+  **SB-010** and **SB-011**. The four runtime rules are in
+  `dev-docs/reference/BACKEND-AUTHORING-MODEL.md` §"Four things a deployed graph does not do the way
+  the canvas does".
+  ⚠️ **F8 is still Richard's** and blocks SB-006's contact section.
+  ⚠️ Acceptance 5 is met on the row, not the mail (no SMTP in the run); acceptance 2's "admin path"
+  is the REST API as the owner, because SB-005's panel does not exist yet — see §7.
+
 - ⬜ **SB-005** — the admin panel (editor, image upload, theme, live preview via realtime).
   ✅ **SB-004 F7 is handled in the backend** by `claimSite`; SB-005 owns its *front* — a first-run
   screen that takes the setup token, signs the owner up, and calls it.
@@ -100,9 +95,27 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   unpublished 404s). 🔴 **Must run with `devOpen: false` over a real SQLite engine** — see SB-004 F2;
   a default local backend does not enforce row-level ACLs at all, so a passing drive there is not
   evidence for any publication claim.
+  ✅ **The backend half is already done** by SB-004 §7 — an anonymous caller reads a published page
+  and 404s an unpublished one, with enforcement on. What SB-008 still owes is the *browser* half:
+  the public site actually rendering it. Scope it as a UI drive, not a permissions drive, and do not
+  re-litigate what §7 measured.
 
 ## Tier 3 — found while building
 
+- ⬜ **SB-010** — [the script ports the authored door does not write](SB-010-THE-SCRIPT-PORTS-THE-DOOR-DOES-NOT-WRITE.md)
+  — **MEASURED s4, worked around in SB-004, not fixed.** The MCP door does not derive a
+  `JavaScriptFunction`'s script ports, so **every cloud component any agent authors** has dead
+  custom signal outputs once deployed — a 30-second 504 rather than an error. The derivation exists
+  and is correct; it is behind `context.editorConnection.isRunningLocally()`, and an authored graph
+  is by definition not being watched by an editor. Same shape as SB-009, and the same disposition:
+  whether the fix writes or merely warns needs a corpus sweep.
+- ⬜ **SB-011** — [a query that widens when it cannot narrow](SB-011-A-QUERY-THAT-WIDENS-WHEN-IT-CANNOT-NARROW.md)
+  — **MEASURED s4, worked around in SB-004, not fixed.** Two independent ways a `Query Records` node
+  in a cloud function returns every row when asked for a few: a translation failure becomes *no
+  filter* (not an error), and the node fetches once unfiltered at graph-build time. The second has a
+  sharp edge — SB-004's workaround is correct only on a query that HAS a filter parameter, and
+  applying it to an unfiltered one made `claimSite` read a claimed site as unclaimed. Fixing it in
+  the node needs a corpus sweep.
 - ⬜ **SB-009** — [a component named in a parameter is not checked by the authored gate](SB-009-A-COMPONENT-NAMED-IN-A-PARAMETER.md)
   — **MEASURED s2, not fixed.** A cloud `Run Tasks` naming a nonexistent helper, or a browser
   component across the runtime boundary, is accepted `0/0/0` and written to disk; the two
@@ -150,3 +163,23 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   on an unclaimed site AND a `SITE_SETUP_TOKEN` secret, 5 mutants graded; building it turned up
   **F8** and **F9**. noodl-mcp **60 suites / 696** green, `typecheck` clean; no editor or runtime
   source touched, so `test:ci` was not re-run (nothing in its scope changed).
+- **s4 (2026-08-26)** — **SB-004 CLOSED: §7 built and run.**
+  `nodegx-backend/tests/sb004-publication-invariant.test.ts` (29 specs) authors the seven components
+  through the real MCP server, converts what the door wrote into a workflow bundle
+  (`tests/helpers/authored-bundle.ts` — the v2→legacy half is the editor's own pure importer, the
+  legacy→runtime half is written there because the editor's version needs a live `NodeLibrary`), and
+  drives it against SQLite with **`devOpen: false`**. The seven components' node/wire lists moved to
+  `noodl-mcp/tests/sb004Components.ts` so the authoring suite and the run cannot drift — that
+  extraction *is* acceptance 8.
+  **Four defects found, all invisible to both authoring doors** (SB-004 F10–F13), the worst of which
+  opened every Section on the site while the correct filter sat on disk. Four mutants graded. Two
+  filed as core gaps: **SB-010** (the door writes no script ports) and **SB-011** (a query that
+  widens when it cannot narrow). The rules an author needs are now in
+  `dev-docs/reference/BACKEND-AUTHORING-MODEL.md`.
+  Final: backend **103 suites / 1123**, noodl-mcp **60 / 696**, both typechecks clean.
+  ⚠️ `test:ci` not run — **no editor or runtime source was touched** (two test files, one test
+  helper, one shared fixture, four docs), so nothing in its scope moved. s2's floor stands.
+  ⚠️ **Deliberately not done**: SB-002's `BACKEND_DOCTRINE_MD` still lacks the four rules. It lives
+  in noodl-editor source, and editing it puts `test:ci` back in scope — a peer held the machine with
+  a live editor stack. First item for the next session; the text is already written in the reference
+  doc and can be lifted.

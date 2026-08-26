@@ -1,14 +1,21 @@
 # SB-004 — The site is records
 
-**Status: 🟡 AUTHORING COMPLETE s3 (2026-08-26); the real backend run is what remains.** The data
-model, the ACL matrix and the flows below are settled against measured backend behaviour (§1). **All
-seven components — four endpoints and three helpers — are authored through the MCP doors and green**
-(`noodl-mcp/tests/sb004Authoring.test.ts`, 15 specs; noodl-mcp 60 suites / 696). s2 closed the debt
-that the plan door had never driven a cloud target end to end; s3 finished the set and, while
-finishing it, found two defects in the *already-authored* publish flow that no gate can see (§6 F5)
-and the missing `admin` role that made the whole template un-authorable (**F7**, now fixed by
-`claimSite` on Richard's fail-closed ruling). Left: **only §7's real-backend run**, which is the
-first thing that can say the publication invariant holds.
+**Status: ✅ DONE s4 (2026-08-26). The invariant is measured, not asserted.** All seven components
+are authored through the MCP doors, deployed to a real SQLite backend with **`devOpen: false`**, and
+driven over HTTP by anonymous and non-admin callers:
+`nodegx-backend/tests/sb004-publication-invariant.test.ts`, **29 specs**, backend suite
+**103 / 1123**, noodl-mcp **60 / 696**, both typechecks clean.
+
+🔴 **The run found four defects that every green authoring run had passed, and each one shipped a
+broken template.** Two are about the door (`JavaScriptFunction` signal ports, F10), one about the
+runtime's delivery order (F11/F12) and one is SB-004 §2's own unhedged bet losing (F13). The worst,
+**F12**, made `publishPage` flip the access rules on *every Section in the site* while carrying the
+correct filter on disk — F5's defect arriving by a second road that no assertion on the authored
+graph could see. All four are fixed, and each fix is graded by a mutant.
+
+The lesson the whole task now carries: **a green authoring run means the graph is well-formed, and
+nothing else.** s2's run was green and published the wrong rows; s3's run was green and could not
+answer a request at all. Only §7 could say either.
 
 Depends on SB-001/002/003 (all ✅ s1). Feeds SB-005 (admin panel), SB-006 (public site), SB-008
 (the drive). Canonical prose model: `dev-docs/reference/BACKEND-AUTHORING-MODEL.md`.
@@ -50,7 +57,7 @@ Five, plus one derived thing that is deliberately not a class.
 | class | fields | who writes it |
 |---|---|---|
 | `Page` | `title` String · `slug` String · `published` Boolean · `publishedAt` Date · `navOrder` Number · `showInNav` Boolean · `seoDescription` String | admin panel (content); **`published` only ever by `publishPage`** |
-| `Section` | `page` Pointer→Page · `kind` String · `order` Number · `data` Object | admin panel |
+| `Section` | **`pageId` String** (was `page` Pointer — see F13) · `kind` String · `order` Number · `data` Object | admin panel |
 | `Theme` | singleton row: `tokens` Object · `name` String | admin panel |
 | `SiteSettings` | singleton row: `siteName` · `homeSlug` · ~~`contactRecipient`~~ (F8) | **first written by `claimSite`**, then the admin panel |
 | `ContactMessage` | `name` · `email` · `message` · `pageSlug` · `handled` Boolean | **only `submitContactForm`**, as system |
@@ -65,10 +72,13 @@ sparse table because `inferColumnType` (`AdapterFacade.ts:364-377`) types an obj
 the section shapes have almost nothing in common. Sections are always fetched by page, never
 filtered on `data`, so nothing needs to query inside it.
 
-⚠️ **`Section.page` as a Pointer is the one unhedged bet in this model.** A plain `pageId` String
-would be the safe choice, and if the pointer-equality path in `Query Records` defects, that is the
-fallback — but the Pointer is the idiom the product teaches, and this template exists to exercise
-the idiom. It is the first thing authoring should prove; see §6.
+🔴 **The Pointer was the one unhedged bet in this model, and §7's run is where it lost.** This
+paragraph used to say `Section.page` was a Pointer, that a plain `pageId` String was the safe
+choice, and that the String was the fallback *"if the pointer-equality path in Query Records
+defects"*. It defects — **silently, in the direction that returns more rows than were asked for**
+(F13). The fallback is taken; `Section.pageId` is a String and the filter is `equal to`. The
+Pointer idiom is not usable from a cloud function until `pointsTo` can see a schema there, which is
+a core gap and not this template's to close.
 
 ## 3. The publication invariant
 
@@ -362,6 +372,114 @@ things a visitor may see. **Left for Richard**, because it changes §2's field l
 must resolve nodes by type or label, never by the id it sent — and cross-component references built
 from remembered ids will not survive. Found by an assertion that expected its own id back.
 
+**F10 — 🔴 a `JavaScriptFunction`'s custom signal outputs are DEAD once deployed, unless the graph
+declares them as ports.** The first thing §7's run hit, and it cost the whole endpoint.
+
+`Outputs.ok()` is a *call*, and it resolves only if `out-ok` is on the node model as a `signal` port
+— `_isSignalType` reads `model.outputPorts[name].type` and nothing else
+(`simplejavascript.ts:634-636`). Those ports are derived by parsing the script, and the derivation
+lives in the node module's `setup()`, which returns immediately unless
+`context.editorConnection.isRunningLocally()` (`:772-775`). **A deployed backend has no editor
+connection.** An editor-drawn graph is fine because the editor saves what it derived
+(`exportDynamicPorts: true`); an MCP-authored graph carries only what the author declared, and the
+door derives nothing.
+
+Measured: `claimSite` threw `Outputs.ok is not a function`, no Response node was ever reached, and
+`POST /functions/claimSite` **504'd after thirty seconds**. Every one of the seven components had at
+least one such output. The fix is a `ports` entry per custom signal — which is exactly what the
+editor would have written — and it is graded by an assertion that re-derives the expected set from
+each script, so a future author who adds a signal and forgets its port gets a red rather than a
+timeout in a deploy.
+
+⚠️ **This is a door-level gap, not a template-level one**, and it deserves its own task: the MCP
+door already parses these scripts well enough to accept a wire from `gate.out-ok`, so it knows the
+port exists — it just does not write it. Every cloud component any agent authors through this door
+has the same hole.
+
+**F11 — 🔴 a signal is not a promise that the values beside it have arrived.** The rule that
+explains three separate defects in this run.
+
+A value delivered to a node is queued per input name and drained by `Node.update`, which captures
+`Object.keys(this._inputValuesQueue)` once per pass (`node.ts:609`). So a node triggered by a signal
+can run **before** the values wired into it are there. Measured directly with a four-input probe: a
+code node taking `Query Records.items`, a Request parameter and a `Secret` value, triggered by that
+query's `fetched`, saw `{empty}` on its first run, `{empty, items}` on its second, and everything
+only on its third.
+
+`claimSite` therefore decided on an empty token and **refused a correct setup token** — in the
+refusal message that is deliberately indistinguishable from a wrong one (F7), so the failure was
+mute by design. `duplicatePage` copied **one** of a page's two sections, which is worse than copying
+none: a partial result reads as a success.
+
+The fix is two rules, both now on the components:
+
+1. **A code node fed by two producers guards on its inputs** — `return` until every value it needs
+   is present. Returning is safe because `runOnValueChange` defaults to ticked
+   (`run-on-value-change.ts:186-189`: *absent means ticked*), so a late value re-runs the node by
+   itself; the guarded run costs one no-op. Acting on the incomplete first run is what cannot be
+   undone.
+2. **A chain, not a fan-out.** `duplicatePage` now starts nothing downstream until the copy has an
+   id, so every consumer's values are at least one hop older than its trigger. The guards stay
+   anyway: they cost nothing and they are the only thing between a race and a silent partial write.
+
+⚠️ The corollary for `receive`: §6b finding 3 recorded it as *the* ordering-safe trigger, because it
+fires "after every parameter output has been updated". That is a promise about the **Request node**,
+not about the consumer — and F12 is what the difference costs.
+
+**F12 — 🔴 a Query Records node fetches ONCE, UNFILTERED, before any graph runs — and that is the
+result the rest of the graph acts on.** The sharpest finding of the run, and F5's defect arriving by
+a road no assertion on the authored graph can see.
+
+`setCollectionName` and `setVisualFilter` each call `scheduleFetch` when their `runOnValueChange`
+box is ticked (`dbcollectionnode2.ts:564`, `:1050`), and absent means ticked. Both are set from
+**parameters**, at node-creation time. So the node queries the moment the graph is built — with no
+`qp-` value, because no graph has run yet. `visualQueryToNeutral` then **drops a rule whose value is
+`undefined`** (`saved.ts:287`, deliberately: that is how an optional filter port works), an empty
+filter is no `where`, and no `where` is every row in the class. `fetched` fires, and the graph
+proceeds on that.
+
+Measured: `publishPage` on one page flipped `"*": {read:true}` onto **all seven Sections across three
+pages**, including two on a page nobody had named — with `SECTIONS_OF_PAGE_FILTER` sitting correctly
+in the authored graph the whole time. F5 fixed the *missing* filter and pinned it by assertion; this
+is the same outcome with the filter present.
+
+The fix is three properties, and all three are now pinned in `sb004Authoring.test.ts` beside F5's
+own assertions:
+
+- `runOnChange-collectionName: false` and `runOnChange-querySettings: false` on the filtered queries,
+- and **no `Do` wire at all**, which leaves `setQueryParameter` (`:1069`, its own box still ticked)
+  as the single trigger. A query cannot be started by its own filter parameter before that parameter
+  exists, so this is the one ordering that cannot invert.
+
+⚠️ **Only on the FILTERED queries.** The two unfiltered singleton reads (`claimSite`'s and
+`site/ContactRecipient`'s) keep the default, measured rather than assumed: with the boxes off,
+`claimSite`'s `settings` node reported `isEmpty: true` for a collection that had a row in it — the
+`isEmpty` output is never flagged without that first fetch — which **opened the one door in the
+template that mints an admin**. §7's `refuses a second claim` arm is what caught it, in the two
+minutes it existed.
+
+**F13 — 🔴 `points to` cannot narrow anything inside a cloud function, and it fails by returning
+everything.** §2's one unhedged bet, lost.
+
+The write half was fine: `inferColumnType` read the `__type` tag and made a real `Pointer` column.
+The read half is not. `pointsTo` is the one operator that needs the collection schema
+(`parse.ts:219-231` — it must know the `targetClass`), the schema comes from
+`CloudStore._collections` (`queryutils.ts:106-121`), and **nothing in the cloud runtime ever
+populates that cache**. The translator does the right thing and refuses; the refusal is caught in
+`getStorageFilter` and reported through `editorConnection` (`dbcollectionnode2.ts:925-932`), which a
+deployed backend does not have; the filter is then `undefined`; and an undefined filter is a query
+with no `where`.
+
+⚠️ §6b finding 2 predicted this would fail **loudly** — *"the one mercy here"*. It does not. It is
+recorded against `assert-an-absence-with-a-known-firing-signal-beside-it`: measured with two arms
+differing in one thing, on rows carrying both shapes of the same link. The String arm returns the 2
+rows asked for; the Pointer arm returns all 3, as a 200.
+
+§2 takes its own stated fallback: `Section.pageId`, a String, filtered with `equal to`, which needs
+no schema. The Pointer idiom stays unusable from a cloud function until `schemaFor` has a source
+there — **a core gap worth its own task**, since it silently widens any authored query.
+
+
 ## 6a. What authoring it actually taught (s2)
 
 Both doors, on the real server: `create_component` for each component, and `create_plan` → two
@@ -425,7 +543,11 @@ Pointer round-trip (finding 2), whether a code node receives Models or plain obj
 `Query Records.items`, and whether `Run Tasks` fires `completed` on an empty item list are all §7
 questions.
 
-## 7. Acceptance
+## 7. Acceptance — ✅ ALL MET s4
+
+`nodegx-backend/tests/sb004-publication-invariant.test.ts`, 29 specs, three backends: the site
+itself, an **unprovisioned** one (arm 9), and a two-arm pointer probe (F13). Each numbered item
+below names the specs that hold it.
 
 1. The five classes exist with the §2 fields, created by first write — no migration step anywhere.
 2. A page and its sections created through the admin path carry the `role:admin` ACL **from
@@ -447,9 +569,34 @@ questions.
    the site is already claimed. The unprovisioned arm is the one that must not be skipped: it is the
    difference between failing closed and failing open.
 
-## 7a. How §7 runs (scoped s3, not yet built)
+### What each one measured
 
-The harness exists; the bridge into it is the part that needed finding.
+| # | how it is held | what it turned up |
+|---|---|---|
+| 1 | `/admin/schema` lists `Page`/`Section`/`SiteSettings`, none of which any migration created | ✅ `_ensureTable` alone; the template ships no schema step |
+| 2 | a fresh draft 404s for **anonymous AND a signed-in stranger**, 200s for the owner, and its ACL is the admin rule *present* rather than absent | ✅ |
+| 3 | publish → page and every section carry `"*": {read:true}` and read 200 anonymously; unpublish reverses both; the mirror and the ACL are asserted to agree | 🔴 **F12** — publish opened every Section on the site |
+| 4 | the copy is a draft, admin-only, `published:false`, renamed `Copy of …-copy-xxxxxx`, with its own new section rows and the published source untouched | 🔴 **F11** — copied 1 of 2 sections |
+| 5 | an anonymous `submitContactForm` writes the row; `ContactMessage.create` is refused to a visitor **and to the owner**; the class is unreadable except to admin | ✅ |
+| 6 | all three helpers 404 as function names; a non-admin gets **403 on an endpoint that exists**, which is the difference from 404 | ✅ (SB-003 holds at run time too) |
+| 7 | `started.security.enforced === true`, asserted in `beforeAll` before anything else | ✅ — and it is what makes every ACL row above mean anything |
+| 8 | the bundle's component names are compared to `SB004_COMPONENTS`, and the helper's derived ports to its Component Inputs/Outputs | 🔴 **F10** — every custom JS signal was dead |
+| 9 | wrong token / already claimed / **unprovisioned** all answer the identical body, and `/admin/roles` shows the role was never created | ✅ fails closed, all three ways |
+
+⚠️ **Acceptance 5 is met on the row, not on the mail.** The function answers and the
+`ContactMessage` is written; no SMTP transport is configured in the run, so "sends one email" is
+held only as far as `Send Email`'s `completed` edge, which is wired precisely so an unconfigured
+mail service still answers the visitor. A real mail assertion belongs with F8's resolution, since
+that changes where the address comes from.
+
+⚠️ **Acceptance 2's "admin path" is the REST API as the owner**, not SB-005's panel, which does not
+exist yet. The rows are written with the ACL the panel will write. When SB-005 lands, its own path
+has to be driven — a panel that forgets the ACL produces a world-readable draft and every spec here
+still passes.
+
+## 7a. How §7 runs — ✅ BUILT s4
+
+The scope below was written in s3 and held up; what it did not predict is in F10–F13.
 
 - **Boot.** `new BackendService({ dataDir, port: 0, … })` then `await service.start()`; the URL is
   `started.listen.url`. `allowEphemeral` **defaults to `false`** (`config.ts:81`) and no test in the
@@ -460,6 +607,11 @@ The harness exists; the bridge into it is the part that needed finding.
 - **The closest working precedent is `tests/cloud-system-roles.test.ts`** — `devOpen: false`, a cloud
   function called over HTTP, and a row that a reader 404s on until a role is granted. It is the
   template to copy, including its role-granting (which F7 says this template needs anyway).
+- ✅ **The seven components are authored in `beforeAll`** through `createServer` from
+  `noodl-mcp/src` over an in-memory MCP client, from `SB004_COMPONENTS` in
+  `noodl-mcp/tests/sb004Components.ts` — the same constants `sb004Authoring.test.ts` sends, extracted
+  so the two suites cannot drift. That extraction *is* acceptance 8: a second copy of the graphs
+  would agree with the artefact only until the first edit that reached one of them.
 - 🔴 **Deploy the REAL components.** A cloud function is registered by dropping a
   `*.workflow.json` bundle (`{components, settings, metadata}`) into `<dataDir>/workflows/`, where a
   component is the **legacy nested `graph.roots` shape** — not the v2 split files the MCP door
@@ -472,15 +624,68 @@ The harness exists; the bridge into it is the part that needed finding.
   paraphrase of it (`measure-the-artefact-before-believing-the-task-file`).
   ⚠️ `visualRoots` is a fixed point through that converter (`editor-deps.ts:243-249`) — irrelevant
   for cloud components, which have no visual tree, but do not reuse the bridge for a page.
+
+  ✅ **The bridge is `nodegx-backend/tests/helpers/authored-bundle.ts`**, and s3's scope was half
+  right. `reconstructLegacyComponent` is indeed pure and gives the legacy `{name, graph:{roots,
+  connections}}`, but the runtime's bundle is a *different* shape again — flat `{name, ports, nodes,
+  connections, roots}` with `sourceId/sourcePort` wires (`componentmodel.ts:467`). The editor's own
+  converter for that step (`utils/exporter/util.ts`, `exportComponent`) reads `node.type.allowAsChild`
+  and `graph.getConnectionHealth` off a live `NodeLibrary` and cannot be reached from a test process,
+  so that half is written in the helper and each difference is stated there.
+
+  🔴 **The one that would have cost a wrong conclusion: component ports are DERIVED from the
+  Component Inputs/Outputs nodes, with the plug INVERTED.** A Component Inputs node *outputs* into
+  its graph, so `{plug:'output'}` there is `{plug:'input'}` on the component, and
+  `createFromExportData` reads exactly that field. `cloud-run-tasks-loop.test.ts`'s header records
+  the same trap from the other side: with the ports only on the nodes, Run Tasks reports
+  `run-tasks/no-completion-output` and the HTTP request **hangs rather than failing** (CWF-018).
 - ⚠️ **Two gaps the precedents do not cover**, so budget for them: no existing backend test puts a
   Record node (`NewDbModelProperties`/`SetDbModelProperties`/`DbCollection2`) inside a cloud
   function at all, and none drives a project directory end to end. Both are new ground, and the
   first is where §6b's Pointer question (finding 2) gets settled.
+
+  ✅ That budget was right and then some: **all four of F10–F13 live in that gap**, and every one of
+  them is a defect in code that has been shipping. A Record node inside a cloud function was
+  genuinely untrodden ground.
+
+- ⚠️ **The suite is NOT typechecked.** `nodegx-backend/tsconfig.json` includes `src/**/*` and
+  excludes `**/*.test.ts`, so neither the new spec nor `tests/helpers/authored-bundle.ts` is covered
+  by `npm run typecheck` in that package — they are compiled by ts-jest with `isolatedModules`,
+  which checks nothing. `noodl-mcp`'s tsconfig *does* include `tests/**/*.ts`, which is why
+  `sb004Components.ts` was put there rather than beside the spec that consumes it.
 - ⚠️ A cloud function runs with `masterKey` (`service.ts:490-500`), so **its own writes bypass both
   layers**. The invariant is therefore tested from the *outside*: an anonymous and a non-admin
-  caller reading `Page`/`Section` over HTTP, never the function's own view.
+  caller reading `Page`/`Section` over HTTP, never the function's own view. ✅ Held to throughout.
+- ⚠️ **One REST-side gap found in passing, not chased:** `GET /classes/:name?where=` refuses a tagged
+  Pointer object — *"received a filter operator it cannot translate: `__type`"* — so the wire filter
+  vocabulary and the graph's are not the same vocabulary. Irrelevant once §2 moved to a String, but
+  SB-005/006 will meet it the moment the admin panel filters on a relation.
 
 ## 8. Session log
+
+- **s4 (2026-08-26)** — **§7 built and run; SB-004 closed.**
+  `nodegx-backend/tests/sb004-publication-invariant.test.ts` (29 specs) authors the seven components
+  through the real MCP server, converts what the door wrote into a workflow bundle
+  (`tests/helpers/authored-bundle.ts`) and drives it against a SQLite backend with
+  **`devOpen: false`** — every claim about who may see what read from the outside, by an anonymous
+  or non-admin caller over HTTP. Backend suite **103 / 1123**, noodl-mcp **60 / 696**, both
+  typechecks clean.
+  **The run found four defects, all of them invisible to both authoring doors** (F10–F13): dead
+  JavaScript signal outputs (a 30-second 504 on the first call), values arriving after the signal
+  that triggers their consumer (a *correct* setup token refused, and one of two sections copied), a
+  Query Records node fetching once unfiltered at graph-build time (**publishing one page opened
+  every Section on the site, with the right filter on disk**), and `points to` silently returning
+  every row inside a cloud function (**§2's unhedged bet lost; the String fallback taken**).
+  Four mutants graded, one per fix, each killed by the assertion that names it. Two of the four are
+  core gaps rather than template gaps and are filed as **SB-010** and **SB-011**.
+  ⚠️ One correction made in-session and left visible: switching the load-time fetch off was applied
+  to *all four* queries first, which made `claimSite` read an already-claimed site as unclaimed —
+  i.e. it opened the admin door. The two unfiltered singleton queries keep the default, and the
+  reason is written on both nodes. §7's `refuses a second claim` arm caught it within minutes,
+  which is the argument for that arm existing.
+  ⚠️ `test:ci` not run: no editor or runtime **source** was touched — the changes are two test files,
+  one test helper and one shared fixture module — so nothing in its scope moved. The floor recorded
+  in s2 stands.
 
 - **s2 (2026-08-26)** — model designed and grounded (§1: cloud vocabulary from the catalog,
   auto-schema from `_ensureTable`, ACL vocabulary from `_getACL`, absent-ACL-is-public from

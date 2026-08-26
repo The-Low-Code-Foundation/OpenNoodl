@@ -221,6 +221,73 @@ code is the bug.*
   membership was reachable only by pasting an objectId into the Permissions panel by hand. `Add User
   To Role` closes it; see §Roles above for why that node is cloud-only.
 
+## Four things a deployed graph does not do the way the canvas does
+
+🔴 **Every one of these was found by running an MCP-authored cloud function on a real backend
+(SB-004 §7), and every one of them was green through both authoring doors first.** They share a
+cause worth stating on its own: **a deployed backend has no editor connection**, and a surprising
+amount of the runtime's helpfulness is behind `context.editorConnection.isRunningLocally()`.
+
+**1. Declare a code node's custom signal outputs, or they are dead.** `Outputs.done()` is a call,
+and it resolves only if `out-done` is on the node as a `signal` port. The editor derives those
+ports by parsing the script and saves what it derived; the MCP door derives nothing. So an authored
+`JavaScriptFunction` needs them written out:
+
+```json
+{ "id": "gate", "type": "JavaScriptFunction",
+  "ports": [{ "name": "out-ok", "plug": "output", "type": "signal" }],
+  "parameters": { "functionScript": "Outputs.ok();" } }
+```
+
+Undeclared, the script throws mid-run, no Response node is reached, and the caller waits out the
+30-second timeout. The built-in `success`/`failure` outcome outputs are declared on the node type
+and always work — which is why this is invisible until you name your own signal.
+
+**2. A signal is not a promise that the values beside it have arrived.** Values are queued per
+input name and drained a pass at a time, so a node triggered by one producer's signal can run before
+another producer's value reaches it. A code node fed by **two** producers must therefore guard:
+
+```js
+if (Inputs.items === undefined || Inputs.flag === undefined) return;
+```
+
+Returning is safe and cheap: `runOnValueChange` is ticked by default, so a late value re-runs the
+node by itself. **Acting on the incomplete first run is what cannot be undone.** Better still,
+prefer a chain to a fan-out — start nothing downstream until the step before it has answered — so
+every consumer's values are at least one hop older than its trigger.
+
+⚠️ This is why `receive` is not the universal answer. It fires after every parameter output on the
+**Request node** has been updated; it says nothing about when those values reach a node three hops
+away.
+
+**3. A `Query Records` node fetches once, unfiltered, when the graph is built.** `collectionName`
+and `visualFilter` are parameters, and setting either schedules a fetch. That first query has no
+`qp-` value, a rule with an undefined value is *dropped* rather than failed, and a dropped rule is
+no `where` — every row in the class, delivered on `fetched` before your request has done anything.
+
+For a query **with** a filter parameter, the shape that works is: switch off the implicit triggers
+and leave `Do` unwired, so the filter value arriving is the only trigger.
+
+```json
+{ "type": "DbCollection2", "parameters": {
+    "runOnChange-collectionName": false,
+    "runOnChange-querySettings": false,
+    "collectionName": "Section",
+    "visualFilter": { "combinator": "and",
+      "rules": [{ "property": "pageId", "operator": "equal to", "input": "pageId" }] } } }
+```
+
+⚠️ **Do the opposite for an unfiltered query.** With those boxes off and no load-time fetch, the
+`isEmpty` output is never flagged and reads `true` for a collection that has rows in it. Leave the
+defaults on a query that has nothing to be early for.
+
+**4. `points to` cannot narrow anything from a cloud function, and it widens instead of failing.**
+It is the one operator that needs the collection schema, the schema cache is never populated in the
+cloud runtime, and the translator's refusal is reported through the editor connection that is not
+there. The query then runs with no filter at all. **Use a plain id String and `equal to` for a
+link a cloud function has to filter on.** Pointers are fine to write and fine to read back; it is
+filtering on one that does not work here.
+
 ## Naming
 
 "Cloud function" is a Noodl-era term; the wire URLs say Parse for compatibility reasons that have
