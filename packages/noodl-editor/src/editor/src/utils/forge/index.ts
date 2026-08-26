@@ -1,4 +1,5 @@
 import { EmbeddedTemplateProvider } from '../../models/template/EmbeddedTemplateProvider';
+import { PlatformTemplateProvider } from '../../models/template/PlatformTemplateProvider';
 import { TemplateRegistry } from './template/template-registry';
 
 /**
@@ -21,6 +22,19 @@ export const DEFAULT_PROJECT_TEMPLATE = 'embedded://hello-world';
  * callers, and `newProject`'s one caller passed an empty template URL, so the branch that
  * reached them never executed.
  */
-const templateRegistry = new TemplateRegistry([new EmbeddedTemplateProvider()]);
+/**
+ * FB-005 T3 — the community shelf joins the embedded one.
+ *
+ * ⚠️ **The order is not load-bearing for `install` and IS for `list`.** No two providers claim
+ * each other's scheme (`embedded://` against `community://`), so which one installs a given URL
+ * is decided by the URL. What the order decides is the order of the picker's rows, and the
+ * embedded template is first deliberately: it is the one that is there with no network, and a
+ * shelf whose first card cannot be drawn offline reads as a broken shelf rather than a quiet one.
+ *
+ * 🔴 **A provider that throws from `list` does not empty the picker** — `TemplateRegistry.list`
+ * logs it and carries on with the rest. That is what makes registering a *network* provider safe
+ * here, and it is why `PlatformTemplateProvider.list` throws rather than returning `[]`.
+ */
+const templateRegistry = new TemplateRegistry([new EmbeddedTemplateProvider(), new PlatformTemplateProvider()]);
 
 export { templateRegistry };

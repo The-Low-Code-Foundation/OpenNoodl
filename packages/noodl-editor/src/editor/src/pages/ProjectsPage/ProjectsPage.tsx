@@ -32,6 +32,7 @@ import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
 import { LauncherLessonData } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 
 import { useEventListener } from '../../hooks/useEventListener';
+import { useProjectTemplates } from '../../hooks/useProjectTemplates';
 import type { AuthoringPlan } from '../../models/AiAssistant/authoring/plan';
 import { provisionSummary } from '../../models/AiAssistant/authoring/plan';
 import {
@@ -323,6 +324,11 @@ export function ProjectsPage(props: ProjectsPageProps) {
 
   /** BST-003 — the connect-an-agent card's state, or `undefined` when there is nothing to offer. */
   const connectAgent = useConnectAgent();
+
+  /**
+   * FB-005 T3 — the template shelf, read only while the create wizard is open. See the hook.
+   */
+  const projectTemplates = useProjectTemplates(isCreateModalVisible);
 
   /**
    * UNI-001 AC2 — the NodeGX account. 🔴 Always present, unlike `connectAgent`: the card draws
@@ -1001,10 +1007,16 @@ export function ProjectsPage(props: ProjectsPageProps) {
   }, []);
 
   const handleCreateProjectConfirm = useCallback(
-    async (name: string, location: string, presetId: string, mode: WizardMode) => {
+    async (name: string, location: string, presetId: string, mode: WizardMode, templateUrl: string) => {
       setIsCreateModalVisible(false);
 
       // Store the chosen preset — StyleTokensModel will consume it on editor startup.
+      //
+      // 🔴 FB-005 T3. Template mode never visits the preset step, so `presetId` is the untouched
+      // default `'modern'` — which `setPendingPresetId` deliberately stores as `null`. So a
+      // template's own styling is not overwritten by a preset nobody picked, and that is a
+      // property of the default rather than of a branch here. If `DEFAULT_PRESET_ID` ever stops
+      // being the one preset that means "leave it alone", this needs a branch.
       setPendingPresetId(presetId);
 
       // Snapshot the scope now: the modal is closing and its state is about to
@@ -1050,7 +1062,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
                 props.route.router.route({ to: 'editor', project });
               });
           },
-          { name, path }
+          // FB-005 T3 — `templateUrl` is `''` in every mode but `'template'`, and `''` is the
+          // value this call site has always passed. `resolveTemplateUrl` maps it to the default.
+          { name, path, projectTemplate: templateUrl }
         );
       } catch (error) {
         setPendingPresetId(null);
@@ -1468,6 +1482,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
         presets={STYLE_PRESETS}
         aiAvailability={aiAvailability}
         scoping={scopingState}
+        templates={projectTemplates}
         initialLocation={initialWizardLocation}
       />
 

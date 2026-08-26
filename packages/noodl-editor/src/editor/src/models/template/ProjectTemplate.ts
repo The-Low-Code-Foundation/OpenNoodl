@@ -20,7 +20,23 @@ export interface ProjectTemplate {
   /** Description of what the template provides */
   description: string;
 
-  /** Category for grouping templates (e.g., "Getting Started", "Dashboard") */
+  /**
+   * Category for grouping templates.
+   *
+   * 🔴 **THE PLATFORM'S VOCABULARY IS CANONICAL, INCLUDING HERE** — ruled 2026-08-26 between
+   * FB-005 T4 and phase 76. One of `starter`, `data-app`, `dashboard`, `site`, `form`,
+   * `integration`, matching `0020`'s `project_template_category_known` in `nodegx-community`.
+   *
+   * ⚠️ The type cannot say so — this is a plain `string`, and the vocabulary is a CHECK
+   * constraint in another repository. `EMBEDDED_TEMPLATE_CATEGORIES` in
+   * `tests-unit/fb-005/template-shelf.test.ts` is what enforces it, and it is the copy that can
+   * drift; see its comment for what a drift costs.
+   *
+   * **Why it matters at all**, given nothing branches on it: FB-005 T3's picker draws embedded and
+   * platform templates in **one list**. This was free text until the ruling, and `hello-world`
+   * said *"Getting Started"* — so a category facet bar (T4) would have shown a prose title beside
+   * six slugs, as a facet of exactly one row.
+   */
   category: string;
 
   /** Template version (semver) */

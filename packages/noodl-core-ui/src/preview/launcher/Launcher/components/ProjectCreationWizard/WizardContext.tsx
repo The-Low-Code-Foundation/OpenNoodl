@@ -8,15 +8,22 @@ import React, { createContext, useCallback, useContext, useState } from 'react';
 
 // ----- Types ----------------------------------------------------------------
 
-/** The entry-mode choice the user makes on the first screen */
-export type WizardMode = 'quick' | 'guided' | 'ai';
+/**
+ * The entry-mode choice the user makes on the first screen.
+ *
+ * FB-005 T3 adds `'template'` — *start from something already built*. It is a **mode** and not a
+ * step inside `guided` for one reason that is worth stating: a template ships its own look, and
+ * the preset step exists to choose one. Two screens that both decide how the app looks, one
+ * silently overriding the other, is the shape this wizard already avoids everywhere else.
+ */
+export type WizardMode = 'quick' | 'guided' | 'ai' | 'template';
 
 /**
  * Step identifiers in the guided flow.
  * Quick mode only visits 'basics' (no preset or review step).
  * AI mode inserts 'scoping' — the conversation — between preset and review.
  */
-export type WizardStep = 'entry' | 'basics' | 'preset' | 'scoping' | 'review';
+export type WizardStep = 'entry' | 'basics' | 'preset' | 'template' | 'scoping' | 'review';
 
 export const DEFAULT_PRESET_ID = 'modern';
 
@@ -33,6 +40,15 @@ export interface WizardState {
   location: string;
   /** ID of the selected style preset */
   selectedPresetId: string;
+  /**
+   * FB-005 T3 — the template URL the picker chose, e.g. `embedded://hello-world` or
+   * `community://<slug>`.
+   *
+   * 🔴 **Starts as `''`, which is the value `handleCreateProjectConfirm` has always passed**, and
+   * `resolveTemplateUrl` turns it into the default. So every mode other than `'template'` behaves
+   * exactly as it did — the empty string is not a placeholder here, it is the existing contract.
+   */
+  selectedTemplateUrl: string;
 }
 
 export interface WizardContextValue {
@@ -71,6 +87,11 @@ export function getStepSequence(mode: WizardMode): WizardStep[] {
       return ['basics'];
     case 'guided':
       return ['basics', 'preset', 'review'];
+    case 'template':
+      // 🔴 No preset step. The template decides how the project looks, and `setPendingPresetId`
+      // treats the default `'modern'` as null — so a template-mode creation applies no preset at
+      // all, rather than one nobody chose landing on top of one somebody published.
+      return ['basics', 'template', 'review'];
     case 'ai':
       // AIX-012. Name, folder and preset come BEFORE the conversation, and that
       // ordering is what makes "exitable at any point" unconditional: from the
@@ -93,6 +114,10 @@ export function isStepValid(step: WizardStep, state: WizardState): boolean {
       return state.projectName.trim().length > 0 && state.location.length > 0;
     case 'preset':
       return state.selectedPresetId.length > 0;
+    case 'template':
+      // ⚠️ There is no default. A picker that pre-selected a row would send someone to Review
+      // with a template they never looked at, and the button before Review says "Next".
+      return state.selectedTemplateUrl.length > 0;
     case 'scoping':
       // Always true, deliberately. The scoping step's Continue is the exit the
       // spec's criterion 2 is about: whatever has been agreed at that moment is
@@ -120,6 +145,7 @@ export function WizardProvider({ children, initialState }: WizardProviderProps) 
     description: '',
     location: '',
     selectedPresetId: DEFAULT_PRESET_ID,
+    selectedTemplateUrl: '',
     ...initialState
   });
 

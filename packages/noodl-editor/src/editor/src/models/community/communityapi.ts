@@ -103,20 +103,33 @@ export type TutorialSummary = {
 };
 
 /**
- * The bundle itself: relative path → file contents.
+ * A bundle: relative path → file contents. **The wire a tutorial and a project template share.**
  *
- * ⚠️ **Text only.** A lesson bundle is JSON and Markdown — TUT-003's is 35 files with not one
- * binary in it — and the transport is jsonb, so a bundle that needed a PNG would need a
- * different wire, not a bigger string. If that day comes it is a new decision, not a
- * widened type.
+ * ⚠️ **Text only, and for BOTH of them.** A lesson bundle is JSON and Markdown — TUT-003's is 35
+ * files with not one binary in it — and `0020` refuses a non-text template payload at publish for
+ * the same reason. The transport is jsonb, so a bundle that needed a PNG would need a different
+ * wire, not a bigger string. If that day comes it is a new decision, not a widened type.
  */
-export type TutorialBundlePayload = {
+export type BundlePayload = {
   slug: string;
   title: string;
   version: number;
   updatedAt: string;
   files: Record<string, string>;
 };
+
+export type TutorialBundlePayload = BundlePayload;
+
+/**
+ * FB-005 T3 — a project template's bundle, which is **the same wire as a tutorial's**.
+ *
+ * 🔴 Deliberately an alias and not a second declaration. `0020`'s payload column, its
+ * text-only CHECK constraint and `/templates/[slug]/bundle`'s response body were all written
+ * as TUT-004's *"one shelf over"*, so a second type here would be a copy that can drift while
+ * both sides still compile — which is exactly how `externalId` survived on this client for
+ * months after the platform stopped sending it.
+ */
+export type TemplateBundlePayload = BundlePayload;
 
 /**
  * 🔴 **A bundle entry is a relative path, AND THIS CHECK IS DELIBERATELY THE SECOND COPY.**
@@ -139,6 +152,56 @@ export function isSafeBundleEntry(path: string): boolean {
   return path.split('/').every((s) => s.length > 0 && s !== '.' && s !== '..');
 }
 
+/**
+ * FB-005 T3 — the `item` of a `/bundle` response, checked, or the refusal to use instead.
+ *
+ * 🔴 **ONE COPY, TWO SHELVES.** `tutorialBundle` and `templateBundle` read the identical
+ * envelope from the identical route shape, and the rules below are all safety rules: one bad
+ * entry refuses the WHOLE bundle, a non-string value is refused, and a parse failure is
+ * `unreachable` rather than `absent`. A second hand-written copy of that list is a copy where
+ * one of the three eventually goes missing, and the one that goes missing is the one an
+ * attacker chose. `isSafeBundleEntry`'s own comment is emphatic that the *cross-repo* copy is
+ * deliberate — this is the opposite case, two callers in one process.
+ *
+ * ⚠️ Returns a `Read` rather than throwing, so the caller's `outcome` chain is unbroken.
+ */
+export function readBundlePayload(item: unknown): Read<BundlePayload> {
+  const row = item as Record<string, unknown> | undefined;
+  const files = row?.files;
+  if (!row || typeof row.slug !== 'string' || !files || typeof files !== 'object' || Array.isArray(files)) {
+    return { outcome: 'unreachable', status: null, detail: 'the bundle payload could not be read' };
+  }
+
+  const out: Record<string, string> = {};
+  for (const [path, contents] of Object.entries(files as Record<string, unknown>)) {
+    // 🔴 One bad entry refuses the WHOLE bundle. Dropping it and installing the rest would
+    // produce an artefact that is quietly not the one that was published — and the dropped
+    // file is exactly the one an attacker chose.
+    if (!isSafeBundleEntry(path)) {
+      return {
+        outcome: 'unreachable',
+        status: null,
+        detail: `the bundle contains an entry that is not a relative path: ${path}`
+      };
+    }
+    if (typeof contents !== 'string') {
+      return { outcome: 'unreachable', status: null, detail: `the bundle entry ${path} is not text` };
+    }
+    out[path] = contents;
+  }
+
+  return {
+    outcome: 'ok',
+    value: {
+      slug: row.slug,
+      title: typeof row.title === 'string' ? row.title : row.slug,
+      version: typeof row.version === 'number' ? row.version : 1,
+      updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : '',
+      files: out
+    }
+  };
+}
+
 function readTutorialSummary(raw: unknown): TutorialSummary | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
@@ -156,6 +219,51 @@ function readTutorialSummary(raw: unknown): TutorialSummary | null {
     // ⚠️ Defaults to FALSE on anything that is not a literal `true`. An older platform that
     // does not send the field must read as "no button", never as "install this".
     installable: r.installable === true
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// FB-005 T3 — the curated template shelf a new project can start from
+// ───────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A row of `/api/v1/community/templates`.
+ *
+ * ⚠️ **NO `installable` FLAG, and the absence is the platform's decision restated rather than
+ * an omission here.** `projecttemplates.ts` says it: a tutorial is an article that *may* have a
+ * bundle, so `installable` tells the two apart; a template row **is** its bundle (`payload` is
+ * `not null`), so a flag could only ever read true. A client that carried one would eventually
+ * branch on it, and the branch would be dead.
+ *
+ * ⚠️ **`fileCount` and not a byte size.** The platform counts keys in the database so the shelf
+ * costs no payload to draw; nothing on this wire knows how big the project is, and a card that
+ * guessed would be guessing.
+ */
+export type TemplateSummary = {
+  slug: string;
+  title: string;
+  summary: string;
+  category: string;
+  version: number;
+  fileCount: number;
+  updatedAt: string;
+};
+
+function readTemplateSummary(raw: unknown): TemplateSummary | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.slug !== 'string' || typeof r.title !== 'string') return null;
+  return {
+    slug: r.slug,
+    title: r.title,
+    // ⚠️ `''` and not `null`, unlike `TutorialSummary.summary`. This one is drawn as the
+    // description on a picker card that has nowhere to put "no description"; the platform's
+    // column is `not null`, so an absent value here means an older platform, not an empty field.
+    summary: typeof r.summary === 'string' ? r.summary : '',
+    category: typeof r.category === 'string' ? r.category : '',
+    version: typeof r.version === 'number' ? r.version : 1,
+    fileCount: typeof r.fileCount === 'number' ? r.fileCount : 0,
+    updatedAt: typeof r.updatedAt === 'string' ? r.updatedAt : ''
   };
 }
 
@@ -1758,45 +1866,70 @@ export class CommunityApiClient {
     );
     if (read.outcome !== 'ok') return read;
 
-    const item = read.value?.item as Record<string, unknown> | undefined;
-    const files = item?.files;
-    if (!item || typeof item.slug !== 'string' || !files || typeof files !== 'object' || Array.isArray(files)) {
-      return { outcome: 'unreachable', status: null, detail: 'the bundle payload could not be read' };
-    }
-
-    const out: Record<string, string> = {};
-    for (const [path, contents] of Object.entries(files as Record<string, unknown>)) {
-      // 🔴 One bad entry refuses the WHOLE bundle. Dropping it and installing the rest would
-      // produce a lesson that is quietly not the lesson that was published — and the dropped
-      // file is exactly the one an attacker chose.
-      if (!isSafeBundleEntry(path)) {
-        return {
-          outcome: 'unreachable',
-          status: null,
-          detail: `the bundle contains an entry that is not a relative path: ${path}`
-        };
-      }
-      if (typeof contents !== 'string') {
-        return { outcome: 'unreachable', status: null, detail: `the bundle entry ${path} is not text` };
-      }
-      out[path] = contents;
-    }
-
-    return {
-      outcome: 'ok',
-      value: {
-        slug: item.slug,
-        title: typeof item.title === 'string' ? item.title : item.slug,
-        version: typeof item.version === 'number' ? item.version : 1,
-        updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : '',
-        files: out
-      }
-    };
+    return readBundlePayload(read.value?.item);
   }
 
   /** The URL a platform-installed lesson records as its source, so `reset` can re-pull it. */
   tutorialBundleUrl(slug: string): string {
     return `${this.baseUrl}/api/v1/community/tutorials/${encodeURIComponent(slug)}/bundle`;
+  }
+
+  /**
+   * FB-005 T3 — the curated template shelf, for the create wizard's picker.
+   *
+   * ⚠️ **Seventh endpoint on this client with no keyword parameter.** T4 is where categories
+   * and text search land, and the note `tutorials()` carries applies here too: filtering is the
+   * client's job over the rows it holds, and the surface that filters has to report its bound.
+   *
+   * 🔴 **A refusal here must not empty the picker.** `TemplateRegistry.list` catches a
+   * provider's error and carries on with the others, so a community that is unreachable — or
+   * switched off for an org minor, which is an `absent` — leaves the embedded templates on the
+   * shelf. That is why `PlatformTemplateProvider.list` *throws* on anything but `ok` rather
+   * than returning `[]`: an empty list is indistinguishable from a shelf with nothing on it.
+   */
+  async templates(window: { limit?: number; offset?: number } = {}): Promise<Read<Paged<TemplateSummary>>> {
+    const search = new URLSearchParams();
+    if (window.limit !== undefined) search.set('limit', String(window.limit));
+    if (window.offset !== undefined && window.offset > 0) search.set('offset', String(window.offset));
+    const query = search.toString();
+
+    const read = await this.get<{ items?: unknown; page?: unknown }>(
+      `/api/v1/community/templates${query === '' ? '' : `?${query}`}`
+    );
+    if (read.outcome !== 'ok') return read;
+
+    const raw = Array.isArray(read.value?.items) ? read.value.items : null;
+    if (!raw) {
+      return { outcome: 'unreachable', status: null, detail: 'the templates payload could not be read' };
+    }
+
+    const items: TemplateSummary[] = [];
+    for (const entry of raw) {
+      const row = readTemplateSummary(entry);
+      if (row) items.push(row);
+    }
+    return { outcome: 'ok', value: { items, page: readPageInfo(read.value?.page, items.length) } };
+  }
+
+  /**
+   * FB-005 T3 — the project behind a template card, as the editor writes it to disk.
+   *
+   * 🔴 **`absent` covers three things and the caller must not try to tell them apart**: no such
+   * template, a draft, and D15 refusing the whole community surface. The platform answers one
+   * 404 to all three deliberately — see the route's own header — and the picker's row came from
+   * the listing, so an `absent` here is a race rather than a state anybody navigates to.
+   *
+   * 🔴 **A bundle carrying an unsafe path is refused HERE and never reaches a disk.** These
+   * files land in a directory the user named on their own machine, which is a stronger reason
+   * than the Learning folder's: `isSafeBundleEntry`'s comment holds — a validator on the far
+   * side of a wire is a claim about a server, not a gate on a disk.
+   */
+  async templateBundle(slug: string): Promise<Read<TemplateBundlePayload>> {
+    const read = await this.get<{ item?: unknown }>(
+      `/api/v1/community/templates/${encodeURIComponent(slug)}/bundle`
+    );
+    if (read.outcome !== 'ok') return read;
+    return readBundlePayload(read.value?.item);
   }
 
   threshold(): Promise<Read<ThresholdResponse>> {

@@ -319,12 +319,20 @@ export class LocalProjectsModel extends Model {
         makeDirectory: (directory) => filesystem.makeDirectory(directory),
         installTemplate: (templateUrl, destination) => templateRegistry.install(templateUrl, destination),
         installStarterAssets: (destination) => installStarterAssets(destination),
-        writeAgentConfig: (destination, projectName) => this.writeAgentConfigFor(destination, projectName)
+        writeAgentConfig: (destination, projectName) => this.writeAgentConfigFor(destination, projectName),
+        // FB-005 T3 / AC2. The one caller passes a `makeUniquePath`, so this pair only ever
+        // removes a directory that did not exist a moment ago — and it now matters, because a
+        // community template is a whole project and a half-written one is what would be left.
+        directoryExists: (directory) => filesystem.exists(directory),
+        removeDirectory: (directory) => filesystem.removeDirRecursive(directory)
       }
     );
 
     if (outcome.status === 'refused') {
-      console.error(`Could not create a project from template '${outcome.templateUrl}': ${outcome.reason}`);
+      const tidied = outcome.removed ? '' : ' (the project folder was left in place)';
+      console.error(
+        `Could not create a project from template '${outcome.templateUrl}': ${outcome.reason}${tidied}`
+      );
       fn();
       return;
     }

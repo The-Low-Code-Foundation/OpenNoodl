@@ -30,7 +30,8 @@ export const helloWorldTemplate: ProjectTemplate = {
   id: 'hello-world',
   name: 'Hello World',
   description: 'A simple starter project with a home page displaying "Hello World"',
-  category: 'Getting Started',
+  // 🔴 The platform's vocabulary, not a prose title — see `ProjectTemplate.category`.
+  category: 'starter',
   version: '1.0.0',
   thumbnail: undefined,
 

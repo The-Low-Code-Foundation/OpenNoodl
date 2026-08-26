@@ -43,6 +43,30 @@ A type signature is not a contract. The method is now called `install`, its cont
 The recipe in "Step 3" below now works. `tests-unit/fb-005/template-install-path.test.ts` grades the chain
 from the wizard to the registry, because a spec over the registry alone stayed green through all of it.
 
+### ✅ What FB-005 T3 added (2026-08-26)
+
+Two things, and the first is the one that had been missing since the registry was written.
+
+1. **A picker.** `templateRegistry.list()` had zero callers; it now has one —
+   `hooks/useProjectTemplates.ts`, feeding the create wizard's `template` mode. Adding a template to
+   `EmbeddedTemplateProvider`'s map is finally a change a user can see.
+2. **A second provider.** `PlatformTemplateProvider` offers the community's curated shelf under
+   `community://<slug>`, so a template can reach a builder **without shipping a new editor**.
+
+⚠️ **`TemplateRegistry.listing()` is what a user-facing surface should call**, not `list()`. `list()`
+drops the providers that failed, and a shelf that is short because the network is down looks exactly
+like a shelf that is short because nobody has published anything.
+
+🔴 **The platform's category vocabulary is canonical, and that includes embedded templates.**
+Ruled 2026-08-26 between FB-005 T4 and phase 76. An embedded `category` is a plain `string` and the
+vocabulary is a CHECK constraint in another repository, so the type cannot enforce it — a spec does
+(`EMBEDDED_TEMPLATE_CATEGORIES`, `tests-unit/fb-005/template-shelf.test.ts`). Use one of `starter`,
+`data-app`, `dashboard`, `site`, `form`, `integration`.
+
+⚠️ It was free text until the ruling, and `hello-world` said `'Getting Started'`. The picker draws
+embedded and platform templates in **one list**, so T4's category facet bar would have shown a prose
+title beside six slugs — as a facet of exactly one row.
+
 ## Creating a New Template
 
 ### Step 1: Define Your Template

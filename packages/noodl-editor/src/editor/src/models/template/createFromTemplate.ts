@@ -22,7 +22,20 @@ import { DEFAULT_PROJECT_TEMPLATE } from '@noodl-utils/forge';
 
 export type CreateFromTemplateOutcome =
   | { status: 'created'; templateUrl: string }
-  | { status: 'refused'; templateUrl: string; reason: string };
+  | {
+      status: 'refused';
+      templateUrl: string;
+      reason: string;
+      /**
+       * FB-005 T3 / AC2 — whether the refusal took the project directory with it.
+       *
+       * ⚠️ **`false` is a normal answer, not a failure**: a directory that already existed
+       * before this ran is one the caller chose and had contents of its own, and removing it
+       * is the destructive mistake. The flag is here so the log can say which happened rather
+       * than leaving a reader to infer it from a rule.
+       */
+      removed: boolean;
+    };
 
 /**
  * The steps, as the caller supplies them. Injected rather than imported so a spec can
@@ -33,6 +46,16 @@ export interface CreateFromTemplateDeps {
   installTemplate(templateUrl: string, destination: string): Promise<void>;
   installStarterAssets(destination: string): Promise<unknown>;
   writeAgentConfig(destination: string, projectName: string): Promise<void>;
+  /**
+   * FB-005 T3 / AC2 — asked **before** anything is created, and it is what makes the cleanup
+   * below safe. A directory this module did not create is never removed by it.
+   *
+   * ⚠️ Optional so that T1's callers and their specs keep working unchanged; a missing pair
+   * means the old behaviour — a refusal leaves whatever is there.
+   */
+  directoryExists?(directory: string): boolean | Promise<boolean>;
+  /** Remove the directory this module created. Only ever called on a refusal. */
+  removeDirectory?(directory: string): void | Promise<void>;
 }
 
 /**
@@ -55,15 +78,35 @@ export function resolveTemplateUrl(requested?: string): string {
  * rejection, the launcher's "Creating new project" activity toast was never hidden,
  * and the user sat in front of a spinner that had already given up.
  *
- * ⚠️ A refusal leaves the directory behind. Deleting a directory the caller chose is
- * the more destructive of the two mistakes, and `newProject`'s one caller passes a
- * `makeUniquePath`, so what is left behind is empty and unnamed by anything else.
+ * 🔴 **A refusal removes the directory — but ONLY if this function created it (FB-005 T3, AC2).**
+ * T1 left it behind deliberately, on the argument that deleting a directory the caller chose is
+ * the more destructive of the two mistakes. That argument is still right, and it is the *reason*
+ * for the precondition rather than a reason to do nothing: a template is a whole project now, so
+ * a filesystem failure on file 84 leaves 83 files that look like one, and the next thing the user
+ * does is open it. `directoryExists` is asked **first**, before `makeDirectory` makes the answer
+ * always-true, and a caller that supplies neither dep keeps T1's behaviour exactly.
+ *
+ * ⚠️ The cleanup is itself guarded. A refusal that then failed to tidy up is still a refusal, and
+ * reporting the removal's error instead of the install's would name the wrong thing entirely.
  */
 export async function createProjectFromTemplate(
   options: { templateUrl?: string; destination: string; projectName: string },
   deps: CreateFromTemplateDeps
 ): Promise<CreateFromTemplateOutcome> {
   const templateUrl = resolveTemplateUrl(options.templateUrl);
+
+  // 🔴 Read BEFORE `makeDirectory`, which is the whole precondition. Asking afterwards would
+  // answer "yes" every time and the cleanup below would delete directories it did not create.
+  //
+  // ⚠️ Guarded, and it defaults to `true` — *"assume it was already there"*. This function
+  // promises never to throw, because nobody awaits its caller; and of the two ways to be wrong
+  // about a directory, leaving one behind is the recoverable one.
+  let preexisting = true;
+  try {
+    if (deps.directoryExists) preexisting = await deps.directoryExists(options.destination);
+  } catch (error) {
+    console.warn('Could not tell whether the project directory already existed', error);
+  }
 
   try {
     await deps.makeDirectory(options.destination);
@@ -75,10 +118,24 @@ export async function createProjectFromTemplate(
     // triggers.
     await deps.installStarterAssets(options.destination);
   } catch (error) {
+    let removed = false;
+    if (!preexisting && deps.removeDirectory) {
+      try {
+        await deps.removeDirectory(options.destination);
+        removed = true;
+      } catch (cleanupError) {
+        // ⚠️ Swallowed on purpose, and logged rather than returned. The caller is about to be
+        // told why the project could not be created; replacing that sentence with one about a
+        // directory that could not be deleted would name the wrong failure.
+        console.warn('Could not remove the directory of a refused project creation', cleanupError);
+      }
+    }
+
     return {
       status: 'refused',
       templateUrl,
-      reason: error instanceof Error ? error.message : String(error)
+      reason: error instanceof Error ? error.message : String(error),
+      removed
     };
   }
 

@@ -151,6 +151,8 @@ const ALLOWED: Record<string, string> = {
     'NAT-012 AC7 rail gate: the token is a BEARER HEADER on `/api/v1/me`, read to decide whether D15 REFUSES this viewer the community surface. 🔴 Withholds nothing, and it is the clearest case in this table of an account making the editor do LESS rather than more — the read exists only so an org-minor whose school switched the community off is not handed a door onto a blank panel. A session-less editor is NEVER refused: `/api/v1/me` answers 401 → `unauthenticated` with no token, and `refusesCommunitySurface` requires `ok` + `surface === \'absent\'`, so signing out can only ever ADD the panel back. Asserted behaviourally in `nat-012/community-rail-gate.test.ts`, which pairs the refused and permitted viewers in one test so a gate that removed the panel for everybody would fail (measured: 4 reds)',
   'noodl-editor/src/editor/src/pages/ProjectsPage/ProjectsPage.tsx':
     'FIX-027 §20 re-pulling a lesson: the token is a BEARER HEADER on the same public `/bundle` read `useTutorialInstall` already installs from, built in `repullFromPlatform` when a learner presses *Start again* on a lesson that came from Community. 🔴 **The question this column demands, answered before the row was added: does it withhold anything from someone with no account? No.** The read is unconditional and there is no branch on its result — a session-less editor gets `token: null` and the re-pull goes out exactly the same, because `/bundle` is what the web page serves to a stranger. As everywhere else in this table the account can only make the editor do LESS: the header is there so D15 can answer 404 to an org-minor whose school switched the community off. ⚠️ The reset happens HERE rather than in the lesson only because the project must be closed before its directory is replaced (`launcherHandoff.ts`) — a lifecycle constraint, not an account one. The DECISION of which reset to run sees no session at all: it is `models/lessonreset.ts`, asserted below. Asserted structurally below',
+  'noodl-editor/src/editor/src/models/template/PlatformTemplateProvider.ts':
+    'FB-005 T3 the curated template shelf: the token is a BEARER HEADER on two reads the platform serves to strangers — `/api/v1/community/templates` and its `/bundle`, whose route header says so outright (*"Signed out is fine, and the D15 gate still runs"*). 🔴 **The question this column demands, answered before the row was added: what does it WITHHOLD? Nothing.** There is no branch on the session — `readCommunitySession()` is read only to build the client, a session-less editor gets `token: null`, and both reads go out identically. The account can only make the editor do LESS, as everywhere else in this table: the header exists so D15 can answer 404 to an org-minor whose school switched the community off. ⚠️ **And the whole feature survives a null session anyway** — `EmbeddedTemplateProvider` is compiled into the editor and is first in the registry, so a signed-out, offline builder still gets a template picker with a template in it. Asserted structurally below',
   'noodl-editor/src/editor/src/hooks/useLearnerPath.ts':
     'UNI-007 AC1 intake and path: the token is a BEARER HEADER on the path read, and the INTAKE read — the questions themselves — is not session-gated at all, because `GET /api/v1/me/intake` takes no token by design. Withholds nothing: a path is a fact that does not exist for a person with no account, in the same way `standing` does not, and no capability the editor had before this surface moved behind a session. Asserted structurally below'
 };
@@ -702,5 +704,58 @@ describe('AC4 — installing a tutorial is not behind an account', () => {
   it('the install action in the panel is not inside any session branch', () => {
     const panel = stripComments(readFileSync(join(EDITOR_SRC, 'views/panels/CommunityPanel/Tutorials.tsx'), 'utf8'));
     expect(isGated(panel, 'pane.onInstall(row.slug)')).toBe(false);
+  });
+});
+
+/**
+ * FB-005 T3 — the template shelf.
+ *
+ * 🔴 The shape here is one step stronger than the other rows in this table, and it is worth
+ * naming: for every other community surface, a session-less editor gets the same surface with a
+ * shorter header. Here it gets the surface *even if the platform is unreachable altogether*,
+ * because the first provider in the registry is compiled into the editor. The account cannot
+ * withhold a template picker; at most it changes how many rows are in one.
+ */
+describe('AC4 — the template shelf withholds nothing, proven against the real source', () => {
+  const provider = stripComments(
+    readFileSync(join(EDITOR_SRC, 'models/template/PlatformTemplateProvider.ts'), 'utf8')
+  );
+  const hook = stripComments(readFileSync(join(EDITOR_SRC, 'hooks/useProjectTemplates.ts'), 'utf8'));
+  const forge = stripComments(readFileSync(join(EDITOR_SRC, 'utils/forge/index.ts'), 'utf8'));
+
+  it('control: the provider really does read the session — the known-firing arm', () => {
+    // Without this, every absence below passes for a module that reads nothing.
+    expect(readsTheSession(provider)).toBe(true);
+    expect(provider).toContain('readCommunitySession');
+  });
+
+  it('the token is used once, to build a client, and nowhere else', () => {
+    // ⚠️ Counted rather than eyeballed. One client is built here, so the expected count is one,
+    // and a second would be a second place a decision could hide.
+    expect(provider.split('session?.token').length - 1).toBe(1);
+  });
+
+  it('neither read is gated on being signed in', () => {
+    expect(isGated(provider, 'source.templates()')).toBe(false);
+    expect(isGated(provider, 'source.templateBundle(slug)')).toBe(false);
+  });
+
+  it('the surface that decides what the picker draws never sees a session', () => {
+    // 🔴 The load-bearing claim. Which rows appear, whether the shelf reads as short, and what
+    // the sentence beside it says are all decided in the hook and in `TemplateRegistry`, neither
+    // of which is ever handed a credential.
+    expect(readsTheSession(hook)).toBe(false);
+    expect(hook).not.toContain('token');
+    expect(READERS).not.toContain('noodl-editor/src/editor/src/hooks/useProjectTemplates.ts');
+  });
+
+  it('the picker still has a provider with no account and no network', () => {
+    // The strongest form of "withholds nothing" available here: the embedded provider needs
+    // neither, and it is first in the registry.
+    expect(forge).toContain('new EmbeddedTemplateProvider()');
+    expect(forge.indexOf('new EmbeddedTemplateProvider()')).toBeLessThan(
+      forge.indexOf('new PlatformTemplateProvider()')
+    );
+    expect(readsTheSession(forge)).toBe(false);
   });
 });

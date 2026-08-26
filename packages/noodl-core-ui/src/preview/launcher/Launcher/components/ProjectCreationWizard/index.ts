@@ -7,3 +7,6 @@ export type { WizardMode, WizardStep, WizardState } from './WizardContext';
 export type { AiAvailability } from './steps/EntryModeStep';
 export type { ScopingMessage } from './steps/ScopingStep';
 export type { ReviewPlanRow } from './steps/ReviewStep';
+
+// FB-005 T3 — the template shelf the create wizard picks from.
+export type { TemplateChoice, TemplateGalleryState } from './steps/TemplateStep';

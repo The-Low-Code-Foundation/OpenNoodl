@@ -22,6 +22,7 @@ import { ProjectBasicsStep } from './steps/ProjectBasicsStep';
 import { ReviewPlanRow, ReviewStep } from './steps/ReviewStep';
 import { ScopingMessage, ScopingStep } from './steps/ScopingStep';
 import { StylePresetStep } from './steps/StylePresetStep';
+import { TemplateGalleryState, TemplateStep } from './steps/TemplateStep';
 import { WizardProvider, useWizardContext, WizardMode, WizardStep } from './WizardContext';
 
 // ----- Public API -----------------------------------------------------------
@@ -70,8 +71,14 @@ export interface ProjectCreationWizardProps {
    * CreateProjectModal.onConfirm. `mode` is appended (AIX-012) so the host can
    * tell an AI-scoped creation — which also writes docs and stashes a plan —
    * from a blank one; existing callers that ignore it behave exactly as before.
+   *
+   * FB-005 T3 appends `templateUrl`, by the same rule. 🔴 It is `''` in every mode but
+   * `'template'`, and `''` is exactly what `handleCreateProjectConfirm` has passed to
+   * `newProject` since the wizard existed — `resolveTemplateUrl` turns it into the default
+   * template. So the new argument changes nothing for the three older modes by construction,
+   * rather than by a host remembering to special-case them.
    */
-  onConfirm: (name: string, location: string, presetId: string, mode: WizardMode) => void;
+  onConfirm: (name: string, location: string, presetId: string, mode: WizardMode, templateUrl: string) => void;
   /** Open a native folder picker; returns the chosen path or null if cancelled */
   onChooseLocation?: () => Promise<string | null>;
   /**
@@ -91,6 +98,13 @@ export interface ProjectCreationWizardProps {
   aiAvailability?: AiAvailability;
   /** AIX-012 — the live scoping conversation. Required for the 'ai' mode. */
   scoping?: ScopingState;
+  /**
+   * FB-005 T3 — the template shelf, for the `'template'` mode's picker. The host owns the
+   * fetch: `templateRegistry` is an editor model and core-ui may not import one.
+   *
+   * ⚠️ Omitted reads as *still loading*, not as *empty*. See `TemplateStep`.
+   */
+  templates?: TemplateGalleryState;
 }
 
 // ----- Step metadata --------------------------------------------------------
@@ -99,6 +113,7 @@ const STEP_TITLES: Record<WizardStep, string> = {
   entry: 'Create New Project',
   basics: 'Project Basics',
   preset: 'Style Preset',
+  template: 'Choose a Template',
   scoping: 'What are we building?',
   review: 'Review'
 };
@@ -106,7 +121,8 @@ const STEP_TITLES: Record<WizardStep, string> = {
 const MODE_LABELS: Record<WizardMode, string> = {
   quick: 'Quick Start',
   guided: 'Guided Setup',
-  ai: 'Start with AI'
+  ai: 'Start with AI',
+  template: 'From a Template'
 };
 
 /** Steps where the Back button should be hidden (entry has no "back") */
@@ -118,10 +134,18 @@ interface WizardInnerProps extends Omit<ProjectCreationWizardProps, 'isVisible'>
   presets: PresetDisplayInfo[];
 }
 
-function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailability, scoping }: WizardInnerProps) {
+function WizardInner({
+  onClose,
+  onConfirm,
+  onChooseLocation,
+  presets,
+  aiAvailability,
+  scoping,
+  templates
+}: WizardInnerProps) {
   const { state, goNext, goBack, canProceed } = useWizardContext();
 
-  const { currentStep, mode, projectName, location, selectedPresetId } = state;
+  const { currentStep, mode, projectName, location, selectedPresetId, selectedTemplateUrl } = state;
 
   // Determine if this is the final step before creation
   const isLastStep = currentStep === 'review' || (mode === 'quick' && currentStep === 'basics');
@@ -165,7 +189,9 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailabi
   const handleNext = () => {
     if (isLastStep) {
       // Fire creation with the wizard state values
-      onConfirm(projectName.trim(), location, selectedPresetId, mode);
+      // 🔴 `''` unless the template picker actually ran. A leftover URL from a mode the user
+      // backed out of would create a project from a template they abandoned.
+      onConfirm(projectName.trim(), location, selectedPresetId, mode, mode === 'template' ? selectedTemplateUrl : '');
     } else {
       goNext();
     }
@@ -180,6 +206,8 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailabi
         return <ProjectBasicsStep onChooseLocation={onChooseLocation ?? (() => Promise.resolve(null))} />;
       case 'preset':
         return <StylePresetStep presets={presets} />;
+      case 'template':
+        return <TemplateStep templates={templates} />;
       case 'scoping':
         return scoping ? (
           <ScopingStep
@@ -198,6 +226,9 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailabi
             presets={presets}
             scopeOutline={mode === 'ai' ? scoping?.outline : undefined}
             planRows={mode === 'ai' ? scoping?.planRows ?? [] : undefined}
+            template={
+              mode === 'template' ? templates?.items.find((t) => t.url === selectedTemplateUrl) : undefined
+            }
           />
         );
     }
@@ -277,6 +308,7 @@ export function ProjectCreationWizard({
   presets,
   aiAvailability,
   scoping,
+  templates,
   initialLocation
 }: ProjectCreationWizardProps) {
   if (!isVisible) return null;
@@ -303,6 +335,7 @@ export function ProjectCreationWizard({
         presets={presets ?? []}
         aiAvailability={aiAvailability}
         scoping={scoping}
+        templates={templates}
       />
     </WizardProvider>
   );

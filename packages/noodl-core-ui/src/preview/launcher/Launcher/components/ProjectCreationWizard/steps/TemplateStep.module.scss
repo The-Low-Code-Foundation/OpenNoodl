@@ -1,0 +1,138 @@
+.TemplateStep {
+  display: flex;
+  flex-direction: column;
+}
+
+.TemplateStep-hint {
+  font-size: 13px;
+  color: var(--theme-color-fg-default-shy);
+  margin: 0 0 var(--spacing-4) 0;
+  line-height: 1.5;
+}
+
+.TemplateStep-status {
+  font-size: 13px;
+  color: var(--theme-color-fg-default-shy);
+  margin: var(--spacing-4) 0;
+  line-height: 1.5;
+}
+
+.TemplateStep-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-3);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default-shy);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+}
+
+.TemplateStep-retry {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-color-primary);
+  cursor: pointer;
+  text-decoration: underline;
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.TemplateList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  // The wizard body is a fixed-height panel; a shelf of thirty must scroll inside it rather
+  // than push the footer's buttons off the bottom of the modal.
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.TemplateCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-1);
+  width: 100%;
+  padding: var(--spacing-3) var(--spacing-4);
+  text-align: left;
+  cursor: pointer;
+  background-color: var(--theme-color-bg-3);
+  // 🔴 2px in BOTH states, so selecting a card never moves the text inside it. A border that
+  // grows on selection reflows the row it is in, which reads as the list jumping.
+  border: 2px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+
+  &--selected {
+    border-color: var(--theme-color-primary);
+    background-color: var(--theme-color-bg-2);
+  }
+}
+
+.TemplateCard-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  width: 100%;
+}
+
+.TemplateCard-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  line-height: 1.3;
+}
+
+.TemplateCard-check {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  white-space: nowrap;
+}
+
+.TemplateCard-description {
+  font-size: 13px;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.5;
+}
+
+.TemplateCard-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-1);
+}
+
+.TemplateCard-tag {
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm, 4px);
+  padding: 1px var(--spacing-2);
+}
