@@ -38,7 +38,16 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
 
 ## Tier 2 — the template
 
-- ⬜ **SB-004** — the site is records (pages/sections/theme/nav; ACLs; publish flow in the §1 idiom)
+- 🟡 **SB-004** — [the site is records](SB-004-THE-SITE-IS-RECORDS.md) — **DESIGNED s2, not yet
+  authored.** Five classes (Page/Section/Theme/SiteSettings/ContactMessage), nav derived not stored;
+  the ACL *is* the publication state and `published` is its queryable mirror, written only by
+  `publishPage`; three endpoints over three helpers composed through `Run Tasks`, the cloud
+  runtime's only iteration primitive. Grounded on measurements, not assumptions: classes auto-create
+  on first write (`_ensureTable`), the graph's ACL vocabulary is exactly `*`/user/`role:` with
+  wirable read-write booleans, and **an absent ACL means public**. 🔴 **F2 — `devOpen` disables
+  row-level ACL (`aclFor`) but NOT collection permissions (`checkClp` has no such branch), so a
+  local drive can show a plausible refusal while never exercising the published/draft boundary at
+  all.** Left: author it through the MCP surface.
 - ⬜ **SB-005** — the admin panel (editor, image upload, theme, live preview via realtime)
 - ⬜ **SB-006** — the public site
 - ⬜ **SB-007** — it ships as a template (via FB-005's registry — consume, don't re-spec).
@@ -56,8 +65,28 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   in the embedded provider's field. `EMBEDDED_TEMPLATE_CATEGORIES` in
   `tests-unit/fb-005/template-shelf.test.ts` now rejects prose categories (known-firing arm), so
   `site` passes unchanged and a wrong string reddens loudly.
+  **Relayed by the FB-005 peer 2026-08-26, T4 committed (`fe9bade4`) — verify by commit:** the
+  category vocabulary cannot express 3 of Richard's 8 roster templates (`pixel-game`,
+  `interactive-fiction`, `shared-canvas` all collapse to `starter` under `0020`'s CHECK) — **not
+  ours**, `site` is in the vocabulary, but the ruling is coming. `TemplateStepBody` gained optional
+  `filter`/`onFilterChange`, so this call site is unaffected; if the Templates tab wants the facet
+  bar, use the exported `filterTemplates` rather than a second matcher, so a pill's count and its
+  rows come from one pass. Cards now draw the category *label*, not the slug.
 - ⬜ **SB-008** — the drive (verify the consequence: anonymous visitor sees the published page;
-  unpublished 404s)
+  unpublished 404s). 🔴 **Must run with `devOpen: false` over a real SQLite engine** — see SB-004 F2;
+  a default local backend does not enforce row-level ACLs at all, so a passing drive there is not
+  evidence for any publication claim.
+
+## Tier 3 — found while building
+
+- ⬜ **SB-009** — [a component named in a parameter is named nowhere any gate looks](SB-009-A-COMPONENT-NAMED-IN-A-PARAMETER.md)
+  — **MEASURED s2, not fixed.** A cloud `Run Tasks` naming a nonexistent helper, or a browser
+  component across the runtime boundary, is accepted `0/0/0` and written to disk; the two
+  known-firing controls beside it (`wrong-runtime-node`, `repeater-template-unresolved`) prove the
+  clean result is "not checked" rather than "not run". 13 `component`-typed ports exist, 1 has an
+  owner. Filed rather than absorbed: the fix touches 8 node types including `Show Popup`, and
+  whether the new code blocks authored output needs a corpus sweep, not an argument. Probe:
+  `noodl-mcp/tests/sb004RunTasksTemplate.test.ts`.
 
 ## Session log
 
