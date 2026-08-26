@@ -38,8 +38,9 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
 
 ## Tier 2 — the template
 
-- 🟡 **SB-004** — [the site is records](SB-004-THE-SITE-IS-RECORDS.md) — **DESIGNED s2, publish flow
-  AUTHORED through both MCP doors.** Five classes (Page/Section/Theme/SiteSettings/ContactMessage), nav derived not stored;
+- 🟡 **SB-004** — [the site is records](SB-004-THE-SITE-IS-RECORDS.md) — **DESIGNED s2; ALL SIX
+  COMPONENTS AUTHORED s3, both doors. Only §7's real backend run remains.**
+  Five classes (Page/Section/Theme/SiteSettings/ContactMessage), nav derived not stored;
   the ACL *is* the publication state and `published` is its queryable mirror, written only by
   `publishPage`; three endpoints over three helpers composed through `Run Tasks`, the cloud
   runtime's only iteration primitive. Grounded on measurements, not assumptions: classes auto-create
@@ -48,10 +49,16 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   row-level ACL (`aclFor`) but NOT collection permissions (`checkClp` has no such branch), so a
   local drive can show a plausible refusal while never exercising the published/draft boundary at
   all.** `site/SetSectionAccess` + `publishPage` authored s2 through `create_component` **and**
-  `create_plan`/`stage`/`apply` — **s1's plan-door debt closed**. ⚠️ A green authoring run is not
-  evidence the invariant holds: the door returns `dynamic-port-skipped` over exactly the ACL
-  parameters, and says so. Left: `duplicatePage`, `submitContactForm`, two helpers, the real
-  backend run.
+  `create_plan`/`stage`/`apply` — **s1's plan-door debt closed**. **s3 finished the set**:
+  `duplicatePage`, `submitContactForm`, `site/CopySectionToPage`, `site/ContactRecipient`
+  (13 specs; noodl-mcp 60/694). 🔴 **F5 — s2's own publish flow was wrong twice, and both are LEGAL
+  graphs**: the section query carried no filter (it would have flipped ACLs on *every* Section in
+  the site) and the Response wired none of its declared params (200 with `{}`). Fixed and pinned by
+  disk-level assertions, 4 mutants graded — a fix nothing grades is one the next author drops.
+  ✅ **F6 — one plan can hold a helper AND its caller**: staging resolves an unapplied sibling,
+  measured beside a known-firing refusal. ⚠️ A green authoring run is still not evidence the
+  invariant holds: the door returns `dynamic-port-skipped` over exactly the ACL parameters, and says
+  so. Left: **the real backend run, and nothing else.**
 - ⬜ **SB-005** — the admin panel (editor, image upload, theme, live preview via realtime)
 - ⬜ **SB-006** — the public site
 - ⬜ **SB-007** — it ships as a template (via FB-005's registry — consume, don't re-spec).
@@ -90,7 +97,11 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   clean result is "not checked" rather than "not run". 13 `component`-typed ports exist, 1 has an
   owner. Filed rather than absorbed: the fix touches 8 node types including `Show Popup`, and
   whether the new code blocks authored output needs a corpus sweep, not an argument. Probe:
-  `noodl-mcp/tests/sb004RunTasksTemplate.test.ts`.
+  `noodl-mcp/tests/sb004RunTasksTemplate.test.ts`. **s3 sharpened the claim** (arms E/E′ in
+  `sb004Authoring.test.ts`): the same helper named as a node **`type`** is refused
+  `unresolved-component-ref` and named as a **parameter** is accepted `0/0/0` — so it is not that
+  the authored door fails to resolve references, but that **one spelling of the same reference goes
+  unresolved**. That names the fix's diagnostic for it.
 
 ## Session log
 
@@ -115,3 +126,12 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   **`Jasmine: 2856 specs, 4 failures (failed)`** — all four `AIX-006 style vocabulary`, i.e. the
   recorded floor, so SB-001's validation/navigation changes cost nothing. (Read the summary line,
   not `$?`: the compound exited **1**, which is what the clean floor also does.)
+- **s3 (2026-08-26)** — **SB-004's authoring finished**: the two remaining endpoints and two
+  remaining helpers, through `create_component`, and the contact pair through the plan door too.
+  The session's real finding is **F5**, and it is about s2's own work: reading `Query Records` and
+  `Response` closely enough to author `duplicatePage` showed that the *already-green* publish flow
+  queried every Section in the site and answered with an empty body. Both are legal graphs, so no
+  gate could have caught either; both are now pinned by assertions on the files on disk, each graded
+  by a mutant. **F6** answers a question SB-005/006 need: a plan can hold a helper and its caller.
+  SB-009 gained arms E/E′. noodl-mcp **60 suites / 694** green, `typecheck` clean; no editor or
+  runtime source touched, so `test:ci` was not re-run (nothing in its scope changed).

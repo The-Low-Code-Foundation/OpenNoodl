@@ -64,6 +64,32 @@ returning 200 having published no sections.
 
 This is the tenth instance of the pattern in `a-gate-can-have-a-hole-shaped-like-the-defect`.
 
+## The arm that sharpens all four (s3)
+
+Arms A–D show that *some* gates fire and this one does not. The strongest form of the claim is
+narrower than that, and it was measured s3 while finishing SB-004's authoring
+(`noodl-mcp/tests/sb004Authoring.test.ts`):
+
+| arm | how the component is named | result |
+|---|---|---|
+| **E — control** | `site/ContactRecipient` as a node **`type`**, before it exists | ✅ **rejected**, `unresolved-component-ref`, message names the type, nothing written |
+| **E′ — the pair** | the *same nodes and wires*, after the helper exists | ✅ accepted |
+| **C/D above** | the same kind of helper as a `taskTemplate` **parameter** | 🔴 accepted `0/0/0` |
+
+So it is not "the authored door does not resolve component references" — **it resolves them, and one
+spelling of the same reference goes unresolved.** E and E′ differ in exactly one variable (does the
+helper exist), so E′ is not evidence that the check is absent; it is evidence that the check is
+present and passing. The refusal is asserted **by diagnostic code**, not by "it errored", so the arm
+cannot pass on an unrelated rejection.
+
+Two further readings from the same pass, both relevant to the fix:
+
+- The check that fires, `unresolved-component-ref`, is precisely the diagnostic the parameter ports
+  have no counterpart for — so the fix has a shape and a name already, and the corpus sweep is about
+  whether emitting it *blockingly* on 12 more ports breaks existing projects.
+- `stage_plan_operation` runs the same resolution and refuses identically, but reports only
+  `details.readable` prose where `create_component` returns structured `details.newErrors`.
+
 ## The population (from the catalog, s2)
 
 Thirteen `component`-typed input ports exist. One has an owner.

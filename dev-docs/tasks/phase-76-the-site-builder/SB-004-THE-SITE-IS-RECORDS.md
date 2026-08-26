@@ -1,11 +1,13 @@
 # SB-004 — The site is records
 
-**Status: 🟡 DESIGNED + publish flow AUTHORED s2 (2026-08-26).** The data model, the ACL matrix and
-the flows below are settled against measured backend behaviour (§1). The publish flow —
-`site/SetSectionAccess` + `publishPage` — is authored through **both** MCP doors and green
-(`noodl-mcp/tests/sb004Authoring.test.ts`); **this closes s1's debt that the plan door had never
-driven a cloud target end to end.** Left: `duplicatePage`, `submitContactForm`, the three remaining
-helpers, and a real backend run (§7).
+**Status: 🟡 AUTHORING COMPLETE s3 (2026-08-26); the real backend run is what remains.** The data
+model, the ACL matrix and the flows below are settled against measured backend behaviour (§1). **All
+six components — three endpoints and three helpers — are authored through the MCP doors and green**
+(`noodl-mcp/tests/sb004Authoring.test.ts`, 13 specs; noodl-mcp 60 suites / 694). s2 closed the debt
+that the plan door had never driven a cloud target end to end; s3 finished the set and, while
+finishing it, found two defects in the *already-authored* publish flow that no gate can see (§6 F5).
+Left: **only §7's real-backend run**, which is the first thing that can say the publication invariant
+holds.
 
 Depends on SB-001/002/003 (all ✅ s1). Feeds SB-005 (admin panel), SB-006 (public site), SB-008
 (the drive). Canonical prose model: `dev-docs/reference/BACKEND-AUTHORING-MODEL.md`.
@@ -157,7 +159,7 @@ saying out loud in SB-002's doctrine.
 takes a **component** as its `taskTemplate` and a Template Contract (`Do` in; `Success`/`Failure`/
 `Error` out), and it is what the README §1 evidence (`cloud-run-tasks-loop.test.ts`) actually rides
 on. So `publishPage` is: Request → `Query Records`(Section where page = pageId) → `Run Tasks`
-(template `site/SetRecordAccess`) → `Update Record`(the Page itself) → Response. This is D2's
+(template `site/SetSectionAccess`) → `Update Record`(the Page itself) → Response. This is D2's
 "composition by component instance" in its literal form, and it is why D2 can stay deferred.
 
 ✅ **The task-template mechanic, settled by reading s2 (`runtasks.ts:393-432`).**
@@ -231,6 +233,41 @@ in the browser bundle. The vehicle is instead `noodl-mcp/tests/helpers.ts` → `
 `src` over a real in-memory MCP client — the actual tool surface, current code. Another instance of
 `a-stale-mcp-dist-hides-a-merged-vocabulary-field`.
 
+**F5 — 🔴 the publish flow authored in s2 was wrong in two ways, and both are legal graphs.**
+Found s3 while reading `Query Records` and `Response` closely enough to author `duplicatePage`.
+
+1. **`publishPage`'s section query had no filter at all.** It carried `collectionName: 'Section'`
+   and nothing else, so it returned *every Section in the site* — publishing one page would have
+   flipped the access rules on all of them, in one authority, exactly as designed. §5 says
+   "Query Records(Section where page = pageId)"; the graph did not say it. An absent `visualFilter`
+   is a legal "match everything", so no validator can call it an error.
+2. **The Response declared `pageId,published` and wired neither.** A Response's `params` mints
+   `pm-<name>` *inputs* (catalog `parameterEncoding`), and a declared parameter with nothing on its
+   port is simply omitted — a 200 carrying `{}`.
+
+Both are fixed and, more to the point, **pinned by assertion on what is written to disk**
+(`expectQueryFilteredOn`, `expectEveryResponseParameterWired`), because a fix nothing grades is a
+fix the next author silently drops. Four mutants graded, each killed by the assertion that names it.
+The filter assertion checks *two* things, because the rule alone is not the filter:
+`collectFilterParameters` mints `qp-<input>` from the rule and a rule whose port supplies nothing is
+**dropped rather than failed** (`saved.ts`, deliberate — that is how an optional filter port works),
+so a rule with no wire narrows nothing and says nothing.
+
+Recorded against `verify-the-consequence-not-just-the-mechanism`: s2's run was green, both doors
+agreed, every assertion passed — and the flow published the wrong rows and answered with an empty
+body. Green meant *well-formed*, which is all it ever claimed.
+
+**F6 — ✅ the plan door resolves an UNAPPLIED sibling, so a helper and its caller fit in one plan.**
+Measured s3, and it matters for SB-005/006, which are helpers-plus-callers all the way down.
+`stage_plan_operation` on `submitContactForm` — which instantiates `site/ContactRecipient` as a node
+**type** — succeeds when the helper is a staged sibling in the same plan, and is refused
+(`unresolved-component-ref`) when it is not. The refusal arm is in the spec beside it: without it,
+"the sibling resolved" and "staging never resolves references" are the same green.
+
+⚠️ One asymmetry an agent parsing these has to know: `create_component` returns structured
+`details.newErrors`; `stage_plan_operation` returns only `details.readable` prose
+(`planTools.ts:795-801`). The code is in the line, not in a field.
+
 ## 6a. What authoring it actually taught (s2)
 
 Both doors, on the real server: `create_component` for each component, and `create_plan` → two
@@ -259,6 +296,41 @@ this and says the node is *"unverified by that check rather than verified as cor
 authoring run means the graph is well-formed; **it is not evidence that the publication invariant
 holds.** Only §7's real-backend run can be that, which is the second reason F2 matters.
 
+## 6b. What authoring the other four taught (s3)
+
+`duplicatePage`, `submitContactForm`, `site/CopySectionToPage`, `site/ContactRecipient` — all
+through `create_component`, and the contact pair through the plan door as well.
+
+1. 🔴 **`Create Record`'s `sourceObjectId` is a LOCAL read, not a backend fetch.** It seeds from
+   `(this.nodeScope.modelScope || Model).get(id).data` (`newdbmodelpropertiesnode.ts:106`), and
+   `Model.get` on an id nobody fetched returns an empty model — so an unfetched source seeds `{}`
+   **in silence**. It is used in `duplicatePage`, where a `Record` node fetched the page into that
+   same component's scope a moment earlier, and deliberately **not** in `site/CopySectionToPage`,
+   where whether a Run Tasks task component shares its creator's model scope is a runtime question
+   authoring cannot answer. The worker is sent each section's fields inside its item instead.
+2. 🔴 **A Pointer is a tagged object on the wire, and `prop-<field>` stores whatever it is given,
+   verbatim** (`dbmodelcrudbase.ts:650-652`). `inferColumnType` types the column by reading
+   `__type === 'Pointer'` (`LocalSQLAdapter.ts:1251`). So writing a bare id string into
+   `Section.page` creates a **String** column on first write — after which §2's `pointsTo` filter
+   has no `targetClass` and refuses (`parse.ts:219-232`). §2's "one unhedged bet" is won or lost on
+   one line of one code node, and the bet fails **loudly** rather than returning an empty set, which
+   is the one mercy here.
+3. **`receive` is the ordering-safe request trigger** — "fires when a request arrives, *after every
+   parameter output has been updated*". Triggering a query from `pm-<param>` instead, as s2's
+   publishPage did, works only because wire order happened to deliver the filter value first.
+4. 🔴 **The instance door IS checked where the parameter door is not — both arms now in one file.**
+   `site/ContactRecipient` named as a node **type** is refused with `unresolved-component-ref` when
+   absent; the same helper named through `RunTasks.taskTemplate` is accepted `0/0/0`
+   ([SB-009](SB-009-A-COMPONENT-NAMED-IN-A-PARAMETER.md)). That is the sharpest form of SB-009's
+   claim: not "the gate does not run here", but **the same reference, checked one way and not the
+   other**, in the same validator, on the same graph.
+
+⚠️ **What s3 still could not verify, and neither can any authoring run:** the ACL parameters
+(`acl-*`), `collectionName`, `prop-*` and `ptype-*`/`preq-*` all return `dynamic-port-skipped`. The
+Pointer round-trip (finding 2), whether a code node receives Models or plain objects from
+`Query Records.items`, and whether `Run Tasks` fires `completed` on an empty item list are all §7
+questions.
+
 ## 7. Acceptance
 
 1. The five classes exist with the §2 fields, created by first write — no migration step anywhere.
@@ -283,6 +355,14 @@ holds.** Only §7's real-backend run can be that, which is the second reason F2 
   probe with two known-firing controls and filed as **SB-009**; F2 is the sharp one.
   **Publish flow authored through both doors and green** (§6a) — s1's plan-door debt closed.
   noodl-mcp 60 suites / 684 green.
+- **s3 (2026-08-26)** — **authoring finished**: `duplicatePage`, `submitContactForm`,
+  `site/CopySectionToPage`, `site/ContactRecipient` (§6b), plus the contact pair through the plan
+  door. **F5 found in s2's own output** — the publish flow queried every Section in the site and
+  answered with an empty body; both fixed and pinned by disk-level assertions, four mutants graded.
+  **F6**: a plan can hold a helper and its caller, measured beside a known-firing refusal arm.
+  SB-009 gained its other half: the same helper, checked as a node type and unchecked as a
+  parameter, asserted by diagnostic **code** in one file. noodl-mcp 60 suites / **694** green,
+  `typecheck` clean. §7 is untouched — nothing here is evidence for the invariant.
   ⚠️ **One correction made mid-session:** §5 first recorded, from `runtasks.ts:393-408`, that a task
   template receives its item *only* through `Component Object`. Reading on to `:419-432` showed the
   item is also pushed onto matching **Component Inputs**, which is what the `data-run-tasks-batch`
