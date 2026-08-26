@@ -1022,6 +1022,71 @@ account"* — which blamed somebody's account for a deployment gap. `absent` now
 client cannot tell them apart, so the sentence names them as possibilities instead of asserting one.
 🔴 **A sentence that asserts a cause the code cannot know is worse than one that does not.**
 
+### ✅ Defect 5 RESOLVED, session 48 — deployed, and the routes flipped
+
+`ops/deploy.sh 49.12.102.195`, run from a **pristine `git clone` of `27be4d1`** rather than the
+working checkout. That is [[deployed-is-not-committed]]'s prescribed method and it is not
+ceremony: the script **rsyncs the working tree**, a peer session was committing to this machine
+throughout, and the refusal's first-ever production catch was a peer's half-finished file. A clone
+satisfies the clean-tree refusal *honestly* instead of silencing it with `--allow-dirty`, and it
+makes the host's stamp true.
+
+**What the deploy reported.** Live before: `acd4a9a` deployed **2026-08-24T17:40:43Z** — so the
+gap was two days, and *the script prints this before it deploys*. ⚠️ **That line is a free answer
+to "is this shipped?" and running a deploy is not the only way to get it.** Migrations: 19 already
+applied, then `0020_fb005_project_templates`, `0021_fb005_template_submissions`,
+`0022_fb005_licence_on_the_shelf` — the three FB-005 tables, all additive, applied **before** the
+restart so the new code never served against the old schema. Service `active`, stamped
+`✅ 27be4d19a10b on main` **dirty=false**, `community.nodegx.io` wired in Caddy's loaded config,
+`https://community.nodegx.io/` **200**, sign-in start **302 → github.com**, capture hosting ✅,
+off-site backup ok 17.6 h old. Neighbours **`200 → 200`** on all three — `nodegx.io`,
+`nexus.digitalbricks.io`, `digitalbricks.io`. `EXIT=0`.
+
+**The measurement that settles the defect**, re-running session 46's probe with its control:
+
+| route | s46 | s48 | |
+|---|---|---|---|
+| `/api/v1/community/threshold` | 200 | **200** | the control — held |
+| `/api/v1/community/templates` | **404** | **200** | T3's shelf |
+| `/api/v1/community/templates/submissions` | **404** | **200** | T5's queue |
+| `/api/v1/community/templates/does-not-exist` | — | **404** | 🆕 the **negative** control |
+
+🔴 **The negative control is the row session 46's table did not have, and it is what makes the two
+200s mean anything.** A catch-all handler answering 200 to every path under `/templates` would
+produce exactly the middle two rows. A known-bad slug still 404ing is what excludes it. ⚠️ Generalise
+it: **when an absence turns present, a positive control proves the host is up and only a negative
+control proves the route is real.**
+
+### ⚠️ A second probe that could not have answered its own question
+
+The authorised `GET /templates/submissions` (Richard's real token) and an anonymous one **both**
+returned `200 {"items":[]}`. Read carelessly that is a leak — the reviewer's queue answering
+strangers. It is not: the route is documented as doing this deliberately (`if (!viewer) return []`,
+with the `submitter_account_id` predicate inside `listMyTemplateSubmissions` rather than in the
+route, and a 401 rejected on the grounds that it would confirm to a stranger that submissions
+exist — the disclosure `communityGate` exists to avoid).
+
+🔴 **But the probe could not have told the two apart, because the queue holds zero rows: the empty
+set fits "correctly scoped" and "wide open" equally.** It was settled by reading the route, not by
+the curl. The curl becomes evidence only once a submission exists and a *second* account asks —
+which is exactly what AC5 already specifies, and why AC5 says *from a second account*.
+
+### 🔴 What the deploy did NOT fix: the shelf is real and EMPTY
+
+`/api/v1/community/templates` → `{"items":[],"page":{"limit":50,"offset":0,"total":0}}`.
+
+*"The curated shelf is empty"* has stopped being a deployment fact and become a **content** one, and
+the two want opposite work. `scripts/publish-project-template.ts` is the publisher and it takes a
+database credential, so promoting is deliberately not something a client can do. **Which of
+Richard's eight templates go up is his editorial call** — and §4c already measured that
+**three of the eight have no honest category** (`pixel-game`, `interactive-fiction`,
+`shared-canvas`), so publishing them is blocked behind the vocabulary gap rather than behind effort.
+
+⚠️ **`nodegx-community`'s `origin/main` was ELEVEN commits behind local `main`** at deploy time —
+every FB-005 platform commit, plus FB-001, FB-002, FB-003, FB-010, FB-011, FB-023 and FB-024,
+exists only on this laptop. Not blocking and not deploy-related, but it is the same shape as the
+finding that produced the stamp in the first place: **a fact that lives in exactly one place.**
+
 ## 5. What is still Richard's to rule — narrowed by the sweep
 
 Two of the task file's four questions are now answered by precedent rather than by decision:
