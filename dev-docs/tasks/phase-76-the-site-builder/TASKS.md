@@ -86,6 +86,10 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   `dynamic-port-skipped` info covers it and the door was silent — it would have thrown on render.
   A static port carrying a structured value is a gap no diagnostic here names.
   ⚠️ **Rule 4 is still UNMEASURED**; nothing filters on a Pointer. Do not record it as answered.
+  🔴 **Amended s7 by SB-006 F14**: the four page `urlPath`s moved under `ADMIN_PATH_PREFIX`
+  (`admin/pages`, `admin/setup`, `admin/theme`, `admin/page/{pageId}`). They were one segment each,
+  which ties with the public site's catch-all `{slug}` — resolved by the order the components were
+  written in. The 21 specs are unchanged and still pass.
 
   ✅ **The claim the task owed is now held on the real path.** SB-004 §7 wrote its rows through the
   REST API as the owner because this panel did not exist, so no spec could tell a panel that sets the
@@ -100,7 +104,51 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   and `CloudFunction2`'s `in-`/`out-` parameters register on the **parameter** path
   (`nodescope.ts:203`), which is what lets one endpoint serve a Publish and an Unpublish button as
   two constants with no wires.
-- ⬜ **SB-006** — the public site
+- 🟡 **SB-006** — [the public site](SB-006-THE-PUBLIC-SITE.md) — **BUILT s7. Structurally complete
+  and mutation-graded; behaviourally UNMEASURED.** Five browser components through the real door
+  (`noodl-mcp/tests/sb006Components.ts`), **29 specs / 12 mutants / 1 control**
+  (`noodl-mcp/tests/sb006PublicSite.test.ts`). Acceptance 1–8 met; **9 is SB-008's and is UNMET** —
+  listed rather than quietly counted as met by the structural ones.
+  🔴 **It changed a file SB-005 had already graded**, and that is the session's headline finding:
+  **F14 — the public site's catch-all `{slug}` ties with every one-segment sibling page, and the
+  Router breaks the tie by the order the components happened to be written in**
+  (`router.tsx:775-783`, the guard is `>` not `>=`). So `/admin` resolving to the panel rather than
+  to a content page called "Admin" was luck. SB-005's four page paths moved under `ADMIN_PATH_PREFIX`
+  (`admin/pages`, `admin/setup`, `admin/theme`, `admin/page/{pageId}`), which removes the tie rather
+  than relying on it — `{slug}` still matches `/admin/pages`, at distance 1, and distance is read
+  before order. SB-005's 21 specs still pass. The assertion re-implements the Router's own rule over
+  **both panels' pages at once**, which is why this suite authors both into one project.
+  Three more, each of which changed a graph:
+  **F15** — a component instance has **only** the ports its `Component Inputs` declares, so `visible`
+  cannot go on one and conditional placement needs a wrapper `Group` (the door refuses it by name;
+  the same run also raised `inert-dimension` on `objectFit` without `sizeMode: 'explicit'`, and
+  🔴 `unitless-dimension`: a bare number on a dimension port is read as a **percentage**);
+  **F16** — a `Page` node's **`title` port is dead after export** (the Router titles from the exported
+  `routerIndex`, `router.tsx:584`) while its **`description` port is live** (`Page.tsx:162-168`), so
+  a records-driven title must go through `Noodl.SEO.setTitle` — on the one template whose product is
+  SEO, the fix that looks right does nothing;
+  **F17** — the door makes the **first page written** the router's start page, so authoring order
+  decides where the app opens; the panel-first order left `startPage: /Pages/PageEditor`, an editor
+  for no record.
+  🆕 **A third query shape**, and it is what most of this site is made of: a query filtered by a
+  **literal** keeps its load-time fetch, because the literal is on the node from the moment it is
+  built and there is no `qp-` port for anything to trigger. **The precondition of SB-004's fix is a
+  filter PORT, not a filter** — the sentence a future author will get wrong.
+  🆕 **Two cross-file contracts now checked**: the theme keys `buildTokens` writes are the keys
+  `applyTheme` reads, and every field a section view reads out of `data` is one `Admin/SectionRow`
+  can write. Neither was checked anywhere before.
+  ⚠️ Also recorded: `isEmpty` is `true` **before** the first fetch by contract, so a not-found panel
+  wired to it shows from load; `For Each` has no channel for a value constant across items (the
+  repeater family's half of SB-004 §5's `Run Tasks` limit), which is why the contact form is a
+  sibling of the section list; and 🔴 **SSG skips dynamic `{param}` routes**, so it would pre-render
+  the three literal admin paths and *not* the public site — a claim SB-007 must not make.
+  🧭 **One ruling: `Section.kind` has five values and `data` can express four.** `cta` has no
+  destination and no control would write one. Either the panel drops it or `data` grows
+  `linkSlug`/`linkLabel`; the second changes SB-004 §2's class model, so it is Richard's.
+  ⚠️ **Rule 4 is still UNMEASURED.** Nothing here filters on a Pointer either.
+  ✅ **F8 does not block the browser half**, contrary to the s6 handover: `site/ContactRecipient` is
+  where the recipient lives and the form names no recipient. What F8 blocks is the claim that a
+  submitted message *reaches* anyone — SB-004 §7's territory, still open.
 - ⬜ **SB-007** — it ships as a template (via FB-005's registry — consume, don't re-spec).
   **Relayed from the FB-005 T3 session, 2026-08-26 (uncommitted in the shared checkout at relay
   time — verify by commit, not by this note):** reusable pieces exist — `hooks/useProjectTemplates.ts`
@@ -131,6 +179,11 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   and 404s an unpublished one, with enforcement on. What SB-008 still owes is the *browser* half:
   the public site actually rendering it. Scope it as a UI drive, not a permissions drive, and do not
   re-litigate what §7 measured.
+  ✅ **The browser half now exists** (SB-006, s7) and the drive must boot `sb006Components.ts` beside
+  `sb005Components.ts`, **site authored first** (SB-006 F17). `scripts/devtools/render-from-disk.js`
+  serves a v2 project straight from disk against the working-tree runtime and reconstructs
+  `routerIndex` the way the exporter does — that is the likely harness, and its header names the
+  export-contract traps it already solved.
 
 ## Tier 3 — found while building
 
@@ -270,3 +323,28 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   **`Jasmine: 2856 specs, 4 failures (failed)`**, all four `AIX-006 style vocabulary` by name, on a
   tree including `8ce12a3c` — the recorded floor. ⚠️ Attributed as a relayed *measurement*, not a
   verdict. s6 itself moved nothing in `test:ci`'s scope (two new noodl-mcp test files, four docs).
+- **s7 (2026-08-26)** — **SB-006 BUILT** (see its entry above and the task file's §7): five browser
+  components through the real MCP door, `noodl-mcp/tests/sb006Components.ts` + a 29-spec suite with
+  **12 mutants and one known-firing control**. Acceptance 1–8 met; **9 is SB-008's and left
+  explicitly UNMET**.
+  Nine mechanisms were measured *before* anything was authored and four changed a graph — one of them
+  a graph SB-005 had already shipped. **F14**: the Router breaks a page-pattern tie by the order the
+  components were written in, so the public site's catch-all `{slug}` was quietly competing with four
+  one-segment admin paths; those paths moved under `admin/`, and the assertion re-implements the
+  Router's rule over **both panels at once**, which is why this suite authors both into one project.
+  **F15**: a component instance carries only its declared `Component Inputs` ports — no `visible`, no
+  layout — so conditional placement needs a wrapper `Group` (the door refuses it by name, and raised
+  two more blocking dimension diagnostics in the same run, including 🔴 a bare number on a dimension
+  port being read as a *percentage*). **F16**: a `Page` node's `title` port is dead after export
+  while its `description` port is live, so a records-driven title has to go through
+  `Noodl.SEO.setTitle` — on the template whose product is SEO. **F17**: the door makes the first page
+  written the start page, so authoring order decides where the app opens.
+  🆕 A **third query shape** — literal-filtered, boxes ON — and the sentence behind it: *the
+  precondition of SB-004's fix is a filter PORT, not a filter*. 🆕 The two cross-file contracts with
+  the panel (theme keys, section fields) are now checked, having been checked nowhere before.
+  🧭 One ruling filed rather than absorbed: `Section.kind` has five values and `data` can express
+  four (`cta` has no destination).
+  ⚠️ `test:ci` **not run — no editor or runtime source was touched** (three noodl-mcp test files, one
+  of them edited, and two docs), so nothing in its scope moved. s6's relayed floor of 4 stands.
+  Final: noodl-mcp **62 suites / 747**, `typecheck:mcp` and `typecheck:editor` both exit **0** (run
+  unpiped).

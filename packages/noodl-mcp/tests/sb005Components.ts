@@ -92,6 +92,28 @@ export const FN_DUPLICATE = 'duplicatePage';
 export const ROUTER = 'Main';
 
 /**
+ * 🔴 **Every admin page is at least two URL segments deep, and that is a
+ * requirement rather than a naming convention.** Measured in SB-006, which is
+ * where it bites.
+ *
+ * The public site is one catch-all page component at `{slug}` — a site builder's
+ * whole point is that `/about` is a record. The Router matches by splitting both
+ * sides on `/` and comparing segment by segment, `{name}` matching any segment
+ * (`router.tsx:747-757`), then keeps the page with the smallest
+ * `|patternParts − pathParts|`, **first one winning a tie** (`:775-783`, the
+ * guard is `>` and not `>=`). A one-segment admin path therefore ties with
+ * `{slug}` on its own URL, and the winner is whichever the Router's `pages` list
+ * names first — which is the order the components happened to be written in.
+ *
+ * Two segments removes the tie rather than relying on it: `{slug}` still matches
+ * `/admin/pages`, but at distance 1, and distance is read before order. These
+ * paths were `setup` / `admin` / `theme` / `page/{pageId}` until SB-006 measured
+ * that; `sb006PublicSite.test.ts` asserts it over both panels at once by
+ * re-implementing the Router's own rule.
+ */
+export const ADMIN_PATH_PREFIX = 'admin';
+
+/**
  * The filtered query's shape, and only the half that transfers — see the module
  * header. Both boxes off kills the load-time unfiltered fetch; the `Do` wire is
  * a separate decision made per query, at its wire.
@@ -445,7 +467,7 @@ export const SETUP_NODES = [
     id: 'page',
     type: 'Page',
     label: 'Set up this site',
-    parameters: { title: 'Set up this site', urlPath: 'setup' },
+    parameters: { title: 'Set up this site', urlPath: `${ADMIN_PATH_PREFIX}/setup` },
     children: ['shell']
   },
   {
@@ -599,7 +621,7 @@ export const ADMIN_NODES = [
     id: 'page',
     type: 'Page',
     label: 'Pages',
-    parameters: { title: 'Pages', urlPath: 'admin' },
+    parameters: { title: 'Pages', urlPath: `${ADMIN_PATH_PREFIX}/pages` },
     children: ['shell']
   },
   {
@@ -734,7 +756,7 @@ export const PAGE_EDITOR_NODES = [
     id: 'page',
     type: 'Page',
     label: 'Edit page',
-    parameters: { title: 'Edit page', urlPath: 'page/{pageId}' },
+    parameters: { title: 'Edit page', urlPath: `${ADMIN_PATH_PREFIX}/page/{pageId}` },
     children: ['shell']
   },
   {
@@ -983,7 +1005,7 @@ export const THEME_EDITOR_NODES = [
     id: 'page',
     type: 'Page',
     label: 'Theme and settings',
-    parameters: { title: 'Theme and settings', urlPath: 'theme' },
+    parameters: { title: 'Theme and settings', urlPath: `${ADMIN_PATH_PREFIX}/theme` },
     children: ['shell']
   },
   {
