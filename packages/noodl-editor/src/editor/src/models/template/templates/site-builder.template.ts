@@ -32,11 +32,22 @@
  * through `Noodl.SEO.setTitle` at run time instead (SB-006 F16 — a `Page` node's
  * `title` port is dead after export).
  *
- * 🔴 **It ships no backend policy.** The publication boundary — public read of
- * `Page` and `Section`, `role:admin` write, `ContactMessage` create `nobody` —
- * is `security.json` in a backend's data directory, and a template is a project
- * directory. A new project from this template has the graphs that assume that
- * policy and no policy. Filed as SB-015; SB-004 §4 carries the document.
+ * ✅ **It DOES ship a backend policy now (SB-015).** It did not, and the gap was
+ * the sharpest thing this template turned up: the publication boundary — public
+ * read of `Page` and `Section`, `role:admin` write, `ContactMessage` create
+ * `nobody` — is `security.json` in a *backend's* data directory, and a template
+ * is a *project* directory. `site-builder.security.json` is that policy, written
+ * into a new project as `nodegx.security.json` and applied by provisioning.
+ *
+ * 🔴 **It is the same file SB-008's drive uses as its control.** That suite used
+ * to hold a typed copy, which meant it measured a real publication boundary
+ * produced by a file no project would ever receive. `helpers/site-drive.ts` now
+ * imports this one, so what the drive measures is what a person gets.
+ *
+ * ⚠️ **`devOpen` is `false`, locally as well as deployed**, and that is a
+ * decision with a cost rather than an oversight — see `projectPolicy.ts`'s
+ * header and SB-015 §6. An author is an anonymous visitor to their own site
+ * until `claimSite` puts them in the `admin` role.
  *
  * @module noodl-editor/models/template/templates
  */
@@ -44,6 +55,7 @@
 import { ProjectContent, ProjectTemplate } from '../ProjectTemplate';
 
 import siteBuilderContent from './site-builder.content.json';
+import siteBuilderSecurity from './site-builder.security.json';
 
 /**
  * ⚠️ The cast is over one field the interface does not declare and the editor
@@ -68,5 +80,17 @@ export const siteBuilderTemplate: ProjectTemplate = {
   version: '1.0.0',
   thumbnail: undefined,
 
-  content
+  content,
+
+  /**
+   * SB-015 — SB-004 §4's policy, as the shipped artefact rather than as prose.
+   *
+   * ⚠️ **Hand-edited, unlike `content`.** The graphs are generated from the
+   * component sets; this is not, because there is nothing to generate it *from* —
+   * a security policy is a decision about the graphs, not a projection of them.
+   * The gate on it is `sb015-project-policy.test.ts`, which checks it against the
+   * collections and endpoints the template actually contains: a `Section` added
+   * to the class model with no rule here reddens.
+   */
+  securityPolicy: siteBuilderSecurity as unknown as Record<string, unknown>
 };

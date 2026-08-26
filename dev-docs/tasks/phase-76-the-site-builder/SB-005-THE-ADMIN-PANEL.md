@@ -15,7 +15,7 @@ measured while building, including **three places where §1 and §2 were wrong o
 
 Depends on SB-004 (✅ s4 — the classes, the ACL invariant and the four cloud functions all exist and
 are driven). Feeds SB-006 (the public site) and SB-008 (the drive). The doctrine an author must read
-first is `BACKEND_DOCTRINE_MD` §"Four things a deployed graph does not do the way the canvas does" —
+first is `BACKEND_DOCTRINE_MD` §"Five things a deployed graph does not do the way the canvas does" —
 but **three of those four rules do not apply on this side of the boundary**, and §2 says which, because
 over-applying them is its own defect.
 

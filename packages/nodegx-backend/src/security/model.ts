@@ -596,6 +596,99 @@ export function effectiveFunctionRule(
   return { rule: allowNoAuth ? 'public' : 'authenticated', source: 'graph', allowNoAuth };
 }
 
+// ----------------------------------------------------------------------------
+// SB-016 — the endpoints nobody declared
+// ----------------------------------------------------------------------------
+
+/** One deployed endpoint, as far as this module needs to know about it. */
+export interface DeployedFunction {
+  name: string;
+  /** The graph's `Allow Unauthenticated` port. */
+  allowNoAuth: boolean;
+}
+
+/** An endpoint whose rule comes from the graph port because no config entry names it. */
+export interface UnresolvedFunction extends DeployedFunction {
+  /** What the graph port resolves to, and therefore what a deploy would enforce. */
+  rule: RuleValue;
+}
+
+/**
+ * SB-016 — every deployed endpoint whose `call` rule resolves **only** from the
+ * graph's `Allow Unauthenticated` port.
+ *
+ * ## Why this predicate and not the narrower one
+ *
+ * SB-016 §4 left the predicate open between this — *resolves from the graph
+ * port at all* — and a narrower *resolves to `authenticated` from the port*,
+ * on the strength of a claim that the narrow one "refuses exactly the two that
+ * are wrong" on the Site Builder template. 🔴 **Measured, it does not.** Site
+ * Builder's four endpoints are `submitContactForm` (ticked → `public`, wanted
+ * `public`), `claimSite` (unticked → `authenticated`, wanted `authenticated`),
+ * and `publishPage`/`duplicatePage` (unticked → `authenticated`, wanted
+ * `role:admin`). The narrow predicate refuses **three** of the four — the two
+ * that are wrong *and* `claimSite`, which is right. No deploy-time predicate can
+ * separate them, because the thing that distinguishes `claimSite` from
+ * `publishPage` is an intention neither the port nor the config records.
+ *
+ * With discrimination off the table, the choice is between *declare every
+ * endpoint* and *declare every endpoint except the ones open to the world*, and
+ * that is not close. Ticking `Allow Unauthenticated` is an affirmative act, but
+ * it is an act performed on a canvas, possibly by somebody else, possibly a year
+ * ago — and its consequence is the only endpoints an anonymous stranger can
+ * reach at all. An interlock that waves those through is silent about precisely
+ * the surface it exists to protect.
+ *
+ * So the refusal does not say *this is wrong*. It says **you have not said**,
+ * and after it is satisfied `security.json` describes every endpoint the backend
+ * serves — which is the property the panel, the audit trail and the next
+ * deployer all read it for.
+ *
+ * ⚠️ A configured entry for a function that is NOT deployed is drift in the
+ * other direction, and is deliberately not this function's business: it grants
+ * nothing, `GET /admin/permissions/functions` already reports it, and refusing a
+ * deploy over a stale rule would punish the safe half of the same mistake.
+ */
+export function unresolvedFunctionRules(
+  config: SecurityConfig,
+  deployed: DeployedFunction[]
+): UnresolvedFunction[] {
+  const unresolved: UnresolvedFunction[] = [];
+  for (const fn of deployed) {
+    const resolved = effectiveFunctionRule(config, fn.name, fn.allowNoAuth);
+    if (resolved.source !== 'graph') continue;
+    unresolved.push({ name: fn.name, allowNoAuth: fn.allowNoAuth, rule: resolved.rule });
+  }
+  return unresolved.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * The `functions` block that makes the endpoints above resolved, written out so
+ * it can be pasted into `security.json` unmodified.
+ *
+ * 🔴 **Every rule is the one the backend is enforcing right now**, so pasting it
+ * and restarting changes nothing about who can call what. That is the point: the
+ * refusal is asking for a *decision to be recorded*, not for behaviour to change,
+ * and a deployer under time pressure needs the zero-risk answer to be the one in
+ * front of them. Tightening `publishPage` to `role:admin` is the next thing they
+ * should do and the message says so, but it is a second step they take with their
+ * eyes open rather than a change this refusal smuggles in.
+ *
+ * ⚠️ It is emitted **merged with whatever `functions` entries already exist**,
+ * because a deployer with three declared endpoints and one undeclared one who
+ * pastes a one-key block over the top has just undeclared the other three.
+ */
+export function proposedFunctionsBlock(config: SecurityConfig, unresolved: UnresolvedFunction[]): string {
+  const merged: Record<string, unknown> = JSON.parse(JSON.stringify(config.functions || {}));
+  for (const fn of unresolved) {
+    const existing = (merged[fn.name] as Record<string, unknown> | undefined) || {};
+    merged[fn.name] = { ...existing, call: fn.rule };
+  }
+  const ordered: Record<string, unknown> = {};
+  for (const key of Object.keys(merged).sort()) ordered[key] = merged[key];
+  return JSON.stringify({ functions: ordered }, null, 2);
+}
+
 export interface FunctionAccessDecision extends AccessDecision {
   source: FunctionRuleSource | 'credential';
 }

@@ -1,10 +1,14 @@
 # SB-013 — A singleton written twice
 
-**Status: ⬜ MEASURED s8 (SB-008 F21), not fixed.** One `claimSite` call leaves **two identical
-`SiteSettings` rows** on a fresh backend. The mechanism is measured with two one-edge arms; the fix
-is a choice between two, which is why it is filed rather than taken.
+**Status: ✅ FIXED s10 — and the fix is not the one this file recommended.** One `claimSite` call
+left **two identical `SiteSettings` rows**; it now leaves one. §4's recommendation (drop the
+explicit `storageFetch`) was measured against the row count only, and the row count is not the
+property this endpoint is for: §6 below is the reading that decided it, in which the recommended
+arm passes and an adjacent one **puts an outsider in the `admin` role on an already-claimed site**.
 
-Probe: `packages/nodegx-backend/tests/sb008-public-site-drive.test.ts`, describe **"🔴 F21"**.
+Arms: `packages/nodegx-backend/tests/sb004-publication-invariant.test.ts`, describe **"SB-013 — the
+second claim, and the two barriers that refuse it"** (5 arms). The original reading stays in
+`sb008-public-site-drive.test.ts` describe **"✅ F21"**, now asserting 1.
 
 ## 1. What was measured
 
@@ -94,6 +98,71 @@ counted*, and the second where SB-004's own rules were involved:
   runs twice.
 
 F12's fix (turn the boxes off) and F21's cause (leave them on and trigger by hand) are the two ends
-of the same rule, which is why `BACKEND-AUTHORING-MODEL.md` §"Four things a deployed graph does not
+of the same rule, which is why `BACKEND-AUTHORING-MODEL.md` §"Five things a deployed graph does not
 do the way the canvas does" should gain the third case: **a query with its `runOnChange` boxes on and
 an explicit `storageFetch` fires `fetched` twice.**
+
+## 6. What s10 measured, and why §4's recommendation was not taken
+
+🔴 **The arms in §2 varied a wire and counted rows. Neither asked the question the endpoint
+exists to answer: does an already-claimed site still refuse?** That reading turns out to separate
+the candidates, and §4's recommended fix is on the wrong side of it.
+
+Each row is one claim by an owner, then a second claim by a **different** user with the **correct**
+token, on a backend of its own. `outsider admin` is the only column that distinguishes a refusal
+from a refusal-shaped breach — every arm answered `This site cannot be claimed.` with a 400.
+
+| arm | `SiteSettings` | `Theme` | 1st answer | outsider admin |
+|---|---|---|---|---|
+| shipped (before s10) | 2 | 0 | `claimed: true` | no |
+| §4.1 — drop `secret.done → storageFetch` | 1 | 0 | `claimed: true` | no |
+| load-time fetch off, nothing else | 2 | 0 | `undefined` | 🔴 **YES** |
+| **s10's fix** — load-time fetch off, gate boxes off, readiness guard | **1** | **1** | `claimed: true` | no |
+
+**The third row is the finding.** It is one checkbox away from §4.1 and it opens the door, because
+`Run` is **purely additive** (`run-on-value-change.ts`, constraints 1 and 2): wiring
+`fetched → Run` adds a trigger and unticks nothing, so the gate *also* re-ran as each input value
+arrived — and the run carrying the secret happens before the query answers, where `isEmpty` is
+`true` for a collection with rows in it (`dbcollectionnode2.ts:410-421`).
+
+🔴 **So §4.1 passes on a race it does not own.** With only the load-time fetch, the gate's decisive
+run is still a value-change run; nothing orders it after the query, and the fetch scheduled at
+graph-build time simply tends to win. The arm above is what that hazard looks like when it loses.
+The graph now closes it twice, and the two are graded independently against that same failure:
+
+- **A — the gate's `runOnChange-in-*` boxes are off**, so `fetched` really is its only trigger.
+  Removing the guard with A in place: still refused, still one row.
+- **B — the script returns unless `Inputs.rows` is defined.** `items` is the only output of a
+  Query Records node that separates *matched nothing* (`[]`) from *has not run* (`undefined`).
+  Turning the boxes back on with B in place: still refused.
+- **Neither**: the outsider is an admin, and there are three `SiteSettings` rows.
+
+⚠️ **B alone also costs the answer**, which is why both ship rather than the cheaper one: with the
+boxes on the gate runs more than once, and the run that publishes `claimed` is not the run the
+Response sends on — the caller is told `claimed: undefined` by a site that IS claimed, which is how
+an owner comes back and claims again.
+
+⚠️ **And the row half is finer than §2 said.** With the gate deciding on `fetched` alone, turning
+the load-time fetch back **on** changes nothing — still one row. So the second row was never "two
+fetches" as such; it was the second *gate run*, and that run was the value-change one. The fix
+belongs on the consumer, not only on the query.
+
+✅ §4's closing ask is met: SB-004's suite counts the rows, and now the themes
+(`🔴 writes exactly ONE of each singleton`).
+
+## 7. What the reference doc had to change
+
+`BACKEND-AUTHORING-MODEL.md` §"Five things a deployed graph does not do the way the canvas does"
+(renamed from Four) carries two corrections rather than an addition:
+
+- **Rule 3's ⚠️ was a misattribution.** It read *"do the opposite for an unfiltered query — with
+  those boxes off the `isEmpty` output is never flagged"*. Measured: with the boxes off and an
+  explicit `storageFetch`, the query **does** fetch and `isEmpty` **is** flagged. What read a
+  claimed site as unclaimed was the consumer, every time. The table gains the row this endpoint is:
+  *unfiltered, read by a consumer that must not decide early → boxes off, `Do` wired*.
+- **Rule 5 is new** and is the general form: `Run` is additive, and every output with a pre-fetch
+  default — `isEmpty`, `count`, `firstItemId` — answers before there is anything to answer about.
+  Take readiness from `items` and the answer from the output you wanted.
+
+Both are in `BACKEND_DOCTRINE_MD`, which also finally carries rule 3's second half — s8's named
+debt, and this task is a fair measure of what leaving it out cost.

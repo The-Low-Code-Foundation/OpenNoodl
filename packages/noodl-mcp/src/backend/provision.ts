@@ -483,6 +483,13 @@ export async function startBackend(
     '--parent-pid',
     String(process.pid)
   ];
+  // SB-015: hand the service the project, so a project that ships a
+  // `nodegx.security.json` is provisioned onto its own policy instead of onto
+  // `defaultSecurityConfig()`. The service applies it only when this data dir
+  // has no `security.json` yet, so passing it on every start — including a
+  // restart or an adoption — is idempotent, and the flag is inert for the
+  // projects (today, all of them) that ship no policy.
+  if (options.projectDir) args.push('--project-dir', options.projectDir);
 
   const child = spawn(process.execPath, args, { stdio: ['ignore', 'pipe', 'pipe'], detached: false });
   const logRing: string[] = [];
@@ -829,6 +836,40 @@ export async function provisionBackend(request: ProvisionRequest): Promise<Provi
     const config = await createBackendDir(name, request.projectId, root);
     installExitHooks(root);
     started = await startBackend(config, { root, projectDir: request.projectDir });
+  }
+
+  // ── SB-015: did the project's policy actually land? ───────────────────────
+  //
+  // The service installs it on a start whose data dir has no `security.json`.
+  // Two of the three paths above do not start anything — an ADOPTED backend was
+  // already running, and a REUSED one may have started long before this project
+  // acquired a policy — so on those the policy silently goes nowhere. That is
+  // the exact shape of the bug SB-015 is about (a correct policy that is not the
+  // one being enforced), and the only difference here is that it is knowable.
+  // Checked with plain fs rather than the backend's validator on purpose: this
+  // package resolves nodegx-backend as a built bundle, not as a source import,
+  // and the service validates the file loudly on the path where it matters.
+  if (request.projectDir) {
+    const projectPolicy = path.join(request.projectDir, 'nodegx.security.json');
+    const backendPolicy = path.join(root, started.backendId, 'security.json');
+    if (fs.existsSync(projectPolicy) && fs.existsSync(backendPolicy)) {
+      const same = (p: string): string | null => {
+        try {
+          return JSON.stringify(JSON.parse(fs.readFileSync(p, 'utf-8')));
+        } catch {
+          return null;
+        }
+      };
+      const fromProject = same(projectPolicy);
+      if (fromProject !== null && fromProject !== same(backendPolicy)) {
+        warnings.push(
+          `This project ships a security policy (nodegx.security.json) but backend "${started.name}" is ` +
+            `running a different one, and an existing security.json is never overwritten. The backend's policy ` +
+            `is what is enforced. Compare ${projectPolicy} with ${backendPolicy} and copy it across ` +
+            `deliberately if the project's is the one you want.`
+        );
+      }
+    }
   }
 
   // ── Collections, advisory. ────────────────────────────────────────────────

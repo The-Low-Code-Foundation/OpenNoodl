@@ -4603,7 +4603,9 @@
             "x": 40,
             "y": 280,
             "parameters": {
-              "collectionName": "SiteSettings"
+              "collectionName": "SiteSettings",
+              "runOnChange-collectionName": false,
+              "runOnChange-querySettings": false
             },
             "ports": [],
             "dynamicports": []
@@ -4616,7 +4618,11 @@
             "x": 40,
             "y": 400,
             "parameters": {
-              "functionScript": "if (Inputs.expected === undefined || Inputs.supplied === undefined) return;\nconst expected = Inputs.expected || '';\nconst supplied = Inputs.supplied || '';\n// Constant-time compare. A plain === leaks the matching prefix length\n// through timing, and this is the one door in the template that mints\n// an admin — the three extra lines are cheaper than the argument.\nlet diff = expected.length ^ supplied.length;\nconst n = Math.max(expected.length, supplied.length);\nfor (let i = 0; i < n; i++) {\n  diff |= (expected.charCodeAt(i) || 0) ^ (supplied.charCodeAt(i) || 0);\n}\n// An empty expected token is never a match: an unprovisioned secret\n// must not let a caller in with an empty string.\nconst tokenOk = expected.length > 0 && diff === 0;\nif (tokenOk && Inputs.unclaimed === true) {\n  Outputs.claimed = true;\n  Outputs.ok();\n} else {\n  Outputs.denied();\n}"
+              "runOnChange-in-expected": false,
+              "runOnChange-in-supplied": false,
+              "runOnChange-in-unclaimed": false,
+              "runOnChange-in-rows": false,
+              "functionScript": "if (Inputs.rows === undefined) return;\nif (Inputs.expected === undefined || Inputs.supplied === undefined) return;\nconst expected = Inputs.expected || '';\nconst supplied = Inputs.supplied || '';\n// Constant-time compare. A plain === leaks the matching prefix length\n// through timing, and this is the one door in the template that mints\n// an admin — the three extra lines are cheaper than the argument.\nlet diff = expected.length ^ supplied.length;\nconst n = Math.max(expected.length, supplied.length);\nfor (let i = 0; i < n; i++) {\n  diff |= (expected.charCodeAt(i) || 0) ^ (supplied.charCodeAt(i) || 0);\n}\n// An empty expected token is never a match: an unprovisioned secret\n// must not let a caller in with an empty string.\nconst tokenOk = expected.length > 0 && diff === 0;\nif (tokenOk && Inputs.unclaimed === true) {\n  Outputs.claimed = true;\n  Outputs.ok();\n} else {\n  Outputs.denied();\n}"
             },
             "ports": [
               {
@@ -4679,12 +4685,48 @@
             "dynamicports": []
           },
           {
+            "id": "seedTheme",
+            "type": "NewDbModelProperties",
+            "children": [],
+            "label": "Write the Theme singleton — the row the theme editor edits",
+            "x": 40,
+            "y": 760,
+            "parameters": {
+              "collectionName": "Theme",
+              "prop-tokens": {
+                "colorPrimary": "",
+                "colorBackground": "",
+                "colorText": "",
+                "fontFamily": ""
+              },
+              "accessControl": [
+                {
+                  "id": "admin",
+                  "label": "Admin"
+                },
+                {
+                  "id": "world",
+                  "label": "World"
+                }
+              ],
+              "acl-admin-target": "role",
+              "acl-admin-role": "admin",
+              "acl-admin-read": true,
+              "acl-admin-write": true,
+              "acl-world-target": "everyone",
+              "acl-world-read": true,
+              "acl-world-write": false
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
             "id": "res-4",
             "type": "noodl.cloud.response",
             "children": [],
             "label": "Claimed",
             "x": 40,
-            "y": 760,
+            "y": 880,
             "parameters": {
               "params": "claimed"
             },
@@ -4697,7 +4739,7 @@
             "children": [],
             "label": "Refused",
             "x": 40,
-            "y": 880,
+            "y": 1000,
             "parameters": {
               "status": "failure",
               "errorMessage": "This site cannot be claimed."
@@ -4739,6 +4781,12 @@
           },
           {
             "fromId": "settings-4",
+            "fromProperty": "items",
+            "toId": "gate",
+            "toProperty": "in-rows"
+          },
+          {
+            "fromId": "settings-4",
             "fromProperty": "fetched",
             "toId": "gate",
             "toProperty": "run"
@@ -4776,6 +4824,18 @@
           {
             "fromId": "mark",
             "fromProperty": "done",
+            "toId": "seedTheme",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "seedTheme",
+            "fromProperty": "done",
+            "toId": "res-4",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "seedTheme",
+            "fromProperty": "failure",
             "toId": "res-4",
             "toProperty": "send"
           },

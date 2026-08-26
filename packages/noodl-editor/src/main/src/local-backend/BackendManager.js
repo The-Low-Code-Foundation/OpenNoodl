@@ -740,6 +740,13 @@ class BackendManager {
    * @param {Object} [options]
    * @param {boolean} [options.ephemeral] - Opt in to non-persisting in-memory mode
    *   when the native SQLite engine is unavailable. Data will NOT persist.
+   * @param {string} [options.projectDir] - SB-015: the **project** directory this
+   *   backend is being started for, which is not the data directory. The service
+   *   reads `nodegx.security.json` from it at startup step 1.4 and installs it as
+   *   its own `security.json`, but only when it has none yet — so passing it on
+   *   every start, including a restart, is idempotent, and it is inert for a
+   *   project that ships no policy. Every renderer call site sends it through
+   *   `BackendServices/startLocalBackend`; see that module for why.
    */
   async startBackend(id, options = {}) {
     // Already running?
@@ -770,6 +777,8 @@ class BackendManager {
       dataDir: backendPath,
       port: config.port,
       ephemeral: options.ephemeral === true,
+      // SB-015 — the project, not the data dir. See the jsdoc above.
+      projectDir: typeof options.projectDir === 'string' && options.projectDir.trim() ? options.projectDir : undefined,
       // A backend that dies on its own is exactly as interesting to a panel as
       // one that is stopped deliberately, and it is the case that used to be
       // invisible: the panel kept showing a running backend that was gone.

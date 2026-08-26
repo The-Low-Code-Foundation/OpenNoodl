@@ -683,13 +683,19 @@ export const RECIPIENT_NODES = [
     // Records is exactly the defect F5 records on publishPage — the difference
     // is intent, and intent has to be visible.
     //
-    // ⚠️ The `runOnChange-*` checkboxes are left TICKED here, unlike the two
-    // filtered queries — measured, not assumed. Switching them off left this
-    // node reporting `isEmpty: true` for a collection that had a row in it: with
-    // no load-time fetch the `isEmpty` output was never flagged, and an
-    // unfiltered query has nothing to gain from suppressing it anyway. On a
-    // FILTERED node the same setting is what stops a query running before its
-    // filter exists; here there is no filter to be early for.
+    // ⚠️ The `runOnChange-*` checkboxes are left TICKED here — measured, not
+    // assumed. Switching them off left this node reporting `isEmpty: true` for
+    // a collection that had a row in it, because **this node has no
+    // `storageFetch` wire**: with the boxes off and nothing triggering it by
+    // hand, it never fetches at all. On a FILTERED node the same setting is
+    // what stops a query running before its filter exists; here there is no
+    // filter to be early for.
+    //
+    // 🔴 That is the whole rule, and `claimSite`'s copy of this node is the
+    // other half of it: boxes OFF *and* `storageFetch` wired, which fetches
+    // exactly once and in an order. Boxes on with a `storageFetch` wire fetches
+    // twice and runs everything downstream twice (SB-013). The two settings are
+    // alternatives, never a belt and braces.
     parameters: { collectionName: 'SiteSettings' }
   },
   {
@@ -918,12 +924,25 @@ export const CLAIM_NODES = [
     id: 'settings',
     type: 'DbCollection2',
     label: 'Has this site been claimed?',
-    // ⚠️ Checkboxes left ticked — see `site/ContactRecipient`'s note. Suppressing
-    // the load-time fetch here made `isEmpty` read `true` on a site that had
-    // already been claimed, i.e. it opened the one door in the template that
-    // mints an admin. That is the direction this endpoint must never fail in,
-    // and §7's `refuses a second claim` arm is what caught it.
-    parameters: { collectionName: 'SiteSettings' }
+    // 🔴 SB-013. The boxes are OFF, so the explicit `storageFetch` below is the
+    // only fetch this node performs — one `fetched` pulse, one run of the
+    // gate → grant → mark chain, one row. With them on it fetched twice (once
+    // at graph-build time, once on the wire) and one claim left TWO identical
+    // `SiteSettings` rows for two readers that both take `rows[0]`.
+    //
+    // ⚠️ Turning them off is the half that used to open the door, and the
+    // reason is `isEmpty`: it is `true` before the first query has run
+    // (`dbcollectionnode2.ts:410-421`), indistinguishable from a real empty
+    // collection. Losing the load-time fetch means the gate's FIRST reading is
+    // the pre-fetch one — which on an already-claimed site says "unclaimed".
+    // SB-013 §6 measured that arm: the outsider became an admin. What makes it
+    // safe here is the pair below — the gate runs only on `fetched`, and its
+    // script returns unless `items` says a query has actually answered.
+    parameters: {
+      collectionName: 'SiteSettings',
+      'runOnChange-collectionName': false,
+      'runOnChange-querySettings': false
+    }
   },
   {
     id: 'gate',
@@ -933,18 +952,34 @@ export const CLAIM_NODES = [
       { name: 'out-ok', plug: 'output', type: 'signal' },
       { name: 'out-denied', plug: 'output', type: 'signal' }
     ],
+    // 🔴 SB-013. `Run` is purely ADDITIVE (`run-on-value-change.ts` §1): wiring
+    // it adds a trigger and unticks nothing, and every input is ticked by
+    // default. So a `Run` wired from `fetched` did NOT mean "decides after the
+    // query" — the node also re-ran on each input value arriving, and the run
+    // that arrived with the secret decided on a pre-fetch `isEmpty`. Off, this
+    // node runs when a query has answered and at no other time.
     parameters: {
+      'runOnChange-in-expected': false,
+      'runOnChange-in-supplied': false,
+      'runOnChange-in-unclaimed': false,
+      'runOnChange-in-rows': false,
       functionScript:
         // 🔴 The readiness guard, and on this node it is a safety property, not
         // tidiness. `expected` (the Secret) and `supplied` (the Request) are
-        // both produced before the query that triggers this node, so the first
-        // run arrives with neither — and a first run that DECIDES refuses a
-        // correct setup token, in a message deliberately indistinguishable from
-        // a wrong one. §7's run measured exactly that before the guard existed.
-        // Returning is safe because a late value re-runs this node
-        // (`runOnValueChange` is ticked by default), and because the two ways an
-        // input can never arrive — an unprovisioned secret, a query that failed
-        // — both answer through the `deny` Response on their own edge.
+        // both produced before the query that triggers this node, so a run can
+        // arrive with neither — and a run that DECIDES refuses a correct setup
+        // token, in a message deliberately indistinguishable from a wrong one.
+        // §7's run measured exactly that before the guard existed. The two ways
+        // an input can never arrive — an unprovisioned secret, a query that
+        // failed — both answer through the `deny` Response on their own edge.
+        //
+        // 🔴 And the first line is SB-013's half, which is the one that is a
+        // BOUNDARY. `isEmpty` cannot tell "the query matched nothing" from "no
+        // query has run" — both are `true` — so it is not safe to decide on. Of
+        // this node's outputs only `items` can: it is `undefined` until a fetch
+        // assigns the collection. Returning here is what makes the refusal
+        // structural rather than a race the load-time fetch happens to win.
+        'if (Inputs.rows === undefined) return;\n' +
         'if (Inputs.expected === undefined || Inputs.supplied === undefined) return;\n' +
         "const expected = Inputs.expected || '';\n" +
         "const supplied = Inputs.supplied || '';\n" +
@@ -992,6 +1027,35 @@ export const CLAIM_NODES = [
     }
   },
   {
+    id: 'seedTheme',
+    type: 'NewDbModelProperties',
+    label: 'Write the Theme singleton — the row the theme editor edits',
+    // 🔴 SB-014. Nothing in the template created a `Theme` record, and the theme
+    // editor saves through `SetDbModelProperties` with the id from
+    // `theme.firstItemId` — `undefined` on an empty collection. So Save wrote
+    // nowhere and said nothing, on a screen whose whole purpose is to write.
+    // A template with two singletons mints both in the same place.
+    //
+    // 🔴 The tokens are EMPTY on purpose, and that is a deliberate non-decision.
+    // `applyTheme` only overrides a custom property when the value is truthy
+    // (`sb006Components.ts`), so an empty set is exactly the palette the site
+    // already ships — seeding it changes nothing a visitor sees and gives the
+    // editor a row to write to. It is byte-for-byte the shape `buildTokens`
+    // produces from a form the author saved with every field blank, so the
+    // seeded state and the authored state are the same state.
+    //
+    // The four keys are written rather than left out: a missing key and an
+    // empty one are different things to a reader doing `tokens.colorText`.
+    parameters: {
+      collectionName: 'Theme',
+      'prop-tokens': { colorPrimary: '', colorBackground: '', colorText: '', fontFamily: '' },
+      // The public site reads the theme as an anonymous visitor, so this row
+      // carries the same world-read rule as `SiteSettings` and for the same
+      // reason.
+      ...SITE_SETTINGS_RULES
+    }
+  },
+  {
     id: 'res',
     type: 'noodl.cloud.response',
     label: 'Claimed',
@@ -1021,6 +1085,9 @@ export const CLAIM_WIRES = [
   // gate must be triggered by `fetched` and never by anything earlier — an
   // "unclaimed" reading taken too early is indistinguishable from a real one.
   { fromId: 'settings', fromProperty: 'isEmpty', toId: 'gate', toProperty: 'in-unclaimed' },
+  // 🔴 SB-013's readiness wire. `items` is the only output of this node that
+  // separates "matched nothing" from "has not run" — see the gate's script.
+  { fromId: 'settings', fromProperty: 'items', toId: 'gate', toProperty: 'in-rows' },
   { fromId: 'settings', fromProperty: 'fetched', toId: 'gate', toProperty: 'run' },
   { fromId: 'gate', fromProperty: 'out-ok', toId: 'grant', toProperty: 'add' },
   { fromId: 'req', fromProperty: 'userId', toId: 'grant', toProperty: 'userId' },
@@ -1031,7 +1098,16 @@ export const CLAIM_WIRES = [
   { fromId: 'grant', fromProperty: 'done', toId: 'mark', toProperty: 'store' },
   { fromId: 'grant', fromProperty: 'unchanged', toId: 'mark', toProperty: 'store' },
   { fromId: 'gate', fromProperty: 'out-claimed', toId: 'res', toProperty: 'pm-claimed' },
-  { fromId: 'mark', fromProperty: 'done', toId: 'res', toProperty: 'send' },
+  // SB-014: the second singleton, after the first.
+  { fromId: 'mark', fromProperty: 'done', toId: 'seedTheme', toProperty: 'store' },
+  { fromId: 'seedTheme', fromProperty: 'done', toId: 'res', toProperty: 'send' },
+  // ⚠️ …and its failure answers `res`, NOT `deny`. By this point the role is
+  // granted and the settings row is written — the site IS claimed, and telling
+  // the caller "This site cannot be claimed" would send an admin away believing
+  // they are not one, with no second claim possible. The theme row is a
+  // convenience; the claim is the contract. Same shape as `submitContactForm`,
+  // where two edges answer one Response that can only send once.
+  { fromId: 'seedTheme', fromProperty: 'failure', toId: 'res', toProperty: 'send' },
   // Every way this can refuse, into the one indistinguishable answer.
   { fromId: 'secret', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
   { fromId: 'settings', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },

@@ -13,7 +13,7 @@
  *
  * ── What crosses the runtime boundary, and what does not ─────────────────────
  *
- * `BACKEND_DOCTRINE_MD` §"Four things a deployed graph does not do the way the
+ * `BACKEND_DOCTRINE_MD` §"Five things a deployed graph does not do the way the
  * canvas does" is about the *cloud* runtime. SB-005 §2 tabled which of its four
  * rules apply here; three measurements taken while building this file sharpen
  * that table, and each one changed a graph below.

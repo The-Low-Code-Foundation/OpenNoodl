@@ -39,215 +39,40 @@
  * `sb006PublicSite.test.ts` uses, and for the same two reasons.
  */
 import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-
-import { createServer } from '../../noodl-mcp/src/server';
 import { SB004_COMPONENTS } from '../../noodl-mcp/tests/sb004Components';
-import { SB005_COMPONENTS, createPass as createPass005 } from '../../noodl-mcp/tests/sb005Components';
-import {
-  NOT_FOUND_TEXT,
-  SB006_COMPONENTS,
-  createPass as createPass006
-} from '../../noodl-mcp/tests/sb006Components';
+import { SB005_COMPONENTS } from '../../noodl-mcp/tests/sb005Components';
+// ⚠️ The two panel sets are imported for the SB-014 census below, which reads the
+// component sets directly rather than the authored project — the authoring
+// itself now happens inside `authorSiteTemplate`.
+import { NOT_FOUND_TEXT, SB006_COMPONENTS } from '../../noodl-mcp/tests/sb006Components';
 import { BackendService } from '../src/service';
 
 import { bundleAuthoredComponents, WorkflowBundle } from './helpers/authored-bundle';
 import { adminHeaders, httpClient } from './helpers/http';
+/**
+ * ⚠️ The authoring, the binding, the data directory and the way a page is read
+ * were all written here and were moved to `helpers/site-drive.ts` when SB-015
+ * needed the same instrument one configuration apart. Two suites comparing two
+ * policies only mean something if everything either side of the policy is
+ * identical, and a second copy of a control is the copy that goes stale.
+ */
+import {
+  authorSiteTemplate,
+  bindProjectToBackend,
+  DRAFT_ACL,
+  makeSiteDataDir,
+  PUBLIC_ACL,
+  readVisit,
+  SITE_SECURITY,
+  Visit,
+  withRenderedPage
+} from './helpers/site-drive';
 
 jest.setTimeout(600000);
 
 const SETUP_TOKEN = 'sb008-setup-token-71c3ad';
 const CONTACT_TO = 'owner@example.invalid';
-
-/** SB-004 §4, verbatim — the same policy file the template ships. */
-const SITE_SECURITY = {
-  version: 1,
-  devOpen: false,
-  defaults: {
-    permissions: {
-      find: 'authenticated',
-      get: 'authenticated',
-      create: 'authenticated',
-      update: 'authenticated',
-      delete: 'authenticated'
-    },
-    creatorOwns: false
-  },
-  collections: {
-    Page: { permissions: { find: 'public', get: 'public', create: 'role:admin', update: 'role:admin', delete: 'role:admin' } },
-    Section: { permissions: { find: 'public', get: 'public', create: 'role:admin', update: 'role:admin', delete: 'role:admin' } },
-    Theme: { permissions: { find: 'public', get: 'public', create: 'role:admin', update: 'role:admin', delete: 'role:admin' } },
-    SiteSettings: { permissions: { find: 'public', get: 'public', create: 'role:admin', update: 'role:admin', delete: 'role:admin' } },
-    ContactMessage: {
-      permissions: { find: 'role:admin', get: 'role:admin', create: 'nobody', update: 'role:admin', delete: 'nobody' }
-    }
-  },
-  functions: {
-    publishPage: { call: 'role:admin' },
-    duplicatePage: { call: 'role:admin' },
-    submitContactForm: { call: 'public' },
-    claimSite: { call: 'authenticated' }
-  },
-  files: { upload: 'authenticated', read: 'public', delete: 'nobody' },
-  signup: 'public'
-};
-
-/** SB-004 §3's draft state, as a record on the wire carries it. */
-const DRAFT_ACL = { 'role:admin': { read: true, write: true } };
-/** …and the state a row that anyone may read is in. Seeded rows that are not pages. */
-const PUBLIC_ACL = { 'role:admin': { read: true, write: true }, '*': { read: true, write: false } };
-
-// ── The browser harness, which is plain CommonJS on purpose ──────────────────
-
-/**
- * `scripts/devtools/render-report.js` — the eyes. It serves the project through
- * `render-from-disk.js` (which reconstructs the exporter's `routerIndex`, proxies
- * `/__backend` to a real backend and serves `index.html` for extension-less
- * paths so a `urlPath` route is reachable at all) and drives a headless Chrome
- * over CDP.
- *
- * `require`d rather than imported because it is repo-layout-dependent plain JS
- * with no build step, which is deliberate on its side; this package's jest
- * transform covers `.ts` and `.html`/`.css` only, so it loads as the CJS it is.
- */
-interface RenderedPage {
-  evaluate(expression: string): Promise<unknown>;
-  navigate(urlPath: string): Promise<void>;
-  setViewport(vp: { width: number; height: number; mobile?: boolean }): Promise<void>;
-  consoleErrors: string[];
-  serverLog(): string;
-  servePort: number;
-}
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { withRenderedPage } = require('../../../scripts/devtools/render-report') as {
-  withRenderedPage<T>(
-    options: { projectDir: string; backendPort?: number },
-    fn: (page: RenderedPage) => Promise<T>
-  ): Promise<T>;
-};
-
-/** What one visit to one URL yields — read once, asserted many times. */
-interface Visit {
-  url: string;
-  /** `document.body.innerText`, which is what a reader sees and nothing else. */
-  text: string;
-  /** The whole document, which is where a hidden leak would be. */
-  html: string;
-  /** The document title, which is the SEO half F16 is about. */
-  title: string;
-  /** `<h1>` contents, in order. The page's own heading is the records-driven one. */
-  headings: string[];
-  /** The `nav` band's link text, in DOM order. */
-  nav: string[];
-  /** `<meta name="description">`, the port half of F16. */
-  description: string | null;
-  /** What the page logged as an error **during this visit** — not cumulatively. */
-  errors: string[];
-}
-
-// ── Authoring ────────────────────────────────────────────────────────────────
-
-interface ToolResult {
-  isError?: boolean;
-  content?: Array<{ type: string; text: string }>;
-}
-
-/**
- * The whole template, through the real MCP server, into one project directory.
- *
- * `createServer` from `src` and not the built dist: the dist on this machine is
- * days old and the bound servers run it (SB-004 §6 F4), so authoring through it
- * would exercise code that is not the code under test.
- */
-async function authorTemplate(): Promise<string> {
-  const fixture = path.join(__dirname, '..', '..', 'noodl-mcp', 'tests', 'fixtures', 'demo-app');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sb008-project-'));
-  fs.cpSync(fixture, dir, { recursive: true });
-
-  const { server } = createServer({ projectDir: dir, allowWrites: true });
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-  const client = new Client({ name: 'sb008-drive', version: '0.0.0' });
-  await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
-
-  const write = async (name: string, args: Record<string, unknown>, label: string) => {
-    const res = (await client.callTool({ name, arguments: args })) as ToolResult;
-    // A rejection here is evidence, not a mystery — print what the door said.
-    if (res.isError) throw new Error(`${name} ${label} refused:\n${res.content?.[0]?.text}`);
-  };
-
-  // 🔴 The site FIRST — F17 (start page) and F14 (the catch-all's tie).
-  for (const c of SB006_COMPONENTS) {
-    const payload = createPass006(c);
-    await write('create_component', { path: c.path, nodes: payload.nodes, connections: payload.connections }, c.path);
-  }
-  for (const c of SB006_COMPONENTS) {
-    if (!c.deferred?.length) continue;
-    await write('update_component', { path: c.path, set: { nodes: c.nodes, connections: c.connections } }, c.path);
-  }
-
-  // Then the panel, which shares the site's router (SB-012's two passes again).
-  for (const c of SB005_COMPONENTS) {
-    const payload = createPass005(c);
-    await write('create_component', { path: c.path, nodes: payload.nodes, connections: payload.connections }, c.path);
-  }
-  for (const c of SB005_COMPONENTS) {
-    if (!c.deferred?.length) continue;
-    await write('update_component', { path: c.path, set: { nodes: c.nodes, connections: c.connections } }, c.path);
-  }
-
-  // And the cloud half, which the browser reaches over HTTP rather than in-page.
-  for (const c of SB004_COMPONENTS) {
-    await write('create_component', { path: c.path, nodes: c.nodes, connections: c.connections }, c.path);
-  }
-
-  await client.close();
-  await server.close();
-  return dir;
-}
-
-/**
- * Point the project's records nodes at the backend this run started.
- *
- * `render-from-disk.js:292` rewrites `metadata.cloudservices.endpoint` to a
- * same-origin `/__backend` path it proxies — **but only when the key is already
- * there**, and the MCP fixture has no `metadata` block at all. Without this the
- * whole site renders with every query silently unbound, which is a blank page
- * for a reason that has nothing to do with permissions.
- */
-function bindProjectToBackend(
-  projectDir: string,
-  backendId: string,
-  backendPort: number
-): { appId: string; endpoint: string } {
-  const file = path.join(projectDir, 'nodegx.project.json');
-  const project = JSON.parse(fs.readFileSync(file, 'utf-8')) as Record<string, unknown>;
-  const metadata = (project.metadata as Record<string, unknown>) ?? {};
-  const cloudservices = { appId: backendId, endpoint: `http://127.0.0.1:${backendPort}` };
-  metadata.cloudservices = cloudservices;
-  project.metadata = metadata;
-  fs.writeFileSync(file, JSON.stringify(project, null, 2));
-  return cloudservices;
-}
-
-/** A data directory with the template's policy in it, ready to `start()`. */
-function makeDataDir(
-  bundle: WorkflowBundle,
-  secrets: Record<string, string>,
-  security: Record<string, unknown> = SITE_SECURITY
-): string {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sb008-data-'));
-  fs.mkdirSync(path.join(dataDir, 'workflows'), { recursive: true });
-  fs.writeFileSync(path.join(dataDir, 'workflows', 'site.workflow.json'), JSON.stringify(bundle));
-  // ⚠️ Before start(): `SecurityState` reads it in its constructor, and a config
-  // applied afterwards would leave the boot running dev-open.
-  fs.writeFileSync(path.join(dataDir, 'security.json'), JSON.stringify(security));
-  fs.writeFileSync(path.join(dataDir, 'secrets.json'), JSON.stringify({ functions: secrets }));
-  return dataDir;
-}
 
 interface Session {
   id: string;
@@ -275,7 +100,12 @@ async function claimOnce(
   const copy = JSON.parse(JSON.stringify(bundle)) as WorkflowBundle;
   if (mutate) mutate(copy);
 
-  const dir = makeDataDir(copy, { SITE_SETUP_TOKEN: SETUP_TOKEN, CONTACT_RECIPIENT_EMAIL: CONTACT_TO });
+  const dir = makeSiteDataDir(
+    copy,
+    { SITE_SETUP_TOKEN: SETUP_TOKEN, CONTACT_RECIPIENT_EMAIL: CONTACT_TO },
+    SITE_SECURITY,
+    'sb008'
+  );
   const svc = new BackendService({ dataDir: dir, port: 0, backendId: `sb008-${label}`, backendName: label });
   const started = await svc.start();
   const c = httpClient(() => started.listen.url);
@@ -308,33 +138,6 @@ async function claimOnce(
   }
 }
 
-/**
- * Visit one URL and read the whole document once it has stopped changing.
- *
- * The site's chain is four sequential round trips — the settings row, then the
- * slug, then the page, then its sections — so a single settle is not enough on a
- * cold connection.
- *
- * `consoleErrors` is per-visit rather than cumulative: it is one array for the
- * whole browser session, so a later page would inherit an earlier page's failure
- * and "this page logged nothing" would be unfalsifiable after the first one.
- */
-async function readVisit(page: RenderedPage, url: string): Promise<Visit> {
-  const before = page.consoleErrors.length;
-  await page.navigate(url);
-  let last = '';
-  let raw = '';
-  for (let i = 0; i < 20; i++) {
-    raw = String(await page.evaluate(READ_PAGE));
-    const parsed = JSON.parse(raw) as Omit<Visit, 'url' | 'errors'>;
-    if (parsed.text === last && parsed.text.length > 0) break;
-    last = parsed.text;
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  const parsed = JSON.parse(raw) as Omit<Visit, 'url' | 'errors'>;
-  return { url, ...parsed, errors: page.consoleErrors.slice(before) };
-}
-
 /** Drop one wire from one deployed component, by its ports. */
 function dropWire(bundle: WorkflowBundle, component: string, sourcePort: string, targetPort: string): void {
   const c = bundle.components.find((x) => x.name === component);
@@ -347,37 +150,6 @@ function dropWire(bundle: WorkflowBundle, component: string, sourcePort: string,
   );
 }
 
-// ── The measured page, as one expression evaluated in the browser ────────────
-
-/**
- * Everything one visit yields, in a single `Runtime.evaluate`.
- *
- * One expression rather than five: each round trip is a chance for the page to
- * change under the reader, and a report assembled from five moments is a report
- * about no moment at all.
- */
-const READ_PAGE = `(function () {
-  return JSON.stringify({
-    text: document.body ? document.body.innerText : '',
-    /**
-     * 🔴 The whole document, not just what a reader sees. An absence claim read
-     * off \`innerText\` alone would pass on a draft that IS on the page and merely
-     * hidden — \`visible: false\` renders as \`display: none\`, and \`innerText\`
-     * skips it. This is the string the leak assertions are made against.
-     */
-    html: document.documentElement.outerHTML,
-    title: document.title,
-    headings: Array.prototype.map.call(document.querySelectorAll('h1'), function (h) { return h.innerText; }),
-    /** The nav band's links, in DOM order — SB-004 §2's derived navigation. */
-    nav: Array.prototype.map.call(document.querySelectorAll('nav *'), function (n) {
-      return n.innerText;
-    }).filter(function (t) { return t && t.trim(); }),
-    description: (function () {
-      var m = document.querySelector('meta[name="description"]');
-      return m ? m.getAttribute('content') : null;
-    })()
-  });
-})()`;
 
 describe('SB-008 — the public site in a browser, against an enforcing backend', () => {
   let projectDir: string;
@@ -417,10 +189,15 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
     client.post<Row>(`/classes/${className}`, body, asUser(owner));
 
   beforeAll(async () => {
-    projectDir = await authorTemplate();
+    projectDir = await authorSiteTemplate('sb008');
     bundle = bundleAuthoredComponents(projectDir, SB004_COMPONENTS.map((c) => c.key));
 
-    dataDir = makeDataDir(bundle, { SITE_SETUP_TOKEN: SETUP_TOKEN, CONTACT_RECIPIENT_EMAIL: CONTACT_TO });
+    dataDir = makeSiteDataDir(
+      bundle,
+      { SITE_SETUP_TOKEN: SETUP_TOKEN, CONTACT_RECIPIENT_EMAIL: CONTACT_TO },
+      SITE_SECURITY,
+      'sb008'
+    );
     service = new BackendService({ dataDir, port: 0, backendId: 'sb008', backendName: 'SB-008 site' });
     const started = await service.start();
     base = started.listen.url;
@@ -467,18 +244,28 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
     );
     expect(settings.status).toBe(200);
 
-    // 🔴 F20, measured here rather than asserted from the graph alone: a freshly
-    // claimed site has NO `Theme` row, and nothing in the template ever creates
-    // one — the theme editor saves by `theme.firstItemId`, which is undefined on
-    // an empty collection. Recorded as a spec below; seeded here so the theme
-    // half of the site can be driven at all.
-    themeRowsAfterClaim = (await client.get<{ results: Row[] }>('/classes/Theme', asUser(owner))).json.results
-      .length;
-    const theme = await createAsAdmin('Theme', {
-      ACL: PUBLIC_ACL,
-      tokens: { colorPrimary: '#1f6feb', colorBackground: '#fffdf7', colorText: '#12202e', fontFamily: 'Georgia, serif' }
-    });
-    expect(theme.status).toBe(201);
+    // 🔴 F20 — **fixed in s10 (SB-014)**, and this is the reading that says so:
+    // `claimSite` now mints the `Theme` singleton beside the `SiteSettings` one.
+    // Before it, a freshly claimed site had no `Theme` row at all and the theme
+    // editor's Save — which targets `theme.firstItemId` — wrote nowhere and said
+    // nothing. So this drive UPDATES the seeded row exactly as it updates the
+    // seeded settings row above, which is also what the panel does.
+    const themes = await client.get<{ results: Row[] }>('/classes/Theme', asUser(owner));
+    themeRowsAfterClaim = themes.json.results.length;
+    ids.theme = themes.json.results[0]?.objectId;
+    const theme = await client.put<Row>(
+      `/classes/Theme/${ids.theme}`,
+      {
+        tokens: {
+          colorPrimary: '#1f6feb',
+          colorBackground: '#fffdf7',
+          colorText: '#12202e',
+          fontFamily: 'Georgia, serif'
+        }
+      },
+      asUser(owner)
+    );
+    expect(theme.status).toBe(200);
 
     /** A page and one richText section, both born drafts (SB-004 §3). */
     const makePage = async (title: string, slug: string, body: string, navOrder: number) => {
@@ -548,10 +335,12 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
     // it on there is nothing left to refuse. If the draft appears here, the
     // instrument can see a leak; if it did not, the whole suite above would be a
     // reading taken with the lens cap on.
-    openDataDir = makeDataDir(bundle, { SITE_SETUP_TOKEN: SETUP_TOKEN, CONTACT_RECIPIENT_EMAIL: CONTACT_TO }, {
-      ...SITE_SECURITY,
-      devOpen: true
-    });
+    openDataDir = makeSiteDataDir(
+      bundle,
+      { SITE_SETUP_TOKEN: SETUP_TOKEN, CONTACT_RECIPIENT_EMAIL: CONTACT_TO },
+      { ...SITE_SECURITY, devOpen: true },
+      'sb008'
+    );
     openService = new BackendService({
       dataDir: openDataDir,
       port: 0,
@@ -787,17 +576,24 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
   // 5. F20 — the row nothing creates
   // ==========================================================================
 
-  describe('🔴 F21 — one claim writes the SiteSettings singleton TWICE', () => {
-    it('measured: a single `claimSite` leaves two identical rows', () => {
-      // Read on the drive's own backend, after exactly one claim. Both rows
-      // carry `My site` / `home` and the same world-read ACL, milliseconds
-      // apart. SB-004 §7 graded `claimSite` with five mutants and could not see
-      // this: it asserted the role, the ACL and the refusal paths, and never
-      // counted the rows.
-      expect(settingsRowsAfterClaim).toBe(2);
+  describe('✅ F21 — one claim, one SiteSettings row (SB-013, fixed s10)', () => {
+    it('measured: a single `claimSite` leaves exactly one row', () => {
+      // Read on the drive's own backend, after exactly one claim. It read **2**
+      // when this suite was written — two rows carrying `My site` / `home` and
+      // the same world-read ACL, milliseconds apart — because the gate ran twice
+      // and the whole gate → grant → mark chain ran with it. SB-004 §7 graded
+      // `claimSite` with five mutants and could not see it: they asserted the
+      // role, the ACL and every refusal path, and never counted.
+      //
+      // 🔴 The fix is NOT the one SB-013 recommended, and the difference is why
+      // this reading is kept rather than deleted. Dropping a wire made the count
+      // 1 while leaving the gate able to decide before any query had answered;
+      // the arms in `sb004-publication-invariant.test.ts` measure what that
+      // costs, which is an outsider holding the admin role.
+      expect(settingsRowsAfterClaim).toBe(1);
     });
 
-    it('🔴 and the consequence is not cosmetic: the site reads rows[0]', () => {
+    it('🔴 and the consequence it removes: both readers take rows[0]', () => {
       // `readSettings` on the public site and `readSettings` in the panel both
       // take `rows[0]`. Nothing orders that list, so the panel's setup page can
       // edit whichever row the backend returns first for IT while the site reads
@@ -811,73 +607,53 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
     });
 
     /**
-     * Which wire materialises the second row — one edge varied, nothing else.
+     * The arms that name the mechanism now live where the graph does —
+     * `sb004-publication-invariant.test.ts`, describe **"SB-013 — the second
+     * claim, and the two barriers that refuse it"** — because the fix is not a
+     * wire this drive can vary. This suite keeps the reading; that one keeps the
+     * comparison.
      *
-     * `claimSite` wires BOTH `grant.done` and `grant.unchanged` into
-     * `mark.store`, and the comment on those two lines says why: *"already being
-     * in the role is the post-condition already holding … a re-run must not go
-     * red"*. The outcome contract fires exactly one of them per invocation
-     * (`node.ts:866-905`, a second report is a `outcome/duplicate` error), so two
-     * rows means **two invocations** — and the wire that makes a re-run safe is
-     * the wire that makes a re-run duplicate.
+     * ⚠️ What was here and is deliberately not: two arms asserting
+     * `shipped:2`. They were true of the graph SB-008 deployed and are false of
+     * the graph it deploys now, and an arm kept past its subject is a fixture
+     * that passes for the wrong reason.
      */
-    it('🔴 removing the `unchanged → store` wire leaves ONE row', async () => {
-      const shipped = await claimOnce(bundle, 'shipped');
-      const variant = await claimOnce(bundle, 'variant', (b) =>
-        dropWire(b, '/#__cloud__/claimSite', 'unchanged', 'store')
-      );
-
-      // The arm that reproduces the drive's own reading, on its own backend —
-      // so the pair is a comparison and not a comparison with a memory.
-      expect(`shipped:${shipped.settings}`).toBe('shipped:2');
-      expect(`variant:${variant.settings}`).toBe('variant:1');
-
-      // 🔴 The control that says the second invocation is real rather than the
-      // node being called twice by the transport: the role has exactly one
-      // member in both arms, which is what `Add User To Role` reporting
-      // `unchanged` on a second pass looks like. A second HTTP request would
-      // have been refused outright (`claimSite` is fail-closed on an already
-      // claimed site), so the second pass is inside one call.
-      expect(`shipped roles:${shipped.roleUsers}`).toBe('shipped roles:1');
-      expect(`variant roles:${variant.roleUsers}`).toBe('variant roles:1');
-    });
-
-    /**
-     * …and WHERE the second invocation comes from, which is the half that
-     * decides which fix is right.
-     *
-     * The gate runs on `settings.fetched`. That query is the *unfiltered*
-     * singleton shape SB-004 s4 arrived at: both `runOnChange-*` boxes left ON,
-     * because with them off there is no filter parameter left to trigger it. So
-     * it fetches at graph-build time **and** again on the explicit
-     * `secret.done → storageFetch` — two `fetched` pulses, two gate runs, two
-     * grants, two stores.
-     *
-     * This arm varies that one wire instead: with the explicit fetch removed the
-     * load-time one still answers, the site is still claimed, and there is one
-     * row. Which says the two pulses are the cause and the `unchanged` wire is
-     * only what turns the second one into a record.
-     */
-    it('🔴 removing the explicit `storageFetch` ALSO leaves one row — two fetches, not one', async () => {
-      const oneFetch = await claimOnce(bundle, 'onefetch', (b) =>
-        dropWire(b, '/#__cloud__/claimSite', 'done', 'storageFetch')
-      );
-      expect(`onefetch:${oneFetch.settings}`).toBe('onefetch:1');
-      expect(`onefetch roles:${oneFetch.roleUsers}`).toBe('onefetch roles:1');
+    it('the singleton stays one after the whole drive has run', async () => {
+      // Not a re-reading of `settingsRowsAfterClaim`: this is the count AFTER
+      // every seed, publish, unpublish and duplicate this drive performed, which
+      // is the only place a second writer would show up.
+      const rows = await client.get<{ results: Row[] }>('/classes/SiteSettings', asUser(owner));
+      expect(`SiteSettings rows:${rows.json.results.length}`).toBe('SiteSettings rows:1');
+      expect(rows.json.results[0].objectId).toBe(ids.settings);
     });
   });
 
-  describe('🧭 F20 — a claimed site has no Theme row, and nothing makes one', () => {
-    it('measured: `claimSite` seeds SiteSettings and not Theme', () => {
-      // Measured on a real claim, before this drive seeded one itself. The theme
-      // editor saves through `SetDbModelProperties` with `idSource: 'explicit'`
-      // fed from `theme.firstItemId`, which is undefined on an empty collection —
-      // so on a freshly claimed site the theme editor's Save writes nowhere and
-      // the site keeps the shipped palette forever.
-      expect(themeRowsAfterClaim).toBe(0);
+  describe('✅ F20 — the Theme row, now minted by the claim (SB-014, fixed s10)', () => {
+    it('measured: `claimSite` seeds BOTH singletons', () => {
+      // Measured on a real claim, before this drive wrote anything of its own.
+      // It read **0** when this suite was written, and the theme editor saves
+      // through `SetDbModelProperties` with `idSource: 'explicit'` fed from
+      // `theme.firstItemId` — `undefined` on an empty collection — so Save wrote
+      // nowhere and said nothing, on a screen that exists to write.
+      expect(themeRowsAfterClaim).toBe(1);
+      // 🔴 The half that makes the row useful rather than merely present: the
+      // editor's target is `firstItemId`, so this drive edited the seeded row by
+      // its id and got a 200 rather than creating a second one.
+      expect(ids.theme).toBeTruthy();
     });
 
-    it('census: no node in the template creates a Theme record', () => {
+    it('🔴 and the seeded row is readable by the anonymous visitor who needs it', async () => {
+      // `applyTheme` runs in the page, with no session — the same visitor every
+      // other assertion in this file is made about. A row born with no rules
+      // reads as public TODAY (`model.ts:701-718`) and would stop the moment a
+      // default arrived, so the rule is carried rather than relied on.
+      const row = await client.get<{ results: Row[] }>('/classes/Theme', asUser(owner));
+      expect(row.json.results[0].ACL).toEqual(PUBLIC_ACL);
+      const anonymous = await client.get<{ results: Row[] }>('/classes/Theme');
+      expect(anonymous.json.results.map((r) => r.objectId)).toEqual([ids.theme]);
+    });
+
+    it('census: exactly one node in the template creates each singleton', () => {
       // The census rather than a spot check, so "no creator" cannot mean "I
       // looked in one file". `NewDbModelProperties` is the only creating node
       // type any of the three sets uses.
@@ -894,11 +670,19 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
           }
         }
       }
-      // The control: creators DO exist, so an empty Theme list is an absence and
-      // not a broken census.
+      // The control: creators DO exist, so a count of one is a reading and not a
+      // broken census.
       expect(creators.length).toBeGreaterThan(0);
-      expect(creators.filter((c) => c.endsWith(':Theme'))).toEqual([]);
-      expect(creators.filter((c) => c.endsWith(':SiteSettings')).length).toBe(1);
+      // 🔴 One each, and both in `claimSite`. SB-014's general shape was **a
+      // class with a reader, an editor and no creator**, which is invisible to
+      // every check this phase has — the doors validate one component, the
+      // structural specs assert what each graph reads and writes, and a
+      // cross-file contract check compares the two ends of a pipe nothing fills.
+      // This census is the check that would have asked.
+      expect(creators.filter((c) => c.endsWith(':Theme'))).toEqual(['sb004/#__cloud__/claimSite:Theme']);
+      expect(creators.filter((c) => c.endsWith(':SiteSettings'))).toEqual([
+        'sb004/#__cloud__/claimSite:SiteSettings'
+      ]);
     });
   });
 });

@@ -41,7 +41,32 @@ export {
   defaultSecurityConfig,
   validateSecurityConfig
 } from './security/model';
-export { SecurityState, SecurityStartupError } from './security/state';
+export { SecurityState, SecurityStartupError, undeclaredFunctionMessage } from './security/state';
+// SB-016 — the endpoints a bundle declares, and the ones no rule names.
+export {
+  DeployedFunction,
+  UnresolvedFunction,
+  unresolvedFunctionRules,
+  proposedFunctionsBlock,
+  effectiveFunctionRule,
+  checkFunctionCall
+} from './security/model';
+export {
+  FunctionDeclaration,
+  scanDeployedFunctions,
+  declaredFunctionsIn
+} from './workflow/functionDeclarations';
+// SB-015 — the policy a project carries to the backend it is provisioned onto.
+export {
+  PROJECT_POLICY_FILE,
+  BACKEND_POLICY_FILE,
+  ProjectPolicyError,
+  ProjectPolicyOutcome,
+  projectPolicyPath,
+  readProjectPolicy,
+  applyProjectPolicy,
+  describeProjectPolicyOutcome
+} from './security/projectPolicy';
 // WF-005 — triggers (schedule / webhook / db-change).
 export { SecretsStore, WEBHOOK_SECRETS_NAMESPACE } from './config/SecretsStore';
 export {

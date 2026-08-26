@@ -51,6 +51,7 @@
 
 import { getIpc } from '@noodl-utils/ipc';
 import { findReusableBackend, type LocalBackendMeta } from './backendReuse';
+import { startLocalBackend } from './startLocalBackend';
 
 export { findReusableBackend };
 export type { LocalBackendMeta };
@@ -318,7 +319,10 @@ export function editorBackendProvisioner(options: EditorProvisionerOptions = {})
       const meta = reusable ?? (await invoke<LocalBackendMeta>('backend:create', spec.name, { projectId }));
       if (!meta?.id) throw new Error('the backend was not created');
 
-      await invoke('backend:start', meta.id, {});
+      // SB-015: the project comes with the start, so a project shipping a
+      // `nodegx.security.json` is provisioned onto its own policy rather than
+      // onto `defaultSecurityConfig()`.
+      await startLocalBackend(invoke, meta.id, project._retainedProjectDirectory);
       const { port } = await waitForRunning(meta.id);
       const endpoint = `http://localhost:${port}`;
 

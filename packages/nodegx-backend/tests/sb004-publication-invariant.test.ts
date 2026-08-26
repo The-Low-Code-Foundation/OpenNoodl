@@ -178,6 +178,19 @@ interface Row {
   [key: string]: unknown;
 }
 
+/** What one owner-claim-then-outsider-claim run yields — SB-013's arms below. */
+interface ClaimReading {
+  /** What the FIRST claim answered. `undefined` is a claimed site telling nobody. */
+  claimed: unknown;
+  settings: number;
+  themes: number;
+  /** The second claim's answer — deliberately the same string as a wrong token. */
+  secondAnswer: string;
+  /** 🔴 The only reading that separates a refusal from a refusal-shaped breach. */
+  outsiderIsAdmin: boolean;
+  admins: number;
+}
+
 describe('SB-004 §7 — the publication invariant on a real backend', () => {
   let projectDir: string;
   let bundle: WorkflowBundle;
@@ -371,6 +384,45 @@ describe('SB-004 §7 — the publication invariant on a real backend', () => {
       // owner through where it refused them a moment ago.
       const allowed = await client.post('/functions/duplicatePage', { pageId: 'nope' }, asUser(owner));
       expect(allowed.status).not.toBe(403);
+    });
+
+    /**
+     * 🔴 SB-013 and SB-014 — the two assertions this suite did not have, and
+     * both were wrong before s10 fixed the graph.
+     *
+     * Five mutants graded `claimSite` here and none could see either: they
+     * asserted the role, the ACL and every refusal path, and never COUNTED. One
+     * claim left **two** `SiteSettings` rows (SB-008 F21) and **no** `Theme` row
+     * at all (F20), so the panel's two singleton editors were editing one row of
+     * two that nothing orders, and one row that did not exist.
+     */
+    it('🔴 writes exactly ONE of each singleton (SB-013, SB-014)', async () => {
+      const settings = await client.get<{ results: Row[] }>('/classes/SiteSettings', asUser(owner));
+      expect(`SiteSettings rows:${settings.json.results.length}`).toBe('SiteSettings rows:1');
+
+      const themes = await client.get<{ results: Row[] }>('/classes/Theme', asUser(owner));
+      expect(`Theme rows:${themes.json.results.length}`).toBe('Theme rows:1');
+
+      // …and the theme row is the one the editor can actually write to: its id
+      // is what `theme.firstItemId` yields, which was `undefined` on the empty
+      // collection and made Save write nowhere and say nothing.
+      expect(themes.json.results[0].objectId).toBeTruthy();
+      // The seeded tokens are the four keys `buildTokens` writes, all empty —
+      // the same state as an author saving the form with every field blank, so
+      // seeding decides no palette and `applyTheme` overrides nothing.
+      expect(themes.json.results[0].tokens).toEqual({
+        colorPrimary: '',
+        colorBackground: '',
+        colorText: '',
+        fontFamily: ''
+      });
+      // 🔴 And it is world-readable, because the PUBLIC site reads the theme
+      // with no session. A row created with no rules would read as public today
+      // (`model.ts:701-718`) and stop doing so the moment a default arrives.
+      expect(themes.json.results[0].ACL).toEqual({
+        'role:admin': { read: true, write: true },
+        '*': { read: true, write: false }
+      });
     });
 
     it('refuses a second claim, with the same answer as a wrong token', async () => {
@@ -906,5 +958,197 @@ describe('SB-004 §7 — a `points to` filter cannot narrow inside a cloud funct
     // Pointer being kept with a note about it.
     expect(res.status).toBe(200);
     expect(res.json.result?.n).toBe(3);
+  });
+});
+
+// ============================================================================
+// SB-013 — why `claimSite` decides once, and why deciding once was not enough
+// ============================================================================
+
+/**
+ * 🔴 **Two barriers, each graded against the same known-firing failure.**
+ *
+ * SB-008 F21 measured one claim leaving two `SiteSettings` rows and filed
+ * SB-013, whose recommendation was one wire: drop `secret.done → storageFetch`
+ * and let the load-time fetch answer. That reading was taken on the row count
+ * alone, and the row count is not the property this endpoint is for.
+ *
+ * The gate's `Run` is wired from `settings.fetched`, which reads like *"decides
+ * after the query"*. It is not: `Run` is purely ADDITIVE and every input is
+ * ticked by default (`run-on-value-change.ts` §1, constraints 1 and 2), so the
+ * node ALSO re-ran on each input arriving — and `isEmpty` is `true` before the
+ * first query has run (`dbcollectionnode2.ts:410-421`), indistinguishable from
+ * a collection that is genuinely empty. A gate run that arrives with the secret
+ * and before the fetch therefore reads an already-claimed site as unclaimed.
+ *
+ * The shipped graph closes it twice, and neither is redundant:
+ *
+ *  - **A — the gate's `runOnChange-in-*` boxes are off**, so it runs on
+ *    `fetched` and at no other time;
+ *  - **B — the script returns unless `Inputs.rows` is defined**, `items` being
+ *    the one output of a Query Records node that separates *matched nothing*
+ *    from *has not run*.
+ *
+ * Every arm below removes exactly one thing from the deployed bundle and
+ * changes nothing else. Read as pairs: **A-alone vs neither** and **B-alone vs
+ * neither** differ by one barrier each, and the failure they are graded against
+ * is not an assertion about rows but an OUTSIDER HOLDING THE ADMIN ROLE.
+ */
+describe('SB-013 — the second claim, and the two barriers that refuse it', () => {
+  let bundle: WorkflowBundle;
+  let projectDir: string;
+
+  beforeAll(async () => {
+    projectDir = await authorSb004();
+    bundle = bundleAuthoredComponents(
+      projectDir,
+      SB004_COMPONENTS.map((c) => c.key)
+    );
+  });
+
+  afterAll(() => {
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  });
+
+  /** One claim by the owner, then one by an outsider, on a backend of its own. */
+  async function claimTwice(label: string, mutate?: (b: WorkflowBundle) => void): Promise<ClaimReading> {
+    const copy = JSON.parse(JSON.stringify(bundle)) as WorkflowBundle;
+    if (mutate) mutate(copy);
+
+    const dir = makeDataDir(copy, { SITE_SETUP_TOKEN: SETUP_TOKEN, CONTACT_RECIPIENT_EMAIL: CONTACT_TO });
+    const svc = new BackendService({ dataDir: dir, port: 0, backendId: `sb013-${label}`, backendName: label });
+    const started = await svc.start();
+    const c = httpClient(() => started.listen.url);
+    try {
+      // Every arm re-asserts it: an arm read with the ACLs off measures nothing.
+      expect(started.security.enforced).toBe(true);
+      const signup = async (who: string) => {
+        const u = await c.post<{ objectId: string; sessionToken: string }>('/users', {
+          username: `${who}-${label}`,
+          password: 'pw'
+        });
+        return { id: u.json.objectId, headers: { 'x-parse-session-token': u.json.sessionToken } };
+      };
+      const first = await signup('owner');
+      const second = await signup('outsider');
+
+      const claim = await c.post<{ result?: { claimed?: boolean } }>(
+        '/functions/claimSite',
+        { setupToken: SETUP_TOKEN },
+        first.headers
+      );
+      const settings = (await c.get<{ results: Row[] }>('/classes/SiteSettings', first.headers)).json.results.length;
+      const themes = (await c.get<{ results: Row[] }>('/classes/Theme', first.headers)).json.results.length;
+
+      // 🔴 The reading SB-013's own arms never took. A claimed site, a CORRECT
+      // token, a different caller — the case the whole gate exists for.
+      const again = await c.post<{ result?: { claimed?: boolean }; error?: string }>(
+        '/functions/claimSite',
+        { setupToken: SETUP_TOKEN },
+        second.headers
+      );
+      const roles = await c.get<{ roles: Array<{ name: string; users: string[] }> }>('/admin/roles', adminHeaders(dir));
+      const admins = roles.json.roles.find((r) => r.name === 'admin')?.users ?? [];
+
+      return {
+        claimed: claim.json.result?.claimed,
+        settings,
+        themes,
+        secondAnswer: again.json.error ?? `claimed:${String(again.json.result?.claimed)}`,
+        outsiderIsAdmin: admins.includes(second.id),
+        admins: admins.length
+      };
+    } finally {
+      await svc.stop();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  const CLAIM = '/#__cloud__/claimSite';
+
+  /** Set parameters on the only node of a type in one deployed component. */
+  function setParam(b: WorkflowBundle, nodeType: string, params: Record<string, unknown>): void {
+    const c = b.components.find((x) => x.name === CLAIM);
+    if (!c) throw new Error(`no ${CLAIM} in the bundle`);
+    const hits = (c.nodes as Array<{ type: string; parameters?: Record<string, unknown> }>).filter(
+      (n) => n.type === nodeType
+    );
+    // An arm that varied nothing is not an arm.
+    expect(`${nodeType} nodes:${hits.length}`).toBe(`${nodeType} nodes:1`);
+    hits[0].parameters = { ...(hits[0].parameters ?? {}), ...params };
+  }
+
+  /** Barrier A removed: the gate re-runs on every input value again. */
+  const gateBoxesOn = (b: WorkflowBundle) =>
+    setParam(b, 'JavaScriptFunction', {
+      'runOnChange-in-expected': true,
+      'runOnChange-in-supplied': true,
+      'runOnChange-in-unclaimed': true,
+      'runOnChange-in-rows': true
+    });
+
+  /** Barrier B removed: the readiness line, and only that line, out of the script. */
+  const guardOff = (b: WorkflowBundle) => {
+    const c = b.components.find((x) => x.name === CLAIM)!;
+    const gate = (c.nodes as Array<{ type: string; parameters?: Record<string, unknown> }>).find(
+      (n) => n.type === 'JavaScriptFunction'
+    )!;
+    const before = gate.parameters!.functionScript as string;
+    const after = before.replace('if (Inputs.rows === undefined) return;\n', '');
+    expect(`guard removed:${before !== after}`).toBe('guard removed:true');
+    gate.parameters!.functionScript = after;
+  };
+
+  it('SHIPPED — one claim, one of each singleton, and the second claim refused', async () => {
+    const r = await claimTwice('shipped');
+    expect(`claimed:${String(r.claimed)}`).toBe('claimed:true');
+    expect(`settings:${r.settings} themes:${r.themes}`).toBe('settings:1 themes:1');
+    expect(r.secondAnswer).toBe('This site cannot be claimed.');
+    expect(`outsider is admin:${r.outsiderIsAdmin}`).toBe('outsider is admin:false');
+  });
+
+  it('🔴 NEITHER barrier — the outsider becomes an admin on a claimed site', async () => {
+    // The known-firing failure the two arms below are graded against. Note what
+    // it is NOT: the answer is still `This site cannot be claimed.` and the HTTP
+    // status is still 400. The refusal message is a lie and the only way to see
+    // it is to ask the role who is in it.
+    const r = await claimTwice('neither', (b) => {
+      gateBoxesOn(b);
+      guardOff(b);
+    });
+    expect(r.secondAnswer).toBe('This site cannot be claimed.');
+    expect(`outsider is admin:${r.outsiderIsAdmin}`).toBe('outsider is admin:true');
+    expect(`admins:${r.admins}`).toBe('admins:2');
+  });
+
+  it('barrier A alone (boxes off, guard removed) — refused', async () => {
+    const r = await claimTwice('boxes-only', guardOff);
+    expect(`outsider is admin:${r.outsiderIsAdmin}`).toBe('outsider is admin:false');
+    expect(`settings:${r.settings} themes:${r.themes}`).toBe('settings:1 themes:1');
+  });
+
+  it('barrier B alone (guard kept, boxes on) — refused, and it costs the ANSWER', async () => {
+    const r = await claimTwice('guard-only', gateBoxesOn);
+    expect(`outsider is admin:${r.outsiderIsAdmin}`).toBe('outsider is admin:false');
+    expect(`settings:${r.settings} themes:${r.themes}`).toBe('settings:1 themes:1');
+
+    // 🔴 Why both barriers ship rather than the cheaper one. The boundary holds
+    // on the guard alone — but with the boxes on the gate still runs more than
+    // once, and the run that publishes `claimed` is not the run the Response
+    // sends on: the caller is told nothing at all. A site that IS claimed
+    // answering `claimed: undefined` is how an owner ends up claiming twice.
+    expect(`claimed:${String(r.claimed)}`).toBe('claimed:undefined');
+  });
+
+  it('🔴 the row half: with the load-time fetch back on, the singleton is still ONE', async () => {
+    // SB-013 §2 read the second row as "two fetches, two gate runs". The finer
+    // reading is that the second RUN was the value-change one: with the gate
+    // deciding on `fetched` alone, restoring the load-time fetch changes
+    // nothing. That is why the fix is on the gate and not only on the query.
+    const r = await claimTwice('two-fetches', (b) =>
+      setParam(b, 'DbCollection2', { 'runOnChange-collectionName': true, 'runOnChange-querySettings': true })
+    );
+    expect(`settings:${r.settings} themes:${r.themes}`).toBe('settings:1 themes:1');
+    expect(`outsider is admin:${r.outsiderIsAdmin}`).toBe('outsider is admin:false');
   });
 });

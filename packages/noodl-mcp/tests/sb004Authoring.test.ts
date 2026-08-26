@@ -384,13 +384,23 @@ describe('SB-004: duplicate and contact, through create_component', () => {
       return found[0];
     };
     const responses = graph.nodes.filter((n) => n.type === 'noodl.cloud.response');
+    // SB-014 put a second `NewDbModelProperties` in this graph — the `Theme`
+    // singleton — so this one is resolved by the collection it writes rather
+    // than by being the only creator, which it no longer is.
+    const creators = graph.nodes.filter((n) => n.type === 'NewDbModelProperties');
+    const creatorFor = (collection: string) => {
+      const found = creators.filter((n) => n.parameters?.collectionName === collection);
+      expect(`${collection} creators:${found.length}`).toBe(`${collection} creators:1`);
+      return found[0];
+    };
     const ids = {
       req: single('noodl.cloud.request').id,
       secret: single('noodl.cloud.secret').id,
       settings: single('DbCollection2').id,
       gate: single('JavaScriptFunction').id,
       grant: single('noodl.cloud.addusertorole').id,
-      mark: single('NewDbModelProperties').id,
+      mark: creatorFor('SiteSettings').id,
+      theme: creatorFor('Theme').id,
       deny: responses.find((n) => n.parameters?.status === 'failure')?.id
     };
     const byId = (id?: string) => graph.nodes.find((n) => n.id === id);
@@ -411,6 +421,49 @@ describe('SB-004: duplicate and contact, through create_component', () => {
     // 3. `isEmpty` is true before the first query runs, so the gate must be
     //    triggered by `fetched` — never by anything that could arrive earlier.
     expect(wired('gate', 'run')?.fromProperty).toBe('fetched');
+
+    // 3b. 🔴 SB-013, and (3) alone is not it. `Run` is purely ADDITIVE
+    //     (`run-on-value-change.ts` §1) — wiring it unticks nothing — so a gate
+    //     with its boxes on ALSO ran as each input arrived, and the run that
+    //     arrived with the secret decided on the pre-fetch `isEmpty`. Both
+    //     barriers are asserted here because both are one edit from gone, and
+    //     `sb004-publication-invariant.test.ts` grades each against an outsider
+    //     holding the admin role.
+    const gate = node('gate');
+    for (const port of ['in-expected', 'in-supplied', 'in-unclaimed', 'in-rows']) {
+      expect(`${port} auto-run:${String(gate?.parameters?.[`runOnChange-${port}`])}`).toBe(`${port} auto-run:false`);
+    }
+    // …and the readiness the script decides on: `items` is the only output of a
+    // Query Records node that separates "matched nothing" from "has not run".
+    expect(from(wired('gate', 'in-rows'))).toBe('settings');
+    expect(wired('gate', 'in-rows')?.fromProperty).toBe('items');
+    expect(gate?.parameters?.functionScript).toContain('if (Inputs.rows === undefined) return;');
+    // The query fetches once, on the wire after the secret, and not at load.
+    for (const port of ['collectionName', 'querySettings']) {
+      expect(`${port} auto-fetch:${String(node('settings')?.parameters?.[`runOnChange-${port}`])}`).toBe(
+        `${port} auto-fetch:false`
+      );
+    }
+
+    // 3c. SB-014 — the site's OTHER singleton, minted in the same place. The
+    //     theme editor saves by `firstItemId`, so with no row its Save wrote
+    //     nowhere and said nothing.
+    expect(from(wired('theme', 'store'))).toBe('mark');
+    expect(node('theme')?.parameters?.['prop-tokens']).toEqual({
+      colorPrimary: '',
+      colorBackground: '',
+      colorText: '',
+      fontFamily: ''
+    });
+    // The public site reads the theme with no session, so the row is born
+    // world-readable — the same rule `SiteSettings` carries.
+    expect(node('theme')?.parameters?.['acl-world-read']).toBe(true);
+    expect(node('theme')?.parameters?.['acl-world-write']).toBe(false);
+    // ⚠️ And its failure answers the SUCCESS response, not the refusal: by then
+    // the role is granted and the site is claimed, and "This site cannot be
+    // claimed" would send a real admin away with no second claim possible.
+    const themeFailure = wires.connections.find((c) => c.fromId === ids.theme && c.fromProperty === 'failure');
+    expect(themeFailure?.toId).not.toBe(ids.deny);
 
     // 4. The grantee is the resolved session, NOT a request parameter. If this
     //    ever reads `pm-…`, anybody may name anybody.

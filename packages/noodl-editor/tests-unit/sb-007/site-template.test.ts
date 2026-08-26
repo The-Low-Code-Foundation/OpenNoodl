@@ -118,9 +118,14 @@ describe('SB-007 — install writes a project that opens', () => {
     madeDirectories.length = 0;
   });
 
-  it('writes one project.json holding all nineteen components', async () => {
+  it('writes a project.json holding all nineteen components, and its policy, and nothing else', async () => {
     const project = await installOnce('/projects/a');
-    expect([...written.keys()]).toEqual(['/projects/a/project.json']);
+    // 🔴 The list is EXHAUSTIVE on purpose, and it earned that in s12: SB-015
+    // added a second write (`nodegx.security.json`, the backend policy the
+    // template's graphs assume) and this assertion is what reported it. An
+    // `toContain` here would have let a new file land in every project made from
+    // every template with nothing to notice. Keep it exhaustive.
+    expect([...written.keys()]).toEqual(['/projects/a/project.json', '/projects/a/nodegx.security.json']);
     expect(project.components).toHaveLength(19);
   });
 
@@ -148,7 +153,10 @@ describe('SB-007 — install writes a project that opens', () => {
     const second = await installOnce('/projects/b');
     const a = nodeIdsOf(first);
     const b = nodeIdsOf(second);
-    expect(a.size).toBe(191);
+    // 192 since SB-014 added `claimSite`'s `Theme` creator. The literal is the
+    // point: a rewrite that renamed ids instead of regenerating them would keep
+    // the disjointness assertion below green on a set that had SHRUNK.
+    expect(a.size).toBe(192);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 

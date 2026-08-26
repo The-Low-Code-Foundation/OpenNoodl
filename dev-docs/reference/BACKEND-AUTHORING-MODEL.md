@@ -221,7 +221,45 @@ code is the bug.*
   membership was reachable only by pasting an objectId into the Permissions panel by hand. `Add User
   To Role` closes it; see §Roles above for why that node is cloud-only.
 
-## Four things a deployed graph does not do the way the canvas does
+## The endpoint gate has no defaults tier — the one thing a graph cannot say
+
+🔴 **`Allow Unauthenticated` has two values and the policy a real endpoint needs has
+three.** This is the sharpest asymmetry in the backend's access model and it bites
+authors, not operators, so it belongs here.
+
+Two gates, two fallbacks, and only one of them consults `defaults`:
+
+| what is being called | rule when `security.json` does not name it |
+| --- | --- |
+| a **collection** | `defaults.permissions` — `authenticated` in the shipped default. Fails **shut** |
+| a **cloud function** | the Request node's own `Allow Unauthenticated` port: ticked = `public`, unticked = `authenticated`. There is no defaults tier at all |
+
+`effectiveFunctionRule` (`security/model.ts`) is the resolver, and the precedence is
+deliberate and documented. The finding is not that it is undocumented — it is that
+**nothing in the security file can lower a rule that came from the port**, because
+there is no tier to lower it from, and **a cloud function runs as system** (the
+master key bypasses CLPs and ACLs), so that gate is the *only* boundary in front of
+a privileged write. There is nothing behind it.
+
+**What this means when you are authoring.** An endpoint only an administrator should
+reach wants `role:admin`, and the port cannot express it: unticked gets you
+`authenticated`, which is *any account that can sign up*. So no amount of careful
+graph authoring closes a privileged endpoint. It has to be declared:
+
+```json
+{ "functions": { "publishPage": { "call": "role:admin" } } }
+```
+
+…and the place to put that, for a project rather than for one backend, is the project's
+`nodegx.security.json` (SB-015), which provisioning installs as the backend's
+`security.json` on a first start that has none.
+
+✅ **A deploy will now tell you.** SB-016: a non-loopback bind whose endpoints resolve
+only from the graph port refuses to start and prints every unresolved endpoint plus the
+`functions` block to paste (`UNDECLARED_FUNCTION_ON_PUBLIC_BIND`). ⚠️ **A loopback
+backend does not**, so this is a rule you still have to know while building.
+
+## Five things a deployed graph does not do the way the canvas does
 
 🔴 **Every one of these was found by running an MCP-authored cloud function on a real backend
 (SB-004 §7), and every one of them was green through both authoring doors first.** They share a
@@ -277,24 +315,25 @@ and leave `Do` unwired, so the filter value arriving is the only trigger.
       "rules": [{ "property": "pageId", "operator": "equal to", "input": "pageId" }] } } }
 ```
 
-⚠️ **Do the opposite for an unfiltered query.** With those boxes off and no load-time fetch, the
-`isEmpty` output is never flagged and reads `true` for a collection that has rows in it. Leave the
-defaults on a query that has nothing to be early for.
-
-🔴 **And then do not also trigger it by hand.** The other end of the same rule, measured by SB-008
-F21 with two one-edge arms: a query with the boxes **on** *and* a wire into `storageFetch` fires
-`fetched` **twice** — once for the load-time fetch, once for yours — and **everything downstream of
-it runs twice**. In `claimSite` that meant one call writing the site's `SiteSettings` singleton as
-two identical rows, eleven milliseconds apart, with no error anywhere and both readers taking
-`rows[0]`.
+🔴 **And do not also trigger it by hand.** The other end of the same rule, measured by SB-008 F21:
+a query with the boxes **on** *and* a wire into `storageFetch` runs everything downstream of it
+**twice**. In `claimSite` that meant one call writing the site's `SiteSettings` singleton as two
+identical rows, eleven milliseconds apart, with no error anywhere and both readers taking `rows[0]`.
 
 So the boxes and the explicit fetch are alternatives, not a belt and braces:
 
 | the query | boxes | `storageFetch` |
 |---|---|---|
 | filtered through a `qp-` port | **off** | not needed — the filter arriving is the trigger |
-| unfiltered, or filtered by a **literal** | **on** | **leave it unwired** |
-| needs a refresh after a write | off, or on with the load-time fetch accounted for | this is the one case for it |
+| filtered by a **literal** | **on** | **leave it unwired** |
+| unfiltered, read by a consumer that must not decide early | **off** | **wire it** — the fetch is then ordered after whatever triggers it |
+| unfiltered, read whenever | **on** | leave it unwired |
+
+⚠️ **This table's third row corrects the advice that used to be here** (*"do the opposite for an
+unfiltered query — with the boxes off the `isEmpty` output is never flagged"*). Measured in SB-013's
+arms: with the boxes off and an explicit `storageFetch`, the query **does** fetch and `isEmpty`
+**is** flagged. What made a claimed site read as unclaimed was never the query — it was the consumer
+deciding before the query had answered, which is rule 5.
 
 ⚠️ A **literal**-filtered query is the third shape and it belongs in the second row: a literal is on
 the node from the moment it is built, so the graph-build fetch is already correctly narrowed and
@@ -307,6 +346,37 @@ cloud runtime, and the translator's refusal is reported through the editor conne
 there. The query then runs with no filter at all. **Use a plain id String and `equal to` for a
 link a cloud function has to filter on.** Pointers are fine to write and fine to read back; it is
 filtering on one that does not work here.
+
+**5. Wiring `Run` does not stop a code node running on its own, and `isEmpty` cannot tell "empty"
+from "not yet".** Two facts that are harmless apart and are a security defect together, measured in
+SB-013's arms on `claimSite` — the one endpoint in the site template that mints an admin.
+
+`Run` is **purely additive** (`run-on-value-change.ts`, constraints 1 and 2): wiring it adds a
+trigger and unticks nothing, and *every input is ticked by default*. So a gate wired
+`Query Records.fetched → Run` reads like "decides after the query" and does not — it also re-runs as
+each input value arrives, and the run that arrives with the secret happens **before** the fetch.
+
+`isEmpty` is `true` before the first query has run (`dbcollectionnode2.ts:410-421`) and `true` for a
+collection that matched nothing. Those are one value for opposite facts, so a decision made on
+`isEmpty` alone is one that can be taken too early and still look right. In `claimSite` it read an
+already-claimed site as unclaimed and put a second, unrelated caller into the `admin` role — while
+answering `This site cannot be claimed.` to the very request that did it.
+
+Two things fix it and the graph carries both:
+
+```json
+{ "type": "JavaScriptFunction", "parameters": {
+    "runOnChange-in-expected": false, "runOnChange-in-unclaimed": false,
+    "functionScript": "if (Inputs.rows === undefined) return;\n…" } }
+```
+
+- **untick the boxes** on a node that has a `Run` wire, so its trigger really is its only trigger;
+- **guard on `items`**, the one output of a Query Records node that separates *matched nothing*
+  (`[]`) from *has not run* (`undefined`).
+
+⚠️ **Generalise the second rather than the first.** Every output with a pre-fetch default —
+`isEmpty`, `count`, `firstItemId` — answers before there is anything to answer about. If a decision
+turns on one of them, take the readiness from `items` and the answer from the output you wanted.
 
 ## Naming
 

@@ -98,6 +98,8 @@ class ServiceSupervisor {
    * @param {string} config.dataDir - Data directory (SQLite files, workflows, uploads)
    * @param {number} config.port - Port to bind
    * @param {boolean} [config.ephemeral] - Opt in to non-persisting mode
+   * @param {string} [config.projectDir] - SB-015: the **project** directory, not
+   *   the data directory. Becomes `--project-dir`; see {@link buildSpawnArgs}.
    * @param {(exit: {code: number|null, signal: string|null}) => void} [config.onUnexpectedExit] -
    *   Called when the child dies AFTER it was ready — i.e. a crash, not a
    *   `stop()`. A failure during startup is reported by rejecting `start()`
@@ -134,6 +136,53 @@ class ServiceSupervisor {
   }
 
   /**
+   * The argv this supervisor would spawn, given a resolved service entry.
+   *
+   * 🔴 **Extracted from `start()` deliberately (SB-015).** The property worth
+   * grading is that the project directory reaches the child's command line, and
+   * `start()` cannot be called to check it without spawning a real
+   * `nodegx-backend` bundle that may not be built — so the assertion would have
+   * had to be a source-text one, which passes just as happily on dead code.
+   *
+   * ⚠️ The shape of this argv is load-bearing twice over: `BackendManager` reads
+   * `spawnargs[1]` back off it for the orphan registry.
+   *
+   * @param {string} entry - resolved path to the service bundle
+   * @returns {string[]}
+   */
+  buildSpawnArgs(entry) {
+    const args = [
+      entry,
+      'serve',
+      '--data-dir',
+      this.config.dataDir,
+      '--port',
+      String(this.config.port),
+      '--backend-id',
+      this.config.id,
+      '--backend-name',
+      this.config.name,
+      // Orphan guard. stop() handles a graceful editor shutdown, but a
+      // force-quit or `pkill` never reaches it — and this child is not in a
+      // process group anyone reaps, so it kept the port and its cron schedules
+      // alive indefinitely. The service polls this pid and drains when it goes.
+      '--parent-pid',
+      String(process.pid)
+    ];
+    if (this.config.ephemeral) args.push('--ephemeral');
+    // SB-015 — hand the service the project it is being started for, so a
+    // project that ships `nodegx.security.json` is provisioned onto its own
+    // policy instead of onto `defaultSecurityConfig()`. The service applies it
+    // only when this data dir has no `security.json` yet, so passing it on every
+    // start is idempotent, and the flag is inert for a project without a policy.
+    // This is the flag `noodl-mcp`'s spawner has always passed and this one did
+    // not, which made the editor — the path a person picking a template is
+    // actually on — the one spawner that ignored a project's policy.
+    if (this.config.projectDir) args.push('--project-dir', this.config.projectDir);
+    return args;
+  }
+
+  /**
    * Spawn the service and wait for its READY handshake.
    * Rejects loudly on missing entry, early exit, or timeout.
    */
@@ -151,25 +200,7 @@ class ServiceSupervisor {
         return;
       }
 
-      const args = [
-        entry,
-        'serve',
-        '--data-dir',
-        this.config.dataDir,
-        '--port',
-        String(this.config.port),
-        '--backend-id',
-        this.config.id,
-        '--backend-name',
-        this.config.name,
-        // Orphan guard. stop() handles a graceful editor shutdown, but a
-        // force-quit or `pkill` never reaches it — and this child is not in a
-        // process group anyone reaps, so it kept the port and its cron schedules
-        // alive indefinitely. The service polls this pid and drains when it goes.
-        '--parent-pid',
-        String(process.pid)
-      ];
-      if (this.config.ephemeral) args.push('--ephemeral');
+      const args = this.buildSpawnArgs(entry);
 
       safeLog(`Spawning service for ${this.config.id}: ${process.execPath} ${entry}`);
       const child = spawn(process.execPath, args, {

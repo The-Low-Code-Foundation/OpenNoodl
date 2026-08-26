@@ -29,6 +29,14 @@ import * as path from 'path';
 
 import type { ExecutionHistory } from '../execution/ExecutionStore';
 import { logger } from '../ops/logger';
+// SB-016 — the endpoint predicate, shared with the deploy interlock so the gate
+// and the runner cannot disagree about what a function is.
+import {
+  CLOUD_COMPONENT_PREFIX,
+  declaredFunctionsIn,
+  findRequestNode,
+  requestNodeAllowsNoAuth
+} from './functionDeclarations';
 // CWF-013 — type-only, from the cloud runtime's own declaration, so the sink this file builds
 // and the `NodeScope.runContext` a node reads cannot drift apart.
 import type { CloudKitLoadResult, NodeRunContext, RuntimeLogEntry } from '@cloud-runtime';
@@ -648,15 +656,21 @@ export class WorkflowRunner {
    * predicate is "has a Request node", not "has the name prefix", and a helper
    * is indistinguishable from a nonexistent name at every boundary
    * (HTTP 404, workflow step, trigger dispatch, the permissions listing).
+   *
+   * 🔴 **SB-016: the predicate itself now lives in `functionDeclarations.ts`**,
+   * because the deploy interlock has to answer the same question at startup step
+   * 1.5, off disk, before any of this is loaded. Two implementations of "what is
+   * an endpoint" is how a gate ends up refusing a deploy over a name nothing
+   * serves — or waving through one it does.
    */
   private findRequestNodeForFunction(functionName: string): Record<string, unknown> | null {
-    const fullName = `/#__cloud__/${functionName}`;
+    const fullName = `${CLOUD_COMPONENT_PREFIX}${functionName}`;
     for (const exportData of this.loadedWorkflows.values()) {
       const components =
         (exportData.components as { name: string; nodes?: Record<string, unknown>[] }[] | undefined) || [];
       for (const component of components) {
         if (component.name !== fullName) continue;
-        const found = this.findRequestNode(component.nodes || []);
+        const found = findRequestNode(component.nodes || []);
         if (found) return found;
       }
     }
@@ -673,31 +687,14 @@ export class WorkflowRunner {
    * (public when true, authenticated otherwise); a config entry overrides it.
    */
   functionAllowsNoAuth(functionName: string): boolean {
-    const found = this.findRequestNodeForFunction(functionName);
-    return Boolean(found && (found.parameters as Record<string, unknown> | undefined)?.allowNoAuth === true);
-  }
-
-  private findRequestNode(nodes: Record<string, unknown>[]): Record<string, unknown> | null {
-    for (const node of nodes) {
-      if (node.type === 'noodl.cloud.request') return node;
-      const children = node.children as Record<string, unknown>[] | undefined;
-      if (Array.isArray(children)) {
-        const found = this.findRequestNode(children);
-        if (found) return found;
-      }
-    }
-    return null;
+    return requestNodeAllowsNoAuth(this.findRequestNodeForFunction(functionName));
   }
 
   getAvailableFunctions(): { name: string; workflow: string }[] {
     const functions: { name: string; workflow: string }[] = [];
     for (const [workflowName, exportData] of this.loadedWorkflows) {
-      const components =
-        (exportData.components as { name: string; nodes?: Record<string, unknown>[] }[] | undefined) || [];
-      for (const component of components) {
-        if (component.name.startsWith('/#__cloud__/') && this.findRequestNode(component.nodes || [])) {
-          functions.push({ name: component.name.replace('/#__cloud__/', ''), workflow: workflowName });
-        }
+      for (const declaration of declaredFunctionsIn(exportData, workflowName)) {
+        functions.push({ name: declaration.name, workflow: declaration.workflow });
       }
     }
     return functions;

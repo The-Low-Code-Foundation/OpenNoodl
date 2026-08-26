@@ -47,6 +47,39 @@ export interface ProjectTemplate {
 
   /** The actual project content */
   content: ProjectContent;
+
+  /**
+   * SB-015 — the backend security policy this template's graphs assume, written
+   * into a new project as `nodegx.security.json`.
+   *
+   * 🔴 **Why a template needs this at all.** A template that ships graphs whose
+   * whole product is *what a stranger cannot see* was shipping them onto
+   * `defaultSecurityConfig()`, and SB-015's drive measured both halves of what
+   * that costs: locally `devOpen: true` disables row-level ACL entirely so every
+   * draft renders to every visitor; deployed with `devOpen: false` and nothing
+   * else, collection reads fall back to `authenticated` so the public site serves
+   * the public nothing — while the *function* gate falls back the other way and
+   * hands a stranger the site's admin verbs (SB-016). Each failure looks like the
+   * other's fix.
+   *
+   * The shape is exactly a backend's `security.json`, validated by the same
+   * `validateSecurityConfig` at the moment provisioning applies it. A template
+   * that omits this field behaves exactly as every template did before it
+   * existed — the absence is the no-op, which is what makes the mechanism opt-in
+   * rather than a migration.
+   *
+   * ⚠️ **Deliberately not a general "extra files" channel.** A template installs
+   * a project somebody else may have written, and a hook that let one write
+   * arbitrary paths into a directory is a larger decision than the one that was
+   * ruled. This writes one known filename with one validated grammar.
+   *
+   * ⚠️ **A recipient did not write this.** The file lands at the project root
+   * where it can be opened, diffed and deleted, and provisioning refuses to
+   * overwrite a backend policy that already exists — but it is a policy that
+   * arrived with somebody else's project, and `projectPolicy.ts`'s header states
+   * exactly what that does and does not bound.
+   */
+  securityPolicy?: Record<string, unknown>;
 }
 
 /**

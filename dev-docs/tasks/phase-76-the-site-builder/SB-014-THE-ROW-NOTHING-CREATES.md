@@ -1,10 +1,13 @@
 # SB-014 — The row nothing creates
 
-**Status: ⬜ MEASURED s8 (SB-008 F20), not fixed.** Nothing in the site-builder template ever creates
-a `Theme` record, so on every new site the theme editor's **Save writes nowhere** and the site keeps
-the shipped palette permanently.
+**Status: ✅ FIXED s10, by §4's fix 1.** Nothing in the site-builder template created a `Theme`
+record, so on every new site the theme editor's **Save wrote nowhere** and the site kept the shipped
+palette permanently. `claimSite` now mints the `Theme` singleton beside the `SiteSettings` one, in
+the same graph and with the same world-read ACL.
 
-Probe: `packages/nodegx-backend/tests/sb008-public-site-drive.test.ts`, describe **"🧭 F20"**.
+Probe, now the evidence it is fixed:
+`packages/nodegx-backend/tests/sb008-public-site-drive.test.ts`, describe **"✅ F20"**, plus
+`sb004-publication-invariant.test.ts` **"🔴 writes exactly ONE of each singleton"**.
 
 ## 1. What was measured
 
@@ -80,3 +83,29 @@ fixture ever is — to see it.
 
 ⚠️ Worth a corpus sweep of its own: **for every collection a template reads, is there a node that
 creates it?** That is a question a linter could ask of any project, and nothing asks it today.
+
+## 6. What s10 shipped, and the product decision it declined to make
+
+Fix 1, taken with SB-013 in one pass over `claimSite` so the second did not re-grade the first's
+mutants. One `NewDbModelProperties` node, `SITE_SETTINGS_RULES` for its ACL, chained
+`mark.done → seedTheme.store → res.send`.
+
+🔴 **The seeded tokens are the four keys, all empty**, and that is deliberately not a palette
+decision. `applyTheme` only overrides a custom property when the value is truthy, so an empty set
+renders exactly what the site already ships — seeding it changes nothing a visitor sees and gives
+the editor a row to write to. It is byte-for-byte the shape `buildTokens` produces from a form saved
+with every field blank, so the seeded state and the authored state are one state. §4's objection —
+*"seeding a row that duplicates the shipped tokens makes the first Save a visual no-op even when it
+works"* — is answered rather than accepted: with empty tokens the first Save is the first thing that
+has ever had a visible effect.
+
+⚠️ **The failure edge is wired to the SUCCESS response, not the refusal.** By the time this node
+runs the role is granted and the settings row is written: the site *is* claimed. Answering `This
+site cannot be claimed.` would send a real admin away believing they are not one, with no second
+claim possible — a worse outcome than a missing convenience row. The theme row is a convenience;
+the claim is the contract. Asserted in `sb004Authoring.test.ts`.
+
+✅ **§5's general shape is now a check rather than a moral.** SB-008's census asserted `Theme` had
+no creator; it now asserts each singleton has **exactly one**, named. That is the linter question
+§5 asked for — *for every collection a template reads, is there a node that creates it?* — asked
+over this template. Asking it of any project is still open, and is the better half of the idea.

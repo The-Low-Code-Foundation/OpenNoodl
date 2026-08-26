@@ -32,7 +32,11 @@ import {
   principalKeys,
   checkClp,
   effectiveCreatorOwns,
-  AccessDecision
+  AccessDecision,
+  DeployedFunction,
+  UnresolvedFunction,
+  unresolvedFunctionRules,
+  proposedFunctionsBlock
 } from './model';
 
 export class SecurityStartupError extends Error {
@@ -71,6 +75,48 @@ function atomicWriteJSON(filePath: string, value: unknown, mode?: number): void 
   }
 }
 
+/**
+ * SB-016's refusal, written out.
+ *
+ * 🔴 **The message is the feature.** The failure this interlock exists to stop
+ * is a silent one that the person who hits it misattributes — SB-015 F24: an
+ * author told "That page could not be found" about a page they just published.
+ * A refusal that said only *some function is unresolved* would reproduce that
+ * one layer up, at the exact moment somebody is trying to ship. So it names
+ * every endpoint, says what each one currently resolves to and where that came
+ * from, and prints the block to paste. Exported so a spec can grade the text
+ * rather than the throw.
+ */
+export function undeclaredFunctionMessage(
+  configPath: string,
+  unresolved: UnresolvedFunction[],
+  functionsBlock: string
+): string {
+  const rows = unresolved.map(
+    (fn) =>
+      `  - ${fn.name}: "Allow Unauthenticated" is ${fn.allowNoAuth ? 'TICKED' : 'unticked'} in the graph, ` +
+      `so this deploy would enforce ${JSON.stringify(fn.rule)}` +
+      (fn.rule === 'public' ? '  <-- callable by anyone on the internet' : '')
+  );
+  return (
+    `Refusing to start: ${unresolved.length} cloud function${unresolved.length === 1 ? '' : 's'} ` +
+    `${unresolved.length === 1 ? 'has' : 'have'} no rule in ${configPath}, and the service is asked to bind ` +
+    `beyond localhost.\n\n` +
+    `An undeclared function does NOT fall back to "defaults" the way an undeclared collection does. Its rule ` +
+    `comes from the Request node's own "Allow Unauthenticated" port, which has two values and cannot say ` +
+    `"role:admin" at all — and a cloud function runs as system, so this gate is the only boundary in front of ` +
+    `it.\n\n` +
+    `Undeclared here:\n${rows.join('\n')}\n\n` +
+    `  Fix: add this to ${configPath}. Every rule below is the one being enforced right now, so pasting it ` +
+    `changes nothing about who can call what — it records the decision so the gate stops depending on a ` +
+    `checkbox in the graph:\n\n` +
+    `${functionsBlock}\n\n` +
+    `  Then tighten it. An endpoint only an administrator should reach wants "role:admin", which the graph ` +
+    `port cannot express; "authenticated" above means any account that can sign up.\n` +
+    `  Or bind to 127.0.0.1, where this does not apply.`
+  );
+}
+
 export interface SecurityDeps {
   dataDir: string;
   /** Loopback bind? (The interlock and the dev-open fast-path both key on it.) */
@@ -84,6 +130,17 @@ export interface SecurityDeps {
    * for one, so `adminReadonlyToken` stays null on every existing backend.
    */
   readonlyToken?: string | null;
+  /**
+   * SB-016: every cloud endpoint this backend is about to serve, scanned off
+   * the workflow bundles on disk (`workflow/functionDeclarations.ts`).
+   *
+   * 🔴 **Required, not optional.** An absent list and an empty one mean
+   * different things — *nobody looked* versus *there are no endpoints* — and an
+   * interlock that silently skips itself when its input is missing is the
+   * accept-and-ignore shape this model bans everywhere else. Every construction
+   * site says which one it means.
+   */
+  deployedFunctions: DeployedFunction[];
   facade: AdapterFacade;
 }
 
@@ -188,6 +245,23 @@ export class SecurityState {
           `  Fix: set "devOpen": false in ${SECURITY_FILE} (then configure collection permissions), ` +
           `or bind to 127.0.0.1.`
       );
+    }
+
+    // --- SB-016: the second deploy interlock -------------------------------
+    // The one above is about a setting that turns the gates off. This one is
+    // about the gate that was never on: an endpoint with no `functions` entry
+    // takes its rule from the graph's own `Allow Unauthenticated` port, and
+    // `defaults` — which closes an undeclared *collection* — is never consulted.
+    // So the two gates fall back in opposite directions out of one file, and the
+    // one with no defaults tier is the one whose callers run as system.
+    if (!deps.loopback) {
+      const unresolved = unresolvedFunctionRules(this.config, deps.deployedFunctions);
+      if (unresolved.length > 0) {
+        throw new SecurityStartupError(
+          'UNDECLARED_FUNCTION_ON_PUBLIC_BIND',
+          undeclaredFunctionMessage(configPath, unresolved, proposedFunctionsBlock(this.config, unresolved))
+        );
+      }
     }
   }
 

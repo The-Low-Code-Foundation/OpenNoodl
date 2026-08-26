@@ -84,6 +84,7 @@ async function provisionLessonBackend(projectModel: ProjectModel): Promise<void>
     manifest,
     projectId: projectModel.id,
     projectName: projectModel.name,
+    projectDir: directory,
     boundEndpoint: getCloudServices(projectModel).endpoint,
     invoke: (channel, ...args) => ipc.invoke(channel, ...args)
   });

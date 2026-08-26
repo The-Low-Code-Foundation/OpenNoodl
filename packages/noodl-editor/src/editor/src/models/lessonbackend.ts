@@ -45,6 +45,7 @@
  */
 
 import { findReusableBackend, type LocalBackendMeta } from './BackendServices/backendReuse';
+import { startLocalBackend } from './BackendServices/startLocalBackend';
 import { lessonObservesDatabase } from './lessondatabase';
 import type { LessonManifest } from './lessonformat';
 
@@ -59,6 +60,13 @@ export interface EnsureLessonBackendInput {
   /** The ownership key. A project without one never reuses — it gets its own. */
   projectId: string | undefined;
   projectName?: string;
+  /**
+   * SB-015 — the lesson project's directory, handed to the service so a project
+   * shipping `nodegx.security.json` comes up on its own policy. A lesson ships
+   * none, so this is inert today; it is threaded because the alternative is a
+   * spawner that is silently the odd one out.
+   */
+  projectDir?: string;
   /** `getCloudServices(project).endpoint` at the call site. Bound means bound. */
   boundEndpoint?: string;
   invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
@@ -82,7 +90,7 @@ export function lessonBackendName(projectName: string | undefined, manifest: Les
  * rather than being half-stated here.
  */
 export async function ensureLessonBackend(input: EnsureLessonBackendInput): Promise<EnsureLessonBackendResult> {
-  const { manifest, projectId, projectName, boundEndpoint, invoke } = input;
+  const { manifest, projectId, projectName, projectDir, boundEndpoint, invoke } = input;
 
   if (!lessonObservesDatabase(manifest)) return { status: 'not-needed' };
   if (boundEndpoint) return { status: 'already-bound', endpoint: boundEndpoint };
@@ -96,7 +104,7 @@ export async function ensureLessonBackend(input: EnsureLessonBackendInput): Prom
     const meta = reusable ?? ((await invoke('backend:create', name, { projectId })) as LocalBackendMeta | undefined);
     if (!meta?.id) return { status: 'failed', reason: 'the backend was not created' };
 
-    await invoke('backend:start', meta.id, {});
+    await startLocalBackend(invoke, meta.id, projectDir);
     const { port } = input.waitForRunning
       ? await input.waitForRunning(meta.id)
       : await pollUntilRunning(meta.id, invoke);

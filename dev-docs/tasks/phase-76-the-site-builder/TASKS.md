@@ -59,11 +59,15 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   §2's unhedged bet lost; the String fallback §2 itself named is taken — `Section.pageId`.
   All four fixed, four mutants graded. F10 and F12/F13 are **core gaps, not template gaps**, filed as
   **SB-010** and **SB-011**. The four runtime rules are in
-  `dev-docs/reference/BACKEND-AUTHORING-MODEL.md` §"Four things a deployed graph does not do the way
+  `dev-docs/reference/BACKEND-AUTHORING-MODEL.md` §"Five things a deployed graph does not do the way
   the canvas does".
   ⚠️ **F8 is still Richard's** and blocks SB-006's contact section.
   ⚠️ Acceptance 5 is met on the row, not the mail (no SMTP in the run); acceptance 2's "admin path"
   is the REST API as the owner, because SB-005's panel does not exist yet — see §7.
+  ⚠️ **Its graph moved in s10.** `claimSite` gained the SB-013 fix (gate boxes off, a readiness
+  guard on `items`, the query's load-time fetch off) and SB-014's `Theme` creator. The suite gained
+  five arms and the two assertions it never had — count the rows, count the themes. Read
+  `sb004Components.ts` as it is, not as §6a describes it.
 
 - ✅ **SB-005** — [the admin panel](SB-005-THE-ADMIN-PANEL.md) — **BUILT s6, CLOSED s8.**
   Structurally complete and mutation-graded s6; **behaviourally measured s8** by SB-008's drive.
@@ -257,42 +261,120 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
 
 ## Tier 3 — found while building
 
-- ⬜ **SB-015** — [a template cannot carry its own permissions](SB-015-A-TEMPLATE-CANNOT-CARRY-ITS-OWN-PERMISSIONS.md)
-  — **DERIVED s9 from the shipped defaults, not driven.** SB-004 §4's policy is
-  `security.json` in a **backend's** data directory; SB-007 ships a **project** directory,
-  and there is no field, no file and no `provisionBackend` path that carries one to the
-  other. So a new project from this template has nineteen graphs assuming that table and a
-  backend with `defaultSecurityConfig()` — and it fails **two opposite ways**:
-  🔴 **locally nothing is enforced** (`devOpen: true` + loopback disables row-level ACL
-  entirely, which is *why* SB-008 kept a dev-open twin: the same draft renders), and
-  🔴 **deployed nothing is visible** (a non-loopback bind with `devOpen` on refuses to
-  start; set it false with `collections: {}` and `Page.find` falls back to `authenticated`,
-  so the public site serves the public nothing). **Each failure looks like the other's
-  fix**, and somebody who hits the second and reaches for the first has turned the boundary
-  off. 🧭 Three shapes (a project-side policy file provisioning applies / the permissions
-  panel deriving a proposal from the graph / a documented manual step), and which is
-  Richard's. ⬜ Not driven — the companion drive to SB-008, one config apart, in the state a
-  real first user is in.
+- ✅ **SB-015** — [a template cannot carry its own permissions](SB-015-A-TEMPLATE-CANNOT-CARRY-ITS-OWN-PERMISSIONS.md)
+  — **DERIVED s9, DRIVEN s11, BUILT s12 as shape 1.** The template ships
+  `site-builder.security.json`; `EmbeddedTemplateProvider.install` writes it into a new
+  project as `nodegx.security.json`; the backend installs it as its own `security.json` at
+  startup **step 1.4, before `SecurityState`** — because a policy applied one step later is a
+  correct file on disk that the running process is not enforcing. **22 backend specs + 5
+  editor specs, 4 mutants graded** (`sb015-project-policy.test.ts`,
+  `tests-unit/sb-015/template-ships-a-policy.test.ts`).
+  ✅ **§3's two objections are answered rather than argued away** (§6.2–6.3): the absence is
+  the no-op, so nothing migrates; and a received policy can only ever replace
+  `defaultSecurityConfig()`, never a `security.json` somebody already has — the rule
+  `deploy/entrypoint.sh` has followed since WF-003, graded by a mutant. When it *cannot*
+  apply, that is a named outcome with a message, because a correct policy that is not the one
+  being enforced is this task's own bug.
+  ✅ **The local case has an answer**: verbatim, `devOpen` included. Any other answer leaves
+  the author testing with the boundary off and shipping with it on. 🔴 **And it has a stated
+  cost** — enforced locally, an author is anonymous on their own machine until `claimSite`
+  puts them in `admin`, and the `SITE_SETUP_TOKEN` that needs is a secret **provisioning does
+  not write**. ✅ **DRIVEN s13** (`sb015-first-local-run.test.ts`, **14 specs / 3 mutants**,
+  two arms differing in that one secret and nothing else).
+  🔴 **F27 — the prediction was wrong in the direction that matters.** §6.4 predicted "a site
+  that renders, a nav, and an admin panel whose every write is refused". A person actually
+  gets **the not-found panel on their own home page** — `claimSite` **400**, roles **`[]`**,
+  every write **403**, and **no `SiteSettings` or `Theme` row at all**, because `claimSite` is
+  what mints them (SB-013/SB-014). The refusal is at the start, not the edge.
+  🔴 **That screen now has THREE pixel-identical causes** — a genuine draft (SB-008), a
+  policy-refused read (F24), and an empty site nobody could claim — wanting three different
+  fixes, and **the one a person reaches for first is turning the boundary off**.
+  ⬜ Still not fixed; §6.4's two candidates stand, plus the new consideration that a correct
+  fix still leaves the not-found panel as the failure screen for everything else.
+  🔴 **The finding that came free: `SITE_SECURITY` was a typed constant in a test helper**, so
+  SB-008 measured a publication boundary produced by a file no project would ever receive.
+  `helpers/site-drive.ts` now imports the shipped artefact — one copy, and what the drive
+  measures is what a person gets. **SB-008's 20 specs pass unchanged.**
+  ✅ **BOTH SPAWNERS, s13.** The editor's passes `--project-dir` too, so §1's claim no longer
+  has a path it does not hold on. **20 specs / 7 mutants**, split across the two runners that
+  can each see one half of the chain (`tests-unit/sb-015/editor-spawner-passes-project-dir.test.ts`
+  12, `tests-main/local-backend/service-supervisor-project-dir.test.js` 8).
+  🔴 **F26 — §7 predicted "more than one call site (auto-start on project open, the panel)".
+  There are FOUR**: those two, plus `provisionBackend` and `models/lessonbackend`, which
+  nothing had named. The hole is closed twice over rather than once, because the two halves
+  do not cover each other — **`projectDir` is a REQUIRED POSITIONAL PARAMETER** of the shared
+  helper, so a fifth call site does not compile until its author decides; and **a census
+  asserts no renderer module invokes `backend:start` except the helper**, because the compiler
+  cannot see a call that bypasses it. ⚠️ **Fourth time this phase a recommendation's own
+  numbers were wrong** (SB-013's row count, SB-016 §4/F25, s11's F24, this) — see §6.7.
+  🆕 The census **reddened on prose** when written as a quoted-string match, which is the
+  looser instrument despite reading as the tighter one; it strips block comments and matches
+  the bare string. 🆕 `buildSpawnArgs` was **extracted** from `ServiceSupervisor.start()` —
+  SB-016's move, same reason: `start()` spawns a bundle that need not be built, so the only
+  other available assertion was source-text, which passes on dead code.
+  ⬜ Still not opened in the editor; still no `secrets.json` channel; `securityPolicy` is on
+  `ProjectTemplate` so only **embedded** templates can carry one.
 
-- ⬜ **SB-013** — [a singleton written twice](SB-013-A-SINGLETON-WRITTEN-TWICE.md) — **MEASURED s8
-  (SB-008 F21), not fixed.** One `claimSite` leaves **two identical `SiteSettings` rows**, 11 ms
-  apart, on a fresh backend. Two one-edge arms name the mechanism: the settings query keeps both
-  `runOnChange` boxes **on** (SB-004 s4's own rule) *and* is triggered by an explicit `storageFetch`,
-  so `fetched` fires **twice** and the whole gate → grant → mark chain runs twice; the second pass
-  reports `unchanged`, which is also wired to `store`. 🔴 **The wire that makes a re-run safe is the
-  wire that makes a re-run duplicate.** Both readers take `rows[0]` and nothing orders that list, so
-  the panel can edit one row while the site reads the other. 🧭 Three fixes, all touching **closed**
-  SB-004; the task file recommends the one-wire one and says what it costs. **Do it with SB-014 or
-  the second one re-grades the first's mutants for nothing.**
-- ⬜ **SB-014** — [the row nothing creates](SB-014-THE-ROW-NOTHING-CREATES.md) — **MEASURED s8
-  (SB-008 F20), not fixed.** **Nothing in the template ever creates a `Theme` record.** Measured on a
-  real claim (`GET /classes/Theme` → 0) and by a census of every `NewDbModelProperties` in all three
-  component sets — `Page`, `Section`, `ContactMessage`, `SiteSettings`, and never `Theme`. The theme
-  editor saves by `theme.firstItemId`, `undefined` on an empty collection, so **Save writes nowhere
-  and says nothing**. Both halves of SB-006's theme contract are correct and dead. 🧭 Two fixes.
-  🔴 **The general shape**: a class with a reader, an editor and no creator is invisible to every
-  check this phase has — it took a run on a *freshly claimed* backend, the state a real first user is
-  in and no fixture ever is.
+- ✅ **SB-016** — [the gate with no defaults tier](SB-016-THE-GATE-WITH-NO-DEFAULT-TIER.md)
+  — **MEASURED s11 as SB-015 F23, BUILT s12** as Richard's disposition 2. A non-loopback bind
+  whose endpoints resolve only from the graph port refuses to start
+  (`UNDECLARED_FUNCTION_ON_PUBLIC_BIND`) and names every one of them. **30 specs / 5 mutants**
+  (`sb016-function-gate-interlock.test.ts`).
+  🔴 **F25 — §4's reason for the narrow predicate was false, measured.** §4 said *refuse only
+  where the port resolves to `authenticated`* "refuses exactly the two that are wrong". It
+  refuses **three**: `claimSite` is unticked, resolves to `authenticated`, and `authenticated`
+  is what SB-004 §4 wants for it. The deeper finding is that **neither candidate
+  discriminates** — what separates `claimSite` from `publishPage` is an intention that is in
+  neither the port nor the config, so no startup-time predicate can read it.
+  ✅ **The broad predicate ships, and the reasoning inverts §4's**: the endpoints the narrow one
+  exempts are exactly the `public` ones — the only surface an anonymous stranger can reach —
+  so exempting them makes the interlock silent about what it exists to protect. The refusal
+  does not say *this is wrong*; it says **you have not said**.
+  🔴 **The message is graded like code**, because this task is about a failure of messages:
+  every endpoint named with its port state, `public` ones flagged as reachable by anyone, the
+  file named by path, and a `functions` block that is **merged** with existing entries
+  (a one-key paste would undeclare the rest — mutant), **preserves what is enforced right
+  now** (mutant), is a *valid* config, and — a separate spec from every text assertion —
+  **is SUFFICIENT**: extracted from the refusal, pasted in, the same service starts.
+  🔴 **It runs at step 1.5, off disk, not from the `WorkflowRunner`** — the runner comes up at
+  step 5 and the HTTP server listens at step 3, so an interlock reading it would fire after
+  the port is open. A spec asserts the chosen port is still bindable after the refusal. The
+  endpoint predicate moved to `workflow/functionDeclarations.ts` and the runner imports it;
+  another spec asserts the two agree over a real bundle.
+  ⚠️ **This repository's own container deploy is affected**: `deploy/security.production.json`
+  is arm C exactly (`devOpen: false`, `collections: {}`, `functions: {}`), so a project with
+  cloud functions deployed that way now refuses with the block to paste. `deploy/README.md`
+  says so.
+  ⬜ The corpus sweep is still open, and a **defaults tier for functions** (disposition 1) was
+  not ruled and is not built — a loopback backend can still be in the state silently.
+
+- ✅ **SB-013** — [a singleton written twice](SB-013-A-SINGLETON-WRITTEN-TWICE.md) — **FIXED s10,
+  and NOT by the fix the task file recommended.** One `claimSite` left two identical `SiteSettings`
+  rows; it leaves one. 🔴 **The recommendation was measured on the row count, and the row count is
+  not the property this endpoint is for.** Asking the other question — *does an already-claimed site
+  still refuse?* — separates the candidates: one checkbox away from the recommended arm, **an
+  outsider ends up in the `admin` role on a claimed site**, and the endpoint still answers
+  `This site cannot be claimed.` while doing it. Cause: **`Run` is purely ADDITIVE**
+  (`run-on-value-change.ts` §1) — wiring `fetched → Run` unticks nothing, so the gate also re-ran as
+  each value arrived, and the run carrying the secret lands **before** the query, where `isEmpty` is
+  `true` for a collection with rows in it. So the recommended fix passes on a race it does not own.
+  The graph closes it **twice**, each barrier graded independently against that failure: the gate's
+  `runOnChange-in-*` boxes off, and a readiness guard on `items` (the one output that separates
+  *matched nothing* from *has not run*). ⚠️ The guard alone also costs the ANSWER — `claimed:
+  undefined` from a site that IS claimed. 🆕 And the row half is finer than F21 said: with the gate
+  deciding on `fetched` alone, restoring the load-time fetch changes nothing. **The second row was
+  the second gate run, not the second fetch.** 5 arms in `sb004-publication-invariant.test.ts`.
+- ✅ **SB-014** — [the row nothing creates](SB-014-THE-ROW-NOTHING-CREATES.md) — **FIXED s10** by the
+  fix its file recommended, in the same pass over `claimSite`. **Nothing in the template ever created
+  a `Theme` record**, so the theme editor's Save — targeting `theme.firstItemId`, `undefined` on an
+  empty collection — wrote nowhere and said nothing. `claimSite` now mints it beside `SiteSettings`,
+  world-readable because the public site reads it with no session. 🔴 **The tokens are the four keys,
+  all EMPTY, and that is a deliberate non-decision**: `applyTheme` only overrides a truthy value, so
+  the seed renders exactly the shipped palette and the author's first Save is the first thing that
+  has ever had a visible effect. ⚠️ Its failure edge answers the SUCCESS response, not the refusal —
+  by then the site IS claimed, and "cannot be claimed" would send a real admin away with no second
+  claim possible. ✅ SB-008's census now asserts **exactly one creator per singleton, named** — the
+  linter question §5 asked for, asked over this template; asking it of any project is still open.
 
 - ⬜ **SB-012** — [three spellings of a component name](SB-012-THREE-SPELLINGS-OF-A-COMPONENT-NAME.md)
   — **MEASURED s6, worked around in SB-005, not fixed.** `RouterNavigate.target` and
@@ -389,7 +471,8 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   a live editor stack. First item for the next session; the text is already written in the reference
   doc and can be lifted.
 - **s5 (2026-08-26)** — **s4's deliberate omission CLOSED** (`8ce12a3c`): `BACKEND_DOCTRINE_MD` now
-  carries §"Four things a deployed graph does not do the way the canvas does", lifted from the
+  carries §"Four things a deployed graph does not do the way the canvas does" (renamed to Five in
+  s10), lifted from the
   reference doc, including the counter-rule SB-004's own correction turned on (rule 3's fix is wrong
   on a query with no filter parameter). `sb002BackendDoctrine` gained a claim census over the four
   rules, asserted claim by claim rather than on the heading; **two mutants graded** (inverting the
@@ -531,3 +614,182 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   signal, never `$?`. **No debt carried into the next session.**
   ⚠️ **Still deliberately not done**, carried from s8: `BACKEND_DOCTRINE_MD` does not carry rule 3's
   second half.
+- **s10 (2026-08-26)** — **SB-013 and SB-014 CLOSED in one pass over `claimSite`**, which is how
+  their files asked to be taken, plus **s8's `BACKEND_DOCTRINE_MD` debt closed** and the reference
+  doc corrected on a claim that was wrong.
+  🔴 **The session's finding is that SB-013's own recommendation was measured on the wrong
+  property.** Its two arms counted rows. Adding the question the endpoint exists to answer — *does
+  an already-claimed site still refuse?* — split the candidates: one checkbox away from the
+  recommended arm, **the outsider holds the `admin` role**, and every arm answers
+  `This site cannot be claimed.` with a 400 while doing it. The only reading that separates a
+  refusal from a refusal-shaped breach is asking the role who is in it.
+  **Cause: `Run` is purely ADDITIVE.** `run-on-value-change.ts` §1 constraints 1–2 — wiring a `Run`
+  adds a trigger and unticks nothing, every input ticked by default — so a gate wired
+  `fetched → Run` reads like *decides after the query* and does not. The run carrying the secret
+  arrives before the fetch, where `isEmpty` is `true` for a collection with rows in it. Two barriers
+  ship, **each graded independently against that same failure**: gate boxes off (arm: guard removed,
+  still refused) and a readiness guard on `items` (arm: boxes back on, still refused). Neither:
+  outsider is an admin, three settings rows. ⚠️ The guard alone also costs the answer —
+  `claimed: undefined` from a site that IS claimed.
+  🆕 **And the row half is finer than F21 said**: with the gate deciding on `fetched` alone,
+  restoring the load-time fetch changes nothing. The second row was the second **gate run**, not the
+  second fetch — the fix belongs on the consumer, not only on the query.
+  **SB-014** seeds the `Theme` singleton in the same graph, world-readable, tokens **empty on
+  purpose** so seeding decides no palette; its failure edge answers the SUCCESS response because by
+  then the site is claimed. SB-008's census now asserts one named creator per singleton.
+  **Docs**: `BACKEND-AUTHORING-MODEL.md` §"Four things…" is now §"**Five**", rule 5 is the general
+  form (`Run` is additive; `isEmpty`/`count`/`firstItemId` all answer before there is anything to
+  answer about — take readiness from `items`), and 🔴 **rule 3's ⚠️ was a misattribution**: with the
+  boxes off and an explicit `storageFetch` the query *does* fetch and `isEmpty` *is* flagged. Its
+  table gains the row this endpoint is. `BACKEND_DOCTRINE_MD` carries all of it including s8's owed
+  half; the claim census grew to five rules and was graded with a mutant (⚠️ the verbatim-over-stdio
+  spec passes under it — it measures transport, as s5 recorded).
+  Final: noodl-mcp **63 suites / 769**, nodegx-backend **104 / 1149** (10 skipped), editor jest
+  **347 / 5751**; `typecheck:mcp`, `typecheck:editor`, `typecheck:editor-tests` and the backend's
+  own `tsc` all exit **0** (run unpiped).
+  ⚠️ The template was **regenerated** (`npm run template:site-builder`) — `claimSite` gained a node,
+  so the artefact is 192 node ids where it was 191, and `tests-unit/sb-007` pins the new literal.
+- **s11 (2026-08-26)** — **SB-015 DRIVEN.** §2 was a source derivation for two sessions; it is now
+  15 specs over three policy files, one authored project, and a headless Chrome with no
+  credential (`nodegx-backend/tests/sb015-default-policy-drive.test.ts`). Both predicted failures
+  reproduced exactly — as provisioned the draft renders in full **and appears in the nav on every
+  page**; with `devOpen: false` alone the *published* page is a 404 to the public.
+  🔴 **And §2 understated it in both directions.** **F23** → **SB-016**: the deployed failure is
+  not one-directional. Collections fall back to `defaults.permissions` and fail shut; **functions
+  have no defaults tier at all** and fall back to the graph's `Allow Unauthenticated` port, which
+  no security file can lower — so a stranger signs up and publishes the owner's draft, and the
+  call runs **as system**. **F24**: a refusal renders as the not-found panel, so the author is
+  told "That page could not be found" about a page they just published, on every URL of their own
+  site.
+  🔴 **F24's first spec asserted the two screens were identical and was RED.** They differ in
+  exactly one way and it points away from the cause — a genuine draft still draws the site chrome,
+  a refused site draws the bare string, so the state reads as *empty* rather than *refused*. The
+  claim in the task file was corrected to what the spec measures. **A spec, not a sentence.**
+  🔴 **The instrument was extracted, not copied.** SB-008's authoring, binding, data directory and
+  page reader moved to `tests/helpers/site-drive.ts` and both suites import it: two suites
+  comparing two policies mean nothing unless everything either side of the policy is identical.
+  **SB-008's own 20 specs are the check that the extraction changed nothing — 20/20.**
+  🔴 **A refactor script cut this file's whole prefix**, because `lines.index("/**")` matched the
+  file's own header docblock rather than the intended one — and the file carried s10's
+  **uncommitted** work. Rebuilt from the reads taken earlier in the same session and verified two
+  ways: every removal in the region diffs as a moved harness block and nothing else, and s10's own
+  additions (the singleton census) are present and passing. ⚠️ **The lesson is the marker, not the
+  script**: an anchor that is not unique deletes to the wrong place silently.
+  ⚠️ **And the backend's `typecheck` does not cover its tests** — `tsconfig.json` is
+  `include: ["src/**/*"]` with `**/*.test.ts` excluded, so `tsc --noEmit` exited **0** on a file
+  containing an undefined symbol. 🔴 **This was already recorded in s4 and it bit anyway**, which is
+  the part worth keeping: a known trap does not protect you if you read the green without asking
+  what it covered. Only ts-jest compiles the tests. **Run the suite.**
+  ⚠️ `test:ci` **not run — nothing in its scope moved** (two backend test files, one new backend
+  test helper, three docs). No editor, runtime or `noodl-mcp` source touched, and the three
+  component sets are imported unchanged, so noodl-mcp was not re-run either.
+- **s12 (2026-08-26)** — **BOTH RULINGS BUILT.** SB-016's deploy interlock and SB-015's
+  project policy, plus the two things measuring them turned up.
+  🔴 **F25 — SB-016 §4's stated reason for its narrower predicate was false, and the
+  measurement is what found it.** §4 said *refuse only where the port resolves to
+  `authenticated`* "refuses exactly the two that are wrong" on this template; read off the
+  shipped bundle it refuses **three** — `claimSite` is unticked, resolves to `authenticated`,
+  and `authenticated` is what SB-004 §4 wants for it. The finding underneath is that
+  **neither candidate discriminates and none can**: what separates `claimSite` from
+  `publishPage` is an intention in neither the port nor the config. The broad predicate ships
+  and the reasoning **inverts** §4's — the endpoints the narrow one exempts are exactly the
+  `public` ones, the only surface a stranger can reach at all, so exempting them makes the
+  interlock silent about what it exists to protect. ⚠️ **Third time this phase** a
+  recommendation carried a measurement of the wrong property (SB-013's row count, this, and
+  s11's own F24 spec). **Re-derive the numbers before building on them.**
+  **SB-016**: `UNDECLARED_FUNCTION_ON_PUBLIC_BIND` at startup **step 1.5**, beside the
+  `devOpen` one, reading bundles off disk — because the `WorkflowRunner` comes up at step 5
+  and the HTTP server listens at step 3, and a spec asserts the chosen port is still bindable
+  after the refusal. The endpoint predicate moved to `workflow/functionDeclarations.ts` and
+  the runner imports it; another spec asserts the two agree over a real bundle. The message is
+  graded like code — every endpoint named, `public` ones flagged, the block **merged** rather
+  than replacing, **behaviour-preserving**, valid, and — a separate spec from every text
+  assertion — **sufficient**: extracted from the refusal, pasted in, the service starts.
+  **30 specs / 5 mutants.**
+  **SB-015** as shape 1: `site-builder.security.json` ships, `ProjectTemplate.securityPolicy`
+  carries it, `EmbeddedTemplateProvider.install` writes `nodegx.security.json`, and
+  `security/projectPolicy.ts` installs it as the backend's own at **step 1.4, before
+  `SecurityState`** — the ordering mutant reddens four specs. §3's two objections answered in
+  §6.2–6.3 (the absence is the no-op; a received policy can only ever replace the defaults,
+  never an existing `security.json`), and the local case answered **verbatim, `devOpen`
+  included**, with its cost stated: an author is anonymous on their own machine until
+  `claimSite`, whose `SITE_SETUP_TOKEN` provisioning does not write. **22 backend + 5 editor
+  + 3 MCP specs, 4 mutants.**
+  🔴 **The finding that came free: `SITE_SECURITY` was a typed constant in a test helper**, so
+  SB-008 measured a real publication boundary produced by a file no project would ever
+  receive. `helpers/site-drive.ts` imports the shipped artefact now — one copy, and what the
+  drive measures is what a person gets. **SB-008's 20 specs pass unchanged**, which is the
+  check that the substitution changed nothing.
+  🆕 **And `deploy/security.production.json` is arm C exactly** — the shipped default with
+  `devOpen: false`, so `collections: {}` and `functions: {}`. This repository's own container
+  deploy has been putting every project with cloud functions into the state SB-015 measured;
+  it now gets SB-016's refusal instead. `deploy/README.md` says so.
+  **Docs**: `BACKEND-AUTHORING-MODEL.md` gains §"The endpoint gate has no defaults tier",
+  and `BACKEND_DOCTRINE_MD` carries the same rule with a five-assertion claim census — an
+  agent that does not know it will author a `publishPage` correct in every other respect and
+  callable by anyone who signs up.
+  ⬜ **Deliberately not done, stated so it is not assumed**: the **editor's**
+  `ServiceSupervisor` does not pass `--project-dir`, so SB-015 is wired for one spawner of
+  two — and the unwired one is the path a person picking the template is on (SB-015 §7 names
+  the threading and warns that `backend:start` has more than one call site). Nothing has
+  opened a project made from this template in the editor, so §6.4's local-run prediction is a
+  prediction.
+  **Gates**: nodegx-backend **107 suites / 1226** (10 skipped) EXIT 0 — +2 suites, +52 tests
+  over s11's 105/1174, reconciling exactly (30 + 22); noodl-mcp **64 / 773** EXIT 0; noodl-editor
+  jest **348 / 5756** EXIT 0; `typecheck:mcp`, `typecheck:editor`, `typecheck:editor-tests` and
+  the backend's own `tsc` all exit **0** (run unpiped).
+  ⚠️ **The editor suite's first run carried one REAL red and it was the right one**:
+  `sb-007/site-template.test.ts` asserts `install()` writes **exactly** one file, and SB-015
+  makes it write two. The assertion was exhaustive and that is why it fired; it is still
+  exhaustive, with a comment saying so. A `toContain` there would have let a new file land in
+  every project made from every template with nothing to notice.
+  🔴 **`test:ci` OWED, and the debt is bounded rather than discharged.** Editor source moved
+  (`EmbeddedTemplateProvider.ts`, `ProjectTemplate.ts`, `site-builder.template.ts`,
+  `prompts/backend.ts`, a new JSON webpack bundles), so it is genuinely in scope — but a peer's
+  `vitest` held the machine all session and `test:ci` must run alone **on the machine**, not
+  merely on the checkout. A contended run's timeout is indistinguishable from failures. **The
+  bound**: every changed module reaches `test:ci` only by compilation, which `typecheck:editor`
+  covers; the editor's own 348 suites exercise the template provider directly (17 specs across
+  `sb-007` and the new `sb-015`); and `prompts/backend.ts`'s only consumer,
+  `noodl-mcp/src/editor-deps.ts`, is not in `test:ci`'s graph. **Next session should ride a solo
+  window** — same shape as s5→s6.
+  ⚠️ **A peer's `vitest` held the machine for the whole session** (a different checkout,
+  `nodegx-community`), so every timing here is contended and the first full `noodl-mcp` run
+  showed 2 reds — `projectOwnsBackend` and `provision`, both real-backend spawners, both green
+  alone in 2.3s. The recorded canary, attributed as contention. ⚠️ It also cost six minutes to
+  a mutant runner that appeared to hang: a **failing** spec that starts a `BackendService`
+  leaks it (the `stop()` is in the success path), so jest cannot exit — use `--forceExit` when
+  grading mutants that make service specs red, and `python3 -u` so a killed run does not lose
+  every result.
+- **s13 (2026-08-26/27)** — **SB-015 IS WIRED FOR BOTH SPAWNERS, AND §6.4 IS DRIVEN.**
+  🔴 **F26 — the editor had FOUR `backend:start` call sites, not the two §7 predicted**:
+  `provisionBackend`, `ProjectBackendLifecycle` (auto-start on project open), the panel's
+  `useLocalBackends`, and `models/lessonbackend`, which nothing had named. The hole is closed
+  **twice**, because the two halves do not cover each other: `projectDir` is a **required
+  positional parameter** of a new leaf module (`BackendServices/startLocalBackend.ts`), so a
+  fifth call site does not compile until its author decides; and **a census asserts no renderer
+  module invokes `backend:start` except that module**, because the compiler cannot see a call
+  that bypasses it. `buildSpawnArgs` was **extracted** from `ServiceSupervisor.start()` —
+  SB-016's move, same reason: `start()` spawns a bundle that need not be built, so the only
+  other available assertion was source-text, which passes on dead code. **20 specs / 7 mutants.**
+  🆕 **The census reddened when written, on prose** — a quoted-string match reads as the
+  tighter instrument and is the looser one (it counts a docblock's backticks and misses a
+  template literal). It strips block comments and matches the bare string; line comments are
+  left in deliberately, because a census that cries wolf is fixed by rewording and one that
+  misses a call is the defect.
+  🔴 **F27 — §6.4's prediction was wrong in the direction that matters.** It predicted "a site
+  that renders, a nav, and an admin panel whose every write is refused". Driven
+  (`sb015-first-local-run.test.ts`, **14 specs / 3 mutants**, two arms differing in one secret
+  and nothing else), a person provisioned into this template gets **the not-found panel on
+  their own home page**: `claimSite` **400**, roles **`[]`**, every write **403**, and **no
+  `SiteSettings` or `Theme` row at all** — because `claimSite` is what mints them. The refusal
+  is at the start of the experience, not the edge. **That screen now has three pixel-identical
+  causes** (a genuine draft, a policy-refused read, an unclaimable site) wanting three
+  different fixes, and the one a person reaches for first is turning the boundary off.
+  ⚠️ **The two-arm design is what made it safe for the prediction to be wrong**: the
+  `with-token` control renders a real page through the same instrument, so "the author saw
+  nothing" could not be read as a broken harness.
+  **Gates**: nodegx-backend **108 suites / 1240** (10 skipped) EXIT 0 — +1 suite / +14 tests
+  over s12's 107/1226, reconciling exactly; noodl-editor jest **350 / 5776** EXIT 0 — +2 / +20,
+  also exact; `typecheck:editor`, `typecheck:editor-tests`, `typecheck:mcp` and the backend's
+  own `tsc` all exit **0** (run unpiped). noodl-mcp not re-run — no `noodl-mcp` source moved.

@@ -117,6 +117,22 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
     // Write project.json to destination
     const projectJsonPath = filesystem.join(destination, 'project.json');
     await filesystem.writeFile(projectJsonPath, JSON.stringify(projectContent, null, 2));
+
+    // SB-015: and the policy the graphs assume, if this template carries one.
+    //
+    // 🔴 It is written UNINSTANTIATED — no id remapping, no clone-and-rewrite —
+    // because a security policy names collections, functions and roles, and not
+    // one node id. Running it through `instantiateContent`'s neighbourhood would
+    // be a rewrite looking for ids in a document that has none, which is the
+    // shape of near-miss SB-007 F22 already recorded (a string-matching rewrite
+    // would have corrupted eight parameters whose values collide with ids).
+    //
+    // A template with no `securityPolicy` writes no file, which is every
+    // template but one and is exactly today's behaviour.
+    if (template.securityPolicy) {
+      const policyPath = filesystem.join(destination, 'nodegx.security.json');
+      await filesystem.writeFile(policyPath, JSON.stringify(template.securityPolicy, null, 2) + '\n');
+    }
   }
 
   /**
