@@ -207,8 +207,12 @@ Implement `ITemplateProvider` (`utils/forge/template/template.ts`) and register 
 `utils/forge/index.ts`. `install(url, destination)` must leave a loadable project in `destination`;
 it is not a download hook, and there is no unzip step waiting downstream any more.
 
-⚠️ **Templates that carry their own binaries do not travel yet.** The curated transport FB-005 builds on
-(`stageBundleFiles`, from TUT-004) takes `Record<string, string>` — text only. See `FB-005-SCOPE.md` §3.
+✅ **A template carries its own binaries** (migration `0023`, 2026-08-26). The bundle has **two**
+maps: `files` (path → text, written straight to disk) and `binaryFiles` (path → base64, decoded
+first). A provider that writes only `files` installs a project with its fonts and images missing,
+so implement both loops. ⚠️ A path may never appear in both — the platform refuses that at publish
+and `readBundlePayload` refuses it on arrival, because otherwise nothing decides what lands on
+disk. See `FB-005-SCOPE.md` §4f.
 
 ---
 

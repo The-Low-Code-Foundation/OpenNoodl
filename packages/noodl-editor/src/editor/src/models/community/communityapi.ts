@@ -105,10 +105,22 @@ export type TutorialSummary = {
 /**
  * A bundle: relative path → file contents. **The wire a tutorial and a project template share.**
  *
- * ⚠️ **Text only, and for BOTH of them.** A lesson bundle is JSON and Markdown — TUT-003's is 35
- * files with not one binary in it — and `0020` refuses a non-text template payload at publish for
- * the same reason. The transport is jsonb, so a bundle that needed a PNG would need a different
- * wire, not a bigger string. If that day comes it is a new decision, not a widened type.
+ * ⚠️ **`files` IS STILL TEXT ONLY, FOR BOTH OF THEM.** A lesson bundle is JSON and Markdown —
+ * TUT-003's is 35 files with not one binary in it — and `0020` refuses a non-text template
+ * payload at publish for the same reason.
+ *
+ * 🔴 **AND THE DAY THIS TYPE SAID WOULD COME, CAME — `binaryFiles` (`0023`).** The comment here
+ * used to end *"If that day comes it is a new decision, not a widened type"*, and it was right on
+ * both counts: it was a decision, taken against a measurement (of the 77 real projects on the
+ * author's machine, eleven could not be shared, and the residue was fonts and images the author
+ * owned), and this is not a widened `files` — it is a SECOND MAP, so that no value's meaning
+ * depends on its own contents. A sentinel like `"base64:…"` inside `files` is a string a source
+ * file can contain, which would let a text file forge a binary.
+ *
+ * ⚠️ **A TUTORIAL BUNDLE NEVER CARRIES ONE.** `publish-tutorial-bundle.ts` still refuses a binary
+ * outright — `stageBundleFiles` has no decode branch — so this is `{}` on that shelf. Shared
+ * anyway, because the envelope and the checks are shared and a second declaration is a copy that
+ * drifts while both sides still compile.
  */
 export type BundlePayload = {
   slug: string;
@@ -116,6 +128,13 @@ export type BundlePayload = {
   version: number;
   updatedAt: string;
   files: Record<string, string>;
+  /**
+   * Relative path → **base64 of the file's bytes**. `{}` when there are none, which includes
+   * every template published before `0023` and every tutorial bundle ever.
+   *
+   * 🔴 Never optional. A caller meeting `undefined` here is a caller that iterates it anyway.
+   */
+  binaryFiles: Record<string, string>;
 };
 
 export type TutorialBundlePayload = BundlePayload;
@@ -190,6 +209,48 @@ export function readBundlePayload(item: unknown): Read<BundlePayload> {
     out[path] = contents;
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔴 THE BINARY MAP GOES THROUGH THE SAME GATE, AND THIS IS THE HALF THAT WOULD HAVE BEEN
+  // FORGOTTEN. `isSafeBundleEntry`'s own comment says why the far side's identical check is not
+  // enough: *"a validator on the far side of a wire is a claim about a server, not a gate on a
+  // disk"*. A second map added to the payload and not to this loop is precisely a gate with a
+  // hole shaped like the new feature — and the values in it are bytes, written to a directory
+  // the user named on their own machine.
+  //
+  // ⚠️ ABSENT IS NORMAL, not a refusal: a pre-`0023` template and every tutorial bundle send no
+  // such key. An older client ignores it entirely and installs what it always did.
+  const rawBinaries = row.binaryFiles;
+  const binaries: Record<string, string> = {};
+  if (rawBinaries !== undefined) {
+    if (typeof rawBinaries !== 'object' || rawBinaries === null || Array.isArray(rawBinaries)) {
+      return { outcome: 'unreachable', status: null, detail: 'the bundle binaryFiles could not be read' };
+    }
+    for (const [path, encoded] of Object.entries(rawBinaries as Record<string, unknown>)) {
+      if (!isSafeBundleEntry(path)) {
+        return {
+          outcome: 'unreachable',
+          status: null,
+          detail: `the bundle contains an entry that is not a relative path: ${path}`
+        };
+      }
+      if (typeof encoded !== 'string') {
+        return { outcome: 'unreachable', status: null, detail: `the bundle entry ${path} is not base64` };
+      }
+      // 🔴 A PATH IN BOTH MAPS IS REFUSED HERE TOO, and not only by `0023`'s constraint. What
+      // lands on disk would otherwise be decided by whichever loop the installer ran last —
+      // a file whose contents nobody chose. ⚠️ Checked on THIS side because this is the side
+      // holding the directory.
+      if (Object.prototype.hasOwnProperty.call(out, path)) {
+        return {
+          outcome: 'unreachable',
+          status: null,
+          detail: `the bundle carries ${path} as both text and binary`
+        };
+      }
+      binaries[path] = encoded;
+    }
+  }
+
   return {
     outcome: 'ok',
     value: {
@@ -197,7 +258,8 @@ export function readBundlePayload(item: unknown): Read<BundlePayload> {
       title: typeof row.title === 'string' ? row.title : row.slug,
       version: typeof row.version === 'number' ? row.version : 1,
       updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : '',
-      files: out
+      files: out,
+      binaryFiles: binaries
     }
   };
 }
@@ -1998,6 +2060,12 @@ export class CommunityApiClient {
     category: string;
     attestedLicence: string;
     files: Record<string, string>;
+    /**
+     * The binaries, base64'd (`0023`). ⚠️ Optional on the wire and omitted when empty — the route
+     * treats `undefined` and `{}` as the same submission, and sending `{}` on every share would
+     * put a key in the body for no reason.
+     */
+    binaryFiles?: Record<string, string>;
   }): Promise<Write<{ submissionId: string; status: string }>> {
     return this.post<{ submissionId: string; status: string }>(
       '/api/v1/community/templates/submissions',

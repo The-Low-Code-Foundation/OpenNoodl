@@ -1087,6 +1087,140 @@ every FB-005 platform commit, plus FB-001, FB-002, FB-003, FB-010, FB-011, FB-02
 exists only on this laptop. Not blocking and not deploy-related, but it is the same shape as the
 finding that produced the stamp in the first place: **a fact that lives in exactly one place.**
 
+## 4f. ✅ The binary transport, session 49 — **a template carries its own font, and a false positive went with it**
+
+**Queue item 2**, taken because item 1 needs Richard. §4e ended by naming this as *"the transport's
+limit, and it is the next task, not this one"*, and `0020`'s header had already written the exit
+condition three sessions earlier: *"what it cannot carry is its own photography or brand font, and
+that is the day this becomes base64 (⚠️ +33% against the cap) or E7's object store."*
+
+### 🔴 The measurement first, because it decided the design and it moved a number
+
+Run over **77 real projects** on this machine — every directory under `NodeGX test projects` and
+`project-examples` that has a manifest — through the **real** `isNeverShared`, not a restatement of
+it. ⚠️ **The denominator is not §4e's 25.** That corpus was the editor's recent-projects list, which
+has changed since; this one is the disk. The two are not comparable and the figures below are not
+a correction of that table.
+
+| | count |
+|---|---|
+| projects with a manifest | **77** |
+| still refused by the text-only transport (after `RESTORED_ON_INSTALL`) | **11** |
+| refused for SIZE, before or after | **0** |
+| **over the 8 MiB cap once every binary is base64'd** | **0** |
+
+The blocking files were **19 `.ttf`** the author had dropped into `fonts/` (Roboto, Inter) and
+**4 `.png`** under `assets/` — exactly the residue §4e predicted, and content nothing can restore.
+
+🔴 **And the `+33%` `0020` warned about is not the problem it might have been.** With every binary
+encoded, the **largest of the 77 projects comes to 1,445,478 bytes against a cap of 8,388,608** —
+17% of the limit. ✅ **So the cap is untouched.** Raising a limit on the strength of a hypothesis is
+how a limit stops meaning anything, and there is no project on this machine that needs it raised.
+
+### The design, and the one alternative that had to be refused
+
+**Two maps: `payload = { files, binaryFiles }`,** the second being path → base64.
+
+🔴 **NOT a sentinel inside the value** (`"base64:iVBOR…"`), and the reason is not taste. `files`
+holds a builder's **source code**, and a source file whose first line is `base64:` is a file a
+person can write — a sentinel would let a text file **forge** a binary and arrive on a stranger's
+disk as decoded rubbish. Two maps make the discriminant the **key set**, which no file's contents
+can influence.
+
+✅ **Inside `payload` rather than in a new column**, which bought two properties for free:
+`promoteTemplateSubmission` copies `payload` onto the shelf unchanged, and `pg_column_size(payload)`
+already counts the new bytes — so the 8 MiB cap and the route's matching wire cap both keep working
+with no second number to hold in step.
+
+⚠️ **`0020`'s `project_template_files_are_text` is untouched and still true.** That constraint is
+what `stageBundleFiles` depends on — it calls `writeFile(path, contents)` with no branch for a
+non-string. Weakening it to admit a tagged union would have made every existing reader responsible
+for a case it has never seen. A client that never learns about `binaryFiles` behaves exactly as it
+did.
+
+### 🔴 The classifier got STRICTLY better, and it fixed a false positive nobody had noticed
+
+The editor's walk used to read through `filesystem.readFile`, which decodes to UTF-16 before the
+module sees anything — so it had to test for a NUL **or a U+FFFD**, the second tell being necessary
+precisely *because* the decode had already happened.
+
+It now reads `readBinaryFile` and asks the question directly: **encode the decoded string back and
+compare the bytes.** ⚠️ **That retires a real false positive.** A source file that genuinely
+contains U+FFFD — a Markdown note quoting a mojibake bug — round-trips perfectly, so it is text.
+Under the old rule it was classified as a binary, and a binary **refused the entire share**.
+
+⚠️ The same upgrade landed on the platform's `readBundleDirectory`, which had the opposite bug of
+the same family: a latin-1 `.txt` or a JPEG with no NUL byte passed the NUL scan and was stored as
+a string `toString('utf8')` had already replaced bytes in — publishing without error and installing
+**corrupted**.
+
+### What shipped
+
+**Platform (`nodegx-community`), all new:**
+
+- **`0023_fb005_binary_template_files.sql`** — **eight** CHECK constraints, four per table, no new
+  column: values are strings, values are base64-**shaped**, no key in both maps, and `binaryFiles`
+  is an object when present. ⚠️ **Every one of them PASSES on a missing key**, because
+  `alter table … add constraint` validates the rows already on the shelf and one that required the
+  key could not have been added at all.
+- ✅ `readBundleDirectory` **sorts rather than throws**; `publish-tutorial-bundle.ts` keeps the old
+  refusal **in the same words**, because a lesson bundle's transport is `0017`'s and its staging
+  writer still has no decode branch.
+- Path safety, base64 shape and disjointness are checked in the **module** as well, so a publisher
+  holding a 200-file project is told **which file** — a constraint fires with a name and no idea
+  which entry broke it.
+- `fileCount` and the detail route's `paths` now describe the **whole** project. A card reading
+  "40 files" for a project holding 40 sources and 2 fonts is a number that disagrees with the
+  folder the installer gets.
+
+**Editor (`OpenNoodl`):**
+
+- `collectTemplateFiles` sorts into two maps; **`TemplateReadFs.readFile` became `readBinaryFile`**
+  — the swap *is* the transport. ✅ `FileSystemElectron extends FileSystemNode`, so nothing new was
+  required of the platform.
+- ❌ **The `binaries` outcome is DELETED from `ShareAsTemplateOutcome`**, not left unreachable, and
+  the dialog sentence *"Templates cannot carry images yet"* went with it. A dead arm in a union is
+  an arm somebody writes a message for, and that message would describe a limit that no longer
+  exists. A spec now asserts **no arm anywhere** still says it.
+- `PlatformTemplateProvider.install` decodes and writes bytes, in a **second loop** rather than a
+  branch — a merged iteration would need a predicate to tell the maps apart, which is the sentinel
+  design again.
+- 🔴 **`readBundlePayload` runs the SAME gate over the new map** — path safety, string-ness, and a
+  path in both maps. `isSafeBundleEntry`'s own comment is why: *"a validator on the far side of a
+  wire is a claim about a server, not a gate on a disk."* **A second map added to the payload and
+  not to that loop is exactly a gate with a hole shaped like the new feature.**
+
+### 🔴 Three findings worth carrying out of this task
+
+1. **`->` and `||` share a precedence class in postgres and associate LEFT.** The disjointness
+   constraint was written `payload -> 'files' || payload -> 'binaryFiles'` and parsed as
+   `((payload -> 'files') || payload) -> 'binaryFiles'`, which evaluates to `{}` for every real
+   payload — a merged count of 0 against a sum of N, **refusing every insert**. 42 specs went red
+   on rows with no binaries in them at all. ✅ **The negative control is what pins it**: a spec that
+   only asserted *"an overlapping payload is refused"* is green while the constraint refuses
+   everything.
+2. **A backtick inside a SQL comment inside a JS template literal ends the string.** `0020`'s
+   author left the warning in the file (*"it cost one syntax error to learn"*) and it cost a second
+   one anyway — three of the new SQL comments used `` `0023` `` and produced *"Octal literals are
+   not allowed"*. The lesson survived; reading it before writing did not.
+3. ⚠️ **The exclusion list's JUSTIFICATION changed even though the list did not.**
+   `RESTORED_ON_INSTALL` used to be the fix for a refusal; those fonts would now travel fine. It is
+   now about not shipping a third of a megabyte of base64 that `installStarterAssets` writes out of
+   the app bundle for free. 🔴 **And the failure mode of a stray `.DS_Store` moved from *refuses the
+   share* to *uploads to a public shelf*** — the same rule, a worse consequence, which is a reason
+   to keep measuring it rather than to relax.
+
+### ⚠️ What this deliberately does NOT include
+
+- **A deploy.** The migration and routes are committed and **not live**; production is `27be4d1`.
+  🔴 *Deployed is not committed*, and §4e records the direction that is easy to miss. Nothing on
+  the shelf needs `0023` yet — it holds zero rows — so this is a queued deploy, not a broken one.
+- **Raising the 8 MiB cap.** Measured as unnecessary; see above.
+- **An object store (E7).** base64 is the branch `0020` named as cheap and reversible, and the
+  measurement says it is sufficient for every project on this machine.
+- **A binary in a LESSON bundle.** `publish-tutorial-bundle.ts` still refuses one. The decoder was
+  built for templates because a need was measured there; neither half of that is true for tutorials.
+
 ## 5. What is still Richard's to rule — narrowed by the sweep
 
 Two of the task file's four questions are now answered by precedent rather than by decision:

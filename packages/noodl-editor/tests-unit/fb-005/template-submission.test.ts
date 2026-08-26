@@ -47,8 +47,14 @@ import {
 // A fake project on a fake disk.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Paths → contents. Directories are inferred from the keys, as a real walk would find them. */
-function fakeFs(tree: Record<string, string>): TemplateReadFs {
+/**
+ * Paths → contents. Directories are inferred from the keys, as a real walk would find them.
+ *
+ * ⚠️ **A VALUE MAY BE A `Buffer` (`0023`).** The walk reads bytes now, so a fixture that could
+ * only hold a string could not express the case the binary transport exists for: a PNG whose
+ * bytes are not valid UTF-8. A string value is encoded as UTF-8, which is what a text file is.
+ */
+function fakeFs(tree: Record<string, string | Buffer>): TemplateReadFs {
   return {
     async listDirectory(path: string) {
       const prefix = path === '/p' ? '' : `${path.slice('/p/'.length)}/`;
@@ -78,13 +84,22 @@ function fakeFs(tree: Record<string, string>): TemplateReadFs {
         }))
       ];
     },
-    async readFile(path: string) {
+    async readBinaryFile(path: string) {
       const key = path.slice('/p/'.length);
       if (!(key in tree)) throw new Error(`no such file ${path}`);
-      return tree[key];
+      const value = tree[key];
+      return Buffer.isBuffer(value) ? value : Buffer.from(value, 'utf8');
     }
   };
 }
+
+/**
+ * 🔴 **A REAL PNG HEADER, NOT A STRING OF LETTERS.** The property under test is that BYTES
+ * survive the trip, and a fixture made of printable ASCII would survive a transport that decoded
+ * to UTF-8 and back — the exact failure the two maps exist to prevent. These eight bytes are a
+ * PNG's signature, and they include a NUL plus two (`0x89`, `0x1a`) that are not valid UTF-8.
+ */
+const PNG_BYTES = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 const PROJECT = {
   'nodegx.project.json': '{"name":"A pricing page"}',
@@ -241,11 +256,14 @@ describe('🔴 what does NOT leave the machine', () => {
       'components/.DS_Store': 'Finder\u0000junk',
       'components/Home.json': '{"name":"Home"}'
     });
-    const { files, excluded, binaries } = await collectTemplateFiles(fs, '/p');
+    const { files, binaryFiles, excluded } = await collectTemplateFiles(fs, '/p');
     expect(Object.keys(files)).toContain('components/Home.json');
     expect(excluded).toContain('components/.DS_Store');
-    // ⚠️ The point of the fix: it is WITHHELD, not classified as a binary that refuses the share.
-    expect(binaries).toEqual([]);
+    // ⚠️ The point of the fix: it is WITHHELD, not sorted into the payload. 🔴 The stakes changed
+    // with `0023` and the assertion is worth MORE now, not less: before, a stray `.DS_Store`
+    // refused the share loudly; now it would be UPLOADED, as base64, to a public shelf. A rule
+    // whose failure mode moved from "refuses" to "publishes" is a rule to keep measuring.
+    expect(binaryFiles).toEqual({});
   });
 
   it('an exact-path rule stays exact — .mcp.json elsewhere is not silently withheld', () => {
@@ -302,7 +320,7 @@ describe('🔴 what does NOT leave the machine', () => {
       'noodl_modules/lucide-icons/lucide.woff2': 'font\u0000bytes',
       'components/Home.json': '{"name":"Home"}'
     });
-    const { files, excluded, binaries } = await collectTemplateFiles(fs, '/p');
+    const { files, binaryFiles, excluded } = await collectTemplateFiles(fs, '/p');
 
     // Beside a file that IS collected from the same walk — otherwise this is an absence check on
     // a population the walk never reached.
@@ -316,9 +334,13 @@ describe('🔴 what does NOT leave the machine', () => {
     expect(excluded).toContain('noodl_modules/lucide-icons');
     expect(Object.keys(files).some((f) => f.startsWith('noodl_modules/'))).toBe(false);
 
-    // 🔴 THE POINT: the fonts no longer refuse the share. Measured over 25 real projects, 42 of
-    // the 46 files blocking a share were exactly these.
-    expect(binaries).toEqual([]);
+    // 🔴 THE POINT, AND `0023` SHARPENED IT RATHER THAN RETIRING IT. Before the binary transport
+    // these fonts REFUSED the share — 42 of the 46 blocking files over 25 real projects. Now they
+    // would travel: nine weights of Inter and 1,998 Lucide glyphs, base64'd, in every template
+    // anybody shared, when `installStarterAssets` puts them back from the app bundle for free.
+    // The exclusion stopped being about a limit and became about not shipping half a megabyte
+    // that the installer already has.
+    expect(binaryFiles).toEqual({});
 
     // And the sentence tells the author the omission is undone rather than just naming it.
     expect(whyNeverShared('noodl_modules/inter')).toMatch(/added back automatically/i);
@@ -350,10 +372,13 @@ describe('🔴 what does NOT leave the machine', () => {
 
 // ═════════════════════════════════════════════════════════════════════════════
 describe('refusals arrive before the upload, in the order a person can act on', () => {
-  it('🔴 says "no manifest" before it says "too many binaries" — the wrong folder is the likelier mistake', async () => {
-    // Somebody who picked their Downloads folder should be told they picked the wrong folder, not
-    // that their holiday photos cannot travel. Both are true; only one is useful.
-    const fs = fakeFs({ 'photo.png': 'not\uFFFDtext', 'notes.txt': 'hello' });
+  it('🔴 says "no manifest" for a folder of photographs — the wrong folder is the likelier mistake', async () => {
+    // Somebody who picked their Downloads folder should be told they picked the wrong folder.
+    // ⚠️ **THE COMPETING SENTENCE CHANGED WITH `0023` AND THE ORDER STILL HOLDS.** This used to
+    // read "no manifest" before "too many binaries"; there is no binaries refusal any more, so
+    // what it now guards is that a folder whose only text file is `notes.txt` is refused for the
+    // reason that helps, rather than uploaded as a template made of holiday photos.
+    const fs = fakeFs({ 'photo.png': PNG_BYTES, 'notes.txt': 'hello' });
     const result = await shareAsTemplate({ fs, sink: sink() }, META);
     expect(result.outcome).toBe('no-manifest');
 
@@ -369,24 +394,51 @@ describe('refusals arrive before the upload, in the order a person can act on', 
     ]);
   });
 
-  it('refuses a project with binaries, naming them', async () => {
-    const fs = fakeFs({ ...PROJECT, 'assets/logo.png': 'PNG\uFFFD\uFFFDIHDR' });
-    const result = await shareAsTemplate({ fs, sink: sink() }, META);
-    expect(result.outcome).toBe('binaries');
-    expect((result as Extract<ShareAsTemplateOutcome, { outcome: 'binaries' }>).paths).toEqual([
-      'assets/logo.png'
-    ]);
+  it('🔴 CARRIES a project with a real PNG in it, as base64, and the BYTES survive', async () => {
+    // 🔴 **THIS SPEC REPLACES ITS OWN OPPOSITE.** It used to read *"refuses a project with
+    // binaries, naming them"*, and the measurement that ended it is in the module header: over
+    // the 77 real projects on this machine, eleven were refused after the starter-module
+    // exclusion, and the residue was 19 `.ttf` in `fonts/` and 4 `.png` in `assets/` — the
+    // author's own content, which nothing can restore.
+    const record = sink();
+    const fs = fakeFs({ ...PROJECT, 'assets/logo.png': PNG_BYTES });
+    const result = await shareAsTemplate({ fs, sink: record }, META);
+    expect(result.outcome).toBe('submitted');
+
+    // ⚠️ **THE ASSERTION IS THE DECODE, NOT THE PRESENCE.** A transport that base64'd the UTF-8
+    // *decoding* of these bytes would put a string here too — and it would be the wrong string,
+    // which is the whole failure `0023` exists to prevent. The two bytes this fixture was chosen
+    // for (`0x89` and `0x1a`) are exactly the ones that would not survive.
+    expect(Buffer.from(record.sent[0].binaryFiles!['assets/logo.png'], 'base64')).toEqual(PNG_BYTES);
+
+    // And it is NOT in the text map. Two maps, one path each.
+    expect(record.sent[0].files['assets/logo.png']).toBeUndefined();
+    expect(record.sent[0].files['nodegx.project.json']).toBe(PROJECT['nodegx.project.json']);
   });
 
-  it('detects a NUL as well as a replacement character', async () => {
-    // 🔴 The platform tests bytes; this side has already decoded to UTF-16, so the byte-level test
-    // ALONE would pass binaries through to a 400 naming a rule about jsonb. Both tells are needed.
-    const nul = fakeFs({ ...PROJECT, 'assets/a.bin': 'head\u0000tail' });
-    expect((await shareAsTemplate({ fs: nul, sink: sink() }, META)).outcome).toBe('binaries');
+  it('🔴 a NUL is binary, and a REPLACEMENT CHARACTER in a source file no longer is', async () => {
+    const nul = fakeFs({ ...PROJECT, 'assets/a.bin': Buffer.from([0x68, 0x00, 0x74]) });
+    const record = sink();
+    expect((await shareAsTemplate({ fs: nul, sink: record }, META)).outcome).toBe('submitted');
+    expect(Object.keys(record.sent[0].binaryFiles ?? {})).toEqual(['assets/a.bin']);
+
+    // 🔴 **A FALSE POSITIVE THE OLD TEST COULD NOT AVOID, NOW FIXED, AND ASSERTED AS THE FIX.**
+    // The previous classifier worked on a decoded string and had to treat U+FFFD as a binary
+    // tell, because decoding a PNG produces one. A Markdown file that quotes a mojibake bug
+    // contains a real U+FFFD, round-trips through UTF-8 perfectly, and was being classified as a
+    // binary — which, before `0023`, refused the whole share.
+    const mojibake = sink();
+    const withFffd = fakeFs({ ...PROJECT, 'docs/bug.md': 'the header rendered as \uFFFD\uFFFD' });
+    expect((await shareAsTemplate({ fs: withFffd, sink: mojibake }, META)).outcome).toBe('submitted');
+    expect(mojibake.sent[0].files['docs/bug.md']).toContain('\uFFFD');
+    expect(mojibake.sent[0].binaryFiles ?? {}).toEqual({});
+
     // ⚠️ THE CONTROL — ordinary text with unusual characters in it is NOT a binary. Without this
-    // the detector could be `() => true` and the case above still passes.
+    // the classifier could be `() => false` and both cases above still pass.
+    const record2 = sink();
     const text = fakeFs({ ...PROJECT, 'docs/notes.md': '# Héllo — ünicode, emoji 🎉, tabs\tand all' });
-    expect((await shareAsTemplate({ fs: text, sink: sink() }, META)).outcome).toBe('submitted');
+    expect((await shareAsTemplate({ fs: text, sink: record2 }, META)).outcome).toBe('submitted');
+    expect(record2.sent[0].binaryFiles ?? {}).toEqual({});
   });
 
   it('refuses an empty directory rather than filing an empty submission', async () => {
@@ -517,12 +569,30 @@ describe('reach — the caller-grep made executable', () => {
     expect(code).not.toContain('publishTemplate');
   });
 
-  it('the payload size is measured the way the route measures it', () => {
+  it('the payload size is measured the way the DATABASE measures it, and counts base64 as base64', () => {
     // Two copies of a number, agreeing about what they COUNT — bytes of the JSON body, not
     // characters. A cap measured in UTF-16 units is one a caller can exceed by a factor of four.
+    //
+    // 🔴 **THE SUBJECT MOVED WITH `0023` AND THE SPEC MOVED WITH IT.** It used to compare against
+    // `JSON.stringify(files)`; the thing `project_template_payload_size` actually caps is
+    // `payload`, which is `{ files, binaryFiles }`. ⚠️ Still an approximation of the ROUTE's cap,
+    // which counts the whole request body — five short strings more — and deliberately so: the
+    // two numbers are matched so a payload the API accepts is not one the database then refuses,
+    // and erring a few hundred bytes UNDER is the safe direction.
     const files = { 'a.json': '🎉'.repeat(10) };
-    expect(templatePayloadBytes(files)).toBe(
-      Buffer.byteLength(JSON.stringify(files), 'utf8')
+    expect(templatePayloadBytes(files)).toBe(Buffer.byteLength(JSON.stringify({ files }), 'utf8'));
+
+    // 🔴 A binary is counted as the base64 it TRAVELS as, not as its decoded size. `0020` warned
+    // that base64 costs +33% against the cap; a measurement that reported the decoded size would
+    // tell somebody they were at 6 MiB when the route was about to refuse them at 8.1.
+    const binaryFiles = { 'a.png': PNG_BYTES.toString('base64') };
+    expect(templatePayloadBytes(files, binaryFiles)).toBe(
+      Buffer.byteLength(JSON.stringify({ files, binaryFiles }), 'utf8')
     );
+    expect(templatePayloadBytes(files, binaryFiles)).toBeGreaterThan(templatePayloadBytes(files));
+
+    // ⚠️ And an EMPTY binary map costs nothing — an ordinary text-only share is byte-identical
+    // on the wire to what it was before this change.
+    expect(templatePayloadBytes(files, {})).toBe(templatePayloadBytes(files));
   });
 });

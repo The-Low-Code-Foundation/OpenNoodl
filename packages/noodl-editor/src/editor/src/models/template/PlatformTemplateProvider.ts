@@ -48,7 +48,13 @@ export interface TemplateWriteFs {
   join(...parts: string[]): string;
   dirname(path: string): string;
   makeDirectory(path: string): Promise<void>;
-  writeFile(path: string, contents: string): Promise<void>;
+  /**
+   * ⚠️ **`Buffer | string`, matching `IFileSystem.writeFile`'s own `FileBlob`.** The real
+   * implementation has always branched on the two (`typeof blob === 'string' ? Buffer.from(blob)
+   * : blob`); this interface simply stopped hiding half of it. A decoded font must reach disk as
+   * bytes, and a `Buffer` passed through a `string` parameter would be stringified.
+   */
+  writeFile(path: string, contents: Buffer | string): Promise<void>;
 }
 
 /** `community://hello` → `hello`, and `null` for anything this provider does not claim. */
@@ -185,6 +191,7 @@ export class PlatformTemplateProvider implements ITemplateProvider {
     }
 
     const files = read.value.files;
+    const binaryFiles = read.value.binaryFiles;
     const paths = Object.keys(files);
     if (paths.length === 0) {
       // `0020`'s `project_template_has_files` refuses this at publish. Checked again because an
@@ -201,6 +208,27 @@ export class PlatformTemplateProvider implements ITemplateProvider {
       // and idempotent, so this costs a stat per file rather than a branch that can be wrong.
       await fs.makeDirectory(fs.dirname(full));
       await fs.writeFile(full, files[path]);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // 🔴 **THE DECODE, AND IT IS THE ONLY PLACE A TEMPLATE'S BYTES COME BACK (`0023`).** The
+    // fonts and images the author owns travel as base64 because the transport is jsonb; this loop
+    // is what makes them files again.
+    //
+    // ⚠️ **A SECOND LOOP RATHER THAN A BRANCH INSIDE THE FIRST**, because the two maps are two
+    // sources and a merged iteration would need a predicate to tell them apart — which is exactly
+    // the sentinel-in-the-value design `0023` rejected. The order between them is free:
+    // `..._binary_files_disjoint` on the platform and `readBundlePayload` on this side both
+    // refuse a path that appears in both, so neither loop can overwrite the other's file.
+    //
+    // 🔴 **`Buffer.from(x, 'base64')` DOES NOT THROW ON RUBBISH — IT TRUNCATES.** That is why the
+    // shape is gated at publish (`..._binary_files_base64`) rather than caught here: by this
+    // point the only thing this code could do is write a short file, and there is nothing to
+    // compare it against.
+    for (const path of Object.keys(binaryFiles)) {
+      const full = fs.join(destination, path);
+      await fs.makeDirectory(fs.dirname(full));
+      await fs.writeFile(full, Buffer.from(binaryFiles[path], 'base64'));
     }
   }
 }

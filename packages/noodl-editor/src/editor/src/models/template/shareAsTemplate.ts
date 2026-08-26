@@ -108,14 +108,23 @@ export const NEVER_SHARED: readonly {
  * this automatically; removing one shrinks it, in the same commit.
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * 🔴 **What this does NOT cover, measured: a third-party module still refuses the share.** Over 25
- * real projects, 42 of the 46 files blocking a share were `.ttf`/`.woff2` under
- * `noodl_modules/inter` and `noodl_modules/lucide-icons` — which this fixes. A module somebody
- * installed from the library, or dropped in by hand, has **no record to restore from**
- * (`kit-provenance.json` has no `builtin` arm and is not written for starter assets, and nothing
- * in the product detects a missing module), so it travels — and if it is binary, the share is
- * refused. **That refusal is the honest one**: a transport that cannot carry it should say so
- * rather than quietly ship a template missing a third of itself.
+ * 🔴 **WHAT THIS LIST IS FOR CHANGED WHEN THE TRANSPORT LEARNED BASE64 (`0023`), AND IT IS WORTH
+ * BEING EXACT ABOUT.** It used to be the fix for a REFUSAL: over 25 real projects, 42 of the 46
+ * files blocking a share were `.ttf`/`.woff2` under `noodl_modules/inter` and
+ * `noodl_modules/lucide-icons`, and excluding them turned 13 shareable projects into 19. Those
+ * files would now travel perfectly well.
+ *
+ * ⚠️ So the justification is no longer *"they cannot be carried"* — it is *"they should not be"*.
+ * Nine weights of Inter and 1,998 Lucide glyphs is roughly a third of a megabyte of base64 in
+ * every template anybody shares, and `installStarterAssets` writes the identical bytes out of the
+ * app bundle at install time for free. 🔴 **The rule on this constant is unchanged and is what
+ * still makes it legitimate: a module may be here ONLY IF THE EDITOR CAN PUT IT BACK.**
+ *
+ * ⚠️ **A third-party module still travels, and now it travels WHOLE.** A kit somebody installed
+ * from the library or dropped in by hand has no record to restore from (`kit-provenance.json` has
+ * no `builtin` arm and is not written for starter assets, and nothing in the product detects a
+ * missing module) — so it is part of the template, binaries and all. That used to refuse the
+ * share; it is now simply included, which is what the author meant by putting it there.
  */
 export const RESTORED_ON_INSTALL: readonly string[] = Array.from(
   new Set(
@@ -194,38 +203,63 @@ export const SHAREABLE_LICENCES = [
   { value: 'other', label: 'Something else — I wrote it and I will agree terms with you' }
 ] as const;
 
-/** The half of `@noodl/platform`'s filesystem this module reads. Narrow, so a spec can supply it. */
+/**
+ * The half of `@noodl/platform`'s filesystem this module reads. Narrow, so a spec can supply it.
+ *
+ * 🔴 **`readBinaryFile` REPLACED `readFile`, AND THE SWAP IS THE WHOLE OF THE BINARY TRANSPORT.**
+ * `readFile` decodes to UTF-16 before this module sees anything, which throws away the one fact
+ * the walk now needs: the bytes. A version that kept both and called `readFile` first would be
+ * deciding *"is this text?"* from a string that had already been damaged in the answering.
+ *
+ * ⚠️ `FileSystemElectron extends FileSystemNode`, so the real filesystem has had this method all
+ * along — nothing new is required of the platform.
+ */
 export interface TemplateReadFs {
   listDirectory(path: string): Promise<{ name: string; fullPath: string; isDirectory: boolean }[]>;
-  readFile(path: string): Promise<string>;
+  readBinaryFile(path: string): Promise<Buffer>;
 }
 
 export type CollectedTemplate = {
+  /** Files that survive a UTF-8 round trip, as themselves. */
   files: Record<string, string>;
+  /**
+   * Everything else, base64'd — the fonts and images a project owns.
+   *
+   * 🔴 **A SECOND MAP RATHER THAN A TAGGED VALUE INSIDE `files`.** A sentinel prefix would make a
+   * value's meaning depend on its own contents, and `files` holds a builder's SOURCE CODE — a
+   * file whose first line reads `base64:` is a file somebody can write. The key set is a
+   * discriminant no file's contents can influence.
+   */
+  binaryFiles: Record<string, string>;
   /** Withheld by `NEVER_SHARED`, reported rather than dropped silently. */
   excluded: string[];
-  /** Not text, so this transport cannot carry them. See `binaryPaths` on the refusal. */
-  binaries: string[];
 };
 
 /**
- * 🔴 A NUL **or** a replacement character.
+ * Does this file survive being stored as a UTF-8 string and read back?
  *
- * The platform's `readBundleDirectory` tests for a NUL byte in a `Buffer`, which is the reliable
- * tell. This side reads through `filesystem.readFile`, which has already decoded to UTF-16 — and
- * decoding a PNG does not necessarily preserve a NUL, it produces U+FFFD where the bytes were not
- * valid UTF-8. **So the byte-level test alone would pass binaries through to a 400 from the
- * platform**, which is a refusal the person cannot act on because it names a rule about jsonb.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🔴 **A LOSSLESS ROUND TRIP, WHICH IS A STRICTLY BETTER TEST THAN THE TWO IT REPLACES.** The
+ * previous version worked on a decoded string and asked whether it contained a NUL or a U+FFFD —
+ * the second tell being necessary precisely BECAUSE the decode had already happened and a PNG's
+ * bytes do not survive it. Now the walk holds the `Buffer`, so it can ask the question directly:
+ * encode the decoded string back and compare the bytes.
  *
- * ⚠️ The cost is a false positive on a text file that genuinely contains U+FFFD, which is a
- * character that means "something was already corrupted here". Refusing to publish that file is
- * the right answer anyway.
+ * ⚠️ **AND IT FIXES A FALSE POSITIVE THE OLD TEST COULD NOT AVOID.** A source file that genuinely
+ * contains U+FFFD — a comment quoting a mojibake bug, say — was classified as a binary and, in the
+ * old world, refused the entire share. It round-trips perfectly, so it is text, and it now travels
+ * as itself.
+ *
+ * ⚠️ **The NUL scan stays in front as a fast path**, and because it is the rule `0020`'s SQL and
+ * the platform's walk both state in as many words.
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
-function looksBinary(contents: string): boolean {
-  // ⚠️ Written as ESCAPES, not as the characters themselves. A literal NUL in a source file
-  // makes `grep` treat the whole file as binary and skip it silently — a trap this repo has
+function survivesUtf8(contents: Buffer): boolean {
+  // ⚠️ `indexOf(0)`, not a literal NUL character anywhere in this file. A literal NUL in a source
+  // file makes `grep` treat the whole file as binary and skip it silently — a trap this repo has
   // already recorded — so the one module that reasons about NULs must not contain one.
-  return contents.includes('\u0000') || contents.includes('\uFFFD');
+  if (contents.indexOf(0) !== -1) return false;
+  return Buffer.compare(Buffer.from(contents.toString('utf8'), 'utf8'), contents) === 0;
 }
 
 /**
@@ -242,8 +276,8 @@ export async function collectTemplateFiles(
   projectDir: string,
 ): Promise<CollectedTemplate> {
   const files: Record<string, string> = {};
+  const binaryFiles: Record<string, string> = {};
   const excluded: string[] = [];
-  const binaries: string[] = [];
 
   const walk = async (dir: string, prefix: string): Promise<void> => {
     const entries = await fs.listDirectory(dir);
@@ -261,17 +295,22 @@ export async function collectTemplateFiles(
         await walk(entry.fullPath, rel);
         continue;
       }
-      const contents = await fs.readFile(entry.fullPath);
-      if (looksBinary(contents)) {
-        binaries.push(rel);
-        continue;
+      const contents = await fs.readBinaryFile(entry.fullPath);
+      // 🔴 **SORTED, NOT REFUSED.** This branch used to push the path onto a list that failed the
+      // whole share. Measured over the 77 real projects on this machine, that refused ELEVEN of
+      // them, and the residue after the starter-module exclusion was 19 `.ttf` the author had
+      // dropped into `fonts/` and 4 `.png` under `assets/` — content nothing can restore, so the
+      // choice was carry it or refuse the project.
+      if (survivesUtf8(contents)) {
+        files[rel] = contents.toString('utf8');
+      } else {
+        binaryFiles[rel] = contents.toString('base64');
       }
-      files[rel] = contents;
     }
   };
 
   await walk(projectDir, '');
-  return { files, excluded, binaries };
+  return { files, binaryFiles, excluded };
 }
 
 /**
@@ -298,10 +337,27 @@ export function hasProjectManifest(files: Record<string, string>): boolean {
  */
 export const MAX_TEMPLATE_BYTES = 8 * 1024 * 1024;
 
-export function templatePayloadBytes(files: Record<string, string>): number {
-  // `Buffer` is available in this renderer (`nodeIntegration: true`), but a spec should not need
-  // it — and `TextEncoder` is what both environments agree on.
-  return new TextEncoder().encode(JSON.stringify(files)).length;
+/**
+ * Bytes of the JSON body, **counting both maps**.
+ *
+ * 🔴 **THE BASE64 IS COUNTED AS BASE64, WHICH IS THE ONLY HONEST WAY TO COUNT IT.** A binary
+ * inflates by a third on the wire, and measuring the decoded size would tell somebody they were
+ * at 6 MiB of an 8 MiB limit when the route was about to refuse them at 8.1.
+ *
+ * ⚠️ **AND THE LIMIT IS UNCHANGED, AGAINST A MEASUREMENT RATHER THAN AN ASSUMPTION.** `0020`
+ * warned that base64 costs +33% against the cap. Over the 77 real projects on this machine, every
+ * binary encoded, the LARGEST came to 1,445,478 bytes — 17% of the cap. Raising a limit on the
+ * strength of a hypothesis is how a limit stops meaning anything.
+ */
+export function templatePayloadBytes(
+  files: Record<string, string>,
+  binaryFiles: Record<string, string> = {},
+): number {
+  // `Buffer` is available in this renderer (`nodeIntegration: true`), and the walk above now
+  // depends on it — but `TextEncoder` is still what measures the wire, because the wire is UTF-8
+  // JSON and that is what both environments agree on.
+  const body = Object.keys(binaryFiles).length > 0 ? { files, binaryFiles } : { files };
+  return new TextEncoder().encode(JSON.stringify(body)).length;
 }
 
 /**
@@ -318,7 +374,12 @@ export function templatePayloadBytes(files: Record<string, string>): number {
 export type ShareAsTemplateOutcome =
   | { outcome: 'submitted'; submissionId: string; excluded: string[] }
   | { outcome: 'no-manifest'; looked: string[] }
-  | { outcome: 'binaries'; paths: string[] }
+  /**
+   * ❌ **`binaries` IS GONE, AND THE DELETION IS THE FEATURE.** It meant *"this project contains a
+   * file this transport cannot carry"*, and the transport now carries it. ⚠️ Removing the member
+   * rather than leaving it unreachable is deliberate: a dead arm in a union is an arm somebody
+   * writes a message for, and the message would describe a limit that no longer exists.
+   */
   | { outcome: 'too-big'; bytes: number; limit: number }
   | { outcome: 'empty' }
   /** No credential, or an expired one. An ordinary fact and the caller's own fix. */
@@ -338,6 +399,7 @@ export interface TemplateSubmissionSink {
     category: string;
     attestedLicence: string;
     files: Record<string, string>;
+    binaryFiles?: Record<string, string>;
   }): Promise<
     | { outcome: 'ok'; value: { submissionId: string; status: string } }
     | { outcome: 'unauthenticated' }
@@ -366,13 +428,16 @@ export async function shareAsTemplate(
     attestedLicence: string;
   },
 ): Promise<ShareAsTemplateOutcome> {
-  const { files, excluded, binaries } = await collectTemplateFiles(deps.fs, input.projectDir);
+  const { files, binaryFiles, excluded } = await collectTemplateFiles(deps.fs, input.projectDir);
 
+  // ⚠️ **`files` ALONE FOR BOTH OF THESE, AND THAT IS NOT AN OVERSIGHT.** A folder holding nothing
+  // but images is not a project somebody meant to share, and the manifest this looks for is a
+  // JSON file — which is text by construction. A project whose only entries were binaries would
+  // fail the manifest check next, with the sentence about the wrong folder that it should get.
   if (Object.keys(files).length === 0) return { outcome: 'empty' };
   if (!hasProjectManifest(files)) return { outcome: 'no-manifest', looked: MANIFESTS };
-  if (binaries.length > 0) return { outcome: 'binaries', paths: binaries };
 
-  const bytes = templatePayloadBytes(files);
+  const bytes = templatePayloadBytes(files, binaryFiles);
   if (bytes > MAX_TEMPLATE_BYTES) {
     return { outcome: 'too-big', bytes, limit: MAX_TEMPLATE_BYTES };
   }
@@ -384,6 +449,9 @@ export async function shareAsTemplate(
     category: input.category,
     attestedLicence: input.attestedLicence,
     files,
+    // ⚠️ Omitted when there are none, matching what the route treats as the same submission. It
+    // also keeps an ordinary text-only share byte-identical on the wire to what it was before.
+    ...(Object.keys(binaryFiles).length > 0 ? { binaryFiles } : {}),
   });
 
   switch (result.outcome) {

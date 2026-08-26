@@ -282,7 +282,10 @@ describe('FB-005 T5 — why the send button is off', () => {
 const EVERY_OUTCOME: ShareAsTemplateOutcome[] = [
   { outcome: 'submitted', submissionId: 's1', excluded: [] },
   { outcome: 'no-manifest', looked: ['nodegx.project.json'] },
-  { outcome: 'binaries', paths: ['assets/logo.png'] },
+  // ❌ `binaries` was here. `0023` gave the transport a base64 map, so a project with a PNG in it
+  // is shared rather than refused, and the arm was DELETED from the union rather than left
+  // unreachable — see `ShareAsTemplateOutcome`. This list is what makes that deletion visible:
+  // it is exhaustively typed, so an arm removed here and left in the union reddens §4.
   { outcome: 'too-big', bytes: MAX_TEMPLATE_BYTES + 1, limit: MAX_TEMPLATE_BYTES },
   { outcome: 'empty' },
   { outcome: 'unauthenticated' },
@@ -376,17 +379,20 @@ describe('FB-005 T5 — describeShareOutcome', () => {
     expect(sentence.detail).toMatch(/can be because/i);
   });
 
-  it('binaries names the LIMIT, not the files’ fault, and does not list two hundred paths', () => {
-    const many = Array.from({ length: 40 }, (_, i) => `assets/img-${i}.png`);
-    const sentence = describeShareOutcome({ outcome: 'binaries', paths: many });
-    expect(sentence.detail).toContain('40 files');
-    expect(sentence.detail).toContain('and others');
-    expect(sentence.detail).not.toContain('img-39.png');
-    // Singular agrees on BOTH halves — "1 files ... are not text" is how a sentence tells you
-    // nobody read it. The whole clause is asserted rather than a fragment of it.
-    const one = describeShareOutcome({ outcome: 'binaries', paths: ['assets/logo.png'] });
-    expect(one.detail).toContain('1 file in this project is not text');
-    expect(sentence.detail).toContain('40 files in this project are not text');
+  it('🔴 NO sentence anywhere still tells somebody that templates cannot carry images', () => {
+    // 🔴 **THIS SPEC REPLACES THE ONE THAT GRADED THAT SENTENCE'S GRAMMAR.** *"Templates cannot
+    // carry images yet"* was true, carefully worded, and is now false — and a false sentence in
+    // a dialog is worse than a missing one, because a person reads it as current and goes and
+    // deletes their logo. Asserted over EVERY arm rather than over the deleted one, because the
+    // failure mode is somebody re-adding the wording to a neighbouring message.
+    for (const outcome of EVERY_OUTCOME) {
+      const sentence = describeShareOutcome(outcome);
+      // ⚠️ No message argument: `expect(value, message)` is vitest's, and this runner is jest —
+      // a two-argument `expect` here fails the suite TO RUN. The outcome is put in the string
+      // instead, so a failure still names which arm broke.
+      const words = `${outcome.outcome}: ${sentence.headline} ${sentence.detail}`.toLowerCase();
+      expect(words).not.toMatch(/cannot carry image|is not text|are not text/);
+    }
   });
 
   it('every tone is one of the three the modal can draw', () => {

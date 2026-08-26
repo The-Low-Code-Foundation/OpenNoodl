@@ -231,17 +231,10 @@ export function describeShareOutcome(outcome: ShareAsTemplateOutcome): ShareSent
         withheld: []
       };
 
-    case 'binaries':
-      return {
-        tone: 'problem',
-        // ⚠️ Names the LIMIT rather than the files' fault. Templates carry text today
-        // (`stageBundleFiles` takes `Record<string, string>`) — the images are fine.
-        headline: 'Templates cannot carry images yet',
-        detail: `${outcome.paths.length} file${outcome.paths.length === 1 ? '' : 's'} in this project ${
-          outcome.paths.length === 1 ? 'is' : 'are'
-        } not text: ${outcome.paths.slice(0, 5).join(', ')}${outcome.paths.length > 5 ? ', and others' : ''}.`,
-        withheld: []
-      };
+    // ❌ `binaries` — *"Templates cannot carry images yet"* — HAS BEEN DELETED RATHER THAN LEFT
+    // UNREACHABLE. The transport carries them now (`0023`), so the sentence was about a limit
+    // that no longer exists, and a message for an outcome nothing can produce is a message
+    // somebody eventually reads as current.
 
     case 'too-big':
       return {

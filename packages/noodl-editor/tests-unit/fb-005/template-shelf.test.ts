@@ -179,7 +179,11 @@ function fakeSource(overrides: Partial<TemplateSource> = {}): TemplateSource {
 }
 
 function fakeFs() {
-  const written = new Map<string, string>();
+  // ⚠️ `Buffer | string`, matching what the real filesystem's `FileBlob` has always been. A fake
+  // that only recorded strings would stringify a decoded font and record `[object Object]`-ish
+  // nonsense that still satisfied a `toBeDefined` — so the fake has to be able to hold bytes for
+  // the assertion about bytes to mean anything.
+  const written = new Map<string, Buffer | string>();
   const directories: string[] = [];
   const fs: TemplateWriteFs = {
     join: (...parts: string[]) => parts.join('/'),
@@ -187,7 +191,7 @@ function fakeFs() {
     makeDirectory: async (path: string) => {
       directories.push(path);
     },
-    writeFile: async (path: string, contents: string) => {
+    writeFile: async (path: string, contents: Buffer | string) => {
       written.set(path, contents);
     }
   };
@@ -267,7 +271,8 @@ describe('PlatformTemplateProvider.install', () => {
       files: {
         'project.json': '{"name":"Starter"}',
         'components/Home.json': '{"id":"home"}'
-      }
+      },
+      binaryFiles: {}
     }
   };
 
@@ -334,7 +339,7 @@ describe('PlatformTemplateProvider.install', () => {
       fakeSource({
         templateBundle: async () => ({
           outcome: 'ok',
-          value: { slug: 's', title: 'S', version: 1, updatedAt: '', files: {} }
+          value: { slug: 's', title: 'S', version: 1, updatedAt: '', files: {}, binaryFiles: {} }
         })
       }),
       fs
@@ -686,6 +691,124 @@ describe('readBundlePayload — one copy, two shelves', () => {
   it('falls back to the slug when the platform sends no title', () => {
     const read = readBundlePayload({ slug: 's', files: { 'a.json': '{}' } });
     expect(read.outcome === 'ok' && read.value.title).toBe('s');
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // `binaryFiles` (`0023`) — the SAME gate, applied to the map that was added after it
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  it('⚠️ a bundle with no `binaryFiles` key reads as `{}` — every pre-0023 template, and every tutorial', () => {
+    const read = readBundlePayload({ slug: 's', files: { 'a.json': '{}' } });
+    // 🔴 `{}` rather than `undefined`, because the installer iterates it. This is the shape the
+    // whole existing shelf sends today, so getting it wrong takes the shelf offline on deploy.
+    expect(read.outcome === 'ok' && read.value.binaryFiles).toEqual({});
+  });
+
+  it('carries base64 through untouched', () => {
+    const read = readBundlePayload({ slug: 's', files: { 'a.json': '{}' }, binaryFiles: { 'a.png': 'iVBORw0=' } });
+    expect(read.outcome === 'ok' && read.value.binaryFiles).toEqual({ 'a.png': 'iVBORw0=' });
+  });
+
+  it('🔴 refuses a TRAVERSING path in the BINARY map — the hole shaped like the new feature', () => {
+    // 🔴 THE ONE THAT WOULD HAVE SHIPPED. `isSafeBundleEntry`'s own comment says why the
+    // platform's identical check is not enough: *"a validator on the far side of a wire is a
+    // claim about a server, not a gate on a disk"*. A second map added to the payload and not to
+    // this loop is exactly a gate with a hole shaped like the new feature — and these values are
+    // BYTES, written into a directory the user named on their own machine.
+    const read = readBundlePayload({
+      slug: 's',
+      files: { 'a.json': '{}' },
+      binaryFiles: { '../../.ssh/authorized_keys': 'AAAA' }
+    }) as Extract<Read<unknown>, { outcome: 'unreachable' }>;
+    expect(read.outcome).toBe('unreachable');
+    expect(read.detail).toContain('authorized_keys');
+  });
+
+  it('refuses a binary entry that is not a string, and a `binaryFiles` that is an array', () => {
+    expect(readBundlePayload({ slug: 's', files: { 'a.json': '{}' }, binaryFiles: { 'a.png': 5 } }).outcome).toBe(
+      'unreachable'
+    );
+    expect(readBundlePayload({ slug: 's', files: { 'a.json': '{}' }, binaryFiles: ['a.png'] }).outcome).toBe(
+      'unreachable'
+    );
+  });
+
+  it('🔴 refuses a path carried in BOTH maps — nothing would decide what lands on disk', () => {
+    // ⚠️ Checked on THIS side as well as by `..._binary_files_disjoint`, because this is the side
+    // holding the directory. Whichever loop the installer ran last would win, which is a file
+    // whose contents nobody chose.
+    const read = readBundlePayload({
+      slug: 's',
+      files: { 'a.png': 'text' },
+      binaryFiles: { 'a.png': 'AAAA' }
+    }) as Extract<Read<unknown>, { outcome: 'unreachable' }>;
+    expect(read.outcome).toBe('unreachable');
+    expect(read.detail).toContain('a.png');
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+describe('FB-005 — install writes a binary as BYTES (`0023`)', () => {
+  /** A PNG signature: a NUL, and two bytes that are not valid UTF-8 on their own. */
+  const PNG_BYTES = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+  /** The same shape as §5's fixture, declared here because that one is scoped to its describe. */
+  const textOnly = {
+    outcome: 'ok' as const,
+    value: {
+      slug: 'starter',
+      title: 'Starter',
+      version: 1,
+      updatedAt: '',
+      files: { 'project.json': '{"name":"Starter"}', 'components/Home.json': '{"id":"home"}' },
+      binaryFiles: {}
+    }
+  };
+
+  const withBinary = {
+    outcome: 'ok' as const,
+    value: {
+      slug: 'starter',
+      title: 'Starter',
+      version: 1,
+      updatedAt: '',
+      files: { 'project.json': '{"name":"Starter"}' },
+      binaryFiles: { 'assets/logo.png': PNG_BYTES.toString('base64') }
+    }
+  };
+
+  it('🔴 decodes the base64 and writes the ORIGINAL BYTES, not the string', async () => {
+    const { fs, written, directories } = fakeFs();
+    await providerWith(fakeSource({ templateBundle: async () => withBinary }), fs).install(
+      'community://starter',
+      '/projects/mine'
+    );
+
+    // 🔴 THE ASSERTION IS THE BUFFER COMPARISON. A provider that wrote `files[path]` for both
+    // maps would put the base64 STRING on disk — a valid file, the right length, and not a PNG.
+    // `toBe`-ing a string would have passed on exactly that defect.
+    expect(written.get('/projects/mine/assets/logo.png')).toEqual(PNG_BYTES);
+
+    // ⚠️ And the text half is written as text from the same install — otherwise this is a check
+    // on a population the walk never reached.
+    expect(written.get('/projects/mine/project.json')).toBe('{"name":"Starter"}');
+    // The nested parent is made for a binary entry too. Its own loop, its own `makeDirectory`.
+    expect(directories).toContain('/projects/mine/assets');
+  });
+
+  it('⚠️ a bundle with no binaries writes exactly what it always did', async () => {
+    // The negative control. Without it, the spec above is green on an installer that writes a
+    // `Buffer` for everything — which would corrupt every text file in every template.
+    const { fs, written } = fakeFs();
+    await providerWith(fakeSource({ templateBundle: async () => textOnly }), fs).install(
+      'community://starter',
+      '/projects/mine'
+    );
+    expect([...written.keys()].sort()).toEqual([
+      '/projects/mine/components/Home.json',
+      '/projects/mine/project.json'
+    ]);
+    expect(written.get('/projects/mine/project.json')).toBe('{"name":"Starter"}');
   });
 });
 

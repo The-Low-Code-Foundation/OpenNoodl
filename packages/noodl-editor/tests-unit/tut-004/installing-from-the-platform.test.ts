@@ -158,6 +158,8 @@ function bundlePayload(over: { manifest?: LessonManifest; withSolution?: boolean
     title: manifest.title ?? 'Put some text on the page',
     version: 1,
     updatedAt: '2026-08-20T10:00:00.000Z',
+    // ⚠️ `{}` — see `the-real-bundle-installs.test.ts`. A lesson bundle is text by construction.
+    binaryFiles: {},
     files: {
       'lesson.json': JSON.stringify(manifest),
       ...projectFiles('', EMPTY_PAGE),

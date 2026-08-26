@@ -100,7 +100,11 @@ beforeEach(() => {
       title: 'Log a thing',
       version: 1,
       updatedAt: '2026-08-20T12:00:00.000Z',
-      files: readDirectory(BUNDLE_DIR)
+      files: readDirectory(BUNDLE_DIR),
+      // ⚠️ `{}` — a LESSON bundle never carries binaries. `0023` gave the shared `BundlePayload`
+      // a second map for project templates, and `publish-tutorial-bundle.ts` still refuses a
+      // binary outright because TUT-004's staging writer has no decode branch.
+      binaryFiles: {}
     }
   });
   const source: PlatformSource = {
