@@ -1227,23 +1227,43 @@ Found while doing the **pre-flight** for queue item 1, not while looking for it.
 not run first and then inspected; the script was read, a claim in it looked too strong, and the
 host was queried before a byte moved.
 
-### The measurement
+### 🔴 THE MEASUREMENT WAS WRONG, AND THE DEPLOY IS WHAT CAUGHT IT
 
-| | |
-|---|---|
-| `HETZNER_S3_*` values set on nexus-1 | **5 of 5** |
-| the same keys in `~/nodegx-community-deploy.env` | **0 of 5** |
-| lines `ops/deploy.sh` writes into the app env file | **the whole file**, unconditionally |
+This section originally opened with *"the laptop carries 0 of 5"* and called the next deploy an
+imminent silent outage. **It was neither.** The corrected table:
 
-`ops/deploy.sh` rewrites `/etc/nodegx-community/nodegx-community.env` **whole**, so every line
-absent from the laptop is a line *erased* from the host. `DATABASE_URL` has always been read back
-off the host for exactly that reason. The five Hetzner keys were not.
+| | measured | actually |
+|---|---|---|
+| `HETZNER_S3_*` set on nexus-1 | 5 of 5 | ✅ 5 of 5 |
+| the same keys in `~/nodegx-community-deploy.env` | **0 of 5** | 🔴 **4 of 5** (the 5th is derived) |
 
-🔴 **So the next deploy from this laptop would have blanked all five.** Nothing would have
-errored: `objectStoreConfig()` trims and returns `null` on any blank, and its callers degrade to
-*"not hosted"* by design. Capture hosting would simply have been **off** after a deploy that
-printed green — the precise failure mode `src/lib/objectstore.ts` says out loud is unacceptable
-(*"What is NOT acceptable is being quiet about it"*).
+🔴 **The instrument was a regex.** The key names were read with `grep -oE '^[A-Z_]+='`, whose
+character class has **no digits in it** — and every `HETZNER_S3_*` key contains a `3`. The four
+keys it *did* report (`GITHUB_…`, `NOTIFICATION_…`, `BREVO_…`) are exactly the ones with no digit
+in their names, so the output looked like a complete and plausible file rather than a filtered one.
+
+⚠️ **Nothing detected this until the deploy printed `object store: using this laptop's
+HETZNER_S3_* keys`** — a readout added by the very change being justified. The fix's own
+instrumentation refuted the fix's own premise.
+
+✅ **Lesson, and it is the recorded one wearing new clothes: a bounded query reports its bound.**
+`^[A-Z_]+=` cannot match a digit and will never say so. The control that would have caught it in
+one line is asking the *complement* — `grep -v` for the lines the pattern did **not** match —
+which is the same shape as pairing an absence with a known-firing signal.
+
+### What is actually true
+
+The blanking is a **latent** hazard, not an observed one. `ops/deploy.sh` does rewrite the app env
+file **whole**, so a key absent from the laptop *is* erased from the host — and since the Hetzner
+keys are deliberately optional here, a laptop that lacks one is a reachable state. It simply is
+not *this* laptop today.
+
+`DATABASE_URL` has always been read back off the host precisely because the file is written
+whole. The five Hetzner keys were not, and **in the state where the laptop lacks one**, nothing
+would error: `objectStoreConfig()` trims and returns `null` on any blank and its callers degrade
+to *"not hosted"* by design, so capture hosting would stop after a deploy that printed green —
+the failure mode `src/lib/objectstore.ts` calls unacceptable (*"What is NOT acceptable is being
+quiet about it"*).
 
 ### ⚠️ The second-order hazard the shape of the fix exists to avoid
 
@@ -1272,9 +1292,13 @@ That intent is not being overruled casually. Two things narrow it:
    only, so *"write what the laptop has"* and *"keep what the host has"* give the **same answer**
    in every one of them. The new behaviour passes all three unchanged; it fills a gap rather than
    contradicting a rule.
-2. **Revocation-by-deletion was never a working mechanism for these keys.** They have never been
-   in the live secrets file, so nothing was lost that previously worked — whereas the data loss
-   was real and imminent.
+2. ⚠️ **The second reason originally given here was FALSE and is withdrawn.** It read
+   *"revocation-by-deletion was never a working mechanism for these keys, they have never been in
+   the live secrets file"* — which rested entirely on the broken regex above. They **are** in the
+   live secrets file, so deleting one there **is** a working revocation today, and this change
+   takes it away: the host's copy would win instead. The loud readout on every deploy is what
+   makes that survivable, not invisible — but it is a real trade, and it is 🔒 **Richard's to
+   confirm or reverse**, not settled here.
 
 ⚠️ And the deploy is **not quiet** about which side won: every run now prints `KEEPING the host's
 existing keys`, `using this laptop's HETZNER_S3_* keys`, or that both are unset.
@@ -1287,6 +1311,17 @@ passed. Known-good and known-broken **disagree**, so the spec has discriminating
 than merely being green. Two more pin the other half — the laptop must still **win** over the
 host, or rotating a key would be impossible — and the region derivation re-running *after* the
 fallback.
+
+### ✅ What the deploy itself then showed
+
+`ops/deploy.sh` ran clean at **2026-08-26T19:30:30Z**, stamping `6460e1a83f52` on `main`.
+Migration `0023_fb005_binary_template_files.sql` applied (22 already applied, 1 new). All three
+neighbours went `200 → 200`. Capture hosting verified live: *"bucket, endpoint and keys are in the
+app env"*. Off-site backup ✅ 19.5h old, restore check ✅ 2026-08-23.
+
+⚠️ **Production is behaviourally UNCHANGED by this fix today** — the laptop has the keys, so
+"laptop wins" produces byte-identical output to the old script. The change is inert until the
+state it guards actually occurs.
 
 ### ⚠️ What is NOT proven
 
