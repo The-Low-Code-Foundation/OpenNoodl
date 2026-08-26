@@ -638,13 +638,33 @@ export class WorkflowRunner {
     }
   }
 
-  hasFunction(functionName: string): boolean {
+  /**
+   * SB-003: a cloud *function* is a `/#__cloud__/` component whose graph holds a
+   * `noodl.cloud.request` node. A component without one is a helper — a per-item
+   * unit of work instantiated by another cloud graph (Run Tasks, component
+   * instances) — and is not an endpoint: calling it can only ever 500 inside the
+   * CloudRunner ("Could not find request node"), after writing a failed
+   * execution record for a call that was never servable. So the function
+   * predicate is "has a Request node", not "has the name prefix", and a helper
+   * is indistinguishable from a nonexistent name at every boundary
+   * (HTTP 404, workflow step, trigger dispatch, the permissions listing).
+   */
+  private findRequestNodeForFunction(functionName: string): Record<string, unknown> | null {
     const fullName = `/#__cloud__/${functionName}`;
     for (const exportData of this.loadedWorkflows.values()) {
-      const components = exportData.components as { name: string }[] | undefined;
-      if (components && components.some((c) => c.name === fullName)) return true;
+      const components =
+        (exportData.components as { name: string; nodes?: Record<string, unknown>[] }[] | undefined) || [];
+      for (const component of components) {
+        if (component.name !== fullName) continue;
+        const found = this.findRequestNode(component.nodes || []);
+        if (found) return found;
+      }
     }
-    return false;
+    return null;
+  }
+
+  hasFunction(functionName: string): boolean {
+    return this.findRequestNodeForFunction(functionName) !== null;
   }
 
   /**
@@ -653,17 +673,8 @@ export class WorkflowRunner {
    * (public when true, authenticated otherwise); a config entry overrides it.
    */
   functionAllowsNoAuth(functionName: string): boolean {
-    const fullName = `/#__cloud__/${functionName}`;
-    for (const exportData of this.loadedWorkflows.values()) {
-      const components =
-        (exportData.components as { name: string; nodes?: Record<string, unknown>[] }[] | undefined) || [];
-      for (const component of components) {
-        if (component.name !== fullName) continue;
-        const found = this.findRequestNode(component.nodes || []);
-        return Boolean(found && (found.parameters as Record<string, unknown> | undefined)?.allowNoAuth === true);
-      }
-    }
-    return false;
+    const found = this.findRequestNodeForFunction(functionName);
+    return Boolean(found && (found.parameters as Record<string, unknown> | undefined)?.allowNoAuth === true);
   }
 
   private findRequestNode(nodes: Record<string, unknown>[]): Record<string, unknown> | null {
@@ -681,9 +692,10 @@ export class WorkflowRunner {
   getAvailableFunctions(): { name: string; workflow: string }[] {
     const functions: { name: string; workflow: string }[] = [];
     for (const [workflowName, exportData] of this.loadedWorkflows) {
-      const components = (exportData.components as { name: string }[] | undefined) || [];
+      const components =
+        (exportData.components as { name: string; nodes?: Record<string, unknown>[] }[] | undefined) || [];
       for (const component of components) {
-        if (component.name.startsWith('/#__cloud__/')) {
+        if (component.name.startsWith('/#__cloud__/') && this.findRequestNode(component.nodes || [])) {
           functions.push({ name: component.name.replace('/#__cloud__/', ''), workflow: workflowName });
         }
       }

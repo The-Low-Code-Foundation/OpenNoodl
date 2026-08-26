@@ -37,13 +37,24 @@
 import { PORT_PARAM_MAPPING } from './workflowPorts';
 
 /**
- * What a cloud function may be called.
+ * What this gesture is willing to *mint* a new cloud function as — NOT what a
+ * function may legally be named.
  *
- * A function name is a **URL path segment** — `POST /functions/<name>` — as well
- * as a component's local name and a step's `ref`, so it is held to the narrowest
- * of the three. Deliberately not a validation of what an author may *type* into
- * the `ref` row (that stays free text, WFA-006's decision); it is what this
- * gesture is willing to *mint*.
+ * SB-003 checked the wider claim this header used to make ("a function name is
+ * a URL path segment, so it is held to the narrowest of its three uses") and it
+ * does not hold at the boundary: every caller percent-encodes the name
+ * (`cloudfunction2.ts:280`, `cloudfunction.ts:289`, `api/cloudfunctions.ts:83`,
+ * `BackendManager.js:325`), the backend router splits the path before decoding
+ * (`HttpServer.ts:175-186`) so an encoded `a/b` matches `functions/:name`, and
+ * the workflow-step and trigger paths pass raw names in-process. Nested,
+ * spaced names (`Stripe/Subscriptions/Cancel`, `Send Email`) are shipped
+ * practice in the prefab library and work on every call path — they are
+ * legitimate, and nothing enforces this regex at rename, export or load.
+ *
+ * So this is a house style for names minted here (URL-legible without
+ * encoding, lowerCamelCase per `functionNameFromLabel`), same as the panel
+ * door's `validateLocalName`. Deliberately not a validation of what an author
+ * may *type* into the `ref` row (that stays free text, WFA-006's decision).
  */
 export const FUNCTION_NAME_RE = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 
