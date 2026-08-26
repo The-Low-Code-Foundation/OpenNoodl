@@ -768,7 +768,13 @@ describe('TemplateStepBody — the three states are three different screens', ()
     expect(words).toContain('Hello World');
     expect(words).toContain('Starter CRM');
     expect(words).toContain('Community');
-    expect(words).toContain('data-app');
+    // 🔴 CHANGED BY T4, and the pair is the point. T3 asserted the raw slug `data-app`, which is
+    // what the card genuinely drew: the category vocabulary was ruled to the platform's machine
+    // slugs on 2026-08-26, and nothing turned them back into words on the way to a person. T4
+    // added `categoryLabel`, so the assertion is now that the label is drawn AND the slug is not
+    // — a `toContain` on the label alone would stay green if both were drawn side by side.
+    expect(words).toContain('Data app');
+    expect(words).not.toContain('data-app');
   });
 
   it('marks the chosen card in TEXT, not only in colour', () => {

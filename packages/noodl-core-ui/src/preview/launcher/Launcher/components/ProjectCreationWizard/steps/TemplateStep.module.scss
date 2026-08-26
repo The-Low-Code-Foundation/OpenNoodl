@@ -136,3 +136,75 @@
   border-radius: var(--radius-sm, 4px);
   padding: 1px var(--spacing-2);
 }
+
+// ─── FB-005 T4 — narrowing the shelf ──────────────────────────────────────────
+// 🔴 THE ACTIVE PILL'S STATE IS ON THE BORDER AND IN TEXT, NOT IN THE FILL. FB-002 shipped a
+// selected pill whose fill was 1.16:1 against its panel — every *label* passed AA while *which
+// one is on* did not, and `tokens:css` is blind to it because it only checks that a `var(--…)`
+// names a defined property. The border here is the same token `.TemplateCard--selected` uses,
+// measured this session at 4.46:1 dark / 3.61:1 light, and the pill also carries a ✓ in its
+// text — a state written in words cannot be taken away by a contrast ratio.
+
+.TemplateFilter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+}
+
+.TemplateFilter-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--spacing-2) var(--spacing-3);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+
+  &::placeholder {
+    color: var(--theme-color-fg-default-shy);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+}
+
+.TemplateFilter-facets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.TemplateFilter-pill {
+  font-size: 11px;
+  font-family: inherit;
+  // ⚠️ `fg-default`, not `fg-default-shy`: a pill is a control, and the shy token is for text
+  // beside one. The inactive pill has to be readable enough to be worth clicking.
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-2);
+  // 🔴 1px in both states would move the text on activation; 2px here matches `.TemplateCard`'s
+  // reason — a border that grows reflows the row and reads as the list jumping.
+  border: 2px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  padding: 2px var(--spacing-2);
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+
+  &--active {
+    border-color: var(--theme-color-primary);
+    background-color: var(--theme-color-bg-3);
+  }
+}
