@@ -1221,6 +1221,82 @@ a string `toString('utf8')` had already replaced bytes in — publishing without
 - **A binary in a LESSON bundle.** `publish-tutorial-bundle.ts` still refuses one. The decoder was
   built for templates because a need was measured there; neither half of that is true for tutorials.
 
+## 4g. ✅ The deploy that would have taken capture hosting dark — session 50
+
+Found while doing the **pre-flight** for queue item 1, not while looking for it. The deploy was
+not run first and then inspected; the script was read, a claim in it looked too strong, and the
+host was queried before a byte moved.
+
+### The measurement
+
+| | |
+|---|---|
+| `HETZNER_S3_*` values set on nexus-1 | **5 of 5** |
+| the same keys in `~/nodegx-community-deploy.env` | **0 of 5** |
+| lines `ops/deploy.sh` writes into the app env file | **the whole file**, unconditionally |
+
+`ops/deploy.sh` rewrites `/etc/nodegx-community/nodegx-community.env` **whole**, so every line
+absent from the laptop is a line *erased* from the host. `DATABASE_URL` has always been read back
+off the host for exactly that reason. The five Hetzner keys were not.
+
+🔴 **So the next deploy from this laptop would have blanked all five.** Nothing would have
+errored: `objectStoreConfig()` trims and returns `null` on any blank, and its callers degrade to
+*"not hosted"* by design. Capture hosting would simply have been **off** after a deploy that
+printed green — the precise failure mode `src/lib/objectstore.ts` says out loud is unacceptable
+(*"What is NOT acceptable is being quiet about it"*).
+
+### ⚠️ The second-order hazard the shape of the fix exists to avoid
+
+The obvious fix — fall the `S3_*` variables back to the host and carry on — **introduces a worse
+bug than it fixes.** `ops/install-backup.sh` branches on whether credentials were *passed to it*:
+given none it takes `elif [ -f "$BACKUP_ENV" ]` and leaves the existing `backup.env` alone, and
+that is the only thing preserving **`BACKUP_ENCRYPT_PASSPHRASE`** — a value that lives in that
+file *and nowhere else*, recoverable from neither the laptop nor the app env.
+
+Host-recovered keys reaching that call would take its credentials-*present* branch and rewrite
+`backup.env` with an **empty** passphrase, turning off backup encryption exactly as quietly.
+
+✅ **So the fallback feeds the app env file only**, through separate `APP_S3_*` variables. The
+backup wiring still sees the laptop's values and only the laptop's values. The separation is the
+fix, not an implementation detail.
+
+### 🔴 The fix reverses a stated intent, and that is worth saying plainly
+
+The blanking was **deliberate**, and its rationale is written down at
+`tests/ops-deploy-provenance.test.ts` — *"an unset key cannot survive from a previous deploy"*,
+guarding against a revoked key living on forever.
+
+That intent is not being overruled casually. Two things narrow it:
+
+1. **The specs never pinned it.** All three existing E7 cases hold the host at `DATABASE_URL`
+   only, so *"write what the laptop has"* and *"keep what the host has"* give the **same answer**
+   in every one of them. The new behaviour passes all three unchanged; it fills a gap rather than
+   contradicting a rule.
+2. **Revocation-by-deletion was never a working mechanism for these keys.** They have never been
+   in the live secrets file, so nothing was lost that previously worked — whereas the data loss
+   was real and imminent.
+
+⚠️ And the deploy is **not quiet** about which side won: every run now prints `KEEPING the host's
+existing keys`, `using this laptop's HETZNER_S3_* keys`, or that both are unset.
+
+### The control
+
+🔴 **The regression spec was run against the unfixed script and FAILED** (`expected
+'DATABASE_URL=…' to contain 'HETZNER_S3_BUCKET=host-bucket'`), then against the fixed one and
+passed. Known-good and known-broken **disagree**, so the spec has discriminating power rather
+than merely being green. Two more pin the other half — the laptop must still **win** over the
+host, or rotating a key would be impossible — and the region derivation re-running *after* the
+fallback.
+
+### ⚠️ What is NOT proven
+
+**That `backup.env` survives is source-level reasoning, not a driven observation.** The harness's
+`ssh` stub fakes the backup step (`backup wiring: ok`), so `install-backup.sh`'s preserve branch
+is **not executed** by any test. The argument rests on reading its `elif [ -f "$BACKUP_ENV" ]`
+branch — which is the weaker kind of evidence, and is recorded here as such.
+
+---
+
 ## 5. What is still Richard's to rule — narrowed by the sweep
 
 Two of the task file's four questions are now answered by precedent rather than by decision:
