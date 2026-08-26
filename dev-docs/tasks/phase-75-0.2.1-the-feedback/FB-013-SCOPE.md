@@ -306,9 +306,9 @@ Ordered so the early steps are shippable and independent of R-chat-mod.
 
 | # | slice | size | depends on |
 |---|---|---|---|
-| **C1** | `0024` + `src/lib/chat.ts` + the Drizzle mirror + the three sweeps (§11) | **M** | — |
-| **C2** | the five routes, envelope-compliant, D15 verdicts | **M** | C1 |
-| **C3** | the web tab: river + facet bar + thread view + composer | **M** | C2 |
+| **C1** | `0024` + `src/lib/chat.ts` + the Drizzle mirror + the three sweeps (§11) | **M** | ✅ **DONE s51** |
+| **C2** | the five routes, envelope-compliant, D15 verdicts | **M** | ✅ **DONE s51** |
+| **C3** | the web tab: river + facet bar + thread view + composer | **M** | ✅ **DONE s52** |
 | **C4** | the launcher tab, inside FB-006's structure (**done 2026-08-22**, so not a blocker) | **S–M** | C3 |
 | **C5** | moderation verbs | **S** | 🔒 R-chat-mod |
 
@@ -356,6 +356,25 @@ probe is owed all the same.
 
 ✅ **Run the whole suite, not the file you wrote.** A green new spec beside three red sweeps is the
 exact shape of work that looks finished.
+
+### 🔴 C3 owed TWO MORE, and neither is in the table above — because a PAGE is not a route
+
+⚠️ **The four sweeps §11 names are what a new TABLE and a new API ROUTE owe. C3 added neither** —
+no migration, no column, no endpoint — so all four were untouched, and a session reading only this
+section would have concluded it owed nothing. It owed two, both found by running the whole suite:
+
+| sweep | what it demands of a PAGE | how it went |
+|---|---|---|
+| `uni019-home` AC3 | every page on disk is **reachable by clicking**, or is in `NON_BROWSABLE` with a reason | ✅ passed first time — the nav entry and `chatRiver`'s `href` were enough |
+| `uni023-facet-bar` AC5 | the `'use client'` files in `src/` are an **exact list**, each with a written reason | 🔴 **went red** — `ChatComposer.tsx` had to argue for itself |
+| `uni013-slice5` §1 | every page is an **archetype instance or a recorded exception** | 🔴 **went red on both new pages** |
+
+🔴 **`linksInPage` reads a page's source and the exported bodies of the `lib/` functions it
+imports — it does NOT read components.** So the river's link to a thread had to be built in
+`lib/lists.ts`; an href invented inside `Chat.tsx` would have left `/chat/[messageId]` reported
+UNREACHABLE, correctly, because nothing the sweep can see would have linked to it. ✅ **That is
+why a page's composition belongs in `lib/` and its markup in a component, and it is a
+correctness constraint rather than a convention.**
 
 ## 12. Traps carried in — read before writing C1
 
