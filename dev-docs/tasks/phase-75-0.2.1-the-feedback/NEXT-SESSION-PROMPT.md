@@ -1,114 +1,129 @@
 # Phase 75 — next session
 
-**State as of 2026-08-26 (session 40).** Richard's brief is still **speed: keep knocking out phase
-75**, so this file leads with the queue. Take the top unblocked item; dip into the rest when it bites.
+**State as of 2026-08-26 (session 41).** Richard's brief is still **speed: keep knocking out phase
+75**, so this file leads with the queue. Take the top unblocked item; dip into the rest when it
+bites.
 
-**Committed this session:** queue item 1 — **FB-005 T1**, the template registry settled. AC1 met.
-The zip transport and its three providers are gone, `newProject` has one branch and it goes through
-`templateRegistry`, and two live defects turned up on the way that had nothing to do with templates.
-Read **[FB-005-SCOPE.md](FB-005-SCOPE.md) §4** before touching T2.
+**Committed this session:** queue item 1 — **FB-024**, the bench search
+(`nodegx-community` `ee37d0a`). 🔴 **The filed defect was in a function nothing calls, and the
+live one was worse than the file said.** Read
+**[FB-024-THE-SEARCH-THAT-COULD-NOT-SEE-A-QUESTION.md](FB-024-THE-SEARCH-THAT-COULD-NOT-SEE-A-QUESTION.md)**
+before touching search again.
 
-⚠️ **Peers.** `ListAgents` showed four other `opennoodl-*` sessions during this one. They are other
-projects, **but every one of them runs its MCP server from *this* checkout's
-`node_modules/electron/dist`**, so a sweep from any of them can match a `test:ci` electron. Nothing
-went wrong this session; the run completed clean.
+⚠️ **Peers.** Four other `opennoodl-*` sessions have been seen on this machine in recent sessions,
+and **every one of them runs its MCP server from *this* checkout's `node_modules/electron/dist`**,
+so a sweep from any of them can match a `test:ci` electron. Nothing went wrong this session —
+but note this session ran **no OpenNoodl gates at all**: the change was entirely in the sibling
+`nodegx-community` repo.
 
 ## The queue — unblocked, cheapest-first. Take the top one.
 
 | # | item | size | state |
 |---|---|---|---|
-| 1 | *(cheap, unowned)* **bench search ANDs its terms** | **S** | 🔴 **now the cheapest thing on the board, and T4 is blocked behind it.** `websearch_to_tsquery` in `nodegx-community/src/lib/bench.ts`; **2/22 even in perfect vocabulary**. Real users, real miss |
-| 2 | **FB-005 T2** — platform `project_templates` + list/detail/bundle routes | **M** | ✅ **unblocked** — T1 done, the editor side has a seam that takes a new provider. 🔴 **4 gates guard a new `/api/v1` route** (P73) and a **CHECK constraint passes on NULL** (TUT-004) |
+| 1 | **FB-005 T2** — platform `project_templates` + list/detail/bundle routes | **M** | ✅ **now the top item.** T1 done, the editor side has a seam that takes a new provider. 🔴 **4 gates guard a new `/api/v1` route** (P73) and a **CHECK constraint passes on NULL** (TUT-004) |
+| 2 | **FB-005 T4** | — | ✅ **UNBLOCKED** — it waited on the search item, which is now closed |
 | 3 | **FB-013** chat | **L** | 🔴 **ruled 08-22: OVERRULED, build it.** ⚠️ Its corpus does not exist either — FB-014 measured the bench at **3 posts, 2 threads, 1,369 chars** |
 
 ✅ **FB-014 is off the queue** — design phase done, AC1 + AC3 met, AC2 shown to be impossible. Its
 external-processor question is with Richard.
 
-## ✅ Item 1, closed: FB-005 T1 — and the root cause was a contract, not a bug
+## ✅ Item 1, closed: FB-024 — and the queue item was wrong about where the bug was
 
-Full account in **[FB-005-SCOPE.md](FB-005-SCOPE.md) §4**. The recommended option was taken —
-delete the zip path, keep the provider interface — but deletion was only half of it.
+The item read *"the bench search ANDs its terms — `websearch_to_tsquery` in
+`nodegx-community/src/lib/bench.ts`, 2/22 even in perfect vocabulary."* Every clause of that is
+true about `searchThreads`. 🔴 **`searchThreads` has exactly one importer: its own test file.** The
+reader's search box goes `benchList` → `buildList` → `select()` in `facets.ts`, which matched a
+**JavaScript substring** over rows already in memory. **Two different searches, and the defect was
+filed against the one no reader can reach.**
 
-🔴 **`ITemplateProvider.download`'s own doc comment read *"@param destination The destination we
-will save the ZIP file"*, and its one reachable implementation wrote a `project.json` into a
-directory.** Both are `(url: string, destination: string) => Promise<void>`. The compiler had
-nothing to say, and `TemplateRegistry.download` — written against the documented meaning — would
-have tried to unzip a directory. **A type signature is not a contract.** The method is now
-`install`, the contract is written on the interface, and the *rename* is the part that matters: it
-is the only thing that stops a future provider satisfying the old meaning silently.
+⚠️ **Note the shape — it is s40's template registry one repo over.** A mechanism described
+accurately, in a file nothing calls. **Grep the callers before believing the mechanism.**
 
-**What shipped.** Deleted: `HttpTemplateProvider`, `NoodlDocsTemplateProvider`, the unregistered
-`LocalTemplateProvider`, `TemplateRegistry.download`'s download/unzip/cache, `ProgressCallback`,
-and the never-read `useCloudServices`/`cloudServicesTemplateURL` fields. Added:
-`TemplateRegistry.install`, which **does not swallow a failed install** — the version it replaces
-wrapped the claim and the install in one `try/catch`, so a provider that claimed a URL and then
-failed fell out of the loop and the caller was told *"Cannot find a valid template provider"*, a
-message about the wrong thing entirely. And `models/template/createFromTemplate.ts`, the seam:
-`newProject` reaches `electron-store`, `@noodl/git` and an `_addProject` that writes into
-**Richard's real launcher list**, so it cannot be driven by a spec — the decisions moved to a module
-plain-Node jest can. Precedent: `refusalPlan.ts`, s37.
+🔴 **And the live defect was worse than the filed one.** `benchList` builds its rows from
+`listThreads`, which returns `BenchThreadSummary` — title, handle, section, counts, **no body**. So
+the box labelled *"Search questions"* **could not see one word of one question.** ⚠️ The Bench was
+**the only one of the six lists** whose `searchable` named no text field; tutorials, profiles and
+briefs all search a body, a bio or a description.
 
-✅ **`newProject` now has one branch.** `resolveTemplateUrl` turns the wizard's `''` — and a missing
-argument — into `DEFAULT_PROJECT_TEMPLATE`, so *"no template"* and *"the default template"* stopped
-being two code paths that had drifted apart. That drift **was** the outage: the `''` made the
-registry branch unreachable, and the `else` reached the embedded provider directly.
+| query | before | after |
+|---|---|---|
+| a word in the TITLE | **1** | 1 (the control — the box worked at all) |
+| a word in the QUESTION body | **0** | **1** |
+| a word in an ANSWER body | **0** | **1** |
+| the same words via `searchThreads` | 1, 1 | 1, 1 (the control — the text was always there) |
+| `repeater draws` (adjacent, in order) | **1** | 1 |
+| `repeater nothing` (*same title, same two words*) | **0** | **1** |
+| `draws repeater` (reversed) | **0** | **1** |
+| `which output fires when the row never updates` | **0** | **1** |
+| that sentence with one nonsense word swapped in | 0 | **0** (the control) |
 
-## 🔴 The finding of this session: TWO LIVE DEFECTS, NEITHER OF THEM THE ONE T1 WAS ABOUT
+**What shipped.** `termsOf` makes the query its **words** rather than one substring — each term is
+still a substring, so `kern` keeps finding `kerning`. **Postgres's own 127-word `english.stop`**
+rather than a hand-written list: every term is required, so the sentence needed `which` and `when`
+to appear in a thread, and **the words carrying no meaning were the only ones doing any
+excluding**. `threadSearchText` feeds bodies in from the **parsed** model (as `excerptFor` does),
+with **`hidden_at is null`** so a moderated post is not findable by a word inside it. And the label
+now says what it searches.
 
-Both were found by writing the seam, not by reading the code.
+🔴 **`plainto_tsquery` — the fix the item suggested — is a no-op.** Measured beside
+`websearch_to_tsquery` on the same sentence it returns the **identical** tsquery. The two differ in
+the syntax they accept, not in how they join what they parsed.
 
-1. 🔴 **`newProject` is not awaited by its caller.** `ProjectsPage` calls it callback-style, so any
-   rejection was an **unhandled promise rejection**: the launcher's *"Creating new project"*
-   activity toast was never hidden and `fn` was never called. **Create a project into a location
-   you cannot write to and the launcher spins forever** on a creation that had already stopped.
-   ⚠️ **Note the shape — it is s39's `unzipUrl` hang one layer up.** The failure that *was* handled
-   was the fast, in-band one (`!project` from `projectFromDirectory`); the thrown one was not.
-   ✅ It now returns a **string-discriminated** outcome and `fn()` is called on every path.
-2. 🔴 **A failed agent configuration destroyed a correctly installed project.**
-   `writeAgentConfigFor` was awaited in the same unguarded run as the template, so an unwritable
-   `.mcp.json` refused the whole creation — a file `backfillProjectAgentConfig` writes again the
-   next time the project is opened. Now outside the guard and non-fatal.
+✅ **`searchThreads` was ORed and ranked anyway** — FB-014 measured this exact query as its lexical
+arm — but 🔴 **an explicit operator is left alone, and the guard tests the PARSED query**: ORing
+`repeater -solved` gives `'repeat' | !'solv'`, matching **every thread that fails to mention
+"solved"** — a negation turned into its own opposite. ⚠️ It is deliberately **not** wired into the
+faceted list: `select()` stays the only place a row is included or excluded, which is what makes a
+pill's count equal the rows behind it.
 
-⚠️ **Left deliberately:** a refusal leaves the (empty) project directory behind. Deleting a
-directory the caller chose is the more destructive of the two mistakes and the one caller passes a
-`makeUniquePath`. AC2's *"a refusal leaves nothing on disk"* belongs to T2/T3, where a partial
-install of a multi-file bundle is real rather than hypothetical.
+## 🔴 Two instrument lessons worth carrying
 
-## 🔴 Second: MY OWN SOURCE-ANALYSIS INSTRUMENT SAID "THE WIRING IS MISSING" ON CORRECT CODE
+1. 🔴 **A control arm that stops discriminating after the fix is not a passing arm — it is a dead
+   one.** `nothing asker` matched before the fix by running off the end of a title into the author
+   handle. After the fix it *still* matches, because both words are in the row. I nearly recorded
+   that as "the span is closed". It is not closed — **term matching only ever WIDENS**, and
+   anything the old whole-string match returned it returns too. The comment claiming otherwise was
+   corrected before it shipped. **Re-ask what an arm excludes once the code under it has changed.**
+2. 🔴 **A mutation script killed by the tool timeout LEFT A MUTANT IN THE TREE.** `mutate.py`
+   reverted in a `finally`, and SIGTERM at 120 s skipped it — `facets.ts` sat with `return words;`
+   in it. ✅ **Save pristine copies first, restore by `copyfile` from those, and `md5` all three
+   files afterwards.** ⚠️ **And a waiter looping on `pgrep -f "vitest run"` MATCHES ITSELF** — its
+   own `zsh -c` command line contains the pattern — so it never exits. Wait on the **PID**.
 
-AC1 is explicit that a spec over `TemplateRegistry` alone *"stays green through exactly the outage
-we are in now"* — and it would have. So
-`tests-unit/fb-005/template-install-path.test.ts` asserts the **chain**: `ProjectsPage` →
-`newProject` → `createProjectFromTemplate` → `templateRegistry.install`. A caller-grep made
-executable. **27 specs, all green; 6 mutants, each killed by its own spec and no other.**
+⚠️ **`M6`'s anchor was one space wrong and the script reported `ANCHOR-NOT-FOUND`** — the
+hidden-post guard, the security-relevant one, was briefly ungraded while eight others looked fine.
+**A mutant that never applied reads almost exactly like a mutant that was killed.** Re-run it; it
+kills its spec.
 
-🔴 **The body extractor was wrong on its first run.** To prove `newProject` *calls* the registry
-rather than merely importing it — it imported it throughout the outage — the spec brace-matches the
-method body. `indexOf('{', afterSignature)` finds the **parameter list**: `options: { name?: string;
-… }` is an inline object type, so it returned the type literal and both wiring assertions failed on
-code that was right. ✅ **Walk the parentheses to the end of the parameter list first.** The control
-that caught it is now shipped: a neighbouring method that must come back *without* the symbol,
-proving the extractor discriminates rather than returning the whole file.
+## Gates — session 41
 
-⚠️ **And the strip-comments control had to be re-anchored.** It first asserted that
-`EmbeddedTemplateProvider` appears in the raw source and not in the stripped one — but the bypass
-this file exists to forbid would contain that identifier too, so the control fired for **two**
-different reasons and stopped being a control. It anchors on a **comment-only phrase** now.
-Stripping matters here: `newProject`'s own doc comment names `templateRegistry` while explaining the
-outage, so an unstripped grep passes on the prose.
+⚠️ **This session's change was entirely in `nodegx-community`. No OpenNoodl gate was run, and none
+was implicated.** The OpenNoodl figures below are s40's and are quoted as history, not as
+measurements of the current tree — **re-measure before relying on them.**
 
-## Gates — session 40 ran all three, this tree, `cline-dev`
+- `nodegx-community` full suite: **59 files / 1418 specs / 0 failures** (this tree, after the
+  change). Needs ~22 minutes — **background it and wait on the PID**.
+- `nodegx-community` `npx tsc --noEmit`: **0 errors**.
+- `check:css` was **not** run — no stylesheet changed. ⚠️ It has one pre-existing non-ours
+  violation.
+- 🔴 **From s40, NOT re-measured this session:** `typecheck:editor` 0 errors; `test:main` 341 files
+  / 5522 specs / 0 failures; `test:ci` **`Jasmine: 2849 specs, 4 failures`** — the recorded floor,
+  all four AIX-006, by name. ⚠️ `test:ci` needs ~11 minutes and outlives a 600 s tool timeout.
+  ⚠️ Quote the **summary line**, never `$?`: at s40 the compound exited **0** while the log's tail
+  said `lerna ERR! npm run test:ci exited 1`.
 
-🔴 **Re-measure, never quote.** These are s40's own runs, after the change.
+## 🔴 Still open from FB-024 itself
 
-- `npm run typecheck:editor`: **0 errors**.
-- `npm run test:main`: **341 files / 5522 specs / 0 failures** (was 340/5495; +1 file, +27 specs).
-- `npm run test:ci`: **`Jasmine: 2849 specs, 4 failures`** — the recorded floor, **all four AIX-006,
-  by name**. ⚠️ Quoted from the summary line, not `$?`: the compound exited **0** while the log's
-  own tail says `lerna ERR! npm run test:ci exited 1`. Both halves of that trap fired in one run.
-  ⚠️ It needed **~11 minutes** and outlived a 600 s tool timeout — background it and poll `pgrep`.
-- `npm run test:platform` was **not** run — nothing under `@noodl/platform-node` changed.
-- `npm run tokens:css` was **not** run — no stylesheet changed.
+- ⚠️ **`body_tsv`, its GIN index and its trigger still serve no reader.** The live search covers
+  bodies now, so the column's only prospective caller is FB-014. If FB-014 is not built this is a
+  delete — but it is a migration, and the call is **Richard's**, not a tidy-up.
+- ⚠️ **`benchList` now parses the markdown of every visible post in the 200-thread window on every
+  request** (the page is `force-dynamic`). Free at 3 posts; first thing to cache when the Bench has
+  content.
+- ⚠️ **Node names that are stopwords** — `For Each`, `Not`, `And`, `Or` are all in the snowball
+  list. The all-stopword fallback covers the exact query `for each`; `Static Data For Each`
+  searches `static data` and matches more widely than typed. Correct rows, extra ones.
+- ⚠️ **Not deployed** — nexus-1 still runs the old matcher.
 
 ## Driving — what worked, exactly
 
@@ -205,10 +220,11 @@ property, nothing more. It would have passed the 1.91:1 this phase shipped.
 
 ## Still open, owned by nobody
 
-- 🆕 🔴 **The bench search ANDs its terms.** `websearch_to_tsquery` requires *every* bare word, so a
-  conversational query matches **2/22 documents even in perfect vocabulary**. Anyone typing a
-  sentence into the bench search gets nothing. Cheap (`plainto_tsquery` + ranking, or OR-ing terms),
-  independent of pgvector, measured by FB-014's control. **Queue item 3.**
+- ✅ **CLOSED as FB-024 (session 41).** This bullet said the bench search ANDs its terms via
+  `websearch_to_tsquery`, cheaply fixed with `plainto_tsquery`. 🔴 **Three things were wrong with
+  it**: the function it names has **no caller**; the live search was a **substring match that
+  could not see post bodies at all**; and `plainto_tsquery` returns the **identical** tsquery, so
+  it was never a fix. Kept here as the shape to watch for — see the top of this file.
 - 🆕 ⚠️ **`Set Record Properties` → `Update Record` (2026-08-01) created a live name collision** with
   the pre-existing `noodl.byob.UpdateRecord`. Two nodes now answer to one name in the picker and the
   catalog. Found by FB-014's rename mining; excluded from its eval because a query for that name has
