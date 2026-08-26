@@ -281,6 +281,26 @@ and leave `Do` unwired, so the filter value arriving is the only trigger.
 `isEmpty` output is never flagged and reads `true` for a collection that has rows in it. Leave the
 defaults on a query that has nothing to be early for.
 
+🔴 **And then do not also trigger it by hand.** The other end of the same rule, measured by SB-008
+F21 with two one-edge arms: a query with the boxes **on** *and* a wire into `storageFetch` fires
+`fetched` **twice** — once for the load-time fetch, once for yours — and **everything downstream of
+it runs twice**. In `claimSite` that meant one call writing the site's `SiteSettings` singleton as
+two identical rows, eleven milliseconds apart, with no error anywhere and both readers taking
+`rows[0]`.
+
+So the boxes and the explicit fetch are alternatives, not a belt and braces:
+
+| the query | boxes | `storageFetch` |
+|---|---|---|
+| filtered through a `qp-` port | **off** | not needed — the filter arriving is the trigger |
+| unfiltered, or filtered by a **literal** | **on** | **leave it unwired** |
+| needs a refresh after a write | off, or on with the load-time fetch accounted for | this is the one case for it |
+
+⚠️ A **literal**-filtered query is the third shape and it belongs in the second row: a literal is on
+the node from the moment it is built, so the graph-build fetch is already correctly narrowed and
+there is no parameter left for anything to trigger. **The precondition of rule 3's fix is a filter
+PORT, not a filter.**
+
 **4. `points to` cannot narrow anything from a cloud function, and it widens instead of failing.**
 It is the one operator that needs the collection schema, the schema cache is never populated in the
 cloud runtime, and the translator's refusal is reported through the editor connection that is not

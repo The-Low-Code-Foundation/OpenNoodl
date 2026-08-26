@@ -65,11 +65,15 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   ⚠️ Acceptance 5 is met on the row, not the mail (no SMTP in the run); acceptance 2's "admin path"
   is the REST API as the owner, because SB-005's panel does not exist yet — see §7.
 
-- 🟡 **SB-005** — [the admin panel](SB-005-THE-ADMIN-PANEL.md) — **BUILT s6. Structurally complete
-  and mutation-graded; behaviourally UNMEASURED.** Six browser components through the real door
+- ✅ **SB-005** — [the admin panel](SB-005-THE-ADMIN-PANEL.md) — **BUILT s6, CLOSED s8.**
+  Structurally complete and mutation-graded s6; **behaviourally measured s8** by SB-008's drive.
+  Six browser components through the real door
   (`noodl-mcp/tests/sb005Components.ts`), **21 specs / 9 mutants**
-  (`noodl-mcp/tests/sb005AdminPanel.test.ts`). Acceptance 1–5 met; **6 is SB-008's and is UNMET** —
-  it is listed rather than quietly counted as met by the structural ones.
+  (`noodl-mcp/tests/sb005AdminPanel.test.ts`). Acceptance 1–5 met s6; **6 met s8 in two halves** —
+  a draft is invisible to an anonymous visitor through the shipped site with enforcement on
+  (SB-008), and the state that draft is in is the state this panel's `Create Record` authors (s6,
+  two mutants). ⚠️ **The residual is named rather than rounded off**: the row was written over REST
+  carrying the panel's ACL, **not by a click**. Nothing has driven the panel's UI.
   🔴 **A green authoring run means well-formed and nothing else** — the phase's own lesson, three
   times over. What building it measured (§7), each item having changed a graph:
   **rule 2 does not bite `CloudFunction2`/`Query Records`** (both defer through
@@ -104,11 +108,14 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   and `CloudFunction2`'s `in-`/`out-` parameters register on the **parameter** path
   (`nodescope.ts:203`), which is what lets one endpoint serve a Publish and an Unpublish button as
   two constants with no wires.
-- 🟡 **SB-006** — [the public site](SB-006-THE-PUBLIC-SITE.md) — **BUILT s7. Structurally complete
-  and mutation-graded; behaviourally UNMEASURED.** Five browser components through the real door
-  (`noodl-mcp/tests/sb006Components.ts`), **29 specs / 12 mutants / 1 control**
-  (`noodl-mcp/tests/sb006PublicSite.test.ts`). Acceptance 1–8 met; **9 is SB-008's and is UNMET** —
-  listed rather than quietly counted as met by the structural ones.
+- ✅ **SB-006** — [the public site](SB-006-THE-PUBLIC-SITE.md) — **BUILT s7, CLOSED s8.** Five
+  browser components through the real door (`noodl-mcp/tests/sb006Components.ts`), **29 specs /
+  12 mutants / 1 control** (`noodl-mcp/tests/sb006PublicSite.test.ts`). Acceptance 1–8 met s7;
+  **9 was SB-008's and is now ✅ MET.**
+  🔴 **s8 also found that this site had never had a navigation.** The nav query filters a boolean
+  literal, and a boolean literal could not be bound at all (SB-008 F18) — so acceptance 4's third
+  query shape was structurally right and returned a 500 every time. Fixed in the adapter; the drive
+  now reads two links in `navOrder`.
   🔴 **It changed a file SB-005 had already graded**, and that is the session's headline finding:
   **F14 — the public site's catch-all `{slug}` ties with every one-segment sibling page, and the
   Router breaks the tie by the order the components happened to be written in**
@@ -171,21 +178,61 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   `filter`/`onFilterChange`, so this call site is unaffected; if the Templates tab wants the facet
   bar, use the exported `filterTemplates` rather than a second matcher, so a pill's count and its
   rows come from one pass. Cards now draw the category *label*, not the slug.
-- ⬜ **SB-008** — the drive (verify the consequence: anonymous visitor sees the published page;
-  unpublished 404s). 🔴 **Must run with `devOpen: false` over a real SQLite engine** — see SB-004 F2;
-  a default local backend does not enforce row-level ACLs at all, so a passing drive there is not
-  evidence for any publication claim.
-  ✅ **The backend half is already done** by SB-004 §7 — an anonymous caller reads a published page
-  and 404s an unpublished one, with enforcement on. What SB-008 still owes is the *browser* half:
-  the public site actually rendering it. Scope it as a UI drive, not a permissions drive, and do not
-  re-litigate what §7 measured.
-  ✅ **The browser half now exists** (SB-006, s7) and the drive must boot `sb006Components.ts` beside
-  `sb005Components.ts`, **site authored first** (SB-006 F17). `scripts/devtools/render-from-disk.js`
-  serves a v2 project straight from disk against the working-tree runtime and reconstructs
-  `routerIndex` the way the exporter does — that is the likely harness, and its header names the
-  export-contract traps it already solved.
+- ✅ **SB-008** — [the drive](SB-008-THE-DRIVE.md) — **DONE s8. The browser half is measured.**
+  Both panels authored through the real door into one project (**site first**), deployed beside
+  SB-004's cloud half on real SQLite with **`devOpen: false`**, driven in headless Chrome as an
+  **anonymous** visitor: `packages/nodegx-backend/tests/sb008-public-site-drive.test.ts`,
+  **20 specs / 4 known-firing controls / 3 one-edge arms**.
+  🔴 **This closes SB-005 acceptance 6 and SB-006 acceptance 9** — the same claim from two sides, and
+  the only two criteria in the phase left deliberately unmet. A published page renders to an
+  anonymous visitor; an unpublished one shows the not-found panel and **no part of it is anywhere in
+  the document** (asserted against `outerHTML`, not `innerText` — a draft behind `visible: false` is
+  `display: none`, which `innerText` skips).
+  🔴 **The absence claims stand on four controls**, because "the draft did not appear" has a dozen
+  causes that are not permissions: the published page renders through the same instrument; the admin
+  *can* read the draft over HTTP; the **dev-open twin** — same project, same seed, one config line —
+  **does** render the draft; and F18's raw boolean throws.
+  🔴 **Four findings, one of them fixed and it had killed a whole feature:**
+  **F18** — 🔴 **a boolean filter cannot be queried on the SQLite backend at all.** The write path
+  folds booleans to 0/1 and the read path never did, and `node:sqlite` refuses to bind a JS boolean —
+  so it *threw*: 500 from `/classes/:c`, `query-records/query-failed` in the browser. SB-006's derived
+  navigation filters `showInNav`, so **every page of the site rendered with no navigation** and the
+  only trace was a console line. **Fixed** (`convertQueryValue`, all four binding sites); nothing that
+  worked before can regress, because every affected path threw.
+  **F19** — four existing unit specs pinned the unbindable value as correct, in a file that also
+  asserts `serializeValue(true) === 1` a few dozen lines away. **A params list is only evidence if
+  something binds it.**
+  **F20** — 🧭 **nothing in the template ever creates a `Theme` row** → **SB-014**.
+  **F21** — 🔴 **one `claimSite` writes the `SiteSettings` singleton twice** → **SB-013**.
+  ✅ Also confirmed rather than claimed: **F16 is real in a browser** (the tab reads the record on a
+  published page and the static `Site` on the not-found one, in one run); the `description` port is
+  live; the root URL opens on `homeSlug`'s page; a slug that is no record is indistinguishable from a
+  draft.
+  ⬜ **Not done, stated so it is not assumed**: the panel was never *clicked* (it is authored,
+  deployed and part of the routing measurement); the contact form was never submitted; **rule 4 is
+  still UNMEASURED**; SSG is still not a claim this template can make.
 
 ## Tier 3 — found while building
+
+- ⬜ **SB-013** — [a singleton written twice](SB-013-A-SINGLETON-WRITTEN-TWICE.md) — **MEASURED s8
+  (SB-008 F21), not fixed.** One `claimSite` leaves **two identical `SiteSettings` rows**, 11 ms
+  apart, on a fresh backend. Two one-edge arms name the mechanism: the settings query keeps both
+  `runOnChange` boxes **on** (SB-004 s4's own rule) *and* is triggered by an explicit `storageFetch`,
+  so `fetched` fires **twice** and the whole gate → grant → mark chain runs twice; the second pass
+  reports `unchanged`, which is also wired to `store`. 🔴 **The wire that makes a re-run safe is the
+  wire that makes a re-run duplicate.** Both readers take `rows[0]` and nothing orders that list, so
+  the panel can edit one row while the site reads the other. 🧭 Three fixes, all touching **closed**
+  SB-004; the task file recommends the one-wire one and says what it costs. **Do it with SB-014 or
+  the second one re-grades the first's mutants for nothing.**
+- ⬜ **SB-014** — [the row nothing creates](SB-014-THE-ROW-NOTHING-CREATES.md) — **MEASURED s8
+  (SB-008 F20), not fixed.** **Nothing in the template ever creates a `Theme` record.** Measured on a
+  real claim (`GET /classes/Theme` → 0) and by a census of every `NewDbModelProperties` in all three
+  component sets — `Page`, `Section`, `ContactMessage`, `SiteSettings`, and never `Theme`. The theme
+  editor saves by `theme.firstItemId`, `undefined` on an empty collection, so **Save writes nowhere
+  and says nothing**. Both halves of SB-006's theme contract are correct and dead. 🧭 Two fixes.
+  🔴 **The general shape**: a class with a reader, an editor and no creator is invisible to every
+  check this phase has — it took a run on a *freshly claimed* backend, the state a real first user is
+  in and no fixture ever is.
 
 - ⬜ **SB-012** — [three spellings of a component name](SB-012-THREE-SPELLINGS-OF-A-COMPONENT-NAME.md)
   — **MEASURED s6, worked around in SB-005, not fixed.** `RouterNavigate.target` and
@@ -348,3 +395,46 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   of them edited, and two docs), so nothing in its scope moved. s6's relayed floor of 4 stands.
   Final: noodl-mcp **62 suites / 747**, `typecheck:mcp` and `typecheck:editor` both exit **0** (run
   unpiped).
+- **s8 (2026-08-26)** — **SB-008 DONE. The browser half is measured, and the phase's two deliberately
+  unmet criteria are closed** (SB-005 acceptance 6, SB-006 acceptance 9 — the same claim from two
+  sides). `packages/nodegx-backend/tests/sb008-public-site-drive.test.ts`: both panels authored
+  through the real door into one project (**site first**), SB-004's cloud half deployed beside them,
+  a real SQLite backend with **`devOpen: false`** (`enforced === true` asserted first), and a
+  headless Chrome with **no credential of any kind** — **20 specs, 4 known-firing controls, 3
+  one-edge arms**.
+  A published page renders records and all; a draft shows the not-found panel and **no part of it is
+  anywhere in the document** (asserted against `outerHTML`, because a draft behind `visible: false`
+  is `display: none` and `innerText` would skip it); a slug that is no record is indistinguishable
+  from a draft.
+  🔴 **The absence claims stand on a dev-open twin** — same project, same seed, one configuration
+  line — in which **the same draft renders**. Without it, "the draft did not appear" would have a
+  dozen causes that are not permissions, and each looks identical from the DOM.
+  🔴 **Four findings. F18 is the one that had already shipped:** a boolean literal **cannot be bound
+  to a SQLite parameter at all** — the write path folds booleans to 0/1 and the read path never did,
+  and `node:sqlite` throws rather than answering. SB-006's derived navigation filters `showInNav`, so
+  **the public site had no navigation on any page**, a 500 per fetch, and the only trace was a console
+  line no structural spec reads. **Fixed** in `QueryBuilder.ts` (`convertQueryValue`, all four binding
+  sites); **nothing that worked can regress, because every affected path threw**.
+  **F19** — four pre-existing unit specs pinned the unbindable value as correct, in the same file that
+  asserts `serializeValue(true) === 1` a few dozen lines away. **A params list is only evidence if
+  something binds it**; the new block binds it, with the raw boolean as its control.
+  **F20** → **SB-014** (nothing creates a `Theme` row). **F21** → **SB-013** (`claimSite` writes its
+  singleton twice).
+  ✅ Confirmed in a browser rather than claimed: **F16** (the tab reads the record on a published page
+  and the static `Site` on the not-found one, in one run — the only reading that separates the working
+  fix from the one the door accepts), the live `description` port, F17 as a property, F14's tie gone.
+  ⬜ **Stated so it is not assumed**: the panel's UI was never clicked; the contact form was never
+  submitted; **rule 4 is still UNMEASURED** (third session running); SSG is still not a claim.
+  Final: nodegx-backend **104 suites / 1143**, noodl-mcp **62 / 747**, noodl-runtime **141 / 2552**;
+  `typecheck:mcp`, the backend's and the runtime's all exit **0** (run unpiped).
+  ✅ **`test:ci` RUN SOLO** — s8 touched `noodl-runtime` source (`QueryBuilder.ts`), which webpack
+  compiles into the editor bundle, so it was genuinely in scope. Summary line:
+  **`Jasmine: 2856 specs, 4 failures (failed)`**, seed 42097, all four `AIX-006 style vocabulary` **by
+  name** — the recorded floor, so the adapter fix costs nothing. ⚠️ The compound exited **1**, which is
+  what a clean floor does; the summary line is the signal, never `$?`.
+  ⚠️ A peer had uncommitted `noodl-editor` edits (fb-005: `models/community`, `models/template`,
+  `tests-unit/fb-005`) in the shared checkout during that window. Nothing red landed in that
+  territory, but attribute by path if a later run does.
+  ⚠️ **Deliberately not done**: `BACKEND_DOCTRINE_MD` (`prompts/backend.ts`, editor source) does not
+  carry rule 3's new second half. The text is written in the reference doc and can be lifted — same
+  shape as s4's omission that s5 closed.

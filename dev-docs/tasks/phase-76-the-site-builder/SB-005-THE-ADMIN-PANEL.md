@@ -1,10 +1,11 @@
 # SB-005 — The admin panel
 
-**Status: 🟡 BUILT s6 (2026-08-26). Structurally complete and mutation-graded; behaviourally
-UNMEASURED.** Six browser components authored through the real MCP door
-(`noodl-mcp/tests/sb005Components.ts`), asserted by `noodl-mcp/tests/sb005AdminPanel.test.ts` —
-**21 specs, 9 mutants graded**. Acceptance 1–5 met; **acceptance 6 is SB-008's and remains unmet**,
-which is the point of listing it. §7 records what building it measured.
+**Status: ✅ CLOSED s8 (2026-08-26). Built s6, driven s8.** Six browser components authored through
+the real MCP door (`noodl-mcp/tests/sb005Components.ts`), asserted by
+`noodl-mcp/tests/sb005AdminPanel.test.ts` — **21 specs, 9 mutants graded**. Acceptance 1–5 met s6;
+**acceptance 6 met s8 by [SB-008](SB-008-THE-DRIVE.md)**, in two halves rather than one run — read
+its wording below, because the residual is named there rather than rounded off. §7 records what
+building it measured.
 
 🔴 **Read §4 before reading that green as evidence of anything.** It says the same thing SB-004 §7
 had to learn twice: an authoring run says the graph is well-formed and nothing else.
@@ -148,9 +149,15 @@ the criterion narrower where it was wrong and stricter where it was loose; neith
    Three mutants.
 5. ✅ The claim screen's refusal path is single-messaged (F7's oracle stays closed): the refusal is a
    constant parameter, and **no `error` output anywhere in that component is read**. One mutant.
-6. ⬜ **UNMET — deferred to SB-008**: a draft created through the panel is unreadable to an anonymous
-   caller over HTTP with enforcement on. Recorded here so it cannot be quietly counted as met by the
-   structural items above. **It is not met by anything in this task.**
+6. ✅ **MET s8, in two halves, and the join is stated rather than assumed.** A draft is unreadable to
+   an anonymous caller — over HTTP *and* through the shipped public site, with `devOpen: false`
+   (SB-008, four controls including a dev-open twin in which the same draft does render). And the
+   state that draft is in is the state this panel's `Create Record` authors: asserted rule by rule
+   against SB-004's own constant, graded by two mutants (§5.2 above).
+   ⚠️ **The residual, named:** the row SB-008 measured was written over REST carrying the panel's
+   ACL, **not by a click in the panel**. Nothing in this phase has driven the panel's own UI. So what
+   is proven is "a draft in the state this panel writes is invisible to a visitor", not "pressing New
+   Page produces such a row". The second needs a UI drive, and no task claims it.
 
 Two checks were added that the draft did not ask for, both because the build found the defect they
 guard: every code node's signal outputs are declared as ports (SB-004 F10, on the browser side), and

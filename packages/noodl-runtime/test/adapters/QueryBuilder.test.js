@@ -1,3 +1,4 @@
+const { resolveEngine } = require('../../src/api/adapters/local-sql');
 const QueryBuilder = require('../../src/api/adapters/local-sql/QueryBuilder');
 
 describe('QueryBuilder', () => {
@@ -122,7 +123,18 @@ describe('QueryBuilder', () => {
         params
       );
       expect(result).toBe('(("type" = ? OR "type" = ?) AND "active" = ?)');
-      expect(params).toEqual(['A', 'B', true]);
+      // 🔴 `1`, not `true` — SB-008 F18/F19. This assertion (and three more like
+      // it below) pinned a raw JS boolean as the correct parameter, and
+      // better-sqlite3 REFUSES to bind one: every WHERE clause these four specs
+      // certified threw `Provided value cannot be bound to SQLite parameter 1`
+      // the moment it reached `db.prepare(sql).all(...params)`. The suite was
+      // green over a query that could not run.
+      //
+      // ⚠️ The contradiction was already in this file, eleven lines apart:
+      // `serializeValue(true) === 1` is asserted below, so the write path's
+      // conversion was pinned correct and the read path's absence was pinned
+      // correct too. A params list is only evidence if something binds it.
+      expect(params).toEqual(['A', 'B', 1]);
     });
 
     it('handles direct equality', () => {
@@ -165,6 +177,84 @@ describe('QueryBuilder', () => {
     });
   });
 
+  /**
+   * SB-008 F18 — a boolean filter, in every operator that can carry one.
+   *
+   * The write path folds booleans to 0/1 (`serializeValue`, asserted below) and
+   * until this block the read path did not, so a row this driver had itself
+   * stored as `1` could not be asked for by the literal it was written as. The
+   * symptom was not a wrong answer: better-sqlite3 refuses to bind a JS boolean,
+   * so the query THREW — a 500 from `/classes/:c`, `query-records/query-failed`
+   * in a browser, and an empty navigation on every page of the site-builder
+   * template (SB-006's derived nav).
+   *
+   * Every operator is covered rather than `$eq` alone: a boolean is legal in all
+   * of them, and a half-converted set is the harder bug to find.
+   */
+  describe('a boolean is bound as 0/1, never as a JS boolean (SB-008 F18)', () => {
+    const paramsFor = (where) => {
+      const params = [];
+      QueryBuilder.buildWhereClause(where, params);
+      return params;
+    };
+
+    it('converts direct equality', () => {
+      expect(paramsFor({ showInNav: true })).toEqual([1]);
+      expect(paramsFor({ showInNav: false })).toEqual([0]);
+    });
+
+    it('converts $eq and $ne', () => {
+      expect(paramsFor({ published: { $eq: true } })).toEqual([1]);
+      expect(paramsFor({ published: { $ne: false } })).toEqual([0]);
+    });
+
+    it('converts every member of $in and $nin', () => {
+      // The list form is where a half-fix hides: one unconverted member is
+      // enough to make the whole statement unbindable.
+      expect(paramsFor({ flag: { $in: [true, false] } })).toEqual([1, 0]);
+      expect(paramsFor({ flag: { $nin: [false, true] } })).toEqual([0, 1]);
+    });
+
+    it('leaves the values it is not about alone', () => {
+      // The negative control: converting booleans must not convert anything
+      // else, and `0`/`1` arriving as numbers must stay numbers.
+      expect(paramsFor({ n: { $eq: 1 } })).toEqual([1]);
+      expect(paramsFor({ s: { $eq: 'true' } })).toEqual(['true']);
+      expect(paramsFor({ d: { $gt: { __type: 'Date', iso: '2024-01-01T00:00:00.000Z' } } })).toEqual([
+        '2024-01-01T00:00:00.000Z'
+      ]);
+    });
+
+    /**
+     * 🔴 F19 — the assertion the four pre-existing specs were missing.
+     *
+     * A `params` list is only evidence if something binds it. Four specs in this
+     * file certified `[…, true]` as the correct parameter list for a WHERE
+     * clause that could not execute, and stayed green for as long as nothing in
+     * the suite handed those params to a statement. This one does, and the
+     * second half is the known-firing control: the *unconverted* value throws,
+     * so the first half is a measurement rather than a tautology.
+     */
+    it('🔴 the converted value BINDS and the raw boolean does not', () => {
+      const engine = resolveEngine();
+      if (!engine) throw new Error('no SQLite engine resolved — this spec cannot measure anything');
+      const db = engine.open(':memory:');
+      db.exec('CREATE TABLE t ("objectId" TEXT, "showInNav" INTEGER)');
+      db.prepare('INSERT INTO t VALUES (?, ?)').run('a', 1);
+      db.prepare('INSERT INTO t VALUES (?, ?)').run('b', 0);
+
+      const params = [];
+      const where = QueryBuilder.buildWhereClause({ showInNav: true }, params);
+      const rows = db.prepare(`SELECT "objectId" FROM t WHERE ${where}`).all(...params);
+      expect(rows.map((r) => r.objectId)).toEqual(['a']);
+
+      // The control: the shape the four specs pinned, against the same statement.
+      expect(() => db.prepare(`SELECT "objectId" FROM t WHERE ${where}`).all(true)).toThrow();
+
+      db.close();
+    });
+  });
+
   describe('buildOrderClause', () => {
     it('returns empty string for empty sort', () => {
       expect(QueryBuilder.buildOrderClause(null)).toBe('');
@@ -201,7 +291,7 @@ describe('QueryBuilder', () => {
         where: { active: { $eq: true } }
       });
       expect(sql).toBe('SELECT * FROM "users" WHERE "active" = ?');
-      expect(params).toEqual([true]);
+      expect(params).toEqual([1]); // F18: a bound boolean is 0/1, never a JS boolean
     });
 
     it('builds select with sort', () => {
@@ -260,7 +350,7 @@ describe('QueryBuilder', () => {
         where: { active: { $eq: true } }
       });
       expect(sql).toBe('SELECT COUNT(*) as count FROM "users" WHERE "active" = ?');
-      expect(params).toEqual([true]);
+      expect(params).toEqual([1]); // F18: a bound boolean is 0/1, never a JS boolean
     });
   });
 
@@ -339,7 +429,7 @@ describe('QueryBuilder', () => {
         where: { active: { $eq: true } }
       });
       expect(sql).toBe('SELECT DISTINCT "country" FROM "users" WHERE "active" = ?');
-      expect(params).toEqual([true]);
+      expect(params).toEqual([1]); // F18: a bound boolean is 0/1, never a JS boolean
     });
   });
 

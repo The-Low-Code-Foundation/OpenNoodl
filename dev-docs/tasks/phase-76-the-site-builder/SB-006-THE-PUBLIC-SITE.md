@@ -1,7 +1,7 @@
 # SB-006 — The public site
 
-**Status: 🟡 BUILT s7 (2026-08-26). Structurally complete and mutation-graded; behaviourally
-UNMEASURED.** Five browser components authored through the real MCP door
+**Status: ✅ CLOSED s8 (2026-08-26). Built s7, driven s8.** Structurally complete and
+mutation-graded s7; **acceptance 9 met by [SB-008](SB-008-THE-DRIVE.md)'s drive**. Five browser components authored through the real MCP door
 (`noodl-mcp/tests/sb006Components.ts`), asserted by `noodl-mcp/tests/sb006PublicSite.test.ts` —
 **29 specs, 12 mutants graded, 1 known-firing control**. Acceptance 1–8 met; **acceptance 9 is
 SB-008's and remains unmet**, which is the point of listing it.
@@ -147,10 +147,16 @@ browsing the public site reads drafts, because that principal may. That is the i
    node's port** — and no wire enters `Page.title`. One mutant, and it is the fix that looks right.
 8. ✅ **Every browser global a code node touches is guarded**, with a census so "no unguarded
    references" cannot mean "no references". One mutant.
-9. ⬜ **UNMET — deferred to SB-008**: an anonymous visitor loads a published page through this site
-   and gets a 404-equivalent for an unpublished one, over HTTP with enforcement on. Recorded here so
-   it cannot be quietly counted as met by the structural items above. **It is not met by anything in
-   this task.**
+9. ✅ **MET by SB-008 (s8), not by anything in this task.** An anonymous visitor loads a published
+   page through this site and gets the not-found panel for an unpublished one, over HTTP with
+   `devOpen: false`, in a headless browser — and no part of the draft is anywhere in the document.
+   Four known-firing controls stand under it, including a **dev-open twin** in which the same draft
+   does render.
+   🔴 **The same run found that acceptance 4's third query shape had never worked.** The nav query
+   filters `showInNav` — a boolean literal — and a boolean could not be bound to a SQLite parameter
+   at all (SB-008 F18), so the query 500'd and **this site had no navigation on any page**. The graph
+   was right; the adapter's read path was missing the conversion its write path has had all along.
+   Fixed there, not here.
 
 ## 6. What was built (s7)
 

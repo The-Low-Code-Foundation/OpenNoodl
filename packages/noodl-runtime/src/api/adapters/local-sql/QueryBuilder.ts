@@ -212,6 +212,40 @@ function convertPointerValue(value: unknown): unknown {
 }
 
 /**
+ * One bound value, on its way from a Parse-style `where` into a SQLite
+ * parameter slot.
+ *
+ * 🔴 **The boolean leg is a defect fix, not a convenience** (SB-008 F18). The
+ * write path has always folded booleans to 0/1 — `serializeValue`, below,
+ * `// Handle booleans - SQLite uses 0/1` — and the read path never did, so a
+ * value this driver had itself stored as `1` could not be asked for by the
+ * literal it was written as. better-sqlite3 refuses to bind a JS boolean at
+ * all, so the failure was not a wrong answer but a throw: *"Provided value
+ * cannot be bound to SQLite parameter 1"*, surfaced as a **500** from
+ * `/classes/:c` and as `query-records/query-failed` in a browser.
+ *
+ * Measured before the change, on one table, one route, three arms: `{flag:true}`
+ * → 500, `{flag:1}` → 200 with the row, `{name:'yes'}` → 200 (the control that
+ * says the route itself works). The second arm is what makes this the missing
+ * conversion rather than a storage question — the data was already in the shape
+ * the fix converts to.
+ *
+ * ⚠️ **Nothing that works today can regress**: every path this changes threw
+ * before it, on every input, in every adapter mode. What it can change is a
+ * caller that was *relying* on the 500, and there is none — the throw reaches
+ * the wire as a generic server error.
+ *
+ * Applied at all four binding sites (direct equality, the comparison operators,
+ * `$in`, `$nin`) rather than at one, because a boolean is legal in every one of
+ * them and a half-converted operator set is the harder bug to find.
+ */
+function convertQueryValue(value: unknown): unknown {
+  const converted = convertDateValue(convertPointerValue(value));
+  if (typeof converted === 'boolean') return converted ? 1 : 0;
+  return converted;
+}
+
+/**
  * Build a WHERE clause from a Parse-style query
  *
  * @param where - Parse-style query object
@@ -281,7 +315,7 @@ export function buildWhereClause(
     if (typeof condition !== 'object' || condition === null) {
       // Direct equality
       conditions.push(`${col} = ?`);
-      params.push(convertDateValue(convertPointerValue(condition)));
+      params.push(convertQueryValue(condition));
       continue;
     }
 
@@ -338,7 +372,7 @@ function translateOperator(
   siblings?: Record<string, unknown>
 ): string | null {
   // Convert special types
-  const convertedValue = convertDateValue(convertPointerValue(value));
+  const convertedValue = convertQueryValue(value);
 
   switch (op) {
     case '$eq':
@@ -375,7 +409,7 @@ function translateOperator(
       if (!Array.isArray(value) || value.length === 0) {
         return '0'; // Always false
       }
-      const inValues = value.map((v) => convertDateValue(convertPointerValue(v)));
+      const inValues = value.map((v) => convertQueryValue(v));
       const placeholders = inValues.map(() => '?').join(', ');
       params.push(...inValues);
       return `${col} IN (${placeholders})`;
@@ -385,7 +419,7 @@ function translateOperator(
       if (!Array.isArray(value) || value.length === 0) {
         return '1'; // Always true (not in empty set)
       }
-      const ninValues = value.map((v) => convertDateValue(convertPointerValue(v)));
+      const ninValues = value.map((v) => convertQueryValue(v));
       const ninPlaceholders = ninValues.map(() => '?').join(', ');
       params.push(...ninValues);
       return `${col} NOT IN (${ninPlaceholders})`;
