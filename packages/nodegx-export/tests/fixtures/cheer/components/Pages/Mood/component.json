@@ -5,7 +5,7 @@
   "path": "/Pages/Mood",
   "type": "page",
   "created": "2026-08-27T09:06:23.280Z",
-  "modified": "2026-08-27T09:06:23.280Z",
+  "modified": "2026-08-27T10:14:39.085Z",
   "modifiedBy": "noodl-mcp",
   "description": "Mood board page: a Global Store \"mood\" written through a text input (note) and a button that copies the visitorName variable into the theme key, read back through two Subscribe nodes."
 }

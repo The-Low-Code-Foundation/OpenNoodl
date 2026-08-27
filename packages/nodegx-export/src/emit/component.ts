@@ -136,6 +136,10 @@ export function emitComponent(
   const usedCollectionNames = new Set<string>();
   const collectExprUse = (expr: ValueExpr) => {
     if (expr.kind === 'store-get') usedVariableNames.add(expr.variableName);
+    if (expr.kind === 'store-key-get') usedStoreNames.add(expr.storeName);
+    if (expr.kind === 'format') {
+      for (const part of expr.parts) if (typeof part !== 'string') collectExprUse(part);
+    }
   };
   const collectActionUse = (action: HandlerAction) => {
     if (action.kind === 'emit') {
@@ -154,6 +158,11 @@ export function emitComponent(
       usedCollectionNames.add(action.collectionName);
       action.entries.forEach((e) => collectExprUse(e.expr));
     }
+    if (action.kind === 'branch') {
+      collectExprUse(action.cond);
+      action.whenTrue.forEach(collectActionUse);
+      action.whenFalse.forEach(collectActionUse);
+    }
   };
   const allActions: HandlerAction[] = [
     ...Object.values(plan.handlers).flatMap((byPort) => Object.values(byPort).flat()),
@@ -163,10 +172,27 @@ export function emitComponent(
   allActions.forEach(collectActionUse);
   for (const receiver of plan.receivers) usedChannelNames.add(receiver.channelName);
 
-  // Render bindings needing hooks, in pre-order encounter order.
+  // Render bindings needing hooks, in pre-order encounter order. A computed binding earns the
+  // hooks of every source its expression tree reads, in part order.
   const hookVariables: string[] = [];
   const hookStoreKeys: Array<{ storeName: string; key: string }> = [];
   const hookCollections: string[] = [];
+  const hookExprSources = (expr: ValueExpr) => {
+    if (expr.kind === 'store-get' && !hookVariables.includes(expr.variableName)) {
+      hookVariables.push(expr.variableName);
+      usedVariableNames.add(expr.variableName);
+    }
+    if (
+      expr.kind === 'store-key-get' &&
+      !hookStoreKeys.some((h) => h.storeName === expr.storeName && h.key === expr.key)
+    ) {
+      hookStoreKeys.push({ storeName: expr.storeName, key: expr.key });
+      usedStoreNames.add(expr.storeName);
+    }
+    if (expr.kind === 'format') {
+      for (const part of expr.parts) if (typeof part !== 'string') hookExprSources(part);
+    }
+  };
   for (const id of preOrder(plan)) {
     for (const source of Object.values(plan.bindings[id] ?? {})) {
       if (source.kind === 'store' && !hookVariables.includes(source.variableName)) {
@@ -180,6 +206,7 @@ export function emitComponent(
         hookStoreKeys.push({ storeName: source.storeName, key: source.key });
         usedStoreNames.add(source.storeName);
       }
+      if (source.kind === 'computed') hookExprSources(source.expr);
     }
     if (plan.roleOf[id] === 'repeater') {
       const collectionName = plan.repeaters[id]?.itemsCollectionName;
@@ -248,19 +275,62 @@ export function emitComponent(
   const itemLocal = hookCollections.length > 0 ? dedupeLocal('item') : 'item';
   const indexLocal = hookCollections.length > 0 ? dedupeLocal('index') : 'index';
 
-  // ---- handler statement rendering -------------------------------------------------------
-  const exprCode = (expr: ValueExpr): string => {
+  // ---- expression + handler statement rendering ------------------------------------------
+  // One expression vocabulary, two modes (LOGIC-TARGET §1): in render an expression reads the
+  // component's hook locals; in a handler it reads `.get()` snapshots.
+  const templateText = (text: string): string =>
+    text.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+  /**
+   * Whether an expression can statically be undefined. A format placeholder substitutes the
+   * runtime's `''` for an unset input; `String(undefined)` would print the word, so such parts
+   * interpolate with `?? ''`.
+   */
+  const maybeUndefined = (expr: ValueExpr): boolean => {
+    switch (expr.kind) {
+      case 'prop':
+        return true; // every emitted component prop is optional
+      case 'store-get':
+        return true; // variables boot undefined until their first write (state.ts)
+      case 'store-key-get':
+        return !(storeByName.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.required ?? false);
+      case 'payload':
+        return true; // payload keys are optional-typed
+      case 'input-text':
+      case 'literal':
+      case 'format':
+        return false;
+    }
+  };
+  const exprCode = (expr: ValueExpr, mode: 'handler' | 'render'): string => {
     switch (expr.kind) {
       case 'prop':
         return expr.name;
       case 'input-text':
         return 'event.target.value';
       case 'store-get':
-        return `${variableByName.get(expr.variableName)!.exportName}.get()`;
+        return mode === 'render'
+          ? (hookLocals.get(expr.variableName) ?? expr.variableName)
+          : `${variableByName.get(expr.variableName)!.exportName}.get()`;
+      case 'store-key-get':
+        return mode === 'render'
+          ? (storeKeyLocals.get(storeKeyId(expr.storeName, expr.key)) ?? expr.key)
+          : memberExpr(`${storeByName.get(expr.storeName)!.exportName}.get()`, expr.key);
       case 'payload':
         return `payload.${expr.key}`;
       case 'literal':
         return tsLiteral(expr.value);
+      case 'format':
+        return (
+          '`' +
+          expr.parts
+            .map((p) =>
+              typeof p === 'string'
+                ? templateText(p)
+                : '${' + exprCode(p, mode) + (maybeUndefined(p) ? " ?? ''" : '') + '}'
+            )
+            .join('') +
+          '`'
+        );
     }
   };
   const actionCode = (action: HandlerAction): string => {
@@ -268,32 +338,53 @@ export function emitComponent(
       case 'navigate':
         return `navigate('${action.to}')`;
       case 'store-set':
-        return `${variableByName.get(action.variableName)!.exportName}.set(${exprCode(action.expr)})`;
+        return `${variableByName.get(action.variableName)!.exportName}.set(${exprCode(action.expr, 'handler')})`;
       case 'globalstore-set': {
         const store = storeByName.get(action.storeName)!;
         const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(action.key) ? action.key : JSON.stringify(action.key);
-        return `${store.exportName}.set({ ${key}: ${exprCode(action.expr)} })`;
+        return `${store.exportName}.set({ ${key}: ${exprCode(action.expr, 'handler')} })`;
       }
       case 'collection-add': {
         const collection = collectionByName.get(action.collectionName)!;
         const entries = action.entries
-          .map((e) => `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(e.key) ? e.key : JSON.stringify(e.key)}: ${exprCode(e.expr)}`)
+          .map(
+            (e) =>
+              `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(e.key) ? e.key : JSON.stringify(e.key)}: ${exprCode(e.expr, 'handler')}`
+          )
           .join(', ');
         return `${collection.exportName}.add({${entries.length > 0 ? ` ${entries} ` : ''}})`;
       }
       case 'emit': {
         const channel = channelByName.get(action.channelName)!;
         if (channel.payloadTypeName === null) return `${channel.exportName}.emit()`;
-        const entries = action.payload.map((p) => `${p.key}: ${exprCode(p.expr)}`).join(', ');
+        const entries = action.payload.map((p) => `${p.key}: ${exprCode(p.expr, 'handler')}`).join(', ');
         return `${channel.exportName}.emit({${entries.length > 0 ? ` ${entries} ` : ''}})`;
+      }
+      case 'branch': {
+        const armCode = (actions: HandlerAction[]): string =>
+          actions.length === 1 ? actionCode(actions[0]) : `{ ${actions.map(actionCode).join('; ')}; }`;
+        const cond = exprCode(action.cond, 'handler');
+        if (action.whenTrue.length === 0) {
+          const negated = /^[A-Za-z_$][A-Za-z0-9_$.]*(\(\))?$/.test(cond) ? `!${cond}` : `!(${cond})`;
+          return `if (${negated}) ${armCode(action.whenFalse)}`;
+        }
+        const test = `if (${cond}) ${armCode(action.whenTrue)}`;
+        return action.whenFalse.length > 0 ? `${test}; else ${armCode(action.whenFalse)}` : test;
       }
     }
   };
-  const handlerArrow = (actions: HandlerAction[], param: string): string => {
+  /**
+   * A branch statement cannot be an arrow's expression body, and Prettier never leaves a
+   * non-empty block on one line — so a handler containing one takes the multi-line block form,
+   * indented at the attribute's own column.
+   */
+  const handlerArrow = (actions: HandlerAction[], param: string, indent: number): string => {
     const statements = actions.map(actionCode);
-    return statements.length === 1
-      ? `${param} => ${statements[0]}`
-      : `${param} => { ${statements.join('; ')}; }`;
+    if (actions.some((a) => a.kind === 'branch')) {
+      const body = statements.map((s) => `${pad(indent + 2)}${s};`).join('\n');
+      return `${param} => {\n${body}\n${pad(indent)}}`;
+    }
+    return statements.length === 1 ? `${param} => ${statements[0]}` : `${param} => { ${statements.join('; ')}; }`;
   };
 
   // ---- imports ---------------------------------------------------------------------------
@@ -366,6 +457,7 @@ export function emitComponent(
     if (source.kind === 'prop') return source.name;
     if (source.kind === 'store') return hookLocals.get(source.variableName) ?? null;
     if (source.kind === 'store-key') return storeKeyLocals.get(storeKeyId(source.storeName, source.key)) ?? null;
+    if (source.kind === 'computed') return exprCode(source.expr, 'render');
     return null;
   };
 
@@ -389,7 +481,7 @@ export function emitComponent(
     return CONTENT_ATTR_ORDER.filter((attr) => attrs.has(attr)).map((attr) => attrs.get(attr)!);
   };
 
-  const handlerAttrs = (node: NodeIR): string[] => {
+  const handlerAttrs = (node: NodeIR, attrIndent: number): string[] => {
     const attrs: string[] = [];
     for (const [port, actions] of Object.entries(plan.handlers[node.id] ?? {})) {
       const eventAttr = EVENT_ATTRS[port];
@@ -397,21 +489,23 @@ export function emitComponent(
         notes.push(`${plan.path}: signal ${node.id}.${port} has no DOM event equivalent — dropped, reported`);
         continue;
       }
-      attrs.push(`${eventAttr}={${handlerArrow(actions, '()')}}`);
+      attrs.push(`${eventAttr}={${handlerArrow(actions, '()', attrIndent)}}`);
     }
     return attrs;
   };
 
   /** The wired-onTextChanged rule: writes on change, and nothing else — the input stays native. */
-  const changeAttrs = (node: NodeIR): string[] => {
+  const changeAttrs = (node: NodeIR, attrIndent: number): string[] => {
     const actions = plan.changeHandlers[node.id];
     if (!actions || actions.length === 0) return [];
-    return [`onChange={${handlerArrow(actions, '(event)')}}`];
+    return [`onChange={${handlerArrow(actions, '(event)', attrIndent)}}`];
   };
 
   const childText = (node: NodeIR, paramName: string): string | null => {
     const bound = plan.bindings[node.id]?.[paramName];
     if (bound) {
+      // An all-static format folded to a literal reads as the plain text it is.
+      if (bound.kind === 'computed' && bound.expr.kind === 'literal') return jsxText(String(bound.expr.value));
       const expr = bindingExpr(bound);
       if (expr !== null) return `{${expr}}`;
       notes.push(`${plan.path}: wire into ${node.id}.${paramName} has no statically known source — dropped, reported`);
@@ -438,8 +532,8 @@ export function emitComponent(
     const className = classOf(id);
     if (className) attrs.push(`className={styles.${className}}`);
     if (role === 'image' || role === 'input') attrs.push(...contentAttrs(node));
-    if (role === 'input') attrs.push(...changeAttrs(node));
-    attrs.push(...handlerAttrs(node));
+    if (role === 'input') attrs.push(...changeAttrs(node, indent + 2));
+    attrs.push(...handlerAttrs(node, indent + 2));
 
     if (role === 'text') {
       return element(tag, attrs, childText(node, 'text'), indent, false);
@@ -596,16 +690,26 @@ export function emitComponent(
   for (const query of plan.queries) {
     body.push('  useEffect(() => {', `    ${query.fetchName}().then(${query.setterName});`, '  }, []);', '');
   }
+  const actionExprsOf = (a: HandlerAction): ValueExpr[] => {
+    switch (a.kind) {
+      case 'emit':
+        return a.payload.map((p) => p.expr);
+      case 'store-set':
+      case 'globalstore-set':
+        return [a.expr];
+      case 'collection-add':
+        return a.entries.map((e) => e.expr);
+      case 'branch':
+        return [a.cond, ...a.whenTrue.flatMap(actionExprsOf), ...a.whenFalse.flatMap(actionExprsOf)];
+      case 'navigate':
+        return [];
+    }
+  };
+  const containsPayload = (e: ValueExpr): boolean =>
+    e.kind === 'payload' || (e.kind === 'format' && e.parts.some((p) => typeof p !== 'string' && containsPayload(p)));
   for (const receiver of plan.receivers) {
     const channel = channelByName.get(receiver.channelName)!;
-    const usesPayload = receiver.actions.some((a) =>
-      (a.kind === 'emit'
-        ? a.payload.map((p) => p.expr)
-        : a.kind === 'store-set' || a.kind === 'globalstore-set'
-          ? [a.expr]
-          : []
-      ).some((e) => e.kind === 'payload')
-    );
+    const usesPayload = receiver.actions.some((a) => actionExprsOf(a).some(containsPayload));
     body.push(`  useSignal(${channel.exportName}, ${usesPayload ? '(payload)' : '()'} => {`);
     for (const action of receiver.actions) body.push(`    ${actionCode(action)};`);
     body.push('  });', '');
@@ -658,21 +762,26 @@ function element(
   isContainer: boolean
 ): string[] {
   const open = `${pad(indent)}<${tag}${attrs.map((a) => ` ${a}`).join('')}`;
+  // A multi-line attribute (a block-form handler) carries its own absolute indentation, which
+  // only lines up in the one-attribute-per-line form.
+  const mustWrap = attrs.some((a) => a.includes('\n'));
 
   if (children === null) {
     const inline = `${open} />`;
-    if (inline.length <= PRINT_WIDTH) return [inline];
+    if (!mustWrap && inline.length <= PRINT_WIDTH) return [inline];
     return [...wrapAttrs(tag, attrs, indent), `${pad(indent)}/>`];
   }
 
   if (typeof children === 'string') {
     const inline = `${open}>${children}</${tag}>`;
-    if (!isContainer && inline.length <= PRINT_WIDTH) return [inline];
-    const openLines = `${open}>`.length <= PRINT_WIDTH ? [`${open}>`] : [...wrapAttrs(tag, attrs, indent), `${pad(indent)}>`];
+    if (!mustWrap && !isContainer && inline.length <= PRINT_WIDTH) return [inline];
+    const openLines =
+      !mustWrap && `${open}>`.length <= PRINT_WIDTH ? [`${open}>`] : [...wrapAttrs(tag, attrs, indent), `${pad(indent)}>`];
     return [...openLines, ...wrapText(children, indent + 2), `${pad(indent)}</${tag}>`];
   }
 
-  const openLines = `${open}>`.length <= PRINT_WIDTH ? [`${open}>`] : [...wrapAttrs(tag, attrs, indent), `${pad(indent)}>`];
+  const openLines =
+    !mustWrap && `${open}>`.length <= PRINT_WIDTH ? [`${open}>`] : [...wrapAttrs(tag, attrs, indent), `${pad(indent)}>`];
   return [...openLines, ...children, `${pad(indent)}</${tag}>`];
 }
 

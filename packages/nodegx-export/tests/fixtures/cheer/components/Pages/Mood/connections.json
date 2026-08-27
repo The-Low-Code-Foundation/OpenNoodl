@@ -22,20 +22,38 @@
       "toProperty": "text"
     },
     {
-      "fromId": "subTheme",
-      "fromProperty": "value",
-      "toId": "themeText",
-      "toProperty": "text"
-    },
-    {
       "fromId": "readVisitor-2",
       "fromProperty": "value",
       "toId": "setTheme",
       "toProperty": "value"
     },
     {
+      "fromId": "subTheme",
+      "fromProperty": "value",
+      "toId": "themeFormat",
+      "toProperty": "theme"
+    },
+    {
+      "fromId": "themeFormat",
+      "fromProperty": "formatted",
+      "toId": "themeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "readVisitor-2",
+      "fromProperty": "value",
+      "toId": "hasVisitor",
+      "toProperty": "condition"
+    },
+    {
       "fromId": "themeButton",
       "fromProperty": "onClick",
+      "toId": "hasVisitor",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "hasVisitor",
+      "fromProperty": "ontrue",
       "toId": "setTheme",
       "toProperty": "set"
     }

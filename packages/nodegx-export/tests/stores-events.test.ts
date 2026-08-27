@@ -97,6 +97,8 @@ export function CheerBanner() {
 `;
 
 const GOLDEN_HOME = `// @nodegx:generated (visual — provenance markers complete in EXP-007)
+import { useValue } from '@nodegx/core/react';
+
 import { CheerBanner } from '../components/CheerBanner';
 import { GreetingBadge } from '../components/GreetingBadge';
 import { celebrate } from '../events';
@@ -105,6 +107,8 @@ import styles from './Home.module.css';
 
 /** Home. */
 export function HomePage() {
+  const name = useValue(visitorName);
+
   return (
     <div className={styles.page}>
       <title>Cheer</title>
@@ -116,6 +120,8 @@ export function HomePage() {
         placeholder="Type a visitor name"
         onChange={(event) => visitorName.set(event.target.value)}
       />
+
+      <p className={styles.cheerPreview}>{\`Cheering for \${name ?? ''}!\`}</p>
 
       <GreetingBadge />
 
@@ -222,9 +228,11 @@ describe('writes without subscriptions (STEP5-TARGET §5)', () => {
     expect(home).toContain('onChange={(event) => visitorName.set(event.target.value)}');
   });
 
-  test('Home subscribes to nothing: handler reads are .get() snapshots, no hooks', () => {
+  test('handler reads stay .get() snapshots; only the render read earns the hook', () => {
     const home = app.files['src/pages/Home.tsx'];
-    expect(home).not.toContain('useValue');
+    // One useValue, earned by the preview's render binding — the click handler's read of the
+    // same variable stays a snapshot and earns nothing.
+    expect(home.match(/useValue\(/g)).toHaveLength(1);
     expect(home).toContain('visitorName.get()');
   });
 });

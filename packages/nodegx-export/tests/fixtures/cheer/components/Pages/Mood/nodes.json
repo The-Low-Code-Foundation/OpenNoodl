@@ -196,6 +196,29 @@
       "parameters": {
         "name": "visitorName"
       }
+    },
+    {
+      "id": "themeFormat",
+      "type": "String Format",
+      "label": "Theme sentence",
+      "parameters": {
+        "format": "Feeling {theme} today"
+      },
+      "x": 410,
+      "y": 880
+    },
+    {
+      "id": "hasVisitor",
+      "type": "Condition",
+      "label": "Has a visitor name",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "metadata": {
+        "comment": "Evaluate-only: re-test on change is unticked so the click is the only trigger — the button must not fire when the name changes."
+      },
+      "x": 410,
+      "y": 1000
     }
   ],
   "visualRoots": [

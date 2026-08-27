@@ -24,6 +24,7 @@
       "children": [
         "headline",
         "nameInput",
+        "cheerPreview",
         "visitorBadge",
         "cheerButton",
         "cheerBanner"
@@ -138,6 +139,28 @@
       },
       "x": 410,
       "y": 640
+    },
+    {
+      "id": "cheerPreview",
+      "type": "Text",
+      "label": "Cheer preview",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "previewFormat",
+      "type": "String Format",
+      "label": "Preview sentence",
+      "parameters": {
+        "format": "Cheering for {name}!"
+      },
+      "x": 410,
+      "y": 520
     }
   ],
   "visualRoots": [

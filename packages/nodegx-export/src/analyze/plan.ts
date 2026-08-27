@@ -12,6 +12,14 @@
  * `useSignal`). Value wires resolve by sink context: the same `Variable2.value` read is a
  * `useValue` hook in rendered content and a `.get()` snapshot inside a handler.
  *
+ * Step 6 adds statically-knowable logic (EXP-002-LOGIC-TARGET-OUTPUT.md): String Format and
+ * Condition resolve into *expression trees* over the same source vocabulary, rendered inline
+ * wherever their output lands — the `derived()` row of EXP-001's table compiled away, because
+ * the hooks a component already earns are the reactivity a Derived would provide. A Condition
+ * in a handler chain (`trigger → eval`, `ontrue → sink`) becomes a branch action — an `if`
+ * statement in the trigger's handler — and only when the author unticked Run On Value Change,
+ * because Evaluate is additive and an onClick cannot carry on-change firing.
+ *
  * Everything here is pure decision-making over the IR; no text is generated. The emit layer
  * (emit/component.ts) turns a ComponentPlan into TSX/CSS.
  */
@@ -57,26 +65,36 @@ export type BindingSource =
   | { kind: 'prop'; name: string }
   | { kind: 'store'; variableName: string }
   | { kind: 'store-key'; storeName: string; key: string }
+  | { kind: 'computed'; expr: ValueExpr }
   | { kind: 'unresolved'; fromId: string; fromProperty: string };
 
 /**
  * A value read inside a handler or binding, resolved to what the generated code can actually
  * say. `input-text` and `payload` are context-bound: they only exist inside the owning input's
  * onChange and the owning receiver's handler respectively — attachment validates that.
+ *
+ * Step 6's additions compose: `format` is a String Format resolved to alternating static text
+ * and sub-expressions (a template literal at emit), and `store-key-get` is a single-key
+ * Subscribe read usable in either context (the selector hook local in render, `.get().<key>`
+ * in a handler).
  */
 export type ValueExpr =
   | { kind: 'prop'; name: string }
   | { kind: 'input-text'; inputId: string }
   | { kind: 'store-get'; variableName: string }
+  | { kind: 'store-key-get'; storeName: string; key: string }
   | { kind: 'payload'; key: string; receiverId: string }
-  | { kind: 'literal'; value: string | number | boolean };
+  | { kind: 'literal'; value: string | number | boolean }
+  | { kind: 'format'; parts: Array<string | ValueExpr> };
 
 export type HandlerAction =
   | { kind: 'navigate'; to: string }
   | { kind: 'emit'; channelName: string; payload: Array<{ key: string; expr: ValueExpr }> }
   | { kind: 'store-set'; variableName: string; expr: ValueExpr }
   | { kind: 'globalstore-set'; storeName: string; key: string; expr: ValueExpr }
-  | { kind: 'collection-add'; collectionName: string; entries: Array<{ key: string; expr: ValueExpr }> };
+  | { kind: 'collection-add'; collectionName: string; entries: Array<{ key: string; expr: ValueExpr }> }
+  /** A Condition in a handler chain: `if (cond) whenTrue; else whenFalse;` (LOGIC-TARGET §3). */
+  | { kind: 'branch'; cond: ValueExpr; whenTrue: HandlerAction[]; whenFalse: HandlerAction[] };
 
 export interface ReceiverPlan {
   nodeId: string;
@@ -397,12 +415,46 @@ function planComponent(
     return typeof name === 'string' && registry.channels.has(name) ? name : undefined;
   };
 
-  const resolveExpr = (fromNode: NodeIR | undefined, fromProperty: string): ValueExpr | null => {
+  /**
+   * Everything a resolved expression tree drags along: internal wires to consume, logic nodes
+   * to collapse, Subscribe nodes whose translation the tree is, and — on failure — why. The
+   * caller applies these only when it actually uses the expression.
+   */
+  type ResolveCtx = { consumes: string[]; logicNodeIds: string[]; subscriberIds: string[]; visited: Set<string>; defer?: string };
+  const newCtx = (): ResolveCtx => ({ consumes: [], logicNodeIds: [], subscriberIds: [], visited: new Set() });
+
+  /** The pass-4b eligibility rules for a single-key Subscribe read, shared with resolveExpr. */
+  const storeKeyReadOf = (node: NodeIR): { storeName: string; key: string } | { defer: string } => {
+    const store = storePlanOf(node);
+    if (store === undefined) return { defer: 'store name is not a literal' };
+    if (store.deferred !== undefined) return { defer: store.deferred };
+    if (wiredPorts.has(`${node.id}:keys`)) return { defer: "the subscription's keys are wired, not literal" };
+    const keys = subscribeKeysOf(node);
+    if (keys.length !== 1) {
+      return { defer: `${keys.length === 0 ? 'a whole-store' : 'a multi-key'} subscription is not translated in this slice` };
+    }
+    const keyType = store.keys.find((k) => k.key === keys[0])?.tsType;
+    if (keyType !== 'string' && keyType !== 'number') {
+      return { defer: `key "${keys[0]}" of store "${store.name}" has no statically-typed value` };
+    }
+    return { storeName: store.name, key: keys[0] };
+  };
+
+  const resolveExpr = (fromNode: NodeIR | undefined, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
     if (!fromNode) return null;
     if (fromNode.type === 'Component Inputs') return { kind: 'prop', name: fromProperty };
     if (fromNode.type === 'Variable2' && fromProperty === 'value') {
       const name = variableNameOf(fromNode);
       return name !== undefined ? { kind: 'store-get', variableName: name } : null;
+    }
+    if (fromNode.type === GLOBAL_STORE_SUBSCRIBE && fromProperty === 'value') {
+      const read = storeKeyReadOf(fromNode);
+      if ('defer' in read) {
+        ctx.defer = read.defer;
+        return null;
+      }
+      ctx.subscriberIds.push(fromNode.id);
+      return { kind: 'store-key-get', storeName: read.storeName, key: read.key };
     }
     if (isTextInputType(fromNode.type) && fromProperty === 'onTextChanged') {
       return { kind: 'input-text', inputId: fromNode.id };
@@ -412,17 +464,105 @@ function planComponent(
       const known = name !== undefined && registry.channels.get(name)!.payload.some((p) => p.key === fromProperty);
       return known ? { kind: 'payload', key: fromProperty, receiverId: fromNode.id } : null;
     }
+    if (fromNode.type === 'String Format' && fromProperty === 'formatted') {
+      if (ctx.visited.has(fromNode.id)) {
+        ctx.defer = 'a wire cycle through logic nodes';
+        return null;
+      }
+      ctx.visited.add(fromNode.id);
+      return formatExprOf(fromNode, ctx);
+    }
     return null;
   };
 
-  type CompiledSink = { action: HandlerAction; consumes: string[]; collapses?: string[] } | { defer: string };
+  /**
+   * A String Format as an expression: static text transcribed (a literal parameter on a
+   * placeholder folds in; an unfed placeholder substitutes '' — the runtime's own rule), wired
+   * placeholders resolved recursively. All-static formats fold to a literal; a bare
+   * single-placeholder format collapses to its string-typed expression (LOGIC-TARGET §2).
+   */
+  const formatExprOf = (node: NodeIR, ctx: ResolveCtx): ValueExpr | null => {
+    if (wiredPorts.has(`${node.id}:format`)) {
+      ctx.defer = 'the format string is wired, not literal';
+      return null;
+    }
+    const format = literalParam(node, 'format');
+    if (typeof format !== 'string') {
+      ctx.defer = 'the format string is not a literal';
+      return null;
+    }
+    const parts: Array<string | ValueExpr> = [];
+    const pushText = (text: string) => {
+      if (text.length === 0) return;
+      const last = parts.length - 1;
+      if (typeof parts[last] === 'string') parts[last] = (parts[last] as string) + text;
+      else parts.push(text);
+    };
+    const placeholderPattern = /\{([A-Za-z0-9_]*)\}/g;
+    let cursor = 0;
+    let match: RegExpExecArray | null;
+    while ((match = placeholderPattern.exec(format)) !== null) {
+      pushText(format.slice(cursor, match.index));
+      cursor = match.index + match[0].length;
+      const name = match[1];
+      if (name.length === 0) {
+        ctx.defer = 'the format contains a nameless {} placeholder';
+        return null;
+      }
+      const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === name);
+      if (wire) {
+        const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
+        if (expr === null) {
+          if (ctx.defer === undefined) ctx.defer = `placeholder "${name}" has no statically known source`;
+          return null;
+        }
+        parts.push(expr);
+        ctx.consumes.push(wire.key);
+        continue;
+      }
+      const literal = literalParam(node, name);
+      if (literal !== undefined) pushText(String(literal));
+      // Neither wire nor parameter: the runtime substitutes '' — the placeholder disappears.
+    }
+    pushText(format.slice(cursor));
+    ctx.logicNodeIds.push(node.id);
+    const exprs = parts.filter((p): p is ValueExpr => typeof p !== 'string');
+    if (exprs.length === 0) return { kind: 'literal', value: parts.length === 1 ? (parts[0] as string) : '' };
+    if (parts.length === 1 && exprTsType(exprs[0]) === 'string') return exprs[0];
+    return { kind: 'format', parts };
+  };
+
+  /** As far as an expression's TypeScript type is statically known — the format-collapse gate. */
+  const exprTsType = (expr: ValueExpr): string => {
+    switch (expr.kind) {
+      case 'prop':
+        return plan.props.find((p) => p.name === expr.name)?.tsType ?? 'unknown';
+      case 'input-text':
+        return 'string';
+      case 'store-get':
+        return registry.variables.get(expr.variableName)?.tsType ?? 'unknown';
+      case 'store-key-get':
+        return registry.stores.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.tsType ?? 'unknown';
+      case 'payload':
+        return registry.channels.get(channelNameOf(nodeById.get(expr.receiverId)!)!)?.payload.find((p) => p.key === expr.key)?.tsType ?? 'unknown';
+      case 'literal':
+        return typeof expr.value;
+      case 'format':
+        return 'string';
+    }
+  };
+
+  type CompiledSink =
+    | { action: HandlerAction; consumes: string[]; collapses?: string[]; subscribes?: string[] }
+    | { defer: string };
 
   const TRIGGER_PORTS: Record<string, string> = {
     RouterNavigate: 'navigate',
     'Event Sender': 'sendEvent',
     'Set Variable': 'do',
     [GLOBAL_STORE_SET]: 'set',
-    NewModel: 'new'
+    NewModel: 'new',
+    Condition: 'eval'
   };
 
   // The NewModel → CollectionInsert chains (COLLECTIONS-TARGET §2), keyed by the NewModel so
@@ -455,17 +595,23 @@ function planComponent(
       if (propagation !== 'global') {
         return { defer: `propagation "${String(propagation)}" scopes the event to the component tree` };
       }
+      const ctx = newCtx();
       const payload: Array<{ key: string; expr: ValueExpr }> = [];
       const consumes: string[] = [];
       for (const key of payloadKeysOf(node)) {
         const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === key);
         if (!wire) continue; // an unwired payload key sends undefined — omitted (C3)
-        const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty);
-        if (expr === null) return { defer: `payload "${key}" has no statically known source` };
+        const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
+        if (expr === null) return { defer: ctx.defer ?? `payload "${key}" has no statically known source` };
         payload.push({ key, expr });
         consumes.push(wire.key);
       }
-      return { action: { kind: 'emit', channelName, payload }, consumes };
+      return {
+        action: { kind: 'emit', channelName, payload },
+        consumes: [...consumes, ...ctx.consumes],
+        collapses: ctx.logicNodeIds,
+        subscribes: ctx.subscriberIds
+      };
     }
     if (node.type === GLOBAL_STORE_SET) {
       const store = storePlanOf(node);
@@ -487,20 +633,27 @@ function planComponent(
       }
       const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'value');
       if (!wire) return { defer: 'nothing is wired into value' };
-      const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty);
-      if (expr === null) return { defer: 'the value wire has no statically known source' };
-      return { action: { kind: 'globalstore-set', storeName: store.name, key, expr }, consumes: [wire.key] };
+      const ctx = newCtx();
+      const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
+      if (expr === null) return { defer: ctx.defer ?? 'the value wire has no statically known source' };
+      return {
+        action: { kind: 'globalstore-set', storeName: store.name, key, expr },
+        consumes: [wire.key, ...ctx.consumes],
+        collapses: ctx.logicNodeIds,
+        subscribes: ctx.subscriberIds
+      };
     }
     if (node.type === 'NewModel') {
       const result = chainByNewModel.get(node.id);
       if (result === undefined) return { defer: 'the created object is never inserted into a translated array' };
       if ('defer' in result) return { defer: result.defer };
       const chain = result.chain;
+      const ctx = newCtx();
       const entries: Array<{ key: string; expr: ValueExpr }> = [];
       for (const property of chain.properties) {
         if (property.wire) {
-          const expr = resolveExpr(nodeById.get(property.wire.fromId), property.wire.fromProperty);
-          if (expr === null) return { defer: `property "${property.key}" has no statically known source` };
+          const expr = resolveExpr(nodeById.get(property.wire.fromId), property.wire.fromProperty, ctx);
+          if (expr === null) return { defer: ctx.defer ?? `property "${property.key}" has no statically known source` };
           entries.push({ key: property.key, expr });
         } else if (property.literal !== undefined) {
           entries.push({ key: property.key, expr: { kind: 'literal', value: property.literal } });
@@ -508,10 +661,12 @@ function planComponent(
       }
       return {
         action: { kind: 'collection-add', collectionName: chain.collectionName, entries },
-        consumes: chain.consumes,
-        collapses: [chain.insertId]
+        consumes: [...chain.consumes, ...ctx.consumes],
+        collapses: [chain.insertId, ...ctx.logicNodeIds],
+        subscribes: ctx.subscriberIds
       };
     }
+    if (node.type === 'Condition') return compileCondition(node);
     // Set Variable
     const variableName = variableNameOf(node);
     if (variableName === undefined) return { defer: 'variable name is not a literal' };
@@ -521,14 +676,90 @@ function planComponent(
     }
     const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'value');
     if (!wire) return { defer: 'nothing is wired into value' };
-    const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty);
-    if (expr === null) return { defer: 'the value wire has no statically known source' };
-    return { action: { kind: 'store-set', variableName, expr }, consumes: [wire.key] };
+    const ctx = newCtx();
+    const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
+    if (expr === null) return { defer: ctx.defer ?? 'the value wire has no statically known source' };
+    return {
+      action: { kind: 'store-set', variableName, expr },
+      consumes: [wire.key, ...ctx.consumes],
+      collapses: ctx.logicNodeIds,
+      subscribes: ctx.subscriberIds
+    };
+  };
+
+  /**
+   * A Condition in a handler chain (LOGIC-TARGET §3): `trigger → eval`, arms into action
+   * sinks. Translates only when the author unticked Run On Value Change — Evaluate is additive
+   * (NDA-017), so a ticked box means the branch also fires on every change of the condition
+   * input, behaviour a handler cannot carry.
+   */
+  const compileCondition = (node: NodeIR): CompiledSink => {
+    if (literalParam(node, 'runOnChange-condition') !== false) {
+      return {
+        defer: 'Condition re-tests on every change of its input (Run On Value Change is ticked) — only an Evaluate-only condition translates in this slice'
+      };
+    }
+    const stray = component.connections.find(
+      (c) => c.fromId === node.id && c.fromProperty !== 'ontrue' && c.fromProperty !== 'onfalse'
+    );
+    if (stray) return { defer: `its ${stray.fromProperty} output drives logic this slice does not translate` };
+
+    const ctx = newCtx();
+    let cond: ValueExpr;
+    const condWire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'condition');
+    if (condWire) {
+      const resolved = resolveExpr(nodeById.get(condWire.fromId), condWire.fromProperty, ctx);
+      if (resolved === null) return { defer: ctx.defer ?? 'the condition wire has no statically known source' };
+      cond = resolved;
+      ctx.consumes.push(condWire.key);
+    } else {
+      const literal = literalParam(node, 'condition');
+      if (literal === undefined) return { defer: 'nothing statically known feeds condition' };
+      cond = { kind: 'literal', value: literal };
+    }
+
+    const consumes: string[] = [...ctx.consumes];
+    const collapses: string[] = [...ctx.logicNodeIds];
+    const subscribes: string[] = [...ctx.subscriberIds];
+    const arm = (port: 'ontrue' | 'onfalse'): HandlerAction[] | { defer: string } => {
+      const actions: HandlerAction[] = [];
+      for (const wire of component.connections.filter((c) => c.fromId === node.id && c.fromProperty === port)) {
+        const target = nodeById.get(wire.toId);
+        if (!target || TRIGGER_PORTS[target.type] !== wire.toProperty) {
+          return { defer: `its ${port} wire drives no translatable action` };
+        }
+        if (target.type === 'Condition') {
+          return { defer: `its ${port} arm drives another Condition — nesting is not translated in this slice` };
+        }
+        const compiled = compiledOf(target);
+        if ('defer' in compiled) return { defer: compiled.defer };
+        actions.push(compiled.action);
+        consumes.push(wire.key, ...compiled.consumes);
+        collapses.push(target.id, ...(compiled.collapses ?? []));
+        subscribes.push(...(compiled.subscribes ?? []));
+      }
+      return actions;
+    };
+    const whenTrue = arm('ontrue');
+    if ('defer' in whenTrue) return whenTrue;
+    const whenFalse = arm('onfalse');
+    if ('defer' in whenFalse) return whenFalse;
+    if (whenTrue.length === 0 && whenFalse.length === 0) {
+      return { defer: 'neither branch drives a translatable action' };
+    }
+    return { action: { kind: 'branch', cond, whenTrue, whenFalse }, consumes, collapses, subscribes };
   };
 
   const compiledSinks = new Map<string, CompiledSink>();
+  const compiledOf = (node: NodeIR): CompiledSink => {
+    const cached = compiledSinks.get(node.id);
+    if (cached !== undefined) return cached;
+    const result = compileSink(node);
+    compiledSinks.set(node.id, result);
+    return result;
+  };
   for (const node of component.nodes) {
-    if (TRIGGER_PORTS[node.type] !== undefined) compiledSinks.set(node.id, compileSink(node));
+    if (TRIGGER_PORTS[node.type] !== undefined) compiledOf(node);
   }
 
   const actionExprs = (action: HandlerAction): ValueExpr[] => {
@@ -540,20 +771,24 @@ function planComponent(
       case 'store-set':
       case 'globalstore-set':
         return [action.expr];
+      case 'branch':
+        return [action.cond, ...action.whenTrue.flatMap(actionExprs), ...action.whenFalse.flatMap(actionExprs)];
       case 'navigate':
         return [];
     }
   };
 
-  const exprValidIn = (
-    expr: ValueExpr,
-    context: { kind: 'dom'; nodeId: string } | { kind: 'receiver'; receiverId: string }
-  ): boolean => {
+  type ExprContext = { kind: 'dom'; nodeId: string } | { kind: 'receiver'; receiverId: string } | { kind: 'render' };
+
+  const exprValidIn = (expr: ValueExpr, context: ExprContext): boolean => {
     switch (expr.kind) {
       case 'prop':
       case 'store-get':
+      case 'store-key-get':
       case 'literal':
         return true;
+      case 'format':
+        return expr.parts.every((p) => typeof p === 'string' || exprValidIn(p, context));
       case 'input-text':
         return context.kind === 'dom' && context.nodeId === expr.inputId;
       case 'payload':
@@ -571,11 +806,19 @@ function planComponent(
     return { channelName };
   };
 
-  // Pass 2: attach compiled actions to handler owners, trigger wires in source order.
+  // Pass 2: attach compiled actions to handler owners, trigger wires in source order. A wire
+  // from a Condition's arm into a trigger port is chain-internal: the branch consumes it when
+  // it attaches, and the Condition sweep reports it when it does not.
   const receiverActions = new Map<string, HandlerAction[]>();
+  const boundSubscribers = new Set<string>();
   for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
     const toNode = nodeById.get(connection.toId);
     if (!toNode || TRIGGER_PORTS[toNode.type] !== connection.toProperty) continue;
+    const fromNode = nodeById.get(connection.fromId);
+    if (fromNode?.type === 'Condition' && (connection.fromProperty === 'ontrue' || connection.fromProperty === 'onfalse')) {
+      continue;
+    }
     consumed.add(connection.key);
     const compiled = compiledSinks.get(toNode.id)!;
     if ('defer' in compiled) {
@@ -583,7 +826,6 @@ function planComponent(
       notes.push(`wire ${connection.key} dropped: ${compiled.defer}`);
       continue;
     }
-    const fromNode = nodeById.get(connection.fromId);
     // A rendered input's `textChanged` pulse is its onChange: the action joins the same handler
     // the write-through rule uses, so `value ← onTextChanged` + `set ← textChanged` from one
     // input collapse into a single onChange attribute (NAMED-STORES-TARGET §2).
@@ -603,6 +845,7 @@ function planComponent(
       dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
       for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
+      for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
       continue;
     }
     if (fromNode && rendered.has(fromNode.id) && connection.kind === 'signal') {
@@ -618,6 +861,7 @@ function planComponent(
       dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
       for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
+      for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
       continue;
     }
     if (fromNode?.type === 'Event Receiver' && connection.fromProperty === 'eventReceived') {
@@ -636,6 +880,7 @@ function planComponent(
       dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
       for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
+      for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
       continue;
     }
     dispositions[toNode.id] = {
@@ -720,7 +965,6 @@ function planComponent(
 
   // Pass 4b: single-key Subscribe reads into rendered sinks become store-key bindings
   // (useStore selectors at emit — NAMED-STORES-TARGET §2).
-  const boundSubscribers = new Set<string>();
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
     const fromNode = nodeById.get(connection.fromId);
@@ -728,34 +972,46 @@ function planComponent(
     const toNode = nodeById.get(connection.toId);
     if (!toNode || !rendered.has(toNode.id)) continue; // leave for the catch-all
     consumed.add(connection.key);
-    const store = storePlanOf(fromNode);
-    if (store === undefined) {
-      notes.push(`wire ${connection.key} dropped: store name is not a literal`);
-      continue;
-    }
-    if (store.deferred !== undefined) {
-      notes.push(`wire ${connection.key} dropped: ${store.deferred}`);
-      continue;
-    }
-    if (wiredPorts.has(`${fromNode.id}:keys`)) {
-      notes.push(`wire ${connection.key} dropped: the subscription's keys are wired, not literal`);
-      continue;
-    }
-    const keys = subscribeKeysOf(fromNode);
-    if (keys.length !== 1) {
-      notes.push(
-        `wire ${connection.key} dropped: ${keys.length === 0 ? 'a whole-store' : 'a multi-key'} subscription is not translated in this slice`
-      );
-      continue;
-    }
-    const keyType = store.keys.find((k) => k.key === keys[0])?.tsType;
-    if (keyType !== 'string' && keyType !== 'number') {
-      notes.push(`wire ${connection.key} dropped: key "${keys[0]}" of store "${store.name}" has no statically-typed value`);
+    const read = storeKeyReadOf(fromNode);
+    if ('defer' in read) {
+      notes.push(`wire ${connection.key} dropped: ${read.defer}`);
       continue;
     }
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
-    plan.bindings[toNode.id][connection.toProperty] = { kind: 'store-key', storeName: store.name, key: keys[0] };
+    plan.bindings[toNode.id][connection.toProperty] = { kind: 'store-key', storeName: read.storeName, key: read.key };
     boundSubscribers.add(fromNode.id);
+  }
+
+  // Pass 4c: a String Format's output into a rendered sink becomes a computed binding — the
+  // expression tree rendered inline at the sink, its hooks earned exactly as direct bindings
+  // earn them (LOGIC-TARGET §2). The whole tree's wires are consumed together; a tree that
+  // fails to resolve defers whole, never as a half-filled literal.
+  for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
+    const fromNode = nodeById.get(connection.fromId);
+    if (fromNode?.type !== 'String Format' || connection.fromProperty !== 'formatted') continue;
+    const toNode = nodeById.get(connection.toId);
+    if (!toNode || !rendered.has(toNode.id)) continue; // leave for the catch-all
+    consumed.add(connection.key);
+    const ctx = newCtx();
+    const expr = resolveExpr(fromNode, 'formatted', ctx);
+    if (expr === null) {
+      notes.push(`wire ${connection.key} dropped: ${ctx.defer ?? 'the format has no statically known source'}`);
+      continue;
+    }
+    if (!exprValidIn(expr, { kind: 'render' })) {
+      notes.push(`wire ${connection.key} dropped: the format reads values that only exist inside a handler`);
+      continue;
+    }
+    plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
+    plan.bindings[toNode.id][connection.toProperty] = { kind: 'computed', expr };
+    for (const key of ctx.consumes) consumed.add(key);
+    for (const id of ctx.subscriberIds) boundSubscribers.add(id);
+    if (plan.file) {
+      for (const id of ctx.logicNodeIds) {
+        dispositions[id] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+      }
+    }
   }
 
   // Pass 5: Component Inputs bindings and the query/array→repeater feeds (step 4's rules,
@@ -883,6 +1139,25 @@ function planComponent(
           ? 'array id is not a literal'
           : 'array feeds nothing statically translatable';
       dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+    }
+  }
+
+  // Logic nodes the passes above translated are already collapsed; the rest defer with the
+  // most specific reason available (LOGIC-TARGET §4).
+  for (const node of component.nodes) {
+    if (dispositions[node.id] !== undefined) continue;
+    if (node.type === 'Condition') {
+      const compiled = compiledSinks.get(node.id);
+      const reason =
+        compiled !== undefined && 'defer' in compiled
+          ? compiled.defer
+          : 'no Evaluate wire attaches this condition to a handler';
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+      notes.push(`node ${node.id} (Condition) deferred: ${reason}`);
+    } else if (node.type === 'String Format') {
+      const reason = 'format output drives nothing statically translatable';
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+      notes.push(`node ${node.id} (String Format) deferred: ${reason}`);
     }
   }
 

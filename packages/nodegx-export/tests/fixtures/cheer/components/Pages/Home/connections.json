@@ -20,6 +20,18 @@
       "fromProperty": "onClick",
       "toId": "cheerSend",
       "toProperty": "sendEvent"
+    },
+    {
+      "fromId": "visitorVar",
+      "fromProperty": "value",
+      "toId": "previewFormat",
+      "toProperty": "name"
+    },
+    {
+      "fromId": "previewFormat",
+      "fromProperty": "formatted",
+      "toId": "cheerPreview",
+      "toProperty": "text"
     }
   ]
 }

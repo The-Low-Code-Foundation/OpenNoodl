@@ -1,7 +1,7 @@
 {
   "$schema": "https://opennoodl.dev/schemas/registry-v2.json",
   "version": 1,
-  "lastUpdated": "2026-08-27T09:38:52.379Z",
+  "lastUpdated": "2026-08-27T10:14:39.123Z",
   "components": {
     "App": {
       "path": "App",
@@ -14,9 +14,9 @@
     "Pages/Home": {
       "path": "Pages/Home",
       "type": "page",
-      "nodeCount": 9,
-      "connectionCount": 3,
-      "modified": "2026-08-27T08:30:27.248Z",
+      "nodeCount": 11,
+      "connectionCount": 5,
+      "modified": "2026-08-27T10:14:28.547Z",
       "created": "2026-08-27T08:28:56.551Z"
     },
     "Components/GreetingBadge": {
@@ -38,9 +38,9 @@
     "Pages/Mood": {
       "path": "Pages/Mood",
       "type": "page",
-      "nodeCount": 13,
-      "connectionCount": 6,
-      "modified": "2026-08-27T09:06:23.323Z",
+      "nodeCount": 15,
+      "connectionCount": 9,
+      "modified": "2026-08-27T10:14:39.123Z",
       "created": "2026-08-27T09:06:23.323Z"
     },
     "Components/NoteRow": {
@@ -62,7 +62,7 @@
   },
   "stats": {
     "totalComponents": 7,
-    "totalNodes": 45,
-    "totalConnections": 21
+    "totalNodes": 49,
+    "totalConnections": 26
   }
 }

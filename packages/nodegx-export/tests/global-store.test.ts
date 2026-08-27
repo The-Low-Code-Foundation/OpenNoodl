@@ -80,9 +80,14 @@ export function MoodPage() {
 
       <p className={styles.noteEcho}>{note}</p>
 
-      <p className={styles.themeText}>{theme}</p>
+      <p className={styles.themeText}>{\`Feeling \${theme} today\`}</p>
 
-      <button className={styles.themeButton} onClick={() => mood.set({ theme: visitorName.get() })}>
+      <button
+        className={styles.themeButton}
+        onClick={() => {
+          if (visitorName.get()) mood.set({ theme: visitorName.get() });
+        }}
+      >
         Steal the visitor's name
       </button>
     </div>
