@@ -14,8 +14,13 @@ Model.prototype.on = function (event, listener, group) {
     group: group
   });
 
-  if (this.listeners.length > 10000) {
-    console.log('Warning: we have more that 10000 listeners on this model, is this sane?');
+  // Warn at the crossing, not on every registration after it: the old `>` guard
+  // made this line 68-76% of a CI run's log output (~10,000 IPC-forwarded lines
+  // per run), drowning the specs it was meant to protect. One line carries the
+  // same signal. The count that matters — how big the array actually got — is
+  // reported at the end of a test run by the suite's instrumentation.
+  if (this.listeners.length === 10001) {
+    console.log('Warning: we have more than 10000 listeners on this model, is this sane?');
   }
 
   return this;

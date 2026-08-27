@@ -6,6 +6,16 @@ const config = merge(shared, {
   output: {
     // No dev server in CI — SpecRunner.html loads the bundle from disk.
     publicPath: ''
+  },
+  cache: {
+    // Separate cache name: this config differs from webpack.test.js (publicPath),
+    // and two configs sharing one cache name poison each other's entries.
+    // webpack-merge concatenates buildDependencies.config, so the merged list
+    // covers both files. Invalidation proven 2026-08-27: a broken spec still
+    // failed by name on a warm cache (2,424 cached modules), and editing this
+    // file produced a cold rebuild.
+    name: 'test-ci',
+    buildDependencies: { config: [__filename] }
   }
 });
 

@@ -110,6 +110,13 @@ describe('TraceSession — Record has to record', () => {
     previous = ViewerConnection.instance;
     ViewerConnection.instance = connection as unknown as ViewerConnection;
     spyOn(NodeLibraryImporter.instance, 'clientsWithRuntime').and.returnValue(['client-1']);
+    // GAT-004: the suite-wide listener rollback (tests/index.ts) strips every
+    // EventDispatcher subscription a spec registers, including the ones
+    // listen() makes on first use — but listen()'s `listening` latch would stop
+    // it re-registering, leaving every spec after the first deaf (all 10 specs
+    // here failed that way, 2026-08-27, seed 00697). Reset the latch so each
+    // spec's first listen() registers fresh subscriptions inside its own window.
+    (session as unknown as { listening: boolean }).listening = false;
   });
 
   afterEach(() => {

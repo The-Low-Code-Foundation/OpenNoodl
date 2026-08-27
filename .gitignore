@@ -193,6 +193,9 @@ packages/noodl-editor/tests/vendors-*.bundle.js
 packages/noodl-editor/tests/*.svg
 packages/noodl-editor/tests/test-results.json
 
+# Webpack filesystem cache for test builds (GAT-003) — package-local so worktrees do not share it
+packages/noodl-editor/.webpack-cache/
+
 # Other
 packages/noodl-editor/src/external
 .github/.secrets

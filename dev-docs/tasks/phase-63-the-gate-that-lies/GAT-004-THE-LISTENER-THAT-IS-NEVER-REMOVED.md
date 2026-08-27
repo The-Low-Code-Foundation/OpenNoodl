@@ -1,7 +1,33 @@
 # GAT-004 — The listener that is never removed
 
-**Status:** 📋 open · ⭐ **the real fix** · **Tier 2** · half a day · depends on GAT-001 for a
-trustworthy before/after
+**Status:** ✅ **SHIPPED 2026-08-27** · ⭐ **the real fix** · **Tier 2**
+
+**§0 measured before fixing, as demanded** (seed 00697, quiet machine): 277,297
+`Model.notifyListeners` calls; **587.6s of a 645.4s run — 91% — inside dispatch**, 578.5s of it the
+`EventDispatcher.instance` fan-out scanning a cumulative **1.54e9** listener entries.
+`EventDispatcher.instance` ended at 11,338 listeners, `NodeLibrary` at 22,572. The product is
+minutes; the mechanism was real.
+
+**What shipped** (all in `tests/index.ts`, product untouched beyond GAT-002's latch): a per-spec
+rollback — every listener added to any `Model` or the `EventDispatcher` inside a spec's
+global-beforeEach→afterEach window is removed by identity in the global afterEach. Import-time and
+`beforeAll` registrations are outside the window and untouched. After: **62.6s**, dispatch 4.3s,
+dispatcher ends at 16, no model over 1,000, warning never fires, **same 2,856 specs and the same 4
+AIX-006 failures by name** (run-2 vs run-4 comparison at the same seed).
+
+**Two findings for §1's expected fallout, both measured:**
+1. **Exempting grouped listeners from rollback reclaims nothing** — run 3 reproduced run 1's numbers
+   exactly (11,338 / 22,572 / 654s). The leak is owners that register with `group=this` and never
+   call `off`; a removal path nobody calls is not a removal path.
+2. **The one legitimate casualty is the lazy-latch singleton**: `TraceSession.instance` registers its
+   subscriptions on first `listen()` behind a `listening` latch; rollback stripped them, the latch
+   blocked re-registration, and all 10 remaining specs in its suite failed. Fixed in
+   `tracesession.spec.ts` (`beforeEach` resets the latch). Any future whole-suite red after a green
+   first spec should be checked against this shape first.
+
+§2 (make group-less `on()` an error in tests) and §3 (index dispatch) both stayed unbuilt — §2
+because the leak turned out to be *grouped* registrations, §3 per its own advice: with the arrays
+small, O(n) is free.
 
 ## The two facts
 

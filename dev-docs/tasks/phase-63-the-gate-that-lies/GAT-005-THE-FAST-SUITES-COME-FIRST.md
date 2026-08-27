@@ -1,6 +1,13 @@
 # GAT-005 — The fast suites come first
 
-**Status:** 📋 open · **Tier 3: structure** · depends on GAT-004 landing first
+**Status:** ❎ **CLOSED UNBUILT 2026-08-27** — the premise dissolved. This task existed because the
+Electron suite cost twenty-plus minutes; after GAT-004 it costs **~90 seconds end to end** (1.8s warm
+build + boot + 62.6s specs, measured same day at seed 00697). At that price, running the slow suite
+on every change is cheaper than building or maintaining any tiering/selection machinery, and §2's
+change-scoped skipping — already flagged risky — buys nothing at all. §3's "one command that says
+what to trust" got its core anyway via GAT-001: the runner prints totals + the readout path every
+run, and `tests/test-results.json` is the machine-readable answer. Reopen only if the suite regresses
+toward minutes (watch the `[gat004]` end-count canary, TASKS.md).
 
 ## The observation
 

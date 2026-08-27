@@ -1,7 +1,16 @@
 # Phase 63 — The gate that lies, and the twenty minutes it costs (Track GAT)
 
 **Created:** 2026-08-12
-**Status:** 📋 specced, not started. Tasks are **[TASKS.md](TASKS.md)** (GAT-001…006).
+**Status:** ✅ **SHIPPED 2026-08-27** — GAT-001…004 built and measured; 005/006 closed as unnecessary.
+Tasks are **[TASKS.md](TASKS.md)** (GAT-001…006). Headline, same suite, same machine:
+**2,856 specs in 62.6s** (four runs earlier that week could not finish inside 900s), failures back to
+the 4-name AIX-006 floor, and a gate that can no longer exit 0 without a fresh
+`tests/test-results.json` to show for it. The leak was real and measured: **91% of the run** (587.6s
+of 645.4s) was inside `Model.notifyListeners`, almost all of it the `EventDispatcher.instance`
+fan-out scanning a cumulative 1.54 billion listener entries; a per-spec listener rollback in
+`tests/index.ts` removed it. Details and the two surprises (Electron's `app.exit()` ignores the
+`process.exitCode` rewrite that plain Node honours; exempting *grouped* listeners from rollback
+reclaims **nothing** because the leak is owners that never call `off`) are in the task files.
 **Origin:** Richard, 2026-08-12, after a session in which `test:ci` was run four times and produced a
 usable answer once:
 

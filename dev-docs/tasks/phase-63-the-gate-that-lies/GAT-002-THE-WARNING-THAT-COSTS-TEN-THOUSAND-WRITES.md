@@ -1,6 +1,15 @@
 # GAT-002 — The warning that costs ten thousand writes
 
-**Status:** 📋 open · **Tier 1: speed** · ~30 minutes · independent of everything else
+**Status:** ✅ **SHIPPED 2026-08-27** · **Tier 1: speed**
+
+**What shipped:** `model.js` warns at the crossing (`=== 10001`), not on every registration after
+it. The final-count signal §1 asked for comes from the `[gat004]`/`[listeners]` instrumentation in
+`tests/index.ts` (per-singleton end counts, every run). `[spec-start]` forwarding is untouched — §2's
+decision was to keep CI forwarding as-is, because the flood was the repetition, not the forwarding.
+**§3's measurement collapsed into GAT-004's**: the warning fired exactly **once** in the pre-teardown
+run (log 3,925 lines vs 15,396 on 2026-08-12) and **never** after GAT-004, so its isolated
+wall-clock saving was not separately measurable and the honest number is "the log flood is gone;
+the time was mostly the dispatch, see GAT-004". The leak itself was untouched here, per acceptance.
 
 ## The observation
 

@@ -1,7 +1,24 @@
 # GAT-001 — A run that grades nothing must not exit zero
 
-**Status:** 📋 open · ⭐ **the flagship** · **Tier 1: trust** · blocks nothing technically, blocks
-everything epistemically
+**Status:** ✅ **SHIPPED 2026-08-27** · ⭐ **the flagship** · **Tier 1: trust**
+
+**What shipped:** two guard layers. `test.js` prints a distinguishable diagnosis from a
+`process.on('exit')` handler when the process dies without `finish()` having run; the enforcement is
+in `scripts/run-electron-tests.js`, which deletes `tests/test-results.json` before the run and
+**believes exit 0 only if a results file with mtime after spawn exists** — covering every in-process
+mechanism including the unidentified one. The JSON is stamped (`gitHead`, `startedAt`, `finishedAt`,
+`elapsedSeconds`) so a stale copy is comparable, and the runner prints the readout path plus a
+one-line summary every run.
+
+**Proven red** via `NOODL_TEST_PROVE_GUARD=1 npm run test:_start_electron` (reproduces the 23:40
+shape: `app.exit(0)` before results, no window). Finding along the way, measured: **Electron's
+`app.exit()` ignores the `process.exitCode` rewrite inside an `'exit'` listener that plain Node
+honours** — the child still exits 0, which is why the in-process guard alone is not the fix and the
+runner-side freshness check is. §1's invariant is enforced one level up from where the spec guessed.
+**Proven green-path** on four full runs the same day: results reported → summary + fresh JSON +
+honest exit (1, with the four AIX-006 floor failures named). Renderer kill and window-close paths
+were already `finish(1)` and unchanged; the acceptance's kill-9 case is covered by the runner's
+signal branch plus the freshness check.
 
 ## The observation, exactly
 

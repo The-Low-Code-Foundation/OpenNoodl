@@ -1,6 +1,22 @@
 # GAT-003 — The build that starts from scratch, every time
 
-**Status:** 📋 open · **Tier 1: speed** · ~30 minutes · independent of everything else
+**Status:** ✅ **SHIPPED 2026-08-27** · **Tier 1: speed**
+
+**What shipped:** `cache: { type: 'filesystem' }` in `webpack.test.js` (name `test`) and
+`webpack.test-ci.js` (name `test-ci` — the configs differ, so they must not share entries), with
+`buildDependencies.config` on both files. **Numbers:** 43.1s cold → **1.5–1.8s warm** (2,437 modules
+cached); cache size **405 MB**, gitignored.
+
+**§2 decided, not defaulted:** the cache lives in `packages/noodl-editor/.webpack-cache`, NOT
+webpack's default `node_modules/.cache` — `make-worktree.sh` symlinks a worktree's package
+`node_modules` to the primary's, so the default would share one cache between worktrees building
+*different trees*. The package-local directory is a real directory in every worktree: isolated per
+tree, worktrees start cold, correctness over speed.
+
+**§3 proven, both directions, not argued:** a spec deliberately broken on a warm cache (2,424 modules
+served cached) **failed by name** in the run's results; editing `webpack.test-ci.js` produced a full
+cold rebuild (41.9s, zero cached modules), and the next build was warm again (1.8s). G16's second
+invocation (~0.7s) was left uncached as recommended.
 
 ## The observation
 

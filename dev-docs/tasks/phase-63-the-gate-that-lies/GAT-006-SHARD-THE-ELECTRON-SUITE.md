@@ -1,7 +1,12 @@
 # GAT-006 — Shard the Electron suite
 
-**Status:** 📋 open · **Tier 3: structure** · ⚠️ **may not be worth building — see §0** · depends on
-GAT-004
+**Status:** ❎ **CLOSED UNBUILT 2026-08-27**, exactly as §0 instructed: post-GAT-004 `test:ci` is
+**62.6s of spec time / ~90s end to end** (2,856 specs, seed 00697, quiet machine) — far under the
+five-minute bar, so sharding's permanent complexity (N renderers, N result streams, cross-shard
+seeds, silent-shard accounting) buys nothing. G31's distribution answer, from the run's own
+`[slowest]` report: the tail is a handful of multi-second specs, another reason sharding would have
+disappointed. This is the successful outcome §0 named. Reopen only if the suite regresses toward the
+bar with the leak canary clean.
 
 ## §0 — ⚠️ Read this before starting: this task may already be unnecessary
 
