@@ -107,13 +107,20 @@ into `cdp.js`. It will be wanted a third time.
 
 ## Standing facts for this area
 
-- `test:ci` floor is **4**, all `AIX-006 style vocabulary`. Measured this session at `3697ebcd`:
-  2856 specs / 4 failures, seed 15442. **Quote the tree, not the seed.**
+- `test:ci` floor is **4**, all `AIX-006 style vocabulary`. ✅ **Confirmed on the committed tree**:
+  a peer's run at `c37cab73` — this lane's last commit, so all seven are in it — read 2856 / 4,
+  the same four by name, in **65s**, seed **80902**. This session's own run read the same 2856 / 4
+  at seed **15442**, so the floor is not a seed artefact. **Quote the tree, not the seed.**
+  ⚠️ **This session's own run graded the fixes while they were still uncommitted** and therefore
+  recorded `gitHead 3697ebcd`, which does not name them; the `c37cab73` reading is the one with
+  real provenance for the committed code. Verified from `test-results.json` directly (mtime
+  21:20:30), not relayed.
 - The three suites, in order and **never two at once**: `noodl-runtime` (2555),
   `noodl-viewer-react` (1079), editor `test:main` (5791 + 8 new = 5799 mine), then `test:ci`.
-- ⚠️ **A peer is live in the editor tree.** At 21:02 they were mid-edit on
-  `site-builder.content.json`, which reddens `tests-unit/sb-007/site-template.test.ts`
-  (*disjoint node ids* expects 192, got 193). **That red is theirs, not the tree's** — check
-  `git status` and mtimes before attributing an editor red to your own change.
+- ✅ **The sb-007 red is gone** — it was a peer mid-edit on `site-builder.content.json` (SB-015 F27
+  gained a node, 192→193) and they fixed the count. Recorded because the *method* is the reusable
+  part: **mtime + `git status` attributed it in one step**, and the spec file itself had not been
+  touched since 08-26. Check both before attributing an editor red to your own change.
+- ⚠️ **A peer is active in this tree** (Secrets panel, backend specs). Announce before any suite.
 - ⚠️ `AskAboutNodeDialog.module.scss` has been uncommitted since **08-20** and belongs to nobody in
   this lane. Leave it; it is not ours to commit.
