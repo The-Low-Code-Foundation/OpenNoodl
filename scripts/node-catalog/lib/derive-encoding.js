@@ -74,10 +74,28 @@ const DECLARED_ONLY_REASON =
  * already in the static list. A node added here that really does mint a name fails the build
  * rather than publishing a reassuring lie.
  *
- * ⚠️ Near neighbour, deliberately not moved: `Set Variable` is described in `RESIDUE_REASONS`
- * as *"the single dynamic port is `value`, whose type follows the `setWith` parameter"* — the
- * same shape — but it is `known: false` today and re-classifying it is a separate claim that
- * wants its own measurement.
+ * 🔴 **Near neighbour that reads like this shape and is not: `Set Variable`. Measured
+ * 2026-08-27, and the answer is that it must stay `known: false`.** Its `RESIDUE_REASONS`
+ * sentence — *"the single dynamic port is `value`, whose type follows the `setWith`
+ * parameter"* — invites exactly this table, and the invitation is wrong on the one fact
+ * that matters here: **`value` is not a declared port.** `setvariablenode.ts` declares
+ * `name`, `setWith` and `do`; `value` is minted at runtime by `registerInputIfNeeded` and
+ * published by the `setup` hook. Two differences from Text Input follow, and either one is
+ * disqualifying on its own:
+ *
+ *   1. Text Input declares both value ports as `'*'` and only ever **narrows** them. Set
+ *      Variable's port has no static existence to narrow.
+ *   2. With `setWith === 'emptyString'` the hook publishes **no ports at all** — the port
+ *      does not change type, it **disappears**. A reader told the static list is complete
+ *      would be wrong in both directions.
+ *
+ * ✅ **The measurement is the guard below, run over the real corpus rather than reasoned
+ * about**: the entry was added, `catalog:generate` was run, and `retypesEncoding` threw —
+ * *"its setup published value — not in its static port list"*. So `runtime-discovered` and
+ * `known: false` are both telling the truth for this node, the explicit `RESIDUE_REASONS`
+ * text already says precisely which port and which parameter, and the expensive failure this
+ * table exists to prevent (an AI told the port list cannot be trusted when it is exactly
+ * right) does not apply — here the list really is incomplete.
  */
 const RETYPES_DECLARED_PORTS = {
   'net.noodl.controls.textinput':
