@@ -92,6 +92,38 @@ const RECORD_VERBS: Record<string, 'create' | 'update' | 'delete'> = {
   DeleteDbModelProperties: 'delete'
 };
 
+/**
+ * The user family's three *actions* (USER-FAMILY-TARGET §1) — the record verbs' shape again,
+ * with `UserService` where `cloudStore` was: one trigger, value inputs that accumulate without
+ * triggering, an `error` output that is never cleared, and `done` after the service answers.
+ *
+ * ⚠️ **Log Out's trigger port is spelled `login`**, not `logout`. That is not a transcription
+ * slip — `logout.ts` says the name "is persisted in every project that uses this node, so it
+ * cannot be corrected without breaking them".
+ */
+const USER_VERBS: Record<
+  string,
+  { verb: 'login' | 'logout' | 'signup'; trigger: string; fnName: string; inputs: string[] }
+> = {
+  'net.noodl.user.LogIn': { verb: 'login', trigger: 'login', fnName: 'logIn', inputs: ['username', 'password'] },
+  'net.noodl.user.LogOut': { verb: 'logout', trigger: 'login', fnName: 'logOut', inputs: [] },
+  'net.noodl.user.SignUp': {
+    verb: 'signup',
+    trigger: 'signup',
+    fnName: 'signUp',
+    inputs: ['username', 'password', 'email']
+  }
+};
+
+/** The `User` node's outputs this slice reads off the session stub (USER-FAMILY-TARGET §4c). */
+const SESSION_READS: Record<string, { field: 'id' | 'username' | 'email'; maybeUndefined: boolean } | 'authenticated'> =
+  {
+    authenticated: 'authenticated',
+    id: { field: 'id', maybeUndefined: true },
+    username: { field: 'username', maybeUndefined: true },
+    email: { field: 'email', maybeUndefined: true }
+  };
+
 export type BindingSource =
   | { kind: 'prop'; name: string }
   | { kind: 'store'; variableName: string }
@@ -158,7 +190,15 @@ export type ValueExpr =
    * `input-text` context rule generalized per control role: `event.target.checked` for a
    * checkbox, `Number(event.target.value)` for a range, `event.target.value` for a dropdown.
    */
-  | { kind: 'control-event'; controlId: string; form: 'string' | 'checked' | 'number' };
+  | { kind: 'control-event'; controlId: string; form: 'string' | 'checked' | 'number' }
+  /**
+   * A read of the signed-in user (USER-FAMILY-TARGET §4c) — the `User` node's outputs, which are
+   * getters over the session rather than stored values. `authenticated` is
+   * `model !== undefined` in the runtime, so it is a real boolean and lands at value sinks as
+   * well as truthiness ones; the other three are `model.get(…)` and read undefined while nobody
+   * is signed in, which is exactly the state the stub reports.
+   */
+  | { kind: 'session-get'; nodeId: string; field: 'authenticated' | 'id' | 'username' | 'email' };
 
 export type HandlerAction =
   | { kind: 'navigate'; to: string }
@@ -198,25 +238,41 @@ export type HandlerAction =
    */
   | { kind: 'state-set'; name: string; expr?: ValueExpr; op?: 'toggle' | 'inc' | 'dec' }
   /**
-   * A record verb fired from a handler chain (RECORD-VERBS-TARGET §4): the first asynchronous
-   * action in the vocabulary. The emitted handler becomes `async`, the call is awaited, `then`
-   * is the `done` chain — which is where `reportOutcomes(…, 'done')` sits in the runtime, after
-   * the store answers — and the catch writes `errorState`, the node's `Error` output, which the
-   * runtime never clears once set.
+   * An awaited call into an api stub (RECORD-VERBS-TARGET §4, USER-FAMILY-TARGET §4e): the
+   * vocabulary's asynchronous action. The emitted handler becomes `async`, the call is awaited,
+   * `then` is the `done` chain — which is where `reportOutcomes(…, 'done')` sits in the runtime,
+   * after the service answers — and the catch writes `errorState`, the node's `Error` output,
+   * which the runtime never clears once set.
+   *
+   * ⚠️ **One kind, two families.** The record verbs and the user family emit the *same* action;
+   * they differ only in `fnName` and in the shape of `args`. USER-FAMILY §4e records why this is
+   * a rename of `record-op` rather than a sibling case beside it: a new discriminant recruits
+   * every switch site silently and the wrong ones fail without throwing (s19's dispatcher trap),
+   * whereas a rename is a compile error at each site until it is handled.
    */
   | {
-      kind: 'record-op';
+      kind: 'api-call';
       nodeId: string;
-      verb: 'create' | 'update' | 'delete';
-      /** The api module's exported function: `createPuppy` / `updatePuppy` / `deletePuppy`. */
+      /** What produced the call — for notes and the stub's provenance line. */
+      verb: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'signup';
+      /** The api module's exported function: `createPuppy` / `updatePuppy` / `logIn` / `logOut`. */
       fnName: string;
-      /** Update/Delete only — the record the verb acts on. */
-      idExpr?: ValueExpr;
-      /** Create/Update only, wire order then literal order. */
-      props: Array<{ key: string; expr: ValueExpr }>;
+      /**
+       * The call's arguments, in position order. `updatePuppy(id, {…})` is `[expr, data]`,
+       * `logIn(u, p)` is `[expr, expr]`, `logOut()` is `[]`.
+       */
+      args: ApiCallArg[];
       errorState: string;
       then: HandlerAction[];
     };
+
+/**
+ * One argument of an {@link HandlerAction} `api-call`: either a plain value, or the object
+ * literal a record verb's `prop-*` set (and a Sign Up's credentials) collapses into.
+ */
+export type ApiCallArg =
+  | { kind: 'expr'; expr: ValueExpr }
+  | { kind: 'data'; props: Array<{ key: string; expr: ValueExpr }> };
 
 /**
  * One re-hosted Function/Expression node (EXP-003-JS-TARGET-OUTPUT §4): the verbatim body plus
@@ -341,6 +397,18 @@ export interface MutationPlan {
   moduleBase: string;
 }
 
+/**
+ * One translated user-family node (USER-FAMILY-TARGET §4d): what `src/api/session.ts` has to
+ * export for it. Unlike {@link MutationPlan} there is nothing to key on — a project has one
+ * session — so the three writes and the read all land in a single module.
+ */
+export interface SessionCallPlan {
+  nodeId: string;
+  verb: 'login' | 'logout' | 'signup' | 'read';
+  /** `logIn` / `logOut` / `signUp` / `useSession`. */
+  fnName: string;
+}
+
 export interface RepeaterPlan {
   nodeId: string;
   /** Legacy component path of the template ("/Components/PuppyCard"), or null when unset. */
@@ -463,6 +531,8 @@ export interface ComponentPlan {
   queries: QueryPlan[];
   /** Record verbs translated in this component (RECORD-VERBS-TARGET §4), compile order. */
   mutations: MutationPlan[];
+  /** The user-family nodes that translated — what `src/api/session.ts` must export. */
+  sessionCalls: SessionCallPlan[];
   repeaters: Record<string, RepeaterPlan>;
   /** Static Data nodes hoisted to module constants (STATIC-DATA-TARGET §3), resolution order. */
   staticData: StaticDataPlan[];
@@ -635,6 +705,7 @@ function planComponent(
     closesPopup: false,
     queries: [],
     mutations: [],
+    sessionCalls: [],
     repeaters: {},
     staticData: [],
     jsFunctions: {},
@@ -1409,7 +1480,7 @@ function planComponent(
    * clears it: the port's own description says the reason is *"kept after a later attempt
    * succeeds"*, and `_internal.error` is assigned only in `setError`.
    */
-  const recordErrorVars = new Map<string, StateVarPlan>();
+  const verbErrorVars = new Map<string, StateVarPlan>();
   /**
    * Verbs whose `Do` actually attached to a handler, filled by the attachment sweep. Every
    * binding pass runs after it, so an `Error` read can require it: a verb whose trigger the
@@ -1417,8 +1488,34 @@ function planComponent(
    * row nothing writes would render a blank where the interpreter shows a message.
    */
   const attachedRecordVerbs = new Set<string>();
-  const recordErrorStateOf = (node: NodeIR): StateVarPlan => {
-    let stateVar = recordErrorVars.get(node.id);
+  /**
+   * Whether a `User` node may be read as a plain session read (USER-FAMILY-TARGET §5.6–§5.10),
+   * or the named reason it may not. Every gate is a fork in §1's contract that the session stub
+   * has no shape for; the `Fetch` path owns four of them.
+   */
+  const sessionReadGate = (node: NodeIR): string | null => {
+    if (wiredPorts.has(`${node.id}:fetch`)) {
+      return 'its Fetch is wired — a re-read of the session is an invocation, and the export\'s session stub has no fetch to make';
+    }
+    // Absent means ticked (NDA-017, the `Run`-trap family) — so check `!== false`, never falsy.
+    if (literalParam(node, 'runOnChange-user') === false) {
+      return 'its Run On Value Change is unticked, so the ports stop tracking the session — the export\'s read cannot reproduce a subscription that is switched off';
+    }
+    if (literalParam(node, 'backendId') !== undefined || wiredPorts.has(`${node.id}:backendId`)) {
+      return 'it names a specific Backend — one session module is all this slice emits';
+    }
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (SESSION_READS[wire.fromProperty] !== undefined) continue;
+      if (wire.fromProperty.startsWith('prop-')) {
+        return `its ${wire.fromProperty} output is consumed — the project's own _User columns, which the session stub carries no schema for`;
+      }
+      return `its ${wire.fromProperty} output is consumed — it belongs to the Fetch path, which is not translated in this slice`;
+    }
+    return null;
+  };
+
+  const verbErrorStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = verbErrorVars.get(node.id);
     if (stateVar === undefined) {
       stateVar = allocStateVar(
         node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Error`,
@@ -1429,7 +1526,7 @@ function planComponent(
         'record-error',
         `The Error output of ${node.authoredLabel ? `"${node.authoredLabel}"` : `the ${node.type}`} — written when the write is refused, and never cleared (RECORD-VERBS-TARGET §1).`
       );
-      recordErrorVars.set(node.id, stateVar);
+      verbErrorVars.set(node.id, stateVar);
     }
     return stateVar;
   };
@@ -1768,13 +1865,37 @@ function planComponent(
     // until the first refusal, which folds at its sinks exactly as the runtime's own unwritten
     // getter does. Read only when the verb itself translates: a deferred verb never writes it,
     // and a state row nothing writes would be an invented value.
-    if (RECORD_VERBS[fromNode.type] !== undefined && fromProperty === 'error') {
+    if ((RECORD_VERBS[fromNode.type] !== undefined || USER_VERBS[fromNode.type] !== undefined) && fromProperty === 'error') {
       if (!attachedRecordVerbs.has(fromNode.id)) {
-        const compiled = compiledOf(fromNode, 'store');
+        const trigger = USER_VERBS[fromNode.type]?.trigger ?? 'store';
+        const compiled = compiledOf(fromNode, trigger);
         ctx.defer = 'defer' in compiled ? compiled.defer : 'its Do is never fired by a translatable trigger';
         return null;
       }
-      return { kind: 'state-get', name: recordErrorStateOf(fromNode).name, maybeUndefined: true };
+      return { kind: 'state-get', name: verbErrorStateOf(fromNode).name, maybeUndefined: true };
+    }
+    // The `User` node's session reads (USER-FAMILY-TARGET §4c). Not an action: the runtime's
+    // outputs are getters over `UserService`, re-read on four session events, so the faithful
+    // translation is a read of the session and not a stored value.
+    if (fromNode.type === 'net.noodl.user.User') {
+      const read = SESSION_READS[fromProperty];
+      if (read === undefined) {
+        ctx.defer = `its ${fromProperty} output belongs to the Fetch path, which is not translated in this slice`;
+        return null;
+      }
+      const gate = sessionReadGate(fromNode);
+      if (gate !== null) {
+        ctx.defer = gate;
+        return null;
+      }
+      // Deliberately *not* pushed onto `plan.sessionCalls` here: `resolveExpr` runs
+      // speculatively and a pass may drop the wire it resolved, which would leave a
+      // `useSession` in the stub module that nothing imports. The read is earned by a
+      // surviving expression instead — the sweep below §4c's comment.
+      ctx.logicNodeIds.push(fromNode.id);
+      return read === 'authenticated'
+        ? { kind: 'session-get', nodeId: fromNode.id, field: 'authenticated' }
+        : { kind: 'session-get', nodeId: fromNode.id, field: read.field };
     }
     if (isTextInputType(fromNode.type) && fromProperty === 'onTextChanged') {
       return { kind: 'input-text', inputId: fromNode.id };
@@ -1854,6 +1975,10 @@ function planComponent(
         return true;
       case 'store-key-get':
         return !(registry.stores.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.required ?? false);
+      // `authenticated` is `model !== undefined` — a real boolean, never absent. The other three
+      // are `model.get(…)` and read undefined while nobody is signed in (USER-FAMILY §1).
+      case 'session-get':
+        return expr.field !== 'authenticated';
       case 'undefined':
         return true;
       // An output the body might not write reads undefined, exactly like the runtime getter
@@ -2072,6 +2197,8 @@ function planComponent(
         return registry.variables.get(expr.variableName)?.tsType ?? 'unknown';
       case 'store-key-get':
         return registry.stores.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.tsType ?? 'unknown';
+      case 'session-get':
+        return expr.field === 'authenticated' ? 'boolean' : 'string';
       case 'payload':
         return registry.channels.get(channelNameOf(nodeById.get(expr.receiverId)!)!)?.payload.find((p) => p.key === expr.key)?.tsType ?? 'unknown';
       case 'literal':
@@ -2106,7 +2233,12 @@ function planComponent(
     Condition: 'eval',
     NewDbModelProperties: 'store',
     SetDbModelProperties: 'store',
-    DeleteDbModelProperties: 'store'
+    DeleteDbModelProperties: 'store',
+    // ⚠️ Log Out's is `login` too — the port name is persisted in every project that uses the
+    // node, so the runtime could not correct it (USER-FAMILY-TARGET §1).
+    'net.noodl.user.LogIn': 'login',
+    'net.noodl.user.LogOut': 'login',
+    'net.noodl.user.SignUp': 'signup'
   };
 
   /** The popup nodes' trigger ports are dynamic (`closeAction-*`), so membership is a predicate. */
@@ -2562,13 +2694,104 @@ function planComponent(
 
     return {
       action: {
-        kind: 'record-op',
+        kind: 'api-call',
         nodeId: node.id,
         verb,
         fnName,
-        idExpr,
-        props,
-        errorState: recordErrorStateOf(node).name,
+        // `updatePuppy(id, {…})` / `createPuppy({…})` / `deletePuppy(id)` — position order.
+        args: [
+          ...(idExpr === undefined ? [] : [{ kind: 'expr' as const, expr: idExpr }]),
+          ...(verb === 'delete' ? [] : [{ kind: 'data' as const, props }])
+        ],
+        errorState: verbErrorStateOf(node).name,
+        then: chain.then
+      },
+      consumes: [...consumes, ...chain.consumes, ...ctx.consumes],
+      collapses: [...ctx.logicNodeIds, ...chain.collapses],
+      subscribes: [...ctx.subscriberIds, ...chain.subscribes]
+    };
+  };
+
+  /**
+   * A user-family action fired from a handler chain (USER-FAMILY-TARGET §4/§5).
+   *
+   * The record verbs' shape with a different service behind it, so this shares their action,
+   * their Error state row, their attachment sweep and their `done`-chain compilation — the only
+   * things that differ are the gates, and every gate here is a fork in §1's contract that the
+   * emit vocabulary has no shape for.
+   */
+  const compileUserOp = (node: NodeIR): CompiledSink => {
+    const spec = USER_VERBS[node.type];
+    const ctx = newCtx();
+    const consumes: string[] = [];
+
+    // Consumed outcome pulses beyond `done`: the runtime pulses them per invocation, and only
+    // the done chain and the Error value are translated in this slice (§5.4).
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (wire.fromProperty === 'failure' || wire.fromProperty === 'completed') {
+        return {
+          defer: `its ${wire.fromProperty} output is consumed — only the done chain and the Error value are translated in this slice`
+        };
+      }
+    }
+
+    // The credentials. Like `prop-*` these accumulate rather than trigger (§1), so the request
+    // carries whatever has arrived when the trigger fires — and a control's state boots `''`,
+    // which is §6's named divergence from the runtime's absent input.
+    const props: Array<{ key: string; expr: ValueExpr }> = [];
+    for (const key of spec.inputs) {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === key);
+      if (wires.length > 1) {
+        return { defer: `two wires feed ${key} — last-writer-wins is not statically ordered` };
+      }
+      if (wires.length === 1) {
+        const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (expr === null) return { defer: ctx.defer ?? `its ${key} has no statically known source` };
+        if (isBooleanExpr(expr)) {
+          return { defer: `its ${key} is fed a logic truth value — only truthiness sinks take one in this slice` };
+        }
+        props.push({ key, expr });
+        consumes.push(wires[0].key);
+        continue;
+      }
+      const literal = literalParam(node, key);
+      if (literal !== undefined) props.push({ key, expr: { kind: 'literal', value: literal } });
+    }
+
+    // Sign Up's extra `_User` columns: the export's session stub carries no user schema to type
+    // them against, and the corpus has none — designed and deferred on §4c/§4e's precedent
+    // rather than built with nothing to test it (§5.5).
+    if (
+      spec.verb === 'signup' &&
+      (component.connections.some((c) => c.toId === node.id && c.toProperty.startsWith('prop-')) ||
+        node.parameters.some((p) => p.name.startsWith('prop-')))
+    ) {
+      return {
+        defer: 'it sets extra _User columns at sign-up — the export\'s session stub carries no user schema to type them against'
+      };
+    }
+
+    const chain = doneChainOf(node);
+    if ('defer' in chain) return { defer: chain.defer };
+
+    plan.sessionCalls.push({ nodeId: node.id, verb: spec.verb, fnName: spec.fnName });
+
+    return {
+      action: {
+        kind: 'api-call',
+        nodeId: node.id,
+        verb: spec.verb,
+        fnName: spec.fnName,
+        // `logIn(username, password)` / `signUp({…})` / `logOut()` — Log In reads better
+        // positionally, Sign Up carries a widening field set, and Log Out takes nothing.
+        args:
+          spec.verb === 'signup'
+            ? [{ kind: 'data' as const, props }]
+            : spec.inputs.map((key) => ({
+                kind: 'expr' as const,
+                expr: props.find((p) => p.key === key)?.expr ?? { kind: 'literal' as const, value: '' }
+              })),
+        errorState: verbErrorStateOf(node).name,
         then: chain.then
       },
       consumes: [...consumes, ...chain.consumes, ...ctx.consumes],
@@ -2579,6 +2802,7 @@ function planComponent(
 
   const compileSink = (node: NodeIR, port: string): CompiledSink => {
     if (RECORD_VERBS[node.type] !== undefined && port === 'store') return compileRecordOp(node);
+    if (USER_VERBS[node.type] !== undefined && port === USER_VERBS[node.type].trigger) return compileUserOp(node);
     if (jsNodeKindOf(node.type) !== null && port === 'run') return compileJsRun(node);
     if (isLatchType(node.type)) return compileLatch(node, port);
     if ((plan.roleOf[node.id] === 'checkbox' || plan.roleOf[node.id] === 'input') && (CONTROL_ACTION_PORTS[plan.roleOf[node.id]] ?? []).includes(port)) {
@@ -2808,6 +3032,7 @@ function planComponent(
       case 'literal':
       case 'undefined':
       case 'state-get':
+      case 'session-get':
         return true;
       case 'format':
         return expr.parts.every((p) => typeof p === 'string' || exprValidIn(p, context, invokedScope));
@@ -2858,11 +3083,13 @@ function planComponent(
         case 'popup-show':
         case 'popup-close':
           return actionsValidIn(action.then, context, invokedScope);
-        case 'record-op':
+        case 'api-call':
           return (
-            (action.idExpr === undefined || exprValidIn(action.idExpr, context, invokedScope)) &&
-            action.props.every((p) => exprValidIn(p.expr, context, invokedScope)) &&
-            actionsValidIn(action.then, context, invokedScope)
+            action.args.every((arg) =>
+              arg.kind === 'expr'
+                ? exprValidIn(arg.expr, context, invokedScope)
+                : arg.props.every((p) => exprValidIn(p.expr, context, invokedScope))
+            ) && actionsValidIn(action.then, context, invokedScope)
           );
         case 'jsfun-run': {
           const def = plan.jsFunctions[action.nodeId];
@@ -2965,6 +3192,11 @@ function planComponent(
       if (RECORD_VERBS[sink.type] !== undefined) {
         return c.toProperty.startsWith('prop-') || c.toProperty === 'modelId';
       }
+      // USER-FAMILY-TARGET §3 — the first test of §3's claim that "every later handler-argument
+      // reader (the User nodes' credentials, HTTP's body) earns control state by the same
+      // clause". The credentials are read from the *button's* handler, exactly as the five form
+      // fields were, so the clause holds unchanged.
+      if (USER_VERBS[sink.type] !== undefined) return USER_VERBS[sink.type].inputs.includes(c.toProperty);
       return rendered.has(sink.id) && !isTriggerWire(sink.type, c.toProperty);
     });
     if (!stateWired && !actionWired && !outputRead) continue;
@@ -3354,22 +3586,26 @@ function planComponent(
       }
       // The call's arguments are read before the await, so they take the snapshot in place; the
       // done chain follows it and carries the same map onward.
-      case 'record-op': {
-        let idExpr: ValueExpr | undefined;
-        if (action.idExpr !== undefined) {
-          const e = snapExpr(action.idExpr, snap);
-          if ('defer' in e) return e;
-          idExpr = e;
-        }
-        const props: Array<{ key: string; expr: ValueExpr }> = [];
-        for (const p of action.props) {
-          const e = snapExpr(p.expr, snap);
-          if ('defer' in e) return e;
-          props.push({ key: p.key, expr: e });
+      case 'api-call': {
+        const args: ApiCallArg[] = [];
+        for (const arg of action.args) {
+          if (arg.kind === 'expr') {
+            const e = snapExpr(arg.expr, snap);
+            if ('defer' in e) return e;
+            args.push({ kind: 'expr', expr: e });
+            continue;
+          }
+          const props: Array<{ key: string; expr: ValueExpr }> = [];
+          for (const p of arg.props) {
+            const e = snapExpr(p.expr, snap);
+            if ('defer' in e) return e;
+            props.push({ key: p.key, expr: e });
+          }
+          args.push({ kind: 'data', props });
         }
         const then = snapActionList(action.then, snap);
         if (!Array.isArray(then)) return then;
-        return { ...action, idExpr, props, then };
+        return { ...action, args, then };
       }
       case 'jsfun-run': {
         if ((plan.jsFunctions[action.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap))) {
@@ -3771,7 +4007,7 @@ function planComponent(
         } else if (action.kind === 'popup-close') {
           closeAttached = true;
           scanActions(action.then);
-        } else if (action.kind === 'record-op') {
+        } else if (action.kind === 'api-call') {
           attachedMutations.add(action.nodeId);
           scanActions(action.then);
         } else if (action.kind === 'branch') {
@@ -3786,7 +4022,11 @@ function planComponent(
     plan.popups = slotRegistry.filter((s) => attachedSlotKeys.has(s.slotKey));
     plan.closesPopup = closeAttached;
     plan.mutations = plan.mutations.filter((m) => attachedMutations.has(m.nodeId));
-    for (const [nodeId, stateVar] of recordErrorVars) {
+    // The user family earns its session exports the same way (USER-FAMILY-TARGET §5.1). The
+    // `read` entries are pushed after the 4x passes and are earned separately, by a surviving
+    // expression — so only the verbs are filtered here.
+    plan.sessionCalls = plan.sessionCalls.filter((c) => c.verb === 'read' || attachedMutations.has(c.nodeId));
+    for (const [nodeId, stateVar] of verbErrorVars) {
       if (attachedMutations.has(nodeId)) continue;
       const index = plan.stateVars.indexOf(stateVar);
       if (index >= 0) plan.stateVars.splice(index, 1);
@@ -3812,8 +4052,10 @@ function planComponent(
   // the named-deferral rule, which is what makes the audit a map of the next slices.
   for (const node of component.nodes) {
     if (dispositions[node.id] !== undefined) continue;
-    if (RECORD_VERBS[node.type] === undefined) continue;
-    const compiled = compiledSinks.get(`${node.id}:store`);
+    const trigger =
+      RECORD_VERBS[node.type] !== undefined ? 'store' : USER_VERBS[node.type] !== undefined ? USER_VERBS[node.type].trigger : undefined;
+    if (trigger === undefined) continue;
+    const compiled = compiledSinks.get(`${node.id}:${trigger}`);
     const reason =
       compiled !== undefined && 'defer' in compiled
         ? compiled.defer
@@ -4053,11 +4295,23 @@ function planComponent(
     // STATIC-DATA §4.6 — `count` over rows known at emit, which resolves to a number literal.
     // It rides this pass because it wants exactly the same bindable discipline.
     const isStaticCountRead = fromNode.type === 'Static Data' && connection.fromProperty === 'count';
-    // A record verb's Error into a rendered sink (RECORD-VERBS-TARGET §4a) — the status line.
+    // An awaited call's Error into a rendered sink (RECORD-VERBS-TARGET §4a) — the status line.
     // It rides this pass because it is a state read into a bindable sink, exactly like the two
     // above, `stateLandedKeys` included so the verdict sweeps can see the read landed.
-    const isRecordErrorRead = RECORD_VERBS[fromNode.type] !== undefined && connection.fromProperty === 'error';
-    if (!isLatchRead && !isControlRead && !isStaticCountRead && !isRecordErrorRead) continue;
+    //
+    // ⚠️ **Both families, not just the record verbs.** This predicate named one of them while
+    // `resolveExpr` named both, and the mismatch **failed silently**: the Log In status line
+    // resolved and then fell through to the catch-all note, rendering an empty `<p>` where the
+    // interpreted app shows the refusal (USER-FAMILY-TARGET §9). s19's dispatcher rule in its
+    // second family — when a vocabulary grows a member, audit every site that enumerates it.
+    const isRecordErrorRead =
+      (RECORD_VERBS[fromNode.type] !== undefined || USER_VERBS[fromNode.type] !== undefined) &&
+      connection.fromProperty === 'error';
+    // A `User` output into a rendered sink (USER-FAMILY-TARGET §4c) — `Signed in as <username>`
+    // and the `authenticated` visibility gates. It rides this pass for the same reason the
+    // Error read does: it is a read of ambient state into a bindable sink.
+    const isSessionRead = fromNode.type === 'net.noodl.user.User' && SESSION_READS[connection.fromProperty] !== undefined;
+    if (!isLatchRead && !isControlRead && !isStaticCountRead && !isRecordErrorRead && !isSessionRead) continue;
     const toNode = nodeById.get(connection.toId);
     if (!toNode || !rendered.has(toNode.id)) continue; // handler reads resolve at compile; the sweep names the rest
     const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
@@ -4074,7 +4328,7 @@ function planComponent(
     if (isRecordErrorRead && plan.bindings[toNode.id]?.[connection.toProperty] !== undefined) {
       consumed.add(connection.key);
       notes.push(
-        `wire ${connection.key} dropped: ${toNode.id}.${connection.toProperty} already shows another record verb's Error — the runtime shows whichever wrote last, which is not statically ordered`
+        `wire ${connection.key} dropped: ${toNode.id}.${connection.toProperty} already shows another node's Error — the runtime shows whichever wrote last, which is not statically ordered`
       );
       continue;
     }
@@ -4371,6 +4625,65 @@ function planComponent(
       continue;
     }
     dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+  }
+
+  // The session read is earned by a surviving expression (USER-FAMILY-TARGET §4c), the same
+  // discipline the popup slots and the api-stub mutations take: `resolveExpr` runs
+  // speculatively, so a `User` node whose every read was dropped by a later pass must leave no
+  // `useSession` in the module and no collapsed disposition behind. This runs after the 4x
+  // passes because that is where bindings are written.
+  {
+    const readNodeIds = new Set<string>();
+    const walkExpr = (expr: ValueExpr): void => {
+      if (expr.kind === 'session-get') readNodeIds.add(expr.nodeId);
+      else if (expr.kind === 'format') {
+        for (const p of expr.parts) if (typeof p !== 'string') walkExpr(p);
+      } else if (expr.kind === 'logical') expr.operands.forEach(walkExpr);
+      else if (expr.kind === 'not' || expr.kind === 'truthy') walkExpr(expr.operand);
+    };
+    const walkActions = (actions: HandlerAction[]): void => {
+      for (const action of actions) {
+        switch (action.kind) {
+          case 'api-call':
+            for (const arg of action.args) {
+              if (arg.kind === 'expr') walkExpr(arg.expr);
+              else for (const p of arg.props) walkExpr(p.expr);
+            }
+            walkActions(action.then);
+            break;
+          case 'branch':
+            walkExpr(action.cond);
+            walkActions(action.whenTrue);
+            walkActions(action.whenFalse);
+            break;
+          case 'popup-show':
+          case 'popup-close':
+          case 'jsfun-run':
+            walkActions(action.then);
+            break;
+          case 'state-set':
+            if (action.expr !== undefined) walkExpr(action.expr);
+            break;
+          default:
+            break;
+        }
+      }
+    };
+    for (const byNode of Object.values(plan.bindings)) {
+      for (const binding of Object.values(byNode)) if (binding.kind === 'computed') walkExpr(binding.expr);
+    }
+    for (const byPort of Object.values(plan.handlers)) for (const actions of Object.values(byPort)) walkActions(actions);
+    for (const actions of Object.values(plan.changeHandlers)) walkActions(actions);
+    for (const receiver of plan.receivers) walkActions(receiver.actions);
+    for (const nodeId of readNodeIds) {
+      plan.sessionCalls.push({ nodeId, verb: 'read', fnName: 'useSession' });
+    }
+    // A `User` node no surviving expression reads is not collapsed — the sweeps below name it.
+    for (const node of component.nodes) {
+      if (node.type !== 'net.noodl.user.User') continue;
+      if (readNodeIds.has(node.id)) continue;
+      if (dispositions[node.id]?.kind === 'collapsed') delete dispositions[node.id];
+    }
   }
 
   // Pass 6: report every wire nothing translated.

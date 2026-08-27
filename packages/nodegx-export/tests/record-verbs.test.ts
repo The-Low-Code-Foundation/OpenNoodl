@@ -112,10 +112,10 @@ describe('§4a — Create Record: the form idiom, awaited', () => {
   });
 
   test('the second and third Error wires into one status line drop with a note, never silently', () => {
-    const notes = app.notes.filter((n) => n.includes("already shows another record verb's Error"));
+    const notes = app.notes.filter((n) => n.includes("already shows another node's Error"));
     expect(notes).toEqual([
-      "Pages/Admin: wire updateRecord:error->statusText:text dropped: statusText.text already shows another record verb's Error — the runtime shows whichever wrote last, which is not statically ordered",
-      "Pages/Admin: wire deleteRecord:error->statusText:text dropped: statusText.text already shows another record verb's Error — the runtime shows whichever wrote last, which is not statically ordered"
+      "Pages/Admin: wire updateRecord:error->statusText:text dropped: statusText.text already shows another node's Error — the runtime shows whichever wrote last, which is not statically ordered",
+      "Pages/Admin: wire deleteRecord:error->statusText:text dropped: statusText.text already shows another node's Error — the runtime shows whichever wrote last, which is not statically ordered"
     ]);
   });
 });

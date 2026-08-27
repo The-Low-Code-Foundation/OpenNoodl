@@ -6,7 +6,7 @@
  */
 
 import { Catalog, CatalogIndex } from '../catalog';
-import { planProject, ProjectPlan, QueryPlan } from '../analyze/plan';
+import { planProject, ProjectPlan, QueryPlan, SessionCallPlan } from '../analyze/plan';
 import { ExportIR } from '../ir/types';
 import { emitComponent } from './component';
 import { emitScaffold } from './scaffold';
@@ -163,7 +163,81 @@ function apiStubs(ir: ExportIR, project: ProjectPlan): Array<[string, string]> {
 
     stubs.push([`src/api/${moduleBase}.ts`, GENERATED_TS + parts.join('\n')]);
   }
+
+  const session = sessionStub(ir, project);
+  if (session !== null) stubs.push(session);
   return stubs;
+}
+
+/**
+ * `src/api/session.ts` — the user family's one module (USER-FAMILY-TARGET §4d).
+ *
+ * Unlike the collection stubs there is nothing to key on: a project has one session, so the
+ * three writes and the read share a file whichever of them translated.
+ */
+function sessionStub(ir: ExportIR, project: ProjectPlan): [string, string] | null {
+  type Site = { componentPath: string; nodeId: string };
+  const byFn = new Map<string, { verb: SessionCallPlan['verb']; sites: Site[] }>();
+  for (const plan of project.plans) {
+    for (const call of plan.sessionCalls) {
+      let entry = byFn.get(call.fnName);
+      if (entry === undefined) byFn.set(call.fnName, (entry = { verb: call.verb, sites: [] }));
+      entry.sites.push({ componentPath: plan.path, nodeId: call.nodeId });
+    }
+  }
+  if (byFn.size === 0) return null;
+
+  const nodeLabel = (site: Site): string => {
+    const node = ir.components.find((c) => c.path === site.componentPath)?.nodes.find((n) => n.id === site.nodeId);
+    return node?.authoredLabel ? `"${node.authoredLabel}" ` : '';
+  };
+  const siteLine = (site: Site, type: string): string =>
+    ` * TODO(export): ${nodeLabel(site)}(${type} \`${site.nodeId}\` on /${site.componentPath})`;
+
+  const SPEC: Record<
+    SessionCallPlan['verb'],
+    { nodeType: string; past: string; signature: string }
+  > = {
+    login: {
+      nodeType: 'net.noodl.user.LogIn',
+      past: 'signed in against',
+      signature: '(username: string, password: string): Promise<SessionUser>'
+    },
+    logout: { nodeType: 'net.noodl.user.LogOut', past: 'ended the session on', signature: '(): Promise<void>' },
+    signup: {
+      nodeType: 'net.noodl.user.SignUp',
+      past: 'created an account on',
+      signature:
+        '(data: { username?: string; password?: string; email?: string }): Promise<SessionUser>'
+    },
+    read: { nodeType: 'net.noodl.user.User', past: '', signature: '' }
+  };
+
+  const parts: string[] = ['export interface SessionUser {\n  id: string;\n  username?: string;\n  email?: string;\n}\n'];
+  for (const [fnName, { verb, sites }] of byFn) {
+    const spec = SPEC[verb];
+    if (verb === 'read') {
+      // The one non-throwing export, and §4c is the whole argument for it: logged-out is a
+      // plausible state of a real session — the runtime says a server render always sees one —
+      // and it is the only state reachable through this module while `logIn` throws.
+      parts.push(
+        `/**\n${sites.map((s) => siteLine(s, spec.nodeType)).join('\n')}\n` +
+          ` * read the signed-in user from the project's NodeGX backend. Connect this to your own auth; until\n` +
+          ` * you do it answers "nobody is signed in", which is also what a server render sees.\n */\n` +
+          `export function ${fnName}(): { authenticated: boolean; user: SessionUser | null } {\n` +
+          `  return { authenticated: false, user: null };\n}\n`
+      );
+      continue;
+    }
+    parts.push(
+      `/**\n${sites.map((s) => siteLine(s, spec.nodeType)).join('\n')}\n` +
+        ` * ${spec.past} the project's NodeGX backend. Connect this to your own auth; until you do it throws,\n` +
+        ` * which is what the graph's Failure path already handles.\n */\n` +
+        `export async function ${fnName}${spec.signature} {\n` +
+        `  throw new Error('${fnName} is not connected to a backend yet');\n}\n`
+    );
+  }
+  return ['src/api/session.ts', GENERATED_TS + parts.join('\n')];
 }
 
 function tsColumnType(columnType: string): string {

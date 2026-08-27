@@ -737,13 +737,13 @@
     },
     {
       "typeName": "net.noodl.user.LogIn",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "await logIn(username, password) into src/api/session.ts; Error -> component state"
     },
     {
       "typeName": "net.noodl.user.LogOut",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "await logOut(); Error row written even when nothing reads it"
     },
     {
       "typeName": "net.noodl.user.RequestMagicLink",
@@ -777,13 +777,13 @@
     },
     {
       "typeName": "net.noodl.user.SignUp",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "await signUp({...}); defers on any prop-* (_User columns have no stub schema)"
     },
     {
       "typeName": "net.noodl.user.User",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "useSession() read; the Fetch path and prop-* outputs defer"
     },
     {
       "typeName": "net.noodl.user.VerifyEmail",

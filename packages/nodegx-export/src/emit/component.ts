@@ -38,6 +38,11 @@ const PRINT_WIDTH = 100;
 
 /** A bare reference (`name`, `visitorName.get()`) that negates without parentheses. */
 const SIMPLE_REF = /^[A-Za-z_$][A-Za-z0-9_$.]*(\(\))?$/;
+/**
+ * The `useSession()` render local (USER-FAMILY-TARGET §4c). One per component whatever the graph
+ * reads off it, and reserved so no hook local can take the name out from under it.
+ */
+const SESSION_LOCAL = 'session';
 
 /** Runtime signal outputs that have a direct DOM event equivalent. Anything else is reported. */
 const EVENT_ATTRS: Record<string, string> = {
@@ -236,7 +241,11 @@ export function emitComponent(
   );
   const jsArgExprs = (nodeId: string): ValueExpr[] =>
     (jsFunByNode[nodeId]?.inputs ?? []).flatMap((i) => (i.expr !== undefined ? [i.expr] : []));
+  // Earned by a surviving read, exactly as a variable earns its `useValue` — a `User` node whose
+  // every read was gated leaves no hook behind (USER-FAMILY-TARGET §4c).
+  let usesSession = false;
   const collectExprUse = (expr: ValueExpr) => {
+    if (expr.kind === 'session-get') usesSession = true;
     if (expr.kind === 'store-get') usedVariableNames.add(expr.variableName);
     if (expr.kind === 'store-key-get') usedStoreNames.add(expr.storeName);
     if (expr.kind === 'state-get') referencedStateNames.add(expr.name);
@@ -309,7 +318,7 @@ export function emitComponent(
     actions.flatMap((a) =>
       a.kind === 'branch'
         ? [a, ...deepActions(a.whenTrue), ...deepActions(a.whenFalse)]
-        : a.kind === 'popup-show' || a.kind === 'popup-close' || a.kind === 'jsfun-run' || a.kind === 'record-op'
+        : a.kind === 'popup-show' || a.kind === 'popup-close' || a.kind === 'jsfun-run' || a.kind === 'api-call'
           ? [a, ...deepActions(a.then)]
           : [a]
     );
@@ -341,6 +350,12 @@ export function emitComponent(
     if (expr.kind === 'logical') expr.operands.forEach(hookExprSources);
     if (expr.kind === 'not' || expr.kind === 'truthy') hookExprSources(expr.operand);
     if (expr.kind === 'state-get') referencedStateNames.add(expr.name);
+    // ⚠️ The second walker. `collectExprUse` covers handler actions and this one covers render
+    // bindings, and each enumerates the kinds it cares about separately — so a new ValueExpr
+    // kind that earns a hook must be added to BOTH. Setting it only in `collectExprUse` emitted
+    // `session.authenticated` in four bindings with no `const session` above them, and only
+    // building the emitted app caught it (USER-FAMILY-TARGET §9).
+    if (expr.kind === 'session-get') usesSession = true;
     if (expr.kind === 'jsfun-out') {
       if (expr.viaState !== undefined) {
         // A materialized read (§4f) goes through the state var, not a render local.
@@ -389,11 +404,12 @@ export function emitComponent(
     }
   }
   for (const sync of plan.syncEffects) referencedStateNames.add(sync.stateName);
-  // A record verb's Error row is *written* by its catch even when nothing reads it, and a row
+  // An awaited call's Error row is *written* by its catch even when nothing reads it, and a row
   // reached only by its writer is still a row: without this the emitted setter call names a
-  // binding the filter had already dropped (RECORD-VERBS-TARGET §4a).
+  // binding the filter had already dropped (RECORD-VERBS-TARGET §4a). Log Out is the case where
+  // nothing reads it in the whole corpus (USER-FAMILY-TARGET §4b).
   for (const action of deepActions(allActions)) {
-    if (action.kind === 'record-op') referencedStateNames.add(action.errorState);
+    if (action.kind === 'api-call') referencedStateNames.add(action.errorState);
   }
   for (const lifted of Object.values(plan.instanceLifted)) {
     for (const entry of lifted) {
@@ -407,7 +423,15 @@ export function emitComponent(
 
   // The hook's local name is the variable's last camelCase word (`visitorName` → `name`),
   // deduplicated against everything else in scope, falling back to `<export>Value`.
-  const reserved = new Set<string>(['event', 'navigate', 'payload', 'styles', 'joinClasses', plan.file.symbol]);
+  const reserved = new Set<string>([
+    'event',
+    'navigate',
+    'payload',
+    'styles',
+    'joinClasses',
+    SESSION_LOCAL,
+    plan.file.symbol
+  ]);
   plan.props.forEach((p) => reserved.add(p.name));
   plan.outputProps.forEach((o) => reserved.add(o.prop));
   plan.liftedOutputProps.forEach((l) => reserved.add(l.prop));
@@ -525,6 +549,10 @@ export function emitComponent(
         return true; // variables boot undefined until their first write (state.ts)
       case 'store-key-get':
         return !(storeByName.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.required ?? false);
+      // `authenticated` is a real boolean (`model !== undefined`); the rest are absent while
+      // nobody is signed in, which is the state the stub always reports (USER-FAMILY §4c).
+      case 'session-get':
+        return expr.field !== 'authenticated';
       case 'payload':
         return true; // payload keys are optional-typed
       case 'undefined':
@@ -566,6 +594,10 @@ export function emitComponent(
       // chain-order correctness inside handlers is the plan-side snapshot rule's job.
       case 'state-get':
         return expr.name;
+      // One `const session = useSession()` per component, read the same way in both modes — the
+      // hook is a render local and a handler closes over it (USER-FAMILY §4c).
+      case 'session-get':
+        return expr.field === 'authenticated' ? `${SESSION_LOCAL}.authenticated` : `${SESSION_LOCAL}.user?.${expr.field}`;
       case 'control-event':
         return expr.form === 'checked'
           ? 'event.target.checked'
@@ -786,11 +818,10 @@ export function emitComponent(
       // await inside the try — which is where `reportOutcomes(…, 'done')` sits in the runtime,
       // after the store answers — and the catch is `setError`: it writes the Error output and
       // never clears it, exactly as `_internal.error` behaves.
-      case 'record-op': {
-        const args = [
-          ...(action.idExpr === undefined ? [] : [exprCode(action.idExpr, 'handler')]),
-          ...(action.verb === 'delete' ? [] : [recordDataObject(action.props)])
-        ];
+      case 'api-call': {
+        const args = action.args.map((arg) =>
+          arg.kind === 'expr' ? exprCode(arg.expr, 'handler') : recordDataObject(arg.props)
+        );
         const inner = pad(indent + 2);
         const body = [
           `${inner}await ${action.fnName}(${args.join(', ')});`,
@@ -830,14 +861,14 @@ export function emitComponent(
     const statements = expanded.map(actionCode);
     // A record verb's call is awaited, so the handler it lands in is `async` — and its try/catch
     // is a statement, which takes the same block form a branch does (RECORD-VERBS-TARGET §4a).
-    const isAsync = expanded.some((a) => a.kind === 'record-op');
+    const isAsync = expanded.some((a) => a.kind === 'api-call');
     const head = isAsync ? `async ${param}` : param;
     if (isAsync || expanded.some((a) => a.kind === 'branch' || (a.kind === 'popup-close' && a.then.length > 0))) {
       // A try/catch is a statement, not an expression: it prints at the handler's own column and
       // takes no terminator. Every other action keeps the semicolon the existing goldens pin.
       const body = expanded
         .map((a) =>
-          a.kind === 'record-op'
+          a.kind === 'api-call'
             ? `${pad(indent + 2)}${actionCode(a, indent + 2)}`
             : `${pad(indent + 2)}${actionCode(a)};`
         )
@@ -895,6 +926,13 @@ export function emitComponent(
       specifier,
       `import { ${[...fetchNames, ...fnNames, ...typeNames.map((t) => `type ${t}`)].join(', ')} } from '${specifier}';`
     );
+  }
+  // The session module is not keyed on anything — a project has one session — so every
+  // user-family node in this component imports from the same specifier (USER-FAMILY-TARGET §4d).
+  if (plan.sessionCalls.length > 0) {
+    const specifier = `${relRoot}/api/session`;
+    const fnNames = [...new Set(plan.sessionCalls.map((c) => c.fnName))].sort();
+    internalImports.set(specifier, `import { ${fnNames.join(', ')} } from '${specifier}';`);
   }
   if (usedVariableNames.size > 0) {
     const specifier = `${relRoot}/stores/variables`;
@@ -1121,10 +1159,12 @@ export function emitComponent(
       if (bound.kind === 'computed' && bound.expr.kind === 'undefined') return null;
       // An unwritten wrapper output reads undefined; the runtime renders that as nothing
       // (EXP-003 §4's `{formatListOut.text ?? ''}` shape). Lifted/materialized state reads
-      // are undefined until their first delivery and fold the same way (CONTROLLED-STATE §4d/§4f).
+      // are undefined until their first delivery and fold the same way (CONTROLLED-STATE §4d/§4f),
+      // and so does a session read while nobody is signed in (USER-FAMILY §4c) — React renders
+      // `undefined` as nothing either way, but the fold is what makes the emitted text say so.
       if (
         bound.kind === 'computed' &&
-        (bound.expr.kind === 'jsfun-out' || bound.expr.kind === 'state-get') &&
+        (bound.expr.kind === 'jsfun-out' || bound.expr.kind === 'state-get' || bound.expr.kind === 'session-get') &&
         maybeUndefined(bound.expr)
       ) {
         const code = bindingExpr(bound);
@@ -1775,6 +1815,10 @@ export function emitComponent(
   for (const local of radioNameLocals.values()) {
     body.push(`  const ${local} = useId();`);
   }
+  // One session local per component, whatever the graph reads off it (USER-FAMILY-TARGET §4c).
+  // It is earned by a `session-get` surviving into a binding or a handler, not by the `User`
+  // node existing — a node whose every read was gated leaves nothing behind.
+  if (usesSession) body.push(`  const ${SESSION_LOCAL} = useSession();`);
   for (const query of plan.queries) {
     body.push(`  const [${query.stateName}, ${query.setterName}] = useState<${query.typeName}[]>([]);`);
   }
@@ -1886,10 +1930,9 @@ export function emitComponent(
         return a.then.flatMap(actionExprsOf);
       case 'jsfun-run':
         return [...jsArgExprs(a.nodeId), ...a.then.flatMap(actionExprsOf)];
-      case 'record-op':
+      case 'api-call':
         return [
-          ...(a.idExpr === undefined ? [] : [a.idExpr]),
-          ...a.props.map((p) => p.expr),
+          ...a.args.flatMap((arg) => (arg.kind === 'expr' ? [arg.expr] : arg.props.map((p) => p.expr))),
           ...a.then.flatMap(actionExprsOf)
         ];
       case 'navigate':
