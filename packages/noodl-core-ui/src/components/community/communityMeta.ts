@@ -90,12 +90,40 @@ function plural(n: number, unit: string): string {
 /**
  * What happened to a question — the half of a thread row a reader actually scans for.
  *
- * 🔴 **`null` minutes means nobody has answered, and that is the row worth drawing loudest.**
- * It is also the value the health readout counts as `unreplied`, so a row that stayed silent
- * about it would leave the tab quoting a number no row on the page accounts for.
+ * 🔴 **`null` minutes does NOT mean "nobody has answered". It means nobody *other than the
+ * asker* has answered**, and conflating the two is FIX-025 bug 7. `firstReplyMinutes` is
+ * computed by the platform as the first post *by another account* (`src/lib/bench.ts`), on
+ * purpose — D16's threshold is about people coming back, and somebody answering themselves in
+ * two minutes is not a community responding. `replyCount` counts every visible post after the
+ * first, the asker's own included. So the two disagree exactly when the asker has replied to
+ * themselves, and both are telling the truth.
+ *
+ * ⚠️ **Measured on production 2026-08-27**, not argued: `/api/v1/community/threads` returns
+ * `de14371e…` with `replyCount: 1, accepted: true, firstReplyMinutes: null` — an answered,
+ * *accepted* question this function was calling unanswered — beside `2abd111a…` with
+ * `replyCount: 0`, which really is unanswered. **They are the control pair**: before this
+ * change both rendered the identical sentence.
+ *
+ * 🔴 **The row must not go silent when minutes are null**, whatever else it says. That value
+ * is what the health readout counts as `unreplied` (`Launcher/views/Community.tsx` draws
+ * "N unreplied"), so a row saying nothing would leave the tab quoting a number no row on the
+ * page accounts for. Both null branches therefore still speak.
+ *
+ * ⚠️ **`replyCount` is REQUIRED rather than optional, deliberately.** An optional argument is a
+ * hole shaped like this defect: a caller that forgot it would silently get the wrong sentence
+ * back, which is the state this function was already in. Required, the compiler names every
+ * call site. The body is still defensive about the *value*, because this field crosses the
+ * wire and this file's siblings have twice been burned by a declared field arriving `undefined`
+ * — an unusable count degrades to the pre-existing sentence rather than throwing.
  */
-export function replyLatency(minutes: number | null | undefined): string | null {
-  if (minutes === null || minutes === undefined) return 'no reply yet';
+export function replyLatency(
+  minutes: number | null | undefined,
+  replyCount: number | null | undefined
+): string | null {
+  if (minutes === null || minutes === undefined) {
+    const replies = typeof replyCount === 'number' && Number.isFinite(replyCount) ? replyCount : 0;
+    return replies > 0 ? 'no reply from anyone else yet' : 'no reply yet';
+  }
   if (!Number.isFinite(minutes) || minutes < 0) return null;
   if (minutes < 60) return `answered in ${Math.round(minutes)} min`;
   if (minutes < 48 * 60) return `answered in ${Math.round(minutes / 60)}h`;

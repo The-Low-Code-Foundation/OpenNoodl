@@ -389,12 +389,28 @@ export type ForumThread = {
    * on 2026-08-25 answered `200` with two rows carrying all eight fields `mirrorThreads` sends,
    * one `"accepted":true` and one `"accepted":false`.
    *
-   * ⚠️ **The other three — `section`, `authorHandle`, `replyCount` — are on the wire and stay
-   * undeclared, deliberately.** Nothing draws them. This file's two scars are both fields that
-   * were *declared* and then read as `undefined` or drawn by nobody; a field declared here is a
-   * promise that something downstream keeps, so the list gets one when something needs one.
+   * ⚠️ **`section` and `authorHandle` are on the wire and stay undeclared, deliberately.**
+   * Nothing draws them. This file's two scars are both fields that were *declared* and then read
+   * as `undefined` or drawn by nobody; a field declared here is a promise that something
+   * downstream keeps, so the list gets one when something needs one.
    */
   accepted: boolean;
+
+  /**
+   * FIX-025 bug 7 — **this is the "when something needs one" the note above describes.**
+   * `replyLatency` draws it now, because `firstReplyMinutes` alone cannot tell "nobody has
+   * answered" from "only the asker has": the platform computes that field from the first post
+   * by *another* account, so a thread the asker replied to themselves carries `replyCount: 1`
+   * and `firstReplyMinutes: null` together, and both are true.
+   *
+   * 🔴 **Verified on the wire the way `accepted` was, and re-measured rather than relayed.**
+   * `curl https://community.nodegx.io/api/v1/community/threads` on **2026-08-27** answered `200`
+   * with two rows carrying all eight fields `mirrorThreads` sends —
+   * `de14371e…` `{replyCount: 1, accepted: true, firstReplyMinutes: null}` and
+   * `2abd111a…` `{replyCount: 0, accepted: false, firstReplyMinutes: null}`. The first is the
+   * live instance of the bug; the pair is the control.
+   */
+  replyCount: number;
 };
 
 /**

@@ -86,7 +86,7 @@ describe('UNI-011 / D21 — the community panel view model', () => {
           },
           forum: {
             outcome: 'ok',
-            value: { threads: [{ id: '1', title: 'A thread', createdAt: '', firstReplyMinutes: null, accepted: false }] }
+            value: { threads: [{ id: '1', title: 'A thread', createdAt: '', firstReplyMinutes: null, replyCount: 0, accepted: false }] }
           }
         })
       );
@@ -163,7 +163,7 @@ describe('UNI-011 / D21 — the community panel view model', () => {
               outcome: 'ok',
               value: {
                 threads: [
-                  { id: '1', title: 'Why is my repeater empty?', createdAt: '', firstReplyMinutes: 12, accepted: false }
+                  { id: '1', title: 'Why is my repeater empty?', createdAt: '', firstReplyMinutes: 12, replyCount: 1, accepted: false }
                 ]
               }
             }
@@ -172,7 +172,7 @@ describe('UNI-011 / D21 — the community panel view model', () => {
       );
       expect(view.bench.section).toEqual({
         state: 'items',
-        items: [{ id: '1', title: 'Why is my repeater empty?', createdAt: '', firstReplyMinutes: 12, accepted: false }]
+        items: [{ id: '1', title: 'Why is my repeater empty?', createdAt: '', firstReplyMinutes: 12, replyCount: 1, accepted: false }]
       });
       expect(view.articles.state).toBe('items');
       expect(view.replays.state).toBe('items');
@@ -260,6 +260,9 @@ describe('FB-002 — the Bench defaults to the questions that still need work', 
     title: `Question ${id}`,
     createdAt: '2026-08-20T10:00:00.000Z',
     firstReplyMinutes: accepted ? 30 : null,
+    // ⚠️ FIX-025 bug 7 made this load-bearing for the sentence a row draws. An accepted thread
+    // here is one somebody ELSE answered, which is why its minutes are non-null.
+    replyCount: accepted ? 1 : 0,
     accepted
   });
 

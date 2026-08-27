@@ -158,12 +158,24 @@ export function answersLine(count: number): string {
   return count === 1 ? '1 answer' : `${count} answers`;
 }
 
-/** `@rosborne · 3 days ago · answered in 41 min`. */
+/**
+ * `@rosborne · 3 days ago · answered in 41 min`.
+ *
+ * 🔴 **FIX-025 bug 7 — the reply count is `thread.answers.length`, NOT `thread.replyCount`**, and
+ * the choice is the point rather than a detail. This screen already draws `answersLine` from the
+ * visible answers, for the reason {@link threadDetailView} records; feeding `replyLatency` the
+ * payload's count instead would let the two sentences on one page disagree — *"No answers yet —
+ * you could be the first."* above a meta line conceding somebody had in fact replied. Same
+ * number, so they cannot.
+ *
+ * ⚠️ `firstReplyMinutes` being null does not mean nobody answered; it means nobody *other than
+ * the asker* did. See `communityMeta.replyLatency` for the production rows that prove it.
+ */
 export function threadMeta(thread: ThreadDetail, now?: number): string | null {
   return metaLine([
     thread.authorHandle ? `@${thread.authorHandle}` : null,
     relativeTime(thread.createdAt, now ?? Date.now()),
-    replyLatency(thread.firstReplyMinutes)
+    replyLatency(thread.firstReplyMinutes, thread.answers.length)
   ]);
 }
 

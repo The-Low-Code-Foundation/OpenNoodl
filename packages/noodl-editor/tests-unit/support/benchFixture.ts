@@ -32,12 +32,19 @@ export function forumOf(threads: ForumThread[]): Read<ForumState> {
 }
 
 /**
- * A thread that is **waiting**, unless a caller says otherwise.
+ * A thread that is **waiting** and that **nobody has replied to**, unless a caller says otherwise.
  *
  * ⚠️ The default is `accepted: false` on purpose: the surfaces open on the waiting list, so a
  * fixture that defaulted the other way would make every unrelated suite's rows disappear and the
  * failure would read as a broken renderer.
+ *
+ * ⚠️ `replyCount: 0` is defaulted on the same reasoning and is the value that agrees with the
+ * other default — an unaccepted, unreplied question. FIX-025 bug 7 made this field load-bearing
+ * for the sentence a row draws, so a suite that wants the *asker answered themselves* case has
+ * to say `replyCount` out loud, which is what makes those rows readable as the case they are.
  */
-export function threadOf(thread: Omit<ForumThread, 'accepted'> & { accepted?: boolean }): ForumThread {
-  return { accepted: false, ...thread };
+export function threadOf(
+  thread: Omit<ForumThread, 'accepted' | 'replyCount'> & { accepted?: boolean; replyCount?: number }
+): ForumThread {
+  return { accepted: false, replyCount: 0, ...thread };
 }

@@ -92,26 +92,89 @@ describe('relativeTime says what a person would say', () => {
 
 describe('replyLatency — the half of a thread row a reader scans for', () => {
   it('🔴 says nobody answered, which is the row worth drawing loudest', () => {
-    expect(replyLatency(null)).toBe('no reply yet');
-    expect(replyLatency(undefined)).toBe('no reply yet');
+    expect(replyLatency(null, 0)).toBe('no reply yet');
+    expect(replyLatency(undefined, 0)).toBe('no reply yet');
   });
 
   it('scales its unit with the wait', () => {
-    expect(replyLatency(12)).toBe('answered in 12 min');
-    expect(replyLatency(90)).toBe('answered in 2h');
-    expect(replyLatency(60 * 24 * 5)).toBe('answered in 5 days');
+    expect(replyLatency(12, 1)).toBe('answered in 12 min');
+    expect(replyLatency(90, 1)).toBe('answered in 2h');
+    expect(replyLatency(60 * 24 * 5, 1)).toBe('answered in 5 days');
   });
 
   it('refuses a nonsense number rather than drawing it', () => {
-    expect(replyLatency(-4)).toBeNull();
-    expect(replyLatency(Number.NaN)).toBeNull();
-    expect(replyLatency(Number.POSITIVE_INFINITY)).toBeNull();
+    expect(replyLatency(-4, 0)).toBeNull();
+    expect(replyLatency(Number.NaN, 0)).toBeNull();
+    expect(replyLatency(Number.POSITIVE_INFINITY, 0)).toBeNull();
   });
 
   it('🔴 "no reply yet" and a refusal are DIFFERENT answers', () => {
     // They render differently and mean opposite things: one is a fact about the community, the
     // other is a fact about the payload. Collapsing them would make a broken field look quiet.
-    expect(replyLatency(null)).not.toBe(replyLatency(-1));
+    expect(replyLatency(null, 0)).not.toBe(replyLatency(-1, 0));
+  });
+});
+
+/**
+ * FIX-025 bug 7 — *"Answered question still says 'no reply yet'"*.
+ *
+ * 🔴 **THE TWO ROWS BELOW ARE PRODUCTION, COPIED FROM THE WIRE ON 2026-08-27**, not invented:
+ * `curl https://community.nodegx.io/api/v1/community/threads` returns exactly these two threads,
+ * with the same title and the same author, differing in `replyCount` alone. Before this change
+ * they rendered the **identical** sentence, which is why the bug survived a fix and two drives.
+ *
+ * ⚠️ **The unanswered row is the negative control and it matters more than the positive one.**
+ * Every assertion here except that one is satisfied by a function that simply stopped saying
+ * "no reply yet" — and that function would be wrong, because a genuinely unanswered question is
+ * the row the Bench exists to surface.
+ */
+describe('FIX-025 bug 7 — null minutes means nobody ELSE has answered', () => {
+  /** `de14371e…` — the asker answered their own question, and accepted it. */
+  const ANSWERED_BY_THE_ASKER = { firstReplyMinutes: null, replyCount: 1 };
+  /** `2abd111a…` — same title, same author, nobody has said anything. */
+  const NOBODY_HAS_ANSWERED = { firstReplyMinutes: null, replyCount: 0 };
+
+  it('🔴 does not call a thread with a reply on it unanswered', () => {
+    const drawn = replyLatency(ANSWERED_BY_THE_ASKER.firstReplyMinutes, ANSWERED_BY_THE_ASKER.replyCount);
+    expect(drawn).toBe('no reply from anyone else yet');
+    // The reported sentence, stated as the thing that must NOT come back.
+    expect(drawn).not.toBe('no reply yet');
+  });
+
+  it('🔴 NEGATIVE CONTROL — a question nobody has answered still says so', () => {
+    expect(replyLatency(NOBODY_HAS_ANSWERED.firstReplyMinutes, NOBODY_HAS_ANSWERED.replyCount)).toBe(
+      'no reply yet'
+    );
+  });
+
+  it('🔴 the two production rows no longer render the same sentence', () => {
+    // The whole defect in one line: `firstReplyMinutes` is null on both, so a function reading
+    // only that field cannot tell them apart however it is worded.
+    expect(replyLatency(ANSWERED_BY_THE_ASKER.firstReplyMinutes, ANSWERED_BY_THE_ASKER.replyCount)).not.toBe(
+      replyLatency(NOBODY_HAS_ANSWERED.firstReplyMinutes, NOBODY_HAS_ANSWERED.replyCount)
+    );
+  });
+
+  it('🔴 both null branches still SPEAK, because the tab counts them as unreplied', () => {
+    // `Launcher/views/Community.tsx` draws "N unreplied" from this same null. A row that went
+    // quiet would leave that number accounted for by nothing on the page.
+    for (const replies of [0, 1, 5]) {
+      expect(replyLatency(null, replies)).not.toBeNull();
+      expect(replyLatency(null, replies)).not.toBe('');
+    }
+  });
+
+  it('a real answer still beats both, however many follow-ups the asker wrote', () => {
+    expect(replyLatency(41, 9)).toBe('answered in 41 min');
+    expect(replyLatency(41, 0)).toBe('answered in 41 min');
+  });
+
+  it('⚠️ an unusable count degrades to the old sentence rather than throwing', () => {
+    // This field crosses the wire, and this file's siblings have twice been burned by a declared
+    // field arriving `undefined`. Degrading to "no reply yet" is the pre-existing behaviour.
+    expect(replyLatency(null, undefined)).toBe('no reply yet');
+    expect(replyLatency(null, null)).toBe('no reply yet');
+    expect(replyLatency(null, Number.NaN)).toBe('no reply yet');
   });
 });
 

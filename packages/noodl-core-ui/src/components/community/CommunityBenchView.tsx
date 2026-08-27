@@ -58,6 +58,13 @@ export type CommunityBenchRow = {
   title: string;
   createdAt: string;
   firstReplyMinutes: number | null;
+  /**
+   * FIX-025 bug 7 — declared because `replyLatency` now draws it, which is the bar the note
+   * above sets. It is `firstReplyMinutes`'s companion and not its duplicate: this counts the
+   * asker's own follow-ups and that one does not, so the pair is what separates "nobody has
+   * answered" from "only the asker has".
+   */
+  replyCount: number;
   accepted: boolean;
 };
 
@@ -119,10 +126,15 @@ export function CommunityBenchView({
               key={thread.id}
               density={density}
               title={thread.title}
-              /* 🔴 `firstReplyMinutes === null` is "no reply yet" — the row worth scanning for,
-                 and the one the health readout counts as `unreplied`. Unchanged by FB-002: the
-                 filter is about an *accepted answer*, which is not the same fact. */
-              meta={metaLine([relativeTime(thread.createdAt), replyLatency(thread.firstReplyMinutes)])}
+              /* 🔴 `firstReplyMinutes === null` is still the row the health readout counts as
+                 `unreplied`, and still speaks. Unchanged by FB-002: the filter is about an
+                 *accepted answer*, which is not the same fact. ⚠️ FIX-025 bug 7: it takes
+                 `replyCount` too, because null minutes means "nobody ELSE has answered" and on
+                 a thread the asker answered themselves the old sentence contradicted the row. */
+              meta={metaLine([
+                relativeTime(thread.createdAt),
+                replyLatency(thread.firstReplyMinutes, thread.replyCount)
+              ])}
               onClick={() => onOpenThread(thread.id)}
             />
           ))

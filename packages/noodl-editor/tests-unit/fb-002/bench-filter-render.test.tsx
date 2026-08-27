@@ -85,8 +85,54 @@ describe('FB-002 — the Bench filter reaches the screen', () => {
     });
 
     it('⚠️ CONTROL: a row that HAS a reply says so instead', () => {
-      const replied = draw(forumOf([threadOf({ id: 'r1', title: 'Replied', createdAt: '2026-08-20T10:00:00.000Z', firstReplyMinutes: 41 })]));
+      const replied = draw(forumOf([threadOf({ id: 'r1', title: 'Replied', createdAt: '2026-08-20T10:00:00.000Z', firstReplyMinutes: 41, replyCount: 2 })]));
       expect(byClass(replied, 'RowMeta').map((node) => node.ownText).join(' ')).not.toContain('no reply yet');
+    });
+
+    /**
+     * FIX-025 bug 7, at the level that matters: `communityMeta` returning the right string is not
+     * the same claim as the ROW drawing it. `replyCount` had to reach `CommunityBenchRow` through
+     * `ForumThread` and `composeBench` for that to be true, and this walks the real component.
+     *
+     * 🔴 **Both rows are production, from the wire on 2026-08-27** — same title, same author,
+     * both `firstReplyMinutes: null`, differing in `replyCount` alone. That is why the pair is
+     * here rather than one row: before the fix they drew the identical meta line.
+     */
+    describe('🔴 FIX-025 bug 7 — the row a reply landed on stops calling itself unanswered', () => {
+      const PRODUCTION_PAIR = [
+        // de14371e… — the asker answered their own question, and accepted it.
+        threadOf({ id: 'p-answered', title: 'Help with a Text node', createdAt: '2026-08-19T11:19:27.206Z', firstReplyMinutes: null, replyCount: 1, accepted: true }),
+        // 2abd111a… — nobody has said anything.
+        threadOf({ id: 'p-waiting', title: 'Help with a Text node', createdAt: '2026-08-19T11:18:13.201Z', firstReplyMinutes: null, replyCount: 0 })
+      ];
+
+      const metaOf = (state: 'waiting' | 'solved') =>
+        byClass(draw(forumOf(PRODUCTION_PAIR), state), 'RowMeta').map((node) => node.ownText);
+
+      it('CONTROL: each pill drew exactly the one row it should have', () => {
+        // 🔴 Without this the assertions below could both be reading an empty list. The pair
+        // splits across the two pills precisely because one is accepted and the other is not.
+        expect(metaOf('waiting').length).toBe(1);
+        expect(metaOf('solved').length).toBe(1);
+      });
+
+      it('🔴 the accepted, self-answered row does NOT say "no reply yet"', () => {
+        const [meta] = metaOf('solved');
+        expect(meta).toContain('no reply from anyone else yet');
+        // The reported sentence, as the thing that must not come back. `toContain` matters:
+        // the new sentence does not have the old one as a substring, which is why this can fail.
+        expect(meta).not.toContain('no reply yet');
+      });
+
+      it('🔴 NEGATIVE CONTROL: the row nobody answered still says "no reply yet"', () => {
+        const [meta] = metaOf('waiting');
+        expect(meta).toContain('no reply yet');
+        expect(meta).not.toContain('no reply from anyone else yet');
+      });
+
+      it('🔴 the two rows no longer draw the same meta line', () => {
+        expect(metaOf('solved')[0]).not.toBe(metaOf('waiting')[0]);
+      });
     });
 
     it('one row per thread the filter passed, and they are buttons', () => {

@@ -97,6 +97,50 @@ describe('the heading over the answers', () => {
     const view = threadDetailView(thread({ replyCount: 3, answers: [post({ id: 'p2' })] }), NOW);
     expect(view.answersLine).toBe('1 answer');
   });
+
+  /**
+   * FIX-025 bug 7, on the surface where the contradiction is loudest: this screen draws BOTH the
+   * answers heading and the meta line, so an answered thread used to read *"1 answer"* directly
+   * above *"no reply yet"*.
+   *
+   * 🔴 `firstReplyMinutes: null` with an answer present is the real production shape — the asker
+   * answered themselves, so the platform's *first reply by somebody else* clock never started.
+   */
+  describe('🔴 FIX-025 bug 7 — the heading and the meta line cannot contradict each other', () => {
+    const SELF_ANSWERED = thread({
+      firstReplyMinutes: null,
+      replyCount: 1,
+      accepted: true,
+      answers: [post({ id: 'p2' })]
+    });
+
+    it('CONTROL: the heading really does say there is an answer', () => {
+      // Without this, the meta assertion below could be agreeing with an empty page.
+      expect(threadDetailView(SELF_ANSWERED, NOW).answersLine).toBe('1 answer');
+    });
+
+    it('🔴 so the meta line does not call the thread unanswered', () => {
+      const view = threadDetailView(SELF_ANSWERED, NOW);
+      expect(view.meta).toContain('no reply from anyone else yet');
+      expect(view.meta).not.toContain('no reply yet');
+    });
+
+    it('🔴 NEGATIVE CONTROL: with no answers, both say nobody has replied', () => {
+      const view = threadDetailView(thread({ firstReplyMinutes: null, replyCount: 0, answers: [] }), NOW);
+      expect(view.answersLine).toBe('No answers yet — you could be the first.');
+      expect(view.meta).toContain('no reply yet');
+      expect(view.meta).not.toContain('no reply from anyone else yet');
+    });
+
+    it('⚠️ a HIDDEN reply moves both sentences together, because both read the drawn answers', () => {
+      // The payload still claims a reply; moderation removed the only one. A meta line reading
+      // `replyCount` here would concede a reply the heading says does not exist.
+      const view = threadDetailView(thread({ firstReplyMinutes: null, replyCount: 3, answers: [] }), NOW);
+      expect(view.answersLine).toBe('No answers yet — you could be the first.');
+      expect(view.meta).toContain('no reply yet');
+      expect(view.meta).not.toContain('no reply from anyone else yet');
+    });
+  });
 });
 
 describe('an attachment, in words', () => {

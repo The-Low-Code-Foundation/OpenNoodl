@@ -30,12 +30,20 @@ const ago = (ms: number) => new Date(NOW - ms).toISOString();
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
-type Thread = { id: string; title: string; createdAt: string; firstReplyMinutes: number | null };
+type Thread = {
+  id: string;
+  title: string;
+  createdAt: string;
+  firstReplyMinutes: number | null;
+  replyCount: number;
+};
 
 const THREADS: Thread[] = [
-  { id: '1', title: 'Why does my For Each render one row?', createdAt: ago(2 * HOUR), firstReplyMinutes: 41 },
-  { id: '2', title: 'Deploy to a folder writes twice — is that expected?', createdAt: ago(3 * DAY), firstReplyMinutes: null },
-  { id: '3', title: 'Component Inputs ports not arriving on the instance', createdAt: ago(30 * DAY), firstReplyMinutes: 60 * 26 }
+  { id: '1', title: 'Why does my For Each render one row?', createdAt: ago(2 * HOUR), firstReplyMinutes: 41, replyCount: 3 },
+  { id: '2', title: 'Deploy to a folder writes twice — is that expected?', createdAt: ago(3 * DAY), firstReplyMinutes: null, replyCount: 0 },
+  { id: '3', title: 'Component Inputs ports not arriving on the instance', createdAt: ago(30 * DAY), firstReplyMinutes: 60 * 26, replyCount: 1 },
+  // FIX-025 bug 7 — the asker answered themselves: a reply on the row, and still nobody else.
+  { id: '4', title: 'Text node styling — never mind, found it', createdAt: ago(5 * DAY), firstReplyMinutes: null, replyCount: 1 }
 ];
 
 const threadRows = (items: Thread[]) =>
@@ -43,7 +51,7 @@ const threadRows = (items: Thread[]) =>
     <CommunityRow
       key={t.id}
       title={t.title}
-      meta={metaLine([relativeTime(t.createdAt, NOW), replyLatency(t.firstReplyMinutes)])}
+      meta={metaLine([relativeTime(t.createdAt, NOW), replyLatency(t.firstReplyMinutes, t.replyCount)])}
     />
   ));
 
@@ -95,7 +103,7 @@ export const PanelDensity: Story = {
               key={t.id}
               density={CommunityDensity.Panel}
               title={t.title}
-              meta={metaLine([relativeTime(t.createdAt, NOW), replyLatency(t.firstReplyMinutes)])}
+              meta={metaLine([relativeTime(t.createdAt, NOW), replyLatency(t.firstReplyMinutes, t.replyCount)])}
             />
           ))
         }
