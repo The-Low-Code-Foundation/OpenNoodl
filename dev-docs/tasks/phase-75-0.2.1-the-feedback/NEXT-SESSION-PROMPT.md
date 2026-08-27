@@ -1,147 +1,142 @@
 # Next session — phase 75
 
-_Written 2026-08-27 at the end of session 56, which closed **FIX-025 bug 7's second cause** and
-found that the note describing it was wrong in the two places that made it look expensive. Read
-`TASKS.md` for the rest of the phase; this file is only about what that session left._
+_Written 2026-08-27 at the end of session 57, which closed **FIX-025 §7** by driving it, and built
+and drove **the read half of FB-013 C4** — the launcher's Chat tab. Read `TASKS.md` for the rest of
+the phase; this file is only about what that session left._
 
 ## What happened
 
-The previous session committed Richard's FB-025/026/027 batch and left nothing carried over, so
-this one took the cheapest item the index offered — **FIX-025 §5/§7/§12, "built, need the editor
-drive"**. 🔴 **That index line was stale in all three places**, and checking it was most of the
-value:
+Session 56 left exactly one thing owed — a drive — and the checkout was quiet, so that went first
+and closed FIX-025 §7 outright. The rest of the session took the largest genuinely buildable item
+the index offered: **FB-013 C4**, which §10 confirms is independent of the R-chat-mod ruling.
 
-* **§12** had been **driven on 08-25**; the line had simply not been updated.
-* **§5** is a deliberate park, not open work: the render decision is already specced, and the only
-  unseen thing is the live signed-out launcher, which means signing out of Richard's live
-  community session on this machine.
-* **§7** was the only real item — and it was **not** the "decision rather than a patch" the note
-  claimed.
-
-**Two commits on `cline-dev`, neither pushed** (`63fb8b64` the fix, plus this handoff).
+**Two commits on `cline-dev`, neither pushed** (`aa38a50c` the §7 drive record, and the C4 build).
 
 ## Start here
 
-**Nothing is carried over from §7.** The largest open items in `TASKS.md` are still FB-012
-(tutorials + share/export) and FB-009 (a syllabus you can start), both waiting on content from
-Richard, and FB-005's blocker is content too. **FB-013 has real buildable remainder**: C4 (the
-launcher tab), C5, and **R-chat-mod** — the moderation-posture question the ruling required be
-asked, with a recommendation already written in `FB-013-SCOPE.md` §8.
+🔒 **The two things that need Richard, and they are now the gate on this feature rather than a
+footnote:**
 
-⚠️ **The one thing §7 still owes is a drive.** The strings and the wiring are graded from the
-runner and the render spec walks the real component with the real composer, but nobody has looked
-at the row in a running editor.
+1. **R-chat-mod** — the moderation posture the ruling *required* be asked. `FB-013-SCOPE.md` §8
+   lays out A/B/C with a recommendation of **B** (hide-by-moderator, no reader-facing report).
+   C5 is blocked on it, **and so is the chat composer now** — see below.
+2. **Deploying `nodegx-community`.** The chat routes are **built and not deployed**. Until they
+   are, the launcher's Chat tab is a correct surface with nothing to talk to.
 
-## 🔴 The harness trap that cost this session an hour — read this before you run `test:ci`
+⚠️ **Everything else in the phase is unchanged**: FB-012 and FB-009 are the largest open items and
+both wait on content from Richard, and FB-005's blocker is content too.
 
-**`packages/noodl-editor/.webpack-cache` can enter a state where the test-ci build reports 44
-unresolved-alias errors** (`@noodl-store/*`, `@noodl-versioning`, `@noodl-viewer-cloud/*`) plus 3
-"TypeScript emitted no output" errors, on a tree that compiles perfectly. Every alias target exists
-on disk, and `tsc -p packages/noodl-editor` reads **0** at the same moment.
+## 🔴 The chat composer moved, and the reason is the useful part
 
-🔴 **It reproduces at plain `HEAD` with your changes fully reverted** — that is the measurement
-that settles it. `rm -rf packages/noodl-editor/.webpack-cache` made **both** arms compile cleanly
-(63s cold, vs 13–22s poisoned-and-failing).
+C4 built the **read** half: the river, the channel facet, the thread pane. It did **not** build a
+composer, and that is a decision rather than a shortfall. Posting is what *creates* the messages a
+moderation posture is about — shipping *"anyone can post from the editor"* before deciding whether
+anybody can take a message down is precisely the ordering the ruling exists to prevent. **So the
+composer belongs with C5, behind R-chat-mod, not in front of it.** If Richard rules B, both land
+together and the feature is whole in one slice.
 
-⚠️ **Two wrong attributions were one step away, and both were nearly published.** First a peer was
-running three `webpack` watchers for a `dev:debug` stack, so *"contamination window = the webpack"*
-fitted perfectly — I messaged them and took a hold they did not owe. Then a control build at HEAD
-passed while the treatment failed, which read as *deterministically mine* — until the next HEAD
-build failed too. **The held-constant was the cache, and it was not constant.** A reading that fits
-is not one that excludes; here two different stories fitted in the same ten minutes.
+## 🔴 The platform half is not deployed, and here is how that was established
 
-✅ Clearing it is safe beside a peer's live editor: it is gitignored, and only `webpack.test.js` /
-`webpack.test-ci.js` use it — `webpack.renderer.dev.js` is `cache: false`.
+`/api/v1/community/chat` answers **404** on production. On its own that proves nothing — so:
+`/api/v1/community/threads` answers **200** and an invented path
+(`/api/v1/community/does-not-exist`) answers **404**. The positive control says the instrument
+works; the negative one says a 404 really is *absent*. The chat commits (`c5be57b`, `91d8b0c`) are
+on `main` in `nodegx-community` and have not shipped.
 
-## What §7 actually was, and why the old note made it look bigger
+✅ **So C4 was driven against a LOCAL platform, and the recipe is cheap enough to repeat.** No
+Docker — the daemon is not running on this machine, and the repo's compose default of port
+**55432** is a red herring:
 
-The note said the platform *"sends `firstReplyMinutes: null` on a thread with `replyCount: 1`"*,
-that an answered thread therefore *"reads unanswered on every surface, web included"*, and that it
-was *"unowned, and a decision rather than a patch"*.
+```
+createdb -h 127.0.0.1 -p 5432 -U richardosborne <scratch>
+cd ~/vscode_projects/nodegx-community
+DATABASE_URL="postgres://richardosborne@127.0.0.1:5432/<scratch>" npm run db:migrate   # 0024 applies
+PORT=3399 DATABASE_URL=... npx next dev -p 3399
+```
 
-🔴 **The platform is not defective, and that is the finding.** `firstReplyMinutes` is computed by
-`nodegx-community/src/lib/bench.ts` as the first post **by another account**, on purpose — D16's
-threshold is about people coming back — and `uni015-bench.test.ts` has asserted exactly that since
-UNI-015 (*"the first-reply clock ignores the asker answering themselves"*). `replyCount` counts
-every visible post after the first, the asker's own included. The two disagree **precisely** when
-somebody answers their own question, and **both are true**. There was no number to fix.
+Then point `models/community/communityorigin.ts`'s `COMMUNITY_URL` at `http://localhost:3399`
+for the drive. 🔴 **It is a one-line compile-time constant with no env override — back it up and
+revert it, and check the revert with `git diff` rather than by eye.** ⚠️ Seed `updated_at =
+created_at`; the platform derives `editedAt` as `updated_at > created_at`, so backdated rows
+otherwise draw as *edited*. And `listRiver` orders by `seq desc` (insertion), not `created_at`, so
+backdated seeds appear out of time order — an artefact of seeding, not a defect.
 
-🔴 **And the web never drew it.** `firstReplyMinutes` appears nowhere under
-`nodegx-community/src/app` or `src/components` — it feeds the threshold and nothing else. So there
-was no second surface, and therefore no cross-surface decision to take.
+## 🔴 What the drive and the sweeps found
 
-✅ **What was left is one sentence**: `replyLatency` rendered a value about *replies by other
-people* as a claim about *replies*. It now takes `replyCount` and says **"no reply from anyone else
-yet"** when the asker has replied. ⚠️ The old note's one correct half is honoured — the row still
-*speaks* in both null branches, because the launcher draws "N unreplied" off the same null.
+✅ **The count-equals-rows identity was driven, not just specced.** Pills read **All 5 · #lounge 3 ·
+#templates 1 · #tutorials 1 · #collab 0**; clicking `#lounge` returned **exactly 3** rows. And
+`#collab 0` is a *visible pill*, which is the design claim — a quiet channel is a zero you can see
+and decide about, never a room you fall into.
 
-## The measurements worth not repeating
+✅ **The cross-repository label agreement was MEASURED.** `chatThreadLabel` mirrors the platform's
+`threadLabel` because that string is a permalink's `<h1>`, and the platform's own note says a label
+two surfaces compute differently is one address whose title depends on which client you followed it
+from. The launcher's heading and the web's `<h1>` for the same message came back **byte-identical**.
+🔴 A mirrored algorithm is exactly the kind of claim that rots silently — re-measure it, do not
+re-assert it.
 
-✅ **Production is the fixture, and it is a control pair.**
-`curl https://community.nodegx.io/api/v1/community/threads` (2026-08-27, re-measured not relayed)
-returns two threads with the same title and author, **both `firstReplyMinutes: null`**:
+🔴 **THE WEB'S NAV IS COPIED IN TWO PLACES IN THIS CHECKOUT, AND ONLY ONE IS FINDABLE BY READING.**
+`communityTabs.ts`'s header quotes the nav and says outright that a copy drifts; I re-read the web,
+found it *had* drifted (C3 added `/chat` **second** on 08-26), and corrected it. Then
+`fb-006/community-tabs.test.ts` went red — **a second copy of the same list, as a literal**, which I
+did not know existed. ✅ The mitigation worked twice over; the lesson is that a "quoted copy"
+mitigation needs to name every copy, and this one now does.
 
-| thread | `replyCount` | `accepted` | drew before | draws now |
-|---|---|---|---|---|
-| `de14371e…` | 1 | **true** | *no reply yet* | *no reply from anyone else yet* |
-| `2abd111a…` | 0 | false | *no reply yet* | *no reply yet* |
+🔴 **The UNI-001 session-reader sweep fired and was right to.** Any new `readCommunitySession`
+caller must answer *"what does this read WITHHOLD?"* before it is listed, and the only acceptable
+answer is *nothing*. For chat it is nothing: the token is a bearer header on reads the platform
+serves to strangers, there is no branch on whether a session **exists** (`session === undefined`
+waits for the *store*; `null` proceeds), and `chatview.ts` never sees a token. A structural
+assertion pins that, with a control proving the checker can see a session when one is there, plus a
+row that would fail if the guard were rewritten as `if (!session) return` — which reads almost
+identically and would withhold the whole tab from everyone signed out.
 
-**Row 1 is Richard's bug, still live on production.** The pair is what makes the spec honest: they
-used to render the identical string, so reading one field cannot tell them apart however it is
-worded. ⚠️ This also re-confirms `replyCount` is **on the wire** — the scar in `communityapi.ts`
-says a declared field must be verified there and not read off the platform's source.
+⚠️ **One spec of mine survived its mutant before it killed it.** The word-boundary row asserted
+`not.toMatch(/alph…$/)` — one *example* of a mid-word cut — and the mutant that deletes the
+boundary logic happened to land on `…al…` instead, so it passed. Rewritten to assert the
+**property**: whatever survives the cut must be a prefix of the original that stopped at a space.
+🔴 **A spec that names a mechanism it never reaches is this phase's recurring failure**, and it
+cost nothing here only because the mutation run was done at all.
 
-✅ **A local Postgres reproduced the mechanism**, without Docker: brew `postgresql@16` is running
-on **5432**, and a scratch database (`createdb`, then `DATABASE_URL=postgres://richardosborne@127.0.0.1:5432/<db>`)
-runs the community suite fine. The repo's own default is port **55432** (the docker-compose one),
-and **the Docker daemon is not running on this machine**. Staged printout: asked → asker
-self-replies (`replyCount=1, firstReplyMinutes=null`) → that reply accepted (**the bug**) →
-a stranger replies (`replyCount=2, firstReplyMinutes=0`, cleared).
+## ⚠️ Found, measured, unowned — and now on a third surface
 
-## 🔴 The mutant that mattered
+The shared `.FilterPill`'s selected state is carried by fill alone, measured live in the running
+editor on the Chat tab:
 
-`replyCount` had to travel `ForumThread` → `composeBench` → `CommunityBenchRow` → the row. Severing
-**only the last hop** — `replyLatency(thread.firstReplyMinutes, 0)` in `CommunityBenchView.tsx` —
-reddens **2 render specs while all 29 unit specs stay green**. A correct function that nothing
-hands the right argument to is the same screen as no fix at all, and the unit specs alone would
-have shipped it.
+| | measured | needs |
+|---|---|---|
+| active fill vs panel | **1.36:1** | 3:1 for a non-text state |
+| active vs inactive fill | **1.94:1** | — |
+| border, active vs inactive | **identical** (4.17:1 both) | — |
+| label text | 8.46:1 | passes AA comfortably |
 
-**8 mutants, all killed**: revert (2 red) · over-correct to always-the-new-sentence (4) · `>= 0`
-boundary (4) · go silent (2) · drop the wire guard (1) · sever the wiring (2 render) · pass `0` on
-the detail page (1) · payload count instead of drawn answers (1).
+So *which* channel is selected is close to invisible. **FB-002 recorded this on the Bench and
+FB-005 T4 already solved the same problem for template pills by moving the state onto the border.**
+The community `.FilterPill` never adopted it, and Bench, People and Chat now all share the defect.
+🔴 **It was left deliberately**: it is a shared component across three shipped tabs and a
+design-token call, and restyling surfaces I was not driving at the end of a session is not a change
+I could have verified. It is a small, precedented fix for whoever picks it up.
 
-⚠️ **Note the shape**: the **negative control** — *a question nobody answered still says "no reply
-yet"* — is the only row that kills the over-correction. Every other assertion is satisfied by a
-function that merely stopped saying the old sentence.
+## Gates, as measured this session
 
-## Two smaller things this session established
-
-- ✅ **`replyCount` is a REQUIRED parameter, not optional.** An optional one is a hole shaped like
-  this defect: a caller that forgets it gets the wrong sentence silently, which is the state the
-  function was already in. Required, the compiler names every call site.
-- 🔴 **`tsc -p packages/noodl-editor` does NOT typecheck `tests-unit/`, but ts-jest does.** The
-  typecheck read 0 while `uni-011/mirrorview.test.ts` held `ForumThread` literals missing the new
-  field; `test:main` then reported **`Tests: 0 total`** for that file — a suite that failed to
-  *run*, not to pass. ⚠️ `**/*.stories.tsx` is excluded from that tsconfig outright, so story call
-  sites compile nowhere and must be fixed by hand.
+- Editor `test:main`: **356 suites / 5879 / 0**. ⚠️ The first run read **2 failed**, and *both were
+  the sweeps above doing their job* — not flakes, and not regressions.
+- `noodl-core-ui`: **28 / 527 / 0**.
+- `tsc -p packages/noodl-editor`: clean, and **proven to see the new files by a planted error**
+  (1 → 0). ⚠️ It does **not** cover `tests-unit/`; ts-jest does, and that ran green.
+- `test:ci` **not run by this lane this session.** A peer ran it solo twice (seeds 83318, 65707):
+  **2860 specs / 6 failures** — this lane's documented **AIX-006 floor of 4, by name**, plus 2 new
+  SB-017 specs red by design. 🔴 **Relayed, not measured here**, and the spec count has moved from
+  2856 because the peer added specs — quote the tree, not the number.
 
 ## Standing facts for this area
 
-- `test:ci` floor is **4**, all `AIX-006 style vocabulary`. ✅ **Confirmed on the COMMITTED tree,
-  at a second seed, on a machine with nothing else running**: **2856 specs / 4 failures**, the same
-  four by name, seed **72521**, `gitHead` **`b3d9ffba`**, readout mtime 22:13:43 read directly.
-  ⚠️ `b3d9ffba` is a **peer's** docs-only commit that landed mid-run — but **both of this lane's
-  commits are ancestors of it** (`git merge-base --is-ancestor`, checked), so the graded tree does
-  contain the fix. An earlier run the same session read the identical 2856 / 4 at seed **57633**
-  but stamped `gitHead 640bbfe3`, because the fix was still uncommitted when it ran — that is the
-  documented caveat, and this reading is the one with real provenance. **Quote the tree, not the
-  seed**, and check whose commit the tree is named after before quoting it.
-- The suites, in order and **never two at once**: `noodl-runtime` (2555), `noodl-viewer-react`
-  (1079), editor `test:main`, then `test:ci`. This session ran `test:main` (**354 / 5840 / 0**) and
-  `noodl-core-ui` (**28 / 527 / 0**); runtime and viewer-react were untouched and not run.
-- ⚠️ **A peer is active in this checkout** (P76 / SB-015, a `dev:debug` stack on CDP 9222 plus the
-  sb015 backend on 8588). `test:main` really is safe beside it; the `test:ci` webpack scare above
-  was **not** their doing.
-- ⚠️ `AskAboutNodeDialog.module.scss` has been uncommitted since **08-20** and belongs to nobody in
-  this lane. Still there. Leave it.
-- ⚠️ **`nodegx-community` was not touched** and needs no deploy from this work.
+- ⚠️ **A peer is active in this checkout** (P76 / SB-017). We traded the machine three times this
+  session and it worked: they asked before `test:ci`, I dropped my stack, they cleared
+  `.webpack-cache` on the tip from session 56 and both builds were clean. **Keep announcing.**
+- ⚠️ **Not mine and still uncommitted, leave them**: `packages/nodegx-export/*` (P18),
+  `tests/cloud/sb017-*` and `tests/cloud/fixtures/` (P76), and
+  `AskAboutNodeDialog.module.scss`, which has been uncommitted since **08-20** and belongs to
+  nobody in this lane.
+- ⚠️ **`nodegx-community` was not touched by this session** — C4 is entirely editor-side. The
+  deploy it needs is of work C1–C3 already committed there.
