@@ -1104,7 +1104,19 @@
     outline-offset: 1px;
   }
 
+  /*
+    🔴 The selected state is on the BORDER, and the fill is no longer load-bearing.
+
+    This rule used to change `background` and `color` only, which measured **1.36:1** for the
+    active fill against the panel — every label legible, and which pill was on invisible. The
+    border clears 3:1 on BOTH of its sides in BOTH themes (5.60/4.13 dark, 4.57/3.74 light);
+    see `CommunityFilterPill.tsx` for the table and for why the `✓` is there as well.
+
+    ⚠️ `border-color` and not `border` — the width must stay 1px in both states, or activating a
+    filter reflows the row and the list reads as jumping.
+  */
   &.is-active {
+    border-color: var(--theme-color-primary);
     background: var(--theme-color-bg-3);
     color: var(--theme-color-fg-default);
   }
@@ -1112,6 +1124,16 @@
 
 .FilterCount {
   color: var(--theme-color-fg-default-shy);
+}
+
+/*
+  ⚠️ The `✓` on a selected pill. Colour is not allowed to be the only carrier of a state (WCAG
+  1.4.1), so the selection is said in text as well as drawn on the border. It is `aria-hidden` at
+  the markup — `aria-pressed` already tells a screen reader this.
+*/
+.FilterPillMark {
+  margin-left: var(--spacing-1);
+  color: var(--theme-color-fg-default);
 }
 
 .DirectorySummary {

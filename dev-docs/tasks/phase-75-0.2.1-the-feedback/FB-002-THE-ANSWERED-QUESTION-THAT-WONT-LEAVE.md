@@ -370,3 +370,82 @@ MCP helpers survived.
 `router.route({to:'editor', project})`, where the router is found by walking fibers from `#root`
 for `memoizedProps.route.router` (**3 nodes in**). No editor global exists; `require()` from an
 `eval` fails on the webpack aliases.
+
+---
+
+## ✅ CLOSED 2026-08-27 (session 58) — the state moved to the border, on all three surfaces
+
+The paragraph above was right about the fix and right about the owner being nobody, for five
+sessions and three shipped tabs. It is done: **`CommunityFilterPill.tsx`**, one component, drawn by
+the Bench, the people directory and Chat.
+
+### 🔴 The reason it took three surfaces is the reason it is now ONE component
+
+The pill markup was **copied into three view components over one shared class** — seven identical
+lines in `CommunityBenchView`, `CommunityDirectoryView` and `CommunityChatView`. So a defect in the
+*shared* half reached every surface while the *fixable* half had three homes. A spec now asserts
+`css['FilterPill']` is named in **exactly one** component, and that row goes red if any of them
+drifts back to its own copy.
+
+### ✅ What carries the state now — border AND text, neither alone
+
+Copied from **FB-005 T4**, which solved this for the template pills and measured it. The border
+colour changes and the **width does not** (1px both states — a border that grows reflows the row),
+and the label gains a `✓`. The `✓` is `aria-hidden`: `aria-pressed` already tells a screen reader
+this, and letting the mark into the accessible name makes it announce *"Solved 1 ✓, pressed"*.
+
+### 🔴 Measured, in the running editor, on painted pixels — not on tokens
+
+`tests-unit/fb-002/filter-pill-state.test.tsx` computes the ratios from the stylesheet, and the
+drive then measured what was actually painted. **They agree to the second decimal**, which is what
+makes the pair worth having: the arithmetic says the contrast is *available*, the paint says the
+rule *wins*.
+
+| pair | dark | light | was |
+|---|---|---|---|
+| **active border vs card** | **5.60:1** | **4.57:1** | 4.17 / identical to inactive |
+| **active border vs its own fill** | **4.13:1** | **3.74:1** | — |
+| inactive border vs card | 4.17:1 | 3.72:1 | 4.17:1 |
+| active **fill** vs card | 1.36:1 | 1.22:1 | 1.36:1 — *unchanged, and no longer load-bearing* |
+
+🔴 **The fill is still 1.36:1 and that is the point.** It was left exactly as it was; the state
+simply stopped depending on it. Delete the `background` line and the selection survives.
+
+⚠️ **Both sides of the border are graded, in both themes.** A boundary is only a boundary against
+what sits on either side of it — a border that reads against the card and dissolves into its own
+fill is still a line nobody can find, and grading only the outer pair is how the fill-only version
+would have scored well on whichever pair somebody happened to pick.
+
+### The drive
+
+Launcher → Community, against **production**. Bench: `Solved 1` plain, `Waiting for an answer 1 ✓`
+blue-bordered; `elementFromPoint` confirms the pill is the top element at its own centre, so it is
+not measured behind a blocker. People: both pills start **off** (multi-select), and a real trusted
+click turned `Available for work 0` on — same 5.60 / 4.13, mark present. ⚠️ **Chat was NOT driven**:
+its routes are still 404 on production, so its pills need the local-platform recipe in session 57's
+handoff. It draws through the identical component and is covered by the spec's rendered row.
+
+### ⚠️ What this deliberately does NOT touch
+
+🔴 **The `--theme-color-border-default` finding is still Richard's and still open.** FB-005 T4
+recorded it: that token measures **1.07:1 dark / 1.15:1 light** against the panel, so an *unselected*
+card or pill has an effectively invisible boundary. That is a **token** decision touching every
+surface in the editor and it is a different defect from this one — this task moved the *selected*
+state, and left every resting boundary exactly where it found it.
+
+### Mutation grading — five mutants, all killed
+
+| mutant | reds |
+|---|---|
+| `is-active` loses `border-color` (**the regression that shipped**) | 6 |
+| border points at a low-contrast token (right property, wrong value) | 4 |
+| the `✓` branch deleted | 6 |
+| `aria-hidden` removed from the mark | 1 |
+| the Bench drifts back to its own copy of the markup | 2 |
+
+🔴 **The first mutant originally scored `Tests: 0 total`, and fixing THAT was the real finding.**
+`tokenFor` called `expect()` at module scope, so a deleted declaration threw during collection:
+no named failure, and the other fourteen rows in the file silently stopped running with it. A
+missing declaration is a finding and has to be reported by the row whose sentence describes it —
+`tokenFor` now returns `null` and the rows grade it. **A spec that cannot run is not a spec that
+failed**, and the two are easy to confuse in a summary line.

@@ -41,6 +41,7 @@
 import React from 'react';
 
 import type { CommunityFilterPill } from './CommunityDirectoryView';
+import { FilterPill } from './CommunityFilterPill';
 import { CommunityDensity, CommunityRow } from './CommunityRow';
 import { CommunitySectionBody, type CommunitySectionState } from './CommunitySectionBody';
 import { metaLine, relativeTime, replyLatency } from './communityMeta';
@@ -102,16 +103,12 @@ export function CommunityBenchView({
            and the pills are the only chrome here — there is no facet legend to read it off. */
         <div className={css['ChipRow']} role="group" aria-label="Show questions">
           {view.filters.map((filter) => (
-            <button
+            <FilterPill
               key={filter.key}
-              type="button"
-              className={`${css['FilterPill']} ${filter.active ? css['is-active'] : ''}`}
-              aria-pressed={filter.active}
-              data-test={`community-bench-filter-${filter.key}`}
-              onClick={() => onSelectFilter(filter.key)}
-            >
-              {filter.label} <span className={css['FilterCount']}>{filter.count}</span>
-            </button>
+              filter={filter}
+              dataTest={`community-bench-filter-${filter.key}`}
+              onSelect={onSelectFilter}
+            />
           ))}
         </div>
       )}

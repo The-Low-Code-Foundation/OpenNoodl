@@ -32,6 +32,7 @@
 
 import React from 'react';
 
+import { FilterPill } from './CommunityFilterPill';
 import { CommunityDensity } from './CommunityRow';
 import { CommunityPersonRow, type CommunityPersonRowView } from './CommunityPersonRow';
 import { CommunitySectionBody, type CommunitySectionState } from './CommunitySectionBody';
@@ -116,15 +117,7 @@ export function CommunityDirectoryView({
       {view.filters.length > 0 && (
         <div className={css['ChipRow']}>
           {view.filters.map((filter) => (
-            <button
-              key={filter.key}
-              type="button"
-              className={`${css['FilterPill']} ${filter.active ? css['is-active'] : ''}`}
-              aria-pressed={filter.active}
-              onClick={() => onToggleFilter(filter.key)}
-            >
-              {filter.label} <span className={css['FilterCount']}>{filter.count}</span>
-            </button>
+            <FilterPill key={filter.key} filter={filter} onSelect={onToggleFilter} />
           ))}
         </div>
       )}

@@ -35,6 +35,8 @@ export type {
   CommunityPersonRowProps,
   CommunityPersonRowView
 } from './CommunityPersonRow';
+export { FilterPill } from './CommunityFilterPill';
+export type { FilterPillModel, FilterPillProps } from './CommunityFilterPill';
 export { CommunityDirectoryView } from './CommunityDirectoryView';
 export type {
   CommunityDirectoryView as CommunityDirectoryViewModel,

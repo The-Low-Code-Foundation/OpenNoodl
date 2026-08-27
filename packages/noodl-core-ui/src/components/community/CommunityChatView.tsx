@@ -27,6 +27,7 @@
 
 import React from 'react';
 
+import { FilterPill } from './CommunityFilterPill';
 import { CommunityDensity } from './CommunityRow';
 import { CommunityPostBody } from './CommunityPostBody';
 import { CommunitySectionBody, type CommunitySectionState } from './CommunitySectionBody';
@@ -148,16 +149,12 @@ export function CommunityChatView({
            say what they select and not what they are selecting from. */
         <div className={css['ChipRow']} role="group" aria-label="Show channels">
           {view.filters.map((filter) => (
-            <button
+            <FilterPill
               key={filter.key}
-              type="button"
-              className={`${css['FilterPill']} ${filter.active ? css['is-active'] : ''}`}
-              aria-pressed={filter.active}
-              data-test={`community-chat-filter-${filter.key}`}
-              onClick={() => onSelectChannel(filter.key)}
-            >
-              {filter.label} <span className={css['FilterCount']}>{filter.count}</span>
-            </button>
+              filter={filter}
+              dataTest={`community-chat-filter-${filter.key}`}
+              onSelect={onSelectChannel}
+            />
           ))}
         </div>
       )}
