@@ -600,8 +600,10 @@ describe('NDA-017: what must keep working', () => {
    *
    * The row above proved a saved `runOnChange-a` reaches the checkbox. It says nothing about
    * *when*. `NodeScope.setNodeParameters` queues one entry per parameter and `_performDirtyUpdate`
-   * drains them in `Object.keys(_inputValuesQueue)` order — i.e. the order they were queued, which
-   * is the parameter bag's own key order. So an unticked input whose value also lives in the bag
+   * drains them in the order they were queued, which is the parameter bag's own key order. (These
+   * are all values queued in one pass, so FB-025's restated drain rule — pending values before
+   * pending signals, then arrival order — leaves the order among them unchanged.) So an unticked
+   * input whose value also lives in the bag
    * loses the race: `a` lands first, `shouldRunOnValueChange('a')` reads the *absent means ticked*
    * rule because the checkbox has not been applied yet, and the node evaluates at load. Exactly
    * once, quietly, on a node the author had made passive.

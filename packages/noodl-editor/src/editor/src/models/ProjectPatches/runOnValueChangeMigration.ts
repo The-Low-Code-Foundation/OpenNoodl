@@ -58,8 +58,11 @@
  *
  * 3. **Order inside the parameter bag is load-bearing.** All nodes (and their parameters) are
  *    created before any connection is added (`NodeScope.setComponentModel`), and the queued
- *    values drain in `Object.keys(_inputValuesQueue)` order — i.e. the order
- *    `setNodeParameters` queued them, which is the parameter bag's own key order. If the
+ *    values drain in the order `setNodeParameters` queued them, which is the parameter bag's
+ *    own key order. (FB-025 restated the drain rule — a pending value now goes before a pending
+ *    signal, and an emptied port lets go of its queue key — but *these* are all values queued in
+ *    one pass, so the order among them is still queueing order and this paragraph still holds.)
+ *    If the
  *    governed value drains *before* its checkbox, the setter reads absent-as-ticked and schedules
  *    exactly the load-time run this migration exists to prevent. So {@link
  *    applyRunOnValueChangeMigration} rebuilds the bag with the `runOnChange-*` keys **first**, and

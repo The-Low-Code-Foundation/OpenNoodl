@@ -265,12 +265,15 @@ describe('OC-3b — a value port never emits undefined, so its queue key exists 
    * ⚠️ The row that justifies "drive it twice", and the one that found a general runtime
    * hazard rather than a defect in this node.
    *
-   * `Node.prototype.sendValue` returns early on `undefined` (`node.ts:706`), so a port whose
-   * first emit is `undefined` queues nothing. The receiver drains with
-   * `Object.keys(this._inputValuesQueue)` (`node.ts:566`) — **insertion order**, and each key
-   * is created on that port's first delivery. So a value port that was `undefined` first time
-   * has its key created *after* the signal that did fire, and is delivered after that signal
-   * from then on.
+   * `Node.prototype.sendValue` returns early on `undefined`, so a port whose first emit is
+   * `undefined` queues nothing. The receiver used to drain with
+   * `Object.keys(this._inputValuesQueue)` — **insertion order**, each key created on that port's
+   * first delivery — so a value port that was `undefined` first time had its key created *after*
+   * the signal that did fire, and was delivered after that signal from then on.
+   *
+   * ✅ **FB-025 removed that ordering hazard** (`node.ts`: a pending value goes before a pending
+   * signal, and an emptied port lets go of its key). This row no longer discriminates on it, and
+   * is kept as the behavioural statement `emptyToNull` exists to make — see the node.
    *
    * `Previous Value` is `undefined` on the very first `Object Replaced` and meaningful on the
    * second. Before the fix, the second observation carried `undefined` — the signal arrived

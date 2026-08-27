@@ -606,17 +606,70 @@ Node.prototype.update = function () {
       //all inputs are now updated, flag as not dirty
       this._dirty = false;
 
+      /**
+       * FB-025 — **which port drains first, stated instead of inherited.**
+       *
+       * Two facts decide the cross-port order, and until this change both were accidents.
+       *
+       * 1. `Object.keys` on a plain object yields *insertion* order — the order each port was
+       *    first ever delivered to, not the order the entries waiting right now arrived in. A
+       *    port's key was created once and never moved again, so a signal port that happened to
+       *    be queued once before its paired value port had ever been written drained ahead of
+       *    that value **for the life of the node**. A `Run` then ran the program on the
+       *    *previous* value, every time, for ever. Fixed by letting an emptied port go of its
+       *    key at the bottom of the loop, which makes this object mean what the drain needs:
+       *    **the ports with input pending, keyed in the order that input arrived.**
+       *
+       * 2. Arrival order alone is still not the answer, because a value can be one hop behind
+       *    the signal that describes it. `_updateDependencies` (C6) has just pulled it in, so
+       *    both are pending — but the value was *emitted* first and arrived second. Hence the
+       *    two sweeps below: **a pending value is applied before a pending signal**, and only
+       *    then does arrival order break the tie within each group.
+       *
+       * This is the *signal before value* class (`NV-ii`) the corpus already names twice and had
+       * only ever repaired one node at a time: `objectchanged.ts`'s `emptyToNull` exists because
+       * a port whose first emit is `undefined` queues nothing (`sendValue` returns early), so its
+       * key was created after the signal's and lost the race permanently; and
+       * `nda-012-logic-category.test.ts` records that `Signal To Index` is merely *masked* from
+       * the same defect by `index` holding `0` rather than `undefined` when the wire was made —
+       * "an accident of the node's `initialize`, not of its ordering". `CONTRACT.md` C4 asserts
+       * the guarantee ("a value lands before the signal that follows it") that nothing in here
+       * actually implemented.
+       *
+       * ⚠️ **C7 lockstep is unchanged.** A port appears in `order` at most once per pass, so it
+       * still advances one entry per pass and a value stays in step with the signal beside it
+       * when several events are queued (`node-signal-value-pairing.test.ts`).
+       */
       const inputNames = Object.keys(this._inputValuesQueue);
+
+      /** The pass order: ports with a value pending, then ports with a signal pending. */
+      const order: string[] = [];
 
       let hasMoreInputs = true;
 
       while (hasMoreInputs && !this._cyclicLoop) {
         hasMoreInputs = false;
 
-        for (let i = 0; i < inputNames.length; i++) {
-          const inputName = inputNames[i];
+        order.length = 0;
+        for (let pass = 0; pass < 2; pass++) {
+          const wantSignal = pass === 1;
+          for (let i = 0; i < inputNames.length; i++) {
+            const queue = this._inputValuesQueue[inputNames[i]];
+            // A port emptied earlier has let go of its key, so read fresh rather than trusting
+            // the snapshot. The head entry is what classifies the port: `SIGNAL_PULSE` is the
+            // single-entry pulse form, everything else is a value.
+            if (queue === undefined || queue.length === 0) continue;
+            if ((queue[0] === SIGNAL_PULSE) !== wantSignal) continue;
+            order.push(inputNames[i]);
+          }
+        }
+
+        for (let i = 0; i < order.length; i++) {
+          const inputName = order[i];
           const queue = this._inputValuesQueue[inputName];
-          if (queue.length > 0) {
+          // Read fresh rather than trusting the snapshot: a port emptied earlier in this pass
+          // has let go of its key, and `setInputValue` can have re-queued onto it since.
+          if (queue !== undefined && queue.length > 0) {
             const queued = queue.shift();
 
             // OBS-001: for the duration of this input's processing, the event that delivered
@@ -643,8 +696,14 @@ Node.prototype.update = function () {
               if (tracingContext) tracingContext._currentCause = previousCause;
             }
 
-            if (queue.length > 0) {
+            if (this._inputValuesQueue[inputName] !== undefined && this._inputValuesQueue[inputName].length > 0) {
               hasMoreInputs = true;
+            } else {
+              // The key goes with the last entry. See the note above the snapshot: an emptied
+              // port that kept its key would keep its place at the head of every future drain,
+              // which is the whole defect.
+              delete this._inputValuesQueue[inputName];
+              delete this._inputCauseQueue[inputName];
             }
           }
         }

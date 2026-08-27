@@ -168,8 +168,9 @@ NodeScope.prototype.setNodeParameters = function (node, nodeModel) {
     /**
      * NDA-017 — a `runOnChange-…` answer must be applied before the input it governs.
      *
-     * These parameters are queued in this order and drained in it (`Object.keys` of
-     * `_inputValuesQueue`, which is insertion-ordered), so a governed value that lands before
+     * These parameters are queued in this order and drained in it — they are all values queued
+     * in one pass, so FB-025's rule (a pending value before a pending signal, then arrival order)
+     * leaves the order among them exactly as it was. So a governed value that lands before
      * its own checkbox is read against `runOnValueChange`'s *absent means ticked* rule and
      * schedules a run — at load, on a node the author had made passive. The checkbox setter
      * only records a boolean, so hoisting it can do nothing else.
