@@ -1,9 +1,9 @@
 # Phase 76 — next session
 
-Read `TASKS.md` here first. **Tier 2 closed at s9; SB-013/014 at s10; SB-015 driven s11, built
-s12 with SB-016, both spawners wired s13. s14 closed SB-015 §6.4** — the first five minutes
-now has a fix, and F27's screen names its causes. What remains is **four Tier 3 findings that
-want a corpus sweep or a ruling, Richard's three open questions, and one drive nobody has run.**
+Read `TASKS.md` here first. **s15 ran the drive nobody had run — a project made from the real
+template, in the real editor, with a real backend — and it found that the template does not
+work.** Every cloud endpoint times out. The cause is measured and written up in **SB-017**;
+what it needs now is a ruling on where the fix goes, not more measuring.
 
 Before touching the template, read **SB-007 §3** (why the content is generated) and **§4** (F22).
 Before authoring any *cloud* component, read `dev-docs/reference/BACKEND-AUTHORING-MODEL.md`
@@ -11,138 +11,130 @@ Before authoring any *cloud* component, read `dev-docs/reference/BACKEND-AUTHORI
 gate has no defaults tier"**. Before authoring any *browser* component, read **SB-005 §7** and
 **SB-006 §7**.
 
-## Where s14 left it (2026-08-27)
+## Where s15 left it (2026-08-27)
 
-✅ **`test:ci` was taken and the number is no longer owed** — the first genuinely solo window in
-three sessions. **2856 specs, 4 failures, 71s**, all four `AIX-006 style vocabulary` **by name**:
-the documented floor. ⚠️ A peer's `dev:debug` overlapped the run; taken as clean on the full
-spec count plus the four named failures, with the overlap on the record rather than argued away.
+✅ **SB-015 is CLOSED and its claims hold on the real path.** This is what the drive was for and
+it delivered: shipped `site-builder.security.json` → project `nodegx.security.json` → backend
+`security.json`, **all three md5 `7b007097c3259d92177db4c592055e50`**. `/health` reads
+**`devOpen: false, enforced: true`**. The backend is spawned with **`--project-dir`** (s13's
+work, exercised for the first time). Four endpoints deploy; the three helpers read *"in the
+project, not on this backend"* — SB-003, visible in the UI.
 
-🔴 **F28 — both of §6.4's candidates were unbuildable as written.** Not a wrong number inside a
-right recommendation, which is what the previous five instances were — **a wrong option set**.
-The only door that writes a function secret is `PUT /admin/secrets/:name`, admin-gated, and this
-template ships `devOpen: false`, so it is gated on loopback too: a template graph reaches it only
-by carrying an admin credential. And "provisioning mints it" is self-defeating, because a minted
-value the author cannot read is not a fix and the log is closed to it — `SecretValueScrubber`
-redacts every `functions` value ≥8 chars, on a **5-second refresh**, so it would leak the real
-token *sometimes*.
+✅ **The Secrets panel passes its first drive.** `SITE_SETUP_TOKEN` written through it, *Generate
+a value* producing 43 chars (32 bytes base64url, in the renderer), form cleared, and the row
+naming the environment's second door. Empty state and copy both read correctly. **Nothing was
+found wrong with it** — s14 built it right.
 
-⚠️ **F28's own first census was wrong, and that is the more useful half.** It said
-`/admin/secrets` had no caller. The route is **mounted** and the three `backend:*` IPC channels
-**already existed** — only the renderer panel was missing, so the ruled build was much smaller
-than it was sold as. **Two known grep lies stacked**: `--include="*.ts"` excluded
-`BackendManager.js`, and **`HttpServer.ts` carries one NUL byte** so grep skips it as binary.
-🔴 **The known-firing control fired and did not help**, because control and subject were read
-through the same two blind spots. **A control only bounds the error when it sits on the other
-side of the suspected blindness** — here, a control in a `.js` file or a NUL-carrying one.
+✅ **F27's screen is right on a real project**: an unclaimed site draws *"This site has not been
+set up yet."*, the correct one of `diagnoseNotFound`'s three sentences.
 
-✅ **RULED s14 (Richard): build the missing Secrets panel** — the only shape that adds no new
-credential path. ✅ **BUILT**: `views/panels/secrets/`, the **eighth** backend surface, reachable
-from the Backend Services card's overflow menu. Lists by name, writes, removes, generates a
-32-byte base64url value in the *renderer*, and reports the environment's second door on every
-row. **33 specs / 10 mutants, 10 killed.**
+🔴 **SB-017 — every cloud endpoint times out, and the template is not shippable until it is
+fixed.** `claimSite`, from the template's own Setup page with a real signup and the real
+generated token: **30005 ms**, `status = error`. `submitContactForm`, policy `public`, curl, no
+credential: **504 in 30.017 s**. `execution_steps` is **empty for a 30-second execution** — the
+graph never ran and denied; it never ran.
 
-✅ **F27's screen is fixed** — three causes, three sentences, none of which names a credential,
-collection or policy (all three are read by visitors; a spec asserts it).
+🔴 **The mechanism is measured, not inferred: the editor's deploy silently drops every connection
+whose port the target node does not declare — 51 of 100 cloud connections.** `claimSite`'s JS
+node is wired four `in-*` on disk and declares only `out-ok`/`out-denied`; in the deployed
+bundle **all four `in-*` and `out-claimed` are gone**, so `if (Inputs.rows === undefined) return;`
+returns every time and no `Response` is ever reached.
 
-🔴 **Two orderings were wrong on the first pass and only the DRIVES caught them.** Both first
-versions passed every spec that existed before the drives were re-run.
+🔴 **This is SB-010 and SB-010 understated it.** It filed the consequence as dead signal
+*outputs*. The **inputs** go too, and that is fatal rather than subtle. SB-004 F10 declared
+`out-ok`/`out-denied` by hand — **exactly the two ports that survive**. The fix was applied to
+the half that had been noticed.
 
-1. **An unclaimed site makes the Page query FAIL, not return empty** — `claimSite` is what
-   creates the collections. So "refused" and "not set up" are true at once, and **the condition
-   that explains the other has to win**.
-2. 🔴 **`claimed === false` is not evidence of an unclaimed site.** It comes from the settings
-   query's `items`, and a **refused** query publishes an empty `items` exactly like an **empty**
-   one — `Run` is additive, so the reader runs on `items` whether or not `fetched` fired. Arm C
-   of `sb015-default-policy-drive` is the refused case and was reporting itself as "not set up".
-   ✅ Fixed by wiring the settings query's **`error`** in beside it — the known-firing-signal
-   rule in its exact form: **an absence only means what you think beside a signal that separates
-   refused from absent, and the two want opposite fixes.**
+🔴 **Why 29 green specs could not see it.** `sb004-publication-invariant.test.ts` builds its
+bundle with `tests/helpers/authored-bundle.ts`, **not the editor's deploy path**, so it measures
+a bundle the product never builds. **This is the second instance of that shape in this phase** —
+SB-015 §6.5 was the same for `SITE_SECURITY` and was fixed by importing the shipped artefact.
+The same question was never asked of the bundle, which is the larger half.
 
-🆕 **Three specs that ASSERTED the defect went red** and were rewritten to assert the fix (§6.4c)
-— they were correct when written, and the rewrite keeps what they used to say in the comment.
-🔴 **And one mutant stopped biting**: it found its target by *script content*, so when visibility
-moved to a new node it mutated a node the assertion no longer read and **survived**. It failed
-loudly — a surviving mutant is a red spec — which is the only reason it did not become
-decoration. It now resolves its target **through the wire it asserts about**.
+🆕 **The editor had been saying so all along: 84 `port doesn't exist` warnings on open**, 44 of
+them these exact script ports. 🔴 **Re-measured after creating, binding and starting a real
+backend with a live schema: the same 84** — the obvious "no backend, so no dynamic ports"
+reading refuted by a control that varied exactly one thing. **The warnings are a preview of what
+the deploy deletes.** ⚠️ Saving prunes nothing: 255 connections shipped, 255 on disk after
+install, 255 after the editor's own save. The project file is faithful; only the bundle is lossy.
+
+⬜ **SB-018** — three smaller things from the same drive: `For Each` has no `Changed` output and
+the template wires one twice (bounded — a valid wire sits beside each); `DbCollection2.storageFetch`
+is flagged in cloud components but not browser ones; and the public site's `<h1>` renders the
+literal word **`Text`** on an unclaimed site.
 
 ## Next work, in order
 
-1. ⬜ **Nothing has still opened a project made from this template IN THE EDITOR.** SB-007
-   recorded it, s13 recorded it, and it is now the only ⬜ left on SB-015 §7 that is not a
-   ruling. **The Secrets panel s14 built has never been driven** — it is graded as decisions
-   over values, and its spec says so in as many words. The drive that would close both: make a
-   project from the template, open it, set `SITE_SETUP_TOKEN` in the new panel, claim the site,
-   and see a real page. Use `run-editor`, and read the **drive traps** below first.
-2. **SB-009 / SB-010 / SB-011 / SB-012** — all measured-not-fixed, all wanting a corpus sweep or
-   a ruling rather than an argument.
-3. 🧭 **Richard's, still open**: F8 (does a contact message reach anyone), `Section.kind`'s fifth
+1. 🧭 **SB-017 needs Richard's ruling: door, converter, or both.** The one thing that decides it
+   is in **SB-017 §6** and is a single file's reading — the node's `ports` array is *already*
+   short on disk, so the converter may simply be honest about a node written incomplete. Settle
+   that before writing any code; it is the difference between fixing the authoring door and
+   fixing the deploy.
+2. ⬜ **The test whose absence let this ship** (SB-017 §7 acceptance 1): the editor's deploy path
+   and `authored-bundle.ts` must produce the same connection count for the same components.
+   Write this *before* the fix, so it goes red first.
+3. ⬜ **SB-018's three**, all small, all cheap once someone is in the template.
+4. **SB-009 / SB-010 / SB-011 / SB-012** — SB-010 is no longer "measured, worked around": it is
+   the cause of SB-017 and should be re-read in that light. The other three still want a corpus
+   sweep or a ruling.
+5. 🧭 **Richard's, still open**: F8 (does a contact message reach anyone), `Section.kind`'s fifth
    value with no destination, D3 (does SB-003's boundary fix ride 0.2.1).
-4. 🧭 **Still the better half of SB-014 §5**: *for every collection a template reads, is there a
-   node that creates it?* and *for every collection a template names, is there a rule?* Both are
-   asked of this template; neither is asked of an arbitrary project, and both are questions a
-   linter could ask of any. 🆕 s14 gives the first one teeth: **the answer for `Page` is "no",
-   and that is exactly why the query fails rather than returning empty on a fresh site.**
-5. ⬜ **`securityPolicy` is on `ProjectTemplate`**, so `PlatformTemplateProvider`'s `community://`
-   shelf still has no channel for one. Not needed today; named so it is not assumed.
+6. ⬜ **`securityPolicy` is on `ProjectTemplate`**, so `PlatformTemplateProvider`'s `community://`
+   shelf still has no channel for one. Named so it is not assumed.
 
 ## Traps that will bite here specifically
 
-- 🔴 **`grep` lies here in at least two ways at once.** `--include="*.ts"` silently excludes the
-  `.js` half of the editor's main process; **`HttpServer.ts` contains a NUL byte** so grep skips
-  it as binary and says nothing. **Census with a reader that opens every file** (a short Python
-  walk) before asserting any absence — and put the control on the *other* side of the blindness.
-- 🔴 **The backend's `typecheck` DOES NOT COVER ITS TESTS.** `tsconfig.json` is
-  `include: ["src/**/*"]`, so `npx tsc --noEmit` exits **0** on a test file with a wrong argument
-  type. s4, s11 and s13 all hit it. **Run the suite.**
-- 🔴 **`test:ci`'s timeout and its clean floor are the same exit code.** The only signal is the
-  **summary line**; a run without one is **NOT MEASURED**. Floor: `2856 specs, 4 failures`, all
-  four `AIX-006 style vocabulary` by name.
-- 🔴 **A failing spec that starts a `BackendService` leaks it** (the `stop()` is in the success
-  path), so jest cannot exit. Use `--forceExit` when grading mutants that make service specs
-  fail, and never conclude "hung" from a run whose specs are supposed to be red.
-- 🔴 **`python3` buffers stdout** — `python3 -u`, or a killed mutant run loses every result.
-- 🔴 **Kill by PID, never by name.** Three peer sessions were live throughout s14.
-- 🔴 **`Run` is purely ADDITIVE**, and `isEmpty`/`count`/`firstItemId` answer **pre-fetch**. 🆕
-  And a **refused** query publishes an empty `items` indistinguishably from an empty one — take
-  refusal from `error`, never from emptiness.
-- 🔴 **A green authoring run means well-formed and nothing else**; a green REFUSAL means nothing
-  either — read the consequence, not the status code.
+- 🔴 **A green cloud-function suite here does not mean the function works.** The suite's bundle
+  and the editor's deployed bundle are **two different artefacts**, and s15 measured them
+  disagreeing by 51 connections. Until acceptance 1 exists, **read the deployed bundle**:
+  `~/.noodl/backends/<id>/workflows/<project>.workflow.json`.
+- 🔴 **`.webpack-cache` can poison a `test:ci` BUILD** with ~47 unresolved-alias errors
+  (`@noodl-store/*`, `@noodl-versioning`, `@noodl-viewer-cloud/*`) in files nobody touched —
+  relayed by the P75 peer, who nearly read it as their own regression and then nearly blamed my
+  stack. `rm -rf packages/noodl-editor/.webpack-cache`; it is gitignored, only `test`/`test-ci`
+  use it, and `renderer.dev` is `cache: false` so it cannot touch a live `dev:debug` stack.
+- 🔴 **Driving the wizard: the modal is rendered TWICE** and `cdp click` targets an element's
+  centre, which on these cards lands on a child text span. Stamp the copy that is **not** inside
+  a `[class*=Measuring]` ancestor, and expect to **click twice** on the Add Backend dialog.
+  `elementFromPoint` before every click — several cards are only hittable off-centre.
+- 🔴 **The warnings list in the DOM is virtualised AND doubled by the measuring ghost** — it read
+  168 for 84 real warnings. Read `WarningsModel.instance.warnings` instead; you can reach it with
+  `window.webpackChunknoodl_editor.push([['x'],{},r=>{req=r}])` and
+  `req('./src/editor/src/models/warningsmodel.ts')`.
+- 🔴 **`const` leaks between `cdp eval` calls** — wrap every eval in an IIFE or the second one
+  dies with *"Identifier 'b' has already been declared"*.
+- 🔴 **A repeat submit on the Setup page never reaches the backend** — the signup fails first, so
+  a "wrong token" control arm measures nothing. s15 wasted one arm on this. The arm that works is
+  reading the deployed bundle against the project on disk.
+- 🔴 **The backend's `typecheck` DOES NOT COVER ITS TESTS** (`include: ["src/**/*"]`). Run the suite.
+- 🔴 **`test:ci`'s timeout and its clean floor are the same exit code.** Only the **summary line**
+  counts. Floor: `2856 specs, 4 failures`, all four `AIX-006 style vocabulary` by name — read
+  again at **seed 57633** by the P75 peer during this session.
+- 🔴 **Editing a backend's `security.json` is blocked by the permission classifier**, even on a
+  throwaway local backend. Do not try to route around it — use the editor's own Access panel, or
+  ask Richard. s15 hit this and took the read-only route instead (which was better anyway).
 - 🔴 **The artefact and the component sets are two populations.** Edit a component set and
   **regenerate** (`npm run template:site-builder`) or `sb007Template.test.ts` reddens. ⚠️
-  `site-builder.security.json` is **NOT** generated — hand-edited, deliberately; its gate is
-  `sb015-project-policy.test.ts`.
-- 🔴 **All three component sets are data files** (`sb004Components.ts`, `sb005Components.ts`,
-  `sb006Components.ts`). Edit graphs there, never in a spec; **nine** suites drive them.
+  `site-builder.security.json` is **NOT** generated — hand-edited, deliberately.
 - 🔴 **An authored node id is a request, not a handle (F9).** Read a written graph by node
-  **type** or **label**; `claimSite` has **two** `NewDbModelProperties`, so resolve by
-  `collectionName`. 🆕 **The same rule applies to a MUTANT's target** — resolve it through the
-  wire it asserts about, or it silently stops biting when the graph moves.
-- 🔴 **A source-text assertion pins a spelling, not a property.** `toContain('if (Inputs.rows
-  === undefined) return;')` passed on a guard that had been rewritten and would pass on one
-  commented out. Where a graph carries a script, **run it** and assert what it publishes.
-- 🔴 **jest here is `testEnvironment: 'node'`** — no jsdom, no `@testing-library/react`. A panel
-  cannot be mounted. Extract its decisions (`secretsPanelModel.ts`, `buildSpawnArgs`) or the only
-  assertion left is source text.
-- **The MCP dist on this machine is stale** and the bound servers run it. Author through
-  `createServer` from `src`.
-- ⚠️ `npm run template:site-builder` runs `ts-node -T` deliberately — type-checking that program
-  takes ts-node past 2 GB.
+  **type** or **label**; resolve a mutant's target **through the wire it asserts about**.
+- 🔴 **`Run` is purely ADDITIVE**, and a **refused** query publishes an empty `items`
+  indistinguishably from an empty one — take refusal from `error`, never from emptiness.
+- 🔴 **jest here is `testEnvironment: 'node'`** — no jsdom. A panel cannot be mounted; extract its
+  decisions, as `secretsPanelModel.ts` does.
 - Shared checkout: commit by pathspec (untracked ⇒ `add` + `commit` in **one chain**), never
-  stage-then-commit; announce before any editor launch/teardown; `test:ci` **alone**.
+  stage-then-commit; announce before any editor launch **and teardown**; `test:ci` **alone**.
 
-## Gates, s14
+## Gates, s15
 
-- **`test:ci` ✅ TAKEN TWICE, both at the floor.** `2856 specs, 4 failures`, all four
-  `AIX-006 style vocabulary` **by name**, both times — 71s at seed 62551 (HEAD `76465eeb`,
-  before the editor changes) and 65s at seed **80902** (HEAD `c37cab73`, after them). ⚠️ The
-  two readings used **different seeds**, so the floor is not a seed artefact; that is the one
-  thing a single run could not have told you.
-- nodegx-backend **108 suites / 1240** (10 skipped) ✅ EXIT 0 — unchanged suite count; the three
-  SB-015 drives now assert the fix rather than the defect.
-- noodl-mcp **64 suites / 774** ✅ EXIT 0 — +1 test over s12's 773 (`sb006PublicSite`).
-- noodl-editor jest **354 suites / 5832** ✅ EXIT 0 — **+1 suite / +33 tests** from
-  `tests-unit/sb-015/secrets-panel-model.test.ts`; the rest of the delta over s13's 350/5776 is
-  a peer's seven FB-025/026/027 commits landing in the same tree.
-- `typecheck:editor`, `typecheck:editor-tests`, `typecheck:mcp` and the backend's own `tsc`: all
-  exit **0**, run unpiped.
+**None were run, and none were in scope.** s15 changed **no repository source** — two new task
+files (`SB-017`, `SB-018`), `TASKS.md`, and `SB-015` §7. The drive's own project lives at
+`/Users/richardosborne/Documents/sb015-editor-drive`, outside the repo, and its backend at
+`~/.noodl/backends/backend_mtbxrca3axpbc`; both are disposable and can be deleted.
+
+Relayed measurement, not this session's own: the P75 peer rode a solo `test:ci` in this window
+and read **`2856 specs, 4 failures`, seed 57633** — the documented AIX-006 floor.
+
+⚠️ The editor stack was launched and **torn down**; 27 processes stopped, nothing left running,
+and all MCP servers survived the sweep. Teardown was announced to all three peers that the
+launch was announced to.

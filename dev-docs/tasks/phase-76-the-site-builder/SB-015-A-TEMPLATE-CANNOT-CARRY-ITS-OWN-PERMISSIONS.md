@@ -577,9 +577,26 @@ specs.
 
 ## 7. What is still not done
 
-⬜ **Nothing has opened a project made from this template in the editor.** SB-007
-recorded that and it is still true; the local-case measurement in §6.4 is the same
-drive.
+✅ **DONE s15 — a project made from this template has now been opened in the editor**,
+given a backend through the real UI, and driven. **This task's own claims all hold on
+the real path:**
+
+- shipped `site-builder.security.json` → project `nodegx.security.json` → backend
+  `security.json`, **all three md5 `7b007097c3259d92177db4c592055e50`**;
+- `/health` on the created backend: **`devOpen: false, enforced: true`**;
+- the backend was spawned with **`--project-dir`** — §6.7's work, on the real path;
+- **the Secrets panel works**: `SITE_SETUP_TOKEN` written through it, *Generate a value*
+  producing 43 chars in the renderer, and the row naming the environment's second door;
+- **F27's screen is right**: an unclaimed site draws *"This site has not been set up
+  yet."* — the correct one of the three sentences, on a real project rather than a fixture.
+
+🔴 **And the drive found that the template does not work — see
+[SB-017](SB-017-THE-DEPLOY-DROPS-HALF-THE-GRAPH.md).** Every cloud endpoint times out
+after 30 s, because the editor's deploy drops **51 of 100 cloud connections** — every one
+whose port the node does not declare. So `claimSite` cannot be completed, the site cannot
+be claimed, and §6.4's whole local-case story is blocked behind a defect that is not about
+permissions at all. ⚠️ **The setup token is no longer the thing standing between an author
+and a claimed site**, which is what this task had assumed since §3.
 
 ⬜ **The `secrets.json` half.** A policy travels; the secret a policy's graphs need
 does not. See §6.4.

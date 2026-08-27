@@ -456,6 +456,51 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   the authored door fails to resolve references, but that **one spelling of the same reference goes
   unresolved**. That names the fix's diagnostic for it.
 
+- 🔴 **SB-017** — [the deploy drops half the cloud graph](SB-017-THE-DEPLOY-DROPS-HALF-THE-GRAPH.md)
+  — **MEASURED s15 by the drive nobody had run. The template does not work.** Made from
+  `embedded://site-builder` in the real editor, opened, given a backend through the real UI:
+  **every cloud endpoint times out.** `claimSite` from the template's own Setup page, real signup,
+  real generated token — `status = error`, **30005 ms**. `submitContactForm`, policy `public`,
+  curl, no credential — **504 in 30.017 s**. Two of the two reachable without an admin session,
+  and `claimSite` is what mints the admin.
+  🔴 **The mechanism is measured, not inferred: the editor's deploy silently drops every
+  connection whose port the target node does not declare — 51 of 100 cloud connections.**
+  `claimSite`'s JS node is wired four `in-*` on disk and declares only `out-ok`/`out-denied`;
+  in the deployed bundle **all four `in-*` and `out-claimed` are gone**, so the script's first
+  guard returns every time, no `Response` is ever reached, and the request hangs to the cap.
+  `execution_steps` is **empty for a 30-second execution** — it never ran and denied, it never ran.
+  🔴 **This is SB-010, and SB-010 understated it**: it filed the consequence as dead signal
+  *outputs*; the **inputs** go too, and that is fatal rather than subtle. SB-004 F10 declared
+  `out-ok`/`out-denied` by hand — exactly the two ports that survive. **The fix was applied to the
+  half that had been noticed.**
+  🔴 **Why 29 green specs did not catch it**: `sb004-publication-invariant.test.ts` builds its
+  bundle with `tests/helpers/authored-bundle.ts`, **not the editor's deploy path**, so it measures
+  a bundle the product never builds. **Second instance in this file** — SB-015 §6.5 was the same
+  shape for `SITE_SECURITY`, fixed by importing the shipped artefact; the same question was never
+  asked of the bundle, which is the larger half. ⚠️ The helper exists for a real reason (the
+  editor's converter needs a live `NodeLibrary`); what is missing is a test that the two agree.
+  🆕 **The editor says so on open and nobody had looked: 84 `port doesn't exist` warnings**, 44 of
+  them exactly these script ports. 🔴 **Re-measured with a real backend created, bound, started and
+  holding the schema: the same 84** — the obvious "no backend, so no dynamic ports" reading refuted
+  by a control that varied one thing. **The warnings are a preview of what the deploy deletes.**
+  ⚠️ Bounded: saving prunes nothing — 255 connections shipped, 255 on disk after install, 255 after
+  the editor's own save. The project file is faithful; only the bundle is lossy.
+  🧭 **Needs a ruling**: door, converter, or both. §6 names the one file's reading that decides it.
+- ⬜ **SB-018** — [two dead wires, a port that resolves in one runtime and not the other, and a
+  heading that says "Text"](SB-018-TWO-DEAD-WIRES-AND-A-PLACEHOLDER-HEADING.md) — **MEASURED s15.**
+  (1) **`For Each` has no `Changed` output** and the template wires one twice (`PageEditor`,
+  `Admin`); both dead. ⚠️ Bounded — a valid `NewDbModelProperties.done` wire sits beside each, so
+  the refresh still fires. The gap it names: **no door checks that a wired port exists on a
+  STANDARD node** — SB-009's hole one level down. (2) **`DbCollection2.storageFetch` is flagged in
+  cloud components and not browser ones**, though `dbcollectionnode2.ts:1222` pushes it
+  unconditionally; excluded as SB-017's cause but **not cosmetic** — in `claimSite` all four
+  `runOnChange-*` are `false`, so if it is inert then SB-013's explicit-fetch barrier does nothing
+  and its readiness guard carries the fix alone (and **SB-013's specs stay green either way**).
+  (3) 🔴 **The public site's `<h1>` renders the literal word `Text`** on an unclaimed site — the
+  node sets no `text` parameter and `text.ts:41` defaults to `'Text'`. **F27's territory that F27
+  did not cover**: s14 made the body name its cause; the heading a person reads first still says
+  `Text`.
+
 ## Session log
 
 - **s1 (2026-08-26)** — phase opened; both code maps run (recorded in SB-001/SB-003 files).
@@ -833,3 +878,44 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   over s12's 107/1226, reconciling exactly; noodl-editor jest **350 / 5776** EXIT 0 — +2 / +20,
   also exact; `typecheck:editor`, `typecheck:editor-tests`, `typecheck:mcp` and the backend's
   own `tsc` all exit **0** (run unpiped). noodl-mcp not re-run — no `noodl-mcp` source moved.
+- **s15 (2026-08-27)** — **THE DRIVE NOBODY HAD RUN, AND IT FOUND THAT THE TEMPLATE DOES NOT
+  WORK.** Item 1 of the s14 handover, end to end through the real UI: `New project` →
+  `Start from a Template` → **Site Builder** → created at
+  `/Users/richardosborne/Documents/sb015-editor-drive` → opened → backend provisioned through the
+  Backend Services panel → **Secrets panel driven for the first time** → `claimSite` called from
+  the template's own Setup page. **SB-017 and SB-018 filed.**
+  ✅ **SB-015's chain is confirmed byte-for-byte on the real path, which is what this drive was for.**
+  Shipped `site-builder.security.json` → project `nodegx.security.json` → backend `security.json`,
+  **all three md5 `7b007097c3259d92177db4c592055e50`**. `/health` on the created backend:
+  **`devOpen: false, enforced: true`**. The backend was spawned with **`--project-dir`** (s13's
+  work, on the real path for the first time). 4 endpoints deployed; the 3 helpers read
+  *"in the project, not on this backend"* — **SB-003 visible in the UI**.
+  ✅ **The Secrets panel passes its first drive.** `SITE_SETUP_TOKEN` typed, **Generate a value**
+  produced 43 chars (32 bytes base64url, in the renderer as designed), saved, form cleared, and the
+  row reports the environment's second door — *"Falls back to NODEGX_SECRET_SITE_SETUP_TOKEN on a
+  server that has no secrets file."* Empty state and copy read correctly. Nothing found wrong with it.
+  ✅ **F27's fix confirmed on the real path**: an unclaimed site with the policy enforced draws
+  *"This site has not been set up yet."* — the right one of the three sentences, on a project a
+  person actually made rather than a fixture.
+  🔴 **And then nothing worked.** `claimSite` **30005 ms**, `submitContactForm` **504 in 30.017 s**
+  — see **SB-017**. The cause is measured: **the deploy drops 51 of 100 cloud connections**, every
+  one whose port the node does not declare, so the JS nodes get no inputs and no `Response` is ever
+  reached. **SB-010, whose consequence was filed as dead signal outputs; the inputs go too.**
+  🔴 **29 green specs could not see it** because they build their bundle with a test helper rather
+  than the editor's deploy path — **the second `SITE_SECURITY`-shaped finding in this phase**, and
+  the larger half.
+  🔴 **84 `port doesn't exist` warnings on open**, 44 of them these ports — **and they are
+  unchanged by creating, binding and starting a real backend with a live schema**, which refutes
+  the obvious reading with a control that varied exactly one thing. ⚠️ Saving prunes nothing: 255
+  connections shipped, 255 on disk after install, 255 after the editor's own save.
+  ⚠️ **A wrong-token control arm was invalid and is recorded as such** — the second submit never
+  reached the backend (the repeat signup fails first), so it measured nothing. The discriminating
+  arm that did work was reading the **deployed bundle** against the project on disk.
+  ⚠️ **No repository source was changed.** Two new task files and this log; the drive's own project
+  is outside the repo. Gates not re-run — nothing in any suite's scope moved. The peer's solo
+  `test:ci` in this window read **2856 specs / 4 failures, seed 57633** — the documented floor.
+  🆕 **Relayed from the P75 peer, worth carrying**: `packages/noodl-editor/.webpack-cache` can
+  poison a `test:ci` **build** with ~47 unresolved-alias errors (`@noodl-store/*`,
+  `@noodl-versioning`, `@noodl-viewer-cloud/*`) in files nobody touched. It reads as your
+  regression and it is not. `rm -rf` it; it is gitignored, only `test`/`test-ci` use it, and
+  `renderer.dev` is `cache: false` so it cannot touch a running `dev:debug` stack.
