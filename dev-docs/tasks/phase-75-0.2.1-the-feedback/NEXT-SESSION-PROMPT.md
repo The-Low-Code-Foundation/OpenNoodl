@@ -90,9 +90,12 @@ deleting that subject**, not only by corrupting it — deletion is the case that
   explains the suite but leaves **five tests missing** — and that peer was actively editing
   `registeradapters.ts` and `cloudDynamicPorts.ts`, which specs enumerate. **Quote the tree, not
   the number.** Both runs were 0 failures, which is the claim that survives.
-- `test:ci` **not run by this lane.** No source spec under `packages/noodl-editor/tests/` references
-  the community components (the only match is a build artefact), so it does not cover this change.
-  The P76 lane started a `test:ci` as this session was writing up.
+- `test:ci` **not run by this lane — but the P76 lane's run covered this change anyway.** They ran
+  it while this session was writing up, and `test:ci` builds the **working tree**, which had held
+  these `noodl-core-ui` edits for hours. Relayed result: **2863 specs / 4 failures — the documented
+  AIX-006 floor, by name.** So the change adds nothing to the Electron suite, which until then was
+  only an argument from absence (no source spec under `packages/noodl-editor/tests/` names the
+  community components; the sole match is a build artefact). 🔴 **Relayed, not measured here.**
 
 ## Standing facts for this area
 
@@ -100,8 +103,10 @@ deleting that subject**, not only by corrupting it — deletion is the case that
   launch, two by checking `ps` rather than recollection. **Keep announcing launch AND teardown.**
 - ⚠️ **P76 asks that the local backend "sb015 site backend" (port 8588) be left alone** in the
   Backend Services panel — staged for SB-017 acceptance. Not touched this session.
-- ⚠️ **P76's expected `test:ci` shape is 2862 specs / 6 failures** — the AIX-006 floor of 4 by name
-  plus 2 deliberately-red SB-017 parity specs. And **`rm -rf packages/noodl-editor/.webpack-cache`
+- ✅ **The `test:ci` floor is back to 4, and the "expect 6" note is now STALE.** SB-017 landed on
+  2026-08-27 and its two deliberately-red parity specs are green; the suite is **2863** specs.
+  🔴 A stale-HIGH floor hides regressions, which is why this is worth correcting rather than
+  leaving. Still: **`rm -rf packages/noodl-editor/.webpack-cache`
   before running it**: a poisoned cache fails the *build* with ~47 unresolved-alias errors in files
   nobody touched, and reads as your own regression.
 - ⚠️ **Not mine and still uncommitted, leave them**: `packages/nodegx-export/*` (P18),
