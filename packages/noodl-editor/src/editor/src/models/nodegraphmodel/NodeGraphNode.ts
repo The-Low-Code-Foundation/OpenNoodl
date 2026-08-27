@@ -4,6 +4,7 @@ import { stripCodeHistoryMetadata } from '@noodl-models/CodeHistory/codeHistoryM
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphModel } from '@noodl-models/nodegraphmodel/NodeGraphModel';
 import { NodeGrapPort } from '@noodl-models/NodeGraphPort';
+import { replaceOrAppendPorts } from '@noodl-models/nodegraphmodel/portOverrides';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
 import { UnknownNodeType } from '@noodl-models/nodelibrary/UnknownNodeType';
@@ -515,8 +516,9 @@ export class NodeGraphNode extends Model {
       // Any user defined ports
       if (this.ports) ports = ports.concat(this.ports);
 
-      // Dynamic instance ports on this instance
-      if (this.dynamicports) ports = ports.concat(this.dynamicports);
+      // Dynamic instance ports on this instance. FB-026 — these *replace* a static port of the
+      // same name and plug rather than appearing beside it; see `portOverrides.ts`.
+      if (this.dynamicports) ports = replaceOrAppendPorts(ports, this.dynamicports);
 
       // Sort on index (assign index in order if not present)
       each(ports, function (p, index) {

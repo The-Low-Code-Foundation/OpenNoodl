@@ -50596,7 +50596,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Writes the current Text into the field now. This is additional to Text applying as it arrives; untick Text under Run On Value Change to stop that"
+          "description": "Writes the current Value into the field now. This is additional to Value applying as it arrives; untick Value under Run On Value Change to stop that"
         },
         {
           "name": "sizeMode",
@@ -50634,14 +50634,14 @@
         },
         {
           "name": "startValue",
-          "displayName": "Text",
+          "displayName": "Value",
           "group": "Text",
           "plug": "input",
           "type": {
-            "name": "string"
+            "name": "*"
           },
           "isSignal": false,
-          "description": "The text to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse",
+          "description": "The value to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse",
           "index": 18
         },
         {
@@ -51138,14 +51138,14 @@
         },
         {
           "name": "onTextChanged",
-          "displayName": "Text",
+          "displayName": "Value",
           "group": "General",
           "plug": "output",
           "type": {
-            "name": "string"
+            "name": "*"
           },
           "isSignal": false,
-          "description": "What the field currently contains, updated as the user types",
+          "description": "What the field currently contains, updated as the user types. A number when Type is Number, otherwise text",
           "index": 1
         },
         {
@@ -51205,14 +51205,14 @@
         },
         {
           "name": "textChanged",
-          "displayName": "Text Changed",
+          "displayName": "Value Changed",
           "group": "General",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires whenever the Text output changes, so a graph can sequence off the new value rather than poll it",
+          "description": "Fires whenever the Value output changes, so a graph can sequence off the new value rather than poll it",
           "index": 2
         },
         {
@@ -51251,9 +51251,10 @@
       ],
       "dynamicPorts": {
         "mechanisms": [
-          "declared-port-groups"
+          "declared-port-groups",
+          "runtime-discovered"
         ],
-        "description": "Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups).",
+        "description": "The port list above is complete — this node mints no ports. It republishes its own two value ports (`startValue`, `onTextChanged`) per instance with a narrowed type: `number` when the `type` parameter is `number`, `string` for every other Type. They are declared `*` statically because nothing outside a connected editor can narrow them.",
         "declaredPortGroups": [
           {
             "condition": "sizeMode = explicit OR sizeMode = contentHeight",
@@ -51357,7 +51358,7 @@
         "known": true,
         "patterns": [],
         "seededBy": [],
-        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+        "notes": "This node mints no port names. Its two value ports are declared `'*'` above and are republished per instance with a narrowed type — `number` when the `type` parameter is `number`, `string` otherwise — so the port list above is complete and only the `type` field moves."
       }
     },
     {

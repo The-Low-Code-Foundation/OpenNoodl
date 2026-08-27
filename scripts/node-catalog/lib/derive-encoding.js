@@ -56,6 +56,38 @@ const DECLARED_ONLY_REASON =
   'This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them.';
 
 /**
+ * FB-026 — node types that push dynamic ports **over their own statically declared ones**, to
+ * narrow a type, and mint no new names.
+ *
+ * `runtime-discovered` otherwise carries the sentence *"the static port list below is incomplete
+ * for such instances"*, and `residueFor` otherwise falls through to *"no parameter on this node
+ * carries the list its ports are generated from"*. Both are false for a node like this, and the
+ * second is the more expensive: `known: false` tells an AI reading the catalog that it cannot
+ * trust the port list, when the port list is exactly right and only a `type` moves.
+ *
+ * Text Input is the first. Its `Value` ports are declared `'*'` — the only true answer where
+ * nothing is running to narrow them — and `updatePorts` republishes those same two names as
+ * `string` or `number` from the `Type` parameter once an editor is connected.
+ *
+ * ⚠️ **The entry is a claim, and `parameter-encoding`'s headless drive is what checks it**: the
+ * generator runs the node's `setup` and refuses an entry here whose published port names are not
+ * already in the static list. A node added here that really does mint a name fails the build
+ * rather than publishing a reassuring lie.
+ *
+ * ⚠️ Near neighbour, deliberately not moved: `Set Variable` is described in `RESIDUE_REASONS`
+ * as *"the single dynamic port is `value`, whose type follows the `setWith` parameter"* — the
+ * same shape — but it is `known: false` today and re-classifying it is a separate claim that
+ * wants its own measurement.
+ */
+const RETYPES_DECLARED_PORTS = {
+  'net.noodl.controls.textinput':
+    'This node mints no port names. Its two value ports are declared `\'*\'` above and are ' +
+    'republished per instance with a narrowed type — `number` when the `type` parameter is ' +
+    '`number`, `string` otherwise — so the port list above is complete and only the `type` field ' +
+    'moves.'
+};
+
+/**
  * @param {string} typeName
  * @param {object} metadata     live register metadata
  * @param {object} rawDef       the definition passed to registerNode
@@ -64,6 +96,12 @@ const DECLARED_ONLY_REASON =
  */
 function deriveEncoding(typeName, metadata, rawDef, dynamicPorts) {
   if (!dynamicPorts) return null;
+
+  // FB-026 — a node that only re-types ports it already declares. Checked, not asserted; see
+  // `retypesEncoding`, which throws rather than publishing an unverified `known: true`.
+  if (RETYPES_DECLARED_PORTS[typeName]) {
+    return retypesEncoding(typeName, metadata, rawDef, RETYPES_DECLARED_PORTS[typeName]);
+  }
 
   const rawNode = rawDef && rawDef.node ? rawDef.node : undefined;
   const numberedInputs = rawNode && rawNode.numberedInputs;
@@ -287,6 +325,54 @@ function noteFor(entries, numberedInputs) {
   return notes.join(' ') || undefined;
 }
 
+/**
+ * FB-026 — the check behind a `RETYPES_DECLARED_PORTS` entry.
+ *
+ * The entry claims two things: that the node's `setup` mints no port name that is not already
+ * declared, and that it publishes ports at all. Both are driven here rather than believed, and a
+ * failure **throws**, per this file's rule that a verification failure fails generation while a
+ * missing observation only lands in the residue. A node added to that table that really does mint
+ * a name therefore breaks the build instead of publishing a reassuring lie into the catalog.
+ *
+ * ⚠️ The emptiness guard is not decoration. Without it the name check passes vacuously the day
+ * the hook stops emitting — an absence asserted with no known-firing signal beside it — and the
+ * catalog would keep saying `known: true` about a narrowing that no longer happens.
+ *
+ * Driven twice, because the narrowing is a *branch*: `type: 'number'` and the default have to be
+ * exercised or half the rule is unmeasured.
+ */
+function retypesEncoding(typeName, metadata, rawDef, notes) {
+  const declared = new Set([
+    ...Object.keys((metadata && metadata.inputs) || {}),
+    ...Object.keys((metadata && metadata.outputs) || {})
+  ]);
+
+  const observedNames = new Set();
+
+  for (const parameters of [{}, { type: 'number' }]) {
+    const observed = driveSetup(typeName, rawDef, parameters, {});
+    for (const port of observed.ports || []) observedNames.add(port.name);
+  }
+
+  if (!observedNames.size) {
+    throw new Error(
+      `${typeName} is listed in RETYPES_DECLARED_PORTS but its setup published no ports at all. ` +
+        'Either the narrowing was removed — in which case remove the entry — or the hook no longer runs.'
+    );
+  }
+
+  const minted = [...observedNames].filter((name) => !declared.has(name));
+  if (minted.length) {
+    throw new Error(
+      `${typeName} is listed in RETYPES_DECLARED_PORTS, which claims it mints no port names, but ` +
+        `its setup published ${minted.join(', ')} — not in its static port list. Remove the entry: ` +
+        'the static port list really is incomplete for this node.'
+    );
+  }
+
+  return { known: true, patterns: [], seededBy: [], notes };
+}
+
 function residueFor(typeName, dynamicPorts, runs, error) {
   const explicit = RESIDUE_REASONS[typeName];
   if (explicit) return { known: false, reason: explicit };
@@ -303,6 +389,11 @@ function residueFor(typeName, dynamicPorts, runs, error) {
   const mechanisms = dynamicPorts.mechanisms || [];
   if (mechanisms.length === 1 && mechanisms[0] === 'declared-port-groups') {
     return { known: true, patterns: [], seededBy: [], notes: DECLARED_ONLY_REASON };
+  }
+  // FB-026. Ahead of every `known: false` rule below, because this node's port list *is* known —
+  // see RETYPES_DECLARED_PORTS.
+  if (RETYPES_DECLARED_PORTS[typeName]) {
+    return { known: true, patterns: [], seededBy: [], notes: RETYPES_DECLARED_PORTS[typeName] };
   }
   if (mechanisms.includes('editor-adapter')) {
     return {
@@ -358,4 +449,4 @@ function toCatalogPattern(entry, tokenMap) {
   return pattern;
 }
 
-module.exports = { deriveEncoding, toCatalogPattern, RESIDUE_REASONS, DECLARED_ONLY_REASON };
+module.exports = { deriveEncoding, toCatalogPattern, RESIDUE_REASONS, DECLARED_ONLY_REASON, RETYPES_DECLARED_PORTS };

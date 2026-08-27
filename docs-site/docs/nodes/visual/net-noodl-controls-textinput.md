@@ -106,7 +106,7 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `placeholder` | String | `Type here...` | Greyed-out hint shown while the field is empty |
 | `position` | Enum (`relative`, `absolute`, `sticky`, `fixed`) | `relative` | How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky pins to the parent edge on overflow, Fixed stays put and takes no space |
 | `sizeMode` | Enum (`explicit`, `contentWidth`, `contentHeight`, `contentSize`) | `contentSize` | Whether Width and Height are used as given, or the element sizes itself to fit its contents |
-| `startValue` | String | — | The text to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse |
+| `startValue` | * | — | The value to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse |
 | `styleCss` | String | `/* background-color: red; */` | Raw CSS declarations applied to this element, overriding the styling ports above |
 | `textAlignX` | Enum (`left`, `center`, `right`) | `left` | Aligns the typed text within the field |
 | `textStyle` | TextStyle | `None` | Applies one of the project's saved text styles; the individual font ports below override whatever it sets |
@@ -132,7 +132,7 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `blur` | Signal | — | Takes keyboard focus away from this field, which is what fires Blurred |
 | `clear` | Signal | — | Empties the field |
 | `focus` | Signal | — | Puts the keyboard cursor in this field |
-| `set` | Signal | — | Writes the current Text into the field now. This is additional to Text applying as it arrives; untick Text under Run On Value Change to stop that |
+| `set` | Signal | — | Writes the current Value into the field now. This is additional to Value applying as it arrives; untick Value under Run On Value Change to stop that |
 
 ## Outputs
 
@@ -146,7 +146,7 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `enabled` | Boolean | — | Reports back whether this control is currently accepting interaction, following the Enabled input |
 | `focusState` | Boolean | — | True while this control holds keyboard focus, so typing and Enter go to it |
 | `hoverState` | Boolean | — | True while the pointer is over this control; stays false on touch devices with no pointer |
-| `onTextChanged` | String | — | What the field currently contains, updated as the user types |
+| `onTextChanged` | * | — | What the field currently contains, updated as the user types. A number when Type is Number, otherwise text |
 | `pressedState` | Boolean | — | True while a mouse button or finger is held down on this control, and false again the moment it is released or slides off |
 | `screenPositionX` | Number | — | Distance in pixels from the left edge of the window to this element's left edge |
 | `screenPositionY` | Number | — | Distance in pixels from the top edge of the window to this element's top edge |
@@ -166,15 +166,15 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `onFocus` | Signal | — | Fires the moment this control takes keyboard focus, whether from a click, a tab or a Focus action |
 | `pointerDown` | Signal | — | Fires as a mouse button or finger goes down on this control, before any click has completed |
 | `pointerUp` | Signal | — | Fires when the mouse button or finger is lifted, and also when a touch is cancelled by the system |
-| `textChanged` | Signal | — | Fires whenever the Text output changes, so a graph can sequence off the new value rather than poll it |
+| `textChanged` | Signal | — | Fires whenever the Value output changes, so a graph can sequence off the new value rather than poll it |
 | `unchanged` | Signal | — | Fires when a Set or Clear left the field as it was — most often a Set while the field has focus, which is deliberately absorbed so it cannot overwrite what is being typed |
 | `willUnmount` | Signal | — | Fires just before this element is removed from the page, while it still exists |
 
 ## Dynamic ports
 
-_This node's port list changes at runtime (declared-port-groups); the tables above may be incomplete for a given instance._
+_This node's port list changes at runtime (declared-port-groups, runtime-discovered); the tables above may be incomplete for a given instance._
 
-Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups).
+The port list above is complete — this node mints no ports. It republishes its own two value ports (`startValue`, `onTextChanged`) per instance with a narrowed type: `number` when the `type` parameter is `number`, `string` for every other Type. They are declared `*` statically because nothing outside a connected editor can narrow them.
 
 | Condition | Inputs shown | Outputs shown |
 |---|---|---|

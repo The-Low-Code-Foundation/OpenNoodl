@@ -24,6 +24,20 @@ const EDITOR_ADAPTER_TYPES = {
 };
 
 const NOTES = {
+  /**
+   * FB-026 — the one node here whose runtime-discovered ports are its *own* ports, re-typed.
+   *
+   * Without this entry the generic sentence applies — *"the static port list below is incomplete
+   * for such instances"* — and it is false: `updatePorts` republishes `startValue` and
+   * `onTextChanged`, both of which are declared above, and changes nothing but their `type`. The
+   * matching claim on `parameterEncoding` is checked rather than believed; see
+   * `RETYPES_DECLARED_PORTS` in `derive-encoding.js`.
+   */
+  'net.noodl.controls.textinput':
+    'The port list above is complete — this node mints no ports. It republishes its own two value ' +
+    'ports (`startValue`, `onTextChanged`) per instance with a narrowed type: `number` when the ' +
+    '`type` parameter is `number`, `string` for every other Type. They are declared `*` statically ' +
+    'because nothing outside a connected editor can narrow them.',
   Expression:
     'Input ports are created for each free variable referenced in the "expression" parameter (e.g. the expression "a + b" yields number inputs named "a" and "b"). The "result" output and its type follow the expression.',
   JavaScriptFunction:

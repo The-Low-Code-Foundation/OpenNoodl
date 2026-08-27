@@ -2,6 +2,7 @@ import React from 'react';
 
 import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
+import { outwardValueForFieldType } from '../../../nodes/controls/textInputValue';
 import { Noodl, Slot } from '../../../types';
 import { noodlRootRef } from '../../noodl-root-ref';
 import { IconGlyph } from '../../visual/Icon/IconGlyph';
@@ -24,7 +25,7 @@ export interface TextInputProps extends Noodl.ReactProps {
   placeholder: string;
   maxLength: number;
 
-  startValue: string;
+  startValue: string | number;
   value: string;
 
   useLabel: boolean;
@@ -41,7 +42,7 @@ export interface TextInputProps extends Noodl.ReactProps {
   iconSize: string;
   iconColor: Noodl.Color;
 
-  onTextChanged?: (value: string) => void;
+  onTextChanged?: (value: string | number | null) => void;
   onEnter?: () => void;
 
   children: Slot;
@@ -63,15 +64,25 @@ export class TextInput extends React.Component<TextInputProps, State> {
     super(props);
 
     this.state = {
-      value: props.startValue
+      // Same coercion `setText` does, for the same reason: a Number field can be given its
+      // start value as a number, and the controlled `<input>` needs a string.
+      value: props.startValue === null || props.startValue === undefined ? '' : String(props.startValue)
     } satisfies State;
 
     this.ref = React.createRef();
   }
 
-  setText(value: string) {
-    this.setState({ value });
-    this.props.onTextChanged && this.props.onTextChanged(value);
+  /**
+   * FB-026 — what the field *holds* and what the node *emits* are two different things, and
+   * before this they were the same string. The rule, and why the state stays raw text, is in
+   * `nodes/controls/textInputValue.ts`.
+   */
+  setText(value: string | number) {
+    // Inward it is always text: `startValue` may arrive as a number on a Number field, and the
+    // `<input>`'s `value` has to be a string or React drops the control.
+    const text = value === null || value === undefined ? '' : String(value);
+    this.setState({ value: text });
+    this.props.onTextChanged && this.props.onTextChanged(outwardValueForFieldType(this.props.type, text));
   }
 
   componentDidMount() {
