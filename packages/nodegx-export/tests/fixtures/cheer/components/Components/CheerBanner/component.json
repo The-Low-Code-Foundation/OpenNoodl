@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "cb80401b-1ab0-4498-9339-3b215cc37788",
+  "name": "CheerBanner",
+  "path": "/Components/CheerBanner",
+  "type": "visual",
+  "created": "2026-08-27T08:30:04.008Z",
+  "modified": "2026-08-27T08:30:04.008Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "Receives the celebrate event and stores its message payload in the app-wide lastCheer variable, which the banner text reads back."
+}

@@ -11,6 +11,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+// The shipped default token set, read from the editor module that owns it (the Rise lesson:
+// never restate content the artifact already carries). Pure data, no editor runtime involved.
+import { DEFAULT_TOKENS } from '../../../noodl-editor/src/editor/src/models/StyleTokensModel/DefaultTokens';
 import { Catalog, CatalogIndex, EXECUTION_REVEALED_TYPES, isCodeEditorType, isSignalPort, portTypeName } from '../catalog';
 import {
   AuthoringIntent,
@@ -62,12 +65,7 @@ export function parseProject(projectDir: string, catalog: Catalog): ExportIR {
     name: projectFile.name ?? path.basename(projectDir),
     catalogFormatVersion: index.catalogFormatVersion,
     exporterVersion: EXPORTER_VERSION,
-    designTokens: (projectFile.metadata?.designTokens?.customTokens ?? []).map((t: any) => ({
-      name: t.name,
-      value: t.value,
-      ...(t.category !== undefined ? { category: t.category } : {}),
-      ...(t.description !== undefined ? { description: t.description } : {})
-    })),
+    designTokens: effectiveTokens(projectFile.metadata?.designTokens?.customTokens ?? []),
     collections: (projectFile.metadata?.dbCollections ?? []).map((c: any) => ({
       name: c.name,
       columns: (c.columns ?? []).map((col: any) => ({ name: col.name, type: col.type }))
@@ -76,6 +74,30 @@ export function parseProject(projectDir: string, catalog: Catalog): ExportIR {
   };
 
   return { project, components };
+}
+
+/**
+ * The effective token set — shipped defaults merged with the project's overrides, in shipped
+ * order, custom extras appended in source order. The runtime resolves `var()` against exactly
+ * this merge (editor `ProjectTokenCss.buildEffectiveTokens`, REV-009); emitting only the
+ * overrides left every default reference (`--space-4`, `--text-xl`, …) unresolved — found by
+ * the first fixture with no overrides at all (EXP-002-STEP5-TARGET-OUTPUT.md §6).
+ */
+function effectiveTokens(custom: any[]): ProjectIR['designTokens'] {
+  const overrides = new Map<string, any>(
+    custom.filter((t: any) => typeof t?.name === 'string').map((t: any) => [t.name, t])
+  );
+  const defaultNames = new Set(DEFAULT_TOKENS.map((t) => t.name));
+  const merged = [
+    ...DEFAULT_TOKENS.map((d) => overrides.get(d.name) ?? d),
+    ...custom.filter((t: any) => typeof t?.name === 'string' && !defaultNames.has(t.name))
+  ];
+  return merged.map((t: any) => ({
+    name: t.name,
+    value: t.value,
+    ...(t.category !== undefined ? { category: t.category } : {}),
+    ...(t.description !== undefined ? { description: t.description } : {})
+  }));
 }
 
 /** Recursively finds every directory under `root` holding a component.json. */

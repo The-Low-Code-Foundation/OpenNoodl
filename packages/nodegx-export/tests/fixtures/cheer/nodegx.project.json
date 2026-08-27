@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Cheer",
+  "id": "8ac40979-ada1-406c-91c5-9b69f3af6b68",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-08-27T08:28:56.551Z",
+  "modified": "2026-08-27T08:28:56.551Z",
+  "settings": {
+    "htmlTitle": "Cheer",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "481fc1ac-432a-404b-b92a-d4509a61bd72"
+}

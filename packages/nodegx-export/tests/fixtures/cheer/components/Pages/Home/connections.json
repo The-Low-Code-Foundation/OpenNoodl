@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "fc889956-7d22-40c0-b344-a1f391cfed60",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "nameInput",
+      "fromProperty": "onTextChanged",
+      "toId": "visitorVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "visitorVar",
+      "fromProperty": "value",
+      "toId": "cheerSend",
+      "toProperty": "message"
+    },
+    {
+      "fromId": "cheerButton",
+      "fromProperty": "onClick",
+      "toId": "cheerSend",
+      "toProperty": "sendEvent"
+    }
+  ]
+}

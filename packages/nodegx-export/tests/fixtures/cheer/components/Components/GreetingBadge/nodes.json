@@ -1,0 +1,54 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "a23b27b1-64cb-44c9-a093-a21bb85ac41b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "badge",
+      "type": "Group",
+      "label": "Badge",
+      "children": [
+        "greetText"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "sizeMode": "contentSize",
+        "backgroundColor": "var(--muted)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-1)",
+        "paddingBottom": "var(--space-1)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "greetText",
+      "type": "Text",
+      "label": "Visitor name",
+      "parent": "badge",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "readVisitor",
+      "type": "Variable2",
+      "label": "Read visitorName",
+      "parameters": {
+        "name": "visitorName"
+      },
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "badge"
+  ]
+}

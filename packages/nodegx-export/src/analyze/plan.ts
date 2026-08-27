@@ -1,8 +1,16 @@
 /**
- * Component analysis — EXP-002 step 4's decision stage. Parsing recorded what the project says;
- * this walks each component's visual tree and decides what the generator will do about it:
- * which nodes render (and as what), which collapse, which become stubs, and which defer to
- * EXP-003. Dispositions are analysis output about the graph, never facts of it (IR design).
+ * Component analysis — EXP-002 step 4's decision stage, extended by step 5. Parsing recorded
+ * what the project says; this walks each component's visual tree and decides what the generator
+ * will do about it: which nodes render (and as what), which collapse, which become stubs, and
+ * which defer to EXP-003. Dispositions are analysis output about the graph, never facts of it
+ * (IR design).
+ *
+ * Step 5 adds the app-state constructs (EXP-002-STEP5-TARGET-OUTPUT.md): Variables become the
+ * stores module, Send/Receive Event pairs become channels, and signal wires compile into
+ * handler *actions* — a navigate, a store `.set`, a channel `.emit` — attached to whichever
+ * handler owns the triggering signal (a rendered element's DOM event, or a receiver's
+ * `useSignal`). Value wires resolve by sink context: the same `Variable2.value` read is a
+ * `useValue` hook in rendered content and a `.get()` snapshot inside a handler.
  *
  * Everything here is pure decision-making over the IR; no text is generated. The emit layer
  * (emit/component.ts) turns a ComponentPlan into TSX/CSS.
@@ -13,13 +21,40 @@ import { ComponentIR, Disposition, ExportIR, NodeIR } from '../ir/types';
 import { routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
 import { StyleRole } from '../emit/style';
+import { AppStateRegistry, ChannelPlan, collectAppState, isTextInputType, payloadKeysOf, VariablePlan } from './appState';
+
+export type { ChannelPlan, VariablePlan } from './appState';
 
 /** How a node participates in the render, or null for pure logic nodes. */
 export type RenderRole = StyleRole | 'instance' | 'repeater';
 
 export type BindingSource =
   | { kind: 'prop'; name: string }
+  | { kind: 'store'; variableName: string }
   | { kind: 'unresolved'; fromId: string; fromProperty: string };
+
+/**
+ * A value read inside a handler or binding, resolved to what the generated code can actually
+ * say. `input-text` and `payload` are context-bound: they only exist inside the owning input's
+ * onChange and the owning receiver's handler respectively — attachment validates that.
+ */
+export type ValueExpr =
+  | { kind: 'prop'; name: string }
+  | { kind: 'input-text'; inputId: string }
+  | { kind: 'store-get'; variableName: string }
+  | { kind: 'payload'; key: string; receiverId: string };
+
+export type HandlerAction =
+  | { kind: 'navigate'; to: string }
+  | { kind: 'emit'; channelName: string; payload: Array<{ key: string; expr: ValueExpr }> }
+  | { kind: 'store-set'; variableName: string; expr: ValueExpr };
+
+export interface ReceiverPlan {
+  nodeId: string;
+  channelName: string;
+  /** Actions in trigger-wire source order — statement order in the useSignal handler. */
+  actions: HandlerAction[];
+}
 
 export interface PropPlan {
   name: string;
@@ -81,8 +116,12 @@ export interface ComponentPlan {
   roleOf: Record<string, RenderRole>;
   /** nodeId → toProperty → source, for value wires landing on rendered nodes. */
   bindings: Record<string, Record<string, BindingSource>>;
-  /** nodeId → source port → navigation url, for signal wires resolved to RouterNavigate. */
-  handlers: Record<string, Record<string, { navigateTo: string }>>;
+  /** nodeId → source signal port → actions, for signal wires resolved to handler statements. */
+  handlers: Record<string, Record<string, HandlerAction[]>>;
+  /** Rendered text input id → actions its onChange performs (the wired-onTextChanged rule). */
+  changeHandlers: Record<string, HandlerAction[]>;
+  /** Event Receivers this component hosts as useSignal subscriptions. */
+  receivers: ReceiverPlan[];
   queries: QueryPlan[];
   repeaters: Record<string, RepeaterPlan>;
   dispositions: Record<string, Disposition>;
@@ -97,18 +136,23 @@ export interface ProjectPlan {
   urlPathByLegacy: Map<string, string>;
   /** Collections needing an api stub module, in first-use order. */
   stubCollections: string[];
+  /** App-wide Variables, discovery order — src/stores/variables.ts when non-empty. */
+  variables: VariablePlan[];
+  /** Event channels, discovery order — src/events.ts when non-empty. */
+  channels: ChannelPlan[];
 }
 
 export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
   const pages = routedPages(ir);
   const urlPathByLegacy = new Map(pages.map((p) => [`/${p.componentPath}`, p.urlPath]));
   const pageFileByPath = new Map(pages.map((p) => [p.componentPath, { fileBase: p.fileBase, symbol: p.symbol }]));
+  const registry = collectAppState(ir);
 
   const usedPageNames = new Set(pages.map((p) => p.fileBase));
   const usedComponentNames = new Set<string>();
 
   const plans = ir.components.map((component) =>
-    planComponent(component, ir, catalog, urlPathByLegacy, pageFileByPath, usedPageNames, usedComponentNames)
+    planComponent(component, ir, catalog, registry, urlPathByLegacy, pageFileByPath, usedPageNames, usedComponentNames)
   );
 
   const byLegacyPath = new Map(plans.map((p) => [p.legacyPath, p]));
@@ -118,13 +162,21 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
       if (!stubCollections.includes(query.collectionName)) stubCollections.push(query.collectionName);
     }
   }
-  return { plans, byLegacyPath, urlPathByLegacy, stubCollections };
+  return {
+    plans,
+    byLegacyPath,
+    urlPathByLegacy,
+    stubCollections,
+    variables: [...registry.variables.values()],
+    channels: [...registry.channels.values()]
+  };
 }
 
 function planComponent(
   component: ComponentIR,
   ir: ExportIR,
   catalog: CatalogIndex,
+  registry: AppStateRegistry,
   urlPathByLegacy: Map<string, string>,
   pageFileByPath: Map<string, { fileBase: string; symbol: string }>,
   usedPageNames: Set<string>,
@@ -145,6 +197,8 @@ function planComponent(
     roleOf: {},
     bindings: {},
     handlers: {},
+    changeHandlers: {},
+    receivers: [],
     queries: [],
     repeaters: {},
     dispositions,
@@ -169,6 +223,7 @@ function planComponent(
   // Visual roots: parentless nodes that render. Order is source order (D2), which matches the
   // file's visualRoots in every observed project.
   const roots = component.nodes.filter((n) => n.parent === undefined && roleOf(n) !== null && roleOf(n) !== 'unsupported');
+  const rendered = new Set<string>();
   if (roots.length === 0) {
     for (const node of component.nodes) {
       dispositions[node.id] = dispositionForLogic(node);
@@ -185,7 +240,7 @@ function planComponent(
 
   // File identity: routed pages keep the scaffold's names so the page file replaces its
   // placeholder exactly; everything else allocates within its directory (D5). A routed
-  // component is a page whatever its component.json says — the editor's home page
+  // component is a page whatever its component.json says — the editor home page
   // (#__page__/Home) declares itself "visual".
   const routed = pageFileByPath.get(component.path);
   if (component.role === 'page' || routed) {
@@ -198,7 +253,6 @@ function planComponent(
   }
 
   // Walk the visual tree: roles, render children, the page collapse.
-  const rendered = new Set<string>();
   const walk = (node: NodeIR) => {
     const role = roleOf(node);
     if (role === null || role === 'unsupported') return;
@@ -275,16 +329,258 @@ function planComponent(
     };
   }
 
-  // Wires. Value wires from Component Inputs become prop bindings; the query→repeater items
-  // wire feeds the repeater; signal wires into RouterNavigate become navigate handlers.
-  // Everything else is recorded, not guessed (EXP-003's territory).
+  // ---- wires (step 5 restructured step 4's single loop into targeted passes) --------------
+  //
+  // 1. Action sinks (RouterNavigate, Event Sender, Set Variable) compile once each.
+  // 2. Signal wires into their trigger ports attach the compiled action to the handler owner —
+  //    a rendered element's DOM event, or a receiver's useSignal.
+  // 3. A wired onTextChanged into a Variable becomes the input's onChange (write-through).
+  // 4. Variable reads into rendered sinks become store bindings (useValue at emit).
+  // 5. Component Inputs bindings and the query→repeater feed (step 4's rules, unchanged).
+  // 6. Whatever no pass consumed is reported. Nothing silently dropped.
+  const consumed = new Set<string>();
+
+  const variableNameOf = (node: NodeIR): string | undefined => {
+    const name = literalParam(node, 'name');
+    return typeof name === 'string' && registry.variables.has(name) ? name : undefined;
+  };
+  const channelNameOf = (node: NodeIR): string | undefined => {
+    const name = literalParam(node, 'channelName');
+    return typeof name === 'string' && registry.channels.has(name) ? name : undefined;
+  };
+
+  const resolveExpr = (fromNode: NodeIR | undefined, fromProperty: string): ValueExpr | null => {
+    if (!fromNode) return null;
+    if (fromNode.type === 'Component Inputs') return { kind: 'prop', name: fromProperty };
+    if (fromNode.type === 'Variable2' && fromProperty === 'value') {
+      const name = variableNameOf(fromNode);
+      return name !== undefined ? { kind: 'store-get', variableName: name } : null;
+    }
+    if (isTextInputType(fromNode.type) && fromProperty === 'onTextChanged') {
+      return { kind: 'input-text', inputId: fromNode.id };
+    }
+    if (fromNode.type === 'Event Receiver' && fromProperty !== 'eventReceived') {
+      const name = channelNameOf(fromNode);
+      const known = name !== undefined && registry.channels.get(name)!.payload.some((p) => p.key === fromProperty);
+      return known ? { kind: 'payload', key: fromProperty, receiverId: fromNode.id } : null;
+    }
+    return null;
+  };
+
+  type CompiledSink = { action: HandlerAction; consumes: string[] } | { defer: string };
+
+  const TRIGGER_PORTS: Record<string, string> = {
+    RouterNavigate: 'navigate',
+    'Event Sender': 'sendEvent',
+    'Set Variable': 'do'
+  };
+
+  const compileSink = (node: NodeIR): CompiledSink => {
+    if (node.type === 'RouterNavigate') {
+      const target = literalParam(node, 'target');
+      const url = typeof target === 'string' ? urlPathByLegacy.get(target) : undefined;
+      if (url === undefined) return { defer: `navigation target ${String(target)} is not a routed page` };
+      return { action: { kind: 'navigate', to: url }, consumes: [] };
+    }
+    if (node.type === 'Event Sender') {
+      const channelName = channelNameOf(node);
+      if (channelName === undefined) return { defer: 'channel name is not a literal' };
+      const propagation = literalParam(node, 'propagation') ?? 'global';
+      if (propagation !== 'global') {
+        return { defer: `propagation "${String(propagation)}" scopes the event to the component tree` };
+      }
+      const payload: Array<{ key: string; expr: ValueExpr }> = [];
+      const consumes: string[] = [];
+      for (const key of payloadKeysOf(node)) {
+        const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === key);
+        if (!wire) continue; // an unwired payload key sends undefined — omitted (C3)
+        const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty);
+        if (expr === null) return { defer: `payload "${key}" has no statically known source` };
+        payload.push({ key, expr });
+        consumes.push(wire.key);
+      }
+      return { action: { kind: 'emit', channelName, payload }, consumes };
+    }
+    // Set Variable
+    const variableName = variableNameOf(node);
+    if (variableName === undefined) return { defer: 'variable name is not a literal' };
+    const setWith = literalParam(node, 'setWith');
+    if (setWith !== undefined && setWith !== 'string') {
+      return { defer: `setWith "${String(setWith)}" conversion is not translated in step 5` };
+    }
+    const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'value');
+    if (!wire) return { defer: 'nothing is wired into value' };
+    const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty);
+    if (expr === null) return { defer: 'the value wire has no statically known source' };
+    return { action: { kind: 'store-set', variableName, expr }, consumes: [wire.key] };
+  };
+
+  const compiledSinks = new Map<string, CompiledSink>();
+  for (const node of component.nodes) {
+    if (TRIGGER_PORTS[node.type] !== undefined) compiledSinks.set(node.id, compileSink(node));
+  }
+
+  const actionExprs = (action: HandlerAction): ValueExpr[] =>
+    action.kind === 'emit' ? action.payload.map((p) => p.expr) : action.kind === 'store-set' ? [action.expr] : [];
+
+  const exprValidIn = (
+    expr: ValueExpr,
+    context: { kind: 'dom'; nodeId: string } | { kind: 'receiver'; receiverId: string }
+  ): boolean => {
+    switch (expr.kind) {
+      case 'prop':
+      case 'store-get':
+        return true;
+      case 'input-text':
+        return context.kind === 'dom' && context.nodeId === expr.inputId;
+      case 'payload':
+        return context.kind === 'receiver' && context.receiverId === expr.receiverId;
+    }
+  };
+
+  const receiverEligible = (node: NodeIR): { channelName: string } | { defer: string } => {
+    const channelName = channelNameOf(node);
+    if (channelName === undefined) return { defer: 'channel name is not a literal' };
+    const enabledWired = component.connections.some((c) => c.toId === node.id && c.toProperty === 'enabled');
+    if (literalParam(node, 'enabled') !== undefined || enabledWired) {
+      return { defer: 'an authored enabled input gates this receiver' };
+    }
+    return { channelName };
+  };
+
+  // Pass 2: attach compiled actions to handler owners, trigger wires in source order.
+  const receiverActions = new Map<string, HandlerAction[]>();
   for (const connection of component.connections) {
+    const toNode = nodeById.get(connection.toId);
+    if (!toNode || TRIGGER_PORTS[toNode.type] !== connection.toProperty) continue;
+    consumed.add(connection.key);
+    const compiled = compiledSinks.get(toNode.id)!;
+    if ('defer' in compiled) {
+      dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: compiled.defer };
+      notes.push(`wire ${connection.key} dropped: ${compiled.defer}`);
+      continue;
+    }
+    const fromNode = nodeById.get(connection.fromId);
+    if (fromNode && rendered.has(fromNode.id) && connection.kind === 'signal') {
+      if (!actionExprs(compiled.action).every((e) => exprValidIn(e, { kind: 'dom', nodeId: fromNode.id }))) {
+        dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: 'the action reads values that only exist in another handler' };
+        notes.push(`wire ${connection.key} dropped: the action reads values that only exist in another handler`);
+        continue;
+      }
+      plan.handlers[fromNode.id] = plan.handlers[fromNode.id] ?? {};
+      const list = (plan.handlers[fromNode.id][connection.fromProperty] =
+        plan.handlers[fromNode.id][connection.fromProperty] ?? []);
+      list.push(compiled.action);
+      dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
+      for (const key of compiled.consumes) consumed.add(key);
+      continue;
+    }
+    if (fromNode?.type === 'Event Receiver' && connection.fromProperty === 'eventReceived') {
+      const eligible = receiverEligible(fromNode);
+      if ('defer' in eligible) {
+        dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: eligible.defer };
+        notes.push(`wire ${connection.key} dropped: ${eligible.defer}`);
+        continue;
+      }
+      if (!actionExprs(compiled.action).every((e) => exprValidIn(e, { kind: 'receiver', receiverId: fromNode.id }))) {
+        dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: 'the action reads values that only exist in another handler' };
+        notes.push(`wire ${connection.key} dropped: the action reads values that only exist in another handler`);
+        continue;
+      }
+      receiverActions.set(fromNode.id, [...(receiverActions.get(fromNode.id) ?? []), compiled.action]);
+      dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
+      for (const key of compiled.consumes) consumed.add(key);
+      continue;
+    }
+    dispositions[toNode.id] = {
+      kind: 'deferred',
+      to: 'EXP-003',
+      reason: `trigger ${connection.fromId}.${connection.fromProperty} is not a rendered element event or a receiver`
+    };
+    notes.push(`wire ${connection.key} dropped: the trigger is not a rendered element event or a receiver`);
+  }
+
+  // Receivers with attached actions become useSignal subscriptions in this component's file.
+  for (const node of component.nodes) {
+    if (node.type !== 'Event Receiver') continue;
+    const actions = receiverActions.get(node.id);
+    if (!actions || actions.length === 0) {
+      if (dispositions[node.id] === undefined) {
+        dispositions[node.id] = {
+          kind: 'deferred',
+          to: 'EXP-003',
+          reason: 'received event drives nothing statically translatable'
+        };
+      }
+      continue;
+    }
+    if (!plan.file) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: 'component emits no file to host the subscription' };
+      notes.push(`receiver ${node.id} deferred: component emits no file to host the subscription`);
+      continue;
+    }
+    if (literalParam(node, 'consume') === 'always') {
+      notes.push(`receiver ${node.id} consumes events; exported subscribers all receive every event`);
+    }
+    plan.receivers.push({ nodeId: node.id, channelName: channelNameOf(node)!, actions });
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+  }
+
+  // Pass 3: a wired onTextChanged into a Variable is the input's onChange — write-through,
+  // and nothing else: the input stays uncontrolled because no wire feeds text back in.
+  for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
+    const toNode = nodeById.get(connection.toId);
+    if (toNode?.type !== 'Variable2' || connection.toProperty !== 'value') continue;
+    consumed.add(connection.key);
+    const variableName = variableNameOf(toNode);
+    const fromNode = nodeById.get(connection.fromId);
+    if (
+      variableName !== undefined &&
+      fromNode &&
+      isTextInputType(fromNode.type) &&
+      connection.fromProperty === 'onTextChanged' &&
+      rendered.has(fromNode.id)
+    ) {
+      const list = (plan.changeHandlers[fromNode.id] = plan.changeHandlers[fromNode.id] ?? []);
+      list.push({ kind: 'store-set', variableName, expr: { kind: 'input-text', inputId: fromNode.id } });
+    } else {
+      notes.push(
+        `wire ${connection.key} dropped: a variable write is only translated from a rendered text input in step 5`
+      );
+    }
+  }
+
+  // Pass 4: Variable reads into rendered sinks become store bindings (useValue at emit).
+  for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
+    const fromNode = nodeById.get(connection.fromId);
+    if (fromNode?.type !== 'Variable2' || connection.fromProperty !== 'value') continue;
+    const toNode = nodeById.get(connection.toId);
+    if (!toNode || !rendered.has(toNode.id)) continue; // leave for the catch-all
+    consumed.add(connection.key);
+    const variableName = variableNameOf(fromNode);
+    if (variableName === undefined) {
+      notes.push(`wire ${connection.key} dropped: variable name is not a literal`);
+      continue;
+    }
+    if (registry.variables.get(variableName)!.tsType !== 'string') {
+      notes.push(`wire ${connection.key} dropped: variable "${variableName}" has no statically-typed writer`);
+      continue;
+    }
+    plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
+    plan.bindings[toNode.id][connection.toProperty] = { kind: 'store', variableName };
+  }
+
+  // Pass 5: Component Inputs bindings and the query→repeater feed (step 4's rules).
+  for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
     const fromNode = nodeById.get(connection.fromId);
     const toNode = nodeById.get(connection.toId);
-
     if (fromNode?.type === 'Component Inputs' && toNode && rendered.has(toNode.id)) {
       plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
       plan.bindings[toNode.id][connection.toProperty] = { kind: 'prop', name: connection.fromProperty };
+      consumed.add(connection.key);
       continue;
     }
     if (
@@ -294,26 +590,26 @@ function planComponent(
       plan.repeaters[toNode.id]
     ) {
       plan.repeaters[toNode.id].itemsQueryId = fromNode.id;
+      consumed.add(connection.key);
       continue;
     }
-    if (toNode?.type === 'RouterNavigate' && connection.toProperty === 'navigate') {
-      const target = toNode ? literalParam(toNode, 'target') : undefined;
-      const url = typeof target === 'string' ? urlPathByLegacy.get(target) : undefined;
-      if (url !== undefined && fromNode && rendered.has(fromNode.id) && connection.kind === 'signal') {
-        plan.handlers[fromNode.id] = plan.handlers[fromNode.id] ?? {};
-        plan.handlers[fromNode.id][connection.fromProperty] = { navigateTo: url };
-        dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
-      } else {
-        dispositions[toNode.id] = {
-          kind: 'deferred',
-          to: 'EXP-003',
-          reason: `navigation target ${String(target)} is not a routed page or the trigger is not a rendered node`
-        };
-        notes.push(`wire ${connection.key} dropped: unresolvable navigation`);
-      }
-      continue;
+  }
+
+  // Pass 6: report every wire nothing translated.
+  for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
+    notes.push(`wire ${connection.key} has no deterministic translation in step 5 (deferred to EXP-003)`);
+  }
+
+  // Variables collapse into the stores module — the node is the module's provenance.
+  for (const node of component.nodes) {
+    if (node.type !== 'Variable2' || dispositions[node.id] !== undefined) continue;
+    if (variableNameOf(node) !== undefined) {
+      dispositions[node.id] = { kind: 'collapsed', into: 'src/stores/variables.ts' };
+    } else {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: 'variable name is not a literal' };
+      notes.push(`node ${node.id} (Variable2) deferred: variable name is not a literal`);
     }
-    notes.push(`wire ${connection.key} has no deterministic translation in step 4 (deferred to EXP-003)`);
   }
 
   // Queries: a DbCollection2 consumed by a rendered repeater becomes state + effect + typed
@@ -321,8 +617,8 @@ function planComponent(
   const usedStateNames = new Set<string>();
   for (const node of component.nodes) {
     if (node.type !== 'DbCollection2') continue;
-    const consumed = Object.values(plan.repeaters).some((r) => r.itemsQueryId === node.id);
-    if (!consumed) {
+    const consumedByRepeater = Object.values(plan.repeaters).some((r) => r.itemsQueryId === node.id);
+    if (!consumedByRepeater) {
       dispositions[node.id] = {
         kind: 'deferred',
         to: 'EXP-003',

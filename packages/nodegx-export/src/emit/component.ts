@@ -17,7 +17,7 @@
  */
 
 import { CatalogIndex } from '../catalog';
-import { BindingSource, ComponentPlan, ProjectPlan, QueryPlan } from '../analyze/plan';
+import { BindingSource, ComponentPlan, HandlerAction, ProjectPlan, QueryPlan, ValueExpr } from '../analyze/plan';
 import { ExportIR, NodeIR } from '../ir/types';
 import { assignClassNames, ClassCandidate, partitionMergeGroup } from './naming';
 import { computeNodeStyle, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, StyleRole } from './style';
@@ -121,12 +121,113 @@ export function emitComponent(
     return index === undefined ? undefined : classNames[index];
   };
 
+  // ---- app state usage (step 5) ----------------------------------------------------------
+  // Which variables and channels this component touches, and how: a render binding earns a
+  // useValue hook; a handler read is a `.get()` snapshot; a receiver earns useSignal. Collected
+  // up front because the import list and the reserved-identifier set depend on it.
+  const variableByName = new Map(project.variables.map((v) => [v.name, v]));
+  const channelByName = new Map(project.channels.map((c) => [c.name, c]));
+  const usedVariableNames = new Set<string>();
+  const usedChannelNames = new Set<string>();
+  const collectExprUse = (expr: ValueExpr) => {
+    if (expr.kind === 'store-get') usedVariableNames.add(expr.variableName);
+  };
+  const collectActionUse = (action: HandlerAction) => {
+    if (action.kind === 'emit') {
+      usedChannelNames.add(action.channelName);
+      action.payload.forEach((p) => collectExprUse(p.expr));
+    }
+    if (action.kind === 'store-set') {
+      usedVariableNames.add(action.variableName);
+      collectExprUse(action.expr);
+    }
+  };
+  const allActions: HandlerAction[] = [
+    ...Object.values(plan.handlers).flatMap((byPort) => Object.values(byPort).flat()),
+    ...Object.values(plan.changeHandlers).flat(),
+    ...plan.receivers.flatMap((r) => r.actions)
+  ];
+  allActions.forEach(collectActionUse);
+  for (const receiver of plan.receivers) usedChannelNames.add(receiver.channelName);
+
+  // Render bindings needing hooks, in pre-order encounter order.
+  const hookVariables: string[] = [];
+  for (const id of preOrder(plan)) {
+    for (const source of Object.values(plan.bindings[id] ?? {})) {
+      if (source.kind === 'store' && !hookVariables.includes(source.variableName)) {
+        hookVariables.push(source.variableName);
+        usedVariableNames.add(source.variableName);
+      }
+    }
+  }
+
+  const usesNavigate = allActions.some((a) => a.kind === 'navigate');
+
+  // The hook's local name is the variable's last camelCase word (`visitorName` → `name`),
+  // deduplicated against everything else in scope, falling back to `<export>Value`.
+  const reserved = new Set<string>(['event', 'navigate', 'payload', 'styles', plan.file.symbol]);
+  plan.props.forEach((p) => reserved.add(p.name));
+  plan.queries.forEach((q) => {
+    [q.stateName, q.setterName, q.itemName, q.fetchName, q.typeName].forEach((n) => reserved.add(n));
+  });
+  for (const name of usedVariableNames) reserved.add(variableByName.get(name)!.exportName);
+  for (const name of usedChannelNames) reserved.add(channelByName.get(name)!.exportName);
+  const hookLocals = new Map<string, string>();
+  for (const variableName of hookVariables) {
+    const exportName = variableByName.get(variableName)!.exportName;
+    const words = exportName.split(/(?=[A-Z])/).filter((w) => w.length > 0);
+    let candidate = words[words.length - 1].charAt(0).toLowerCase() + words[words.length - 1].slice(1);
+    if (reserved.has(candidate)) candidate = `${exportName}Value`;
+    let counter = 2;
+    while (reserved.has(candidate)) candidate = `${exportName}Value${counter++}`;
+    reserved.add(candidate);
+    hookLocals.set(variableName, candidate);
+  }
+
+  // ---- handler statement rendering -------------------------------------------------------
+  const exprCode = (expr: ValueExpr): string => {
+    switch (expr.kind) {
+      case 'prop':
+        return expr.name;
+      case 'input-text':
+        return 'event.target.value';
+      case 'store-get':
+        return `${variableByName.get(expr.variableName)!.exportName}.get()`;
+      case 'payload':
+        return `payload.${expr.key}`;
+    }
+  };
+  const actionCode = (action: HandlerAction): string => {
+    switch (action.kind) {
+      case 'navigate':
+        return `navigate('${action.to}')`;
+      case 'store-set':
+        return `${variableByName.get(action.variableName)!.exportName}.set(${exprCode(action.expr)})`;
+      case 'emit': {
+        const channel = channelByName.get(action.channelName)!;
+        if (channel.payloadTypeName === null) return `${channel.exportName}.emit()`;
+        const entries = action.payload.map((p) => `${p.key}: ${exprCode(p.expr)}`).join(', ');
+        return `${channel.exportName}.emit({${entries.length > 0 ? ` ${entries} ` : ''}})`;
+      }
+    }
+  };
+  const handlerArrow = (actions: HandlerAction[], param: string): string => {
+    const statements = actions.map(actionCode);
+    return statements.length === 1
+      ? `${param} => ${statements[0]}`
+      : `${param} => { ${statements.join('; ')}; }`;
+  };
+
   // ---- imports ---------------------------------------------------------------------------
   // Both src/pages and src/components sit one level below src/, where api/ lives.
   const relRoot = '..';
-  const usesNavigate = Object.keys(plan.handlers).length > 0;
-  const instanceSymbols = new Map<string, string>(); // module specifier → symbol
   const externalImports: string[] = [];
+  const coreHooks: string[] = [];
+  if (hookLocals.size > 0) coreHooks.push('useValue');
+  if (plan.receivers.length > 0) coreHooks.push('useSignal');
+  if (coreHooks.length > 0) {
+    externalImports.push(`import { ${coreHooks.sort().join(', ')} } from '@nodegx/core/react';`);
+  }
   if (plan.queries.length > 0) externalImports.push(`import { useEffect, useState } from 'react';`);
   if (usesNavigate) externalImports.push(`import { useNavigate } from 'react-router-dom';`);
 
@@ -146,6 +247,16 @@ export function emitComponent(
       `import { ${[...fetchNames, ...typeNames.map((t) => `type ${t}`)].join(', ')} } from '${specifier}';`
     );
   }
+  if (usedVariableNames.size > 0) {
+    const specifier = `${relRoot}/stores/variables`;
+    const names = [...usedVariableNames].map((n) => variableByName.get(n)!.exportName).sort();
+    internalImports.set(specifier, `import { ${names.join(', ')} } from '${specifier}';`);
+  }
+  if (usedChannelNames.size > 0) {
+    const specifier = `${relRoot}/events`;
+    const names = [...usedChannelNames].map((n) => channelByName.get(n)!.exportName).sort();
+    internalImports.set(specifier, `import { ${names.join(', ')} } from '${specifier}';`);
+  }
 
   const requireInstance = (legacyPath: string | null, where: string): { symbol: string } | null => {
     if (!legacyPath) return null;
@@ -163,6 +274,7 @@ export function emitComponent(
   // ---- JSX -------------------------------------------------------------------------------
   const bindingExpr = (source: BindingSource): string | null => {
     if (source.kind === 'prop') return source.name;
+    if (source.kind === 'store') return hookLocals.get(source.variableName) ?? null;
     return null;
   };
 
@@ -188,15 +300,22 @@ export function emitComponent(
 
   const handlerAttrs = (node: NodeIR): string[] => {
     const attrs: string[] = [];
-    for (const [port, action] of Object.entries(plan.handlers[node.id] ?? {})) {
+    for (const [port, actions] of Object.entries(plan.handlers[node.id] ?? {})) {
       const eventAttr = EVENT_ATTRS[port];
       if (!eventAttr) {
         notes.push(`${plan.path}: signal ${node.id}.${port} has no DOM event equivalent — dropped, reported`);
         continue;
       }
-      attrs.push(`${eventAttr}={() => navigate('${action.navigateTo}')}`);
+      attrs.push(`${eventAttr}={${handlerArrow(actions, '()')}}`);
     }
     return attrs;
+  };
+
+  /** The wired-onTextChanged rule: writes on change, and nothing else — the input stays native. */
+  const changeAttrs = (node: NodeIR): string[] => {
+    const actions = plan.changeHandlers[node.id];
+    if (!actions || actions.length === 0) return [];
+    return [`onChange={${handlerArrow(actions, '(event)')}}`];
   };
 
   const childText = (node: NodeIR, paramName: string): string | null => {
@@ -228,6 +347,7 @@ export function emitComponent(
     const className = classOf(id);
     if (className) attrs.push(`className={styles.${className}}`);
     if (role === 'image' || role === 'input') attrs.push(...contentAttrs(node));
+    if (role === 'input') attrs.push(...changeAttrs(node));
     attrs.push(...handlerAttrs(node));
 
     if (role === 'text') {
@@ -332,12 +452,26 @@ export function emitComponent(
       : `export function ${symbol}() {`;
   body.push(signature);
   if (usesNavigate) body.push('  const navigate = useNavigate();');
+  for (const variableName of hookVariables) {
+    body.push(`  const ${hookLocals.get(variableName)} = useValue(${variableByName.get(variableName)!.exportName});`);
+  }
   for (const query of plan.queries) {
     body.push(`  const [${query.stateName}, ${query.setterName}] = useState<${query.typeName}[]>([]);`);
   }
-  if (usesNavigate || plan.queries.length > 0) body.push('');
+  if (usesNavigate || hookVariables.length > 0 || plan.queries.length > 0) body.push('');
   for (const query of plan.queries) {
     body.push('  useEffect(() => {', `    ${query.fetchName}().then(${query.setterName});`, '  }, []);', '');
+  }
+  for (const receiver of plan.receivers) {
+    const channel = channelByName.get(receiver.channelName)!;
+    const usesPayload = receiver.actions.some((a) =>
+      (a.kind === 'emit' ? a.payload.map((p) => p.expr) : a.kind === 'store-set' ? [a.expr] : []).some(
+        (e) => e.kind === 'payload'
+      )
+    );
+    body.push(`  useSignal(${channel.exportName}, ${usesPayload ? '(payload)' : '()'} => {`);
+    for (const action of receiver.actions) body.push(`    ${actionCode(action)};`);
+    body.push('  });', '');
   }
   body.push('  return (', ...jsxLines, '  );', '}');
 

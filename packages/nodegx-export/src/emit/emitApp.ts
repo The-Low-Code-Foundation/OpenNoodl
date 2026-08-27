@@ -1,8 +1,8 @@
 /**
  * Whole-app emission: the scaffold, then the visual generator's component/page files replacing
- * the scaffold's placeholders, then the typed api stubs the pages consume. The dependency list
- * stays computed from the output (TARGET-OUTPUT §3): nothing here adds @nodegx/core, because
- * nothing generated imports it.
+ * the scaffold's placeholders, then the app-state modules (stores/events — step 5) and the
+ * typed api stubs the pages consume. The dependency list stays computed from the output
+ * (TARGET-OUTPUT §3): @nodegx/core joins package.json exactly when a generated file imports it.
  */
 
 import { Catalog, CatalogIndex } from '../catalog';
@@ -10,6 +10,7 @@ import { planProject, ProjectPlan, QueryPlan } from '../analyze/plan';
 import { ExportIR } from '../ir/types';
 import { emitComponent } from './component';
 import { emitScaffold } from './scaffold';
+import { emitStateModules } from './state';
 
 const GENERATED_TS = '// @nodegx:generated (api stub — provenance markers complete in EXP-007)\n';
 
@@ -41,11 +42,31 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   for (const [path, content] of apiStubs(ir, project)) {
     files[path] = content;
   }
+  Object.assign(files, emitStateModules(project));
+
+  // Dependencies are computed from the output (TARGET-OUTPUT §3): the library is earned by an
+  // import, never declared up front.
+  const usesCore = Object.entries(files).some(
+    ([path, content]) => path !== 'package.json' && content.includes("from '@nodegx/core")
+  );
+  if (usesCore) {
+    files['package.json'] = withCoreDependency(files['package.json']);
+  }
 
   return {
     files: Object.fromEntries(Object.entries(files).sort(([a], [b]) => (a < b ? -1 : 1))),
     notes
   };
+}
+
+function withCoreDependency(packageJson: string): string {
+  const parsed = JSON.parse(packageJson);
+  parsed.dependencies = Object.fromEntries(
+    [['@nodegx/core', '^0.1.0'], ...Object.entries(parsed.dependencies ?? {})].sort(([a], [b]) =>
+      a < b ? -1 : 1
+    )
+  );
+  return JSON.stringify(parsed, null, 2) + '\n';
 }
 
 /**
