@@ -102,3 +102,23 @@ Cheapest fix: give the node a `text` parameter that is a sensible standing value
 overrides something rather than filling a blank. ⚠️ Note this is a *template* fix and the
 template content is **generated** — edit the component set and run
 `npm run template:site-builder`, or `sb007Template.test.ts` reddens.
+
+## 5. 🆕 A third one, found by SB-017's drive (s17)
+
+`submitContactForm` answers **`{"received": false}`** on a request whose message it stored
+correctly — driven over real HTTP against a real backend, so this is the answer a visitor's
+form gets.
+
+`compose`'s script ends `Outputs.built()`, which makes `out-built` a **signal**, and
+`compose.out-built` is wired to `res-3.pm-received` — a **value** parameter port on the
+Response node. `canCastPortTypes` allows the cast, so nothing warns on the canvas and nothing
+drops on the way out; the port simply never receives a value and the response reports the
+declared default.
+
+Same family as §2 and §3: a wire that is structurally fine and semantically dead. Two shapes
+of fix — publish a value (`Outputs.built = true` beside the signal, with a second
+`scriptOutputs` entry) or drop the `received` parameter and let the 200 be the answer — and
+the second is a change to what the endpoint promises, so it is not a free pick.
+
+⚠️ It is also the one connection WFA-009's `pm-` rule kept when SB-017 dropped the other 51,
+which is why it survived to be observed at all.

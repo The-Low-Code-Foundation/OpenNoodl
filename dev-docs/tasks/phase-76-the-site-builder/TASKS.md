@@ -456,8 +456,36 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   the authored door fails to resolve references, but that **one spelling of the same reference goes
   unresolved**. That names the fix's diagnostic for it.
 
-- 🔴 **SB-017** — [the deploy drops half the cloud graph](SB-017-THE-DEPLOY-DROPS-HALF-THE-GRAPH.md)
-  — **MEASURED s15 by the drive nobody had run. The template does not work.** Made from
+- ✅ **SB-017** — [the deploy drops half the cloud graph](SB-017-THE-DEPLOY-DROPS-HALF-THE-GRAPH.md)
+  — **FIXED AND DRIVEN s17 (commit `0236a696`). 49 of 100 becomes 100, and both endpoints answer.**
+  The editor now derives a cloud node's dynamic ports itself — three `NodeTypeAdapters` classes over
+  an import-free `cloudDynamicPorts.ts` — replacing the client WF-007 deleted, per Richard's ruling.
+  **Driven on the same preserved backend s15 used**: the deployed bundle went **49 → 100**
+  connections, `submitContactForm` answers **200 in 0.055 s** (was 504 in 30.017 s) and stores all
+  four submitted values, and `claimSite` answers **`{"claimed": true}` in 26 ms** (was
+  `status = error`, 30005 ms), minting `_Role` 1, the join row, `SiteSettings` **1** and `Theme` 1
+  — so SB-013's singleton fix holds on the real deploy path, which nothing had measured there.
+  🔴 **With two known-firing controls**: a second claim with the **correct** token on the now-claimed
+  site is refused, a wrong token is refused, and **neither wrote a row**.
+  🔴 **`prop-*` is derived partly from the wires, and that is a measurement, not a shortcut.** The
+  runtime builds it from introspected columns; the real drive project's `dbCollections` metadata,
+  written by a live bound started backend, is `columns: []` on every class — **permanently**, because
+  a column exists once something has written it and the graph that writes it is the graph whose ports
+  are missing. (That also answers §6.5's open question about s15's live-backend control.) The
+  runtime registers `prop-<anything>` from the wire, so the derivation states what the runtime does.
+  ⚠️ **Its cost is stated**: on that family, on those types, in a cloud component, a wire can no
+  longer be reported as going to a port that does not exist. Both controls still fire.
+  ✅ **84 warnings → 23, and all 23 are browser-side** — `/Pages/PageEditor` 14, `/Pages/Admin` 3,
+  `/Pages/ThemeEditor` 3, `/Admin/SectionRow` 1. **The public site and the Setup page are clean**,
+  which bounds §6.5's browser question for the first time: the drop is confined to the admin panel.
+  ⬜ **Still owed**: the Setup-page half of acceptance 2 (same browser deploy); the browser half
+  itself; and the backend-side half of acceptance 1 (`authored-bundle.ts` lossless on connections).
+  🆕 **A third small template defect** found by the drive → SB-018 §5: `submitContactForm` answers
+  `{"received": false}` about a message it stored, because `Outputs.built()` is a **signal** wired
+  into the Response's **value** port `pm-received`.
+
+  *The measurement that produced all of this, kept because it is what the fix is graded against:*
+  **MEASURED s15 by the drive nobody had run. The template did not work.** Made from
   `embedded://site-builder` in the real editor, opened, given a backend through the real UI:
   **every cloud endpoint times out.** `claimSite` from the template's own Setup page, real signup,
   real generated token — `status = error`, **30005 ms**. `submitContactForm`, policy `public`,

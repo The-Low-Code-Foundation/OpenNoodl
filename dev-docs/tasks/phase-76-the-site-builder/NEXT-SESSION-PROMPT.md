@@ -1,124 +1,107 @@
 # Phase 76 — next session
 
-Read `TASKS.md` here first. **s16 settled the ruling s15 asked for and wrote the test whose
-absence let the template ship broken.** The test is red, on purpose, and the fix is not
-written. Read **SB-017 §6 and §8** before anything else — §6 is now an answer, not a question,
-and §8 is Richard's ruling.
+Read `TASKS.md` here first. **s17 wrote the fix, and drove it: both endpoints answer.**
+SB-017 is closed except for three named remainders. Read **SB-017 §10** — it is the whole of
+what s17 did, and §10.2 is the one decision a reviewer should push on.
 
 Before authoring any *cloud* component, read `dev-docs/reference/BACKEND-AUTHORING-MODEL.md`
 §**"Five things a deployed graph does not do the way the canvas does"**. Before any *browser*
 component, **SB-005 §7** and **SB-006 §7**. Before touching the template, **SB-007 §3/§4**.
 
-## Where s16 left it (2026-08-27)
+## Where s17 left it (2026-08-27)
 
-✅ **SB-017 §6 is RESOLVED, and the answer moved the fix off the authoring door.** s15 left one
-reading to do; four files answered all three of §6's questions.
+✅ **SB-017 is FIXED (`0236a696`) and DRIVEN.** The editor now derives a cloud node's dynamic
+ports itself — the client WF-007 deleted, replaced where `dynamicPortRules.ts`'s header says
+it belongs: three `NodeTypeAdapters` classes over an import-free
+`models/nodelibrary/cloudDynamicPorts.ts`.
 
-- **The node is not "written incomplete" — incompleteness is the norm.** Every
-  `JavaScriptFunction` persists a short `ports` array on **both** runtimes, and the browser side
-  is *shorter*: **69 undeclared script-port connections raising 0 warnings**, against the cloud's
-  **44 and 44**. `/Site/SectionView`'s `unpack` declares **zero** ports and SB-008 drove it fine.
-  Same disk shape, one runtime breaks ⇒ the shape is not the cause.
-- **The runtime never needed the ports.** `NodeScope.createConnection` calls
-  `registerInputIfNeeded`/`registerOutputIfNeeded` on the wire's own ports
-  (`nodescope.ts:149-150`). **The wire is the declaration** — which is why `authored-bundle.ts`,
-  which drops nothing, produces working functions.
-- 🔴 **One cause, five families.** Dynamic ports reach the editor only from a connected runtime
-  client calling `sendDynamicPorts`. **WF-007 deleted the cloud-runtime window** and
-  `NodeLibraryImporter.ts:285` says so in as many words; WFA-001 replaced it with a **static**
-  library, which carries declared ports and nothing a node computes. `pm-` is the one family that
-  works, **because WFA-009 already built the editor-side generator this task needs** — for one
-  family.
+- **The deployed bundle went 49 → 100 connections**, on the same preserved backend s15 used.
+- **`submitContactForm`: 200 in 0.055 s** (was 504 in 30.017 s), and the stored
+  `ContactMessage` carries all four submitted values.
+- **`claimSite`: `{"claimed": true}` in 26 ms** (was `status = error`, 30005 ms) — minting
+  `_Role` 1, the join row, `SiteSettings` **1** and `Theme` 1. 🔴 **SB-013's singleton fix
+  holds on the real deploy path**, which nothing had ever measured there.
+- 🔴 **Two known-firing controls**: a second claim with the **correct** token is refused, a
+  wrong token is refused, and **neither wrote a row**.
+- ✅ **84 warnings → 23.**
 
-✅ **Richard's ruling (SB-017 §8): derive the ports in the editor for cloud components**, i.e.
-replace the client WF-007 deleted. Not the door, not the exporter, not "stop dropping". **Where
-the code goes is already prescribed** by `dynamicPortRules.ts`'s own header: a `NodeTypeAdapters`
-class per family, *not* a new `namedports/list` rule. The script parser already exists and is
-shared (`JavascriptNodeParser.parseAndAddPortsFromScript`), so the adapter is a caller.
-
-🔴 **The thing most likely to waste your session: a script-port-only fix does not work.**
-**51 dropped = 32 script-only + 19 schema-family.** `claimSite`'s schema one is
-`secret.done -> DbCollection2.storageFetch` — **the wire that starts the function**. Restore all
-44 script ports and the collection still never fetches, `fetched` never fires, the gate never
-runs, and it still times out at 30 s. `submitContactForm` would run and store a `ContactMessage`
-with **no name, email, message or page**. Scope the work to **dynamic ports as a family**. This
-is the third pass at the same half-fix: SB-004 F10 did the signal outputs, SB-010 did the script
-ports, and both were "the half that had been noticed".
-
-✅ **SB-018 §2 was wrong and is corrected.** It had excluded `storageFetch` as a cause of SB-017
-and filed it as one of three small things. It is the same mechanism and it is on `claimSite`'s
-critical path. Moved to SB-017; the SB-013 question it raised is still open and inherited.
+🔴 **The one decision worth re-reading: `prop-*` is derived partly from the wires.**
+Everything else comes from parameters. The runtime builds `prop-` from the introspected
+columns of the class, and the real drive project's `dbCollections` metadata — written by a
+live, bound, started backend — is `columns: []` on every class. **That is permanent**: on this
+backend a column exists once something has written it, and the graph that writes it is the
+graph whose ports are missing. The runtime registers `prop-<anything>` from the wire, so the
+derivation is accurate; **the cost is that a mistyped `prop-titel` no longer warns**, and that
+is stated in SB-017 §10.2 rather than buried. (This also answers §6.5's old open question —
+s15's live-backend control had no schema to find.)
 
 ## Next work, in order
 
-1. ⬜ **Write the fix.** Acceptance 1 is already red and waiting —
-   `noodl-editor/tests/cloud/sb017-deploy-connection-parity.test.ts`, registered in
-   `tests/cloud/index.ts`. It reproduces s15's **real deployed bundle exactly** (4, 4, 5, 5, 8, 9,
-   14 = **49 of 100**) — the bundle itself is now vendored at `tests/cloud/fixtures/` — so what
-   fails there fails in production. Make it 100.
-   🔴 **Four of its six cases are green and must STAY green**: the port warnings really fire (a
-   spec that skipped `evaluateHealth` would pass on the defect); **a wire whose port is genuinely
-   wrong is still dropped**, so the fix cannot be "delete the health check"; the deployed bundle
-   is a strict subset of the template; and the export **never loses a wire production already
-   had** — which is what catches a fix that reaches 100 by re-pointing rather than restoring.
-   ⚠️ The spec drives `NamedPortsAdapter` directly rather than importing `registeradapters`, which
-   would register every adapter on a shared EventDispatcher for the whole bundle. Without that one
-   line it under-reports by exactly one connection and could never reach parity.
-2. ⬜ **Then acceptance 2 and 3 (SB-017 §9) — the drive.** A green suite is not the claim;
-   `claimSite` answering from the template's own Setup page is. #3 now requires the stored
-   `ContactMessage` to **carry the four submitted values**.
-3. ⬜ **The backend-side half of acceptance 1**, not yet written: that `authored-bundle.ts` is
-   lossless on connections, so "editor == helper" is closed from both ends rather than asserted
-   of one. Both compare to the same third thing — the shipped template — because they cannot run
-   in one process (`exportComponent` needs a live `NodeLibrary`; that is *why* the helper exists).
-4. ⬜ **SB-018's remaining two**: `For Each.Changed` wired twice and dead (bounded — a valid wire
-   sits beside each), and the public `<h1>` rendering the literal word `Text`.
-5. 🔴 **Measure the browser half before 0.2.1.** `build/deployer.ts` exports through the **same**
-   `exportComponent`, so the same drop applies wherever a browser connection carries a warning.
-   Browser script ports are safe (the viewer derives them), but **32 of the 40 browser warnings
-   are `prop-`**. SB-008 drove the public site; **nothing has ever clicked the admin panel.**
-6. 🧭 **Richard's, still open**: F8 (does a contact message reach anyone), `Section.kind`'s fifth
-   value with no destination, D3 (does SB-003's boundary fix ride 0.2.1).
-7. ⬜ **`securityPolicy` is on `ProjectTemplate`**, so `PlatformTemplateProvider`'s `community://`
-   shelf still has no channel for one.
+1. 🔴 **The browser half, now bounded rather than unbounded.** All 23 remaining warnings are
+   browser-side and **confined to the admin panel**: `/Pages/PageEditor` 14, `/Pages/Admin` 3,
+   `/Pages/ThemeEditor` 3, `/Admin/SectionRow` 1. **The public site and the Setup page are
+   clean**, so what SB-008 drove is unaffected. `build/deployer.ts` exports through the *same*
+   `exportComponent`, so those 23 are wires the browser deploy drops — and **nothing has ever
+   clicked the admin panel**, so what they cost is unknown. Measure before 0.2.1.
+   ⚠️ The fix's scope is cloud components **by ruling**. Extending it needs a decision, not an
+   edit: a browser Function node already gets its ports from the viewer, so only `prop-` and
+   `storageFetch` are candidates, and they would need the same wire-derived answer §10.2 gives
+   — on a surface where a schema *can* eventually exist.
+2. ⬜ **The Setup-page half of acceptance 2.** s17 drove `claimSite` over REST with a fresh
+   signup; "from the template's own Setup page" is the browser deploy again.
+   ⚠️ **The preserved backend is now CLAIMED** by `sb017-owner@example.com` — clear
+   `_Role` / `_Join_users__Role` / `SiteSettings` / `Theme` before driving it, or the Setup
+   page correctly refuses and it reads as a broken fix. (`_User` also still holds s15's
+   `owner@example.com`; use a third address.)
+3. ⬜ **The backend-side half of acceptance 1**: that `authored-bundle.ts` is lossless on
+   connections, so "editor == helper" is closed from both ends rather than asserted of one.
+   Both compare to the same third thing — the shipped template — because they cannot run in
+   one process (`exportComponent` needs a live `NodeLibrary`; that is *why* the helper exists).
+4. ⬜ **SB-018 is now three**, and the third is new: `submitContactForm` answers
+   `{"received": false}` about a message it stored, because `compose`'s `Outputs.built()` is a
+   **signal** wired into the Response's **value** port `pm-received`. The cast is allowed, so
+   nothing warns. Plus the two from s15: `For Each.Changed` wired twice and dead (bounded — a
+   valid wire sits beside each), and the public `<h1>` rendering the literal word `Text`.
+5. 🧭 **Richard's, still open**: F8 (does a contact message reach anyone — s17 proved it is
+   *stored*, not that it is *delivered*), `Section.kind`'s fifth value with no destination,
+   D3 (does SB-003's boundary fix ride 0.2.1).
+6. ⬜ **`securityPolicy` is on `ProjectTemplate`**, so `PlatformTemplateProvider`'s
+   `community://` shelf still has no channel for one.
 
 ## Traps that will bite here specifically
 
-- 🔴 **A green cloud-function suite still does not mean the function works.** Until the fix lands,
-  the suite's bundle and the editor's are two artefacts disagreeing by 51 connections. **Read the
-  deployed bundle**: `~/.noodl/backends/<id>/workflows/<project>.workflow.json`.
-  ✅ **The bundle itself is now IN THE REPO** (`tests/cloud/fixtures/sb017-deployed-bundle.workflow.json`),
-  so nothing depends on the backend surviving. ✅ **But the backend is deliberately preserved
-  anyway** — `backend_mtbxrca3axpbc`, with its project at `~/Documents/sb015-editor-drive`. It is
-  **already staged for acceptance 2 and 3**: policy installed and enforced, `SITE_SETUP_TOKEN`
-  provisioned, four endpoints deployed. Rebuilding it is ~20 min of wizard driving. Its owner will
-  delete it once acceptance 2 is met. ⚠️ Read the `_User` trap below before driving it.
-- 🔴 **A `test:ci` build failure has NO summary line**, so the run is *not measured* rather than
-  red. **Floor: `2856 specs, 4 failures`, all four `AIX-006 style vocabulary` by name.** s16 read
-  **2860/6** twice (seeds 83318 and 65707) — 4 floor + the 2 new SB-017 reds, the other 2 green.
-- 🔴 **`.webpack-cache` can poison that build** with ~47 unresolved-alias errors in files nobody
-  touched, and it reads as your own regression. `rm -rf packages/noodl-editor/.webpack-cache`
-  first; gitignored, only `test`/`test-ci` use it. Two peers lost time to this on 08-27.
-- 🔴 **`typecheck:editor` does NOT cover `tests/`** — `tsconfig.json`'s `include` is
-  `src/editor`, `src/shared`, `src/main`. Use **`typecheck:editor-tests`**, and confirm your file
-  is in the population (`tsc --listFiles | grep`) before believing a clean pass.
-- 🔴 **A spec not imported in its directory barrel NEVER RUNS**, and a suite that never ran it
-  looks exactly like one where it passed.
-- 🔴 **`test-results.json` is not written by this runner** — the summary line and the log are the
-  readout. Do not go looking for a results file to confirm a run.
+- 🔴 **A `test:ci` build failure has NO summary line**, so the run is *not measured* rather
+  than red. **Floor: `2863 specs, 4 failures`**, all four `AIX-006 style vocabulary` **by
+  name**. (2863, not 2862 — s17 added one case. Quote the tree: seed 57907, HEAD `f23946bf`.)
+- 🔴 **`.webpack-cache` can poison that build** with ~47 unresolved-alias errors in files
+  nobody touched, and it reads as your own regression. `rm -rf packages/noodl-editor/.webpack-cache`
+  first; gitignored, only `test`/`test-ci` use it.
+- 🔴 **`typecheck:editor` does NOT cover `tests/`** — use **`typecheck:editor-tests`**, and
+  neither covers `tests-unit/` (ts-jest does that at run time). Confirm your file is in the
+  population (`tsc -p … --listFiles | grep`) before believing a clean pass.
+- ✅ **`tests-unit/` can `require` another package's source.** s17's agreement spec loads the
+  **real** runtime node modules (`dbcollectionnode2`, `simplejavascript`, the two Record write
+  nodes) and drives their `setup()` with a fake editor connection. This is the only runner in
+  `noodl-editor` that can — the renderer bundle cannot reach `@noodl/runtime`.
+  ⚠️ **Fire `editorImportComplete` on the fake graph model**, or those modules announce nothing
+  and every comparison passes on two empty lists.
+  ⚠️ **Compare the port TYPE, not just name and plug** — a mutant deleting the parser's
+  `Outputs.Done()` signal rule survived a `name:plug` comparison, because the general rule
+  still finds the name and only the type changes.
+- 🔴 **`setDynamicPorts` REPLACES a node's dynamic port list.** Two adapters writing to one
+  node erase each other silently. That is why s17's three adapters are partitioned by node
+  type and `prop-`/`acl-` share one.
+- 🔴 **The warnings list in the DOM is virtualised AND doubled by the ghost.** s17 read 42
+  rendered lines for 21 unique, against a chip saying 23 — so the list under-reports *and*
+  over-reports at once. De-duplicate, and trust the chip for the total.
+- 🔴 **There is no editor global for `WarningsModel`**, and `require('@noodl-models/…')` from
+  `cdp eval` fails (webpack alias). Read the topbar chip and the panel text.
 - 🔴 **Driving the wizard: the modal renders TWICE**, and `cdp click` hits an element's centre,
   which on these cards is a child text span. Stamp the copy **not** under a `[class*=Measuring]`
   ancestor, `elementFromPoint` before every click, and expect to click twice on Add Backend.
-- 🔴 **The warnings list in the DOM is virtualised AND doubled by the ghost** (168 for 84 real).
-  Read `WarningsModel.instance.warnings` instead.
+  ✅ Opening a project from the launcher needs no such care —
+  `div[class*='LauncherProjectCard-module__Info']` works first time.
 - 🔴 **`const` leaks between `cdp eval` calls** — wrap every eval in an IIFE.
-- 🔴 **THE FALSE NEGATIVE THAT WILL COST YOU ACCEPTANCE 2.** The Setup page chains
-  **signup → claimSite**, and `_User` on the preserved backend **already holds
-  `owner@example.com`** from s15's claim attempt. A second run with that email **fails at signup
-  and never reaches `claimSite`** — no execution record, no 504, nothing. **It looks exactly like
-  the fix not working.** Use a fresh email, or clear the `_User` row, *before* reading a red as a
-  failed fix. (s15 lost a control arm to this when it was only a wasted arm; after the fix it is
-  worse, because it inverts the reading.)
 - 🔴 **Editing a backend's `security.json` is blocked by the permission classifier.** Use the
   editor's Access panel or ask Richard; do not route around it.
 - 🔴 **The artefact and the component sets are two populations.** Edit a component set and
@@ -130,24 +113,17 @@ critical path. Moved to SB-017; the SB-013 question it raised is still open and 
 - Shared checkout: commit by pathspec (untracked ⇒ `add` + `commit` in **one chain**), never
   stage-then-commit; announce before any editor launch **and teardown**; `test:ci` **alone**.
 
-## Gates, s16
+## Gates, s17
 
-- ✅ **`test:ci` on the CURRENT tree — `2862 specs, 6 failures`, seed 64684, HEAD `5c4f7312`.**
-  This is the reading that covers **both** lanes: an FB-013 commit landed between s16's two
-  commits, and the earlier readings predate it. ⚠️ A peer's `test:main` and core-ui runs do not
-  cover the editor jasmine suite, so quoting them for this gate would be the wrong population.
-  Earlier readings, same 4+2 split: `2862/6` seed 57878 (and `2860/6` at seeds 83318 and 65707
-  before the fixture cases were added). 4 = the documented AIX-006 floor, by name. 2 = the new
-  SB-017 spec's defect assertions, **red by design**; its **four** other cases pass.
-  ⚠️ **One run (seed 10943) also failed `projectsaveflush.js` — "re-arms a held save".** Not
-  reproduced in three other runs. I had left the **cloud node library installed globally** (a
-  real leak, now restored in `afterEach` — the documented "inherited whichever ran last" hazard),
-  but **that leak was present in two runs where the save spec passed**, so it is *not* shown to
-  be the cause. The spec waits 1500 ms and polls disk for 8 s; treat it as load-sensitive, and
-  **if you see it again, do not assume it is yours.**
-- ✅ **`typecheck:editor-tests` clean (exit 0)**, and the new file was proven to be in the checked
-  population by a deliberate mutant that reddened it.
-- ⚠️ **No repository source changed** — one new spec, its barrel line, and four task documents.
-  The fix itself is not written.
-- ⚠️ A peer's dev stack was stopped by its owner before the runs and the machine was verified
-  quiet; s16 launched **no** editor stack of its own.
+- ✅ **`test:ci` — `2863 specs, 4 failures`, seed 57907, HEAD `f23946bf`.** The documented
+  AIX-006 floor, by name. Three runs this session, same 4 every time; a fourth run under a
+  deliberate mutant read `2863/6`, the two extra being the parity spec's own cases.
+- ✅ **`typecheck:editor` and `typecheck:editor-tests` clean (exit 0)**, both new source files
+  confirmed in the checked population with `tsc --listFiles`.
+- ✅ **`tests-unit/sb-017` 6/6** under `test:main`'s jest.
+- ✅ **4 mutants graded and killed** — the parser's signal rule, the `acl-` role/userid branch,
+  `storageFetch`, and the wire-derived `prop-` names (that last through the full suite, losing
+  **exactly the 13 connections across four components** §6.4 predicted).
+- ⚠️ An editor stack was launched for the drive and **torn down** (`dev:stop`, 27 processes,
+  nothing left); the peer holding the P75 lane was told before and after. The sb015 backend on
+  8588 went down with it.

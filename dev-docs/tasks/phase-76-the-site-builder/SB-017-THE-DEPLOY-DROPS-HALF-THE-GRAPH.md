@@ -1,6 +1,7 @@
 # SB-017 — the deploy drops half the cloud graph, and every endpoint times out
 
-**Status: 🟡 MEASURED s15. §6 RESOLVED and the ruling TAKEN s16 — see §8. Not yet fixed.**
+**Status: 🟢 FIXED AND DRIVEN s17 — acceptance 1, 2, 3, 5 and 6 MET; 4 met on the cloud side.**
+Measured s15, §6 resolved and the ruling taken s16 (§8), built s17 (§10).
 
 Found by the drive nobody had run: making a project from `embedded://site-builder` in the
 real editor, opening it, provisioning a backend through the real UI, and calling the
@@ -209,9 +210,17 @@ family, not to the family that happens to be visible.**
   warnings s15 counted are `prop-`. SB-008 drove the public site successfully, so what it
   exercised survives; nothing has clicked the admin panel. **Unbounded, and worth measuring
   before 0.2.1.**
-- Why the `prop-`/`qp-` warnings persisted with a live backend holding a schema (s15's
-  control). A `QueryRecordsAdapter` is registered for `DbCollection2` and 4 `qp-` warnings
-  still stood.
+- ~~Why the `prop-`/`qp-` warnings persisted with a live backend holding a schema~~ —
+  **ANSWERED s17, and it is not a bug in the reading.** The backend held **no schema**. Its
+  `dbCollections` metadata, written by a live, bound, started NodeGX backend, is three of the
+  five classes with **`columns: []` on every one**
+  (`~/Documents/sb015-editor-drive/nodegx.project.json`). `recordFieldPorts` builds `prop-*`
+  from introspected columns, so it had nothing to build from — and `qp-` never came from the
+  schema at all, it comes from `visualFilter`, which no cloud client was reading.
+  🔴 **This is permanent, not transient.** On this backend a column exists once something has
+  written it, and the graph that writes it is the graph whose ports are missing. **A fresh
+  site can never have the schema its own `prop-` ports would need** — so the schema route
+  would not have worked before WF-007 either, and §10's derivation cannot use it.
 
 ## 7. Acceptance for whoever takes this
 
@@ -285,3 +294,211 @@ Superseding §7 where they differ, and keeping its numbering:
 6. 🆕 A negative control on the browser half: the 69 undeclared browser script-port
    connections must still export, i.e. the adapter must not be the only thing keeping them
    alive once it exists.
+
+## 10. The fix, s17 (2026-08-27)
+
+Commit `0236a696`. **49 of 100 becomes 100 of 100**, per component, through the product's own
+`exportComponent`.
+
+### 10.1 What was built
+
+Two files, plus three lines of registration:
+
+- **`models/nodelibrary/cloudDynamicPorts.ts`** — the derivations, importing nothing (like
+  `dynamicPortRules.ts`, and for the same reason: `tests-unit/` is the only runner in this
+  package that can grade this without starting Electron). `in-`/`out-` from the two proplists
+  and the parsed script; `prop-`/`acl-` on the Record family; `qp-` and the dynamic `Do` on
+  Query Records.
+- **`models/NodeTypeAdapters/CloudDynamicPortsAdapter.ts`** — the plumbing. **Three** adapter
+  classes, not one, because `setDynamicPorts` **replaces** a node's dynamic port list: two
+  adapters writing to one node would silently erase each other, so the families are
+  partitioned by node type and each type has exactly one writer. `prop-` and `acl-` therefore
+  share one adapter — they are two port sets on one node, as they are in the runtime, where
+  `_additionalDynamicPorts` chains onto one list.
+- **`registeradapters.ts`** gains `Model.connectionAdded` / `Model.connectionRemoved`
+  bridges. **No adapter had ever listened to either**, which is why they had to be added
+  rather than merely subscribed to.
+
+🔴 **Cloud components only**, which is §8's wording rather than caution. A browser Function
+node **already has** these ports — the viewer is a connected runtime client and pushes them
+(§6.1: 69 undeclared browser script-port connections, **0** warnings). An adapter running
+there would be a second writer with a *shorter* list, and the two would overwrite each other
+on every parameter change.
+
+### 10.2 🔴 `prop-*` is derived partly from the wires, and that is a measurement
+
+Every other family comes from parameters. `prop-*` cannot: the runtime builds it from the
+**introspected columns of the selected class**, and §6.5 above now records that a live, bound,
+started backend for this project reports `columns: []` on every class it knows — permanently,
+because a column exists once something has written it and the graph that writes it is the
+graph whose ports are missing.
+
+What the editor does know is what the author wired, and **the runtime agrees with it
+exactly**: `registerInputIfNeeded` mints `prop-<anything>` on the wire
+(`dbmodelcrudbase.ts:639`), and `NodeScope.createConnection` calls it before connecting
+(`nodescope.ts:149-150`). So the field names come from the node's own `prop-*` parameters
+**and** from the `prop-*` endpoints of wires touching it.
+
+⚠️ **The cost, stated rather than rounded off.** For this family, on these node types, in a
+cloud component, a wire can no longer be reported as going to a port that does not exist —
+because after this it does. A mistyped `prop-titel` writes a `titel` column instead of
+warning. That is the runtime's behaviour reported accurately rather than a check weakened:
+nothing else loses its warning, and both controls below still fire.
+
+### 10.3 What it is graded by
+
+**`tests/cloud/sb017-deploy-connection-parity.test.ts`** — 7 cases, through the real
+`exportComponent`:
+
+| case | before | after |
+|---|---|---|
+| per-component connection counts | 4,4,5,5,8,9,14 = **49** | **5,9,9,16,22,19,20 = 100** |
+| `claimSite`'s `secret.done -> storageFetch` survives | ✗ | ✓ |
+| a wire to a port on nothing is still dropped | ✓ | ✓ |
+| the deployed bundle is a strict subset of the template | ✓ | ✓ |
+| never loses a connection production already had | ✓ | ✓ |
+| 🆕 every browser Function node untouched (acceptance 6) | — | ✓ |
+| the health instrument is live | (asserted the defect) | rewritten — see below |
+
+🔴 **The case that asserted the defect was rewritten to assert the fix, and that is where a
+control usually stops controlling anything.** It used to read *"some cloud connection is
+unhealthy"* — the negative control on the setup, because if `evaluateHealth` had not run or
+the library had not loaded, every wire would read healthy and the parity assertions would pass
+on a template that stayed broken. That blindness is still real, so it now uses a signal that
+fires *after* the fix: **a wire to a port that exists on nothing warns, and every other cloud
+wire is clean**. Both halves have to hold at once, which separates the two failure modes —
+health never ran (the broken wire would not warn) from the library never loaded (every other
+wire would warn too).
+
+**`tests-unit/sb-017/cloud-ports-agree-with-the-runtime.test.ts`** — 6 cases, and this is §4's
+lesson applied to this fix itself. The derivation is a **second implementation of something
+the runtime owns**, so it is not asserted against a hand-written expectation: the spec
+`require`s the **real** runtime node modules (`dbcollectionnode2`, `simplejavascript`,
+`newdbmodelpropertiesnode`, `setdbmodelpropertiesnode`), drives their `setup()` with a fake
+editor connection that captures `sendDynamicPorts`, over **the shipped template's own nodes**,
+and compares. Reachable from `tests-unit/` and nowhere else in this package — the editor does
+not depend on `@noodl/runtime` and these modules cannot be bundled into the renderer.
+
+⚠️ Two things that had to be got right, both found by mutants:
+
+- **Compare the port TYPE, not just name and plug.** With `name:plug` alone, deleting the
+  parser's `Outputs.Done()` signal rule **survived**: the general `Outputs.x` rule still finds
+  the name, and only its type changes — `signal` becomes `'*'`. A signal wire does not survive
+  that (`con-type-mismatch`, and `exportComponent` drops on *any* warning).
+- **Fire `editorImportComplete`.** The Record and Query families hang their initial sweep off
+  that event rather than running it in `setup`; without firing it, nothing is announced and
+  every comparison passes on two empty lists.
+
+The two cases that *disagree* are asserted rather than excluded: the runtime's editor-side
+builder declares **zero** `prop-` ports for this project, and the running node registers
+`prop-<anything>` on demand — with a known-firing half, that `no-such-port-on-any-node` is
+**not** registered, so the claim is about the prefix and not about the method accepting
+anything.
+
+**Mutants graded (4 killed):** the `Outputs.X()` signal rule; the `acl-` role/userid branch;
+`storageFetch`; and the wire-derived `prop-` names — the last through the full suite, losing
+**exactly 13 connections across four components** (`CopySectionToPage` 5/9, `publishPage`
+15/16, `duplicatePage` 18/22, `submitContactForm` 15/19), which is the number §6.4 predicted.
+
+### 10.4 Gates
+
+- `test:ci` **2863 specs, 4 failures**, seed 57907, HEAD `f23946bf` — the documented AIX-006
+  floor, by name. (2863 = 2862 + the new browser negative control.)
+- `typecheck:editor` and `typecheck:editor-tests` clean; both new source files confirmed in
+  the checked population with `tsc --listFiles`.
+- `tests-unit/sb-017` 6/6 under `test:main`'s jest.
+
+### 10.5 The drive, same session — §1's two endpoints answer
+
+Same editor, same preserved backend (`backend_mtbxrca3axpbc`, project
+`~/Documents/sb015-editor-drive`), same four steps as s15's drive: launch the real editor,
+open the project, let it deploy, call the endpoints.
+
+**The deployed bundle now carries the whole graph.** Read off
+`~/.noodl/backends/backend_mtbxrca3axpbc/workflows/sb015-editor-drive-04961864.workflow.json`
+after the editor rewrote it:
+
+| component | s15 | s17 |
+|---|---|---|
+| `claimSite` | 14 | **20** |
+| `duplicatePage` | 8 | **22** |
+| `publishPage` | 5 | **16** |
+| `site/ContactRecipient` | 5 | **9** |
+| `site/CopySectionToPage` | 4 | **9** |
+| `site/SetSectionAccess` | 4 | **5** |
+| `submitContactForm` | 9 | **19** |
+| **total** | **49** | **100** |
+
+✅ **Acceptance 3 — `submitContactForm` answers, and stores the four values.**
+**HTTP 200 in 0.055 s**, where s15 measured **504 in 30.017 s**. The stored row carries every
+submitted value and the admin-only ACL:
+
+```json
+{"handled": 0, "name": "Ada Lovelace", "email": "ada@example.com",
+ "message": "Does the deploy carry the graph now?", "pageSlug": "home",
+ "ACL": "{\"role:admin\":{\"read\":true,\"write\":true}}"}
+```
+
+✅ **Acceptance 2 — `claimSite` answers a real request.** `{"claimed": true}` in **26 ms**,
+where s15 measured `status = error`, **30005 ms**. And it minted exactly what it owes:
+`_Role` **1** (`admin`), `_Join_users__Role` **1** (the new user), `SiteSettings` **1** —
+**one**, so SB-013's fix holds on the real deploy path, which no spec had ever measured
+there — and `Theme` **1** (SB-014). Both singletons carry
+`{"role:admin":{read,write}, "*":{read:true,write:false}}`.
+
+🔴 **With two known-firing controls**, because "the endpoint answered" and "the endpoint
+answers whatever you ask" are the same green: a **second** claim on the now-claimed site with
+the **correct** token is refused (`This site cannot be claimed.`), a **wrong** token is
+refused, and **neither refusal wrote a row** — still 1 role, 1 join, 1 settings, 1 theme.
+
+⚠️ **The half of acceptance 2 that is still owed**: this was driven over REST with a fresh
+signup, not *from the template's own Setup page*. The endpoint is the load-bearing half and
+it is measured; the Setup page reaches it through the **browser** deploy, which is the half
+this fix deliberately does not touch. (The `_User` trap was real and avoided — s15's
+`owner@example.com` is still in `_User`, and a second signup with it fails before `claimSite`
+is reached.)
+
+⚠️ The preserved backend is now **claimed** by `sb017-owner@example.com`, so driving the Setup
+page needs its claim state cleared first.
+
+### 10.6 Acceptance 4 — 84 warnings become 23, and all 23 are the browser half
+
+Read off the editor's own topbar chip on the opened project: **84 → 23**. Every one of the 23
+is in a **browser** component, and specifically in the admin panel — from the warnings panel,
+de-doubled for the `BaseDialog` ghost (42 rendered, 21 unique; the chip's 23 includes two the
+virtualised list did not render):
+
+| component | warnings |
+|---|---|
+| `/Pages/PageEditor` | 14 |
+| `/Pages/Admin` | 3 |
+| `/Pages/ThemeEditor` | 3 |
+| `/Admin/SectionRow` | 1 |
+
+🔴 **This bounds §6.5's open question, which was unbounded before.** The public site
+(`/Pages/Site`, `/Site/*`) and the **Setup page** are clean — so what SB-008 drove is
+unaffected, and the browser drop is confined to the three admin pages and one admin row
+component. Which is exactly the surface the phase has never clicked.
+
+### 10.7 🆕 A third small template defect, found by the drive
+
+`submitContactForm` answered `{"received": false}` while storing the message correctly.
+`compose`'s script ends `Outputs.built()` — a **signal** — and `compose.out-built` is wired to
+`res-3.pm-received`, a **value** parameter port. The type cast is allowed, so nothing warns,
+and the caller is told `received: false` about a message that was received. Filed with
+SB-018's family; it is the same shape as its other two.
+
+### 10.8 What is still open
+
+- 🔴 **The browser half** — §6.5's question, now bounded rather than unbounded (§10.6).
+  `build/deployer.ts` exports through the same `exportComponent`, so the same drop applies to
+  the **23 warnings across the three admin pages and `/Admin/SectionRow`**. The fix's scope is
+  cloud components by ruling, and extending it there is not a decision this task took: a
+  browser Function node already gets its ports from the viewer, so only the `prop-`/`storageFetch`
+  families are candidates, and doing it would need the same wire-derived answer §10.2 gives —
+  on a surface where the schema *can* eventually exist. **Nothing has ever clicked the admin
+  panel**, so what those 23 cost is still unknown.
+- **The Setup-page half of acceptance 2** (§10.5), which is the same browser deploy.
+- **The backend-side half of acceptance 1** — that `authored-bundle.ts` is lossless on
+  connections, so "editor == helper" is closed from both ends rather than asserted of one.
+  Not written.
