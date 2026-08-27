@@ -97,9 +97,11 @@ export function CheerBanner() {
 `;
 
 const GOLDEN_HOME = `// @nodegx:generated (visual — provenance markers complete in EXP-007)
+import { useNavigate } from 'react-router-dom';
 import { useValue } from '@nodegx/core/react';
 
 import { CheerBanner } from '../components/CheerBanner';
+import { FarewellCard } from '../components/FarewellCard';
 import { GreetingBadge } from '../components/GreetingBadge';
 import { celebrate } from '../events';
 import { visitorName } from '../stores/variables';
@@ -107,6 +109,7 @@ import styles from './Home.module.css';
 
 /** Home. */
 export function HomePage() {
+  const navigate = useNavigate();
   const name = useValue(visitorName);
 
   return (
@@ -134,6 +137,8 @@ export function HomePage() {
       </button>
 
       <CheerBanner />
+
+      <FarewellCard onWaved={() => navigate('/mood')} />
     </div>
   );
 }

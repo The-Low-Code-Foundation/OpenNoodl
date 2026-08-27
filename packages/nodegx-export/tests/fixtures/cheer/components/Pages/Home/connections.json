@@ -44,6 +44,12 @@
       "fromProperty": "result",
       "toId": "cheerButton",
       "toProperty": "enabled"
+    },
+    {
+      "fromId": "farewell",
+      "fromProperty": "waved",
+      "toId": "goMood",
+      "toProperty": "navigate"
     }
   ]
 }

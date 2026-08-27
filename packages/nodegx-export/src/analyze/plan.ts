@@ -103,7 +103,9 @@ export type HandlerAction =
   | { kind: 'globalstore-set'; storeName: string; key: string; expr: ValueExpr }
   | { kind: 'collection-add'; collectionName: string; entries: Array<{ key: string; expr: ValueExpr }> }
   /** A Condition in a handler chain: `if (cond) whenTrue; else whenFalse;` (LOGIC-TARGET §3). */
-  | { kind: 'branch'; cond: ValueExpr; whenTrue: HandlerAction[]; whenFalse: HandlerAction[] };
+  | { kind: 'branch'; cond: ValueExpr; whenTrue: HandlerAction[]; whenFalse: HandlerAction[] }
+  /** Fires the component's own signal output: `onWaved?.()` (COMPONENT-OUTPUTS-TARGET §4). */
+  | { kind: 'output-signal'; prop: string };
 
 export interface ReceiverPlan {
   nodeId: string;
@@ -172,6 +174,11 @@ export interface ComponentPlan {
   /** Root node's authored label — the component's doc comment. */
   docComment?: string;
   props: PropPlan[];
+  /**
+   * Declared signal outputs as callback props (`onWaved?: () => void`), declaration order —
+   * the parent side reads the same list off the target's plan (COMPONENT-OUTPUTS-TARGET §2).
+   */
+  outputProps: Array<{ port: string; prop: string }>;
   /** Render children per node, collapse applied, logic nodes filtered out. */
   childrenOf: Record<string, string[]>;
   roleOf: Record<string, RenderRole>;
@@ -260,6 +267,7 @@ function planComponent(
     file: null,
     rootId: null,
     props: [],
+    outputProps: [],
     childrenOf: {},
     roleOf: {},
     bindings: {},
@@ -403,6 +411,23 @@ function planComponent(
       plan.props.push({ name: port.name, tsType: tsTypeOf(port.type, port.kind) });
     }
   }
+
+  // Output props: every declared signal output port is an optional callback prop
+  // (COMPONENT-OUTPUTS-TARGET §2). Ports that cannot become props, and value-kind ports,
+  // are reported here once; wires into them are reported where they drop.
+  const outputInterface = componentOutputInterface(component);
+  plan.outputProps = outputInterface.props;
+  for (const failure of outputInterface.failed) notes.push(failure.reason);
+  for (const port of outputInterface.valuePorts) {
+    notes.push(
+      `output "${port}" is a value output — a value output lifts state into the parent (the component-state slice), not translated here`
+    );
+  }
+  const outputPropByPort = new Map(outputInterface.props.map((p) => [p.port, p.prop]));
+  const failedOutputPorts = new Map(outputInterface.failed.map((f) => [f.port, f.reason]));
+  const valueOutputPorts = new Set(outputInterface.valuePorts);
+  /** Outputs node id → the first fed port's failure — the node's deferral reason (§4). */
+  const failedOutputsNodes = new Map<string, string>();
 
   // Repeaters: template + effective mapping (authored parameter, else the declared port's
   // default — the mapping script usually is not in `parameters` at all).
@@ -969,6 +994,21 @@ function planComponent(
       const actions: HandlerAction[] = [];
       for (const wire of component.connections.filter((c) => c.fromId === node.id && c.fromProperty === port)) {
         const target = nodeById.get(wire.toId);
+        // A Component Outputs port is a translatable arm target: the arm fires the callback.
+        // The outputs node keeps its own disposition (the post-pass) — it never collapses here.
+        if (target?.type === 'Component Outputs') {
+          const prop = outputPropByPort.get(wire.toProperty);
+          if (prop === undefined) {
+            return {
+              defer: valueOutputPorts.has(wire.toProperty)
+                ? `its ${port} arm fires value output "${wire.toProperty}" — lifted state belongs to the component-state slice`
+                : `its ${port} wire drives no translatable action`
+            };
+          }
+          actions.push({ kind: 'output-signal', prop });
+          consumes.push(wire.key);
+          continue;
+        }
         if (!target || TRIGGER_PORTS[target.type] !== wire.toProperty) {
           return { defer: `its ${port} wire drives no translatable action` };
         }
@@ -1018,6 +1058,7 @@ function planComponent(
       case 'branch':
         return [action.cond, ...action.whenTrue.flatMap(actionExprs), ...action.whenFalse.flatMap(actionExprs)];
       case 'navigate':
+      case 'output-signal':
         return [];
     }
   };
@@ -1055,23 +1096,79 @@ function planComponent(
     return { channelName };
   };
 
+  // A component instance's signal outputs, from the *target* component's declarations —
+  // parse cannot resolve a source port kind across components (instance-output wires all
+  // parse as 'value'), so analysis consults the interface directly (COMPONENT-OUTPUTS §5).
+  const instanceOutputPropCache = new Map<string, Map<string, string>>();
+  const instanceSignalOutputs = (node: NodeIR): Map<string, string> => {
+    let cached = instanceOutputPropCache.get(node.type);
+    if (cached === undefined) {
+      const target = ir.components.find((c) => `/${c.path}` === node.type);
+      cached = new Map(target ? componentOutputInterface(target).props.map((p) => [p.port, p.prop]) : []);
+      instanceOutputPropCache.set(node.type, cached);
+    }
+    return cached;
+  };
+
+  /**
+   * A Component Outputs node as an action sink with dynamic trigger ports (§4): a declared
+   * signal port compiles to the prop call; a value port, a failed prop, or a For Each relay
+   * fails the node; a port nothing declares drops alone — the runtime's own `hasOutput`
+   * guard drops that write too, so silence there is the faithful translation.
+   */
+  const outputSinkOf = (port: string, fromNode: NodeIR | undefined): CompiledSink | { drop: string } => {
+    const prop = outputPropByPort.get(port);
+    if (prop !== undefined) {
+      if (fromNode?.type === 'For Each') {
+        return {
+          defer: `a repeater relays its rows' outputs into "${port}" — which row fired is not statically expressible in this slice`
+        };
+      }
+      return { action: { kind: 'output-signal', prop }, consumes: [] };
+    }
+    if (valueOutputPorts.has(port)) {
+      return { defer: `output "${port}" is a value output — lifted state belongs to the component-state slice` };
+    }
+    const failedReason = failedOutputPorts.get(port);
+    if (failedReason !== undefined) return { defer: failedReason };
+    return { drop: `no Component Outputs declaration names port "${port}" — the runtime's hasOutput guard drops the write too` };
+  };
+
   // Pass 2: attach compiled actions to handler owners, trigger wires in source order. A wire
   // from a Condition's arm into a trigger port is chain-internal: the branch consumes it when
-  // it attaches, and the Condition sweep reports it when it does not.
+  // it attaches, and the Condition sweep reports it when it does not. A Component Outputs
+  // sink never takes its disposition here — failures accumulate in failedOutputsNodes and the
+  // post-pass rules once, so the outcome cannot depend on wire order.
   const receiverActions = new Map<string, HandlerAction[]>();
   const boundSubscribers = new Set<string>();
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
     const toNode = nodeById.get(connection.toId);
-    if (!toNode || TRIGGER_PORTS[toNode.type] !== connection.toProperty) continue;
+    if (!toNode) continue;
+    const outputsSink = toNode.type === 'Component Outputs';
+    if (!outputsSink && TRIGGER_PORTS[toNode.type] !== connection.toProperty) continue;
     const fromNode = nodeById.get(connection.fromId);
     if (fromNode?.type === 'Condition' && (connection.fromProperty === 'ontrue' || connection.fromProperty === 'onfalse')) {
       continue;
     }
     consumed.add(connection.key);
-    const compiled = compiledSinks.get(toNode.id)!;
+    let compiled: CompiledSink;
+    if (outputsSink) {
+      const sink = outputSinkOf(connection.toProperty, fromNode);
+      if ('drop' in sink) {
+        notes.push(`wire ${connection.key} dropped: ${sink.drop}`);
+        continue;
+      }
+      compiled = sink;
+    } else {
+      compiled = compiledSinks.get(toNode.id)!;
+    }
     if ('defer' in compiled) {
-      dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: compiled.defer };
+      if (outputsSink) {
+        if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, compiled.defer);
+      } else {
+        dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: compiled.defer };
+      }
       notes.push(`wire ${connection.key} dropped: ${compiled.defer}`);
       continue;
     }
@@ -1085,29 +1182,45 @@ function planComponent(
       connection.fromProperty === 'textChanged'
     ) {
       if (!actionExprs(compiled.action).every((e) => exprValidIn(e, { kind: 'dom', nodeId: fromNode.id }))) {
-        dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: 'the action reads values that only exist in another handler' };
-        notes.push(`wire ${connection.key} dropped: the action reads values that only exist in another handler`);
+        const reason = 'the action reads values that only exist in another handler';
+        if (outputsSink) {
+          if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, reason);
+        } else {
+          dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason };
+        }
+        notes.push(`wire ${connection.key} dropped: ${reason}`);
         continue;
       }
       const list = (plan.changeHandlers[fromNode.id] = plan.changeHandlers[fromNode.id] ?? []);
       list.push(compiled.action);
-      dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
+      if (!outputsSink) dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
       for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
       for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
       continue;
     }
-    if (fromNode && rendered.has(fromNode.id) && connection.kind === 'signal') {
+    // A rendered instance's declared signal output owns handlers exactly as a DOM event does —
+    // the wire's parsed kind is 'value' (cross-component blindness), so the interface decides.
+    const instanceSignal =
+      fromNode !== undefined &&
+      plan.roleOf[fromNode.id] === 'instance' &&
+      instanceSignalOutputs(fromNode).has(connection.fromProperty);
+    if (fromNode && rendered.has(fromNode.id) && (connection.kind === 'signal' || instanceSignal)) {
       if (!actionExprs(compiled.action).every((e) => exprValidIn(e, { kind: 'dom', nodeId: fromNode.id }))) {
-        dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: 'the action reads values that only exist in another handler' };
-        notes.push(`wire ${connection.key} dropped: the action reads values that only exist in another handler`);
+        const reason = 'the action reads values that only exist in another handler';
+        if (outputsSink) {
+          if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, reason);
+        } else {
+          dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason };
+        }
+        notes.push(`wire ${connection.key} dropped: ${reason}`);
         continue;
       }
       plan.handlers[fromNode.id] = plan.handlers[fromNode.id] ?? {};
       const list = (plan.handlers[fromNode.id][connection.fromProperty] =
         plan.handlers[fromNode.id][connection.fromProperty] ?? []);
       list.push(compiled.action);
-      dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
+      if (!outputsSink) dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
       for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
       for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
@@ -1121,23 +1234,44 @@ function planComponent(
         continue;
       }
       if (!actionExprs(compiled.action).every((e) => exprValidIn(e, { kind: 'receiver', receiverId: fromNode.id }))) {
-        dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: 'the action reads values that only exist in another handler' };
-        notes.push(`wire ${connection.key} dropped: the action reads values that only exist in another handler`);
+        const reason = 'the action reads values that only exist in another handler';
+        if (outputsSink) {
+          if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, reason);
+        } else {
+          dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason };
+        }
+        notes.push(`wire ${connection.key} dropped: ${reason}`);
         continue;
       }
       receiverActions.set(fromNode.id, [...(receiverActions.get(fromNode.id) ?? []), compiled.action]);
-      dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
+      if (!outputsSink) dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
       for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
       for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
       continue;
     }
-    dispositions[toNode.id] = {
-      kind: 'deferred',
-      to: 'EXP-003',
-      reason: `trigger ${connection.fromId}.${connection.fromProperty} is not a rendered element event or a receiver`
-    };
+    const untranslatable = `trigger ${connection.fromId}.${connection.fromProperty} is not a rendered element event or a receiver`;
+    if (outputsSink) {
+      if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, untranslatable);
+    } else {
+      dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: untranslatable };
+    }
     notes.push(`wire ${connection.key} dropped: the trigger is not a rendered element event or a receiver`);
+  }
+
+  // Component Outputs nodes rule once, after every wire has spoken: the interface declaration
+  // is static (Component Inputs' own disposition) unless some fed port failed — then the node
+  // defers with that first failure, while the ports that did translate keep their behaviour
+  // (a missing callback is absent behaviour, reported — not a lying structure) (§4).
+  for (const node of component.nodes) {
+    if (node.type !== 'Component Outputs' || dispositions[node.id] !== undefined) continue;
+    const failure = failedOutputsNodes.get(node.id);
+    if (failure !== undefined) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: failure };
+      notes.push(`node ${node.id} (Component Outputs) deferred: ${failure}`);
+    } else {
+      dispositions[node.id] = { kind: 'static' };
+    }
   }
 
   // Receivers with attached actions become useSignal subscriptions in this component's file.
@@ -1474,6 +1608,58 @@ function planComponent(
   }
 
   return plan;
+}
+
+/**
+ * A component's output interface, from its Component Outputs nodes' declarations — the union
+ * across nodes, first declaration of a name winning (the runtime merges the port sets the same
+ * way). Signal ports become callback props (COMPONENT-OUTPUTS-TARGET §2): a name that is
+ * already an `onX` identifier is kept verbatim, anything else becomes `on` + PascalCase. A
+ * port that cannot become a prop — no identifier material, or a collision with an input prop
+ * or another output — fails with a reason rather than being silently renamed. Deterministic
+ * over the ComponentIR alone, so the child's plan and every parent's plan agree.
+ */
+export interface OutputInterface {
+  props: Array<{ port: string; prop: string }>;
+  failed: Array<{ port: string; reason: string }>;
+  /** Declared value-kind output ports — lifted state, the component-state slice's work. */
+  valuePorts: string[];
+}
+
+export function componentOutputInterface(component: ComponentIR): OutputInterface {
+  const takenProps = new Set<string>();
+  for (const node of component.nodes) {
+    if (node.type !== 'Component Inputs') continue;
+    for (const port of node.declaredPorts) if (port.plug === 'output') takenProps.add(port.name);
+  }
+  const result: OutputInterface = { props: [], failed: [], valuePorts: [] };
+  const seen = new Set<string>();
+  for (const node of component.nodes) {
+    if (node.type !== 'Component Outputs') continue;
+    for (const port of node.declaredPorts) {
+      if (port.plug !== 'input' || seen.has(port.name)) continue;
+      seen.add(port.name);
+      if (port.kind !== 'signal') {
+        result.valuePorts.push(port.name);
+        continue;
+      }
+      if (!/[A-Za-z0-9]/.test(port.name)) {
+        result.failed.push({ port: port.name, reason: `output "${port.name}" has no identifier material for a prop name` });
+        continue;
+      }
+      const prop = /^on[A-Z][A-Za-z0-9_$]*$/.test(port.name) ? port.name : `on${pascalCase(port.name)}`;
+      if (takenProps.has(prop)) {
+        result.failed.push({
+          port: port.name,
+          reason: `output "${port.name}" would collide with prop "${prop}" — rename the port`
+        });
+        continue;
+      }
+      takenProps.add(prop);
+      result.props.push({ port: port.name, prop });
+    }
+  }
+  return result;
 }
 
 function renderRole(node: NodeIR, catalog: CatalogIndex): RenderRole | 'unsupported' | null {

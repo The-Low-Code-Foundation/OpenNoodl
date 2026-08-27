@@ -27,7 +27,8 @@
         "cheerPreview",
         "visitorBadge",
         "cheerButton",
-        "cheerBanner"
+        "cheerBanner",
+        "farewell"
       ],
       "parameters": {
         "flexDirection": "column",
@@ -170,6 +171,24 @@
       "y": 640,
       "metadata": {
         "comment": "Value mode: Run On Value Change stays ticked (the default) so Is True is a live comparator; nothing triggers Evaluate and no arm is wired — the result gates the button's enabled."
+      }
+    },
+    {
+      "id": "farewell",
+      "type": "/Components/FarewellCard",
+      "label": "Farewell card",
+      "x": 160,
+      "y": 1000,
+      "parent": "shell"
+    },
+    {
+      "id": "goMood",
+      "type": "RouterNavigate",
+      "label": "Go to Mood",
+      "x": 410,
+      "y": 1000,
+      "parameters": {
+        "target": "/Pages/Mood"
       }
     }
   ],

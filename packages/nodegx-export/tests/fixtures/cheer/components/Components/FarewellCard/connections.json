@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "b81de083-d194-499d-9677-ffe93d6dbd51",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "waveButton",
+      "fromProperty": "onClick",
+      "toId": "farewellOutputs",
+      "toProperty": "waved"
+    }
+  ]
+}

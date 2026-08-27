@@ -114,8 +114,8 @@
     },
     {
       "typeName": "Component Outputs",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "signal outputs become optional callback props (onX?: () => void); value outputs defer named to the component-state slice"
     },
     {
       "typeName": "Component State",

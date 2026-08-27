@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "b81de083-d194-499d-9677-ffe93d6dbd51",
+  "name": "FarewellCard",
+  "path": "/Components/FarewellCard",
+  "type": "visual",
+  "created": "2026-08-27T12:49:10.952Z",
+  "modified": "2026-08-27T12:49:10.952Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "A farewell card whose Wave button raises the component's own `waved` signal output — the parent decides what a wave means."
+}

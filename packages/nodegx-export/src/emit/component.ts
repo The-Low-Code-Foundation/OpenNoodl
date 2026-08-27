@@ -277,6 +277,7 @@ export function emitComponent(
   // deduplicated against everything else in scope, falling back to `<export>Value`.
   const reserved = new Set<string>(['event', 'navigate', 'payload', 'styles', plan.file.symbol]);
   plan.props.forEach((p) => reserved.add(p.name));
+  plan.outputProps.forEach((o) => reserved.add(o.prop));
   plan.queries.forEach((q) => {
     [q.stateName, q.setterName, q.itemName, q.fetchName, q.typeName].forEach((n) => reserved.add(n));
   });
@@ -419,6 +420,10 @@ export function emitComponent(
     switch (action.kind) {
       case 'navigate':
         return `navigate('${action.to}')`;
+      // The optional call is the runtime's hasOutput/unwired case: a parent that passes
+      // nothing gets nothing (COMPONENT-OUTPUTS-TARGET §3).
+      case 'output-signal':
+        return `${action.prop}?.()`;
       case 'store-set':
         return `${variableByName.get(action.variableName)!.exportName}.set(${exprCode(action.expr, 'handler')})`;
       case 'globalstore-set': {
@@ -654,7 +659,7 @@ export function emitComponent(
     if (role === 'instance') {
       const target = requireInstance(node.type, `instance ${id}`);
       if (!target) return [`${pad(indent)}{/* TODO(export): component instance ${id} could not be resolved */}`];
-      const attrs = instanceAttrs(node);
+      const attrs = [...instanceAttrs(node), ...instanceHandlerAttrs(node, indent + 2)];
       return element(target.symbol, attrs, null, indent, false);
     }
 
@@ -892,6 +897,27 @@ export function emitComponent(
     return element('svg', svgAttrs, children.length > 0 ? children : null, indent, true);
   };
 
+  /**
+   * Signal wires from an instance's outputs attach as callback props — the prop names come off
+   * the target's own plan, so parent and child agree by construction (COMPONENT-OUTPUTS §5).
+   */
+  const instanceHandlerAttrs = (node: NodeIR, attrIndent: number): string[] => {
+    const handlers = plan.handlers[node.id];
+    if (!handlers) return [];
+    const targetPlan = project.byLegacyPath.get(node.type);
+    const propByPort = new Map((targetPlan?.outputProps ?? []).map((o) => [o.port, o.prop]));
+    const attrs: string[] = [];
+    for (const [port, actions] of Object.entries(handlers)) {
+      const prop = propByPort.get(port);
+      if (prop === undefined) {
+        notes.push(`${plan.path}: instance ${node.id} signal "${port}" has no callback prop on ${node.type} — dropped, reported`);
+        continue;
+      }
+      attrs.push(`${prop}={${handlerArrow(actions, '()', attrIndent)}}`);
+    }
+    return attrs;
+  };
+
   const instanceAttrs = (node: NodeIR): string[] => {
     const attrs: string[] = [];
     for (const param of node.parameters) {
@@ -923,17 +949,19 @@ export function emitComponent(
   }
 
   const body: string[] = [];
-  if (plan.props.length > 0) {
+  const allPropNames = [...plan.props.map((p) => p.name), ...plan.outputProps.map((o) => o.prop)];
+  if (allPropNames.length > 0) {
     body.push(`export interface ${symbol}Props {`);
     for (const prop of plan.props) body.push(`  ${prop.name}?: ${prop.tsType};`);
+    for (const output of plan.outputProps) body.push(`  ${output.prop}?: () => void;`);
     body.push('}', '');
   }
   if (plan.docComment) {
     body.push(`/** ${plan.docComment}${/[.!?]$/.test(plan.docComment) ? '' : '.'} */`);
   }
   const signature =
-    plan.props.length > 0
-      ? `export function ${symbol}({ ${plan.props.map((p) => p.name).join(', ')} }: ${symbol}Props) {`
+    allPropNames.length > 0
+      ? `export function ${symbol}({ ${allPropNames.join(', ')} }: ${symbol}Props) {`
       : `export function ${symbol}() {`;
   body.push(signature);
   if (usesNavigate) body.push('  const navigate = useNavigate();');
@@ -980,6 +1008,7 @@ export function emitComponent(
       case 'branch':
         return [a.cond, ...a.whenTrue.flatMap(actionExprsOf), ...a.whenFalse.flatMap(actionExprsOf)];
       case 'navigate':
+      case 'output-signal':
         return [];
     }
   };
