@@ -442,8 +442,8 @@
     },
     {
       "typeName": "Static Data",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "the authored JSON rows become a frozen module constant with a derived row type, feeding the For Each that consumes them (EXP-002-STATIC-DATA-TARGET-OUTPUT.md); CSV, a blob that does not parse to an array of records, a wired parse-failure channel, and rows no rendered repeater consumes each defer with a named reason"
     },
     {
       "typeName": "String",

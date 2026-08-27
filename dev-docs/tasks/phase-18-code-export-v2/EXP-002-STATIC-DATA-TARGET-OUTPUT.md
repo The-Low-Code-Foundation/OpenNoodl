@@ -196,16 +196,22 @@ never shadow a prop; a collision suffixes `_1`, the established rule.
    node that reaches emit has already parsed"*. Measured `0/14`, so this gate costs nothing
    today. It exists because the alternative is silent: a node that parses can never fire
    `failure`, so emitting nothing would delete a wired behaviour rather than defer it.
-6. **`count` is consumed** — translated as `CONSTANT.length`, which is correct by construction.
-   `0/14` exercise it, so it ships **with a fixture and no corpus evidence**, and that is stated
-   rather than implied.
+6. **`count` is consumed** — translated as a **number literal**, which is correct by
+   construction: the rows are known at emit, and the runtime's `count` is `collection.size()`
+   over exactly these rows. `0/14` exercise it, so it ships **with a fixture and no corpus
+   evidence**, and that is stated rather than implied.
 7. A **second consumer of `items`** does not gate this node. The constant is module-scoped and
    any reader can read it; the *other* consumer defers or translates under its own rules. `0/14`
    today.
+8. **No rendered repeater consumes the rows** — *"the authored rows are not consumed by a
+   rendered repeater"*. The node passed every gate above but nothing renders it, so the plan
+   drops it rather than emitting a dead constant. This follows the `DbCollection2` precedent
+   (*"query result is not consumed by a rendered repeater"*) rather than §4.7's first draft,
+   which would have emitted an unused constant and called it a note.
 
 The repeater's own existing gates are unchanged and still apply on top: an unresolvable template,
-`templateType: dynamic`, or a non-identity mapping script still defers the For Each, and then the
-constant is emitted but unused — which is a note, not an error.
+`templateType: dynamic`, or a non-identity mapping script still defers the For Each — and then
+§4.8 drops the constant with it, so a deferred repeater never leaves dead data behind.
 
 ## §5 What stays deferred (unchanged, and measured)
 
@@ -236,17 +242,38 @@ changes that, and no number in this document should be read as if it did.
 4. **A runtime parse failure preserves the previous `items`; the export defers the node.** Two
    different answers to the same input, both deliberate (§4.2).
 
-## §7 Corpus impact — a projection, not a result
+## §7 Corpus impact — measured after building (session 18)
 
-**14 repeaters should flip from deferred to rendering**, across 8 distinct template components,
-in the most repeated shape in the corpus (ProductCard/CategoryCard/FooterColumn). The 8 callback
-props and 2 Component Outputs nodes stay deferred.
+The slice is built. Measured with `coverage-audit.ts` over the same 40-project list, run twice:
+once in a worktree at the pre-change commit, once on the working tree.
 
-**No coverage percentage is quoted here.** The corpus stands at **86.7%** (2,361/2,724) from
-session 16 and is unmoved until code lands; it must be re-measured with the **s16 audit
-instrument over the same 40-project list**, because the aggregate depends on the signature dedupe
-and a different script over a different list is not comparable. The ledger's `Static Data` entry
-flips `deferred` → `translated` in the same commit as the code, never before.
+| | translated / total | % |
+|---|---|---|
+| before (worktree at `d5480e90`) | 3,681 / 4,441 | 82.89 |
+| after | 3,705 / 4,441 | **83.43** |
+
+**+24 nodes on an unchanged denominator** — exactly the 24 raw Static Data nodes across the 13
+host projects, every one flipping to `0 deferred`. The before-run **reproduces session 16's saved
+`coverage-s16.txt` byte-for-byte in aggregate** (3,681/4,441), which is what makes the two runs
+comparable rather than merely adjacent.
+
+Two things this table does **not** say, both worth stating because the number invites the wrong
+reading:
+
+1. **This is the undeduped metric, not the 86.7% one.** The `86.7% (2,361/2,724, 28 signatures)`
+   figure carried in the handoffs comes from a signature-deduped aggregate that **none of the
+   surviving instruments reproduce** — `coverage-audit.ts` does not dedupe, and the saved s16
+   file sums to 82.89% over 40 projects. Rather than quote a number this session cannot re-derive,
+   both figures above come from one instrument run twice. Whoever restores the deduped audit
+   should re-measure both sides with it.
+2. **The node count understates the actual gain.** A deferred For Each was *already* counted as
+   translated — it renders, just as a `TODO` comment. So the audit sees 24 Static Data nodes flip
+   and cannot see the thing that matters: **14 deduped repeaters now render real rows** instead of
+   a placeholder, across 8 template components, in the most repeated shape in the corpus. The 8
+   callback props and 2 Component Outputs nodes stay deferred (§5).
+
+The ledger's `Static Data` entry flipped `deferred` → `translated` in the same commit as the code:
+175 types, now **109 deferred, 50 translated**, 1 stubbed, 15 backend-only.
 
 ## §8 Fixture & test plan (the EXP-002 discipline)
 
@@ -271,3 +298,23 @@ the shape allows:
 
 A `static-data-defers` case must fail if the reason string changes, so the reasons in §4 are the
 contract, not commentary.
+
+
+## §9 Implementation addendum — what building the slice settled
+
+1. **⚠️ The `json` port arrives as `kind: 'script'`, not `literal`.** It is a code-editor port,
+   and `literalParam` answers `undefined` for it. The first implementation read it that way and
+   **deferred all 14 corpus nodes while every test passed** — the gate fired for a reason that was
+   true of the accessor, not of the data. Caught only by dumping the emitted artefact. This is the
+   `ParamIR.value` tagged-union trap the session-17 handoff warned about, in a new costume.
+2. **`count` needed a pass, not just an expression.** `resolveExpr` gained the literal, but value
+   wires from a Static Data node reach no pass by default — pass 4f admits latch and control reads
+   only. It gained `isStaticCountRead`, which inherits 4f's bindable discipline unchanged.
+3. **The §4e branch had to be told to stand aside.** Its guard excluded `DbCollection2` and
+   `Collection2` but not `Static Data`, so it consumed the wire and filed *"items are fed by no
+   statically known source"* before the typed branch could run. That note is precisely what the
+   corpus measurement had shown, which is the reason it was findable at all.
+4. **The audit-summing regex silently dropped 3 of 40 projects** whose names contain spaces
+   (`Puppy test 3`, `Puppy test`, `Tutorial project`), because `(\S+)` cannot match them. Both
+   sides were equally affected so the delta held, but the aggregate was wrong until fixed — a
+   bounded query reporting its bound.

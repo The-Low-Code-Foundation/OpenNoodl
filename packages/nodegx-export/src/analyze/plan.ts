@@ -301,6 +301,40 @@ export interface RepeaterPlan {
    * runtime re-renders on array identity change anyway — grade Q).
    */
   itemsExpr?: ValueExpr;
+  /**
+   * A Static Data node whose parsed rows are hoisted to a module constant (STATIC-DATA §3).
+   * Deliberately not `itemsExpr`: that path's contract is "no statically-known item shape, so
+   * fields read as `any` and every mapped input is kept". Static Data's shape *is* known, so it
+   * takes the `collection` treatment instead — derived type, `allowedFields`, a real key.
+   */
+  itemsStaticId?: string;
+}
+
+/**
+ * One Static Data node hoisted to a frozen module constant (STATIC-DATA-TARGET §3).
+ *
+ * The node's three inputs are all `allowEditOnly` (staticdata.ts), so no wire can feed them and
+ * the rows are knowable by construction rather than by a solver that happened to succeed. Only
+ * nodes that pass every §4 gate get a plan; the rest defer with their reason named.
+ */
+export interface StaticDataPlan {
+  nodeId: string;
+  /** `PRODUCTS_DATA` — SCREAMING_SNAKE of the authored label, deduped against reserved names. */
+  constName: string;
+  /** `FeaturedProduct` — the row type alias. */
+  typeName: string;
+  /** Nested object/array aliases this row type references, declaration order (§3.1). */
+  nestedTypes: Array<{ name: string; decl: string }>;
+  /** The row type's own field list, source order. */
+  fields: Array<{ name: string; tsType: string; optional: boolean }>;
+  /** The parsed rows, verbatim — emitted as a frozen literal. */
+  rows: Array<Record<string, unknown>>;
+  /**
+   * `id` when every row carries a unique, primitive, non-null one — which mirrors the runtime's
+   * own identity notion, since `Collection.set` mints each row into a Model and treats `id` as
+   * the record's identity rather than ordinary data (collection.ts:542). Null ⇒ key by index.
+   */
+  keyField: string | null;
 }
 
 /**
@@ -364,6 +398,8 @@ export interface ComponentPlan {
   closesPopup: boolean;
   queries: QueryPlan[];
   repeaters: Record<string, RepeaterPlan>;
+  /** Static Data nodes hoisted to module constants (STATIC-DATA-TARGET §3), resolution order. */
+  staticData: StaticDataPlan[];
   /**
    * Re-host wrapper definitions by node id (EXP-003 §4), registered the moment a read of the
    * node resolves — the emit layer prints exactly the wrappers that surviving expressions
@@ -533,6 +569,7 @@ function planComponent(
     closesPopup: false,
     queries: [],
     repeaters: {},
+    staticData: [],
     jsFunctions: {},
     stateVars: [],
     syncEffects: [],
@@ -1225,6 +1262,159 @@ function planComponent(
     return stateVar;
   };
 
+  // ---- Static Data: the authored blob as a build-time constant (STATIC-DATA-TARGET) --------
+  //
+  // `type`, `csv` and `json` are all `allowEditOnly` (staticdata.ts), so this is not a solver
+  // that might succeed — the rows are knowable by construction. Every rejection below names its
+  // reason, because §8's defer fixtures assert the reason, not merely that something deferred.
+
+  const usedStaticNames = new Set<string>();
+
+  /** An authored key is arbitrary text; only an identifier can print bare. */
+  const tsFieldKey = (name: string) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name));
+
+  /** §3.1 — the type of one JS value, recursing into objects and arrays. */
+  const staticTsType = (
+    value: unknown,
+    typeBase: string,
+    nested: Array<{ name: string; decl: string }>
+  ): string => {
+    if (value === null) return 'null';
+    if (Array.isArray(value)) {
+      // An empty array has no element to inspect; a mixed one has no single element type.
+      const elemTypes = [...new Set(value.map((v) => staticTsType(v, typeBase, nested)))];
+      if (elemTypes.length !== 1) return 'readonly unknown[]';
+      return `readonly ${elemTypes[0]}[]`;
+    }
+    if (typeof value === 'object') {
+      const rows = [value as Record<string, unknown>];
+      const name = allocStaticTypeName(typeBase);
+      const decl = staticRowTypeDecl(rows, name, nested);
+      nested.push({ name, decl });
+      return name;
+    }
+    return typeof value === 'number' ? 'number' : typeof value === 'boolean' ? 'boolean' : 'string';
+  };
+
+  const allocStaticTypeName = (base: string): string => {
+    let name = base;
+    let counter = 2;
+    while (usedStaticNames.has(name) || stateNameTaken(name)) name = `${base}${counter++}`;
+    usedStaticNames.add(name);
+    return name;
+  };
+
+  /** §3.1 — the union of keys across rows, each typed by the union of its values' types. */
+  const staticRowFields = (
+    rows: Array<Record<string, unknown>>,
+    typeBase: string,
+    nested: Array<{ name: string; decl: string }>
+  ): Array<{ name: string; tsType: string; optional: boolean }> => {
+    const keys: string[] = [];
+    for (const row of rows) for (const k of Object.keys(row)) if (!keys.includes(k)) keys.push(k);
+    return keys.map((key) => {
+      const present = rows.filter((r) => key in r);
+      const types = [...new Set(present.map((r) => staticTsType(r[key], `${typeBase}${pascalCase(key)}`, nested)))];
+      return { name: key, tsType: types.sort().join(' | '), optional: present.length < rows.length };
+    });
+  };
+
+  const staticRowTypeDecl = (
+    rows: Array<Record<string, unknown>>,
+    name: string,
+    nested: Array<{ name: string; decl: string }>
+  ): string => {
+    const fields = staticRowFields(rows, name, nested);
+    const body = fields.map((f) => `  ${tsFieldKey(f.name)}${f.optional ? '?' : ''}: ${f.tsType};`).join('\n');
+    return `type ${name} = {\n${body}\n};`;
+  };
+
+  for (const node of component.nodes) {
+    if (node.type !== 'Static Data') continue;
+
+    // §4.1 — `type` defaults to csv, and unset ALSO parses csv (parseData's first branch).
+    const authoredType = literalParam(node, 'type');
+    if (authoredType !== 'json') {
+      notes.push(
+        `${plan.path}: node ${node.id} (Static Data) deferred: CSV is not translated in this slice` +
+          (authoredType === undefined ? ' (Type is unset, which the runtime reads as CSV)' : '')
+      );
+      continue;
+    }
+    // ⚠️ The `json` input is a code-editor port, so its ParamIR arrives as `kind: 'script'` —
+    // NOT `literal`. `literalParam` answers undefined for it, which reads as "no JSON" and
+    // defers every node in the corpus. Measured against the artefact, not assumed.
+    const jsonParam = node.parameters.find((p) => p.name === 'json')?.value;
+    const raw =
+      jsonParam === undefined
+        ? undefined
+        : jsonParam.kind === 'script'
+          ? jsonParam.source
+          : jsonParam.kind === 'literal'
+            ? String(jsonParam.value)
+            : jsonParam.kind === 'json'
+              ? JSON.stringify(jsonParam.value)
+              : undefined;
+    if (typeof raw !== 'string' || raw.trim() === '') {
+      notes.push(`${plan.path}: node ${node.id} (Static Data) deferred: no JSON is authored`);
+      continue;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      notes.push(
+        `${plan.path}: node ${node.id} (Static Data) deferred: the authored JSON does not parse (${(e as Error).message})`
+      );
+      continue;
+    }
+    // §4.3 / §4.4 — the runtime mints each row into a Model, so a non-record row has no field
+    // to map; and a non-array parse has no rows at all.
+    if (!Array.isArray(parsed)) {
+      notes.push(`${plan.path}: node ${node.id} (Static Data) deferred: the authored JSON is not an array of records`);
+      continue;
+    }
+    if (!parsed.every((r) => typeof r === 'object' && r !== null && !Array.isArray(r))) {
+      notes.push(`${plan.path}: node ${node.id} (Static Data) deferred: a row is not a record`);
+      continue;
+    }
+    // §4.5 — a node that reaches here has already parsed, so `failure` can never fire and
+    // `error` is always empty. Emitting nothing for a wired parse-failure channel would delete
+    // a behaviour rather than defer it, so the node defers instead.
+    const failureWire = component.connections.find(
+      (c) => c.fromId === node.id && (c.fromProperty === 'failure' || c.fromProperty === 'error')
+    );
+    if (failureWire !== undefined) {
+      notes.push(
+        `${plan.path}: node ${node.id} (Static Data) deferred: the parse-failure channel is wired ("${failureWire.fromProperty}"), and a node that reaches emit has already parsed`
+      );
+      continue;
+    }
+
+    const rows = parsed as Array<Record<string, unknown>>;
+    const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+    const typeBase = allocStaticTypeName(label.length > 0 ? pascalCase(label) : 'StaticRow');
+    const nestedTypes: Array<{ name: string; decl: string }> = [];
+    const fields = staticRowFields(rows, typeBase, nestedTypes);
+
+    // §3.2 — `id` is the key only when every row carries a unique, primitive, non-null one.
+    const ids = rows.map((r) => r.id);
+    const keyField =
+      ids.every((v) => (typeof v === 'string' || typeof v === 'number') && v !== null) &&
+      new Set(ids).size === rows.length
+        ? 'id'
+        : null;
+
+    let constName = (label.length > 0 ? label : 'staticRows').replace(/[^A-Za-z0-9]+/g, '_').toUpperCase();
+    if (/^[0-9]/.test(constName)) constName = `_${constName}`;
+    let counter = 2;
+    const base = constName;
+    while (usedStaticNames.has(constName) || stateNameTaken(constName)) constName = `${base}_${counter++}`;
+    usedStaticNames.add(constName);
+
+    plan.staticData.push({ nodeId: node.id, constName, typeName: typeBase, nestedTypes, fields, rows, keyField });
+  }
+
   // ---- the latches (§4a): Switch and Counter, the same shape in boolean and number --------
 
   const LATCH_PULSES: Record<string, string[]> = {
@@ -1356,6 +1546,16 @@ function planComponent(
     }
     if (jsNodeKindOf(fromNode.type) !== null) {
       return jsFunReadExpr(fromNode, fromProperty, ctx);
+    }
+    // STATIC-DATA §4.6 — the rows are known at emit, so `count` is a number literal. No new
+    // machinery: the runtime's own `count` is `collection.size()` over exactly these rows.
+    if (fromNode.type === 'Static Data' && fromProperty === 'count') {
+      const sd = plan.staticData.find((s) => s.nodeId === fromNode.id);
+      if (sd === undefined) {
+        ctx.defer = 'the Static Data node it counts deferred';
+        return null;
+      }
+      return { kind: 'literal', value: sd.rows.length };
     }
     if (fromNode.type === 'Variable2' && fromProperty === 'value') {
       const name = variableNameOf(fromNode);
@@ -3384,7 +3584,10 @@ function planComponent(
     const spec = controlSpecOf(fromNode.id);
     const isControlRead =
       spec !== undefined && connection.fromProperty === spec.output && controlStateVars.has(fromNode.id);
-    if (!isLatchRead && !isControlRead) continue;
+    // STATIC-DATA §4.6 — `count` over rows known at emit, which resolves to a number literal.
+    // It rides this pass because it wants exactly the same bindable discipline.
+    const isStaticCountRead = fromNode.type === 'Static Data' && connection.fromProperty === 'count';
+    if (!isLatchRead && !isControlRead && !isStaticCountRead) continue;
     const toNode = nodeById.get(connection.toId);
     if (!toNode || !rendered.has(toNode.id)) continue; // handler reads resolve at compile; the sweep names the rest
     const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
@@ -3435,7 +3638,10 @@ function planComponent(
       plan.repeaters[toNode.id] &&
       fromNode !== undefined &&
       fromNode.type !== 'DbCollection2' &&
-      fromNode.type !== 'Collection2'
+      fromNode.type !== 'Collection2' &&
+      // Static Data has a statically-known item shape, so it takes the typed branch below
+      // rather than this one, whose contract is "untyped list, fields read as `any`".
+      fromNode.type !== 'Static Data'
     ) {
       consumed.add(connection.key);
       const ctx = newCtx();
@@ -3483,6 +3689,25 @@ function planComponent(
     ) {
       plan.repeaters[toNode.id].itemsQueryId = fromNode.id;
       consumed.add(connection.key);
+      continue;
+    }
+    // STATIC-DATA §3 — the authored blob's rows, hoisted to a module constant. Ordered before
+    // the Collection2 branch only for readability; the two cannot both match.
+    if (
+      toNode?.type === 'For Each' &&
+      connection.toProperty === 'items' &&
+      fromNode?.type === 'Static Data' &&
+      connection.fromProperty === 'items' &&
+      plan.repeaters[toNode.id]
+    ) {
+      const sd = plan.staticData.find((s) => s.nodeId === fromNode.id);
+      if (sd === undefined) {
+        // The node deferred at its own gate, which already filed the reason (§4).
+        notes.push(`wire ${connection.key} dropped: the Static Data node it reads deferred`);
+        continue;
+      }
+      consumed.add(connection.key);
+      plan.repeaters[toNode.id].itemsStaticId = fromNode.id;
       continue;
     }
     if (
@@ -3789,6 +4014,32 @@ function planComponent(
       moduleBase: plural.toLowerCase()
     });
     dispositions[node.id] = { kind: 'stubbed', reason: 'DbCollection2 → typed api stub + useState/useEffect' };
+  }
+
+  // Static Data (STATIC-DATA-TARGET §3): a node whose rows reached a rendered repeater is
+  // collapsed into the hosting file as a module constant. One that passed its own gates but
+  // that no repeater consumes is dropped from the plan rather than emitted as a dead constant —
+  // the DbCollection2 precedent above, and the reason is named either way.
+  for (const node of component.nodes) {
+    if (node.type !== 'Static Data') continue;
+    const planned = plan.staticData.find((s) => s.nodeId === node.id);
+    if (planned === undefined) {
+      // Its §4 gate already filed the reason; record the disposition to match.
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: 'the authored rows are not statically translatable' };
+      continue;
+    }
+    const consumedByRepeater = Object.values(plan.repeaters).some((r) => r.itemsStaticId === node.id);
+    if (!consumedByRepeater) {
+      const reason = 'the authored rows are not consumed by a rendered repeater';
+      plan.staticData = plan.staticData.filter((s) => s.nodeId !== node.id);
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+      notes.push(`${plan.path}: node ${node.id} (Static Data) deferred: ${reason}`);
+      continue;
+    }
+    dispositions[node.id] = {
+      kind: 'collapsed',
+      into: plan.file ? `src/${plan.file.dir}/${plan.file.fileBase}.tsx` : plan.path
+    };
   }
 
   // Whatever analysis has not classified yet is logic: EXP-003's, or unknown-type debris.

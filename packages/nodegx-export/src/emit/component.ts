@@ -1234,14 +1234,18 @@ export function emitComponent(
     const collection =
       repeater?.itemsCollectionName != null ? collectionByName.get(repeater.itemsCollectionName) : undefined;
     const itemsExpr = repeater?.itemsExpr;
+    const staticData = repeater?.itemsStaticId
+      ? plan.staticData.find((s) => s.nodeId === repeater.itemsStaticId)
+      : undefined;
+    const noFeed = !query && !collection && itemsExpr === undefined && staticData === undefined;
     const target = requireInstance(repeater?.templatePath ?? null, `For Each ${node.id}`);
     const templatePlan = repeater?.templatePath ? project.byLegacyPath.get(repeater.templatePath) : undefined;
-    if (!repeater || (!query && !collection && itemsExpr === undefined) || !target || repeater.mapping === null) {
+    if (!repeater || noFeed || !target || repeater.mapping === null) {
       const reason = !repeater?.templatePath
         ? 'no template component'
         : repeater.mapping === null
           ? 'dynamic mapping script'
-          : !query && !collection && itemsExpr === undefined
+          : noFeed
             ? 'items are not fed by a query, a named array, or a statically-known list'
             : 'unresolvable template';
       notes.push(`${plan.path}: For Each ${node.id} deferred to EXP-003 (${reason})`);
@@ -1253,6 +1257,25 @@ export function emitComponent(
       repeater.mapping === 'template-inputs'
         ? (templatePlan?.props ?? []).map((p) => ({ input: p.name, field: p.name }))
         : repeater.mapping;
+    // STATIC-DATA §3: the rows are known, so this takes the typed treatment — the item type's
+    // own fields are the allowed set, and a mapped input the rows do not carry is dropped and
+    // reported, exactly as the collection/query paths do.
+    if (staticData !== undefined) {
+      const carried = new Set(staticData.fields.map((f) => f.name));
+      const keptStatic = mapping.filter((entry) => carried.has(entry.field));
+      for (const dropped of mapping.filter((entry) => !carried.has(entry.field))) {
+        notes.push(
+          `${plan.path}: For Each ${node.id} maps "${dropped.input}" from field "${dropped.field}", which no authored row carries — dropped, reported`
+        );
+      }
+      // §3.2: `id` keys only when every row has a unique one, mirroring the runtime's own
+      // record identity; otherwise index, which is the same information the runtime has.
+      const keyAttr = staticData.keyField ? `key={${itemLocal}.${staticData.keyField}}` : `key={${indexLocal}}`;
+      const attrs = [keyAttr, ...keptStatic.map(({ input, field }) => `${input}={${memberExpr(itemLocal, field)}}`)];
+      const lines = element(target.symbol, attrs, null, indent + 2, false);
+      const params = staticData.keyField ? itemLocal : `${itemLocal}, ${indexLocal}`;
+      return [`${pad(indent)}{${staticData.constName}.map((${params}) => (`, ...lines, `${pad(indent)}))}`];
+    }
     // §4e: a plain-list feed has no statically-known item shape — fields read as `any` off the
     // untyped list (the §10 ruling), so every mapped input is kept.
     if (itemsExpr !== undefined) {
@@ -1546,6 +1569,18 @@ export function emitComponent(
       '}',
       ''
     );
+  }
+  // Static Data (STATIC-DATA-TARGET §3): the authored rows as a frozen module constant, above
+  // the component. The inputs are `allowEditOnly`, so this is a build-time constant in the
+  // runtime's terms too — there is no edit it could miss.
+  for (const sd of plan.staticData) {
+    for (const nested of sd.nestedTypes) body.push(nested.decl, '');
+    body.push(`type ${sd.typeName} = {`);
+    for (const f of sd.fields) {
+      body.push(`  ${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(f.name) ? f.name : JSON.stringify(f.name)}${f.optional ? '?' : ''}: ${f.tsType};`);
+    }
+    body.push('};', '');
+    body.push(`const ${sd.constName}: readonly ${sd.typeName}[] = Object.freeze(${staticRowsLiteral(sd.rows, 0)});`, '');
   }
   const allPropNames = [
     ...plan.props.map((p) => p.name),
@@ -1856,6 +1891,31 @@ function memberExpr(object: string, field: string): string {
 
 function pad(indent: number): string {
   return ' '.repeat(indent);
+}
+
+/**
+ * The authored rows as a TS array literal (STATIC-DATA-TARGET §3), printed rather than
+ * `JSON.stringify`d so keys print bare where they can and the result reads like code a person
+ * wrote. Values are re-serialized from the parsed JSON, so there is no authored text to preserve
+ * verbatim — only the values themselves, which `JSON.stringify` renders exactly for each scalar.
+ */
+function staticRowsLiteral(value: unknown, indent: number): string {
+  const inner = pad(indent + 2);
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '[]';
+    const items = value.map((v) => `${inner}${staticRowsLiteral(v, indent + 2)}`);
+    return `[\n${items.join(',\n')}\n${pad(indent)}]`;
+  }
+  if (typeof value === 'object' && value !== null) {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length === 0) return '{}';
+    const fields = entries.map(([k, v]) => {
+      const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(k) ? k : JSON.stringify(k);
+      return `${inner}${key}: ${staticRowsLiteral(v, indent + 2)}`;
+    });
+    return `{\n${fields.join(',\n')}\n${pad(indent)}}`;
+  }
+  return JSON.stringify(value);
 }
 
 // ---- Circle's arc math (Circle.tsx, verbatim semantics) -----------------------------------
