@@ -21,6 +21,56 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 - ✅ **FB-010** — a settings page, so a profile can exist at all (M) — **DONE, DRIVEN 2026-08-23; DEPLOYED to nexus-1** (`eaa19c6`, verified live rather than by the deploy script alone: `41fe2749`). ⚠️ **This line said `⬜` until 2026-08-24 (session 18)** — the task file has read *"BUILT, SPECCED, DRIVEN"* since the 23rd and the deploy commit landed after it, so the index was the only place still claiming it was open. 🔴 A stale index line is worse than a missing one: it sends the next session to rebuild something that already shipped. Corrected from the task file and the commit, not from memory.
 - ✅ **FB-003** — [become a coach / post an RFP: the two composers](FB-003-NOBODY-CAN-OFFER-OR-ASK.md) — **DONE, DRIVEN over real HTTP 2026-08-23** (`nodegx-community` `67df2b1`). Two POSTs on the routes that already served the GETs, plus one client island holding both composers — an API caller and **not** a server action, because AC1 is that a request posted on the web reaches the **editor's** NAT-009 client without either being redeployed. 🔴 **THE DRIVE FOUND WHAT THE FILE DID NOT: `coaching_offers.account_id` references `profiles`, not `accounts`** — so an account with **no profile cannot create an offer at all**, which is *every* account a real sign-up produces (`upsertProfile` has no caller — **that is FB-010**). It rendered as the generic *"that offer could not be created"* on the most likely path through the feature; now `[offer-needs-profile]`, a 403 naming the precondition. ⚠️ **The spec fixture had hidden it** — `makeUnlistedBuilder` creates a profile, so all sixteen green arms walked past the real case. ✅ Also fixed: `boardRefusalResponse`'s default said *"that **response** could not be sent"* to somebody posting a **request**. ✅ Also found, unreachable, recorded: **`[rfp-response-cap]` names two different failures**. ✅ **There is no rate band** — derived from the schema, per the task's own NAT-008 trap. **34 specs, 12 mutations all red**; suite **56/1360/0**. ⚠️ **AC4's editor half is open** — `POST_A_REQUEST_LINE` has **no UI consumer**, so there is no click to redirect; the web half (sign-in with `?next=`) is done. ~~⚠️ Not deployed.~~ ✅ **Almost certainly DEPLOYED — corrected 2026-08-24 (s18).** `67df2b1` is an **ancestor of `eaa19c6`** (verified locally with `git merge-base --is-ancestor`), and `eaa19c6` is the stamp session 17 read off nexus-1. ✅ **CONFIRMED DEPLOYED — the stamp was re-measured 2026-08-24 (s19)**, read off `49.12.102.195:/etc/nodegx-community/deployed.json` over SSH: `eaa19c6c…` on `main`, `dirty: false`. So s18's ancestry argument stands on a measured stamp rather than a relayed one. ⚠️ The box has since moved to `acd4a9a` (FB-011), which is a descendant of both.
 
+## Tier 1c — Richard's 2026-08-27 batch (three reports, one message)
+
+- ✅ **FB-025** — [the Run that read last time's value](FB-025-THE-RUN-THAT-READ-LAST-TIMES-VALUE.md)
+  — **DONE, GATED and DRIVEN on the canvas 2026-08-27** (`27f16f8b`). 🔴 **The first drive attempt proved nothing, and that is the lesson**: authoring the `Run` connection before the value connection in `project.json` does **not** reproduce this — a project *loaded from disk* gets the value port's queue key first (`["workspace","generatedCode","x","run"]`) and is correct even on the unfixed runtime. Only Richard's build order **performed live** — unwire the value port, reload, type one character, wire it back into the running graph — makes the broken order `["workspace","generatedCode","run","x"]`. 🔴 **A general runtime ordering defect, not a Visual Function
+  one.** `Node.update` drained per-port input queues in `Object.keys(_inputValuesQueue)` order —
+  **insertion order of the keys**, created lazily on each port's first-ever delivery and never
+  removed — so a `Run` pulsed once before its value port had ever been written kept its place at the
+  head of every later drain **for the life of the node**, and the program ran on last frame's
+  `Inputs`. ✅ **The repository already knew and had repaired it one node at a time**:
+  `objectchanged.ts`'s `emptyToNull` exists only because of it (`NV-ii`), `nda-012` pins that
+  `Signal To Index` is merely *masked* by "an accident of the node's `initialize`", and
+  `CONTRACT.md` **C4 asserted the guarantee nothing implemented**. Now stated: a pending **value**
+  is applied before a pending **signal**, then arrival order, and an emptied port lets go of its
+  key. **C7 lockstep, C8 consolidation and `Delete` untouched.** 🔴 **Arrival order alone was wrong
+  and `nodegx-core-parity` C4 is what proved it** — a value one hop upstream is pulled in by
+  `_updateDependencies` *after* the signal was queued. 🔴 **`nda-012`'s mechanism row pinned the
+  accident and was rewritten to pin the guarantee**, with an adversarial graph that is red on the
+  old drain. Both 🔴 rows re-run against unfixed `node.ts`: red; control: green.
+- ✅ **FB-026** — [the field that is not always text](FB-026-THE-FIELD-THAT-IS-NOT-ALWAYS-TEXT.md) —
+  **DONE, GATED and DRIVEN 2026-08-27** (`26dcc51c`) — **both directions, through the property panel's own dropdown**, because a model write never re-renders that panel. Number: ports `number`, field publishes `5` as a `number`, wire `{healthy: true}`. Flipped back to Text: `{healthy: false}`, dashed, *"connects a **string** to a **number** port"*. ✅ **The flip is what makes the healthy reading evidence rather than a constant** — same wire, same instrument, opposite answers. Exactly one row named `Value` per plug, confirming the `getPorts` override at its own surface. 🧭 **The subject was ambiguous and Richard settled it**: the
+  **Text Input**'s `Type` property, not the Visual Function's `Define input` TYPE dropdown (whose
+  options are labelled exactly `any/string/number/…`, which is why it read as the other one).
+  `event.target.value` is a string for **every** `<input>`, `type="number"` included, so Number
+  really did publish `"5"` — **FIX-025's dashed wire was telling the truth**, and all three
+  symptoms were that one defect. Now: one shared conversion with **four** callers
+  (`textInputValue.ts`), empty → **`null` never `NaN`** (E3/E4; `NaN` would raise OBS-003 hops
+  away), the field keeps the **raw string** so a half-typed `-`/`1.` survives, and the two ports are
+  declared `'*'` and **narrowed per instance** from the parameter. 🔴 **New editor capability:
+  a dynamic port now *replaces* a static one of the same name and plug** (`portOverrides.ts`) —
+  before, they concatenated, and nothing collided only because every producer takes care not to.
+  ✅ Richard's rename: `Text`→`Value`, `Text Changed`→`Value Changed`, **display names only**.
+  🔴 **The catalog would have published a lie** (`runtime-discovered` ⇒ *"the static port list is
+  incomplete"*, and `known: false`) — so `RETYPES_DECLARED_PORTS` was added and **the claim is
+  driven and throws**, both branches, with an emptiness guard; **mutation-tested**.
+  ⚠️ **`docs:nodes:check` read *clean* against a stale enriched catalog** — a green check on a
+  stale input; `catalog:merge` first.
+- ✅ **FB-027** — [copy without multi-select](FB-027-COPY-WITHOUT-MULTI-SELECT.md) — **DONE 08-27,
+  GATED and DRIVEN 2026-08-27** (`c4ec2103`) — every gesture a **real input event** (a genuine right-click; `Ctrl` chords via `Input.dispatchKeyEvent` with focus emulation on the same connection), counted with `ws.getAllBlocks(false).length` before and after. Duplicate on a 4-block stack **+5** (the stack *and* the value block plugged into it); `Ctrl+X` **−4** — it removed what it copied; `Ctrl+X` on a **value** block **−1**, the `outputConnection` carve-out; `Delete` still **−1** and the stack heals. 🧭 **Ruled by Richard**: the multi-select plugin peers on `blockly >=11 <12`
+  and this editor is on **12.3.1** (LGC-006's constraint, **re-checked against npm, not recalled**);
+  no rollback, make the gesture that exists carry the group. 🔴 **The real defect was not only the
+  missing selection**: `toCopyData(addNextBlocks = false)` **defaults to false** and all four
+  Blockly call sites pass nothing, so Duplicate/Ctrl+C/Ctrl+X took the block and its inputs and left
+  **the stack below it** behind — for a Visual Function, that is the whole program.
+  🔴 **`MyBlocksSave.ts` had claimed the opposite since 08-12** (*"exactly as Blockly's own Duplicate
+  behaves"*); corrected, and now true. `Delete` deliberately untouched. 🔴 **The doubles had a hole
+  shaped like the defect**: `ShortcutRegistry.register` throws on an already-mapped key code
+  (`allowOverrides` only silences the *name* warning), so the suite was green while the editor threw
+  at startup — **`test:main` went to 5 suites / 90 tests red**. Fixed by `unregister` first, and the
+  double now **refuses what Blockly refuses**, plus a row against the **real Blockly**.
+
 ## Tier 1b — the test-user batches (filed 08-22; no rulings needed)
 
 - ✅ **FB-020** — the checkbox that cannot be checked (S/M) — **done 08-22, driven.** 🔴 The
