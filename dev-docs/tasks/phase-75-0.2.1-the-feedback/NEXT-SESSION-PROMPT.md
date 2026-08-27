@@ -10,7 +10,7 @@ The previous two sessions built, gated and drove Richard's three bugs and commit
 them. This session committed all of it and cleared both follow-ups. **Nothing from that batch is
 outstanding.**
 
-Six commits, all on `cline-dev`, none pushed:
+Seven commits on `cline-dev`, none pushed — the six below plus this handoff:
 
 | | |
 |---|---|
@@ -32,7 +32,9 @@ largest open items are FB-012 (tutorials + share/export) and FB-009 (a syllabus 
 both waiting on content from Richard, and FB-005's blocker is content too. FIX-025 §5/§7/§12 are
 built and need an editor drive, which is the cheapest real work on the list.
 
-⚠️ **Nothing is pushed.** Six commits sit on `cline-dev`.
+⚠️ **Nothing is pushed.** Seven commits sit on `cline-dev`. ⚠️ **A peer's commit interleaved with
+them** — `85a58b4c` (`docs(exp-002)`, the Logic Builder paper design) is **not this lane's**, so
+`3697ebcd..HEAD` is not a clean read of this session's work.
 
 ## The two follow-ups, and why neither ended where the last handoff expected
 
