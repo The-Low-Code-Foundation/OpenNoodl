@@ -150,7 +150,8 @@ function tsConfig(): string {
           strict: true,
           noEmit: true,
           skipLibCheck: true,
-          isolatedModules: true
+          isolatedModules: true,
+          types: ['vite/client']
         },
         include: ['src']
       },

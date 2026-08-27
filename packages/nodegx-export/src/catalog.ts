@@ -60,6 +60,19 @@ export class CatalogIndex {
     return this.byTypeName.get(typeName);
   }
 
+  isVisual(typeName: string): boolean {
+    return this.byTypeName.get(typeName)?.isVisual === true;
+  }
+
+  /**
+   * The catalog-declared default of an input port, or undefined when the catalog does not know
+   * one. The interpreter falls back to these same defaults, so style extraction reads them here
+   * rather than restating catalog content in code (the Rise lesson).
+   */
+  inputDefault(typeName: string, portName: string): unknown {
+    return this.byTypeName.get(typeName)?.inputs?.find((p) => p.name === portName)?.default;
+  }
+
   /**
    * The kind of a catalog-declared port, by name. Returns undefined when the catalog does not
    * know the port (dynamic ports, unknown types) — callers decide what that means; this function

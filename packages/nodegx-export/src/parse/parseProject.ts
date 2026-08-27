@@ -41,6 +41,8 @@ interface RawNode {
   label?: string;
   parameters?: Record<string, unknown>;
   dynamicports?: RawPort[];
+  /** Component Inputs/Outputs declare their interface here, not under dynamicports. */
+  ports?: RawPort[];
   metadata?: { comment?: string };
   parent?: string;
   children?: string[];
@@ -143,7 +145,10 @@ function parseNode(raw: RawNode, catalog: CatalogIndex): NodeIR {
   const isComponentInstance = type.startsWith('/');
   const catalogEntry = isComponentInstance ? undefined : catalog.get(type);
 
-  const declaredPorts: PortIR[] = (raw.dynamicports ?? []).map((p) => ({
+  // Component Inputs/Outputs serialise their interface under `ports`; everything else declares
+  // instance-specific ports under `dynamicports`. Both are the node's own declarations.
+  const rawPorts = [...(raw.dynamicports ?? []), ...(raw.ports ?? [])];
+  const declaredPorts: PortIR[] = rawPorts.map((p) => ({
     name: p.name,
     plug: p.plug ?? 'input',
     kind: isSignalPort(p) ? 'signal' : 'value',
@@ -151,9 +156,7 @@ function parseNode(raw: RawNode, catalog: CatalogIndex): NodeIR {
     ...(p.default !== undefined ? { default: p.default } : {})
   }));
 
-  const scriptParamNames = new Set(
-    (raw.dynamicports ?? []).filter((p) => isCodeEditorType(p.type)).map((p) => p.name)
-  );
+  const scriptParamNames = new Set(rawPorts.filter((p) => isCodeEditorType(p.type)).map((p) => p.name));
 
   const parameters: ParamIR[] = Object.entries(raw.parameters ?? {})
     .map(([name, value]) => ({ name, value: classifyParam(value, scriptParamNames.has(name)) }))
@@ -217,7 +220,7 @@ function resolveSourcePortKind(
   portName: string
 ): 'value' | 'signal' {
   if (fromNode) {
-    const declared = (fromNode.dynamicports ?? []).find((p) => p.name === portName);
+    const declared = [...(fromNode.dynamicports ?? []), ...(fromNode.ports ?? [])].find((p) => p.name === portName);
     if (declared) return isSignalPort(declared) ? 'signal' : 'value';
     const fromType = fromNode.type ?? '';
     if (fromType && !fromType.startsWith('/')) {
