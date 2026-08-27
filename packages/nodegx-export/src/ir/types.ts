@@ -30,6 +30,11 @@ export interface ProjectIR {
   collections: CollectionIR[];
   /** One per Router node found in the project. */
   routers: RouterIR[];
+  /**
+   * Component paths under components/__cloud__ — cloud functions, executed by the backend's
+   * interpreter. The frontend export skips them entirely; they surface as one report note.
+   */
+  cloudComponents: string[];
 }
 
 export interface TokenIR {

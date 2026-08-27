@@ -27,6 +27,12 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   const files = emitScaffold(ir);
   const notes: string[] = [];
 
+  if (ir.project.cloudComponents.length > 0) {
+    notes.push(
+      `${ir.project.cloudComponents.length} cloud function component(s) skipped — they run on the backend's interpreter, not in the frontend export: ${ir.project.cloudComponents.join(', ')}`
+    );
+  }
+
   for (const plan of project.plans) {
     if (plan.skipReason) {
       if (plan.rootId === null && !plan.file) notes.push(`${plan.path}: ${plan.skipReason}`);

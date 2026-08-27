@@ -1,0 +1,881 @@
+{
+  "$comment": "Every catalog node type, classified for code export (EXP-008). Gate: scripts/export-ledger/check.js, run as export-ledger:check in PR CI. A new browser-capable node must be translated by packages/nodegx-export, stubbed, or carry an explicit exemption sentence here \u2014 see dev-docs/tasks/phase-18-code-export-v2/EXP-008-EXPORT-COVERAGE-LEDGER.md.",
+  "catalogFormatVersion": "1.1.0",
+  "entries": [
+    {
+      "typeName": "AddDbModelRelation",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "And",
+      "status": "translated",
+      "note": "a && b"
+    },
+    {
+      "typeName": "Animation",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Boolean",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Boolean To String",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Button",
+      "status": "translated",
+      "note": "button"
+    },
+    {
+      "typeName": "CSS Definition",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Checkbox",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Circle",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Cloud File",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Cloud Function",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "CloudFunction2",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Collection",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Collection2",
+      "status": "translated",
+      "note": "collection module (literal id only)"
+    },
+    {
+      "typeName": "CollectionClear",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "CollectionInsert",
+      "status": "translated",
+      "note": "one .add({...}) in the owning handler"
+    },
+    {
+      "typeName": "CollectionNew",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "CollectionRemove",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Color",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Color Blend",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Component Children",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Component Inputs",
+      "status": "translated",
+      "note": "component props interface"
+    },
+    {
+      "typeName": "Component Outputs",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Component State",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Condition",
+      "status": "translated",
+      "note": "inline branch / bare truthiness (runOnChange rules apply)"
+    },
+    {
+      "typeName": "Counter",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Date To String",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "DbCollection",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "DbCollection2",
+      "status": "stubbed",
+      "exemption": "typed api stub + useState/useEffect \u2014 the backend seam, by design (phase README: no backend code export)"
+    },
+    {
+      "typeName": "DbModel",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "DbModel2",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "DeleteDbModelProperties",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Drag",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Event Receiver",
+      "status": "translated",
+      "note": "channel subscription"
+    },
+    {
+      "typeName": "Event Sender",
+      "status": "translated",
+      "note": "emit over typed channel"
+    },
+    {
+      "typeName": "Expression",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Field Set",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Filter Collection",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "FilterDBModels",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "For Each",
+      "status": "translated",
+      "note": "repeater \u2192 .map() (identity/template-inputs mapping only; script mappings defer)"
+    },
+    {
+      "typeName": "For Each Actions",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Form",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Globals",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Group",
+      "status": "translated",
+      "note": "flex group \u2192 div"
+    },
+    {
+      "typeName": "Gyroscope",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Image",
+      "status": "translated",
+      "note": "img"
+    },
+    {
+      "typeName": "Inverter",
+      "status": "translated",
+      "note": "!x (maybe-undefined sources defer)"
+    },
+    {
+      "typeName": "JavaScriptFunction",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Javascript2",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Label",
+      "status": "translated",
+      "note": "text role (Text alias)"
+    },
+    {
+      "typeName": "Logic Builder",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Map Collection",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Model",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Model2",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "NavigationClosePopup",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "NavigationShowPopup",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "NewDbModelProperties",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "NewModel",
+      "status": "translated",
+      "note": "folded into CollectionInsert chain (id provenance = Model2 slice, pending)"
+    },
+    {
+      "typeName": "Number",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Number Blend",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Number Remapper",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "On App Error",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Open File Picker",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Options",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Or",
+      "status": "translated",
+      "note": "a || b"
+    },
+    {
+      "typeName": "Page",
+      "status": "translated",
+      "note": "page root"
+    },
+    {
+      "typeName": "Page Stack",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "PageInputs",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "PageStackNavigate",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "PageStackNavigateBack",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "PageStackNavigateToPath",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Parent Component State",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "REST2",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Radio Button",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Radio Button Group",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Range",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "RemoveDbModelRelation",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Router",
+      "status": "translated",
+      "note": "router shell \u2192 src/App.tsx routes"
+    },
+    {
+      "typeName": "RouterNavigate",
+      "status": "translated",
+      "note": "navigate() from rendered-element/receiver triggers only"
+    },
+    {
+      "typeName": "RunTasks",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Screen Resolution",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Script Downloader",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Set Variable",
+      "status": "translated",
+      "note": "variable write in handler (element/receiver triggers only)"
+    },
+    {
+      "typeName": "SetDbModelProperties",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "SetModelProperties",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Sign File URL",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Signal To Index",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "States",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Static Data",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "String",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "String Format",
+      "status": "translated",
+      "note": "template literal at the sink"
+    },
+    {
+      "typeName": "String Mapper",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "String Selector",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "SubscribeToChanges",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Substring",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Switch",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Text",
+      "status": "translated",
+      "note": "text role"
+    },
+    {
+      "typeName": "Text Input",
+      "status": "translated",
+      "note": "controlled input"
+    },
+    {
+      "typeName": "Timer",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Transition",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Unique Id",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Upload File",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Value Changed",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Variable",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "Variable2",
+      "status": "translated",
+      "note": "useVariable hook"
+    },
+    {
+      "typeName": "Video",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.ActionDispatcher",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.ActionHandler",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.ArrayChanged",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.ComponentObject",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.DateAdd",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.DateCompare",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.DateDifference",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.DateParts",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.GlobalStore",
+      "status": "translated",
+      "note": "named store module declarer"
+    },
+    {
+      "typeName": "net.noodl.GlobalStore.Set",
+      "status": "translated",
+      "note": "store write"
+    },
+    {
+      "typeName": "net.noodl.GlobalStore.Subscribe",
+      "status": "translated",
+      "note": "store hook (single-key only; multi-key/whole-store defers)"
+    },
+    {
+      "typeName": "net.noodl.HTTP",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.Hash",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.JSONStreamParser",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.Log",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.Now",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.ObjectChanged",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.OptimisticUpdate",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.ParentComponentObject",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.ParseCSV",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.PatternExtractor",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.RandomBytes",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.SSE",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.SetComponentObjectProperties",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.SetParentComponentObjectProperties",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.StateHistory",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.StateHistory.Undo",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.StateSnapshot",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.StreamBuffer",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.TextAccumulator",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.ToCSV",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.UUID",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.WebSocket",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.animatetovalue",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.controls.button",
+      "status": "translated",
+      "note": "button"
+    },
+    {
+      "typeName": "net.noodl.controls.checkbox",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.controls.options",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.controls.radiobutton",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.controls.range",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.controls.textinput",
+      "status": "translated",
+      "note": "controlled input"
+    },
+    {
+      "typeName": "net.noodl.externallink",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.user.LogIn",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.user.LogOut",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.user.RequestMagicLink",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.user.RequestPasswordReset",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.user.ResetPassword",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.user.SendEmailVerification",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.user.SetUserProperties",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.user.SignInWith",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.user.SignUp",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.user.User",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.user.VerifyEmail",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.visual.columns",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "net.noodl.visual.icon",
+      "status": "deferred",
+      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+    },
+    {
+      "typeName": "noodl.cloud.addusertorole",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.aggregate",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.createuser",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.deleteuser",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.getuserroles",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.hmac",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.jwtsign",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.jwtverify",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.removeuserfromrole",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.request",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.response",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.secret",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.sendemail",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.updateuser",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.verifysessiontoken",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    }
+  ]
+}

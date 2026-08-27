@@ -56,7 +56,15 @@ export function parseProject(projectDir: string, catalog: Catalog): ExportIR {
   const projectFile = readJson(path.join(projectDir, 'nodegx.project.json'));
   const componentsDir = path.join(projectDir, projectFile.structure?.componentsDir ?? 'components');
 
+  // Cloud functions live under components/__cloud__ and run on the backend's interpreter —
+  // they are not browser components and must not be walked as if they were.
+  const cloudDir = path.join(componentsDir, '__cloud__');
+  const cloudComponents = fs.existsSync(cloudDir)
+    ? findComponentDirs(cloudDir).map((dir) => path.relative(componentsDir, dir).split(path.sep).join('/'))
+    : [];
+
   const components = findComponentDirs(componentsDir)
+    .filter((dir) => !path.relative(componentsDir, dir).split(path.sep).includes('__cloud__'))
     .map((dir) => parseComponent(dir, index))
     // D1: components sort by path, codepoint order.
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
@@ -70,7 +78,8 @@ export function parseProject(projectDir: string, catalog: Catalog): ExportIR {
       name: c.name,
       columns: (c.columns ?? []).map((col: any) => ({ name: col.name, type: col.type }))
     })),
-    routers: collectRouters(components)
+    routers: collectRouters(components),
+    cloudComponents
   };
 
   return { project, components };

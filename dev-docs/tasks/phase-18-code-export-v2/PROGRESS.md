@@ -1,8 +1,8 @@
 # Phase 18 Progress — Code Export v2
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track F
-**Last updated:** 2026-08-27 (third session)
-**Overall status:** 🟡 In progress — 1 / 7 tasks built (EXP-001); EXP-002 steps 1–5 done (IR, hand-written target, walking skeleton, visual-node generator, **stores/events** — `@nodegx/core` is earned by a real fixture now, and the emitted app's whole reactive chain is driven green)
+**Last updated:** 2026-08-27 (eighth session)
+**Overall status:** 🟡 In progress — 2 / 8 tasks built (EXP-001, EXP-008); EXP-002 through step 6 + named stores + collections + the expression family (sessions 1–7; see NEXT-SESSION-PROMPT.md for the live state). Session 8 audited real-graph coverage — **66% of nodes translate today across 29 distinct projects** — fixed the `__cloud__` walk bug, and built the EXP-008 coverage ledger + CI gate ([EXP-008-EXPORT-COVERAGE-LEDGER.md](./EXP-008-EXPORT-COVERAGE-LEDGER.md), which also carries the ranked gap list toward ~90–95%)
 
 ## Status vocabulary
 
@@ -19,6 +19,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | EXP-005 | Multi-framework pipeline | Not started | 4–6 wks | AI ports the *exported React* to Svelte/Vue, same trace harness — not native multi-compilers |
 | [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) | Export carries authoring intent | Not started | 1–1.5 wks | Node comments, wire labels, authored titles and comment-box regions become comments and identifiers. Design is [CAN-005](../phase-28-canvas-legibility/CAN-005-EXPORT-AUTHORING-INTENT.md); rescues CODE-008 (F57). Blocked on EXP-002 |
 | [EXP-007](./EXP-007-EXPORT-PROVENANCE.md) | Export provenance & regeneration safety | Not started | 1 wk | Generated files carry node id, component, catalog/exporter version and a content hash, so a re-export knows what a human has edited. Harvests `FileChangeTracker` from the [Rise assessment](../../../docs/research/rise-assessment.md). Same injection point as EXP-006, different payload. Blocked on EXP-002 |
+| [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Export coverage ledger & contributor gate | **Complete** (2026-08-27) | — | Every catalog type classified in `packages/nodegx-export/coverage-ledger.json`; `export-ledger:check` in the PR `node-catalog` job refuses an unclassified type, so a new frontend node ships with a translation or a reviewed exemption sentence in the diff. Gate verified against four hand-made mutants. Doc carries the 2026-08-27 real-graph audit (66% of nodes translate today across 29 distinct projects; ranked gaps to ~90–95%) |
 
 ## Relationship to the original Phase 7
 

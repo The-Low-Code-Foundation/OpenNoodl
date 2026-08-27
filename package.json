@@ -62,6 +62,7 @@
     "cloud-library:check": "node scripts/cloud-node-library/generate.js --check",
     "catalog:generate": "node scripts/node-catalog/generate.js",
     "catalog:check": "node scripts/node-catalog/generate.js --check",
+    "export-ledger:check": "node scripts/export-ledger/check.js",
     "catalog:validate": "node scripts/node-catalog/validate-project.js",
     "catalog:encoding:selftest": "node scripts/node-catalog/encoding-selftest.js",
     "catalog:encoding:eval": "node scripts/node-catalog/encoding-eval.js",

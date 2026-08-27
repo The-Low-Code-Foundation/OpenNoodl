@@ -1,78 +1,76 @@
-# Next session — EXP-002 after session 7 (the expression family): Model2, then the recorded holes
+# Next session — EXP-002 after session 8 (the audit and the gate): work the ranked gap list
 
-**Where the phase stands (2026-08-27, after seven sessions).** EXP-002 steps 1–6, named stores,
-collections, and now the grown expression family are done. Session 7 extended
-`EXP-002-LOGIC-TARGET-OUTPUT.md` (§6–§9 — read the extension before touching logic) and landed
-**And / Or / Inverter and the Condition value outputs** as boolean expressions, plus the first
-**boolean render sink**: `enabled` → `disabled` (an inverting `attr-not:disabled` role in
-`CONTENT_PARAMS`, buttons now emit content attrs). Two source-reading corrections to what the
-old prompt predicted:
+**Where the phase stands (2026-08-27, after eight sessions).** Sessions 1–7 built EXP-002 through
+steps 1–6 plus named stores, collections, and the expression family (And/Or/Inverter, Condition
+value outputs, `enabled` → `disabled`). **Session 8 measured instead of building**: the planner ran
+over the real project corpus on this machine — 29 distinct graphs, 2,826 nodes — and **66% of
+nodes translate today** (Puppy test 3 83%, ecommerce example 93%, Cheer 100%, icon/columns-heavy
+UIs 43%). The full method, numbers and ranked gap list live in
+[EXP-008-EXPORT-COVERAGE-LEDGER.md](./EXP-008-EXPORT-COVERAGE-LEDGER.md) — read it first; the
+audit script is `coverage-audit.ts` in session 8's scratchpad
+(`/private/tmp/claude-501/-Users-richardosborne-vscode-projects-OpenNoodl/2f7493be-477b-464e-8927-49f40b596c70/scratchpad/`).
 
-- **Switch is NOT a ternary — it is a stateful latch** (`on`/`off`/`flip` mutate
-  `_internal.state`, outcome signals on top; `switch.ts`). No expression exists to extract; the
-  honest translation is a boolean `useState` with three setter paths — **its own future slice**
-  beside `effect()`. It defers whole today.
-- **Boolean expressions are truthiness devices** (`a && b` evaluates to an operand, the node's
-  `result` to a strict boolean), so they are admitted into truthiness sinks only: a Condition's
-  `condition` input, another logical's operand, and `enabled`. Any value-shaped sink (format
-  placeholder, store write, payload, collection entry, text) defers with a note. They could
-  land later by emitting `!!(…)`-coerced forms — there was no fixture material to hold a
-  golden to.
+Session 8 also landed, all committed:
 
-**The rules that cost thought** (all in the target doc §6–§9): Inverter has an **undefined
-passthrough** (`invert(undefined) = undefined`, deliberate) — an Inverter over a
-maybe-undefined source defers, since `!x` would answer `true` where the runtime answers falsy;
-plan.ts has its own `maybeUndefinedExpr` twin of emit's `maybeUndefined` for this. Condition
-value outputs need `runOnChange-condition` **ticked** (the branch gate mirrored) and a pure
-comparator node (no eval/arms/done wired); `result` → bare condition truthiness, `isfalse` →
-`!cond`. Numbered ports are `"input 0"`, `"input 1"` (space, from 0); wires beat literal
-params; literals fold (decisive literal collapses the node; single survivor collapses to its
-truthiness; And nobody fed defers). Negation shapes: `!name`, `!(a && b)`, `!!x` for a bound
-`not` (the double negation is deliberate); `enabled: false` authored → bare `disabled` attr.
+- **The `__cloud__` walk fix**: `parseProject` now skips `components/__cloud__/` (cloud functions
+  are the backend interpreter's), records them on `ProjectIR.cloudComponents`, and `emitApp`
+  surfaces one note. `tests/cloud-components.test.ts`. Before this, cloud components parsed as
+  browser components.
+- **EXP-008, the coverage ledger + contributor gate**: every catalog type classified in
+  `packages/nodegx-export/coverage-ledger.json` (28 translated · 1 stubbed · 15 backend-only ·
+  131 deferred-with-exemption); `npm run export-ledger:check` in the PR `node-catalog` job fails
+  on any unclassified type. **Standing duty: when a slice lands, flip its ledger entries to
+  `translated` in the same commit** — the check trusts the ledger's word, so a stale ledger is a
+  lie the gate cannot catch.
+- **Scope rulings recorded** (EXP-008 doc): backend export is deployment (Node + `node:sqlite`
+  service + bundled interpreter), never codegen this phase; Parse is retired — backends are
+  `nodegx` (inbuilt) or `external` (Directus-style APIs); kit nodes defer visibly and are outside
+  the gate. The announcement this phase supports: *"your frontend becomes a real React codebase;
+  your backend is a self-hostable Node + SQLite service."*
 
-- **Fixture** (Cheer via its MCP server, snapshot re-copied): Home `hasName` (Condition,
-  default runOnChange) `visitorVar.value → condition`, `result → cheerButton.enabled` ⇒
-  `disabled={!name}`. Mood `freshBoard` (Inverter over `subNote.value` — required key, so
-  translatable) + `canSteal` (And: `readVisitor-2.value`, `freshBoard.result`) →
-  `themeButton.enabled` ⇒ `disabled={!(name && !note)}` ("steal the name onto a fresh board
-  only" — the drive order changed to match: steal FIRST, then type the note). Notes
-  `draftOrVisitor` (Or: `noteDraftVar.value`, new `visitorRead.value`) → `canAdd` (Condition,
-  untick) between `addButton.onClick` and `makeNote.new` ⇒
-  `if (noteDraft.get() || visitorName.get()) notes.add({…})`.
-- **Proof**: 131 tests (~1s, from the package dir `../../node_modules/.bin/jest`; new
-  `tests/boolean-logic.test.ts` holds the slice's rules; the four page goldens updated).
-  Re-emitted into this session's scratchpad `cheer-app/` (session
-  `729429a9-c13f-4fa3-8721-2a058607661a`; node_modules carried from the 08-27 copies; core tgz
-  still current — core src unchanged since 08-07), `tsc -b` + `vite build` clean, four jsdom
-  drives green with the new disabled/guard assertions. render_report on the live project:
-  clean; the one `dead-placeholder-text` on Home is the pre-existing CheerBanner boot state.
+**Next, in corpus-impact order** (deferred-node counts in EXP-008 §audit):
 
-**Next, in order of value:**
-
-- **Model2 (id provenance)** — unchanged from the collections slice (COLLECTIONS-TARGET §5):
-  the lone `NewModel.id → modifyId` wire is its first, degenerate case; a literal-id Model2
-  read and a same-handler NewModel id are the next two.
-- **Smaller recorded holes**, cheapest first: boolean expressions into value sinks via
-  `!!(…)`-coercion (needs fixture material); `else` arms and multi-action arms are implemented
-  but fixture-unexercised (the `};` cosmetic in brace arms is known); nested Conditions defer;
-  a String-Format-fed `enabled` is allowed but unexercised.
-- **The two state-shaped slices**, each its own design decision on paper first: Switch as
-  component state (`useState` + three setters + the Switched signals question), and on-change
-  firing (`runOnChange` ticked with wired arms) as the `effect()` row.
+1. **The missing visual generators** — `net.noodl.visual.columns`, `net.noodl.visual.icon`,
+   `net.noodl.controls.range`, `net.noodl.controls.checkbox` (+ `Options`, `Radio Button`,
+   `Video`, `Circle` while there). Mechanical, same shape as the existing renderRole cases;
+   kills the biggest collateral (a subtree under an unsupported visual defers wholesale as
+   "logic node (Text)" etc.). ⚠️ Radio inputs: a radio `name` is document-global — scope per
+   component instance.
+2. **Component Outputs** — the other half of the component interface; 69 direct + ~60 deferred
+   instances downstream. Design question: outputs as callback props vs a returned handle —
+   decide on paper in the target doc first, like every slice so far.
+3. **Model2 (id provenance)** — unchanged from the collections slice
+   (COLLECTIONS-TARGET §5): the lone `NewModel.id → modifyId` wire is the first, degenerate
+   case; a literal-id Model2 read and a same-handler NewModel id are the next two.
+4. **Popups** (`NavigationShowPopup`/`ClosePopup`) — needs its paper design (modal state beside
+   the Switch/`useState` slice).
+5. **RouterNavigate from logic-signal triggers** (32 deferred) and the smaller recorded holes:
+   boolean exprs into value sinks via `!!(…)`, `else`/multi-action arms fixture-unexercised,
+   nested Conditions, `String`/`Color` variable nodes, `Static Data` (never translated —
+   session 8 confirmed no handling exists despite step-4 folklore), Counter.
+6. **Logic Builder (Visual Function)** — deterministic slice, not EXP-003: the program is
+   structured JSON, generable headlessly (P73). 14 deferred in corpus and growing as VF becomes
+   the recommended way to compute.
+7. **The two state-shaped slices** on paper first: Switch as component state (`useState` + three
+   setters + the Switched signals question) and on-change firing (`runOnChange` ticked with
+   wired arms) as the `effect()` row.
+8. **EXP-003** then takes what only it can: `JavaScriptFunction`, `Javascript2`, `Expression`.
 
 **Standing practice:** work on `cline-dev`; commit by pathspec (`packages/nodegx-export`,
-`dev-docs/tasks/phase-18-code-export-v2`); never commit `packages/nodegx-core/dist`; untracked
-files add+commit in one chain. Fixtures are snapshots — re-copy from the live Cheer project
-after MCP edits (`diff -rq`; the registry lives at `components/_registry.json`). ts-morph/
+`dev-docs/tasks/phase-18-code-export-v2`, plus `scripts/export-ledger`/root `package.json`/
+`.github/workflows/pr.yml` only when the gate itself changes); never commit
+`packages/nodegx-core/dist`; untracked files add+commit in one chain. 134 tests (~2s, from the
+package dir `../../node_modules/.bin/jest`). Fixtures are snapshots — re-copy from the live
+Cheer project after MCP edits (`diff -rq`; registry at `components/_registry.json`). ts-morph/
 Prettier remain uninstalled; the goldens protect the later AST refactor. The package is still
-not in root `test:packages`; wiring it in edits the shared root package.json — do it
-deliberately, announced. Emit recipe: `emit-cheer.ts` in the scratchpad, run with
+not in root `test:packages`. Emit recipe: `emit-cheer.ts` in the scratchpad, run with
 `TS_NODE_COMPILER_OPTIONS='{"module":"commonjs","moduleResolution":"node","esModuleInterop":true}'
 ../../node_modules/.bin/ts-node --transpile-only --skipProject` (it restores the scratch
-`file:` core pin after writing — update its OUT path to the new session's scratchpad). ⚠️ jsdom
+`file:` core pin after writing — update its OUT path to the new session's scratchpad; core tgz
+current while `git log -1 -- packages/nodegx-core/src` predates the pack date, 08-07). ⚠️ jsdom
 drive trap: import React only AFTER installing the jsdom globals (recipes in
 `cheer-app/drive-*.mjs`). ⚠️ `src/analyze/appState.ts` contains literal NUL bytes — `grep -a`;
-never type `\u0000` into Edit args. ⚠️ "disabled" appears in tokens.css token comments — a
-puppy-style "no disabled anywhere" sweep must restrict to `.tsx`. ⚠️ The Mood fixture wires
-`readVisitor-2.value` into three sinks (setTheme.value, hasVisitor.condition, canSteal
-"input 0") — all legitimate, don't "deduplicate".
+never type `\u0000` into Edit/Write args (5 hits and counting — write such lines via python
+bytes). ⚠️ "disabled" appears in tokens.css token comments — a "no disabled anywhere" sweep must
+restrict to `.tsx`. ⚠️ The Mood fixture wires `readVisitor-2.value` into three sinks — all
+legitimate, don't "deduplicate".

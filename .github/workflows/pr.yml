@@ -215,6 +215,13 @@ jobs:
       # no viewer client to deliver them — so a cloud node added or renamed
       # without regenerating leaves the editor painting it as an unknown type.
       - run: npm run cloud-library:check
+      # EXP-008: every catalog node must be classified for code export in
+      # packages/nodegx-export/coverage-ledger.json. A new frontend node ships
+      # either with a deterministic translation or with an explicit exemption
+      # sentence the ledger diff puts in front of review — silent export gaps
+      # are the one thing this forbids. Runs after catalog:check so a stale
+      # catalog fails as staleness, not as a missing classification.
+      - run: npm run export-ledger:check
       # SUB-012: the catalog validator's duplicate-node-id rule, against its
       # committed corrupt/clean fixture pair. A project with two nodes sharing
       # an id used to pass every gate with zero failures.
