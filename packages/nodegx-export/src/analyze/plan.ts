@@ -21,9 +21,23 @@ import { ComponentIR, Disposition, ExportIR, NodeIR } from '../ir/types';
 import { routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
 import { StyleRole } from '../emit/style';
-import { AppStateRegistry, ChannelPlan, collectAppState, isTextInputType, payloadKeysOf, VariablePlan } from './appState';
+import {
+  AppStateRegistry,
+  ChannelPlan,
+  collectAppState,
+  GLOBAL_STORE,
+  GLOBAL_STORE_SET,
+  GLOBAL_STORE_SUBSCRIBE,
+  initialStateOf,
+  isTextInputType,
+  payloadKeysOf,
+  StorePlan,
+  storeNameOf,
+  subscribeKeysOf,
+  VariablePlan
+} from './appState';
 
-export type { ChannelPlan, VariablePlan } from './appState';
+export type { ChannelPlan, StoreKeyPlan, StorePlan, VariablePlan } from './appState';
 
 /** How a node participates in the render, or null for pure logic nodes. */
 export type RenderRole = StyleRole | 'instance' | 'repeater';
@@ -31,6 +45,7 @@ export type RenderRole = StyleRole | 'instance' | 'repeater';
 export type BindingSource =
   | { kind: 'prop'; name: string }
   | { kind: 'store'; variableName: string }
+  | { kind: 'store-key'; storeName: string; key: string }
   | { kind: 'unresolved'; fromId: string; fromProperty: string };
 
 /**
@@ -47,7 +62,8 @@ export type ValueExpr =
 export type HandlerAction =
   | { kind: 'navigate'; to: string }
   | { kind: 'emit'; channelName: string; payload: Array<{ key: string; expr: ValueExpr }> }
-  | { kind: 'store-set'; variableName: string; expr: ValueExpr };
+  | { kind: 'store-set'; variableName: string; expr: ValueExpr }
+  | { kind: 'globalstore-set'; storeName: string; key: string; expr: ValueExpr };
 
 export interface ReceiverPlan {
   nodeId: string;
@@ -140,6 +156,8 @@ export interface ProjectPlan {
   variables: VariablePlan[];
   /** Event channels, discovery order — src/events.ts when non-empty. */
   channels: ChannelPlan[];
+  /** Named Global Stores, discovery order — one src/stores/<exportName>.ts each. */
+  stores: StorePlan[];
 }
 
 export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
@@ -168,7 +186,8 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
     urlPathByLegacy,
     stubCollections,
     variables: [...registry.variables.values()],
-    channels: [...registry.channels.values()]
+    channels: [...registry.channels.values()],
+    stores: [...registry.stores.values()]
   };
 }
 
@@ -339,10 +358,15 @@ function planComponent(
   // 5. Component Inputs bindings and the query→repeater feed (step 4's rules, unchanged).
   // 6. Whatever no pass consumed is reported. Nothing silently dropped.
   const consumed = new Set<string>();
+  const wiredPorts = new Set(component.connections.map((c) => `${c.toId}:${c.toProperty}`));
 
   const variableNameOf = (node: NodeIR): string | undefined => {
     const name = literalParam(node, 'name');
     return typeof name === 'string' && registry.variables.has(name) ? name : undefined;
+  };
+  const storePlanOf = (node: NodeIR): StorePlan | undefined => {
+    const name = storeNameOf(node, wiredPorts);
+    return name !== undefined ? registry.stores.get(name) : undefined;
   };
   const channelNameOf = (node: NodeIR): string | undefined => {
     const name = literalParam(node, 'channelName');
@@ -372,7 +396,8 @@ function planComponent(
   const TRIGGER_PORTS: Record<string, string> = {
     RouterNavigate: 'navigate',
     'Event Sender': 'sendEvent',
-    'Set Variable': 'do'
+    'Set Variable': 'do',
+    [GLOBAL_STORE_SET]: 'set'
   };
 
   const compileSink = (node: NodeIR): CompiledSink => {
@@ -401,6 +426,30 @@ function planComponent(
       }
       return { action: { kind: 'emit', channelName, payload }, consumes };
     }
+    if (node.type === GLOBAL_STORE_SET) {
+      const store = storePlanOf(node);
+      if (store === undefined) return { defer: 'store name is not a literal' };
+      if (store.deferred !== undefined) return { defer: store.deferred };
+      if (literalParam(node, 'merge') === true || wiredPorts.has(`${node.id}:merge`)) {
+        return { defer: 'merge writes shallow-merge objects — not translated in this slice' };
+      }
+      if (literalParam(node, 'transaction') === true || wiredPorts.has(`${node.id}:transaction`)) {
+        return { defer: 'batched writes are not translated in this slice' };
+      }
+      const key = literalParam(node, 'key');
+      if (typeof key !== 'string' || key === '' || wiredPorts.has(`${node.id}:key`)) {
+        return { defer: 'key is not a literal' };
+      }
+      const keyType = store.keys.find((k) => k.key === key)?.tsType ?? 'unknown';
+      if (keyType === 'number' || keyType === 'boolean') {
+        return { defer: `key "${key}" is ${keyType}-typed by the initial state; only string writes translate in this slice` };
+      }
+      const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'value');
+      if (!wire) return { defer: 'nothing is wired into value' };
+      const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty);
+      if (expr === null) return { defer: 'the value wire has no statically known source' };
+      return { action: { kind: 'globalstore-set', storeName: store.name, key, expr }, consumes: [wire.key] };
+    }
     // Set Variable
     const variableName = variableNameOf(node);
     if (variableName === undefined) return { defer: 'variable name is not a literal' };
@@ -420,8 +469,17 @@ function planComponent(
     if (TRIGGER_PORTS[node.type] !== undefined) compiledSinks.set(node.id, compileSink(node));
   }
 
-  const actionExprs = (action: HandlerAction): ValueExpr[] =>
-    action.kind === 'emit' ? action.payload.map((p) => p.expr) : action.kind === 'store-set' ? [action.expr] : [];
+  const actionExprs = (action: HandlerAction): ValueExpr[] => {
+    switch (action.kind) {
+      case 'emit':
+        return action.payload.map((p) => p.expr);
+      case 'store-set':
+      case 'globalstore-set':
+        return [action.expr];
+      case 'navigate':
+        return [];
+    }
+  };
 
   const exprValidIn = (
     expr: ValueExpr,
@@ -461,6 +519,26 @@ function planComponent(
       continue;
     }
     const fromNode = nodeById.get(connection.fromId);
+    // A rendered input's `textChanged` pulse is its onChange: the action joins the same handler
+    // the write-through rule uses, so `value ← onTextChanged` + `set ← textChanged` from one
+    // input collapse into a single onChange attribute (NAMED-STORES-TARGET §2).
+    if (
+      fromNode &&
+      rendered.has(fromNode.id) &&
+      isTextInputType(fromNode.type) &&
+      connection.fromProperty === 'textChanged'
+    ) {
+      if (!actionExprs(compiled.action).every((e) => exprValidIn(e, { kind: 'dom', nodeId: fromNode.id }))) {
+        dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: 'the action reads values that only exist in another handler' };
+        notes.push(`wire ${connection.key} dropped: the action reads values that only exist in another handler`);
+        continue;
+      }
+      const list = (plan.changeHandlers[fromNode.id] = plan.changeHandlers[fromNode.id] ?? []);
+      list.push(compiled.action);
+      dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
+      for (const key of compiled.consumes) consumed.add(key);
+      continue;
+    }
     if (fromNode && rendered.has(fromNode.id) && connection.kind === 'signal') {
       if (!actionExprs(compiled.action).every((e) => exprValidIn(e, { kind: 'dom', nodeId: fromNode.id }))) {
         dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: 'the action reads values that only exist in another handler' };
@@ -572,6 +650,46 @@ function planComponent(
     plan.bindings[toNode.id][connection.toProperty] = { kind: 'store', variableName };
   }
 
+  // Pass 4b: single-key Subscribe reads into rendered sinks become store-key bindings
+  // (useStore selectors at emit — NAMED-STORES-TARGET §2).
+  const boundSubscribers = new Set<string>();
+  for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
+    const fromNode = nodeById.get(connection.fromId);
+    if (fromNode?.type !== GLOBAL_STORE_SUBSCRIBE || connection.fromProperty !== 'value') continue;
+    const toNode = nodeById.get(connection.toId);
+    if (!toNode || !rendered.has(toNode.id)) continue; // leave for the catch-all
+    consumed.add(connection.key);
+    const store = storePlanOf(fromNode);
+    if (store === undefined) {
+      notes.push(`wire ${connection.key} dropped: store name is not a literal`);
+      continue;
+    }
+    if (store.deferred !== undefined) {
+      notes.push(`wire ${connection.key} dropped: ${store.deferred}`);
+      continue;
+    }
+    if (wiredPorts.has(`${fromNode.id}:keys`)) {
+      notes.push(`wire ${connection.key} dropped: the subscription's keys are wired, not literal`);
+      continue;
+    }
+    const keys = subscribeKeysOf(fromNode);
+    if (keys.length !== 1) {
+      notes.push(
+        `wire ${connection.key} dropped: ${keys.length === 0 ? 'a whole-store' : 'a multi-key'} subscription is not translated in this slice`
+      );
+      continue;
+    }
+    const keyType = store.keys.find((k) => k.key === keys[0])?.tsType;
+    if (keyType !== 'string' && keyType !== 'number') {
+      notes.push(`wire ${connection.key} dropped: key "${keys[0]}" of store "${store.name}" has no statically-typed value`);
+      continue;
+    }
+    plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
+    plan.bindings[toNode.id][connection.toProperty] = { kind: 'store-key', storeName: store.name, key: keys[0] };
+    boundSubscribers.add(fromNode.id);
+  }
+
   // Pass 5: Component Inputs bindings and the query→repeater feed (step 4's rules).
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
@@ -609,6 +727,43 @@ function planComponent(
     } else {
       dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: 'variable name is not a literal' };
       notes.push(`node ${node.id} (Variable2) deferred: variable name is not a literal`);
+    }
+  }
+
+  // Global Store declarers collapse into their store module; Subscribes into the component file
+  // that hosts their selector hook. Anything the passes above did not translate defers.
+  for (const node of component.nodes) {
+    if (dispositions[node.id] !== undefined) continue;
+    if (node.type === GLOBAL_STORE || node.type === GLOBAL_STORE_SUBSCRIBE) {
+      const store = storePlanOf(node);
+      if (store === undefined) {
+        dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: 'store name is not a literal' };
+        notes.push(`node ${node.id} (${node.type}) deferred: store name is not a literal`);
+        continue;
+      }
+      if (store.deferred !== undefined) {
+        dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: store.deferred };
+        notes.push(`node ${node.id} (${node.type}) deferred: ${store.deferred}`);
+        continue;
+      }
+      if (node.type === GLOBAL_STORE) {
+        if (initialStateOf(node, wiredPorts).kind === 'bad') {
+          dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: 'initialState is not a literal JSON object' };
+          notes.push(`node ${node.id} (${node.type}) deferred: initialState is not a literal JSON object`);
+        } else {
+          dispositions[node.id] = { kind: 'collapsed', into: `src/stores/${store.exportName}.ts` };
+        }
+        continue;
+      }
+      if (boundSubscribers.has(node.id) && plan.file) {
+        dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+      } else {
+        dispositions[node.id] = {
+          kind: 'deferred',
+          to: 'EXP-003',
+          reason: 'subscription drives nothing statically translatable'
+        };
+      }
     }
   }
 

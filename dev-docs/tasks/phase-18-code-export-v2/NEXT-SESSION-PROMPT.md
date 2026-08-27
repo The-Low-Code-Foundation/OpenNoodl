@@ -1,78 +1,80 @@
-# Next session — EXP-002 after step 5: the named stores, then statically-knowable logic
+# Next session — EXP-002 after the named-stores slice: Collection2, then statically-knowable logic
 
-**Where the phase stands (2026-08-27, after three sessions).** EXP-002 steps 1–5 are done. Step 5
-(this session) landed stores, events, and the wired text input:
+**Where the phase stands (2026-08-27, after four sessions).** EXP-002 steps 1–5 plus the
+named-stores slice are done. This session landed GlobalStore end to end:
 
-- **New fixture: Cheer** — a real project authored through the MCP server for exactly this
-  purpose (`~/vscode_projects/NodeGX test projects/exp002-step5-cheer`, snapshot at
-  `packages/nodegx-export/tests/fixtures/cheer`), because Puppy test 3 contains none of these
-  constructs. One page: textinput → Variable `visitorName` (write-through), read by a
-  GreetingBadge component; button → Event Sender `celebrate` (payload `message` from the
-  variable); CheerBanner hosts the Event Receiver whose payload a Set Variable writes into
-  `lastCheer`, read back by a Text. Validated clean, render-reported, driven.
-- **The target was hand-written first**: `EXP-002-STEP5-TARGET-OUTPUT.md` — read it before
-  touching the generators; the goldens in `tests/stores-events.test.ts` hold the emitter to it
-  byte-for-byte (5 golden files). 64 tests total, ~1s, from the package dir:
-  `../../node_modules/.bin/jest`.
-- **The architecture step 5 added** (all in `packages/nodegx-export`):
-  - `src/analyze/appState.ts` — project-wide registry: Variables (literal `name`) and channels
-    (literal `channelName`), writer/sender provenance, and **type inference over statically-known
-    writes** (textinput → string; payload keys follow sender wires; variables follow their
-    writers; recursive with cycle guard; untypable writer ⇒ `unknown` ⇒ render bindings defer).
-  - `src/analyze/plan.ts` — wire handling is now six targeted passes: sink compilation
-    (RouterNavigate / Event Sender / Set Variable → `HandlerAction`), trigger attachment (DOM
-    event or receiver `useSignal`, with context validation — `payload.*` only in its receiver,
-    `event.target.value` only in its own input's onChange), variable write-through, variable
-    render bindings, the step-4 prop/repeater rules, then a nothing-silently-dropped catch-all.
-  - `src/emit/state.ts` — `src/stores/variables.ts` (one module for all Variables, mirroring the
-    interpreter's single shared record) and `src/events.ts` (typed `channel()` per literal
-    channel; payload interface = union of senders' keys).
-  - `src/emit/component.ts` — `useValue` hooks (local name = last camel word of the export,
-    deduped), `useSignal` blocks, action rendering (`.get()` in handlers vs hook in render — the
-    same wire, two translations chosen by sink), `onChange` write-through, `@nodegx/core/react`
-    imports.
-  - `src/emit/emitApp.ts` — `@nodegx/core@^0.1.0` joins the emitted package.json **only when a
-    generated file imports it** (scan-the-output, TARGET-OUTPUT §3).
-- **Proof ran end to end**: emitted Cheer app `npm install` (core packed locally from
-  `packages/nodegx-core` — rebuild dist first, it predated its last commit) + `tsc -b && vite
-  build` clean; a jsdom drive (scripts in the session scratchpad, `drive-check.mjs`) proved the
-  behavior chain: typing re-renders the badge through the shared variable; the click emits, the
-  receiver fires, the Set Variable lands, the banner shows the payload. ⚠️ jsdom trap: import
-  React **after** installing the jsdom globals — imported at top of file, the change-event
-  plugin silently never fires (clicks still do), which reads exactly like a broken generator.
-- **Scaffold correction**: `tokens.css` was emitting only `customTokens`; every export (Puppy's
-  included) had unresolved `var()` references for the 182 shipped defaults. `parseProject` now
-  merges defaults (imported from the editor's `DefaultTokens.ts` — read, not restated) with
-  overrides, shipped order.
+- **Fixture**: the Cheer project grew a second page, `Pages/Mood`, authored through its MCP
+  server (`~/vscode_projects/NodeGX test projects/exp002-step5-cheer`, snapshot at
+  `packages/nodegx-export/tests/fixtures/cheer`): a `net.noodl.GlobalStore` declarer
+  (`storeName "mood"`, `initialState {"note":"","theme":"sunny"}`), a textinput writing key
+  `note` through the write-through pair (`onTextChanged → Set.value` + `textChanged → Set.set`),
+  two single-key Subscribes rendering `note` and `theme` into Texts, and a button copying the
+  step-5 Variable `visitorName` into key `theme`. Validated clean, render-reported (Mood shows
+  "sunny" from the initial state in the interpreter), registered in the router automatically.
+  ⚠️ The Variable2 node id got remapped to `readVisitor-2` on create (project-wide id
+  uniqueness) — the fixture uses that id.
+- **The target was hand-written first**: `EXP-002-NAMED-STORES-TARGET-OUTPUT.md`. Read it before
+  touching the generators. It also **decides Collection2's write idiom on paper** (§5) and
+  defers Model2 with reasons (§6). Goldens in `tests/global-store.test.ts` hold the emitter to
+  it byte-for-byte (`src/stores/mood.ts`, `src/pages/Mood.tsx`). 80 tests total, ~1.2s, from
+  the package dir: `../../node_modules/.bin/jest`.
+- **Architecture added** (all in `packages/nodegx-export`):
+  - `src/analyze/appState.ts` — `StorePlan` registry beside variables/channels: declarers,
+    writers, key set with types (initial-state JSON literal decides required keys' types;
+    writer-wire inference types the optional rest; `storeNameOf` defaults absent/empty to
+    `'app'` and returns undefined for wired/non-literal names; `initialStateOf` accepts a JSON
+    object parameter or JSON text, the runtime's own `coerceState` rule). Subscribe.value joins
+    `typeOfSource` so store keys feed variable/payload inference. Export names share the
+    variables/channels identifier space with `variables` reserved; interfaces are
+    `<Pascal>State`.
+  - `src/analyze/plan.ts` — `globalstore-set` HandlerAction (fourth kind), `store-key`
+    BindingSource, `net.noodl.GlobalStore.Set` in TRIGGER_PORTS (`set`), a rendered input's
+    `textChanged` pulse attaching actions into `changeHandlers` (so the write-through pair is
+    one onChange), pass 4b for single-key Subscribe render bindings, dispositions: declarer →
+    collapsed into its store module, bound Subscribe → collapsed into the component file.
+  - `src/emit/state.ts` — one `src/stores/<exportName>.ts` per non-deferred store.
+  - `src/emit/component.ts` — `useStore` hooks (local name = the key), per-store imports,
+    `.set({ key: expr })` action code.
+- **Proof ran end to end**: re-emitted the extended Cheer into a scratch copy of the step-5 app
+  (kept node_modules + the packed core tgz — core src unchanged since 08-07, the old tgz is
+  current), `tsc -b` and `vite build` clean, and `drive-mood.mjs` (this session's scratchpad,
+  `cheer-app/`) proved: initial render shows the initial state; typing writes through and the
+  selector re-renders the echo; the theme key is untouched by note writes; clicking snapshots
+  `visitorName.get()` into `theme` and the readout re-renders. The step-5 Home drive still
+  passes on the re-emitted app.
+- **Deferrals, all with notes** (target §3): `persist` defers the whole store; `merge` /
+  `transaction` defer the Set; multi-key and whole-store subscriptions; wired/non-literal
+  names/keys; number/boolean-typed keys refuse string writes but still render; unparseable
+  initialState defers the declarer only. Recorded divergences: core store notifies on every
+  write where the runtime equality-gates (absorbed by React's bail-out; signal chains defer
+  anyway); export writes synchronously in the handler vs the runtime's end-of-frame.
 
-**Deliberately deferred from step 5, all reported in notes** (see STEP5-TARGET §6): Model2 /
-Collection2 / GlobalStore; signal chains whose handler owner is not a DOM event or receiver;
-payload outputs bound into rendered content; non-literal names; non-global propagation;
-non-string `setWith`. Known cosmetic divergence recorded there too (unset variable → interpreter
-shows the Text default, export renders empty).
+**Next: Collection2, then step 6 (statically-knowable logic).** Concretely:
 
-**Next: the named stores — GlobalStore, Model2, Collection2 — then step 6 (statically-knowable
-logic).** Concretely:
-
-- **GlobalStore first.** EXP-001 §3 *is* its hand-written target (`store(name, initial)` +
-  `useStore` selector + `.set` in handlers), the node family exists in this runtime
-  (`net.noodl.GlobalStore`, `.Set`, `.Subscribe` — `packages/noodl-editor/...` search the viewer
-  for their sources and read them before assuming semantics). Fixture material does not exist:
-  extend the Cheer project through its MCP server (a second page or component is fine) or author
-  another small one. Hand-write the target first, as every step has.
-- **Collection2 → `collection()`** needs the write idiom (NewModel → CollectionInsert chain) to
-  be worth anything — a read-only client array renders an empty list forever. That chain is one
-  deterministic shape (compile the pair into one `todos.add({...})` action); decide it on paper
-  in the target doc before coding.
-- **Model2** is the hardest of the three (parameter-dependent `prop-*` ports, id-addressed
-  instances) — fine to defer again, but say so in the notes and the doc.
-- Step 6 borders this: Condition with literal inputs, String Format — the `derived()` row.
-  Separate slice.
+- **Collection2 first — the write idiom is already decided on paper** (NAMED-STORES-TARGET §5):
+  `NewModel → CollectionInsert` in one handler compiles to a single `todos.add({...})` when the
+  property wires resolve in handler context, `collectionName` is literal, and nothing else
+  consumes the NewModel's outputs; item type = union of statically-known inserted property
+  sets, optional-keyed; the read side is `For Each.items ← Collection2.items` →
+  `useCollection(todos)`. Runtime node names: `Collection2`, `CollectionNew`,
+  `CollectionInsert`, `NewModel` (`noodl-runtime/src/nodes/std-library/data/`) — **read their
+  sources before assuming semantics** (the standing lesson; e.g. check how NewModel wires into
+  an insert and what `add to collection` does on the node itself). Fixture material does not
+  exist: extend Cheer again through its MCP server (a small list page — notes list with an add
+  button is the natural fit over the existing store) or author fresh. Hand-write the target
+  first, as every slice has. Watch the repeater path: step 4's For Each currently requires a
+  DbCollection2-fed query — the Collection2-fed repeater is a new branch there.
+- **Model2 stays deferred** until after Collection2 (id provenance argument in target §6).
+- **Step 6 borders this**: Condition with literal inputs, String Format — the `derived()` row.
+  Separate slice; hand-write its target on Cheer or Puppy material first.
 
 **Standing practice:** work on `cline-dev`; commit by pathspec (`packages/nodegx-export`,
-`dev-docs/tasks/phase-18-code-export-v2` — this session also touched
-`packages/nodegx-core/dist` only via rebuild, don't commit dist). Fixtures are snapshots — the
-live Cheer project and the fixture diverge deliberately if either changes. ts-morph/Prettier
-remain uninstalled; template-string emission is Prettier-shaped and the goldens protect the
-later AST refactor. The package is still not in root `test:packages`; wiring it in edits the
-shared root package.json — do it deliberately, announced.
+`dev-docs/tasks/phase-18-code-export-v2`); never commit `packages/nodegx-core/dist`. Fixtures
+are snapshots — re-copy from the live project after MCP edits. ts-morph/Prettier remain
+uninstalled; the goldens protect the later AST refactor. The package is still not in root
+`test:packages`; wiring it in edits the shared root package.json — do it deliberately,
+announced. ⚠️ jsdom drive trap: import React only AFTER installing the jsdom globals, or
+change events silently never fire. ⚠️ `src/analyze/appState.ts` contains literal NUL bytes
+(step 5's payload-map separator, in a comment and two template literals) — grep treats the file
+as binary and silently matches nothing; use `grep -a`. The store-map code added this session
+uses the visible `\u0000` escape in source instead.

@@ -1,0 +1,204 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "6660dd22-c522-4744-8241-cb1bbcc813ae",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "moodPage",
+      "type": "Page",
+      "label": "Mood board",
+      "x": 40,
+      "y": 40,
+      "children": [
+        "moodShell"
+      ],
+      "parameters": {
+        "title": "Mood",
+        "urlPath": "mood"
+      }
+    },
+    {
+      "id": "moodShell",
+      "type": "Group",
+      "label": "Shell",
+      "x": 100,
+      "y": 160,
+      "parent": "moodPage",
+      "children": [
+        "moodHeading",
+        "noteInput",
+        "noteEcho",
+        "themeText",
+        "themeButton"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      }
+    },
+    {
+      "id": "moodHeading",
+      "type": "Text",
+      "label": "Heading",
+      "x": 160,
+      "y": 280,
+      "parent": "moodShell",
+      "parameters": {
+        "text": "Mood board",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "noteInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Note",
+      "x": 160,
+      "y": 400,
+      "parent": "moodShell",
+      "parameters": {
+        "placeholder": "Write a note",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-md)",
+        "fontSize": "var(--text-base)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)"
+      }
+    },
+    {
+      "id": "noteEcho",
+      "type": "Text",
+      "label": "Note echo",
+      "x": 160,
+      "y": 520,
+      "parent": "moodShell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "themeText",
+      "type": "Text",
+      "label": "Theme readout",
+      "x": 160,
+      "y": 640,
+      "parent": "moodShell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      }
+    },
+    {
+      "id": "themeButton",
+      "type": "net.noodl.controls.button",
+      "label": "Steal name",
+      "x": 160,
+      "y": 760,
+      "parent": "moodShell",
+      "parameters": {
+        "label": "Steal the visitor's name",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      }
+    },
+    {
+      "id": "moodStore",
+      "type": "net.noodl.GlobalStore",
+      "label": "mood store",
+      "x": 410,
+      "y": 160,
+      "parameters": {
+        "storeName": "mood",
+        "initialState": {
+          "note": "",
+          "theme": "sunny"
+        }
+      },
+      "metadata": {
+        "comment": "Declares the store and its initial keys; Set/Subscribe nodes reach it by name alone."
+      }
+    },
+    {
+      "id": "setNote",
+      "type": "net.noodl.GlobalStore.Set",
+      "label": "Write note",
+      "x": 410,
+      "y": 400,
+      "parameters": {
+        "storeName": "mood",
+        "key": "note"
+      }
+    },
+    {
+      "id": "setTheme",
+      "type": "net.noodl.GlobalStore.Set",
+      "label": "Write theme",
+      "x": 410,
+      "y": 760,
+      "parameters": {
+        "storeName": "mood",
+        "key": "theme"
+      }
+    },
+    {
+      "id": "subNote",
+      "type": "net.noodl.GlobalStore.Subscribe",
+      "label": "Watch note",
+      "x": 410,
+      "y": 520,
+      "parameters": {
+        "storeName": "mood",
+        "keys": "note"
+      }
+    },
+    {
+      "id": "subTheme",
+      "type": "net.noodl.GlobalStore.Subscribe",
+      "label": "Watch theme",
+      "x": 410,
+      "y": 640,
+      "parameters": {
+        "storeName": "mood",
+        "keys": "theme"
+      }
+    },
+    {
+      "id": "readVisitor-2",
+      "type": "Variable2",
+      "label": "visitorName variable",
+      "x": 610,
+      "y": 760,
+      "parameters": {
+        "name": "visitorName"
+      }
+    }
+  ],
+  "visualRoots": [
+    "moodPage"
+  ]
+}

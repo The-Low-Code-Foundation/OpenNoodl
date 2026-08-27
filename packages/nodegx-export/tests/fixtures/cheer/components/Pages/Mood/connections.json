@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "6660dd22-c522-4744-8241-cb1bbcc813ae",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "noteInput",
+      "fromProperty": "onTextChanged",
+      "toId": "setNote",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "noteInput",
+      "fromProperty": "textChanged",
+      "toId": "setNote",
+      "toProperty": "set"
+    },
+    {
+      "fromId": "subNote",
+      "fromProperty": "value",
+      "toId": "noteEcho",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "subTheme",
+      "fromProperty": "value",
+      "toId": "themeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "readVisitor-2",
+      "fromProperty": "value",
+      "toId": "setTheme",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "themeButton",
+      "fromProperty": "onClick",
+      "toId": "setTheme",
+      "toProperty": "set"
+    }
+  ]
+}

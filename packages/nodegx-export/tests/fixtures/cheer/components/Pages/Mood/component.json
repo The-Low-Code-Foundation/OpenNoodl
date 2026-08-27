@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "6660dd22-c522-4744-8241-cb1bbcc813ae",
+  "name": "Mood",
+  "path": "/Pages/Mood",
+  "type": "page",
+  "created": "2026-08-27T09:06:23.280Z",
+  "modified": "2026-08-27T09:06:23.280Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "Mood board page: a Global Store \"mood\" written through a text input (note) and a button that copies the visitorName variable into the theme key, read back through two Subscribe nodes."
+}

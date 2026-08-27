@@ -19,7 +19,7 @@
 import { CatalogIndex } from '../catalog';
 import { BindingSource, ComponentPlan, HandlerAction, ProjectPlan, QueryPlan, ValueExpr } from '../analyze/plan';
 import { ExportIR, NodeIR } from '../ir/types';
-import { assignClassNames, ClassCandidate, partitionMergeGroup } from './naming';
+import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase } from './naming';
 import { computeNodeStyle, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, StyleRole } from './style';
 
 const GENERATED_TS = '// @nodegx:generated (visual — provenance markers complete in EXP-007)\n';
@@ -127,8 +127,10 @@ export function emitComponent(
   // up front because the import list and the reserved-identifier set depend on it.
   const variableByName = new Map(project.variables.map((v) => [v.name, v]));
   const channelByName = new Map(project.channels.map((c) => [c.name, c]));
+  const storeByName = new Map(project.stores.map((s) => [s.name, s]));
   const usedVariableNames = new Set<string>();
   const usedChannelNames = new Set<string>();
+  const usedStoreNames = new Set<string>();
   const collectExprUse = (expr: ValueExpr) => {
     if (expr.kind === 'store-get') usedVariableNames.add(expr.variableName);
   };
@@ -139,6 +141,10 @@ export function emitComponent(
     }
     if (action.kind === 'store-set') {
       usedVariableNames.add(action.variableName);
+      collectExprUse(action.expr);
+    }
+    if (action.kind === 'globalstore-set') {
+      usedStoreNames.add(action.storeName);
       collectExprUse(action.expr);
     }
   };
@@ -152,11 +158,19 @@ export function emitComponent(
 
   // Render bindings needing hooks, in pre-order encounter order.
   const hookVariables: string[] = [];
+  const hookStoreKeys: Array<{ storeName: string; key: string }> = [];
   for (const id of preOrder(plan)) {
     for (const source of Object.values(plan.bindings[id] ?? {})) {
       if (source.kind === 'store' && !hookVariables.includes(source.variableName)) {
         hookVariables.push(source.variableName);
         usedVariableNames.add(source.variableName);
+      }
+      if (
+        source.kind === 'store-key' &&
+        !hookStoreKeys.some((h) => h.storeName === source.storeName && h.key === source.key)
+      ) {
+        hookStoreKeys.push({ storeName: source.storeName, key: source.key });
+        usedStoreNames.add(source.storeName);
       }
     }
   }
@@ -172,6 +186,7 @@ export function emitComponent(
   });
   for (const name of usedVariableNames) reserved.add(variableByName.get(name)!.exportName);
   for (const name of usedChannelNames) reserved.add(channelByName.get(name)!.exportName);
+  for (const name of usedStoreNames) reserved.add(storeByName.get(name)!.exportName);
   const hookLocals = new Map<string, string>();
   for (const variableName of hookVariables) {
     const exportName = variableByName.get(variableName)!.exportName;
@@ -182,6 +197,19 @@ export function emitComponent(
     while (reserved.has(candidate)) candidate = `${exportName}Value${counter++}`;
     reserved.add(candidate);
     hookLocals.set(variableName, candidate);
+  }
+  // A store-key hook's local is the key itself — it is what the author named the thing —
+  // falling back to `<exportName><PascalKey>` when the key is not usable or already taken.
+  const storeKeyLocals = new Map<string, string>();
+  const storeKeyId = (storeName: string, key: string) => `${storeName}\u0000${key}`;
+  for (const { storeName, key } of hookStoreKeys) {
+    const exportName = storeByName.get(storeName)!.exportName;
+    let candidate = /^[a-z_$][A-Za-z0-9_$]*$/.test(key) ? key : `${exportName}${pascalCase(key)}`;
+    if (reserved.has(candidate)) candidate = `${exportName}${pascalCase(key)}`;
+    let counter = 2;
+    while (reserved.has(candidate)) candidate = `${exportName}${pascalCase(key)}${counter++}`;
+    reserved.add(candidate);
+    storeKeyLocals.set(storeKeyId(storeName, key), candidate);
   }
 
   // ---- handler statement rendering -------------------------------------------------------
@@ -203,6 +231,11 @@ export function emitComponent(
         return `navigate('${action.to}')`;
       case 'store-set':
         return `${variableByName.get(action.variableName)!.exportName}.set(${exprCode(action.expr)})`;
+      case 'globalstore-set': {
+        const store = storeByName.get(action.storeName)!;
+        const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(action.key) ? action.key : JSON.stringify(action.key);
+        return `${store.exportName}.set({ ${key}: ${exprCode(action.expr)} })`;
+      }
       case 'emit': {
         const channel = channelByName.get(action.channelName)!;
         if (channel.payloadTypeName === null) return `${channel.exportName}.emit()`;
@@ -224,6 +257,7 @@ export function emitComponent(
   const externalImports: string[] = [];
   const coreHooks: string[] = [];
   if (hookLocals.size > 0) coreHooks.push('useValue');
+  if (storeKeyLocals.size > 0) coreHooks.push('useStore');
   if (plan.receivers.length > 0) coreHooks.push('useSignal');
   if (coreHooks.length > 0) {
     externalImports.push(`import { ${coreHooks.sort().join(', ')} } from '@nodegx/core/react';`);
@@ -252,6 +286,11 @@ export function emitComponent(
     const names = [...usedVariableNames].map((n) => variableByName.get(n)!.exportName).sort();
     internalImports.set(specifier, `import { ${names.join(', ')} } from '${specifier}';`);
   }
+  for (const name of [...usedStoreNames].sort()) {
+    const store = storeByName.get(name)!;
+    const specifier = `${relRoot}/stores/${store.exportName}`;
+    internalImports.set(specifier, `import { ${store.exportName} } from '${specifier}';`);
+  }
   if (usedChannelNames.size > 0) {
     const specifier = `${relRoot}/events`;
     const names = [...usedChannelNames].map((n) => channelByName.get(n)!.exportName).sort();
@@ -275,6 +314,7 @@ export function emitComponent(
   const bindingExpr = (source: BindingSource): string | null => {
     if (source.kind === 'prop') return source.name;
     if (source.kind === 'store') return hookLocals.get(source.variableName) ?? null;
+    if (source.kind === 'store-key') return storeKeyLocals.get(storeKeyId(source.storeName, source.key)) ?? null;
     return null;
   };
 
@@ -455,19 +495,27 @@ export function emitComponent(
   for (const variableName of hookVariables) {
     body.push(`  const ${hookLocals.get(variableName)} = useValue(${variableByName.get(variableName)!.exportName});`);
   }
+  for (const { storeName, key } of hookStoreKeys) {
+    const store = storeByName.get(storeName)!;
+    const selector = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? `s.${key}` : `s[${JSON.stringify(key)}]`;
+    body.push(`  const ${storeKeyLocals.get(storeKeyId(storeName, key))} = useStore(${store.exportName}, (s) => ${selector});`);
+  }
   for (const query of plan.queries) {
     body.push(`  const [${query.stateName}, ${query.setterName}] = useState<${query.typeName}[]>([]);`);
   }
-  if (usesNavigate || hookVariables.length > 0 || plan.queries.length > 0) body.push('');
+  if (usesNavigate || hookVariables.length > 0 || hookStoreKeys.length > 0 || plan.queries.length > 0) body.push('');
   for (const query of plan.queries) {
     body.push('  useEffect(() => {', `    ${query.fetchName}().then(${query.setterName});`, '  }, []);', '');
   }
   for (const receiver of plan.receivers) {
     const channel = channelByName.get(receiver.channelName)!;
     const usesPayload = receiver.actions.some((a) =>
-      (a.kind === 'emit' ? a.payload.map((p) => p.expr) : a.kind === 'store-set' ? [a.expr] : []).some(
-        (e) => e.kind === 'payload'
-      )
+      (a.kind === 'emit'
+        ? a.payload.map((p) => p.expr)
+        : a.kind === 'store-set' || a.kind === 'globalstore-set'
+          ? [a.expr]
+          : []
+      ).some((e) => e.kind === 'payload')
     );
     body.push(`  useSignal(${channel.exportName}, ${usesPayload ? '(payload)' : '()'} => {`);
     for (const action of receiver.actions) body.push(`    ${actionCode(action)};`);

@@ -12,7 +12,8 @@
         "pages": {
           "startPage": "/Pages/Home",
           "routes": [
-            "/Pages/Home"
+            "/Pages/Home",
+            "/Pages/Mood"
           ]
         }
       }
