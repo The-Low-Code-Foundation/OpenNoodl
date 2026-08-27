@@ -95,6 +95,7 @@ export function emitComponent(
     const role = plan.roleOf[id] as StyleRole;
     const style = computeNodeStyle(node, role, catalog);
     for (const name of style.unhandled) {
+      if (name === 'visible' || name === 'mounted') continue; // §4b: handled by the render wrap / class toggle
       notes.push(`${plan.path}: parameter ${name} on ${id} has no style/content mapping — dropped, reported`);
     }
     for (const note of style.notes) notes.push(`${plan.path}: node ${id}: ${note}`);
@@ -108,6 +109,7 @@ export function emitComponent(
       const group = nodeById.get(plan.collapsedGroupId)!;
       const groupStyle = computeNodeStyle(group, 'group', catalog);
       for (const name of groupStyle.unhandled) {
+        if (name === 'visible' || name === 'mounted') continue;
         notes.push(`${plan.path}: parameter ${name} on ${plan.collapsedGroupId} has no style/content mapping — dropped, reported`);
       }
       const groupProps = new Set(groupStyle.decls.map((d) => d.prop));
@@ -180,6 +182,24 @@ export function emitComponent(
     usedClassNames.add(name);
     popupLayerClass = name;
   }
+  // The visible sink's shared rule (CONTROLLED-STATE §4b): hidden but keeping layout space —
+  // the runtime's `visibility: hidden` mutation, spelled as one class per module.
+  const visibleLiteralFalse = (id: string): boolean => {
+    const v = nodeById.get(id)?.parameters.find((p) => p.name === 'visible')?.value;
+    return v?.kind === 'literal' && v.value === false;
+  };
+  let hiddenKeepSpaceClass: string | undefined;
+  if (
+    preOrder(plan).some(
+      (id) => isStyledRole(plan.roleOf[id]) && (plan.bindings[id]?.['visible'] !== undefined || visibleLiteralFalse(id))
+    )
+  ) {
+    let name = 'hiddenKeepSpace';
+    let counter = 2;
+    while (usedClassNames.has(name)) name = `hiddenKeepSpace${counter++}`;
+    usedClassNames.add(name);
+    hiddenKeepSpaceClass = name;
+  }
 
   // ---- app state usage (step 5) ----------------------------------------------------------
   // Which variables and channels this component touches, and how: a render binding earns a
@@ -197,22 +217,39 @@ export function emitComponent(
   // reference print — the plan registers every resolved definition, referenced or not.
   const jsFunByNode = plan.jsFunctions;
   const referencedJsIds = new Set<string>();
+  // State rows print only when something references them (CONTROLLED-STATE §3.1) — the
+  // jsFunctions precedent: a definition nothing kept costs nothing.
+  const referencedStateNames = new Set<string>();
+  const stateVarByName = new Map(plan.stateVars.map((v) => [v.name, v]));
+  const stateSetterOf = (name: string): string => stateVarByName.get(name)?.setterName ?? `set${name}`;
+  const controlVarByNode = new Map(
+    plan.stateVars.filter((v) => v.origin === 'control').map((v) => [v.originNodeId, v])
+  );
   const jsArgExprs = (nodeId: string): ValueExpr[] =>
     (jsFunByNode[nodeId]?.inputs ?? []).flatMap((i) => (i.expr !== undefined ? [i.expr] : []));
   const collectExprUse = (expr: ValueExpr) => {
     if (expr.kind === 'store-get') usedVariableNames.add(expr.variableName);
     if (expr.kind === 'store-key-get') usedStoreNames.add(expr.storeName);
+    if (expr.kind === 'state-get') referencedStateNames.add(expr.name);
     if (expr.kind === 'format') {
       for (const part of expr.parts) if (typeof part !== 'string') collectExprUse(part);
     }
     if (expr.kind === 'logical') expr.operands.forEach(collectExprUse);
     if (expr.kind === 'not' || expr.kind === 'truthy') collectExprUse(expr.operand);
     if (expr.kind === 'jsfun-out') {
+      if (expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
       referencedJsIds.add(expr.nodeId);
       jsArgExprs(expr.nodeId).forEach(collectExprUse);
     }
   };
   const collectActionUse = (action: HandlerAction) => {
+    if (action.kind === 'state-set') {
+      referencedStateNames.add(action.name);
+      if (action.expr !== undefined) collectExprUse(action.expr);
+    }
+    if (action.kind === 'jsfun-run' && action.materialize !== undefined) {
+      referencedStateNames.add(action.materialize);
+    }
     if (action.kind === 'emit') {
       usedChannelNames.add(action.channelName);
       action.payload.forEach((p) => collectExprUse(p.expr));
@@ -285,7 +322,14 @@ export function emitComponent(
     }
     if (expr.kind === 'logical') expr.operands.forEach(hookExprSources);
     if (expr.kind === 'not' || expr.kind === 'truthy') hookExprSources(expr.operand);
+    if (expr.kind === 'state-get') referencedStateNames.add(expr.name);
     if (expr.kind === 'jsfun-out') {
+      if (expr.viaState !== undefined) {
+        // A materialized read (§4f) goes through the state var, not a render local.
+        referencedStateNames.add(expr.viaState);
+        referencedJsIds.add(expr.nodeId);
+        return;
+      }
       referencedJsIds.add(expr.nodeId);
       if (!renderJsIds.includes(expr.nodeId)) renderJsIds.push(expr.nodeId);
       jsArgExprs(expr.nodeId).forEach(hookExprSources);
@@ -312,21 +356,47 @@ export function emitComponent(
         hookCollections.push(collectionName);
         usedCollectionNames.add(collectionName);
       }
+      const itemsExpr = plan.repeaters[id]?.itemsExpr;
+      if (itemsExpr !== undefined) hookExprSources(itemsExpr);
     }
   }
+  // The state effects' sources earn their hooks exactly as bindings do (CONTROLLED-STATE §3).
+  for (const sync of plan.syncEffects) hookExprSources(sync.source);
+  for (const push of plan.pushEffects) hookExprSources(push.expr);
+  // A rendered stateful control references its own row (value/checked + onChange), a sync
+  // effect its target, a lifted callback its setter — whether or not any expression reads it.
+  for (const stateVar of plan.stateVars) {
+    if (stateVar.origin === 'control' && plan.roleOf[stateVar.originNodeId] !== undefined) {
+      referencedStateNames.add(stateVar.name);
+    }
+  }
+  for (const sync of plan.syncEffects) referencedStateNames.add(sync.stateName);
+  for (const lifted of Object.values(plan.instanceLifted)) {
+    for (const entry of lifted) {
+      const stateVar = plan.stateVars.find((v) => v.setterName === entry.setterName);
+      if (stateVar) referencedStateNames.add(stateVar.name);
+    }
+  }
+  const referencedStateVars = plan.stateVars.filter((v) => referencedStateNames.has(v.name));
 
   const usesNavigate = deepActions(allActions).some((a) => a.kind === 'navigate');
 
   // The hook's local name is the variable's last camelCase word (`visitorName` → `name`),
   // deduplicated against everything else in scope, falling back to `<export>Value`.
-  const reserved = new Set<string>(['event', 'navigate', 'payload', 'styles', plan.file.symbol]);
+  const reserved = new Set<string>(['event', 'navigate', 'payload', 'styles', 'joinClasses', plan.file.symbol]);
   plan.props.forEach((p) => reserved.add(p.name));
   plan.outputProps.forEach((o) => reserved.add(o.prop));
+  plan.liftedOutputProps.forEach((l) => reserved.add(l.prop));
   if (plan.closesPopup) reserved.add('onClose');
   // Wrapper names are module scope — locals must yield to them, so they reserve first.
   for (const id of referencedJsIds) {
     const def = jsFunByNode[id];
     if (def) reserved.add(def.fnName);
+  }
+  // State rows were allocated in the plan's identifier space — locals yield to them here.
+  for (const stateVar of referencedStateVars) {
+    reserved.add(stateVar.name);
+    reserved.add(stateVar.setterName);
   }
   // The popup slot's state pair (POPUPS-TARGET §2) — allocated before the hook locals so a
   // variable named "openPopup" yields, not the slot.
@@ -388,8 +458,10 @@ export function emitComponent(
     reserved.add(candidate);
     return candidate;
   };
-  const itemLocal = hookCollections.length > 0 ? dedupeLocal('item') : 'item';
-  const indexLocal = hookCollections.length > 0 ? dedupeLocal('index') : 'index';
+  const hasIndexKeyedRows =
+    hookCollections.length > 0 || Object.values(plan.repeaters).some((r) => r.itemsExpr !== undefined);
+  const itemLocal = hasIndexKeyedRows ? dedupeLocal('item') : 'item';
+  const indexLocal = hasIndexKeyedRows ? dedupeLocal('index') : 'index';
 
   // Rendered Radio Button Groups holding radios get an instance-scoped name via useId() — a
   // radio `name` is document-global, and two instances of one component must not join each
@@ -434,8 +506,13 @@ export function emitComponent(
       case 'undefined':
         return true; // a Component Object property's boot value (COMPONENT-OBJECT-TARGET §3)
       case 'jsfun-out':
-        return expr.fold === undefined; // an unwritten output reads undefined, like the runtime getter
+        // An unwritten output reads undefined, like the runtime getter; a materialized read is
+        // undefined until the first invocation (CONTROLLED-STATE §4f).
+        return expr.viaState !== undefined || expr.fold === undefined;
+      case 'state-get':
+        return expr.maybeUndefined === true;
       case 'input-text':
+      case 'control-event':
       case 'literal':
       case 'format':
       case 'logical':
@@ -461,6 +538,16 @@ export function emitComponent(
         return expr.name;
       case 'input-text':
         return 'event.target.value';
+      // A state read is the render closure's value in both modes (CONTROLLED-STATE §3.2);
+      // chain-order correctness inside handlers is the plan-side snapshot rule's job.
+      case 'state-get':
+        return expr.name;
+      case 'control-event':
+        return expr.form === 'checked'
+          ? 'event.target.checked'
+          : expr.form === 'number'
+            ? 'Number(event.target.value)'
+            : 'event.target.value';
       case 'store-get':
         return mode === 'render'
           ? (hookLocals.get(expr.variableName) ?? expr.variableName)
@@ -507,6 +594,20 @@ export function emitComponent(
       // Expression's typed getters, verbatim semantics (expression.ts).
       case 'jsfun-out': {
         const def = jsFunByNode[expr.nodeId]!;
+        // A materialized read (§4f) goes through the state var in render — the last run's
+        // value, undefined before the first invocation, exactly the runtime getter's answer.
+        if (expr.viaState !== undefined && mode === 'render') {
+          const base =
+            def.kind === 'function'
+              ? /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(expr.output)
+                ? `${expr.viaState}?.${expr.output}`
+                : `${expr.viaState}?.[${JSON.stringify(expr.output)}]`
+              : expr.viaState;
+          if (expr.fold === 'string') return `String(${base} ?? '')`;
+          if (expr.fold === 'number') return `(typeof ${base} === 'number' ? ${base} : Number(${base}) || 0)`;
+          if (expr.fold === 'boolean') return `!!${base}`;
+          return base;
+        }
         const local = mode === 'render' ? jsLocals.get(expr.nodeId) : undefined;
         const callee = local ?? `${def.fnName}(${jsArgsObject(def, mode)})`;
         const base = def.kind === 'function' ? memberExpr(callee, expr.output) : callee;
@@ -518,6 +619,58 @@ export function emitComponent(
     }
   };
   /**
+   * A useEffect dependency list for a state effect (CONTROLLED-STATE §3.4/§3.5): the leaf
+   * reactive references the expression reads, as the render-mode locals they print as.
+   */
+  const effectDeps = (expr: ValueExpr): string[] => {
+    const deps: string[] = [];
+    const add = (code: string) => {
+      if (!deps.includes(code)) deps.push(code);
+    };
+    const walk = (e: ValueExpr) => {
+      switch (e.kind) {
+        case 'prop':
+        case 'state-get':
+          add(e.name);
+          break;
+        case 'store-get':
+          add(hookLocals.get(e.variableName) ?? e.variableName);
+          break;
+        case 'store-key-get':
+          add(storeKeyLocals.get(storeKeyId(e.storeName, e.key)) ?? e.key);
+          break;
+        case 'format':
+          for (const p of e.parts) if (typeof p !== 'string') walk(p);
+          break;
+        case 'logical':
+          e.operands.forEach(walk);
+          break;
+        case 'not':
+        case 'truthy':
+          walk(e.operand);
+          break;
+        case 'jsfun-out': {
+          if (e.viaState !== undefined) {
+            add(e.viaState);
+            break;
+          }
+          const local = jsLocals.get(e.nodeId);
+          if (local !== undefined) {
+            add(jsFunByNode[e.nodeId]?.kind === 'function' ? memberExpr(local, e.output) : local);
+          } else {
+            jsArgExprs(e.nodeId).forEach(walk);
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    };
+    walk(expr);
+    return deps;
+  };
+
+  /**
    * popup-show's `done`-chain becomes following statements in the same handler (POPUPS-TARGET
    * §3) — expanded wherever an action list prints as statements, arms included.
    */
@@ -526,9 +679,12 @@ export function emitComponent(
       a.kind === 'popup-show' && a.then.length > 0
         ? [{ ...a, then: [] }, ...expandActions(a.then)]
         : // A jsfun-run is only its done-chain (EXP-003 §4 A2h): output reads inline the call
-          // at their sinks, so the run itself needs no statement.
+          // at their sinks, so the run itself needs no statement — unless it materializes its
+          // output record (CONTROLLED-STATE §4f), which is one setter statement before the chain.
           a.kind === 'jsfun-run'
-          ? expandActions(a.then)
+          ? a.materialize !== undefined
+            ? [{ ...a, then: [] }, ...expandActions(a.then)]
+            : expandActions(a.then)
           : [a]
     );
   const actionCode = (action: HandlerAction): string => {
@@ -574,10 +730,23 @@ export function emitComponent(
         const then = expandActions(action.then).map(actionCode);
         return `if (onClose) { onClose(${arg}); ${then.join('; ')}; }`;
       }
-      // Unreachable in practice — every print site expands first, and expandActions replaces a
-      // jsfun-run with its chain; kept total so the switch stays exhaustive.
-      case 'jsfun-run':
+      // A materialized run prints its setter statement (§4f); the plain form is unreachable in
+      // practice — every print site expands first — and kept total so the switch stays exhaustive.
+      case 'jsfun-run': {
+        if (action.materialize !== undefined) {
+          const def = jsFunByNode[action.nodeId]!;
+          return `${stateSetterOf(action.materialize)}(${def.fnName}(${jsArgsObject(def, 'handler')}))`;
+        }
         return expandActions(action.then).map(actionCode).join('; ');
+      }
+      // The functional updates are §3.3's closure-staleness-immune forms.
+      case 'state-set': {
+        const setter = stateSetterOf(action.name);
+        if (action.op === 'toggle') return `${setter}((v) => !v)`;
+        if (action.op === 'inc') return `${setter}((v) => v + 1)`;
+        if (action.op === 'dec') return `${setter}((v) => v - 1)`;
+        return `${setter}(${exprCode(action.expr!, 'handler')})`;
+      }
       case 'branch': {
         const armCode = (armActions: HandlerAction[]): string => {
           const list = expandActions(armActions);
@@ -624,6 +793,13 @@ export function emitComponent(
   const reactImports: string[] = [];
   if (plan.queries.length > 0) reactImports.push('useEffect', 'useState');
   if (plan.popups.length > 0 && !reactImports.includes('useState')) reactImports.push('useState');
+  if (referencedStateVars.length > 0 && !reactImports.includes('useState')) reactImports.push('useState');
+  if (
+    (plan.syncEffects.length > 0 || plan.pushEffects.length > 0) &&
+    !reactImports.includes('useEffect')
+  ) {
+    reactImports.push('useEffect');
+  }
   if (radioNameLocals.size > 0) reactImports.push('useId');
   if (reactImports.length > 0) externalImports.push(`import { ${reactImports.sort().join(', ')} } from 'react';`);
   if (plan.popups.length > 0) externalImports.push(`import { createPortal } from 'react-dom';`);
@@ -688,10 +864,24 @@ export function emitComponent(
     return null;
   };
 
+  /** The state param a stateful control replaces with its controlled attribute (§4c). */
+  const CONTROL_STATE_PARAM: Record<string, string> = {
+    checkbox: 'checked',
+    range: 'value',
+    select: 'value',
+    input: 'startValue'
+  };
+
   const contentAttrs = (node: NodeIR): string[] => {
     const roles = CONTENT_PARAMS[node.type] ?? {};
+    // A stateful control's state param prints as the controlled attribute, never the
+    // uncontrolled default (§4c) — the boot value lives in useState.
+    const stateParam = controlVarByNode.has(node.id)
+      ? CONTROL_STATE_PARAM[plan.roleOf[node.id] ?? '']
+      : undefined;
     const attrs = new Map<string, string>();
     for (const param of node.parameters) {
+      if (param.name === stateParam) continue;
       const role = roles[param.name];
       // The inverting role (LOGIC-TARGET §7): `enabled: false` is the bare `disabled`
       // attribute; `enabled: true` restates the default and emits nothing.
@@ -704,6 +894,7 @@ export function emitComponent(
       if (param.value.kind === 'literal') attrs.set(attr, jsxAttr(attr, param.value.value));
     }
     for (const [toProperty, source] of Object.entries(plan.bindings[node.id] ?? {})) {
+      if (toProperty === stateParam) continue;
       const role = roles[toProperty];
       if (role === 'attr-not:disabled') {
         const code = negatedBindingExpr(source);
@@ -750,6 +941,8 @@ export function emitComponent(
     const attrs: string[] = [];
     const roleEvents = ROLE_EVENT_ATTRS[plan.roleOf[node.id]] ?? {};
     for (const [port, actions] of Object.entries(plan.handlers[node.id] ?? {})) {
+      // A stateful control's Changed chain merges into its controlled onChange (§4c).
+      if (port === 'onChange' && controlVarByNode.has(node.id)) continue;
       const eventAttr = roleEvents[port] ?? EVENT_ATTRS[port];
       if (!eventAttr) {
         notes.push(`${plan.path}: signal ${node.id}.${port} has no DOM event equivalent — dropped, reported`);
@@ -760,11 +953,88 @@ export function emitComponent(
     return attrs;
   };
 
-  /** The wired-onTextChanged rule: writes on change, and nothing else — the input stays native. */
+  /**
+   * The wired-onTextChanged rule: writes on change, and nothing else — the input stays native.
+   * A *stateful* control (CONTROLLED-STATE §4c) instead gets the controlled onChange: the
+   * user-path state write leads, then the wired Changed chain in statement order.
+   */
   const changeAttrs = (node: NodeIR, attrIndent: number): string[] => {
-    const actions = plan.changeHandlers[node.id];
-    if (!actions || actions.length === 0) return [];
+    const stateVar = controlVarByNode.get(node.id);
+    const own = plan.changeHandlers[node.id] ?? [];
+    if (stateVar === undefined) {
+      if (own.length === 0) return [];
+      return [`onChange={${handlerArrow(own, '(event)', attrIndent)}}`];
+    }
+    const role = plan.roleOf[node.id];
+    const eventExpr: ValueExpr =
+      role === 'input'
+        ? { kind: 'input-text', inputId: node.id }
+        : {
+            kind: 'control-event',
+            controlId: node.id,
+            form: role === 'checkbox' ? 'checked' : role === 'range' ? 'number' : 'string'
+          };
+    const chain = [...own, ...((plan.handlers[node.id] ?? {})['onChange'] ?? [])];
+    const actions: HandlerAction[] = [{ kind: 'state-set', name: stateVar.name, expr: eventExpr }, ...chain];
     return [`onChange={${handlerArrow(actions, '(event)', attrIndent)}}`];
+  };
+
+  /** Truthiness spelling for a mounted condition: boolean-typed sources print bare; anything
+   *  else coerces `!!` so a number 0 can never leak into the JSX (the `0 &&` render trap). */
+  const boolTypedSource = (source: BindingSource): boolean => {
+    if (source.kind === 'prop') return plan.props.find((p) => p.name === source.name)?.tsType === 'boolean';
+    if (source.kind !== 'computed') return false;
+    const e = source.expr;
+    if (e.kind === 'not') return true;
+    if (e.kind === 'literal') return typeof e.value === 'boolean';
+    if (e.kind === 'state-get') return (stateVarByName.get(e.name)?.tsType.replace(' | undefined', '') ?? '') === 'boolean';
+    if (e.kind === 'prop') return plan.props.find((p) => p.name === e.name)?.tsType === 'boolean';
+    if (e.kind === 'jsfun-out') return e.fold === 'boolean';
+    return false;
+  };
+  const truthinessCode = (source: BindingSource): string | null => {
+    const base = bindingExpr(source);
+    if (base === null) return null;
+    if (boolTypedSource(source)) return base;
+    return SIMPLE_REF.test(base) ? `!!${base}` : `!!(${base})`;
+  };
+  const negatedVisibleCode = (source: BindingSource): string | null => {
+    const base = bindingExpr(source);
+    if (base === null) return null;
+    return SIMPLE_REF.test(base) ? `!${base}` : `!(${base})`;
+  };
+  let usesJoinClasses = false;
+  /** The className attribute with the visible sink applied (§4b): a live toggle of the
+   *  hidden-keep-space class, or the static fold of a literal/boot-value source. */
+  const classAttrOf = (id: string, className: string | undefined): string | null => {
+    const bound = plan.bindings[id]?.['visible'];
+    let mode: 'normal' | 'hidden' | 'live' = 'normal';
+    if (bound !== undefined) {
+      if (bound.kind === 'computed' && bound.expr.kind === 'undefined') mode = 'hidden';
+      else if (bound.kind === 'computed' && bound.expr.kind === 'literal') mode = bound.expr.value ? 'normal' : 'hidden';
+      else mode = 'live';
+    } else if (visibleLiteralFalse(id)) {
+      mode = 'hidden';
+    }
+    if (mode === 'normal') return className ? `className={styles.${className}}` : null;
+    const hidden = `styles.${hiddenKeepSpaceClass}`;
+    if (mode === 'hidden') {
+      notes.push(
+        `${plan.path}: node ${id} is statically invisible — hidden but keeping its layout space (authored state, not dead code)`
+      );
+      if (!className) return `className={${hidden}}`;
+      usesJoinClasses = true;
+      return `className={joinClasses(styles.${className}, ${hidden})}`;
+    }
+    const negated = negatedVisibleCode(bound!);
+    if (negated === null) {
+      notes.push(`${plan.path}: wire into ${id}.visible has no statically known source — dropped, reported`);
+      return className ? `className={styles.${className}}` : null;
+    }
+    usesJoinClasses = true;
+    return className
+      ? `className={joinClasses(styles.${className}, ${negated} && ${hidden})}`
+      : `className={joinClasses(${negated} && ${hidden})}`;
   };
 
   const childText = (node: NodeIR, paramName: string): string | null => {
@@ -775,8 +1045,13 @@ export function emitComponent(
       // A boot-value read renders empty, as the runtime renders an undefined text.
       if (bound.kind === 'computed' && bound.expr.kind === 'undefined') return null;
       // An unwritten wrapper output reads undefined; the runtime renders that as nothing
-      // (EXP-003 §4's `{formatListOut.text ?? ''}` shape).
-      if (bound.kind === 'computed' && bound.expr.kind === 'jsfun-out' && maybeUndefined(bound.expr)) {
+      // (EXP-003 §4's `{formatListOut.text ?? ''}` shape). Lifted/materialized state reads
+      // are undefined until their first delivery and fold the same way (CONTROLLED-STATE §4d/§4f).
+      if (
+        bound.kind === 'computed' &&
+        (bound.expr.kind === 'jsfun-out' || bound.expr.kind === 'state-get') &&
+        maybeUndefined(bound.expr)
+      ) {
         const code = bindingExpr(bound);
         if (code !== null) return `{${code} ?? ''}`;
       }
@@ -801,7 +1076,48 @@ export function emitComponent(
 
   type RadioCtx = { name: string; selected?: string };
 
+  /**
+   * The mounted sink (§4b) wraps the element in a conditional render — false removes the
+   * element from the tree entirely, the runtime's own rule — so the wrapper decides before
+   * the element prints. A statically-false source removes it with a comment: authored
+   * invisibility is authored state, not dead code.
+   */
   const render = (id: string, indent: number, radioCtx?: RadioCtx): string[] => {
+    const node = nodeById.get(id)!;
+    const mountedBound = plan.bindings[id]?.['mounted'];
+    if (mountedBound !== undefined) {
+      const staticallyFalse =
+        mountedBound.kind === 'computed' &&
+        (mountedBound.expr.kind === 'undefined' ||
+          (mountedBound.expr.kind === 'literal' && !mountedBound.expr.value));
+      if (staticallyFalse) {
+        notes.push(
+          `${plan.path}: node ${id} mounts from a statically-false source — removed from the tree (authored state, kept as a comment)`
+        );
+        return [`${pad(indent)}{/* node ${id}: mounted from a statically-false source — removed from the tree */}`];
+      }
+      const staticallyTrue = mountedBound.kind === 'computed' && mountedBound.expr.kind === 'literal';
+      if (!staticallyTrue) {
+        const cond = truthinessCode(mountedBound);
+        if (cond !== null) {
+          const inner = renderCore(id, indent + 2, radioCtx);
+          return [`${pad(indent)}{${cond} && (`, ...inner, `${pad(indent)})}`];
+        }
+        notes.push(`${plan.path}: wire into ${id}.mounted has no statically known source — dropped, reported`);
+      }
+    } else {
+      const mountedLit = node.parameters.find((p) => p.name === 'mounted')?.value;
+      if (mountedLit?.kind === 'literal' && mountedLit.value === false) {
+        notes.push(
+          `${plan.path}: node ${id} is authored Mounted false — removed from the tree (authored state, kept as a comment)`
+        );
+        return [`${pad(indent)}{/* node ${id}: authored Mounted false — removed from the tree */}`];
+      }
+    }
+    return renderCore(id, indent, radioCtx);
+  };
+
+  const renderCore = (id: string, indent: number, radioCtx?: RadioCtx): string[] => {
     const node = nodeById.get(id)!;
     const role = plan.roleOf[id];
 
@@ -816,12 +1132,18 @@ export function emitComponent(
     const tag = TAGS[role];
     const attrs: string[] = [];
     const className = classOf(id);
-    if (className) attrs.push(`className={styles.${className}}`);
+    const classAttr = classAttrOf(id, className);
+    if (classAttr !== null) attrs.push(classAttr);
     const isControl = role === 'checkbox' || role === 'radio' || role === 'range' || role === 'select';
     if (role === 'image' || role === 'input' || role === 'button' || role === 'video' || isControl) {
       attrs.push(...contentAttrs(node));
     }
-    if (role === 'input') attrs.push(...changeAttrs(node, indent + 2));
+    // The controlled control's value/checked (§4c) — local state, synced by the graph path.
+    const controlVar = controlVarByNode.get(id);
+    if (controlVar !== undefined) {
+      attrs.push(`${role === 'checkbox' ? 'checked' : 'value'}={${controlVar.name}}`);
+    }
+    if (role === 'input' || isControl) attrs.push(...changeAttrs(node, indent + 2));
     attrs.push(...handlerAttrs(node, indent + 2));
 
     if (role === 'text') {
@@ -911,15 +1233,16 @@ export function emitComponent(
     const query = plan.queries.find((q) => q.nodeId === repeater?.itemsQueryId);
     const collection =
       repeater?.itemsCollectionName != null ? collectionByName.get(repeater.itemsCollectionName) : undefined;
+    const itemsExpr = repeater?.itemsExpr;
     const target = requireInstance(repeater?.templatePath ?? null, `For Each ${node.id}`);
     const templatePlan = repeater?.templatePath ? project.byLegacyPath.get(repeater.templatePath) : undefined;
-    if (!repeater || (!query && !collection) || !target || repeater.mapping === null) {
+    if (!repeater || (!query && !collection && itemsExpr === undefined) || !target || repeater.mapping === null) {
       const reason = !repeater?.templatePath
         ? 'no template component'
         : repeater.mapping === null
           ? 'dynamic mapping script'
-          : !query && !collection
-            ? 'items are not fed by a query or a named array'
+          : !query && !collection && itemsExpr === undefined
+            ? 'items are not fed by a query, a named array, or a statically-known list'
             : 'unresolvable template';
       notes.push(`${plan.path}: For Each ${node.id} deferred to EXP-003 (${reason})`);
       return [`${pad(indent)}{/* TODO(export): For Each ${node.id} deferred to EXP-003 (${reason}) */}`];
@@ -930,6 +1253,19 @@ export function emitComponent(
       repeater.mapping === 'template-inputs'
         ? (templatePlan?.props ?? []).map((p) => ({ input: p.name, field: p.name }))
         : repeater.mapping;
+    // §4e: a plain-list feed has no statically-known item shape — fields read as `any` off the
+    // untyped list (the §10 ruling), so every mapped input is kept.
+    if (itemsExpr !== undefined) {
+      const attrs = [
+        `key={${indexLocal}}`,
+        ...mapping.map(({ input, field }) => `${input}={${memberExpr(itemLocal, field)}}`)
+      ];
+      const lines = element(target.symbol, attrs, null, indent + 2, false);
+      const srcCode = exprCode(itemsExpr, 'render');
+      // `?? []` is foreach.tsx's own "empty arrival clears the list".
+      const source = SIMPLE_REF.test(srcCode) ? `(${srcCode} ?? [])` : `((${srcCode}) ?? [])`;
+      return [`${pad(indent)}{${source}.map((${itemLocal}, ${indexLocal}) => (`, ...lines, `${pad(indent)}))}`];
+    }
     // Restrict to fields the item type actually carries — the runtime feeds undefined outside
     // them (which the empty-value contract never delivers), and the emitted type has no key.
     const allowedFields = collection
@@ -992,8 +1328,11 @@ export function emitComponent(
     const children: string[] = [];
     if (placeholder?.kind === 'literal' && String(placeholder.value).length > 0) {
       // The native spelling of the runtime's placeholder overlay: a hidden disabled option,
-      // selected by default unless the author picked a value.
-      if (!selectAttrs.some((a) => a.startsWith('defaultValue'))) selectAttrs.push('defaultValue=""');
+      // selected by default unless the author picked a value — or unless the select is
+      // controlled (§4c), where the state's '' boot selects it instead.
+      if (!selectAttrs.some((a) => a.startsWith('defaultValue') || a.startsWith('value='))) {
+        selectAttrs.push('defaultValue=""');
+      }
       children.push(
         ...element('option', ['value=""', 'disabled', 'hidden'], jsxText(String(placeholder.value)), indent + 2, false)
       );
@@ -1073,12 +1412,25 @@ export function emitComponent(
   const instanceAttrs = (node: NodeIR): string[] => {
     const attrs: string[] = [];
     for (const param of node.parameters) {
+      if (param.name === 'visible' || param.name === 'mounted') continue; // §4b: not target props
       if (param.value.kind === 'literal') attrs.push(jsxAttr(param.name, param.value.value));
     }
     for (const [toProperty, source] of Object.entries(plan.bindings[node.id] ?? {})) {
+      // mounted rides the render wrapper; visible has no class to toggle on an instance.
+      if (toProperty === 'mounted') continue;
+      if (toProperty === 'visible') {
+        notes.push(
+          `${plan.path}: wire into instance ${node.id}.visible dropped — an instance has no element class to toggle in this slice`
+        );
+        continue;
+      }
       const expr = bindingExpr(source);
       if (expr !== null) attrs.push(`${toProperty}={${expr}}`);
       else notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
+    }
+    // The lifted callbacks (§4d parent side): `onXChanged={setX}` writes the parent state var.
+    for (const lifted of plan.instanceLifted[node.id] ?? []) {
+      attrs.push(`${lifted.prop}={${lifted.setterName}}`);
     }
     return attrs;
   };
@@ -1167,7 +1519,7 @@ export function emitComponent(
 
   // ---- the module ------------------------------------------------------------------------
   const symbol = plan.file.symbol;
-  const hasCss = classNames.length > 0 || popupLayerClass !== undefined;
+  const hasCss = classNames.length > 0 || popupLayerClass !== undefined || hiddenKeepSpaceClass !== undefined;
   if (hasCss) {
     internalImports.set(`./${plan.file.fileBase}.module.css`, `import styles from './${plan.file.fileBase}.module.css';`);
   }
@@ -1187,12 +1539,26 @@ export function emitComponent(
     if (!referencedJsIds.has(def.nodeId)) continue;
     body.push(...jsWrapperLines(def), '');
   }
-  const allPropNames = [...plan.props.map((p) => p.name), ...plan.outputProps.map((o) => o.prop)];
+  if (usesJoinClasses) {
+    body.push(
+      'function joinClasses(...classes: Array<string | false | undefined>) {',
+      "  return classes.filter(Boolean).join(' ');",
+      '}',
+      ''
+    );
+  }
+  const allPropNames = [
+    ...plan.props.map((p) => p.name),
+    ...plan.outputProps.map((o) => o.prop),
+    ...plan.liftedOutputProps.map((l) => l.prop)
+  ];
   if (plan.closesPopup) allPropNames.push('onClose');
   if (allPropNames.length > 0) {
     body.push(`export interface ${symbol}Props {`);
     for (const prop of plan.props) body.push(`  ${prop.name}?: ${prop.tsType};`);
     for (const output of plan.outputProps) body.push(`  ${output.prop}?: () => void;`);
+    // Lifted value outputs (CONTROLLED-STATE §4d): optional callbacks carrying the value.
+    for (const lifted of plan.liftedOutputProps) body.push(`  ${lifted.prop}?: (value: ${lifted.tsType}) => void;`);
     // The popup boundary's reserved prop (POPUPS-TARGET §4), after the declared interface.
     if (plan.closesPopup) body.push('  onClose?: (action?: string) => void;');
     body.push('}', '');
@@ -1228,6 +1594,15 @@ export function emitComponent(
     const union = plan.popups.map((p) => tsLiteral(p.slotKey)).join(' | ');
     body.push(`  const [${popupState}, ${popupSetter}] = useState<${union} | null>(null);`);
   }
+  // The state rows (CONTROLLED-STATE §3.1) — only the vars something references print.
+  for (const stateVar of referencedStateVars) {
+    body.push(`  // ${stateVar.comment}`);
+    body.push(
+      `  const [${stateVar.name}, ${stateVar.setterName}] = useState<${stateVar.tsType}>(${
+        stateVar.boot === null ? '' : tsLiteral(stateVar.boot)
+      });`
+    );
+  }
   for (const [id, local] of jsLocals) {
     const def = jsFunByNode[id]!;
     body.push(`  const ${local} = ${def.fnName}(${jsArgsObject(def, 'render')});`);
@@ -1240,12 +1615,70 @@ export function emitComponent(
     radioNameLocals.size > 0 ||
     plan.queries.length > 0 ||
     popupState !== null ||
+    referencedStateVars.length > 0 ||
     jsLocals.size > 0
   ) {
     body.push('');
   }
   for (const query of plan.queries) {
     body.push('  useEffect(() => {', `    ${query.fetchName}().then(${query.setterName});`, '  }, []);', '');
+  }
+  // Sync effects (§3.4): the graph path of a wired control-state input — the input setter's
+  // own coercion and abstain rules (§1's table), and never the Changed chain.
+  for (const sync of plan.syncEffects) {
+    const setter = stateSetterOf(sync.stateName);
+    const src = exprCode(sync.source, 'render');
+    const deps = effectDeps(sync.source).join(', ');
+    if (sync.coerce === 'checkbox') {
+      body.push(
+        '  // Graph-path sync (checkbox): !!value, applied always — and Changed never fires.',
+        '  useEffect(() => {',
+        `    ${setter}(!!${SIMPLE_REF.test(src) ? src : `(${src})`});`,
+        `  }, [${deps}]);`,
+        ''
+      );
+    } else if (sync.coerce === 'slider') {
+      body.push(
+        '  // Graph-path sync (slider): abstain on empty, clamp to [min, max] — Changed never fires.',
+        '  useEffect(() => {',
+        `    const arrival = ${src};`,
+        "    if (arrival === undefined || arrival === null || arrival === '') return;",
+        '    const next = Number(arrival);',
+        '    if (!Number.isFinite(next)) return;',
+        `    ${setter}(Math.min(${sync.max}, Math.max(${sync.min}, next)));`,
+        `  }, [${deps}]);`,
+        ''
+      );
+    } else if (sync.coerce === 'dropdown') {
+      body.push(
+        '  // Graph-path sync (dropdown): undefined deselects, null abstains — Changed never fires.',
+        '  useEffect(() => {',
+        `    if (${src} === null) return;`,
+        `    ${setter}(${src} === undefined ? '' : String(${src}));`,
+        `  }, [${deps}]);`,
+        ''
+      );
+    } else {
+      body.push(
+        '  // Graph-path sync (text input): undefined abstains, null clears (FB-026) — Changed never fires.',
+        '  useEffect(() => {',
+        `    if (${src} === undefined) return;`,
+        `    ${setter}(${src} === null ? '' : String(${src}));`,
+        `  }, [${deps}]);`,
+        ''
+      );
+    }
+  }
+  // Push effects (§3.5): the lifted value output — fires on change and once at mount, which
+  // is the boot delivery a parent wire gets from the interpreter.
+  for (const push of plan.pushEffects) {
+    const deps = [...effectDeps(push.expr), push.prop].join(', ');
+    body.push(
+      '  useEffect(() => {',
+      `    ${push.prop}?.(${exprCode(push.expr, 'render')});`,
+      `  }, [${deps}]);`,
+      ''
+    );
   }
   const actionExprsOf = (a: HandlerAction): ValueExpr[] => {
     switch (a.kind) {
@@ -1254,6 +1687,8 @@ export function emitComponent(
       case 'store-set':
       case 'globalstore-set':
         return [a.expr];
+      case 'state-set':
+        return a.expr !== undefined ? [a.expr] : [];
       case 'collection-add':
         return a.entries.map((e) => e.expr);
       case 'branch':
@@ -1313,6 +1748,10 @@ export function emitComponent(
     // the runtime's wrapper group does (POPUPS-TARGET §5).
     if (popupLayerClass !== undefined) {
       cssBlocks.push(`.${popupLayerClass} {\n  position: fixed;\n  inset: 0;\n}`);
+    }
+    // The visible sink's shared rule (CONTROLLED-STATE §4b): hidden, but keeping layout space.
+    if (hiddenKeepSpaceClass !== undefined) {
+      cssBlocks.push(`.${hiddenKeepSpaceClass} {\n  visibility: hidden;\n}`);
     }
     files[`${baseDir}/${plan.file.fileBase}.module.css`] = GENERATED_CSS + '\n' + cssBlocks.join('\n\n') + '\n';
   }

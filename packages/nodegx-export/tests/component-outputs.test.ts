@@ -221,7 +221,9 @@ describe('child-side shapes (§4)', () => {
     });
     wire(mutated, 'Components/FarewellCard', 'waveButton', 'onClick', 'farewellOutputs', 'count');
     const result = emitApp(mutated, catalog);
-    expect(result.notes.join('\n')).toContain('lifted state belongs to the component-state slice');
+    expect(result.notes.join('\n')).toContain(
+      'value output "count" is fed by net.noodl.controls.button — no statically known source in the emit vocabulary'
+    );
     expect(result.files['src/components/FarewellCard.tsx']).toContain('onClick={() => onWaved?.()}');
     const plan = planProject(mutated, index);
     const disposition = plan.byLegacyPath.get('/Components/FarewellCard')!.dispositions['farewellOutputs'];
@@ -279,6 +281,8 @@ describe('parent-side shapes (§5)', () => {
     unwire(mutated, 'Components/FarewellCard', 'waveButton:onClick->farewellOutputs:waved');
     const result = emitApp(mutated, catalog);
     expect(result.files['src/pages/Home.tsx']).not.toContain('FarewellCard onWaved');
-    expect(result.notes.join('\n')).toContain('trigger is not a rendered element event or a receiver');
+    expect(result.notes.join('\n')).toContain(
+      'feeds an unrendered sink — lifted values land only in rendered sinks in this slice'
+    );
   });
 });

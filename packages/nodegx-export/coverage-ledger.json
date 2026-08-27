@@ -129,8 +129,8 @@
     },
     {
       "typeName": "Counter",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "CONTROLLED-STATE-TARGET (session 16): the number latch - Increase/Decrease are functional updates, Reset writes the literal start; enabled limits, a wired Start Value and a consumed countChanged defer named"
     },
     {
       "typeName": "Date To String",
@@ -477,8 +477,8 @@
     },
     {
       "typeName": "Switch",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "CONTROLLED-STATE-TARGET (session 16): a useState latch - On/Off/Flip are state writes, Current State reads it; consumed switched*/done/unchanged pulses and a wired State input defer named"
     },
     {
       "typeName": "Text",

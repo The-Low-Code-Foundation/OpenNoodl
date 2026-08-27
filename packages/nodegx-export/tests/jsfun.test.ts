@@ -243,14 +243,16 @@ describe('the graph-side gate (EXP-003 §3.5–§3.7), each a named defer', () =
     expect(result.files['src/pages/Home.tsx']).toContain('const formatShoutOut');
   });
 
-  test('a run-wired output feeding a render sink is controlled-state territory (§3.7)', () => {
+  test('a run-wired output feeding a render sink materializes the record (§3.7, CONTROLLED-STATE §4f)', () => {
     const mutated = cloneIr();
     wire(mutated, 'Pages/Home', 'cheerButton', 'onClick', 'formatShout', 'run', 'signal');
     const result = emitApp(mutated, catalog);
-    expect(result.notes.join('\n')).toContain(
-      'consumed outside the Run chain — run-wired outputs feeding render sinks need materialized state'
-    );
-    expect(result.files['src/pages/Home.tsx']).not.toContain('formatShoutOut');
+    const home = result.files['src/pages/Home.tsx'];
+    // The output record becomes a state var written where the chain runs; render reads are
+    // maybe-undefined until the first invocation — the runtime's own pre-first-run contract.
+    expect(home).toContain('const [formatShoutOut, setFormatShoutOut] = useState<{ text?: any } | undefined>();');
+    expect(home).toContain('setFormatShoutOut(formatShout(');
+    expect(home).toContain("{formatShoutOut?.text ?? ''}");
   });
 
   test('outputs feeding nothing statically translatable defer — the corpus junk fate', () => {
@@ -336,11 +338,13 @@ describe('A2h — invocation-pure, inside the handler chain (EXP-003 §4)', () =
     expect(home).not.toContain('shoutOnceOut');
   });
 
-  test('an invoked node read outside its chain is invalid — the render sink drops it', () => {
+  test('an invoked node read outside its chain materializes the record as state (§4f)', () => {
     const mutated = withA2h();
     wire(mutated, 'Pages/Home', 'shoutOnce', 'out-text', 'shoutText', 'text');
     const result = emitApp(mutated, catalog);
-    expect(result.notes.join('\n')).toContain('consumed outside the Run chain');
+    const home = result.files['src/pages/Home.tsx'];
+    expect(home).toContain('setShoutOnceOut(shoutOnce(');
+    expect(home).toContain("{shoutOnceOut?.text ?? ''}");
   });
 
   test('a Run whose chain drives nothing defers with the note', () => {

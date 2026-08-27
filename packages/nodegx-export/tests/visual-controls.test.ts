@@ -313,7 +313,7 @@ describe('checkbox and radio (VISUALS-TARGET §3)', () => {
     expect(result.notes.join('\n')).toContain('radio-button/no-group');
   });
 
-  test('a wired checked defers the checkbox — defaultChecked cannot carry a live wire', () => {
+  test('a wired checked mints local state (CONTROLLED-STATE §4c) — a dead feed drops named, the state stays', () => {
     const result = withShowcase((component) => {
       component.connections.push({
         key: 'x:value->remember:checked',
@@ -324,7 +324,12 @@ describe('checkbox and radio (VISUALS-TARGET §3)', () => {
         kind: 'value'
       });
     });
-    expect(result.notes.join('\n')).toContain('its checked arrives over a wire');
+    expect(result.notes.join('\n')).toContain('the control keeps local state without the graph feed');
+    const tsx = result.files['src/components/Showcase.tsx'];
+    // The wired checkbox is controlled off its state row; its authored boot moved into useState.
+    expect(tsx).toContain('const [checked, setChecked] = useState<boolean>(true);');
+    expect(tsx).toContain('checked={checked}');
+    expect(tsx).toContain('onChange={(event) => setChecked(event.target.checked)}');
   });
 });
 

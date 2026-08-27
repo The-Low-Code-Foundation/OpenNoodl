@@ -191,7 +191,7 @@ describe('what defers, all with notes (LOGIC-TARGET §9)', () => {
     expect(result.notes.join('\n')).toContain('the And has no inputs wired or authored');
   });
 
-  test('Switch is not an expression — a stateful latch, deferred whole (§6 headnote)', () => {
+  test('Switch is not an expression — a stateful latch, now a state row (CONTROLLED-STATE §4a)', () => {
     const mutated = cloneIr();
     const home = componentOf(mutated, 'Pages/Home');
     home.nodes.push({
@@ -206,8 +206,9 @@ describe('what defers, all with notes (LOGIC-TARGET §9)', () => {
     wire(mutated, 'Pages/Home', 'latch', 'state', 'cheerButton', 'enabled');
     unwire(mutated, 'Pages/Home', 'hasLongName:isTrue->aboutButton:enabled'); // the EXP-003 gate owns its own disabled — out of this claim's way
     const result = emitApp(mutated, catalog);
-    expect(result.files['src/pages/Home.tsx']).not.toContain('disabled');
-    expect(result.notes.join('\n')).toContain('no deterministic translation');
+    const homeFile = result.files['src/pages/Home.tsx'];
+    expect(homeFile).toContain('const [switchState, setSwitchState] = useState<boolean>(false);');
+    expect(homeFile).toContain('disabled={!switchState}');
   });
 });
 

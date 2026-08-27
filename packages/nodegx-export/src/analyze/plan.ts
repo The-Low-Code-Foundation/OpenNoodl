@@ -119,9 +119,27 @@ export type ValueExpr =
    * local (`formatShoutOut.text`); in a handler it inlines the call over `.get()` snapshots —
    * legal because the gate admits only pure bodies, so recomputation is unobservable. `fold`
    * carries Expression's typed getters (`asString` → `String(x ?? '')`, `asNumber` →
-   * `Number(x) || 0`, `asBoolean` → `!!x` — expression.ts, verbatim semantics).
+   * `Number(x) || 0`, `asBoolean` → `!!x` — expression.ts, verbatim semantics). `viaState` is
+   * the 4f landing zone (CONTROLLED-STATE-TARGET): an *invoked* node whose outputs feed render
+   * sinks materializes its output record as a state var, and render reads go through it
+   * (`stockCheckOut?.warning`) — maybe-undefined until the first invocation, the runtime's own
+   * pre-first-run contract.
    */
-  | { kind: 'jsfun-out'; nodeId: string; output: string; fold?: 'string' | 'number' | 'boolean' };
+  | { kind: 'jsfun-out'; nodeId: string; output: string; fold?: 'string' | 'number' | 'boolean'; viaState?: string }
+  /**
+   * A state var read (CONTROLLED-STATE-TARGET §3.2): the render closure's value in both render
+   * and handler positions. Inside a handler chain the attachment pass applies the chain-local
+   * snapshot rule — a read after a `state-set` in the same chain is rewritten to the written
+   * expression, because the runtime updates state synchronously mid-chain and React closures
+   * do not.
+   */
+  | { kind: 'state-get'; name: string; maybeUndefined?: boolean }
+  /**
+   * The user-path value inside a control's own onChange (CONTROLLED-STATE-TARGET §4c) — the
+   * `input-text` context rule generalized per control role: `event.target.checked` for a
+   * checkbox, `Number(event.target.value)` for a range, `event.target.value` for a dropdown.
+   */
+  | { kind: 'control-event'; controlId: string; form: 'string' | 'checked' | 'number' };
 
 export type HandlerAction =
   | { kind: 'navigate'; to: string }
@@ -149,8 +167,17 @@ export type HandlerAction =
    * `done` wires described, in wire order. The node's own compute needs no statement — output
    * reads inside the chain inline the call at their sinks, and a pure body run without reading
    * its outputs is unobservable. `done` is invocation-only in both runtimes, so this is exact.
+   * `materialize` (CONTROLLED-STATE-TARGET §4f) names the state var the run writes when the
+   * node's outputs also feed render sinks: `setStockCheckOut(stockCheck({ … }))` precedes the
+   * chain, and render reads go through the var.
    */
-  | { kind: 'jsfun-run'; nodeId: string; then: HandlerAction[] };
+  | { kind: 'jsfun-run'; nodeId: string; then: HandlerAction[]; materialize?: string }
+  /**
+   * A state var write (CONTROLLED-STATE-TARGET §3.3). `op` is a functional update
+   * (`setX(v => !v)`) — immune to closure staleness, which is why Switch's `flip` and
+   * Counter's arithmetic use it, never `expr`.
+   */
+  | { kind: 'state-set'; name: string; expr?: ValueExpr; op?: 'toggle' | 'inc' | 'dec' };
 
 /**
  * One re-hosted Function/Expression node (EXP-003-JS-TARGET-OUTPUT §4): the verbatim body plus
@@ -191,6 +218,48 @@ export interface ReceiverPlan {
   actions: HandlerAction[];
 }
 
+/**
+ * One `useState` row in the component (CONTROLLED-STATE-TARGET §3.1) — the first construct
+ * that materializes state in the emitted component rather than compiling it away. Names live
+ * in the component's one identifier space (props, hooks, wrappers — the stores rule).
+ */
+export interface StateVarPlan {
+  name: string;
+  setterName: string;
+  /** The useState type parameter, `' | undefined'` included where the boot is undefined. */
+  tsType: string;
+  /** Boot value; null is the `undefined` boot (`useState<T | undefined>()`). */
+  boot: string | number | boolean | null;
+  originNodeId: string;
+  origin: 'switch' | 'counter' | 'control' | 'lifted' | 'jsfun';
+  /** The provenance comment above the row. */
+  comment: string;
+}
+
+/**
+ * The graph path of a wired control-state input (CONTROLLED-STATE-TARGET §3.4): a useEffect
+ * running the *input setter's* semantics — coercion, abstain guards, clamping, per §1's table —
+ * and never the `Changed` chain (the runtime's own asymmetry).
+ */
+export interface SyncEffectPlan {
+  stateName: string;
+  source: ValueExpr;
+  coerce: 'checkbox' | 'slider' | 'dropdown' | 'textinput';
+  /** Slider only: the literal clamp bounds (a wired min/max defers the node before this). */
+  min?: number;
+  max?: number;
+}
+
+/**
+ * The lifted value output's child side (CONTROLLED-STATE-TARGET §3.5, CO §6 built): a push
+ * effect firing the optional callback prop on change and once at mount — the boot delivery a
+ * parent wire gets from the interpreter, so the mount fire is the faithful part.
+ */
+export interface PushEffectPlan {
+  prop: string;
+  expr: ValueExpr;
+}
+
 export interface PropPlan {
   name: string;
   tsType: string;
@@ -225,6 +294,13 @@ export interface RepeaterPlan {
    * defers to EXP-003.
    */
   mapping: Array<{ input: string; field: string }> | 'template-inputs' | null;
+  /**
+   * A list-typed vocabulary source wired into `items` (CONTROLLED-STATE-TARGET §4e) — a
+   * prop-fed or state-fed plain list. Emitted `(expr ?? []).map(…)`: `?? []` is foreach.tsx's
+   * own "empty arrival clears the list", rows key by index (no identity column, and the
+   * runtime re-renders on array identity change anyway — grade Q).
+   */
+  itemsExpr?: ValueExpr;
 }
 
 /**
@@ -295,6 +371,35 @@ export interface ComponentPlan {
    * and therefore deterministic.
    */
   jsFunctions: Record<string, JsFunctionPlan>;
+  /**
+   * State rows (CONTROLLED-STATE-TARGET §3), registered the moment a use resolves — the emit
+   * layer prints exactly the vars that surviving actions/expressions/effects reference.
+   */
+  stateVars: StateVarPlan[];
+  /** Sync effects (§3.4), registration order — one per translated wired control-state input. */
+  syncEffects: SyncEffectPlan[];
+  /** Push effects (§3.5), registration order — the lifted value outputs' child side. */
+  pushEffects: PushEffectPlan[];
+  /**
+   * Value output ports this component lifts (§4d child side) — the parent side consults this
+   * list off the target's plan, so parent and child agree by construction (the s10 rule).
+   */
+  liftedOutputProps: Array<{ port: string; prop: string; tsType: string }>;
+  /** Instance id → lifted callbacks the parent passes (`onXChanged={setX}`) (§4d parent side). */
+  instanceLifted: Record<string, Array<{ prop: string; setterName: string }>>;
+  /**
+   * Parent-side lifted wires awaiting the target's plan (planProject's second phase): a
+   * consumed instance value output binds only when the child actually lifted the port —
+   * otherwise the parent would pass a prop the child's emitted interface does not declare.
+   */
+  pendingLifted: Array<{
+    connectionKey: string;
+    instanceId: string;
+    targetLegacy: string;
+    port: string;
+    toNodeId: string;
+    toProperty: string;
+  }>;
   dispositions: Record<string, Disposition>;
   /** Dropped wires, unhandled constructs — EXP-004's report feed. Nothing silently dropped. */
   notes: string[];
@@ -331,6 +436,53 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
   );
 
   const byLegacyPath = new Map(plans.map((p) => [p.legacyPath, p]));
+
+  // Second phase (CONTROLLED-STATE-TARGET §4d, parent side): a consumed instance value output
+  // binds only after the child's plan exists — the child lifts the port (prop + push effect)
+  // or it does not, and a parent passing `onXChanged` to a child whose emitted interface lacks
+  // it would fail the emitted app's own typecheck (the popups closable lesson).
+  for (const plan of plans) {
+    const liftedVarByKey = new Map<string, string>();
+    for (const pending of plan.pendingLifted) {
+      const child = byLegacyPath.get(pending.targetLegacy);
+      const lifted = child?.liftedOutputProps.find((l) => l.port === pending.port);
+      if (!lifted) {
+        plan.notes.push(
+          `wire ${pending.connectionKey} dropped: instance output "${pending.port}" is not lifted by ${pending.targetLegacy} — its feed defers there`
+        );
+        continue;
+      }
+      const varKey = `${pending.instanceId}:${pending.port}`;
+      let name = liftedVarByKey.get(varKey);
+      if (name === undefined) {
+        const taken = takenNamesOf(plan);
+        const cleaned = pending.port.replace(/[^A-Za-z0-9_$]+/g, '_').replace(/^_+|_+$/g, '');
+        const base = cleaned.length > 0 && !/^[0-9]/.test(cleaned) ? cleaned : `_${cleaned || 'lifted'}`;
+        name = base;
+        let counter = 2;
+        while (taken.has(name) || taken.has(setterNameOf(name))) name = `${base}${counter++}`;
+        liftedVarByKey.set(varKey, name);
+        plan.stateVars.push({
+          name,
+          setterName: setterNameOf(name),
+          tsType: `${lifted.tsType} | undefined`,
+          boot: null,
+          originNodeId: pending.instanceId,
+          origin: 'lifted',
+          comment: `Lifted from ${pending.targetLegacy}'s value output "${pending.port}" — undefined until the child's mount push (CONTROLLED-STATE-TARGET §4d).`
+        });
+        const list = (plan.instanceLifted[pending.instanceId] = plan.instanceLifted[pending.instanceId] ?? []);
+        list.push({ prop: lifted.prop, setterName: setterNameOf(name) });
+      }
+      plan.bindings[pending.toNodeId] = plan.bindings[pending.toNodeId] ?? {};
+      plan.bindings[pending.toNodeId][pending.toProperty] = {
+        kind: 'computed',
+        expr: { kind: 'state-get', name, maybeUndefined: true }
+      };
+    }
+    plan.pendingLifted = [];
+  }
+
   const stubCollections: string[] = [];
   for (const plan of plans) {
     for (const query of plan.queries) {
@@ -382,6 +534,12 @@ function planComponent(
     queries: [],
     repeaters: {},
     jsFunctions: {},
+    stateVars: [],
+    syncEffects: [],
+    pushEffects: [],
+    liftedOutputProps: [],
+    instanceLifted: {},
+    pendingLifted: [],
     dispositions,
     notes
   };
@@ -524,11 +682,6 @@ function planComponent(
   const outputInterface = componentOutputInterface(component);
   plan.outputProps = outputInterface.props;
   for (const failure of outputInterface.failed) notes.push(failure.reason);
-  for (const port of outputInterface.valuePorts) {
-    notes.push(
-      `output "${port}" is a value output — a value output lifts state into the parent (the component-state slice), not translated here`
-    );
-  }
   const outputPropByPort = new Map(outputInterface.props.map((p) => [p.port, p.prop]));
   const failedOutputPorts = new Map(outputInterface.failed.map((f) => [f.port, f.reason]));
   const valueOutputPorts = new Set(outputInterface.valuePorts);
@@ -797,8 +950,10 @@ function planComponent(
     if (/^[0-9]/.test(base)) base = `_${base}`;
     const taken = (name: string) =>
       usedJsFnNames.has(name) ||
+      usedStateVarNames.has(name) ||
       plan.props.some((p) => p.name === name) ||
       plan.outputProps.some((o) => o.prop === name) ||
+      outputInterface.valueProps.some((v) => v.prop === name) ||
       name === plan.file?.symbol ||
       name === 'Inputs' ||
       name === 'Outputs';
@@ -1004,7 +1159,15 @@ function planComponent(
     ctx.consumes.push(...record.consumes);
     ctx.logicNodeIds.push(...record.logicNodeIds);
     ctx.subscriberIds.push(...record.subscriberIds);
-    const base: ValueExpr = { kind: 'jsfun-out', nodeId: fromNode.id, output: kind === 'function' ? output : 'result' };
+    // An invoked node materialized by its Run chain (§4f): reads outside the chain go through
+    // the state var. In-chain reads resolve before materialization exists and keep inlining.
+    const via = def.mode === 'invoked' ? jsMaterializedVars.get(fromNode.id) : undefined;
+    const base: ValueExpr = {
+      kind: 'jsfun-out',
+      nodeId: fromNode.id,
+      output: kind === 'function' ? output : 'result',
+      ...(via !== undefined ? { viaState: via.name } : {})
+    };
     if (kind === 'function') return base;
     switch (output) {
       case 'result':
@@ -1022,6 +1185,167 @@ function planComponent(
       default:
         return { ...base, fold: 'boolean' };
     }
+  };
+
+  // ---- the controlled-state slice (CONTROLLED-STATE-TARGET §3–§4): allocation ------------
+
+  const usedStateVarNames = new Set<string>();
+  const stateNameTaken = (name: string): boolean =>
+    usedStateVarNames.has(name) ||
+    usedJsFnNames.has(name) ||
+    plan.props.some((p) => p.name === name) ||
+    plan.outputProps.some((o) => o.prop === name) ||
+    outputInterface.valueProps.some((v) => v.prop === name) ||
+    name === plan.file?.symbol ||
+    ['Inputs', 'Outputs', 'event', 'navigate', 'payload', 'styles', 'joinClasses'].includes(name);
+
+  const allocStateVar = (
+    label: string | undefined,
+    fallback: string,
+    tsType: string,
+    boot: StateVarPlan['boot'],
+    originNodeId: string,
+    origin: StateVarPlan['origin'],
+    comment: string
+  ): StateVarPlan => {
+    // "Show Details" → showDetails: word-joining camelCase, not underscore substitution — the
+    // row reads like the label the author gave the node. (camelCase('') answers the literal
+    // fallback "node", so an absent label must bypass it and take this call's own fallback.)
+    const trimmedLabel = (label ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+    const cleaned = trimmedLabel.length > 0 ? pascalCase(trimmedLabel).replace(/[^A-Za-z0-9_$]/g, '') : '';
+    let base = cleaned.length > 0 ? cleaned.charAt(0).toLowerCase() + cleaned.slice(1) : fallback;
+    if (/^[0-9]/.test(base)) base = `_${base}`;
+    let name = base;
+    let counter = 2;
+    while (stateNameTaken(name) || stateNameTaken(setterNameOf(name))) name = `${base}${counter++}`;
+    usedStateVarNames.add(name);
+    usedStateVarNames.add(setterNameOf(name));
+    const stateVar: StateVarPlan = { name, setterName: setterNameOf(name), tsType, boot, originNodeId, origin, comment };
+    plan.stateVars.push(stateVar);
+    return stateVar;
+  };
+
+  // ---- the latches (§4a): Switch and Counter, the same shape in boolean and number --------
+
+  const LATCH_PULSES: Record<string, string[]> = {
+    Switch: ['switched', 'switchedToOn', 'switchedToOff', 'done', 'unchanged'],
+    Counter: ['countChanged']
+  };
+  const LATCH_TRIGGERS: Record<string, string[]> = {
+    Switch: ['on', 'off', 'flip'],
+    Counter: ['increase', 'decrease', 'reset']
+  };
+  const isLatchType = (type: string): boolean => type === 'Switch' || type === 'Counter';
+
+  const latchMemo = new Map<string, { stateVar: StateVarPlan } | { defer: string }>();
+  const latchStateOf = (node: NodeIR): { stateVar: StateVarPlan } | { defer: string } => {
+    const cached = latchMemo.get(node.id);
+    if (cached !== undefined) return cached;
+    const result = ((): { stateVar: StateVarPlan } | { defer: string } => {
+      const consumedPulse = component.connections.find(
+        (c) => c.fromId === node.id && (LATCH_PULSES[node.type] ?? []).includes(c.fromProperty)
+      );
+      if (consumedPulse) {
+        return {
+          defer: `its ${consumedPulse.fromProperty} signal is consumed — change-conditional pulses are not translated in this slice`
+        };
+      }
+      if (node.type === 'Switch') {
+        // The State input's setter emits the switched signals on every set — "announces a
+        // switch even though nothing switched" (switch.ts) — so a wired one fabricates pulses.
+        if (wiredPorts.has(`${node.id}:onFromStart`)) {
+          return { defer: 'its State input is wired — the setter announces a switch even though nothing switched (switch.ts)' };
+        }
+        const stateVar = allocStateVar(
+          node.authoredLabel,
+          'switchState',
+          'boolean',
+          literalParam(node, 'onFromStart') === true,
+          node.id,
+          'switch',
+          `From the Switch node${node.authoredLabel ? ` "${node.authoredLabel}"` : ''} — a latch: On/Off/Flip write it, Current State reads it.`
+        );
+        return { stateVar };
+      }
+      if (literalParam(node, 'limitsEnabled') === true || wiredPorts.has(`${node.id}:limitsEnabled`)) {
+        return { defer: 'its limits gate the mutations — clamped counting is not translated in this slice' };
+      }
+      if (wiredPorts.has(`${node.id}:startValue`)) {
+        return { defer: 'its Start Value is wired — the first arrival seeds the count and announces countChanged (counter.ts)' };
+      }
+      const rawStart = literalParam(node, 'startValue');
+      const boot = typeof rawStart === 'number' ? rawStart : Number(rawStart ?? 0) || 0;
+      const stateVar = allocStateVar(
+        node.authoredLabel,
+        'count',
+        'number',
+        boot,
+        node.id,
+        'counter',
+        `From the Counter node${node.authoredLabel ? ` "${node.authoredLabel}"` : ''} — Increase/Decrease/Reset write it, Count reads it.`
+      );
+      return { stateVar };
+    })();
+    latchMemo.set(node.id, result);
+    return result;
+  };
+
+  // ---- the controls (§4c): local state + sync effect, the dual-path contract --------------
+
+  type ControlSpec = {
+    statePort: string;
+    output: string;
+    tsType: 'boolean' | 'number' | 'string';
+    coerce: SyncEffectPlan['coerce'];
+    eventForm: 'string' | 'checked' | 'number';
+    fallbackName: string;
+  };
+  const CONTROL_STATE: Partial<Record<RenderRole, ControlSpec>> = {
+    checkbox: {
+      statePort: 'checked',
+      output: 'checked',
+      tsType: 'boolean',
+      coerce: 'checkbox',
+      eventForm: 'checked',
+      fallbackName: 'checked'
+    },
+    range: {
+      statePort: 'value',
+      output: 'value',
+      tsType: 'number',
+      coerce: 'slider',
+      eventForm: 'number',
+      fallbackName: 'rangeValue'
+    },
+    select: {
+      statePort: 'value',
+      output: 'value',
+      tsType: 'string',
+      coerce: 'dropdown',
+      eventForm: 'string',
+      fallbackName: 'selected'
+    },
+    input: {
+      statePort: 'startValue',
+      output: 'onTextChanged',
+      tsType: 'string',
+      coerce: 'textinput',
+      eventForm: 'string',
+      fallbackName: 'text'
+    }
+  };
+  /** Rendered control node id → its state var, populated by the minting pass below. */
+  const controlStateVars = new Map<string, StateVarPlan>();
+  /** Invoked JS node id → the §4f materialized state var, minted by compileJsRun. */
+  const jsMaterializedVars = new Map<string, StateVarPlan>();
+  const controlSpecOf = (id: string): ControlSpec | undefined => {
+    const role = plan.roleOf[id];
+    return role === undefined ? undefined : CONTROL_STATE[role];
+  };
+  /** Action ports whose translation needs local control state (§4c: check/uncheck, clear). */
+  const CONTROL_ACTION_PORTS: Partial<Record<RenderRole, string[]>> = {
+    checkbox: ['check', 'uncheck'],
+    input: ['clear']
   };
 
   const resolveExpr = (fromNode: NodeIR | undefined, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
@@ -1045,6 +1369,28 @@ function planComponent(
       }
       ctx.subscriberIds.push(fromNode.id);
       return { kind: 'store-key-get', storeName: read.storeName, key: read.key };
+    }
+    // Latch reads (CONTROLLED-STATE-TARGET §4a): `state`/`currentCount` read the latch's var.
+    if (
+      (fromNode.type === 'Switch' && fromProperty === 'state') ||
+      (fromNode.type === 'Counter' && fromProperty === 'currentCount')
+    ) {
+      const rec = latchStateOf(fromNode);
+      if ('defer' in rec) {
+        ctx.defer = rec.defer;
+        return null;
+      }
+      return { kind: 'state-get', name: rec.stateVar.name };
+    }
+    // A stateful control's value output reads its local state anywhere in the component
+    // (§4c); inside the control's own onChange the chain-local snapshot rewrites it to the
+    // user-path event value. A text input nothing makes stateful keeps today's own-chain rule.
+    {
+      const spec = controlSpecOf(fromNode.id);
+      if (spec !== undefined && fromProperty === spec.output) {
+        const stateVar = controlStateVars.get(fromNode.id);
+        if (stateVar !== undefined) return { kind: 'state-get', name: stateVar.name };
+      }
     }
     if (isTextInputType(fromNode.type) && fromProperty === 'onTextChanged') {
       return { kind: 'input-text', inputId: fromNode.id };
@@ -1127,10 +1473,14 @@ function planComponent(
       case 'undefined':
         return true;
       // An output the body might not write reads undefined, exactly like the runtime getter
-      // (§4); the typed Expression folds never answer undefined.
+      // (§4); the typed Expression folds never answer undefined. A materialized read is
+      // undefined until the first invocation (CONTROLLED-STATE §4f).
       case 'jsfun-out':
-        return expr.fold === undefined;
+        return expr.viaState !== undefined || expr.fold === undefined;
+      case 'state-get':
+        return expr.maybeUndefined === true;
       case 'input-text':
+      case 'control-event':
       case 'literal':
       case 'format':
       case 'logical':
@@ -1348,6 +1698,10 @@ function planComponent(
         return 'undefined';
       case 'jsfun-out':
         return expr.fold ?? 'unknown';
+      case 'state-get':
+        return plan.stateVars.find((v) => v.name === expr.name)?.tsType.replace(' | undefined', '') ?? 'unknown';
+      case 'control-event':
+        return expr.form === 'checked' ? 'boolean' : expr.form === 'number' ? 'number' : 'string';
       case 'logical':
       case 'not':
       case 'truthy':
@@ -1373,7 +1727,10 @@ function planComponent(
     TRIGGER_PORTS[type] === toProperty ||
     (type === 'NavigationShowPopup' && toProperty === 'show') ||
     (type === 'NavigationClosePopup' && (toProperty === 'close' || toProperty.startsWith('closeAction-'))) ||
-    (jsNodeKindOf(type) !== null && toProperty === 'run');
+    (jsNodeKindOf(type) !== null && toProperty === 'run') ||
+    (isLatchType(type) && (LATCH_TRIGGERS[type] ?? []).includes(toProperty)) ||
+    ((type === 'net.noodl.controls.checkbox' || type === 'Checkbox') && (toProperty === 'check' || toProperty === 'uncheck')) ||
+    (isTextInputType(type) && toProperty === 'clear');
 
   // Which components open as popups anywhere in the project — the close side translates only
   // inside one; elsewhere the runtime resolves an enclosing popup by ancestor walk, which a
@@ -1592,24 +1949,107 @@ function planComponent(
     const strayRead = component.connections.find(
       (c) => c.fromId === node.id && isJsValueOutput(node, c.fromProperty) && !chain.consumes.includes(c.key)
     );
+    // §4f (CONTROLLED-STATE-TARGET): outputs read outside the Run chain materialize the output
+    // record as a state var written where the chain runs — render reads are maybe-undefined
+    // until the first invocation, the runtime's own pre-first-run contract.
+    let materialize: string | undefined;
     if (strayRead) {
-      return {
-        defer: `its ${strayRead.fromProperty} output is consumed outside the Run chain — run-wired outputs feeding render sinks need materialized state (the controlled-state slice)`
-      };
+      const strayRendered = nodeById.get(strayRead.toId);
+      if (!strayRendered || !rendered.has(strayRead.toId)) {
+        return {
+          defer: `its ${strayRead.fromProperty} output is consumed outside the Run chain by an unrendered sink — the last run's value is not statically expressible there`
+        };
+      }
+      const def = record.def;
+      const fields = def.outputs.map(
+        (o) => `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(o.name) ? o.name : JSON.stringify(o.name)}?: ${o.tsType}`
+      );
+      const tsType =
+        def.kind === 'function'
+          ? `${fields.length > 0 ? `{ ${fields.join('; ')} }` : 'Record<string, never>'} | undefined`
+          : 'any';
+      const stateVar = allocStateVar(
+        `${def.fnName}Out`,
+        'runOut',
+        tsType,
+        null,
+        node.id,
+        'jsfun',
+        `The last run of ${def.fnName} (§4f) — undefined until the first invocation, as the runtime's unwritten outputs read.`
+      );
+      materialize = stateVar.name;
+      jsMaterializedVars.set(node.id, stateVar);
     }
-    if (chain.then.length === 0) {
+    if (chain.then.length === 0 && materialize === undefined) {
       return { defer: 'its Run drives nothing this slice translates — no done-chain action consumes its work' };
     }
     return {
-      action: { kind: 'jsfun-run', nodeId: node.id, then: chain.then },
+      action: {
+        kind: 'jsfun-run',
+        nodeId: node.id,
+        then: chain.then,
+        ...(materialize !== undefined ? { materialize } : {})
+      },
       consumes: chain.consumes,
       collapses: chain.collapses,
       subscribes: chain.subscribes
     };
   };
 
+  /**
+   * A latch trigger as a state write (CONTROLLED-STATE-TARGET §4a): `on`/`off` set literally,
+   * `flip` and the Counter arithmetic are functional updates (immune to closure staleness —
+   * which is why they are `op`, never `expr`), `reset` writes the literal start value.
+   */
+  const compileLatch = (node: NodeIR, port: string): CompiledSink => {
+    const rec = latchStateOf(node);
+    if ('defer' in rec) return { defer: rec.defer };
+    const name = rec.stateVar.name;
+    const action: HandlerAction =
+      port === 'on'
+        ? { kind: 'state-set', name, expr: { kind: 'literal', value: true } }
+        : port === 'off'
+          ? { kind: 'state-set', name, expr: { kind: 'literal', value: false } }
+          : port === 'flip'
+            ? { kind: 'state-set', name, op: 'toggle' }
+            : port === 'increase'
+              ? { kind: 'state-set', name, op: 'inc' }
+              : port === 'decrease'
+                ? { kind: 'state-set', name, op: 'dec' }
+                : { kind: 'state-set', name, expr: { kind: 'literal', value: rec.stateVar.boot as number } };
+    return { action, consumes: [] };
+  };
+
+  /** Checkbox check/uncheck and Text Input clear as state writes on a stateful control (§4c). */
+  const compileControlAction = (node: NodeIR, port: string): CompiledSink => {
+    const consumedOutcome = component.connections.find(
+      (c) => c.fromId === node.id && (c.fromProperty === 'done' || c.fromProperty === 'unchanged')
+    );
+    if (consumedOutcome) {
+      return {
+        defer: `its ${consumedOutcome.fromProperty} outcome is consumed — change-conditional pulses are not translated in this slice`
+      };
+    }
+    const stateVar = controlStateVars.get(node.id);
+    if (stateVar === undefined) {
+      return { defer: `its ${port} action writes control state nothing else observes — no state row is minted` };
+    }
+    const action: HandlerAction =
+      port === 'check'
+        ? { kind: 'state-set', name: stateVar.name, expr: { kind: 'literal', value: true } }
+        : port === 'uncheck'
+          ? { kind: 'state-set', name: stateVar.name, expr: { kind: 'literal', value: false } }
+          : // clear → the field type's empty value, projected onto the DOM string (FB-026).
+            { kind: 'state-set', name: stateVar.name, expr: { kind: 'literal', value: '' } };
+    return { action, consumes: [] };
+  };
+
   const compileSink = (node: NodeIR, port: string): CompiledSink => {
     if (jsNodeKindOf(node.type) !== null && port === 'run') return compileJsRun(node);
+    if (isLatchType(node.type)) return compileLatch(node, port);
+    if ((plan.roleOf[node.id] === 'checkbox' || plan.roleOf[node.id] === 'input') && (CONTROL_ACTION_PORTS[plan.roleOf[node.id]] ?? []).includes(port)) {
+      return compileControlAction(node, port);
+    }
     if (node.type === 'NavigationShowPopup') return compileShowPopup(node);
     if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
     if (node.type === 'RouterNavigate') {
@@ -1774,7 +2214,7 @@ function planComponent(
           if (prop === undefined) {
             return {
               defer: valueOutputPorts.has(wire.toProperty)
-                ? `its ${port} arm fires value output "${wire.toProperty}" — lifted state belongs to the component-state slice`
+                ? `its ${port} arm fires value output "${wire.toProperty}" — a lifted value takes a continuous feed, not a pulse`
                 : `its ${port} wire drives no translatable action`
             };
           }
@@ -1833,6 +2273,7 @@ function planComponent(
       case 'store-key-get':
       case 'literal':
       case 'undefined':
+      case 'state-get':
         return true;
       case 'format':
         return expr.parts.every((p) => typeof p === 'string' || exprValidIn(p, context, invokedScope));
@@ -1843,15 +2284,18 @@ function planComponent(
         return exprValidIn(expr.operand, context, invokedScope);
       case 'input-text':
         return context.kind === 'dom' && context.nodeId === expr.inputId;
+      case 'control-event':
+        return context.kind === 'dom' && context.nodeId === expr.controlId;
       case 'payload':
         return context.kind === 'receiver' && context.receiverId === expr.receiverId;
       // A reactive node's output reads anywhere its args do (render local / inline snapshot
       // call — pure, so recomputation is unobservable). An invoked node's output reads only
-      // inside its own Run chain: outside it, the runtime answers the *last run's* value,
-      // which a fresh call cannot reproduce (§3.7).
+      // inside its own Run chain — unless the run materialized its record as state (§4f),
+      // through which render reads the last run's value exactly as the runtime getter does.
       case 'jsfun-out': {
         const def = plan.jsFunctions[expr.nodeId];
         if (def === undefined) return false;
+        if (expr.viaState !== undefined) return true;
         if (def.mode === 'invoked' && !(invokedScope?.has(expr.nodeId) ?? false)) return false;
         return def.inputs.every((i) => i.expr === undefined || exprValidIn(i.expr, context, invokedScope));
       }
@@ -1869,6 +2313,8 @@ function planComponent(
         case 'store-set':
         case 'globalstore-set':
           return exprValidIn(action.expr, context, invokedScope);
+        case 'state-set':
+          return action.expr === undefined || exprValidIn(action.expr, context, invokedScope);
         case 'branch':
           return (
             exprValidIn(action.cond, context, invokedScope) &&
@@ -1935,11 +2381,462 @@ function planComponent(
       return { action: { kind: 'output-signal', prop }, consumes: [] };
     }
     if (valueOutputPorts.has(port)) {
-      return { defer: `output "${port}" is a value output — lifted state belongs to the component-state slice` };
+      return { defer: `output "${port}" is a value output that did not lift — its name or feed failed (the component's notes say why)` };
     }
     const failedReason = failedOutputPorts.get(port);
     if (failedReason !== undefined) return { defer: failedReason };
     return { drop: `no Component Outputs declaration names port "${port}" — the runtime's hasOutput guard drops the write too` };
+  };
+
+  // ---- the controlled-state slice: execution (CONTROLLED-STATE-TARGET §4) -----------------
+
+  const boundSubscribers = new Set<string>();
+  /**
+   * Wires the state passes consumed whose sinks stay ordinary rendered nodes — the CO/JS
+   * verdict sweeps read this to see the read landed (their `collapsed`-sink test cannot).
+   */
+  const stateLandedKeys = new Set<string>();
+  /** Why each control minted state — the statically-undefined feed demotes a wire-only mint. */
+  const controlMintReasons = new Map<string, { stateWired: boolean; actionWired: boolean; outputRead: boolean }>();
+
+  // Minting (§4c): a control earns local state when its state input is wired (the sync-effect
+  // shape), when its value output is read outside its own onChange (a render sink or a lifted
+  // mirror), or when a state-writing action (check/uncheck/clear) targets it. An unwired
+  // control nobody reads keeps today's uncontrolled translation — no state row is minted for
+  // a control nobody feeds.
+  for (const node of component.nodes) {
+    if (!rendered.has(node.id)) continue;
+    const spec = controlSpecOf(node.id);
+    if (spec === undefined) continue;
+    const role = plan.roleOf[node.id] as RenderRole;
+    const unticked = spec.coerce === 'textinput' && literalParam(node, 'runOnChange-startValue') === false;
+    const stateWired = wiredPorts.has(`${node.id}:${spec.statePort}`) && !unticked;
+    const actionWired = (CONTROL_ACTION_PORTS[role] ?? []).some((port) => wiredPorts.has(`${node.id}:${port}`));
+    const outputRead = component.connections.some((c) => {
+      if (c.fromId !== node.id || c.fromProperty !== spec.output) return false;
+      const sink = nodeById.get(c.toId);
+      if (!sink) return false;
+      if (sink.type === 'Component Outputs') return valueOutputPorts.has(c.toProperty);
+      return rendered.has(sink.id) && !isTriggerWire(sink.type, c.toProperty);
+    });
+    if (!stateWired && !actionWired && !outputRead) continue;
+    controlMintReasons.set(node.id, { stateWired, actionWired, outputRead });
+    const authored = literalParam(node, spec.statePort);
+    const catalogDefault = node.catalogRef ? catalog.inputDefault(node.catalogRef, spec.statePort) : undefined;
+    const raw =
+      authored !== undefined
+        ? authored
+        : typeof catalogDefault === 'string' || typeof catalogDefault === 'number' || typeof catalogDefault === 'boolean'
+          ? catalogDefault
+          : undefined;
+    const boot =
+      spec.tsType === 'boolean'
+        ? raw === true
+        : spec.tsType === 'number'
+          ? typeof raw === 'number'
+            ? raw
+            : Number(raw ?? 0) || 0
+          : raw === undefined
+            ? ''
+            : String(raw);
+    controlStateVars.set(
+      node.id,
+      allocStateVar(
+        node.authoredLabel,
+        spec.fallbackName,
+        spec.tsType,
+        boot,
+        node.id,
+        'control',
+        `The ${role}'s local state (§4c) — the graph path syncs it without firing Changed; the user path writes it and runs the Changed chain.`
+      )
+    );
+  }
+
+  // Sync effects (§3.4): the wired control-state input's graph path — the input setter's own
+  // coercion and abstain guards per §1's table, and never the Changed chain.
+  for (const node of component.nodes) {
+    if (!rendered.has(node.id)) continue;
+    const spec = controlSpecOf(node.id);
+    if (spec === undefined) continue;
+    const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === spec.statePort);
+    if (wires.length === 0) continue;
+    if (spec.coerce === 'textinput' && literalParam(node, 'runOnChange-startValue') === false) {
+      for (const w of wires) {
+        consumed.add(w.key);
+        notes.push(
+          `wire ${w.key} dropped: Value is unticked under Run On Value Change — arrivals wait for a Set pulse, which is not translated in this slice`
+        );
+      }
+      continue;
+    }
+    const stateVar = controlStateVars.get(node.id);
+    if (stateVar === undefined) continue;
+    if (wires.length > 1) {
+      for (const w of wires) consumed.add(w.key);
+      notes.push(
+        `wires into ${node.id}.${spec.statePort} dropped: two wires feed the control's state — last-writer-wins is not statically ordered`
+      );
+      continue;
+    }
+    const wire = wires[0];
+    consumed.add(wire.key);
+    const from = nodeById.get(wire.fromId);
+    const ctx = newCtx();
+    const expr = from === undefined ? null : resolveExpr(from, wire.fromProperty, ctx);
+    if (expr === null) {
+      notes.push(
+        `wire ${wire.key} dropped: ${
+          ctx.defer ?? `fed by ${from?.type ?? 'a missing node'} with no statically known source in the emit vocabulary`
+        } — the control keeps local state without the graph feed`
+      );
+      continue;
+    }
+    if (isBooleanExpr(expr) && spec.coerce !== 'checkbox') {
+      notes.push(
+        `wire ${wire.key} dropped: a logic truth value lands only in a truthiness sink — a ${plan.roleOf[node.id]} state input is value-shaped`
+      );
+      continue;
+    }
+    if (!exprValidIn(expr, { kind: 'render' })) {
+      notes.push(`wire ${wire.key} dropped: the expression reads values that only exist inside a handler`);
+      continue;
+    }
+    // A statically-undefined feed (a boot-value read) never applies — the input abstains or
+    // keeps its boot state (§1) — so no sync effect prints, and a control whose only state
+    // demand was this wire keeps today's uncontrolled shape.
+    if (expr.kind === 'undefined') {
+      if (from?.type === COMPONENT_OBJECT) {
+        notes.push(
+          `wire ${wire.key}: property "${wire.fromProperty.slice('value-'.length)}" reads its boot value — no wire writes it (a runtime script would) — rendered as the empty/omitted form`
+        );
+      } else {
+        notes.push(`wire ${wire.key}: the arrival is statically undefined — the control keeps its boot state, no sync effect`);
+      }
+      stateLandedKeys.add(wire.key);
+      for (const k of ctx.consumes) consumed.add(k);
+      const reasons = controlMintReasons.get(node.id);
+      if (reasons !== undefined && !reasons.actionWired && !reasons.outputRead) {
+        const index = plan.stateVars.indexOf(stateVar);
+        if (index >= 0) plan.stateVars.splice(index, 1);
+        controlStateVars.delete(node.id);
+      }
+      continue;
+    }
+    const sync: SyncEffectPlan = { stateName: stateVar.name, source: expr, coerce: spec.coerce };
+    if (spec.coerce === 'slider') {
+      const minRaw = literalParam(node, 'min') ?? (node.catalogRef ? catalog.inputDefault(node.catalogRef, 'min') : undefined);
+      const maxRaw = literalParam(node, 'max') ?? (node.catalogRef ? catalog.inputDefault(node.catalogRef, 'max') : undefined);
+      sync.min = typeof minRaw === 'number' ? minRaw : Number(minRaw ?? 0) || 0;
+      sync.max = typeof maxRaw === 'number' ? maxRaw : Number(maxRaw ?? 100) || 100;
+    }
+    plan.syncEffects.push(sync);
+    stateLandedKeys.add(wire.key);
+    for (const k of ctx.consumes) consumed.add(k);
+    for (const s of ctx.subscriberIds) boundSubscribers.add(s);
+    if (plan.file) {
+      for (const l of ctx.logicNodeIds) {
+        dispositions[l] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+      }
+    }
+  }
+
+  // §4d child side: a Component Outputs value port fed by the vocabulary lifts — an optional
+  // callback prop plus a push effect. A port whose feed does not resolve fails alone (the
+  // mixed-outputs rule); the node's verdict names the first failure while good ports keep
+  // firing.
+  {
+    const valuePropByPort = new Map(outputInterface.valueProps.map((v) => [v.port, v]));
+    const wiresByPort = new Map<string, typeof component.connections>();
+    for (const c of component.connections) {
+      const toNode = nodeById.get(c.toId);
+      if (toNode?.type !== 'Component Outputs' || !valueOutputPorts.has(c.toProperty)) continue;
+      wiresByPort.set(c.toProperty, [...(wiresByPort.get(c.toProperty) ?? []), c]);
+    }
+    for (const [port, wires] of wiresByPort) {
+      const vp = valuePropByPort.get(port);
+      if (vp === undefined) continue; // naming failed — outputInterface.failed reports it; pass 2 rules the node
+      const fail = (key: string | null, reason: string) => {
+        for (const w of wires) {
+          consumed.add(w.key);
+          if (!failedOutputsNodes.has(w.toId)) failedOutputsNodes.set(w.toId, reason);
+        }
+        notes.push(key !== null ? `wire ${key} dropped: ${reason}` : reason);
+      };
+      if (wires.length > 1) {
+        fail(null, `two wires feed value output "${port}" — last-writer-wins is not statically ordered`);
+        continue;
+      }
+      const wire = wires[0];
+      const from = nodeById.get(wire.fromId);
+      if (from?.type === 'For Each') {
+        fail(
+          wire.key,
+          `a repeater relays its rows' outputs into "${port}" — which row fired is not statically expressible in this slice`
+        );
+        continue;
+      }
+      const ctx = newCtx();
+      const expr = from === undefined ? null : resolveExpr(from, wire.fromProperty, ctx);
+      if (expr === null) {
+        fail(
+          wire.key,
+          `value output "${port}" is fed by ${from?.type ?? 'a missing node'} — ${
+            ctx.defer ?? 'no statically known source in the emit vocabulary'
+          }`
+        );
+        continue;
+      }
+      if (isBooleanExpr(expr)) {
+        fail(wire.key, `value output "${port}" is fed a logic truth value — only truthiness sinks take one in this slice`);
+        continue;
+      }
+      if (!exprValidIn(expr, { kind: 'render' })) {
+        fail(wire.key, `value output "${port}" reads values that only exist inside a handler`);
+        continue;
+      }
+      consumed.add(wire.key);
+      stateLandedKeys.add(wire.key);
+      plan.pushEffects.push({ prop: vp.prop, expr });
+      plan.liftedOutputProps.push({ port, prop: vp.prop, tsType: vp.tsType });
+      for (const k of ctx.consumes) consumed.add(k);
+      for (const s of ctx.subscriberIds) boundSubscribers.add(s);
+      if (plan.file) {
+        for (const l of ctx.logicNodeIds) {
+          dispositions[l] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+        }
+      }
+    }
+    // Declared value ports that did not lift keep a named note (the s10 report, updated).
+    for (const port of outputInterface.valuePorts) {
+      if (!plan.liftedOutputProps.some((l) => l.port === port)) {
+        notes.push(`output "${port}" is a value output with no statically-translatable feed — not lifted in this slice`);
+      }
+    }
+  }
+
+  // §4d parent side: consumed instance value outputs are recorded pending and resolved after
+  // every plan exists (planProject's second phase) — binding requires the child to have
+  // actually lifted the port, or the parent would pass a prop the child does not declare.
+  for (const c of component.connections) {
+    if (consumed.has(c.key)) continue;
+    const fromNode = nodeById.get(c.fromId);
+    if (!fromNode || plan.roleOf[fromNode.id] !== 'instance' || !rendered.has(fromNode.id)) continue;
+    const targetIR = ir.components.find((tc) => `/${tc.path}` === fromNode.type);
+    if (!targetIR) continue;
+    const vp = componentOutputInterface(targetIR).valueProps.find((v) => v.port === c.fromProperty);
+    if (vp === undefined) continue;
+    const toNode = nodeById.get(c.toId);
+    if (!toNode || !rendered.has(toNode.id)) {
+      consumed.add(c.key);
+      notes.push(
+        `wire ${c.key} dropped: instance output "${c.fromProperty}" feeds an unrendered sink — lifted values land only in rendered sinks in this slice`
+      );
+      continue;
+    }
+    const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[c.toProperty];
+    const truthinessSink = c.toProperty === 'visible' || c.toProperty === 'mounted';
+    const bindable =
+      truthinessSink ||
+      contentRole === 'children' ||
+      contentRole === 'attr-not:disabled' ||
+      (contentRole !== undefined && contentRole.startsWith('attr:'));
+    if (!bindable) {
+      consumed.add(c.key);
+      notes.push(
+        `wire ${c.key} dropped: instance output "${c.fromProperty}" feeds ${toNode.type}.${c.toProperty}, which has no static binding in this slice`
+      );
+      continue;
+    }
+    if (c.toProperty === 'mounted' && toNode.id === plan.rootId) {
+      consumed.add(c.key);
+      notes.push(`wire ${c.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+      continue;
+    }
+    consumed.add(c.key);
+    plan.pendingLifted.push({
+      connectionKey: c.key,
+      instanceId: fromNode.id,
+      targetLegacy: fromNode.type,
+      port: c.fromProperty,
+      toNodeId: toNode.id,
+      toProperty: c.toProperty
+    });
+  }
+
+  // ---- the chain-local snapshot rule (§3) -------------------------------------------------
+  // The runtime writes state synchronously mid-chain; React's setter does not update the
+  // closure. Inside one compiled handler chain, a read after a `state-set { expr }` resolves
+  // to the written expression; a read after an `op` write defers the reading node — the
+  // compiler never silently emits the stale read.
+  type ChainSnapshot = Map<string, ValueExpr | 'op'>;
+  const exprTouchesSnap = (e: ValueExpr, snap: ChainSnapshot): boolean => {
+    switch (e.kind) {
+      case 'state-get':
+        return snap.has(e.name);
+      case 'format':
+        return e.parts.some((p) => typeof p !== 'string' && exprTouchesSnap(p, snap));
+      case 'logical':
+        return e.operands.some((o) => exprTouchesSnap(o, snap));
+      case 'not':
+      case 'truthy':
+        return exprTouchesSnap(e.operand, snap);
+      case 'jsfun-out':
+        return (plan.jsFunctions[e.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap));
+      default:
+        return false;
+    }
+  };
+  const snapExpr = (expr: ValueExpr, snap: ChainSnapshot): ValueExpr | { defer: string } => {
+    switch (expr.kind) {
+      case 'state-get': {
+        const written = snap.get(expr.name);
+        if (written === undefined) return expr;
+        if (written === 'op') {
+          return {
+            defer: `it reads state "${expr.name}" after a functional update earlier in the chain — the value is not statically expressible mid-chain`
+          };
+        }
+        return written;
+      }
+      case 'format': {
+        const parts: Array<string | ValueExpr> = [];
+        for (const part of expr.parts) {
+          if (typeof part === 'string') {
+            parts.push(part);
+            continue;
+          }
+          const r = snapExpr(part, snap);
+          if ('defer' in r) return r;
+          parts.push(r);
+        }
+        return { ...expr, parts };
+      }
+      case 'logical': {
+        const operands: ValueExpr[] = [];
+        for (const o of expr.operands) {
+          const r = snapExpr(o, snap);
+          if ('defer' in r) return r;
+          operands.push(r);
+        }
+        return { ...expr, operands };
+      }
+      case 'not':
+      case 'truthy': {
+        const r = snapExpr(expr.operand, snap);
+        if ('defer' in r) return r;
+        return { ...expr, operand: r };
+      }
+      case 'jsfun-out': {
+        // Wrapper argument records are shared across call sites — a per-site rewrite cannot
+        // land, so a chain-written argument gates instead (zero corpus demand).
+        if (exprTouchesSnap(expr, snap)) {
+          return { defer: 'a Function argument reads state written earlier in this chain — not translated in this slice' };
+        }
+        return expr;
+      }
+      default:
+        return expr;
+    }
+  };
+  const snapActionList = (actions: HandlerAction[], snap: ChainSnapshot): HandlerAction[] | { defer: string } => {
+    const out: HandlerAction[] = [];
+    for (const a of actions) {
+      const r = snapAction(a, snap);
+      if ('defer' in r) return r;
+      out.push(r);
+    }
+    return out;
+  };
+  const snapAction = (action: HandlerAction, snap: ChainSnapshot): HandlerAction | { defer: string } => {
+    switch (action.kind) {
+      case 'state-set': {
+        if (action.expr !== undefined) {
+          const e = snapExpr(action.expr, snap);
+          if ('defer' in e) return e;
+          snap.set(action.name, e);
+          return { ...action, expr: e };
+        }
+        snap.set(action.name, 'op');
+        return action;
+      }
+      case 'store-set':
+      case 'globalstore-set': {
+        const e = snapExpr(action.expr, snap);
+        if ('defer' in e) return e;
+        return { ...action, expr: e };
+      }
+      case 'emit': {
+        const payload: Array<{ key: string; expr: ValueExpr }> = [];
+        for (const p of action.payload) {
+          const e = snapExpr(p.expr, snap);
+          if ('defer' in e) return e;
+          payload.push({ key: p.key, expr: e });
+        }
+        return { ...action, payload };
+      }
+      case 'collection-add': {
+        const entries: Array<{ key: string; expr: ValueExpr }> = [];
+        for (const entry of action.entries) {
+          const e = snapExpr(entry.expr, snap);
+          if ('defer' in e) return e;
+          entries.push({ key: entry.key, expr: e });
+        }
+        return { ...action, entries };
+      }
+      case 'branch': {
+        const cond = snapExpr(action.cond, snap);
+        if ('defer' in cond) return cond;
+        const trueSnap = new Map(snap);
+        const whenTrue = snapActionList(action.whenTrue, trueSnap);
+        if (!Array.isArray(whenTrue)) return whenTrue;
+        const falseSnap = new Map(snap);
+        const whenFalse = snapActionList(action.whenFalse, falseSnap);
+        if (!Array.isArray(whenFalse)) return whenFalse;
+        // A write inside either arm is order-unknown after the branch — later reads defer.
+        for (const [k, v] of trueSnap) if (snap.get(k) !== v) snap.set(k, 'op');
+        for (const [k, v] of falseSnap) if (snap.get(k) !== v) snap.set(k, 'op');
+        return { ...action, cond, whenTrue, whenFalse };
+      }
+      case 'popup-show':
+      case 'popup-close': {
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        return { ...action, then };
+      }
+      case 'jsfun-run': {
+        if ((plan.jsFunctions[action.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap))) {
+          return { defer: 'a Function argument reads state written earlier in this chain — not translated in this slice' };
+        }
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        return { ...action, then };
+      }
+      default:
+        return action;
+    }
+  };
+  /** One snapshot per handler owner; a stateful control's own chain seeds its user-path value. */
+  const chainSnapshots = new Map<string, ChainSnapshot>();
+  const chainSnapshotFor = (ownerKey: string, seedControlId?: string): ChainSnapshot => {
+    let snap = chainSnapshots.get(ownerKey);
+    if (snap === undefined) {
+      snap = new Map();
+      if (seedControlId !== undefined) {
+        const stateVar = controlStateVars.get(seedControlId);
+        const spec = controlSpecOf(seedControlId);
+        if (stateVar !== undefined && spec !== undefined) {
+          snap.set(
+            stateVar.name,
+            spec.coerce === 'textinput'
+              ? { kind: 'input-text', inputId: seedControlId }
+              : { kind: 'control-event', controlId: seedControlId, form: spec.eventForm }
+          );
+        }
+      }
+      chainSnapshots.set(ownerKey, snap);
+    }
+    return snap;
   };
 
   // Every action sink compiles before attachment — the sweeps that report unattached sinks
@@ -2012,7 +2909,6 @@ function planComponent(
   // its disposition here — failures accumulate in failedOutputsNodes and the post-pass rules
   // once, so the outcome cannot depend on wire order.
   const receiverActions = new Map<string, HandlerAction[]>();
-  const boundSubscribers = new Set<string>();
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
     const toNode = nodeById.get(connection.toId);
@@ -2075,8 +2971,18 @@ function planComponent(
         notes.push(`wire ${connection.key} dropped: ${reason}`);
         continue;
       }
+      const snapped = snapAction(compiled.action, chainSnapshotFor(`change:${fromNode.id}`, fromNode.id));
+      if ('defer' in snapped) {
+        if (outputsSink) {
+          if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, snapped.defer);
+        } else {
+          dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: snapped.defer };
+        }
+        notes.push(`wire ${connection.key} dropped: ${snapped.defer}`);
+        continue;
+      }
       const list = (plan.changeHandlers[fromNode.id] = plan.changeHandlers[fromNode.id] ?? []);
-      list.push(compiled.action);
+      list.push(snapped);
       if (!outputsSink) dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
       for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
@@ -2100,10 +3006,26 @@ function planComponent(
         notes.push(`wire ${connection.key} dropped: ${reason}`);
         continue;
       }
+      // A stateful control's own Changed chain sees the user-path value the runtime wrote
+      // before pulsing — the snapshot seed (§3's rule, applied to the leading set).
+      const seedId = connection.fromProperty === 'onChange' && controlStateVars.has(fromNode.id) ? fromNode.id : undefined;
+      const snapped = snapAction(
+        compiled.action,
+        chainSnapshotFor(`dom:${fromNode.id}:${connection.fromProperty}`, seedId)
+      );
+      if ('defer' in snapped) {
+        if (outputsSink) {
+          if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, snapped.defer);
+        } else {
+          dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: snapped.defer };
+        }
+        notes.push(`wire ${connection.key} dropped: ${snapped.defer}`);
+        continue;
+      }
       plan.handlers[fromNode.id] = plan.handlers[fromNode.id] ?? {};
       const list = (plan.handlers[fromNode.id][connection.fromProperty] =
         plan.handlers[fromNode.id][connection.fromProperty] ?? []);
-      list.push(compiled.action);
+      list.push(snapped);
       if (!outputsSink) dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
       for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
@@ -2127,7 +3049,17 @@ function planComponent(
         notes.push(`wire ${connection.key} dropped: ${reason}`);
         continue;
       }
-      receiverActions.set(fromNode.id, [...(receiverActions.get(fromNode.id) ?? []), compiled.action]);
+      const snappedRecv = snapAction(compiled.action, chainSnapshotFor(`recv:${fromNode.id}`));
+      if ('defer' in snappedRecv) {
+        if (outputsSink) {
+          if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, snappedRecv.defer);
+        } else {
+          dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: snappedRecv.defer };
+        }
+        notes.push(`wire ${connection.key} dropped: ${snappedRecv.defer}`);
+        continue;
+      }
+      receiverActions.set(fromNode.id, [...(receiverActions.get(fromNode.id) ?? []), snappedRecv]);
       if (!outputsSink) dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
       for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
@@ -2266,6 +3198,10 @@ function planComponent(
       notes.push(`wire ${connection.key} dropped: variable "${variableName}" has no statically-typed writer`);
       continue;
     }
+    if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
+      notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+      continue;
+    }
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
     plan.bindings[toNode.id][connection.toProperty] = { kind: 'store', variableName };
   }
@@ -2282,6 +3218,10 @@ function planComponent(
     const read = storeKeyReadOf(fromNode);
     if ('defer' in read) {
       notes.push(`wire ${connection.key} dropped: ${read.defer}`);
+      continue;
+    }
+    if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
+      notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
       continue;
     }
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
@@ -2322,10 +3262,18 @@ function planComponent(
     const enabledSink =
       connection.toProperty === 'enabled' &&
       (role === 'button' || role === 'input' || role === 'checkbox' || role === 'radio' || role === 'select' || role === 'range');
-    if (isBooleanExpr(expr) && !enabledSink) {
+    // `visible`/`mounted` join `enabled` in the truthiness admission list (CONTROLLED-STATE
+    // §4b) — both fold a maybe-undefined source exactly as the runtime's `if (value)` does.
+    const truthinessSink =
+      enabledSink || connection.toProperty === 'visible' || connection.toProperty === 'mounted';
+    if (isBooleanExpr(expr) && !truthinessSink) {
       notes.push(
-        `wire ${connection.key} dropped: a logic truth value lands only in a truthiness sink (a control's enabled) in this slice`
+        `wire ${connection.key} dropped: a logic truth value lands only in a truthiness sink (a control's enabled, visible, mounted) in this slice`
       );
+      continue;
+    }
+    if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
+      notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
       continue;
     }
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
@@ -2351,14 +3299,19 @@ function planComponent(
     const toNode = nodeById.get(connection.toId);
     if (!toNode || !rendered.has(toNode.id)) continue; // the sweep names the reason
     const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
+    const truthinessSink = connection.toProperty === 'visible' || connection.toProperty === 'mounted';
     const bindable =
-      contentRole === 'children' || contentRole === 'attr-not:disabled' || (contentRole !== undefined && contentRole.startsWith('attr:'));
+      truthinessSink ||
+      contentRole === 'children' ||
+      contentRole === 'attr-not:disabled' ||
+      (contentRole !== undefined && contentRole.startsWith('attr:'));
     if (!bindable) continue; // the sweep names the reason
+    if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) continue; // the sweep names the reason
     const ctx = newCtx();
     const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
     if (expr === null) continue; // the sweep defers the node with this reason
     if (!exprValidIn(expr, { kind: 'render' })) continue;
-    if (isBooleanExpr(expr) && contentRole !== 'attr-not:disabled') continue;
+    if (isBooleanExpr(expr) && contentRole !== 'attr-not:disabled' && !truthinessSink) continue;
     consumed.add(connection.key);
     coBoundReadKeys.add(connection.key);
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
@@ -2392,16 +3345,19 @@ function planComponent(
     const toNode = nodeById.get(connection.toId);
     if (!toNode || !rendered.has(toNode.id)) continue; // the sweep names the reason
     const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
+    const truthinessSink = connection.toProperty === 'visible' || connection.toProperty === 'mounted';
     const bindable =
+      truthinessSink ||
       contentRole === 'children' ||
       contentRole === 'attr-not:disabled' ||
       (contentRole !== undefined && contentRole.startsWith('attr:'));
     if (!bindable) continue; // the sweep names the reason
+    if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) continue; // the sweep names the reason
     const ctx = newCtx();
     const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
     if (expr === null) continue; // the sweep defers the node with this reason
     if (!exprValidIn(expr, { kind: 'render' })) continue; // handler-only args, or an invoked node
-    if (isBooleanExpr(expr) && contentRole !== 'attr-not:disabled') continue;
+    if (isBooleanExpr(expr) && contentRole !== 'attr-not:disabled' && !truthinessSink) continue;
     consumed.add(connection.key);
     jsBoundReadKeys.add(connection.key);
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
@@ -2413,6 +3369,44 @@ function planComponent(
         dispositions[id] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
       }
     }
+  }
+
+  // Pass 4f: latch state and stateful-control value outputs into rendered sinks
+  // (CONTROLLED-STATE-TARGET §4a, §4c) — `Switch.state → Group.visible`,
+  // `range.value → Text.text`. Same bindable discipline as 4d/4e, plus the truthiness sinks.
+  for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
+    const fromNode = nodeById.get(connection.fromId);
+    if (!fromNode) continue;
+    const isLatchRead =
+      (fromNode.type === 'Switch' && connection.fromProperty === 'state') ||
+      (fromNode.type === 'Counter' && connection.fromProperty === 'currentCount');
+    const spec = controlSpecOf(fromNode.id);
+    const isControlRead =
+      spec !== undefined && connection.fromProperty === spec.output && controlStateVars.has(fromNode.id);
+    if (!isLatchRead && !isControlRead) continue;
+    const toNode = nodeById.get(connection.toId);
+    if (!toNode || !rendered.has(toNode.id)) continue; // handler reads resolve at compile; the sweep names the rest
+    const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
+    const truthinessSink = connection.toProperty === 'visible' || connection.toProperty === 'mounted';
+    const bindable =
+      truthinessSink ||
+      contentRole === 'children' ||
+      contentRole === 'attr-not:disabled' ||
+      (contentRole !== undefined && contentRole.startsWith('attr:'));
+    if (!bindable) continue; // the sweep names the reason
+    if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
+      consumed.add(connection.key);
+      notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+      continue;
+    }
+    const ctx = newCtx();
+    const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
+    if (expr === null) continue; // the sweep defers with this reason
+    consumed.add(connection.key);
+    stateLandedKeys.add(connection.key);
+    plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
+    plan.bindings[toNode.id][connection.toProperty] = { kind: 'computed', expr };
   }
 
   // Pass 5: Component Inputs bindings and the query/array→repeater feeds (step 4's rules,
@@ -2434,7 +3428,48 @@ function planComponent(
     if (consumed.has(connection.key)) continue;
     const fromNode = nodeById.get(connection.fromId);
     const toNode = nodeById.get(connection.toId);
+    // §4e: a list-typed vocabulary source into `items` — a prop-fed or state-fed plain list.
+    if (
+      toNode?.type === 'For Each' &&
+      connection.toProperty === 'items' &&
+      plan.repeaters[toNode.id] &&
+      fromNode !== undefined &&
+      fromNode.type !== 'DbCollection2' &&
+      fromNode.type !== 'Collection2'
+    ) {
+      consumed.add(connection.key);
+      const ctx = newCtx();
+      const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
+      if (expr === null) {
+        notes.push(`wire ${connection.key} dropped: ${ctx.defer ?? 'items are fed by no statically known source'}`);
+        continue;
+      }
+      const tsType = exprTsType(expr);
+      if (!tsType.endsWith('[]')) {
+        notes.push(`wire ${connection.key} dropped: items are fed by a source not statically typed as a list (${tsType})`);
+        continue;
+      }
+      if (!exprValidIn(expr, { kind: 'render' })) {
+        notes.push(`wire ${connection.key} dropped: the expression reads values that only exist inside a handler`);
+        continue;
+      }
+      plan.repeaters[toNode.id].itemsExpr = expr;
+      stateLandedKeys.add(connection.key);
+      for (const k of ctx.consumes) consumed.add(k);
+      for (const s of ctx.subscriberIds) boundSubscribers.add(s);
+      if (plan.file) {
+        for (const l of ctx.logicNodeIds) {
+          dispositions[l] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+        }
+      }
+      continue;
+    }
     if (fromNode?.type === 'Component Inputs' && toNode && rendered.has(toNode.id)) {
+      if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
+        consumed.add(connection.key);
+        notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+        continue;
+      }
       plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
       plan.bindings[toNode.id][connection.toProperty] = { kind: 'prop', name: connection.fromProperty };
       consumed.add(connection.key);
@@ -2494,7 +3529,7 @@ function planComponent(
       for (const read of reads) {
         // Landed: bound by pass 4d, or consumed by a handler chain whose sink attached. A wire
         // pass 2 consumed while *dropping* leaves its sink deferred, so it does not count.
-        if (coBoundReadKeys.has(read.key)) continue;
+        if (coBoundReadKeys.has(read.key) || stateLandedKeys.has(read.key)) continue;
         if (consumed.has(read.key) && dispositions[read.toId]?.kind === 'collapsed') continue;
         const ctx = newCtx();
         const resolved = resolveExpr(node, read.fromProperty, ctx);
@@ -2570,7 +3605,7 @@ function planComponent(
     if (verdict === null && allReads.length === 0) verdict = 'its outputs feed nothing statically translatable';
     if (verdict === null) {
       for (const read of allReads) {
-        if (jsBoundReadKeys.has(read.key)) continue;
+        if (jsBoundReadKeys.has(read.key) || stateLandedKeys.has(read.key)) continue;
         if (consumed.has(read.key) && dispositions[read.toId]?.kind === 'collapsed') continue;
         const ctx = newCtx();
         const resolved = resolveExpr(node, read.fromProperty, ctx);
@@ -2587,6 +3622,44 @@ function planComponent(
       }
     }
     if (verdict === null && !plan.file) verdict = 'component emits no file to host its wrapper';
+    if (verdict !== null) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: verdict };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${verdict}`);
+      continue;
+    }
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+  }
+
+  // The latch verdict (CONTROLLED-STATE-TARGET §4a) — the Component Outputs precedent: a
+  // Switch/Counter the passes did not rule defers with the gate's reason or the first
+  // unlanded wire's; one whose every wire landed collapses into the file.
+  for (const node of component.nodes) {
+    if (!isLatchType(node.type) || dispositions[node.id] !== undefined) continue;
+    let verdict: string | null = null;
+    const rec = latchStateOf(node);
+    if ('defer' in rec) verdict = rec.defer;
+    if (verdict === null) {
+      for (const c of component.connections) {
+        if (consumed.has(c.key)) continue;
+        if (c.toId === node.id && (LATCH_TRIGGERS[node.type] ?? []).includes(c.toProperty)) {
+          const compiled = compiledSinks.get(`${node.id}:${c.toProperty}`);
+          verdict =
+            compiled !== undefined && 'defer' in compiled
+              ? compiled.defer
+              : `its ${c.toProperty} trigger is never fired by a translatable source`;
+          break;
+        }
+        if (c.fromId === node.id) {
+          const sink = nodeById.get(c.toId);
+          verdict = `its ${c.fromProperty} read feeds ${sink?.type ?? 'a missing node'}.${c.toProperty}, which has no static binding in this slice`;
+          break;
+        }
+      }
+    }
+    if (verdict === null && !component.connections.some((c) => c.fromId === node.id || c.toId === node.id)) {
+      verdict = 'its state feeds nothing statically translatable';
+    }
+    if (verdict === null && !plan.file) verdict = 'component emits no file to host its state';
     if (verdict !== null) {
       dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: verdict };
       notes.push(`node ${node.id} (${node.type}) deferred: ${verdict}`);
@@ -2743,8 +3816,15 @@ function planComponent(
 export interface OutputInterface {
   props: Array<{ port: string; prop: string }>;
   failed: Array<{ port: string; reason: string }>;
-  /** Declared value-kind output ports — lifted state, the component-state slice's work. */
+  /** Declared value-kind output ports — the lifted-state candidates (CONTROLLED-STATE §4d). */
   valuePorts: string[];
+  /**
+   * Value ports named as lifted callback props (`on` + PascalCase + `Changed` — the s10 name
+   * source; collisions fail the port, never silently rename). Whether a port actually lifts is
+   * the owning component's plan's to decide (its feed must resolve); the name is decided here,
+   * off the ComponentIR alone, so the child's plan and every parent's plan agree.
+   */
+  valueProps: Array<{ port: string; prop: string; tsType: string }>;
 }
 
 export function componentOutputInterface(component: ComponentIR): OutputInterface {
@@ -2753,34 +3833,80 @@ export function componentOutputInterface(component: ComponentIR): OutputInterfac
     if (node.type !== 'Component Inputs') continue;
     for (const port of node.declaredPorts) if (port.plug === 'output') takenProps.add(port.name);
   }
-  const result: OutputInterface = { props: [], failed: [], valuePorts: [] };
+  const result: OutputInterface = { props: [], failed: [], valuePorts: [], valueProps: [] };
   const seen = new Set<string>();
   for (const node of component.nodes) {
     if (node.type !== 'Component Outputs') continue;
     for (const port of node.declaredPorts) {
       if (port.plug !== 'input' || seen.has(port.name)) continue;
       seen.add(port.name);
-      if (port.kind !== 'signal') {
-        result.valuePorts.push(port.name);
-        continue;
-      }
       if (!/[A-Za-z0-9]/.test(port.name)) {
         result.failed.push({ port: port.name, reason: `output "${port.name}" has no identifier material for a prop name` });
+        if (port.kind !== 'signal') result.valuePorts.push(port.name);
         continue;
       }
-      const prop = /^on[A-Z][A-Za-z0-9_$]*$/.test(port.name) ? port.name : `on${pascalCase(port.name)}`;
+      const prop =
+        port.kind === 'signal'
+          ? /^on[A-Z][A-Za-z0-9_$]*$/.test(port.name)
+            ? port.name
+            : `on${pascalCase(port.name)}`
+          : /^on[A-Z][A-Za-z0-9_$]*Changed$/.test(port.name)
+            ? port.name
+            : `on${pascalCase(port.name)}Changed`;
       if (takenProps.has(prop)) {
         result.failed.push({
           port: port.name,
           reason: `output "${port.name}" would collide with prop "${prop}" — rename the port`
         });
+        if (port.kind !== 'signal') result.valuePorts.push(port.name);
         continue;
       }
       takenProps.add(prop);
-      result.props.push({ port: port.name, prop });
+      if (port.kind === 'signal') {
+        result.props.push({ port: port.name, prop });
+      } else {
+        result.valuePorts.push(port.name);
+        result.valueProps.push({ port: port.name, prop, tsType: valueTsTypeOf(port.type) });
+      }
     }
   }
   return result;
+}
+
+/** A lifted value port's payload type: the declared type when authored, `any` otherwise (§10). */
+function valueTsTypeOf(portType: string | undefined): string {
+  switch (portType) {
+    case 'boolean':
+      return 'boolean';
+    case 'number':
+      return 'number';
+    case 'string':
+      return 'string';
+    default:
+      return 'any';
+  }
+}
+
+function setterNameOf(name: string): string {
+  return `set${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+}
+
+/** Every identifier a plan already claims at module/component scope — the one-space rule. */
+function takenNamesOf(plan: ComponentPlan): Set<string> {
+  const taken = new Set<string>(['Inputs', 'Outputs', 'event', 'navigate', 'payload', 'styles']);
+  plan.props.forEach((p) => taken.add(p.name));
+  plan.outputProps.forEach((o) => taken.add(o.prop));
+  plan.liftedOutputProps.forEach((l) => taken.add(l.prop));
+  if (plan.file) taken.add(plan.file.symbol);
+  for (const def of Object.values(plan.jsFunctions)) taken.add(def.fnName);
+  for (const v of plan.stateVars) {
+    taken.add(v.name);
+    taken.add(v.setterName);
+  }
+  plan.queries.forEach((q) =>
+    [q.stateName, q.setterName, q.itemName, q.fetchName, q.typeName].forEach((n) => taken.add(n))
+  );
+  return taken;
 }
 
 function renderRole(node: NodeIR, catalog: CatalogIndex): RenderRole | 'unsupported' | null {
@@ -2853,11 +3979,14 @@ const STRUCTURE_PORTS: Partial<Record<RenderRole, string[]>> = {
     'smallLayout'
   ],
   icon: ['iconSourceType', 'iconIconSource', 'iconImageSource'],
-  checkbox: ['checked', 'useLabel', 'useIcon', 'label'],
+  // A wired `checked`/`value` no longer defers the control whole: it is the controlled-state
+  // slice's local-state + sync-effect shape (CONTROLLED-STATE-TARGET §4c). The ports that
+  // stay here still shape structure a static render cannot follow (tracks, options, marks).
+  checkbox: ['useLabel', 'useIcon', 'label'],
   radio: ['useLabel', 'useIcon', 'label', 'value'],
   radiogroup: ['value'],
-  select: ['items', 'value', 'placeholder', 'useLabel'],
-  range: ['value', 'min', 'max', 'step'],
+  select: ['items', 'placeholder', 'useLabel'],
+  range: ['min', 'max', 'step'],
   circle: [
     'size',
     'fillEnabled',
@@ -2943,6 +4072,10 @@ function tsTypeOf(portType: string | undefined, kind: 'value' | 'signal'): strin
       return 'boolean';
     case 'number':
       return 'number';
+    // Fields read off an untyped list must be `any` — strict tsc rejects them under unknown
+    // (the §10 ruling); the list itself is the §4e repeater feed.
+    case 'array':
+      return 'any[]';
     default:
       return 'string';
   }

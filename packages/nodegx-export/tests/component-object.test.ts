@@ -244,7 +244,10 @@ describe('strict-mixed, the Component Outputs precedent (COMPONENT-OBJECT-TARGET
 
   test('a read into a deferred sink defers the node with that collateral named', () => {
     const mutated = cloneIr();
+    // A custom-marked checkbox still defers whole (VISUALS-TARGET) — a wired `checked` alone
+    // no longer does (CONTROLLED-STATE §4c), so the deferred collateral needs the mark.
     addChild(mutated, CARD, 'greet-root', { id: 'gc-check', type: 'net.noodl.controls.checkbox' });
+    setParam(nodeOf(mutated, CARD, 'gc-check'), 'iconIconSource', 'star');
     wire(mutated, CARD, 'greet-state', 'value-Draft', 'gc-check', 'checked');
     const disposition = cardDisposition(mutated);
     expect(disposition.kind).toBe('deferred');

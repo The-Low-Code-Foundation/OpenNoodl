@@ -40,6 +40,9 @@ export const lastCheer = value<string | undefined>(undefined);
 /** Written by "Visitor name" (net.noodl.controls.textinput \`nameInput\` on /Pages/Home). */
 export const visitorName = value<string | undefined>(undefined);
 
+/** Written by "Copy draft" (Set Variable \`copyDraft\` on /Components/CheerMeter). */
+export const draftCopy = value<string | undefined>(undefined);
+
 /** Written by "Draft" (net.noodl.controls.textinput \`entryInput\` on /Pages/Notes). */
 export const noteDraft = value<string | undefined>(undefined);
 `;
@@ -104,6 +107,7 @@ import { useValue } from '@nodegx/core/react';
 
 import { AboutDialog } from '../components/AboutDialog';
 import { CheerBanner } from '../components/CheerBanner';
+import { CheerMeter } from '../components/CheerMeter';
 import { FarewellCard } from '../components/FarewellCard';
 import { GreetingBadge } from '../components/GreetingBadge';
 import { GreetingCard } from '../components/GreetingCard';
@@ -140,6 +144,8 @@ export function HomePage() {
   const navigate = useNavigate();
   const name = useValue(visitorName);
   const [openPopup, setOpenPopup] = useState<'AboutDialog' | null>(null);
+  // Lifted from /Components/CheerMeter's value output "draft" — undefined until the child's mount push (CONTROLLED-STATE-TARGET §4d).
+  const [draft, setDraft] = useState<string | undefined>();
   const hasLongNameOut = hasLongName({ name });
   const formatShoutOut = formatShout({ name });
 
@@ -182,6 +188,10 @@ export function HomePage() {
       <GreetingCard Name="Ada" />
 
       <p className={styles.shoutText}>{formatShoutOut.text ?? ''}</p>
+
+      <CheerMeter onDraftChanged={setDraft} />
+
+      <p className={styles.echoText}>{draft ?? ''}</p>
 
       {openPopup === 'AboutDialog' &&
         createPortal(
@@ -280,8 +290,9 @@ describe('writes without subscriptions (STEP5-TARGET §5)', () => {
 
   test('the wired input stays uncontrolled: onChange only, no value, no state of its own', () => {
     const home = app.files['src/pages/Home.tsx'];
-    // The one useState on this page is the popup slot (POPUPS-TARGET §2) — the input earns none.
-    expect(home.match(/useState/g)).toHaveLength(2); // the import specifier + the slot
+    // The page's useState rows are the popup slot (POPUPS-TARGET §2) and the lifted draft
+    // (CONTROLLED-STATE §4d) — the wired input itself still earns none.
+    expect(home.match(/useState/g)).toHaveLength(3); // the import specifier + slot + lifted draft
     expect(home).toContain("useState<'AboutDialog' | null>");
     expect(home).not.toContain('value={');
     expect(home).toContain('onChange={(event) => visitorName.set(event.target.value)}');

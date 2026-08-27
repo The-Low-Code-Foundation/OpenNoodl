@@ -1,0 +1,180 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "db6659b4-274f-408c-b6d5-7d5b90b538a0",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "meterRoot",
+      "type": "Group",
+      "label": "Cheer meter",
+      "x": 40,
+      "y": 40,
+      "children": [
+        "meterInput",
+        "toggleButton",
+        "detailsText",
+        "badge-2"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "borderRadius": "var(--radius-md)"
+      }
+    },
+    {
+      "id": "meterInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Draft",
+      "x": 100,
+      "y": 160,
+      "parent": "meterRoot",
+      "parameters": {
+        "placeholder": "Draft a cheer",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-md)",
+        "fontSize": "var(--text-base)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)"
+      },
+      "metadata": {
+        "comment": "CONTROLLED-STATE §4c fixture: Value is wired from the visitorName variable (the graph path), and the user path runs the Changed chain."
+      }
+    },
+    {
+      "id": "toggleButton",
+      "type": "net.noodl.controls.button",
+      "label": "Details",
+      "x": 100,
+      "y": 280,
+      "parent": "meterRoot",
+      "parameters": {
+        "label": "Details",
+        "backgroundColor": "var(--secondary)",
+        "color": "var(--secondary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      }
+    },
+    {
+      "id": "detailsText",
+      "type": "Text",
+      "label": "Details line",
+      "x": 100,
+      "y": 400,
+      "parent": "meterRoot",
+      "parameters": {
+        "text": "The crowd goes wild",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "metadata": {
+        "comment": "CONTROLLED-STATE §4b fixture: mounted is wired from the Switch — false removes the element from the tree."
+      }
+    },
+    {
+      "id": "badge-2",
+      "type": "Group",
+      "label": "Live badge",
+      "x": 100,
+      "y": 520,
+      "parent": "meterRoot",
+      "children": [
+        "badgeText"
+      ],
+      "parameters": {
+        "backgroundColor": "var(--secondary)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-1)",
+        "paddingBottom": "var(--space-1)",
+        "sizeMode": "contentSize"
+      },
+      "metadata": {
+        "comment": "CONTROLLED-STATE §4b fixture: visible is wired from the Switch — hidden but keeping its layout space."
+      }
+    },
+    {
+      "id": "badgeText",
+      "type": "Text",
+      "label": "Badge text",
+      "x": 100,
+      "y": 640,
+      "parent": "badge-2",
+      "parameters": {
+        "text": "Live",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--secondary-foreground)"
+      }
+    },
+    {
+      "id": "showDetails",
+      "type": "Switch",
+      "label": "Show Details",
+      "x": 360,
+      "y": 280,
+      "metadata": {
+        "comment": "CONTROLLED-STATE §4a fixture: a latch — Flip writes it, Current State feeds mounted and visible."
+      }
+    },
+    {
+      "id": "draftVar",
+      "type": "Variable2",
+      "label": "visitorName variable",
+      "x": 360,
+      "y": 160,
+      "parameters": {
+        "name": "visitorName"
+      }
+    },
+    {
+      "id": "copyDraft",
+      "type": "Set Variable",
+      "label": "Copy draft",
+      "x": 620,
+      "y": 160,
+      "parameters": {
+        "name": "draftCopy"
+      },
+      "metadata": {
+        "comment": "The Changed chain of the controlled input — runs only on the user path, never on the graph sync."
+      }
+    },
+    {
+      "id": "meterOutputs",
+      "type": "Component Outputs",
+      "x": 620,
+      "y": 320,
+      "ports": [
+        {
+          "name": "draft",
+          "plug": "input",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "meterRoot"
+  ]
+}

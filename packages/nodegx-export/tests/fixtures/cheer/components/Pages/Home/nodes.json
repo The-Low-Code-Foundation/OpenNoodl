@@ -31,7 +31,9 @@
         "farewell",
         "aboutButton",
         "greetingCard",
-        "shoutText"
+        "shoutText",
+        "cheerMeter",
+        "echoText"
       ],
       "parameters": {
         "flexDirection": "column",
@@ -273,6 +275,29 @@
       },
       "metadata": {
         "comment": "EXP-003 A1 fixture: a pure expression gating the About button's enabled through Is True."
+      }
+    },
+    {
+      "id": "cheerMeter",
+      "type": "/Components/CheerMeter",
+      "label": "Cheer meter",
+      "x": 160,
+      "y": 1480,
+      "parent": "shell"
+    },
+    {
+      "id": "echoText",
+      "type": "Text",
+      "label": "Draft echo",
+      "x": 160,
+      "y": 1600,
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "metadata": {
+        "comment": "CONTROLLED-STATE §4d fixture: reads the meter's lifted draft value output."
       }
     }
   ],

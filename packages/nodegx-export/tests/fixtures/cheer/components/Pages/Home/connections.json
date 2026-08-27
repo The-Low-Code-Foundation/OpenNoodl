@@ -80,6 +80,12 @@
       "fromProperty": "isTrue",
       "toId": "aboutButton",
       "toProperty": "enabled"
+    },
+    {
+      "fromId": "cheerMeter",
+      "fromProperty": "draft",
+      "toId": "echoText",
+      "toProperty": "text"
     }
   ]
 }

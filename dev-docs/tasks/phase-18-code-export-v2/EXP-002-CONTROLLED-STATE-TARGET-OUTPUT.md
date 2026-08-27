@@ -374,3 +374,55 @@ report, not this document's to promise.
 - jsdom drive: flip → element vanishes (mounted) vs stays-with-space (visible); typing syncs
   the controlled field and the lifted value arrives at the parent. Emitted app `tsc -b` +
   `vite build` clean; audit re-run with named-reason spot-checks.
+
+## §10 Implementation addendum (session 16 — what building the slice settled)
+
+The slice landed as designed — the CheerMeter fixture (§9) drives every §4 shape, 287 tests,
+the emitted app builds clean, and the jsdom drive proves flip→unmount, keep-space visibility,
+controlled typing, the lifted arrival and the cross-component graph sync. These rulings are
+where the paper met the compiler:
+
+- **A statically-undefined control feed demotes.** A wired state input whose source resolves
+  to the `undefined` ValueExpr (a Component Object boot read — the Cheer GreetingCard's own
+  wire) gets **no sync effect**: the arrival abstains at the input (§1), so an effect would be
+  a lie. The wire drops with the boot-value note, and a control whose *only* state demand was
+  that wire reverts to today's uncontrolled shape — byte-identical GreetingCard output.
+- **The verdict sweeps needed a landed-keys set.** A CO/JS read consumed by a state pass lands
+  on a sink that stays an ordinary `static` rendered node, which the verdicts' collapsed-sink
+  test cannot see — without `stateLandedKeys` the GreetingCard's record deferred the moment
+  the slice landed (cost the first red run).
+- **The lifted parent side is a second planning phase.** A parent binds a consumed instance
+  value output only after the child's plan exists (`liftedOutputProps`), because passing
+  `onXChanged` to a child whose emitted interface lacks it fails the emitted app's own tsc —
+  the popups `closesPopup` lesson, now at plan time. `pendingLifted` records the wires; the
+  phase-2 fixup mints the parent var against `takenNamesOf(plan)`.
+- **Value-prop naming lives in `componentOutputInterface`** — `on` + PascalCase + `Changed`,
+  collisions fail the port — so child and every parent derive the same name from the child's
+  IR alone. A port that fails naming stays in `valuePorts`; its feed drops via the old
+  value-port path and the parent's wire falls to the catch-all report.
+- **Controlled Radio Button Group stayed deferred** (its `value` is still a STRUCTURE_PORT).
+  Every corpus RBG feed is ComponentObject/Tier-B; the controlled-radio emit shape
+  (`checked={x === 'v'}` per radio) buys nothing until Tier B lands. A deliberate narrowing of
+  §4c's table — revisit with Tier B.
+- **JSX truthiness is narrower than plan truthiness.** In `{cond && <el/>}` a number 0 renders
+  itself, and the `logical`/`truthy` kinds print operand-valued expressions — so only
+  provably-boolean sources print bare; everything else coerces `!!`. The `visible` toggle
+  negates instead (`!x && styles.hiddenKeepSpace`), which is boolean by construction.
+- **The snapshot rule applies at attachment, per handler owner.** Compiled actions are cached
+  and shared, so the rewrite copies; a stateful control's own chain seeds its user-path event
+  value (which is why the Changed chain reads `event.target.value`, never the stale closure);
+  branch arms fork the map and rejoin as `op`; a Function argument record is shared across
+  call sites, so a chain-written argument gates rather than rewrites.
+- **§4f materializes instead of deferring.** `compileJsRun`'s stray-read defer became the
+  state row: `setXOut(fn(args))` before the chain, render reads `xOut?.field` (in-chain reads
+  still inline — pure). An Expression materializes its raw value as `any`.
+- **Latch/state names camelCase off the authored label** ("Show Details" → `showDetails`);
+  `camelCase('')` answers the literal fallback `"node"`, so an absent label must bypass it.
+- **An instance's `visible` drops named** (no element class to toggle on an instance);
+  `mounted` on an instance rides the render wrapper like any element.
+- **Corpus outcome (same-instrument audit, honestly):** 86.1% → 86.7% (2,361/2,724, 28
+  signatures, 40 projects) — +26 nodes, no project regressed. Every Switch instance now
+  translates; Counter lands one instance per cn-family project (the rest defer named on wired
+  Start Value). §8's caution held: the ProductCard-family `visible` wires sit in components
+  that also carry other defects, so the mechanical win is real but modest. **Both `Switch`
+  and `Counter` flipped in the ledger this commit.**
