@@ -1,149 +1,139 @@
-# Next session — the relation verbs, or the record read; and the ranking is now measured
+# Next session — fix the two record-verb typing defects first, then the reactive Condition
 
-**Where the phase stands (2026-08-27, after twenty sessions).** Session 20 rebuilt the ranking
-instrument the s19 handoff asked for, used it to **change the planned next slice**, and built the
-one it chose: **the record verbs** —
-[EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md), commit
-`1840c6d5`. Read its **§0, §3, §5 and §9** before touching backend actions, api stubs, or control
-state again.
+**Where the phase stands (2026-08-27, after twenty-one sessions).** Session 21 re-ran the ranking
+instrument at HEAD, which **inverted the s20 handoff's top two**, and built the slice that came
+out first: **the user family** —
+[EXP-002-USER-FAMILY-TARGET-OUTPUT.md](./EXP-002-USER-FAMILY-TARGET-OUTPUT.md), commit `9d8f79db`.
+Read its **§4e, §5 and §9** before touching the awaited action, the session stub, or any new
+`ValueExpr` kind.
 
-**What landed.** Create / Update / Delete Record are the **first asynchronous action in the emit
-vocabulary**: the compiled handler becomes `async`, the call is `await`ed into the class's api
-stub, the `done` chain follows it *inside the try* — which is where `reportOutcomes(…, 'done')`
-sits in the runtime, after the store answers — and the `Error` output lands in component state
-that nothing clears, exactly as `_internal.error` behaves. **369 tests (25 new); ledger 105
-deferred / 54 translated / 1 stubbed / 15 backend-only.**
+**What landed.** Log In / Log Out / Sign Up and the `User` session read all translate, on a
+**generalised** version of the record verbs' action: `record-op` is now **`api-call`** with
+positional `args`, one kind serving both families. `User` becomes a `useSession()` that answers
+signed-out — consistent with the write stubs that throw, and what the runtime documents for a
+server render. **390 tests (21 new); ledger 101 deferred / 58 translated / 1 stubbed / 15
+backend-only.**
 
-**Measured, same instrument both sides over the same 40-project list** — worktree at the
-pre-change commit, then the working tree:
+**Measured, same instrument both sides** — a worktree at HEAD, then the working tree:
 
 | | translated / total | % |
 |---|---|---|
-| before | 3,737 / 4,441 | 84.15 |
-| after | 3,749 / 4,441 | **84.42** |
+| before | 3,749 / 4,441 | 84.42 |
+| after | 3,766 / 4,441 | **84.80** |
 
-**+12 nodes on an unchanged denominator, across five genuinely different projects** (`Puppy test`,
-`Puppy test 3`, `puppy-test-3-fix008c`, `tut001-drive`, `phase58-backend-deferred`); no project
-regressed, and every remaining defer in those projects reads back as one of §5's gates in its own
-words. The emitted `puppy-test-3` app `tsc -b` and `vite build` clean.
+**+17 nodes on an unchanged denominator over four projects**; no project regressed; the
+before-run reproduces `cov-after-s20.txt` exactly. Per-type: `LogIn` 0→4, `LogOut` 0→4, `SignUp`
+0→1, `User` 0→1 **of four**, plus collateral `RouterNavigate` 50→56 and `Inverter` 2→3.
 
 ---
 
-## 🔴 The ranking instrument, and why the plan changed
+## 🔴 The ranking was invalidated by the change that motivated it
 
-The s19 handoff's next slice was **EXP-003 Tier B (the Filters family, ~80 nodes)**. Session 20
-built `rank2.ts` first — the instrument s19 asked for, ranking **by deferral reason** with
-distinct-clone-deduped-component, distinct-program and host-emits columns. Two readings inverted
-immediately:
+The s20 handoff ranked **relation verbs + `DbModel2`** first. Re-running `rank2.ts` at HEAD —
+`rank2-out.txt` described a tree that no longer existed, because the s20 slice landed *after* the
+ranking that chose it — gave:
 
-1. **`net.noodl.controls.button` reads as 35 nodes across 10 projects — and is 7 distinct
-   instances**, every one collateral of a host whose render tree already defers. Nothing to build.
-2. **The entire top of the raw ranking is one kit.** `the script reads the Noodl API` (80),
-   `logic node (Model2)` (72), `net.noodl.ComponentObject` (56), `the script reads the Component
-   scope` (56), and the four *"its `<port>` arrives over a wire"* control rows (72) are the **same
-   eight projects** — all clones of the stock Filters kit, **nine distinct components** between
-   them, gated behind Model2, a dynamic-template For Each, and a reactive-object/event vocabulary
-   none of which exist.
+| slice | nodes | projects | distinct components | collateral |
+|---|---|---|---|---|
+| relation verbs + `DbModel2` + consumed `Id` | **3** | **1** | **1** | none |
+| the user family | **13** | **4** | **7** | **6** |
 
-Tier B's ~350-node blast radius is real. It is also **one third-party kit copied eight times**,
-and it is weeks of work re-implementing a mini reactive framework (`Noodl.Object.create` with a
-global registry, `Noodl.Events`, `Component.RepeaterObject` mutated across the parent/row
-boundary, closures shared between nodes through the `Component` scope, `setTimeout` debouncing).
-`tb-survey.ts` in the session scratchpad dumps every body of it, per component, with wires —
-**read that before anyone commits to Tier B.**
+`RemoveDbModelRelation` has **zero corpus instances** — it was in the plan for being a neighbour,
+not for being measured. The handoff had ranked the relation verbs first on *"it completes one real
+page end to end"*, a demo criterion rather than the coverage criterion the phase is measured by;
+its own sentence calling the user family *"the cheapest remaining breadth"* was the correct
+reading, filed under the wrong rank.
 
-> ⚠️ The instrument answers *"how much work is this, and how broadly does it apply"*, not *"how
-> many nodes are there"*. Both numbers are honest; only one of them ranks slices.
-
-**Item 1 of s19's list needed no work**: all four tutorial projects (`tut001-drive`,
-`tut003-{starter,bundle,solution}` and `tut003-drive-bundle`) are already in `projects.txt`. They
-are the only solution-shaped projects on the machine.
+> **A ranking is invalidated by the change it motivated.** Re-run `rank2.ts` at the start of every
+> session, before trusting any inherited order. Fifth session running that this changed the plan;
+> second in which the previous session's own handoff was the thing corrected.
 
 ## Next, in order
 
-1. **`AddDbModelRelation` + `RemoveDbModelRelation` + `DbModel2`** — the record verbs' immediate
-   neighbours, and what §4c of the new doc is already written for. `Puppy test`'s Create Inquiry
-   defers today *only* on its consumed `Id`, and landing the relation verb turns that read into
-   the `const created = await …; created.id` shape the section specifies. Small, and it completes
-   one real page (Puppy Detail) end to end. `DbModel2` is a second api-stub verb (`fetchPuppy(id)`)
-   feeding render sinks.
-2. **The User family** (`net.noodl.user.LogIn` / `LogOut` / `User` / `SignUp` — 13 nodes, 4-5
-   projects). Every one is the same awaited-action-with-an-Error shape this slice just settled,
-   and the §3 control-state clause already makes the credential fields readable from the submit
-   button. This is the cheapest remaining breadth in the corpus.
-3. **Conditional signal chains for Visual Functions** — `tut003`'s Create now defers on exactly
-   one thing: `store ← Logic Builder.ok` is a *value* wire. Landing it also makes §4e reachable
-   (the `storageFetch` re-fetch), and §4e records the pass-ordering hazard that will bite when it
-   does: query plans are computed **after** handler compilation, so a refetch action compiled in
-   the handler pass cannot know whether its target will become a query.
-4. **EXP-003 Tier B** stays in the queue as a per-component rewrite, after Model2 and the
-   dynamic-template repeater. It is not the next slice, and the ranking that said it was has been
-   corrected.
+1. 🔴 **The two record-verb typing defects — a shipped slice emits an app that does not compile.**
+   Building `phase58-backend-deferred` (which s20 never did — it built only `puppy-test-3`) fails
+   `tsc -b`, and **both errors reproduce at the pre-s21 baseline**, so they are the record verbs':
+   - `AddStockForm.tsx:50` — `createStockItem({ name: … })` where `Partial<StockItem>` has no
+     `name`. The interface is minted from the project's collection **schema**, and the graph
+     writes a `prop-` the schema snapshot does not carry. *Design question: does a graph-written
+     column join the interface, or is it dropped with a note (the Static Data `allowedFields`
+     precedent)?*
+   - `StockItemRow.tsx:51` — `deleteStockItem(id)` with `id: string | undefined` from an optional
+     component prop. *Design question: does an absent id call the stub, or refuse the way the
+     runtime's "Missing Record Id" does?*
+
+   Both belong in RECORD-VERBS §4d. Small, and they close a correctness hole rather than adding
+   coverage. **Also add a corpus-wide build check** — `tsc` over one emitted project is not `tsc`
+   over the corpus, and that is exactly how these survived.
+2. **The reactive Condition** (`Condition re-tests on every change of its input`, 3 nodes / 3
+   projects) — and it is worth more than three, because it is precisely what gates the **three
+   remaining `User` nodes** (the auth-gate idiom `authenticated → Condition → onfalse →
+   RouterNavigate`). Retires ~6 nodes over 3 projects and finishes the page this session left
+   half-done. This session's work is what made it the coherent next slice.
+3. **Relation verbs + `DbModel2`** (3 nodes, 1 project) — still small, still the only consumer of
+   the record verbs' consumed-`Id` gate; §4c of RECORD-VERBS is already written for it.
+4. **EXP-003 Tier B** stays where it is: ~350 nodes that are **one third-party kit copied into
+   eight projects**, gated behind Model2, a dynamic-template For Each and a reactive-object
+   vocabulary none of which exist. `tb-survey.ts` dumps every body of it — **read that before
+   anyone commits to it.**
+
+## 🔴 Traps this session paid for
+
+**Two expression walkers, and only one was updated.** `emit/component.ts` has `collectExprUse`
+(handler actions) **and `hookExprSources` (render bindings)**, each enumerating the kinds it cares
+about. Adding `session-get` to the first only emitted `session.authenticated` in four bindings
+with **no `const session` above them**. No unit test could catch it — every assertion about the
+binding text was correct. It took `tsc -b` over the emitted app.
+
+**A predicate that enumerated one family.** Pass 4f's `isRecordErrorRead` named `RECORD_VERBS`
+while `resolveExpr` named both, and the mismatch **failed silently with a note**: the Log In
+status line rendered `<p></p>` where the interpreted app shows the refusal. Caught by dumping the
+artefact, not by 369 passing tests.
+
+> Together these sharpen s19's dispatcher rule: **the compiler only helps where the site is an
+> exhaustive switch. Every site that is a *predicate* — an `if`, a `some`, a lookup table — is
+> silent, and those are the ones to grep for by hand.** ✅ And the stronger form of s18's rule:
+> **build the artefact, do not merely read it.** Reading caught one of these; only building caught
+> the other.
+
+✅ **The rename was the right call.** `record-op` → `api-call` produced compile errors at all ten
+dispatch sites and left **every record-verb golden byte-identical**. A sibling case would have
+made each of those ten a silent fallthrough. **When a vocabulary must grow, prefer the rename.**
+
+🔴 **`plan.sessionCalls` had no attachment filter** where `plan.mutations` did, so an unwired Log
+In deferred correctly *and still exported `logIn`*. Caught only because the §5.1 test asserts what
+the gate **removes**, not merely what it reports. **Assert the absence, not just the reason.**
+
+⚠️ **A test can hang the runner.** A single spanning regex with `(\s+.*\n)*` over a whole emitted
+page backtracks catastrophically; jest never returns and it reads exactly like a product infinite
+loop. Fixed substrings assert the same thing. (Also: a 120s tool timeout **backgrounds** the run
+and leaves an **empty** log — the process is still alive; find it with `ps` and kill your own PID.)
+
+⚠️ Still true: **zsh does not glob unquoted parameter expansions** — `"${(@f)$(cat projects.txt)}"`
+for the project list, and `grep` on that file returns *all* matches, so `$(grep -i phase58 …)` is
+three paths, not one. ⚠️ No `tsx` in this tree; use `../../node_modules/.bin/ts-node
+--transpile-only --skipProject` with `TS_NODE_COMPILER_OPTIONS`. ⚠️ The ledger is
+`ensure_ascii=True` JSON — a rewrite with `False` churns every em-dash.
+
+## Instruments (session 21 scratchpad `30c14fe6-…`)
+
+- **`rank2.ts`** — the ranking instrument; `rank2-s21.txt` (before) and `rank2-s21-after.txt`
+  (after). **Run this first, every session.**
+- `probe.ts` — `TYPE=<typeName> ts-node probe.ts <projects…>`: every deferred instance with its
+  reason, parent, params and wires. `user-probe.txt` is what showed all seven user instances are
+  one idiom with **not a single authored parameter**.
+- `coverage-audit.ts` + `cov-base-s21.ts` (the worktree twin) + `projects.txt`;
+  `cov-before-s21.txt` / `cov-after-s21-final.txt`. Worktree recipe:
+  `scripts/devtools/make-worktree.sh <name> HEAD`, then `sed` the absolute import paths.
+  **Never** `git stash` here.
+- **`emit-to-app.ts`** — new, and the one that found both defects: emits a project into a
+  buildable app copy (`app/`, which keeps `node_modules` and the `file:` core pin — **never
+  overwrite its `package.json`**), so `tsc -b` and `vite build` can grade the real output.
+  `emit-to-app-base.ts` is the worktree twin that attributes an error to a slice.
+- `dump.ts` — `ts-node dump.ts <projectDir> [fileFilter]`, `NOTES=1` for the note list.
 
 **Standing practice:** work on `cline-dev`; commit by pathspec (`packages/nodegx-export`,
-`dev-docs/tasks/phase-18-code-export-v2`, plus `scripts/export-ledger`/root `package.json`/
-`.github/workflows/pr.yml` only when the gate itself changes); never commit
-`packages/nodegx-core/dist`; untracked files add+commit in one chain. 369 tests (~3s, from the
-package dir `../../node_modules/.bin/jest`); a lone suite-level red with 0 failing tests is a
-flake until re-run. `npm run export-ledger:check` from the root gates the ledger.
-
-## Traps this session paid for
-
-🔴 **A state row reached only by its *writer* was filtered out of existence.** Emit keeps
-`plan.stateVars` that something **references**, and `referencedStateNames` was built from
-expressions plus a short list of implicit readers. A record verb's `Error` row is written by its
-catch and — when another verb won the shared status line — read by nothing, so the row vanished
-while `setUpdatePuppyError(…)` stayed in the handler and the emitted app did not compile. The rule
-the sweep was missing is one line: **a write is a reference.** Anything that adds an action which
-*writes* state owes this check.
-
-🔴 **"Compiled" is not "attached", and the difference is a wrong translation.** A verb whose `Do`
-the slice cannot translate still runs in the interpreter. Binding its `Error` to a state row
-nothing writes would render a blank where the interpreter shows a message — so the read requires
-`attachedRecordVerbs`, filled by the attachment sweep, and every binding pass runs after it. The
-same distinction retires the api-stub export and the state row for an unattached verb.
-
-🔴 **Three verbs share one status line and the runtime shows whichever wrote last.** Overwriting
-`plan.bindings[node][prop]` would have dropped two wires in silence; the first binds and the rest
-drop **with a note**. Wherever two producers meet one sink, assert it rather than letting the last
-one win quietly.
-
-✅ **The fixture the phase already ships beat the one §7 planned.** `tests/fixtures/puppy-test-3`
-carries the idiom verbatim — five inputs into `prop-*`, a button into `Do`, three `Error` wires
-into one `Text`, and **a Delete whose class name the author never filled in**. No hand-authored
-Cheer addition would have included that last one, and it is gate 1's only real case: the runtime
-answers `Failure` with *"No class name specified"* and never reaches the backend, so translating
-it as a working call would have been a hole shaped exactly like the defect.
-
-⚠️ **Two designed sections were deliberately not built** (§4c the `id` read, §4e the query
-re-fetch), each with its reason recorded in place. Both have exactly zero *reachable* corpus
-demand once their blockers are accounted for, and building them would have added machinery no
-corpus case could test.
-
-⚠️ Still true: **zsh does not glob unquoted parameter expansions** — `SP=$(echo …*/scratchpad)`,
-and `"${(@f)$(cat projects.txt)}"` for the project list. ⚠️ There is no `tsx` in this tree; use
-`../../node_modules/.bin/ts-node --transpileOnly --compilerOptions '{"module":"commonjs",…}'`.
-⚠️ Peers commit into this tree constantly — `HEAD` moved twice mid-session, once *between* two
-`git show` invocations. Commit by pathspec and never stage.
-
-## Instruments (session 20 scratchpad `c21c8eab-…`)
-
-- **`rank2.ts`** — the rebuilt ranking instrument. Two views: deferred **types** and deferral
-  **reasons**, each with nodes / projects / distinct components / distinct programs / emitting
-  hosts. `rank2-out.txt` holds this session's run. **Use this, not `m2-rank.ts`.**
-- `probe.ts` — `TYPE=<typeName> ts-node probe.ts <projects…>`: every deferred instance of one
-  type with its reason, parent, params and wires. This is what collapsed the button row from
-  "35 nodes / 10 projects" to "7 instances, all collateral" in one run.
-- `tb-survey.ts` / `tb-out.txt` — the Tier B census, **per component**: every JS body in the
-  Filters family with its runtime-API marker tally and full wire context. Read before Tier B.
-- `rv-survey.ts` / `rv-out.txt` — the record-verb census: every instance with every authored
-  parameter, which is what set §5's gates (and showed `idSource: foreach`, `storeType`,
-  `storeProperties`, `backendId` and `sourceObjectId` have *zero* corpus demand).
-- `dump.ts` — `ts-node dump.ts <projectDir> [fileFilter]`: the emitted artefact. The s18 rule
-  again; this is what showed the missing `createPuppyError` row.
-- `coverage-audit.ts` + `coverage-audit-base.ts` + `projects.txt`, `cov-before-s20.txt` /
-  `cov-after-s20.txt`. Worktree recipe: `scripts/devtools/make-worktree.sh <name> HEAD`, then
-  `sed` the instrument's absolute import paths at the worktree. **Never** `git stash` here.
-
-ts-morph/Prettier stay uninstalled; goldens protect the later AST refactor; the package is not in
-root `test:packages`.
+`dev-docs/tasks/phase-18-code-export-v2`), untracked files add+commit in one chain, never stage.
+390 tests (~4s, from the package dir `../../node_modules/.bin/jest`); a lone suite-level red with
+0 failing tests is a flake until re-run. `npm run export-ledger:check` from the root gates the
+ledger. ts-morph/Prettier stay uninstalled; the package is not in root `test:packages`.
