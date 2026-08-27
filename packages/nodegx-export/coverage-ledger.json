@@ -39,13 +39,13 @@
     },
     {
       "typeName": "Checkbox",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "legacy alias of net.noodl.controls.checkbox \u2014 same appearance:none translation"
     },
     {
       "typeName": "Circle",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "inline SVG with the runtime arc paths computed at generation time (VISUALS-TARGET \u00a77)"
     },
     {
       "typeName": "Cloud File",
@@ -319,8 +319,8 @@
     },
     {
       "typeName": "Options",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "legacy alias of net.noodl.controls.options \u2014 same translation"
     },
     {
       "typeName": "Or",
@@ -369,18 +369,18 @@
     },
     {
       "typeName": "Radio Button",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "legacy alias of net.noodl.controls.radiobutton \u2014 same translation"
     },
     {
       "typeName": "Radio Button Group",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "flex container providing the instance-scoped radio name via useId(); literal value marks defaultChecked (VISUALS-TARGET \u00a73)"
     },
     {
       "typeName": "Range",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "legacy alias of net.noodl.controls.range \u2014 same translation"
     },
     {
       "typeName": "RemoveDbModelRelation",
@@ -529,8 +529,8 @@
     },
     {
       "typeName": "Video",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "native video element: src/poster/flags pass through, object-fit always stated (VISUALS-TARGET \u00a76)"
     },
     {
       "typeName": "net.noodl.ActionDispatcher",
@@ -709,23 +709,23 @@
     },
     {
       "typeName": "net.noodl.controls.checkbox",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "appearance:none input with the runtime box defaults and a masked default tick; label wrapper (VISUALS-TARGET \u00a73)"
     },
     {
       "typeName": "net.noodl.controls.options",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "native select: literal items become options, placeholder the hidden disabled option; wired items defer (VISUALS-TARGET \u00a75)"
     },
     {
       "typeName": "net.noodl.controls.radiobutton",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "appearance:none radio inside a Radio Button Group, ::before dot with the FB-020 colour fallback (VISUALS-TARGET \u00a73)"
     },
     {
       "typeName": "net.noodl.controls.range",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "native input[type=range] with authored bounds; thumbColor becomes accent-color (VISUALS-TARGET \u00a74)"
     },
     {
       "typeName": "net.noodl.controls.textinput",
@@ -794,13 +794,13 @@
     },
     {
       "typeName": "net.noodl.visual.columns",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "CSS Grid: fr tracks from the layout string, gap gutters, repeat(auto-fit) for Auto Fit, @container breakpoints (VISUALS-TARGET \u00a71)"
     },
     {
       "typeName": "net.noodl.visual.icon",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "one element per source kind: font span, sprite svg use, img (VISUALS-TARGET \u00a72); inline sources defer"
     },
     {
       "typeName": "noodl.cloud.addusertorole",

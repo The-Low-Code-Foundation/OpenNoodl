@@ -21,7 +21,7 @@ import { BindingSource, ComponentPlan, HandlerAction, ProjectPlan, QueryPlan, Va
 import { ExportIR, NodeIR } from '../ir/types';
 import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase } from './naming';
 import { tsLiteral } from './state';
-import { computeNodeStyle, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, StyleRole } from './style';
+import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole } from './style';
 
 const GENERATED_TS = '// @nodegx:generated (visual — provenance markers complete in EXP-007)\n';
 const GENERATED_CSS = '/* @nodegx:generated (visual) */\n';
@@ -47,7 +47,26 @@ const TAGS: Record<string, string> = {
   text: 'p',
   image: 'img',
   button: 'button',
-  input: 'input'
+  input: 'input',
+  columns: 'div',
+  radiogroup: 'div',
+  checkbox: 'input',
+  radio: 'input',
+  range: 'input',
+  select: 'select',
+  video: 'video',
+  circle: 'svg'
+};
+
+/**
+ * The control roles' `Changed` signal output is the DOM change event — same trigger machinery
+ * as onClick, scoped per role so a value-carrying output on some other node never matches.
+ */
+const ROLE_EVENT_ATTRS: Partial<Record<string, Record<string, string>>> = {
+  checkbox: { onChange: 'onChange' },
+  radio: { onChange: 'onChange' },
+  select: { onChange: 'onChange' },
+  range: { onChange: 'onChange' }
 };
 
 export interface EmittedComponent {
@@ -70,6 +89,7 @@ export function emitComponent(
   // ---- styles + class names --------------------------------------------------------------
   const styledIds = preOrder(plan).filter((id) => isStyledRole(plan.roleOf[id]));
   const styleOf = new Map<string, Decl[]>();
+  const roleCssOf = new Map<string, RoleCss>();
   for (const id of styledIds) {
     const node = nodeById.get(id)!;
     const role = plan.roleOf[id] as StyleRole;
@@ -77,6 +97,10 @@ export function emitComponent(
     for (const name of style.unhandled) {
       notes.push(`${plan.path}: parameter ${name} on ${id} has no style/content mapping — dropped, reported`);
     }
+    for (const note of style.notes) notes.push(`${plan.path}: node ${id}: ${note}`);
+    const roleCss = computeRoleCss(node, role, catalog);
+    for (const note of roleCss.notes) notes.push(`${plan.path}: ${note}`);
+    roleCssOf.set(id, roleCss);
     let decls = style.decls;
     // The page collapse: the merged Group's style is the page div's style, plus any page-own
     // declarations the Group does not already set (none in practice — Page style params are rare).
@@ -94,12 +118,16 @@ export function emitComponent(
 
   // Identical declaration sets merge into one class (TARGET-OUTPUT §2) — but only where the ids
   // share naming vocabulary (partitionMergeGroup); accidental byte-identity across unrelated
-  // nodes keeps separate classes. Empty sets get no class.
+  // nodes keeps separate classes. Empty sets get no class. Role CSS (marks, wrappers, container
+  // queries) is part of a class's identity, so nodes merge only when that matches too.
   const byDeclsKey = new Map<string, string[]>();
   for (const id of styledIds) {
     const decls = styleOf.get(id)!;
-    if (decls.length === 0) continue;
-    const key = JSON.stringify(decls);
+    const roleCss = roleCssOf.get(id)!;
+    if (decls.length === 0 && roleCss.blocks.length === 0 && !roleCss.wrapper && roleCss.containerQueries.length === 0) {
+      continue;
+    }
+    const key = JSON.stringify([decls, roleCss.blocks, roleCss.wrapper ?? null, roleCss.containerQueries]);
     byDeclsKey.set(key, [...(byDeclsKey.get(key) ?? []), id]);
   }
   const subgroupOf = new Map<string, string[]>();
@@ -123,6 +151,25 @@ export function emitComponent(
   const classOf = (id: string): string | undefined => {
     const index = classIndexOf.get(id);
     return index === undefined ? undefined : classNames[index];
+  };
+
+  // Companion classes (a control's label wrapper, a columns node's query container) name after
+  // the class they accompany, deduplicated against every assigned name.
+  const usedClassNames = new Set(classNames);
+  const wrapperNames = new Map<number, string>();
+  groups.forEach((group, i) => {
+    const wrapper = roleCssOf.get(group.nodeIds[0])?.wrapper;
+    if (!wrapper) return;
+    const base = `${classNames[i]}${wrapper.role === 'label' ? 'Label' : 'Container'}`;
+    let name = base;
+    let counter = 2;
+    while (usedClassNames.has(name)) name = `${base}${counter++}`;
+    usedClassNames.add(name);
+    wrapperNames.set(i, name);
+  });
+  const wrapperClassOf = (id: string): string | undefined => {
+    const index = classIndexOf.get(id);
+    return index === undefined ? undefined : wrapperNames.get(index);
   };
 
   // ---- app state usage (step 5) ----------------------------------------------------------
@@ -282,6 +329,18 @@ export function emitComponent(
   const itemLocal = hookCollections.length > 0 ? dedupeLocal('item') : 'item';
   const indexLocal = hookCollections.length > 0 ? dedupeLocal('index') : 'index';
 
+  // Rendered Radio Button Groups holding radios get an instance-scoped name via useId() — a
+  // radio `name` is document-global, and two instances of one component must not join each
+  // other's group (VISUALS-TARGET §3).
+  const hasRadioDescendant = (id: string): boolean =>
+    (plan.childrenOf[id] ?? []).some((child) => plan.roleOf[child] === 'radio' || hasRadioDescendant(child));
+  const radioNameLocals = new Map<string, string>();
+  for (const id of preOrder(plan)) {
+    if (plan.roleOf[id] === 'radiogroup' && hasRadioDescendant(id)) {
+      radioNameLocals.set(id, dedupeLocal(`${classOf(id) ?? 'radioGroup'}Id`));
+    }
+  }
+
   // ---- expression + handler statement rendering ------------------------------------------
   // One expression vocabulary, two modes (LOGIC-TARGET §1): in render an expression reads the
   // component's hook locals; in a handler it reads `.get()` snapshots.
@@ -422,7 +481,10 @@ export function emitComponent(
   if (coreHooks.length > 0) {
     externalImports.push(`import { ${coreHooks.sort().join(', ')} } from '@nodegx/core/react';`);
   }
-  if (plan.queries.length > 0) externalImports.push(`import { useEffect, useState } from 'react';`);
+  const reactImports: string[] = [];
+  if (plan.queries.length > 0) reactImports.push('useEffect', 'useState');
+  if (radioNameLocals.size > 0) reactImports.push('useId');
+  if (reactImports.length > 0) externalImports.push(`import { ${reactImports.sort().join(', ')} } from 'react';`);
   if (usesNavigate) externalImports.push(`import { useNavigate } from 'react-router-dom';`);
 
   const internalImports = new Map<string, string>(); // specifier → line
@@ -539,8 +601,9 @@ export function emitComponent(
 
   const handlerAttrs = (node: NodeIR, attrIndent: number): string[] => {
     const attrs: string[] = [];
+    const roleEvents = ROLE_EVENT_ATTRS[plan.roleOf[node.id]] ?? {};
     for (const [port, actions] of Object.entries(plan.handlers[node.id] ?? {})) {
-      const eventAttr = EVENT_ATTRS[port];
+      const eventAttr = roleEvents[port] ?? EVENT_ATTRS[port];
       if (!eventAttr) {
         notes.push(`${plan.path}: signal ${node.id}.${port} has no DOM event equivalent — dropped, reported`);
         continue;
@@ -571,7 +634,19 @@ export function emitComponent(
     return null;
   };
 
-  const render = (id: string, indent: number): string[] => {
+  /** Effective (authored-or-catalog-default) literal, for ports the runtime always applies. */
+  const effectiveLiteral = (node: NodeIR, name: string): string | number | boolean | undefined => {
+    const authored = node.parameters.find((p) => p.name === name)?.value;
+    if (authored?.kind === 'literal') return authored.value;
+    const def = node.catalogRef ? catalog.inputDefault(node.catalogRef, name) : undefined;
+    return typeof def === 'string' || typeof def === 'number' || typeof def === 'boolean' ? def : undefined;
+  };
+
+  const fontIconSetsNoted = new Set<string>();
+
+  type RadioCtx = { name: string; selected?: string };
+
+  const render = (id: string, indent: number, radioCtx?: RadioCtx): string[] => {
     const node = nodeById.get(id)!;
     const role = plan.roleOf[id];
 
@@ -587,7 +662,10 @@ export function emitComponent(
     const attrs: string[] = [];
     const className = classOf(id);
     if (className) attrs.push(`className={styles.${className}}`);
-    if (role === 'image' || role === 'input' || role === 'button') attrs.push(...contentAttrs(node));
+    const isControl = role === 'checkbox' || role === 'radio' || role === 'range' || role === 'select';
+    if (role === 'image' || role === 'input' || role === 'button' || role === 'video' || isControl) {
+      attrs.push(...contentAttrs(node));
+    }
     if (role === 'input') attrs.push(...changeAttrs(node, indent + 2));
     attrs.push(...handlerAttrs(node, indent + 2));
 
@@ -597,13 +675,60 @@ export function emitComponent(
     if (role === 'button') {
       return element(tag, attrs, childText(node, 'label'), indent, false);
     }
-    if (role === 'image' || role === 'input') {
+    if (role === 'image' || role === 'input' || role === 'video') {
       return element(tag, attrs, null, indent, false);
+    }
+    if (role === 'icon') return renderIcon(node, attrs, className, indent);
+    if (role === 'circle') return renderCircle(node, attrs, indent);
+    if (role === 'checkbox' || role === 'radio') {
+      const typeAttr = role === 'checkbox' ? 'type="checkbox"' : 'type="radio"';
+      const inputAttrs = [...attrs];
+      // className leads, then the input's type, then the group wiring, then content attrs.
+      inputAttrs.splice(className ? 1 : 0, 0, typeAttr);
+      if (role === 'radio' && radioCtx) {
+        inputAttrs.splice((className ? 1 : 0) + 1, 0, `name={${radioCtx.name}}`);
+        const value = node.parameters.find((p) => p.name === 'value')?.value;
+        if (value?.kind === 'literal' && radioCtx.selected !== undefined && String(value.value) === radioCtx.selected) {
+          inputAttrs.push('defaultChecked');
+        }
+      }
+      const input = element('input', inputAttrs, null, indent, false);
+      if (effectiveLiteral(node, 'useLabel') !== true) return input;
+      const wrapperClass = wrapperClassOf(id);
+      const labelAttrs = wrapperClass ? [`className={styles.${wrapperClass}}`] : [];
+      const inner = element('input', inputAttrs, null, indent + 2, false);
+      const text = childText(node, 'label') ?? jsxText(String(effectiveLiteral(node, 'label') ?? 'Label'));
+      return element('label', labelAttrs, [...inner, ...wrapText(text, indent + 2)], indent, true);
+    }
+    if (role === 'range') {
+      const rangeAttrs = [...attrs];
+      rangeAttrs.splice(className ? 1 : 0, 0, 'type="range"');
+      return element('input', rangeAttrs, null, indent, false);
+    }
+    if (role === 'select') return renderSelect(node, attrs, indent);
+    if (role === 'columns') {
+      const childIds = plan.childrenOf[id] ?? [];
+      const wrapperClass = wrapperClassOf(id);
+      const inner = indent + (wrapperClass ? 2 : 0);
+      const blocks = childIds.map((childId) => render(childId, inner + 2, radioCtx)).flat();
+      const grid = element(tag, attrs, blocks.length > 0 ? blocks : null, inner, true);
+      if (!wrapperClass) return grid;
+      return element('div', [`className={styles.${wrapperClass}}`], grid, indent, true);
+    }
+    if (role === 'radiogroup') {
+      const nameLocal = radioNameLocals.get(id);
+      const selected = node.parameters.find((p) => p.name === 'value')?.value;
+      const ctx: RadioCtx | undefined = nameLocal
+        ? { name: nameLocal, ...(selected?.kind === 'literal' ? { selected: String(selected.value) } : {}) }
+        : radioCtx;
+      const childIds = plan.childrenOf[id] ?? [];
+      const blocks = childIds.map((childId) => render(childId, indent + 2, ctx)).flat();
+      return element(tag, attrs, blocks.length > 0 ? blocks : null, indent, true);
     }
 
     // Containers: group / page.
     const childIds = plan.childrenOf[id] ?? [];
-    const blocks = childIds.map((childId) => render(childId, indent + 2));
+    const blocks = childIds.map((childId) => render(childId, indent + 2, radioCtx));
     if (role === 'page') {
       const headLines: string[] = [];
       if (plan.head?.title !== undefined) headLines.push(`${pad(indent + 2)}<title>${plan.head.title}</title>`);
@@ -674,6 +799,99 @@ export function emitComponent(
     return [`${pad(indent)}{${query!.stateName}.map((${item}) => (`, ...lines, `${pad(indent)}))}`];
   };
 
+  const renderIcon = (node: NodeIR, attrs: string[], className: string | undefined, indent: number): string[] => {
+    const source = iconSourceOf(node, catalog);
+    if (source.kind === 'image') {
+      return element('img', [...attrs, jsxAttr('src', source.src), 'alt=""'], null, indent, false);
+    }
+    if (source.kind === 'sprite') {
+      const use = [`${pad(indent + 2)}<use href="${source.url}#${source.symbolId}" />`];
+      return element('svg', attrs, use, indent, true);
+    }
+    if (source.kind === 'font') {
+      if (source.classes.length > 0 && !fontIconSetsNoted.has(source.classes[0])) {
+        fontIconSetsNoted.add(source.classes[0]);
+        notes.push(
+          `${plan.path}: font icon set "${source.classes[0]}" needs its stylesheet shipped with the app — the export does not bundle icon set modules`
+        );
+      }
+      const setClasses = source.classes.join(' ');
+      const spanAttrs =
+        className && setClasses.length > 0
+          ? ['className={`${styles.' + className + '} ' + setClasses + '`}', ...attrs.slice(1)]
+          : setClasses.length > 0 && !className
+            ? [`className="${setClasses}"`, ...attrs]
+            : attrs;
+      return element('span', spanAttrs, source.text !== undefined ? jsxText(source.text) : null, indent, false);
+    }
+    // No source: the runtime draws an empty box that still takes its size in layout.
+    return element('span', attrs, null, indent, false);
+  };
+
+  const renderSelect = (node: NodeIR, attrs: string[], indent: number): string[] => {
+    const items = node.parameters.find((p) => p.name === 'items')?.value;
+    const placeholder = node.parameters.find((p) => p.name === 'placeholder')?.value;
+    const selectAttrs = [...attrs];
+    const children: string[] = [];
+    if (placeholder?.kind === 'literal' && String(placeholder.value).length > 0) {
+      // The native spelling of the runtime's placeholder overlay: a hidden disabled option,
+      // selected by default unless the author picked a value.
+      if (!selectAttrs.some((a) => a.startsWith('defaultValue'))) selectAttrs.push('defaultValue=""');
+      children.push(
+        ...element('option', ['value=""', 'disabled', 'hidden'], jsxText(String(placeholder.value)), indent + 2, false)
+      );
+    }
+    if (items?.kind === 'json' && Array.isArray(items.value)) {
+      for (const item of items.value as Array<{ Label?: unknown; Value?: unknown; Disabled?: unknown }>) {
+        if (typeof item !== 'object' || item === null) continue;
+        const value = item.Value !== undefined ? String(item.Value) : '';
+        const label = item.Label !== undefined ? String(item.Label) : value;
+        const optionAttrs = [jsxAttr('value', value)];
+        if (item.Disabled === true || item.Disabled === 'true') optionAttrs.push('disabled');
+        children.push(...element('option', optionAttrs, jsxText(label), indent + 2, false));
+      }
+    }
+    return element('select', selectAttrs, children.length > 0 ? children : null, indent, true);
+  };
+
+  // Circle: every shape port is static, so the arc paths the runtime computes per render are
+  // computed once here — same math, same inside-stroke radius trick (Circle.tsx).
+  const renderCircle = (node: NodeIR, attrs: string[], indent: number): string[] => {
+    const eff = (name: string) => effectiveLiteral(node, name);
+    const size = Number(eff('size') ?? 100) || 0;
+    const startAngle = Number(eff('startAngle') ?? 0);
+    const endAngle = Number(eff('endAngle') ?? 360);
+    const r = size / 2;
+    const children: string[] = [];
+    if (eff('fillEnabled') !== false) {
+      const d = filledArcPath(r, r, r, startAngle, endAngle);
+      children.push(
+        ...element('path', [`d="${d}"`, jsxAttr('fill', String(eff('fillColor') ?? 'red'))], null, indent + 2, false)
+      );
+    }
+    if (eff('strokeEnabled') === true) {
+      const strokeWidth = Number(eff('strokeWidth') ?? 10);
+      const d = arcPath(r, r, r - strokeWidth / 2, startAngle, endAngle);
+      children.push(
+        ...element(
+          'path',
+          [
+            `d="${d}"`,
+            jsxAttr('stroke', String(eff('strokeColor') ?? 'black')),
+            jsxAttr('strokeWidth', strokeWidth),
+            'fill="transparent"',
+            jsxAttr('strokeLinecap', String(eff('strokeLineCap') ?? 'butt'))
+          ],
+          null,
+          indent + 2,
+          false
+        )
+      );
+    }
+    const svgAttrs = [...attrs, jsxAttr('width', size), jsxAttr('height', size), 'xmlns="http://www.w3.org/2000/svg"'];
+    return element('svg', svgAttrs, children.length > 0 ? children : null, indent, true);
+  };
+
   const instanceAttrs = (node: NodeIR): string[] => {
     const attrs: string[] = [];
     for (const param of node.parameters) {
@@ -731,6 +949,9 @@ export function emitComponent(
     const collection = collectionByName.get(collectionName)!;
     body.push(`  const ${collectionLocals.get(collectionName)} = useCollection(${collection.exportName});`);
   }
+  for (const local of radioNameLocals.values()) {
+    body.push(`  const ${local} = useId();`);
+  }
   for (const query of plan.queries) {
     body.push(`  const [${query.stateName}, ${query.setterName}] = useState<${query.typeName}[]>([]);`);
   }
@@ -739,6 +960,7 @@ export function emitComponent(
     hookVariables.length > 0 ||
     hookStoreKeys.length > 0 ||
     hookCollections.length > 0 ||
+    radioNameLocals.size > 0 ||
     plan.queries.length > 0
   ) {
     body.push('');
@@ -781,9 +1003,25 @@ export function emitComponent(
   const baseDir = `src/${plan.file.dir}`;
   files[`${baseDir}/${plan.file.fileBase}.tsx`] = tsx;
   if (hasCss) {
-    const cssBlocks = groups.map((group, i) => {
+    const printDecls = (decls: Decl[], indent: string) => decls.map((d) => `${indent}${d.prop}: ${d.value};`).join('\n');
+    const cssBlocks = groups.flatMap((group, i) => {
       const decls = styleOf.get(group.nodeIds[0])!;
-      return `.${classNames[i]} {\n${decls.map((d) => `  ${d.prop}: ${d.value};`).join('\n')}\n}`;
+      const roleCss = roleCssOf.get(group.nodeIds[0])!;
+      const blocks: string[] = [];
+      if (decls.length > 0) blocks.push(`.${classNames[i]} {\n${printDecls(decls, '  ')}\n}`);
+      for (const block of roleCss.blocks) {
+        blocks.push(`.${classNames[i]}${block.suffix} {\n${printDecls(block.decls, '  ')}\n}`);
+      }
+      const wrapperName = wrapperNames.get(i);
+      if (roleCss.wrapper && wrapperName !== undefined) {
+        blocks.push(`.${wrapperName} {\n${printDecls(roleCss.wrapper.decls, '  ')}\n}`);
+      }
+      for (const query of roleCss.containerQueries) {
+        blocks.push(
+          `@container (max-width: ${query.maxWidth}) {\n  .${classNames[i]} {\n${printDecls(query.decls, '    ')}\n  }\n}`
+        );
+      }
+      return blocks;
     });
     files[`${baseDir}/${plan.file.fileBase}.module.css`] = GENERATED_CSS + '\n' + cssBlocks.join('\n\n') + '\n';
   }
@@ -888,4 +1126,47 @@ function memberExpr(object: string, field: string): string {
 
 function pad(indent: number): string {
   return ' '.repeat(indent);
+}
+
+// ---- Circle's arc math (Circle.tsx, verbatim semantics) -----------------------------------
+// A full circle nudges the end angle by the runtime's own epsilon so the arc does not collapse;
+// coordinates print with at most 4 decimals so that nudge survives, deterministically.
+
+function polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
+  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
+  return {
+    x: centerX + radius * Math.cos(angleInRadians),
+    y: centerY + radius * Math.sin(angleInRadians)
+  };
+}
+
+function svgNumber(value: number): string {
+  const rounded = Math.round(value * 10000) / 10000;
+  return Object.is(rounded, -0) ? '0' : String(rounded);
+}
+
+function arcEndpoints(x: number, y: number, radius: number, startAngle: number, endAngle: number) {
+  if (endAngle % 360 === startAngle % 360) endAngle -= 0.0001;
+  return {
+    start: polarToCartesian(x, y, radius, endAngle),
+    end: polarToCartesian(x, y, radius, startAngle),
+    sweep: endAngle - startAngle <= 180 ? '0' : '1'
+  };
+}
+
+function arcPath(x: number, y: number, radius: number, startAngle: number, endAngle: number): string {
+  const { start, end, sweep } = arcEndpoints(x, y, radius, startAngle, endAngle);
+  return [
+    'M', svgNumber(start.x), svgNumber(start.y),
+    'A', svgNumber(radius), svgNumber(radius), '0', sweep, '0', svgNumber(end.x), svgNumber(end.y)
+  ].join(' ');
+}
+
+function filledArcPath(x: number, y: number, radius: number, startAngle: number, endAngle: number): string {
+  const { start, sweep } = arcEndpoints(x, y, radius, startAngle, endAngle);
+  return [
+    arcPath(x, y, radius, startAngle, endAngle),
+    'L', svgNumber(x), svgNumber(y),
+    'L', svgNumber(start.x), svgNumber(start.y)
+  ].join(' ');
 }

@@ -33,17 +33,27 @@ Method: run `parseProject` + `planProject` over the real project corpus (42 proj
 machine, 29 distinct graphs after deduping drive-copies, 2,826 nodes) and tally dispositions
 per node type. Script preserved in the session scratchpad (`coverage-audit.ts`).
 
-**66% of nodes translate today.** Range 43%–100%; Puppy test 3 83%, ecommerce example 93%, the
-Cheer fixture 100%. Catalog-level: 28 types translated, 1 stubbed (DbCollection2), 15
-backend-only, 131 deferred. Roughly half of all deferred *nodes* are collateral — ordinary
-Text/Group/Button inside a component that failed to plan for one of the reasons below.
+**66% of nodes translated at the session-8 audit.** Range 43%–100%; Puppy test 3 83%, ecommerce
+example 93%, the Cheer fixture 100%. Catalog-level then: 28 types translated, 1 stubbed
+(DbCollection2), 15 backend-only, 131 deferred. Roughly half of all deferred *nodes* were
+collateral — ordinary Text/Group/Button inside a component that failed to plan for one of the
+reasons below.
+
+**Re-measured 2026-08-27 (session 9), after the visual-generator wave
+(EXP-002-VISUALS-TARGET-OUTPUT.md): 82% of nodes translate — 2,194 of 2,689 across 28 distinct
+graphs.** Columns and Icon leave the gap list entirely (they were #1 with their collateral);
+the icon/columns-heavy UIs that read 43% now read 64–65%, the ecommerce example 98%, Puppy
+test 3 83%→83% (its gap is Component Outputs). Catalog-level now: 41 translated, 118 deferred.
+The residual control deferrals are wire-fed state (`checked`/`value` over wires — 15 nodes),
+which is the component-state slice's territory, not a visual gap.
 
 The ranked gap list (deferred node counts from the corpus, direct + collateral where large):
 
-1. **Missing visual generators** — `net.noodl.visual.columns` (62), `net.noodl.visual.icon`
-   (49), `net.noodl.controls.range` (9), `net.noodl.controls.checkbox` (7); `Options`,
-   `Radio Button`, `Video`, `Circle` unexercised in the corpus but the same shape of work.
-   Mechanical EXP-002 slices; kills the largest collateral.
+1. ~~**Missing visual generators**~~ — **done, session 9**: `net.noodl.visual.columns`,
+   `net.noodl.visual.icon`, `net.noodl.controls.range`, `net.noodl.controls.checkbox`,
+   `Options`, `Radio Button` (+ Group), `Video`, `Circle` all translate;
+   see EXP-002-VISUALS-TARGET-OUTPUT.md for what defers (wire-fed structure, masonry,
+   inline icons, custom marks).
 2. **Component Outputs** (69, plus ~60 deferred component instances downstream) — the other
    half of the component interface.
 3. **Popups** — `NavigationShowPopup`/`ClosePopup` (64 + collateral). Needs a design decision

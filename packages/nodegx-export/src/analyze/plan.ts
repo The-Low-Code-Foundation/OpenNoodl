@@ -28,7 +28,7 @@ import { CatalogIndex } from '../catalog';
 import { ComponentIR, Disposition, ExportIR, NodeIR } from '../ir/types';
 import { routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
-import { StyleRole } from '../emit/style';
+import { iconSourceOf, StyleRole } from '../emit/style';
 import {
   AppStateRegistry,
   ChannelPlan,
@@ -285,11 +285,27 @@ function planComponent(
     return plan;
   }
 
-  const roleOf = (node: NodeIR): RenderRole | 'unsupported' | null => renderRole(node, catalog);
+  // A supported visual type can still be un-renderable statically (wire-fed structure, masonry,
+  // an inline icon) — those nodes read 'unsupported' with a recorded reason (VISUALS-TARGET).
+  const wiredIn = new Set(component.connections.map((c) => `${c.toId}:${c.toProperty}`));
+  const deferReasons = new Map<string, string>();
+  const roleOf = (node: NodeIR): RenderRole | 'unsupported' | null => {
+    const role = renderRole(node, catalog);
+    if (role === null || role === 'unsupported' || role === 'instance' || role === 'repeater') return role;
+    const reason = visualDeferReason(node, role, wiredIn, catalog);
+    if (reason !== null) {
+      deferReasons.set(node.id, reason);
+      return 'unsupported';
+    }
+    return role;
+  };
 
   // Visual roots: parentless nodes that render. Order is source order (D2), which matches the
-  // file's visualRoots in every observed project.
-  const roots = component.nodes.filter((n) => n.parent === undefined && roleOf(n) !== null && roleOf(n) !== 'unsupported');
+  // file's visualRoots in every observed project. A Radio Button cannot root a component — it
+  // only works inside a Radio Button Group (the runtime raises radio-button/no-group).
+  const roots = component.nodes.filter(
+    (n) => n.parent === undefined && roleOf(n) !== null && roleOf(n) !== 'unsupported' && roleOf(n) !== 'radio'
+  );
   const rendered = new Set<string>();
   if (roots.length === 0) {
     for (const node of component.nodes) {
@@ -319,8 +335,10 @@ function planComponent(
     plan.file = { dir: 'components', fileBase, symbol: fileBase };
   }
 
-  // Walk the visual tree: roles, render children, the page collapse.
-  const walk = (node: NodeIR) => {
+  // Walk the visual tree: roles, render children, the page collapse. The radio-group flag rides
+  // the walk: a Radio Button anywhere below a Radio Button Group joins its group (React context
+  // in the runtime); one outside any group is inert there (radio-button/no-group) and defers.
+  const walk = (node: NodeIR, inRadioGroup: boolean) => {
     const role = roleOf(node);
     if (role === null || role === 'unsupported') return;
     rendered.add(node.id);
@@ -330,22 +348,33 @@ function planComponent(
       .map((id) => nodeById.get(id))
       .filter((c): c is NodeIR => c !== undefined);
     plan.childrenOf[node.id] = [];
+    const childInGroup = inRadioGroup || role === 'radiogroup';
     for (const child of children) {
       const childRole = roleOf(child);
+      if (childRole === 'radio' && !childInGroup) {
+        const reason =
+          'a Radio Button outside a Radio Button Group cannot be selected (the runtime raises radio-button/no-group)';
+        dispositions[child.id] = { kind: 'deferred', to: 'EXP-003', reason };
+        notes.push(`node ${child.id} (${child.type}) deferred: ${reason}`);
+        continue;
+      }
       if (childRole === null || childRole === 'unsupported') {
-        dispositions[child.id] = {
-          kind: 'deferred',
-          to: 'EXP-003',
-          reason: `visual child of ${node.id} with no deterministic generator (${child.type || 'untyped'})`
-        };
-        notes.push(`node ${child.id} (${child.type || 'untyped'}) is in the visual tree but has no generator yet`);
+        const reason =
+          deferReasons.get(child.id) ??
+          `visual child of ${node.id} with no deterministic generator (${child.type || 'untyped'})`;
+        dispositions[child.id] = { kind: 'deferred', to: 'EXP-003', reason };
+        notes.push(
+          deferReasons.has(child.id)
+            ? `node ${child.id} (${child.type}) deferred: ${reason}`
+            : `node ${child.id} (${child.type || 'untyped'}) is in the visual tree but has no generator yet`
+        );
         continue;
       }
       plan.childrenOf[node.id].push(child.id);
-      walk(child);
+      walk(child, childInGroup);
     }
   };
-  walk(root);
+  walk(root, false);
 
   // TARGET-OUTPUT §2's page shape: a Page whose sole visual child is a Group merges that Group
   // into the page div — one wrapper, classed after the Page node, styled by both.
@@ -1232,7 +1261,9 @@ function planComponent(
       continue;
     }
     const role = plan.roleOf[toNode.id];
-    const enabledSink = connection.toProperty === 'enabled' && (role === 'button' || role === 'input');
+    const enabledSink =
+      connection.toProperty === 'enabled' &&
+      (role === 'button' || role === 'input' || role === 'checkbox' || role === 'radio' || role === 'select' || role === 'range');
     if (isBooleanExpr(expr) && !enabledSink) {
       notes.push(
         `wire ${connection.key} dropped: a logic truth value lands only in a truthiness sink (a control's enabled) in this slice`
@@ -1461,6 +1492,28 @@ function renderRole(node: NodeIR, catalog: CatalogIndex): RenderRole | 'unsuppor
     case 'net.noodl.controls.textinput':
     case 'Text Input':
       return 'input';
+    case 'net.noodl.visual.columns':
+      return 'columns';
+    case 'net.noodl.visual.icon':
+      return 'icon';
+    case 'net.noodl.controls.checkbox':
+    case 'Checkbox':
+      return 'checkbox';
+    case 'net.noodl.controls.radiobutton':
+    case 'Radio Button':
+      return 'radio';
+    case 'Radio Button Group':
+      return 'radiogroup';
+    case 'net.noodl.controls.range':
+    case 'Range':
+      return 'range';
+    case 'net.noodl.controls.options':
+    case 'Options':
+      return 'select';
+    case 'Video':
+      return 'video';
+    case 'Circle':
+      return 'circle';
     case 'Page':
       return 'page';
     case 'For Each':
@@ -1470,6 +1523,74 @@ function renderRole(node: NodeIR, catalog: CatalogIndex): RenderRole | 'unsuppor
     default:
       return catalog.isVisual(node.type) ? 'unsupported' : null;
   }
+}
+
+/**
+ * Ports whose value shapes the emitted *structure* (tracks, options, marks, initial state) —
+ * a wire into one means the node's static translation would lie, so the node defers whole
+ * (VISUALS-TARGET). Ports that merely carry content (src, label text) stay bindable.
+ */
+const STRUCTURE_PORTS: Partial<Record<RenderRole, string[]>> = {
+  columns: [
+    'layoutString',
+    'sizing',
+    'packing',
+    'direction',
+    'minWidth',
+    'marginX',
+    'marginY',
+    'justifyContent',
+    'mediumBreakpoint',
+    'mediumLayout',
+    'smallBreakpoint',
+    'smallLayout'
+  ],
+  icon: ['iconSourceType', 'iconIconSource', 'iconImageSource'],
+  checkbox: ['checked', 'useLabel', 'useIcon', 'label'],
+  radio: ['useLabel', 'useIcon', 'label', 'value'],
+  radiogroup: ['value'],
+  select: ['items', 'value', 'placeholder', 'useLabel'],
+  range: ['value', 'min', 'max', 'step'],
+  circle: [
+    'size',
+    'fillEnabled',
+    'fillColor',
+    'strokeEnabled',
+    'strokeWidth',
+    'strokeColor',
+    'strokeLineCap',
+    'startAngle',
+    'endAngle'
+  ]
+};
+
+/**
+ * Why a node of a supported visual type still cannot render statically, or null when it can.
+ * The checks mirror the target doc's defers: JS-measured layouts, wire-fed structure, custom
+ * control marks, and the inline icon kind.
+ */
+function visualDeferReason(node: NodeIR, role: RenderRole, wiredIn: Set<string>, catalog: CatalogIndex): string | null {
+  const wired = (STRUCTURE_PORTS[role] ?? []).find((port) => wiredIn.has(`${node.id}:${port}`));
+  if (wired !== undefined) return `its ${wired} arrives over a wire, so the rendered structure is not static`;
+  const literal = (name: string) => {
+    const value = node.parameters.find((p) => p.name === name)?.value;
+    return value?.kind === 'literal' ? value.value : undefined;
+  };
+  if (role === 'columns') {
+    if (literal('packing') === 'masonry') return 'masonry packing is measured at runtime — not translated in this slice';
+    if (literal('direction') === 'column') return 'vertical layout direction is not translated in this slice';
+  }
+  if (role === 'icon' && iconSourceOf(node, catalog).kind === 'inline') {
+    return 'inline SVG icon sources pass a sanitizer at render time — not translated in this slice';
+  }
+  if (role === 'checkbox' || role === 'radio') {
+    const customMark = node.parameters.some((p) => p.name === 'iconIconSource' || p.name === 'iconImageSource');
+    if (customMark) return 'a custom mark icon on a control is not translated in this slice';
+  }
+  if (role === 'select' && literal('useLabel') === true) {
+    return 'a labelled dropdown is not translated in this slice';
+  }
+  return null;
 }
 
 function dispositionForLogic(node: NodeIR): Disposition {
