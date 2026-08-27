@@ -252,8 +252,8 @@
     },
     {
       "typeName": "Logic Builder",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "the block editor's generated code is re-hosted verbatim in a typed wrapper, with the port set read from the workspace through the runtime's own detectIO and Noodl.Variables bound to the app variables store (EXP-002-LOGIC-BUILDER-TARGET-OUTPUT.md); a node with no blocks or no Run wire emits nothing, as the runtime runs nothing; a block outside the admitted vocabulary (Noodl.Objects/Arrays/Config, window, a library global), a second signal input, a consumed block signal or outcome signal, a reserved-port write, and a program that will not compile strict each defer with a named reason"
     },
     {
       "typeName": "Map Collection",

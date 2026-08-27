@@ -1,7 +1,8 @@
 # EXP-002 Logic Builder (Visual Function) — the target output (session 19)
 
-**Status: paper design, no production code.** Read §1 before writing any of it: the handoff's
-premise about this node is wrong, and the runtime source says so in as many words.
+**Status: BUILT (session 19). §9 is the implementation addendum — read it with §3 before
+touching the emitter again.** Read §1 first regardless: the handoff's premise about this node was
+wrong, and the runtime source says so in as many words.
 
 The short version. A Visual Function is **a third script host, not a structured-JSON program**.
 Its ports come from the Blockly workspace (`detectIO`); its *body* is `generatedCode`, the
@@ -281,26 +282,71 @@ all read `Noodl.*` and defer. Only body #2 passes.
 - user-visible behaviour change in any emitted app: **none.** `ProductCard`'s outputs are
   consumed by nothing, and the body throws if it runs.
 
-**Under this design (block-vocabulary gate + the `Variables` facade):**
+**Under this design (block-vocabulary gate + the `Variables` facade) — now measured, built:**
 
-- flips: 6 empty + 3 `ProductCard` + 3 `Header` + 1 `check_entry` = **13 of 14**; `PriceDiscount`
-  defers on gate 2 and its host emits nothing regardless.
-- user-visible behaviour change: **`tut003`'s status message renders**, and `Header`'s
-  `result → variant` starts delivering the `null` it delivers in the interpreter. That is the
-  honest total.
+Same instrument, same 40-project list, once in a worktree at the pre-change commit and once on
+the working tree. The before-run reproduces session 18's after-figure exactly, which is what
+makes the pair comparable.
 
-🔴 **`check_entry` may still count `deferred` under the Component Outputs precedent.** Two of its
-four outputs (`ok`, `title`) land on `NewDbModelProperties`, a deferred type — and the standing
-rule is *"mixed outputs node counts `deferred` while its good ports keep firing"*. So the audit
-number may show **10 of 14**, not 13, while the app behaves better than before. Judge this slice
-by what runs, not by the tally — session 18's lesson, arriving from the other direction.
+| | translated / total | % |
+|---|---|---|
+| before | 3,705 / 4,441 | 83.43 |
+| after | 3,737 / 4,441 | **84.15** |
 
-**Ruling: build it, and build the block-aware version — but do not sell it on the coverage
-number.** The justification is product, not percentage: Visual Function is the beginner's logic
-surface (LGC-001 named the test user who wanted exactly this), and an export that silently drops
-every Visual Function is a bad answer to *"can I take my app with me"*. The coverage delta is
-~9–13 nodes on a 4,441-node denominator — **about +0.2%**, and mostly on junk. The blind re-host
-is not worth building on its own: it is nearly the same work for none of the behaviour.
+**+32 nodes on an unchanged denominator, every one of them a `Logic Builder`** (the per-type diff
+shows no other row moving — no collateral, claimed or otherwise). By type: **0 / 34 → 32 / 34.**
+
+⚠️ **34, not 14** — and both numbers are honest about different populations. The ranking's 14 is
+deduped by project signature; the coverage audit counts every instance across all 40 projects,
+where the near-clone projects contribute their copies. Quote whichever you mean, and say which.
+
+The two that remain deferred are exactly the two §2 predicted:
+
+- `PriceDiscount` — *"logic node (Logic Builder)"*: its host component emits no file at all, so
+  the node is collateral of that, not of this gate. Its `noodl_get_config` would refuse it anyway.
+- `tut003 check_entry` — *"its block-declared signal `ok` drives NewDbModelProperties.store"*.
+
+🔴 **`check_entry` turned out to have two independent blockers, not one**, and neither is about
+Visual Functions. The signal chain lands on `NewDbModelProperties`, a deferred type — so building
+conditional signal chains would not have rescued it. And its `entry` input is fed by
+`onTextChanged`, whose payload exists only inside *that* handler, while the node runs from a
+button's `onClick`; that defers until the text input is controlled. Both are other slices' work.
+A test pins the second one, because it is the more surprising.
+
+**Ruling: build it, and build the block-aware version.** Build the blind re-host on its own is
+the one thing not worth doing — nearly the same work for none of the behaviour.
+
+🔴 **And read the coverage delta as a fact about the corpus, not about the feature.** The
+programs in §2 are *fixture* programs: these 40 projects were authored as drive fixtures for
+other phases, and their Visual Functions are scratch — six instances with no blocks at all, a
+body that assigns `result` four times ending in `null`, a body that calls `.slice()` on a
+number. Nothing in that is a statement about the node, which works; it is a statement about
+**this corpus's fitness to measure this slice**, and the answer is that it is poor. A ~+0.2%
+delta on a 4,441-node denominator is what you get for translating a feature that these
+particular old projects barely exercise.
+
+That matters beyond this slice, because the ranking every session picks work from is computed
+over the same corpus. **A feature can be well-built, widely used in real projects, and still
+rank last here** — the corpus is fixed, ageing, and was never sampled to represent what people
+build. Visual Function is the beginner's logic surface (LGC-001 named the test user who asked
+for exactly it), so an export that drops it is a bad answer to *"can I take my app with me"*
+however the fixtures score it. Treat the audit as a regression detector, not as a priority
+oracle — and see §5.1.
+
+### 5.1 The corpus is ageing, and it is now shaping decisions
+
+Worth saying once, in the place a future session will find it. Every ranking in this phase is
+computed over 40 projects that exist because earlier phases needed something to drive. Nothing
+sampled them for coverage of the node library, and nothing refreshes them as the product grows.
+The consequence showed up plainly this session: the top-ranked slice's corpus population is
+**six distinct nodes, four bodies, one of which does real work**, and the one real program is a
+tutorial solution added recently — the newest project in the list is the only one that exercises
+the feature properly.
+
+Two cheap repairs, neither of them this slice's job: add real projects to the audit list as they
+are built (the tutorial solutions are the best-shaped ones available), and give `m2-rank.ts` the
+columns §5 had to derive by hand — distinct nodes, distinct bodies, and hosts that actually emit.
+Until then, a ranking row is a population count and must be read as one.
 
 **Two findings for whoever picks the next slice.** `NewDbModelProperties` (8 nodes, 7 projects —
 the widest-spread deferred type in the corpus, and more projects than any other) is what blocks
@@ -349,3 +395,63 @@ next reader does not re-derive it.
   deferred vocabulary named in the note. The gate certifies a lie otherwise.
 - Drive: `tut003-log-a-thing-solution` is the real-world case — a jsdom drive proving that typing
   nothing and pressing the button shows the guard message, and that typing something clears it.
+
+---
+
+## §9 Implementation addendum — what building the slice settled
+
+Built in the same session as the paper design. 344 tests (34 new in `visual-function.test.ts`,
+17 suites); ledger `Logic Builder` → `translated` in the same commit.
+
+**The design held.** `detectIO` for ports, `generatedCode` re-hosted verbatim, the vocabulary gate
+on the workspace, the `Noodl.Variables` facade. Nothing in §3 needed rethinking. What cost time
+was integration with machinery that had only ever seen two script hosts.
+
+🔴 **Adding a third kind to `jsNodeKindOf` silently recruited every existing dispatch site.**
+Seven places test `jsNodeKindOf(type) !== null`, and each had been written when that meant
+"Function or Expression". Two were actively wrong for a Visual Function and both failed
+*silently*, translating nothing rather than erroring:
+
+1. **The dead-wire pre-pass** fell through to the Expression rule, whose liveness test is "is this
+   an identifier of the expression". A Visual Function has no expression, so its identifier list
+   is empty and **every wire on the node read as dead** and was consumed with a note. It now has
+   its own rule off `detectIO` — the node registers author names verbatim, so neither the
+   Function's `in-`/`out-` spelling nor the Expression's identifiers describe it.
+2. **The "never runs" pass has to precede pass 2, not follow pass 5.** Attaching a trigger wire
+   defers its *target* node with the compile's reason, so a node with no blocks was being
+   deferred as *"the node has no blocks to run"* — a deferral for a node that asked nothing of
+   the translation. It is `static`, and the pass that says so has to run before anything judges it.
+
+⚠️ **The router shell claims its whole component before any pass runs**, so three of the six
+empty instances were being called *"node beside the router shell"*. A Visual Function that never
+runs is `static` even there.
+
+🔴 **Dumping the artefact caught two bugs no passing test would have.** This is session 18's rule
+paying off a second time, and both were in the one construct with no precedent to copy:
+
+- **The `Noodl.Variables` facade emitted no separator between accessor pairs.** Each variable
+  contributes a `get`/`set` *pair*, and the per-line push left `set one(…) {}` and `get two(…)`
+  adjacent — a syntax error that **the single-variable case cannot show**. The test that pins it
+  uses two variables deliberately.
+- **The facade must be `any` on both sides, not the store's own type.** The corpus writes
+  `Noodl.Variables["myVariable"] = null` into a variable the store types `string`, and reads an
+  `unknown`-typed variable straight into a `string` output. Under the store's types the emitted
+  app fails its *own* `tsc` on both. This is EXP-003 §4's ruling again — the honest type of an
+  untyped runtime delivery is `any`, never `unknown` — and `Noodl.Variables` really is untyped at
+  runtime. The store keeps its type for every other reader.
+
+⚠️ **Test-fixture traps, both of which read as product bugs.** The Cheer fixture's button port is
+`onClick`, not `click` — a wire to `click` attaches to a port that never renders, so the plan was
+correct and produced nothing. And feeding a Visual Function's input from `onTextChanged` while
+running it from a *different* handler defers legitimately (§5) — that is not a fixture wiring
+choice, it is the real constraint, so the corrected fixture feeds from a Variable and a separate
+test pins the payload case.
+
+✅ **`generatedCode` and `workspace` really are `kind: 'literal'`** — `logic-builder-workspace`
+and `logic-builder-hidden` are not `codeeditor` editor types. Verified against the artefact
+rather than assumed, because session 18's trap was the same question with the opposite answer.
+
+✅ **Scope refused, deliberately, each with a named defer**: conditional signal chains (a
+`send signal` firing a chain guarded on the branch taken), a second block-declared signal input,
+and `Noodl.Objects`/`Arrays`/`Config`. The first is the natural next increment — but see §5:
+the only corpus node that would use it is blocked by something else anyway.

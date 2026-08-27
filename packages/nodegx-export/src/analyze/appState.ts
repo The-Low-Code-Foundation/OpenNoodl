@@ -16,6 +16,7 @@
 
 import { ComponentIR, ExportIR, NodeIR } from '../ir/types';
 import { camelCase, lowerFirst, pascalCase } from '../emit/naming';
+import { censusOf, LOGIC_BUILDER, workspaceOf } from './logicbuilder';
 
 export interface VariableWriter {
   componentPath: string;
@@ -319,6 +320,25 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
         const plan = ensureVariable(name);
         if (node.type === 'Set Variable') {
           plan.writers.push(writerRef(component, node));
+        }
+      }
+      /**
+       * A Visual Function's block program can name a Variable that no `Variable` node in the
+       * project declares — `tut003-log-a-thing-solution` does exactly that, minting
+       * `lastEntryTitle` from the blocks alone. Without this the name would resolve to nothing
+       * (`variableNameOf` answers `undefined` for an unregistered name) and the binding would
+       * vanish silently.
+       *
+       * ⚠️ Read off the **workspace's** `noodl_get_variable`/`noodl_set_variable` fields, never
+       * mined from the generated text: the workspace is the source of truth, and a mined
+       * `Noodl.Variables[...]` cannot tell a literal key from an expression one.
+       * LOGIC-BUILDER-TARGET §3.4.
+       */
+      if (node.type === LOGIC_BUILDER) {
+        const census = censusOf(workspaceOf(node));
+        for (const name of census.variableReads) ensureVariable(name);
+        for (const name of census.variableWrites) {
+          ensureVariable(name).writers.push(writerRef(component, node));
         }
       }
       if (node.type === 'Event Sender' || node.type === 'Event Receiver') {

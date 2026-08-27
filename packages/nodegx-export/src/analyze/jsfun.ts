@@ -13,18 +13,29 @@ import { NodeIR } from '../ir/types';
 
 export const JS_FUNCTION = 'JavaScriptFunction';
 export const JS_EXPRESSION = 'Expression';
+/**
+ * The Visual Function node — the third script host, and the reason it belongs in this family.
+ *
+ * Its type id is still `Logic Builder` (frozen: it is the string in every saved `project.json`);
+ * `Visual Function` is the label LGC-001 §3 gave it. The runtime compiles its `generatedCode`
+ * parameter with `new Function`, exactly as it compiles a Function body — so the re-host
+ * machinery here is the same machinery. What differs is where its *ports* come from and which
+ * gate decides it: see `logicbuilder.ts`, and EXP-002-LOGIC-BUILDER-TARGET-OUTPUT.md §1.
+ */
+export const JS_VISUAL = 'Logic Builder';
 
-export type JsNodeKind = 'function' | 'expression';
+export type JsNodeKind = 'function' | 'expression' | 'visual';
 
 export function jsNodeKindOf(type: string): JsNodeKind | null {
   if (type === JS_FUNCTION) return 'function';
   if (type === JS_EXPRESSION) return 'expression';
+  if (type === JS_VISUAL) return 'visual';
   return null;
 }
 
 /** The node's verbatim script text, from the parameter the runtime compiles. */
 export function jsBodyOf(node: NodeIR, kind: JsNodeKind): string | undefined {
-  const name = kind === 'function' ? 'functionScript' : 'expression';
+  const name = kind === 'function' ? 'functionScript' : kind === 'expression' ? 'expression' : 'generatedCode';
   const value = node.parameters.find((p) => p.name === name)?.value;
   if (value?.kind === 'script') return value.source;
   if (value?.kind === 'literal' && typeof value.value === 'string') return value.value;

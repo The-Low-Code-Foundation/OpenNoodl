@@ -240,6 +240,11 @@ export function emitComponent(
       if (expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
       referencedJsIds.add(expr.nodeId);
       jsArgExprs(expr.nodeId).forEach(collectExprUse);
+      // A Visual Function's wrapper binds a `Noodl.Variables` facade over the app's variables
+      // store, so referencing the definition is what earns those imports (§3.4).
+      for (const name of jsFunByNode[expr.nodeId]?.variables ?? []) {
+        if (variableByName.has(name)) usedVariableNames.add(name);
+      }
     }
   };
   const collectActionUse = (action: HandlerAction) => {
@@ -278,6 +283,10 @@ export function emitComponent(
       referencedJsIds.add(action.nodeId);
       jsArgExprs(action.nodeId).forEach(collectExprUse);
       action.then.forEach(collectActionUse);
+      // Same as the expression side: the wrapper's Noodl.Variables facade earns the imports.
+      for (const name of jsFunByNode[action.nodeId]?.variables ?? []) {
+        if (variableByName.has(name)) usedVariableNames.add(name);
+      }
     }
   };
   const allActions: HandlerAction[] = [
@@ -597,8 +606,10 @@ export function emitComponent(
         // A materialized read (§4f) goes through the state var in render — the last run's
         // value, undefined before the first invocation, exactly the runtime getter's answer.
         if (expr.viaState !== undefined && mode === 'render') {
+          // Function and Visual Function both materialize an Outputs record keyed by port name;
+          // Expression materializes its single value raw.
           const base =
-            def.kind === 'function'
+            def.kind !== 'expression'
               ? /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(expr.output)
                 ? `${expr.viaState}?.${expr.output}`
                 : `${expr.viaState}?.[${JSON.stringify(expr.output)}]`
@@ -1514,6 +1525,84 @@ export function emitComponent(
       lines.push('    })();');
       lines.push('  } catch (e) {');
       lines.push(`    console.error('Function node ${def.fnName} threw:', e);`);
+      lines.push('  }');
+      lines.push('  return Outputs;');
+      lines.push('}');
+    } else if (def.kind === 'visual') {
+      /**
+       * A Visual Function, re-hosted (LOGIC-BUILDER-TARGET §3.2–§3.4).
+       *
+       * The body is the block editor's own generated projection, verbatim — the same string the
+       * runtime compiles with `new Function`. Everything around it exists to supply the
+       * parameters that function is called with, so the body needs no rewriting at all:
+       *
+       *  - `Inputs` / `Outputs`  — the port records, keyed by the workspace's own names.
+       *  - `sendSignalOnOutput`  — collects fired signals rather than pulsing.
+       *  - `Noodl.Variables`     — 🔴 a real facade over the app's variables store, so the
+       *                            body's verbatim `Noodl.Variables["x"]` reads and writes keep
+       *                            their exact meaning. This is what the block-vocabulary gate
+       *                            buys: every key is a literal from a block field.
+       *  - `__p` / `__s`         — the block editor's debug probes, identity and no-op, exactly
+       *                            as the runtime passes them when nobody is inspecting.
+       *                            Stripping them would need an AST (they nest); shimming is
+       *                            correct by construction.
+       */
+      const outputFields = def.outputs.map((o) => `${fieldKey(o.name)}?: ${o.tsType}`);
+      const outputsType = outputFields.length > 0 ? `{ ${outputFields.join('; ')} }` : 'Record<string, never>';
+      const vars = def.variables ?? [];
+      lines.push(
+        `// From the Visual Function "${def.fnName}" — the block program's generated code, verbatim.`,
+        '// Authored as blocks; regenerate from the block editor rather than editing this by hand.'
+      );
+      lines.push(`function ${def.fnName}(Inputs: ${inputsType}): ${outputsType} {`);
+      lines.push(`  const Outputs: ${outputsType} = {};`);
+      // A `send signal` whose output nobody wired is a no-op in the runtime too
+      // (`_createExecutionContext` registers the port on demand precisely so it can be one), and
+      // a node whose signals ARE consumed defers before reaching here. So the fired names are
+      // collected and go nowhere, which is exactly what they do in the interpreter.
+      lines.push('  const fired: string[] = [];');
+      lines.push('  const sendSignalOnOutput = (name: string): void => { fired.push(name); };');
+      lines.push('  void fired;');
+      if (vars.length > 0) {
+        /**
+         * 🔴 **The facade is `any` on both sides, deliberately** — EXP-003 §4's ruling that an
+         * untyped runtime delivery's honest type is `any`, not `unknown`.
+         *
+         * `Noodl.Variables` really is untyped at runtime, and block programs rely on it: the
+         * corpus writes `Noodl.Variables["myVariable"] = null` into a variable the store types
+         * `string`, and reads a variable typed `unknown` straight into a `string` output. Under
+         * the store's own types the emitted app would fail its own `tsc` on both. The store
+         * keeps its type for everyone else; this facade is the loose surface the block program
+         * was written against.
+         */
+        const pairs = vars.flatMap((name) => {
+          const store = variableByName.get(name);
+          if (store === undefined) return [];
+          return [
+            `      get ${fieldKey(name)}(): any { return ${store.exportName}.get(); },`,
+            `      set ${fieldKey(name)}(v: any) { ${store.exportName}.set(v); }`
+          ].join('\n');
+        });
+        if (pairs.length > 0) {
+          lines.push('  const Noodl = {');
+          lines.push('    Variables: {');
+          // Joined, not pushed per line: each entry is a get/set PAIR, and a missing separator
+          // between pairs is a syntax error the single-variable case cannot show.
+          lines.push(pairs.join(',\n'));
+          lines.push('    }');
+          lines.push('  };');
+        }
+      }
+      // Declared unconditionally, exactly as the runtime declares them: a body generated before
+      // block probes existed mentions neither, and an unused local costs nothing.
+      lines.push('  const __p = <T,>(_id: string, v: T): T => v;');
+      lines.push('  const __s = (_id: string): void => {};');
+      lines.push('  try {');
+      lines.push('    (() => {');
+      lines.push(...def.body.split('\n'));
+      lines.push('    })();');
+      lines.push('  } catch (e) {');
+      lines.push(`    console.error('Visual Function ${def.fnName} threw:', e);`);
       lines.push('  }');
       lines.push('  return Outputs;');
       lines.push('}');

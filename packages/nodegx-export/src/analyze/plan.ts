@@ -39,6 +39,15 @@ import {
   JS_FUNCTION
 } from './jsfun';
 import {
+  censusOf,
+  hasProgram,
+  isVisualFunction,
+  visualGateOf,
+  visualIoOf,
+  workspaceOf,
+  VISUAL_FUNCTION_LABEL
+} from './logicbuilder';
+import {
   AppStateRegistry,
   ChannelPlan,
   collectAppState,
@@ -187,10 +196,10 @@ export type HandlerAction =
  */
 export interface JsFunctionPlan {
   nodeId: string;
-  kind: 'function' | 'expression';
+  kind: 'function' | 'expression' | 'visual';
   /** Module-scope wrapper name — the sanitized node label, deduped per component file. */
   fnName: string;
-  /** The verbatim body (Function) or expression text (Expression). Never reformatted. */
+  /** The verbatim body (Function), expression text (Expression) or generated code (Visual). */
   body: string;
   /**
    * The wrapper's input record, in script order: wire-fed inputs carry the resolved source,
@@ -204,6 +213,16 @@ export interface JsFunctionPlan {
   signals: string[];
   /** Expression only: preamble Math aliases the expression references (`pi` → `Math.PI`). */
   mathAliases: string[];
+  /**
+   * Visual only: app-wide Variables the block program reads or writes, from the workspace's
+   * `noodl_get_variable`/`noodl_set_variable` fields — never mined from the generated text.
+   *
+   * These become the `Noodl.Variables` facade the wrapper binds (LOGIC-BUILDER-TARGET §3.4):
+   * the body keeps its verbatim `Noodl.Variables["x"]` reads and writes, and they land on the
+   * export's own variables store. Every name here is registered in `ProjectPlan.variables`,
+   * minted by the block program where no `Variable` node declares it.
+   */
+  variables?: string[];
   /**
    * reactive — no `run` wire: one render local per instance, recomputed per render (grade Q).
    * invoked — `run` wired: calls inline inside its own handler chain only (grade I).
@@ -588,7 +607,12 @@ function planComponent(
       dispositions[node.id] =
         node.type === 'Router'
           ? { kind: 'collapsed', into: 'src/App.tsx' }
-          : { kind: 'deferred', to: 'EXP-003', reason: 'node beside the router shell' };
+          : // A Visual Function that never runs asked nothing of the translation, so calling it
+            // deferred would be untrue even here (LOGIC-BUILDER-TARGET §3.5). Everything else
+            // beside the router really is work the scaffold does not do.
+            isVisualFunction(node.type) && !(hasProgram(node) && component.connections.some((c) => c.toId === node.id && c.toProperty === 'run'))
+            ? { kind: 'static' }
+            : { kind: 'deferred', to: 'EXP-003', reason: 'node beside the router shell' };
     }
     plan.skipReason = 'router shell — emitted as src/App.tsx by the scaffold';
     return plan;
@@ -949,10 +973,24 @@ function planComponent(
 
   /** Expression's value outputs (expression.ts) — everything else it emits is a pulse or error. */
   const EXPRESSION_VALUE_OUTPUTS = new Set(['result', 'isTrue', 'isFalse', 'asString', 'asNumber', 'asBoolean']);
-  const isJsValueOutput = (node: NodeIR, fromProperty: string): boolean =>
-    node.type === JS_FUNCTION
-      ? fromProperty.startsWith('out-')
-      : node.type === JS_EXPRESSION && EXPRESSION_VALUE_OUTPUTS.has(fromProperty);
+  /**
+   * ⚠️ A Visual Function's ports are the *workspace's*, read through the runtime's own
+   * `detectIO` — never mined from the generated code and never taken from `ConnectionIR.kind`.
+   *
+   * 🔴 The wire kind would be the plausible-looking mistake: parse reports `value` for every
+   * wire out of this node, including its block-declared **signals**, because it cannot see
+   * across into a runtime-discovered port set (the IR contract says as much). `detectIO` is the
+   * only thing that knows `ok` is a pulse and `title` is a value. LOGIC-BUILDER-TARGET §3.1.
+   */
+  const isJsValueOutput = (node: NodeIR, fromProperty: string): boolean => {
+    if (node.type === JS_FUNCTION) return fromProperty.startsWith('out-');
+    if (node.type === JS_EXPRESSION) return EXPRESSION_VALUE_OUTPUTS.has(fromProperty);
+    if (isVisualFunction(node.type)) {
+      const io = visualIoOf(node);
+      return io.outputs.some((p) => p.name === fromProperty) && !io.signalOutputs.includes(fromProperty);
+    }
+    return false;
+  };
 
   /** `outtype-*`/`intype-*` enum → the wrapper's field type. `any` is the honest type of an
    * untyped runtime delivery — `unknown` would fail the emitted app's tsc on the corpus's own
@@ -981,9 +1019,9 @@ function planComponent(
    * JS-node chain, deferred whole in this slice (it would need a translated-order fixpoint). */
   const jsResolving = new Set<string>();
   const usedJsFnNames = new Set<string>();
-  const allocJsFnName = (node: NodeIR, kind: 'function' | 'expression'): string => {
+  const allocJsFnName = (node: NodeIR, kind: JsFunctionPlan['kind']): string => {
     const cleaned = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9_$]+/g, '_').replace(/^_+|_+$/g, '');
-    let base = cleaned.length > 0 ? cleaned : kind === 'function' ? 'fn' : 'expr';
+    let base = cleaned.length > 0 ? cleaned : kind === 'function' ? 'fn' : kind === 'visual' ? 'blocks' : 'expr';
     if (/^[0-9]/.test(base)) base = `_${base}`;
     const taken = (name: string) =>
       usedJsFnNames.has(name) ||
@@ -1011,21 +1049,46 @@ function planComponent(
     if (cached !== undefined) return cached;
     const result = ((): JsFunRecord => {
       const kind = jsNodeKindOf(node.type)!;
-      const word = kind === 'function' ? 'script' : 'expression';
+      const word = kind === 'function' ? 'script' : kind === 'expression' ? 'expression' : 'block program';
       const body = jsBodyOf(node, kind);
       if (body === undefined || body.trim().length === 0) {
-        return { defer: kind === 'function' ? 'the node has no script to run' : 'the node has no expression' };
+        return {
+          defer:
+            kind === 'function'
+              ? 'the node has no script to run'
+              : kind === 'expression'
+                ? 'the node has no expression'
+                : 'the node has no blocks to run'
+        };
       }
-      const purity = jsPurityDefer(kind, body);
-      if (purity !== null) return { defer: `the ${word} ${purity}` };
+      if (kind === 'visual') {
+        // The vocabulary gate (LOGIC-BUILDER-TARGET §4) replaces jsPurityDefer here, and is
+        // stronger: it reads the workspace's block types rather than scanning the generated
+        // text, so it can license the `Noodl.Variables` binding a text scan would have to
+        // refuse. See logicbuilder.ts's header for why that distinction is sound.
+        const gate = visualGateOf(node);
+        if (gate.defer !== null) return { defer: gate.defer };
+      } else {
+        const purity = jsPurityDefer(kind, body);
+        if (purity !== null) return { defer: `the ${word} ${purity}` };
+      }
 
-      const mode: JsFunctionPlan['mode'] = wiredPorts.has(`${node.id}:run`) ? 'invoked' : 'reactive';
+      /**
+       * A Visual Function is **always** invoked: values arriving on its inputs are stored and
+       * run nothing (`logic-builder.ts`'s setter says so — *"Don't auto-execute"*), so there is
+       * no reactive-derived mode for it at all. Function and Expression keep both shapes.
+       */
+      const mode: JsFunctionPlan['mode'] =
+        kind === 'visual' || wiredPorts.has(`${node.id}:run`) ? 'invoked' : 'reactive';
 
       // The input name set: mined from the body exactly as the runtime mints ports, plus any
       // properly-prefixed extras the graph feeds (proplist-declared ports the body may ignore).
       const mined = kind === 'function' ? functionMinedPortsOf(body) : { inputs: [], outputs: [], signals: [] };
       const exprIds = kind === 'expression' ? expressionIdentifiersOf(body) : { ports: [], mathAliases: [], raw: new Set<string>() };
-      const inputNames: string[] = kind === 'function' ? [...mined.inputs] : [...exprIds.ports];
+      // A Visual Function's inputs are the workspace's, not the body's (§3.1).
+      const visualIo = kind === 'visual' ? visualIoOf(node) : undefined;
+      const inputNames: string[] =
+        kind === 'function' ? [...mined.inputs] : kind === 'visual' ? visualIo!.inputs.map((p) => p.name) : [...exprIds.ports];
       const portNameOf = (name: string) => (kind === 'function' ? `in-${name}` : name);
       if (kind === 'function') {
         for (const c of component.connections) {
@@ -1138,6 +1201,17 @@ function planComponent(
           }
           outputs.push({ name, tsType: jsOutputTsType(declaredTypeOf(name)) });
         }
+      } else if (kind === 'visual') {
+        // Straight off `detectIO`: the port set the runtime registers, types included. A name
+        // that is both a value and a signal reads as the signal, because that is the one port
+        // the node actually has (`interfacePorts`' own rule).
+        for (const name of visualIo!.signalOutputs) {
+          if (!signals.includes(name)) signals.push(name);
+        }
+        for (const port of visualIo!.outputs) {
+          if (signals.includes(port.name)) continue;
+          outputs.push({ name: port.name, tsType: jsOutputTsType(port.type === '*' ? undefined : port.type) });
+        }
       }
 
       const def: JsFunctionPlan = {
@@ -1149,7 +1223,17 @@ function planComponent(
         outputs,
         signals,
         mathAliases: exprIds.mathAliases,
-        mode
+        mode,
+        ...(kind === 'visual'
+          ? {
+              variables: [
+                ...new Set([
+                  ...censusOf(workspaceOf(node)).variableReads,
+                  ...censusOf(workspaceOf(node)).variableWrites
+                ])
+              ]
+            }
+          : {})
       };
       return { def, consumes, logicNodeIds, subscriberIds };
     })();
@@ -1173,6 +1257,11 @@ function planComponent(
         ctx.defer = `its ${fromProperty} pulse fires per evaluation — render-derived code has no faithful analogue`;
       } else if (kind === 'function' && !fromProperty.startsWith('out-')) {
         ctx.defer = `a Function output registers as "out-<name>" — the runtime never delivers a wire from "${fromProperty}"`;
+      } else if (kind === 'visual' && visualIoOf(fromNode).signalOutputs.includes(fromProperty)) {
+        // ⚠️ Reached through `detectIO`, not the wire kind — parse reports `value` here.
+        ctx.defer = `its block-declared signal "${fromProperty}" is consumed as a value — a pulse carries nothing to read`;
+      } else if (kind === 'visual' && ['success', 'failure', 'done', 'unchanged', 'completed'].includes(fromProperty)) {
+        ctx.defer = `its ${fromProperty} outcome signal is consumed — the outcome contract is the invocation tier`;
       } else {
         ctx.defer = `its ${fromProperty} output is consumed — signal semantics this slice does not translate`;
       }
@@ -1202,10 +1291,12 @@ function planComponent(
     const base: ValueExpr = {
       kind: 'jsfun-out',
       nodeId: fromNode.id,
-      output: kind === 'function' ? output : 'result',
+      // Expression has one value output under six spellings, so its record field is always
+      // `result`; Function and Visual Function both carry a record keyed by the port's own name.
+      output: kind === 'expression' ? 'result' : output,
       ...(via !== undefined ? { viaState: via.name } : {})
     };
-    if (kind === 'function') return base;
+    if (kind === 'function' || kind === 'visual') return base;
     switch (output) {
       case 'result':
         return base;
@@ -2142,6 +2233,17 @@ function planComponent(
         const builtIn = ['success', 'failure', 'unchanged', 'completed', 'error'].includes(c.fromProperty);
         if (!builtIn) continue; // a dead bare-name wire — the pre-pass noted and consumed it
       }
+      if (isVisualFunction(node.type) && visualIoOf(node).signalOutputs.includes(c.fromProperty)) {
+        // A `send signal` block fires a chain of its own, conditionally on the branch the
+        // program took. Compiling that means one guarded chain per signal off a `fired` list —
+        // the next increment. Both corpus instances land on sinks this slice cannot translate
+        // anyway (a deferred DB node, and an imperative focus), so nothing is lost by refusing
+        // it here rather than building it untested.
+        const sink = nodeById.get(c.toId);
+        return {
+          defer: `its block-declared signal "${c.fromProperty}" drives ${sink?.type ?? 'a missing node'}.${c.toProperty} — conditional signal chains are the next increment`
+        };
+      }
       return { defer: `its ${c.fromProperty} output is consumed — only done continues a Run chain in this slice` };
     }
     const chain = doneChainOf(node);
@@ -2165,7 +2267,7 @@ function planComponent(
         (o) => `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(o.name) ? o.name : JSON.stringify(o.name)}?: ${o.tsType}`
       );
       const tsType =
-        def.kind === 'function'
+        def.kind !== 'expression'
           ? `${fields.length > 0 ? `{ ${fields.join('; ')} }` : 'Record<string, never>'} | undefined`
           : 'any';
       const stateVar = allocStateVar(
@@ -3060,10 +3162,80 @@ function planComponent(
   // name and the wire never delivers. An Expression input that is not an identifier of the
   // expression delivers into scope nobody reads. Dropping each with its note is the faithful
   // translation (the runtime's own guard drops them too — the hasOutput precedent).
+  /**
+   * Visual Functions that never run (LOGIC-BUILDER-TARGET §3.5) — **first**, before any pass
+   * can judge them.
+   *
+   * Two states, one faithful translation: **nothing**.
+   *
+   * - **No blocks.** `_compileFunction` returns null with no `compileError`, so `_executeLogic`
+   *   reports `Unchanged` and returns. Six of the corpus's fourteen instances are this — a
+   *   freshly dropped node.
+   * - **No trigger wired.** A Visual Function never runs on its own: values arriving on inputs
+   *   are stored and run nothing (`logic-builder.ts`'s setter — *"Don't auto-execute"*), so with
+   *   nothing wired to `run` the program never executes and its outputs never publish.
+   *
+   * 🔴 Neither is a **deferral**. A deferral says "this slice could not translate it"; these say
+   * "the runtime does nothing here, and neither does the emitted app". `static` is the honest
+   * disposition, and the wires are consumed because they genuinely carry nothing — an input
+   * wire's value is stored and never read, and an output wire is dead (the `hasOutput`
+   * precedent: the runtime drops a wire from a port it never registered).
+   *
+   * ⚠️ **It has to run before pass 2.** Attaching a trigger wire defers its *target* node with
+   * the compile's reason, so leaving this until pass 5 let "the node has no blocks to run"
+   * become the node's verdict — a deferral for a node that asked nothing of the translation.
+   */
+  for (const node of component.nodes) {
+    if (!isVisualFunction(node.type) || dispositions[node.id] !== undefined) continue;
+    if (hasProgram(node) && wiredPorts.has(`${node.id}:run`)) continue;
+
+    const why = !hasProgram(node)
+      ? 'it has no blocks yet — the runtime reports Unchanged and runs nothing'
+      : 'nothing is wired to its Run — a Visual Function never runs on its own, so its program never executes';
+    for (const c of component.connections) {
+      if (c.fromId === node.id || c.toId === node.id) consumed.add(c.key);
+    }
+    dispositions[node.id] = { kind: 'static' };
+    notes.push(`node ${node.id} (${VISUAL_FUNCTION_LABEL}) emits nothing: ${why}`);
+  }
+
   const jsDeadWireKeys = new Set<string>();
   for (const node of component.nodes) {
     const kind = jsNodeKindOf(node.type);
     if (kind === null) continue;
+    /**
+     * A Visual Function's dead wires are decided by `detectIO`, not by the Function's
+     * `in-`/`out-` spelling or the Expression's identifier list — it registers author names
+     * verbatim. Falling through to the Expression rule (as this loop did when `jsNodeKindOf`
+     * grew a third kind) would call *every* wire on the node dead.
+     */
+    if (kind === 'visual') {
+      const io = visualIoOf(node);
+      const liveIn = new Set([...io.inputs.map((p) => p.name), ...io.signalInputs, 'run']);
+      const liveOut = new Set([
+        ...io.outputs.map((p) => p.name),
+        ...io.signalOutputs,
+        'success',
+        'failure',
+        'done',
+        'unchanged',
+        'completed',
+        'error'
+      ]);
+      for (const c of component.connections) {
+        if (consumed.has(c.key)) continue;
+        const dead =
+          (c.toId === node.id && !liveIn.has(c.toProperty)) || (c.fromId === node.id && !liveOut.has(c.fromProperty));
+        if (!dead) continue;
+        consumed.add(c.key);
+        jsDeadWireKeys.add(c.key);
+        const port = c.toId === node.id ? c.toProperty : c.fromProperty;
+        notes.push(
+          `wire ${c.key} dropped: the block program declares no port "${port}" — the runtime never delivers this connection`
+        );
+      }
+      continue;
+    }
     const body = jsBodyOf(node, kind);
     const exprPorts = kind === 'expression' && body !== undefined ? expressionIdentifiersOf(body).ports : [];
     for (const c of component.connections) {
