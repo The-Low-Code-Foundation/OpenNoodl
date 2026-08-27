@@ -14,8 +14,13 @@
  * builders to "select some blocks". **Blockly 12 core has no multi-select** — one block is
  * selected at a time, and the multi-select plugin is not installed and cannot be installed in
  * this lane. So the real gesture is one right-click on the **top block of the group**, and
- * everything inside it and stacked below it comes with it, exactly as Blockly's own *Duplicate*
- * behaves.
+ * everything inside it and stacked below it comes with it.
+ *
+ * ⚠️ **This used to end "exactly as Blockly's own *Duplicate* behaves", and that was never true.**
+ * `BlockSvg.toCopyData(addNextBlocks = false)` defaults to `false` and all four of Blockly's own
+ * call sites passed nothing, so Duplicate took the block and its inputs and left the stack below
+ * it behind — the opposite of what `bodyFromBlocks` does here. FB-027 made the comparison true
+ * rather than deleting it: see `stackCopy.ts`.
  *
  * That is not a compromise so much as the honest reading: a builder does not think of `n ÷ 2`
  * as three blocks they must select, they think of it as one thing they are pointing at. But it

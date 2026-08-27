@@ -161,6 +161,17 @@ export type { BenchControllerOptions, BenchLastRun, BenchSurface } from './Bench
 export { initNoodlBlocks } from './NoodlBlocks';
 export { initNoodlGenerators, generateCode } from './NoodlGenerators';
 export { initBlocklyIntegration } from './initialize';
+// FB-027 — copy/duplicate/cut take the whole stack, because Blockly 12 has no multi-select to
+// select one with and the plugin that adds it peers on `blockly <12`. Import-free of React, the
+// DOM and every editor singleton, so `tests-unit/fb-027/` grades the policy headlessly.
+export {
+  CUT_SHORTCUT_NAME,
+  DUPLICATE_ITEM_ID,
+  DUPLICATE_STACK_TEXT,
+  applyStackCopy,
+  resetStackCopyForTests
+} from './stackCopy';
+export type { StackCopyBlockly, StackCopyShortcut } from './stackCopy';
 
 // My Blocks (LGC-007): a saved group of blocks, reusable in any Visual Function.
 // The rules — format, store, cycle guard, shape inference, inliner — are in `myblocks/`

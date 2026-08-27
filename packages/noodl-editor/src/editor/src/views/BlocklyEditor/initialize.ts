@@ -8,8 +8,11 @@
  * @module BlocklyEditor
  */
 
+import * as Blockly from 'blockly';
+
 import { initNoodlBlocks } from './NoodlBlocks';
 import { initNoodlGenerators } from './NoodlGenerators';
+import { applyStackCopy } from './stackCopy';
 
 let blocklyInitialized = false;
 
@@ -30,6 +33,10 @@ export function initBlocklyIntegration() {
 
   initNoodlBlocks();
   initNoodlGenerators();
+  // FB-027 — copy, duplicate and cut take the whole stack. Here rather than in the workspace
+  // component because Blockly's registries are renderer-wide and this is the one-time hook that
+  // already knows it.
+  applyStackCopy(Blockly as never);
 
   blocklyInitialized = true;
 }
