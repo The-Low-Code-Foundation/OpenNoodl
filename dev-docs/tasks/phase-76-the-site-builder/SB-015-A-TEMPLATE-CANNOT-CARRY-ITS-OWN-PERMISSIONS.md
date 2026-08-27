@@ -291,6 +291,209 @@ consideration neither candidate had: whatever is chosen must also account for th
 *screen*, because even a correct fix leaves the not-found panel as the thing an
 author sees the moment anything else goes wrong.
 
+### 6.4a F28 — both candidates in §6.4 are refuted, and the option set was the wrong shape
+
+**s14 read the source before building either candidate. Neither survives, and the
+reason is the same in both cases: there is no product surface that stores a
+function secret.** This is recorded as its own subsection because §6.4's ⬜ is not
+"pick one and build it" any more.
+
+**Candidate A — "the template's setup page mints and stores the token itself" — cannot
+be built.** The only door that writes the `functions` namespace is
+`PUT /admin/secrets/:name` (`src/server/admin-secrets.ts`). It is admin-gated, and its
+own header records that admin-gating is relaxed *only* under dev-open on a loopback
+bind — the posture SB-015 deliberately does not ship. So under `devOpen: false` a
+browser graph reaches that door only by carrying an admin credential, which is the one
+thing a template must never contain. A setup page could instead keep the token in a
+*collection*, but that removes condition (1) of the gate, and §6's own note says (2)
+alone is check-then-write and not atomic — i.e. it reopens SB-013's escalation.
+
+**Candidate B — "provisioning seeds `SITE_SETUP_TOKEN`" — is viable only in a form
+neither §6.4 nor the module headers describe, and its obvious form is self-defeating.**
+
+- The MCP provision module's invariant (*"a provision creates no credential material
+  of its own"*, `provision.ts` §Secrets) is a deliberate property of **both** spawners.
+  A mint belongs where the backend already mints `adminToken` — `SecurityState` at
+  first start — not in either spawner. That much is a re-siting, not an objection.
+- 🔴 **But a minted token the author cannot read is not a fix**, and the obvious way to
+  tell them is closed: `SecretValueScrubber` (`src/ops/log-scrub.ts`) reads *every*
+  value in the `functions` namespace of length ≥ `MIN_SCRUBBABLE_LENGTH` (8) and
+  replaces it in the log sink. A backend that mints `SITE_SETUP_TOKEN` and then prints
+  it prints `REDACTED`.
+- ⚠️ **And it would not fail cleanly.** The scrubber's table refreshes on a
+  `REFRESH_INTERVAL_MS` (5s) interval, so a line printed inside the window between the
+  mint and the next refresh emits the **real token**. That is a fix that works
+  sometimes — green in a spec that prints immediately, redacted for the person who
+  reads the log a minute later, and a credential in a logfile when it does work.
+
+🔴 **The fact under both of them: there is no renderer surface that sets a function
+secret** — so an author's only way to provision `SITE_SETUP_TOKEN` today is to hand-edit
+a mode-0600 `secrets.json` inside a backend data directory the editor never shows them.
+
+⚠️ **The first version of this paragraph said "`/admin/secrets` has no caller", and that
+was wrong in two layers out of three.** Corrected by re-census, the chain is:
+
+| layer | state |
+|---|---|
+| backend route `GET/PUT/DELETE /admin/secrets` | ✅ **mounted** — `AdminSecretsRoutes` imported, constructed (`HttpServer.ts:466`) and in the route table (`:926-937`), admin-gated |
+| main-process IPC `backend:listSecrets` / `setSecret` / `deleteSecret` | ✅ **exist** (`BackendManager.js:340-348`), proxying exactly those three |
+| a renderer panel that calls them | ❌ **none** — 0 callers in `editor/src`, re-counted with a reader that opens every file |
+
+**So the ruled build is the last mile only**, not a route plus a bridge plus a panel.
+
+🔴 **How the wrong version was produced, because it is the reusable part.** Two grep
+lies, both already known here, stacked:
+
+1. the census was run with `--include="*.ts" --include="*.tsx"`, and **`BackendManager.js`
+   is a `.js` file** — the IPC bridge was excluded by the filter, not absent;
+2. **`HttpServer.ts` contains one NUL byte**, so grep skips it as binary and says
+   nothing — the route table is invisible without `-a`.
+
+⚠️ The control that was supposed to catch this *did* fire (`admin/roles` → 5), which is
+exactly why it did not help: **both control and subject were read through the same two
+blind spots**, so a known-firing control proved the instrument ran, not that it could
+see. A control only bounds the error when it sits on the *other* side of the suspected
+blindness — here that would have meant a control in a `.js` file, or in a NUL-carrying
+one. Re-counting with a Python reader that opens every file regardless of extension is
+what actually settled it.
+
+⚠️ **This is the sixth instance of the phase's recurring shape, and the first one this
+task file produced itself** — the previous five were a wrong *number* inside a correct
+recommendation (SB-013's row count, SB-016 §4/F25, s11's F24, s13's F26's call-site
+count, s13's §6.4 prediction). The refutation of the two candidates stands; the
+*measurement offered as its foundation* did not, and it was written in the same session
+that catalogued the pattern. **A census is a measurement and inherits its instrument's
+blind spots — state which files it opened.**
+
+⬜ **What this leaves open is a ruling, not a build.** The three shapes now on the
+table, with what each actually costs:
+
+1. **Build the missing Secrets panel** (or an MCP tool) that calls the door CWF-009
+   already shipped. It is a capability the product is missing anyway — every function
+   secret has this problem, not just this template's. ✅ **Smaller than first stated**:
+   the route and the IPC bridge both exist, so this is a renderer panel over three
+   channels that are already there.
+2. **Mint at first start and surface it once through a channel the scrubber does not
+   sit on** — the editor's backend panel reading it over IPC, not the log. Narrower,
+   but it adds a read-back path, and `admin-secrets.ts` §2 refuses one by construction
+   for reasons that still hold.
+3. **Drop the secret from the gate on a loopback bind only** — i.e. `claimSite`'s
+   condition (1) is satisfied automatically when the request is local. Smallest, and it
+   is the one that trades the boundary for convenience, which is arm A wearing a hat.
+
+🧭 **Richard's call**, because (1) is a product surface, (2) reverses a documented
+refusal, and (3) narrows a boundary he ruled on in §3.
+
+✅ **RULED s14 (Richard): shape 1 — build the missing Secrets panel.** The largest of
+the three and the only one that adds no new credential path: it calls the door CWF-009
+already shipped, keeps `admin-secrets.ts`'s two rules intact (one namespace, no
+read-back), and fixes the problem for *every* function secret rather than for this
+template's one. (2) was rejected because a read-back is refused by construction and the
+scrubber's refresh window makes the log channel leak-sometimes rather than fail-closed;
+(3) because it trades the boundary §3 ruled on for convenience.
+
+✅ **Also ruled s14: the screen is fixed in the same session**, not deferred behind the
+panel — all three shapes leave the not-found panel ambiguous, so the work is independent
+of which one won.
+
+### 6.4b What s14 built, and the two orderings the drive had to teach it
+
+✅ **The Secrets panel is built** (`views/panels/secrets/`), registered as the
+**eighth** backend surface and reachable from the Backend Services card's overflow
+menu. It lists what is provisioned by name, writes a value, removes one, offers a
+generated 32-byte base64url value, and reports the environment's second door on
+every row. **33 specs / 10 mutants, 10 killed**
+(`tests-unit/sb-015/secrets-panel-model.test.ts`).
+
+**Two things it deliberately does not do.** It never asks for a value back —
+`admin-secrets.ts` §2 refuses that by construction and the panel does not work
+around it, so a value is legible exactly once, in the field the author typed it
+into. And it does not mint anything server-side: the *generate* button draws from
+`window.crypto` in the renderer and sends the result through the ordinary `PUT`,
+because a backend that mints a credential has to then say what it is, and its only
+channel for that is the log — which `SecretValueScrubber` redacts on a 5-second
+refresh, i.e. it would leak the real value *sometimes*.
+
+🔴 **The panel's decisions live in `secretsPanelModel.ts`, not in the component.**
+This repo's jest is `testEnvironment: 'node'` with no jsdom and no
+`@testing-library/react`, and the panel calls `window.require('electron')` at module
+scope — a spec that imported it would fail to *load*, which reads as a broken
+harness rather than a broken decision. Extracted, the decisions are graded over real
+inputs. Same move as SB-016's endpoint predicate and s13's `buildSpawnArgs`, for the
+same reason. ⚠️ **The spec imports the backend's own `SecretsStore` constants and
+pins both copies against one table**, because the renderer duplicates a name pattern
+and an env-prefix transform that nothing previously failed on when they disagreed.
+
+---
+
+✅ **F27's screen is fixed.** `Pages/Site` gained `diagnoseNotFound`, which drives
+both the panel's `text` and its `visible`. Three causes, three sentences:
+
+| state | what it now says |
+|---|---|
+| a claimed site, a slug with no published page | *That page could not be found.* |
+| nobody has completed setup | *This site has not been set up yet.* |
+| the read was refused | *This site’s pages are not available right now.* |
+
+⚠️ **None of the three names a credential, a collection, a policy or a recovery
+step**, and a spec asserts that: all three are read by *visitors*, and a 404 that
+explains how the site is administered is a different defect. The author-facing
+instruction belongs in the editor — which is what the Secrets panel now is.
+
+🔴 **Two orderings were wrong on the first pass, and the drive is what caught both.
+Neither was visible from the graph.**
+
+1. **An unclaimed site makes the Page query FAIL, not come back empty** — nothing
+   has created the collection, because `claimSite` is what writes the first rows.
+   So "refused" and "not set up" are true simultaneously, and reading the failure
+   first reported F27's state as a refusal: true, and useless to the person who has
+   to fix it. **The condition that EXPLAINS the other has to win.**
+2. 🔴 **`claimed === false` is not evidence of an unclaimed site.** It is computed
+   from the settings query's `items`, and a **refused** query publishes an empty
+   `items` exactly like an **empty** one does — `Run` is additive, so the reader
+   runs on `items` arriving whether or not `fetched` ever fired.
+   `sb015-default-policy-drive`'s arm C is the refused case and was reporting
+   itself as "this site has not been set up yet".
+
+   ✅ Fixed by wiring the settings query's **`error`** in beside it: a refused
+   settings read is answered first and never as "not set up". **This is the
+   known-firing-signal rule in its exact form** — an absence (`items` is empty) only
+   means what you think beside a signal that distinguishes *refused* from *absent*,
+   and the two want opposite fixes.
+
+⚠️ **Both orderings were found by running the drives, not by reading the graph**, and
+both first versions passed every spec that existed before the drive was re-run.
+
+---
+
+### 6.4c Three specs that asserted the defect, and what happened to them
+
+Fixing F27 turned three green specs red, and **all three were correct when written** —
+they were measurements of the state SB-015 had documented. They are rewritten to assert
+the *fix*, with what they used to say preserved in the comment:
+
+- `sb015-first-local-run` *"F27 — the site draws THE NOT-FOUND PANEL"* → now asserts
+  the state names itself and borrows neither of the other two sentences;
+- `sb015-default-policy-drive` *"renders a REFUSAL as the not-found panel — the same
+  screen a draft draws"* → now asserts the **difference**, plus the control that a
+  genuine draft still reads as an ordinary not-found (a "fix" that made *everything*
+  say "refused" would have destroyed the distinction just as thoroughly);
+- `tests-unit/sb-007/site-template` node-id count 192 → 193.
+
+🔴 **And one mutant stopped biting, which is the reusable part.**
+`sb006PublicSite`'s *"a not-found reader that acts before rows arrive"* found its
+target by `scriptOf(n).includes('Outputs.missing')` — the page reader. When
+visibility moved onto `diagnoseNotFound` the mutant went on mutating a node the
+assertion no longer read, and **survived**. It failed loudly, because a surviving
+mutant is a red spec, and that is the only reason it did not quietly become
+decoration. ✅ It now resolves its target **through the wire** it is asserting about,
+so it follows the decision wherever the graph puts it.
+
+⚠️ Its sibling assertion was `toContain('if (Inputs.rows === undefined) return;')` — a
+**source-text** check that pins a spelling rather than a property, and passes on a
+guard that has been commented out or made unreachable. It now **runs** the script with
+no inputs and asserts nothing is published, which is the actual invariant.
+
 ### 6.5 The finding that came free
 
 🔴 **`SITE_SECURITY` was a typed constant in a test helper, so SB-008 measured a

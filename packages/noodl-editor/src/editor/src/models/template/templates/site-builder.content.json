@@ -825,12 +825,25 @@
             "dynamicports": []
           },
           {
+            "id": "diagnoseNotFound",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Which of the three empty screens is this?",
+            "x": 470,
+            "y": 1120,
+            "parameters": {
+              "functionScript": "const pageRefused = Inputs.error !== undefined && Inputs.error !== null && Inputs.error !== \"\";\nconst settingsRefused = Inputs.settingsError !== undefined && Inputs.settingsError !== null && Inputs.settingsError !== \"\";\nif (settingsRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.claimed === false) {\n  Outputs.text = \"This site has not been set up yet.\";\n  Outputs.visible = true;\n  return;\n}\nif (pageRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.missing === undefined) return;\nif (!Inputs.missing) {\n  Outputs.visible = false;\n  return;\n}\nOutputs.text = \"That page could not be found.\";\nOutputs.visible = true;"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
             "id": "pageInputs",
             "type": "PageInputs",
             "children": [],
             "label": "The slug from the URL",
             "x": 470,
-            "y": 1000,
+            "y": 1240,
             "parameters": {
               "pathParams": "slug"
             },
@@ -843,7 +856,7 @@
             "children": [],
             "label": "SiteSettings (one row)",
             "x": 470,
-            "y": 1120,
+            "y": 1360,
             "parameters": {
               "collectionName": "SiteSettings"
             },
@@ -858,7 +871,7 @@
             "x": 470,
             "y": 520,
             "parameters": {
-              "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.homeSlug = first.homeSlug || 'home';"
+              "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.claimed = rows.length > 0;\nOutputs.homeSlug = first.homeSlug || 'home';"
             },
             "ports": [],
             "dynamicports": []
@@ -888,7 +901,7 @@
             "children": [],
             "label": "The page with this slug",
             "x": 470,
-            "y": 1240,
+            "y": 1480,
             "parameters": {
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false,
@@ -976,7 +989,7 @@
             "children": [],
             "label": "Theme (one row)",
             "x": 470,
-            "y": 1360,
+            "y": 1600,
             "parameters": {
               "collectionName": "Theme"
             },
@@ -989,7 +1002,7 @@
             "children": [],
             "label": "The theme record, as CSS variables",
             "x": 470,
-            "y": 1480,
+            "y": 1720,
             "parameters": {
               "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) root.style.setProperty('--primary', t.colorPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.fontFamily) root.style.fontFamily = t.fontFamily;"
             },
@@ -1002,7 +1015,7 @@
             "children": [],
             "label": "The document title",
             "x": 470,
-            "y": 1600,
+            "y": 1840,
             "parameters": {
               "functionScript": "if (!Inputs.title) return;\nif (!Noodl || !Noodl.SEO) return;\nNoodl.SEO.setTitle(Inputs.title);"
             },
@@ -1074,8 +1087,38 @@
           {
             "fromId": "readPage",
             "fromProperty": "out-missing",
+            "toId": "diagnoseNotFound",
+            "toProperty": "in-missing"
+          },
+          {
+            "fromId": "readSettings",
+            "fromProperty": "out-claimed",
+            "toId": "diagnoseNotFound",
+            "toProperty": "in-claimed"
+          },
+          {
+            "fromId": "pageQuery",
+            "fromProperty": "error",
+            "toId": "diagnoseNotFound",
+            "toProperty": "in-error"
+          },
+          {
+            "fromId": "settings",
+            "fromProperty": "error",
+            "toId": "diagnoseNotFound",
+            "toProperty": "in-settingsError"
+          },
+          {
+            "fromId": "diagnoseNotFound",
+            "fromProperty": "out-visible",
             "toId": "notFound",
             "toProperty": "visible"
+          },
+          {
+            "fromId": "diagnoseNotFound",
+            "fromProperty": "out-text",
+            "toId": "notFound",
+            "toProperty": "text"
           },
           {
             "fromId": "readPage",

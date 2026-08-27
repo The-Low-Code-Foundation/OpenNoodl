@@ -1,5 +1,5 @@
 /**
- * The seven backend surfaces, as registered side panels.
+ * The eight backend surfaces, as registered side panels.
  *
  * ## What this replaces
  *
@@ -62,9 +62,18 @@ import { EmailPanel } from '../../email';
 import { PermissionsPanel } from '../../permissions';
 import { SchemaPanel } from '../../schemamanager';
 import { SearchPanel } from '../../search';
+import { SecretsPanel } from '../../secrets';
 import { TriggersPanel } from '../../triggers';
 
-export type BackendSurfaceKind = 'schema' | 'data' | 'permissions' | 'triggers' | 'email' | 'auth' | 'search';
+export type BackendSurfaceKind =
+  | 'schema'
+  | 'data'
+  | 'permissions'
+  | 'triggers'
+  | 'email'
+  | 'auth'
+  | 'search'
+  | 'secrets';
 
 export interface BackendSurfaceProps extends Record<string, unknown> {
   backendId: string;
@@ -104,7 +113,8 @@ const SURFACES: BackendSurfaceDefinition[] = [
   { kind: 'triggers', name: 'Triggers', panel: asPanel(TriggersPanel) },
   { kind: 'email', name: 'Email', panel: asPanel(EmailPanel) },
   { kind: 'auth', name: 'Sign-in providers', panel: asPanel(AuthPanel) },
-  { kind: 'search', name: 'Search', panel: asPanel(SearchPanel) }
+  { kind: 'search', name: 'Search', panel: asPanel(SearchPanel) },
+  { kind: 'secrets', name: 'Secrets', panel: asPanel(SecretsPanel) }
 ];
 
 export const backendSurfacePanelId = (kind: BackendSurfaceKind) => `backend-${kind}`;

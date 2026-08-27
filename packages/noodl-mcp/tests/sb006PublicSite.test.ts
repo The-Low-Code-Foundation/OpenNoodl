@@ -29,7 +29,9 @@ import {
 } from './sb005Components';
 import {
   CONTACT_REFUSAL_TEXT,
+  NOT_AVAILABLE_TEXT,
   NOT_FOUND_TEXT,
+  NOT_SET_UP_TEXT,
   SB006_COMPONENTS,
   SITE_URL_PATH,
   THEME_KEYS,
@@ -315,9 +317,31 @@ export function assertNotFoundIsNotIsEmpty(w: Written): void {
   expect(feeds.length).toBe(1);
   const source = w.graph.nodes.find((n) => n.id === feeds[0].fromId);
   expect(source?.type).toBe('JavaScriptFunction');
-  // And that code node must abstain until rows have arrived, or its first,
-  // rows-less run publishes `missing: true` to the very same port.
-  expect(scriptOf(source as GraphNode)).toContain('if (Inputs.rows === undefined) return;');
+
+  /**
+   * And that code node must abstain until something has answered, or its
+   * first, input-less run publishes `visible: true` over a page that is about
+   * to render.
+   *
+   * ⚠️ This used to assert the guard's SOURCE TEXT
+   * (`toContain('if (Inputs.rows === undefined) return;')`). That passes on a
+   * guard that has been commented out, moved below the first write, or made
+   * unreachable — and it broke the moment SB-015 F27 rewrote the node with an
+   * equivalent guard over different inputs, which is the tell that it was
+   * pinning a spelling rather than a property. It now RUNS the script with no
+   * inputs and asserts nothing is published, which is the actual invariant.
+   */
+  const script = scriptOf(source as GraphNode);
+  const published: Record<string, unknown> = {};
+  const Outputs = new Proxy(published, {
+    set(target, key, value) {
+      target[key as string] = value;
+      return true;
+    }
+  });
+  // eslint-disable-next-line no-new-func
+  new Function('Inputs', 'Outputs', script)({}, Outputs);
+  expect(published).toEqual({});
 }
 
 /**
@@ -672,13 +696,116 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     expect(() => assertNotFoundIsNotIsEmpty(mutant)).toThrow();
   });
 
-  it('MUTANT: a not-found reader that acts before rows arrive reddens', () => {
+  /**
+   * ⚠️ This mutant is aimed at whatever node CURRENTLY drives the panel's
+   * `visible`, found through the wire rather than by script content.
+   *
+   * It used to find the node by `scriptOf(n).includes('Outputs.missing')` — the
+   * page reader — and when SB-015 F27 moved visibility onto `diagnoseNotFound`
+   * the mutant kept mutating a node the assertion no longer reads, and stopped
+   * reddening. It failed loudly (a mutant that survives is a red spec), which is
+   * the only reason it did not quietly become decoration. Resolved by the wire,
+   * it follows the assertion wherever the graph puts the decision.
+   */
+  it('MUTANT: a not-found reader that acts before its inputs arrive reddens', () => {
     const mutant = clone(written['Pages/Site']);
-    const reader = mutant.graph.nodes.find(
-      (n) => n.type === 'JavaScriptFunction' && scriptOf(n).includes('Outputs.missing')
-    )!;
-    reader.parameters!.functionScript = scriptOf(reader).replace('if (Inputs.rows === undefined) return;\n', '');
+    const notFound = mutant.graph.nodes.find((n) => n.parameters?.text === NOT_FOUND_TEXT)!;
+    const feed = mutant.wires.find((c) => c.toId === notFound.id && c.toProperty === 'visible')!;
+    const reader = mutant.graph.nodes.find((n) => n.id === feed.fromId)!;
+    // Strip every early return, whatever it guards on: the property under test
+    // is "publishes nothing before an answer", not any one spelling of it.
+    reader.parameters!.functionScript = scriptOf(reader)
+      .split('\n')
+      .filter((line) => !/return;\s*$/.test(line) || /^\s*\}/.test(line))
+      .join('\n');
     expect(() => assertNotFoundIsNotIsEmpty(mutant)).toThrow();
+  });
+
+  /**
+   * The three causes are three DIFFERENT strings (SB-015 F27).
+   *
+   * The defect this guards is the one F27 measured: one panel, three causes, one
+   * sentence — an author reading "That page could not be found." on their own
+   * home page reaches for the publication boundary, which is SB-015 §2's arm A.
+   */
+  it('the not-found panel says which of its three causes it is (SB-015 F27)', () => {
+    const w = written['Pages/Site'];
+    const notFound = w.graph.nodes.find((n) => n.parameters?.text === NOT_FOUND_TEXT)!;
+    const feed = w.wires.find((c) => c.toId === notFound.id && c.toProperty === 'text');
+    expect(feed).toBeDefined();
+    const decider = w.graph.nodes.find((n) => n.id === feed!.fromId)!;
+    const script = scriptOf(decider);
+
+    const run = (inputs: Record<string, unknown>) => {
+      const out: Record<string, unknown> = {};
+      // eslint-disable-next-line no-new-func
+      new Function('Inputs', 'Outputs', script)(inputs, out);
+      return out;
+    };
+
+    // 1. A refused read on a site that HAS been set up — not reported as
+    // "not found".
+    const refused = run({ error: 'Permission denied', claimed: true });
+    expect(refused.visible).toBe(true);
+    expect(refused.text).toBe(NOT_AVAILABLE_TEXT);
+
+    /**
+     * 🔴 PRECEDENCE, and the drive is what established it.
+     *
+     * An unclaimed site makes the Page query FAIL rather than return empty —
+     * `claimSite` is what writes the first rows, so before it runs there is no
+     * collection to query. Both conditions are therefore true at once, and the
+     * one that EXPLAINS the other has to win: `sb015-first-local-run` measured
+     * this exact state reporting itself as a refusal, which is true and
+     * useless. Asserted here so the order cannot be swapped back silently.
+     */
+    expect(run({ error: 'Failed to fetch', claimed: false }).text).toBe(NOT_SET_UP_TEXT);
+
+    /**
+     * 🔴 REFUSED SETTINGS vs ABSENT SETTINGS — the pair the drive separated.
+     *
+     * `claimed` is computed from the settings query's `items`, and a REFUSED
+     * query publishes an empty `items` exactly like an EMPTY one does (`Run` is
+     * additive, so the reader runs on `items` arriving whether or not `fetched`
+     * ever fired). So `claimed === false` alone cannot tell "nobody set this
+     * site up" from "you may not read the settings" — and
+     * `sb015-default-policy-drive`'s arm C is the second case, which the first
+     * version of this reported as the first.
+     *
+     * The settings query's own `error` is the known-firing signal that
+     * separates them. Both rows below carry `claimed: false`; only the error
+     * differs.
+     */
+    expect(run({ claimed: false, settingsError: 'Failed to fetch' }).text).toBe(NOT_AVAILABLE_TEXT);
+    expect(run({ claimed: false }).text).toBe(NOT_SET_UP_TEXT);
+
+    // And `claimed: undefined` is "the settings query has not answered", which
+    // must NOT read as "no row" — that would put the not-set-up screen on every
+    // site for the moment before its settings arrive.
+    expect(run({ error: 'Failed to fetch' }).text).toBe(NOT_AVAILABLE_TEXT);
+    expect(run({ claimed: undefined, missing: undefined })).toEqual({});
+
+    // 2. A site nobody has claimed: no SiteSettings row.
+    const unclaimed = run({ missing: true, claimed: false });
+    expect(unclaimed.visible).toBe(true);
+    expect(unclaimed.text).toBe(NOT_SET_UP_TEXT);
+
+    // 3. A claimed site, a slug with no published page — the genuine 404.
+    const genuine = run({ missing: true, claimed: true });
+    expect(genuine.visible).toBe(true);
+    expect(genuine.text).toBe(NOT_FOUND_TEXT);
+
+    // And the panel stays down when the page WAS found.
+    expect(run({ missing: false, claimed: true })).toEqual({ visible: false });
+
+    // The three are actually distinct — the whole point.
+    expect(new Set([refused.text, unclaimed.text, genuine.text]).size).toBe(3);
+
+    // ⚠️ None of them names a credential, a collection or a policy: all three
+    // are read by visitors, not only by the author.
+    for (const t of [refused.text, unclaimed.text, genuine.text] as string[]) {
+      expect(t).not.toMatch(/token|secret|policy|permission|admin|SiteSettings/i);
+    }
   });
 
   it('the title goes through Noodl.SEO and the description through the port (acceptance 7)', () => {
@@ -802,7 +929,8 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     // The census half: the loop must have seen every code node, and three of
     // them must actually declare something — otherwise "no mismatches" could
     // mean the door never persisted `ports` and the check compared '' with ''.
-    expect(rows.length).toBe(8);
+    // 9 since SB-015 F27 added `diagnoseNotFound` to `Site`.
+    expect(rows.length).toBe(9);
     expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(3);
   });
 
@@ -855,8 +983,9 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
       functions: 1,
       // Sections, and nav links.
       repeaters: 2,
-      // NavLink 0, SectionView 1, ContactForm 1, Nav 0, Site 6.
-      code: 8,
+      // NavLink 0, SectionView 1, ContactForm 1, Nav 0, Site 7 — Site gained
+      // `diagnoseNotFound` with SB-015 F27.
+      code: 9,
       pages: 1,
       // One: the nav link. The site never navigates away from itself.
       navigations: 1,

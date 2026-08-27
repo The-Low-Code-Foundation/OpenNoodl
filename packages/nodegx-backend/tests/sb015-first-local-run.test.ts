@@ -59,6 +59,7 @@ import {
   withRenderedPage
 } from './helpers/site-drive';
 import { SB004_COMPONENTS } from '../../noodl-mcp/tests/sb004Components';
+import { NOT_AVAILABLE_TEXT, NOT_FOUND_TEXT, NOT_SET_UP_TEXT } from '../../noodl-mcp/tests/sb006Components';
 
 jest.setTimeout(900000);
 
@@ -291,21 +292,43 @@ describe('SB-015 §6.4 — the first local run of a project made from the templa
       expect(reports['with-token'].seed.updateSettings).toBe(200);
     });
 
-    it('🔴 F27 — the site draws THE NOT-FOUND PANEL, which is F24’s screen again', () => {
-      // §6.4 predicted "a site that renders, a nav, and an admin panel whose
-      // every write is refused". What a person actually gets is the not-found
-      // panel on their own home page: title "Site", the static string, no nav.
+    it('✅ F27 FIXED — the screen now NAMES the state instead of saying "not found"', () => {
+      // ⚠️ THIS SPEC USED TO ASSERT THE DEFECT, and it was right to. §6.4
+      // predicted "a site that renders, a nav, and an admin panel whose every
+      // write is refused". What a person actually got was the not-found panel
+      // on their own home page — one sentence shared with a genuine draft
+      // (SB-008) and a policy-refused read (F24), three causes wanting three
+      // different fixes, and the one a person reaches for first is turning the
+      // publication boundary off.
       //
-      // 🔴 That screen now has THREE causes that are pixel-identical — a
-      // genuine draft (SB-008), a policy-refused read (s11 F24), and this, an
-      // empty site nobody could claim. They want three different fixes, and the
-      // one a person reaches for first is turning the boundary off.
+      // SB-015 §6.4a fixed the screen. What is asserted now is that this state
+      // identifies itself, and that it does NOT borrow either of the other two
+      // sentences.
       const v = reports['no-token'].rootVisit;
-      expect(v.text).toContain('That page could not be found.');
+      expect(v.text).toContain(NOT_SET_UP_TEXT);
+      expect(v.text).not.toContain(NOT_FOUND_TEXT);
+      expect(v.text).not.toContain(NOT_AVAILABLE_TEXT);
       expect(v.title).toBe('Site');
+
+      /**
+       * 🔴 The reading that fixed the fix. This arm's Page query FAILS — it
+       * does not come back empty — because `claimSite` is what creates the
+       * collections, so before it runs there is nothing to query:
+       *
+       *   [noodl] DbCollection2 (/Pages/Site): Failed to fetch.
+       *   [query-records/query-failed]
+       *
+       * The first version of the diagnosis read the failure before the missing
+       * settings row and reported this state as a refusal — true, and useless
+       * to the person who has to fix it. Pinned here because the console line
+       * is the evidence that the two conditions really are simultaneous.
+       */
+      expect(v.errors.join('\n')).toContain('query-records/query-failed');
+
       // …and the control renders a real page through the same instrument, so
       // this is a reading about the state and not about the browser.
-      expect(reports['with-token'].rootVisit.text).not.toContain('That page could not be found.');
+      expect(reports['with-token'].rootVisit.text).not.toContain(NOT_SET_UP_TEXT);
+      expect(reports['with-token'].rootVisit.text).not.toContain(NOT_FOUND_TEXT);
     });
 
     it('🔴 and the site they look at is EMPTY — not "renders with a nav"', () => {

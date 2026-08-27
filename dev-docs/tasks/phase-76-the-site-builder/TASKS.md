@@ -289,8 +289,48 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   🔴 **That screen now has THREE pixel-identical causes** — a genuine draft (SB-008), a
   policy-refused read (F24), and an empty site nobody could claim — wanting three different
   fixes, and **the one a person reaches for first is turning the boundary off**.
-  ⬜ Still not fixed; §6.4's two candidates stand, plus the new consideration that a correct
-  fix still leaves the not-found panel as the failure screen for everything else.
+  🔴 **F28 (s14) — BOTH of §6.4's candidates were unbuildable as written**, and the option
+  set was the wrong shape rather than the wrong number. *"The setup page mints and stores the
+  token"* cannot be built: the only door that writes the `functions` namespace is
+  `PUT /admin/secrets/:name`, admin-gated, and `devOpen: false` (which this template ships)
+  means gated on loopback too — so a template graph reaches it only by carrying an admin
+  credential. *"Provisioning seeds the token"* is self-defeating in its obvious form: a
+  minted value the author cannot read is not a fix, and the log is closed to it because
+  `SecretValueScrubber` redacts every `functions` value ≥8 chars — on a 5s refresh, so it
+  would leak the real token *sometimes* and print `REDACTED` otherwise.
+  ⚠️ **And F28's own first census was wrong**, which is the sixth instance of the phase's
+  shape and the first this task file produced itself. It said `/admin/secrets` had no caller;
+  the route is **mounted** and the three `backend:*` IPC channels **exist** — only the
+  renderer panel was missing. Two known grep lies stacked: `--include="*.ts"` excluded
+  `BackendManager.js`, and `HttpServer.ts` carries **one NUL byte** so grep skips it as
+  binary. 🔴 **The known-firing control fired and did not help**, because control and subject
+  were read through the same two blind spots — a control only bounds the error when it sits
+  on the *other* side of the suspected blindness.
+  ✅ **RULED s14 (Richard): build the missing Secrets panel** — the only shape that adds no
+  new credential path. ✅ **BUILT s14**, registered as the **eighth** backend surface, with
+  its decisions extracted to `secretsPanelModel.ts` because jest here is
+  `testEnvironment: 'node'` and the component cannot be mounted. **33 specs / 10 mutants, 10
+  killed**, and the spec pins the renderer's duplicated name-pattern and env-prefix against
+  the backend's own constants — nothing previously failed when those two copies disagreed.
+  ✅ **F27's SCREEN IS FIXED s14.** `diagnoseNotFound` drives the panel's text and
+  visibility: *That page could not be found.* / *This site has not been set up yet.* /
+  *This site’s pages are not available right now.* ⚠️ None names a credential, collection or
+  policy — all three are read by visitors, and a spec asserts it.
+  🔴 **Two orderings were wrong first, and only the drives caught them.** (1) An unclaimed
+  site makes the Page query **fail**, not return empty — `claimSite` creates the collections
+  — so "refused" and "not set up" are simultaneously true and the condition that *explains*
+  the other must win. (2) 🔴 **`claimed === false` is not evidence of an unclaimed site**: it
+  comes from the settings query's `items`, and a **refused** query publishes an empty `items`
+  exactly like an **empty** one (`Run` is additive, so the reader runs on `items` regardless
+  of `fetched`). Arm C of `sb015-default-policy-drive` is the refused case and was reporting
+  itself as "not set up". ✅ Fixed by wiring the settings query's **`error`** in beside it —
+  **the known-firing-signal rule in its exact form**.
+  🆕 **Three specs that ASSERTED the defect went red and were rewritten to assert the fix**
+  (§6.4c), and **one mutant stopped biting**: it found its target by script content, so when
+  visibility moved to a new node it mutated a node the assertion no longer read and
+  **survived**. It now resolves its target *through the wire* it asserts about. Its sibling
+  `toContain('if (Inputs.rows === undefined) return;')` was a source-text check pinning a
+  spelling; it now **runs** the script with no inputs and asserts nothing is published.
   🔴 **The finding that came free: `SITE_SECURITY` was a typed constant in a test helper**, so
   SB-008 measured a publication boundary produced by a file no project would ever receive.
   `helpers/site-drive.ts` now imports the shipped artefact — one copy, and what the drive

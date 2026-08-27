@@ -169,8 +169,42 @@ export const SECTION_SORT = [{ property: 'order', order: 'ascending' }];
 export const CONTACT_REFUSAL_TEXT = 'That message could not be sent.';
 /** And the one thing a successful one says. */
 export const CONTACT_SUCCESS_TEXT = 'Thanks — your message has been sent.';
-/** What a visitor sees at a slug that is not a published page. */
+/**
+ * What a visitor sees at a slug that is not a published page.
+ *
+ * 🔴 **SB-015 F27: this screen used to have three pixel-identical causes** — a
+ * genuine 404, a read the policy refused, and a site nobody has claimed — and
+ * they want three different fixes. The one an author reaches for first, on
+ * seeing this text on their own home page, is turning the publication boundary
+ * off, which is SB-015 §2's arm A. So the panel now says which of the three it
+ * is, computed by `diagnoseNotFound` below.
+ *
+ * ⚠️ All three strings are read by **visitors**, not only by the author, so none
+ * of them names a credential, a collection, a policy or a recovery step. The
+ * author-facing instruction belongs in the editor (the Secrets panel, SB-015
+ * §6.4a), not on a public page — a 404 that explains how the site is
+ * administered is a different defect.
+ */
 export const NOT_FOUND_TEXT = 'That page could not be found.';
+
+/**
+ * The site has no `SiteSettings` row, i.e. nobody has completed setup.
+ *
+ * This is what F27 actually measured: with `claimSite` refused there is no
+ * `SiteSettings` and no `Theme`, so there are no pages either and the *home*
+ * page 404s. Saying "not found" there is true and useless; this says the thing
+ * that is actually wrong.
+ */
+export const NOT_SET_UP_TEXT = 'This site has not been set up yet.';
+
+/**
+ * The page query was refused rather than answered (s11's F24).
+ *
+ * Deliberately NOT "not found": a refused read and an absent record are opposite
+ * conditions with opposite fixes, and reporting one as the other is how a
+ * policy problem gets diagnosed as a missing record.
+ */
+export const NOT_AVAILABLE_TEXT = 'This site’s pages are not available right now.';
 
 /** SB-004 §5's public endpoint. */
 export const FN_CONTACT = 'submitContactForm';
@@ -653,7 +687,72 @@ export const SITE_NODES = [
     // 🔴 `visible: false` is the authored default and it must stay standing until
     // a fetch has happened — see the module header on `isEmpty`. Nothing wired
     // here can publish before `pageQuery` has answered once.
+    //
+    // `text` keeps the plain 404 as its authored value so the node still reads
+    // correctly with nothing wired; `diagnoseNotFound` overwrites it on the two
+    // occasions it is wrong.
     parameters: { as: 'p', text: NOT_FOUND_TEXT, visible: false }
+  },
+  {
+    id: 'diagnoseNotFound',
+    type: 'JavaScriptFunction',
+    label: 'Which of the three empty screens is this?',
+    parameters: {
+      // 🔴 The guard is the same one `readPage` uses and for the same reason: a
+      // JavaScript function runs when ANY input arrives (`Run` is additive), so
+      // without it this node decides on a pre-fetch reading and publishes
+      // `visible: true` over a page that is about to render.
+      //
+      // `error` is only ever set by `pageQuery.failure`, so its presence — not
+      // its content — is the refusal signal. Nothing here reads the message,
+      // because the message is for the author's console and not for a visitor.
+      functionScript:
+        'const pageRefused = Inputs.error !== undefined && Inputs.error !== null && Inputs.error !== "";\n' +
+        'const settingsRefused = Inputs.settingsError !== undefined && Inputs.settingsError !== null && Inputs.settingsError !== "";\n' +
+        // 🔴 THE ABSENCE NEEDS A KNOWN-FIRING SIGNAL BESIDE IT, and this is
+        // where the drive caught the first version out. `claimed` is computed
+        // from the settings query's `items`, and a REFUSED query publishes an
+        // empty `items` exactly like an EMPTY one does — so `claimed === false`
+        // alone cannot tell "nobody set this site up" from "you may not read
+        // the settings". `sb015-default-policy-drive`'s arm C is the second
+        // case and was reporting itself as the first.
+        //
+        // The settings query's `error` is the signal that separates them, so a
+        // refused settings read is answered FIRST and never as "not set up".
+        'if (settingsRefused) {\n' +
+        '  Outputs.text = ' + JSON.stringify(NOT_AVAILABLE_TEXT) + ';\n' +
+        '  Outputs.visible = true;\n' +
+        '  return;\n' +
+        '}\n' +
+        // 🔴 ORDER IS LOAD-BEARING, and the drive is what established it. An
+        // unclaimed site makes the Page query FAIL rather than come back empty
+        // — nothing has created the collection, because `claimSite` is what
+        // writes the first rows. So "nobody has set this site up" explains the
+        // failure and must be read BEFORE it; with the two the other way round,
+        // the state F27 measured reported itself as a refusal.
+        //
+        // `=== false` and not `!Inputs.claimed`: undefined means the settings
+        // query has not answered, which is not the same as answering "no row".
+        'if (Inputs.claimed === false) {\n' +
+        '  Outputs.text = ' + JSON.stringify(NOT_SET_UP_TEXT) + ';\n' +
+        '  Outputs.visible = true;\n' +
+        '  return;\n' +
+        '}\n' +
+        'if (pageRefused) {\n' +
+        '  Outputs.text = ' + JSON.stringify(NOT_AVAILABLE_TEXT) + ';\n' +
+        '  Outputs.visible = true;\n' +
+        '  return;\n' +
+        '}\n' +
+        // The abstain, and it is what keeps the authored `visible: false`
+        // standing until something has actually answered.
+        'if (Inputs.missing === undefined) return;\n' +
+        'if (!Inputs.missing) {\n' +
+        '  Outputs.visible = false;\n' +
+        '  return;\n' +
+        '}\n' +
+        'Outputs.text = ' + JSON.stringify(NOT_FOUND_TEXT) + ';\n' +
+        'Outputs.visible = true;'
+    }
   },
 
   { id: 'pageInputs', type: 'PageInputs', label: 'The slug from the URL', parameters: { pathParams: 'slug' } },
@@ -674,6 +773,10 @@ export const SITE_NODES = [
         'const rows = Inputs.rows || [];\n' +
         'const first = rows[0] ? rows[0].data || rows[0] : {};\n' +
         "Outputs.siteName = first.siteName || '';\n" +
+        // 🔴 SB-015 F27. A `SiteSettings` row is what `claimSite` mints, so its
+        // absence IS "nobody has set this site up" — the state that used to
+        // render as an ordinary 404 on the author's own home page.
+        'Outputs.claimed = rows.length > 0;\n' +
         "Outputs.homeSlug = first.homeSlug || 'home';"
     }
   },
@@ -846,7 +949,19 @@ export const SITE_WIRES = [
   { fromId: 'pageQuery', fromProperty: 'fetched', toId: 'readPage', toProperty: 'run' },
 
   { fromId: 'readPage', fromProperty: 'out-title', toId: 'pageTitle', toProperty: 'text' },
-  { fromId: 'readPage', fromProperty: 'out-missing', toId: 'notFound', toProperty: 'visible' },
+  // 🔴 SB-015 F27: `notFound` is no longer driven straight off `missing`. The
+  // three causes reach `diagnoseNotFound`, which decides both the text and
+  // whether the panel shows at all.
+  { fromId: 'readPage', fromProperty: 'out-missing', toId: 'diagnoseNotFound', toProperty: 'in-missing' },
+  { fromId: 'readSettings', fromProperty: 'out-claimed', toId: 'diagnoseNotFound', toProperty: 'in-claimed' },
+  // The refusal arm. `error` publishes only when the query fails, so its
+  // presence is the signal and nothing has to listen for `failure` separately.
+  { fromId: 'pageQuery', fromProperty: 'error', toId: 'diagnoseNotFound', toProperty: 'in-error' },
+  // The settings query's own refusal, which is what separates "not set up"
+  // from "you may not read this" — see the node's script.
+  { fromId: 'settings', fromProperty: 'error', toId: 'diagnoseNotFound', toProperty: 'in-settingsError' },
+  { fromId: 'diagnoseNotFound', fromProperty: 'out-visible', toId: 'notFound', toProperty: 'visible' },
+  { fromId: 'diagnoseNotFound', fromProperty: 'out-text', toId: 'notFound', toProperty: 'text' },
   // ✅ The metatag half that DOES work from the port (`Page.tsx:162-168`).
   { fromId: 'readPage', fromProperty: 'out-seoDescription', toId: 'page', toProperty: 'description' },
   // 🔴 And the half that does not: the title goes through `Noodl.SEO`.

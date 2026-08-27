@@ -43,7 +43,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { SB004_COMPONENTS } from '../../noodl-mcp/tests/sb004Components';
-import { NOT_FOUND_TEXT } from '../../noodl-mcp/tests/sb006Components';
+import { NOT_AVAILABLE_TEXT, NOT_FOUND_TEXT } from '../../noodl-mcp/tests/sb006Components';
 import { defaultSecurityConfig } from '../src/security/model';
 import { BackendService } from '../src/service';
 
@@ -408,40 +408,46 @@ describe('SB-015 — a template cannot carry its own permissions, driven', () =>
       expect(v.text).not.toContain('HOME-BODY-MARKER');
     });
 
-    it('🔴 renders a REFUSAL as the not-found panel — the same screen a draft draws', () => {
-      // The reading SB-015 §2 does not have, and the sharpest one here.
+    it('✅ FIXED (F27): a REFUSAL no longer draws the same screen as a draft', () => {
+      // ⚠️ THIS SPEC USED TO ASSERT THE DEFECT, and the assertion was correct
+      // when it was written. Arm C's published home page was pixel-for-pixel
+      // arm D's draft: same title, same headings, same "That page could not be
+      // found." A person was told a page they had just published did not exist,
+      // on every URL of their own site — the screen pointed at publishing and
+      // the cause was a permission file they had never seen.
       //
-      // §2 says the two failures look like each other's fix. They also both
-      // look like something that is not permissions at all: a 403 on
-      // `Page.find` reaches the site as an empty result, and an empty result is
-      // what an unpublished slug produces. So arm C's PUBLISHED home page is
-      // pixel-for-pixel arm D's DRAFT — same title, same headings, same text.
-      //
-      // A person in this state is being told "that page could not be found"
-      // about a page they just published, on every URL of their own site. The
-      // screen points at publishing; the cause is a permission file they have
-      // never seen and were never given.
+      // SB-015 §6.4a fixed it: `diagnoseNotFound` reads the page query's
+      // `error`, so a refused read and an absent record now say different
+      // things. What is asserted here is the DIFFERENCE, plus the control that
+      // the genuine draft still reads as an ordinary not-found — because a
+      // "fix" that changed both screens would have destroyed the distinction
+      // just as thoroughly by making everything say "refused".
       const refused = reports.devOpenOff.visits.root;
       const genuineDraft = reports.specified.visits.secret;
 
-      // The panel itself is the same one, down to the dead `Page` title port
-      // (F16) leaving the static component name in the tab.
+      // The refusal names itself, and is NOT the 404 sentence.
+      expect(refused.text).toContain(NOT_AVAILABLE_TEXT);
+      expect(refused.text).not.toContain(NOT_FOUND_TEXT);
+
+      // The control: a genuine draft is still an ordinary not-found.
+      expect(genuineDraft.text).toContain(NOT_FOUND_TEXT);
+      expect(genuineDraft.text).not.toContain(NOT_AVAILABLE_TEXT);
+
+      // 🔴 The two screens are now distinguishable by their text, which is the
+      // whole of the fix. Everything else about them is still alike — same dead
+      // `Page` title port (F16) leaving the static component name in the tab —
+      // and that is deliberately left standing: F16 is a separate finding and
+      // this spec must not quietly start covering it.
       expect({ title: refused.title, headings: refused.headings }).toEqual({
         title: genuineDraft.title,
         headings: genuineDraft.headings
       });
-      expect(refused.text).toContain(NOT_FOUND_TEXT);
-      expect(genuineDraft.text).toContain(NOT_FOUND_TEXT);
 
-      // 🔴 …and the one thing that IS different is not a cue about permissions.
-      // The genuine draft still draws the site's chrome, because the settings
-      // row and the nav query are answered; arm C loses those too, so the site
-      // reads as *empty* rather than as *refused*. Asserted rather than
-      // narrated, because "the pages look the same" would be false and the
-      // interesting claim is which part differs.
+      // Still true, and still the reason the refusal needed its own sentence:
+      // arm C loses the settings row and the nav too, so the site reads as
+      // empty rather than as refused everywhere except this one string.
       expect(genuineDraft.text).toContain('Kestrel Joinery');
       expect(refused.text).not.toContain('Kestrel Joinery');
-      expect(refused.text.trim()).toBe(NOT_FOUND_TEXT);
     });
 
     it('🔴 leaves its only trace in the console, which nothing structural reads', () => {
