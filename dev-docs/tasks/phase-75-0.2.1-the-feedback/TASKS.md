@@ -253,7 +253,15 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
   with "nobody else answered". **Measured on production**: `de14371e…` still returns
   `replyCount: 1, accepted: true, firstReplyMinutes: null` — an accepted question calling itself
   unanswered — beside `2abd111a…` with `replyCount: 0`, which is the honest negative control.
-  ⚠️ **What is genuinely left is a drive**: nobody has looked at the row in a running editor.
+  ✅ **AND NOW DRIVEN (s57), so §7 is fully closed.** Launcher → Community → Bench, against
+  production: the **Waiting** pill draws `2abd111a…` as *"no reply yet"* and the **Solved** pill
+  draws `de14371e…` as *"no reply from anyone else yet"* — asserted on the **React key**, because
+  both rows carry the same title, author and age and `firstReplyMinutes` is `null` on both, so
+  painted text can never separate them. The thread pane draws the new sentence above an accepted
+  answer written **by the asker**, which is the consequence and not just the mechanism. The health
+  readout still counts **both** as `unreplied` (D16 unchanged). ⚠️ The rail panel was not driven
+  and need not be: `replyLatency`'s row call site is *inside the shared component*
+  (`CommunityBenchView.tsx:136`), grepped — there is no second renderer to drift.
 - 🧭 FIX-026 — restore source decision (a)/(b), then build
 - 🟡 FIX-027 — 14/15/16 🧭 · 17 ⬜ · 19/20 ⬜ · 22 🧭 · `state-on-a-page` needs a home ⬜
 - 🧭 `tsfixme` baseline decision

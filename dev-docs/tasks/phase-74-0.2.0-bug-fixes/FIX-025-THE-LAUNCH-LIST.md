@@ -62,7 +62,7 @@ with the double cast and `string` without it.
 | 4 | Learning tab says "Sign in" while signed in | `useLearnerPath.ts` | ✅ |
 | 5 | Signed-out intake questions look answerable | `LearnerPathSection.tsx` | ✅ |
 | 6 | `POST /me/intake` → 500 | platform `pathing.ts` | ✅ **deployed `c5d3ad5`, PROVED** |
-| 7 | Answered question still says "no reply yet" | `useCommunityMirror.ts`, then `communityMeta.ts` | ✅ **second cause FIXED 08-27** |
+| 7 | Answered question still says "no reply yet" | `useCommunityMirror.ts`, then `communityMeta.ts` | ✅ **CLOSED 08-27 — fixed and DRIVEN** |
 | 8 | Current step shows two check icons | `LessonLayerView.css` | ✅ |
 | 9 | "Check my work" doesn't explain itself | `lessonconditioncopy.ts` | ✅ |
 | 10 | Long step description overflows, can't scroll | `LessonLayerView.css` | ✅ |
@@ -399,9 +399,41 @@ the detail page (1) · payload count instead of drawn answers (1). ⚠️ Note t
 control — *a question nobody answered still says "no reply yet"* — is what kills the
 over-correction, and **every other row is satisfied by a function that simply stopped saying it**.
 
-⚠️ **Still not driven in a running editor.** The strings and the wiring are graded from the
-runner; nobody has looked at the row. That is a smaller gap than it was — the render spec walks
-the real component with the real composer — but it is not a drive.
+✅ **DRIVEN IN A RUNNING EDITOR 2026-08-27 (s57), on the launcher's Community → Bench, against
+production.** The last gap is closed, and the control pair drove as a pair:
+
+| filter | row identity (React key) | `replyCount` | `firstReplyMinutes` | drawn |
+|---|---|---|---|---|
+| **Waiting** (default) | `2abd111a-7400-4226-9403-154c70c68281` | 0 | `null` | *1 week ago · no reply yet* |
+| **Solved** | `de14371e-9c99-4b8d-a257-d024c6309608` | 1 | `null` | *1 week ago · no reply from anyone else yet* |
+
+🔴 **The two rows are indistinguishable by painted text and always were** — same title (*"Help with
+a Text node"*), same author, same age, and `firstReplyMinutes` is `null` on **both**. So the drive
+asserts on **identity**, reading `thread.id` back off the React key exactly as FB-002's drive had
+to. One click of a filter pill is what swaps them, and the sentence changes with the row: the field
+that did not change cannot be what produced the difference.
+
+⚠️ **The key is NOT on the host `<button>`.** `key={thread.id}` sits on the `CommunityRow`
+*component* element, so `el.__reactFiber$…` reads `key: null` and a drive that stops there gets
+nothing and may conclude the row is anonymous. Walk `fiber.return` until a non-null `key` appears.
+
+✅ **The thread pane — the second production caller — was driven in the same pass**, by clicking
+the solved row: it reads *"@richardosborne14 · 1 week ago · no reply from anyone else yet"*, and
+directly beneath it the **only** answer is by `@richardosborne14`, the asker, marked *Accepted
+answer*. 🔴 **That is the consequence rather than the mechanism**: the new sentence is not merely
+different, it is *true of what is on the screen*. The old string is absent from that pane
+(`/no reply yet/` → false, `/no reply from anyone else yet/` → true).
+
+✅ **The launcher's health readout still speaks off the same null**, as the fix promised: *"no
+replies yet (n=0, 2 unreplied), target under 24h"* — **both** threads still counted `unreplied`,
+which is correct under D16, since nobody else has replied to either. So the row learned to
+distinguish the two cases without the threshold losing either of them.
+
+✅ **The rail panel was NOT driven, and does not need to be — that is grepped, not assumed.**
+`replyLatency` has exactly two production call sites, and the row's is
+`CommunityBenchView.tsx:136`, *inside the shared component both surfaces render*. There is no
+second row renderer that could drift, which is the same one-place property that made this a
+one-sentence fix.
 
 ⚠️ **Not deployed, and nothing to deploy** — this is editor-side only and ships with the app. The
 platform was not touched, and should not be.
