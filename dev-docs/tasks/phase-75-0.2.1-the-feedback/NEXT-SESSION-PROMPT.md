@@ -1,126 +1,142 @@
 # Next session — phase 75
 
-_Written 2026-08-27 at the end of the session that **committed** FB-025/026/027 and closed the two
-items the drives had left. Read `TASKS.md` for the rest of the phase; this file is only about what
-that session left._
+_Written 2026-08-27 at the end of session 56, which closed **FIX-025 bug 7's second cause** and
+found that the note describing it was wrong in the two places that made it look expensive. Read
+`TASKS.md` for the rest of the phase; this file is only about what that session left._
 
 ## What happened
 
-The previous two sessions built, gated and drove Richard's three bugs and committed **none** of
-them. This session committed all of it and cleared both follow-ups. **Nothing from that batch is
-outstanding.**
+The previous session committed Richard's FB-025/026/027 batch and left nothing carried over, so
+this one took the cheapest item the index offered — **FIX-025 §5/§7/§12, "built, need the editor
+drive"**. 🔴 **That index line was stale in all three places**, and checking it was most of the
+value:
 
-Seven commits on `cline-dev`, none pushed — the six below plus this handoff:
+* **§12** had been **driven on 08-25**; the line had simply not been updated.
+* **§5** is a deliberate park, not open work: the render decision is already specced, and the only
+  unseen thing is the live signed-out launcher, which means signing out of Richard's live
+  community session on this machine.
+* **§7** was the only real item — and it was **not** the "decision rather than a patch" the note
+  claimed.
 
-| | |
-|---|---|
-| `27f16f8b` | **FB-025** — the drain order is stated instead of inherited |
-| `26dcc51c` | **FB-026** — a Number-typed Text Input publishes a number |
-| `c4ec2103` | **FB-027** — copy takes the stack, not one block |
-| `b5a624a4` | the `TASKS.md` index says driven, because they are |
-| `13499279` | **`Set Variable` measured** — it must stay `known: false` |
-| `1eea0dd2` | **the docs gate can no longer grade a stale catalog** |
-
-Gates before committing, one suite at a time: `noodl-runtime` **2555**, `noodl-viewer-react`
-**1079**, editor `test:main` **5791**, `test:ci` **2856 specs / 4 failures** at `3697ebcd` — the
-four by name, all `AIX-006 style vocabulary`, which is the documented floor.
+**Two commits on `cline-dev`, neither pushed** (`63fb8b64` the fix, plus this handoff).
 
 ## Start here
 
-**There is no carried-over work from Richard's batch.** Pick the next thing from `TASKS.md`; the
-largest open items are FB-012 (tutorials + share/export) and FB-009 (a syllabus you can start),
-both waiting on content from Richard, and FB-005's blocker is content too. FIX-025 §5/§7/§12 are
-built and need an editor drive, which is the cheapest real work on the list.
+**Nothing is carried over from §7.** The largest open items in `TASKS.md` are still FB-012
+(tutorials + share/export) and FB-009 (a syllabus you can start), both waiting on content from
+Richard, and FB-005's blocker is content too. **FB-013 has real buildable remainder**: C4 (the
+launcher tab), C5, and **R-chat-mod** — the moderation-posture question the ruling required be
+asked, with a recommendation already written in `FB-013-SCOPE.md` §8.
 
-⚠️ **Nothing is pushed.** Seven commits sit on `cline-dev`. ⚠️ **A peer's commit interleaved with
-them** — `85a58b4c` (`docs(exp-002)`, the Logic Builder paper design) is **not this lane's**, so
-`3697ebcd..HEAD` is not a clean read of this session's work.
+⚠️ **The one thing §7 still owes is a drive.** The strings and the wiring are graded from the
+runner and the render spec walks the real component with the real composer, but nobody has looked
+at the row in a running editor.
 
-## The two follow-ups, and why neither ended where the last handoff expected
+## 🔴 The harness trap that cost this session an hour — read this before you run `test:ci`
 
-### 1. `Set Variable` — the last handoff was wrong, and the measurement is the finding
+**`packages/noodl-editor/.webpack-cache` can enter a state where the test-ci build reports 44
+unresolved-alias errors** (`@noodl-store/*`, `@noodl-versioning`, `@noodl-viewer-cloud/*`) plus 3
+"TypeScript emitted no output" errors, on a tree that compiles perfectly. Every alias target exists
+on disk, and `tsc -p packages/noodl-editor` reads **0** at the same moment.
 
-It said *"`Set Variable` is still misclassified (`known: false`), though `RESIDUE_REASONS` describes
-it as exactly the shape FB-026 added `RETYPES_DECLARED_PORTS` for. One line plus a measurement."*
+🔴 **It reproduces at plain `HEAD` with your changes fully reverted** — that is the measurement
+that settles it. `rm -rf packages/noodl-editor/.webpack-cache` made **both** arms compile cleanly
+(63s cold, vs 13–22s poisoned-and-failing).
 
-🔴 **It is not that shape, and adding the line would have published a lie.** `value` is **not a
-declared port** — `setvariablenode.ts` declares `name`, `setWith` and `do`, and `value` is minted at
-runtime by `registerInputIfNeeded`. Text Input declares both value ports as `'*'` and only
-**narrows** them; this port has no static existence to narrow. Worse, with
-`setWith === 'emptyString'` the hook publishes **no ports at all** — the port does not change type,
-it **disappears**.
+⚠️ **Two wrong attributions were one step away, and both were nearly published.** First a peer was
+running three `webpack` watchers for a `dev:debug` stack, so *"contamination window = the webpack"*
+fitted perfectly — I messaged them and took a hold they did not owe. Then a control build at HEAD
+passed while the treatment failed, which read as *deterministically mine* — until the next HEAD
+build failed too. **The held-constant was the cache, and it was not constant.** A reading that fits
+is not one that excludes; here two different stories fitted in the same ten minutes.
 
-✅ **The measurement was the guard itself, not an argument**: the entry was added to
-`RETYPES_DECLARED_PORTS`, `catalog:generate` was run, and `retypesEncoding` threw — *"its setup
-published `value` — not in its static port list"*. `runtime-discovered` and `known: false` are both
-telling the truth for this node. Recorded in `derive-encoding.js` where the open question used to
-be, so nobody re-opens it.
+✅ Clearing it is safe beside a peer's live editor: it is gitignored, and only `webpack.test.js` /
+`webpack.test-ci.js` use it — `webpack.renderer.dev.js` is `cache: false`.
 
-### 2. `docs:nodes:check` — the hole was real, and narrower than described
+## What §7 actually was, and why the old note made it look bigger
 
-The handoff said the check *"grades a stale input"*. True, and reproduced before fixing: mutating one
-`docs` field in `node-catalog.json` and re-running printed **"clean. 194 generated files match 175
-catalog nodes"**.
+The note said the platform *"sends `firstReplyMinutes: null` on a thread with `replyCount: 1`"*,
+that an answered thread therefore *"reads unanswered on every surface, web included"*, and that it
+was *"unowned, and a decision rather than a patch"*.
 
-⚠️ **But `catalog:merge:check` caught the same mutation**, so the sweep as a whole was never blind —
-the defect was a docs gate that only works while somebody remembers to run a different gate beside
-it. That is what the guard replaces.
+🔴 **The platform is not defective, and that is the finding.** `firstReplyMinutes` is computed by
+`nodegx-community/src/lib/bench.ts` as the first post **by another account**, on purpose — D16's
+threshold is about people coming back — and `uni015-bench.test.ts` has asserted exactly that since
+UNI-015 (*"the first-reply clock ignores the asker answering themselves"*). `replyCount` counts
+every visible post after the first, the asker's own included. The two disagree **precisely** when
+somebody answers their own question, and **both are true**. There was no number to fix.
 
-The comparison is exact rather than heuristic, because `merge.js` copies structural nodes through
-verbatim as `{ ...n, enrichment }` — stripping `enrichment` must give back `node-catalog.json`
-exactly. It runs in **both** modes: generating pages from a stale catalog is the worse half, because
-it bakes the staleness in and `--check` then agrees with them. A missing or unparseable structural
-catalog is an **error, not a skip**.
+🔴 **And the web never drew it.** `firstReplyMinutes` appears nowhere under
+`nodegx-community/src/app` or `src/components` — it feeds the threshold and nothing else. So there
+was no second surface, and therefore no cross-surface decision to take.
 
-🔴 **8 rows in `tests-unit/alpha-006/docsCatalogFreshness.test.ts`, and the one that matters is the
-negative control** — *"accepts a catalog that differs only by enrichment"*. Every other row is
-satisfied by a guard that throws unconditionally. Two mutants prove they discriminate: disabling the
-guard reddens 5, and forgetting to strip `enrichment` reddens **only** that one.
+✅ **What was left is one sentence**: `replyLatency` rendered a value about *replies by other
+people* as a claim about *replies*. It now takes `replyCount` and says **"no reply from anyone else
+yet"** when the asker has replied. ⚠️ The old note's one correct half is honoured — the row still
+*speaks* in both null branches, because the launcher draws "N unreplied" off the same null.
 
-## The drive rig, still there, still worth not rebuilding
+## The measurements worth not repeating
 
-`NodeGX test projects/fb025-drive` — a Text Input into a Visual Function, plus a second Number-typed
-Text Input into a declared `number` input. **`REBUILD-FIXTURE.py` sits beside it**; re-run it for a
-clean copy, because driving FB-027 mangles the Blockly workspace.
+✅ **Production is the fixture, and it is a control pair.**
+`curl https://community.nodegx.io/api/v1/community/threads` (2026-08-27, re-measured not relayed)
+returns two threads with the same title and author, **both `firstReplyMinutes: null`**:
 
-🔴 **Authoring the `Run` connection before the value connection in `project.json` does NOT reproduce
-FB-025.** A project *loaded from disk* gets the value port's queue key created first, so the graph is
-correct even on the unfixed runtime — a drive that stops there records a pass on an arrangement that
-was never broken.
+| thread | `replyCount` | `accepted` | drew before | draws now |
+|---|---|---|---|---|
+| `de14371e…` | 1 | **true** | *no reply yet* | *no reply from anyone else yet* |
+| `2abd111a…` | 0 | false | *no reply yet* | *no reply yet* |
 
-✅ **What reproduces it is Richard's build order, performed live:** unwire the value port → reload
-the viewer → type one character → wire the value port back **into the running graph**. Read the order
-directly:
+**Row 1 is Richard's bug, still live on production.** The pair is what makes the spec honest: they
+used to render the identical string, so reading one field cannot tell them apart however it is
+worded. ⚠️ This also re-confirms `replyCount` is **on the wire** — the scar in `communityapi.ts`
+says a declared field must be verified there and not read off the platform's source.
 
-```js
-Object.keys(vfNode._inputValuesQueue)   // ["workspace","generatedCode","run","x"] = the broken order
-```
+✅ **A local Postgres reproduced the mechanism**, without Docker: brew `postgresql@16` is running
+on **5432**, and a scratch database (`createdb`, then `DATABASE_URL=postgres://richardosborne@127.0.0.1:5432/<db>`)
+runs the community suite fine. The repo's own default is port **55432** (the docker-compose one),
+and **the Docker daemon is not running on this machine**. Staged printout: asked → asker
+self-replies (`replyCount=1, firstReplyMinutes=null`) → that reply accepted (**the bug**) →
+a stranger replies (`replyCount=2, firstReplyMinutes=0`, cleared).
 
-✅ **Reaching the viewer's live runtime** (there is no global): walk any rendered node's
-`__reactFiber$` up to a fiber whose `memoizedProps.noodlRuntime` exists, then
-`rt.rootComponent.nodeScope.getAllNodesRecursive()`.
+## 🔴 The mutant that mattered
 
-✅ **`scripts/devtools/cdp.js` still has no right-click and no key command.** The ~90-line CDP helper
-FB-027 needed — real `Input.dispatchMouseEvent` with `button:'right'`, and `Input.dispatchKeyEvent`
-chords with `Emulation.setFocusEmulationEnabled` **on the same connection** — is still not folded
-into `cdp.js`. It will be wanted a third time.
+`replyCount` had to travel `ForumThread` → `composeBench` → `CommunityBenchRow` → the row. Severing
+**only the last hop** — `replyLatency(thread.firstReplyMinutes, 0)` in `CommunityBenchView.tsx` —
+reddens **2 render specs while all 29 unit specs stay green**. A correct function that nothing
+hands the right argument to is the same screen as no fix at all, and the unit specs alone would
+have shipped it.
+
+**8 mutants, all killed**: revert (2 red) · over-correct to always-the-new-sentence (4) · `>= 0`
+boundary (4) · go silent (2) · drop the wire guard (1) · sever the wiring (2 render) · pass `0` on
+the detail page (1) · payload count instead of drawn answers (1).
+
+⚠️ **Note the shape**: the **negative control** — *a question nobody answered still says "no reply
+yet"* — is the only row that kills the over-correction. Every other assertion is satisfied by a
+function that merely stopped saying the old sentence.
+
+## Two smaller things this session established
+
+- ✅ **`replyCount` is a REQUIRED parameter, not optional.** An optional one is a hole shaped like
+  this defect: a caller that forgets it gets the wrong sentence silently, which is the state the
+  function was already in. Required, the compiler names every call site.
+- 🔴 **`tsc -p packages/noodl-editor` does NOT typecheck `tests-unit/`, but ts-jest does.** The
+  typecheck read 0 while `uni-011/mirrorview.test.ts` held `ForumThread` literals missing the new
+  field; `test:main` then reported **`Tests: 0 total`** for that file — a suite that failed to
+  *run*, not to pass. ⚠️ `**/*.stories.tsx` is excluded from that tsconfig outright, so story call
+  sites compile nowhere and must be fixed by hand.
 
 ## Standing facts for this area
 
-- `test:ci` floor is **4**, all `AIX-006 style vocabulary`. ✅ **Confirmed on the committed tree**:
-  a peer's run at `c37cab73` — this lane's last commit, so all seven are in it — read 2856 / 4,
-  the same four by name, in **65s**, seed **80902**. This session's own run read the same 2856 / 4
-  at seed **15442**, so the floor is not a seed artefact. **Quote the tree, not the seed.**
-  ⚠️ **This session's own run graded the fixes while they were still uncommitted** and therefore
-  recorded `gitHead 3697ebcd`, which does not name them; the `c37cab73` reading is the one with
-  real provenance for the committed code. Verified from `test-results.json` directly (mtime
-  21:20:30), not relayed.
-- The three suites, in order and **never two at once**: `noodl-runtime` (2555),
-  `noodl-viewer-react` (1079), editor `test:main` (5791 + 8 new = 5799 mine), then `test:ci`.
-- ✅ **The sb-007 red is gone** — it was a peer mid-edit on `site-builder.content.json` (SB-015 F27
-  gained a node, 192→193) and they fixed the count. Recorded because the *method* is the reusable
-  part: **mtime + `git status` attributed it in one step**, and the spec file itself had not been
-  touched since 08-26. Check both before attributing an editor red to your own change.
-- ⚠️ **A peer is active in this tree** (Secrets panel, backend specs). Announce before any suite.
+- `test:ci` floor is **4**, all `AIX-006 style vocabulary`. ✅ Re-confirmed this session:
+  **2856 specs / 4 failures**, the same four by name, seed **57633**, `test-results.json` mtime
+  22:06:30 read directly. ⚠️ Its `gitHead` reads `640bbfe3` because the fix was still uncommitted
+  when it ran — the documented caveat, not a different tree. **Quote the tree, not the seed.**
+- The suites, in order and **never two at once**: `noodl-runtime` (2555), `noodl-viewer-react`
+  (1079), editor `test:main`, then `test:ci`. This session ran `test:main` (**354 / 5840 / 0**) and
+  `noodl-core-ui` (**28 / 527 / 0**); runtime and viewer-react were untouched and not run.
+- ⚠️ **A peer is active in this checkout** (P76 / SB-015, a `dev:debug` stack on CDP 9222 plus the
+  sb015 backend on 8588). `test:main` really is safe beside it; the `test:ci` webpack scare above
+  was **not** their doing.
 - ⚠️ `AskAboutNodeDialog.module.scss` has been uncommitted since **08-20** and belongs to nobody in
-  this lane. Leave it; it is not ours to commit.
+  this lane. Still there. Leave it.
+- ⚠️ **`nodegx-community` was not touched** and needs no deploy from this work.

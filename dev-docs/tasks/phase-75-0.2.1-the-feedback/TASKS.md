@@ -243,7 +243,17 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
 
 ## Carried from phase 74 (work lives in `phase-74-0.2.0-bug-fixes/`)
 
-- ⬜ FIX-025 §5/§7/§12 — built, need the editor drive
+- 🟡 FIX-025 — **this line was stale in all three places, corrected 2026-08-27 (s56).** §12 was
+  **driven 08-25**; §5 is a deliberate park (seeing it means signing out of Richard's live
+  community session, and the render decision is already specced); **§7 is CLOSED** — its second
+  cause was fixed, specced and mutation-graded this session. 🔴 **The note that made §7 look
+  expensive was wrong twice**: the platform is not defective (`firstReplyMinutes` counts replies
+  *by other people*, on purpose, and D16 needs it that way), and the web never drew the sentence
+  at all — so there was no cross-surface decision, only a renderer conflating "nobody answered"
+  with "nobody else answered". **Measured on production**: `de14371e…` still returns
+  `replyCount: 1, accepted: true, firstReplyMinutes: null` — an accepted question calling itself
+  unanswered — beside `2abd111a…` with `replyCount: 0`, which is the honest negative control.
+  ⚠️ **What is genuinely left is a drive**: nobody has looked at the row in a running editor.
 - 🧭 FIX-026 — restore source decision (a)/(b), then build
 - 🟡 FIX-027 — 14/15/16 🧭 · 17 ⬜ · 19/20 ⬜ · 22 🧭 · `state-on-a-page` needs a home ⬜
 - 🧭 `tsfixme` baseline decision

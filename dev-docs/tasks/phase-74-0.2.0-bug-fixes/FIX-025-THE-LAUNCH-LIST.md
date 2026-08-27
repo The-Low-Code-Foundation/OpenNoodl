@@ -62,7 +62,7 @@ with the double cast and `string` without it.
 | 4 | Learning tab says "Sign in" while signed in | `useLearnerPath.ts` | ✅ |
 | 5 | Signed-out intake questions look answerable | `LearnerPathSection.tsx` | ✅ |
 | 6 | `POST /me/intake` → 500 | platform `pathing.ts` | ✅ **deployed `c5d3ad5`, PROVED** |
-| 7 | Answered question still says "no reply yet" | `useCommunityMirror.ts` | ✅ |
+| 7 | Answered question still says "no reply yet" | `useCommunityMirror.ts`, then `communityMeta.ts` | ✅ **second cause FIXED 08-27** |
 | 8 | Current step shows two check icons | `LessonLayerView.css` | ✅ |
 | 9 | "Check my work" doesn't explain itself | `lessonconditioncopy.ts` | ✅ |
 | 10 | Long step description overflows, can't scroll | `LessonLayerView.css` | ✅ |
@@ -327,12 +327,81 @@ fixture so *"no violation found"* cannot quietly mean *"the rule was never locat
   question-count assertion and a no-sign-in-door control. What is unseen is only the **live
   signed-out launcher**, and seeing it still means signing out of Richard's live community
   session on this machine. Not done, and not worth his session.
-- **Bug 7** (mirror reply) — specced, not driven; it needs a real answered thread. ⚠️ And there
-  is a **second cause of the same sentence that the editor fix cannot reach**: the platform
-  sends `firstReplyMinutes: null` on a thread with `replyCount: 1`, and
-  `communityMeta.ts:98` turns `null` minutes into *"no reply yet"* unconditionally, so an
-  answered thread reads unanswered **on every surface, web included**. 🔴 **Do not patch
-  `replyLatency` to check `replyCount` without deciding the other half**: its own docstring
-  says `null` minutes is what the health readout counts as `unreplied`, so the tab's count is
-  wrong by the same data and fixing only the row would leave the two disagreeing. Unowned, and
-  it is a decision rather than a patch.
+- **Bug 7** (mirror reply) — ✅ **FIXED 2026-08-27**, and the note that stood here was wrong in
+  the two places that made it look expensive. It is written out below rather than edited away,
+  because the correction is the reusable part.
+
+### ✅ Bug 7 — CLOSED 2026-08-27, and the "decision" was a sentence
+
+This line used to read: *"a second cause of the same sentence that the editor fix cannot reach…
+an answered thread reads unanswered on every surface, web included… Unowned, and it is a decision
+rather than a patch."* **Two of those claims do not survive being checked.**
+
+🔴 **THE PLATFORM IS NOT DEFECTIVE, AND THAT IS THE WHOLE FINDING.** `firstReplyMinutes` is
+computed by `nodegx-community/src/lib/bench.ts` as the first post **by another account**, on
+purpose — D16's threshold is about people coming back, and `uni015-bench.test.ts` has asserted
+that intent since UNI-015 (*"the first-reply clock ignores the asker answering themselves"*).
+`replyCount` counts every visible post after the first, the asker's own included. So the two
+disagree **exactly** when somebody answers their own question, and **both are telling the truth**.
+There was never a number to fix, and D16's health readout is right as it stands.
+
+🔴 **AND THE WEB NEVER DREW IT.** *"On every surface, web included"* is false: `firstReplyMinutes`
+appears nowhere under `nodegx-community/src/app` or `src/components` — it feeds the threshold and
+nothing else. The sentence existed in **exactly one place**, `communityMeta.replyLatency`, with two
+production callers. So there was no second surface to keep in agreement, and therefore no decision:
+the cross-surface disagreement the old note warned about could not arise.
+
+✅ **What it actually was: `replyLatency` rendered a value about *replies by other people* as a
+claim about *replies*.** It now takes `replyCount` and says **"no reply from anyone else yet"**
+when the asker has replied, and keeps **"no reply yet"** when nobody has. ⚠️ **The old note's one
+correct half is honoured**: the row still *speaks* in both null branches, because the launcher
+draws "N unreplied" off the same null and a silent row would leave that number accounted for by
+nothing on the page.
+
+✅ **MEASURED, NOT ARGUED — and production is the fixture.**
+`curl https://community.nodegx.io/api/v1/community/threads` on **2026-08-27** returns two threads,
+same title, same author, **both `firstReplyMinutes: null`**:
+
+| thread | `replyCount` | `accepted` | drew before | draws now |
+|---|---|---|---|---|
+| `de14371e…` | 1 | **true** | *no reply yet* | *no reply from anyone else yet* |
+| `2abd111a…` | 0 | false | *no reply yet* | *no reply yet* |
+
+**The first row is Richard's bug 7, still live on production today** — an accepted, answered
+question calling itself unanswered. **The pair is the control**: before the change they rendered
+the identical string, which is why reading only `firstReplyMinutes` can never tell them apart
+however it is worded. Both rows are now spec fixtures in `nat-005/community-meta.test.ts` and
+`fb-002/bench-filter-render.test.tsx`.
+
+⚠️ **The mechanism was reproduced against a real Postgres too**, not only read off production:
+asked → asker self-replies → that reply accepted → a stranger replies, printing the row at each
+stage. Stage 3 is the bug (`replyCount=1, accepted=true, firstReplyMinutes=null`); stage 4 clears
+it (`replyCount=2, firstReplyMinutes=0`).
+
+✅ **`replyCount` is a REQUIRED parameter, not an optional one.** An optional argument would be a
+hole shaped like this exact defect — a caller that forgot it gets the wrong sentence, silently,
+which is the state the function was already in. Required, the compiler names every call site.
+
+🔴 **On the thread page the count is `answers.length`, NOT the payload's `replyCount`**, because
+that screen already draws its heading from the visible answers. Feeding the payload's number to
+the meta line would let one page say *"No answers yet — you could be the first."* directly above a
+line conceding somebody had replied. Same number, so they cannot disagree.
+
+🔴 **THE UNIT SPECS COULD NOT HAVE CAUGHT THE WIRING, AND A MUTANT PROVES IT.** `replyCount` had to
+reach the row through `ForumThread` → `composeBench` → `CommunityBenchRow`. Severing just the last
+hop — `replyLatency(thread.firstReplyMinutes, 0)` in `CommunityBenchView.tsx` — reddens **2 render
+specs while all 29 unit specs stay green**. A correct function nothing hands the right argument to
+is the same screen as no fix at all.
+
+**8 mutants, all killed**: revert (2 red) · over-correct to always-the-new-sentence (4) · `>= 0`
+boundary (4) · go silent (2) · drop the wire guard (1) · sever the wiring (2 render) · pass `0` on
+the detail page (1) · payload count instead of drawn answers (1). ⚠️ Note the shape: the negative
+control — *a question nobody answered still says "no reply yet"* — is what kills the
+over-correction, and **every other row is satisfied by a function that simply stopped saying it**.
+
+⚠️ **Still not driven in a running editor.** The strings and the wiring are graded from the
+runner; nobody has looked at the row. That is a smaller gap than it was — the render spec walks
+the real component with the real composer — but it is not a drive.
+
+⚠️ **Not deployed, and nothing to deploy** — this is editor-side only and ships with the app. The
+platform was not touched, and should not be.
