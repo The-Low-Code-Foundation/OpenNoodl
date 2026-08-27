@@ -257,11 +257,22 @@ connections and stops has not fixed `claimSite`.
 
 Superseding §7 where they differ, and keeping its numbering:
 
-1. Unchanged, and now stated precisely enough to write: for the shipped template's seven cloud
-   components, the editor's deploy path and `authored-bundle.ts` emit the **same 100
-   connections**. Today the editor emits 49. **Write it before the fix so it goes red**, and
-   assert per-component counts, not a total — a total can be right while two components are
-   wrong in opposite directions.
+1. ✅ **WRITTEN AND RED (s16)** — `noodl-editor/tests/cloud/sb017-deploy-connection-parity.test.ts`.
+   For the shipped template's seven cloud components the editor's deploy path must emit the
+   **same 100 connections**; today it emits 49, asserted per component rather than as a total
+   (a total can be right while two components are wrong in opposite directions).
+   ✅ **The deployed bundle is vendored** as `tests/cloud/fixtures/sb017-deployed-bundle.workflow.json`,
+   byte-identical to the drive's (md5 `57360404…`). It had lived only in `~/.noodl/backends/`,
+   where the Backend Services overflow menu deletes it with no confirmation — a reference
+   artefact one menu click and ~20 minutes of driving from being unreproducible.
+   Two further cases ride on it, and **both stay green after the fix**:
+   *the deployed bundle is a strict subset of the template* (a frozen record of the defect, and
+   proof the deploy only **drops** — no wire was re-pointed on the way out), and *the export
+   never loses a connection production already had* (a fix that reached 100 by re-pointing
+   wires rather than restoring them would satisfy every count and still be wrong).
+   🔴 Ids are compared **type-qualified**, as multisets — a project made from a template gets
+   fresh ids (F9), and `claimSite` holds two Response nodes, so de-duplicating would forgive a
+   lost wire.
 2. `claimSite` answers a real request and the site can be claimed from the Setup page.
    🔴 Needs **both** families (§6.4).
 3. `submitContactForm` answers **and stores the four submitted values** — the original wording

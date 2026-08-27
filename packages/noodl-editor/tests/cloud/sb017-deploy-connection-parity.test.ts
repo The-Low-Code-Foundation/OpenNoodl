@@ -53,6 +53,7 @@ import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 
+import deployedBundle from './fixtures/sb017-deployed-bundle.workflow.json';
 import cloudNodeLibrary from '../../src/editor/src/models/nodelibrary/cloud-node-library.json';
 import siteBuilderContent from '../../src/editor/src/models/template/templates/site-builder.content.json';
 import {
@@ -70,10 +71,62 @@ function connectionsOnDisk(): Record<string, number> {
   return counts;
 }
 
+
+/** Every node in a graph, flattened — `children` is a tree. */
+function flatten(roots: TSFixme[]): TSFixme[] {
+  const out: TSFixme[] = [];
+  const visit = (n: TSFixme) => {
+    out.push(n);
+    (n.children ?? []).forEach(visit);
+  };
+  roots.forEach(visit);
+  return out;
+}
+
+/**
+ * A component's connections as a multiset of type-qualified wires.
+ *
+ * Ids are useless across the two artefacts (F9), and a multiset keeps the two
+ * Response nodes in `claimSite` from collapsing into one.
+ */
+function wireCounts(nodes: TSFixme[], connections: TSFixme[], from: 'bundle' | 'authored'): Record<string, number> {
+  const typeOf: Record<string, string> = {};
+  flatten(nodes).forEach((n) => (typeOf[n.id] = n.type));
+
+  const counts: Record<string, number> = {};
+  for (const c of connections) {
+    const [sid, sport, tid, tport] =
+      from === 'bundle'
+        ? [c.sourceId, c.sourcePort, c.targetId, c.targetPort]
+        : [c.fromId, c.fromProperty, c.toId, c.toProperty];
+    const key = `${typeOf[sid]}.${sport} -> ${typeOf[tid]}.${tport}`;
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** The wires `have` is missing relative to `want`, as a flat list. */
+function shortfall(want: Record<string, number>, have: Record<string, number>): string[] {
+  const missing: string[] = [];
+  for (const [wire, n] of Object.entries(want)) {
+    for (let i = 0; i < n - (have[wire] ?? 0); i++) missing.push(wire);
+  }
+  return missing;
+}
+
 describe('SB-017: the editor deploy path ships every connection the template holds', () => {
   let project: ProjectModel;
+  let previousLibrary: unknown;
 
   beforeEach(() => {
+    // 🔴 `loadLibrary()` replaces a singleton for the whole spec bundle, so a
+    // suite that installs one and walks away decides what every later spec with
+    // no library of its own resolves against — the documented failure where a
+    // file "inherited whichever ran last, which is why its assertions passed or
+    // failed on the seed". This one installs the CLOUD library, which is not
+    // what most of the editor's specs expect. Snapshot and put it back.
+    previousLibrary = (window as TSFixme).NodeLibraryData;
+
     WarningsModel.instance.clearAllWarnings();
 
     // The library the editor really serves for cloud components — the generated
@@ -106,6 +159,9 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     NodeLibrary.instance.unregisterModule(project);
     WarningsModel.instance.clearAllWarnings();
     ProjectModel.instance = undefined;
+
+    (window as TSFixme).NodeLibraryData = previousLibrary;
+    if (previousLibrary) NodeLibrary.instance.loadLibrary();
   });
 
   it('raises the port warnings that drive the drop — the instrument is live', () => {
@@ -176,5 +232,42 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // The added wire is not exported: one more connection in the graph, the same
     // number out.
     expect(after).toBe(before);
+  });
+  it('the bundle the drive really deployed is a strict subset of the template', () => {
+    // The frozen record of the defect as it shipped. Nothing here reads the
+    // current export, so this case does not change when the fix lands — it is
+    // what makes the header's "49 of 100" re-derivable rather than remembered.
+    //
+    // It also says something the connection counts alone do not: the deploy only
+    // ever *drops*. Not one deployed wire is absent from the template, so no
+    // connection was rewritten or re-pointed on the way out.
+    for (const deployed of (deployedBundle as TSFixme).components) {
+      const authored = (siteBuilderContent as TSFixme).components.find(
+        (c: TSFixme) => c.name === deployed.name
+      );
+
+      const inBundle = wireCounts(deployed.nodes, deployed.connections, 'bundle');
+      const inTemplate = wireCounts(authored.graph.roots, authored.graph.connections, 'authored');
+
+      expect(shortfall(inBundle, inTemplate)).toEqual([]);
+    }
+  });
+
+  it('never loses a connection production already had', () => {
+    // The durable half of "this spec reproduces production", and a regression
+    // guard the count assertions cannot give: a fix that reached 100 by
+    // re-pointing wires rather than restoring them would satisfy every count
+    // above and still be wrong. True today (49 of 49) and required to stay true
+    // at 100.
+    const exported = exportCloudFunctionsToJSON(project) as TSFixme;
+
+    for (const deployed of (deployedBundle as TSFixme).components) {
+      const now = exported.components.find((c: TSFixme) => c.name === deployed.name);
+
+      const inBundle = wireCounts(deployed.nodes, deployed.connections, 'bundle');
+      const inExport = wireCounts(now.nodes, now.connections, 'bundle');
+
+      expect(shortfall(inBundle, inExport)).toEqual([]);
+    }
   });
 });

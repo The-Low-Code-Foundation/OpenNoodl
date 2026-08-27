@@ -54,10 +54,13 @@ critical path. Moved to SB-017; the SB-013 question it raised is still open and 
 1. ⬜ **Write the fix.** Acceptance 1 is already red and waiting —
    `noodl-editor/tests/cloud/sb017-deploy-connection-parity.test.ts`, registered in
    `tests/cloud/index.ts`. It reproduces s15's **real deployed bundle exactly** (4, 4, 5, 5, 8, 9,
-   14 = **49 of 100**), so what fails there fails in production. Make it 100.
-   🔴 **Two of its four cases are green and must STAY green**: the port warnings really fire (a
-   spec that skipped `evaluateHealth` would pass on the defect), and **a wire whose port is
-   genuinely wrong is still dropped** — so the fix cannot be "delete the health check".
+   14 = **49 of 100**) — the bundle itself is now vendored at `tests/cloud/fixtures/` — so what
+   fails there fails in production. Make it 100.
+   🔴 **Four of its six cases are green and must STAY green**: the port warnings really fire (a
+   spec that skipped `evaluateHealth` would pass on the defect); **a wire whose port is genuinely
+   wrong is still dropped**, so the fix cannot be "delete the health check"; the deployed bundle
+   is a strict subset of the template; and the export **never loses a wire production already
+   had** — which is what catches a fix that reaches 100 by re-pointing rather than restoring.
    ⚠️ The spec drives `NamedPortsAdapter` directly rather than importing `registeradapters`, which
    would register every adapter on a shared EventDispatcher for the whole bundle. Without that one
    line it under-reports by exactly one connection and could never reach parity.
@@ -119,9 +122,15 @@ critical path. Moved to SB-017; the SB-013 question it raised is still open and 
 
 ## Gates, s16
 
-- ✅ **`test:ci` — `2860 specs, 6 failures`, seeds 83318 and 65707**, on the committed tree.
-  4 = the documented AIX-006 floor, by name. 2 = the new SB-017 spec's defect assertions, **red
-  by design**; its two control cases pass.
+- ✅ **`test:ci` — `2862 specs, 6 failures`, seed 57878** (and `2860/6` at seeds 83318 and 65707
+  before the fixture cases were added). 4 = the documented AIX-006 floor, by name. 2 = the new
+  SB-017 spec's defect assertions, **red by design**; its **four** other cases pass.
+  ⚠️ **One run (seed 10943) also failed `projectsaveflush.js` — "re-arms a held save".** Not
+  reproduced in three other runs. I had left the **cloud node library installed globally** (a
+  real leak, now restored in `afterEach` — the documented "inherited whichever ran last" hazard),
+  but **that leak was present in two runs where the save spec passed**, so it is *not* shown to
+  be the cause. The spec waits 1500 ms and polls disk for 8 s; treat it as load-sensitive, and
+  **if you see it again, do not assume it is yours.**
 - ✅ **`typecheck:editor-tests` clean (exit 0)**, and the new file was proven to be in the checked
   population by a deliberate mutant that reddened it.
 - ⚠️ **No repository source changed** — one new spec, its barrel line, and four task documents.
