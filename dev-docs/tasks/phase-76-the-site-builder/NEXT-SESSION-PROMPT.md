@@ -86,8 +86,13 @@ critical path. Moved to SB-017; the SB-013 question it raised is still open and 
 
 - 🔴 **A green cloud-function suite still does not mean the function works.** Until the fix lands,
   the suite's bundle and the editor's are two artefacts disagreeing by 51 connections. **Read the
-  deployed bundle**: `~/.noodl/backends/<id>/workflows/<project>.workflow.json`. s15's survives at
-  `backend_mtbxrca3axpbc` and is what s16 checked the new spec against — keep it until the fix lands.
+  deployed bundle**: `~/.noodl/backends/<id>/workflows/<project>.workflow.json`.
+  ✅ **The bundle itself is now IN THE REPO** (`tests/cloud/fixtures/sb017-deployed-bundle.workflow.json`),
+  so nothing depends on the backend surviving. ✅ **But the backend is deliberately preserved
+  anyway** — `backend_mtbxrca3axpbc`, with its project at `~/Documents/sb015-editor-drive`. It is
+  **already staged for acceptance 2 and 3**: policy installed and enforced, `SITE_SETUP_TOKEN`
+  provisioned, four endpoints deployed. Rebuilding it is ~20 min of wizard driving. Its owner will
+  delete it once acceptance 2 is met. ⚠️ Read the `_User` trap below before driving it.
 - 🔴 **A `test:ci` build failure has NO summary line**, so the run is *not measured* rather than
   red. **Floor: `2856 specs, 4 failures`, all four `AIX-006 style vocabulary` by name.** s16 read
   **2860/6** twice (seeds 83318 and 65707) — 4 floor + the 2 new SB-017 reds, the other 2 green.
@@ -107,8 +112,13 @@ critical path. Moved to SB-017; the SB-013 question it raised is still open and 
 - 🔴 **The warnings list in the DOM is virtualised AND doubled by the ghost** (168 for 84 real).
   Read `WarningsModel.instance.warnings` instead.
 - 🔴 **`const` leaks between `cdp eval` calls** — wrap every eval in an IIFE.
-- 🔴 **A repeat submit on the Setup page never reaches the backend** — the signup fails first, so
-  a "wrong token" control arm measures nothing.
+- 🔴 **THE FALSE NEGATIVE THAT WILL COST YOU ACCEPTANCE 2.** The Setup page chains
+  **signup → claimSite**, and `_User` on the preserved backend **already holds
+  `owner@example.com`** from s15's claim attempt. A second run with that email **fails at signup
+  and never reaches `claimSite`** — no execution record, no 504, nothing. **It looks exactly like
+  the fix not working.** Use a fresh email, or clear the `_User` row, *before* reading a red as a
+  failed fix. (s15 lost a control arm to this when it was only a wasted arm; after the fix it is
+  worse, because it inverts the reading.)
 - 🔴 **Editing a backend's `security.json` is blocked by the permission classifier.** Use the
   editor's Access panel or ask Richard; do not route around it.
 - 🔴 **The artefact and the component sets are two populations.** Edit a component set and
@@ -122,7 +132,11 @@ critical path. Moved to SB-017; the SB-013 question it raised is still open and 
 
 ## Gates, s16
 
-- ✅ **`test:ci` — `2862 specs, 6 failures`, seed 57878** (and `2860/6` at seeds 83318 and 65707
+- ✅ **`test:ci` on the CURRENT tree — `2862 specs, 6 failures`, seed 64684, HEAD `5c4f7312`.**
+  This is the reading that covers **both** lanes: an FB-013 commit landed between s16's two
+  commits, and the earlier readings predate it. ⚠️ A peer's `test:main` and core-ui runs do not
+  cover the editor jasmine suite, so quoting them for this gate would be the wrong population.
+  Earlier readings, same 4+2 split: `2862/6` seed 57878 (and `2860/6` at seeds 83318 and 65707
   before the fixture cases were added). 4 = the documented AIX-006 floor, by name. 2 = the new
   SB-017 spec's defect assertions, **red by design**; its **four** other cases pass.
   ⚠️ **One run (seed 10943) also failed `projectsaveflush.js` — "re-arms a held save".** Not
