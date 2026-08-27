@@ -1,6 +1,6 @@
 # SB-017 — the deploy drops half the cloud graph, and every endpoint times out
 
-**Status: ⬜ MEASURED s15, NOT FIXED. Needs a ruling on where the fix goes.**
+**Status: 🟡 MEASURED s15. §6 RESOLVED and the ruling TAKEN s16 — see §8. Not yet fixed.**
 
 Found by the drive nobody had run: making a project from `embedded://site-builder` in the
 real editor, opening it, provisioning a backend through the real UI, and calling the
@@ -112,17 +112,106 @@ been drawn because nothing had ever opened this template in an editor.
 255 on disk after install, 255 after the editor's own save. The project file is faithful; only
 the deployed bundle is lossy.
 
-## 6. What is NOT yet known
+## 6. RESOLVED s16 — it is not the door, and it is one cause, not two
 
-- **Whether the browser half is affected.** 40 of the 84 warnings are on browser components,
-  and the browser runtime is not this deploy path. SB-008 drove the public site successfully,
-  so at least the parts it exercised survive — but nothing has clicked the admin panel.
-- **Whether the drop is in the converter or upstream of it.** The bundle is the first place it
-  was observed; the node's `ports` array is already short on disk, so the converter may simply
-  be honest about a node that was written incomplete. **That distinction decides the fix** and
-  is one file's reading away.
-- Whether a fix belongs in the authoring door (derive and write the ports), in the deploy
-  converter (derive at deploy), or in both.
+§6 used to ask three questions. A reading of four files answered all three, and the answer
+moves the fix off the authoring door entirely.
+
+### 6.1 The node is not "written incomplete" — incompleteness is the norm
+
+The reading §6 called "one file away" was that `claimSite`'s `gate` declares only
+`out-ok`/`out-denied` on disk, so perhaps the converter is merely being honest about a badly
+written node. **It is not.** Every `JavaScriptFunction` in the template persists a short
+`ports` array, on both runtimes, and the browser side is *shorter*:
+
+| | undeclared script-port connections | warnings raised |
+|---|---|---|
+| browser components | **69** | **0** |
+| cloud components | **44** | **44** |
+
+`/Site/SectionView`'s `unpack` declares **zero** ports and its script reads two `Inputs` and
+writes six `Outputs`; `/Pages/Site` has 24 such connections. SB-008 drove that page
+successfully. The disk shape is identical across the two runtimes and only one of them
+breaks, so the shape is not the cause. **The authoring door is exonerated** — writing ports
+there would give cloud nodes something no browser node has, and would still not help a node
+authored in the editor or typed by hand.
+
+(The static count of 44 on the cloud side is *exactly* the 44 script-port warnings s15
+counted live in `WarningsModel`. Two independent instruments, same number.)
+
+### 6.2 The runtime never needed the ports at all
+
+`NodeScope.createConnection` calls `registerInputIfNeeded` / `registerOutputIfNeeded` on the
+wire's own ports before connecting it (`noodl-runtime/src/nodescope.ts:149-150`), and
+`simplejavascript.ts:637,684` registers any `in-*` / `out-*` name on demand. **The wire is
+the declaration.** That is why `authored-bundle.ts`, which drops nothing, produces working
+functions — its header's choice ("a wire the door accepted is a wire the runtime should be
+given") was right, and right for a reason it did not know.
+
+### 6.3 The cause: dynamic ports have had no cloud client since WF-007
+
+The editor learns a node's *dynamic* ports from a connected runtime client pushing
+`sendDynamicPorts`. `SimpleJavascriptNodeModule.setup` is gated on
+`editorConnection.isRunningLocally()` and runs **in the viewer**, not the editor.
+
+**WF-007 deleted the hidden cloud-runtime window**, and `NodeLibraryImporter.ts:285` says so
+in as many words: *"the cloud types used to come from the hidden cloud-runtime window WF-007
+deleted, and since then there have been none."* WFA-001 replaced it with
+`cloud-node-library.json` — a **static** snapshot, which by construction carries statically
+declared ports and nothing a node computes.
+
+So for cloud components, **every dynamic-port family is missing at once**. Not just the
+script ports:
+
+| family | what generates it | resolved for cloud today |
+|---|---|---|
+| `pm-` | Request/Response `params` | ✅ **yes** — WFA-009's `namedports/list` rule |
+| `in-` / `out-` | `JavaScriptFunction` script parse | ❌ no |
+| `prop-` | Db property nodes, from the schema | ❌ no |
+| `qp-`, `acl-` | query-parameter / access-control | ❌ no (a `QueryRecordsAdapter` exists and is partial) |
+| `storageFetch` | `DbCollection2`'s dynamic `Do` port | ❌ no |
+
+`pm-` is resolved *because WFA-009 already built the editor-side generator this task needs* —
+for one family. Everything else is the same hole with no rule written.
+
+### 6.4 🔴 The composition, and why "fix the script ports" is not enough
+
+Simulating the editor's port resolution against the committed `cloud-node-library.json`
+reproduces **all seven** components' deployed connection counts exactly — 49 kept, 51 dropped,
+the same numbers s15 read off the bundle. That model then splits the 51:
+
+**51 dropped = 32 script-port-only + 19 involving a schema-family port.**
+
+The chosen fix for script ports clears 32 and **leaves 19**, and the 19 are load-bearing:
+
+- 🔴 `claimSite`: `noodl.cloud.secret.done → DbCollection2.storageFetch`. This is the wire that
+  **starts the function**. With every script port restored, the collection still never fetches,
+  so `fetched` never fires, so `gate.run` never fires, and `claimSite` still hangs for 30 s.
+- `submitContactForm`: all four `request.pm-* → NewDbModelProperties.prop-*` wires. The graph
+  would run and store a `ContactMessage` with no name, email, message or page.
+- `publishPage` / `duplicatePage` / `CopySectionToPage` / `SetSectionAccess`: the `prop-` and
+  `acl-` wires that carry the values being written, including `acl-world-read` — the
+  publication boundary itself.
+
+⚠️ **SB-018 filed `storageFetch` as one of three small things.** It is on `claimSite`'s
+critical path. It is not small, and it should be closed as part of this task, not that one.
+
+**The lesson is §3's, one level up.** SB-004 F10 fixed the half that had been noticed
+(signal outputs); SB-010 filed the half it had noticed (script ports); a fix scoped to script
+ports would be the third pass of the same mistake. **Scope the fix to dynamic ports as a
+family, not to the family that happens to be visible.**
+
+### 6.5 Still not known
+
+- **Whether the browser half is affected.** `build/deployer.ts` exports through the *same*
+  `exportComponent`, so the same drop applies wherever a browser connection carries a warning.
+  The browser's script ports are safe (the viewer derives them), but 32 of the 40 browser
+  warnings s15 counted are `prop-`. SB-008 drove the public site successfully, so what it
+  exercised survives; nothing has clicked the admin panel. **Unbounded, and worth measuring
+  before 0.2.1.**
+- Why the `prop-`/`qp-` warnings persisted with a live backend holding a schema (s15's
+  control). A `QueryRecordsAdapter` is registered for `DbCollection2` and 4 `qp-` warnings
+  still stood.
 
 ## 7. Acceptance for whoever takes this
 
@@ -134,3 +223,54 @@ the deployed bundle is lossy.
 4. The 44 script-port warnings are gone on a freshly installed project, or their absence from
    the deployed bundle is shown to be harmless with something better than an argument.
 5. A known-firing control: a graph whose ports really are wrong still fails.
+
+## 8. The ruling, taken 2026-08-27 (s16)
+
+Richard, given §6: **derive the ports in the editor for cloud components** — replace the
+client WF-007 deleted, rather than patching the exporter or the authoring door.
+
+Rejected, and why:
+
+- **The authoring door** — §6.1. The door is not where this breaks.
+- **Derive at export time only** — fixes the bundle and leaves the canvas showing 84 red
+  warnings on a freshly installed project. Acceptance 4 would have to fall back to its weaker
+  "shown to be harmless" branch, and the canvas would still be lying to the author.
+- **Stop the exporter dropping unhealthy connections** — makes the two paths agree by
+  construction, but by removing the check rather than feeding it, and it changes the browser
+  deploy too. The health filter should keep meaning what it says.
+
+**Where the code goes is already prescribed**, by `dynamicPortRules.ts`'s own header:
+
+> *"A node whose ports depend on a database schema, on another component, or on a parsed
+> script writes a `NodeTypeAdapters` class instead — which is what `PageInputs`,
+> `RouterNavigate` and `Router` already do. Growing this rule an escape hatch until it is code
+> in JSON is the failure mode to avoid."*
+
+So: **not** a new `namedports/list` rule — an adapter per family. The script-port parser
+already exists and is shared (`JavascriptNodeParser.parseAndAddPortsFromScript`, the same one
+the viewer-side module calls), so the adapter is a caller, not a reimplementation.
+
+⚠️ Per §6.4 the work is **two families, not one**. A change that clears the 32 script-port
+connections and stops has not fixed `claimSite`.
+
+## 9. Acceptance, revised s16
+
+Superseding §7 where they differ, and keeping its numbering:
+
+1. Unchanged, and now stated precisely enough to write: for the shipped template's seven cloud
+   components, the editor's deploy path and `authored-bundle.ts` emit the **same 100
+   connections**. Today the editor emits 49. **Write it before the fix so it goes red**, and
+   assert per-component counts, not a total — a total can be right while two components are
+   wrong in opposite directions.
+2. `claimSite` answers a real request and the site can be claimed from the Setup page.
+   🔴 Needs **both** families (§6.4).
+3. `submitContactForm` answers **and stores the four submitted values** — the original wording
+   would pass on a record full of nulls.
+4. The 84 warnings are gone on a freshly installed project. Now reachable rather than a
+   fallback, because the fix is on the canvas side.
+5. A known-firing control: a graph whose ports really are wrong still fails, still warns, and
+   its connection is still dropped. **Without this the fix is indistinguishable from deleting
+   the health check.**
+6. 🆕 A negative control on the browser half: the 69 undeclared browser script-port
+   connections must still export, i.e. the adapter must not be the only thing keeping them
+   alive once it exists.

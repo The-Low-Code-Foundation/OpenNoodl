@@ -1,6 +1,6 @@
 # SB-018 — two dead wires, a port that resolves in one runtime and not the other, and a heading that says "Text"
 
-**Status: ⬜ MEASURED s15, NOT FIXED.** Three small findings from the same drive as
+**Status: ⬜ MEASURED s15, NOT FIXED. §2 RESOLVED s16 and MOVED — it is not small, and it is not a separate question.** Findings from the same drive as
 [SB-017](SB-017-THE-DEPLOY-DROPS-HALF-THE-GRAPH.md). Filed together because each is
 individually too small for its own task and none should be lost.
 
@@ -40,15 +40,41 @@ Of the four "plain" dangling ports in s15's census, all four are wires into
 `storageFetch` **unconditionally**, so the runtime source has the port. Something in how the
 editor derives ports for a *cloud* component does not.
 
-⚠️ **This was a candidate cause for SB-017 and is now excluded as the common one** — SB-017's
-mechanism is the missing script ports, which explains both failing endpoints, and
-`submitContactForm`'s own graph has no `DbCollection2` at all. It survives as a separate
-question, and it is not cosmetic: in `claimSite` all four `runOnChange-*` are `false`
-(SB-004 F12's fix), so that wire is the collection's **only** fetch trigger. If it is inert
-rather than merely mis-reported, then SB-013's explicit-fetch barrier is doing nothing and its
-readiness guard is carrying the whole fix alone. SB-013 shipped two barriers graded
-independently, so **its specs would still be green either way** — which is exactly why this
-needs reading rather than assuming.
+### 🔴 RESOLVED s16 — the exclusion above was wrong, and this belongs to SB-017
+
+The paragraph that stood here excluded `storageFetch` as a cause of SB-017 on the grounds that
+the mechanism was "the missing script ports". **Both halves of that reasoning were wrong**, and
+the closing sentence — *"this needs reading rather than assuming"* — was the right instinct.
+
+1. **It is the same mechanism, not a separate question.** `dbcollectionnode2.ts:1222` pushes
+   `storageFetch` from inside the node's **dynamic** ports function, not from a static
+   declaration. Dynamic ports reach the editor only when a runtime client pushes them over
+   `sendDynamicPorts`, and cloud components have had no such client since WF-007 deleted the
+   cloud-runtime window. That is *identical* to the script ports' cause — see SB-017 §6.3,
+   which tabulates all five affected families. The browser/cloud asymmetry in the table above
+   is explained exactly: the browser viewer pushes them, nothing pushes them for the cloud.
+
+2. **`submitContactForm` having no `DbCollection2` did not exclude it**, because the argument
+   only ever needed one endpoint to break. And it *does* break by this family: all four of its
+   `request.pm-* -> NewDbModelProperties.prop-*` wires are dropped, so the record it stores
+   would carry no name, email, message or page.
+
+3. 🔴 **It is on `claimSite`'s critical path.** `secret.done -> DbCollection2.storageFetch` is
+   the wire that starts the function, and this file already said why: all four `runOnChange-*`
+   are `false`, so it is the collection's **only** fetch trigger. It is dropped from the
+   deployed bundle. **A fix scoped to script ports clears 32 of the 51 dropped connections and
+   `claimSite` still hangs for 30 seconds.**
+
+So this is not one of three small things. It is a second family of the SB-017 defect, and it
+is tracked there — **SB-017 §6.4 and acceptance 2**. It stays written down here because the
+browser/cloud table above is the measurement that identified the family, and because the
+question this file asked about SB-013 is still open and still worth an answer:
+
+⬜ **Still open, and inherited by SB-017:** in the *deployed* bundle `claimSite`'s collection
+has no fetch trigger at all, so SB-013's explicit-fetch barrier is inert there and its
+readiness guard is carrying the fix alone. SB-013 shipped two barriers graded independently,
+so **its specs are green either way**. Whoever fixes SB-017 should re-read SB-013 against a
+bundle that has the wire back.
 
 ## 3. The public site's heading renders the literal word "Text"
 

@@ -485,17 +485,52 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   by a control that varied one thing. **The warnings are a preview of what the deploy deletes.**
   ⚠️ Bounded: saving prunes nothing — 255 connections shipped, 255 on disk after install, 255 after
   the editor's own save. The project file is faithful; only the bundle is lossy.
-  🧭 **Needs a ruling**: door, converter, or both. §6 names the one file's reading that decides it.
+  ✅ **§6 RESOLVED s16 and the ruling TAKEN — see SB-017 §8.** It is **not the door**: every
+  `JavaScriptFunction` persists a short `ports` array on **both** runtimes, and the browser side is
+  *shorter* — **69 undeclared script-port connections, 0 warnings**, against the cloud's 44 and 44.
+  Incompleteness is the norm; only one runtime breaks, so the disk shape is not the cause. And the
+  runtime never needed the ports: `NodeScope.createConnection` registers a port **from the wire**
+  (`nodescope.ts:149-150`) — which is why `authored-bundle.ts`, dropping nothing, works.
+  🔴 **One cause, five families.** Dynamic ports reach the editor only from a connected runtime
+  client calling `sendDynamicPorts`, and **WF-007 deleted the cloud-runtime window**
+  (`NodeLibraryImporter.ts:285` says so); WFA-001 replaced it with a **static** library that carries
+  no computed port. So for cloud components `in-`/`out-`, `prop-`, `qp-`/`acl-` and `storageFetch`
+  are **all** missing at once. `pm-` is the exception **because WFA-009 already built the
+  editor-side generator this task needs** — for one family.
+  🔴 **"Fix the script ports" is NOT enough — 51 dropped = 32 script-only + 19 schema-family.**
+  `claimSite`'s 19th is `secret.done -> DbCollection2.storageFetch`, **the wire that starts the
+  function**: with every script port restored the collection still never fetches, `fetched` never
+  fires, and it still hangs for 30 s. `submitContactForm` would run and store a `ContactMessage`
+  with **no name, email, message or page**. **Scope the fix to dynamic ports as a family** — a
+  script-only fix is the third pass of the same half-fix (SB-004 F10, then SB-010, then this).
+  ✅ **Richard's ruling: derive the ports in the editor for cloud components** — replace the client
+  WF-007 deleted. Where the code goes is already prescribed by `dynamicPortRules.ts`'s own header:
+  **a `NodeTypeAdapters` class per family**, not a new `namedports/list` rule.
+  ✅ **Acceptance 1 EXISTS AND IS RED (s16)**:
+  `noodl-editor/tests/cloud/sb017-deploy-connection-parity.test.ts`, in the `cloud` barrel.
+  It reproduces s15's **real deployed bundle exactly** — 4, 4, 5, 5, 8, 9, 14 = **49 of 100** —
+  so what fails there fails in production. **Two controls are green**: the port warnings really
+  fire (else the whole spec would pass on the defect), and a wire whose port is genuinely wrong is
+  **still dropped** — so the fix cannot be "delete the health check".
+  🔴 **Acceptance revised in SB-017 §9**: #3 now requires `submitContactForm` to **store the four
+  values** (the old wording passes on a record of nulls); #4 is now reachable rather than a
+  fallback; #6 is new — a negative control that the 69 browser connections still export.
+  ⚠️ **Unbounded and worth measuring before 0.2.1**: `build/deployer.ts` exports through the *same*
+  `exportComponent`, so the browser half is exposed to the same drop. 32 of its 40 warnings are
+  `prop-`. SB-008 drove the public site; **nothing has clicked the admin panel.**
 - ⬜ **SB-018** — [two dead wires, a port that resolves in one runtime and not the other, and a
   heading that says "Text"](SB-018-TWO-DEAD-WIRES-AND-A-PLACEHOLDER-HEADING.md) — **MEASURED s15.**
   (1) **`For Each` has no `Changed` output** and the template wires one twice (`PageEditor`,
   `Admin`); both dead. ⚠️ Bounded — a valid `NewDbModelProperties.done` wire sits beside each, so
   the refresh still fires. The gap it names: **no door checks that a wired port exists on a
   STANDARD node** — SB-009's hole one level down. (2) **`DbCollection2.storageFetch` is flagged in
-  cloud components and not browser ones**, though `dbcollectionnode2.ts:1222` pushes it
-  unconditionally; excluded as SB-017's cause but **not cosmetic** — in `claimSite` all four
-  `runOnChange-*` are `false`, so if it is inert then SB-013's explicit-fetch barrier does nothing
-  and its readiness guard carries the fix alone (and **SB-013's specs stay green either way**).
+  cloud components and not browser ones** — 🔴 **RESOLVED s16 and MOVED TO SB-017. The exclusion
+  recorded here was wrong.** `dbcollectionnode2.ts:1222` pushes `storageFetch` from the node's
+  **dynamic** ports function, so it is the *same* mechanism as the script ports (SB-017 §6.3), and
+  it is **on `claimSite`'s critical path** — this file's own note that all four `runOnChange-*` are
+  `false` is exactly why. Not one of three small things. ⬜ The SB-013 question it raised is still
+  open and inherited by SB-017: in the deployed bundle that collection has **no fetch trigger at
+  all**, so the explicit-fetch barrier is inert there and **SB-013's specs stay green either way**.
   (3) 🔴 **The public site's `<h1>` renders the literal word `Text`** on an unclaimed site — the
   node sets no `text` parameter and `text.ts:41` defaults to `'Text'`. **F27's territory that F27
   did not cover**: s14 made the body name its cause; the heading a person reads first still says
