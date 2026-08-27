@@ -50,6 +50,12 @@
       "fromProperty": "waved",
       "toId": "goMood",
       "toProperty": "navigate"
+    },
+    {
+      "fromId": "aboutButton",
+      "fromProperty": "onClick",
+      "toId": "showAbout",
+      "toProperty": "show"
     }
   ]
 }

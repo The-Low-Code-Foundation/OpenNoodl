@@ -274,13 +274,13 @@
     },
     {
       "typeName": "NavigationClosePopup",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "reserved onClose prop inside popup targets: close/closeAction-* + gated done-chain; results/nested targets defer (POPUPS-TARGET)"
     },
     {
       "typeName": "NavigationShowPopup",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "parent-owned popup slot: useState + conditional createPortal; literal target/params, replace policy, done-chain; consumed close outcomes defer (POPUPS-TARGET)"
     },
     {
       "typeName": "NewDbModelProperties",

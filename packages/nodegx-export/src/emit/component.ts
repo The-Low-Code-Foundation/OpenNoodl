@@ -171,6 +171,15 @@ export function emitComponent(
     const index = classIndexOf.get(id);
     return index === undefined ? undefined : wrapperNames.get(index);
   };
+  // The popup overlay class (POPUPS-TARGET §5) — the runtime's wrapper group, spelled in CSS.
+  let popupLayerClass: string | undefined;
+  if (plan.popups.length > 0) {
+    let name = 'popupLayer';
+    let counter = 2;
+    while (usedClassNames.has(name)) name = `popupLayer${counter++}`;
+    usedClassNames.add(name);
+    popupLayerClass = name;
+  }
 
   // ---- app state usage (step 5) ----------------------------------------------------------
   // Which variables and channels this component touches, and how: a render binding earns a
@@ -215,6 +224,9 @@ export function emitComponent(
       action.whenTrue.forEach(collectActionUse);
       action.whenFalse.forEach(collectActionUse);
     }
+    if (action.kind === 'popup-show' || action.kind === 'popup-close') {
+      action.then.forEach(collectActionUse);
+    }
   };
   const allActions: HandlerAction[] = [
     ...Object.values(plan.handlers).flatMap((byPort) => Object.values(byPort).flat()),
@@ -222,6 +234,15 @@ export function emitComponent(
     ...plan.receivers.flatMap((r) => r.actions)
   ];
   allActions.forEach(collectActionUse);
+  /** Nested actions (branch arms, popup done-chains) flattened — the `usesNavigate` sweep. */
+  const deepActions = (actions: HandlerAction[]): HandlerAction[] =>
+    actions.flatMap((a) =>
+      a.kind === 'branch'
+        ? [a, ...deepActions(a.whenTrue), ...deepActions(a.whenFalse)]
+        : a.kind === 'popup-show' || a.kind === 'popup-close'
+          ? [a, ...deepActions(a.then)]
+          : [a]
+    );
   for (const receiver of plan.receivers) usedChannelNames.add(receiver.channelName);
 
   // Render bindings needing hooks, in pre-order encounter order. A computed binding earns the
@@ -271,13 +292,25 @@ export function emitComponent(
     }
   }
 
-  const usesNavigate = allActions.some((a) => a.kind === 'navigate');
+  const usesNavigate = deepActions(allActions).some((a) => a.kind === 'navigate');
 
   // The hook's local name is the variable's last camelCase word (`visitorName` → `name`),
   // deduplicated against everything else in scope, falling back to `<export>Value`.
   const reserved = new Set<string>(['event', 'navigate', 'payload', 'styles', plan.file.symbol]);
   plan.props.forEach((p) => reserved.add(p.name));
   plan.outputProps.forEach((o) => reserved.add(o.prop));
+  if (plan.closesPopup) reserved.add('onClose');
+  // The popup slot's state pair (POPUPS-TARGET §2) — allocated before the hook locals so a
+  // variable named "openPopup" yields, not the slot.
+  const allocLocal = (base: string): string => {
+    let name = base;
+    let counter = 2;
+    while (reserved.has(name)) name = `${base}${counter++}`;
+    reserved.add(name);
+    return name;
+  };
+  const popupState = plan.popups.length > 0 ? allocLocal('openPopup') : null;
+  const popupSetter = plan.popups.length > 0 ? allocLocal('setOpenPopup') : null;
   plan.queries.forEach((q) => {
     [q.stateName, q.setterName, q.itemName, q.fetchName, q.typeName].forEach((n) => reserved.add(n));
   });
@@ -416,6 +449,14 @@ export function emitComponent(
         return exprCode(expr.operand, mode);
     }
   };
+  /**
+   * popup-show's `done`-chain becomes following statements in the same handler (POPUPS-TARGET
+   * §3) — expanded wherever an action list prints as statements, arms included.
+   */
+  const expandActions = (actions: HandlerAction[]): HandlerAction[] =>
+    actions.flatMap((a) =>
+      a.kind === 'popup-show' && a.then.length > 0 ? [{ ...a, then: [] }, ...expandActions(a.then)] : [a]
+    );
   const actionCode = (action: HandlerAction): string => {
     switch (action.kind) {
       case 'navigate':
@@ -447,9 +488,23 @@ export function emitComponent(
         const entries = action.payload.map((p) => `${p.key}: ${exprCode(p.expr, 'handler')}`).join(', ');
         return `${channel.exportName}.emit({${entries.length > 0 ? ` ${entries} ` : ''}})`;
       }
+      // The slot set (POPUPS-TARGET §3); its done-chain emits as following statements via
+      // expandActions, so the action itself is just the set.
+      case 'popup-show':
+        return `${popupSetter}(${tsLiteral(action.slotKey)})`;
+      // The reserved-prop close (POPUPS-TARGET §4): the gate is the runtime's popup-in-scope
+      // check — outside a popup slot the prop is absent and nothing fires, done-chain included.
+      case 'popup-close': {
+        const arg = action.action === undefined ? '' : tsLiteral(action.action);
+        if (action.then.length === 0) return `onClose?.(${arg})`;
+        const then = expandActions(action.then).map(actionCode);
+        return `if (onClose) { onClose(${arg}); ${then.join('; ')}; }`;
+      }
       case 'branch': {
-        const armCode = (actions: HandlerAction[]): string =>
-          actions.length === 1 ? actionCode(actions[0]) : `{ ${actions.map(actionCode).join('; ')}; }`;
+        const armCode = (armActions: HandlerAction[]): string => {
+          const list = expandActions(armActions);
+          return list.length === 1 ? actionCode(list[0]) : `{ ${list.map(actionCode).join('; ')}; }`;
+        };
         const cond = exprCode(action.cond, 'handler');
         if (action.whenTrue.length === 0) {
           const negated = SIMPLE_REF.test(cond) ? `!${cond}` : `!(${cond})`;
@@ -463,11 +518,13 @@ export function emitComponent(
   /**
    * A branch statement cannot be an arrow's expression body, and Prettier never leaves a
    * non-empty block on one line — so a handler containing one takes the multi-line block form,
-   * indented at the attribute's own column.
+   * indented at the attribute's own column. A gated popup close (`if (onClose) { … }`) is the
+   * same statement shape.
    */
   const handlerArrow = (actions: HandlerAction[], param: string, indent: number): string => {
-    const statements = actions.map(actionCode);
-    if (actions.some((a) => a.kind === 'branch')) {
+    const expanded = expandActions(actions);
+    const statements = expanded.map(actionCode);
+    if (expanded.some((a) => a.kind === 'branch' || (a.kind === 'popup-close' && a.then.length > 0))) {
       const body = statements.map((s) => `${pad(indent + 2)}${s};`).join('\n');
       return `${param} => {\n${body}\n${pad(indent)}}`;
     }
@@ -488,8 +545,10 @@ export function emitComponent(
   }
   const reactImports: string[] = [];
   if (plan.queries.length > 0) reactImports.push('useEffect', 'useState');
+  if (plan.popups.length > 0 && !reactImports.includes('useState')) reactImports.push('useState');
   if (radioNameLocals.size > 0) reactImports.push('useId');
   if (reactImports.length > 0) externalImports.push(`import { ${reactImports.sort().join(', ')} } from 'react';`);
+  if (plan.popups.length > 0) externalImports.push(`import { createPortal } from 'react-dom';`);
   if (usesNavigate) externalImports.push(`import { useNavigate } from 'react-router-dom';`);
 
   const internalImports = new Map<string, string>(); // specifier → line
@@ -734,6 +793,8 @@ export function emitComponent(
     // Containers: group / page.
     const childIds = plan.childrenOf[id] ?? [];
     const blocks = childIds.map((childId) => render(childId, indent + 2, radioCtx));
+    // Popup slots render after the root's own children (POPUPS-TARGET §5).
+    if (id === plan.rootId && plan.popups.length > 0) blocks.push(...popupJsx(indent + 2));
     if (role === 'page') {
       const headLines: string[] = [];
       if (plan.head?.title !== undefined) headLines.push(`${pad(indent + 2)}<title>${plan.head.title}</title>`);
@@ -931,11 +992,41 @@ export function emitComponent(
     return attrs;
   };
 
+  /**
+   * One conditional portal per popup slot (POPUPS-TARGET §5): the runtime mounts popups as
+   * siblings after the app root, painting above by DOM order — `createPortal(…, document.body)`
+   * keeps that true from anywhere in the tree.
+   */
+  const popupJsx = (indent: number): string[][] =>
+    plan.popups.map((slot) => {
+      const target = requireInstance(slot.targetLegacy, `popup ${slot.slotKey}`);
+      if (!target) return [`${pad(indent)}{/* TODO(export): popup ${slot.slotKey} could not be resolved */}`];
+      // A target with no translated Close Popup declares no onClose — passing one would fail
+      // the emitted app's own typecheck, and such a popup never closes at runtime either.
+      const closable = project.byLegacyPath.get(slot.targetLegacy)?.closesPopup === true;
+      const attrs = [
+        ...slot.params.map((p) => jsxAttr(p.input, p.value)),
+        ...(closable ? [`onClose={() => ${popupSetter}(null)}`] : [])
+      ];
+      return [
+        `${pad(indent)}{${popupState} === ${tsLiteral(slot.slotKey)} &&`,
+        `${pad(indent + 2)}createPortal(`,
+        `${pad(indent + 4)}<div className={styles.${popupLayerClass}}>`,
+        ...element(target.symbol, attrs, null, indent + 6, false),
+        `${pad(indent + 4)}</div>,`,
+        `${pad(indent + 4)}document.body`,
+        `${pad(indent + 2)})}`
+      ];
+    });
+
   const jsxLines = render(plan.rootId, 4);
+  if (plan.popups.length > 0 && plan.roleOf[plan.rootId!] !== 'group' && plan.roleOf[plan.rootId!] !== 'page') {
+    notes.push(`${plan.path}: popup slots need a container root to render under — dropped, reported`);
+  }
 
   // ---- the module ------------------------------------------------------------------------
   const symbol = plan.file.symbol;
-  const hasCss = classNames.length > 0;
+  const hasCss = classNames.length > 0 || popupLayerClass !== undefined;
   if (hasCss) {
     internalImports.set(`./${plan.file.fileBase}.module.css`, `import styles from './${plan.file.fileBase}.module.css';`);
   }
@@ -950,10 +1041,13 @@ export function emitComponent(
 
   const body: string[] = [];
   const allPropNames = [...plan.props.map((p) => p.name), ...plan.outputProps.map((o) => o.prop)];
+  if (plan.closesPopup) allPropNames.push('onClose');
   if (allPropNames.length > 0) {
     body.push(`export interface ${symbol}Props {`);
     for (const prop of plan.props) body.push(`  ${prop.name}?: ${prop.tsType};`);
     for (const output of plan.outputProps) body.push(`  ${output.prop}?: () => void;`);
+    // The popup boundary's reserved prop (POPUPS-TARGET §4), after the declared interface.
+    if (plan.closesPopup) body.push('  onClose?: (action?: string) => void;');
     body.push('}', '');
   }
   if (plan.docComment) {
@@ -983,13 +1077,18 @@ export function emitComponent(
   for (const query of plan.queries) {
     body.push(`  const [${query.stateName}, ${query.setterName}] = useState<${query.typeName}[]>([]);`);
   }
+  if (popupState !== null) {
+    const union = plan.popups.map((p) => tsLiteral(p.slotKey)).join(' | ');
+    body.push(`  const [${popupState}, ${popupSetter}] = useState<${union} | null>(null);`);
+  }
   if (
     usesNavigate ||
     hookVariables.length > 0 ||
     hookStoreKeys.length > 0 ||
     hookCollections.length > 0 ||
     radioNameLocals.size > 0 ||
-    plan.queries.length > 0
+    plan.queries.length > 0 ||
+    popupState !== null
   ) {
     body.push('');
   }
@@ -1007,6 +1106,9 @@ export function emitComponent(
         return a.entries.map((e) => e.expr);
       case 'branch':
         return [a.cond, ...a.whenTrue.flatMap(actionExprsOf), ...a.whenFalse.flatMap(actionExprsOf)];
+      case 'popup-show':
+      case 'popup-close':
+        return a.then.flatMap(actionExprsOf);
       case 'navigate':
       case 'output-signal':
         return [];
@@ -1021,7 +1123,7 @@ export function emitComponent(
     const channel = channelByName.get(receiver.channelName)!;
     const usesPayload = receiver.actions.some((a) => actionExprsOf(a).some(containsPayload));
     body.push(`  useSignal(${channel.exportName}, ${usesPayload ? '(payload)' : '()'} => {`);
-    for (const action of receiver.actions) body.push(`    ${actionCode(action)};`);
+    for (const action of expandActions(receiver.actions)) body.push(`    ${actionCode(action)};`);
     body.push('  });', '');
   }
   body.push('  return (', ...jsxLines, '  );', '}');
@@ -1052,6 +1154,11 @@ export function emitComponent(
       }
       return blocks;
     });
+    // The overlay box: full-viewport, unstyled — the popup component styles itself, exactly as
+    // the runtime's wrapper group does (POPUPS-TARGET §5).
+    if (popupLayerClass !== undefined) {
+      cssBlocks.push(`.${popupLayerClass} {\n  position: fixed;\n  inset: 0;\n}`);
+    }
     files[`${baseDir}/${plan.file.fileBase}.module.css`] = GENERATED_CSS + '\n' + cssBlocks.join('\n\n') + '\n';
   }
 

@@ -97,9 +97,12 @@ export function CheerBanner() {
 `;
 
 const GOLDEN_HOME = `// @nodegx:generated (visual — provenance markers complete in EXP-007)
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useValue } from '@nodegx/core/react';
 
+import { AboutDialog } from '../components/AboutDialog';
 import { CheerBanner } from '../components/CheerBanner';
 import { FarewellCard } from '../components/FarewellCard';
 import { GreetingBadge } from '../components/GreetingBadge';
@@ -111,6 +114,7 @@ import styles from './Home.module.css';
 export function HomePage() {
   const navigate = useNavigate();
   const name = useValue(visitorName);
+  const [openPopup, setOpenPopup] = useState<'AboutDialog' | null>(null);
 
   return (
     <div className={styles.page}>
@@ -139,6 +143,18 @@ export function HomePage() {
       <CheerBanner />
 
       <FarewellCard onWaved={() => navigate('/mood')} />
+
+      <button className={styles.aboutButton} onClick={() => setOpenPopup('AboutDialog')}>
+        About
+      </button>
+
+      {openPopup === 'AboutDialog' &&
+        createPortal(
+          <div className={styles.popupLayer}>
+            <AboutDialog onClose={() => setOpenPopup(null)} />
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
@@ -227,9 +243,11 @@ describe('writes without subscriptions (STEP5-TARGET §5)', () => {
     expect(app.files['src/pages/Home.tsx']).toBe(GOLDEN_HOME);
   });
 
-  test('the wired input stays uncontrolled: onChange only, no value, no useState', () => {
+  test('the wired input stays uncontrolled: onChange only, no value, no state of its own', () => {
     const home = app.files['src/pages/Home.tsx'];
-    expect(home).not.toContain('useState');
+    // The one useState on this page is the popup slot (POPUPS-TARGET §2) — the input earns none.
+    expect(home.match(/useState/g)).toHaveLength(2); // the import specifier + the slot
+    expect(home).toContain("useState<'AboutDialog' | null>");
     expect(home).not.toContain('value={');
     expect(home).toContain('onChange={(event) => visitorName.set(event.target.value)}');
   });

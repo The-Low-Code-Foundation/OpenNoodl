@@ -1,0 +1,107 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "7d7b199f-df04-4dad-8719-74ce156fde6b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "aboutDialog",
+      "type": "Group",
+      "label": "Dialog",
+      "x": 40,
+      "y": 40,
+      "children": [
+        "aboutTitle",
+        "aboutBody",
+        "aboutOkButton"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "backgroundColor": "var(--surface)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "borderRadius": "var(--radius-lg)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)"
+      }
+    },
+    {
+      "id": "aboutTitle",
+      "type": "Text",
+      "label": "Title",
+      "x": 100,
+      "y": 160,
+      "parent": "aboutDialog",
+      "parameters": {
+        "text": "About Cheer",
+        "fontSize": "var(--text-lg)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "aboutBody",
+      "type": "Text",
+      "label": "Body",
+      "x": 100,
+      "y": 280,
+      "parent": "aboutDialog",
+      "parameters": {
+        "text": "Cheer is a tiny place to collect good moments.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      }
+    },
+    {
+      "id": "aboutOkButton",
+      "type": "net.noodl.controls.button",
+      "label": "OK",
+      "x": 100,
+      "y": 400,
+      "parent": "aboutDialog",
+      "parameters": {
+        "label": "OK",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      }
+    },
+    {
+      "id": "aboutClose",
+      "type": "NavigationClosePopup",
+      "label": "Close via ok",
+      "x": 350,
+      "y": 400,
+      "parameters": {
+        "closeActions": "ok"
+      }
+    },
+    {
+      "id": "aboutOutputs",
+      "type": "Component Outputs",
+      "label": "Dialog outputs",
+      "x": 600,
+      "y": 400,
+      "ports": [
+        {
+          "name": "closed",
+          "plug": "input",
+          "type": "signal"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "aboutDialog"
+  ]
+}

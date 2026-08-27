@@ -105,7 +105,18 @@ export type HandlerAction =
   /** A Condition in a handler chain: `if (cond) whenTrue; else whenFalse;` (LOGIC-TARGET §3). */
   | { kind: 'branch'; cond: ValueExpr; whenTrue: HandlerAction[]; whenFalse: HandlerAction[] }
   /** Fires the component's own signal output: `onWaved?.()` (COMPONENT-OUTPUTS-TARGET §4). */
-  | { kind: 'output-signal'; prop: string };
+  | { kind: 'output-signal'; prop: string }
+  /**
+   * Opens a popup slot: `setOpenPopup('AboutDialog')`, then the Show Popup's `done`-chain as
+   * following statements in the same handler (POPUPS-TARGET §3).
+   */
+  | { kind: 'popup-show'; slotKey: string; then: HandlerAction[] }
+  /**
+   * Closes the enclosing popup through the reserved prop (POPUPS-TARGET §4): with a
+   * `done`-chain, `if (onClose) { onClose('ok'); …then }`; without one, `onClose?.('ok')`.
+   * `action` undefined is the plain `Close` (the runtime's `Closed` outcome).
+   */
+  | { kind: 'popup-close'; action?: string; then: HandlerAction[] };
 
 export interface ReceiverPlan {
   nodeId: string;
@@ -150,6 +161,21 @@ export interface RepeaterPlan {
   mapping: Array<{ input: string; field: string }> | 'template-inputs' | null;
 }
 
+/**
+ * One conditional popup render in the hosting component (POPUPS-TARGET §2, §5). Show Popup
+ * nodes opening the same target with identical literal params share a slot — safe because a
+ * node with any consumed close outcome defers, so shared keys never conflate observable
+ * behaviour.
+ */
+export interface PopupSlotPlan {
+  /** The slot's string literal (`'AboutDialog'`), from the target path's last segment. */
+  slotKey: string;
+  /** Legacy component path of the popup component ("/Components/AboutDialog"). */
+  targetLegacy: string;
+  /** Literal `popupParam-*` values, keyed by the target's input port name — props at emit. */
+  params: Array<{ input: string; value: string | number | boolean }>;
+}
+
 export interface ComponentFilePlan {
   dir: 'pages' | 'components';
   /** "ThankYou" — file base name, deduplicated per directory. */
@@ -190,6 +216,10 @@ export interface ComponentPlan {
   changeHandlers: Record<string, HandlerAction[]>;
   /** Event Receivers this component hosts as useSignal subscriptions. */
   receivers: ReceiverPlan[];
+  /** Popup slots this component renders, registration order — earned by attachment (§2). */
+  popups: PopupSlotPlan[];
+  /** True when a translated Close Popup attached — the component declares `onClose` (§4). */
+  closesPopup: boolean;
   queries: QueryPlan[];
   repeaters: Record<string, RepeaterPlan>;
   dispositions: Record<string, Disposition>;
@@ -274,6 +304,8 @@ function planComponent(
     handlers: {},
     changeHandlers: {},
     receivers: [],
+    popups: [],
+    closesPopup: false,
     queries: [],
     repeaters: {},
     dispositions,
@@ -822,6 +854,188 @@ function planComponent(
     Condition: 'eval'
   };
 
+  /** The popup nodes' trigger ports are dynamic (`closeAction-*`), so membership is a predicate. */
+  const isTriggerWire = (type: string, toProperty: string): boolean =>
+    TRIGGER_PORTS[type] === toProperty ||
+    (type === 'NavigationShowPopup' && toProperty === 'show') ||
+    (type === 'NavigationClosePopup' && (toProperty === 'close' || toProperty.startsWith('closeAction-')));
+
+  // Which components open as popups anywhere in the project — the close side translates only
+  // inside one; elsewhere the runtime resolves an enclosing popup by ancestor walk, which a
+  // prop cannot thread statically (POPUPS-TARGET §4).
+  const popupTargetLegacies = new Set<string>();
+  for (const comp of ir.components) {
+    for (const n of comp.nodes) {
+      if (n.type !== 'NavigationShowPopup') continue;
+      const target = literalParam(n, 'target');
+      if (typeof target === 'string') popupTargetLegacies.add(target);
+    }
+  }
+
+  // The slot registry (POPUPS-TARGET §2): nodes opening the same target with identical literal
+  // params share a key; distinct param sets on one target take numeric suffixes in compile
+  // order. plan.popups is filtered to the keys that actually attached, after pass 2.
+  const slotRegistry: PopupSlotPlan[] = [];
+  const slotFor = (targetLegacy: string, params: PopupSlotPlan['params']): string => {
+    const identity = JSON.stringify([targetLegacy, params]);
+    const existing = slotRegistry.find((s) => JSON.stringify([s.targetLegacy, s.params]) === identity);
+    if (existing) return existing.slotKey;
+    const base = pascalCase(lastSegment(targetLegacy.replace(/^\//, '')));
+    let key = base;
+    let counter = 2;
+    while (slotRegistry.some((s) => s.slotKey === key)) key = `${base}${counter++}`;
+    slotRegistry.push({ slotKey: key, targetLegacy, params });
+    return key;
+  };
+
+  /** Reserved-prop collision (§4): checked from both sides of the declared interface. */
+  const closePropCollision = (() => {
+    const taken = new Set(plan.props.map((p) => p.name));
+    plan.outputProps.forEach((o) => taken.add(o.prop));
+    return taken.has('onClose')
+      ? 'a declared port already claims the reserved prop "onClose" — rename the port (POPUPS-TARGET §4)'
+      : undefined;
+  })();
+
+  /**
+   * Compile the wires off a popup node's `done` into actions appended in the same handler
+   * (POPUPS-TARGET §3, §4). A `done`-chain into a Component Outputs port fires the callback
+   * (the outputs node keeps its own disposition); into any other sink it must be a
+   * translatable trigger. Anything else defers the popup node.
+   */
+  type DoneChain = { then: HandlerAction[]; consumes: string[]; collapses: string[]; subscribes: string[] };
+  const doneChainOf = (node: NodeIR): DoneChain | { defer: string } => {
+    const then: HandlerAction[] = [];
+    const consumes: string[] = [];
+    const collapses: string[] = [];
+    const subscribes: string[] = [];
+    for (const wire of component.connections.filter((c) => c.fromId === node.id && c.fromProperty === 'done')) {
+      if (wire.toId === node.id) return { defer: 'its done output drives itself' };
+      const target = nodeById.get(wire.toId);
+      if (target?.type === 'Component Outputs') {
+        const sink = outputSinkOf(wire.toProperty, node);
+        if ('drop' in sink) {
+          notes.push(`wire ${wire.key} dropped: ${sink.drop}`);
+          consumes.push(wire.key);
+          continue;
+        }
+        if ('defer' in sink) return { defer: sink.defer };
+        then.push(sink.action);
+        consumes.push(wire.key);
+        continue;
+      }
+      if (!target || !isTriggerWire(target.type, wire.toProperty)) {
+        return { defer: 'its done output drives no translatable action' };
+      }
+      const compiled = compiledOf(target, wire.toProperty);
+      if ('defer' in compiled) return { defer: compiled.defer };
+      then.push(compiled.action);
+      consumes.push(wire.key, ...compiled.consumes);
+      collapses.push(target.id, ...(compiled.collapses ?? []));
+      subscribes.push(...(compiled.subscribes ?? []));
+    }
+    return { then, consumes, collapses, subscribes };
+  };
+
+  /** Show Popup → the slot set + `done`-chain (POPUPS-TARGET §3). */
+  const compileShowPopup = (node: NodeIR): CompiledSink => {
+    if (wiredPorts.has(`${node.id}:target`)) {
+      return { defer: 'target is wired — which component opens is not statically knowable' };
+    }
+    const target = literalParam(node, 'target');
+    if (typeof target !== 'string') {
+      return { defer: "no Target component is set (the runtime's show-popup/no-target failure)" };
+    }
+    const targetComp = ir.components.find((c) => `/${c.path}` === target);
+    if (!targetComp) return { defer: `popup target ${target} is not in the project` };
+    if (targetComp.role === 'page' || targetComp.nodes.some((n) => n.type === 'Page' || n.type === 'Router')) {
+      return { defer: 'a page cannot open as a popup slot in this slice' };
+    }
+    const rootable = targetComp.nodes.some((n) => {
+      if (n.parent !== undefined) return false;
+      const role = renderRole(n, catalog);
+      return role !== null && role !== 'unsupported' && role !== 'radio';
+    });
+    if (!rootable) return { defer: `popup target ${target} exports no component (no visual root)` };
+    if (literalParam(node, 'stackPolicy') === 'stack' || wiredPorts.has(`${node.id}:stackPolicy`)) {
+      return { defer: 'Show On Top layers popups — the slot is single in this slice (POPUPS-TARGET §7)' };
+    }
+    const consumedOutput = component.connections.find((c) => c.fromId === node.id && c.fromProperty !== 'done');
+    if (consumedOutput) {
+      return {
+        defer: `its ${consumedOutput.fromProperty} output is consumed — close-outcome dispatch is future work (POPUPS-TARGET §7)`
+      };
+    }
+    const wiredParam = component.connections.find((c) => c.toId === node.id && c.toProperty.startsWith('popupParam-'));
+    if (wiredParam) {
+      return {
+        defer: `${wiredParam.toProperty} is wired — the runtime snapshots params at open; only literal params translate`
+      };
+    }
+    const targetInputs = new Set<string>();
+    for (const n of targetComp.nodes) {
+      if (n.type !== 'Component Inputs') continue;
+      for (const p of n.declaredPorts) if (p.plug === 'output') targetInputs.add(p.name);
+    }
+    const params: PopupSlotPlan['params'] = [];
+    for (const param of node.parameters) {
+      if (!param.name.startsWith('popupParam-')) continue;
+      const input = param.name.slice('popupParam-'.length);
+      if (param.value.kind !== 'literal') {
+        return { defer: `popup param "${input}" is not a literal value` };
+      }
+      if (!targetInputs.has(input)) {
+        notes.push(`Show Popup ${node.id} param "${input}" names no input on ${target} — dropped, reported`);
+        continue;
+      }
+      params.push({ input, value: param.value.value });
+    }
+    const chain = doneChainOf(node);
+    if ('defer' in chain) return chain;
+    return {
+      action: { kind: 'popup-show', slotKey: slotFor(target, params), then: chain.then },
+      consumes: chain.consumes,
+      collapses: chain.collapses,
+      subscribes: chain.subscribes
+    };
+  };
+
+  /** Close Popup → the reserved-prop call (POPUPS-TARGET §4), per trigger port. */
+  const compileClosePopup = (node: NodeIR, port: string): CompiledSink => {
+    if (!popupTargetLegacies.has(`/${component.path}`)) {
+      return {
+        defer:
+          'closes an enclosing popup the runtime resolves by ancestor walk — only a component opened directly as a popup target translates in this slice'
+      };
+    }
+    if (literalParam(node, 'targetComponent') !== undefined || wiredPorts.has(`${node.id}:targetComponent`)) {
+      return { defer: 'Popup names a specific enclosing popup — nested popups are not translated in this slice' };
+    }
+    if (
+      literalParam(node, 'results') !== undefined ||
+      component.connections.some((c) => c.toId === node.id && c.toProperty.startsWith('result-'))
+    ) {
+      return { defer: 'close results are value outputs — lifted state belongs to the component-state slice' };
+    }
+    const consumedOutput = component.connections.find((c) => c.fromId === node.id && c.fromProperty !== 'done');
+    if (consumedOutput) {
+      return { defer: `its ${consumedOutput.fromProperty} output is consumed — not translated in this slice` };
+    }
+    if (closePropCollision !== undefined) return { defer: closePropCollision };
+    const chain = doneChainOf(node);
+    if ('defer' in chain) return chain;
+    return {
+      action: {
+        kind: 'popup-close',
+        ...(port === 'close' ? {} : { action: port.slice('closeAction-'.length) }),
+        then: chain.then
+      },
+      consumes: chain.consumes,
+      collapses: chain.collapses,
+      subscribes: chain.subscribes
+    };
+  };
+
   // The NewModel → CollectionInsert chains (COLLECTIONS-TARGET §2), keyed by the NewModel so
   // the trigger wire into `new` compiles the whole pair. An insert whose chain defers parks the
   // reason on the NewModel feeding its Do, so the trigger wire reports why.
@@ -838,7 +1052,9 @@ function planComponent(
     }
   }
 
-  const compileSink = (node: NodeIR): CompiledSink => {
+  const compileSink = (node: NodeIR, port: string): CompiledSink => {
+    if (node.type === 'NavigationShowPopup') return compileShowPopup(node);
+    if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
     if (node.type === 'RouterNavigate') {
       const target = literalParam(node, 'target');
       const url = typeof target === 'string' ? urlPathByLegacy.get(target) : undefined;
@@ -1009,13 +1225,13 @@ function planComponent(
           consumes.push(wire.key);
           continue;
         }
-        if (!target || TRIGGER_PORTS[target.type] !== wire.toProperty) {
+        if (!target || !isTriggerWire(target.type, wire.toProperty)) {
           return { defer: `its ${port} wire drives no translatable action` };
         }
         if (target.type === 'Condition') {
           return { defer: `its ${port} arm drives another Condition — nesting is not translated in this slice` };
         }
-        const compiled = compiledOf(target);
+        const compiled = compiledOf(target, wire.toProperty);
         if ('defer' in compiled) return { defer: compiled.defer };
         actions.push(compiled.action);
         consumes.push(wire.key, ...compiled.consumes);
@@ -1034,17 +1250,22 @@ function planComponent(
     return { action: { kind: 'branch', cond, whenTrue, whenFalse }, consumes, collapses, subscribes };
   };
 
+  /** Keyed `${nodeId}:${port}` — the popup nodes compile per trigger port (`closeAction-*`). */
   const compiledSinks = new Map<string, CompiledSink>();
-  const compiledOf = (node: NodeIR): CompiledSink => {
-    const cached = compiledSinks.get(node.id);
+  const compiling = new Set<string>();
+  const compiledOf = (node: NodeIR, port: string): CompiledSink => {
+    const key = `${node.id}:${port}`;
+    const cached = compiledSinks.get(key);
     if (cached !== undefined) return cached;
-    const result = compileSink(node);
-    compiledSinks.set(node.id, result);
+    // A chain that re-enters itself (done-chains or arms wired in a loop) defers rather than
+    // recursing forever; the outer call records the reason.
+    if (compiling.has(key)) return { defer: 'its trigger chain is cyclic' };
+    compiling.add(key);
+    const result = compileSink(node, port);
+    compiling.delete(key);
+    compiledSinks.set(key, result);
     return result;
   };
-  for (const node of component.nodes) {
-    if (TRIGGER_PORTS[node.type] !== undefined) compiledOf(node);
-  }
 
   const actionExprs = (action: HandlerAction): ValueExpr[] => {
     switch (action.kind) {
@@ -1057,6 +1278,9 @@ function planComponent(
         return [action.expr];
       case 'branch':
         return [action.cond, ...action.whenTrue.flatMap(actionExprs), ...action.whenFalse.flatMap(actionExprs)];
+      case 'popup-show':
+      case 'popup-close':
+        return action.then.flatMap(actionExprs);
       case 'navigate':
       case 'output-signal':
         return [];
@@ -1134,11 +1358,27 @@ function planComponent(
     return { drop: `no Component Outputs declaration names port "${port}" — the runtime's hasOutput guard drops the write too` };
   };
 
+  // Every action sink compiles before attachment — the sweeps that report unattached sinks
+  // read compiledSinks for their reasons. (This loop sits below outputSinkOf because the popup
+  // compilers' done-chains reach it.)
+  for (const node of component.nodes) {
+    if (TRIGGER_PORTS[node.type] !== undefined) compiledOf(node, TRIGGER_PORTS[node.type]);
+    else if (node.type === 'NavigationShowPopup') compiledOf(node, 'show');
+    else if (node.type === 'NavigationClosePopup') {
+      compiledOf(node, 'close');
+      for (const c of component.connections) {
+        if (c.toId === node.id && c.toProperty.startsWith('closeAction-')) compiledOf(node, c.toProperty);
+      }
+    }
+  }
+
   // Pass 2: attach compiled actions to handler owners, trigger wires in source order. A wire
   // from a Condition's arm into a trigger port is chain-internal: the branch consumes it when
-  // it attaches, and the Condition sweep reports it when it does not. A Component Outputs
-  // sink never takes its disposition here — failures accumulate in failedOutputsNodes and the
-  // post-pass rules once, so the outcome cannot depend on wire order.
+  // it attaches, and the Condition sweep reports it when it does not. A popup node's `done`
+  // wires are chain-internal the same way — the popup compile consumes them on attach, and the
+  // popup sweep reports the node when it never attaches. A Component Outputs sink never takes
+  // its disposition here — failures accumulate in failedOutputsNodes and the post-pass rules
+  // once, so the outcome cannot depend on wire order.
   const receiverActions = new Map<string, HandlerAction[]>();
   const boundSubscribers = new Set<string>();
   for (const connection of component.connections) {
@@ -1146,9 +1386,15 @@ function planComponent(
     const toNode = nodeById.get(connection.toId);
     if (!toNode) continue;
     const outputsSink = toNode.type === 'Component Outputs';
-    if (!outputsSink && TRIGGER_PORTS[toNode.type] !== connection.toProperty) continue;
+    if (!outputsSink && !isTriggerWire(toNode.type, connection.toProperty)) continue;
     const fromNode = nodeById.get(connection.fromId);
     if (fromNode?.type === 'Condition' && (connection.fromProperty === 'ontrue' || connection.fromProperty === 'onfalse')) {
+      continue;
+    }
+    if (
+      (fromNode?.type === 'NavigationShowPopup' || fromNode?.type === 'NavigationClosePopup') &&
+      connection.fromProperty === 'done'
+    ) {
       continue;
     }
     consumed.add(connection.key);
@@ -1161,7 +1407,7 @@ function planComponent(
       }
       compiled = sink;
     } else {
-      compiled = compiledSinks.get(toNode.id)!;
+      compiled = compiledOf(toNode, connection.toProperty);
     }
     if ('defer' in compiled) {
       if (outputsSink) {
@@ -1298,6 +1544,46 @@ function planComponent(
     }
     plan.receivers.push({ nodeId: node.id, channelName: channelNameOf(node)!, actions });
     dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+  }
+
+  // Popup slots and the close prop are earned by attachment (POPUPS-TARGET §2, §4): a compiled
+  // popup action whose trigger never attached must leave no state, render, or prop behind.
+  {
+    const attachedSlotKeys = new Set<string>();
+    let closeAttached = false;
+    const scanActions = (actions: HandlerAction[]) => {
+      for (const action of actions) {
+        if (action.kind === 'popup-show') {
+          attachedSlotKeys.add(action.slotKey);
+          scanActions(action.then);
+        } else if (action.kind === 'popup-close') {
+          closeAttached = true;
+          scanActions(action.then);
+        } else if (action.kind === 'branch') {
+          scanActions(action.whenTrue);
+          scanActions(action.whenFalse);
+        }
+      }
+    };
+    for (const byPort of Object.values(plan.handlers)) for (const actions of Object.values(byPort)) scanActions(actions);
+    for (const actions of Object.values(plan.changeHandlers)) scanActions(actions);
+    for (const receiver of plan.receivers) scanActions(receiver.actions);
+    plan.popups = slotRegistry.filter((s) => attachedSlotKeys.has(s.slotKey));
+    plan.closesPopup = closeAttached;
+  }
+
+  // The popup sweep: popup nodes the passes did not collapse defer with their compiled reason.
+  for (const node of component.nodes) {
+    if (dispositions[node.id] !== undefined) continue;
+    if (node.type !== 'NavigationShowPopup' && node.type !== 'NavigationClosePopup') continue;
+    const show = node.type === 'NavigationShowPopup';
+    const compiled = compiledSinks.get(`${node.id}:${show ? 'show' : 'close'}`);
+    const reason =
+      compiled !== undefined && 'defer' in compiled
+        ? compiled.defer
+        : `${show ? 'Show' : 'Close'} is never fired by a translatable trigger`;
+    dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+    notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
   }
 
   // Pass 3: a wired onTextChanged into a Variable is the input's onChange — write-through,
@@ -1548,7 +1834,7 @@ function planComponent(
   for (const node of component.nodes) {
     if (dispositions[node.id] !== undefined) continue;
     if (node.type === 'Condition') {
-      const compiled = compiledSinks.get(node.id);
+      const compiled = compiledSinks.get(`${node.id}:eval`);
       const reason =
         compiled !== undefined && 'defer' in compiled
           ? compiled.defer

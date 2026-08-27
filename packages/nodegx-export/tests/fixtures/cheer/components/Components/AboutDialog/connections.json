@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "7d7b199f-df04-4dad-8719-74ce156fde6b",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "aboutOkButton",
+      "fromProperty": "onClick",
+      "toId": "aboutClose",
+      "toProperty": "closeAction-ok"
+    },
+    {
+      "fromId": "aboutClose",
+      "fromProperty": "done",
+      "toId": "aboutOutputs",
+      "toProperty": "closed"
+    }
+  ]
+}

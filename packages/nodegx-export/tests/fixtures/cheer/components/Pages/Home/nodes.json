@@ -28,7 +28,8 @@
         "visitorBadge",
         "cheerButton",
         "cheerBanner",
-        "farewell"
+        "farewell",
+        "aboutButton"
       ],
       "parameters": {
         "flexDirection": "column",
@@ -189,6 +190,37 @@
       "y": 1000,
       "parameters": {
         "target": "/Pages/Mood"
+      }
+    },
+    {
+      "id": "aboutButton",
+      "type": "net.noodl.controls.button",
+      "label": "About",
+      "x": 160,
+      "y": 1120,
+      "parent": "shell",
+      "parameters": {
+        "label": "About",
+        "backgroundColor": "var(--secondary)",
+        "color": "var(--secondary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      }
+    },
+    {
+      "id": "showAbout",
+      "type": "NavigationShowPopup",
+      "label": "Show About dialog",
+      "x": 410,
+      "y": 1120,
+      "parameters": {
+        "target": "/Components/AboutDialog"
       }
     }
   ],
