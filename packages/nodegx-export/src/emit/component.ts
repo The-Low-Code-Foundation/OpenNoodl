@@ -17,7 +17,16 @@
  */
 
 import { CatalogIndex } from '../catalog';
-import { BindingSource, ComponentPlan, HandlerAction, JsFunctionPlan, ProjectPlan, QueryPlan, ValueExpr } from '../analyze/plan';
+import {
+  BindingSource,
+  ComponentPlan,
+  HandlerAction,
+  JsFunctionPlan,
+  MutationPlan,
+  ProjectPlan,
+  QueryPlan,
+  ValueExpr
+} from '../analyze/plan';
 import { ExportIR, NodeIR } from '../ir/types';
 import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase } from './naming';
 import { tsLiteral } from './state';
@@ -300,7 +309,7 @@ export function emitComponent(
     actions.flatMap((a) =>
       a.kind === 'branch'
         ? [a, ...deepActions(a.whenTrue), ...deepActions(a.whenFalse)]
-        : a.kind === 'popup-show' || a.kind === 'popup-close' || a.kind === 'jsfun-run'
+        : a.kind === 'popup-show' || a.kind === 'popup-close' || a.kind === 'jsfun-run' || a.kind === 'record-op'
           ? [a, ...deepActions(a.then)]
           : [a]
     );
@@ -380,6 +389,12 @@ export function emitComponent(
     }
   }
   for (const sync of plan.syncEffects) referencedStateNames.add(sync.stateName);
+  // A record verb's Error row is *written* by its catch even when nothing reads it, and a row
+  // reached only by its writer is still a row: without this the emitted setter call names a
+  // binding the filter had already dropped (RECORD-VERBS-TARGET §4a).
+  for (const action of deepActions(allActions)) {
+    if (action.kind === 'record-op') referencedStateNames.add(action.errorState);
+  }
   for (const lifted of Object.values(plan.instanceLifted)) {
     for (const entry of lifted) {
       const stateVar = plan.stateVars.find((v) => v.setterName === entry.setterName);
@@ -698,7 +713,16 @@ export function emitComponent(
             : expandActions(a.then)
           : [a]
     );
-  const actionCode = (action: HandlerAction): string => {
+  /** The `prop-*` record a record verb sends — the runtime's `_internal.inputValues`, by value. */
+  const recordDataObject = (props: Array<{ key: string; expr: ValueExpr }>): string => {
+    const entries = props.map((p) => {
+      const code = exprCode(p.expr, 'handler');
+      const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(p.key) ? p.key : JSON.stringify(p.key);
+      return key === code ? code : `${key}: ${code}`;
+    });
+    return entries.length > 0 ? `{ ${entries.join(', ')} }` : '{}';
+  };
+  const actionCode = (action: HandlerAction, indent = 0): string => {
     switch (action.kind) {
       case 'navigate':
         return `navigate('${action.to}')`;
@@ -758,6 +782,28 @@ export function emitComponent(
         if (action.op === 'dec') return `${setter}((v) => v - 1)`;
         return `${setter}(${exprCode(action.expr!, 'handler')})`;
       }
+      // The first asynchronous action (RECORD-VERBS-TARGET §4a). The `done` chain follows the
+      // await inside the try — which is where `reportOutcomes(…, 'done')` sits in the runtime,
+      // after the store answers — and the catch is `setError`: it writes the Error output and
+      // never clears it, exactly as `_internal.error` behaves.
+      case 'record-op': {
+        const args = [
+          ...(action.idExpr === undefined ? [] : [exprCode(action.idExpr, 'handler')]),
+          ...(action.verb === 'delete' ? [] : [recordDataObject(action.props)])
+        ];
+        const inner = pad(indent + 2);
+        const body = [
+          `${inner}await ${action.fnName}(${args.join(', ')});`,
+          ...expandActions(action.then).map((a) => `${inner}${actionCode(a, indent + 2)};`)
+        ];
+        return [
+          'try {',
+          ...body,
+          `${pad(indent)}} catch (error) {`,
+          `${inner}${stateSetterOf(action.errorState)}(error instanceof Error ? error.message : String(error));`,
+          `${pad(indent)}}`
+        ].join('\n');
+      }
       case 'branch': {
         const armCode = (armActions: HandlerAction[]): string => {
           const list = expandActions(armActions);
@@ -782,11 +828,23 @@ export function emitComponent(
   const handlerArrow = (actions: HandlerAction[], param: string, indent: number): string => {
     const expanded = expandActions(actions);
     const statements = expanded.map(actionCode);
-    if (expanded.some((a) => a.kind === 'branch' || (a.kind === 'popup-close' && a.then.length > 0))) {
-      const body = statements.map((s) => `${pad(indent + 2)}${s};`).join('\n');
-      return `${param} => {\n${body}\n${pad(indent)}}`;
+    // A record verb's call is awaited, so the handler it lands in is `async` — and its try/catch
+    // is a statement, which takes the same block form a branch does (RECORD-VERBS-TARGET §4a).
+    const isAsync = expanded.some((a) => a.kind === 'record-op');
+    const head = isAsync ? `async ${param}` : param;
+    if (isAsync || expanded.some((a) => a.kind === 'branch' || (a.kind === 'popup-close' && a.then.length > 0))) {
+      // A try/catch is a statement, not an expression: it prints at the handler's own column and
+      // takes no terminator. Every other action keeps the semicolon the existing goldens pin.
+      const body = expanded
+        .map((a) =>
+          a.kind === 'record-op'
+            ? `${pad(indent + 2)}${actionCode(a, indent + 2)}`
+            : `${pad(indent + 2)}${actionCode(a)};`
+        )
+        .join('\n');
+      return `${head} => {\n${body}\n${pad(indent)}}`;
     }
-    return statements.length === 1 ? `${param} => ${statements[0]}` : `${param} => { ${statements.join('; ')}; }`;
+    return statements.length === 1 ? `${head} => ${statements[0]}` : `${head} => { ${statements.join('; ')}; }`;
   };
 
   // ---- imports ---------------------------------------------------------------------------
@@ -817,19 +875,25 @@ export function emitComponent(
   if (usesNavigate) externalImports.push(`import { useNavigate } from 'react-router-dom';`);
 
   const internalImports = new Map<string, string>(); // specifier → line
-  const stubModules = new Map<string, QueryPlan[]>();
-  for (const query of plan.queries) {
-    const list = stubModules.get(query.moduleBase) ?? [];
-    list.push(query);
-    stubModules.set(query.moduleBase, list);
-  }
-  for (const [moduleBase, queries] of stubModules) {
+  // One import per api module, carrying the reads and the writes together — the record verbs
+  // land in the same module as the query on the same class (RECORD-VERBS-TARGET §4d). Only the
+  // fetch needs its item type imported; a mutation's argument type is inferred from the call.
+  const stubModules = new Map<string, { queries: QueryPlan[]; mutations: MutationPlan[] }>();
+  const stubModule = (moduleBase: string) => {
+    let entry = stubModules.get(moduleBase);
+    if (entry === undefined) stubModules.set(moduleBase, (entry = { queries: [], mutations: [] }));
+    return entry;
+  };
+  for (const query of plan.queries) stubModule(query.moduleBase).queries.push(query);
+  for (const mutation of plan.mutations) stubModule(mutation.moduleBase).mutations.push(mutation);
+  for (const [moduleBase, { queries, mutations }] of stubModules) {
     const specifier = `${relRoot}/api/${moduleBase}`;
     const fetchNames = [...new Set(queries.map((q) => q.fetchName))].sort();
+    const fnNames = [...new Set(mutations.map((m) => m.fnName))].sort();
     const typeNames = [...new Set(queries.map((q) => q.typeName))].sort();
     internalImports.set(
       specifier,
-      `import { ${[...fetchNames, ...typeNames.map((t) => `type ${t}`)].join(', ')} } from '${specifier}';`
+      `import { ${[...fetchNames, ...fnNames, ...typeNames.map((t) => `type ${t}`)].join(', ')} } from '${specifier}';`
     );
   }
   if (usedVariableNames.size > 0) {
@@ -1822,6 +1886,12 @@ export function emitComponent(
         return a.then.flatMap(actionExprsOf);
       case 'jsfun-run':
         return [...jsArgExprs(a.nodeId), ...a.then.flatMap(actionExprsOf)];
+      case 'record-op':
+        return [
+          ...(a.idExpr === undefined ? [] : [a.idExpr]),
+          ...a.props.map((p) => p.expr),
+          ...a.then.flatMap(actionExprsOf)
+        ];
       case 'navigate':
       case 'output-signal':
         return [];

@@ -1,0 +1,365 @@
+# EXP-002 — the record verbs: the target output (session 20)
+
+**Decided on paper before code, like every slice since step 5. Read this before touching Create /
+Update / Delete Record, the api stub module, control state minted for a form field, or any
+`await` in an emitted handler.** This is the first slice whose action is *asynchronous*, and the
+shape it settles — an awaited call, a `done` chain that runs after it, and a failure that lands in
+component state — is the one the whole backend family (the User nodes, HTTP, the relation verbs)
+will reuse.
+
+Sources read first: `packages/noodl-runtime/src/nodes/std-library/data/dbmodelcrudbase.ts`
+(`_addBaseInfo` — the outcome/`error` contract, `checkWarningsBeforeCloudOp`, `cloudStore`;
+`_addModelId` — `idSource`, `modelId`, the `id` getter, `setModelID`'s empty-id rule;
+`_addInputProperties` — `prop-*`; `_addAccessControl`), `newdbmodelpropertiesnode.ts`,
+`setdbmodelpropertiesnode.ts`, `deletedbmodelpropertiesnode.ts`. Corpus: `rv-survey.ts` and
+`rank2.ts`, session 20 scratchpad (`c21c8eab-…`), outputs `rv-out.txt` / `rank2-out.txt`.
+
+## §0 Why this slice and not Tier B — the ranking instrument, rebuilt
+
+The s19 handoff asked for two things before the next ranking was trusted: real projects added to
+the corpus, and the ranking instrument given the columns §5 had been deriving by hand. `rank2.ts`
+is that instrument. It prints, per deferred type and **per deferral reason**: raw nodes, distinct
+projects, **distinct clone-deduped components**, **distinct programs**, and how many sit in a host
+that actually emits a file. The first run corrected two readings immediately:
+
+- `net.noodl.controls.button` reads as **35 nodes across 10 projects** — and is **7 distinct
+  instances**, every one collateral of a host whose render tree already defers. Nothing to build.
+- The entire top of the raw ranking is **one kit**. `the script reads the Noodl API` (80),
+  `logic node (Model2)` (72), `net.noodl.ComponentObject` (56), `the script reads the Component
+  scope` (56) and the four *"its `<port>` arrives over a wire, so the rendered structure is not
+  static"* rows (72) are the **same eight projects** — all clones of the stock Filters kit, 9
+  distinct components between them. Tier B's ~350-node blast radius is real, and it is one
+  third-party kit copied eight times, gated behind Model2, a dynamic-template For Each, and a
+  reactive-object/event vocabulary none of which exist.
+
+Against that, the record verbs are 19 raw nodes / **12 distinct instances across five genuinely
+different hand-built apps** (`Puppy test`, `puppy-test-3-fix008c`, `phase58-backend-deferred`,
+`test1`, `tut003-log-a-thing-solution`), every one the *same* idiom, and every one sitting on
+vocabulary that already exists. This is the slice; Tier B keeps its place in the queue as a
+per-component rewrite once its four prerequisites land.
+
+> ⚠️ The instrument answers "how much *work* is this and how *broadly* does it apply", not "how
+> many nodes are there". Both numbers are honest; only one of them ranks slices.
+
+## §1 What the runtime actually does (from the sources)
+
+The three verbs are one node assembled three ways by `dbmodelcrudbase`'s mixins.
+
+- **`store` ("Do") is the only trigger.** `valueChangedToTrue` → `storageInsert` /
+  `scheduleSave` / `storageDelete`. Each mints an outcome token, runs
+  `checkWarningsBeforeCloudOp`, then `scheduleOnce` — which **coalesces per update pass** (two
+  `Do` pulses in one pass do one request) while `pendingOutcomes`/`takeOutcomes` keep *two*
+  outcomes, because two invocations are two invocations.
+- **`prop-*` inputs accumulate, they do not trigger.** `_setInputValue` writes
+  `_internal.inputValues[name]`; nothing else. So the request body is *whatever has arrived by
+  the time `Do` fires* — and a `prop-X` that never arrived is an **absent key**, not an empty one.
+- **`collectionName` is load-bearing and can be absent.** `checkWarningsBeforeCloudOp` answers a
+  missing `collectionId` with `setError('No class name specified')` and returns false — the
+  backend is never called. A verb with no class named **always fails**.
+- **`modelId` accepts a record or its id**; `setModelID` treats `undefined`/`null`/`''` as *clear
+  the binding* (NDA-012 OB-ii), and every verb then answers `setError('Missing Record Id')`.
+  `idSource: 'foreach'` instead binds to the enclosing repeater's row.
+- **`error` is a value output that is never cleared.** Its description says so in as many words —
+  *"kept after a later attempt succeeds"* — and `_internal.error` is assigned only in `setError`.
+  `failure` is the signal beside it; `done` fires on success. The error value is flagged dirty
+  **before** the pulse, so a graph wiring `Failure → show` can already read `Error`.
+- **`id`** reads `model.getId()` when there is a model, else the `modelId` input. On Create,
+  `setModel(m)` runs **before** `reportOutcomes(…, 'done')` — so a `done` chain reading `Id`
+  already has the id the backend assigned. On Update/Delete it is just the `modelId` input.
+- **Update is two nodes in one**: `storeType: 'cloud'` (default) writes through
+  `cloudstore.save`; `'local'` only mutates the in-memory record. `storeProperties: 'all'` sends
+  every field the record holds rather than only the wired ones.
+- Create additionally takes `sourceObjectId` (seed the new record from an existing one) and the
+  whole family takes `accessControl`/`acl-*` (an ACL sent with the write) and `backendId`.
+
+## §2 The corpus (rv-survey.ts, clone-deduped)
+
+Nine Create, five Update, five Delete raw; one Add Relation and one `DbModel2` beside them. After
+clone-dedupe: **12 distinct verb instances** (6 Create, 3 Update, 3 Delete), plus the two neighbours.
+**One idiom, five times:**
+
+```
+prop-<field>  ←  textinput.onTextChanged        (the form fields)
+modelId       ←  textinput.onTextChanged | Component Inputs.itemId
+store         ←  button.onClick                 (the submit)
+done          →  Component Outputs.<signal> | DbCollection2.storageFetch | AddDbModelRelation.store
+error         →  Text.text                      (the status line)
+id            →  AddDbModelRelation.modelId
+```
+
+The authored-parameter census is what sets the gates, and it is unusually clean:
+
+| parameter | authored, over the whole corpus |
+|---|---|
+| `collectionName` | 11 of 12 — **`puppy-test-3-fix008c`'s Delete has none** |
+| `idSource` | `explicit` ×3, **`foreach` never** |
+| `storeType`, `storeProperties`, `backendId`, `sourceObjectId` | **never** |
+| `accessControl` + `acl-*` | `test1`'s Create only |
+| a literal `prop-*` | `test1`'s `prop-note="test"` |
+
+Two shapes outside the idiom: `phase58`'s Update takes **two wires into one `prop-count`** (an
+increment and a decrement Expression, each with its own `store`), and `tut003`'s Create takes
+`store` from a **Visual Function's block-declared `ok`**, which is a value wire, not a signal.
+
+## §3 The enabling change: a form field is state (§4c's third clause, completed)
+
+The dominant idiom cannot be translated by the record verbs alone, and the reason is worth
+stating plainly because it is the whole of why this slice was blocked.
+
+`onTextChanged` resolves to `{ kind: 'input-text' }`, which `exprValidIn` admits **only inside
+that input's own DOM handler**. The form reads five inputs from the *button's* `onClick`. So
+every `prop-*` wire was invalid in its context and the node deferred — not because the verb was
+untranslatable, but because its arguments were unreachable.
+
+CONTROLLED-STATE §4c already owns the fix and states it as *"the control's value output anywhere
+in the component reads the local state"*. The implementation approximates "anywhere" as **a
+rendered sink or a lifted Component Outputs value port** — the only two readers that existed when
+it was written. This slice adds the third: **a handler action's argument**. Concretely, the
+`outputRead` clause of the minting pass also counts a wire into a record verb's `prop-*` or
+`modelId`, and then everything downstream is unchanged — `resolveExpr` already prefers
+`state-get` over `input-text` when a control has state, the control's own `onChange` already
+seeds the chain-local snapshot with the user-path event value, and the emitted field becomes the
+controlled input §4c specifies.
+
+This is the general shape, not a special case: every later handler-argument reader (the User
+nodes' credentials, HTTP's body) earns control state by the same clause.
+
+## §4 The target output, hand-written first
+
+### 4a — Create, with the status line and a done chain
+
+```tsx
+export function AddStockForm(props: { onItemAdded?: () => void }) {
+  const { onItemAdded } = props;
+  // The form fields are local state because the submit chain reads them (§3).
+  const [name, setName] = useState<string>('');
+  const [count, setCount] = useState<string>('');
+  const [supplier, setSupplier] = useState<string>('');
+  // From "Create stock item" — the Error output, which the runtime keeps after a later
+  // attempt succeeds, so nothing clears it.
+  const [createStockItemError, setCreateStockItemError] = useState<string | undefined>(undefined);
+
+  return (
+    <div className={styles.addStockForm}>
+      <input className={styles.name} value={name} onChange={(event) => setName(event.target.value)} />
+      …
+      <button
+        className={styles.addItem}
+        onClick={async () => {
+          try {
+            await createStockItem({ name: name, count: count, supplier: supplier });
+            onItemAdded?.();
+          } catch (error) {
+            setCreateStockItemError(error instanceof Error ? error.message : String(error));
+          }
+        }}
+      >
+        Add item
+      </button>
+      <p className={styles.errorMessage}>{createStockItemError ?? ''}</p>
+    </div>
+  );
+}
+```
+
+- **The handler becomes `async` and the call is `await`ed.** Everything after it in the compiled
+  chain is the `done` chain, in wire order — which is exactly `reportOutcomes(…, 'done')`'s
+  position in the runtime, after the store answers.
+- **The `catch` is `setError`.** It writes the error state and runs the `failure` chain if one is
+  wired. It does **not** clear the error on success (§1), and it does not rethrow: the runtime
+  carries on.
+- `error` reads as a maybe-undefined `state-get`, so it folds at its sinks through the existing
+  session-12 machinery (`Text.text` → `?? ''`).
+- **Coalescing is not modelled and does not need to be.** `scheduleOnce` collapses two `Do`
+  pulses *in one update pass* into one request; two clicks are two passes. Nothing in the emit
+  vocabulary can deliver two `Do`s in one pass, so the two systems agree at every reachable
+  point — grade Q, the A1 argument one tier up.
+
+### 4b — Update and Delete
+
+```tsx
+onClick={async () => {
+  try {
+    await updatePuppy(puppyId, { name: name, breed: breed, age: age, photo: photo, bio: bio });
+  } catch (error) {
+    setUpdatePuppyError(error instanceof Error ? error.message : String(error));
+  }
+}}
+```
+
+`modelId` is the first argument, resolved through the ordinary value vocabulary (a control state
+read here, a `prop` in `phase58`'s row component). Delete takes the id alone.
+
+### 4c — The `id` output — designed, deliberately not built
+
+`NewDbModelProperties.id → AddDbModelRelation.modelId` is a read of a value that exists only
+after the await. The chain-local rule generalises cleanly: the awaited call binds a `const`, and
+reads of `id` inside that chain resolve to it.
+
+```tsx
+const created = await createInquiry({ visitorName, contactInfo, message });
+await addInquiryRelation(created.id, puppyId);   // ← the relation verb, when it lands
+```
+
+**It is not in the built slice**, and the reason is the corpus: the *only* consumer of `id`
+anywhere is `AddDbModelRelation`, which is itself out of scope — so the shape would add a second
+scope dimension to `exprValidIn` (a value legal only inside one chain) with no reachable case to
+test it against. A consumed `id` is gate 11 instead, and the relation slice inherits this section
+already written.
+
+### 4d — The api stub module: reads answer empty, **writes throw**
+
+The verbs join the collection's existing stub module, and the module is now minted by a query
+**or** a mutation:
+
+```ts
+export interface StockItem {
+  id: string;
+  name?: string;
+  count?: number;
+}
+
+/**
+ * TODO(export): "Create stock item" (NewDbModelProperties `create_i` on /Components/AddStockForm)
+ * created a record in the `StockItem` collection in the project's NodeGX backend. Connect this to
+ * your own data source; the export report lists every call site.
+ */
+export async function createStockItem(data: Partial<StockItem>): Promise<StockItem> {
+  throw new Error('createStockItem is not connected to a backend yet');
+}
+```
+
+`fetchStockItems` returns `[]` so the export builds and runs. A **write** stub must not do the
+equivalent, and the asymmetry is deliberate: an empty list is a plausible state of a real
+collection, while a fabricated successful write is a plausible state of nothing. Throwing puts
+the unfinished export on the path the graph already draws — the status Text fills with the
+reason, which is what the interpreted app does with no backend attached. The alternative silently
+reports success for a record that was never stored.
+
+Naming is a pure function of the class name, identical to the query stub's derivation, so a
+project that both reads and writes one collection gets **one** module: `Puppy` → `src/api/puppies.ts`,
+`interface Puppy`, `fetchPuppies`, `createPuppy` / `updatePuppy` / `deletePuppy`.
+
+### 4e — `DbCollection2.storageFetch` as a done-chain action — designed, deliberately not built
+
+`tut003`'s Create fires the collection's re-fetch on `done`. The query already emits `useState` +
+a mount `useEffect`; the action would be the same call as a statement, not awaited (the runtime's
+`storageFetch` is a pulse whose `fetched`/`done` fire later and, in the corpus, into nothing):
+
+```tsx
+await createLogEntries({ title: title });
+fetchLogEntries().then(setLogEntries);
+```
+
+**Not built, for two reasons that agree.** The query plan is computed in a pass that runs *after*
+handler compilation (it depends on the repeater-items wires), so a refetch action compiled during
+the handler pass cannot know whether its target will become a query at all — and emitting a call
+against a state var that never materialised would break the emitted app's own build. And the
+demand is unreachable anyway: `tut003`'s Create defers on its trigger (gate 8) regardless, so
+nothing in the corpus exercises it. The pass-ordering note is the real finding, and it belongs to
+whichever session lands the Visual Function signal chains, because that is when this becomes
+reachable.
+
+## §5 The gates (any hit ⇒ the node defers, reason named)
+
+Each is a fork in §1's contract that the emit vocabulary has no shape for, and each names the
+slice that owns it:
+
+1. **No `collectionName`** — *"no class is named, so the runtime answers Failure with 'No class
+   name specified' and never calls the backend"*. Translating it as a working call would be a
+   hole shaped exactly like the defect. (`puppy-test-3-fix008c`'s Delete.)
+2. `idSource = 'foreach'`, or `repeaterComponent` authored — the record is the enclosing
+   repeater's row: **row identity**, the s10 wall.
+3. `storeType = 'local'` — an in-memory-only write, and the export has no in-memory record.
+4. `storeProperties = 'all'` — sends every field the record holds; nothing in the export holds it.
+5. `accessControl` / any `acl-*` parameter — the ACL is a backend concept with no stub shape.
+6. `backendId` authored, or `sourceObjectId` wired.
+7. **Two wires into one `prop-*` or into `modelId`** — last-writer-wins is not statically
+   ordered (the CO §4 and control-state precedents, same wording). This is `phase58`'s Update.
+8. `store` unwired, or wired from something the handler vocabulary does not compile — which is
+   `tut003`'s Create today (`Logic Builder.ok` is a value wire; conditional signal chains for
+   Visual Functions are LOGIC-BUILDER's named next increment).
+9. `modelId` neither wired nor authored on Update/Delete — the runtime answers
+   `setError('Missing Record Id')` every time; same rule as gate 1.
+10. A `prop-*` or `modelId` source that resolves to nothing in the vocabulary — defer naming the
+    feeder (collateral, the standing rule).
+11. A consumed `id` outside the invoking chain; a consumed query `fetched`/`done` on a
+    `storageFetch` target.
+
+## §6 Recorded divergences (cosmetic or named, deliberate)
+
+- **Absent keys become empty ones.** The runtime sends only the `prop-*` values that have
+  *arrived*; a control's state boots `''` and is always sent. A create where the user typed
+  nothing posts `{ name: '' }` where the interpreter posts `{}`. Recorded rather than papered
+  over: suppressing boot values would be wrong the moment a user types and then clears a field.
+  A plan note names every field this applies to.
+- **Coalescing**: `scheduleOnce` merges two `Do`s in one update pass; unreachable from the emit
+  vocabulary (§4a).
+- **Outcome batching**: two invocations report twice in the runtime through the token batch; two
+  awaited calls report twice here, by construction.
+- The `error` value is component state rather than a node getter — invisible to
+  `getInspectInfo` in the emitted app, which does not exist there anyway.
+- `id` before the first successful Create reads `undefined` in the runtime (no model, no
+  `modelId`); the export has no reader for it at all (gate 11), so the state is unreachable.
+
+## §7 Fixture & test plan (the EXP-002 discipline — superseded by §9)
+
+- Cheer grows, via MCP on the live project (prefixed wires!), snapshot re-copied (`diff -rq`): a
+  small form — two text inputs, a submit button, a Create Record with `done` into a Component
+  Outputs signal and `error` into a Text — plus an Update and a Delete over the same collection so
+  one api module carries all four functions.
+- Tests: goldens for §4a/4b/4c (byte-for-byte); the api-stub module with a query *and* mutations;
+  the write-stub throw; every §5 gate producing its named reason; the §3 control-state mint
+  (a text input that only feeds a `prop-*` becomes controlled); the async handler shape; the
+  `error` fold at `Text.text`; the `id` binding emitted only when read.
+- Audit re-run over the 40 projects, same instrument both sides; ledger flips
+  `NewDbModelProperties`, `SetDbModelProperties`, `DeleteDbModelProperties` in the same commit;
+  emitted app `tsc -b` + `vite build` clean.
+
+## §8 Corpus impact, stated honestly
+
+Seven of the twelve distinct verb instances pass every gate; five do not, and each names a slice
+already in the queue (`phase58`'s Update on the two-writer rule, `tut003`'s Create on the Visual
+Function signal chain, `puppy-test-3-fix008c`'s Delete on its missing class, `test1`'s Create on
+its ACL, `Puppy test`'s Create Inquiry on its consumed `Id`). The collateral is larger than the
+verbs: the form's text inputs stop being uncontrolled, the status `Text` gets a source, and
+`phase58`'s `Component Outputs` signals get feeds. What actually flips is the audit re-run's to
+report, not this document's to promise — §10's standing caution.
+
+## §9 Implementation addendum (session 20 — what building the slice settled)
+
+The slice landed as designed, minus §4c and §4e, both cut with reasons above. These are the
+rulings where the paper met the compiler.
+
+- **§7's fixture plan was not followed, and should not have been.** `tests/fixtures/puppy-test-3`
+  already carries the idiom verbatim — five inputs into `prop-*`, a button into `Do`, three
+  `Error` wires into one status `Text`, and a Delete the author never gave a class name. A shape
+  the corpus actually has beats one written to be translatable; in particular no hand-authored
+  fixture would have thought to include the missing class name, which is gate 1's only real case.
+- 🔴 **A state row reached only by its *writer* was filtered out of existence.** Emit keeps
+  `plan.stateVars` that something *references*, and `referencedStateNames` was built from
+  expressions and a short list of implicit readers. A record verb's `Error` row is written by its
+  catch and — when another verb won the shared status line — read by nothing, so the row vanished
+  while `setUpdatePuppyError(…)` stayed in the handler. The emitted app did not compile. The
+  general rule the sweep was missing: **a write is a reference.**
+- **Three verbs share one status line, and the runtime shows whichever wrote last.** Binding
+  overwrite would have dropped two wires in silence, so the first wire binds and the rest drop
+  *with a note* — the CO §4 two-writer rule applied to the sink side.
+- **The `Error` read requires the verb to have *attached*, not merely to have compiled.** A verb
+  whose `Do` the slice could not translate still runs in the interpreter, so binding its `Error`
+  to a state row nothing writes would render a blank where the interpreter shows a message. The
+  attachment sweep fills `attachedRecordVerbs` and every binding pass runs after it.
+- **The try/catch is a statement, so it prints at the handler's own column and takes no
+  terminator** — unlike every other action, whose trailing `;` the existing goldens pin (a popup
+  close's `if (onClose) { … };` is asserted byte-for-byte). `actionCode` grew an indent
+  parameter defaulting to 0, so nothing else moved.
+- **The api module is minted by a query *or* a mutation**, and both derive their names from one
+  `collectionModuleNames(collectionName)` — otherwise a project that reads and writes one class
+  gets two modules that disagree about the type name.
+
+**Corpus outcome (same instrument both sides, worktree at HEAD vs the working tree):**
+**3,737/4,441 → 3,749/4,441, 84.15% → 84.42%** — +12 nodes on an unchanged denominator, across
+**five distinct projects** (`Puppy test`, `Puppy test 3`, `puppy-test-3-fix008c`, `tut001-drive`,
+`phase58-backend-deferred`), no project regressed. Every remaining defer in those projects reads
+as one of §5's gates in its own words. 369 tests (25 new); the emitted `puppy-test-3` app
+`tsc -b` and `vite build` clean.

@@ -81,38 +81,87 @@ function withCoreDependency(packageJson: string): string {
  * before the inheritor wires a backend, and every stub is a line item in the report.
  */
 function apiStubs(ir: ExportIR, project: ProjectPlan): Array<[string, string]> {
-  const byCollection = new Map<string, Array<{ componentPath: string; query: QueryPlan }>>();
+  type Site = { componentPath: string; nodeId: string };
+  type Module = {
+    typeName: string;
+    moduleBase: string;
+    fetchName?: string;
+    querySites: Site[];
+    /** Mutation function name → its call sites, first-use order (RECORD-VERBS-TARGET §4d). */
+    mutations: Map<string, { verb: 'create' | 'update' | 'delete'; sites: Site[] }>;
+  };
+  const byCollection = new Map<string, Module>();
+  const moduleFor = (collectionName: string, typeName: string, moduleBase: string): Module => {
+    let entry = byCollection.get(collectionName);
+    if (entry === undefined) {
+      byCollection.set(collectionName, (entry = { typeName, moduleBase, querySites: [], mutations: new Map() }));
+    }
+    return entry;
+  };
   for (const plan of project.plans) {
     for (const query of plan.queries) {
-      const sites = byCollection.get(query.collectionName) ?? [];
-      sites.push({ componentPath: plan.path, query });
-      byCollection.set(query.collectionName, sites);
+      const entry = moduleFor(query.collectionName, query.typeName, query.moduleBase);
+      entry.fetchName = query.fetchName;
+      entry.querySites.push({ componentPath: plan.path, nodeId: query.nodeId });
+    }
+    for (const mutation of plan.mutations) {
+      const entry = moduleFor(mutation.collectionName, mutation.typeName, mutation.moduleBase);
+      let fn = entry.mutations.get(mutation.fnName);
+      if (fn === undefined) entry.mutations.set(mutation.fnName, (fn = { verb: mutation.verb, sites: [] }));
+      fn.sites.push({ componentPath: plan.path, nodeId: mutation.nodeId });
     }
   }
 
+  const nodeLabel = (site: Site): string => {
+    const node = ir.components.find((c) => c.path === site.componentPath)?.nodes.find((n) => n.id === site.nodeId);
+    return node?.authoredLabel ? `"${node.authoredLabel}" ` : '';
+  };
+  const siteLine = (site: Site, type: string): string =>
+    ` * TODO(export): ${nodeLabel(site)}(${type} \`${site.nodeId}\` on /${site.componentPath})`;
+
   const stubs: Array<[string, string]> = [];
-  for (const [collectionName, sites] of byCollection) {
+  for (const [collectionName, module] of byCollection) {
     const schema = ir.project.collections.find((c) => c.name === collectionName);
-    const { typeName, fetchName, moduleBase } = sites[0].query;
+    const { typeName, moduleBase, fetchName, querySites, mutations } = module;
 
     const fields = (schema?.columns ?? []).map((col) => `  ${col.name}?: ${tsColumnType(col.type)};`);
-    const siteLines = sites.map(({ componentPath, query }) => {
-      const node = ir.components
-        .find((c) => c.path === componentPath)
-        ?.nodes.find((n) => n.id === query.nodeId);
-      const label = node?.authoredLabel ? `"${node.authoredLabel}" ` : '';
-      return ` * TODO(export): ${label}(DbCollection2 \`${query.nodeId}\` on /${componentPath})`;
-    });
+    const parts: string[] = [
+      `export interface ${typeName} {\n  id: string;\n${fields.join('\n')}${fields.length > 0 ? '\n' : ''}}\n`
+    ];
 
-    stubs.push([
-      `src/api/${moduleBase}.ts`,
-      GENERATED_TS +
-        `export interface ${typeName} {\n  id: string;\n${fields.join('\n')}${fields.length > 0 ? '\n' : ''}}\n\n` +
-        `/**\n${siteLines.join('\n')}\n` +
-        ` * fetched the \`${collectionName}\` collection from the project's NodeGX backend. Connect this to your\n` +
-        ` * own data source; the export report lists every call site.\n */\n` +
-        `export async function ${fetchName}(): Promise<${typeName}[]> {\n  return [];\n}\n`
-    ]);
+    if (fetchName !== undefined) {
+      parts.push(
+        `/**\n${querySites.map((s) => siteLine(s, 'DbCollection2')).join('\n')}\n` +
+          ` * fetched the \`${collectionName}\` collection from the project's NodeGX backend. Connect this to your\n` +
+          ` * own data source; the export report lists every call site.\n */\n` +
+          `export async function ${fetchName}(): Promise<${typeName}[]> {\n  return [];\n}\n`
+      );
+    }
+
+    // A read stub answers empty so the export builds and runs; a **write** stub throws
+    // (RECORD-VERBS-TARGET §4d). An empty list is a plausible state of a real collection; a
+    // fabricated successful write is a plausible state of nothing, and reporting success for a
+    // record that was never stored is the one failure this whole slice exists to make visible.
+    for (const [fnName, { verb, sites }] of mutations) {
+      const nodeType =
+        verb === 'create' ? 'NewDbModelProperties' : verb === 'update' ? 'SetDbModelProperties' : 'DeleteDbModelProperties';
+      const past = verb === 'create' ? 'created a record in' : verb === 'update' ? 'updated a record in' : 'deleted a record from';
+      const signature =
+        verb === 'create'
+          ? `(data: Partial<${typeName}>): Promise<${typeName}>`
+          : verb === 'update'
+            ? `(id: string, data: Partial<${typeName}>): Promise<${typeName}>`
+            : `(id: string): Promise<void>`;
+      parts.push(
+        `/**\n${sites.map((s) => siteLine(s, nodeType)).join('\n')}\n` +
+          ` * ${past} the \`${collectionName}\` collection in the project's NodeGX backend. Connect this to your\n` +
+          ` * own data source; until you do it throws, which is what the graph's Failure path already handles.\n */\n` +
+          `export async function ${fnName}${signature} {\n` +
+          `  throw new Error('${fnName} is not connected to a backend yet');\n}\n`
+      );
+    }
+
+    stubs.push([`src/api/${moduleBase}.ts`, GENERATED_TS + parts.join('\n')]);
   }
   return stubs;
 }

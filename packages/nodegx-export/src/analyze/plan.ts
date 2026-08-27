@@ -82,6 +82,16 @@ export type RenderRole = StyleRole | 'instance' | 'repeater';
 /** The per-component-instance record node (COMPONENT-OBJECT-TARGET; componentobject.ts). */
 const COMPONENT_OBJECT = 'net.noodl.ComponentObject';
 
+/**
+ * The record verbs (RECORD-VERBS-TARGET) — one node assembled three ways by
+ * `dbmodelcrudbase`'s mixins, and the first asynchronous action in the vocabulary.
+ */
+const RECORD_VERBS: Record<string, 'create' | 'update' | 'delete'> = {
+  NewDbModelProperties: 'create',
+  SetDbModelProperties: 'update',
+  DeleteDbModelProperties: 'delete'
+};
+
 export type BindingSource =
   | { kind: 'prop'; name: string }
   | { kind: 'store'; variableName: string }
@@ -186,7 +196,27 @@ export type HandlerAction =
    * (`setX(v => !v)`) — immune to closure staleness, which is why Switch's `flip` and
    * Counter's arithmetic use it, never `expr`.
    */
-  | { kind: 'state-set'; name: string; expr?: ValueExpr; op?: 'toggle' | 'inc' | 'dec' };
+  | { kind: 'state-set'; name: string; expr?: ValueExpr; op?: 'toggle' | 'inc' | 'dec' }
+  /**
+   * A record verb fired from a handler chain (RECORD-VERBS-TARGET §4): the first asynchronous
+   * action in the vocabulary. The emitted handler becomes `async`, the call is awaited, `then`
+   * is the `done` chain — which is where `reportOutcomes(…, 'done')` sits in the runtime, after
+   * the store answers — and the catch writes `errorState`, the node's `Error` output, which the
+   * runtime never clears once set.
+   */
+  | {
+      kind: 'record-op';
+      nodeId: string;
+      verb: 'create' | 'update' | 'delete';
+      /** The api module's exported function: `createPuppy` / `updatePuppy` / `deletePuppy`. */
+      fnName: string;
+      /** Update/Delete only — the record the verb acts on. */
+      idExpr?: ValueExpr;
+      /** Create/Update only, wire order then literal order. */
+      props: Array<{ key: string; expr: ValueExpr }>;
+      errorState: string;
+      then: HandlerAction[];
+    };
 
 /**
  * One re-hosted Function/Expression node (EXP-003-JS-TARGET-OUTPUT §4): the verbatim body plus
@@ -250,7 +280,7 @@ export interface StateVarPlan {
   /** Boot value; null is the `undefined` boot (`useState<T | undefined>()`). */
   boot: string | number | boolean | null;
   originNodeId: string;
-  origin: 'switch' | 'counter' | 'control' | 'lifted' | 'jsfun';
+  origin: 'switch' | 'counter' | 'control' | 'lifted' | 'jsfun' | 'record-error';
   /** The provenance comment above the row. */
   comment: string;
 }
@@ -292,6 +322,21 @@ export interface QueryPlan {
   setterName: string;
   itemName: string;
   fetchName: string;
+  typeName: string;
+  moduleBase: string;
+}
+
+/**
+ * One translated record verb (RECORD-VERBS-TARGET §4d): what the api stub module has to export
+ * for it. The naming is a pure function of the class name, identical to {@link QueryPlan}'s, so a
+ * project that both reads and writes one collection gets a single module.
+ */
+export interface MutationPlan {
+  nodeId: string;
+  verb: 'create' | 'update' | 'delete';
+  collectionName: string;
+  /** `createPuppy` / `updatePuppy` / `deletePuppy`. */
+  fnName: string;
   typeName: string;
   moduleBase: string;
 }
@@ -416,6 +461,8 @@ export interface ComponentPlan {
   /** True when a translated Close Popup attached — the component declares `onClose` (§4). */
   closesPopup: boolean;
   queries: QueryPlan[];
+  /** Record verbs translated in this component (RECORD-VERBS-TARGET §4), compile order. */
+  mutations: MutationPlan[];
   repeaters: Record<string, RepeaterPlan>;
   /** Static Data nodes hoisted to module constants (STATIC-DATA-TARGET §3), resolution order. */
   staticData: StaticDataPlan[];
@@ -587,6 +634,7 @@ function planComponent(
     popups: [],
     closesPopup: false,
     queries: [],
+    mutations: [],
     repeaters: {},
     staticData: [],
     jsFunctions: {},
@@ -1353,6 +1401,39 @@ function planComponent(
     return stateVar;
   };
 
+  /**
+   * The `Error` output of a record verb as component state (RECORD-VERBS-TARGET §4a).
+   *
+   * Allocated on first need and memoized, because the read (a `Text.text` binding) and the write
+   * (the verb's own catch) are planned in different passes and must agree on the name. Nothing
+   * clears it: the port's own description says the reason is *"kept after a later attempt
+   * succeeds"*, and `_internal.error` is assigned only in `setError`.
+   */
+  const recordErrorVars = new Map<string, StateVarPlan>();
+  /**
+   * Verbs whose `Do` actually attached to a handler, filled by the attachment sweep. Every
+   * binding pass runs after it, so an `Error` read can require it: a verb whose trigger the
+   * slice could not translate still *runs* in the interpreter, and binding its Error to a state
+   * row nothing writes would render a blank where the interpreter shows a message.
+   */
+  const attachedRecordVerbs = new Set<string>();
+  const recordErrorStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = recordErrorVars.get(node.id);
+    if (stateVar === undefined) {
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Error`,
+        'recordError',
+        'string | undefined',
+        null,
+        node.id,
+        'record-error',
+        `The Error output of ${node.authoredLabel ? `"${node.authoredLabel}"` : `the ${node.type}`} — written when the write is refused, and never cleared (RECORD-VERBS-TARGET §1).`
+      );
+      recordErrorVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+
   // ---- Static Data: the authored blob as a build-time constant (STATIC-DATA-TARGET) --------
   //
   // `type`, `csv` and `json` are all `allowEditOnly` (staticdata.ts), so this is not a solver
@@ -1683,6 +1764,18 @@ function planComponent(
         if (stateVar !== undefined) return { kind: 'state-get', name: stateVar.name };
       }
     }
+    // A record verb's Error output (RECORD-VERBS-TARGET §4a) — component state, maybe-undefined
+    // until the first refusal, which folds at its sinks exactly as the runtime's own unwritten
+    // getter does. Read only when the verb itself translates: a deferred verb never writes it,
+    // and a state row nothing writes would be an invented value.
+    if (RECORD_VERBS[fromNode.type] !== undefined && fromProperty === 'error') {
+      if (!attachedRecordVerbs.has(fromNode.id)) {
+        const compiled = compiledOf(fromNode, 'store');
+        ctx.defer = 'defer' in compiled ? compiled.defer : 'its Do is never fired by a translatable trigger';
+        return null;
+      }
+      return { kind: 'state-get', name: recordErrorStateOf(fromNode).name, maybeUndefined: true };
+    }
     if (isTextInputType(fromNode.type) && fromProperty === 'onTextChanged') {
       return { kind: 'input-text', inputId: fromNode.id };
     }
@@ -2010,7 +2103,10 @@ function planComponent(
     'Set Variable': 'do',
     [GLOBAL_STORE_SET]: 'set',
     NewModel: 'new',
-    Condition: 'eval'
+    Condition: 'eval',
+    NewDbModelProperties: 'store',
+    SetDbModelProperties: 'store',
+    DeleteDbModelProperties: 'store'
   };
 
   /** The popup nodes' trigger ports are dynamic (`closeAction-*`), so membership is a predicate. */
@@ -2346,7 +2442,143 @@ function planComponent(
     return { action, consumes: [] };
   };
 
+  /**
+   * A record verb fired from a handler chain (RECORD-VERBS-TARGET §4/§5).
+   *
+   * Every gate below is a fork in the runtime contract (§1) that the emit vocabulary has no
+   * shape for, and each names the slice that owns it. The two the corpus actually exercises are
+   * the missing class name — where the runtime answers `Failure` with *"No class name
+   * specified"* and never reaches the backend, so a working call would be a hole shaped exactly
+   * like the defect — and the two-writer property, which is CO §4's rule in its own words.
+   */
+  const compileRecordOp = (node: NodeIR): CompiledSink => {
+    const verb = RECORD_VERBS[node.type];
+    const authoredOrWired = (name: string) =>
+      node.parameters.some((p) => p.name === name) || wiredPorts.has(`${node.id}:${name}`);
+
+    if (node.parameters.some((p) => p.name === 'accessControl' || p.name.startsWith('acl-'))) {
+      return { defer: 'it writes access-control rules with the record — the ACL has no shape in the api stub' };
+    }
+    if (authoredOrWired('backendId')) return { defer: 'it names a specific Backend — one api module per class is all this slice emits' };
+    if (verb === 'create' && authoredOrWired('sourceObjectId')) {
+      return { defer: 'its Source Object Id seeds the new record from an existing one — that read is not translated in this slice' };
+    }
+    if (literalParam(node, 'idSource') === 'foreach' || authoredOrWired('repeaterComponent')) {
+      return { defer: 'its Id Source is the enclosing repeater\'s row — row identity is not statically knowable in this slice' };
+    }
+    if (verb === 'update') {
+      if (literalParam(node, 'storeType') === 'local' || wiredPorts.has(`${node.id}:storeType`)) {
+        return { defer: 'Store to is Local only — an in-memory-only write, and the export holds no record to write into' };
+      }
+      if (literalParam(node, 'storeProperties') === 'all' || wiredPorts.has(`${node.id}:storeProperties`)) {
+        return { defer: 'Properties to store is All — it sends every field the record holds, and the export holds none of them' };
+      }
+    }
+
+    const collectionName = literalParam(node, 'collectionName');
+    if (typeof collectionName !== 'string' || collectionName === '' || wiredPorts.has(`${node.id}:collectionName`)) {
+      return {
+        defer:
+          collectionName === undefined
+            ? 'no class is named, so the runtime answers Failure with "No class name specified" and never calls the backend'
+            : 'its class name is not a literal'
+      };
+    }
+
+    // Consumed outcome pulses beyond `done`, and the `id` output: the runtime pulses/publishes
+    // them per invocation and nothing in this slice's shape carries them (§5.11).
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (wire.fromProperty === 'failure' || wire.fromProperty === 'completed') {
+        return { defer: `its ${wire.fromProperty} output is consumed — only the done chain and the Error value are translated in this slice` };
+      }
+      if (wire.fromProperty === 'id') {
+        return { defer: 'its Id output is consumed — the record it names exists only inside the invoking chain, which the relation verbs would need' };
+      }
+    }
+
+    const ctx = newCtx();
+    const consumes: string[] = [];
+
+    // The record the verb acts on. `setModelID` treats an empty id as *clear the binding*, after
+    // which every verb answers `setError('Missing Record Id')` — so an Update or Delete with no
+    // Id at all is gate 1 by a second road (§5.9).
+    let idExpr: ValueExpr | undefined;
+    if (verb !== 'create') {
+      const idWires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'modelId');
+      if (idWires.length > 1) {
+        return { defer: 'two wires feed its Id — last-writer-wins is not statically ordered' };
+      }
+      if (idWires.length === 1) {
+        const expr = resolveExpr(nodeById.get(idWires[0].fromId), idWires[0].fromProperty, ctx);
+        if (expr === null) return { defer: ctx.defer ?? 'its Id has no statically known source' };
+        if (isBooleanExpr(expr)) return { defer: 'its Id is fed a logic truth value — only truthiness sinks take one in this slice' };
+        idExpr = expr;
+        consumes.push(idWires[0].key);
+      } else {
+        const literal = literalParam(node, 'modelId');
+        if (typeof literal !== 'string' || literal === '') {
+          return { defer: 'it names no record, so the runtime answers Failure with "Missing Record Id" every time' };
+        }
+        idExpr = { kind: 'literal', value: literal };
+      }
+    }
+
+    // `prop-*` accumulate rather than trigger (§1): the body is whatever has arrived when `Do`
+    // fires. Wire order first, then literal parameters the wires do not already cover.
+    const props: Array<{ key: string; expr: ValueExpr }> = [];
+    if (verb !== 'delete') {
+      const seen = new Set<string>();
+      for (const wire of component.connections) {
+        if (wire.toId !== node.id || !wire.toProperty.startsWith('prop-')) continue;
+        const key = wire.toProperty.slice('prop-'.length);
+        if (seen.has(key)) {
+          return { defer: `two wires feed prop-${key} — last-writer-wins is not statically ordered` };
+        }
+        seen.add(key);
+        const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
+        if (expr === null) return { defer: ctx.defer ?? `property "${key}" has no statically known source` };
+        if (isBooleanExpr(expr)) {
+          return { defer: `property "${key}" is fed a logic truth value — only truthiness sinks take one in this slice` };
+        }
+        props.push({ key, expr });
+        consumes.push(wire.key);
+      }
+      for (const param of node.parameters) {
+        if (!param.name.startsWith('prop-')) continue;
+        const key = param.name.slice('prop-'.length);
+        if (seen.has(key)) continue;
+        const literal = literalParam(node, param.name);
+        if (literal === undefined) return { defer: `property "${key}" is authored as something other than a literal` };
+        props.push({ key, expr: { kind: 'literal', value: literal } });
+      }
+    }
+
+    const chain = doneChainOf(node);
+    if ('defer' in chain) return { defer: chain.defer };
+
+    const { typeName, moduleBase } = collectionModuleNames(collectionName);
+    const fnName = `${verb}${typeName}`;
+    plan.mutations.push({ nodeId: node.id, verb, collectionName, fnName, typeName, moduleBase });
+
+    return {
+      action: {
+        kind: 'record-op',
+        nodeId: node.id,
+        verb,
+        fnName,
+        idExpr,
+        props,
+        errorState: recordErrorStateOf(node).name,
+        then: chain.then
+      },
+      consumes: [...consumes, ...chain.consumes, ...ctx.consumes],
+      collapses: [...ctx.logicNodeIds, ...chain.collapses],
+      subscribes: [...ctx.subscriberIds, ...chain.subscribes]
+    };
+  };
+
   const compileSink = (node: NodeIR, port: string): CompiledSink => {
+    if (RECORD_VERBS[node.type] !== undefined && port === 'store') return compileRecordOp(node);
     if (jsNodeKindOf(node.type) !== null && port === 'run') return compileJsRun(node);
     if (isLatchType(node.type)) return compileLatch(node, port);
     if ((plan.roleOf[node.id] === 'checkbox' || plan.roleOf[node.id] === 'input') && (CONTROL_ACTION_PORTS[plan.roleOf[node.id]] ?? []).includes(port)) {
@@ -2626,6 +2858,12 @@ function planComponent(
         case 'popup-show':
         case 'popup-close':
           return actionsValidIn(action.then, context, invokedScope);
+        case 'record-op':
+          return (
+            (action.idExpr === undefined || exprValidIn(action.idExpr, context, invokedScope)) &&
+            action.props.every((p) => exprValidIn(p.expr, context, invokedScope)) &&
+            actionsValidIn(action.then, context, invokedScope)
+          );
         case 'jsfun-run': {
           const def = plan.jsFunctions[action.nodeId];
           if (def === undefined) return false;
@@ -2719,6 +2957,14 @@ function planComponent(
       const sink = nodeById.get(c.toId);
       if (!sink) return false;
       if (sink.type === 'Component Outputs') return valueOutputPorts.has(c.toProperty);
+      // RECORD-VERBS-TARGET §3 — the third reader class, and the whole of why the form idiom
+      // was blocked. `onTextChanged` resolves to `input-text`, which is legal only inside that
+      // input's own DOM handler; a submit chain reads five fields from the *button's* handler.
+      // §4c already says a control's value output "anywhere in the component" reads its local
+      // state — a handler action's argument is anywhere.
+      if (RECORD_VERBS[sink.type] !== undefined) {
+        return c.toProperty.startsWith('prop-') || c.toProperty === 'modelId';
+      }
       return rendered.has(sink.id) && !isTriggerWire(sink.type, c.toProperty);
     });
     if (!stateWired && !actionWired && !outputRead) continue;
@@ -3106,6 +3352,25 @@ function planComponent(
         if (!Array.isArray(then)) return then;
         return { ...action, then };
       }
+      // The call's arguments are read before the await, so they take the snapshot in place; the
+      // done chain follows it and carries the same map onward.
+      case 'record-op': {
+        let idExpr: ValueExpr | undefined;
+        if (action.idExpr !== undefined) {
+          const e = snapExpr(action.idExpr, snap);
+          if ('defer' in e) return e;
+          idExpr = e;
+        }
+        const props: Array<{ key: string; expr: ValueExpr }> = [];
+        for (const p of action.props) {
+          const e = snapExpr(p.expr, snap);
+          if ('defer' in e) return e;
+          props.push({ key: p.key, expr: e });
+        }
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        return { ...action, idExpr, props, then };
+      }
       case 'jsfun-run': {
         if ((plan.jsFunctions[action.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap))) {
           return { defer: 'a Function argument reads state written earlier in this chain — not translated in this slice' };
@@ -3490,8 +3755,13 @@ function planComponent(
 
   // Popup slots and the close prop are earned by attachment (POPUPS-TARGET §2, §4): a compiled
   // popup action whose trigger never attached must leave no state, render, or prop behind.
+  //
+  // The record verbs earn their api-stub exports and their Error state row the same way
+  // (RECORD-VERBS-TARGET §4): a compiled verb whose `Do` never attached must not put a
+  // `createPuppy` in the api module that nothing calls, nor a `useState` nothing writes.
   {
     const attachedSlotKeys = new Set<string>();
+    const attachedMutations = attachedRecordVerbs;
     let closeAttached = false;
     const scanActions = (actions: HandlerAction[]) => {
       for (const action of actions) {
@@ -3500,6 +3770,9 @@ function planComponent(
           scanActions(action.then);
         } else if (action.kind === 'popup-close') {
           closeAttached = true;
+          scanActions(action.then);
+        } else if (action.kind === 'record-op') {
+          attachedMutations.add(action.nodeId);
           scanActions(action.then);
         } else if (action.kind === 'branch') {
           scanActions(action.whenTrue);
@@ -3512,6 +3785,12 @@ function planComponent(
     for (const receiver of plan.receivers) scanActions(receiver.actions);
     plan.popups = slotRegistry.filter((s) => attachedSlotKeys.has(s.slotKey));
     plan.closesPopup = closeAttached;
+    plan.mutations = plan.mutations.filter((m) => attachedMutations.has(m.nodeId));
+    for (const [nodeId, stateVar] of recordErrorVars) {
+      if (attachedMutations.has(nodeId)) continue;
+      const index = plan.stateVars.indexOf(stateVar);
+      if (index >= 0) plan.stateVars.splice(index, 1);
+    }
   }
 
   // The popup sweep: popup nodes the passes did not collapse defer with their compiled reason.
@@ -3524,6 +3803,21 @@ function planComponent(
       compiled !== undefined && 'defer' in compiled
         ? compiled.defer
         : `${show ? 'Show' : 'Close'} is never fired by a translatable trigger`;
+    dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+    notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+  }
+
+  // The record-verb sweep, the popup sweep's twin: a verb the attachment pass did not collapse
+  // defers with its *compiled* reason rather than falling to the catch-all "logic node (…)" —
+  // the named-deferral rule, which is what makes the audit a map of the next slices.
+  for (const node of component.nodes) {
+    if (dispositions[node.id] !== undefined) continue;
+    if (RECORD_VERBS[node.type] === undefined) continue;
+    const compiled = compiledSinks.get(`${node.id}:store`);
+    const reason =
+      compiled !== undefined && 'defer' in compiled
+        ? compiled.defer
+        : 'its Do is never fired by a translatable trigger';
     dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
     notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
   }
@@ -3759,7 +4053,11 @@ function planComponent(
     // STATIC-DATA §4.6 — `count` over rows known at emit, which resolves to a number literal.
     // It rides this pass because it wants exactly the same bindable discipline.
     const isStaticCountRead = fromNode.type === 'Static Data' && connection.fromProperty === 'count';
-    if (!isLatchRead && !isControlRead && !isStaticCountRead) continue;
+    // A record verb's Error into a rendered sink (RECORD-VERBS-TARGET §4a) — the status line.
+    // It rides this pass because it is a state read into a bindable sink, exactly like the two
+    // above, `stateLandedKeys` included so the verdict sweeps can see the read landed.
+    const isRecordErrorRead = RECORD_VERBS[fromNode.type] !== undefined && connection.fromProperty === 'error';
+    if (!isLatchRead && !isControlRead && !isStaticCountRead && !isRecordErrorRead) continue;
     const toNode = nodeById.get(connection.toId);
     if (!toNode || !rendered.has(toNode.id)) continue; // handler reads resolve at compile; the sweep names the rest
     const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
@@ -3770,6 +4068,16 @@ function planComponent(
       contentRole === 'attr-not:disabled' ||
       (contentRole !== undefined && contentRole.startsWith('attr:'));
     if (!bindable) continue; // the sweep names the reason
+    // Three verbs sharing one status line is the corpus's own shape (the Puppy admin form). The
+    // runtime shows whichever wrote last, which is not statically ordered — so the first wire
+    // binds and the rest are dropped *with a note*, never overwritten in silence.
+    if (isRecordErrorRead && plan.bindings[toNode.id]?.[connection.toProperty] !== undefined) {
+      consumed.add(connection.key);
+      notes.push(
+        `wire ${connection.key} dropped: ${toNode.id}.${connection.toProperty} already shows another record verb's Error — the runtime shows whichever wrote last, which is not statically ordered`
+      );
+      continue;
+    }
     if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
       consumed.add(connection.key);
       notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
@@ -4172,8 +4480,7 @@ function planComponent(
       continue;
     }
     const collectionName = String(literalParam(node, 'collectionName') ?? 'Record');
-    const typeName = pascalCase(collectionName);
-    const plural = pluralize(typeName.charAt(0).toLowerCase() + typeName.slice(1));
+    const { typeName, plural, moduleBase, fetchName } = collectionModuleNames(collectionName);
     const stateName = dedupe(plural, usedStateNames);
     plan.queries.push({
       nodeId: node.id,
@@ -4181,9 +4488,9 @@ function planComponent(
       stateName,
       setterName: `set${stateName.charAt(0).toUpperCase()}${stateName.slice(1)}`,
       itemName: typeName.charAt(0).toLowerCase() + typeName.slice(1),
-      fetchName: `fetch${plural.charAt(0).toUpperCase()}${plural.slice(1)}`,
+      fetchName,
       typeName,
-      moduleBase: plural.toLowerCase()
+      moduleBase
     });
     dispositions[node.id] = { kind: 'stubbed', reason: 'DbCollection2 → typed api stub + useState/useEffect' };
   }
@@ -4508,6 +4815,27 @@ function pluralize(word: string): string {
   if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
   if (/(s|x|z|ch|sh)$/i.test(word)) return `${word}es`;
   return `${word}s`;
+}
+
+/**
+ * The api module's names for one class, a pure function of the class name (RECORD-VERBS-TARGET
+ * §4d). Queries and mutations both derive from this, so a project that reads *and* writes one
+ * collection lands both in a single module rather than two that disagree about the type name.
+ */
+export function collectionModuleNames(collectionName: string): {
+  typeName: string;
+  plural: string;
+  moduleBase: string;
+  fetchName: string;
+} {
+  const typeName = pascalCase(collectionName);
+  const plural = pluralize(typeName.charAt(0).toLowerCase() + typeName.slice(1));
+  return {
+    typeName,
+    plural,
+    moduleBase: plural.toLowerCase(),
+    fetchName: `fetch${plural.charAt(0).toUpperCase()}${plural.slice(1)}`
+  };
 }
 
 function lastSegment(componentPath: string): string {

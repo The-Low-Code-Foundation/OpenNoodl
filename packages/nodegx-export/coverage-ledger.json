@@ -159,8 +159,8 @@
     },
     {
       "typeName": "DeleteDbModelProperties",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "RECORD-VERBS-TARGET (session 20): an awaited delete taking the record id alone, on the same shape as Create; a Delete with no class name defers, because the runtime answers Failure with \u201cNo class name specified\u201d and never reaches the backend"
     },
     {
       "typeName": "Drag",
@@ -282,8 +282,8 @@
     },
     {
       "typeName": "NewDbModelProperties",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "RECORD-VERBS-TARGET (session 20): an awaited create in the handler its Do is wired from, the prop-* record built from the form fields the enabling control-state clause makes readable, the done chain following the await and the Error output landing in component state that nothing clears; a missing class name (the runtime answers Failure and never calls the backend), access-control rules, a named Backend, a Source Object Id seed, two wires into one property, a consumed Id or Failure and a done chain that drives nothing translatable each defer with a named reason"
     },
     {
       "typeName": "NewModel",
@@ -417,8 +417,8 @@
     },
     {
       "typeName": "SetDbModelProperties",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "RECORD-VERBS-TARGET (session 20): an awaited update taking the record id then the property record, on the same shape as Create; additionally Store to = Local only, Properties to store = All, an Id Source from the enclosing repeater and an unnamed record defer with a named reason"
     },
     {
       "typeName": "SetModelProperties",
