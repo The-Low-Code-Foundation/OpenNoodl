@@ -1,0 +1,249 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Puppy test 3",
+  "version": "4",
+  "nodegxVersion": "1.1.0",
+  "modified": "2026-08-11T14:07:54.353Z",
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "runtimeVersion": "react19",
+  "rootNodeId": "e6afaa6b-f2bf-4da2-91b9-3e920c436c02",
+  "settings": {
+    "bodyScroll": true
+  },
+  "metadata": {
+    "title": "Hello World Project",
+    "description": "A simple starter project",
+    "cloudservices": {
+      "instanceId": "backend_msjck0y2ukxwv",
+      "endpoint": "http://localhost:8581",
+      "appId": "backend_msjck0y2ukxwv",
+      "type": "nodegx"
+    },
+    "dbCollections": [
+      {
+        "name": "Puppy",
+        "columns": [
+          {
+            "name": "name",
+            "type": "String"
+          },
+          {
+            "name": "breed",
+            "type": "String"
+          },
+          {
+            "name": "age",
+            "type": "String"
+          },
+          {
+            "name": "available",
+            "type": "Boolean"
+          },
+          {
+            "name": "description",
+            "type": "String"
+          },
+          {
+            "name": "photo",
+            "type": "String"
+          }
+        ],
+        "createdAt": null
+      }
+    ],
+    "systemCollections": [],
+    "designTokens": {
+      "version": 1,
+      "customTokens": [
+        {
+          "name": "--primary",
+          "value": "#18181b",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Main brand and action color"
+        },
+        {
+          "name": "--primary-hover",
+          "value": "#27272a",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Primary color on hover"
+        },
+        {
+          "name": "--secondary",
+          "value": "#71717a",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Supporting action color"
+        },
+        {
+          "name": "--secondary-hover",
+          "value": "#52525b",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Secondary color on hover"
+        },
+        {
+          "name": "--destructive",
+          "value": "#dc2626",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Dangerous actions and errors"
+        },
+        {
+          "name": "--destructive-hover",
+          "value": "#b91c1c",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Destructive color on hover"
+        },
+        {
+          "name": "--muted",
+          "value": "#f4f4f5",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Subtle backgrounds, disabled states"
+        },
+        {
+          "name": "--muted-foreground",
+          "value": "#71717a",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Text color on muted background"
+        },
+        {
+          "name": "--accent",
+          "value": "#f4f4f5",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Highlights and selections"
+        },
+        {
+          "name": "--accent-foreground",
+          "value": "#18181b",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Text color on accent background"
+        },
+        {
+          "name": "--foreground",
+          "value": "#18181b",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Default text color"
+        },
+        {
+          "name": "--surface",
+          "value": "#fafafa",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Card and panel surfaces"
+        },
+        {
+          "name": "--border",
+          "value": "#e4e4e7",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Default border color"
+        },
+        {
+          "name": "--border-subtle",
+          "value": "#f4f4f5",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Subtle/light border"
+        },
+        {
+          "name": "--border-strong",
+          "value": "#d4d4d8",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Strong/dark border"
+        },
+        {
+          "name": "--ring",
+          "value": "#18181b",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Focus ring color"
+        },
+        {
+          "name": "--font-sans",
+          "value": "system-ui, -apple-system, sans-serif",
+          "category": "typography-family",
+          "isCustom": true,
+          "description": "Inter, falling back to the system sans-serif stack"
+        },
+        {
+          "name": "--radius-sm",
+          "value": "2px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--radius-md",
+          "value": "4px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--radius-lg",
+          "value": "6px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--radius-xl",
+          "value": "8px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--radius-2xl",
+          "value": "10px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--radius-3xl",
+          "value": "12px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--shadow-sm",
+          "value": "none",
+          "category": "shadow",
+          "isCustom": true
+        },
+        {
+          "name": "--shadow-md",
+          "value": "none",
+          "category": "shadow",
+          "isCustom": true
+        },
+        {
+          "name": "--shadow-lg",
+          "value": "none",
+          "category": "shadow",
+          "isCustom": true
+        },
+        {
+          "name": "--shadow-xl",
+          "value": "none",
+          "category": "shadow",
+          "isCustom": true
+        },
+        {
+          "name": "--shadow-2xl",
+          "value": "none",
+          "category": "shadow",
+          "isCustom": true
+        }
+      ]
+    }
+  }
+}

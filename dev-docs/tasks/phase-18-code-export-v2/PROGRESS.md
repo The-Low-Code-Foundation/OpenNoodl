@@ -1,8 +1,8 @@
 # Phase 18 Progress — Code Export v2
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track F
-**Last updated:** 2026-08-07
-**Overall status:** 🟡 In progress — 1 / 7 tasks built (EXP-001)
+**Last updated:** 2026-08-27
+**Overall status:** 🟡 In progress — 1 / 7 tasks built (EXP-001); EXP-002 started 2026-08-27 (IR designed, target output hand-written, walking skeleton builds)
 
 ## Status vocabulary
 
@@ -13,7 +13,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | ID | Title | Status | Estimate | Notes |
 |---|---|---|---|---|
 | [EXP-001](./EXP-001-NODEGX-CORE.md) | `@nodegx/core` companion library | **Built–not wired** | 3 wks | `packages/nodegx-core`. Behaviour contract read from the runtime ([CONTRACT.md](../../../packages/nodegx-core/CONTRACT.md)), API derived by hand-writing the wanted output first ([EXP-001-TARGET-OUTPUT.md](./EXP-001-TARGET-OUTPUT.md)). 69 tests in-package + 8 parity tests running the same scenario through the real interpreter. 2.8 KB gzipped against an 8 KB budget, gated in CI. **No call sites until EXP-002**; npm scope ownership + publish are human-gated |
-| EXP-002 | Deterministic generators | Not started | 6–8 wks | Visual nodes, state stores, events, routing, scaffolding — "the mechanical 70%" |
+| [EXP-002](./EXP-002-DETERMINISTIC-GENERATORS.md) | Deterministic generators | **In progress** (started 2026-08-27) | 6–8 wks | Steps 1–3 done: IR designed as the shared contract ([EXP-002-IR-DESIGN.md](./EXP-002-IR-DESIGN.md)), target output hand-written from the real v2 project Puppy test 3 ([EXP-002-TARGET-OUTPUT.md](./EXP-002-TARGET-OUTPUT.md) — headline: the whole project exports with zero `@nodegx/core` imports), and `packages/nodegx-export` walking skeleton (IR types, v2 parser, scaffold emitter; 16 tests; emitted app `npm install && npm run build` verified clean). Next: visual-node generator + style extraction (step 4). Note: work is on `cline-dev` per repo practice, not the task branch the checklist names |
 | EXP-003 | AI logic translation + trace verification | Not started | 6–8 wks | **The 2026 addition** — machine-checked translation of Function/Expression/dynamic-port nodes |
 | EXP-004 | Export report & honesty UX | Not started | 1 wk | What exported clean, what is best-effort, what needs review |
 | EXP-005 | Multi-framework pipeline | Not started | 4–6 wks | AI ports the *exported React* to Svelte/Vue, same trace harness — not native multi-compilers |

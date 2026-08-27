@@ -1,0 +1,246 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "dc18707e-5627-4f83-bdfe-019ecbbd6f3d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-3",
+      "type": "Page",
+      "label": "Admin Login Page",
+      "x": 0,
+      "y": 0,
+      "parameters": {
+        "title": "Admin Login",
+        "urlPath": "admin-login"
+      },
+      "dynamicports": [
+        {
+          "name": "title",
+          "displayName": "Title",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "Admin Login",
+          "index": 34
+        },
+        {
+          "name": "urlPath",
+          "displayName": "Url Path",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "admin-login",
+          "index": 35
+        }
+      ],
+      "children": [
+        "root-3"
+      ]
+    },
+    {
+      "id": "root-3",
+      "type": "Group",
+      "label": "Page Root",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "alignX": "center",
+        "alignY": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "backgroundColor": "var(--background)"
+      },
+      "children": [
+        "card-2"
+      ],
+      "parent": "page-3"
+    },
+    {
+      "id": "card-2",
+      "type": "Group",
+      "label": "Login Card",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": {
+          "value": 16,
+          "unit": "px"
+        },
+        "width": {
+          "value": 360,
+          "unit": "px"
+        },
+        "padding": {
+          "value": 32,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 32,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 32,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 32,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 32,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": {
+          "value": 12,
+          "unit": "px"
+        },
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderStyle": "solid",
+        "borderColor": "var(--border)",
+        "boxShadowEnabled": true
+      },
+      "children": [
+        "heading-2",
+        "usernameInput",
+        "passwordInput",
+        "errorText",
+        "loginBtn"
+      ],
+      "parent": "root-3"
+    },
+    {
+      "id": "heading-2",
+      "type": "Text",
+      "label": "Admin Login Heading",
+      "parameters": {
+        "text": "Admin Login",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "color": "var(--foreground)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "card-2"
+    },
+    {
+      "id": "usernameInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Username Input",
+      "parameters": {
+        "placeholder": "Username",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "parent": "card-2"
+    },
+    {
+      "id": "passwordInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Password Input",
+      "parameters": {
+        "placeholder": "Password",
+        "type": "password",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "parent": "card-2"
+    },
+    {
+      "id": "errorText",
+      "type": "Text",
+      "label": "Login Error Message",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "card-2"
+    },
+    {
+      "id": "loginBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Log In Button",
+      "parameters": {
+        "label": "Log In",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderWidth": {
+          "value": 0,
+          "unit": "px"
+        },
+        "boxShadowEnabled": false,
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "parent": "card-2"
+    },
+    {
+      "id": "login",
+      "type": "net.noodl.user.LogIn",
+      "label": "Log In Action",
+      "x": 300,
+      "y": 700
+    },
+    {
+      "id": "navigate",
+      "type": "RouterNavigate",
+      "label": "Go To Admin",
+      "x": 600,
+      "y": 700,
+      "parameters": {
+        "target": "/Pages/Admin",
+        "router": "Main"
+      },
+      "dynamicports": [
+        {
+          "plug": "input",
+          "type": {
+            "name": "component",
+            "title": "Choose page component",
+            "components": [
+              "/#__page__/Home",
+              "/Pages/Landing",
+              "/Pages/Thank You",
+              "/Pages/Admin Login",
+              "/Pages/Admin"
+            ],
+            "allowEditOnly": true
+          },
+          "group": "General",
+          "displayName": "Target Page",
+          "name": "target",
+          "index": 7
+        }
+      ]
+    },
+    {
+      "id": "6d5ec795-be88-fdd9-b555-1bb2f6bba281",
+      "x": 300,
+      "y": 400
+    }
+  ],
+  "visualRoots": [
+    "page-3"
+  ]
+}

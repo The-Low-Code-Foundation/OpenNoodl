@@ -1,0 +1,49 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f7585e21-581f-4fda-8433-efabb50a30df",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "bp-ci",
+      "fromProperty": "Title",
+      "toId": "bp-title",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "bp-ci",
+      "fromProperty": "Accent",
+      "toId": "bp-title",
+      "toProperty": "color"
+    },
+    {
+      "fromId": "bp-ci",
+      "fromProperty": "Align",
+      "toId": "bp-title",
+      "toProperty": "textAlignX"
+    },
+    {
+      "fromId": "bp-ci",
+      "fromProperty": "Big",
+      "toId": "bp-flag",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "bp-ci",
+      "fromProperty": "Start",
+      "toId": "bp-counter",
+      "toProperty": "startValue"
+    },
+    {
+      "fromId": "bp-ci",
+      "fromProperty": "Ping",
+      "toId": "bp-counter",
+      "toProperty": "increase"
+    },
+    {
+      "fromId": "bp-counter",
+      "fromProperty": "currentCount",
+      "toId": "bp-count",
+      "toProperty": "text"
+    }
+  ]
+}

@@ -1,0 +1,179 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "97f7f2dc-6264-40c7-8efc-5df353d9810e",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-2",
+      "type": "Page",
+      "label": "Thank You Page",
+      "x": 0,
+      "y": 0,
+      "parameters": {
+        "title": "Thank You",
+        "urlPath": "thank-you"
+      },
+      "dynamicports": [
+        {
+          "name": "title",
+          "displayName": "Title",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "Thank You",
+          "index": 34
+        },
+        {
+          "name": "urlPath",
+          "displayName": "Url Path",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "thank-you",
+          "index": 35
+        }
+      ],
+      "children": [
+        "root-2"
+      ]
+    },
+    {
+      "id": "root-2",
+      "type": "Group",
+      "label": "Page Root",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingTop": "var(--space-2xl)",
+        "paddingBottom": "var(--space-2xl)",
+        "paddingLeft": "var(--space-xl)",
+        "paddingRight": "var(--space-xl)",
+        "backgroundColor": "var(--background)"
+      },
+      "children": [
+        "card"
+      ],
+      "parent": "page-2"
+    },
+    {
+      "id": "card",
+      "type": "Group",
+      "label": "Confirmation Card",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 600,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "paddingTop": "var(--space-2xl)",
+        "paddingBottom": "var(--space-2xl)",
+        "paddingLeft": "var(--space-2xl)",
+        "paddingRight": "var(--space-2xl)",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-lg)",
+        "boxShadowEnabled": true,
+        "boxShadowColor": "var(--shadow-md)"
+      },
+      "children": [
+        "heading",
+        "body",
+        "backBtn"
+      ],
+      "parent": "root-2"
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Thank You Heading",
+      "parameters": {
+        "text": "Thank you!",
+        "fontSize": "var(--text-4xl)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "textAlignX": "center",
+        "sizeMode": "contentHeight"
+      },
+      "parent": "card"
+    },
+    {
+      "id": "body",
+      "type": "Text",
+      "label": "Confirmation Message",
+      "parameters": {
+        "text": "Your adoption inquiry has been sent. We'll be in touch soon to talk about your new puppy.",
+        "fontSize": "var(--text-base)",
+        "fontWeight": "var(--font-normal)",
+        "lineHeight": "var(--leading-normal)",
+        "color": "var(--muted-foreground)",
+        "textAlignX": "center",
+        "sizeMode": "contentHeight",
+        "marginTop": "var(--space-3)"
+      },
+      "parent": "card"
+    },
+    {
+      "id": "backBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Back To Puppies Button",
+      "parameters": {
+        "label": "Back to Puppies",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderWidth": {
+          "value": 0,
+          "unit": "px"
+        },
+        "boxShadowEnabled": true,
+        "marginTop": "var(--space-6)"
+      },
+      "parent": "card"
+    },
+    {
+      "id": "nav",
+      "type": "RouterNavigate",
+      "label": "Navigate To Landing",
+      "x": 500,
+      "y": 80,
+      "parameters": {
+        "target": "/Pages/Landing",
+        "router": "Main"
+      },
+      "dynamicports": [
+        {
+          "plug": "input",
+          "type": {
+            "name": "component",
+            "title": "Choose page component",
+            "components": [
+              "/#__page__/Home",
+              "/Pages/Landing",
+              "/Pages/Thank You",
+              "/Pages/Admin Login",
+              "/Pages/Admin"
+            ],
+            "allowEditOnly": true
+          },
+          "group": "General",
+          "displayName": "Target Page",
+          "name": "target",
+          "index": 7
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "page-2"
+  ]
+}

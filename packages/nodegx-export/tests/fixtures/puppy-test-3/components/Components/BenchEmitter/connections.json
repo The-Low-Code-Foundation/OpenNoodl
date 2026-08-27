@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "7f9a0729-e6e0-49ce-9ebf-bcaf13d9e4ad",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "be-ci",
+      "fromProperty": "Label",
+      "toId": "be-label",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "be-ci",
+      "fromProperty": "Bump",
+      "toId": "be-counter",
+      "toProperty": "increase"
+    },
+    {
+      "fromId": "be-button",
+      "fromProperty": "onClick",
+      "toId": "be-counter",
+      "toProperty": "increase"
+    },
+    {
+      "fromId": "be-button",
+      "fromProperty": "onClick",
+      "toId": "be-co",
+      "toProperty": "Pressed"
+    },
+    {
+      "fromId": "be-counter",
+      "fromProperty": "currentCount",
+      "toId": "be-count",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "be-counter",
+      "fromProperty": "currentCount",
+      "toId": "be-co",
+      "toProperty": "Count"
+    }
+  ]
+}

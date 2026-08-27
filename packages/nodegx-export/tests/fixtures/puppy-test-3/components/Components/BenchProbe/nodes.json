@@ -1,0 +1,112 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f7585e21-581f-4fda-8433-efabb50a30df",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "bp-ci",
+      "type": "Component Inputs",
+      "label": "The interface under test",
+      "x": -260,
+      "y": 0,
+      "ports": [
+        {
+          "name": "Title",
+          "plug": "output",
+          "type": "*",
+          "index": 0
+        },
+        {
+          "name": "Accent",
+          "plug": "output",
+          "type": "*",
+          "index": 1
+        },
+        {
+          "name": "Align",
+          "plug": "output",
+          "type": "*",
+          "index": 2
+        },
+        {
+          "name": "Big",
+          "plug": "output",
+          "type": "*",
+          "index": 3
+        },
+        {
+          "name": "Start",
+          "plug": "output",
+          "type": "*",
+          "index": 4
+        },
+        {
+          "name": "Ping",
+          "plug": "output",
+          "type": "*",
+          "index": 5
+        },
+        {
+          "name": "Ghost",
+          "plug": "output",
+          "type": "*",
+          "index": 6
+        }
+      ]
+    },
+    {
+      "id": "bp-root",
+      "type": "Group",
+      "label": "Visual root",
+      "x": 0,
+      "y": 0,
+      "parameters": {
+        "flexDirection": "column",
+        "paddingTop": "16",
+        "paddingBottom": "16",
+        "paddingLeft": "16",
+        "paddingRight": "16",
+        "rowGap": "8"
+      },
+      "children": [
+        "bp-title",
+        "bp-flag",
+        "bp-count"
+      ]
+    },
+    {
+      "id": "bp-title",
+      "type": "Text",
+      "label": "Shows Title, Accent and Align",
+      "parameters": {
+        "text": "(no title)"
+      },
+      "parent": "bp-root"
+    },
+    {
+      "id": "bp-flag",
+      "type": "Text",
+      "label": "Shown or hidden by Big",
+      "parameters": {
+        "text": "Big is on"
+      },
+      "parent": "bp-root"
+    },
+    {
+      "id": "bp-count",
+      "type": "Text",
+      "label": "Shows the counter Ping drives",
+      "parent": "bp-root"
+    },
+    {
+      "id": "bp-counter",
+      "type": "Counter",
+      "label": "Driven by the Ping signal",
+      "x": 0,
+      "y": 300
+    }
+  ],
+  "visualRoots": [
+    "bp-root"
+  ]
+}

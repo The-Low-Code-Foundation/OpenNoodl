@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "dc18707e-5627-4f83-bdfe-019ecbbd6f3d",
+  "name": "Admin Login",
+  "path": "/Pages/Admin Login",
+  "type": "page",
+  "modified": "2026-08-11T14:17:51.118Z"
+}

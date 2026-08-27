@@ -1,0 +1,56 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "446ddfbd-da5d-4852-b130-4bb04d5e3c1c",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "e82d69fb-927d-45e7-af21-ccf6bc4b5e84",
+      "type": "Page",
+      "x": 100,
+      "y": 100,
+      "parameters": {
+        "title": "Home",
+        "urlPath": "home"
+      },
+      "dynamicports": [
+        {
+          "name": "title",
+          "displayName": "Title",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "Home",
+          "index": 34
+        },
+        {
+          "name": "urlPath",
+          "displayName": "Url Path",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "home",
+          "index": 35
+        }
+      ],
+      "children": [
+        "1079d2e6-5662-447e-be1e-c823e7bf58ad"
+      ]
+    },
+    {
+      "id": "1079d2e6-5662-447e-be1e-c823e7bf58ad",
+      "type": "Text",
+      "parameters": {
+        "text": "Hello World!",
+        "fontSize": {
+          "value": 32,
+          "unit": "px"
+        },
+        "textAlignX": "center"
+      },
+      "parent": "e82d69fb-927d-45e7-af21-ccf6bc4b5e84"
+    }
+  ],
+  "visualRoots": [
+    "e82d69fb-927d-45e7-af21-ccf6bc4b5e84"
+  ]
+}

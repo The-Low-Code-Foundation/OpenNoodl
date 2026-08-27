@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "0e011d4c-a9b7-4737-a68c-94a817467d05",
+  "name": "PuppyCard",
+  "path": "/Components/PuppyCard",
+  "type": "visual",
+  "modified": "2026-08-11T14:07:54.368Z"
+}

@@ -1,0 +1,977 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "9e0e6209-6902-481e-8e9b-84a430dae201",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Landing page root",
+      "parameters": {
+        "urlPath": "landing",
+        "title": "Puppy Adoption — Landing",
+        "description": "Available puppies for adoption and an inquiry form."
+      },
+      "dynamicports": [
+        {
+          "name": "title",
+          "displayName": "Title",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "Landing",
+          "index": 34
+        },
+        {
+          "name": "urlPath",
+          "displayName": "Url Path",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "puppy-adoption-—-landing",
+          "index": 35
+        }
+      ],
+      "children": [
+        "root"
+      ]
+    },
+    {
+      "id": "root",
+      "type": "Group",
+      "label": "Page content",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "backgroundColor": "var(--surface)"
+      },
+      "children": [
+        "header",
+        "hero",
+        "puppiesSection",
+        "formSection",
+        "footer"
+      ],
+      "parent": "page"
+    },
+    {
+      "id": "header",
+      "type": "Group",
+      "label": "Header band",
+      "parameters": {
+        "flexDirection": "row",
+        "justifyContent": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "backgroundColor": "var(--surface-raised)",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomStyle": "solid",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
+      },
+      "children": [
+        "headerInner"
+      ],
+      "parent": "root"
+    },
+    {
+      "id": "headerInner",
+      "type": "Group",
+      "label": "Header container",
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1120,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "brandText"
+      ],
+      "parent": "header"
+    },
+    {
+      "id": "brandText",
+      "type": "Text",
+      "label": "Brand title",
+      "parameters": {
+        "text": "Puppy Adoption",
+        "fontSize": "var(--text-lg)",
+        "fontWeight": "var(--font-bold)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "headerInner"
+    },
+    {
+      "id": "hero",
+      "type": "Group",
+      "label": "Hero section",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1120,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "rowGap": "var(--space-5)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "children": [
+        "heroTitle",
+        "heroLead"
+      ],
+      "parent": "root"
+    },
+    {
+      "id": "heroTitle",
+      "type": "Text",
+      "label": "Hero title",
+      "parameters": {
+        "text": "Find Your New Best Friend",
+        "fontSize": "var(--text-5xl)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "textAlignX": "center"
+      },
+      "parent": "hero"
+    },
+    {
+      "id": "heroLead",
+      "type": "Text",
+      "label": "Hero lead text",
+      "parameters": {
+        "text": "Every puppy here is looking for somewhere warm to land. Meet the ones waiting right now, and tell us who caught your eye.",
+        "fontSize": "var(--text-xl)",
+        "color": "var(--muted-foreground)",
+        "lineHeight": "var(--leading-relaxed)",
+        "textAlignX": "center",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        }
+      },
+      "parent": "hero"
+    },
+    {
+      "id": "puppiesSection",
+      "type": "Group",
+      "label": "Puppies section",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1120,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "rowGap": "var(--space-8)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingBottom": "var(--space-16)"
+      },
+      "children": [
+        "sectionHead",
+        "grid"
+      ],
+      "parent": "root"
+    },
+    {
+      "id": "sectionHead",
+      "type": "Group",
+      "label": "Section heading",
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "rowGap": "var(--space-2)"
+      },
+      "children": [
+        "puppiesHeading",
+        "puppiesSub"
+      ],
+      "parent": "puppiesSection"
+    },
+    {
+      "id": "puppiesHeading",
+      "type": "Text",
+      "label": "Puppies heading",
+      "parameters": {
+        "text": "Available Puppies",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "textAlignX": "center"
+      },
+      "parent": "sectionHead"
+    },
+    {
+      "id": "puppiesSub",
+      "type": "Text",
+      "label": "Puppies subheading",
+      "parameters": {
+        "text": "Six little characters, all looking for a sofa of their own.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)",
+        "lineHeight": "var(--leading-relaxed)",
+        "textAlignX": "center"
+      },
+      "parent": "sectionHead"
+    },
+    {
+      "id": "grid",
+      "type": "Group",
+      "label": "Puppy card grid",
+      "parameters": {
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "justifyContent": "center",
+        "alignItems": "flex-start",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "columnGap": "var(--space-6)",
+        "rowGap": "var(--space-6)"
+      },
+      "children": [
+        "repeater"
+      ],
+      "parent": "puppiesSection"
+    },
+    {
+      "id": "repeater",
+      "type": "For Each",
+      "label": "One card per puppy",
+      "parameters": {
+        "template": "/Components/PuppyCard"
+      },
+      "dynamicports": [
+        {
+          "name": "inputMappingScript",
+          "type": {
+            "name": "string",
+            "codeeditor": "javascript"
+          },
+          "displayName": "Script",
+          "group": "Input Mapping",
+          "default": "// Here you add mappings between the properties of the item objects and the inputs of the components.\n// 'myComponentInput': 'myObjectProperty',\n// 'anotherComponentInput': function () { return object.get('someProperty') + ' ' + object.get('otherProp') }\n// These are the default mappings based on the selected template component.\nmap({\n\t'photo': 'photo',\n\t'name': 'name',\n\t'breed': 'breed',\n\t'age': 'age',\n\t'description': 'description',\n})\n",
+          "plug": "input",
+          "index": 10
+        }
+      ],
+      "parent": "grid"
+    },
+    {
+      "id": "formSection",
+      "type": "Group",
+      "label": "Inquiry section",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1120,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "rowGap": "var(--space-8)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingBottom": "var(--space-16)"
+      },
+      "children": [
+        "formHead",
+        "contactSection"
+      ],
+      "parent": "root"
+    },
+    {
+      "id": "formHead",
+      "type": "Group",
+      "label": "Form heading block",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "rowGap": "var(--space-2)"
+      },
+      "children": [
+        "contactHeading",
+        "contactLead"
+      ],
+      "parent": "formSection"
+    },
+    {
+      "id": "contactHeading",
+      "type": "Text",
+      "label": "Form heading",
+      "parameters": {
+        "text": "Adoption Inquiry",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "textAlignX": "center"
+      },
+      "parent": "formHead"
+    },
+    {
+      "id": "contactLead",
+      "type": "Text",
+      "label": "Form lead",
+      "parameters": {
+        "text": "Tell us a little about you and we'll be in touch within a day or two.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)",
+        "lineHeight": "var(--leading-relaxed)",
+        "textAlignX": "center",
+        "maxWidth": {
+          "value": 520,
+          "unit": "px"
+        }
+      },
+      "parent": "formHead"
+    },
+    {
+      "id": "contactSection",
+      "type": "Group",
+      "label": "Inquiry form card",
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "rowGap": "var(--space-5)",
+        "backgroundColor": "var(--surface-raised)",
+        "borderRadius": "var(--radius-xl)",
+        "borderWidth": "var(--border-1)",
+        "borderStyle": "solid",
+        "borderColor": "var(--border)",
+        "boxShadowEnabled": true,
+        "boxShadowOffsetX": {
+          "value": 0,
+          "unit": "px"
+        },
+        "boxShadowOffsetY": {
+          "value": 4,
+          "unit": "px"
+        },
+        "boxShadowBlurRadius": {
+          "value": 16,
+          "unit": "px"
+        },
+        "boxShadowSpreadRadius": {
+          "value": 0,
+          "unit": "px"
+        },
+        "boxShadowColor": "#0f172a14",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)",
+        "paddingLeft": "var(--space-8)",
+        "paddingRight": "var(--space-8)"
+      },
+      "children": [
+        "fieldName",
+        "fieldEmail",
+        "fieldPhone",
+        "fieldPuppy",
+        "submitButton"
+      ],
+      "parent": "formSection"
+    },
+    {
+      "id": "fieldName",
+      "type": "Group",
+      "label": "Name field",
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "rowGap": "var(--space-2)"
+      },
+      "children": [
+        "nameLabel",
+        "nameInput"
+      ],
+      "parent": "contactSection"
+    },
+    {
+      "id": "nameLabel",
+      "type": "Text",
+      "label": "Name field label",
+      "parameters": {
+        "text": "Your name",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--foreground)"
+      },
+      "parent": "fieldName"
+    },
+    {
+      "id": "nameInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Name input",
+      "parameters": {
+        "borderColor": "var(--border)",
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderStyle": "solid",
+        "borderRadius": "var(--radius-md)",
+        "backgroundColor": "var(--background)",
+        "paddingTop": "var(--space-2-5)",
+        "paddingBottom": "var(--space-2-5)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "fontSize": "var(--text-base)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit"
+      },
+      "parent": "fieldName"
+    },
+    {
+      "id": "fieldEmail",
+      "type": "Group",
+      "label": "Email field",
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "rowGap": "var(--space-2)"
+      },
+      "children": [
+        "emailLabel",
+        "emailInput"
+      ],
+      "parent": "contactSection"
+    },
+    {
+      "id": "emailLabel",
+      "type": "Text",
+      "label": "Email field label",
+      "parameters": {
+        "text": "Email",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--foreground)"
+      },
+      "parent": "fieldEmail"
+    },
+    {
+      "id": "emailInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Email input",
+      "parameters": {
+        "borderColor": "var(--border)",
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderStyle": "solid",
+        "borderRadius": "var(--radius-md)",
+        "backgroundColor": "var(--background)",
+        "paddingTop": "var(--space-2-5)",
+        "paddingBottom": "var(--space-2-5)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "fontSize": "var(--text-base)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit"
+      },
+      "parent": "fieldEmail"
+    },
+    {
+      "id": "fieldPhone",
+      "type": "Group",
+      "label": "Phone field",
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "rowGap": "var(--space-2)"
+      },
+      "children": [
+        "phoneLabel",
+        "phoneInput"
+      ],
+      "parent": "contactSection"
+    },
+    {
+      "id": "phoneLabel",
+      "type": "Text",
+      "label": "Phone field label",
+      "parameters": {
+        "text": "Phone",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--foreground)"
+      },
+      "parent": "fieldPhone"
+    },
+    {
+      "id": "phoneInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Phone input",
+      "parameters": {
+        "borderColor": "var(--border)",
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderStyle": "solid",
+        "borderRadius": "var(--radius-md)",
+        "backgroundColor": "var(--background)",
+        "paddingTop": "var(--space-2-5)",
+        "paddingBottom": "var(--space-2-5)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "fontSize": "var(--text-base)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit"
+      },
+      "parent": "fieldPhone"
+    },
+    {
+      "id": "fieldPuppy",
+      "type": "Group",
+      "label": "Puppy choice field",
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "rowGap": "var(--space-2)"
+      },
+      "children": [
+        "puppyLabel",
+        "puppyInput"
+      ],
+      "parent": "contactSection"
+    },
+    {
+      "id": "puppyLabel",
+      "type": "Text",
+      "label": "Puppy choice label",
+      "parameters": {
+        "text": "Which puppy caught your eye?",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--foreground)"
+      },
+      "parent": "fieldPuppy"
+    },
+    {
+      "id": "puppyInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Puppy choice input",
+      "parameters": {
+        "borderColor": "var(--border)",
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderStyle": "solid",
+        "borderRadius": "var(--radius-md)",
+        "backgroundColor": "var(--background)",
+        "paddingTop": "var(--space-2-5)",
+        "paddingBottom": "var(--space-2-5)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "fontSize": "var(--text-base)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit"
+      },
+      "parent": "fieldPuppy"
+    },
+    {
+      "id": "submitButton",
+      "type": "net.noodl.controls.button",
+      "label": "Submit inquiry button",
+      "parameters": {
+        "label": "Send Inquiry",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderWidth": {
+          "value": 0,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-md)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-base)",
+        "fontWeight": "var(--font-semibold)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit"
+      },
+      "parent": "contactSection"
+    },
+    {
+      "id": "footer",
+      "type": "Group",
+      "label": "Footer",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "backgroundColor": "var(--surface-raised)",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopStyle": "solid",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)"
+      },
+      "children": [
+        "footerText"
+      ],
+      "parent": "root"
+    },
+    {
+      "id": "footerText",
+      "type": "Text",
+      "label": "Footer text",
+      "parameters": {
+        "text": "Puppy Adoption — every puppy rehomed with care.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "textAlignX": "center"
+      },
+      "parent": "footer"
+    },
+    {
+      "id": "puppyQuery",
+      "type": "DbCollection2",
+      "label": "Query available puppies",
+      "x": 600,
+      "y": 650,
+      "parameters": {
+        "collectionName": "Puppy"
+      },
+      "dynamicports": [
+        {
+          "name": "collectionName",
+          "displayName": "Class",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "User",
+                "value": "_User"
+              },
+              {
+                "label": "Role",
+                "value": "_Role"
+              },
+              {
+                "label": "Puppy",
+                "value": "Puppy"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "index": 19
+        },
+        {
+          "name": "storageFilterType",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "value": "simple",
+                "label": "Visual"
+              },
+              {
+                "value": "json",
+                "label": "Javascript"
+              }
+            ]
+          },
+          "displayName": "Filter",
+          "default": "simple",
+          "plug": "input",
+          "group": "General",
+          "index": 20
+        },
+        {
+          "type": "string",
+          "plug": "input",
+          "group": "Search",
+          "name": "search",
+          "displayName": "Search",
+          "index": 21
+        },
+        {
+          "type": "boolean",
+          "plug": "input",
+          "group": "Limit",
+          "name": "storageEnableLimit",
+          "displayName": "Use limit",
+          "index": 22
+        },
+        {
+          "type": "signal",
+          "plug": "input",
+          "group": "Actions",
+          "name": "storageFetch",
+          "displayName": "Do",
+          "index": 23
+        },
+        {
+          "name": "runOnChange-collectionName",
+          "displayName": "Class",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "default": true,
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "index": 24
+        },
+        {
+          "name": "runOnChange-search",
+          "displayName": "Search",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "default": true,
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "index": 25
+        },
+        {
+          "name": "runOnChange-records",
+          "displayName": "Record changes",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "default": true,
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "index": 26
+        },
+        {
+          "name": "runOnChange-querySettings",
+          "displayName": "Query settings",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "default": true,
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "index": 27
+        },
+        {
+          "type": "boolean",
+          "plug": "input",
+          "group": "Realtime",
+          "name": "realtime",
+          "default": false,
+          "displayName": "Subscribe To Changes",
+          "tooltip": "Keep Items current from the server: re-runs this query when another client creates, updates or deletes a record, and fires the Record Created/Updated/Deleted signals. Not every backend can — see Realtime Error.",
+          "index": 28
+        },
+        {
+          "type": "boolean",
+          "plug": "input",
+          "group": "Total Count",
+          "name": "storageEnableCount",
+          "displayName": "Fetch total count",
+          "index": 29
+        },
+        {
+          "name": "visualFilter",
+          "plug": "input",
+          "type": {
+            "name": "query-filter",
+            "schema": {
+              "properties": {
+                "name": {
+                  "type": "String"
+                },
+                "breed": {
+                  "type": "String"
+                },
+                "age": {
+                  "type": "String"
+                },
+                "available": {
+                  "type": "Boolean"
+                },
+                "description": {
+                  "type": "String"
+                },
+                "photo": {
+                  "type": "String"
+                }
+              }
+            },
+            "allowEditOnly": true,
+            "backend": "nodegx",
+            "valuePortPrefix": "qp-"
+          },
+          "displayName": "Filter",
+          "group": "Filter",
+          "index": 30
+        },
+        {
+          "name": "visualSort",
+          "plug": "input",
+          "type": {
+            "name": "query-sorting",
+            "schema": {
+              "properties": {
+                "name": {
+                  "type": "String"
+                },
+                "breed": {
+                  "type": "String"
+                },
+                "age": {
+                  "type": "String"
+                },
+                "available": {
+                  "type": "Boolean"
+                },
+                "description": {
+                  "type": "String"
+                },
+                "photo": {
+                  "type": "String"
+                }
+              }
+            },
+            "allowEditOnly": true
+          },
+          "displayName": "Sort",
+          "group": "Sorting",
+          "index": 31
+        }
+      ]
+    },
+    {
+      "id": "navThankYou",
+      "type": "RouterNavigate",
+      "label": "Go to Thank You page after submit",
+      "x": 600,
+      "y": 1350,
+      "parameters": {
+        "target": "/Pages/Thank You",
+        "router": "Main"
+      },
+      "dynamicports": [
+        {
+          "plug": "input",
+          "type": {
+            "name": "component",
+            "title": "Choose page component",
+            "components": [
+              "/#__page__/Home",
+              "/Pages/Landing",
+              "/Pages/Thank You",
+              "/Pages/Admin Login",
+              "/Pages/Admin"
+            ],
+            "allowEditOnly": true
+          },
+          "group": "General",
+          "displayName": "Target Page",
+          "name": "target",
+          "index": 7
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

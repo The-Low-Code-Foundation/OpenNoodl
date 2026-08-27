@@ -1,0 +1,225 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "0e011d4c-a9b7-4737-a68c-94a817467d05",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "card-3",
+      "type": "Group",
+      "label": "Card",
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 340,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "backgroundColor": "var(--surface-raised)",
+        "borderRadius": "var(--radius-xl)",
+        "borderWidth": "var(--border-1)",
+        "borderStyle": "solid",
+        "borderColor": "var(--border)",
+        "boxShadowEnabled": true,
+        "boxShadowOffsetX": {
+          "value": 0,
+          "unit": "px"
+        },
+        "boxShadowOffsetY": {
+          "value": 1,
+          "unit": "px"
+        },
+        "boxShadowBlurRadius": {
+          "value": 3,
+          "unit": "px"
+        },
+        "boxShadowSpreadRadius": {
+          "value": 0,
+          "unit": "px"
+        },
+        "boxShadowColor": "#0f172a14",
+        "clip": true
+      },
+      "children": [
+        "photo",
+        "body-2"
+      ]
+    },
+    {
+      "id": "photo",
+      "type": "Image",
+      "label": "Cover photo",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 230,
+          "unit": "px"
+        },
+        "objectFit": "cover",
+        "borderTopLeftRadius": "var(--radius-xl)",
+        "borderTopRightRadius": "var(--radius-xl)"
+      },
+      "parent": "card-3"
+    },
+    {
+      "id": "body-2",
+      "type": "Group",
+      "label": "Card body",
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "rowGap": "var(--space-2)"
+      },
+      "children": [
+        "nameRow",
+        "breedText",
+        "descText"
+      ],
+      "parent": "card-3"
+    },
+    {
+      "id": "nameRow",
+      "type": "Group",
+      "label": "Name and age",
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "columnGap": "var(--space-3)"
+      },
+      "children": [
+        "nameText",
+        "agePill"
+      ],
+      "parent": "body-2"
+    },
+    {
+      "id": "nameText",
+      "type": "Text",
+      "label": "Puppy name",
+      "parameters": {
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "nameRow"
+    },
+    {
+      "id": "agePill",
+      "type": "Group",
+      "label": "Age pill",
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "sizeMode": "contentSize",
+        "backgroundColor": "var(--muted)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-1)",
+        "paddingBottom": "var(--space-1)"
+      },
+      "children": [
+        "ageText"
+      ],
+      "parent": "nameRow"
+    },
+    {
+      "id": "ageText",
+      "type": "Text",
+      "label": "Age",
+      "parameters": {
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--muted-foreground)",
+        "letterSpacing": "var(--tracking-wide)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "agePill"
+    },
+    {
+      "id": "breedText",
+      "type": "Text",
+      "label": "Breed",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--primary)",
+        "letterSpacing": "var(--tracking-wide)"
+      },
+      "parent": "body-2"
+    },
+    {
+      "id": "descText",
+      "type": "Text",
+      "label": "Description",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)"
+      },
+      "parent": "body-2"
+    },
+    {
+      "id": "cardInputs",
+      "type": "Component Inputs",
+      "label": "Record properties in",
+      "x": -300,
+      "y": 0,
+      "ports": [
+        {
+          "name": "photo",
+          "plug": "output",
+          "type": "string",
+          "index": 0
+        },
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "string",
+          "index": 1
+        },
+        {
+          "name": "breed",
+          "plug": "output",
+          "type": "string",
+          "index": 2
+        },
+        {
+          "name": "age",
+          "plug": "output",
+          "type": "string",
+          "index": 3
+        },
+        {
+          "name": "description",
+          "plug": "output",
+          "type": "string",
+          "index": 4
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "card-3"
+  ]
+}

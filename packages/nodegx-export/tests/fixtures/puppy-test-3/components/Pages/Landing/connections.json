@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "9e0e6209-6902-481e-8e9b-84a430dae201",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "puppyQuery",
+      "fromProperty": "items",
+      "toId": "repeater",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "submitButton",
+      "fromProperty": "onClick",
+      "toId": "navThankYou",
+      "toProperty": "navigate"
+    }
+  ]
+}

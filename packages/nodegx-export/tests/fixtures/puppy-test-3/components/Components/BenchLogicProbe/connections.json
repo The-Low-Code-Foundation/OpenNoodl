@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f835f776-e04c-4e0d-8f47-59f805bc3f41",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "bl-ci",
+      "fromProperty": "Seed",
+      "toId": "bl-counter",
+      "toProperty": "startValue"
+    },
+    {
+      "fromId": "bl-ci",
+      "fromProperty": "Go",
+      "toId": "bl-counter",
+      "toProperty": "increase"
+    },
+    {
+      "fromId": "bl-counter",
+      "fromProperty": "currentCount",
+      "toId": "bl-co",
+      "toProperty": "Count"
+    },
+    {
+      "fromId": "bl-counter",
+      "fromProperty": "countChanged",
+      "toId": "bl-co",
+      "toProperty": "Changed"
+    }
+  ]
+}
