@@ -518,6 +518,78 @@ export type ThreadDetail = {
   answers: ThreadPost[];
 };
 
+/**
+ * FB-013 C4 — one chat message, as the launcher's river draws it.
+ *
+ * 🔴 **THERE IS NO `title`, AND THE ABSENCE IS THE DESIGN.** C3 met this on the web and recorded
+ * it: a chat message has no headline, so rendering one through the card archetype would mean
+ * *inventing* a title from the body — and a river of invented headlines is the forum this
+ * feature exists beside rather than inside. `CommunityBenchRow` has a `title` because a
+ * `bench_thread` really carries one; this deliberately does not.
+ *
+ * 🔴 `blocks` is {@link PostBlock}`[]` for the same reason {@link ThreadPost}'s is: the wire's
+ * `Block[]` is **read**, never cast, so a block kind this build cannot draw becomes a visible
+ * marker instead of a hole. The bodies here are stranger-authored and this is the boundary.
+ *
+ * ⚠️ **`editedAt` is null unless the message was actually edited.** The platform derives it as
+ * `updated_at > created_at` rather than sending `updated_at` raw, so a row that has never been
+ * touched does not claim to have been.
+ */
+export type ChatMessage = {
+  id: string;
+  channel: string;
+  authorHandle: string;
+  blocks: PostBlock[];
+  replyCount: number;
+  createdAt: string;
+  editedAt: string | null;
+};
+
+/**
+ * One chat thread: the root, and its replies in the order they were written.
+ *
+ * ⚠️ **`replies` is flat, and that is honest rather than a simplification.** `0024`'s
+ * `chat_reply_shape_guard()` refuses a reply to a reply, so there is no depth for this shape to
+ * lose. Mirrors the platform's own `ChatThreadView`.
+ */
+export type ChatThread = {
+  root: ChatMessage;
+  replies: ChatMessage[];
+};
+
+/**
+ * Read one message off the wire, or `null` if it is not one.
+ *
+ * ⚠️ **Every field is checked, and a row that fails any of them is dropped rather than
+ * defaulted.** A message with no author or no id cannot be drawn or opened, and inventing an
+ * empty handle for it would put an anonymous row in a river where every other row names
+ * somebody.
+ */
+function readChatMessage(value: unknown): ChatMessage | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const row = value as Record<string, unknown>;
+
+  const id = typeof row.id === 'string' ? row.id : null;
+  const channel = typeof row.channel === 'string' ? row.channel : null;
+  const authorHandle = typeof row.authorHandle === 'string' ? row.authorHandle : null;
+  const createdAt = typeof row.createdAt === 'string' ? row.createdAt : null;
+  if (!id || !channel || !authorHandle || !createdAt) return null;
+
+  const replyCount = Number(row.replyCount);
+
+  return {
+    id,
+    channel,
+    authorHandle,
+    blocks: readPostBlocks(row.blocks),
+    // ⚠️ A count we could not read is 0, not absent: the row still draws, and "no replies yet"
+    // is the safe direction — over-stating it would send a reader into an empty thread.
+    replyCount: Number.isFinite(replyCount) && replyCount > 0 ? replyCount : 0,
+    createdAt,
+    editedAt: typeof row.editedAt === 'string' ? row.editedAt : null
+  };
+}
+
 function readAttachments(value: unknown): ThreadAttachment[] {
   if (!Array.isArray(value)) return [];
   const out: ThreadAttachment[] = [];
@@ -2188,6 +2260,83 @@ export class CommunityApiClient {
    * everybody, which is why the questions and the answers are one payload rather than two
    * routes. An editor can therefore draw the form before it has signed anybody in.
    */
+  /**
+   * FB-013 C4 — the river: root messages, newest first, across every channel.
+   *
+   * 🔴 **`channel` IS OPTIONAL HERE BECAUSE IT IS OPTIONAL ON THE ROUTE, AND BOTH ARE SCOPE §2.**
+   * A channel is a *filter*, not a door: the default read is every channel at once, so there is
+   * no screen in this feature a reader can land on and find empty because they picked the quiet
+   * room. A required parameter — or a `chatChannel(name)` method beside this one — would put
+   * that empty room back from the type signature outwards, whatever the view did with it.
+   *
+   * ⚠️ **This client sends `channel` and does NOT send it for the facet.** The pills narrow in
+   * memory over the rows this returns, because `facets.ts`' rule is that a pill's count and a
+   * pill's rows come from one pass — asking the server per pill would be two producers of one
+   * number. The parameter exists for a caller that wants one channel and no counts.
+   *
+   * ⚠️ An unknown channel is **ignored** by the route rather than refused, so a stale value
+   * costs a reader the filter and not the page. This client does not second-guess that.
+   */
+  async chat(options: { channel?: string } = {}): Promise<Read<ChatMessage[]>> {
+    const search = new URLSearchParams();
+    if (options.channel !== undefined && options.channel !== '') search.set('channel', options.channel);
+    const query = search.toString();
+
+    const read = await this.get<{ items?: unknown }>(
+      `/api/v1/community/chat${query === '' ? '' : `?${query}`}`
+    );
+    if (read.outcome !== 'ok') return read;
+
+    const raw = Array.isArray(read.value?.items) ? read.value.items : null;
+    // ⚠️ `unreachable`, never `absent` — see `thread()` for the full argument. A body we could
+    // not read is our problem and is retryable; `absent` is a statement about the viewer's
+    // permission and must never be produced by a parse failure.
+    if (!raw) {
+      return { outcome: 'unreachable', status: null, detail: 'the chat payload could not be read' };
+    }
+
+    const items: ChatMessage[] = [];
+    for (const entry of raw) {
+      const message = readChatMessage(entry);
+      if (message) items.push(message);
+    }
+    return { outcome: 'ok', value: items };
+  }
+
+  /**
+   * FB-013 C4 — one thread: the root and its replies.
+   *
+   * 🔴 **A REPLY'S ID ANSWERS `absent` HERE, and that is the platform's rule rather than this
+   * method's.** `threadById` 404s for a reply because a reply is not a thread — answering with
+   * "the thread containing it" would give two addresses for one page. So a caller must open the
+   * **root**, and this method does not paper over the difference.
+   */
+  async chatThread(messageId: string): Promise<Read<ChatThread>> {
+    const read = await this.get<{ item?: unknown }>(
+      `/api/v1/community/chat/${encodeURIComponent(messageId)}`
+    );
+    if (read.outcome !== 'ok') return read;
+
+    const item = read.value?.item;
+    const shape = typeof item === 'object' && item !== null ? (item as Record<string, unknown>) : null;
+    const root = shape ? readChatMessage(shape.root) : null;
+    if (!root) {
+      return { outcome: 'unreachable', status: null, detail: 'the chat thread payload could not be read' };
+    }
+
+    // ⚠️ A reply we could not read is dropped, but the thread still draws. Refusing the whole
+    // thread over one bad reply would hide the root somebody actually followed a link to.
+    const replies: ChatMessage[] = [];
+    if (Array.isArray(shape?.replies)) {
+      for (const entry of shape.replies) {
+        const reply = readChatMessage(entry);
+        if (reply) replies.push(reply);
+      }
+    }
+
+    return { outcome: 'ok', value: { root, replies } };
+  }
+
   intake(): Promise<Read<IntakeState>> {
     return this.get<IntakeState>('/api/v1/me/intake');
   }

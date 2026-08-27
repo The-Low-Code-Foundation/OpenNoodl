@@ -155,6 +155,8 @@ const ALLOWED: Record<string, string> = {
     'FB-005 T3 the curated template shelf: the token is a BEARER HEADER on two reads the platform serves to strangers — `/api/v1/community/templates` and its `/bundle`, whose route header says so outright (*"Signed out is fine, and the D15 gate still runs"*). 🔴 **The question this column demands, answered before the row was added: what does it WITHHOLD? Nothing.** There is no branch on the session — `readCommunitySession()` is read only to build the client, a session-less editor gets `token: null`, and both reads go out identically. The account can only make the editor do LESS, as everywhere else in this table: the header exists so D15 can answer 404 to an org-minor whose school switched the community off. ⚠️ **And the whole feature survives a null session anyway** — `EmbeddedTemplateProvider` is compiled into the editor and is first in the registry, so a signed-out, offline builder still gets a template picker with a template in it. Asserted structurally below',
   'noodl-editor/src/editor/src/pages/ProjectsPage/useShareTemplate.ts':
     'FB-005 T5 sharing a project as a template: the token builds the client for `POST /api/v1/community/templates/submissions`. 🔴 **THIS IS THE FIRST ROW IN THIS TABLE WHOSE ANSWER TO "what does it WITHHOLD?" IS NOT SIMPLY "nothing", AND IT IS RECORDED RATHER THAN GLOSSED.** Every row above reads a token as a bearer header on something the platform serves to strangers; this one reads it for a WRITE, and the send button is off while signed out. ⚠️ **What makes that not principle 1\'s failure is that no capability MOVED behind the session.** Filing a submission did not exist for anybody before T5, and it cannot exist without an account on the platform side either: `submitTemplate` is a checked write capability and `project_template_submissions.submitter_account_id` is `not null` — a submission with nobody attached is a row the database refuses, and a decline with no one to tell is a queue that is a black hole. So the account does not buy back something an account-less editor lost; it is who the act is BY. 🔴 **And the offer never disappears**: the kebab entry is guarded on the handler and not on a session, the dialog opens signed out, every field works, and `whySendIsOff` names the fix in a sentence — a feature that comes and goes with a session is the failure this table exists to prevent, and this is deliberately not that. ⚠️ The decision layer sees no session at all: `shareTemplateForm.ts` decides what may be sent and what every outcome says, and the whole of what it may know about an account is a BOOLEAN — the arrangement `useCommunityThread` uses for the hand-off. Asserted structurally below.',
+  'noodl-editor/src/editor/src/hooks/useCommunityChat.ts':
+    'FB-013 C4 the launcher chat tab: the token is a BEARER HEADER on two reads the platform serves to strangers — `GET /api/v1/community/chat` and `/chat/[messageId]`, and `chat.ts` says so in its own section header (*"Every read below works signed out — D14 consequence 4 — and there is no viewer argument to get wrong"*). 🔴 **The question this column demands, answered before the row was added: what does it WITHHOLD? Nothing.** There is no branch on whether a session EXISTS — `readCommunitySession()` is read only to build the client, a signed-out editor gets `token: null`, and both reads go out identically. The single `session === undefined` guard waits for the STORE to answer, not for an account: `null` proceeds, and it is the same guard `useCommunityMirror` uses so the first request is not sent before the store has spoken. As everywhere else in this table the account can only make the editor do LESS — the header exists so D15 can refuse an org-minor whose school switched the community off. ⚠️ The decision layer sees no session at all: which rows are drawn, which channel narrows them, every pill count and every sentence are `chatview.ts`, which takes a read and a channel string — asserted structurally below',
   'noodl-editor/src/editor/src/hooks/useLearnerPath.ts':
     'UNI-007 AC1 intake and path: the token is a BEARER HEADER on the path read, and the INTAKE read — the questions themselves — is not session-gated at all, because `GET /api/v1/me/intake` takes no token by design. Withholds nothing: a path is a fact that does not exist for a person with no account, in the same way `standing` does not, and no capability the editor had before this surface moved behind a session. Asserted structurally below'
 };
@@ -811,5 +813,42 @@ describe('AC4 — the template shelf withholds nothing, proven against the real 
       forge.indexOf('new PlatformTemplateProvider()')
     );
     expect(readsTheSession(forge)).toBe(false);
+  });
+});
+
+
+/**
+ * FB-013 C4 — the chat river, added 2026-08-27.
+ *
+ * ⚠️ Same shape as the directory's block above, and for the same reason: the claim in the table
+ * is that the DECISION layer never sees a credential, and a claim about a module is only worth
+ * making beside a control proving the checker can see one when it is there.
+ */
+describe('AC4 — the chat tab withholds nothing, proven against the real source', () => {
+  const hook = stripComments(readFileSync(join(EDITOR_SRC, 'hooks/useCommunityChat.ts'), 'utf8'));
+  const model = stripComments(readFileSync(join(EDITOR_SRC, 'models/community/chatview.ts'), 'utf8'));
+
+  it('control: the hook really does read the session — the known-firing arm', () => {
+    // 🔴 Without this, every absence below passes for a hook that reads nothing at all.
+    expect(readsTheSession(hook)).toBe(true);
+    expect(hook).toContain('readCommunitySession');
+  });
+
+  it('the module that decides what is drawn never sees a session or a token', () => {
+    // 🔴 On this surface that covers WHICH MESSAGES EXIST and WHAT EVERY PILL COUNTS. A facet
+    // that could see a credential would be an editor deciding for itself which conversations a
+    // reader is allowed to know about — the D15 failure the mirror rule names.
+    expect(readsTheSession(model)).toBe(false);
+    expect(model).not.toContain('token');
+    expect(READERS).not.toContain('noodl-editor/src/editor/src/models/community/chatview.ts');
+  });
+
+  it('🔴 the only session branch waits for the STORE, and a signed-out reader passes it', () => {
+    // `session === undefined` is "the store has not answered yet"; `null` is "signed out" and
+    // goes through. A guard written `if (!session) return` would read almost identically and
+    // would withhold the whole tab from everyone without an account — which is the regression
+    // this row exists to catch.
+    expect(hook).toContain('session === undefined');
+    expect(hook).not.toMatch(/if\s*\(\s*!session\s*\)/);
   });
 });

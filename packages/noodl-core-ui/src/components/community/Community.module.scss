@@ -1008,9 +1008,14 @@
   ⚠️ FB-002 — the Bench list carries the SAME controls-inside-the-card arrangement as the
   directory, so it shares the gutter rule below rather than restating it. Two selectors, one
   set of numbers: a second copy is a second thing to keep in step with `.Body`'s padding.
+
+  ⚠️ FB-013 C4 — and now the chat river, for the same reason and on the same numbers. It is the
+  third list with controls above its rows; adding a selector here is what stops it becoming the
+  third copy of these paddings.
 */
 .Directory,
-.Bench {
+.Bench,
+.Chat {
   display: block;
 }
 
@@ -1034,13 +1039,15 @@
 .DirectorySummary,
 .DirectoryBound {
   .Directory.is-density-page &,
-  .Bench.is-density-page & {
+  .Bench.is-density-page &,
+  .Chat.is-density-page & {
     padding-left: var(--spacing-3-5);
     padding-right: var(--spacing-3-5);
   }
 
   .Directory.is-density-panel &,
-  .Bench.is-density-panel & {
+  .Bench.is-density-panel &,
+  .Chat.is-density-panel & {
     padding-left: var(--spacing-3);
     padding-right: var(--spacing-3);
   }
@@ -1328,4 +1335,48 @@
   margin: 4px 0 0;
   color: var(--theme-color-fg-default);
   font-size: 11px;
+}
+
+/* ── The chat river (FB-013 C4) ─────────────────────────────────────────────────────────── */
+
+/*
+  🔴 A MESSAGE ROW IS NOT `.Row`, AND THE DIFFERENCE IS STRUCTURAL RATHER THAN COSMETIC.
+  `.Row` is a `<button>` with a title line; a message has no title and its body carries links,
+  so it cannot be inside a button at all. See `CommunityChatView.tsx`'s header.
+
+  ⚠️ The side padding matches `.Row`'s so the river and the Bench line up when a reader switches
+  tabs, and it is written against the same spacing tokens rather than copied numbers.
+*/
+.Message {
+  display: block;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+
+  &.is-density-page {
+    padding: var(--spacing-2) var(--spacing-3-5);
+  }
+
+  &.is-density-panel {
+    padding: var(--spacing-1-5) var(--spacing-3);
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.MessageHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spacing-1);
+  margin-bottom: var(--spacing-1);
+}
+
+/*
+  ⚠️ The foot is where the way into the thread lives, because the body above it may contain
+  anchors and a row-wide control would swallow them.
+*/
+.MessageFoot {
+  display: flex;
+  margin-top: var(--spacing-1);
 }

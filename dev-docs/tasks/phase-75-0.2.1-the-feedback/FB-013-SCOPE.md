@@ -309,7 +309,7 @@ Ordered so the early steps are shippable and independent of R-chat-mod.
 | **C1** | `0024` + `src/lib/chat.ts` + the Drizzle mirror + the three sweeps (§11) | **M** | ✅ **DONE s51** |
 | **C2** | the five routes, envelope-compliant, D15 verdicts | **M** | ✅ **DONE s51** |
 | **C3** | the web tab: river + facet bar + thread view + composer | **M** | ✅ **DONE s52** |
-| **C4** | the launcher tab, inside FB-006's structure (**done 2026-08-22**, so not a blocker) | **S–M** | C3 |
+| **C4** | the launcher tab, inside FB-006's structure (**done 2026-08-22**, so not a blocker) | **S–M** | 🟡 **READ HALF BUILT s57** — see §10a |
 | **C5** | moderation verbs | **S** | 🔒 R-chat-mod |
 
 ⚠️ **C4's precondition is already met.** FB-013's sequencing note says *"do not ship chat before the
@@ -318,6 +318,58 @@ launcher half **done 2026-08-22**. The warning is discharged; noted because a fu
 that sentence and stop.
 
 **Editor: a door only**, per FB-006/D6 — unchanged, and not in this slice.
+
+### 10a. 🟡 What C4 built (session 57), and the one thing it deliberately did not
+
+✅ **The read surface, end to end**: `CommunityApiClient.chat()` / `.chatThread()`, a composer
+(`models/community/chatview.ts`), the river component and thread pane
+(`noodl-core-ui/components/community/CommunityChatView.tsx`), a hook (`useCommunityChat`), and the
+tab wired through `ProjectsPage` into FB-006's strip.
+
+🔴 **The tab is SECOND in the strip, after Bench, because the web's nav puts Chat there — and the
+copy of that nav pinned in `communityTabs.ts` had gone stale.** That header records the web as a
+different repository whose order *"cannot be derived from disk … it is a copy, and a copy drifts"*,
+with the mitigation being a quoted block that a reader checks. It drifted within four days: C3
+added `/chat` on 08-26 and the quote still described 08-22. **Re-reading it is what caught it**,
+which is the mitigation working rather than failing — the block is now re-quoted and dated.
+
+🔴 **The river is fetched with NO channel, always, and that is `facets.ts`' rule rather than an
+optimisation.** The client accepts a `channel` parameter (the route offers one) and the hook never
+sends it: narrowing happens in memory so a pill's count and a pill's rows come from **one pass over
+one list**. The channel facet *is* the design here, so two producers of that number would be the
+feature failing rather than a cosmetic drift. A spec asserts the identity by *selecting each pill*
+and comparing, rather than re-deriving the count a second way — a re-derivation would agree with an
+implementation that made the same mistake twice.
+
+🔴 **`chatThreadLabel` is a cross-repository copy that MUST keep agreeing.** The platform's
+`threadLabel` is a permalink's `<h1>`, and its own comment says a label two surfaces compute
+differently is one address whose title depends on which client you followed it from. It is mirrored
+line for line, with **one documented difference**: the editor's `unsupported` block kind — its
+marker for a block *it* cannot draw — contributes no text, so a body of only those is honestly
+nameless rather than named after a marker. That kind cannot appear on the wire, so the platform's
+function has no case for it.
+
+⚠️ **A message row is not `CommunityRow`, and the whole row is not the click target.** The first is
+C3's finding transferred (a chat message has no title, and a river of derived headlines is the
+forum). The second is new here and structural: a body may contain links, which
+`CommunityPostBody` draws as real anchors, so a `<button>` around them would nest interactive
+elements. The way into a thread is a control in the row's foot — and it is **absent inside the
+thread pane**, because there it would point at the page it is already on.
+
+🔒 **DEFERRED, and this is the honest half of C4: there is no composer.** You can read the river,
+filter it, and open a thread; you cannot post or reply from the launcher. Two reasons, and the
+second is the real one:
+
+1. Scope: adding both writes turns an S–M slice into an L one.
+2. 🔴 **Posting is where R-chat-mod actually bites.** C5 is listed as blocked on that ruling, but a
+   *composer* is what creates the messages a moderation posture is about — shipping "anyone can
+   post from the editor" before deciding whether anybody can take a message down is the ordering
+   the ruling exists to prevent. **So the composer belongs with C5, not before it.**
+
+⚠️ **And the platform half is not deployed.** `/api/v1/community/chat` answers **404** on
+production while `/api/v1/community/threads` answers **200** and an invented path answers 404 —
+so the tab is correct and has nothing to talk to until `nodegx-community` ships. It was therefore
+driven against a **local** platform (see the task file), not production.
 
 ## 11. 🔴 The sweeps this owes — and it is **FOUR**, not the three FB-005 recorded
 

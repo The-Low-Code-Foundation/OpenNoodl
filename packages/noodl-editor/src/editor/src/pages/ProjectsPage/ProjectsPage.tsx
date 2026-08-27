@@ -88,6 +88,7 @@ import { CommunityApiClient } from '@noodl-models/community/communityapi';
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 import { readCommunitySession } from '@noodl-models/community/communitysession';
 
+import { useCommunityChat } from '@noodl-hooks/useCommunityChat';
 import { useCommunityMirror } from '@noodl-hooks/useCommunityMirror';
 import { useLearnerPath } from '../../hooks/useLearnerPath';
 import { useCommunityPeople } from '@noodl-hooks/useCommunityPeople';
@@ -364,6 +365,12 @@ export function ProjectsPage(props: ProjectsPageProps) {
   // NAT-007 — which thread is open, and its data. The same hook the editor's rail panel calls;
   // see `useCommunityThread` on why one hook rather than one per surface.
   const communityThread = useCommunityThread();
+  /**
+   * FB-013 C4 — the chat river. ⚠️ A hook of its own rather than a field on the mirror: only
+   * this tab draws it, and folding it into `useCommunityMirror` would make the editor's rail
+   * panel poll a river it never shows. See `useCommunityChat`'s header.
+   */
+  const communityChat = useCommunityChat();
   // NAT-008 — the directory and whichever profile is open. A third hook rather than a field on
   // the second, for the reason the second gives: each owns one question, and the surface that
   // mounts them is where they meet.
@@ -1511,6 +1518,17 @@ export function ProjectsPage(props: ProjectsPageProps) {
           // draws as nothing at all — see `LauncherCommunityHostState.people`.
           people: communityPeople.people,
           profile: communityPeople.profile,
+          // FB-013 C4 — the chat tab. Supplying this is what makes the tab exist at all; a build
+          // without it draws no Chat in the strip. See `LauncherCommunityHostState.chat`.
+          chat: {
+            view: communityChat.view,
+            thread: communityChat.thread,
+            onSelectChannel: communityChat.selectChannel,
+            onOpenThread: communityChat.openThread,
+            onBack: communityChat.closeThread,
+            onRetry: communityChat.refresh,
+            onOpenLink: (href) => platform.openExternal(href)
+          },
           onOpenArticle: (slug) => platform.openExternal(`${COMMUNITY_URL}/articles/${slug}`),
           onOpenReplay: (slug) => platform.openExternal(`${COMMUNITY_URL}/replays/${slug}`),
           onOpenCommunity: () => platform.openExternal(COMMUNITY_URL)

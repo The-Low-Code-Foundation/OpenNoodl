@@ -23,15 +23,22 @@ import {
 const CORE_UI = join(__dirname, '../../../noodl-core-ui/src');
 
 /** What this build can actually draw today. The other four are catalogued and unwired. */
-const WIRED = { bench: true, tutorials: true, replays: true, people: true };
+const WIRED = { bench: true, chat: true, tutorials: true, replays: true, people: true };
 
 describe("AC1 — the launcher has the web's tabs, in the web's order", () => {
   it('🔴 the catalogue is the web nav, name for name', () => {
-    // `nodegx-community/src/app/layout.tsx`, read 2026-08-22. ⚠️ A copy, not a derivation: the web
-    // is a different repository and nothing in this checkout can read it. This assertion is the
-    // place a drift is caught, so the quoted list is the whole point of it.
+    // `nodegx-community/src/app/layout.tsx`, re-read 2026-08-27. ⚠️ A copy, not a derivation: the
+    // web is a different repository and nothing in this checkout can read it. This assertion is
+    // the place a drift is caught, so the quoted list is the whole point of it.
+    //
+    // 🔴 IT CAUGHT ONE, AND THAT IS WHY THIS COMMENT NOW NAMES TWO DATES. FB-013 C3 added
+    // `/chat` to the web's nav SECOND on 2026-08-26. FB-013 C4 found the stale copy in
+    // `communityTabs.ts`'s own header and corrected it — and did not know this second copy
+    // existed until this row went red. ⚠️ **The nav is mirrored in TWO places in this
+    // checkout**: the module's header prose and this literal. Update both, or this fires.
     expect(COMMUNITY_TABS.map((tab) => tab.label)).toEqual([
       'Bench',
+      'Chat',
       'Tutorials',
       'Replays',
       'University',
@@ -43,8 +50,8 @@ describe("AC1 — the launcher has the web's tabs, in the web's order", () => {
   });
 
   it('draws the wired ones in that order, whatever order the host mentions them in', () => {
-    const plan = communityTabs({ wired: { people: true, replays: true, bench: true, tutorials: true } });
-    expect(plan.tabs.map((tab) => tab.id)).toEqual(['bench', 'tutorials', 'replays', 'people']);
+    const plan = communityTabs({ wired: { people: true, replays: true, chat: true, bench: true, tutorials: true } });
+    expect(plan.tabs.map((tab) => tab.id)).toEqual(['bench', 'chat', 'tutorials', 'replays', 'people']);
   });
 
   it('🔴 every tab says what IT is for, and no two say the same thing', () => {
@@ -77,7 +84,10 @@ describe('AC2 — a new content kind is a new TAB, not a longer page', () => {
 
   it("wiring one is one flag, and it lands in the web's position rather than at the end", () => {
     const plan = communityTabs({ wired: { ...WIRED, university: true } });
-    expect(plan.tabs.map((tab) => tab.id)).toEqual(['bench', 'tutorials', 'replays', 'university', 'people']);
+    // ⚠️ `chat` is in WIRED as of FB-013 C4 and sits SECOND — which is this row's own claim
+    // demonstrated by a real arrival rather than by the hypothetical `university` one: a kind
+    // added later landed in the web's position, not at the end.
+    expect(plan.tabs.map((tab) => tab.id)).toEqual(['bench', 'chat', 'tutorials', 'replays', 'university', 'people']);
   });
 
   it('🔴 the four unbuilt kinds are already catalogued, so none of them can arrive as more page', () => {

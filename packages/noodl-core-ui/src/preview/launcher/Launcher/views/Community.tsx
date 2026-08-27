@@ -51,6 +51,8 @@ import React, { useState } from 'react';
 
 import {
   CommunityBenchView,
+  CommunityChatThread,
+  CommunityChatView,
   CommunityDirectoryView,
   CommunityProfileView,
   CommunityRow,
@@ -63,6 +65,8 @@ import {
 } from '@noodl-core-ui/components/community';
 import type {
   CommunityBenchViewModel,
+  CommunityChatThreadState,
+  CommunityChatViewModel,
   CommunityDirectoryViewModel,
   CommunityProfileState,
   CommunityReplyBox,
@@ -179,6 +183,27 @@ export interface LauncherCommunityPeoplePane {
   onRetry: () => void;
 }
 
+/**
+ * FB-013 C4's half of the host state.
+ *
+ * ⚠️ Declared rather than spread, for {@link LauncherCommunityThreadPane}'s reason: a new prop
+ * should be a change the tab's author sees.
+ *
+ * 🔴 **`thread` is a STATE and not a boolean.** A chat thread opens in place of the river, the
+ * same arrangement NAT-007 chose for the Bench, and its four states are the same four the rest
+ * of this page uses — so a thread that could not be opened says so where the river was, rather
+ * than closing back to a list and losing the fact that anything happened.
+ */
+export interface LauncherCommunityChatPane {
+  view: CommunityChatViewModel;
+  thread: CommunityChatThreadState;
+  onSelectChannel: (key: string) => void;
+  onOpenThread: (messageId: string) => void;
+  onBack: () => void;
+  onRetry: () => void;
+  onOpenLink?: (href: string) => void;
+}
+
 export interface LauncherCommunityProfilePane {
   state: CommunityProfileState;
   onBack: () => void;
@@ -225,6 +250,15 @@ export interface LauncherCommunityHostState {
    * *"a component that never ran also draws nothing."*
    */
   people?: LauncherCommunityPeoplePane | null;
+  /**
+   * FB-013 C4 — the chat river and whichever thread is open in it.
+   *
+   * ⚠️ **Absent draws NO TAB**, exactly as `people` absent does — Storybook and any editor build
+   * without `useCommunityChat` simply do not offer it. Unlike `people` there is no D15 refusal
+   * to distinguish: chat reads work signed out, so `null` and `undefined` mean the same thing
+   * here and the type says so by not offering `null`.
+   */
+  chat?: LauncherCommunityChatPane;
   /** NAT-008 — a profile, open in place of everything else. `null` when none is open. */
   profile?: LauncherCommunityProfilePane | null;
   onOpenArticle?: (slug: string) => void;
@@ -289,6 +323,7 @@ export function CommunityTab({
   thread,
   people,
   profile,
+  chat,
   activeTab,
   onSelectTab,
   onOpenThread,
@@ -342,6 +377,29 @@ export function CommunityTab({
     );
   }
 
+  /**
+   * 🔴 FB-013 C4 — a chat thread opens IN PLACE too, and for NAT-007's reason rather than by
+   * imitation: the launcher has one content area, and a dialog over a river would put the thing
+   * you were reading behind the thing you opened.
+   *
+   * ⚠️ **After the Bench's pane, not before it.** Both can be open at once in the host's state —
+   * two hooks, neither aware of the other — and a reader who clicked a Bench row last should get
+   * the Bench thread. Ordering is the whole of that decision, so it is stated rather than left
+   * to the order the props happen to appear in.
+   */
+  if (chat && chat.thread.state !== 'closed') {
+    return (
+      <LauncherPage title="Community">
+        <CommunityChatThread
+          state={chat.thread}
+          onBack={chat.onBack}
+          onRetry={chat.onRetry}
+          onOpenLink={chat.onOpenLink}
+        />
+      </LauncherPage>
+    );
+  }
+
   const who =
     view.viewer === null
       ? '…'
@@ -359,7 +417,7 @@ export function CommunityTab({
    * {@link communityTabs}.
    */
   const plan = communityTabs({
-    wired: { bench: true, tutorials: true, replays: true, people: Boolean(people) },
+    wired: { bench: true, chat: Boolean(chat), tutorials: true, replays: true, people: Boolean(people) },
     chosen: activeTab ?? null
   });
 
@@ -423,6 +481,32 @@ export function CommunityTab({
               onSelectFilter={(key) => onSelectBenchFilter?.(key)}
               onOpenThread={(threadId) => onOpenThread?.(threadId)}
               onRetry={onRefresh}
+            />
+          </div>
+        </section>
+      )}
+
+      {plan.active?.id === 'chat' && chat && (
+        /*
+          🔴 The card is drawn here rather than through `CommunitySection`, for the Bench's
+          reason: the channel pills belong INSIDE the card and above the rows, and
+          `CommunitySection` renders the body itself. The count it would draw is a bare item
+          count; `view.summary` says "1 of 4 conversations", which is the honest number on a
+          list something is narrowing.
+        */
+        <section className={css['Section']}>
+          <div className={css['SectionCard']}>
+            {alone && (
+              <div className={css['SectionHead']}>
+                <h3 className={css['SectionTitle']}>Chat</h3>
+              </div>
+            )}
+            <CommunityChatView
+              view={chat.view}
+              onSelectChannel={chat.onSelectChannel}
+              onOpenThread={chat.onOpenThread}
+              onRetry={chat.onRetry}
+              onOpenLink={chat.onOpenLink}
             />
           </div>
         </section>

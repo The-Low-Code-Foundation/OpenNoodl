@@ -47,6 +47,15 @@ export type {
   CommunityBenchView as CommunityBenchViewModel,
   CommunityBenchViewProps
 } from './CommunityBenchView';
+export { CommunityChatThread, CommunityChatView } from './CommunityChatView';
+export type {
+  CommunityChatThreadProps,
+  CommunityChatThreadState,
+  CommunityChatFilterPill,
+  CommunityChatRow,
+  CommunityChatView as CommunityChatViewModel,
+  CommunityChatViewProps
+} from './CommunityChatView';
 export { CommunityProfileView } from './CommunityProfileView';
 export type {
   CommunityBadgeView,

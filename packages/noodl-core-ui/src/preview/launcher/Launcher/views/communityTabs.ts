@@ -22,12 +22,19 @@
  * the whole catalogue lives on one screen of one file, with the web's nav quoted beside it:
  *
  * ```
- * <a href="/bench">Bench</a>          <a href="/tutorials">Tutorials</a>
- * <a href="/replays">Replays</a>      <a href="/university">University</a>
- * <a href="/people">People</a>        <a href="/rfps">Work</a>
- * <a href="/coaching">Coaching</a>    <a href="/orgs">Orgs</a>
+ * <a href="/bench">Bench</a>          <a href="/chat">Chat</a>
+ * <a href="/tutorials">Tutorials</a>  <a href="/replays">Replays</a>
+ * <a href="/university">University</a><a href="/people">People</a>
+ * <a href="/rfps">Work</a>            <a href="/coaching">Coaching</a>
+ * <a href="/orgs">Orgs</a>
  * ```
- * (`nodegx-community/src/app/layout.tsx`, read 2026-08-22.)
+ * (`nodegx-community/src/app/layout.tsx`, re-read 2026-08-27.)
+ *
+ * 🔴 **THE COPY ABOVE HAD DRIFTED, AND RE-READING IT IS WHAT CAUGHT IT.** FB-013 C3 added
+ * `/chat` to the web's nav **second**, right after Bench, on 2026-08-26. This block still said
+ * what the nav held on 08-22 — which is exactly the drift the paragraph above predicts, arriving
+ * five days later. The mitigation worked because the copy was checked rather than trusted; the
+ * order below now matches the nav again.
  *
  * 🔴 **The first tab is "Bench", not "Discussions" — ruled 2026-08-22, and the question that
  * settled it was whether those are two things.** D6's written proposal said *Discussions*, which
@@ -69,6 +76,7 @@
  */
 export type CommunityTabId =
   | 'bench'
+  | 'chat'
   | 'tutorials'
   | 'replays'
   | 'university'
@@ -98,6 +106,17 @@ export const COMMUNITY_TABS: readonly CommunityTabDescriptor[] = [
     id: 'bench',
     label: 'Bench',
     lead: 'Questions asked from the editor land here, beside your projects. You never have to open a browser to read them.'
+  },
+  {
+    id: 'chat',
+    label: 'Chat',
+    /**
+     * 🔴 The lead says **merged river** in the first clause, because that is the one thing a
+     * reader has to understand before the channel pills make sense. FB-013 §2: a channel
+     * narrows this list rather than opening a room of its own, so nobody can land somewhere
+     * quiet by picking wrong.
+     */
+    lead: 'Everything anyone is saying, newest first, across every channel. A channel narrows this list rather than opening a room of its own.'
   },
   {
     id: 'tutorials',
