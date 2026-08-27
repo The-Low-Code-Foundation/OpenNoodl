@@ -29,7 +29,8 @@
         "cheerButton",
         "cheerBanner",
         "farewell",
-        "aboutButton"
+        "aboutButton",
+        "greetingCard"
       ],
       "parameters": {
         "flexDirection": "column",
@@ -221,6 +222,17 @@
       "y": 1120,
       "parameters": {
         "target": "/Components/AboutDialog"
+      }
+    },
+    {
+      "id": "greetingCard",
+      "type": "/Components/GreetingCard",
+      "label": "Greeting card",
+      "x": 160,
+      "y": 1240,
+      "parent": "shell",
+      "parameters": {
+        "Name": "Ada"
       }
     }
   ],

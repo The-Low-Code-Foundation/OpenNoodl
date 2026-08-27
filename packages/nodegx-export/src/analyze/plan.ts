@@ -28,7 +28,7 @@ import { CatalogIndex } from '../catalog';
 import { ComponentIR, Disposition, ExportIR, NodeIR } from '../ir/types';
 import { routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
-import { iconSourceOf, StyleRole } from '../emit/style';
+import { CONTENT_PARAMS, iconSourceOf, StyleRole } from '../emit/style';
 import {
   AppStateRegistry,
   ChannelPlan,
@@ -61,6 +61,9 @@ export type {
 /** How a node participates in the render, or null for pure logic nodes. */
 export type RenderRole = StyleRole | 'instance' | 'repeater';
 
+/** The per-component-instance record node (COMPONENT-OBJECT-TARGET; componentobject.ts). */
+const COMPONENT_OBJECT = 'net.noodl.ComponentObject';
+
 export type BindingSource =
   | { kind: 'prop'; name: string }
   | { kind: 'store'; variableName: string }
@@ -83,6 +86,12 @@ export type BindingSource =
  * strict-boolean outputs, not value-equal, so analysis admits them into truthiness sinks only
  * (a Condition's test, another logical's operand, the `enabled` render sink). `truthy` marks a
  * Condition's `result` — provenance the value-sink gates need, emitted as the bare condition.
+ *
+ * `undefined` is a Component Object property's boot value (COMPONENT-OBJECT-TARGET §3): the
+ * record boots empty and no wire writes the key, so the read is the constant the runtime
+ * would deliver. It is maybe-undefined by definition and folds at its sinks the way the
+ * runtime folds it — format parts to '', truthiness to false, render children/attrs to the
+ * empty/omitted form.
  */
 export type ValueExpr =
   | { kind: 'prop'; name: string }
@@ -94,7 +103,8 @@ export type ValueExpr =
   | { kind: 'format'; parts: Array<string | ValueExpr> }
   | { kind: 'logical'; op: 'and' | 'or'; operands: ValueExpr[] }
   | { kind: 'not'; operand: ValueExpr }
-  | { kind: 'truthy'; operand: ValueExpr };
+  | { kind: 'truthy'; operand: ValueExpr }
+  | { kind: 'undefined' };
 
 export type HandlerAction =
   | { kind: 'navigate'; to: string }
@@ -535,9 +545,152 @@ function planComponent(
     return { storeName: store.name, key: keys[0] };
   };
 
+  /**
+   * The Component Object node gates (COMPONENT-OBJECT-TARGET §4) — any hit defers the whole
+   * node, and every read through it. The record is per component *instance*
+   * (`componentState<instanceId>`, componentobject.ts), shared by the whole family, which is
+   * what gates 1, 3 and 4 protect: another statically-invisible reader or writer of the same
+   * record makes the compile-away translation a lie.
+   */
+  const componentObjectGateMemo = new Map<string, string | null>();
+  const componentObjectGate = (node: NodeIR): string | null => {
+    const cached = componentObjectGateMemo.get(node.id);
+    if (cached !== undefined) return cached;
+    const verdict = ((): string | null => {
+      if (component.nodes.filter((n) => n.type === COMPONENT_OBJECT).length > 1) {
+        return 'two Component Object nodes share one record — not translated in this slice';
+      }
+      const properties = node.parameters.find((p) => p.name === 'properties');
+      if (properties !== undefined && properties.value.kind !== 'literal') {
+        return 'its Properties list is not a literal';
+      }
+      if (component.nodes.some((n) => n.type === 'net.noodl.SetComponentObjectProperties')) {
+        return 'a Set Component Object Properties node writes the same record — not translated in this slice';
+      }
+      if (parentFamilyReachesThisRecord()) {
+        return "a descendant component reaches this record through Parent Component Object — not translated in this slice";
+      }
+      // Absent means ticked (the Evaluate-additive family): unticked silences the model
+      // subscription, so outputs freeze between Fetch pulses and a live alias would lie.
+      if (literalParam(node, 'runOnChange-object') === false) {
+        return 'Object properties is unticked under Run On Value Change — its outputs freeze between Fetch pulses';
+      }
+      if (wiredPorts.has(`${node.id}:fetch`)) {
+        return 'Fetch republishes every property as a batch — signal semantics this slice does not translate';
+      }
+      const signalOut = component.connections.find(
+        (c) =>
+          c.fromId === node.id &&
+          (c.fromProperty === 'changed' ||
+            c.fromProperty === 'fetched' ||
+            c.fromProperty === 'done' ||
+            c.fromProperty === 'completed' ||
+            c.fromProperty.startsWith('changed-'))
+      );
+      if (signalOut !== undefined) {
+        return `its ${signalOut.fromProperty} signal is consumed — signal-on-write belongs to the component-state slice`;
+      }
+      return null;
+    })();
+    componentObjectGateMemo.set(node.id, verdict);
+    return verdict;
+  };
+
+  /**
+   * Gate 4: whether any component reachable from this one (instances and For Each templates,
+   * transitively) hosts a parent-family node — its walk (componentwalk.ts, unbounded) can
+   * resolve *this* component's record. Shadowing by an intermediate Component Object component
+   * is ignored: that only over-defers.
+   */
+  let parentPoisonCache: boolean | undefined;
+  const parentFamilyReachesThisRecord = (): boolean => {
+    if (parentPoisonCache !== undefined) return parentPoisonCache;
+    const hostsParentFamily = new Set(
+      ir.components
+        .filter((c) =>
+          c.nodes.some(
+            (n) => n.type === 'net.noodl.ParentComponentObject' || n.type === 'net.noodl.SetParentComponentObjectProperties'
+          )
+        )
+        .map((c) => `/${c.path}`)
+    );
+    if (hostsParentFamily.size === 0) return (parentPoisonCache = false);
+    const childrenOf = (legacy: string): string[] => {
+      const comp = ir.components.find((c) => `/${c.path}` === legacy);
+      if (!comp) return [];
+      const out: string[] = [];
+      for (const n of comp.nodes) {
+        if (n.type.startsWith('/')) out.push(n.type);
+        if (n.type === 'For Each') {
+          const template = literalParam(n, 'template');
+          if (typeof template === 'string') out.push(template);
+        }
+      }
+      return out;
+    };
+    const visited = new Set<string>();
+    const queue = childrenOf(`/${component.path}`);
+    while (queue.length > 0) {
+      const legacy = queue.pop()!;
+      if (visited.has(legacy)) continue;
+      visited.add(legacy);
+      if (hostsParentFamily.has(legacy)) return (parentPoisonCache = true);
+      queue.push(...childrenOf(legacy));
+    }
+    return (parentPoisonCache = false);
+  };
+
+  /**
+   * A Component Object read as an expression (COMPONENT-OBJECT-TARGET §3): the record compiles
+   * away. Every statically-visible write is a continuous mirror (`value-X` has no trigger —
+   * componentobject.ts), so a single-writer property reads its writer's source; a property no
+   * wire writes reads its boot value, `undefined` — runtime scripts that would write it are
+   * deferred nodes, and faithfulness is to the translated subset (the popups "open-forever"
+   * ruling). Dotted keys defer: the runtime's `resolve: true` path-resolves them (model.ts).
+   */
+  const componentObjectReadExpr = (fromNode: NodeIR, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
+    const gate = componentObjectGate(fromNode);
+    if (gate !== null) {
+      ctx.defer = gate;
+      return null;
+    }
+    const prop = fromProperty.slice('value-'.length);
+    if (prop.includes('.')) {
+      ctx.defer = `property "${prop}" is a dotted path the record would resolve through nested models`;
+      return null;
+    }
+    const writers = component.connections.filter((c) => c.toId === fromNode.id && c.toProperty === fromProperty);
+    if (writers.length > 1) {
+      ctx.defer = `two wires write property "${prop}" — last-writer-wins is not statically ordered`;
+      return null;
+    }
+    if (writers.length === 0) return { kind: 'undefined' };
+    const cycleKey = `${fromNode.id}:${prop}`;
+    if (ctx.visited.has(cycleKey)) {
+      ctx.defer = 'a wire cycle through logic nodes';
+      return null;
+    }
+    ctx.visited.add(cycleKey);
+    const writerExpr = resolveExpr(nodeById.get(writers[0].fromId), writers[0].fromProperty, ctx);
+    if (writerExpr === null) {
+      if (ctx.defer === undefined) ctx.defer = `property "${prop}" mirrors a source with no static translation`;
+      return null;
+    }
+    // The record would hold the operand a && b evaluates to, and a read is a value context.
+    if (isBooleanExpr(writerExpr)) {
+      ctx.defer = `property "${prop}" mirrors a logic truth value — only truthiness sinks take one in this slice`;
+      return null;
+    }
+    ctx.consumes.push(writers[0].key);
+    return writerExpr;
+  };
+
   const resolveExpr = (fromNode: NodeIR | undefined, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
     if (!fromNode) return null;
     if (fromNode.type === 'Component Inputs') return { kind: 'prop', name: fromProperty };
+    if (fromNode.type === COMPONENT_OBJECT && fromProperty.startsWith('value-')) {
+      return componentObjectReadExpr(fromNode, fromProperty, ctx);
+    }
     if (fromNode.type === 'Variable2' && fromProperty === 'value') {
       const name = variableNameOf(fromNode);
       return name !== undefined ? { kind: 'store-get', variableName: name } : null;
@@ -597,6 +750,7 @@ function planComponent(
   /** Truthiness of an expression, folded: literals fold, boolean kinds pass through. */
   const truthyExpr = (expr: ValueExpr): ValueExpr => {
     if (expr.kind === 'literal') return { kind: 'literal', value: Boolean(expr.value) };
+    if (expr.kind === 'undefined') return { kind: 'literal', value: false };
     if (expr.kind === 'logical' || expr.kind === 'not' || expr.kind === 'truthy') return expr;
     return { kind: 'truthy', operand: expr };
   };
@@ -604,6 +758,7 @@ function planComponent(
   /** Negation, folded: literals fold, a double negation collapses (LOGIC-TARGET §9). */
   const notExpr = (expr: ValueExpr): ValueExpr => {
     if (expr.kind === 'literal') return { kind: 'literal', value: !expr.value };
+    if (expr.kind === 'undefined') return { kind: 'literal', value: true };
     if (expr.kind === 'not') return truthyExpr(expr.operand);
     if (expr.kind === 'truthy') return { kind: 'not', operand: expr.operand };
     return { kind: 'not', operand: expr };
@@ -627,6 +782,8 @@ function planComponent(
         return true;
       case 'store-key-get':
         return !(registry.stores.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.required ?? false);
+      case 'undefined':
+        return true;
       case 'input-text':
       case 'literal':
       case 'format':
@@ -675,8 +832,9 @@ function planComponent(
     ctx.logicNodeIds.push(node.id);
     const kept: ValueExpr[] = [];
     for (const operand of operands) {
-      if (operand.kind === 'literal') {
-        const truthy = Boolean(operand.value);
+      // An undefined boot value is a falsy constant — folded exactly as a false literal.
+      if (operand.kind === 'literal' || operand.kind === 'undefined') {
+        const truthy = operand.kind === 'literal' && Boolean(operand.value);
         if (op === 'and' ? !truthy : truthy) return { kind: 'literal', value: op === 'or' };
         continue;
       }
@@ -801,6 +959,12 @@ function planComponent(
           ctx.defer = `placeholder "${name}" is fed a logic truth value — only truthiness sinks take one in this slice`;
           return null;
         }
+        // An undefined boot value substitutes '' — the runtime's own rule for an undefined
+        // delivery (step 6): the placeholder disappears, the wire is still translated.
+        if (expr.kind === 'undefined') {
+          ctx.consumes.push(wire.key);
+          continue;
+        }
         parts.push(expr);
         ctx.consumes.push(wire.key);
         continue;
@@ -834,6 +998,8 @@ function planComponent(
         return typeof expr.value;
       case 'format':
         return 'string';
+      case 'undefined':
+        return 'undefined';
       case 'logical':
       case 'not':
       case 'truthy':
@@ -1295,6 +1461,7 @@ function planComponent(
       case 'store-get':
       case 'store-key-get':
       case 'literal':
+      case 'undefined':
         return true;
       case 'format':
         return expr.parts.every((p) => typeof p === 'string' || exprValidIn(p, context));
@@ -1701,6 +1868,44 @@ function planComponent(
     }
   }
 
+  // Pass 4d: Component Object reads into rendered sinks (COMPONENT-OBJECT-TARGET §3) — the
+  // record compiles away: a mirrored property reads its writer's source, an unwritten one its
+  // boot value. Only sinks the emitter honestly renders consume here (`children`, `attr:`,
+  // the enabled inversion); everything else is the strict-mixed sweep's to name (§5).
+  const coBoundReadKeys = new Set<string>();
+  for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
+    const fromNode = nodeById.get(connection.fromId);
+    if (fromNode?.type !== COMPONENT_OBJECT || !connection.fromProperty.startsWith('value-')) continue;
+    const toNode = nodeById.get(connection.toId);
+    if (!toNode || !rendered.has(toNode.id)) continue; // the sweep names the reason
+    const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
+    const bindable =
+      contentRole === 'children' || contentRole === 'attr-not:disabled' || (contentRole !== undefined && contentRole.startsWith('attr:'));
+    if (!bindable) continue; // the sweep names the reason
+    const ctx = newCtx();
+    const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
+    if (expr === null) continue; // the sweep defers the node with this reason
+    if (!exprValidIn(expr, { kind: 'render' })) continue;
+    if (isBooleanExpr(expr) && contentRole !== 'attr-not:disabled') continue;
+    consumed.add(connection.key);
+    coBoundReadKeys.add(connection.key);
+    plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
+    plan.bindings[toNode.id][connection.toProperty] = { kind: 'computed', expr };
+    if (expr.kind === 'undefined') {
+      notes.push(
+        `wire ${connection.key}: property "${connection.fromProperty.slice('value-'.length)}" reads its boot value — no wire writes it (a runtime script would) — rendered as the empty/omitted form`
+      );
+    }
+    for (const key of ctx.consumes) consumed.add(key);
+    for (const id of ctx.subscriberIds) boundSubscribers.add(id);
+    if (plan.file) {
+      for (const id of ctx.logicNodeIds) {
+        dispositions[id] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+      }
+    }
+  }
+
   // Pass 5: Component Inputs bindings and the query/array→repeater feeds (step 4's rules,
   // plus the Collection2 read side — COLLECTIONS-TARGET §2).
   const boundCollectionReaders = new Set<string>();
@@ -1757,6 +1962,58 @@ function planComponent(
       plan.repeaters[toNode.id].itemsCollectionName = collectionName;
       boundCollectionReaders.add(fromNode.id);
       continue;
+    }
+  }
+
+  // The Component Object verdict — strict-mixed, the Component Outputs precedent
+  // (COMPONENT-OBJECT-TARGET §5): collapsed only when the gates pass and every value-* read
+  // landed; otherwise deferred with the first unlanded read's reason, while the reads that did
+  // land keep their behaviour. Dead mirror writes on a collapsed node are elided with a note —
+  // with no signal consumer (gate 7) the record is unobservable in the emitted app.
+  for (const node of component.nodes) {
+    if (node.type !== COMPONENT_OBJECT || dispositions[node.id] !== undefined) continue;
+    const reads = component.connections.filter((c) => c.fromId === node.id && c.fromProperty.startsWith('value-'));
+    const writes = component.connections.filter((c) => c.toId === node.id && c.toProperty.startsWith('value-'));
+    let verdict: string | null = componentObjectGate(node);
+    if (verdict === null && reads.length === 0) {
+      verdict =
+        writes.length === 0
+          ? 'its properties feed nothing statically translatable'
+          : 'its record is only written, never read — nothing observable to translate';
+    }
+    if (verdict === null) {
+      for (const read of reads) {
+        // Landed: bound by pass 4d, or consumed by a handler chain whose sink attached. A wire
+        // pass 2 consumed while *dropping* leaves its sink deferred, so it does not count.
+        if (coBoundReadKeys.has(read.key)) continue;
+        if (consumed.has(read.key) && dispositions[read.toId]?.kind === 'collapsed') continue;
+        const ctx = newCtx();
+        const resolved = resolveExpr(node, read.fromProperty, ctx);
+        if (resolved === null) {
+          verdict = ctx.defer ?? `property "${read.fromProperty.slice('value-'.length)}" has no static translation`;
+        } else {
+          const sink = nodeById.get(read.toId);
+          verdict =
+            sink !== undefined && dispositions[read.toId] !== undefined && dispositions[read.toId].kind === 'deferred'
+              ? `its ${read.fromProperty} feeds ${sink.type}, which is itself deferred`
+              : `its ${read.fromProperty} feeds ${sink?.type ?? 'a missing node'}.${read.toProperty}, which has no static binding in this slice`;
+        }
+        break;
+      }
+    }
+    if (verdict === null && !plan.file) verdict = 'component emits no file to host its bindings';
+    if (verdict !== null) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: verdict };
+      notes.push(`node ${node.id} (${COMPONENT_OBJECT}) deferred: ${verdict}`);
+      continue;
+    }
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+    for (const write of writes) {
+      if (consumed.has(write.key)) continue;
+      consumed.add(write.key);
+      notes.push(
+        `wire ${write.key} dropped: it mirrors into property "${write.toProperty.slice('value-'.length)}", which nothing reads — the record is not observable in the emitted app`
+      );
     }
   }
 

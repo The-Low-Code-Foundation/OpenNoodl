@@ -1,0 +1,72 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "8c1dd0f8-e737-477e-aadb-51b9305c106c",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "greet-root",
+      "type": "Group",
+      "label": "Card",
+      "children": [
+        "greet-name",
+        "greet-draft"
+      ],
+      "parameters": {
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "greet-name",
+      "type": "Text",
+      "label": "Display name",
+      "parent": "greet-root",
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "greet-draft",
+      "type": "net.noodl.controls.textinput",
+      "label": "Draft note",
+      "parent": "greet-root",
+      "parameters": {
+        "placeholder": "Write a note"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "greet-inputs",
+      "type": "Component Inputs",
+      "ports": [
+        {
+          "name": "Name",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 280
+    },
+    {
+      "id": "greet-state",
+      "type": "net.noodl.ComponentObject",
+      "label": "Card state",
+      "parameters": {
+        "properties": "DisplayName,Draft"
+      },
+      "metadata": {
+        "comment": "DisplayName mirrors the Name input; Draft is only written by scripts at runtime — the export slice reads its boot value."
+      },
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "greet-root"
+  ]
+}

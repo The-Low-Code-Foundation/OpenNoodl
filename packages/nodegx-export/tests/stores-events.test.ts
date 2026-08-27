@@ -106,6 +106,7 @@ import { AboutDialog } from '../components/AboutDialog';
 import { CheerBanner } from '../components/CheerBanner';
 import { FarewellCard } from '../components/FarewellCard';
 import { GreetingBadge } from '../components/GreetingBadge';
+import { GreetingCard } from '../components/GreetingCard';
 import { celebrate } from '../events';
 import { visitorName } from '../stores/variables';
 import styles from './Home.module.css';
@@ -147,6 +148,8 @@ export function HomePage() {
       <button className={styles.aboutButton} onClick={() => setOpenPopup('AboutDialog')}>
         About
       </button>
+
+      <GreetingCard Name="Ada" />
 
       {openPopup === 'AboutDialog' &&
         createPortal(
@@ -278,7 +281,10 @@ describe('dependencies stay computed from the output (STEP5-TARGET §6)', () => 
 
 describe('the whole fixture translates', () => {
   test('nothing is dropped: the only note is the router shell', () => {
-    expect(app.notes).toEqual(['App: router shell — emitted as src/App.tsx by the scaffold']);
+    expect(app.notes).toEqual([
+      'App: router shell — emitted as src/App.tsx by the scaffold',
+      'Components/GreetingCard: wire greet-state:value-Draft->greet-draft:startValue: property "Draft" reads its boot value — no wire writes it (a runtime script would) — rendered as the empty/omitted form'
+    ]);
   });
 
   test('emission is deterministic: two runs are byte-identical (D6)', () => {

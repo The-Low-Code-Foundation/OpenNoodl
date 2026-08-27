@@ -77,7 +77,10 @@ describe('the fixture pair (COMPONENT-OUTPUTS-TARGET §3)', () => {
   });
 
   test('nothing on the grown fixture is dropped', () => {
-    expect(app.notes).toEqual(['App: router shell — emitted as src/App.tsx by the scaffold']);
+    expect(app.notes).toEqual([
+      'App: router shell — emitted as src/App.tsx by the scaffold',
+      'Components/GreetingCard: wire greet-state:value-Draft->greet-draft:startValue: property "Draft" reads its boot value — no wire writes it (a runtime script would) — rendered as the empty/omitted form'
+    ]);
   });
 
   test('the outputs node and the parent-side RouterNavigate both count translated', () => {

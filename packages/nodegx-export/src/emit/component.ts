@@ -395,6 +395,8 @@ export function emitComponent(
         return !(storeByName.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.required ?? false);
       case 'payload':
         return true; // payload keys are optional-typed
+      case 'undefined':
+        return true; // a Component Object property's boot value (COMPONENT-OBJECT-TARGET §3)
       case 'input-text':
       case 'literal':
       case 'format':
@@ -422,6 +424,10 @@ export function emitComponent(
         return `payload.${expr.key}`;
       case 'literal':
         return tsLiteral(expr.value);
+      // The boot-value read: the render sinks fold it away before printing (childText,
+      // contentAttrs, the disabled inversion); this spelling is the cold handler-context path.
+      case 'undefined':
+        return 'undefined';
       case 'format':
         return (
           '`' +
@@ -636,6 +642,9 @@ export function emitComponent(
       }
       if (!role?.startsWith('attr:')) continue;
       const attr = role.slice('attr:'.length);
+      // A boot-value read renders as the attribute's absence — undefined delivered and nothing
+      // delivered are the same rendered control (COMPONENT-OBJECT-TARGET §3; noted at plan).
+      if (source.kind === 'computed' && source.expr.kind === 'undefined') continue;
       const expr = bindingExpr(source);
       if (expr !== null) attrs.set(attr, `${attr}={${expr}}`);
       else notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
@@ -652,6 +661,8 @@ export function emitComponent(
     if (source.kind === 'computed') {
       const expr = source.expr;
       if (expr.kind === 'literal') return Boolean(expr.value) ? 'omit' : 'disabled';
+      // enabled ← boot value: `!!undefined` is the runtime's own coercion — statically disabled.
+      if (expr.kind === 'undefined') return 'disabled';
       if (expr.kind === 'not') {
         const operand = exprCode(expr.operand, 'render');
         return SIMPLE_REF.test(operand) ? `!!${operand}` : `!!(${operand})`;
@@ -689,6 +700,8 @@ export function emitComponent(
     if (bound) {
       // An all-static format folded to a literal reads as the plain text it is.
       if (bound.kind === 'computed' && bound.expr.kind === 'literal') return jsxText(String(bound.expr.value));
+      // A boot-value read renders empty, as the runtime renders an undefined text.
+      if (bound.kind === 'computed' && bound.expr.kind === 'undefined') return null;
       const expr = bindingExpr(bound);
       if (expr !== null) return `{${expr}}`;
       notes.push(`${plan.path}: wire into ${node.id}.${paramName} has no statically known source — dropped, reported`);

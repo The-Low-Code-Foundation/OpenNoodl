@@ -383,6 +383,9 @@ describe('range, dropdown, video, circle (VISUALS-TARGET §4–§7)', () => {
 describe('nothing regresses on the untouched fixture', () => {
   test('the cheer fixture emits with only the router-shell note', () => {
     const plain = emitApp(structuredClone(baseIr), catalog);
-    expect(plain.notes).toEqual(['App: router shell — emitted as src/App.tsx by the scaffold']);
+    expect(plain.notes).toEqual([
+      'App: router shell — emitted as src/App.tsx by the scaffold',
+      'Components/GreetingCard: wire greet-state:value-Draft->greet-draft:startValue: property "Draft" reads its boot value — no wire writes it (a runtime script would) — rendered as the empty/omitted form'
+    ]);
   });
 });

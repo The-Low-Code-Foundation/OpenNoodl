@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "8c1dd0f8-e737-477e-aadb-51b9305c106c",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "greet-inputs",
+      "fromProperty": "Name",
+      "toId": "greet-state",
+      "toProperty": "value-DisplayName"
+    },
+    {
+      "fromId": "greet-state",
+      "fromProperty": "value-DisplayName",
+      "toId": "greet-name",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "greet-state",
+      "fromProperty": "value-Draft",
+      "toId": "greet-draft",
+      "toProperty": "startValue"
+    }
+  ]
+}

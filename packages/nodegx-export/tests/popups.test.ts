@@ -99,7 +99,10 @@ describe('the fixture pair (POPUPS-TARGET §6)', () => {
   });
 
   test('nothing on the grown fixture is dropped', () => {
-    expect(app.notes).toEqual(['App: router shell — emitted as src/App.tsx by the scaffold']);
+    expect(app.notes).toEqual([
+      'App: router shell — emitted as src/App.tsx by the scaffold',
+      'Components/GreetingCard: wire greet-state:value-Draft->greet-draft:startValue: property "Draft" reads its boot value — no wire writes it (a runtime script would) — rendered as the empty/omitted form'
+    ]);
   });
 
   test('both popup nodes collapse into their handler owners; the outputs node stays static', () => {
