@@ -53,7 +53,7 @@ import { useCollection } from '@nodegx/core/react';
 
 import { notes } from '../collections/notes';
 import { NoteRow } from '../components/NoteRow';
-import { noteDraft } from '../stores/variables';
+import { noteDraft, visitorName } from '../stores/variables';
 import styles from './Notes.module.css';
 
 /** Notes. */
@@ -74,7 +74,9 @@ export function NotesPage() {
 
       <button
         className={styles.addButton}
-        onClick={() => notes.add({ text: noteDraft.get(), mood: 'sunny' })}
+        onClick={() => {
+          if (noteDraft.get() || visitorName.get()) notes.add({ text: noteDraft.get(), mood: 'sunny' });
+        }}
       >
         Add note
       </button>

@@ -56,6 +56,30 @@
       "fromProperty": "ontrue",
       "toId": "setTheme",
       "toProperty": "set"
+    },
+    {
+      "fromId": "subNote",
+      "fromProperty": "value",
+      "toId": "freshBoard",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "readVisitor-2",
+      "fromProperty": "value",
+      "toId": "canSteal",
+      "toProperty": "input 0"
+    },
+    {
+      "fromId": "freshBoard",
+      "fromProperty": "result",
+      "toId": "canSteal",
+      "toProperty": "input 1"
+    },
+    {
+      "fromId": "canSteal",
+      "fromProperty": "result",
+      "toId": "themeButton",
+      "toProperty": "enabled"
     }
   ]
 }

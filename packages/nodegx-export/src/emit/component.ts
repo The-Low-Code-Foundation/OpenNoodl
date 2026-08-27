@@ -27,6 +27,9 @@ const GENERATED_TS = '// @nodegx:generated (visual — provenance markers comple
 const GENERATED_CSS = '/* @nodegx:generated (visual) */\n';
 const PRINT_WIDTH = 100;
 
+/** A bare reference (`name`, `visitorName.get()`) that negates without parentheses. */
+const SIMPLE_REF = /^[A-Za-z_$][A-Za-z0-9_$.]*(\(\))?$/;
+
 /** Runtime signal outputs that have a direct DOM event equivalent. Anything else is reported. */
 const EVENT_ATTRS: Record<string, string> = {
   onClick: 'onClick',
@@ -140,6 +143,8 @@ export function emitComponent(
     if (expr.kind === 'format') {
       for (const part of expr.parts) if (typeof part !== 'string') collectExprUse(part);
     }
+    if (expr.kind === 'logical') expr.operands.forEach(collectExprUse);
+    if (expr.kind === 'not' || expr.kind === 'truthy') collectExprUse(expr.operand);
   };
   const collectActionUse = (action: HandlerAction) => {
     if (action.kind === 'emit') {
@@ -192,6 +197,8 @@ export function emitComponent(
     if (expr.kind === 'format') {
       for (const part of expr.parts) if (typeof part !== 'string') hookExprSources(part);
     }
+    if (expr.kind === 'logical') expr.operands.forEach(hookExprSources);
+    if (expr.kind === 'not' || expr.kind === 'truthy') hookExprSources(expr.operand);
   };
   for (const id of preOrder(plan)) {
     for (const source of Object.values(plan.bindings[id] ?? {})) {
@@ -298,6 +305,9 @@ export function emitComponent(
       case 'input-text':
       case 'literal':
       case 'format':
+      case 'logical':
+      case 'not':
+      case 'truthy':
         return false;
     }
   };
@@ -331,6 +341,19 @@ export function emitComponent(
             .join('') +
           '`'
         );
+      // The boolean kinds print their truthiness forms — analysis only lets them reach
+      // truthiness positions (LOGIC-TARGET §5 headnote), so `a && b` never leaks an operand
+      // value where the runtime's strict boolean would show.
+      case 'logical':
+        return expr.operands
+          .map((o) => (o.kind === 'logical' ? `(${exprCode(o, mode)})` : exprCode(o, mode)))
+          .join(expr.op === 'and' ? ' && ' : ' || ');
+      case 'not': {
+        const operand = exprCode(expr.operand, mode);
+        return SIMPLE_REF.test(operand) ? `!${operand}` : `!(${operand})`;
+      }
+      case 'truthy':
+        return exprCode(expr.operand, mode);
     }
   };
   const actionCode = (action: HandlerAction): string => {
@@ -365,7 +388,7 @@ export function emitComponent(
           actions.length === 1 ? actionCode(actions[0]) : `{ ${actions.map(actionCode).join('; ')}; }`;
         const cond = exprCode(action.cond, 'handler');
         if (action.whenTrue.length === 0) {
-          const negated = /^[A-Za-z_$][A-Za-z0-9_$.]*(\(\))?$/.test(cond) ? `!${cond}` : `!(${cond})`;
+          const negated = SIMPLE_REF.test(cond) ? `!${cond}` : `!(${cond})`;
           return `if (${negated}) ${armCode(action.whenFalse)}`;
         }
         const test = `if (${cond}) ${armCode(action.whenTrue)}`;
@@ -466,12 +489,25 @@ export function emitComponent(
     const attrs = new Map<string, string>();
     for (const param of node.parameters) {
       const role = roles[param.name];
+      // The inverting role (LOGIC-TARGET §7): `enabled: false` is the bare `disabled`
+      // attribute; `enabled: true` restates the default and emits nothing.
+      if (role === 'attr-not:disabled') {
+        if (param.value.kind === 'literal' && !param.value.value) attrs.set('disabled', 'disabled');
+        continue;
+      }
       if (!role?.startsWith('attr:')) continue;
       const attr = role.slice('attr:'.length);
       if (param.value.kind === 'literal') attrs.set(attr, jsxAttr(attr, param.value.value));
     }
     for (const [toProperty, source] of Object.entries(plan.bindings[node.id] ?? {})) {
       const role = roles[toProperty];
+      if (role === 'attr-not:disabled') {
+        const code = negatedBindingExpr(source);
+        if (code === 'omit') continue; // folded to always-enabled
+        if (code !== null) attrs.set('disabled', code === 'disabled' ? code : `disabled={${code}}`);
+        else notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
+        continue;
+      }
       if (!role?.startsWith('attr:')) continue;
       const attr = role.slice('attr:'.length);
       const expr = bindingExpr(source);
@@ -479,6 +515,26 @@ export function emitComponent(
       else notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
     }
     return CONTENT_ATTR_ORDER.filter((attr) => attrs.has(attr)).map((attr) => attrs.get(attr)!);
+  };
+
+  /**
+   * `disabled` is the negation of the bound `enabled` (§7), simplified per shape: `!name` over
+   * a plain read, `!(a && b)` over a logical, `!!x` over a negation (the double negation is the
+   * honest form), and a folded literal is static — `disabled` bare, or omitted entirely.
+   */
+  const negatedBindingExpr = (source: BindingSource): string | null | 'omit' | 'disabled' => {
+    if (source.kind === 'computed') {
+      const expr = source.expr;
+      if (expr.kind === 'literal') return Boolean(expr.value) ? 'omit' : 'disabled';
+      if (expr.kind === 'not') {
+        const operand = exprCode(expr.operand, 'render');
+        return SIMPLE_REF.test(operand) ? `!!${operand}` : `!!(${operand})`;
+      }
+      if (expr.kind === 'logical') return `!(${exprCode(expr, 'render')})`;
+    }
+    const base = bindingExpr(source);
+    if (base === null) return null;
+    return SIMPLE_REF.test(base) ? `!${base}` : `!(${base})`;
   };
 
   const handlerAttrs = (node: NodeIR, attrIndent: number): string[] => {
@@ -531,7 +587,7 @@ export function emitComponent(
     const attrs: string[] = [];
     const className = classOf(id);
     if (className) attrs.push(`className={styles.${className}}`);
-    if (role === 'image' || role === 'input') attrs.push(...contentAttrs(node));
+    if (role === 'image' || role === 'input' || role === 'button') attrs.push(...contentAttrs(node));
     if (role === 'input') attrs.push(...changeAttrs(node, indent + 2));
     attrs.push(...handlerAttrs(node, indent + 2));
 
@@ -706,7 +762,10 @@ export function emitComponent(
     }
   };
   const containsPayload = (e: ValueExpr): boolean =>
-    e.kind === 'payload' || (e.kind === 'format' && e.parts.some((p) => typeof p !== 'string' && containsPayload(p)));
+    e.kind === 'payload' ||
+    (e.kind === 'format' && e.parts.some((p) => typeof p !== 'string' && containsPayload(p))) ||
+    (e.kind === 'logical' && e.operands.some(containsPayload)) ||
+    ((e.kind === 'not' || e.kind === 'truthy') && containsPayload(e.operand));
   for (const receiver of plan.receivers) {
     const channel = channelByName.get(receiver.channelName)!;
     const usesPayload = receiver.actions.some((a) => actionExprsOf(a).some(containsPayload));

@@ -77,6 +77,12 @@ export type BindingSource =
  * and sub-expressions (a template literal at emit), and `store-key-get` is a single-key
  * Subscribe read usable in either context (the selector hook local in render, `.get().<key>`
  * in a handler).
+ *
+ * The boolean kinds (`logical`, `not`, `truthy` — LOGIC-TARGET §6) are truthiness devices:
+ * their short forms (`a && b`, `!x`, the bare operand) are truthiness-equal to the runtime's
+ * strict-boolean outputs, not value-equal, so analysis admits them into truthiness sinks only
+ * (a Condition's test, another logical's operand, the `enabled` render sink). `truthy` marks a
+ * Condition's `result` — provenance the value-sink gates need, emitted as the bare condition.
  */
 export type ValueExpr =
   | { kind: 'prop'; name: string }
@@ -85,7 +91,10 @@ export type ValueExpr =
   | { kind: 'store-key-get'; storeName: string; key: string }
   | { kind: 'payload'; key: string; receiverId: string }
   | { kind: 'literal'; value: string | number | boolean }
-  | { kind: 'format'; parts: Array<string | ValueExpr> };
+  | { kind: 'format'; parts: Array<string | ValueExpr> }
+  | { kind: 'logical'; op: 'and' | 'or'; operands: ValueExpr[] }
+  | { kind: 'not'; operand: ValueExpr }
+  | { kind: 'truthy'; operand: ValueExpr };
 
 export type HandlerAction =
   | { kind: 'navigate'; to: string }
@@ -472,7 +481,193 @@ function planComponent(
       ctx.visited.add(fromNode.id);
       return formatExprOf(fromNode, ctx);
     }
+    if ((fromNode.type === 'And' || fromNode.type === 'Or') && fromProperty === 'result') {
+      if (ctx.visited.has(fromNode.id)) {
+        ctx.defer = 'a wire cycle through logic nodes';
+        return null;
+      }
+      ctx.visited.add(fromNode.id);
+      return logicalExprOf(fromNode, fromNode.type === 'And' ? 'and' : 'or', ctx);
+    }
+    if (fromNode.type === 'Inverter' && fromProperty === 'result') {
+      if (ctx.visited.has(fromNode.id)) {
+        ctx.defer = 'a wire cycle through logic nodes';
+        return null;
+      }
+      ctx.visited.add(fromNode.id);
+      return inverterExprOf(fromNode, ctx);
+    }
+    if (fromNode.type === 'Condition' && (fromProperty === 'result' || fromProperty === 'isfalse')) {
+      if (ctx.visited.has(fromNode.id)) {
+        ctx.defer = 'a wire cycle through logic nodes';
+        return null;
+      }
+      ctx.visited.add(fromNode.id);
+      return conditionValueExprOf(fromNode, fromProperty, ctx);
+    }
     return null;
+  };
+
+  /** Truthiness of an expression, folded: literals fold, boolean kinds pass through. */
+  const truthyExpr = (expr: ValueExpr): ValueExpr => {
+    if (expr.kind === 'literal') return { kind: 'literal', value: Boolean(expr.value) };
+    if (expr.kind === 'logical' || expr.kind === 'not' || expr.kind === 'truthy') return expr;
+    return { kind: 'truthy', operand: expr };
+  };
+
+  /** Negation, folded: literals fold, a double negation collapses (LOGIC-TARGET §9). */
+  const notExpr = (expr: ValueExpr): ValueExpr => {
+    if (expr.kind === 'literal') return { kind: 'literal', value: !expr.value };
+    if (expr.kind === 'not') return truthyExpr(expr.operand);
+    if (expr.kind === 'truthy') return { kind: 'not', operand: expr.operand };
+    return { kind: 'not', operand: expr };
+  };
+
+  /** The truthiness-only kinds — admitted into value-shaped sinks never (LOGIC-TARGET §5 headnote). */
+  const isBooleanExpr = (expr: ValueExpr): boolean =>
+    expr.kind === 'logical' || expr.kind === 'not' || expr.kind === 'truthy';
+
+  /**
+   * Whether an expression can statically be undefined — the Inverter gate (§6): the runtime
+   * passes undefined through where `!x` would say true. The emit layer keeps its own twin of
+   * this judgement for `?? ''` interpolation (component.ts maybeUndefined); they serve
+   * different sinks but must agree on the sources.
+   */
+  const maybeUndefinedExpr = (expr: ValueExpr): boolean => {
+    switch (expr.kind) {
+      case 'prop':
+      case 'store-get':
+      case 'payload':
+        return true;
+      case 'store-key-get':
+        return !(registry.stores.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.required ?? false);
+      case 'input-text':
+      case 'literal':
+      case 'format':
+      case 'logical':
+      case 'not':
+      case 'truthy':
+        return false;
+    }
+  };
+
+  /**
+   * An And/Or as an expression (LOGIC-TARGET §6): operands in port order (`input 0`, …), a
+   * wire winning over a literal parameter on the same port. Literal operands fold — a decisive
+   * one (false into And, true into Or) collapses the whole node after every operand has
+   * resolved and been consumed; a single survivor collapses to its truthiness.
+   */
+  const logicalExprOf = (node: NodeIR, op: 'and' | 'or', ctx: ResolveCtx): ValueExpr | null => {
+    const indices = new Set<number>();
+    for (const c of component.connections) {
+      const match = c.toId === node.id ? /^input (\d+)$/.exec(c.toProperty) : null;
+      if (match) indices.add(Number(match[1]));
+    }
+    for (const p of node.parameters) {
+      const match = /^input (\d+)$/.exec(p.name);
+      if (match && p.value.kind === 'literal') indices.add(Number(match[1]));
+    }
+    if (indices.size === 0) {
+      ctx.defer = `the ${node.type} has no inputs wired or authored`;
+      return null;
+    }
+    const operands: ValueExpr[] = [];
+    for (const index of [...indices].sort((a, b) => a - b)) {
+      const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === `input ${index}`);
+      if (wire) {
+        const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
+        if (expr === null) {
+          if (ctx.defer === undefined) ctx.defer = `input ${index} has no statically known source`;
+          return null;
+        }
+        operands.push(expr);
+        ctx.consumes.push(wire.key);
+      } else {
+        operands.push({ kind: 'literal', value: literalParam(node, `input ${index}`)! });
+      }
+    }
+    ctx.logicNodeIds.push(node.id);
+    const kept: ValueExpr[] = [];
+    for (const operand of operands) {
+      if (operand.kind === 'literal') {
+        const truthy = Boolean(operand.value);
+        if (op === 'and' ? !truthy : truthy) return { kind: 'literal', value: op === 'or' };
+        continue;
+      }
+      kept.push(operand);
+    }
+    if (kept.length === 0) return { kind: 'literal', value: op === 'and' };
+    if (kept.length === 1) return truthyExpr(kept[0]);
+    return { kind: 'logical', op, operands: kept };
+  };
+
+  /** An Inverter as `!x` — only when x cannot be undefined; the passthrough otherwise (§6). */
+  const inverterExprOf = (node: NodeIR, ctx: ResolveCtx): ValueExpr | null => {
+    const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'value');
+    let operand: ValueExpr;
+    if (wire) {
+      const resolved = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
+      if (resolved === null) {
+        if (ctx.defer === undefined) ctx.defer = 'the inverted value has no statically known source';
+        return null;
+      }
+      operand = resolved;
+      ctx.consumes.push(wire.key);
+    } else {
+      const literal = literalParam(node, 'value');
+      if (literal === undefined) {
+        ctx.defer = 'nothing statically known feeds the Inverter';
+        return null;
+      }
+      operand = { kind: 'literal', value: literal };
+    }
+    if (maybeUndefinedExpr(operand)) {
+      ctx.defer = 'its operand can be undefined, and the Inverter passes undefined through where !x would say true';
+      return null;
+    }
+    ctx.logicNodeIds.push(node.id);
+    return notExpr(operand);
+  };
+
+  /**
+   * A Condition's value outputs as expressions (LOGIC-TARGET §6): live only while the node
+   * re-tests on change, so the gate is the branch gate mirrored — `runOnChange-condition`
+   * must be ticked (absent), and the node must be *only* a comparator: no Evaluate, no arms,
+   * no outcome wired. `result` is the condition's own truthiness, `isfalse` its negation.
+   */
+  const conditionValueExprOf = (node: NodeIR, output: 'result' | 'isfalse', ctx: ResolveCtx): ValueExpr | null => {
+    if (literalParam(node, 'runOnChange-condition') === false) {
+      ctx.defer =
+        'its value outputs are snapshots of the last Evaluate (Run On Value Change is unticked) — only a live comparator translates in this slice';
+      return null;
+    }
+    const mixed =
+      wiredPorts.has(`${node.id}:eval`) ||
+      component.connections.some((c) => c.fromId === node.id && c.fromProperty !== 'result' && c.fromProperty !== 'isfalse');
+    if (mixed) {
+      ctx.defer = 'a Condition mixing Evaluate or branch wiring with value outputs has no single honest translation';
+      return null;
+    }
+    const condWire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'condition');
+    let cond: ValueExpr;
+    if (condWire) {
+      const resolved = resolveExpr(nodeById.get(condWire.fromId), condWire.fromProperty, ctx);
+      if (resolved === null) {
+        if (ctx.defer === undefined) ctx.defer = 'the condition wire has no statically known source';
+        return null;
+      }
+      cond = resolved;
+      ctx.consumes.push(condWire.key);
+    } else {
+      const literal = literalParam(node, 'condition');
+      if (literal === undefined) {
+        ctx.defer = 'nothing statically known feeds condition';
+        return null;
+      }
+      cond = { kind: 'literal', value: literal };
+    }
+    ctx.logicNodeIds.push(node.id);
+    return output === 'result' ? truthyExpr(cond) : notExpr(cond);
   };
 
   /**
@@ -516,6 +711,10 @@ function planComponent(
           if (ctx.defer === undefined) ctx.defer = `placeholder "${name}" has no statically known source`;
           return null;
         }
+        if (isBooleanExpr(expr)) {
+          ctx.defer = `placeholder "${name}" is fed a logic truth value — only truthiness sinks take one in this slice`;
+          return null;
+        }
         parts.push(expr);
         ctx.consumes.push(wire.key);
         continue;
@@ -549,6 +748,10 @@ function planComponent(
         return typeof expr.value;
       case 'format':
         return 'string';
+      case 'logical':
+      case 'not':
+      case 'truthy':
+        return 'boolean';
     }
   };
 
@@ -603,6 +806,9 @@ function planComponent(
         if (!wire) continue; // an unwired payload key sends undefined — omitted (C3)
         const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
         if (expr === null) return { defer: ctx.defer ?? `payload "${key}" has no statically known source` };
+        if (isBooleanExpr(expr)) {
+          return { defer: `payload "${key}" is fed a logic truth value — only truthiness sinks take one in this slice` };
+        }
         payload.push({ key, expr });
         consumes.push(wire.key);
       }
@@ -636,6 +842,9 @@ function planComponent(
       const ctx = newCtx();
       const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
       if (expr === null) return { defer: ctx.defer ?? 'the value wire has no statically known source' };
+      if (isBooleanExpr(expr)) {
+        return { defer: 'the value wire carries a logic truth value — only truthiness sinks take one in this slice' };
+      }
       return {
         action: { kind: 'globalstore-set', storeName: store.name, key, expr },
         consumes: [wire.key, ...ctx.consumes],
@@ -654,6 +863,9 @@ function planComponent(
         if (property.wire) {
           const expr = resolveExpr(nodeById.get(property.wire.fromId), property.wire.fromProperty, ctx);
           if (expr === null) return { defer: ctx.defer ?? `property "${property.key}" has no statically known source` };
+          if (isBooleanExpr(expr)) {
+            return { defer: `property "${property.key}" is fed a logic truth value — only truthiness sinks take one in this slice` };
+          }
           entries.push({ key: property.key, expr });
         } else if (property.literal !== undefined) {
           entries.push({ key: property.key, expr: { kind: 'literal', value: property.literal } });
@@ -679,6 +891,9 @@ function planComponent(
     const ctx = newCtx();
     const expr = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
     if (expr === null) return { defer: ctx.defer ?? 'the value wire has no statically known source' };
+    if (isBooleanExpr(expr)) {
+      return { defer: 'the value wire carries a logic truth value — only truthiness sinks take one in this slice' };
+    }
     return {
       action: { kind: 'store-set', variableName, expr },
       consumes: [wire.key, ...ctx.consumes],
@@ -789,6 +1004,11 @@ function planComponent(
         return true;
       case 'format':
         return expr.parts.every((p) => typeof p === 'string' || exprValidIn(p, context));
+      case 'logical':
+        return expr.operands.every((o) => exprValidIn(o, context));
+      case 'not':
+      case 'truthy':
+        return exprValidIn(expr.operand, context);
       case 'input-text':
         return context.kind === 'dom' && context.nodeId === expr.inputId;
       case 'payload':
@@ -982,25 +1202,41 @@ function planComponent(
     boundSubscribers.add(fromNode.id);
   }
 
-  // Pass 4c: a String Format's output into a rendered sink becomes a computed binding — the
+  // Pass 4c: a logic node's value output into a rendered sink becomes a computed binding — the
   // expression tree rendered inline at the sink, its hooks earned exactly as direct bindings
-  // earn them (LOGIC-TARGET §2). The whole tree's wires are consumed together; a tree that
-  // fails to resolve defers whole, never as a half-filled literal.
+  // earn them (LOGIC-TARGET §2, §6). The whole tree's wires are consumed together; a tree that
+  // fails to resolve defers whole, never as a half-filled literal. Boolean expressions land
+  // only in the one truthiness sink the render vocabulary has — a control's `enabled` (§7).
+  const LOGIC_VALUE_OUTPUTS: Record<string, string[]> = {
+    'String Format': ['formatted'],
+    And: ['result'],
+    Or: ['result'],
+    Inverter: ['result'],
+    Condition: ['result', 'isfalse']
+  };
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
     const fromNode = nodeById.get(connection.fromId);
-    if (fromNode?.type !== 'String Format' || connection.fromProperty !== 'formatted') continue;
+    if (!fromNode || !(LOGIC_VALUE_OUTPUTS[fromNode.type] ?? []).includes(connection.fromProperty)) continue;
     const toNode = nodeById.get(connection.toId);
     if (!toNode || !rendered.has(toNode.id)) continue; // leave for the catch-all
     consumed.add(connection.key);
     const ctx = newCtx();
-    const expr = resolveExpr(fromNode, 'formatted', ctx);
+    const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
     if (expr === null) {
-      notes.push(`wire ${connection.key} dropped: ${ctx.defer ?? 'the format has no statically known source'}`);
+      notes.push(`wire ${connection.key} dropped: ${ctx.defer ?? 'the logic output has no statically known source'}`);
       continue;
     }
     if (!exprValidIn(expr, { kind: 'render' })) {
-      notes.push(`wire ${connection.key} dropped: the format reads values that only exist inside a handler`);
+      notes.push(`wire ${connection.key} dropped: the expression reads values that only exist inside a handler`);
+      continue;
+    }
+    const role = plan.roleOf[toNode.id];
+    const enabledSink = connection.toProperty === 'enabled' && (role === 'button' || role === 'input');
+    if (isBooleanExpr(expr) && !enabledSink) {
+      notes.push(
+        `wire ${connection.key} dropped: a logic truth value lands only in a truthiness sink (a control's enabled) in this slice`
+      );
       continue;
     }
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
@@ -1158,6 +1394,10 @@ function planComponent(
       const reason = 'format output drives nothing statically translatable';
       dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
       notes.push(`node ${node.id} (String Format) deferred: ${reason}`);
+    } else if (node.type === 'And' || node.type === 'Or' || node.type === 'Inverter') {
+      const reason = 'logic output drives nothing statically translatable';
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
     }
   }
 

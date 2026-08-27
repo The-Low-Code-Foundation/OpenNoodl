@@ -127,6 +127,7 @@ export function HomePage() {
 
       <button
         className={styles.cheerButton}
+        disabled={!name}
         onClick={() => celebrate.emit({ message: visitorName.get() })}
       >
         Cheer

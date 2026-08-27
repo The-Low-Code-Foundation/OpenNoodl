@@ -85,6 +85,10 @@ describe('format resolution rules (LOGIC-TARGET §2)', () => {
     const mutated = cloneIr();
     unwire(mutated, 'Pages/Home', 'visitorVar:value->previewFormat:name');
     setParam(nodeOf(mutated, 'Pages/Home', 'previewFormat'), 'name', { kind: 'literal', value: 'Ada' });
+    // The enabled chain (session 7) earns the hook independently — take it out too, so the
+    // assertion still measures "no hook when nothing needs it".
+    unwire(mutated, 'Pages/Home', 'visitorVar:value->hasName:condition');
+    unwire(mutated, 'Pages/Home', 'hasName:result->cheerButton:enabled');
     const result = emitApp(mutated, catalog);
     expect(result.files['src/pages/Home.tsx']).toContain('>Cheering for Ada!<');
     expect(result.files['src/pages/Home.tsx']).not.toContain('useValue');

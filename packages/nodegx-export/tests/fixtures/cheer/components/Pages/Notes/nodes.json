@@ -154,6 +154,36 @@
       "parameters": {
         "collectionId": "notes"
       }
+    },
+    {
+      "id": "visitorRead",
+      "type": "Variable2",
+      "label": "visitorName variable",
+      "x": 610,
+      "y": 400,
+      "parameters": {
+        "name": "visitorName"
+      }
+    },
+    {
+      "id": "draftOrVisitor",
+      "type": "Or",
+      "label": "Draft or visitor",
+      "x": 610,
+      "y": 640
+    },
+    {
+      "id": "canAdd",
+      "type": "Condition",
+      "label": "Can add a note",
+      "x": 610,
+      "y": 760,
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "metadata": {
+        "comment": "Evaluate-only branch: re-test on change is unticked so the click is the only trigger; the Or feeds the test — a note needs a draft or at least a visitor to blame."
+      }
     }
   ],
   "visualRoots": [

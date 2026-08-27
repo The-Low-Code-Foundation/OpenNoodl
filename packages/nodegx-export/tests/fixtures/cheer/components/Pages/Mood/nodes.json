@@ -219,6 +219,23 @@
       },
       "x": 410,
       "y": 1000
+    },
+    {
+      "id": "freshBoard",
+      "type": "Inverter",
+      "label": "Board still fresh",
+      "x": 610,
+      "y": 880,
+      "metadata": {
+        "comment": "True while the note key is still empty — note is initial-state so it is never undefined, which is what makes the Inverter statically honest."
+      }
+    },
+    {
+      "id": "canSteal",
+      "type": "And",
+      "label": "Can steal the name",
+      "x": 610,
+      "y": 1000
     }
   ],
   "visualRoots": [

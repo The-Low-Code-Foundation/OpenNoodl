@@ -46,26 +46,30 @@ export const CONTENT_PARAMS: Record<string, Record<string, string>> = {
   Text: { text: 'children' },
   Label: { text: 'children' },
   Image: { src: 'attr:src', srcSet: 'attr:srcSet', alt: 'attr:alt' },
-  'net.noodl.controls.button': { label: 'children' },
-  Button: { label: 'children' },
+  // `enabled` is the control gate from addControlEventsAndStates (boolean, default true,
+  // coerced !!value); the DOM spells it inverted, so its role inverts (LOGIC-TARGET §7).
+  'net.noodl.controls.button': { label: 'children', enabled: 'attr-not:disabled' },
+  Button: { label: 'children', enabled: 'attr-not:disabled' },
   'net.noodl.controls.textinput': {
     placeholder: 'attr:placeholder',
     startValue: 'attr:defaultValue',
     type: 'attr:type',
-    maxLength: 'attr:maxLength'
+    maxLength: 'attr:maxLength',
+    enabled: 'attr-not:disabled'
   },
   'Text Input': {
     placeholder: 'attr:placeholder',
     startValue: 'attr:defaultValue',
     type: 'attr:type',
-    maxLength: 'attr:maxLength'
+    maxLength: 'attr:maxLength',
+    enabled: 'attr-not:disabled'
   },
   Page: { title: 'head', description: 'head', urlPath: 'routing' },
   'For Each': { template: 'template', items: 'items', inputMappingScript: 'mapping' }
 };
 
 /** JSX attribute order per element, so generated attribute lists are stable and readable. */
-export const CONTENT_ATTR_ORDER: string[] = ['src', 'srcSet', 'alt', 'type', 'placeholder', 'defaultValue', 'maxLength'];
+export const CONTENT_ATTR_ORDER: string[] = ['src', 'srcSet', 'alt', 'type', 'placeholder', 'defaultValue', 'maxLength', 'disabled'];
 
 /**
  * Style parameters that map 1:1 to a CSS property (camelCase → kebab-case). Everything with

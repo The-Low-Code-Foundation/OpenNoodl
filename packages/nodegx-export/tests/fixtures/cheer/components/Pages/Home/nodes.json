@@ -161,6 +161,16 @@
       },
       "x": 410,
       "y": 520
+    },
+    {
+      "id": "hasName",
+      "type": "Condition",
+      "label": "Has a name",
+      "x": 610,
+      "y": 640,
+      "metadata": {
+        "comment": "Value mode: Run On Value Change stays ticked (the default) so Is True is a live comparator; nothing triggers Evaluate and no arm is wired — the result gates the button's enabled."
+      }
     }
   ],
   "visualRoots": [

@@ -10,12 +10,6 @@
       "toProperty": "value"
     },
     {
-      "fromId": "addButton",
-      "fromProperty": "onClick",
-      "toId": "makeNote",
-      "toProperty": "new"
-    },
-    {
       "fromId": "noteDraftVar",
       "fromProperty": "value",
       "toId": "makeNote",
@@ -38,6 +32,36 @@
       "fromProperty": "items",
       "toId": "notesList",
       "toProperty": "items"
+    },
+    {
+      "fromId": "noteDraftVar",
+      "fromProperty": "value",
+      "toId": "draftOrVisitor",
+      "toProperty": "input 0"
+    },
+    {
+      "fromId": "visitorRead",
+      "fromProperty": "value",
+      "toId": "draftOrVisitor",
+      "toProperty": "input 1"
+    },
+    {
+      "fromId": "draftOrVisitor",
+      "fromProperty": "result",
+      "toId": "canAdd",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "addButton",
+      "fromProperty": "onClick",
+      "toId": "canAdd",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "canAdd",
+      "fromProperty": "ontrue",
+      "toId": "makeNote",
+      "toProperty": "new"
     }
   ]
 }

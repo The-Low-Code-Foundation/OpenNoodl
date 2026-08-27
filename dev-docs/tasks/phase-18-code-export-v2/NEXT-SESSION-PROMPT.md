@@ -1,80 +1,78 @@
-# Next session — EXP-002 after step 6 (statically-knowable logic): grow the expression family, then Model2
+# Next session — EXP-002 after session 7 (the expression family): Model2, then the recorded holes
 
-**Where the phase stands (2026-08-27, after six sessions).** EXP-002 steps 1–6 plus the
-named-stores and collections slices are done. This session landed step 6 — String Format and
-Condition — and settled the load-bearing design decision on paper first
-(`EXP-002-LOGIC-TARGET-OUTPUT.md`, read it before touching anything here): **the `derived()`
-row of EXP-001's table is compiled away.** Logic nodes resolve into *expression trees* over the
-step-5 source vocabulary and land inline — in render as expressions over the hooks the
-component already earns (the hooks ARE the reactivity a Derived would provide), in handlers
-over `.get()` snapshots. No `src/derived/` module, no `useDerived`, ever, for single-component
-logic (a logic node's wires cannot leave its component, so there is nothing to share).
+**Where the phase stands (2026-08-27, after seven sessions).** EXP-002 steps 1–6, named stores,
+collections, and now the grown expression family are done. Session 7 extended
+`EXP-002-LOGIC-TARGET-OUTPUT.md` (§6–§9 — read the extension before touching logic) and landed
+**And / Or / Inverter and the Condition value outputs** as boolean expressions, plus the first
+**boolean render sink**: `enabled` → `disabled` (an inverting `attr-not:disabled` role in
+`CONTENT_PARAMS`, buttons now emit content attrs). Two source-reading corrections to what the
+old prompt predicted:
 
-- **Fixture**: Cheer grew via its MCP server (`mcp__nodegx` binds by `open_project` on
-  `~/vscode_projects/NodeGX test projects/exp002-step5-cheer`; snapshot re-copied to
-  `packages/nodegx-export/tests/fixtures/cheer`): Home gained `previewFormat` (String Format
-  `"Cheering for {name}!"` fed by `visitorVar.value`) → new Text `cheerPreview`; Mood's
-  `themeText` was rewired through `themeFormat` (`"Feeling {theme} today"` fed by
-  `subTheme.value`), and its themeButton is now guarded — `onClick → hasVisitor.eval`
-  (Condition, **`runOnChange-condition: false` authored**), `readVisitor-2.value → condition`,
-  `ontrue → setTheme.set`. Validated clean; the render_report's one `dead-placeholder-text` on
-  Home is the PRE-EXISTING CheerBanner boot state (event-driven text), not this session's.
-- **Architecture added** (`packages/nodegx-export`): `ValueExpr` gained `store-key-get` (a
-  single-key Subscribe read in either context) and `format` (alternating text/sub-expression
-  parts, recursive); `BindingSource` gained `computed`; `HandlerAction` gained `branch`
-  (`if (cond) whenTrue; else whenFalse;`). `resolveExpr` is now recursive with a `ResolveCtx`
-  (consumes/logicNodeIds/subscriberIds/visited/defer) applied only when the expression is
-  used. Pass 4c plans computed render bindings; `compiledOf` is memoized and `Condition` is a
-  trigger relay in `TRIGGER_PORTS` (`eval`); arm wires are skipped by pass 2 and consumed by
-  the branch. Emit: `exprCode(expr, 'handler' | 'render')`, block-form multi-line handler
-  attrs when a branch is present (element() wraps on embedded newlines).
-- **Rules settled** (all in the target doc): literal placeholder params fold into text;
-  all-static formats fold to plain text; bare single-placeholder string-typed formats collapse
-  to the bare expression; repeated placeholders all fill (the code, not the port description,
-  is the authority); **a possibly-undefined source interpolates `?? ''`** — the drive caught
-  `Cheering for undefined!`; required store keys (initial-state) interpolate bare. The
-  Condition branch translates ONLY with the untick authored (Evaluate is ADDITIVE — the
-  `Run`-trap family); truthiness is transcribed as a bare `if`; Condition value outputs
-  (`result`/`isfalse`) defer wholesale — no boolean render sink exists yet.
-- **Proof**: 112 tests (~1s, from the package dir `../../node_modules/.bin/jest`), including
-  the new `tests/logic.test.ts` (20: goldens by reference, fold/collapse/escape/repeat rules,
-  handler-context format, all deferral gates) and updated Home/Mood goldens. Re-emitted into
-  this session's scratchpad `cheer-app/` (node_modules kept from the 08-27 collections-session
-  copy; core tgz still current — core src unchanged since 08-07), `tsc -b` + `vite build`
-  clean, four jsdom drives green: `drive-logic.mjs` (preview boots `Cheering for !`,
-  re-renders on typing), `drive-mood.mjs` (theme sentence; **guard blocks the click while
-  visitorName is empty**, then writes after set), `drive-check.mjs`, `drive-notes.mjs`.
-  Emit-to-disk recipe: `emit-cheer.ts` in the scratchpad, run with
-  `TS_NODE_COMPILER_OPTIONS='{"module":"commonjs","moduleResolution":"node","esModuleInterop":true}'
-  ../../node_modules/.bin/ts-node --transpile-only --skipProject` (the package tsconfig trips
-  ts-node otherwise); it restores the scratch `file:` core pin after writing.
+- **Switch is NOT a ternary — it is a stateful latch** (`on`/`off`/`flip` mutate
+  `_internal.state`, outcome signals on top; `switch.ts`). No expression exists to extract; the
+  honest translation is a boolean `useState` with three setter paths — **its own future slice**
+  beside `effect()`. It defers whole today.
+- **Boolean expressions are truthiness devices** (`a && b` evaluates to an operand, the node's
+  `result` to a strict boolean), so they are admitted into truthiness sinks only: a Condition's
+  `condition` input, another logical's operand, and `enabled`. Any value-shaped sink (format
+  placeholder, store write, payload, collection entry, text) defers with a note. They could
+  land later by emitting `!!(…)`-coerced forms — there was no fixture material to hold a
+  golden to.
+
+**The rules that cost thought** (all in the target doc §6–§9): Inverter has an **undefined
+passthrough** (`invert(undefined) = undefined`, deliberate) — an Inverter over a
+maybe-undefined source defers, since `!x` would answer `true` where the runtime answers falsy;
+plan.ts has its own `maybeUndefinedExpr` twin of emit's `maybeUndefined` for this. Condition
+value outputs need `runOnChange-condition` **ticked** (the branch gate mirrored) and a pure
+comparator node (no eval/arms/done wired); `result` → bare condition truthiness, `isfalse` →
+`!cond`. Numbered ports are `"input 0"`, `"input 1"` (space, from 0); wires beat literal
+params; literals fold (decisive literal collapses the node; single survivor collapses to its
+truthiness; And nobody fed defers). Negation shapes: `!name`, `!(a && b)`, `!!x` for a bound
+`not` (the double negation is deliberate); `enabled: false` authored → bare `disabled` attr.
+
+- **Fixture** (Cheer via its MCP server, snapshot re-copied): Home `hasName` (Condition,
+  default runOnChange) `visitorVar.value → condition`, `result → cheerButton.enabled` ⇒
+  `disabled={!name}`. Mood `freshBoard` (Inverter over `subNote.value` — required key, so
+  translatable) + `canSteal` (And: `readVisitor-2.value`, `freshBoard.result`) →
+  `themeButton.enabled` ⇒ `disabled={!(name && !note)}` ("steal the name onto a fresh board
+  only" — the drive order changed to match: steal FIRST, then type the note). Notes
+  `draftOrVisitor` (Or: `noteDraftVar.value`, new `visitorRead.value`) → `canAdd` (Condition,
+  untick) between `addButton.onClick` and `makeNote.new` ⇒
+  `if (noteDraft.get() || visitorName.get()) notes.add({…})`.
+- **Proof**: 131 tests (~1s, from the package dir `../../node_modules/.bin/jest`; new
+  `tests/boolean-logic.test.ts` holds the slice's rules; the four page goldens updated).
+  Re-emitted into this session's scratchpad `cheer-app/` (session
+  `729429a9-c13f-4fa3-8721-2a058607661a`; node_modules carried from the 08-27 copies; core tgz
+  still current — core src unchanged since 08-07), `tsc -b` + `vite build` clean, four jsdom
+  drives green with the new disabled/guard assertions. render_report on the live project:
+  clean; the one `dead-placeholder-text` on Home is the pre-existing CheerBanner boot state.
 
 **Next, in order of value:**
 
-- **Grow the expression family**: And / Or / Inverter (`&&`, `||`, `!`) and Switch (ternary)
-  join `resolveExpr` with nothing new to decide about *where* code lives — read their runtime
-  sources first (`and.ts`, `or.ts`, `inverter.ts`, `switch.ts` in
-  `noodl-runtime/src/nodes/std-library/`; the run-on-value-change checkbox pattern applies to
-  some). Condition's value outputs join when a boolean render sink lands (an
-  `enabled → disabled` content mapping is the natural first — `CONTENT_PARAMS` in
-  emit/style.ts). Hand-write the target extension first, extend Cheer via MCP.
-- **Model2 (id provenance)** — unchanged from the collections slice: the lone
-  `NewModel.id → modifyId` wire is its first, degenerate case (COLLECTIONS-TARGET §5); a
-  literal-id Model2 read and a same-handler NewModel id are the next two.
-- Smaller recorded holes: `else` arms and multi-action arms are implemented but
-  fixture-unexercised (the `};` cosmetic in brace arms is known); nested Conditions defer;
-  on-change firing (`runOnChange` ticked with wired arms) is the `effect()` row, its own
-  slice.
+- **Model2 (id provenance)** — unchanged from the collections slice (COLLECTIONS-TARGET §5):
+  the lone `NewModel.id → modifyId` wire is its first, degenerate case; a literal-id Model2
+  read and a same-handler NewModel id are the next two.
+- **Smaller recorded holes**, cheapest first: boolean expressions into value sinks via
+  `!!(…)`-coercion (needs fixture material); `else` arms and multi-action arms are implemented
+  but fixture-unexercised (the `};` cosmetic in brace arms is known); nested Conditions defer;
+  a String-Format-fed `enabled` is allowed but unexercised.
+- **The two state-shaped slices**, each its own design decision on paper first: Switch as
+  component state (`useState` + three setters + the Switched signals question), and on-change
+  firing (`runOnChange` ticked with wired arms) as the `effect()` row.
 
 **Standing practice:** work on `cline-dev`; commit by pathspec (`packages/nodegx-export`,
 `dev-docs/tasks/phase-18-code-export-v2`); never commit `packages/nodegx-core/dist`; untracked
 files add+commit in one chain. Fixtures are snapshots — re-copy from the live Cheer project
-after MCP edits (`diff -rq`, copy only `components/**` + `_registry.json`; the live project's
-`.mcp.json`/`CLAUDE.md`/`docs` stay out). ts-morph/Prettier remain uninstalled; the goldens
-protect the later AST refactor. The package is still not in root `test:packages` — wiring it
-in edits the shared root package.json; do it deliberately, announced. ⚠️ jsdom drive trap:
-import React only AFTER installing the jsdom globals (recipes in the scratchpad
+after MCP edits (`diff -rq`; the registry lives at `components/_registry.json`). ts-morph/
+Prettier remain uninstalled; the goldens protect the later AST refactor. The package is still
+not in root `test:packages`; wiring it in edits the shared root package.json — do it
+deliberately, announced. Emit recipe: `emit-cheer.ts` in the scratchpad, run with
+`TS_NODE_COMPILER_OPTIONS='{"module":"commonjs","moduleResolution":"node","esModuleInterop":true}'
+../../node_modules/.bin/ts-node --transpile-only --skipProject` (it restores the scratch
+`file:` core pin after writing — update its OUT path to the new session's scratchpad). ⚠️ jsdom
+drive trap: import React only AFTER installing the jsdom globals (recipes in
 `cheer-app/drive-*.mjs`). ⚠️ `src/analyze/appState.ts` contains literal NUL bytes — `grep -a`;
-never type `\u0000` into Edit args. ⚠️ The step-5 fixture wire
-`readVisitor-2.value → setTheme.value` still exists alongside the new condition wire — both
-read the same variable; don't "deduplicate" them, the branch consumes both legitimately.
+never type `\u0000` into Edit args. ⚠️ "disabled" appears in tokens.css token comments — a
+puppy-style "no disabled anywhere" sweep must restrict to `.tsx`. ⚠️ The Mood fixture wires
+`readVisitor-2.value` into three sinks (setTheme.value, hasVisitor.condition, canSteal
+"input 0") — all legitimate, don't "deduplicate".

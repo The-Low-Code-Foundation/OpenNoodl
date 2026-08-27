@@ -55,7 +55,7 @@ export const mood = store<MoodState>('mood', {
 `;
 
 const GOLDEN_MOOD_PAGE = `// @nodegx:generated (visual — provenance markers complete in EXP-007)
-import { useStore } from '@nodegx/core/react';
+import { useStore, useValue } from '@nodegx/core/react';
 
 import { mood } from '../stores/mood';
 import { visitorName } from '../stores/variables';
@@ -63,6 +63,7 @@ import styles from './Mood.module.css';
 
 /** Mood board. */
 export function MoodPage() {
+  const name = useValue(visitorName);
   const note = useStore(mood, (s) => s.note);
   const theme = useStore(mood, (s) => s.theme);
 
@@ -84,6 +85,7 @@ export function MoodPage() {
 
       <button
         className={styles.themeButton}
+        disabled={!(name && !note)}
         onClick={() => {
           if (visitorName.get()) mood.set({ theme: visitorName.get() });
         }}

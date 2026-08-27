@@ -32,6 +32,18 @@
       "fromProperty": "formatted",
       "toId": "cheerPreview",
       "toProperty": "text"
+    },
+    {
+      "fromId": "visitorVar",
+      "fromProperty": "value",
+      "toId": "hasName",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "hasName",
+      "fromProperty": "result",
+      "toId": "cheerButton",
+      "toProperty": "enabled"
     }
   ]
 }

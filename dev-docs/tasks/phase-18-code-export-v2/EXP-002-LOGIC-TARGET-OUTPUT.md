@@ -260,9 +260,196 @@ export function MoodPage() {
 ## 5. What comes next
 
 - **And / Or / Inverter / Switch** extend the same expression vocabulary (`&&`, `||`, `!`,
-  ternary) with nothing new to decide about *where* the code lives.
+  ternary) with nothing new to decide about *where* the code lives. *(Corrected by §6 — Switch
+  turned out not to belong here at all.)*
 - **Condition's value outputs** land when a boolean render sink exists (an `enabled` →
-  `disabled` content mapping is the natural first).
+  `disabled` content mapping is the natural first). *(Landed — §6–§9.)*
 - **On-change firing** (`runOnChange` ticked, arms wired) is the `effect()` row, its own slice.
 - **Model2** (id provenance) — unchanged from the collections slice's §5: the literal-id read
   and the same-handler NewModel id are next.
+
+---
+
+# Extension (session 7): the expression family grows — And, Or, Inverter, and the Condition value outputs
+
+> §5 predicted "And / Or / Inverter / Switch extend the same expression vocabulary with nothing
+> new to decide about *where* the code lives." Reading the sources (`and.ts`, `or.ts`,
+> `inverter.ts`, `switch.ts` in `noodl-runtime/src/nodes/std-library/`) corrects that in two
+> places before any generator work:
+>
+> - **Switch is not a ternary. It is a stateful latch** — `on`/`off`/`flip` are signal inputs
+>   that mutate `_internal.state`, with `switched`/outcome signals on top. There is no
+>   expression to compile away; the honest translation is *component state* (a boolean
+>   `useState` with three setter paths), a design decision of its own, sitting beside the
+>   `effect()` row. It leaves the expression family and is deferred whole, as ordinary logic.
+> - **The other three, plus Condition's value outputs, are truthiness devices whose faithful
+>   short translations are truthiness-equal, not value-equal.** `a && b` evaluates to an
+>   *operand*, the And node's `result` to a strict boolean; `String(a && b)` could print
+>   `"Ada"` where the runtime prints `"true"`. So this slice admits boolean expressions into
+>   **truthiness sinks only** — a Condition's `condition` input, another logical node's
+>   operand, and the one boolean render sink this slice adds (§7). A boolean expression
+>   arriving anywhere value-shaped (a format placeholder, a store write, an event payload, a
+>   collection entry, a text sink) defers with a note. Value-shaped use can land later by
+>   emitting the `!!(…)`-coerced forms; there is no fixture material to hold a golden to today,
+>   so it waits.
+
+## 6. The three nodes, from source
+
+- **And** (`numbered-inputs`, ports `input 0`, `input 1`, …): each setter coerces
+  (`value ? true : false`); `result` is *false with no inputs*, else true only while no input
+  is false. The result is cached and only flagged dirty when the answer changes — an
+  optimisation with no translated equivalent needed (React re-renders on dependency change and
+  equal values render equal DOM). Translation: operands in port order, `a && b`.
+- **Or** (same port scheme): `inputs.some(isTrue)`, no cache. Translation: `a || b`.
+- **Inverter**: `!value` **with an undefined passthrough** — a never-set Inverter reports
+  `undefined`, not `true`; the source comments call it deliberate ("not yet set" vs "set to
+  false"). `!x` is only faithful when `x` cannot be undefined: with `x` undefined the runtime's
+  output is `undefined` (falsy) while `!x` is `true` — opposite answers in an `enabled` sink.
+  **An Inverter whose operand can statically be undefined defers with a note**; one over a
+  source that cannot (a required store key, a folded literal, a format) translates as `!x`.
+- **Condition `result` / `isfalse`** (`Is True`/`Is False`): both read the condition input back
+  (`!!condition` / `!condition`), `null` until the first test. As *expressions* they are live
+  only while the node re-tests on change — so the gate is the branch gate mirrored:
+  **value-output use requires `runOnChange-condition` ticked (absent), and translates the
+  outputs as the condition's own truthiness (`result` → the bare condition expression,
+  `isfalse` → `!condition`)**. A value-mode Condition must be *only* that: `eval` unwired, both
+  arms unwired, `done` unwired — a node doing both branch- and value-work in one graph has no
+  single honest translation and defers. (The branch gate from §3 is unchanged: arms need the
+  *untick*. The two modes are mutually exclusive by construction.)
+
+Numbered-input details that fall out of the port scheme: the runtime's input array is sparse
+and `some`/`every` skip holes, but every translatable source pushes a value at boot, so the
+exported strict evaluation matches the settled graph (recorded, with the boot-window class). A
+*literal parameter* on `input N` is a literal operand; literal operands fold — a folded-true
+And operand disappears, a folded-false one collapses the whole And to `false` (mirrored for
+Or), an all-literal node folds to a boolean literal. A single surviving operand collapses to
+the bare expression (`and(x)` is `!!x`, truthiness-equal to `x`). And with *nothing* wired or
+authored at all defers — the constant `false` is real runtime behaviour, but a node nobody fed
+is authoring debris, and a note beats a silently disabled button.
+
+## 7. The boolean render sink: `enabled` → `disabled`
+
+Buttons and text inputs carry the control `enabled` input (`addControlEventsAndStates` in
+`noodl-viewer-react/src/nodes/controls/utils.ts`): boolean, default true, coerced `!!value`.
+The DOM already has this concept, inverted: `disabled`. The mapping joins `CONTENT_PARAMS` as
+an *inverting* attribute role:
+
+- A literal authored `enabled: false` emits the bare `disabled` attribute; `enabled: true`
+  (the default restated) emits nothing.
+- A bound `enabled` emits `disabled={!expr}`, with the negation simplified per shape:
+  `!name` over a plain read, `!(a && b)` over a logical, `!cond` over a Condition's `result`,
+  and `!!x` over an Inverter or `isfalse` (the double negation *is* the honest form — a human
+  disabling a control while `x` is set writes `disabled={!!x}`).
+- `disabled` sits after the content attributes in the JSX attribute order, before handlers.
+
+Boot behaviour matches by the same accepted class as §3: the runtime pushes the not-yet-tested
+`null`/coerced value down the wire at connect and settles at end of the first frame; the
+exported expression is the settled value, synchronously.
+
+## 8. The fixture grows — three sinks, three pages
+
+```
+Pages/Home            "you cannot cheer for nobody"
+  hasName             (Condition, runOnChange DEFAULT — value mode)
+  visitorVar value    → hasName condition
+  hasName result      → cheerButton enabled
+
+Pages/Mood            "steal the name onto a fresh board only"
+  freshBoard          (Inverter)
+  subNote value       → freshBoard value        (note is initial-state ⇒ never undefined)
+  canSteal            (And)
+  readVisitor-2 value → canSteal "input 0"
+  freshBoard result   → canSteal "input 1"
+  canSteal result     → themeButton enabled
+
+Pages/Notes           "an empty note needs at least someone to blame it on"
+  visitorRead         (Variable2 visitorName — new reader on this page)
+  draftOrVisitor      (Or)
+  noteDraftVar value  → draftOrVisitor "input 0"
+  visitorRead value   → draftOrVisitor "input 1"
+  draftOrVisitor result → canAdd condition
+  canAdd              (Condition, runOnChange-condition: false — branch mode)
+  addButton onClick   → canAdd eval             (REPLACES onClick → makeNote.new)
+  canAdd ontrue       → makeNote new
+```
+
+Home's button — the Condition value output over the hook local the page already earns:
+
+```tsx
+      <button
+        className={styles.cheerButton}
+        disabled={!name}
+        onClick={() => celebrate.emit({ message: visitorName.get() })}
+      >
+        Cheer
+      </button>
+```
+
+Mood — the composed logical earns the `useValue` hook exactly as a direct binding would
+(`visitorName` was previously handler-only on this page), and the And-over-Inverter renders as
+the negated group:
+
+```tsx
+// src/pages/Mood.tsx (excerpt)
+import { useStore, useValue } from '@nodegx/core/react';
+
+export function MoodPage() {
+  const name = useValue(visitorName);
+  const note = useStore(mood, (s) => s.note);
+  const theme = useStore(mood, (s) => s.theme);
+  …
+      <button
+        className={styles.themeButton}
+        disabled={!(name && !note)}
+        onClick={() => {
+          if (visitorName.get()) mood.set({ theme: visitorName.get() });
+        }}
+      >
+        Steal the visitor's name
+      </button>
+```
+
+Notes — the Or in *handler* context, as the branch test over `.get()` snapshots (the logical
+node collapses into the condition, the Condition into the handler, exactly as §3's chain did):
+
+```tsx
+      <button
+        className={styles.addButton}
+        onClick={() => {
+          if (noteDraft.get() || visitorName.get()) notes.add({ text: noteDraft.get(), mood: 'sunny' });
+        }}
+      >
+        Add note
+      </button>
+```
+
+**What these settle.** Operand order is port order (`input 0` first). The expression tree's
+hooks are earned by use, with the same local-name rules. In handler context every read is a
+`.get()` snapshot, appearing as many times as the statement demands. A logical feeding a
+Condition's `condition` port is ordinary composition — the visited-set cycle guard now spans
+all five node types.
+
+## 9. What defers, what folds, what diverges (this extension)
+
+**Defers, all with notes:**
+
+- A boolean expression into any value-shaped sink (format placeholder, store write, payload
+  key, collection entry, text/content binding) — truthiness sinks only, §5's headnote.
+- An Inverter whose operand can statically be undefined (the passthrough, §6).
+- An And/Or with no operands at all; any of the three with an operand the context cannot
+  resolve (the whole node defers, never a half expression).
+- A Condition mixing modes: value outputs wired while `runOnChange-condition: false` is
+  authored (stale snapshots), or while `eval`/arms/`done` are also wired.
+- Switch, wholesale — component-state territory, its own slice.
+- A logic-node output driving nothing statically translatable (the existing String Format
+  sweep, extended to all four).
+
+**Folds:** literal operands fold at generation time (And drops true / collapses on false, Or
+drops false / collapses on true, Inverter inverts, Condition value-mode over a literal is the
+literal's truthiness); double negation folds (`Inverter → Inverter`, `isfalse` of a folded
+`not`); a single-operand And/Or collapses to its operand's truthiness.
+
+**Recorded divergences (the accepted classes):** end-of-frame vs synchronous, again, including
+the value outputs' `null`-until-first-test boot window; And's answer-change-only dirty flag
+(no observable difference in React); the sparse-holes subtlety for an operand whose source
+never pushes (unreachable through translatable sources, which all push at boot).
