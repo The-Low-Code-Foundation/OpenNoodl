@@ -268,7 +268,7 @@
     {
       "typeName": "Model2",
       "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "blocked by its hosts, not by itself \u2014 all 27 corpus instances are idSource:foreach, and every one sits in a component reached only through a dynamically-templated repeater or one whose items are minted by a script (EXP-002-MODEL2-TARGET-OUTPUT.md \u00a72). Translating it before EXP-003 Tier B would emit template props no call site passes; the foreach design is settled on paper in \u00a74"
     },
     {
       "typeName": "NavigationClosePopup",
