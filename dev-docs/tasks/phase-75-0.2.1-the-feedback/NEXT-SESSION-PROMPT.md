@@ -127,10 +127,15 @@ function that merely stopped saying the old sentence.
 
 ## Standing facts for this area
 
-- `test:ci` floor is **4**, all `AIX-006 style vocabulary`. ✅ Re-confirmed this session:
-  **2856 specs / 4 failures**, the same four by name, seed **57633**, `test-results.json` mtime
-  22:06:30 read directly. ⚠️ Its `gitHead` reads `640bbfe3` because the fix was still uncommitted
-  when it ran — the documented caveat, not a different tree. **Quote the tree, not the seed.**
+- `test:ci` floor is **4**, all `AIX-006 style vocabulary`. ✅ **Confirmed on the COMMITTED tree,
+  at a second seed, on a machine with nothing else running**: **2856 specs / 4 failures**, the same
+  four by name, seed **72521**, `gitHead` **`b3d9ffba`**, readout mtime 22:13:43 read directly.
+  ⚠️ `b3d9ffba` is a **peer's** docs-only commit that landed mid-run — but **both of this lane's
+  commits are ancestors of it** (`git merge-base --is-ancestor`, checked), so the graded tree does
+  contain the fix. An earlier run the same session read the identical 2856 / 4 at seed **57633**
+  but stamped `gitHead 640bbfe3`, because the fix was still uncommitted when it ran — that is the
+  documented caveat, and this reading is the one with real provenance. **Quote the tree, not the
+  seed**, and check whose commit the tree is named after before quoting it.
 - The suites, in order and **never two at once**: `noodl-runtime` (2555), `noodl-viewer-react`
   (1079), editor `test:main`, then `test:ci`. This session ran `test:main` (**354 / 5840 / 0**) and
   `noodl-core-ui` (**28 / 527 / 0**); runtime and viewer-react were untouched and not run.
