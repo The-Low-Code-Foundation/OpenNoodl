@@ -48,6 +48,7 @@
  * longer filters" are the same green.
  */
 
+import { CLOUD_DYNAMIC_PORT_ADAPTERS } from '@noodl-models/NodeTypeAdapters/CloudDynamicPortsAdapter';
 import { NamedPortsAdapter } from '@noodl-models/NodeTypeAdapters/NamedPortsAdapter';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { ProjectModel } from '@noodl-models/projectmodel';
@@ -148,6 +149,14 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // spec that could never reach parity would read as a failed fix.
     new NamedPortsAdapter().events.projectLoaded();
 
+    // SB-017's own adapters, constructed the same way and for the same reason.
+    // Three, not one, because `setDynamicPorts` REPLACES a node's dynamic port
+    // list — so the families are partitioned by node type and each type has
+    // exactly one writer. Driving them here rather than importing
+    // `registeradapters` keeps this spec from installing ten adapters on a
+    // shared EventDispatcher for the whole bundle.
+    CLOUD_DYNAMIC_PORT_ADAPTERS.forEach((Adapter) => new Adapter().events.projectLoaded());
+
     // What opening the project does. `exportComponent` reads WarningsModel, and
     // in the editor this pass is debounce-scheduled from the canvas; a test that
     // skipped it would measure an export with no health signal at all and pass
@@ -164,19 +173,56 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     if (previousLibrary) NodeLibrary.instance.loadLibrary();
   });
 
-  it('raises the port warnings that drive the drop — the instrument is live', () => {
-    // A negative control on the setup itself. If `evaluateHealth` had not run,
-    // or the library had not loaded, every connection would read healthy and the
-    // parity assertions below would pass while the template stayed broken.
-    const warned = getCloudFunctionComponents(project).some((component) =>
-      component.graph.connections.some((c) => !component.graph.getConnectionHealth({
-        sourceId: c.fromId,
-        sourcePort: c.fromProperty,
-        targetId: c.toId,
-        targetPort: c.toProperty
-      }).healthy)
-    );
-    expect(warned).toBe(true);
+  /** `getConnectionHealth`'s verdict for one wire, read the way `exportComponent` reads it. */
+  function unhealthyWires(component: TSFixme): string[] {
+    return component.graph.connections
+      .filter(
+        (c: TSFixme) =>
+          !component.graph.getConnectionHealth({
+            sourceId: c.fromId,
+            sourcePort: c.fromProperty,
+            targetId: c.toId,
+            targetPort: c.toProperty
+          }).healthy
+      )
+      .map((c: TSFixme) => `${c.fromProperty} -> ${c.toProperty}`);
+  }
+
+  it('no cloud wire is unhealthy, and the instrument saying so is live', () => {
+    // 🔴 **This case asserted the defect and was rewritten to assert the fix**,
+    // which is the point where a control usually stops controlling anything.
+    // Before the fix it read "some connection is unhealthy" and was the negative
+    // control on the setup: if `evaluateHealth` had not run, or the library had
+    // not loaded, every wire would read healthy and the parity assertions below
+    // would pass on a template that stayed broken.
+    //
+    // That blindness is still real, so the control is still here — it just needs
+    // a signal that fires *after* the fix. A wire to a port that exists on
+    // nothing is that signal, and it separates the two failure modes the plain
+    // "everything is healthy" assertion cannot:
+    //
+    //   - `evaluateHealth` never ran           → the broken wire does not warn
+    //   - the node library never loaded        → every OTHER wire warns too
+    //
+    // so both halves have to hold at once.
+    const claimSite = project.getComponentWithName('/#__cloud__/claimSite');
+    const wired = claimSite.graph.connections[0];
+    claimSite.graph.addConnection({
+      fromId: wired.fromId,
+      fromProperty: 'no-such-port-on-any-node',
+      toId: wired.toId,
+      toProperty: wired.toProperty
+    });
+    claimSite.graph.evaluateHealth();
+
+    expect(unhealthyWires(claimSite)).toEqual(['no-such-port-on-any-node -> ' + wired.toProperty]);
+
+    // And every other cloud component — untouched — is clean. This is the fix's
+    // own claim on the canvas rather than in the bundle: SB-017 acceptance 4.
+    for (const component of getCloudFunctionComponents(project)) {
+      if (component.name === '/#__cloud__/claimSite') continue;
+      expect(unhealthyWires(component)).toEqual([]);
+    }
   });
 
   it('exports the same number of connections each component holds', () => {
@@ -233,6 +279,46 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // number out.
     expect(after).toBe(before);
   });
+  it('leaves every browser component alone — SB-017 acceptance 6', () => {
+    // The negative control on the ruling's scope. A browser component's Function
+    // node **already has** these ports: the viewer is a connected runtime client
+    // and pushes them over `sendDynamicPorts` (SB-017 §6.1 counted 69 undeclared
+    // browser script-port connections raising **0** warnings, against the cloud
+    // side's 44 raising 44). An adapter that also wrote them would be a second
+    // writer on the same `setDynamicPorts` with a shorter list, and the two would
+    // overwrite each other on every parameter change.
+    //
+    // 17 Function nodes across 8 browser components, and none of them may have
+    // been touched. Asserted on `dynamicports` rather than on an export, because
+    // the export here is measured against the *cloud* node library — the browser
+    // half's deploy is `build/deployer.ts`, and measuring it is SB-017 §6.5's
+    // separate, still-open question.
+    const browserFunctions = project
+      .getComponents()
+      .filter((component) => !component.name.startsWith('/#__cloud__/'))
+      .flatMap((component) => {
+        const nodes: TSFixme[] = [];
+        component.forEachNode((node: TSFixme) => {
+          if (node.type.name === 'JavaScriptFunction') nodes.push(node);
+        });
+        return nodes;
+      });
+
+    expect(browserFunctions.length).toBe(17);
+    expect(browserFunctions.filter((node) => (node.dynamicports || []).length > 0)).toEqual([]);
+
+    // …and the same sweep on the cloud side did write ports, so the assertion
+    // above is about the scope and not about the adapters having done nothing.
+    const cloudFunctions: TSFixme[] = [];
+    getCloudFunctionComponents(project).forEach((component) =>
+      component.forEachNode((node: TSFixme) => {
+        if (node.type.name === 'JavaScriptFunction') cloudFunctions.push(node);
+      })
+    );
+    expect(cloudFunctions.length).toBeGreaterThan(0);
+    expect(cloudFunctions.every((node) => (node.dynamicports || []).length > 0)).toBe(true);
+  });
+
   it('the bundle the drive really deployed is a strict subset of the template', () => {
     // The frozen record of the defect as it shipped. Nothing here reads the
     // current export, so this case does not change when the fix lands — it is
