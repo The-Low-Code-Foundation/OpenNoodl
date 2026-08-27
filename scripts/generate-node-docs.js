@@ -20,7 +20,93 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const CATALOG_PATH = path.join(ROOT, 'packages/noodl-types/src/node-catalog-enriched.json');
+const STRUCTURAL_CATALOG_PATH = path.join(ROOT, 'packages/noodl-types/src/node-catalog.json');
 const OUT_DIR = path.join(ROOT, 'docs-site/docs/nodes');
+
+/**
+ * 🔴 FB-025 lane, 2026-08-27 — **this script grades an input it does not produce, and nothing
+ * here used to notice when that input was stale.**
+ *
+ * The pipeline is two steps: `catalog:generate` writes `node-catalog.json` from the live
+ * registries, and `catalog:merge` folds the authored enrichment into
+ * `node-catalog-enriched.json`. This script reads only the **second** file. So a sweep that ran
+ * `catalog:generate` and not `catalog:merge` left the enriched catalog describing the *previous*
+ * registries, and `docs:nodes:check` compared pages generated from that stale artifact against
+ * pages generated from the same stale artifact and reported **clean** — a green tick on a
+ * question it had not asked.
+ *
+ * ⚠️ Measured rather than argued, 2026-08-27: mutating a `docs` field of one node in
+ * `node-catalog.json` and re-running `docs:nodes:check` printed *"clean. 194 generated files
+ * match 175 catalog nodes"*. `catalog:merge:check` caught the same mutation — so the sweep as a
+ * whole was not blind — but a docs gate that cannot see its own input is stale is one that only
+ * works while somebody remembers to run a different one beside it.
+ *
+ * The comparison below is exact rather than a heuristic, because `merge.js` copies the
+ * structural nodes through verbatim: `nodes: catalog.nodes.map((n) => ({ ...n, enrichment }))`.
+ * Stripping `enrichment` therefore has to give back `node-catalog.json` exactly, and any
+ * difference at all means the merge has not been run since the catalog moved.
+ *
+ * ⚠️ A missing `node-catalog.json` is an **error, not a skip**. A guard that quietly stands down
+ * when it cannot run reinstates precisely the green-on-an-unasked-question this exists to stop.
+ */
+class StaleCatalogError extends Error {}
+
+function assertEnrichedCatalogIsFresh(enriched, structuralPath = STRUCTURAL_CATALOG_PATH) {
+  const rel = path.relative(ROOT, structuralPath);
+  if (!fs.existsSync(structuralPath)) {
+    throw new StaleCatalogError(
+      `${rel} is missing, so the enriched catalog's freshness cannot be checked. ` +
+        'Run `npm run catalog:generate`.'
+    );
+  }
+
+  let structural;
+  try {
+    structural = JSON.parse(fs.readFileSync(structuralPath, 'utf8'));
+  } catch (err) {
+    throw new StaleCatalogError(
+      `${rel} could not be parsed, so the enriched catalog's freshness cannot be checked: ${err.message}`
+    );
+  }
+
+  // Key order differs harmlessly between the two files, so compare canonically by sorted keys.
+  const canonical = (value) =>
+    JSON.stringify(value, (_key, v) =>
+      v && typeof v === 'object' && !Array.isArray(v)
+        ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, v[k]]))
+        : v
+    );
+
+  const enrichedByType = new Map((enriched.nodes || []).map((n) => [n.typeName, n]));
+  const structuralByType = new Map((structural.nodes || []).map((n) => [n.typeName, n]));
+
+  const missing = [...structuralByType.keys()].filter((t) => !enrichedByType.has(t));
+  const extra = [...enrichedByType.keys()].filter((t) => !structuralByType.has(t));
+  const changed = [];
+  for (const [typeName, structuralNode] of structuralByType) {
+    const enrichedNode = enrichedByType.get(typeName);
+    if (!enrichedNode) continue;
+    // eslint-disable-next-line no-unused-vars
+    const { enrichment, ...withoutEnrichment } = enrichedNode;
+    if (canonical(withoutEnrichment) !== canonical(structuralNode)) changed.push(typeName);
+  }
+
+  if (!missing.length && !extra.length && !changed.length) return;
+
+  const detail = [
+    missing.length ? `${missing.length} node(s) absent from it (${missing.slice(0, 5).join(', ')})` : null,
+    extra.length ? `${extra.length} node(s) it still lists (${extra.slice(0, 5).join(', ')})` : null,
+    changed.length ? `${changed.length} node(s) differing (${changed.slice(0, 5).join(', ')})` : null
+  ]
+    .filter(Boolean)
+    .join('; ');
+
+  throw new StaleCatalogError(
+    `Stale enriched catalog: ${path.relative(ROOT, CATALOG_PATH)} does not match ${rel} — ${detail}. ` +
+      'The docs are generated from the enriched catalog, so generating or checking them now would ' +
+      'grade the previous registries. Run `npm run catalog:merge` and commit the result.'
+  );
+}
 
 function slugify(text) {
   return text
@@ -100,6 +186,11 @@ function renderDynamicPorts(dynamicPorts) {
 function main() {
   const check = process.argv.includes('--check');
   const catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+
+  // Both modes, deliberately: writing pages from a stale enriched catalog is the worse half of
+  // the defect, because it bakes the staleness into the committed pages and `--check` then
+  // agrees with them.
+  assertEnrichedCatalogIsFresh(catalog);
 
   const nodesByTypeName = new Map(catalog.nodes.map((n) => [n.typeName, n]));
   const examplesById = new Map((catalog.examples || []).map((e) => [e.id, e]));
@@ -278,4 +369,20 @@ function listExistingFiles(dir) {
   return out;
 }
 
-main();
+if (require.main === module) {
+  runCli();
+}
+
+module.exports = { assertEnrichedCatalogIsFresh, StaleCatalogError };
+
+function runCli() {
+  try {
+    main();
+  } catch (err) {
+  // Only this one is reported as a message: anything else is a defect in this script and keeps
+  // its stack trace.
+    if (!(err instanceof StaleCatalogError)) throw err;
+    console.error(err.message);
+    process.exit(1);
+  }
+}
