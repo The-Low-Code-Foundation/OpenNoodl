@@ -187,7 +187,13 @@ function parseNode(raw: RawNode, catalog: CatalogIndex): NodeIR {
     ...(p.default !== undefined ? { default: p.default } : {})
   }));
 
+  // A script parameter is declared codeeditor either on the node's own dynamic ports or on the
+  // node type's static catalog inputs (`functionScript`, `expression`, `code` — the IR contract
+  // promises sourceText for script-bearing nodes, and those three are static ports).
   const scriptParamNames = new Set(rawPorts.filter((p) => isCodeEditorType(p.type)).map((p) => p.name));
+  for (const port of catalogEntry?.inputs ?? []) {
+    if (isCodeEditorType(port.type)) scriptParamNames.add(port.name);
+  }
 
   const parameters: ParamIR[] = Object.entries(raw.parameters ?? {})
     .map(([name, value]) => ({ name, value: classifyParam(value, scriptParamNames.has(name)) }))

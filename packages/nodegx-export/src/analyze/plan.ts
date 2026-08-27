@@ -30,6 +30,15 @@ import { routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
 import { CONTENT_PARAMS, iconSourceOf, StyleRole } from '../emit/style';
 import {
+  expressionIdentifiersOf,
+  functionMinedPortsOf,
+  jsBodyOf,
+  jsNodeKindOf,
+  jsPurityDefer,
+  JS_EXPRESSION,
+  JS_FUNCTION
+} from './jsfun';
+import {
   AppStateRegistry,
   ChannelPlan,
   collectAppState,
@@ -104,7 +113,15 @@ export type ValueExpr =
   | { kind: 'logical'; op: 'and' | 'or'; operands: ValueExpr[] }
   | { kind: 'not'; operand: ValueExpr }
   | { kind: 'truthy'; operand: ValueExpr }
-  | { kind: 'undefined' };
+  | { kind: 'undefined' }
+  /**
+   * A re-hosted Function/Expression output (EXP-003 §4): in render it reads the node's render
+   * local (`formatShoutOut.text`); in a handler it inlines the call over `.get()` snapshots —
+   * legal because the gate admits only pure bodies, so recomputation is unobservable. `fold`
+   * carries Expression's typed getters (`asString` → `String(x ?? '')`, `asNumber` →
+   * `Number(x) || 0`, `asBoolean` → `!!x` — expression.ts, verbatim semantics).
+   */
+  | { kind: 'jsfun-out'; nodeId: string; output: string; fold?: 'string' | 'number' | 'boolean' };
 
 export type HandlerAction =
   | { kind: 'navigate'; to: string }
@@ -126,7 +143,46 @@ export type HandlerAction =
    * `done`-chain, `if (onClose) { onClose('ok'); …then }`; without one, `onClose?.('ok')`.
    * `action` undefined is the plain `Close` (the runtime's `Closed` outcome).
    */
-  | { kind: 'popup-close'; action?: string; then: HandlerAction[] };
+  | { kind: 'popup-close'; action?: string; then: HandlerAction[] }
+  /**
+   * A pure Function/Expression fired from a handler chain (EXP-003 §4 A2h): the actions its
+   * `done` wires described, in wire order. The node's own compute needs no statement — output
+   * reads inside the chain inline the call at their sinks, and a pure body run without reading
+   * its outputs is unobservable. `done` is invocation-only in both runtimes, so this is exact.
+   */
+  | { kind: 'jsfun-run'; nodeId: string; then: HandlerAction[] };
+
+/**
+ * One re-hosted Function/Expression node (EXP-003-JS-TARGET-OUTPUT §4): the verbatim body plus
+ * everything the wrapper reproduces of the runtime's contract — inputs arriving as a record,
+ * assignments to `Outputs` publishing, script-declared signal outputs callable (as no-ops when
+ * nothing consumes them, exactly as an unwired pulse lands nowhere).
+ */
+export interface JsFunctionPlan {
+  nodeId: string;
+  kind: 'function' | 'expression';
+  /** Module-scope wrapper name — the sanitized node label, deduped per component file. */
+  fnName: string;
+  /** The verbatim body (Function) or expression text (Expression). Never reformatted. */
+  body: string;
+  /**
+   * The wrapper's input record, in script order: wire-fed inputs carry the resolved source,
+   * literal `in-*` parameters fold, mined-but-unfed inputs stay fields so the body's reads
+   * typecheck (they read `undefined`, exactly as a never-delivered runtime input does).
+   */
+  inputs: Array<{ name: string; tsType: string; expr?: ValueExpr }>;
+  /** Function only: the Outputs record's value fields (mined + declared + consumed). */
+  outputs: Array<{ name: string; tsType: string }>;
+  /** Function only: signal outputs (mined call syntax / `outtype-*: signal`), seeded no-op. */
+  signals: string[];
+  /** Expression only: preamble Math aliases the expression references (`pi` → `Math.PI`). */
+  mathAliases: string[];
+  /**
+   * reactive — no `run` wire: one render local per instance, recomputed per render (grade Q).
+   * invoked — `run` wired: calls inline inside its own handler chain only (grade I).
+   */
+  mode: 'reactive' | 'invoked';
+}
 
 export interface ReceiverPlan {
   nodeId: string;
@@ -232,6 +288,13 @@ export interface ComponentPlan {
   closesPopup: boolean;
   queries: QueryPlan[];
   repeaters: Record<string, RepeaterPlan>;
+  /**
+   * Re-host wrapper definitions by node id (EXP-003 §4), registered the moment a read of the
+   * node resolves — the emit layer prints exactly the wrappers that surviving expressions
+   * reference, so a definition nothing kept costs nothing. Insertion order is resolution order
+   * and therefore deterministic.
+   */
+  jsFunctions: Record<string, JsFunctionPlan>;
   dispositions: Record<string, Disposition>;
   /** Dropped wires, unhandled constructs — EXP-004's report feed. Nothing silently dropped. */
   notes: string[];
@@ -318,6 +381,7 @@ function planComponent(
     closesPopup: false,
     queries: [],
     repeaters: {},
+    jsFunctions: {},
     dispositions,
     notes
   };
@@ -525,7 +589,13 @@ function planComponent(
    * to collapse, Subscribe nodes whose translation the tree is, and — on failure — why. The
    * caller applies these only when it actually uses the expression.
    */
-  type ResolveCtx = { consumes: string[]; logicNodeIds: string[]; subscriberIds: string[]; visited: Set<string>; defer?: string };
+  type ResolveCtx = {
+    consumes: string[];
+    logicNodeIds: string[];
+    subscriberIds: string[];
+    visited: Set<string>;
+    defer?: string;
+  };
   const newCtx = (): ResolveCtx => ({ consumes: [], logicNodeIds: [], subscriberIds: [], visited: new Set() });
 
   /** The pass-4b eligibility rules for a single-key Subscribe read, shared with resolveExpr. */
@@ -685,11 +755,283 @@ function planComponent(
     return writerExpr;
   };
 
+  // ---- the re-host slice (EXP-003-JS-TARGET-OUTPUT §3–§4) --------------------------------
+
+  /** Expression's value outputs (expression.ts) — everything else it emits is a pulse or error. */
+  const EXPRESSION_VALUE_OUTPUTS = new Set(['result', 'isTrue', 'isFalse', 'asString', 'asNumber', 'asBoolean']);
+  const isJsValueOutput = (node: NodeIR, fromProperty: string): boolean =>
+    node.type === JS_FUNCTION
+      ? fromProperty.startsWith('out-')
+      : node.type === JS_EXPRESSION && EXPRESSION_VALUE_OUTPUTS.has(fromProperty);
+
+  /** `outtype-*`/`intype-*` enum → the wrapper's field type. `any` is the honest type of an
+   * untyped runtime delivery — `unknown` would fail the emitted app's tsc on the corpus's own
+   * bodies (§4's build-gate ruling, recorded in the design doc's addendum). */
+  const jsOutputTsType = (declared: string | number | boolean | undefined): string => {
+    switch (declared) {
+      case 'string':
+      case 'color':
+        return 'string';
+      case 'number':
+        return 'number';
+      case 'boolean':
+        return 'boolean';
+      case 'array':
+        return 'any[]';
+      default:
+        return 'any';
+    }
+  };
+
+  type JsFunRecord =
+    | { def: JsFunctionPlan; consumes: string[]; logicNodeIds: string[]; subscriberIds: string[] }
+    | { defer: string };
+  const jsFunMemo = new Map<string, JsFunRecord>();
+  /** Nodes whose inputs are being resolved right now — a JS output read while non-empty is a
+   * JS-node chain, deferred whole in this slice (it would need a translated-order fixpoint). */
+  const jsResolving = new Set<string>();
+  const usedJsFnNames = new Set<string>();
+  const allocJsFnName = (node: NodeIR, kind: 'function' | 'expression'): string => {
+    const cleaned = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9_$]+/g, '_').replace(/^_+|_+$/g, '');
+    let base = cleaned.length > 0 ? cleaned : kind === 'function' ? 'fn' : 'expr';
+    if (/^[0-9]/.test(base)) base = `_${base}`;
+    const taken = (name: string) =>
+      usedJsFnNames.has(name) ||
+      plan.props.some((p) => p.name === name) ||
+      plan.outputProps.some((o) => o.prop === name) ||
+      name === plan.file?.symbol ||
+      name === 'Inputs' ||
+      name === 'Outputs';
+    let name = base;
+    let counter = 2;
+    while (taken(name)) name = `${base}${counter++}`;
+    usedJsFnNames.add(name);
+    return name;
+  };
+
+  /**
+   * The per-node half of the purity gate (§3) plus the wrapper definition: body checks from
+   * jsfun.ts, then every statically-known input resolved through the emit vocabulary. Each
+   * failure is a named defer — the deferrals are the map for the next slice.
+   */
+  const jsFunDefOf = (node: NodeIR): JsFunRecord => {
+    const cached = jsFunMemo.get(node.id);
+    if (cached !== undefined) return cached;
+    const result = ((): JsFunRecord => {
+      const kind = jsNodeKindOf(node.type)!;
+      const word = kind === 'function' ? 'script' : 'expression';
+      const body = jsBodyOf(node, kind);
+      if (body === undefined || body.trim().length === 0) {
+        return { defer: kind === 'function' ? 'the node has no script to run' : 'the node has no expression' };
+      }
+      const purity = jsPurityDefer(kind, body);
+      if (purity !== null) return { defer: `the ${word} ${purity}` };
+
+      const mode: JsFunctionPlan['mode'] = wiredPorts.has(`${node.id}:run`) ? 'invoked' : 'reactive';
+
+      // The input name set: mined from the body exactly as the runtime mints ports, plus any
+      // properly-prefixed extras the graph feeds (proplist-declared ports the body may ignore).
+      const mined = kind === 'function' ? functionMinedPortsOf(body) : { inputs: [], outputs: [], signals: [] };
+      const exprIds = kind === 'expression' ? expressionIdentifiersOf(body) : { ports: [], mathAliases: [], raw: new Set<string>() };
+      const inputNames: string[] = kind === 'function' ? [...mined.inputs] : [...exprIds.ports];
+      const portNameOf = (name: string) => (kind === 'function' ? `in-${name}` : name);
+      if (kind === 'function') {
+        for (const c of component.connections) {
+          if (c.toId !== node.id || !c.toProperty.startsWith('in-')) continue;
+          const name = c.toProperty.slice('in-'.length);
+          if (!inputNames.includes(name)) inputNames.push(name);
+        }
+        for (const p of node.parameters) {
+          if (!p.name.startsWith('in-') || p.value.kind !== 'literal') continue;
+          const name = p.name.slice('in-'.length);
+          if (!inputNames.includes(name)) inputNames.push(name);
+        }
+      }
+
+      const inputs: JsFunctionPlan['inputs'] = [];
+      const consumes: string[] = [];
+      const logicNodeIds: string[] = [];
+      const subscriberIds: string[] = [];
+      let anyDelivery = false;
+      jsResolving.add(node.id);
+      try {
+        for (const name of inputNames) {
+          const port = portNameOf(name);
+          const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === port);
+          if (wires.length > 1) {
+            return { defer: `two wires feed input "${name}" — last-writer-wins is not statically ordered` };
+          }
+          const runChangeParam = kind === 'function' ? `runOnChange-in-${name}` : `runOnChange-${name}`;
+          if (wires.length === 1) {
+            const wire = wires[0];
+            // Absent means ticked (the Evaluate-additive family). An unticked input's changes
+            // do not re-run the script, a stale snapshot render-derived code cannot hold.
+            if (mode === 'reactive' && literalParam(node, runChangeParam) === false) {
+              return {
+                defer: `input "${name}" is unticked under Run On Value Change — its changes would not re-run the ${word}`
+              };
+            }
+            const from = nodeById.get(wire.fromId);
+            const ctx = newCtx();
+            const expr = resolveExpr(from, wire.fromProperty, ctx);
+            if (expr === null) {
+              return {
+                defer: `input "${name}" is fed by ${from?.type ?? 'a missing node'} — ${
+                  ctx.defer ?? 'no statically known source in the emit vocabulary'
+                }`
+              };
+            }
+            if (isBooleanExpr(expr)) {
+              return { defer: `input "${name}" is fed a logic truth value — only truthiness sinks take one in this slice` };
+            }
+            anyDelivery = true;
+            const tsType = exprTsType(expr);
+            inputs.push({
+              name,
+              tsType: tsType === 'string' || tsType === 'number' || tsType === 'boolean' ? tsType : 'any',
+              expr
+            });
+            consumes.push(wire.key, ...ctx.consumes);
+            logicNodeIds.push(...ctx.logicNodeIds);
+            subscriberIds.push(...ctx.subscriberIds);
+            continue;
+          }
+          const literal = literalParam(node, port);
+          if (literal !== undefined) {
+            anyDelivery = true;
+            inputs.push({ name, tsType: typeof literal, expr: { kind: 'literal', value: literal } });
+            continue;
+          }
+          // Mined but never fed: the field keeps the body's reads typechecking, and the read
+          // answers undefined — exactly what a never-delivered runtime input reads (§3.5).
+          inputs.push({ name, tsType: 'any' });
+        }
+      } finally {
+        jsResolving.delete(node.id);
+      }
+
+      // Automatic evaluation is gated on any input having arrived unless the expression
+      // references no ports (expression.ts) — an expression whose inputs never arrive never
+      // evaluates, and its outputs abstain null where a render local would compute.
+      if (kind === 'expression' && mode === 'reactive' && exprIds.ports.length > 0 && !anyDelivery) {
+        return { defer: 'none of its inputs is ever delivered — the expression never evaluates (its outputs abstain null)' };
+      }
+
+      // The Outputs record types every name the body can write: mined value assignments,
+      // proplist-declared outputs, and outtype-typed declarations. Signal outputs (mined call
+      // syntax, or declared `signal`) seed as no-op callables so `Outputs.Done()` cannot throw.
+      const outputs: JsFunctionPlan['outputs'] = [];
+      const signals: string[] = [];
+      if (kind === 'function') {
+        const declaredTypeOf = (name: string) => literalParam(node, `outtype-${name}`);
+        const outputNames: string[] = [...mined.outputs];
+        for (const p of node.parameters) {
+          if (!p.name.startsWith('outtype-')) continue;
+          const name = p.name.slice('outtype-'.length);
+          if (!outputNames.includes(name)) outputNames.push(name);
+        }
+        for (const c of component.connections) {
+          if (c.fromId !== node.id || !c.fromProperty.startsWith('out-')) continue;
+          const name = c.fromProperty.slice('out-'.length);
+          if (!outputNames.includes(name)) outputNames.push(name);
+        }
+        for (const name of mined.signals) {
+          if (!signals.includes(name)) signals.push(name);
+        }
+        for (const name of outputNames) {
+          if (signals.includes(name)) continue;
+          if (declaredTypeOf(name) === 'signal') {
+            signals.push(name);
+            continue;
+          }
+          outputs.push({ name, tsType: jsOutputTsType(declaredTypeOf(name)) });
+        }
+      }
+
+      const def: JsFunctionPlan = {
+        nodeId: node.id,
+        kind,
+        fnName: allocJsFnName(node, kind),
+        body,
+        inputs,
+        outputs,
+        signals,
+        mathAliases: exprIds.mathAliases,
+        mode
+      };
+      return { def, consumes, logicNodeIds, subscriberIds };
+    })();
+    jsFunMemo.set(node.id, result);
+    if ('def' in result) plan.jsFunctions[result.def.nodeId] = result.def;
+    return result;
+  };
+
+  /**
+   * A JS node's output as an expression (§4). Value outputs resolve to `jsfun-out`; consumed
+   * built-in pulses and errors defer with the §3.6 named reason; a read while another JS def
+   * is resolving is a node chain and defers whole. Whether an *invoked* node's read is legal
+   * (only inside its own Run chain) is the attachment walk's decision, not resolution's.
+   */
+  const jsFunReadExpr = (fromNode: NodeIR, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
+    const kind = jsNodeKindOf(fromNode.type)!;
+    if (!isJsValueOutput(fromNode, fromProperty)) {
+      if (fromProperty === 'error') {
+        ctx.defer = 'its error output is consumed — failure reporting is not translated in this slice';
+      } else if (fromProperty === 'isTrueEv' || fromProperty === 'isFalseEv') {
+        ctx.defer = `its ${fromProperty} pulse fires per evaluation — render-derived code has no faithful analogue`;
+      } else if (kind === 'function' && !fromProperty.startsWith('out-')) {
+        ctx.defer = `a Function output registers as "out-<name>" — the runtime never delivers a wire from "${fromProperty}"`;
+      } else {
+        ctx.defer = `its ${fromProperty} output is consumed — signal semantics this slice does not translate`;
+      }
+      return null;
+    }
+    if (jsResolving.size > 0) {
+      ctx.defer = 'it is fed by another Function/Expression node — JS-node chains are not translated in this slice';
+      return null;
+    }
+    const record = jsFunDefOf(fromNode);
+    if ('defer' in record) {
+      ctx.defer = record.defer;
+      return null;
+    }
+    const { def } = record;
+    const output = kind === 'function' ? fromProperty.slice('out-'.length) : fromProperty;
+    if (kind === 'function' && def.signals.includes(output)) {
+      ctx.defer = `its signal output "${output}" is consumed — author-signal pulses are not translated in this slice`;
+      return null;
+    }
+    ctx.consumes.push(...record.consumes);
+    ctx.logicNodeIds.push(...record.logicNodeIds);
+    ctx.subscriberIds.push(...record.subscriberIds);
+    const base: ValueExpr = { kind: 'jsfun-out', nodeId: fromNode.id, output: kind === 'function' ? output : 'result' };
+    if (kind === 'function') return base;
+    switch (output) {
+      case 'result':
+        return base;
+      // The abstain-null pre-first-evaluation state is unreachable in the emitted world —
+      // every vocabulary source has a boot value (§4, noted not modeled).
+      case 'isTrue':
+        return truthyExpr(base);
+      case 'isFalse':
+        return notExpr(base);
+      case 'asString':
+        return { ...base, fold: 'string' };
+      case 'asNumber':
+        return { ...base, fold: 'number' };
+      default:
+        return { ...base, fold: 'boolean' };
+    }
+  };
+
   const resolveExpr = (fromNode: NodeIR | undefined, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
     if (!fromNode) return null;
     if (fromNode.type === 'Component Inputs') return { kind: 'prop', name: fromProperty };
     if (fromNode.type === COMPONENT_OBJECT && fromProperty.startsWith('value-')) {
       return componentObjectReadExpr(fromNode, fromProperty, ctx);
+    }
+    if (jsNodeKindOf(fromNode.type) !== null) {
+      return jsFunReadExpr(fromNode, fromProperty, ctx);
     }
     if (fromNode.type === 'Variable2' && fromProperty === 'value') {
       const name = variableNameOf(fromNode);
@@ -784,6 +1126,10 @@ function planComponent(
         return !(registry.stores.get(expr.storeName)?.keys.find((k) => k.key === expr.key)?.required ?? false);
       case 'undefined':
         return true;
+      // An output the body might not write reads undefined, exactly like the runtime getter
+      // (§4); the typed Expression folds never answer undefined.
+      case 'jsfun-out':
+        return expr.fold === undefined;
       case 'input-text':
       case 'literal':
       case 'format':
@@ -1000,6 +1346,8 @@ function planComponent(
         return 'string';
       case 'undefined':
         return 'undefined';
+      case 'jsfun-out':
+        return expr.fold ?? 'unknown';
       case 'logical':
       case 'not':
       case 'truthy':
@@ -1024,7 +1372,8 @@ function planComponent(
   const isTriggerWire = (type: string, toProperty: string): boolean =>
     TRIGGER_PORTS[type] === toProperty ||
     (type === 'NavigationShowPopup' && toProperty === 'show') ||
-    (type === 'NavigationClosePopup' && (toProperty === 'close' || toProperty.startsWith('closeAction-')));
+    (type === 'NavigationClosePopup' && (toProperty === 'close' || toProperty.startsWith('closeAction-'))) ||
+    (jsNodeKindOf(type) !== null && toProperty === 'run');
 
   // Which components open as popups anywhere in the project — the close side translates only
   // inside one; elsewhere the runtime resolves an enclosing popup by ancestor walk, which a
@@ -1218,7 +1567,49 @@ function planComponent(
     }
   }
 
+  /**
+   * A2h (EXP-003 §4): `run` wired from a handler chain, outputs consumed in that chain. The
+   * compiled action carries only the `done`-chain — a pure body run without reading its outputs
+   * is unobservable, and every output read inside the chain inlines the call at its sink. The
+   * runtime's `done` is invocation-only for both nodes (empty-token runs pulse nothing), so the
+   * handler-only translation is exact, not an approximation.
+   */
+  const compileJsRun = (node: NodeIR): CompiledSink => {
+    const record = jsFunDefOf(node);
+    if ('defer' in record) return { defer: record.defer };
+    // §3.6 over the run path: success co-fires with done, failure/unchanged/error report the
+    // run itself, isTrueEv/isFalseEv pulse per evaluation — any of them consumed defers.
+    for (const c of component.connections) {
+      if (c.fromId !== node.id || c.fromProperty === 'done' || isJsValueOutput(node, c.fromProperty)) continue;
+      if (node.type === JS_FUNCTION && !c.fromProperty.startsWith('out-')) {
+        const builtIn = ['success', 'failure', 'unchanged', 'completed', 'error'].includes(c.fromProperty);
+        if (!builtIn) continue; // a dead bare-name wire — the pre-pass noted and consumed it
+      }
+      return { defer: `its ${c.fromProperty} output is consumed — only done continues a Run chain in this slice` };
+    }
+    const chain = doneChainOf(node);
+    if ('defer' in chain) return chain;
+    const strayRead = component.connections.find(
+      (c) => c.fromId === node.id && isJsValueOutput(node, c.fromProperty) && !chain.consumes.includes(c.key)
+    );
+    if (strayRead) {
+      return {
+        defer: `its ${strayRead.fromProperty} output is consumed outside the Run chain — run-wired outputs feeding render sinks need materialized state (the controlled-state slice)`
+      };
+    }
+    if (chain.then.length === 0) {
+      return { defer: 'its Run drives nothing this slice translates — no done-chain action consumes its work' };
+    }
+    return {
+      action: { kind: 'jsfun-run', nodeId: node.id, then: chain.then },
+      consumes: chain.consumes,
+      collapses: chain.collapses,
+      subscribes: chain.subscribes
+    };
+  };
+
   const compileSink = (node: NodeIR, port: string): CompiledSink => {
+    if (jsNodeKindOf(node.type) !== null && port === 'run') return compileJsRun(node);
     if (node.type === 'NavigationShowPopup') return compileShowPopup(node);
     if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
     if (node.type === 'RouterNavigate') {
@@ -1433,29 +1824,9 @@ function planComponent(
     return result;
   };
 
-  const actionExprs = (action: HandlerAction): ValueExpr[] => {
-    switch (action.kind) {
-      case 'emit':
-        return action.payload.map((p) => p.expr);
-      case 'collection-add':
-        return action.entries.map((e) => e.expr);
-      case 'store-set':
-      case 'globalstore-set':
-        return [action.expr];
-      case 'branch':
-        return [action.cond, ...action.whenTrue.flatMap(actionExprs), ...action.whenFalse.flatMap(actionExprs)];
-      case 'popup-show':
-      case 'popup-close':
-        return action.then.flatMap(actionExprs);
-      case 'navigate':
-      case 'output-signal':
-        return [];
-    }
-  };
-
   type ExprContext = { kind: 'dom'; nodeId: string } | { kind: 'receiver'; receiverId: string } | { kind: 'render' };
 
-  const exprValidIn = (expr: ValueExpr, context: ExprContext): boolean => {
+  const exprValidIn = (expr: ValueExpr, context: ExprContext, invokedScope?: ReadonlySet<string>): boolean => {
     switch (expr.kind) {
       case 'prop':
       case 'store-get':
@@ -1464,18 +1835,64 @@ function planComponent(
       case 'undefined':
         return true;
       case 'format':
-        return expr.parts.every((p) => typeof p === 'string' || exprValidIn(p, context));
+        return expr.parts.every((p) => typeof p === 'string' || exprValidIn(p, context, invokedScope));
       case 'logical':
-        return expr.operands.every((o) => exprValidIn(o, context));
+        return expr.operands.every((o) => exprValidIn(o, context, invokedScope));
       case 'not':
       case 'truthy':
-        return exprValidIn(expr.operand, context);
+        return exprValidIn(expr.operand, context, invokedScope);
       case 'input-text':
         return context.kind === 'dom' && context.nodeId === expr.inputId;
       case 'payload':
         return context.kind === 'receiver' && context.receiverId === expr.receiverId;
+      // A reactive node's output reads anywhere its args do (render local / inline snapshot
+      // call — pure, so recomputation is unobservable). An invoked node's output reads only
+      // inside its own Run chain: outside it, the runtime answers the *last run's* value,
+      // which a fresh call cannot reproduce (§3.7).
+      case 'jsfun-out': {
+        const def = plan.jsFunctions[expr.nodeId];
+        if (def === undefined) return false;
+        if (def.mode === 'invoked' && !(invokedScope?.has(expr.nodeId) ?? false)) return false;
+        return def.inputs.every((i) => i.expr === undefined || exprValidIn(i.expr, context, invokedScope));
+      }
     }
   };
+
+  /** Action-tree validity, carrying the set of invoked JS nodes in scope (their Run chains). */
+  const actionsValidIn = (actions: HandlerAction[], context: ExprContext, invokedScope: ReadonlySet<string> = new Set()): boolean =>
+    actions.every((action) => {
+      switch (action.kind) {
+        case 'emit':
+          return action.payload.every((p) => exprValidIn(p.expr, context, invokedScope));
+        case 'collection-add':
+          return action.entries.every((e) => exprValidIn(e.expr, context, invokedScope));
+        case 'store-set':
+        case 'globalstore-set':
+          return exprValidIn(action.expr, context, invokedScope);
+        case 'branch':
+          return (
+            exprValidIn(action.cond, context, invokedScope) &&
+            actionsValidIn(action.whenTrue, context, invokedScope) &&
+            actionsValidIn(action.whenFalse, context, invokedScope)
+          );
+        case 'popup-show':
+        case 'popup-close':
+          return actionsValidIn(action.then, context, invokedScope);
+        case 'jsfun-run': {
+          const def = plan.jsFunctions[action.nodeId];
+          if (def === undefined) return false;
+          const inner = new Set(invokedScope);
+          inner.add(action.nodeId);
+          return (
+            def.inputs.every((i) => i.expr === undefined || exprValidIn(i.expr, context, inner)) &&
+            actionsValidIn(action.then, context, inner)
+          );
+        }
+        case 'navigate':
+        case 'output-signal':
+          return true;
+      }
+    });
 
   const receiverEligible = (node: NodeIR): { channelName: string } | { defer: string } => {
     const channelName = channelNameOf(node);
@@ -1536,6 +1953,54 @@ function planComponent(
       for (const c of component.connections) {
         if (c.toId === node.id && c.toProperty.startsWith('closeAction-')) compiledOf(node, c.toProperty);
       }
+    } else if (jsNodeKindOf(node.type) !== null && wiredPorts.has(`${node.id}:run`)) {
+      compiledOf(node, 'run');
+    }
+  }
+
+  // Dead wires on JS nodes, before any pass can misread them (EXP-003 §1): a Function's ports
+  // register as `in-<name>`/`out-<name>` — nodescope catches the failed connect on any other
+  // name and the wire never delivers. An Expression input that is not an identifier of the
+  // expression delivers into scope nobody reads. Dropping each with its note is the faithful
+  // translation (the runtime's own guard drops them too — the hasOutput precedent).
+  const jsDeadWireKeys = new Set<string>();
+  for (const node of component.nodes) {
+    const kind = jsNodeKindOf(node.type);
+    if (kind === null) continue;
+    const body = jsBodyOf(node, kind);
+    const exprPorts = kind === 'expression' && body !== undefined ? expressionIdentifiersOf(body).ports : [];
+    for (const c of component.connections) {
+      if (consumed.has(c.key)) continue;
+      if (c.toId === node.id && c.toProperty !== 'run') {
+        const dead =
+          kind === 'function'
+            ? !c.toProperty.startsWith('in-')
+            : !exprPorts.includes(c.toProperty);
+        if (dead) {
+          consumed.add(c.key);
+          jsDeadWireKeys.add(c.key);
+          notes.push(
+            kind === 'function'
+              ? `wire ${c.key} dropped: a Function input registers as "in-<name>" — the runtime never delivers a connection to "${c.toProperty}"`
+              : `wire ${c.key} dropped: the expression does not reference an identifier "${c.toProperty}" — the delivery is unobservable`
+          );
+        }
+      }
+      if (c.fromId === node.id) {
+        const dead =
+          kind === 'function'
+            ? !c.fromProperty.startsWith('out-') &&
+              !['run', 'success', 'failure', 'done', 'unchanged', 'completed', 'error'].includes(c.fromProperty)
+            : !EXPRESSION_VALUE_OUTPUTS.has(c.fromProperty) &&
+              !['isTrueEv', 'isFalseEv', 'failure', 'done', 'completed', 'error'].includes(c.fromProperty);
+        if (dead) {
+          consumed.add(c.key);
+          jsDeadWireKeys.add(c.key);
+          notes.push(
+            `wire ${c.key} dropped: ${node.type} registers no output named "${c.fromProperty}" — the runtime never delivers this connection`
+          );
+        }
+      }
     }
   }
 
@@ -1562,6 +2027,12 @@ function planComponent(
       (fromNode?.type === 'NavigationShowPopup' || fromNode?.type === 'NavigationClosePopup') &&
       connection.fromProperty === 'done'
     ) {
+      continue;
+    }
+    // A JS node's `done` wires are its Run chain, chain-internal exactly as a popup's (the
+    // compile consumes them on attach); with Run unwired, `done` never pulses — the JS sweep
+    // drops the wire with that note.
+    if (fromNode !== undefined && jsNodeKindOf(fromNode.type) !== null && connection.fromProperty === 'done') {
       continue;
     }
     consumed.add(connection.key);
@@ -1594,7 +2065,7 @@ function planComponent(
       isTextInputType(fromNode.type) &&
       connection.fromProperty === 'textChanged'
     ) {
-      if (!actionExprs(compiled.action).every((e) => exprValidIn(e, { kind: 'dom', nodeId: fromNode.id }))) {
+      if (!actionsValidIn([compiled.action], { kind: 'dom', nodeId: fromNode.id })) {
         const reason = 'the action reads values that only exist in another handler';
         if (outputsSink) {
           if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, reason);
@@ -1619,7 +2090,7 @@ function planComponent(
       plan.roleOf[fromNode.id] === 'instance' &&
       instanceSignalOutputs(fromNode).has(connection.fromProperty);
     if (fromNode && rendered.has(fromNode.id) && (connection.kind === 'signal' || instanceSignal)) {
-      if (!actionExprs(compiled.action).every((e) => exprValidIn(e, { kind: 'dom', nodeId: fromNode.id }))) {
+      if (!actionsValidIn([compiled.action], { kind: 'dom', nodeId: fromNode.id })) {
         const reason = 'the action reads values that only exist in another handler';
         if (outputsSink) {
           if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, reason);
@@ -1646,7 +2117,7 @@ function planComponent(
         notes.push(`wire ${connection.key} dropped: ${eligible.defer}`);
         continue;
       }
-      if (!actionExprs(compiled.action).every((e) => exprValidIn(e, { kind: 'receiver', receiverId: fromNode.id }))) {
+      if (!actionsValidIn([compiled.action], { kind: 'receiver', receiverId: fromNode.id })) {
         const reason = 'the action reads values that only exist in another handler';
         if (outputsSink) {
           if (!failedOutputsNodes.has(toNode.id)) failedOutputsNodes.set(toNode.id, reason);
@@ -1906,6 +2377,44 @@ function planComponent(
     }
   }
 
+  // Pass 4e: JS value outputs into rendered sinks (EXP-003 §4 A1) — the node becomes a render
+  // local, the sink reads its field. Only sinks the emitter honestly renders consume here
+  // (children, `attr:`, the enabled inversion — pass 4d's discipline, not 4c's silent hole);
+  // everything else is the strict-mixed sweep's to name. Boolean shapes (isTrue/isFalse) land
+  // only in the truthiness sink; the folds and the unfolded any-typed reads land anywhere.
+  const jsBoundReadKeys = new Set<string>();
+  for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
+    const fromNode = nodeById.get(connection.fromId);
+    if (!fromNode || jsNodeKindOf(fromNode.type) === null || !isJsValueOutput(fromNode, connection.fromProperty)) {
+      continue;
+    }
+    const toNode = nodeById.get(connection.toId);
+    if (!toNode || !rendered.has(toNode.id)) continue; // the sweep names the reason
+    const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
+    const bindable =
+      contentRole === 'children' ||
+      contentRole === 'attr-not:disabled' ||
+      (contentRole !== undefined && contentRole.startsWith('attr:'));
+    if (!bindable) continue; // the sweep names the reason
+    const ctx = newCtx();
+    const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
+    if (expr === null) continue; // the sweep defers the node with this reason
+    if (!exprValidIn(expr, { kind: 'render' })) continue; // handler-only args, or an invoked node
+    if (isBooleanExpr(expr) && contentRole !== 'attr-not:disabled') continue;
+    consumed.add(connection.key);
+    jsBoundReadKeys.add(connection.key);
+    plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
+    plan.bindings[toNode.id][connection.toProperty] = { kind: 'computed', expr };
+    for (const key of ctx.consumes) consumed.add(key);
+    for (const id of ctx.subscriberIds) boundSubscribers.add(id);
+    if (plan.file) {
+      for (const id of ctx.logicNodeIds) {
+        dispositions[id] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+      }
+    }
+  }
+
   // Pass 5: Component Inputs bindings and the query/array→repeater feeds (step 4's rules,
   // plus the Collection2 read side — COLLECTIONS-TARGET §2).
   const boundCollectionReaders = new Set<string>();
@@ -2015,6 +2524,75 @@ function planComponent(
         `wire ${write.key} dropped: it mirrors into property "${write.toProperty.slice('value-'.length)}", which nothing reads — the record is not observable in the emitted app`
       );
     }
+  }
+
+  // The JS-node verdict — strict-mixed, the Component Outputs/Object precedent (EXP-003 §3.6):
+  // collapsed only when the gate passes and every consumed value output landed (a pass-4e bind,
+  // or a handler chain whose sink attached); otherwise deferred with the first unlanded read's
+  // named reason, while the reads that did land keep their behaviour. An invoked node never
+  // reaches here — its Run trigger attachment already ruled it.
+  for (const node of component.nodes) {
+    const kind = jsNodeKindOf(node.type);
+    if (kind === null || dispositions[node.id] !== undefined) continue;
+    const allReads = component.connections.filter((c) => c.fromId === node.id && isJsValueOutput(node, c.fromProperty));
+    let verdict: string | null = null;
+    const record = jsFunDefOf(node);
+    if ('defer' in record) verdict = record.defer;
+    if (verdict === null && wiredPorts.has(`${node.id}:run`)) {
+      const compiled = compiledSinks.get(`${node.id}:run`);
+      verdict =
+        compiled !== undefined && 'defer' in compiled ? compiled.defer : 'Run is never fired by a translatable trigger';
+    }
+    if (verdict === null) {
+      for (const c of component.connections) {
+        if (c.fromId !== node.id || jsDeadWireKeys.has(c.key) || isJsValueOutput(node, c.fromProperty)) continue;
+        if (c.fromProperty === 'done') {
+          // Outcome tokens exist only on the Run path (§1) — with Run unwired the runtime
+          // never pulses done, so the wire is dropped as the runtime drops it.
+          consumed.add(c.key);
+          notes.push(`wire ${c.key} dropped: done is invocation-only and Run is not wired — the runtime never pulses it`);
+          continue;
+        }
+        if (kind === 'function' && c.fromProperty === 'unchanged') {
+          consumed.add(c.key);
+          notes.push(`wire ${c.key} dropped: unchanged is invocation-only and Run is not wired — the runtime never pulses it`);
+          continue;
+        }
+        const perEvaluation = c.fromProperty === 'isTrueEv' || c.fromProperty === 'isFalseEv';
+        verdict = perEvaluation
+          ? `its ${c.fromProperty} pulse fires per evaluation — render-derived code has no faithful analogue`
+          : c.fromProperty === 'error'
+            ? 'its error output is consumed — failure reporting is not translated in this slice'
+            : `its ${c.fromProperty} output is consumed — per-run pulses have no render analogue (grade I, EXP-003 §5)`;
+        break;
+      }
+    }
+    if (verdict === null && allReads.length === 0) verdict = 'its outputs feed nothing statically translatable';
+    if (verdict === null) {
+      for (const read of allReads) {
+        if (jsBoundReadKeys.has(read.key)) continue;
+        if (consumed.has(read.key) && dispositions[read.toId]?.kind === 'collapsed') continue;
+        const ctx = newCtx();
+        const resolved = resolveExpr(node, read.fromProperty, ctx);
+        if (resolved === null) {
+          verdict = ctx.defer ?? `its ${read.fromProperty} output has no static translation`;
+        } else {
+          const sink = nodeById.get(read.toId);
+          verdict =
+            sink !== undefined && dispositions[read.toId]?.kind === 'deferred'
+              ? `its ${read.fromProperty} feeds ${sink.type}, which is itself deferred`
+              : `its ${read.fromProperty} feeds ${sink?.type ?? 'a missing node'}.${read.toProperty}, which has no static binding in this slice`;
+        }
+        break;
+      }
+    }
+    if (verdict === null && !plan.file) verdict = 'component emits no file to host its wrapper';
+    if (verdict !== null) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: verdict };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${verdict}`);
+      continue;
+    }
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
   }
 
   // Pass 6: report every wire nothing translated.

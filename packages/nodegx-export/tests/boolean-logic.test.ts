@@ -133,6 +133,7 @@ describe('what defers, all with notes (LOGIC-TARGET §9)', () => {
   test('a Condition mixing Evaluate wiring with value outputs defers the value use', () => {
     const mutated = cloneIr();
     wire(mutated, 'Pages/Home', 'cheerButton', 'onClick', 'hasName', 'eval', 'signal');
+    unwire(mutated, 'Pages/Home', 'hasLongName:isTrue->aboutButton:enabled'); // the EXP-003 gate owns its own disabled — out of this claim's way
     const result = emitApp(mutated, catalog);
     expect(result.files['src/pages/Home.tsx']).not.toContain('disabled');
     expect(result.notes.join('\n')).toContain('no single honest translation');
@@ -141,6 +142,7 @@ describe('what defers, all with notes (LOGIC-TARGET §9)', () => {
   test('an unticked Run On Value Change makes the value outputs snapshots — deferred', () => {
     const mutated = cloneIr();
     setParam(nodeOf(mutated, 'Pages/Home', 'hasName'), 'runOnChange-condition', { kind: 'literal', value: false });
+    unwire(mutated, 'Pages/Home', 'hasLongName:isTrue->aboutButton:enabled'); // the EXP-003 gate owns its own disabled — out of this claim's way
     const result = emitApp(mutated, catalog);
     expect(result.files['src/pages/Home.tsx']).not.toContain('disabled');
     expect(result.notes.join('\n')).toContain('snapshots of the last Evaluate');
@@ -183,6 +185,7 @@ describe('what defers, all with notes (LOGIC-TARGET §9)', () => {
     });
     unwire(mutated, 'Pages/Home', 'hasName:result->cheerButton:enabled');
     wire(mutated, 'Pages/Home', 'emptyGate', 'result', 'cheerButton', 'enabled');
+    unwire(mutated, 'Pages/Home', 'hasLongName:isTrue->aboutButton:enabled'); // the EXP-003 gate owns its own disabled — out of this claim's way
     const result = emitApp(mutated, catalog);
     expect(result.files['src/pages/Home.tsx']).not.toContain('disabled');
     expect(result.notes.join('\n')).toContain('the And has no inputs wired or authored');
@@ -201,6 +204,7 @@ describe('what defers, all with notes (LOGIC-TARGET §9)', () => {
     });
     unwire(mutated, 'Pages/Home', 'hasName:result->cheerButton:enabled');
     wire(mutated, 'Pages/Home', 'latch', 'state', 'cheerButton', 'enabled');
+    unwire(mutated, 'Pages/Home', 'hasLongName:isTrue->aboutButton:enabled'); // the EXP-003 gate owns its own disabled — out of this claim's way
     const result = emitApp(mutated, catalog);
     expect(result.files['src/pages/Home.tsx']).not.toContain('disabled');
     expect(result.notes.join('\n')).toContain('no deterministic translation');

@@ -111,11 +111,37 @@ import { celebrate } from '../events';
 import { visitorName } from '../stores/variables';
 import styles from './Home.module.css';
 
+// From the Function node "formatShout" — the body is preserved verbatim (EXP-003 §4).
+function formatShout(Inputs: { name?: string }): { text?: any } {
+  const Outputs: { text?: any } = {};
+  try {
+    (() => {
+const name = Inputs.name || 'friend';
+Outputs.text = name.toUpperCase() + '!';
+    })();
+  } catch (e) {
+    console.error('Function node formatShout threw:', e);
+  }
+  return Outputs;
+}
+
+// From the Expression node "hasLongName" — the expression is preserved verbatim (EXP-003 §4).
+function hasLongName({ name, length }: { name?: string; length?: any }) {
+  try {
+    return ((name || '').length > 1);
+  } catch (e) {
+    console.error('Expression node hasLongName threw:', e);
+    return 0;
+  }
+}
+
 /** Home. */
 export function HomePage() {
   const navigate = useNavigate();
   const name = useValue(visitorName);
   const [openPopup, setOpenPopup] = useState<'AboutDialog' | null>(null);
+  const hasLongNameOut = hasLongName({ name });
+  const formatShoutOut = formatShout({ name });
 
   return (
     <div className={styles.page}>
@@ -145,11 +171,17 @@ export function HomePage() {
 
       <FarewellCard onWaved={() => navigate('/mood')} />
 
-      <button className={styles.aboutButton} onClick={() => setOpenPopup('AboutDialog')}>
+      <button
+        className={styles.aboutButton}
+        disabled={!hasLongNameOut}
+        onClick={() => setOpenPopup('AboutDialog')}
+      >
         About
       </button>
 
       <GreetingCard Name="Ada" />
+
+      <p className={styles.shoutText}>{formatShoutOut.text ?? ''}</p>
 
       {openPopup === 'AboutDialog' &&
         createPortal(

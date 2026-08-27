@@ -328,3 +328,63 @@ the audit's named defers start pointing at *specific* APIs instead of "logic nod
 - jsdom drive: the formatter renders through the wrapper; the expression gates its sink.
 - Emitted app `tsc -b` + `vite build` clean; ledger flip same commit; audit re-run with
   named-reason spot-checks.
+
+## §10 Implementation addendum (session 14 — what building the slice settled)
+
+The re-host slice landed as designed, with these rulings where the paper met the compiler:
+
+- **Untyped ports are `any`, not `unknown`.** Strict tsc rejects the corpus's own bodies under
+  `unknown` (`Inputs.items || []` then `.map(...)` is an error on an unknown field), which
+  would fail the emitted app's build on exactly the bodies §8 promises. `any` is the honest
+  type of an untyped runtime delivery; authored `intype-*`/`outtype-*` still map to concrete
+  types, and a wire-fed input takes its resolved source's static type where known.
+- **The body runs in an arrow IIFE inside try/catch.** A body-level `return` then exits the
+  *body*, exactly as it exits the runtime's compiled function, and the wrapper still returns
+  Outputs (partial writes published — the proxy's own behaviour on a throw). The catch mirrors
+  the runtime's catch: log and continue; an Expression answers `0` (`_calculateExpression`).
+  Without it, `price.slice(1) * 0.9` over an undefined boot input would white-screen a render
+  where the runtime pulses failure and carries on. Bodies print verbatim, never reindented —
+  a template literal's inner lines are content.
+- **Mined signal outputs seed as no-op callables** (`Outputs.done()` in the leg001 formatters
+  must not throw): the `Outputs.X()` / `Outputs["X"]()` / `.send()` patterns plus
+  `outtype-*: signal` declarations become non-optional `() => void` fields.
+- **Bare-named wires on a Function node are dead and drop with a note.** The runtime registers
+  ports as `in-<name>`/`out-<name>`; nodescope catches the failed connect on any other
+  spelling and the wire never delivers (the catalog's own dynamicPorts description documents
+  the trap). MCP-authored graphs carry these (the puppy formatters wire `items`/`text` bare) —
+  translating them as live feeds would invent behaviour the interpreted app does not have.
+  The same applies to an Expression input naming no identifier of the expression
+  (delivered-but-unobservable) and to unknown output names.
+- **A1 gates on tickedness**: every wire-fed input must be ticked under Run On Value Change —
+  an unticked input's changes do not re-run the script, a stale snapshot per-render code
+  cannot hold. (Invoked nodes skip the check: a Run reads current values regardless.)
+- **A2h emits no call statement.** The compiled action is the `done`-chain only; every output
+  read inside the chain inlines the call at its sink — pure, so recomputation is unobservable,
+  and a run nobody reads is a no-op. A chain that drives nothing defers named.
+- **Consumed pulses defer even when another pass consumed the wire** (a `success` wired into a
+  translated trigger port is dropped by the attachment pass, but the runtime pulses it per
+  run — the verdict sweep examines all non-dead signal wires, consumed or not).
+- **JS→JS chains defer whole** ("JS-node chains are not translated in this slice") — landing
+  them needs a translated-order fixpoint across the strict-mixed verdicts; nothing in the pure
+  corpus tier chains.
+- **`parsePorts` mints odd ports and the wrapper keeps them**: `(name || '').length > 1`
+  yields ports `name` *and* `length` (the string literal is stripped, so `.length` starts a
+  fresh identifier match). The runtime registers `length` too; it just never receives. The
+  wrapper carries it as an unfed field — faithfulness includes the odd ports.
+
+**Corpus outcome (the audit re-run, honestly).** §8's ~15–25 raw-node estimate did not survive
+the dead-wire discovery: the leg001 and puppy formatters — the estimate's core — are wired with
+*bare* port names (`text -> Text.text`), so their outputs never delivered in the interpreted
+app either; the faithful translation drops those wires with the registration note rather than
+inventing a live feed. The phase58 expressions defer named (`done` drives SetDbModelProperties;
+`isTrue` feeds Group.visible), the ProductCard/Text Search expressions have no consumed sinks
+or feed `Text.mounted`, and the Filters family defers on its Component/Noodl markers. Raw JS
+nodes translated in the existing corpus: the Cheer fixture's two; the corpus reads 87%
+(2,260/2,597, 26 distinct signatures — up from 86%). The slice's value stands where §8 put it:
+the wrapper vocabulary, the §5 contract, and defers that now name specific APIs — plus one
+fact the paper design lacked: **a Function port is only real with its `in-`/`out-` prefix, and
+the corpus's MCP-authored graphs largely miss it.** That is FIX-007's defect (phase 66,
+fixed on the docs side 2026-08-14 — the AI now writes the prefix unprompted); the corpus
+graphs predate the fix. The open sliver: `rules/nonexistentPort` still skips
+runtime-discovered types by design, so a bare Function wire passes validation and dies at
+connect — whether validate should error there is FIX-007 follow-up, not export work.

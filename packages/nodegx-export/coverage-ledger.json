@@ -179,8 +179,7 @@
     },
     {
       "typeName": "Expression",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated"
     },
     {
       "typeName": "Field Set",
@@ -239,13 +238,12 @@
     },
     {
       "typeName": "JavaScriptFunction",
-      "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated"
     },
     {
       "typeName": "Javascript2",
       "status": "deferred",
-      "exemption": "pre-gate backlog \u2014 classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "a hand-written node definition (three generations of define/script/Node.* DSL, lifecycle methods, an external-URL mode), not a function \u2014 its faithful target is a hand-written React component, the export-side twin of P69 custom nodes (EXP-003-JS-TARGET-OUTPUT \u00a71); the corpus is browser-coupled date-picker code and junk, zero cost"
     },
     {
       "typeName": "Label",

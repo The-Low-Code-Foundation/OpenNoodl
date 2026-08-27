@@ -92,6 +92,10 @@ describe('format resolution rules (LOGIC-TARGET §2)', () => {
     // assertion still measures "no hook when nothing needs it".
     unwire(mutated, 'Pages/Home', 'visitorVar:value->hasName:condition');
     unwire(mutated, 'Pages/Home', 'hasName:result->cheerButton:enabled');
+    // The EXP-003 nodes (session 14) earn it independently too — same reasoning, same treatment.
+    unwire(mutated, 'Pages/Home', 'visitorVar:value->hasLongName:name');
+    unwire(mutated, 'Pages/Home', 'hasLongName:isTrue->aboutButton:enabled');
+    unwire(mutated, 'Pages/Home', 'visitorVar:value->formatShout:in-name');
     const result = emitApp(mutated, catalog);
     expect(result.files['src/pages/Home.tsx']).toContain('>Cheering for Ada!<');
     expect(result.files['src/pages/Home.tsx']).not.toContain('useValue');

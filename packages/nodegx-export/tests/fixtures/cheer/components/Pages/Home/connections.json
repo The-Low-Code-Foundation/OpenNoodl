@@ -56,6 +56,30 @@
       "fromProperty": "onClick",
       "toId": "showAbout",
       "toProperty": "show"
+    },
+    {
+      "fromId": "visitorVar",
+      "fromProperty": "value",
+      "toId": "formatShout",
+      "toProperty": "in-name"
+    },
+    {
+      "fromId": "formatShout",
+      "fromProperty": "out-text",
+      "toId": "shoutText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "visitorVar",
+      "fromProperty": "value",
+      "toId": "hasLongName",
+      "toProperty": "name"
+    },
+    {
+      "fromId": "hasLongName",
+      "fromProperty": "isTrue",
+      "toId": "aboutButton",
+      "toProperty": "enabled"
     }
   ]
 }

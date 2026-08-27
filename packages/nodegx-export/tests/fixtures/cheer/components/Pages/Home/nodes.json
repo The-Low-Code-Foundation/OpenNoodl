@@ -30,7 +30,8 @@
         "cheerBanner",
         "farewell",
         "aboutButton",
-        "greetingCard"
+        "greetingCard",
+        "shoutText"
       ],
       "parameters": {
         "flexDirection": "column",
@@ -233,6 +234,45 @@
       "parent": "shell",
       "parameters": {
         "Name": "Ada"
+      }
+    },
+    {
+      "id": "shoutText",
+      "type": "Text",
+      "label": "Cheer shout",
+      "x": 160,
+      "y": 1360,
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-lg)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--primary)"
+      }
+    },
+    {
+      "id": "formatShout",
+      "type": "JavaScriptFunction",
+      "label": "formatShout",
+      "x": 410,
+      "y": 1360,
+      "parameters": {
+        "functionScript": "const name = Inputs.name || 'friend';\nOutputs.text = name.toUpperCase() + '!';"
+      },
+      "metadata": {
+        "comment": "EXP-003 A1 fixture: a pure Inputs→Outputs body — no Noodl API, no environment — re-hosted verbatim by the exporter."
+      }
+    },
+    {
+      "id": "hasLongName",
+      "type": "Expression",
+      "label": "hasLongName",
+      "x": 610,
+      "y": 1120,
+      "parameters": {
+        "expression": "(name || '').length > 1"
+      },
+      "metadata": {
+        "comment": "EXP-003 A1 fixture: a pure expression gating the About button's enabled through Is True."
       }
     }
   ],

@@ -17,7 +17,7 @@
  */
 
 import { CatalogIndex } from '../catalog';
-import { BindingSource, ComponentPlan, HandlerAction, ProjectPlan, QueryPlan, ValueExpr } from '../analyze/plan';
+import { BindingSource, ComponentPlan, HandlerAction, JsFunctionPlan, ProjectPlan, QueryPlan, ValueExpr } from '../analyze/plan';
 import { ExportIR, NodeIR } from '../ir/types';
 import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase } from './naming';
 import { tsLiteral } from './state';
@@ -193,6 +193,12 @@ export function emitComponent(
   const usedChannelNames = new Set<string>();
   const usedStoreNames = new Set<string>();
   const usedCollectionNames = new Set<string>();
+  // Re-host wrappers (EXP-003 §4): only definitions that surviving expressions/actions
+  // reference print — the plan registers every resolved definition, referenced or not.
+  const jsFunByNode = plan.jsFunctions;
+  const referencedJsIds = new Set<string>();
+  const jsArgExprs = (nodeId: string): ValueExpr[] =>
+    (jsFunByNode[nodeId]?.inputs ?? []).flatMap((i) => (i.expr !== undefined ? [i.expr] : []));
   const collectExprUse = (expr: ValueExpr) => {
     if (expr.kind === 'store-get') usedVariableNames.add(expr.variableName);
     if (expr.kind === 'store-key-get') usedStoreNames.add(expr.storeName);
@@ -201,6 +207,10 @@ export function emitComponent(
     }
     if (expr.kind === 'logical') expr.operands.forEach(collectExprUse);
     if (expr.kind === 'not' || expr.kind === 'truthy') collectExprUse(expr.operand);
+    if (expr.kind === 'jsfun-out') {
+      referencedJsIds.add(expr.nodeId);
+      jsArgExprs(expr.nodeId).forEach(collectExprUse);
+    }
   };
   const collectActionUse = (action: HandlerAction) => {
     if (action.kind === 'emit') {
@@ -227,6 +237,11 @@ export function emitComponent(
     if (action.kind === 'popup-show' || action.kind === 'popup-close') {
       action.then.forEach(collectActionUse);
     }
+    if (action.kind === 'jsfun-run') {
+      referencedJsIds.add(action.nodeId);
+      jsArgExprs(action.nodeId).forEach(collectExprUse);
+      action.then.forEach(collectActionUse);
+    }
   };
   const allActions: HandlerAction[] = [
     ...Object.values(plan.handlers).flatMap((byPort) => Object.values(byPort).flat()),
@@ -239,7 +254,7 @@ export function emitComponent(
     actions.flatMap((a) =>
       a.kind === 'branch'
         ? [a, ...deepActions(a.whenTrue), ...deepActions(a.whenFalse)]
-        : a.kind === 'popup-show' || a.kind === 'popup-close'
+        : a.kind === 'popup-show' || a.kind === 'popup-close' || a.kind === 'jsfun-run'
           ? [a, ...deepActions(a.then)]
           : [a]
     );
@@ -250,6 +265,9 @@ export function emitComponent(
   const hookVariables: string[] = [];
   const hookStoreKeys: Array<{ storeName: string; key: string }> = [];
   const hookCollections: string[] = [];
+  /** Reactive JS nodes read from render bindings, first-encounter order — each earns one
+   * render local (`const formatShoutOut = formatShout({ name });`) plus its args' hooks. */
+  const renderJsIds: string[] = [];
   const hookExprSources = (expr: ValueExpr) => {
     if (expr.kind === 'store-get' && !hookVariables.includes(expr.variableName)) {
       hookVariables.push(expr.variableName);
@@ -267,6 +285,11 @@ export function emitComponent(
     }
     if (expr.kind === 'logical') expr.operands.forEach(hookExprSources);
     if (expr.kind === 'not' || expr.kind === 'truthy') hookExprSources(expr.operand);
+    if (expr.kind === 'jsfun-out') {
+      referencedJsIds.add(expr.nodeId);
+      if (!renderJsIds.includes(expr.nodeId)) renderJsIds.push(expr.nodeId);
+      jsArgExprs(expr.nodeId).forEach(hookExprSources);
+    }
   };
   for (const id of preOrder(plan)) {
     for (const source of Object.values(plan.bindings[id] ?? {})) {
@@ -300,6 +323,11 @@ export function emitComponent(
   plan.props.forEach((p) => reserved.add(p.name));
   plan.outputProps.forEach((o) => reserved.add(o.prop));
   if (plan.closesPopup) reserved.add('onClose');
+  // Wrapper names are module scope — locals must yield to them, so they reserve first.
+  for (const id of referencedJsIds) {
+    const def = jsFunByNode[id];
+    if (def) reserved.add(def.fnName);
+  }
   // The popup slot's state pair (POPUPS-TARGET §2) — allocated before the hook locals so a
   // variable named "openPopup" yields, not the slot.
   const allocLocal = (base: string): string => {
@@ -375,6 +403,14 @@ export function emitComponent(
     }
   }
 
+  // One render local per reactive JS node read from render bindings (EXP-003 §4 A1) —
+  // the derived-row rule one tier up: the node compiles away into a function call.
+  const jsLocals = new Map<string, string>();
+  for (const id of renderJsIds) {
+    const def = jsFunByNode[id];
+    if (def) jsLocals.set(id, dedupeLocal(`${def.fnName}Out`));
+  }
+
   // ---- expression + handler statement rendering ------------------------------------------
   // One expression vocabulary, two modes (LOGIC-TARGET §1): in render an expression reads the
   // component's hook locals; in a handler it reads `.get()` snapshots.
@@ -397,6 +433,8 @@ export function emitComponent(
         return true; // payload keys are optional-typed
       case 'undefined':
         return true; // a Component Object property's boot value (COMPONENT-OBJECT-TARGET §3)
+      case 'jsfun-out':
+        return expr.fold === undefined; // an unwritten output reads undefined, like the runtime getter
       case 'input-text':
       case 'literal':
       case 'format':
@@ -405,6 +443,17 @@ export function emitComponent(
       case 'truthy':
         return false;
     }
+  };
+  /** The wrapper call's argument record; shorthand where the arg code is the field name. */
+  const jsArgsObject = (def: JsFunctionPlan, mode: 'handler' | 'render'): string => {
+    const entries = def.inputs
+      .filter((i) => i.expr !== undefined)
+      .map((i) => {
+        const code = exprCode(i.expr!, mode);
+        const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(i.name) ? i.name : JSON.stringify(i.name);
+        return key === code ? code : `${key}: ${code}`;
+      });
+    return entries.length > 0 ? `{ ${entries.join(', ')} }` : '{}';
   };
   const exprCode = (expr: ValueExpr, mode: 'handler' | 'render'): string => {
     switch (expr.kind) {
@@ -453,6 +502,19 @@ export function emitComponent(
       }
       case 'truthy':
         return exprCode(expr.operand, mode);
+      // Render reads the node's local; a handler inlines the call over `.get()` snapshots —
+      // pure by the gate, so recomputation is unobservable (EXP-003 §4). The folds are
+      // Expression's typed getters, verbatim semantics (expression.ts).
+      case 'jsfun-out': {
+        const def = jsFunByNode[expr.nodeId]!;
+        const local = mode === 'render' ? jsLocals.get(expr.nodeId) : undefined;
+        const callee = local ?? `${def.fnName}(${jsArgsObject(def, mode)})`;
+        const base = def.kind === 'function' ? memberExpr(callee, expr.output) : callee;
+        if (expr.fold === 'string') return `String(${base} ?? '')`;
+        if (expr.fold === 'number') return `(typeof ${base} === 'number' ? ${base} : Number(${base}) || 0)`;
+        if (expr.fold === 'boolean') return `!!${base}`;
+        return base;
+      }
     }
   };
   /**
@@ -461,7 +523,13 @@ export function emitComponent(
    */
   const expandActions = (actions: HandlerAction[]): HandlerAction[] =>
     actions.flatMap((a) =>
-      a.kind === 'popup-show' && a.then.length > 0 ? [{ ...a, then: [] }, ...expandActions(a.then)] : [a]
+      a.kind === 'popup-show' && a.then.length > 0
+        ? [{ ...a, then: [] }, ...expandActions(a.then)]
+        : // A jsfun-run is only its done-chain (EXP-003 §4 A2h): output reads inline the call
+          // at their sinks, so the run itself needs no statement.
+          a.kind === 'jsfun-run'
+          ? expandActions(a.then)
+          : [a]
     );
   const actionCode = (action: HandlerAction): string => {
     switch (action.kind) {
@@ -506,6 +574,10 @@ export function emitComponent(
         const then = expandActions(action.then).map(actionCode);
         return `if (onClose) { onClose(${arg}); ${then.join('; ')}; }`;
       }
+      // Unreachable in practice — every print site expands first, and expandActions replaces a
+      // jsfun-run with its chain; kept total so the switch stays exhaustive.
+      case 'jsfun-run':
+        return expandActions(action.then).map(actionCode).join('; ');
       case 'branch': {
         const armCode = (armActions: HandlerAction[]): string => {
           const list = expandActions(armActions);
@@ -702,6 +774,12 @@ export function emitComponent(
       if (bound.kind === 'computed' && bound.expr.kind === 'literal') return jsxText(String(bound.expr.value));
       // A boot-value read renders empty, as the runtime renders an undefined text.
       if (bound.kind === 'computed' && bound.expr.kind === 'undefined') return null;
+      // An unwritten wrapper output reads undefined; the runtime renders that as nothing
+      // (EXP-003 §4's `{formatListOut.text ?? ''}` shape).
+      if (bound.kind === 'computed' && bound.expr.kind === 'jsfun-out' && maybeUndefined(bound.expr)) {
+        const code = bindingExpr(bound);
+        if (code !== null) return `{${code} ?? ''}`;
+      }
       const expr = bindingExpr(bound);
       if (expr !== null) return `{${expr}}`;
       notes.push(`${plan.path}: wire into ${node.id}.${paramName} has no statically known source — dropped, reported`);
@@ -1032,6 +1110,56 @@ export function emitComponent(
       ];
     });
 
+  /**
+   * The re-host wrapper (EXP-003 §4): the body verbatim — never reindented, a template
+   * literal's inner lines are content — inside the contract the runtime gives it. The body
+   * runs in an IIFE so a body-level `return` exits the *body* (as it exits the runtime's
+   * compiled function) and the wrapper still returns Outputs; the catch mirrors the runtime's
+   * own (a throw publishes what was written before it, pulses only unconsumed failure paths,
+   * and an Expression answers 0 — expression.ts `_calculateExpression`).
+   */
+  const jsWrapperLines = (def: JsFunctionPlan): string[] => {
+    const fieldKey = (name: string) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name));
+    const inputFields = def.inputs.map((i) => `${fieldKey(i.name)}?: ${i.tsType}`);
+    const inputsType = inputFields.length > 0 ? `{ ${inputFields.join('; ')} }` : 'Record<string, never>';
+    const lines: string[] = [];
+    if (def.kind === 'function') {
+      const outputFields = [
+        ...def.outputs.map((o) => `${fieldKey(o.name)}?: ${o.tsType}`),
+        ...def.signals.map((s) => `${fieldKey(s)}: () => void`)
+      ];
+      const outputsType = outputFields.length > 0 ? `{ ${outputFields.join('; ')} }` : 'Record<string, never>';
+      const seeds = def.signals.map((s) => `${fieldKey(s)}: () => {}`);
+      lines.push(`// From the Function node "${def.fnName}" — the body is preserved verbatim (EXP-003 §4).`);
+      lines.push(`function ${def.fnName}(Inputs: ${inputsType}): ${outputsType} {`);
+      lines.push(`  const Outputs: ${outputsType} = {${seeds.length > 0 ? ` ${seeds.join(', ')} ` : ''}};`);
+      lines.push('  try {');
+      lines.push('    (() => {');
+      lines.push(...def.body.split('\n'));
+      lines.push('    })();');
+      lines.push('  } catch (e) {');
+      lines.push(`    console.error('Function node ${def.fnName} threw:', e);`);
+      lines.push('  }');
+      lines.push('  return Outputs;');
+      lines.push('}');
+    } else {
+      const params = def.inputs.length > 0 ? `{ ${def.inputs.map((i) => i.name).join(', ')} }: ${inputsType}` : '';
+      lines.push(`// From the Expression node "${def.fnName}" — the expression is preserved verbatim (EXP-003 §4).`);
+      lines.push(`function ${def.fnName}(${params}) {`);
+      for (const alias of def.mathAliases) {
+        lines.push(alias === 'pi' ? '  const pi = Math.PI;' : `  const ${alias} = Math.${alias};`);
+      }
+      lines.push('  try {');
+      lines.push(`    return (${def.body});`);
+      lines.push('  } catch (e) {');
+      lines.push(`    console.error('Expression node ${def.fnName} threw:', e);`);
+      lines.push('    return 0;');
+      lines.push('  }');
+      lines.push('}');
+    }
+    return lines;
+  };
+
   const jsxLines = render(plan.rootId, 4);
   if (plan.popups.length > 0 && plan.roleOf[plan.rootId!] !== 'group' && plan.roleOf[plan.rootId!] !== 'page') {
     notes.push(`${plan.path}: popup slots need a container root to render under — dropped, reported`);
@@ -1053,6 +1181,12 @@ export function emitComponent(
   }
 
   const body: string[] = [];
+  // Re-host wrappers print above the component — locality is what a React developer inherits
+  // (EXP-003 §4). Only referenced definitions print, in the plan's resolution order.
+  for (const def of Object.values(jsFunByNode)) {
+    if (!referencedJsIds.has(def.nodeId)) continue;
+    body.push(...jsWrapperLines(def), '');
+  }
   const allPropNames = [...plan.props.map((p) => p.name), ...plan.outputProps.map((o) => o.prop)];
   if (plan.closesPopup) allPropNames.push('onClose');
   if (allPropNames.length > 0) {
@@ -1094,6 +1228,10 @@ export function emitComponent(
     const union = plan.popups.map((p) => tsLiteral(p.slotKey)).join(' | ');
     body.push(`  const [${popupState}, ${popupSetter}] = useState<${union} | null>(null);`);
   }
+  for (const [id, local] of jsLocals) {
+    const def = jsFunByNode[id]!;
+    body.push(`  const ${local} = ${def.fnName}(${jsArgsObject(def, 'render')});`);
+  }
   if (
     usesNavigate ||
     hookVariables.length > 0 ||
@@ -1101,7 +1239,8 @@ export function emitComponent(
     hookCollections.length > 0 ||
     radioNameLocals.size > 0 ||
     plan.queries.length > 0 ||
-    popupState !== null
+    popupState !== null ||
+    jsLocals.size > 0
   ) {
     body.push('');
   }
@@ -1122,6 +1261,8 @@ export function emitComponent(
       case 'popup-show':
       case 'popup-close':
         return a.then.flatMap(actionExprsOf);
+      case 'jsfun-run':
+        return [...jsArgExprs(a.nodeId), ...a.then.flatMap(actionExprsOf)];
       case 'navigate':
       case 'output-signal':
         return [];
@@ -1131,7 +1272,8 @@ export function emitComponent(
     e.kind === 'payload' ||
     (e.kind === 'format' && e.parts.some((p) => typeof p !== 'string' && containsPayload(p))) ||
     (e.kind === 'logical' && e.operands.some(containsPayload)) ||
-    ((e.kind === 'not' || e.kind === 'truthy') && containsPayload(e.operand));
+    ((e.kind === 'not' || e.kind === 'truthy') && containsPayload(e.operand)) ||
+    (e.kind === 'jsfun-out' && jsArgExprs(e.nodeId).some(containsPayload));
   for (const receiver of plan.receivers) {
     const channel = channelByName.get(receiver.channelName)!;
     const usesPayload = receiver.actions.some((a) => actionExprsOf(a).some(containsPayload));
