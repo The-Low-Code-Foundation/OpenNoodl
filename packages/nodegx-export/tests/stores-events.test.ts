@@ -39,6 +39,9 @@ export const lastCheer = value<string | undefined>(undefined);
 
 /** Written by "Visitor name" (net.noodl.controls.textinput \`nameInput\` on /Pages/Home). */
 export const visitorName = value<string | undefined>(undefined);
+
+/** Written by "Draft" (net.noodl.controls.textinput \`entryInput\` on /Pages/Notes). */
+export const noteDraft = value<string | undefined>(undefined);
 `;
 
 const GOLDEN_EVENTS = `// @nodegx:generated (events — provenance markers complete in EXP-007)

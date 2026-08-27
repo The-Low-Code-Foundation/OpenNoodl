@@ -13,7 +13,8 @@
           "startPage": "/Pages/Home",
           "routes": [
             "/Pages/Home",
-            "/Pages/Mood"
+            "/Pages/Mood",
+            "/Pages/Notes"
           ]
         }
       }

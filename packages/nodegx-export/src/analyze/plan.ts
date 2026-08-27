@@ -25,10 +25,14 @@ import {
   AppStateRegistry,
   ChannelPlan,
   collectAppState,
+  collectionNameOf,
+  CollectionPlan,
   GLOBAL_STORE,
   GLOBAL_STORE_SET,
   GLOBAL_STORE_SUBSCRIBE,
   initialStateOf,
+  InsertChain,
+  insertChainOf,
   isTextInputType,
   payloadKeysOf,
   StorePlan,
@@ -37,7 +41,14 @@ import {
   VariablePlan
 } from './appState';
 
-export type { ChannelPlan, StoreKeyPlan, StorePlan, VariablePlan } from './appState';
+export type {
+  ChannelPlan,
+  CollectionKeyPlan,
+  CollectionPlan,
+  StoreKeyPlan,
+  StorePlan,
+  VariablePlan
+} from './appState';
 
 /** How a node participates in the render, or null for pure logic nodes. */
 export type RenderRole = StyleRole | 'instance' | 'repeater';
@@ -57,13 +68,15 @@ export type ValueExpr =
   | { kind: 'prop'; name: string }
   | { kind: 'input-text'; inputId: string }
   | { kind: 'store-get'; variableName: string }
-  | { kind: 'payload'; key: string; receiverId: string };
+  | { kind: 'payload'; key: string; receiverId: string }
+  | { kind: 'literal'; value: string | number | boolean };
 
 export type HandlerAction =
   | { kind: 'navigate'; to: string }
   | { kind: 'emit'; channelName: string; payload: Array<{ key: string; expr: ValueExpr }> }
   | { kind: 'store-set'; variableName: string; expr: ValueExpr }
-  | { kind: 'globalstore-set'; storeName: string; key: string; expr: ValueExpr };
+  | { kind: 'globalstore-set'; storeName: string; key: string; expr: ValueExpr }
+  | { kind: 'collection-add'; collectionName: string; entries: Array<{ key: string; expr: ValueExpr }> };
 
 export interface ReceiverPlan {
   nodeId: string;
@@ -95,12 +108,17 @@ export interface RepeaterPlan {
   templatePath: string | null;
   /** The DbCollection2 node wired into `items`, or null when nothing statically known feeds it. */
   itemsQueryId: string | null;
+  /** The named client-side array wired into `items` (Collection2.items), or null. */
+  itemsCollectionName: string | null;
   /**
    * The identity mapping parsed from the effective mapping script (authored parameter, else the
-   * declared port's default — the fixture's trap). Null when the script is anything beyond a
-   * static string→string `map({...})` literal; that repeater defers to EXP-003.
+   * declared port's default — the fixture's trap). **No script at all is 'template-inputs'**:
+   * the runtime then identity-maps item properties onto same-named component inputs by itself
+   * (foreach.tsx), so the mapping is the template's input names, resolved at emit. Null when
+   * the script is anything beyond a static string→string `map({...})` literal; that repeater
+   * defers to EXP-003.
    */
-  mapping: Array<{ input: string; field: string }> | null;
+  mapping: Array<{ input: string; field: string }> | 'template-inputs' | null;
 }
 
 export interface ComponentFilePlan {
@@ -158,6 +176,8 @@ export interface ProjectPlan {
   channels: ChannelPlan[];
   /** Named Global Stores, discovery order — one src/stores/<exportName>.ts each. */
   stores: StorePlan[];
+  /** Named client-side arrays, discovery order — one src/collections/<exportName>.ts each. */
+  collections: CollectionPlan[];
 }
 
 export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
@@ -187,7 +207,8 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
     stubCollections,
     variables: [...registry.variables.values()],
     channels: [...registry.channels.values()],
-    stores: [...registry.stores.values()]
+    stores: [...registry.stores.values()],
+    collections: [...registry.collections.values()]
   };
 }
 
@@ -344,7 +365,10 @@ function planComponent(
       nodeId: node.id,
       templatePath: typeof template === 'string' ? template : null,
       itemsQueryId: null,
-      mapping: script !== undefined ? parseIdentityMapping(script) : []
+      itemsCollectionName: null,
+      // No script anywhere is the runtime's own identity mapping over the template's inputs
+      // (foreach.tsx) — not an empty mapping. Resolved against the template plan at emit.
+      mapping: script !== undefined ? parseIdentityMapping(script) : 'template-inputs'
     };
   }
 
@@ -391,14 +415,31 @@ function planComponent(
     return null;
   };
 
-  type CompiledSink = { action: HandlerAction; consumes: string[] } | { defer: string };
+  type CompiledSink = { action: HandlerAction; consumes: string[]; collapses?: string[] } | { defer: string };
 
   const TRIGGER_PORTS: Record<string, string> = {
     RouterNavigate: 'navigate',
     'Event Sender': 'sendEvent',
     'Set Variable': 'do',
-    [GLOBAL_STORE_SET]: 'set'
+    [GLOBAL_STORE_SET]: 'set',
+    NewModel: 'new'
   };
+
+  // The NewModel → CollectionInsert chains (COLLECTIONS-TARGET §2), keyed by the NewModel so
+  // the trigger wire into `new` compiles the whole pair. An insert whose chain defers parks the
+  // reason on the NewModel feeding its Do, so the trigger wire reports why.
+  const chainByNewModel = new Map<string, { chain: InsertChain } | { defer: string }>();
+  for (const node of component.nodes) {
+    if (node.type !== 'CollectionInsert') continue;
+    const result = insertChainOf(component, node, nodeById, wiredPorts);
+    if ('chain' in result) {
+      chainByNewModel.set(result.chain.newModelId, result);
+    } else {
+      const addWire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'add');
+      const from = addWire ? nodeById.get(addWire.fromId) : undefined;
+      if (from?.type === 'NewModel' && !chainByNewModel.has(from.id)) chainByNewModel.set(from.id, result);
+    }
+  }
 
   const compileSink = (node: NodeIR): CompiledSink => {
     if (node.type === 'RouterNavigate') {
@@ -450,6 +491,27 @@ function planComponent(
       if (expr === null) return { defer: 'the value wire has no statically known source' };
       return { action: { kind: 'globalstore-set', storeName: store.name, key, expr }, consumes: [wire.key] };
     }
+    if (node.type === 'NewModel') {
+      const result = chainByNewModel.get(node.id);
+      if (result === undefined) return { defer: 'the created object is never inserted into a translated array' };
+      if ('defer' in result) return { defer: result.defer };
+      const chain = result.chain;
+      const entries: Array<{ key: string; expr: ValueExpr }> = [];
+      for (const property of chain.properties) {
+        if (property.wire) {
+          const expr = resolveExpr(nodeById.get(property.wire.fromId), property.wire.fromProperty);
+          if (expr === null) return { defer: `property "${property.key}" has no statically known source` };
+          entries.push({ key: property.key, expr });
+        } else if (property.literal !== undefined) {
+          entries.push({ key: property.key, expr: { kind: 'literal', value: property.literal } });
+        }
+      }
+      return {
+        action: { kind: 'collection-add', collectionName: chain.collectionName, entries },
+        consumes: chain.consumes,
+        collapses: [chain.insertId]
+      };
+    }
     // Set Variable
     const variableName = variableNameOf(node);
     if (variableName === undefined) return { defer: 'variable name is not a literal' };
@@ -473,6 +535,8 @@ function planComponent(
     switch (action.kind) {
       case 'emit':
         return action.payload.map((p) => p.expr);
+      case 'collection-add':
+        return action.entries.map((e) => e.expr);
       case 'store-set':
       case 'globalstore-set':
         return [action.expr];
@@ -488,6 +552,7 @@ function planComponent(
     switch (expr.kind) {
       case 'prop':
       case 'store-get':
+      case 'literal':
         return true;
       case 'input-text':
         return context.kind === 'dom' && context.nodeId === expr.inputId;
@@ -536,6 +601,7 @@ function planComponent(
       const list = (plan.changeHandlers[fromNode.id] = plan.changeHandlers[fromNode.id] ?? []);
       list.push(compiled.action);
       dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
+      for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
       continue;
     }
@@ -550,6 +616,7 @@ function planComponent(
         plan.handlers[fromNode.id][connection.fromProperty] ?? []);
       list.push(compiled.action);
       dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
+      for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
       continue;
     }
@@ -567,6 +634,7 @@ function planComponent(
       }
       receiverActions.set(fromNode.id, [...(receiverActions.get(fromNode.id) ?? []), compiled.action]);
       dispositions[toNode.id] = { kind: 'collapsed', into: fromNode.id };
+      for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into: fromNode.id };
       for (const key of compiled.consumes) consumed.add(key);
       continue;
     }
@@ -690,7 +758,21 @@ function planComponent(
     boundSubscribers.add(fromNode.id);
   }
 
-  // Pass 5: Component Inputs bindings and the query→repeater feed (step 4's rules).
+  // Pass 5: Component Inputs bindings and the query/array→repeater feeds (step 4's rules,
+  // plus the Collection2 read side — COLLECTIONS-TARGET §2).
+  const boundCollectionReaders = new Set<string>();
+  const collectionReadEligible = (node: NodeIR): true | string => {
+    if (component.connections.some((c) => c.toId === node.id)) {
+      return 'the array node has wired inputs (seeding or fetch) — not translated in this slice';
+    }
+    const stray = component.connections.find(
+      (c) =>
+        c.fromId === node.id &&
+        !(c.fromProperty === 'items' && c.toProperty === 'items' && nodeById.get(c.toId)?.type === 'For Each')
+    );
+    if (stray) return `its ${stray.fromProperty} output drives logic this slice does not translate`;
+    return true;
+  };
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
     const fromNode = nodeById.get(connection.fromId);
@@ -709,6 +791,28 @@ function planComponent(
     ) {
       plan.repeaters[toNode.id].itemsQueryId = fromNode.id;
       consumed.add(connection.key);
+      continue;
+    }
+    if (
+      toNode?.type === 'For Each' &&
+      connection.toProperty === 'items' &&
+      fromNode?.type === 'Collection2' &&
+      connection.fromProperty === 'items' &&
+      plan.repeaters[toNode.id]
+    ) {
+      consumed.add(connection.key);
+      const collectionName = collectionNameOf(fromNode, wiredPorts);
+      if (collectionName === undefined) {
+        notes.push(`wire ${connection.key} dropped: array id is not a literal`);
+        continue;
+      }
+      const eligible = collectionReadEligible(fromNode);
+      if (eligible !== true) {
+        notes.push(`wire ${connection.key} dropped: ${eligible}`);
+        continue;
+      }
+      plan.repeaters[toNode.id].itemsCollectionName = collectionName;
+      boundCollectionReaders.add(fromNode.id);
       continue;
     }
   }
@@ -764,6 +868,21 @@ function planComponent(
           reason: 'subscription drives nothing statically translatable'
         };
       }
+    }
+  }
+
+  // Array readers collapse into the component file that hosts their useCollection hook,
+  // exactly as bound Subscribes do; anything else about a Collection2 defers.
+  for (const node of component.nodes) {
+    if (node.type !== 'Collection2' || dispositions[node.id] !== undefined) continue;
+    if (boundCollectionReaders.has(node.id) && plan.file) {
+      dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+    } else {
+      const reason =
+        collectionNameOf(node, wiredPorts) === undefined
+          ? 'array id is not a literal'
+          : 'array feeds nothing statically translatable';
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
     }
   }
 

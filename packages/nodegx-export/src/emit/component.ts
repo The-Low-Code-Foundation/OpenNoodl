@@ -20,6 +20,7 @@ import { CatalogIndex } from '../catalog';
 import { BindingSource, ComponentPlan, HandlerAction, ProjectPlan, QueryPlan, ValueExpr } from '../analyze/plan';
 import { ExportIR, NodeIR } from '../ir/types';
 import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase } from './naming';
+import { tsLiteral } from './state';
 import { computeNodeStyle, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, StyleRole } from './style';
 
 const GENERATED_TS = '// @nodegx:generated (visual — provenance markers complete in EXP-007)\n';
@@ -128,9 +129,11 @@ export function emitComponent(
   const variableByName = new Map(project.variables.map((v) => [v.name, v]));
   const channelByName = new Map(project.channels.map((c) => [c.name, c]));
   const storeByName = new Map(project.stores.map((s) => [s.name, s]));
+  const collectionByName = new Map(project.collections.map((c) => [c.name, c]));
   const usedVariableNames = new Set<string>();
   const usedChannelNames = new Set<string>();
   const usedStoreNames = new Set<string>();
+  const usedCollectionNames = new Set<string>();
   const collectExprUse = (expr: ValueExpr) => {
     if (expr.kind === 'store-get') usedVariableNames.add(expr.variableName);
   };
@@ -147,6 +150,10 @@ export function emitComponent(
       usedStoreNames.add(action.storeName);
       collectExprUse(action.expr);
     }
+    if (action.kind === 'collection-add') {
+      usedCollectionNames.add(action.collectionName);
+      action.entries.forEach((e) => collectExprUse(e.expr));
+    }
   };
   const allActions: HandlerAction[] = [
     ...Object.values(plan.handlers).flatMap((byPort) => Object.values(byPort).flat()),
@@ -159,6 +166,7 @@ export function emitComponent(
   // Render bindings needing hooks, in pre-order encounter order.
   const hookVariables: string[] = [];
   const hookStoreKeys: Array<{ storeName: string; key: string }> = [];
+  const hookCollections: string[] = [];
   for (const id of preOrder(plan)) {
     for (const source of Object.values(plan.bindings[id] ?? {})) {
       if (source.kind === 'store' && !hookVariables.includes(source.variableName)) {
@@ -171,6 +179,13 @@ export function emitComponent(
       ) {
         hookStoreKeys.push({ storeName: source.storeName, key: source.key });
         usedStoreNames.add(source.storeName);
+      }
+    }
+    if (plan.roleOf[id] === 'repeater') {
+      const collectionName = plan.repeaters[id]?.itemsCollectionName;
+      if (collectionName != null && collectionByName.has(collectionName) && !hookCollections.includes(collectionName)) {
+        hookCollections.push(collectionName);
+        usedCollectionNames.add(collectionName);
       }
     }
   }
@@ -187,6 +202,7 @@ export function emitComponent(
   for (const name of usedVariableNames) reserved.add(variableByName.get(name)!.exportName);
   for (const name of usedChannelNames) reserved.add(channelByName.get(name)!.exportName);
   for (const name of usedStoreNames) reserved.add(storeByName.get(name)!.exportName);
+  for (const name of usedCollectionNames) reserved.add(collectionByName.get(name)!.exportName);
   const hookLocals = new Map<string, string>();
   for (const variableName of hookVariables) {
     const exportName = variableByName.get(variableName)!.exportName;
@@ -211,6 +227,26 @@ export function emitComponent(
     reserved.add(candidate);
     storeKeyLocals.set(storeKeyId(storeName, key), candidate);
   }
+  // A collection hook's local is `<exportName>Items`; the map callback's locals are `item` and
+  // `index`, all deduplicated against everything else in scope.
+  const collectionLocals = new Map<string, string>();
+  for (const collectionName of hookCollections) {
+    const exportName = collectionByName.get(collectionName)!.exportName;
+    let candidate = `${exportName}Items`;
+    let counter = 2;
+    while (reserved.has(candidate)) candidate = `${exportName}Items${counter++}`;
+    reserved.add(candidate);
+    collectionLocals.set(collectionName, candidate);
+  }
+  const dedupeLocal = (base: string): string => {
+    let candidate = base;
+    let counter = 2;
+    while (reserved.has(candidate)) candidate = `${base}${counter++}`;
+    reserved.add(candidate);
+    return candidate;
+  };
+  const itemLocal = hookCollections.length > 0 ? dedupeLocal('item') : 'item';
+  const indexLocal = hookCollections.length > 0 ? dedupeLocal('index') : 'index';
 
   // ---- handler statement rendering -------------------------------------------------------
   const exprCode = (expr: ValueExpr): string => {
@@ -223,6 +259,8 @@ export function emitComponent(
         return `${variableByName.get(expr.variableName)!.exportName}.get()`;
       case 'payload':
         return `payload.${expr.key}`;
+      case 'literal':
+        return tsLiteral(expr.value);
     }
   };
   const actionCode = (action: HandlerAction): string => {
@@ -235,6 +273,13 @@ export function emitComponent(
         const store = storeByName.get(action.storeName)!;
         const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(action.key) ? action.key : JSON.stringify(action.key);
         return `${store.exportName}.set({ ${key}: ${exprCode(action.expr)} })`;
+      }
+      case 'collection-add': {
+        const collection = collectionByName.get(action.collectionName)!;
+        const entries = action.entries
+          .map((e) => `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(e.key) ? e.key : JSON.stringify(e.key)}: ${exprCode(e.expr)}`)
+          .join(', ');
+        return `${collection.exportName}.add({${entries.length > 0 ? ` ${entries} ` : ''}})`;
       }
       case 'emit': {
         const channel = channelByName.get(action.channelName)!;
@@ -258,6 +303,7 @@ export function emitComponent(
   const coreHooks: string[] = [];
   if (hookLocals.size > 0) coreHooks.push('useValue');
   if (storeKeyLocals.size > 0) coreHooks.push('useStore');
+  if (collectionLocals.size > 0) coreHooks.push('useCollection');
   if (plan.receivers.length > 0) coreHooks.push('useSignal');
   if (coreHooks.length > 0) {
     externalImports.push(`import { ${coreHooks.sort().join(', ')} } from '@nodegx/core/react';`);
@@ -290,6 +336,11 @@ export function emitComponent(
     const store = storeByName.get(name)!;
     const specifier = `${relRoot}/stores/${store.exportName}`;
     internalImports.set(specifier, `import { ${store.exportName} } from '${specifier}';`);
+  }
+  for (const name of [...usedCollectionNames].sort()) {
+    const collection = collectionByName.get(name)!;
+    const specifier = `${relRoot}/collections/${collection.exportName}`;
+    internalImports.set(specifier, `import { ${collection.exportName} } from '${specifier}';`);
   }
   if (usedChannelNames.size > 0) {
     const specifier = `${relRoot}/events`;
@@ -426,25 +477,51 @@ export function emitComponent(
   const renderRepeater = (node: NodeIR, indent: number): string[] => {
     const repeater = plan.repeaters[node.id];
     const query = plan.queries.find((q) => q.nodeId === repeater?.itemsQueryId);
+    const collection =
+      repeater?.itemsCollectionName != null ? collectionByName.get(repeater.itemsCollectionName) : undefined;
     const target = requireInstance(repeater?.templatePath ?? null, `For Each ${node.id}`);
-    if (!repeater || !query || !target || repeater.mapping === null) {
+    const templatePlan = repeater?.templatePath ? project.byLegacyPath.get(repeater.templatePath) : undefined;
+    if (!repeater || (!query && !collection) || !target || repeater.mapping === null) {
       const reason = !repeater?.templatePath
         ? 'no template component'
         : repeater.mapping === null
           ? 'dynamic mapping script'
-          : !query
-            ? 'items are not fed by a query'
+          : !query && !collection
+            ? 'items are not fed by a query or a named array'
             : 'unresolvable template';
       notes.push(`${plan.path}: For Each ${node.id} deferred to EXP-003 (${reason})`);
       return [`${pad(indent)}{/* TODO(export): For Each ${node.id} deferred to EXP-003 (${reason}) */}`];
     }
-    const item = query.itemName;
-    const attrs = [
-      `key={${item}.id}`,
-      ...repeater.mapping.map(({ input, field }) => `${input}={${memberExpr(item, field)}}`)
-    ];
+    // 'template-inputs' is the no-script case: the runtime identity-maps item properties onto
+    // same-named component inputs by itself (foreach.tsx), so the template's props are the map.
+    const mapping =
+      repeater.mapping === 'template-inputs'
+        ? (templatePlan?.props ?? []).map((p) => ({ input: p.name, field: p.name }))
+        : repeater.mapping;
+    // Restrict to fields the item type actually carries — the runtime feeds undefined outside
+    // them (which the empty-value contract never delivers), and the emitted type has no key.
+    const allowedFields = collection
+      ? new Set(collection.keys.map((k) => k.key))
+      : new Set(['id', ...(ir.project.collections.find((c) => c.name === query!.collectionName)?.columns ?? []).map((c) => c.name)]);
+    const kept = mapping.filter((entry) => allowedFields.has(entry.field));
+    for (const dropped of mapping.filter((entry) => !allowedFields.has(entry.field))) {
+      notes.push(
+        `${plan.path}: For Each ${node.id} maps "${dropped.input}" from field "${dropped.field}", which no statically-known item carries — dropped, reported`
+      );
+    }
+    if (collection) {
+      const attrs = [
+        `key={${indexLocal}}`,
+        ...kept.map(({ input, field }) => `${input}={${memberExpr(itemLocal, field)}}`)
+      ];
+      const lines = element(target.symbol, attrs, null, indent + 2, false);
+      const local = collectionLocals.get(collection.name)!;
+      return [`${pad(indent)}{${local}.map((${itemLocal}, ${indexLocal}) => (`, ...lines, `${pad(indent)}))}`];
+    }
+    const item = query!.itemName;
+    const attrs = [`key={${item}.id}`, ...kept.map(({ input, field }) => `${input}={${memberExpr(item, field)}}`)];
     const lines = element(target.symbol, attrs, null, indent + 2, false);
-    return [`${pad(indent)}{${query.stateName}.map((${item}) => (`, ...lines, `${pad(indent)}))}`];
+    return [`${pad(indent)}{${query!.stateName}.map((${item}) => (`, ...lines, `${pad(indent)}))}`];
   };
 
   const instanceAttrs = (node: NodeIR): string[] => {
@@ -500,10 +577,22 @@ export function emitComponent(
     const selector = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? `s.${key}` : `s[${JSON.stringify(key)}]`;
     body.push(`  const ${storeKeyLocals.get(storeKeyId(storeName, key))} = useStore(${store.exportName}, (s) => ${selector});`);
   }
+  for (const collectionName of hookCollections) {
+    const collection = collectionByName.get(collectionName)!;
+    body.push(`  const ${collectionLocals.get(collectionName)} = useCollection(${collection.exportName});`);
+  }
   for (const query of plan.queries) {
     body.push(`  const [${query.stateName}, ${query.setterName}] = useState<${query.typeName}[]>([]);`);
   }
-  if (usesNavigate || hookVariables.length > 0 || hookStoreKeys.length > 0 || plan.queries.length > 0) body.push('');
+  if (
+    usesNavigate ||
+    hookVariables.length > 0 ||
+    hookStoreKeys.length > 0 ||
+    hookCollections.length > 0 ||
+    plan.queries.length > 0
+  ) {
+    body.push('');
+  }
   for (const query of plan.queries) {
     body.push('  useEffect(() => {', `    ${query.fetchName}().then(${query.setterName});`, '  }, []);', '');
   }

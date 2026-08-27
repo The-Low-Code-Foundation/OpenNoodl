@@ -13,10 +13,11 @@
  * (dependencies stay computed from the output, TARGET-OUTPUT §3).
  */
 
-import { ChannelPlan, ProjectPlan, StorePlan, VariablePlan } from '../analyze/plan';
+import { ChannelPlan, CollectionPlan, ProjectPlan, StorePlan, VariablePlan } from '../analyze/plan';
 
 const GENERATED_STORES = '// @nodegx:generated (stores — provenance markers complete in EXP-007)\n';
 const GENERATED_EVENTS = '// @nodegx:generated (events — provenance markers complete in EXP-007)\n';
+const GENERATED_COLLECTIONS = '// @nodegx:generated (collections — provenance markers complete in EXP-007)\n';
 
 export function emitStateModules(project: ProjectPlan): Record<string, string> {
   const files: Record<string, string> = {};
@@ -30,7 +31,45 @@ export function emitStateModules(project: ProjectPlan): Record<string, string> {
     if (store.deferred !== undefined) continue;
     files[`src/stores/${store.exportName}.ts`] = storeModule(store);
   }
+  for (const collection of project.collections) {
+    files[`src/collections/${collection.exportName}.ts`] = collectionModule(collection);
+  }
   return files;
+}
+
+/**
+ * One module per named client-side array (COLLECTIONS-TARGET §1): the item interface is the
+ * union of statically-known inserted property sets, all optional; the contents start empty
+ * (a named array starts empty in the runtime's table); the doc comment is the reader +
+ * inserter list.
+ */
+function collectionModule(collection: CollectionPlan): string {
+  const fields = collection.keys.map(
+    (k) => `  ${propKey(k.key)}?: ${k.tsType === 'unknown' ? 'unknown' : k.tsType};`
+  );
+  const iface = `export interface ${collection.interfaceName} {${fields.length > 0 ? `\n${fields.join('\n')}\n` : ''}}`;
+
+  const lines = [
+    ...collection.readers.map(
+      (r) => `Named by ${r.label !== undefined ? `"${r.label}" ` : ''}(Collection2 \`${r.nodeId}\` on /${r.componentPath}).`
+    ),
+    ...collection.inserters.map(
+      (i) =>
+        `Inserted by ${i.label !== undefined ? `"${i.label}" ` : ''}(NewModel \`${i.newModelId}\` → CollectionInsert \`${i.insertId}\` on /${i.componentPath}).`
+    )
+  ];
+  const comment =
+    lines.length === 0
+      ? '/** No statically-known reader or inserter — the array exists because nodes name it. */'
+      : lines.length === 1
+        ? `/** ${lines[0]} */`
+        : `/**\n${lines.map((line) => ` * ${line}`).join('\n')}\n */`;
+
+  const declaration = `${comment}\nexport const ${collection.exportName} = collection<${collection.interfaceName}>([]);`;
+
+  return (
+    GENERATED_COLLECTIONS + `import { collection } from '@nodegx/core';\n\n` + iface + '\n\n' + declaration + '\n'
+  );
 }
 
 /**
@@ -76,7 +115,7 @@ function declarersComment(store: StorePlan): string {
 }
 
 /** An object key as TS source: bare when it is a valid identifier, quoted otherwise. */
-function propKey(key: string): string {
+export function propKey(key: string): string {
   return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : tsLiteral(key);
 }
 
@@ -84,7 +123,7 @@ function propKey(key: string): string {
  * A JSON value as a TS literal. Strings prefer single quotes (the emitted code's own style)
  * and fall back to the JSON form when quoting or control characters would need escapes.
  */
-function tsLiteral(value: unknown): string {
+export function tsLiteral(value: unknown): string {
   if (typeof value === 'string') {
     // eslint-disable-next-line no-control-regex
     return /^[^'\\\u0000-\u001f]*$/.test(value) ? `'${value}'` : JSON.stringify(value);
