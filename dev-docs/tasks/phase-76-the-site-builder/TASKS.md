@@ -478,8 +478,13 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   ✅ **84 warnings → 23, and all 23 are browser-side** — `/Pages/PageEditor` 14, `/Pages/Admin` 3,
   `/Pages/ThemeEditor` 3, `/Admin/SectionRow` 1. **The public site and the Setup page are clean**,
   which bounds §6.5's browser question for the first time: the drop is confined to the admin panel.
-  ⬜ **Still owed**: the Setup-page half of acceptance 2 (same browser deploy); the browser half
-  itself; and the backend-side half of acceptance 1 (`authored-bundle.ts` lossless on connections).
+  ✅ **s18 closed two of the three still owed.** The backend-side half of acceptance 1 is written
+  (`sb017-helper-is-lossless.test.ts`, 5 cases / 2 mutants, **100 of 100** as a two-way multiset),
+  and the browser half is **measured** (SB-017 §11): the 23 are **19 `prop-` wires + 2 dead
+  `For Each.Changed`**, one family, and a deployed admin panel writes a `Page` that is published
+  and in the nav with **no title and no slug**. 🧭 Its fix is Richard's — a fourth adapter is not
+  it, because on a browser component the viewer is already the writer (§11.4).
+  ⬜ **Still owed**: the Setup-page half of acceptance 2 (same browser deploy).
   🆕 **A third small template defect** found by the drive → SB-018 §5: `submitContactForm` answers
   `{"received": false}` about a message it stored, because `Outputs.built()` is a **signal** wired
   into the Response's **value** port `pm-received`.
@@ -982,3 +987,54 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   `@noodl-versioning`, `@noodl-viewer-cloud/*`) in files nobody touched. It reads as your
   regression and it is not. `rm -rf` it; it is gitignored, only `test`/`test-ci` use it, and
   `renderer.dev` is `cache: false` so it cannot touch a running `dev:debug` stack.
+
+- **s16 / s17 (2026-08-27)** — recorded in the task file rather than here: **SB-017 §8** is s16's
+  resolution and Richard's ruling, **SB-017 §10** is s17's fix, drive and gates (commit
+  `0236a696`, **49 of 100 becomes 100**, both endpoints answer).
+- **s18 (2026-08-27)** — **the browser half priced, and acceptance 1 closed from both ends.** No
+  source changed; two specs added, five mutants graded, every gate run.
+  ✅ **SB-017 acceptance 1's backend half is written** — `nodegx-backend/tests/sb017-helper-is-lossless.test.ts`,
+  **5 cases / 2 mutants**. `bundleAuthoredComponents` emits **100 of 100** connections per
+  component, compared against the **shipped template** because the two converters cannot run in
+  one process. 🔴 **As a two-way multiset of type-qualified wires, and the mutant proved that was
+  necessary**: re-pointing `storageFetch` to `items` left every per-component count correct and
+  reddened only the multiset case. "editor == helper" is no longer asserted of one side.
+  ✅ **SB-017 §11 — the browser half is measured, and it did not need a drive.**
+  `noodl-editor/tests-unit/sb-017/the-browser-half-drops-every-record-field.test.ts`, **6 cases /
+  3 mutants**. The census is derived from the shipped artefact and the **real runtime modules**
+  and reproduces s17's warnings panel exactly, per component — **14 / 3 / 3 / 1**.
+  🔴 **The 23 are 19 `prop-<field>` wires + 2 dead `For Each.Changed`. One family, not two.**
+  §10.8's candidate list said `prop-` *and* `storageFetch`; `storageFetch` already resolves on
+  the browser side, measured through the same modules as the known-firing control. The browser is
+  not missing a runtime client — the viewer is one — it is missing a **schema**, which is §10.2's
+  finding on the other half: `recordFieldPorts` mints one port per column and a site nobody has
+  written to has no columns.
+  🔴 **The cost, which was the open question**: the loss is **total per write node**, so a deployed
+  admin panel cannot save a title, give a section its `pageId`, or write a theme's tokens.
+  🔴 **And the measurement corrected its own first reading, which is the finding worth carrying.**
+  "Every wire dropped" is not "every field lost": a `prop-` set as a **parameter** is not a
+  connection and survives. `/Pages/Admin` sets three that way and wires two — so the deployed panel
+  writes a `Page` that is **published, in the navigation and ordered, with no title and no slug**.
+  **A row that fails to appear gets reported; this one appears.** Asserted, with the two sets shown
+  disjoint.
+  ⚠️ **Stated as prediction, not measurement**: `SiteSettings`/`Theme` may resolve after a claim
+  (`claimSite` mints them) while `Page`/`Section` cannot, because this panel is their only creator.
+  Nothing measured it.
+  🔴 **The mechanism is not template-specific** — any project deploying a form that writes to a
+  class with no rows yet loses its wired record fields, and gets them back once something has
+  written to the class. **So *when you pressed Deploy* is part of whether the deployed app works.**
+  Not measured beyond this template; stated because the mechanism says it.
+  🧭 **A fourth adapter is NOT the fix, and that is a measured constraint** (SB-017 §11.4): on a
+  browser component **the viewer is already the writer** for these nodes and `setDynamicPorts`
+  replaces, so an editor-side adapter and the viewer would erase each other. Three options, one
+  recommended (derive it in the runtime, where the single writer already is — the wires are
+  reachable through `ComponentModel`'s `inputConnectionAdded`), each with its cost stated.
+  🆕 **The two `For Each.Changed` wires are 2 of the 23** and are recorded back into **SB-018 §6**:
+  SB-017's fix **must not** restore them — they are exactly what its known-firing control is about.
+  ✅ **Gates, all run alone**: `test:ci` **2863 specs, 4 failures, seed 64894, HEAD `e78f35fb`** —
+  the documented floor, all four `AIX-006 style vocabulary` **by name**, fresh `test-results.json`
+  (`.webpack-cache` cleared first). `nodegx-backend` full suite **109 suites / 1245 tests, 0
+  failures**. `noodl-editor` `test:main` **359 suites / 5913 tests, 0 failures**.
+  `typecheck:backend-tests` clean (exit 0); the `tests-unit/` file is typechecked by ts-jest
+  against `tsconfig.tests-main.json` at run time, **confirmed by a deliberate canary** that made
+  the suite fail *to run* (`Tests: 0 total`) rather than fail a case.

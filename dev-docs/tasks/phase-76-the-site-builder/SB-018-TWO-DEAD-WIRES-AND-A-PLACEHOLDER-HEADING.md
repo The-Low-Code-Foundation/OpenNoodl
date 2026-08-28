@@ -122,3 +122,17 @@ the second is a change to what the endpoint promises, so it is not a free pick.
 
 ⚠️ It is also the one connection WFA-009's `pm-` rule kept when SB-017 dropped the other 51,
 which is why it survived to be observed at all.
+
+
+## 6. s18 — the two `For Each.Changed` wires are 2 of SB-017's 23
+
+SB-017 §11's census of the browser half accounts for every one of the 23 warnings s17 read on
+the installed template, and **these two are two of them** — the residue after the 19 `prop-`
+wires. So this file's item (1) is not only dead on the canvas: **both wires are dropped by the
+browser deploy as well**, for the same reason every other undeclared port is.
+
+That does not change the disposition here — it stays bounded, because a valid
+`NewDbModelProperties.done` wire sits beside each and the refresh still fires — but it does
+change who fixes it. **SB-017 §11.4's fix must not restore these two.** They are the case its
+known-firing control is about: a wire to a port that exists on nothing has to keep being
+dropped. The right fix for these two is to delete them, which is this file's, not SB-017's.

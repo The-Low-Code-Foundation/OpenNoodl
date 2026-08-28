@@ -1,99 +1,111 @@
 # Phase 76 — next session
 
-Read `TASKS.md` here first. **s17 wrote the fix, and drove it: both endpoints answer.**
-SB-017 is closed except for three named remainders. Read **SB-017 §10** — it is the whole of
-what s17 did, and §10.2 is the one decision a reviewer should push on.
+Read `TASKS.md` here first. **s18 priced the browser half and closed acceptance 1 from both
+ends.** No source changed this session — two specs, five mutants, every gate green.
+
+Read **SB-017 §11** before anything else: it is the whole of what s18 did, and **§11.4 is the
+one decision a reviewer should push on** (it is Richard's, not an edit).
 
 Before authoring any *cloud* component, read `dev-docs/reference/BACKEND-AUTHORING-MODEL.md`
 §**"Five things a deployed graph does not do the way the canvas does"**. Before any *browser*
 component, **SB-005 §7** and **SB-006 §7**. Before touching the template, **SB-007 §3/§4**.
 
-## Where s17 left it (2026-08-27)
+## Where s18 left it (2026-08-27)
 
-✅ **SB-017 is FIXED (`0236a696`) and DRIVEN.** The editor now derives a cloud node's dynamic
-ports itself — the client WF-007 deleted, replaced where `dynamicPortRules.ts`'s header says
-it belongs: three `NodeTypeAdapters` classes over an import-free
-`models/nodelibrary/cloudDynamicPorts.ts`.
+✅ **SB-017 acceptance 1 is closed from both ends.** `nodegx-backend/tests/sb017-helper-is-lossless.test.ts`
+(5 cases / 2 mutants) says `bundleAuthoredComponents` emits **100 of 100** connections per
+component, measured against the **shipped template** — the same third thing the editor's half
+compares to, because the two converters cannot run in one process.
+🔴 **The multiset was necessary and the mutant proved it**: re-pointing `storageFetch` to
+`items` left every per-component count correct and reddened only the multiset case.
 
-- **The deployed bundle went 49 → 100 connections**, on the same preserved backend s15 used.
-- **`submitContactForm`: 200 in 0.055 s** (was 504 in 30.017 s), and the stored
-  `ContactMessage` carries all four submitted values.
-- **`claimSite`: `{"claimed": true}` in 26 ms** (was `status = error`, 30005 ms) — minting
-  `_Role` 1, the join row, `SiteSettings` **1** and `Theme` 1. 🔴 **SB-013's singleton fix
-  holds on the real deploy path**, which nothing had ever measured there.
-- 🔴 **Two known-firing controls**: a second claim with the **correct** token is refused, a
-  wrong token is refused, and **neither wrote a row**.
-- ✅ **84 warnings → 23.**
+✅ **The browser half is measured, and it did not need a drive.**
+`noodl-editor/tests-unit/sb-017/the-browser-half-drops-every-record-field.test.ts` (6 cases /
+3 mutants) derives the census from the shipped artefact and the **real runtime modules**, and
+reproduces s17's warnings panel **exactly, per component — 14 / 3 / 3 / 1**.
 
-🔴 **The one decision worth re-reading: `prop-*` is derived partly from the wires.**
-Everything else comes from parameters. The runtime builds `prop-` from the introspected
-columns of the class, and the real drive project's `dbCollections` metadata — written by a
-live, bound, started backend — is `columns: []` on every class. **That is permanent**: on this
-backend a column exists once something has written it, and the graph that writes it is the
-graph whose ports are missing. The runtime registers `prop-<anything>` from the wire, so the
-derivation is accurate; **the cost is that a mistyped `prop-titel` no longer warns**, and that
-is stated in SB-017 §10.2 rather than buried. (This also answers §6.5's old open question —
-s15's live-backend control had no schema to find.)
+- 🔴 **The 23 are 19 `prop-<field>` + 2 dead `For Each.Changed`. One family, not two.**
+  §10.8 guessed `prop-` *and* `storageFetch`; `storageFetch` already resolves on the browser
+  side. The browser is not missing a runtime client — the viewer **is** one — it is missing a
+  **schema**, exactly §10.2's finding on the other half.
+- 🔴 **The cost**: the loss is **total per write node**. A deployed admin panel cannot save a
+  page title, cannot give a section its `pageId`/`kind`/`order`, cannot write theme tokens,
+  and its editor fields never load their current values.
+- 🔴 **The measurement corrected its own first reading, and the correction is the finding.**
+  "Every wire dropped" is *not* "every field lost": a `prop-` set as a **parameter** is not a
+  connection and survives. `/Pages/Admin` sets three that way and wires two — so the deployed
+  panel writes a `Page` that is **published, in the navigation and ordered, with no title and
+  no slug**. **A row that fails to appear gets reported; this one appears.**
+- ⚠️ **Prediction, not measurement**: `SiteSettings`/`Theme` may resolve after a claim
+  (`claimSite` mints them) while `Page`/`Section` cannot, this panel being their only creator.
+- 🔴 **Not template-specific.** Any project deploying a form that writes to a class with no
+  rows yet loses its wired record fields, and gets them back once something has written to
+  that class. **So *when you pressed Deploy* is part of whether the deployed app works.** Not
+  measured beyond this template — stated because the mechanism says it, and because it decides
+  how wide the fix has to be.
 
 ## Next work, in order
 
-1. 🔴 **The browser half, now bounded rather than unbounded.** All 23 remaining warnings are
-   browser-side and **confined to the admin panel**: `/Pages/PageEditor` 14, `/Pages/Admin` 3,
-   `/Pages/ThemeEditor` 3, `/Admin/SectionRow` 1. **The public site and the Setup page are
-   clean**, so what SB-008 drove is unaffected. `build/deployer.ts` exports through the *same*
-   `exportComponent`, so those 23 are wires the browser deploy drops — and **nothing has ever
-   clicked the admin panel**, so what they cost is unknown. Measure before 0.2.1.
-   ⚠️ The fix's scope is cloud components **by ruling**. Extending it needs a decision, not an
-   edit: a browser Function node already gets its ports from the viewer, so only `prop-` and
-   `storageFetch` are candidates, and they would need the same wire-derived answer §10.2 gives
-   — on a surface where a schema *can* eventually exist.
+1. 🧭 **SB-017 §11.4 is Richard's, and it is the gating decision.** A fourth
+   `NodeTypeAdapters` class **cannot** be the fix: on a browser component the viewer is
+   already the writer for these nodes and `setDynamicPorts` **replaces**, so the two would
+   erase each other on every parameter change. Three options are laid out with their costs;
+   the recommendation is **derive it in the runtime**, where the single writer already is
+   (`ComponentModel.addConnection` emits `inputConnectionAdded`; `NodeModel.inputs`/`.outputs`
+   are the connection lists). Its stated cost is a **second copy** of the wire-derived rule —
+   the editor cannot import `@noodl/runtime` (§8) — and the harness for grading two copies
+   against each other already exists (`tests-unit/sb-017/cloud-ports-agree-with-the-runtime.test.ts`).
 2. ⬜ **The Setup-page half of acceptance 2.** s17 drove `claimSite` over REST with a fresh
-   signup; "from the template's own Setup page" is the browser deploy again.
-   ⚠️ **The preserved backend is now CLAIMED** by `sb017-owner@example.com` — clear
-   `_Role` / `_Join_users__Role` / `SiteSettings` / `Theme` before driving it, or the Setup
-   page correctly refuses and it reads as a broken fix. (`_User` also still holds s15's
-   `owner@example.com`; use a third address.)
-3. ⬜ **The backend-side half of acceptance 1**: that `authored-bundle.ts` is lossless on
-   connections, so "editor == helper" is closed from both ends rather than asserted of one.
-   Both compare to the same third thing — the shipped template — because they cannot run in
-   one process (`exportComponent` needs a live `NodeLibrary`; that is *why* the helper exists).
-4. ⬜ **SB-018 is now three**, and the third is new: `submitContactForm` answers
-   `{"received": false}` about a message it stored, because `compose`'s `Outputs.built()` is a
-   **signal** wired into the Response's **value** port `pm-received`. The cast is allowed, so
-   nothing warns. Plus the two from s15: `For Each.Changed` wired twice and dead (bounded — a
-   valid wire sits beside each), and the public `<h1>` rendering the literal word `Text`.
-5. 🧭 **Richard's, still open**: F8 (does a contact message reach anyone — s17 proved it is
-   *stored*, not that it is *delivered*), `Section.kind`'s fifth value with no destination,
-   D3 (does SB-003's boundary fix ride 0.2.1).
-6. ⬜ **`securityPolicy` is on `ProjectTemplate`**, so `PlatformTemplateProvider`'s
+   signup; "from the template's own Setup page" is the browser deploy.
+   ⚠️ **The preserved backend is CLAIMED** by `sb017-owner@example.com` — clear `_Role` /
+   `_Join_users__Role` / `SiteSettings` / `Theme` before driving it, or the Setup page
+   correctly refuses and it reads as a broken fix. (`_User` also holds s15's
+   `owner@example.com`; use a third address.) ✅ **The Setup page is clean of the browser
+   drop** (§10.6), so item 1 does not block this.
+3. ⬜ **SB-018 is three, and s18 added a constraint**: the two `For Each.Changed` wires are 2
+   of SB-017's 23, so **SB-017's fix must not restore them** — they are exactly what its
+   known-firing control is about. The right fix is to delete them (SB-018 §6). Plus
+   `submitContactForm` answering `{"received": false}` about a message it stored (a **signal**
+   into a **value** port, cast allowed, nothing warns) and the public `<h1>` rendering the
+   literal word `Text`.
+4. 🧭 **Richard's, still open**: F8 (does a contact message *reach* anyone — s17 proved it is
+   stored, not delivered), `Section.kind`'s fifth value with no destination, D3 (does SB-003's
+   boundary fix ride 0.2.1).
+5. ⬜ **`securityPolicy` is on `ProjectTemplate`**, so `PlatformTemplateProvider`'s
    `community://` shelf still has no channel for one.
 
 ## Traps that will bite here specifically
 
 - 🔴 **A `test:ci` build failure has NO summary line**, so the run is *not measured* rather
   than red. **Floor: `2863 specs, 4 failures`**, all four `AIX-006 style vocabulary` **by
-  name**. (2863, not 2862 — s17 added one case. Quote the tree: seed 57907, HEAD `f23946bf`.)
+  name**. (Quote the tree: s18 read seed 64894, HEAD `e78f35fb`, 65 s.)
 - 🔴 **`.webpack-cache` can poison that build** with ~47 unresolved-alias errors in files
   nobody touched, and it reads as your own regression. `rm -rf packages/noodl-editor/.webpack-cache`
   first; gitignored, only `test`/`test-ci` use it.
-- 🔴 **`typecheck:editor` does NOT cover `tests/`** — use **`typecheck:editor-tests`**, and
-  neither covers `tests-unit/` (ts-jest does that at run time). Confirm your file is in the
-  population (`tsc -p … --listFiles | grep`) before believing a clean pass.
-- ✅ **`tests-unit/` can `require` another package's source.** s17's agreement spec loads the
-  **real** runtime node modules (`dbcollectionnode2`, `simplejavascript`, the two Record write
-  nodes) and drives their `setup()` with a fake editor connection. This is the only runner in
-  `noodl-editor` that can — the renderer bundle cannot reach `@noodl/runtime`.
-  ⚠️ **Fire `editorImportComplete` on the fake graph model**, or those modules announce nothing
-  and every comparison passes on two empty lists.
-  ⚠️ **Compare the port TYPE, not just name and plug** — a mutant deleting the parser's
-  `Outputs.Done()` signal rule survived a `name:plug` comparison, because the general rule
-  still finds the name and only the type changes.
-- 🔴 **`setDynamicPorts` REPLACES a node's dynamic port list.** Two adapters writing to one
-  node erase each other silently. That is why s17's three adapters are partitioned by node
-  type and `prop-`/`acl-` share one.
-- 🔴 **The warnings list in the DOM is virtualised AND doubled by the ghost.** s17 read 42
-  rendered lines for 21 unique, against a chip saying 23 — so the list under-reports *and*
-  over-reports at once. De-duplicate, and trust the chip for the total.
+- ✅ **`tests-unit/` IS typechecked** — by ts-jest against `tsconfig.tests-main.json` at run
+  time, not by `typecheck:editor` or `typecheck:editor-tests`. s18 confirmed it with a
+  deliberate canary: a type error makes the suite fail **to run** (`Tests: 0 total`), which is
+  the same signature as a `Icon`/throwing-hook failure — so read `0 total` as "did not run",
+  never as "nothing to run".
+- 🔴 **`setDynamicPorts` REPLACES a node's dynamic port list.** Two writers on one node erase
+  each other. On the **cloud** side this is why s17's three adapters are partitioned by node
+  type; on the **browser** side it is why a fourth adapter is not available at all.
+- ✅ **`tests-unit/` can `require` another package's source** and drive a runtime node's
+  `setup()` with a fake editor connection capturing `sendDynamicPorts`. This is the instrument
+  that priced the browser half without a drive.
+  ⚠️ **Fire `editorImportComplete`**, or the Record and Query families announce nothing and
+  every comparison passes on two empty lists. s18 graded this: dropping it left the
+  "`prop-` is empty" case **green** and reddened only the known-firing control. **The control
+  is the whole reason that case means anything.**
+- 🔴 **A census is only evidence if it is calibrated against something it could miss.** s18's
+  lands on all four of the editor's per-component numbers; a mutant widening it by one family
+  the viewer *does* announce (`storageFetch`) broke the match immediately.
+- 🔴 **A parameter is not a connection.** `exportComponent` filters wires and copies parameters
+  verbatim, and the runtime registers a `prop-` input on either path. Any claim of the form
+  "the deploy drops X so X never arrives" has to check the parameter side first — s18's did
+  not, at first, and the corrected version is a worse bug than the one it replaced.
+- 🔴 **The warnings list in the DOM is virtualised AND doubled by the ghost** — 42 rendered
+  lines for 21 unique against a chip of 23. De-duplicate, and trust the chip for the total.
 - 🔴 **There is no editor global for `WarningsModel`**, and `require('@noodl-models/…')` from
   `cdp eval` fails (webpack alias). Read the topbar chip and the panel text.
 - 🔴 **Driving the wizard: the modal renders TWICE**, and `cdp click` hits an element's centre,
@@ -110,20 +122,21 @@ s15's live-backend control had no schema to find.)
 - 🔴 **`Run` is purely ADDITIVE**, and a **refused** query publishes an empty `items`
   indistinguishably from an empty one — take refusal from `error`, never from emptiness.
 - 🔴 **jest here is `testEnvironment: 'node'`** — no jsdom; a panel cannot be mounted.
+- 🔴 **There is no browser node library artefact on disk.** `cloud-node-library.json` has no
+  twin, and `tests-unit/cn-003/fixtures/kit-app.editor-nodelibrary.json` records built-in
+  entries **by name only** (`ports: []`). So the browser half cannot be measured through the
+  real `exportComponent` the way the cloud half is — the runtime modules are the instrument.
 - Shared checkout: commit by pathspec (untracked ⇒ `add` + `commit` in **one chain**), never
   stage-then-commit; announce before any editor launch **and teardown**; `test:ci` **alone**.
 
-## Gates, s17
+## Gates, s18
 
-- ✅ **`test:ci` — `2863 specs, 4 failures`, seed 57907, HEAD `f23946bf`.** The documented
-  AIX-006 floor, by name. Three runs this session, same 4 every time; a fourth run under a
-  deliberate mutant read `2863/6`, the two extra being the parity spec's own cases.
-- ✅ **`typecheck:editor` and `typecheck:editor-tests` clean (exit 0)**, both new source files
-  confirmed in the checked population with `tsc --listFiles`.
-- ✅ **`tests-unit/sb-017` 6/6** under `test:main`'s jest.
-- ✅ **4 mutants graded and killed** — the parser's signal rule, the `acl-` role/userid branch,
-  `storageFetch`, and the wire-derived `prop-` names (that last through the full suite, losing
-  **exactly the 13 connections across four components** §6.4 predicted).
-- ⚠️ An editor stack was launched for the drive and **torn down** (`dev:stop`, 27 processes,
-  nothing left); the peer holding the P75 lane was told before and after. The sb015 backend on
-  8588 went down with it.
+- ✅ **`test:ci` — `2863 specs, 4 failures`, seed 64894, HEAD `e78f35fb`, 65 s.** The documented
+  AIX-006 floor, all four **by name**, fresh `test-results.json` (mtime checked).
+- ✅ **`nodegx-backend` full suite — 109 suites / 1245 tests, 0 failures** (10 skipped).
+- ✅ **`noodl-editor` `test:main` — 359 suites / 5913 tests, 0 failures.**
+- ✅ **`typecheck:backend-tests` clean (exit 0).**
+- ✅ **5 mutants graded and killed** — 3 on the browser census (drop `editorImportComplete`;
+  widen the census by a family the viewer announces; miss the read side), 2 on the helper
+  (drop a connection; **re-point** one, which the counts alone forgave).
+- ✅ **No editor stack launched, no peer coordination needed.** Every suite run alone.

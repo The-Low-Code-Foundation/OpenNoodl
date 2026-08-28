@@ -2,6 +2,8 @@
 
 **Status: 🟢 FIXED AND DRIVEN s17 — acceptance 1, 2, 3, 5 and 6 MET; 4 met on the cloud side.**
 Measured s15, §6 resolved and the ruling taken s16 (§8), built s17 (§10).
+**s18 closed acceptance 1's backend half and priced the browser half (§11)** — 19 `prop-`
+wires, one family, and a fix shape that is 🧭 Richard's.
 
 Found by the drive nobody had run: making a project from `embedded://site-builder` in the
 real editor, opening it, provisioning a backend through the real UI, and calling the
@@ -490,6 +492,11 @@ SB-018's family; it is the same shape as its other two.
 
 ### 10.8 What is still open
 
+- ✅ **The browser half — MEASURED s18, see §11.** The 23 are **19 `prop-` wires + 2 dead
+  `For Each.Changed`**, one family and not two, and the cost is that a deployed admin panel
+  writes a `Page` that is published and in the nav with **no title and no slug**. 🧭 The fix
+  is Richard's and a fourth adapter is not it (§11.4). *The original wording, kept because
+  §11 answers it:*
 - 🔴 **The browser half** — §6.5's question, now bounded rather than unbounded (§10.6).
   `build/deployer.ts` exports through the same `exportComponent`, so the same drop applies to
   the **23 warnings across the three admin pages and `/Admin/SectionRow`**. The fix's scope is
@@ -499,6 +506,114 @@ SB-018's family; it is the same shape as its other two.
   on a surface where the schema *can* eventually exist. **Nothing has ever clicked the admin
   panel**, so what those 23 cost is still unknown.
 - **The Setup-page half of acceptance 2** (§10.5), which is the same browser deploy.
-- **The backend-side half of acceptance 1** — that `authored-bundle.ts` is lossless on
-  connections, so "editor == helper" is closed from both ends rather than asserted of one.
-  Not written.
+- ✅ **The backend-side half of acceptance 1** — **WRITTEN s18**, see §11.5.
+  `authored-bundle.ts` is lossless: 100 of 100, per component, as a two-way multiset.
+
+## 11. The browser half, measured (s18, 2026-08-27)
+
+§10.8 left it *bounded but unpriced*: 23 warnings, confined to the admin panel, and
+**"nothing has ever clicked the admin panel, so what those 23 cost is still unknown."**
+This section prices them. No drive was needed — the census is derivable from the shipped
+template and the **real runtime modules**, and it reproduces the editor's own four numbers
+exactly.
+
+`tests-unit/sb-017/the-browser-half-drops-every-record-field.test.ts`, **6 cases, 3 mutants
+graded**.
+
+### 11.1 What the 23 are
+
+**19 × `prop-<field>` on the Record family + 2 × `For Each.Changed` = 21 unique**, and the
+per-component split is s17's panel reading exactly:
+
+| component | count | what |
+|---|---|---|
+| `/Pages/PageEditor` | **14** | 5 `DbModel2.prop-*` (the form's *read* side), 5 `SetDbModelProperties.prop-*` (Save), 3 `NewDbModelProperties.prop-*` (Add section), 1 `For Each.Changed` |
+| `/Pages/Admin` | **3** | `prop-title`, `prop-slug` on the create node, 1 `For Each.Changed` |
+| `/Pages/ThemeEditor` | **3** | `prop-siteName`, `prop-homeSlug` (`SiteSettings`), `prop-tokens` (`Theme`) |
+| `/Admin/SectionRow` | **1** | `prop-data` (`Section`) |
+
+Landing on all four numbers is what makes this the same population rather than a plausible
+neighbour of it. (21 unique against a chip of 23 — the panel is virtualised *and* doubled by
+the `BaseDialog` ghost, which is why s17 trusted the chip for the total.)
+
+### 11.2 It is one family, and it is §10.2's family
+
+The browser is **not** missing a runtime client: the viewer is a connected one, and §6.1
+counted 69 undeclared browser script-port connections raising **0** warnings. It announces
+`in-`/`out-`, `qp-` and `storageFetch` — all measured here through the same modules, as the
+known-firing control. `prop-*` is the single family it cannot announce, for the reason §10.2
+already records on the cloud side: `recordFieldPorts` mints one port per **column of the
+selected class** (`record-ports.ts:161`), and a site nobody has written to has no columns.
+**Same modules, same emptiness, different half.**
+
+So §10.8's "only `prop-` and `storageFetch` are candidates" was half right: `storageFetch`
+already resolves on the browser side. The candidate list is **one family long**.
+
+The other two are `For Each.Changed`, already **SB-018 (1)** and bounded there. They want the
+opposite fix — that wire is wrong, and these 19 are right — so they are separated rather than
+counted in.
+
+### 11.3 🔴 What it costs
+
+Zero columns means zero ports, so the loss is **total per write node**: every `prop-` wire
+into every write node in the panel is dropped, not a subset. A deployed admin panel cannot
+save a page's title, cannot give a section its `pageId`, `kind` or `order`, cannot write a
+theme's tokens, and its page-editor fields never load their current values either — the read
+side is the same family. **SB-004 F10's record of nulls, on the other runtime.**
+
+🔴 **And it is worse than "the row is empty", which is the over-claim this measurement had to
+correct in itself.** A `prop-` value set as a **parameter** is not a connection: it is copied
+verbatim and the runtime registers the input on the parameter path. `/Pages/Admin`'s create
+node sets `prop-published`, `prop-showInNav` and `prop-navOrder` that way and wires only
+`prop-title` and `prop-slug`. So the deployed panel writes a `Page` that is **published, in
+the navigation and ordered — and unnamed and unreachable.** A row that fails to appear gets
+reported; this one appears. Asserted, with the two sets shown disjoint.
+
+⚠️ **Bounded in one direction only, and this must not be recorded as measured.** This is the
+state of a *freshly installed* template, which is what s17 read. A class gets columns once
+something writes it, so `SiteSettings` and `Theme` — which `claimSite` mints — **may** resolve
+after a successful claim, while `Page` and `Section` have no creator but this panel and cannot.
+That is a prediction. Nothing has measured it.
+
+🔴 **The mechanism is not template-specific.** Nothing above is about the Site Builder except
+the numbers: any project that deploys a form writing to a class with no rows yet loses its
+wired record fields the same way, and gets them back once the class has been written to. That
+makes *when you pressed Deploy* part of whether the deployed app works. **Not measured beyond
+this template** — stated because the mechanism says it, and because it decides how wide 11.4's
+fix has to be.
+
+### 11.4 🧭 The fix is Richard's, and a fourth adapter is not it
+
+§10.8 said extending the fix "needs a decision, not an edit". The decision has a hard
+constraint the cloud side did not have: on a browser component **the viewer is already the
+writer** for these very nodes, and `setDynamicPorts` **replaces**. A fourth
+`NodeTypeAdapters` class would be a second writer with a shorter list, and the two would
+erase each other on every parameter change — §10.1's reason for partitioning by node type,
+except that here it binds.
+
+1. ✅ **Recommended — derive it in the runtime, where the one writer already is.**
+   `recordFieldPorts`'s callers also mint `prop-<field>` from the node's own wires.
+   Reachable: `ComponentModel.addConnection` emits `inputConnectionAdded` on the target node
+   (`componentmodel.ts:149-158`), and `NodeModel.inputs`/`.outputs` are the connection lists.
+   One writer stays one writer, and it is the same wire-derived answer §10.2 already took on
+   the cloud side. ⚠️ **Its stated cost**: a second copy of that rule, because the editor
+   cannot import `@noodl/runtime` (§8) and `cloudDynamicPorts.ts` cannot import anything.
+   The mitigation already exists — `tests-unit/sb-017/cloud-ports-agree-with-the-runtime.test.ts`
+   is exactly the harness for grading two copies against each other.
+2. ⬜ **Make `setDynamicPorts` merge per writer instead of replacing.** Removes the constraint
+   rather than working around it, and would let a fourth adapter exist — but it changes a
+   mechanism every adapter and every runtime client shares, so the blast radius is the editor.
+3. ⬜ **Stop the exporter dropping `prop-` wires.** Rejected for §8's reason, unchanged: the
+   health filter should keep meaning what it says.
+
+### 11.5 Acceptance 1 is now closed from both ends
+
+`nodegx-backend/tests/sb017-helper-is-lossless.test.ts` — **5 cases, 2 mutants graded** — is
+§10.8's third open item, and it is done. `bundleAuthoredComponents` emits **100 of 100**
+connections, per component, compared against the same third thing the editor's half compares
+to (the shipped template) because the two converters cannot run in one process.
+
+🔴 **As a multiset of type-qualified wires, in both directions** — a converter that reached the
+right total by re-pointing a wire would satisfy every count and still be wrong. **That mutant
+was run**: re-pointing `storageFetch` to `items` left every per-component count correct and
+reddened the multiset case. The counts alone would have passed it.
