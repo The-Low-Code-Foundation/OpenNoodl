@@ -13,6 +13,29 @@
 > is the right shape. Rebuild it against the **picker** (`Object` is one of the 27 Data-category
 > nodes a user can place today and cannot export), verified against a project somebody would
 > actually build. See [EXP-011](./EXP-011-PICKER-COVERAGE.md) §3 Tier 1.
+>
+> ## ✅ BUILT, 2026-08-28 (session 36) — §4 and §5 shipped as written
+>
+> `Object` in `foreach` mode translates. **§4's design needed no revision** — the child mints a
+> prop per read `prop-p`, the hosting `For Each` binds `p={item.p}` through `memberExpr`, and §5's
+> seven gates are the gates, each defering with the runtime fact behind it. Driven in
+> `tests/fixtures/reading-shelf`. See [EXP-011 §7](./EXP-011-PICKER-COVERAGE.md).
+>
+> Two things the build added to §4, both about **names**:
+>
+> - 🔴 **The prop name and the row field are separate facts.** The prop is deduplicated against
+>   everything the component already declares, so an `Object` reading `mood` in a component that
+>   already has a `mood` input becomes the prop `mood2` — and the parent must still bind it from
+>   `item.mood`. Deriving one from the other reads a field no row has, precisely where the
+>   collision made it hardest to notice. `ComponentPlan.rowProps` carries both.
+> - ⚠️ **Minting happens in a pre-pass, not in `resolveExpr`.** That function runs speculatively
+>   and a later pass may drop the wire it resolved; minting there would declare props for reads
+>   that did not survive. What the pre-pass reads — which `prop-*` outputs have wires at all — is
+>   a fact of the graph rather than of resolution.
+>
+> §7's re-ranking stays void, and the reason it was void is now doubly clear: this slice was
+> chosen from the **picker**, and the corpus's 27 `Model2` instances are still every one of them
+> behind a deferred host.
 
 > **Read this before writing any Model2, repeater-item or `_forEachModel` code, and before
 > ranking another slice by node count.** The headline is a negative result, measured: the

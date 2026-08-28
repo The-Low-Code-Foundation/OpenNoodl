@@ -109,6 +109,16 @@ export interface CollectionPlan {
   readers: VariableWriter[];
   /** Translated insert chains writing this array. */
   inserters: CollectionInserterRef[];
+  /**
+   * Array mutators naming this array — EXP-011 Tier 1.1's `Clear Array`.
+   *
+   * Registered here rather than folded into {@link readers} because the doc comment on the
+   * emitted module is the only place an author can see who touches the array, and "named by"
+   * and "emptied by" are different facts. ⚠️ Registration is what makes the module exist: an
+   * array a `Clear Array` names and nothing else reads still needs a `src/collections/<x>.ts`
+   * for the emitted `.clear()` to have a subject.
+   */
+  mutators: VariableWriter[];
   notes: string[];
 }
 
@@ -296,7 +306,7 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
   const ensureCollection = (name: string): CollectionPlan => {
     let plan = collections.get(name);
     if (!plan) {
-      plan = { name, exportName: '', interfaceName: '', keys: [], readers: [], inserters: [], notes: [] };
+      plan = { name, exportName: '', interfaceName: '', keys: [], readers: [], inserters: [], mutators: [], notes: [] };
       collections.set(name, plan);
     }
     return plan;
@@ -396,6 +406,16 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
       if (node.type === 'Collection2') {
         const name = collectionNameOf(node, wiredPortsOf(component));
         if (name !== undefined) ensureCollection(name).readers.push(writerRef(component, node));
+      }
+      /**
+       * EXP-011 Tier 1.1. Discovery only — whether the node's `Do` reaches a translatable
+       * trigger is `compileSink`'s question, and a mutator that defers there still belongs in
+       * this list: the array it names is real either way, and an emitted module that exists
+       * for a deferred node costs one file, while a missing one is a `!` assertion at emit.
+       */
+      if (node.type === 'CollectionClear') {
+        const name = collectionNameOf(node, wiredPortsOf(component));
+        if (name !== undefined) ensureCollection(name).mutators.push(writerRef(component, node));
       }
       if (node.type === 'CollectionInsert') {
         const name = collectionNameOf(node, wiredPortsOf(component));
@@ -541,6 +561,20 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
       if (port && port.kind === 'value' && (port.type === undefined || port.type === 'string')) return 'string';
       return 'unknown';
     }
+    /**
+     * A `String` value Variable's `savedValue` (EXP-011 Tier 1.4).
+     *
+     * 🔴 **A gap that slice left, found by building against it.** Tier 1.4 taught `resolveExpr`
+     * to read the four value Variables, but not this function — so a Variable written by a
+     * `String` node had no statically-typed writer, typed `unknown`, and *every read of it
+     * dropped*. The graph is as ordinary as they come (a String constant into a Set Variable,
+     * the variable rendered in a Text) and it exported a blank element with a note.
+     *
+     * Only `String`. Its three siblings are `Number`, `Boolean` and `Color`, and this function's
+     * whole vocabulary is string-or-unknown — claiming `string` for a `Number` would be the
+     * emitter asserting a cast the runtime does not perform.
+     */
+    if (node.type === 'String' && ref.fromProperty === 'savedValue') return 'string';
     return 'unknown';
   };
 

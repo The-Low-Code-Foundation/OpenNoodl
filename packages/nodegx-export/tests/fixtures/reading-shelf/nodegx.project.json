@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Reading Shelf",
+  "id": "c248953c-8ea7-4d8d-a2f7-ecb64294cdfc",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-08-28T19:19:48.223Z",
+  "modified": "2026-08-28T19:19:48.223Z",
+  "settings": {
+    "htmlTitle": "Reading Shelf",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "f7d08f7a-e6d1-460a-a602-f6f1ad1725fb"
+}

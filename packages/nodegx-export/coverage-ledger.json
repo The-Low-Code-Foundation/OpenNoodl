@@ -1,7 +1,7 @@
 {
   "$comment": "Every catalog node type, classified for code export (EXP-008). Gate: scripts/export-ledger/check.js (export-ledger:check) refuses an unclassified type; scripts/export-ledger/picker-coverage.js (export-ledger:picker) is the PHASE'S HEADLINE NUMBER and ratchets `pickerCoverageFloor`. Read EXP-008 before changing either: the corpus instance-coverage number this phase used to quote is a regression detector, not a priority oracle, and treating it as one cost twelve sessions.",
   "catalogFormatVersion": "1.1.0",
-  "pickerCoverageFloor": 55,
+  "pickerCoverageFloor": 59,
   "$pickerCoverageFloorComment": "Placeable picker nodes (inNodePicker, not deprecated, browser-capable) that export. Ratchet: export-ledger:picker --check fails if it falls AND if it rises without this number moving, so every gain is held and every loss is a decision in the diff. 55 of 127 at 2026-08-28 (51 before EXP-011 Tier 1.4 added the four value Variables).",
   "$customNodesComment": "EXP-010 AC6, settled 2026-08-28: custom nodes are DELIBERATELY not in this file and not in the picker number, and the statement about them is categorical rather than a percentage. A custom node type comes from a project's own noodl_modules/, so its population is per-project and unbounded — putting it in the numerator inflates a ratio, and putting it in both halves makes the denominator move with whichever project you point the tool at. That is precisely the instance-weighted corpus number this phase spent twelve sessions being misled by (see $comment). Adding these types as `entries` would also be a false claim about the catalog, which is what this file is a ledger OF. The claim instead: a kit's VISUAL nodes (`reactNodes`, i.e. a definition with getReactComponent) export and render; a kit's LOGIC nodes (`nodes`, e.g. tally-kit's whole vocabulary) do not, and every instance of one is named in the report. Both halves are graded by tests/custom-nodes.test.ts, which is the ratchet for this claim.",
   "entries": [
@@ -77,8 +77,7 @@
     },
     {
       "typeName": "CollectionClear",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
+      "status": "translated"
     },
     {
       "typeName": "CollectionInsert",
@@ -88,12 +87,12 @@
     {
       "typeName": "CollectionNew",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
+      "exemption": "deliberately out of scope — it mints an anonymous array with a generated Id, and the only consumer of that Id is another node’s Array Id input, delivered by wire. A wired Array Id is precisely what has no emitted module (the named-array model keys on a literal name), so translating this node would create an array nothing in the exported app could ever name. EXP-011 Tier 1.1, session 36"
     },
     {
       "typeName": "CollectionRemove",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
+      "exemption": "scheduled — EXP-011 Tier 1.1 built the rest of the array vocabulary and left this one, because it is blocked one level up rather than by itself: it needs an Object Id, and in every list shape a person actually builds that Id comes from inside the repeater row — which cannot reach the page while a row’s outputs stay deferred on “which row fired is not statically expressible”. Unblocked by the row-output relay, not by work on this node. Session 36"
     },
     {
       "typeName": "Color",
@@ -191,8 +190,7 @@
     },
     {
       "typeName": "Filter Collection",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
+      "status": "translated"
     },
     {
       "typeName": "FilterDBModels",
@@ -207,7 +205,7 @@
     {
       "typeName": "For Each Actions",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
+      "exemption": "deliberately out of scope — its Item Id is the runtime record id of a repeater row, and the emitted app has no counterpart: rows are plain objects the export never mints ids for. Its remaining ports (Try Remove / Remove Completed / Added) are the Repeater’s removal handshake, which is lifecycle signalling and therefore effect() work. EXP-011 Tier 1.1, session 36"
     },
     {
       "typeName": "Form",
@@ -260,8 +258,7 @@
     },
     {
       "typeName": "Map Collection",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
+      "status": "translated"
     },
     {
       "typeName": "Model",
@@ -270,8 +267,7 @@
     },
     {
       "typeName": "Model2",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: blocked by its hosts, not by itself — all 27 corpus instances are idSource:foreach, and every one sits in a component reached only through a dynamically-templated repeater or one whose items are minted by a script (EXP-002-MODEL2-TARGET-OUTPUT.md §2). Translating it before EXP-003 Tier B would emit template props no call site passes; the foreach design is settled on paper in §4"
+      "status": "translated"
     },
     {
       "typeName": "NavigationClosePopup",
@@ -426,7 +422,7 @@
     {
       "typeName": "SetModelProperties",
       "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
+      "exemption": "scheduled — the collection-state slice. EXP-011 Tier 1.1 translated the read side of Object (a foreach-mode row compiles away into the template’s props); the write side does not, because a row written from inside the row is state the enclosing list owns rather than a prop the parent passes down — EXP-002-MODEL2-TARGET-OUTPUT §4 draws that line and §5.4 is the gate. Session 36"
     },
     {
       "typeName": "Sign File URL",

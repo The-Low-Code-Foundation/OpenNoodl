@@ -124,3 +124,45 @@ reason) or *scheduled* (with the tier), where 95 said "pre-gate backlog" verbati
 `export-ledger:check` now enforces that shape — proved with a control pair before being believed.
 Gates: **580/580** · module-inject 31/31 · corpus **41/41** · audit **85.27%** (from 85.00%) ·
 picker ratchet **51 → 55 of 127 (43.3%)**.
+
+**Session 36 (2026-08-28) — EXP-011 Tier 1.1 built, driven and gated: the client-side data
+vocabulary.** `Object`, `Array Filter`, `Array Map` and `Clear Array` export; the other four of
+Tier 1.1's eight defer on named mechanisms, and **three of those are blocked by something that is
+not about them**. The shape of the slice is that a list became an ordinary **value expression**:
+the collections slice could reach a named array only through a per-consumer field on the repeater,
+and there are now three consumers that compose (`books → filter → map → For Each`). `Object` in
+"From repeater" mode shipped **exactly as EXP-002-MODEL2-TARGET-OUTPUT §4 designed it** — the
+child mints a prop per read, the parent binds `p={item.p}` — with two additions about names: the
+prop is deduplicated and the row **field** is not, so both are carried; and minting happens in a
+pre-pass, because `resolveExpr` runs speculatively and would declare props for reads that do not
+survive. The filter keeps the runtime's **loose** `==`, whose own comment says why, and `Clear
+Array` forks on `peek().length > 0` because `done` fires only when the array was not already
+empty.
+
+🔴 **The session opened by planning to mint an `id` on every inserted row so `Remove Object From
+Array` could translate — and measuring first killed it.** The delete-a-row flow is blocked upstream
+by the row-output relay (*"which row fired is not statically expressible"*), so the ids would have
+bought nothing and changed a shipped slice's output.
+
+🔴 **Three defects that only building and driving could find.** A `Clear Array` fork emitted
+`}; else` — a **SyntaxError** that three `toContain` assertions passed on, because every substring
+really was there; `tests/emitted-syntax.test.ts` now parses every emitted file of every fixture,
+with a control pair, and the same latent join in `branch` went through the one shared helper. Two
+**temporal dead zones** (`collectionReadEligible`, `wiredPorts` read from passes that run earlier)
+crashed on the first real project while 626 tests passed, because **no fixture had a `Model2`
+node**. And an `Array Map` naming a source property the array lacks emitted `row.nope`, which
+**failed `tsc -b`** in the exported app — found by *sabotaging* the driven project, and the same
+hole that had already been closed on the repeater side.
+
+**Reading Shelf** — authored through the MCP server — exports with nothing dropped, builds, and
+runs: a headless Chrome added two books and watched them come back **sorted** (the one added first
+rendered second), added a third to a wishlist and watched the filter **exclude** it, then pressed
+Clear twice and watched the `done` and `unchanged` arms answer differently. The wishlist button is
+a **negative control** and the map was proved by a **mutant** — without either, both readings would
+have been equally consistent with the translation never having been emitted. Also fixed, found by
+building against it: `typeOfSource` was never taught about Tier 1.4's value Variables, so a
+Variable written by a `String` node had no statically-typed writer and **every read of it dropped**
+([EXP-011 §7.5](./EXP-011-PICKER-COVERAGE.md)). Gates: **636/636** · module-inject 31/31 · corpus
+**42/42** typecheck · audit **85.45%** on session 35's own 40-project denominator (from 85.27%;
+⚠️ that session's "41/41" label and its `4441` denominator described different sets) · picker
+ratchet **55 → 59 of 127 (46.5%)**.

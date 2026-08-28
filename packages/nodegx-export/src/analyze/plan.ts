@@ -230,7 +230,48 @@ export type ValueExpr =
    * well as truthiness ones; the other three are `model.get(…)` and read undefined while nobody
    * is signed in, which is exactly the state the stub reports.
    */
-  | { kind: 'session-get'; nodeId: string; field: 'authenticated' | 'id' | 'username' | 'email' };
+  | { kind: 'session-get'; nodeId: string; field: 'authenticated' | 'id' | 'username' | 'email' }
+  /**
+   * A named client-side array, read as a list (EXP-011 Tier 1.1).
+   *
+   * The collections slice could reach a named array only as a repeater's feed, through
+   * {@link RepeaterPlan.itemsCollectionName} — a dedicated field, not an expression. That was
+   * enough while `For Each` was the only consumer; `Array Filter` and `Array Map` are a second
+   * and third, and they compose (`notes → filter → map → For Each`), which a per-consumer field
+   * cannot express. So the array becomes an ordinary value expression and the transforms are
+   * ordinary functions of it.
+   *
+   * In render it is the `useCollection` local, so the component re-renders when the array
+   * changes; in a handler it is `.peek()` — a read that deliberately creates no dependency edge,
+   * which is what a handler wants and what `Collection.get()` would get wrong.
+   */
+  | { kind: 'collection-get'; collectionName: string }
+  /**
+   * `Array Map` over a list (EXP-011 Tier 1.1) — `mapcollectionnode.ts`'s `map({…})` with every
+   * mapping a **property name**, which is `m.set(key, model.get(mapping))` in the runtime and
+   * `{ key: row.mapping }` here.
+   *
+   * ⚠️ A mapping whose value is a *function* is arbitrary JavaScript over a live `Model` and
+   * defers to EXP-003 — {@link parseIdentityMapping} answers null for it, which is the same
+   * gate `For Each`'s own mapping script goes through.
+   */
+  | { kind: 'list-map'; source: ValueExpr; entries: Array<{ key: string; field: string }> }
+  /**
+   * `Array Filter` over a list (EXP-011 Tier 1.1) — the panel-authored filter, sort and
+   * skip/limit, which are `filterSettings` and not a script (`filtercollectionnode.ts`).
+   *
+   * Each piece is optional and they compose in the runtime's own order: filter, then sort, then
+   * skip, then limit (`scheduleFilter`). Emitting them in any other order would silently change
+   * which rows survive a limit.
+   */
+  | {
+      kind: 'list-filter';
+      source: ValueExpr;
+      tests: Array<{ field: string; op: 'eq' | 'neq' | 'gt' | 'lt' | 'gte' | 'lte'; value: string | number | boolean }>;
+      sort: Array<{ field: string; direction: 'ascending' | 'descending' }>;
+      skip?: number;
+      limit?: number;
+    };
 
 export type HandlerAction =
   | { kind: 'navigate'; to: string }
@@ -238,6 +279,18 @@ export type HandlerAction =
   | { kind: 'store-set'; variableName: string; expr: ValueExpr }
   | { kind: 'globalstore-set'; storeName: string; key: string; expr: ValueExpr }
   | { kind: 'collection-add'; collectionName: string; entries: Array<{ key: string; expr: ValueExpr }> }
+  /**
+   * `Clear Array` (EXP-011 Tier 1.1) — `notes.clear()`, plus the two chains the runtime's own
+   * outcome fork owes.
+   *
+   * `collectionnode-clear.ts` measures `wasEmpty` **before** `set([])` and reports `unchanged`
+   * for an array that was already empty, `done` otherwise (ERG-001: "the post-condition already
+   * held"). So a `done` chain emitted unconditionally would fire where the interpreter stays
+   * silent. The emitted form tests the length instead of keeping a local, which is exact rather
+   * than merely close: `Collection.clear()` is itself `if (length === 0) return`, so skipping
+   * the call on the empty arm is the same no-op the guard would have made.
+   */
+  | { kind: 'collection-clear'; collectionName: string; then: HandlerAction[]; unchangedThen: HandlerAction[] }
   /** A Condition in a handler chain: `if (cond) whenTrue; else whenFalse;` (LOGIC-TARGET §3). */
   | { kind: 'branch'; cond: ValueExpr; whenTrue: HandlerAction[]; whenFalse: HandlerAction[] }
   /** Fires the component's own signal output: `onWaved?.()` (COMPONENT-OUTPUTS-TARGET §4). */
@@ -591,6 +644,18 @@ export interface ComponentPlan {
   docComment?: string;
   props: PropPlan[];
   /**
+   * Props that carry the enclosing repeater's row (EXP-011 Tier 1.1) — an `Object` node in
+   * "From repeater" mode, compiled away into the component's interface
+   * (EXP-002-MODEL2-TARGET-OUTPUT §4). Minting order.
+   *
+   * 🔴 `field` is carried separately from `prop` and is **not** decoration. The prop name is
+   * deduplicated against everything else the component declares, so an `Object` reading `mood`
+   * in a component that already has a `mood` input becomes the prop `mood2` — and the parent
+   * must still bind it from `item.mood`. Deriving the field from the prop name would silently
+   * read a field no row has, exactly where the collision made it hardest to notice.
+   */
+  rowProps: Array<{ prop: string; field: string }>;
+  /**
    * Declared signal outputs as callback props (`onWaved?: () => void`), declaration order —
    * the parent side reads the same list off the target's plan (COMPONENT-OUTPUTS-TARGET §2).
    */
@@ -840,6 +905,7 @@ function planComponent(
     file: null,
     rootId: null,
     props: [],
+    rowProps: [],
     outputProps: [],
     childrenOf: {},
     roleOf: {},
@@ -1091,6 +1157,97 @@ function planComponent(
     }
   }
 
+  /**
+   * 🔴 Declared here rather than beside its first *historical* reader, because EXP-011 Tier
+   * 1.1's `Object` pre-pass below runs earlier than every previous consumer and a `const` read
+   * before its declaration executes is a temporal-dead-zone `ReferenceError`. It is a pure
+   * derivation of `component.connections`, so moving it earlier changes nothing but the moment
+   * it exists.
+   */
+  const wiredPorts = new Set(component.connections.map((c) => `${c.toId}:${c.toProperty}`));
+
+  /**
+   * Which nodes, anywhere in the project, name a component as their template — the two
+   * producers of the ambient `_forEachModel` (`foreachitem.ts`: *"Two producers, not one"*).
+   *
+   * ⚠️ A `For Each` whose `templateType` is `dynamic` is excluded even when it also carries a
+   * `template` parameter: its component is chosen per row from the row's own data
+   * (`EXP-002-MODEL2-TARGET-OUTPUT §2` measured a corpus doing exactly that), so it is not
+   * statically the template of anything.
+   */
+  const foreachTemplateHosts = new Map<string, Array<{ nodeId: string; componentPath: string; kind: 'foreach' | 'runtasks' }>>();
+  for (const comp of ir.components) {
+    for (const n of comp.nodes) {
+      const kind = n.type === 'For Each' ? 'foreach' : n.type === 'Run Tasks' ? 'runtasks' : null;
+      if (kind === null) continue;
+      if (kind === 'foreach' && literalParam(n, 'templateType') === 'dynamic') continue;
+      const template = literalParam(n, 'template');
+      if (typeof template !== 'string' || template === '') continue;
+      const list = foreachTemplateHosts.get(template) ?? [];
+      list.push({ nodeId: n.id, componentPath: comp.path, kind });
+      foreachTemplateHosts.set(template, list);
+    }
+  }
+
+  /**
+   * EXP-002-MODEL2-TARGET-OUTPUT §5 — why an `Object` node does *not* compile away into props.
+   * Null means it does. Every branch names the runtime fact behind it.
+   */
+  const model2ForeachGate = (node: NodeIR): string | null => {
+    // §5.1. `modelcrudbase.ts` declares `idSource` with `default: 'explicit'`, so an unset one is
+    // explicit — an id-addressed record in the global Model store, which is store() work with no
+    // repeater row behind it at all.
+    const idSource = literalParam(node, 'idSource');
+    if (idSource !== 'foreach') {
+      return idSource === undefined
+        ? 'its Id Source is unset, which the runtime reads as "explicit" — an id-addressed record in the global store, not a repeater row'
+        : `its Id Source is "${String(idSource)}", not "From repeater"`;
+    }
+    if (wiredPorts.has(`${node.id}:modelId`)) return 'its Object Id is wired, so the record is chosen at runtime';
+    // §5.6. An explicit target names *which* repeater, which the props model — nearest-wins —
+    // does not represent.
+    if (literalParam(node, 'repeaterComponent') !== undefined || wiredPorts.has(`${node.id}:repeaterComponent`)) {
+      return 'it names an explicit Repeater Component, which the props model has no shape for (BINDING-CONTRACT §a)';
+    }
+    // §5.2. The row only exists because a For Each renders this component as its template, so
+    // "which For Each" must be a statically single answer.
+    const hosts = foreachTemplateHosts.get(plan.legacyPath) ?? [];
+    if (hosts.length === 0) {
+      return 'no For Each names this component as its template, so there is no repeater row to read';
+    }
+    if (hosts.length > 1) {
+      return `${hosts.length} For Each nodes name this component as their template, and their rows need not share a shape`;
+    }
+    // §5.7. `runtasks.ts:193` is the other `_forEachModel` producer — a task input, not a
+    // rendered list item, and nothing renders the template at all.
+    if (hosts[0].kind === 'runtasks') {
+      return 'its row comes from a Run Tasks template, where the item is a task input rather than a rendered row';
+    }
+    // §5.4. A write into the row is state owned by the list, not a prop — the collection-state
+    // slice, which this one is not.
+    const write = component.connections.find((c) => c.toId === node.id && c.toProperty.startsWith('prop-'));
+    if (write) return `"${write.toProperty}" is written, and a row written from inside the row is state the list owns`;
+    // §5.5. Signal-on-write is effect() work, as everywhere else in this phase.
+    const signal = component.connections.find(
+      (c) =>
+        c.fromId === node.id &&
+        (c.fromProperty === 'changed' || c.fromProperty.startsWith('changed-') || c.fromProperty === 'fetched' || c.fromProperty === 'done' || c.fromProperty === 'failure')
+    );
+    if (signal) return `its ${signal.fromProperty} signal is consumed, and signal-on-write has no shape in this slice`;
+    if (wiredPorts.has(`${node.id}:fetch`)) return 'its Fetch is wired, which re-reads the store rather than the row';
+    // §5.3 (the `id` half). Gate 4 removes the one corpus consumer; without a minted row id
+    // there is nothing in the emitted app for it to be.
+    const idRead = component.connections.find((c) => c.fromId === node.id && c.fromProperty === 'id');
+    if (idRead) return 'its Id output is consumed, and a repeater row has no id in the emitted app';
+    // §5.6. A dotted name is `{resolve: true}` path resolution through nested records, which
+    // this slice's expressions cannot walk.
+    const dotted = component.connections.find(
+      (c) => c.fromId === node.id && c.fromProperty.startsWith('prop-') && c.fromProperty.includes('.')
+    );
+    if (dotted) return `"${dotted.fromProperty.slice('prop-'.length)}" is a dotted path, which resolves through nested records`;
+    return null;
+  };
+
   // Props: every Component Inputs port is a typed optional prop, source order.
   for (const node of component.nodes) {
     if (node.type !== 'Component Inputs') continue;
@@ -1112,6 +1269,57 @@ function planComponent(
    * wire would make the exported app disagree with the runtime about what arrives, which is the
    * one thing this phase does not do. The blank card in the export is the blank card in the app.
    */
+  /**
+   * EXP-011 Tier 1.1 — `Object` in "From repeater" mode compiles away into props
+   * (EXP-002-MODEL2-TARGET-OUTPUT §4). Node id → `prop-<p>` port name → the prop it became.
+   *
+   * 🔴 **Minted here, in a pre-pass, and deliberately NOT in `resolveExpr`.** `resolveExpr` runs
+   * speculatively and a later pass may drop the wire it resolved — minting there would declare a
+   * prop for a read that did not survive, and the parent would then pass a row field into an
+   * interface position nothing reads. This is EXP-011 §6.2's trap one construct over. What is
+   * read here is a fact of the graph — which `prop-*` outputs have wires at all — not a fact of
+   * resolution, so it is stable before any pass runs.
+   *
+   * ⚠️ This is the one place the export *mints* a prop, against §13b's standing rule that a read
+   * of an undeclared Component Inputs port is dropped and never minted. The rule holds there
+   * because minting would make the exported app disagree with the runtime about what arrives.
+   * Here it is the opposite: the runtime *does* deliver the repeater's row to this node, by
+   * ambient lookup rather than through the component's interface, and a prop is the only shape
+   * the emitted app has for "the row this instance is rendering". The parent binds it in the
+   * same pass that renders the repeater, so both sides always agree.
+   */
+  const model2Props = new Map<string, Map<string, string>>();
+  for (const node of component.nodes) {
+    if (node.type !== 'Model2') continue;
+    const gate = model2ForeachGate(node);
+    if (gate !== null) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: `Object ${node.id}: ${gate}` };
+      continue;
+    }
+    const byPort = new Map<string, string>();
+    // Source order is the wires' order, which is `connections.json`'s (D2) — so two components
+    // with the same graph mint the same props in the same order.
+    for (const wire of component.connections) {
+      if (wire.fromId !== node.id || !wire.fromProperty.startsWith('prop-')) continue;
+      if (byPort.has(wire.fromProperty)) continue;
+      const property = wire.fromProperty.slice('prop-'.length);
+      const taken = takenNamesOf(plan);
+      const cleaned = property.replace(/[^A-Za-z0-9_$]+/g, '_').replace(/^_+|_+$/g, '');
+      const base = cleaned.length > 0 && !/^[0-9]/.test(cleaned) ? cleaned : `_${cleaned || 'row'}`;
+      let name = base;
+      let counter = 2;
+      while (taken.has(name)) name = `${base}${counter++}`;
+      byPort.set(wire.fromProperty, name);
+      plan.rowProps.push({ prop: name, field: property });
+      // `any`, not a guessed type: the row's shape is the parent's business and the §4e feed
+      // types its rows `any` for exactly this reason. A claimed `string` here would be the
+      // emitter asserting something the graph never said.
+      plan.props.push({ name, tsType: 'any' });
+    }
+    if (byPort.size > 0) model2Props.set(node.id, byPort);
+    dispositions[node.id] = { kind: 'collapsed', into: plan.rootId ?? node.id };
+  }
+
   const declaresProp = (name: string): boolean => plan.props.some((p) => p.name === name);
   /** The named drop, spelled once so both read sites (expression and binding) say the same thing. */
   const undeclaredPropReason = (name: string): string =>
@@ -1165,7 +1373,6 @@ function planComponent(
   // 5. Component Inputs bindings and the query→repeater feed (step 4's rules, unchanged).
   // 6. Whatever no pass consumed is reported. Nothing silently dropped.
   const consumed = new Set<string>();
-  const wiredPorts = new Set(component.connections.map((c) => `${c.toId}:${c.toProperty}`));
 
   const variableNameOf = (node: NodeIR): string | undefined => {
     const name = literalParam(node, 'name');
@@ -2262,8 +2469,238 @@ function planComponent(
     input: ['clear']
   };
 
+  /**
+   * The three nodes whose `items` output is a list this slice can read (EXP-011 Tier 1.1).
+   *
+   * `Static Data` is deliberately absent: its rows have a *statically-known shape*, so it takes
+   * the typed `itemsStaticId` treatment on a repeater (a derived row type, a real key, dropped
+   * fields reported). Routing it through here would retype its rows as `any` and lose that —
+   * the §10 "untyped list" contract applied to the one source that does not need it.
+   */
+  const LIST_PRODUCERS = new Set(['Collection2', 'Filter Collection', 'Map Collection']);
+
+  /**
+   * Whether a `Collection2` is a plain read of a named array (COLLECTIONS-TARGET §2).
+   *
+   * 🔴 **Declared here, beside its first caller, and not in Pass 5 where it was.** `listReadOf`
+   * runs from Pass 2 onward, and a `const` arrow read before its declaration executes is a
+   * temporal-dead-zone `ReferenceError`, not a hoisted function — the crash would have been in
+   * the first project wiring an array into a transform.
+   *
+   * EXP-011 Tier 1.1 widened the allowed consumer set: the array's `items` may now also feed
+   * `Array Filter` and `Array Map`, which are reads of it exactly as `For Each` is. Anything
+   * else — a `count` into a Text, a `firstItemId` into a verb — is still logic this slice does
+   * not translate, and still says so.
+   */
+  const collectionReadEligible = (node: NodeIR): true | string => {
+    if (component.connections.some((c) => c.toId === node.id)) {
+      return 'the array node has wired inputs (seeding or fetch) — not translated in this slice';
+    }
+    const stray = component.connections.find(
+      (c) =>
+        c.fromId === node.id &&
+        !(
+          c.fromProperty === 'items' &&
+          c.toProperty === 'items' &&
+          (nodeById.get(c.toId)?.type === 'For Each' || LIST_PRODUCERS.has(nodeById.get(c.toId)?.type ?? ''))
+        )
+    );
+    if (stray) return `its ${stray.fromProperty} output drives logic this slice does not translate`;
+    return true;
+  };
+
+  /**
+   * The value a list producer's `items` output carries, or null with `ctx.defer` set.
+   *
+   * Recursive, so `notes → Array Filter → Array Map → For Each` resolves as one nested
+   * expression. `ctx.visited` is the cycle guard: the graph permits a transform to be wired back
+   * into itself and the runtime merely fails to settle, which is not a reason for this to
+   * recurse forever.
+   */
+  const listReadOf = (node: NodeIR, ctx: ResolveCtx): ValueExpr | null => {
+    if (ctx.visited.has(node.id)) {
+      ctx.defer = `the array feeding "${node.authoredLabel ?? node.id}" is wired back into itself`;
+      return null;
+    }
+    ctx.visited.add(node.id);
+
+    if (node.type === 'Collection2') {
+      const collectionName = collectionNameOf(node, wiredPorts);
+      if (collectionName === undefined) {
+        ctx.defer = 'its Array Id is not a literal name — a runtime-addressed array has no emitted module';
+        return null;
+      }
+      if (!registry.collections.has(collectionName)) {
+        ctx.defer = `no emitted module names the array "${collectionName}"`;
+        return null;
+      }
+      const eligible = collectionReadEligible(node);
+      if (eligible !== true) {
+        ctx.defer = eligible;
+        return null;
+      }
+      ctx.logicNodeIds.push(node.id);
+      return { kind: 'collection-get', collectionName };
+    }
+
+    // Both transforms take their source from a single `items` wire. Two wires is last-writer-wins
+    // in the runtime and has no static order, the same ruling the credential inputs take.
+    const feeds = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'items');
+    if (feeds.length === 0) {
+      ctx.defer = 'nothing is wired into its Items input';
+      return null;
+    }
+    if (feeds.length > 1) {
+      ctx.defer = 'two wires feed its Items input — last-writer-wins is not statically ordered';
+      return null;
+    }
+    const source = resolveExpr(nodeById.get(feeds[0].fromId), feeds[0].fromProperty, ctx);
+    if (source === null) return null;
+    if (!exprTsType(source).endsWith('[]')) {
+      ctx.defer = `its Items input is fed by a source not statically typed as a list (${exprTsType(source)})`;
+      return null;
+    }
+    ctx.consumes.push(feeds[0].key);
+
+    /**
+     * Every *other* output is a refusal, and each is named rather than lumped together.
+     *
+     * The signals are the real content of this gate: `Changed`/`Filtered` fire once per run and
+     * `Done` once per requested run, which are events in a push runtime and have no counterpart
+     * in a derived expression that is simply always current. Translating the list while
+     * silently dropping a signal chain would leave an app whose rows are right and whose
+     * side-effects never happen.
+     */
+    for (const wire of component.connections.filter((c) => c.fromId === node.id && c.fromProperty !== 'items')) {
+      const port = wire.fromProperty;
+      if (port === 'modified' || port === 'done' || port === 'failure' || port === 'completed') {
+        ctx.defer = `its ${port === 'modified' ? 'Changed/Filtered' : port} signal is consumed — a derived list is always current and has no run to announce`;
+        return null;
+      }
+      ctx.defer = `its ${port} output is consumed, which this slice does not read`;
+      return null;
+    }
+
+    if (node.type === 'Map Collection') return mapReadOf(node, source, ctx);
+    return filterReadOf(node, source, ctx);
+  };
+
+  /** `Array Map` — the `map({…})` script, when every mapping is a plain property name. */
+  const mapReadOf = (node: NodeIR, source: ValueExpr, ctx: ResolveCtx): ValueExpr | null => {
+    if (wiredPorts.has(`${node.id}:mapScript`)) {
+      ctx.defer = 'its Script input is wired';
+      return null;
+    }
+    const param = node.parameters.find((p) => p.name === 'mapScript')?.value;
+    const script = param === undefined ? undefined : param.kind === 'script' || param.kind === 'expression' ? param.source : param.kind === 'literal' ? String(param.value) : undefined;
+    if (script === undefined) {
+      /**
+       * ⚠️ An unauthored Script is the *declared default*, and the default maps nothing — it is
+       * the commented-out template `mapcollectionnode.ts` ships. The runtime compiles it in
+       * `initialize` and it produces a record with no properties, so every row maps to `{}`.
+       * That is a faithful translation of a node the author has not filled in, and emitting it
+       * is better than deferring: the deferral would read as "this cannot be exported" when the
+       * truth is "this does nothing yet".
+       */
+      return { kind: 'list-map', source, entries: [] };
+    }
+    const mapping = parseIdentityMapping(script);
+    if (mapping === null) {
+      ctx.defer = 'its Script does more than name source properties — a function-valued mapping is arbitrary JavaScript over a live record';
+      return null;
+    }
+    ctx.logicNodeIds.push(node.id);
+    return { kind: 'list-map', source, entries: mapping.map((m) => ({ key: m.input, field: m.field })) };
+  };
+
+  /** `Array Filter` — the panel-authored filter, sort and skip/limit. */
+  const filterReadOf = (node: NodeIR, source: ValueExpr, ctx: ResolveCtx): ValueExpr | null => {
+    if (wiredPorts.has(`${node.id}:enabled`)) {
+      ctx.defer = 'its Enabled input is wired — whether the filter applies is a runtime value';
+      return null;
+    }
+    /**
+     * Every `filter…` setting is a dynamic input the editor registers, so a *wire* into any of
+     * them makes the filter a runtime value. Checked as a family rather than per port: the port
+     * set is generated (`updatePorts`), so there is no closed list to enumerate against.
+     */
+    const wiredSetting = [...wiredPorts].find((p) => p.startsWith(`${node.id}:filter`));
+    if (wiredSetting !== undefined) {
+      ctx.defer = `its ${wiredSetting.slice(node.id.length + 1)} setting is wired — the filter is not statically known`;
+      return null;
+    }
+    // `enabled` false passes the array straight through, unfiltered, unsorted and unlimited
+    // (`scheduleFilter` skips the whole block) — so the translation is the source itself.
+    if (literalParam(node, 'enabled') === false) {
+      ctx.logicNodeIds.push(node.id);
+      return source;
+    }
+
+    const tests: Array<{ field: string; op: 'eq' | 'neq' | 'gt' | 'lt' | 'gte' | 'lte'; value: string | number | boolean }> = [];
+    const filterList = literalParam(node, 'filterFilter');
+    for (const field of typeof filterList === 'string' && filterList !== '' ? filterList.split(',') : []) {
+      const op = literalParam(node, `filterFilterOp-${field}`) ?? 'eq';
+      if (op === 'regex') {
+        ctx.defer = `its "${field}" test is a regex — the pattern is compiled per row and a malformed one throws, which this slice does not reproduce`;
+        return null;
+      }
+      if (op !== 'eq' && op !== 'neq' && op !== 'gt' && op !== 'lt' && op !== 'gte' && op !== 'lte') {
+        ctx.defer = `its "${field}" test uses the operator "${String(op)}", which this slice does not translate`;
+        return null;
+      }
+      const value = literalParam(node, `filterFilterValue-${field}`);
+      /**
+       * 🔴 An absent value is not "match everything". `getFilter` builds `{[field]: {$eq:
+       * undefined}}` and `applyFilter` then returns false for every row whose property is
+       * absent and compares `item[key] == undefined` otherwise — so the honest translation is
+       * not a comparison this vocabulary can spell. Deferred rather than dropped.
+       */
+      if (value === undefined) {
+        ctx.defer = `its "${field}" test has no value — the runtime compares against undefined, which is not a test this slice can spell`;
+        return null;
+      }
+      tests.push({ field, op, value });
+    }
+
+    const sort: Array<{ field: string; direction: 'ascending' | 'descending' }> = [];
+    const sortList = literalParam(node, 'filterSort');
+    for (const field of typeof sortList === 'string' && sortList !== '' ? sortList.split(',') : []) {
+      sort.push({ field, direction: literalParam(node, `filterSort-${field}`) === 'descending' ? 'descending' : 'ascending' });
+    }
+
+    // `getLimit`/`getSkip` both answer undefined unless the limit is enabled, and then default
+    // to 10 and 0 — the defaults are the runtime's, not this file's invention.
+    let skip: number | undefined;
+    let limit: number | undefined;
+    if (literalParam(node, 'filterEnableLimit') === true) {
+      const authoredLimit = literalParam(node, 'filterLimit');
+      const authoredSkip = literalParam(node, 'filterSkip');
+      limit = typeof authoredLimit === 'number' && authoredLimit !== 0 ? authoredLimit : 10;
+      skip = typeof authoredSkip === 'number' ? authoredSkip : 0;
+    }
+
+    ctx.logicNodeIds.push(node.id);
+    return { kind: 'list-filter', source, tests, sort, ...(skip ? { skip } : {}), ...(limit !== undefined ? { limit } : {}) };
+  };
+
   const resolveExpr = (fromNode: NodeIR | undefined, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
     if (!fromNode) return null;
+    if (LIST_PRODUCERS.has(fromNode.type) && fromProperty === 'items') return listReadOf(fromNode, ctx);
+    /**
+     * `Object` in "From repeater" mode is the repeater's row read sideways
+     * (EXP-002-MODEL2-TARGET-OUTPUT §4), so a `prop-p` read is a prop read on this component.
+     * The prop was minted in the pre-pass above; a node that failed a §5 gate has no entry and
+     * falls through to the deferral its disposition already names.
+     */
+    if (fromNode.type === 'Model2' && fromProperty.startsWith('prop-')) {
+      const name = model2Props.get(fromNode.id)?.get(fromProperty);
+      if (name === undefined) {
+        const disposition = dispositions[fromNode.id];
+        ctx.defer = disposition?.kind === 'deferred' ? disposition.reason : `Object ${fromNode.id} does not read the repeater row`;
+        return null;
+      }
+      return { kind: 'prop', name };
+    }
     if (fromNode.type === 'Component Inputs') {
       if (!declaresProp(fromProperty)) {
         ctx.defer = undeclaredPropReason(fromProperty);
@@ -2484,6 +2921,12 @@ function planComponent(
         return expr.viaState !== undefined || expr.fold === undefined;
       case 'state-get':
         return expr.maybeUndefined === true;
+      // A list is never undefined: a named array is a module-scope `collection([])` that exists
+      // from module load, and both transforms return a fresh array on every run
+      // (`Collection.create(...)` in the runtime, `.map`/`.filter` here).
+      case 'collection-get':
+      case 'list-map':
+      case 'list-filter':
       case 'input-text':
       case 'control-event':
       case 'literal':
@@ -2713,6 +3156,18 @@ function planComponent(
       case 'not':
       case 'truthy':
         return 'boolean';
+      /**
+       * `any[]`, and the `[]` is load-bearing: the repeater's §4e feed gates on
+       * `tsType.endsWith('[]')`, so this is what admits a filtered or mapped array as a `For
+       * Each`'s items. `any` rather than a derived row type because that path's contract is
+       * "no statically-known item shape, so fields read as `any` and every mapped input is
+       * kept" — claiming a row type here would make the repeater drop mapped inputs it cannot
+       * prove the row carries, which is the §10 ruling in reverse.
+       */
+      case 'collection-get':
+      case 'list-map':
+      case 'list-filter':
+        return 'any[]';
     }
   };
 
@@ -2726,6 +3181,8 @@ function planComponent(
     'Set Variable': 'do',
     [GLOBAL_STORE_SET]: 'set',
     NewModel: 'new',
+    // EXP-011 Tier 1.1. The port is `clear`; its display name is "Do".
+    CollectionClear: 'clear',
     Condition: 'eval',
     NewDbModelProperties: 'store',
     SetDbModelProperties: 'store',
@@ -2791,13 +3248,20 @@ function planComponent(
    * translatable trigger. Anything else defers the popup node.
    */
   type DoneChain = { then: HandlerAction[]; consumes: string[]; collapses: string[]; subscribes: string[] };
-  const doneChainOf = (node: NodeIR): DoneChain | { defer: string } => {
+  /**
+   * `port` is a parameter rather than a second copy of this function because EXP-011 Tier 1.1's
+   * `Clear Array` owes chains off **two** outcome ports (`done` and `unchanged`), compiled by
+   * identical rules — and FINDINGS B-iv's standing lesson here is that the divergence between
+   * near-identical copies is itself the defect. Defaulted, so every existing call site keeps
+   * asking exactly what it asked before.
+   */
+  const doneChainOf = (node: NodeIR, port = 'done'): DoneChain | { defer: string } => {
     const then: HandlerAction[] = [];
     const consumes: string[] = [];
     const collapses: string[] = [];
     const subscribes: string[] = [];
-    for (const wire of component.connections.filter((c) => c.fromId === node.id && c.fromProperty === 'done')) {
-      if (wire.toId === node.id) return { defer: 'its done output drives itself' };
+    for (const wire of component.connections.filter((c) => c.fromId === node.id && c.fromProperty === port)) {
+      if (wire.toId === node.id) return { defer: `its ${port} output drives itself` };
       const target = nodeById.get(wire.toId);
       if (target?.type === 'Component Outputs') {
         const sink = outputSinkOf(wire.toProperty, node);
@@ -2812,7 +3276,7 @@ function planComponent(
         continue;
       }
       if (!target || !isTriggerWire(target.type, wire.toProperty)) {
-        return { defer: 'its done output drives no translatable action' };
+        return { defer: `its ${port} output drives no translatable action` };
       }
       const compiled = compiledOf(target, wire.toProperty);
       if ('defer' in compiled) return { defer: compiled.defer };
@@ -3312,6 +3776,71 @@ function planComponent(
     };
   };
 
+  /**
+   * `Clear Array` (EXP-011 Tier 1.1) — the array vocabulary's one unblocked mutator.
+   *
+   * The other two do not reach here and the reasons are recorded rather than inferred:
+   * `Create New Array` mints an anonymous collection whose only consumer is another node's
+   * *wired* Array Id, and a wired Array Id is precisely what {@link collectionNameOf} cannot
+   * resolve; `Remove Object From Array` needs an Object Id, which in every shape a person
+   * actually builds comes from inside a repeater row — and a row's outputs cannot reach the
+   * page at all yet ("which row fired is not statically expressible", the relay gate below).
+   */
+  const compileCollectionClear = (node: NodeIR): CompiledSink => {
+    const collectionName = collectionNameOf(node, wiredPorts);
+    if (collectionName === undefined) {
+      return {
+        defer: 'its Array Id is not a literal name — a runtime-addressed array has no emitted module'
+      };
+    }
+    if (!registry.collections.has(collectionName)) {
+      return { defer: `no emitted module names the array "${collectionName}"` };
+    }
+
+    const consumes: string[] = [];
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (wire.fromProperty === 'completed') {
+        return {
+          defer: 'its Completed output is consumed — this slice translates the Done and Unchanged chains only'
+        };
+      }
+      /**
+       * 🔴 Dropped, not deferred, and the difference is a measured fact about the runtime.
+       *
+       * `Failure` has exactly one cause here — `_internal.collection === undefined`
+       * (`collectionnode-clear.ts`) — and `setCollectionIdInput` leaves it undefined only when
+       * the Array Id is cleared. A literal id goes to `resolveCollectionId`, which is
+       * `Collection.get(id)`, and that mints a named collection for *any* string including `''`
+       * (`collection-failure.ts` says so in its own words). So past the literal-name gate above
+       * this wire cannot fire in the interpreter either. Deferring the whole node over a wire
+       * that is already dead would lose a translation to a no-op.
+       */
+      if (wire.fromProperty === 'failure') {
+        notes.push(
+          `wire ${wire.key} dropped: Clear Array's Failure fires only when no array is bound, and a literal Array Id always resolves — the wire is dead in the interpreter too`
+        );
+        consumes.push(wire.key);
+      }
+    }
+
+    const done = doneChainOf(node, 'done');
+    if ('defer' in done) return { defer: done.defer };
+    const unchanged = doneChainOf(node, 'unchanged');
+    if ('defer' in unchanged) return { defer: unchanged.defer };
+
+    return {
+      action: {
+        kind: 'collection-clear',
+        collectionName,
+        then: done.then,
+        unchangedThen: unchanged.then
+      },
+      consumes: [...consumes, ...done.consumes, ...unchanged.consumes],
+      collapses: [...done.collapses, ...unchanged.collapses],
+      subscribes: [...done.subscribes, ...unchanged.subscribes]
+    };
+  };
+
   const compileSink = (node: NodeIR, port: string): CompiledSink => {
     if (RECORD_VERBS[node.type] !== undefined && port === 'store') return compileRecordOp(node);
     if (USER_VERBS[node.type] !== undefined && port === USER_VERBS[node.type].trigger) return compileUserOp(node);
@@ -3415,6 +3944,7 @@ function planComponent(
         subscribes: ctx.subscriberIds
       };
     }
+    if (node.type === 'CollectionClear') return compileCollectionClear(node);
     if (node.type === 'Condition') return compileCondition(node);
     // Set Variable
     const variableName = variableNameOf(node);
@@ -3573,6 +4103,14 @@ function planComponent(
       case 'not':
       case 'truthy':
         return exprValidIn(expr.operand, context, invokedScope);
+      // A named array reads in every context — the `useCollection` local in render, `.peek()`
+      // in a handler — so, like a store read, it constrains nothing. The transforms are valid
+      // wherever their source is.
+      case 'collection-get':
+        return true;
+      case 'list-map':
+      case 'list-filter':
+        return exprValidIn(expr.source, context, invokedScope);
       case 'input-text':
         return context.kind === 'dom' && context.nodeId === expr.inputId;
       case 'control-event':
@@ -3601,6 +4139,11 @@ function planComponent(
           return action.payload.every((p) => exprValidIn(p.expr, context, invokedScope));
         case 'collection-add':
           return action.entries.every((e) => exprValidIn(e.expr, context, invokedScope));
+        case 'collection-clear':
+          return (
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.unchangedThen, context, invokedScope)
+          );
         case 'store-set':
         case 'globalstore-set':
           return exprValidIn(action.expr, context, invokedScope);
@@ -4199,6 +4742,22 @@ function planComponent(
         for (const [k, v] of trueSnap) if (snap.get(k) !== v) snap.set(k, 'op');
         for (const [k, v] of falseSnap) if (snap.get(k) !== v) snap.set(k, 'op');
         return { ...action, cond, whenTrue, whenFalse };
+      }
+      /**
+       * Two mutually exclusive arms, so this takes `branch`'s treatment and not `popup-show`'s:
+       * only one of them runs, and which one is a runtime fact, so a state write inside either
+       * leaves later reads in the enclosing chain order-unknown.
+       */
+      case 'collection-clear': {
+        const doneSnap = new Map(snap);
+        const then = snapActionList(action.then, doneSnap);
+        if (!Array.isArray(then)) return then;
+        const unchangedSnap = new Map(snap);
+        const unchangedThen = snapActionList(action.unchangedThen, unchangedSnap);
+        if (!Array.isArray(unchangedThen)) return unchangedThen;
+        for (const [k, v] of doneSnap) if (snap.get(k) !== v) snap.set(k, 'op');
+        for (const [k, v] of unchangedSnap) if (snap.get(k) !== v) snap.set(k, 'op');
+        return { ...action, then, unchangedThen };
       }
       case 'popup-show':
       case 'popup-close': {
@@ -4983,21 +5542,49 @@ function planComponent(
     plan.bindings[toNode.id][connection.toProperty] = { kind: 'computed', expr };
   }
 
+  /**
+   * Pass 4g: `Object` reads into rendered sinks (EXP-011 Tier 1.1) — the repeater's row, read
+   * sideways (EXP-002-MODEL2-TARGET-OUTPUT §4).
+   *
+   * Pass 4d's shape, for the same reason: the port name is a *prefix* (`prop-`), so the
+   * whitelist Pass 4c matches on cannot express it. The expression is the simplest one this file
+   * has — the prop minted for this read — so there is nothing to resolve beyond the §5 gates the
+   * pre-pass already applied; a node that failed one has no entry, and Pass 6 names its reason.
+   *
+   * Sinks are restricted exactly as 4d restricts them, and for the same stated reason: only the
+   * ones the emitter honestly renders consume here, so a read landing somewhere the export draws
+   * nothing is reported rather than silently swallowed.
+   */
+  for (const connection of component.connections) {
+    if (consumed.has(connection.key)) continue;
+    const fromNode = nodeById.get(connection.fromId);
+    if (fromNode?.type !== 'Model2' || !connection.fromProperty.startsWith('prop-')) continue;
+    const toNode = nodeById.get(connection.toId);
+    if (!toNode || !rendered.has(toNode.id)) continue; // Pass 6 names the reason
+    const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
+    const truthinessSink = connection.toProperty === 'visible' || connection.toProperty === 'mounted';
+    const bindable =
+      truthinessSink ||
+      contentRole === 'children' ||
+      contentRole === 'attr-not:disabled' ||
+      (contentRole !== undefined && contentRole.startsWith('attr:'));
+    if (!bindable) continue;
+    if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) continue;
+    const ctx = newCtx();
+    const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
+    if (expr === null) {
+      notes.push(`wire ${connection.key} dropped: ${ctx.defer ?? 'the Object node does not read the repeater row'}`);
+      consumed.add(connection.key);
+      continue;
+    }
+    consumed.add(connection.key);
+    plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
+    plan.bindings[toNode.id][connection.toProperty] = { kind: 'computed', expr };
+  }
+
   // Pass 5: Component Inputs bindings and the query/array→repeater feeds (step 4's rules,
   // plus the Collection2 read side — COLLECTIONS-TARGET §2).
   const boundCollectionReaders = new Set<string>();
-  const collectionReadEligible = (node: NodeIR): true | string => {
-    if (component.connections.some((c) => c.toId === node.id)) {
-      return 'the array node has wired inputs (seeding or fetch) — not translated in this slice';
-    }
-    const stray = component.connections.find(
-      (c) =>
-        c.fromId === node.id &&
-        !(c.fromProperty === 'items' && c.toProperty === 'items' && nodeById.get(c.toId)?.type === 'For Each')
-    );
-    if (stray) return `its ${stray.fromProperty} output drives logic this slice does not translate`;
-    return true;
-  };
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
     const fromNode = nodeById.get(connection.fromId);
@@ -6076,6 +6663,29 @@ function recordNeighbourDefer(
     return 'a page path parameter is not translated in this slice';
   }
 
+  /**
+   * EXP-011 Tier 1.1's four deliberate deferrals.
+   *
+   * 🔴 Each names the *mechanism* that blocks it, not "not translated in this slice". Three of
+   * the four are blocked by something outside themselves, and saying so is the difference
+   * between a decision and a to-do: an author reading "Remove Object From Array is not
+   * supported" goes looking for a missing feature, while one reading that a repeater's row
+   * cannot reach the page knows what shape of app to build instead — and knows which other slice
+   * would unblock it.
+   */
+  if (node.type === 'CollectionNew') {
+    return 'it mints an array with a generated Id, and the only thing that Id can feed is another node’s Array Id — which, being a wire rather than a literal name, is exactly what has no emitted module';
+  }
+  if (node.type === 'CollectionRemove') {
+    return 'it needs an Object Id, and in a list an author actually builds that comes from inside the repeater row — which cannot reach the page at all yet ("which row fired is not statically expressible")';
+  }
+  if (node.type === 'SetModelProperties') {
+    return 'it writes properties onto a record; a row written from inside the row is state the list owns, which is the collection-state slice rather than this one (EXP-002-MODEL2-TARGET-OUTPUT §4)';
+  }
+  if (node.type === 'For Each Actions') {
+    return 'its Item Id is the runtime record id of a repeater row, which the emitted app has no counterpart for, and its other ports are the Repeater’s removal handshake — lifecycle signals, which are effect() work';
+  }
+
   return undefined;
 }
 
@@ -6117,12 +6727,22 @@ export function parseIdentityMapping(script: string): Array<{ input: string; fie
   if (!match) return null;
   const body = match[1];
   const entries: Array<{ input: string; field: string }> = [];
-  const entryPattern = /['"]([^'"]+)['"]\s*:\s*['"]([^'"]+)['"]\s*,?/g;
-  let consumed = '';
+  /**
+   * The key may be quoted or a bare identifier; the value must be a **string**.
+   *
+   * ⚠️ The bare-identifier alternative is EXP-011 Tier 1.1's addition, and it is not cosmetic:
+   * `Array Map`'s own declared default script (`mapcollectionnode.ts`) writes
+   * `myOutputProp: 'inputProp'` unquoted, so a quoted-only parser answers null for the shape the
+   * editor puts in front of every author. `For Each`'s mapping script goes through the same
+   * function and gains the same shape — a widening, since an unquoted script deferred before.
+   *
+   * A **function**-valued mapping stays unparseable on purpose: it is arbitrary JavaScript over
+   * a live `Model`, which is EXP-003's, and the leftover check below is what refuses it.
+   */
+  const entryPattern = /(?:['"]([^'"]+)['"]|([A-Za-z_$][\w$]*))\s*:\s*['"]([^'"]+)['"]\s*,?/g;
   let entry: RegExpExecArray | null;
   while ((entry = entryPattern.exec(body)) !== null) {
-    entries.push({ input: entry[1], field: entry[2] });
-    consumed += entry[0];
+    entries.push({ input: entry[1] ?? entry[2], field: entry[3] });
   }
   // Static only if the entries account for the whole body — a function value, computed key or
   // trailing expression means the script does real work.

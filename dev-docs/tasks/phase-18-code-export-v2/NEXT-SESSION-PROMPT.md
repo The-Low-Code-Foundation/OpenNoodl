@@ -1,18 +1,18 @@
-# Next session — EXP-011 Tier 1.4 landed; next is Tier 1.1, the client-side data vocabulary
+# Next session — EXP-011 Tier 1.1 landed; next is Tier 1.2, `HTTP Request`
 
 ## Where the phase stands
 
-**EXP-011 Tier 1.4 is built, driven and gated (session 35).** The four value Variables —
-`String`, `Number`, `Boolean`, `Color` — export. They are one runtime definition
-(`variablebase.createDefinition`), so they were one translation with a four-row cast table, and the
-shape a node takes is decided by its wires: a constant folds to a literal, a wired `value` under
-Run On Value Change becomes a `useState` plus a sync effect carrying `setValueTo`'s own rules, and
-a wired `Set` defers with a named reason.
+**EXP-011 Tier 1.1 is built, driven and gated (session 36).** The client-side data vocabulary:
+`Object`, `Array Filter`, `Array Map` and `Clear Array` export. The other four of Tier 1.1's eight
+defer, each on a named mechanism, and **three of them are blocked by something that is not about
+them** — read [EXP-011 §7.3](./EXP-011-PICKER-COVERAGE.md) before "finishing Tier 1.1", because
+there is no work on those nodes that would finish it.
 
-**51 → 55 of 127 (40.2% → 43.3%).** Floor raised in the same commit.
+**55 → 59 of 127 (43.3% → 46.5%).** Floor raised in the same commit.
 
-Read [EXP-011 §6](./EXP-011-PICKER-COVERAGE.md) before touching this family — §6.2 is the one that
-was nearly wrong, and it is a trap the *next* slice can walk into just as easily.
+Read [EXP-011 §7](./EXP-011-PICKER-COVERAGE.md) before touching this family. §7.2 is the one that
+matters most: three defects that **only building and driving the emitted app could find**, and all
+three are traps the next slice can walk into unchanged.
 
 ## The objective, so it cannot drift
 
@@ -22,42 +22,58 @@ a deployed NodeGX backend — exports to a React repo that builds, runs, and sti
 ## The number
 
 ```
-npm run export-ledger:picker      # ratcheted in PR CI — holds at 55/127 (43.3%)
-npm run export-ledger:check       # now also enforces the SHAPE of a deferral (EXP-011 AC4)
+npm run export-ledger:picker      # ratcheted in PR CI — holds at 59/127 (46.5%)
+npm run export-ledger:check       # also enforces the SHAPE of a deferral (EXP-011 AC4)
 ```
 
-🔴 The corpus audit (now **85.27%**, up from 85.00% — twelve corpus instances of these four types
-translated for free) is a regression net, never a priority oracle.
+🔴 The corpus audit is a regression net, never a priority oracle.
 🔴 Custom node types are **deliberately** outside the picker number — `$customNodesComment` in
 `packages/nodegx-export/coverage-ledger.json` says why. Do not "fix" it by adding them.
 
-## Do this next: EXP-011 Tier 1.1 — the client-side data vocabulary
+⚠️ **Session 35's handoff quoted "corpus 41/41; audit 3787/4441 = 85.27%", and those two describe
+different sets** — `4441` is the **40**-project denominator, `exp011-variables`' 24 nodes are not in
+it. On that same 40, this session's changes read **3795/4441 = 85.45%**. With all 41 it is
+3818/4465; with `Reading Shelf` added, 3847/4494. Quote which set you measured.
 
-**[EXP-011 §3 Tier 1](./EXP-011-PICKER-COVERAGE.md).** `Object` (`Model2`),
-`Set Object Properties`, `Create New Array`, `Clear Array`, `Remove Object From Array`,
-`Array Filter`, `Array Map`, `Repeater Item`. Eight nodes, and the single biggest thing standing
-between a user and an export that works — it is how anyone holds a working set of rows in the UI.
+## Do this next: EXP-011 Tier 1.2 — `HTTP Request`
 
-**[EXP-002-MODEL2-TARGET-OUTPUT.md](./EXP-002-MODEL2-TARGET-OUTPUT.md) §4's design is still good
-and should be reused; §2, §3 and §7's ranking are void.**
+**[EXP-011 §3 Tier 1](./EXP-011-PICKER-COVERAGE.md), item 2.** Any app that talks to anything that
+is not its own backend. `packages/noodl-runtime/src/nodes/std-library/data/httpnode.ts` — read it
+before designing, the way §7 read `filtercollectionnode.ts` before designing the filter.
 
-⚠️ `Model2`'s ledger entry carries a real warning that predates EXP-011 and still stands: all 27
-corpus instances are `idSource:foreach`, sitting in components reached only through dynamically
-templated repeaters. **Build against a project you author, not against those.**
-
-⚠️ **Author the picker-exercising project FIRST** (§2). Session 35's route is written down below
-and took about twenty minutes end to end.
+Then **Tier 1.3, the date family** (`Now`, `Date To String`, `Date Add`, `Date Compare`,
+`Date Difference`, `Date Parts`) — six Utilities nodes, and anything with a timestamp needs two.
 
 ## Then
 
-- **Tier 1.2 `HTTP Request`**, **Tier 1.3 the date family** — the rest of Tier 1.
 - **EXP-004** — the honesty UX (a report file into the output). Still owed: EXP-010's emitted
   `TODO(export)` markers and module report both end with "See the export report", and there is no
-  report. Tier 1.4's deferral notes now join them.
-- **EXP-010 leftovers**, all optional and named in its §9: Route A, a kit's *logic* nodes,
-  npm-dependency kits.
-- **EXP-009 leftovers, small:** drive the exported login/admin forms in a browser, and delete the
-  drive-residue user `exp009-drive` from the local Puppy backend's `_User`.
+  report. Tier 1.4's and Tier 1.1's deferral notes now join them.
+- **The collection-state slice** — it is what unblocks `Set Object Properties`, and (with the
+  row-output relay) `Remove Object From Array`. Both ledger entries name it.
+- **EXP-010 leftovers**, optional, named in its §9. **EXP-009 leftovers**: drive the exported
+  login/admin forms in a browser, and delete the drive-residue user `exp009-drive` from the local
+  Puppy backend's `_User`.
+
+## 🔴 What session 36 would tell you if it could only say four things
+
+1. **Measure the blocker before building the enabler.** The session opened intending to mint an
+   `id` on every inserted row so `Remove Object From Array` could translate. Checking the
+   row-output relay first showed the delete-a-row flow is blocked *there*, so the ids would have
+   bought nothing and would have changed a shipped slice's output. Twenty minutes of grep beat a
+   day of work.
+2. **A `toContain` cannot fail on code that does not parse.** The first `Clear Array` fork emitted
+   `}; else` — a SyntaxError — and three assertions passed on it because every substring really was
+   present. `tests/emitted-syntax.test.ts` is the floor beneath `tsc` now; it is cheap, and it has
+   a control pair so it cannot pass vacuously.
+3. **A green suite over fixtures that lack your node type proves nothing about your node type.**
+   Two temporal-dead-zone `ReferenceError`s (a `const` arrow read from a pass that runs before its
+   declaration) sat behind 626 passing tests, because **no fixture had a `Model2` node**. Emit a
+   real project early, not at the end.
+4. **Sabotage the driven project.** The last hole — an `Array Map` naming a source property the
+   array lacks, emitting `row.nope` and failing `tsc -b` — was found by breaking the thing on
+   purpose, not by reasoning. The same sabotage doubles as the mutant that proves the drive can
+   fail at all.
 
 ## Standing practice
 
@@ -67,70 +83,54 @@ ts-morph and Prettier stay uninstalled; `packages/nodegx-export` is not in root 
 ```
 cd packages/nodegx-export
 ../../node_modules/.bin/tsc --noEmit          # exit 0
-../../node_modules/.bin/jest                  # 580/580
+../../node_modules/.bin/jest                  # 636/636
 cd ../nodegx-module-inject && ../../node_modules/.bin/jest --config jest.config.js   # 31/31
 ```
-
-Corpus net: `build-corpus.ts` **41/41** (40 + `exp011-variables`); audit sums to
-**3787/4441 = 85.27%** — sum the `^=== ` lines with a **regex**, not awk fields (project names
-contain spaces, which silently shifts `$3/$4`).
 
 ⚠️ `ts-node` needs an **absolute** path and `--compiler-options '{"module":"commonjs"}'`, run from
 `packages/nodegx-export`. `build-corpus.ts` needs **both** `--app <harnessDir>` and the project
 list; copy the harness with **`cp -a`** so the `@nodegx/core` symlink survives; zsh project list is
-`"${(@f)$(cat projects.txt)}"`.
+`"${(@f)$(cat projects.txt)}"`. Sum the audit's `^=== ` lines with a **regex**, not awk fields —
+project names contain spaces, which silently shifts `$3/$4`.
 
-## 🔴 How session 35 authored a picker project without an MCP server bound to it
+## 🔴 Authoring a project without an MCP server bound to it (unchanged, and it works)
 
-`create_project` **does not repoint the bound server** — it says so in its own result — and a new
-MCP server cannot be registered mid-session. So:
+`create_project` **does not repoint the bound server** — it says so in its own result. So:
 
-1. `mcp__nodegx__create_project` to scope and skeleton the project (this works from any bound
-   server; only the *authoring* tools stay pointed at the old project).
-2. Drive a **second server over stdio from a script**. Session 35's `mcp-client.mjs` is ~50 lines
-   over `spawn` + newline-delimited JSON-RPC: `initialize`, `notifications/initialized`, then
-   `tools/call`. It runs the server from **`src` via ts-node**, not from `dist/` —
-   `packages/noodl-mcp/dist/noodl-mcp.cjs` was **eight days behind `src`**, and a stale dist has
-   already refused correct work once in this repo.
-3. `update_component` takes `{ path, set: { nodes, connections } }` — **not** top-level
-   `nodes`/`connections`, which errors with *"Provide exactly one of `set` or `operations`"*.
-   `get_node_type` takes `type_names: []`, plural and an array.
-4. `render_report` afterwards confirms the **interpreter** runs it, before you ask whether the
-   export does.
+1. `mcp__nodegx__create_project` to scope and skeleton the project.
+2. Drive a **second server over stdio from a script**: `mcp-client.mjs`, ~50 lines over `spawn` +
+   newline-delimited JSON-RPC. It runs the server from **`src` via ts-node**, never from `dist/`.
+3. `update_component` takes `{ path, set: {...} }` **or** `{ path, operations: [...] }` — and the
+   operation discriminators are **snake_case**: `add_node`, `update_node`, `remove_node`,
+   `add_connection`, `remove_connection`, `set_ports`, `set_visual_roots`, `set_component_info`.
+   Passing `addNode` returns *"Invalid discriminator value"* seven times and one `isError`.
+4. ⚠️ `mcp-client.mjs` truncates each result to 6000 chars, so a big `render_report` comes back as
+   **unparseable JSON**. Grep the raw text for what you need rather than `JSON.parse`-ing it.
+5. `render_report` confirms the **interpreter** runs it, before you ask whether the export does.
 
-## ⚠️ Exporting runs the project's kit code
+## Building and driving an exported app (what session 36 reused)
 
-`parseProject` executes each `noodl_modules/<kit>/index.js` in a Node `vm` context, because a
-custom node's ports are declared nowhere else on disk (`src/parse/kitSource.ts` says why). A `vm`
-context is not a security boundary. Stated in both files; do not let it become implicit.
-
-## Building and driving an exported app (how s35 did it)
-
-- Harness: `cp -a` s34's `realapp/` (a Vite app with `node_modules` and the `@nodegx/core`
+- Harness: `cp -a` the prepared `harness/` (a Vite app with `node_modules` and the `@nodegx/core`
   symlink), `rm -rf src dist public`, then emit into it. **Never overwrite its `package.json`.**
-- 🔴 The writer must perform `EmittedApp.copies` as well as `files` — a `.woff2` is not a string.
-- `npm run build` runs `tsc -b && vite build`, so the generated wrappers are typechecked.
-- Serve with `npx vite preview --port 5199 --strictPort`; **stop it by port**
-  (`lsof -ti :5199 -sTCP:LISTEN | xargs kill`).
-- To *click* or *type*, headless Chrome needs `--remote-debugging-port` and a CDP session.
-  🔴 **Typing into a React-controlled input needs the native value setter**, not `el.value = x`:
-  ```js
-  Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, text);
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  ```
-  Assigning `.value` directly leaves React's internal tracker unchanged and **no `onChange` fires**
-  — the drive reports success and nothing happened.
-- 🔴 **Read `textContent` per element, never `body.innerText`.** `innerText` collapses empty
-  elements away, and an empty readout is exactly what a *deferred* node is supposed to leave
-  behind — the row that proves a deferral behaves honestly is the one `innerText` deletes.
-- 🔴 **Give each signal a distinct observable sink.** Two signals into one popup slot made s34's
-  drive unable to say which arrived.
+- `npm run build` runs `tsc -b && vite build`, so the generated wrappers are typechecked. **This is
+  the step that finds what tests cannot** — it caught two separate emit defects this session.
+- Serve with `npx vite preview --port 5199 --strictPort`; stop it by port
+  (`lsof -ti :5199 -sTCP:LISTEN | xargs kill`). Chrome on a **non-default** debug port (9333), so a
+  stray browser cannot steal it.
+- 🔴 **Typing into a React-controlled input needs the native value setter**, not `el.value = x`.
+- 🔴 **Read `textContent` per element, never `body.innerText`** — `innerText` collapses empty
+  elements away, and an empty readout is exactly what an honest deferral leaves behind.
+- 🔴 **Give the drive something that must NOT happen.** Reading Shelf's wishlist button is the
+  negative control; without it the filter excludes nothing and a passing drive proves nothing.
 
 ## Instruments
 
-s35 scratchpad `91a5e120-…`: `mcp-client.mjs` (the stdio MCP client), `emit-to-app.ts`,
-`notes.ts`, `drive.mjs`, `coverage-audit.ts`, `projects.txt` (41) / `projects-40.txt`, the
-prepared apps `dialapp/` and `harness/`.
+s36 scratchpad `9001618b-…`: `mcp-client.mjs`, `emit-to-app.ts`, `drive-shelf.mjs`,
+`coverage-audit.ts`, `projects-42.txt`, `corpus-harness/`, the built `shelfapp/`.
+s35's `91a5e120-…` has `harness/`, `dialapp/`, `drive.mjs`, `projects.txt` (41).
 s34's `a85c658b-…` has `realapp/`, `kitapp/`, `cdp-drive.mjs`, `sweep.ts`, `mods.ts`.
-s31's `4fdc2703-…` still has `reach.py`, `deferred-census.ts`, `rank2.ts`, `mutate.py`
-(🔴 rank2/census are regression instruments — do not rank work with them).
+
+⚠️ `packages/nodegx-export/src/analyze/appState.ts` contains **four raw NUL bytes** (a map-key
+separator written literally into template strings, lines ~240/469/490/493). `grep` and `rg` treat
+the whole file as **binary and print nothing** — use `rg -a`. It cost this session one search
+before the cause was spotted; replacing them with `\0` escapes would be behaviour-identical.

@@ -256,6 +256,11 @@ export function emitComponent(
     if (expr.kind === 'store-get') usedVariableNames.add(expr.variableName);
     if (expr.kind === 'store-key-get') usedStoreNames.add(expr.storeName);
     if (expr.kind === 'state-get') referencedStateNames.add(expr.name);
+    // EXP-011 Tier 1.1. In a handler this prints as `notes.peek()`, so it earns the *import*
+    // and not a hook — the render half of the same rule is in `hookExprSources` above, which is
+    // the walker this one's comment warns must be kept in step.
+    if (expr.kind === 'collection-get') usedCollectionNames.add(expr.collectionName);
+    if (expr.kind === 'list-map' || expr.kind === 'list-filter') collectExprUse(expr.source);
     if (expr.kind === 'format') {
       for (const part of expr.parts) if (typeof part !== 'string') collectExprUse(part);
     }
@@ -295,6 +300,11 @@ export function emitComponent(
     if (action.kind === 'collection-add') {
       usedCollectionNames.add(action.collectionName);
       action.entries.forEach((e) => collectExprUse(e.expr));
+    }
+    if (action.kind === 'collection-clear') {
+      usedCollectionNames.add(action.collectionName);
+      action.then.forEach(collectActionUse);
+      action.unchangedThen.forEach(collectActionUse);
     }
     if (action.kind === 'branch') {
       collectExprUse(action.cond);
@@ -354,6 +364,16 @@ export function emitComponent(
       hookStoreKeys.push({ storeName: expr.storeName, key: expr.key });
       usedStoreNames.add(expr.storeName);
     }
+    /**
+     * EXP-011 Tier 1.1 — a named array read in render is the `useCollection` hook, which is
+     * what turns the module-scope `Collection` object into the array `.map` can be called on.
+     * Without this the emitted code reads `notes.map(…)` off the Collection itself.
+     */
+    if (expr.kind === 'collection-get' && collectionByName.has(expr.collectionName) && !hookCollections.includes(expr.collectionName)) {
+      hookCollections.push(expr.collectionName);
+      usedCollectionNames.add(expr.collectionName);
+    }
+    if (expr.kind === 'list-map' || expr.kind === 'list-filter') hookExprSources(expr.source);
     if (expr.kind === 'format') {
       for (const part of expr.parts) if (typeof part !== 'string') hookExprSources(part);
     }
@@ -611,6 +631,11 @@ export function emitComponent(
         return expr.viaState !== undefined || expr.fold === undefined;
       case 'state-get':
         return expr.maybeUndefined === true;
+      // A list is always an array — the module-scope `collection([])` exists from module load,
+      // and both transforms return a fresh array. Must agree with plan.ts maybeUndefinedExpr.
+      case 'collection-get':
+      case 'list-map':
+      case 'list-filter':
       case 'input-text':
       case 'control-event':
       case 'literal':
@@ -620,6 +645,87 @@ export function emitComponent(
       case 'truthy':
         return false;
     }
+  };
+  /**
+   * The row parameter of an emitted list transform (EXP-011 Tier 1.1).
+   *
+   * A fixed name is safe because it is only ever bound inside the arrow it names — these
+   * transforms do not nest another expression vocabulary inside the callback, so it cannot
+   * shadow anything an inner expression reads.
+   */
+  const LIST_ROW = 'row';
+  /**
+   * `applyFilter`'s operators, verbatim (`filtercollectionnode.ts`).
+   *
+   * ⚠️ **Loose on purpose.** The runtime compares with `==`/`!=`, not `===`, and its own comment
+   * says why: *"which is what lets a numeric filter value match a CSV column of strings"*.
+   * Tightening these to `===` here would silently drop rows the interpreter keeps — the export
+   * disagreeing with the app the author tested. `$regex` is not in this table; it defers, see
+   * the gate in plan.ts.
+   */
+  const FILTER_OPERATORS: Record<'eq' | 'neq' | 'gt' | 'lt' | 'gte' | 'lte', string> = {
+    eq: '==',
+    neq: '!=',
+    gt: '>',
+    lt: '<',
+    gte: '>=',
+    lte: '<='
+  };
+  /**
+   * A list transform's source, parenthesised when chaining a method onto it would otherwise
+   * bind wrong. A bare identifier (`notesItems`) and a call (`notes.peek()`) both take `.map`
+   * directly; anything else is wrapped.
+   */
+  /**
+   * The fields a list expression's rows are statically known to carry, or null when unknown.
+   *
+   * Null is not "no fields" — it is "this slice cannot say", which is §4e's own state and keeps
+   * every mapped input. Only the sources EXP-011 Tier 1.1 introduced can answer, because only
+   * they emit a row type the exported app's `tsc` will check.
+   */
+  const listExprFields = (expr: ValueExpr): Set<string> | null => {
+    if (expr.kind === 'collection-get') {
+      const plan = collectionByName.get(expr.collectionName);
+      return plan === undefined ? null : new Set(plan.keys.map((k) => k.key));
+    }
+    // A map REPLACES the row: whatever the source carried, the emitted object literal has
+    // exactly these keys and nothing else.
+    if (expr.kind === 'list-map') return new Set(expr.entries.map((e) => e.key));
+    // A filter selects rows without changing their shape.
+    if (expr.kind === 'list-filter') return listExprFields(expr.source);
+    return null;
+  };
+  /**
+   * How a transform reads one field off its source row.
+   *
+   * 🔴 A field the source's row type does not carry is read through an `any` cast, and reported.
+   * Without it the exported app **fails to build**: `Array Map`'s script names source properties
+   * by string, so `map({ badge: 'nope' })` over a `BooksItem[]` emits `row.nope` and `tsc`
+   * answers *"Property 'nope' does not exist on type 'BooksItem'"*. Found by sabotaging the
+   * driven project, not by reasoning — the same hole had already been closed on the repeater's
+   * side and was still open on this one.
+   *
+   * The cast is exact rather than a papering-over. `model.get('nope')` is `undefined` in the
+   * runtime, and `undefined` is what every one of `applyFilter`'s six operators compares
+   * against — including `$neq`, the one that answers *true* for an absent property. Reading
+   * `undefined` reproduces all six without folding any of them, which is a rule that cannot be
+   * got subtly wrong. Where the row shape is unknown the reader is the plain member access, and
+   * every field is fine because the row is already `any`.
+   */
+  const rowFieldReader = (source: ValueExpr, what: string): ((field: string) => string) => {
+    const known = listExprFields(source);
+    return (field: string) => {
+      const plain = memberExpr(LIST_ROW, field);
+      if (known === null || known.has(field)) return plain;
+      notes.push(
+        `${plan.path}: ${what} reads "${field}", which the array it reads does not carry — the runtime answers undefined there, and the emitted read says so`
+      );
+      return memberExpr(`(${LIST_ROW} as any)`, field);
+    };
+  };
+  const listSourceCode = (source: ValueExpr, mode: 'handler' | 'render'): string => {
+    const code = exprCode(source, mode);
+    return SIMPLE_REF.test(code) || /^[A-Za-z_$][\w$.]*\(\)$/.test(code) || code.endsWith(')') ? code : `(${code})`;
   };
   /** The wrapper call's argument record; shorthand where the arg code is the field name. */
   const jsArgsObject = (def: JsFunctionPlan, mode: 'handler' | 'render'): string => {
@@ -693,6 +799,63 @@ export function emitComponent(
       }
       case 'truthy':
         return exprCode(expr.operand, mode);
+      /**
+       * A named array (EXP-011 Tier 1.1). In render it is the `useCollection` local, so the
+       * component re-renders when the array changes; in a handler it is `.peek()`, which reads
+       * without creating a dependency edge — `.get()` there would register the handler's read
+       * as a reactive dependency of whatever happened to be tracking.
+       */
+      case 'collection-get':
+        return mode === 'render'
+          ? (collectionLocals.get(expr.collectionName) ?? collectionByName.get(expr.collectionName)!.exportName)
+          : `${collectionByName.get(expr.collectionName)!.exportName}.peek()`;
+      /** `Array Map` — one object literal per row, keys in the script's own order. */
+      case 'list-map': {
+        const source = listSourceCode(expr.source, mode);
+        const read = rowFieldReader(expr.source, 'Array Map');
+        const entries = expr.entries
+          .map((e) => `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(e.key) ? e.key : JSON.stringify(e.key)}: ${read(e.field)}`)
+          .join(', ');
+        return `${source}.map((${LIST_ROW}) => ({${entries.length > 0 ? ` ${entries} ` : ''}}))`;
+      }
+      /**
+       * `Array Filter` — filter, sort, skip, limit, in `scheduleFilter`'s order. `.slice()`
+       * precedes `.sort()` because `Array.prototype.sort` mutates in place and the source here
+       * may be the `useCollection` local, which React must not see mutated.
+       */
+      case 'list-filter': {
+        let code = listSourceCode(expr.source, mode);
+        const readTest = rowFieldReader(expr.source, 'Array Filter');
+        for (const test of expr.tests) {
+          code = `${code}.filter((${LIST_ROW}) => ${readTest(test.field)} ${FILTER_OPERATORS[test.op]} ${tsLiteral(test.value)})`;
+        }
+        if (expr.sort.length > 0) {
+          const comparisons = expr.sort.map((s) => {
+            const a = memberExpr('a', s.field);
+            const b = memberExpr('b', s.field);
+            const [lo, hi] = s.direction === 'descending' ? [b, a] : [a, b];
+            return `${lo} > ${hi} ? 1 : ${lo} < ${hi} ? -1 : 0`;
+          });
+          const body = comparisons.length === 1 ? comparisons[0] : comparisons.map((c) => `(${c})`).join(' || ');
+          /**
+           * 🔴 The row parameters are annotated `any`, and it is not laziness — it is the only
+           * honest spelling. Every emitted collection key is **optional**, so a sorted field is
+           * `string | undefined`, and `a.title > b.title` on that is a `strictNullChecks` error:
+           * the exported app failed `tsc -b` on exactly this line. The runtime's `sorter`
+           * compares with bare `>`/`<` and simply lets `undefined` through
+           * (`filtercollectionnode.ts`), so a null-safe comparator would have to *invent* an
+           * ordering for absent values that the interpreter does not have. `any` says what is
+           * true: this comparison is JavaScript's, over a field whose type this slice does not
+           * claim. Found by building the emitted app — parsing it was not enough.
+           */
+          code = `${code}.slice().sort((a: any, b: any) => ${body})`;
+        }
+        if (expr.skip !== undefined || expr.limit !== undefined) {
+          const start = expr.skip ?? 0;
+          code = expr.limit === undefined ? `${code}.slice(${start})` : `${code}.slice(${start}, ${start + expr.limit})`;
+        }
+        return code;
+      }
       // Render reads the node's local; a handler inlines the call over `.get()` snapshots —
       // pure by the gate, so recomputation is unobservable (EXP-003 §4). The folds are
       // Expression's typed getters, verbatim semantics (expression.ts).
@@ -810,6 +973,25 @@ export function emitComponent(
     });
     return entries.length > 0 ? `{ ${entries.join(', ')} }` : '{}';
   };
+  /**
+   * `if (t) <then> else <else>`, joined so the result parses.
+   *
+   * 🔴 The naive join is `${ifPart}; else ${elseArm}`, and it is wrong exactly when the then-arm
+   * is a **block**: `if (c) { a; b; }; else d` puts an empty statement between the block and the
+   * `else`, which is a SyntaxError, and an emitted app that does not parse is not an export. It
+   * is right for a single-statement then-arm (`if (c) a; else b`), which is why the shape
+   * survived — the semicolon there is the statement's own terminator.
+   *
+   * Both callers go through here rather than each carrying the rule: EXP-011 Tier 1.1's
+   * `collection-clear` hit it the moment a Done chain made the arm a block, and `branch` has the
+   * same latent shape for a two-action true arm beside a false arm (no fixture in this repo
+   * reaches it today — this is a fix by inspection, not a repro).
+   */
+  const ifElse = (test: string, thenArm: string, elseArm: string | null): string => {
+    const head = `if (${test}) ${thenArm}`;
+    if (elseArm === null) return head;
+    return `${head}${thenArm.startsWith('{') ? '' : ';'} else ${elseArm}`;
+  };
   const actionCode = (action: HandlerAction, indent = 0): string => {
     switch (action.kind) {
       case 'navigate':
@@ -834,6 +1016,30 @@ export function emitComponent(
           )
           .join(', ');
         return `${collection.exportName}.add({${entries.length > 0 ? ` ${entries} ` : ''}})`;
+      }
+      /**
+       * `Clear Array` (EXP-011 Tier 1.1). With neither outcome consumed this is the bare
+       * `.clear()`; with either one it becomes the runtime's own fork, tested on the length
+       * *before* the call — `wasEmpty` in `collectionnode-clear.ts`.
+       *
+       * The empty arm deliberately omits the `.clear()`: `Collection.clear()` opens with
+       * `if (this.items.length === 0) return`, so calling it there would notify nobody and
+       * change nothing. Leaving it out is the same program, one statement shorter.
+       */
+      case 'collection-clear': {
+        const collection = collectionByName.get(action.collectionName)!;
+        const call = `${collection.exportName}.clear()`;
+        const hasDone = action.then.length > 0;
+        const hasUnchanged = action.unchangedThen.length > 0;
+        if (!hasDone && !hasUnchanged) return call;
+        const armCode = (armActions: HandlerAction[], lead?: string): string => {
+          const list = [...(lead === undefined ? [] : [lead]), ...expandActions(armActions).map(actionCode)];
+          return list.length === 1 ? list[0] : `{ ${list.join('; ')}; }`;
+        };
+        const test = `${collection.exportName}.peek().length > 0`;
+        if (!hasUnchanged) return ifElse(test, armCode(action.then, call), null);
+        if (!hasDone) return ifElse(test, call, armCode(action.unchangedThen));
+        return ifElse(test, armCode(action.then, call), armCode(action.unchangedThen));
       }
       case 'emit': {
         const channel = channelByName.get(action.channelName)!;
@@ -911,10 +1117,9 @@ export function emitComponent(
         const cond = exprCode(action.cond, 'handler');
         if (action.whenTrue.length === 0) {
           const negated = SIMPLE_REF.test(cond) ? `!${cond}` : `!(${cond})`;
-          return `if (${negated}) ${armCode(action.whenFalse)}`;
+          return ifElse(negated, armCode(action.whenFalse), null);
         }
-        const test = `if (${cond}) ${armCode(action.whenTrue)}`;
-        return action.whenFalse.length > 0 ? `${test}; else ${armCode(action.whenFalse)}` : test;
+        return ifElse(cond, armCode(action.whenTrue), action.whenFalse.length > 0 ? armCode(action.whenFalse) : null);
       }
     }
   };
@@ -931,7 +1136,14 @@ export function emitComponent(
     // is a statement, which takes the same block form a branch does (RECORD-VERBS-TARGET §4a).
     const isAsync = expanded.some((a) => a.kind === 'api-call');
     const head = isAsync ? `async ${param}` : param;
-    if (isAsync || expanded.some((a) => a.kind === 'branch' || (a.kind === 'popup-close' && a.then.length > 0))) {
+    // A Clear Array that owes either outcome chain prints as an `if`, which is a statement for
+    // exactly the reason a branch is — an arrow with `=> if (…)` as its expression body does not
+    // parse. Without this the one-action case at the foot of this function emits a syntax error.
+    const isStatement = (a: HandlerAction) =>
+      a.kind === 'branch' ||
+      (a.kind === 'popup-close' && a.then.length > 0) ||
+      (a.kind === 'collection-clear' && (a.then.length > 0 || a.unchangedThen.length > 0));
+    if (isAsync || expanded.some(isStatement)) {
       // A try/catch is a statement, not an expression: it prints at the handler's own column and
       // takes no terminator. Every other action keeps the semicolon the existing goldens pin.
       const body = expanded
@@ -1477,12 +1689,26 @@ export function emitComponent(
       notes.push(`${plan.path}: For Each ${node.id} deferred to EXP-003 (${reason})`);
       return [`${pad(indent)}{/* TODO(export): For Each ${node.id} deferred to EXP-003 (${reason}) */}`];
     }
+    /**
+     * The template's row props (EXP-011 Tier 1.1) — an `Object` in "From repeater" mode inside
+     * the template became these, and the parent is where the row reaches them:
+     * `mood={item.mood}`, which is `memberExpr(itemLocal, field)`, the identity-mapping path
+     * this function already emits (EXP-002-MODEL2-TARGET-OUTPUT §4, parent side).
+     *
+     * They are appended to the mapping rather than folded into it, and excluded from the
+     * `template-inputs` derivation below, because their **field** is the property the `Object`
+     * read and their **prop** may have been deduplicated away from it. Deriving one from the
+     * other is the collision bug §4's own note warns about.
+     */
+    const rowProps = templatePlan?.rowProps ?? [];
+    const rowPropNames = new Set(rowProps.map((r) => r.prop));
     // 'template-inputs' is the no-script case: the runtime identity-maps item properties onto
     // same-named component inputs by itself (foreach.tsx), so the template's props are the map.
-    const mapping =
+    const declaredMapping =
       repeater.mapping === 'template-inputs'
-        ? (templatePlan?.props ?? []).map((p) => ({ input: p.name, field: p.name }))
-        : repeater.mapping;
+        ? (templatePlan?.props ?? []).filter((p) => !rowPropNames.has(p.name)).map((p) => ({ input: p.name, field: p.name }))
+        : repeater.mapping.filter((entry) => !rowPropNames.has(entry.input));
+    const mapping = [...declaredMapping, ...rowProps.map((r) => ({ input: r.prop, field: r.field }))];
     // STATIC-DATA §3: the rows are known, so this takes the typed treatment — the item type's
     // own fields are the allowed set, and a mapped input the rows do not carry is dropped and
     // reported, exactly as the collection/query paths do.
@@ -1502,10 +1728,29 @@ export function emitComponent(
       const params = staticData.keyField ? itemLocal : `${itemLocal}, ${indexLocal}`;
       return [`${pad(indent)}{${staticData.constName}.map((${params}) => (`, ...lines, `${pad(indent)}))}`];
     }
-    // §4e: a plain-list feed has no statically-known item shape — fields read as `any` off the
-    // untyped list (the §10 ruling), so every mapped input is kept.
+    /**
+     * §4e: a plain-list feed has no statically-known item shape — fields read as `any` off the
+     * untyped list (the §10 ruling), so every mapped input is kept.
+     *
+     * 🔴 **Unless the list is one this slice built.** EXP-011 Tier 1.1's `collection-get` and
+     * `list-map` produce a list whose row type is *concrete* in the emitted code — a
+     * `NotesItem[]`, or an object literal with the mapped keys — so a mapped input the row does
+     * not carry stops being an `any` read that compiles and becomes a **type error in the
+     * exported app**. Where the shape is knowable it is enforced here exactly as the Static Data
+     * and named-array paths below enforce theirs, dropped field reported. `listExprFields`
+     * answers null for every other source, which keeps §4e's rule intact for them.
+     */
     if (itemsExpr !== undefined) {
-      const attrs = [`key={${indexLocal}}`, ...rowAttrs(mapping, itemLocal)];
+      const known = listExprFields(itemsExpr);
+      const keptExpr = known === null ? mapping : mapping.filter((entry) => known.has(entry.field));
+      if (known !== null) {
+        for (const dropped of mapping.filter((entry) => !known.has(entry.field))) {
+          notes.push(
+            `${plan.path}: For Each ${node.id} maps "${dropped.input}" from field "${dropped.field}", which the array it reads does not carry — dropped, reported`
+          );
+        }
+      }
+      const attrs = [`key={${indexLocal}}`, ...rowAttrs(keptExpr, itemLocal)];
       const lines = element(target.symbol, attrs, null, indent + 2, false);
       const srcCode = exprCode(itemsExpr, 'render');
       // `?? []` is foreach.tsx's own "empty arrival clears the list".
@@ -2216,6 +2461,8 @@ export function emitComponent(
         return a.expr !== undefined ? [a.expr] : [];
       case 'collection-add':
         return a.entries.map((e) => e.expr);
+      case 'collection-clear':
+        return [...a.then.flatMap(actionExprsOf), ...a.unchangedThen.flatMap(actionExprsOf)];
       case 'branch':
         return [a.cond, ...a.whenTrue.flatMap(actionExprsOf), ...a.whenFalse.flatMap(actionExprsOf)];
       case 'popup-show':

@@ -56,6 +56,9 @@ function collectionModule(collection: CollectionPlan): string {
     ...collection.inserters.map(
       (i) =>
         `Inserted by ${i.label !== undefined ? `"${i.label}" ` : ''}(NewModel \`${i.newModelId}\` → CollectionInsert \`${i.insertId}\` on /${i.componentPath}).`
+    ),
+    ...collection.mutators.map(
+      (m) => `Emptied by ${m.label !== undefined ? `"${m.label}" ` : ''}(${m.nodeType} \`${m.nodeId}\` on /${m.componentPath}).`
     )
   ];
   const comment =

@@ -1,6 +1,6 @@
 # EXP-011 — Close the picker gap, ranked by what apps need
 
-**Status:** 🟡 In progress — **Tier 1.4 (the value Variables) is built, driven and gated**, session 35
+**Status:** 🟡 In progress — **Tier 1.1 (the client-side data vocabulary) is built, driven and gated**, session 36
 **Depends on:** nothing — but sequenced after EXP-009 and EXP-010, which are worth more per hour
 **Replaces:** every "what to build next" list in this phase from sessions 20–31
 
@@ -12,12 +12,13 @@
 node scripts/export-ledger/picker-coverage.js
 ```
 
-> **PICKER COVERAGE: 55 of 127 placeable nodes export (43.3%)** — 2026-08-28, session 35
-> (51 / 40.2% when this task was written; **Variables** has left the table below)
+> **PICKER COVERAGE: 59 of 127 placeable nodes export (46.5%)** — 2026-08-28, session 36
+> (51 / 40.2% when this task was written; **Variables** left the table in session 35, and four of
+> the eight Data nodes of Tier 1.1 left it in session 36)
 
 | category | nodes a user can place and cannot export |
 |---|---|
-| **Data** | 27 |
+| **Data** | 23 |
 | **Utilities** | 16 |
 | **Cloud Services** | 9 |
 | **Navigation** | 5 |
@@ -51,13 +52,10 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
 
 ### Tier 1 — an ordinary app hits these on day one
 
-1. **The client-side data vocabulary (Data, ~10 of the 27).** `Object`, `Set Object Properties`,
-   `Create New Array`, `Clear Array`, `Remove Object From Array`, `Array Filter`, `Array Map`,
-   `Repeater Item`. This is how anyone holds a working set of rows in the UI. It is also the
-   honest, NodeGX-shaped version of the `Model2` work sessions 17–31 kept circling — with the
-   difference that this time it is aimed at what the picker offers, not at a legacy prefab's use
-   of it. **[EXP-002-MODEL2-TARGET-OUTPUT.md](./EXP-002-MODEL2-TARGET-OUTPUT.md) §4's design is
-   still good and should be reused; §2, §3 and §7's ranking are void.**
+1. ✅ **The client-side data vocabulary (Data, 8).** `Object`, `Array Filter`, `Array Map` and
+   `Clear Array` are **built, driven and gated in session 36 — §7**. The other four defer, each
+   with a reason about a *mechanism* rather than about effort, and three of them are blocked by
+   something other than themselves — §7.3.
 2. **`HTTP Request`.** Any app that talks to anything that is not its own backend.
 3. **The date family (Utilities, 6).** `Now`, `Date To String`, `Date Add`, `Date Compare`,
    `Date Difference`, `Date Parts`. Anything with a timestamp needs at least two of these.
@@ -99,9 +97,12 @@ nobody will ever do. Most of the current 101 exemptions say the latter, verbatim
 1. ✅ **The picker number moves and holds.** Every slice raises `pickerCoverageFloor` in the same
    commit — `export-ledger:picker` fails if it does not. *(51 → 55, session 35.)*
 2. 🟡 **Tier 1 complete ⇒ 51 → ~72 of 127 (≈57%).** Tiers 1+2 ⇒ ≈87 (≈68%). Everything except the
-   "not a target" list ⇒ ≈108 (≈85%). *(1.4 of 4 done; 1.1–1.3 remain.)*
+   "not a target" list ⇒ ≈108 (≈85%). *(1.1 and 1.4 done — 59 of 127; 1.2 `HTTP Request` and 1.3
+   the date family remain. ⚠️ Tier 1.1 yields 4 of its 8 nodes, not 8: the projection above
+   counted node types, and four of these defer on mechanisms named in §7.3.)*
 3. ✅ **Each slice has a picker-exercising project** that exports, builds and runs (§2).
-   *(Tier 1.4's is `tests/fixtures/variable-dial` — §6.4.)*
+   *(Tier 1.4's is `tests/fixtures/variable-dial` — §6.4; Tier 1.1's is
+   `tests/fixtures/reading-shelf` — §7.4.)*
 4. ✅ **The exemption sentences get rewritten** so that "deferred" means one of *deliberately out of
    scope* (with the reason) or *scheduled* (with the tier), never "pre-gate backlog".
    *(All 97, session 35, and `export-ledger:check` now enforces the shape — §6.5.)*
@@ -210,3 +211,136 @@ to the old sentence fails it with that entry named.
 Where §3's ranking did not name a node (`Boolean To String`, `Delay`, `Log`, `Value Changed`,
 `Color Blend`, the record-relation verbs, `Unique Id`), the entry **says the tier was assigned in
 session 35 rather than by §3** — a tiering nobody ruled on should not read as one somebody did.
+
+---
+
+## §7 Tier 1.1 as built — the client-side data vocabulary (session 36, 2026-08-28)
+
+**55 → 59 of 127 (43.3% → 46.5%).** `pickerCoverageFloor` raised in the same commit.
+
+Tier 1.1 is eight nodes and **four of them translate**. The other four defer on named mechanisms,
+and that split is the finding rather than a shortfall: three of the four are blocked by something
+that is not about them at all (§7.3).
+
+### §7.1 What the vocabulary turned out to be
+
+The emitted app already had the row-holder — `collection<T>([])` in `@nodegx/core`, `useCollection`
+in render, `.add()` in a handler (COLLECTIONS §1–2). What was missing was everything you do to it
+afterwards, and the shape of the answer is that **a list became an ordinary value expression**.
+
+| the author's graph | what is emitted |
+|---|---|
+| `Object`, Id Source "From repeater" | **props on the template.** Each read `prop-p` is a minted prop; the hosting `For Each` binds `p={item.p}` — EXP-002-MODEL2-TARGET-OUTPUT §4's design, unchanged |
+| `Array Filter` | `.filter(…)`, then `.slice().sort(…)`, then one `.slice(skip, skip+limit)` — `scheduleFilter`'s own order |
+| `Array Map` | `.map((row) => ({ … }))`, keys in the script's order |
+| `Clear Array` | `notes.clear()`, forked on `peek().length > 0` when either outcome is consumed |
+
+Three details are the runtime being specific rather than the export being clever:
+
+- **The filter's comparisons are loose.** `applyFilter` uses `==`/`!=`, and its own comment says
+  why — *"what lets a numeric filter value match a CSV column of strings"*. `===` here would drop
+  rows the interpreter keeps, in an app the author has already tested.
+- **`Clear Array`'s `done` fires only when the array was not already empty.** `wasEmpty` is
+  measured before `set([])`, and `unchanged` is the other arm. A `done` chain emitted
+  unconditionally would fire where the interpreter stays silent. The empty arm deliberately omits
+  the `.clear()` call, because `Collection.clear()` is itself `if (length === 0) return`.
+- **A `Failure` on a `Clear Array` with a literal Array Id cannot fire**, because
+  `resolveCollectionId` is `Collection.get(id)` and that mints a named collection for any string.
+  So the wire is **dropped with a note**, not deferred — deferring a whole translation over an
+  already-dead wire would be a loss to a no-op.
+
+`collection-get` is the load-bearing new expression kind. The collections slice could reach a named
+array only through `RepeaterPlan.itemsCollectionName` — a per-consumer field. `For Each` was the
+only consumer then; now there are three and they **compose** (`books → filter → map → For Each`),
+which a field cannot express and an expression can.
+
+### §7.2 The three things that were nearly wrong, and what caught each
+
+🔴 **A `}; else` that three passing tests did not see.** The first `Clear Array` fork emitted
+`if (…) { books.clear(); … }; else …` — an empty statement between a block and its `else`, which
+is a **SyntaxError**. Assertions for `if (books.peek().length > 0)`, for `books.clear()` and for
+`else` all passed, because every one of those substrings really was there. It was visible only by
+reading the emitted file. `tests/emitted-syntax.test.ts` now parses every emitted file of every
+fixture, with a control pair proving the checker disagrees about the good and the broken shape.
+**The same join is latent in the `branch` emit** for a two-action true arm beside a false arm; both
+now go through one `ifElse` helper. No fixture in this repo reaches the `branch` case — that is a
+fix by inspection, not a repro, and it is recorded as such.
+
+🔴 **Two temporal dead zones.** `listReadOf` and the `Object` pre-pass run from Pass 2, and both
+read `const`s declared thousands of lines later (`collectionReadEligible`, `wiredPorts`). A `const`
+arrow read before its declaration executes is a `ReferenceError`, not a hoisted function. The suite
+never saw it — **no fixture had a `Model2` node**, so 626 tests passed over a crash that fires on
+the first project wiring an array into a transform. Found by emitting a real project.
+
+🔴 **An exported app that would not build.** `Array Map`'s script names source properties by
+string, so `map({ badge: 'nope' })` over a typed row emitted `row.nope` and `tsc -b` answered
+*"Property 'nope' does not exist on type 'BooksItem'"*. This is the hole that had already been
+closed on the repeater's side and was still open on the transforms'. Found by **sabotaging the
+driven project**, not by reasoning. Both reads now go through a cast where the field is known
+absent, which is exact: `model.get('nope')` is `undefined`, and `undefined` is what all six of
+`applyFilter`'s operators compare against — including `$neq`, the one that answers *true*.
+
+⚠️ A related one the same build caught: every emitted collection key is **optional**, so a sorted
+field is `string | undefined` and `a.title > b.title` is a `strictNullChecks` error. The comparator
+takes `(a: any, b: any)`, because the runtime's `sorter` compares with bare `>`/`<` and a null-safe
+comparator would have to *invent* an ordering for absent values that the interpreter does not have.
+
+### §7.3 What defers, and why three of the four are not about themselves
+
+- **`Create New Array`** — *deliberately out of scope.* It mints an anonymous array with a
+  generated Id, and the only consumer of that Id is another node's **Array Id input, by wire** —
+  which is precisely what has no emitted module, since the named-array model keys on a literal
+  name. Translating it would create an array nothing in the exported app could name.
+- **`Remove Object From Array`** — *scheduled, and blocked one level up.* It needs an Object Id,
+  and in every list shape a person actually builds that comes from **inside the repeater row** —
+  which cannot reach the page while a row's outputs stay deferred on *"which row fired is not
+  statically expressible"*. 🔴 **This was measured before it was believed.** The session began by
+  planning to mint an `id` on every insert so this node could translate; checking the relay first
+  showed the ids would have bought nothing and would have changed a shipped slice's output.
+- **`Set Object Properties`** — *scheduled: the collection-state slice.* The read side of `Object`
+  translates; the write side does not, because a row written from inside the row is state the
+  enclosing list owns rather than a prop the parent passes down (§4 draws that line, §5.4 gates it).
+- **`Repeater Item`** — *deliberately out of scope.* Its `Item Id` is the runtime record id of a
+  row, and the emitted app has no counterpart. Its other ports are the Repeater's removal
+  handshake — lifecycle signalling, which is `effect()` work.
+
+### §7.4 The project (§2's requirement), and the drive
+
+`tests/fixtures/reading-shelf` — **Reading Shelf**, authored through the MCP server (not by
+hand-editing JSON), one routed page, every node placed on it. It carries all four translations at
+once and reports **nothing dropped** beyond the router shell.
+
+It exports, builds under `tsc -b && vite build`, and runs. Driven in headless Chrome over CDP,
+reading `textContent` back after real keystrokes and real clicks:
+
+```
+boot              : rows []                            status ""
+added Dune        : rows ["Dune favourite"]            ← the Object node's minted prop
+added Anathem     : rows ["Anathem …","Dune …"]        ← SORTED: Dune was added first
+wishlisted Ulysses: rows unchanged                     ← the filter EXCLUDES it
+cleared           : rows []   status "Emptied the shelf."
+cleared again     : rows []   status "The shelf was already empty."   ← the unchanged arm
+console errors    : []
+```
+
+🔴 **The wishlist button is a negative control, and the slice is not measured without it.** With
+every book a favourite, the filter excludes nothing, and "the right rows rendered" would read
+*identically* if the filter had never been emitted — a reading that fits rather than one that
+excludes.
+
+🔴 **The map was proved by a mutant.** Its rename (`badge` ← `shelf`) was sabotaged to read a field
+no row has; the badge text disappeared from every row and the drive's readings changed. Before
+that, "favourite" appearing was equally consistent with the map never having run.
+
+### §7.5 A gap Tier 1.4 left, found by building against it
+
+`collectAppState`'s `typeOfSource` was never taught about the four value Variables. A Variable
+written by a `String` node therefore had **no statically-typed writer**, typed `unknown`, and
+*every read of it dropped* — the graph is as ordinary as they come (a String constant into a Set
+Variable, the variable rendered in a Text) and it exported a blank element with a note. One case
+added, for `String` only: this function's vocabulary is string-or-unknown, and claiming `string`
+for a `Number` would assert a cast the runtime does not perform.
+
+The general lesson is the one §6.2 was already circling: **Tier 1.4 taught `resolveExpr` about
+those nodes and stopped there.** A new readable node has at least two consumers in this package,
+and the second one is silent when it is missed.
