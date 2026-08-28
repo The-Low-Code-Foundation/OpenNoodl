@@ -28,7 +28,7 @@ import {
   ValueExpr
 } from '../analyze/plan';
 import { ExportIR, NodeIR } from '../ir/types';
-import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase } from './naming';
+import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase, propIdentifier, propIdentifiers } from './naming';
 import { tsLiteral } from './state';
 import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole } from './style';
 
@@ -432,7 +432,29 @@ export function emitComponent(
     SESSION_LOCAL,
     plan.file.symbol
   ]);
-  plan.props.forEach((p) => reserved.add(p.name));
+  // Port names are user text (`Align X`, `Margin Bottom`): a prop prints as the identifier the
+  // naming rule assigns it, on every surface — interface, destructuring, reader, and the JSX
+  // attribute a caller writes. `propName` is the child's side of that; `targetPropName` below is
+  // the caller's, resolved off the target's own plan so the two agree by construction.
+  const propIdentByName = propIdentifiers(plan);
+  const propName = (portName: string) => propIdentByName.get(portName) ?? propIdentifier(portName);
+  const targetIdents = new Map<string, Map<string, string>>();
+  /**
+   * The attribute name a caller writes for one of `targetLegacy`'s input ports. A port the
+   * target does not declare (or a target with no plan at all) falls back to the bare mapping:
+   * the attribute is still syntactically an identifier, and whether it belongs on that component
+   * is §10d(2)/(3)'s question, not this one's.
+   */
+  const targetPropName = (targetLegacy: string, portName: string): string => {
+    let idents = targetIdents.get(targetLegacy);
+    if (idents === undefined) {
+      const targetPlan = project.byLegacyPath.get(targetLegacy);
+      idents = targetPlan ? propIdentifiers(targetPlan) : new Map<string, string>();
+      targetIdents.set(targetLegacy, idents);
+    }
+    return idents.get(portName) ?? propIdentifier(portName);
+  };
+  plan.props.forEach((p) => reserved.add(propName(p.name)));
   plan.outputProps.forEach((o) => reserved.add(o.prop));
   plan.liftedOutputProps.forEach((l) => reserved.add(l.prop));
   if (plan.closesPopup) reserved.add('onClose');
@@ -587,7 +609,7 @@ export function emitComponent(
   const exprCode = (expr: ValueExpr, mode: 'handler' | 'render'): string => {
     switch (expr.kind) {
       case 'prop':
-        return expr.name;
+        return propName(expr.name);
       case 'input-text':
         return 'event.target.value';
       // A state read is the render closure's value in both modes (CONTROLLED-STATE §3.2);
@@ -688,6 +710,8 @@ export function emitComponent(
     const walk = (e: ValueExpr) => {
       switch (e.kind) {
         case 'prop':
+          add(propName(e.name));
+          break;
         case 'state-get':
           add(e.name);
           break;
@@ -982,7 +1006,7 @@ export function emitComponent(
 
   // ---- JSX -------------------------------------------------------------------------------
   const bindingExpr = (source: BindingSource): string | null => {
-    if (source.kind === 'prop') return source.name;
+    if (source.kind === 'prop') return propName(source.name);
     if (source.kind === 'store') return hookLocals.get(source.variableName) ?? null;
     if (source.kind === 'store-key') return storeKeyLocals.get(storeKeyId(source.storeName, source.key)) ?? null;
     if (source.kind === 'computed') return exprCode(source.expr, 'render');
@@ -1367,6 +1391,9 @@ export function emitComponent(
     const noFeed = !query && !collection && itemsExpr === undefined && staticData === undefined;
     const target = requireInstance(repeater?.templatePath ?? null, `For Each ${node.id}`);
     const templatePlan = repeater?.templatePath ? project.byLegacyPath.get(repeater.templatePath) : undefined;
+    // The row's attribute names are the template's props, so they take the template's mapping.
+    const templateIdents = templatePlan ? propIdentifiers(templatePlan) : new Map<string, string>();
+    const templateProp = (input: string) => templateIdents.get(input) ?? propIdentifier(input);
     if (!repeater || noFeed || !target || repeater.mapping === null) {
       const reason = !repeater?.templatePath
         ? 'no template component'
@@ -1398,7 +1425,7 @@ export function emitComponent(
       // §3.2: `id` keys only when every row has a unique one, mirroring the runtime's own
       // record identity; otherwise index, which is the same information the runtime has.
       const keyAttr = staticData.keyField ? `key={${itemLocal}.${staticData.keyField}}` : `key={${indexLocal}}`;
-      const attrs = [keyAttr, ...keptStatic.map(({ input, field }) => `${input}={${memberExpr(itemLocal, field)}}`)];
+      const attrs = [keyAttr, ...keptStatic.map(({ input, field }) => `${templateProp(input)}={${memberExpr(itemLocal, field)}}`)];
       const lines = element(target.symbol, attrs, null, indent + 2, false);
       const params = staticData.keyField ? itemLocal : `${itemLocal}, ${indexLocal}`;
       return [`${pad(indent)}{${staticData.constName}.map((${params}) => (`, ...lines, `${pad(indent)}))}`];
@@ -1408,7 +1435,7 @@ export function emitComponent(
     if (itemsExpr !== undefined) {
       const attrs = [
         `key={${indexLocal}}`,
-        ...mapping.map(({ input, field }) => `${input}={${memberExpr(itemLocal, field)}}`)
+        ...mapping.map(({ input, field }) => `${templateProp(input)}={${memberExpr(itemLocal, field)}}`)
       ];
       const lines = element(target.symbol, attrs, null, indent + 2, false);
       const srcCode = exprCode(itemsExpr, 'render');
@@ -1430,14 +1457,14 @@ export function emitComponent(
     if (collection) {
       const attrs = [
         `key={${indexLocal}}`,
-        ...kept.map(({ input, field }) => `${input}={${memberExpr(itemLocal, field)}}`)
+        ...kept.map(({ input, field }) => `${templateProp(input)}={${memberExpr(itemLocal, field)}}`)
       ];
       const lines = element(target.symbol, attrs, null, indent + 2, false);
       const local = collectionLocals.get(collection.name)!;
       return [`${pad(indent)}{${local}.map((${itemLocal}, ${indexLocal}) => (`, ...lines, `${pad(indent)}))}`];
     }
     const item = query!.itemName;
-    const attrs = [`key={${item}.id}`, ...kept.map(({ input, field }) => `${input}={${memberExpr(item, field)}}`)];
+    const attrs = [`key={${item}.id}`, ...kept.map(({ input, field }) => `${templateProp(input)}={${memberExpr(item, field)}}`)];
     const lines = element(target.symbol, attrs, null, indent + 2, false);
     return [`${pad(indent)}{${query!.stateName}.map((${item}) => (`, ...lines, `${pad(indent)}))}`];
   };
@@ -1563,7 +1590,7 @@ export function emitComponent(
     const attrs: string[] = [];
     for (const param of node.parameters) {
       if (param.name === 'visible' || param.name === 'mounted') continue; // §4b: not target props
-      if (param.value.kind === 'literal') attrs.push(jsxAttr(param.name, param.value.value));
+      if (param.value.kind === 'literal') attrs.push(jsxAttr(targetPropName(node.type, param.name), param.value.value));
     }
     for (const [toProperty, source] of Object.entries(plan.bindings[node.id] ?? {})) {
       // mounted rides the render wrapper; visible has no class to toggle on an instance.
@@ -1575,7 +1602,7 @@ export function emitComponent(
         continue;
       }
       const expr = bindingExpr(source);
-      if (expr !== null) attrs.push(`${toProperty}={${expr}}`);
+      if (expr !== null) attrs.push(`${targetPropName(node.type, toProperty)}={${expr}}`);
       else notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
     }
     // The lifted callbacks (§4d parent side): `onXChanged={setX}` writes the parent state var.
@@ -1598,7 +1625,7 @@ export function emitComponent(
       // the emitted app's own typecheck, and such a popup never closes at runtime either.
       const closable = project.byLegacyPath.get(slot.targetLegacy)?.closesPopup === true;
       const attrs = [
-        ...slot.params.map((p) => jsxAttr(p.input, p.value)),
+        ...slot.params.map((p) => jsxAttr(targetPropName(slot.targetLegacy, p.input), p.value)),
         ...(closable ? [`onClose={() => ${popupSetter}(null)}`] : [])
       ];
       return [
@@ -1788,14 +1815,20 @@ export function emitComponent(
     body.push(`const ${sd.constName}: readonly ${sd.typeName}[] = Object.freeze(${staticRowsLiteral(sd.rows, 0)});`, '');
   }
   const allPropNames = [
-    ...plan.props.map((p) => p.name),
+    ...plan.props.map((p) => propName(p.name)),
     ...plan.outputProps.map((o) => o.prop),
     ...plan.liftedOutputProps.map((l) => l.prop)
   ];
   if (plan.closesPopup) allPropNames.push('onClose');
   if (allPropNames.length > 0) {
     body.push(`export interface ${symbol}Props {`);
-    for (const prop of plan.props) body.push(`  ${prop.name}?: ${prop.tsType};`);
+    // The port name rides along as a doc comment wherever the identifier had to differ — the
+    // graph's own vocabulary is what the author will search for.
+    for (const prop of plan.props) {
+      const ident = propName(prop.name);
+      if (ident !== prop.name) body.push(`  /** Component input \`${prop.name}\`. */`);
+      body.push(`  ${ident}?: ${prop.tsType};`);
+    }
     for (const output of plan.outputProps) body.push(`  ${output.prop}?: () => void;`);
     // Lifted value outputs (CONTROLLED-STATE §4d): optional callbacks carrying the value.
     for (const lifted of plan.liftedOutputProps) body.push(`  ${lifted.prop}?: (value: ${lifted.tsType}) => void;`);

@@ -475,3 +475,116 @@ causes**. None is a record-verb defect, and none is a regression — all reprodu
 5. **`readonly unknown[]` fed into a `string` prop** — the same family, from a collection binding.
 
 Ranked by projects unblocked, (1) is worth more than the other four together.
+
+## §11 The prop-name mapping (session 23 — §10d(1), closed)
+
+### 11a — What was wrong, and why quoting was not the fix
+
+A component input port named `Align X` was emitted verbatim as a TypeScript identifier:
+`Align X?: string;` in the Props interface, `{ Value, Align X, … }` in the destructuring. The
+measurement, over the 40-project corpus:
+
+| distinct non-identifier port name | sites |
+|---|---|
+| `Align X`, `Align Y`, `Margin Top/Right/Bottom/Left` | 17 each |
+| `Show Label` | 9 |
+| `Alternate text`, `Filter Values` | 8 each |
+
+Nine distinct names, every one of them words separated by a space. No leading digits, no exotic
+characters, and **no corpus collision** between a sanitised name and an existing port name. On
+the caller's side one of them, `Alternate text`, is also a wire target, so it was emitted as a
+JSX attribute — `<ProductPhoto Alternate text={…} />`. Generated callback props (`onWaved`,
+`onClose`) were never affected: they are minted, not authored.
+
+**The rest of the emitter guards by quoting — `tsFieldKey`, `recordDataObject`, the static-data
+field emitter — and that is exactly why the props path could not just copy them.** A record field
+is only ever a *property key*, and `{ "Align X": … }` is legal. A prop is a property key **and** a
+binding identifier in the destructuring **and** a JSX attribute name at every call site, and the
+last two cannot be quoted at all. So the props path maps rather than quotes.
+
+**The ruling: the port name is the graph's vocabulary and the identifier is the emitted app's,
+and the mapping is a pure function of the plan's own prop list.** That is what makes parent and
+child agree without threading anything between them — the caller resolves an attribute name by
+running `propIdentifiers` over the *child's* plan, exactly as the child does. It is §4d's own
+parent/child rule (the s10 rule) applied to naming.
+
+The mapping, in `emit/naming.ts`:
+
+- A name that is already a bindable identifier is returned untouched. The emitted interface stays
+  the author's vocabulary wherever it legally can be, so `Name`, `value` and `onClick` do not move.
+- Otherwise the non-identifier runs are separators: the words join, each after the first
+  capitalised. `Align X` → `AlignX`, `Alternate text` → `AlternateText`, `min-width` → `minWidth`.
+- A leading digit or an empty result falls back to a `prop` prefix (`2 Column` → `prop2Column`,
+  `!!!` → `prop`) rather than emitting something illegal.
+- **A reserved word is renamed too** (`class` → `classProp`). It parses as an identifier and still
+  cannot be bound, which is the same defect wearing a different hat; the sanitiser is the one
+  place that knows. Zero corpus instances — this one is reasoned, not measured, and says so.
+- Collisions resolve per component, in two passes, and the order is the point: a port that is
+  **already** an identifier keeps its name, so a sanitised sibling yields to it (`Align X` beside
+  `AlignX` gives `AlignX2`) rather than stealing it. The generated callback props reserve first.
+
+The port name is not lost — where the identifier differs, a `/** Component input \`Align X\`. */`
+doc comment carries it, because that is the name the author will search for.
+
+Four surfaces take the mapping, and a test kills each one independently (mutation-checked: each
+reverted in place fails exactly its own test, and no other):
+
+| surface | site |
+|---|---|
+| the Props interface and the destructuring | the child's `plan.props` |
+| every reader — expression, binding, effect dependency | the child's `plan.props` |
+| an instance's parameters and wired attributes | `targetPropName`, off the target's plan |
+| a repeater row's template inputs, and a popup slot's params | the template's / target's plan |
+
+### 11b — What it bought, same instrument both sides
+
+Worktree at HEAD, then the working tree, `scripts/build-corpus.ts` over all 40 projects:
+
+| | before | after |
+|---|---|---|
+| projects that typecheck | 26 / 40 | **27 / 40** |
+| total diagnostics | 593 | **51** |
+| **syntax diagnostics (TS1xxx)** | **558** | **0** |
+
+`Puppy test` (30 errors) now typechecks outright. The eight clone projects went from **66 errors
+each to 2**. Nothing regressed, and the coverage report is byte-identical to sessions 21 and 22 —
+**3,766/4,441, 84.80%** — as it must be: this retires no node, it makes the ones already
+translated compile. The ranking is unchanged from `rank2-s22.txt`. **411 tests (14 new).**
+
+### 11c — 🔴 A syntax error suppresses the semantic pass, so §10d's census was a bound
+
+`tsc` reports parse errors and then does not run the checker. Eight of the fourteen failing
+projects had syntax errors, so **for those projects the run reported no semantic diagnostics at
+all** — and §10d read that silence as "these projects fail for reason (1)".
+
+They do not. With the syntax errors gone, each of the eight reports **two errors that had never
+appeared in any run**: `Outputs["result"] = null;` written into a Visual Function re-host
+wrapper's `{ result?: number }` (`Header.tsx`, TS2322). That is a **sixth** distinct cause, in the
+visual-function slice rather than the props path, and by project count it is now the largest one
+left.
+
+So "roughly five distinct causes" was never a count of what is wrong with the export; it was a
+count of what the instrument could still see past the parse failures. **A diagnostic census taken
+over a corpus that does not parse reports its bound, not its content** — and the honest reading of
+"14 projects fail for five reasons" was always "14 projects fail for *at least* five reasons".
+
+### 11d — What is left, re-derived from the after-run (not inherited)
+
+**13 projects, 51 diagnostics, six distinct causes:**
+
+1. **`null` into a Visual Function wrapper's typed output** — 16 diagnostics, **8 projects**
+   (the clone family). The block program writes `Outputs["result"] = null`; the wrapper types the
+   field from the port's catalog type as `number | undefined`. Largest remaining, and the only one
+   §10d could not see.
+2. **A component reading a prop it never declared** — 18 diagnostics, 2 projects
+   (`ecommerce-example`, `ecom-responsive-probe`, both `ProductCard.tsx`): `Cannot find name
+   'image' / 'badge' / 'rating' / …`. §10d(3), unchanged.
+3. **Props passed to a component that declares none** (`IntrinsicAttributes`) — 7 diagnostics,
+   1 project (`phase55-replay-haiku`). §10d(2), unchanged. The child's side of (2) and the
+   parent's side of this are the same missing `Component Inputs` node seen from two ends.
+4. **`number` into a `string` prop** — 4 diagnostics, 2 projects. §10d(4).
+5. **`readonly unknown[]` into a `string` prop** — 1 diagnostic, 1 project. §10d(5).
+6. **`void` into `ReactNode`** — 2 diagnostics, the two `ProductCard` projects. Travels with (2).
+
+Ranked by projects unblocked, (1) and (2) are worth the rest together: (1) alone would take the
+corpus from 27/40 to 35/40.
