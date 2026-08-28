@@ -28,6 +28,7 @@ import {
   ProjectIR,
   RouterIR
 } from '../ir/types';
+import { parseModules } from './parseModules';
 
 export const EXPORTER_VERSION = '0.0.1';
 
@@ -80,7 +81,10 @@ export function parseProject(projectDir: string, catalog: Catalog): ExportIR {
       columns: (c.columns ?? []).map((col: any) => ({ name: col.name, type: col.type }))
     })),
     routers: collectRouters(components),
-    cloudComponents
+    cloudComponents,
+    // EXP-010. ⚠️ This line runs the project's own kit code (`kitSource.ts`) — a custom node's
+    // ports are declared nowhere else. Never throws: a broken kit is a row with a status.
+    modules: parseModules(projectDir)
   };
   const cloudservices = parseCloudServices(projectFile.metadata?.cloudservices);
   if (cloudservices !== undefined) project.cloudservices = cloudservices;

@@ -28,6 +28,7 @@ import {
   ValueExpr
 } from '../analyze/plan';
 import { ExportIR, NodeIR } from '../ir/types';
+import { KitBinding } from './kits';
 import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase, propIdentifier, propIdentifiers } from './naming';
 import { tsLiteral } from './state';
 import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole } from './style';
@@ -93,7 +94,13 @@ export function emitComponent(
   plan: ComponentPlan,
   project: ProjectPlan,
   ir: ExportIR,
-  catalog: CatalogIndex
+  catalog: CatalogIndex,
+  /**
+   * EXP-010. Node type → the generated wrapper the pages render it through. Empty when the project
+   * has no kit nodes; a type that is *missing* from a non-empty map is a node whose kit failed to
+   * load, and it emits a named marker rather than nothing.
+   */
+  kitBindings: Map<string, KitBinding> = new Map()
 ): EmittedComponent | null {
   if (!plan.file || !plan.rootId) return null;
   const component = ir.components.find((c) => c.path === plan.path)!;
@@ -1293,11 +1300,33 @@ export function emitComponent(
     return renderCore(id, indent, radioCtx);
   };
 
+  /**
+   * EXP-010 AC3. The comment left where a child the export could not identify used to be.
+   *
+   * 🔴 **In the emitted file, not only in the report.** The original defect was not that a custom
+   * node failed to translate — it is that the JSX simply closed over the gap, so a reader of the
+   * exported repo had nothing to search for and no reason to suspect anything was missing. A note
+   * in a report nobody has opened yet does not fix that; a line in the file does.
+   */
+  const droppedChildMarkers = (parentId: string, indent: number): string[][] =>
+    (plan.droppedChildren[parentId] ?? []).map((dropped) => [
+      `${pad(indent)}{/* TODO(export): ${dropped.type} — node ${dropped.nodeId} sits here in the`,
+      `${pad(indent)}    graph and did not render. ${dropped.reason}.`,
+      `${pad(indent)}    See the export report. */}`
+    ]);
+
+  /** A container's rendered children, followed by a marker for each child that did not render. */
+  const renderChildBlocks = (parentId: string, childIds: string[], indent: number, radioCtx?: RadioCtx): string[][] => [
+    ...childIds.map((childId) => render(childId, indent, radioCtx)),
+    ...droppedChildMarkers(parentId, indent)
+  ];
+
   const renderCore = (id: string, indent: number, radioCtx?: RadioCtx): string[] => {
     const node = nodeById.get(id)!;
     const role = plan.roleOf[id];
 
     if (role === 'repeater') return renderRepeater(node, indent);
+    if (role === 'custom') return renderCustom(node, indent);
     if (role === 'instance') {
       const target = requireInstance(node.type, `instance ${id}`);
       if (!target) return [`${pad(indent)}{/* TODO(export): component instance ${id} could not be resolved */}`];
@@ -1363,7 +1392,7 @@ export function emitComponent(
       const childIds = plan.childrenOf[id] ?? [];
       const wrapperClass = wrapperClassOf(id);
       const inner = indent + (wrapperClass ? 2 : 0);
-      const blocks = childIds.map((childId) => render(childId, inner + 2, radioCtx)).flat();
+      const blocks = renderChildBlocks(id, childIds, inner + 2, radioCtx).flat();
       const grid = element(tag, attrs, blocks.length > 0 ? blocks : null, inner, true);
       if (!wrapperClass) return grid;
       return element('div', [`className={styles.${wrapperClass}}`], grid, indent, true);
@@ -1375,13 +1404,13 @@ export function emitComponent(
         ? { name: nameLocal, ...(selected?.kind === 'literal' ? { selected: String(selected.value) } : {}) }
         : radioCtx;
       const childIds = plan.childrenOf[id] ?? [];
-      const blocks = childIds.map((childId) => render(childId, indent + 2, ctx)).flat();
+      const blocks = renderChildBlocks(id, childIds, indent + 2, ctx).flat();
       return element(tag, attrs, blocks.length > 0 ? blocks : null, indent, true);
     }
 
     // Containers: group / page.
     const childIds = plan.childrenOf[id] ?? [];
-    const blocks = childIds.map((childId) => render(childId, indent + 2, radioCtx));
+    const blocks = renderChildBlocks(id, childIds, indent + 2, radioCtx);
     // Popup slots render after the root's own children (POPUPS-TARGET §5).
     if (id === plan.rootId && plan.popups.length > 0) blocks.push(...popupJsx(indent + 2));
     if (role === 'page') {
@@ -1516,11 +1545,22 @@ export function emitComponent(
       return element('svg', attrs, use, indent, true);
     }
     if (source.kind === 'font') {
+      // EXP-010 changed the answer here, so the note changed with it. The export now copies every
+      // `noodl_modules` folder verbatim and links each declared stylesheet, so a set that is *in
+      // the project* ships and its glyphs render. A set that is not — an icon picked from a module
+      // since removed — still needs saying, and now the note is about the set that is missing
+      // rather than about a capability the export lacks.
       if (source.classes.length > 0 && !fontIconSetsNoted.has(source.classes[0])) {
         fontIconSetsNoted.add(source.classes[0]);
-        notes.push(
-          `${plan.path}: font icon set "${source.classes[0]}" needs its stylesheet shipped with the app — the export does not bundle icon set modules`
+        const iconClass = source.classes[0];
+        const shipped = ir.project.modules.some(
+          (m) => m.iconClass === iconClass && m.stylesheets.length > 0 && m.runtimes.includes('browser')
         );
+        if (!shipped) {
+          notes.push(
+            `${plan.path}: font icon set "${iconClass}" is not a noodl_modules icon set in this project with a stylesheet — the export has nothing to ship for it, and these icons render as blank in the exported app`
+          );
+        }
       }
       const setClasses = source.classes.join(' ');
       const spanAttrs =
@@ -1621,6 +1661,102 @@ export function emitComponent(
       attrs.push(`${prop}={${handlerArrow(actions, '()', attrIndent)}}`);
     }
     return attrs;
+  };
+
+  /**
+   * A custom node from a `noodl_modules` kit (EXP-010) — rendered through the generated wrapper in
+   * `src/kits/`, which is ordinary typed React at this call site.
+   *
+   * 🔴 **A node whose kit did not load emits a comment naming it, never nothing.** That is AC3 and
+   * it is the whole point of the task: the original defect was not that custom nodes failed to
+   * export, it was that they failed *silently* — the JSX simply had a gap where the author's own
+   * node had been, with no marker in the file and nothing in the output to search for.
+   */
+  const renderCustom = (node: NodeIR, indent: number): string[] => {
+    const binding = kitBindings.get(node.type);
+    const custom = plan.customNodes[node.id];
+    if (!binding) {
+      const kit = custom ? ` from ${custom.moduleDir}` : '';
+      notes.push(
+        `${plan.path}: node ${node.id} (${node.type}) is a custom node whose kit registered no usable definition — a marker is emitted in its place`
+      );
+      return [
+        `${pad(indent)}{/* TODO(export): custom node ${node.id} (${node.type})${kit} — its kit did`,
+        `${pad(indent)}    not load, so no component was generated. See the export report. */}`
+      ];
+    }
+
+    const specifier = `../kits/${binding.modulePath.split('/').pop()}`;
+    const existing = internalImports.get(specifier);
+    const symbols = new Set(existing ? existing.replace(/^import \{ | \} from .*$/g, '').split(', ') : []);
+    symbols.add(binding.symbol);
+    internalImports.set(specifier, `import { ${[...symbols].sort().join(', ')} } from '${specifier}';`);
+
+    const attrs: string[] = [];
+    for (const param of node.parameters) {
+      if (param.value.kind !== 'literal') {
+        notes.push(
+          `${plan.path}: parameter ${param.name} on ${node.id} (${node.type}) is not a literal — a kit port takes the authored value only, so it is dropped and reported`
+        );
+        continue;
+      }
+      const prop = binding.propOf.get(param.name);
+      if (prop === undefined) {
+        // The `rename-kit` case, from the input side: a parameter left in the file for a port the
+        // kit no longer declares. The running app delivers nothing there either — the difference
+        // is that the export says so.
+        notes.push(
+          `${plan.path}: parameter ${param.name} on ${node.id} names no input port on ${node.type} — the kit declares no such port, so the running app ignores it too`
+        );
+        continue;
+      }
+      attrs.push(jsxAttr(prop, param.value.value));
+    }
+
+    for (const [toProperty, source] of Object.entries(plan.bindings[node.id] ?? {})) {
+      const prop = binding.propOf.get(toProperty);
+      if (prop === undefined) {
+        notes.push(
+          `${plan.path}: wire into ${node.id}.${toProperty} names no input port on ${node.type} — dropped, reported`
+        );
+        continue;
+      }
+      const expr = bindingExpr(source);
+      if (expr === null) {
+        notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
+        continue;
+      }
+      attrs.push(`${prop}={${expr}}`);
+    }
+
+    // Signal outputs: the wrapper's callback prop runs the handler the graph wired to the port.
+    for (const [port, actions] of Object.entries(plan.handlers[node.id] ?? {})) {
+      const prop = binding.signalPropOf.get(port);
+      if (prop === undefined) {
+        notes.push(`${plan.path}: custom node ${node.id} signal "${port}" has no callback prop on ${node.type} — dropped, reported`);
+        continue;
+      }
+      attrs.push(`${prop}={${handlerArrow(actions, '()', indent + 2)}}`);
+    }
+
+    // Value outputs the graph reads: the wrapper calls the setter, the sink binds to the row.
+    for (const lifted of plan.customLifted[node.id] ?? []) {
+      const prop = binding.valuePropOf.get(lifted.port);
+      if (prop === undefined) {
+        notes.push(`${plan.path}: custom node ${node.id} value output "${lifted.port}" has no callback prop on ${node.type} — dropped, reported`);
+        continue;
+      }
+      attrs.push(`${prop}={${lifted.setterName}}`);
+    }
+
+    const childIds = binding.def.allowChildren ? (plan.childrenOf[node.id] ?? []) : [];
+    if (!binding.def.allowChildren && (plan.childrenOf[node.id] ?? []).length > 0) {
+      notes.push(
+        `${plan.path}: node ${node.id} (${node.type}) has rendered children but the kit declares allowChildren: false — they are not passed, matching the running app`
+      );
+    }
+    const blocks = renderChildBlocks(node.id, childIds, indent + 2).flat();
+    return element(binding.symbol, attrs, blocks.length > 0 ? blocks : null, indent, blocks.length > 0);
   };
 
   const instanceAttrs = (node: NodeIR): string[] => {
@@ -2134,8 +2270,18 @@ function preOrder(plan: ComponentPlan): string[] {
   return out;
 }
 
+/**
+ * Does this role earn a CSS class from the style tables?
+ *
+ * ⚠️ **`'custom'` does not, and that is the whole difference between the export having a style
+ * opinion about a kit node and having none.** The tables are keyed by built-in port names; every
+ * parameter on a kit node is a port the kit declared, so running `computeNodeStyle` over one
+ * matches nothing and reports *every* parameter as unmapped — six lines of "dropped, reported"
+ * about `label`, `amount` and `day`, each of which the wrapper passes through perfectly. The kit
+ * styles itself, which is what `props.className` and its own style ports are for.
+ */
 function isStyledRole(role: string | undefined): boolean {
-  return role !== undefined && role !== 'instance' && role !== 'repeater';
+  return role !== undefined && role !== 'instance' && role !== 'repeater' && role !== 'custom';
 }
 
 /**

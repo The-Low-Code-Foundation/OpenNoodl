@@ -45,6 +45,124 @@ export interface ProjectIR {
    * interpreter. The frontend export skips them entirely; they surface as one report note.
    */
   cloudComponents: string[];
+  /**
+   * Everything under `noodl_modules/` — custom node kits, icon sets, bundled fonts, ERG-002
+   * libraries (EXP-010). Directory order.
+   *
+   * 🔴 **Present even when empty, and every module is listed whatever became of it.** The defect
+   * this closed was an absence: the directory was never opened, so a kit node had no ports, no
+   * generator and no mention anywhere in the output. A module that failed to load is a row here
+   * with a `status` and a `message`, never a missing row.
+   */
+  modules: ModuleIR[];
+}
+
+/** Why a module's node definitions are, or are not, in {@link ModuleIR.nodes}. */
+export type ModuleStatus =
+  /** Ran and registered at least one node. */
+  | 'loaded'
+  /**
+   * Nothing to load and nothing wrong: an icon set, a bundled font, an ERG-002 library. Its files
+   * still ship. ⚠️ Distinct from every failure below — a font module reporting "threw" would send
+   * an author looking for a bug in a folder that contains no code.
+   */
+  | 'no-nodes-declared'
+  /** The folder has no readable `manifest.json`, so nothing knows what it is. Files still ship. */
+  | 'no-manifest'
+  /** A kit whose manifest names no `main` — its code arrives from a URL at runtime. */
+  | 'no-main'
+  /** The manifest names a `main` that could not be read. The one status meaning there is no code. */
+  | 'unreadable'
+  /** Ran and never called `Noodl.defineModule`. */
+  | 'no-define-module'
+  /** Called `defineModule` and named no nodes. */
+  | 'defines-no-nodes'
+  /** An ES-module build — a `<script>` tag cannot load it, in the editor or in the exported app. */
+  | 'es-module'
+  /** A CommonJS build — same. */
+  | 'commonjs'
+  /** Threw while loading. It registers nothing in the running app either. */
+  | 'threw';
+
+/** One folder under `noodl_modules/`. */
+export interface ModuleIR {
+  /** The folder name — `cashflow-kit`. The identity everything joins on. */
+  dirName: string;
+  /** The manifest's `name`, falling back to the folder name. What a surface displays. */
+  displayName: string;
+  /**
+   * Which of the four manifest shapes this is. Subtractive, because there is no `kind: 'node-kit'`
+   * marker to test — `projectmodules.ts` measured this across every project on this machine.
+   */
+  kind: 'kit' | 'iconset' | 'external-library' | 'asset';
+  status: ModuleStatus;
+  /** Why, in a sentence a person can act on. Absent only for a plain `loaded`-adjacent asset. */
+  message?: string;
+  /** The manifest's `main`, when it declares one. */
+  main?: string;
+  /** Node definitions this module registered. Empty for every status but `loaded`. */
+  nodes: KitNodeIR[];
+  /** `browser.stylesheets`, project-relative. These become `<link>`s in the exported page. */
+  stylesheets: string[];
+  /**
+   * An icon set's `iconClass` (`"lucide"`) — the CSS class its stylesheet defines glyph rules for.
+   *
+   * The join key between an emitted `<span class="lucide icon-alert-circle">` and the module whose
+   * stylesheet makes it render. Carried so the export can tell "this icon will work" from "this
+   * icon's set is not in the project", which are the same span with opposite outcomes.
+   */
+  iconClass?: string;
+  /**
+   * Every file under the module directory, project-relative, sorted. The copy list.
+   *
+   * 🔴 The whole directory rather than what the manifest names: a stylesheet's `url()` references
+   * are invisible to the manifest, and shipping the CSS without its font renders blank glyphs
+   * instead of an error.
+   */
+  assets: string[];
+  /** Manifest `runtimes`, defaulted to `['browser']` — the same default every other reader applies. */
+  runtimes: string[];
+}
+
+/**
+ * One custom node type a kit registers.
+ *
+ * Mirrors `KitNodeDefinition` in `parse/kitSource.ts`, which is where it is read from source. It
+ * is restated here because the IR is the contract other tasks build against and may not depend on
+ * the shape of the evaluator that happens to fill it.
+ */
+export interface KitNodeIR {
+  /** The node type name the graph stores — `nodegx.cashflow.Pill`. */
+  type: string;
+  displayName?: string;
+  docs?: string;
+  allowChildren: boolean;
+  /** True when the definition has a `getReactComponent` — a visual node rather than a logic one. */
+  visual: boolean;
+  /**
+   * Every input, tagged with how the runtime delivers it. `via: 'prop'` is an `inputProps` entry
+   * that becomes a React prop; `via: 'node'` is an `inputs` entry whose `set` the node runs —
+   * the shape a kit's logic nodes use, and invisible if only `inputProps` is read.
+   */
+  inputs: Array<KitPortIR & { via: 'prop' | 'node' }>;
+  /**
+   * Every output, tagged with how the runtime wires it. `via: 'prop'` is an `outputProps` entry
+   * the component fires by calling a callback prop; `via: 'node'` is an `outputs` entry the node
+   * publishes itself. A `Money Pill`'s `dropped` exists only in the second, so reading one place
+   * loses it.
+   */
+  outputs: Array<KitPortIR & { kind: 'value' | 'signal'; via: 'prop' | 'node' }>;
+}
+
+export interface KitPortIR {
+  name: string;
+  /** Declared port type name ("string", "number", "color", "signal", …). */
+  type?: string;
+  /** The port type's `defaultUnit` ("px"). The runtime appends it to a default before it is a prop. */
+  defaultUnit?: string;
+  displayName?: string;
+  group?: string;
+  default?: unknown;
 }
 
 export interface CloudServicesIR {

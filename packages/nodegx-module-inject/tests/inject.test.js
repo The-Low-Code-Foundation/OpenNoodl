@@ -10,12 +10,15 @@
  * function CN-001 added so a devtool could emit the same tags without a
  * template.
  */
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const {
   buildInjectionTags,
   injectIntoTemplate,
   scanModuleManifests,
+  scanModuleManifestsSync,
   toInjectModules,
   DEPENDENCIES_PLACEHOLDER,
   MAIN_PLACEHOLDER
@@ -43,6 +46,49 @@ describe('scanModuleManifests', () => {
 
   it('resolves an absent project directory to an empty list', async () => {
     await expect(scanModuleManifests(undefined)).resolves.toEqual([]);
+  });
+});
+
+describe('scanModuleManifestsSync (EXP-010)', () => {
+  // 🔴 The claim the sync twin is allowed to exist on is that it is the *same scanner*, not a
+  // second one — LIB-003 merged two `noodl_modules` readers precisely because two had drifted.
+  // These grade that claim directly: same answer, same order, same warnings, on every input the
+  // async one is tested against above. Anything less and the twin is the third scanner.
+  it('gives byte-identical results to the async scan', async () => {
+    expect(scanModuleManifestsSync(KIT_PROJECT)).toEqual(await scanModuleManifests(KIT_PROJECT));
+  });
+
+  it('agrees on a project with no noodl_modules folder', async () => {
+    const noModules = path.resolve(__dirname, '../../noodl-editor/tests-unit/cn-001/fixtures/no-modules-project');
+    expect(scanModuleManifestsSync(noModules)).toEqual(await scanModuleManifests(noModules));
+    expect(scanModuleManifestsSync(noModules)).toEqual([]);
+  });
+
+  it('agrees on an absent project directory', () => {
+    expect(scanModuleManifestsSync(undefined)).toEqual([]);
+  });
+
+  it('reports the same warnings for a malformed manifest', async () => {
+    // ⚠️ The warning path is the one a shared core is most likely to lose: it is the branch a
+    // refactor takes for granted. Both readers must name the module and both must keep the
+    // best-effort manifest rather than skipping it.
+    const broken = fs.mkdtempSync(path.join(os.tmpdir(), 'module-inject-sync-'));
+    fs.mkdirSync(path.join(broken, 'noodl_modules', 'bad-json'), { recursive: true });
+    fs.writeFileSync(path.join(broken, 'noodl_modules', 'bad-json', 'manifest.json'), '{ not json');
+    fs.mkdirSync(path.join(broken, 'noodl_modules', 'no-manifest'), { recursive: true });
+
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const sync = scanModuleManifestsSync(broken);
+      const async_ = await scanModuleManifests(broken);
+      expect(sync).toEqual(async_);
+      expect(sync.map((s) => s.name)).toEqual(['bad-json', 'no-manifest']);
+      expect(sync[0].warnings[0]).toContain('is not valid JSON');
+      expect(sync[1].warnings[0]).toContain('missing or unreadable');
+    } finally {
+      warn.mockRestore();
+      fs.rmSync(broken, { recursive: true, force: true });
+    }
   });
 });
 

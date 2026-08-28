@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e010c000-0000-4000-8000-000000000004",
+  "version": 1,
+  "nodes": [
+    { "id": "settled-root", "type": "Group", "children": ["settled-text"] },
+    { "id": "settled-text", "type": "Text", "parent": "settled-root", "parameters": { "text": "SIGNAL-SETTLED" } }
+  ],
+  "visualRoots": ["settled-root"]
+}

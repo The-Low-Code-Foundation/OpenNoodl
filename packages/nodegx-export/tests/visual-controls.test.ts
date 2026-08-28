@@ -164,14 +164,17 @@ function showcaseComponent(): ComponentIR {
   };
 }
 
-const withShowcase = (mutate?: (component: ComponentIR) => void): ReturnType<typeof emitApp> => {
+const irWithShowcase = (mutate?: (component: ComponentIR) => void): ExportIR => {
   const ir: ExportIR = structuredClone(baseIr);
   const component = showcaseComponent();
   if (mutate) mutate(component);
   ir.components.push(component);
   ir.components.sort((a, b) => (a.path < b.path ? -1 : 1));
-  return emitApp(ir, catalog);
+  return ir;
 };
+
+const withShowcase = (mutate?: (component: ComponentIR) => void): ReturnType<typeof emitApp> =>
+  emitApp(irWithShowcase(mutate), catalog);
 
 const app = withShowcase();
 const tsx = app.files['src/components/Showcase.tsx'];
@@ -262,12 +265,54 @@ describe('icon (VISUALS-TARGET §2)', () => {
     expect(css).toContain('.photoIcon {\n  display: block;\n  width: 40px;\n  height: 40px;\n}');
   });
 
-  test('the icon set stylesheet gap is reported once per set', () => {
+  test('an icon set the project does not have is reported once per set', () => {
+    // The cheer fixture ships no `noodl_modules`, so neither set is in the project and both
+    // icons render blank in the exported app. EXP-010 changed what this note *says*, because it
+    // changed the answer: the export now copies every module folder and links every declared
+    // stylesheet, so the gap is no longer a capability the export lacks.
     const iconNotes = app.notes.filter((n) => n.includes('font icon set'));
     expect(iconNotes).toEqual([
-      'Components/Showcase: font icon set "material-icons" needs its stylesheet shipped with the app — the export does not bundle icon set modules',
-      'Components/Showcase: font icon set "lucide" needs its stylesheet shipped with the app — the export does not bundle icon set modules'
+      'Components/Showcase: font icon set "material-icons" is not a noodl_modules icon set in this project with a stylesheet — the export has nothing to ship for it, and these icons render as blank in the exported app',
+      'Components/Showcase: font icon set "lucide" is not a noodl_modules icon set in this project with a stylesheet — the export has nothing to ship for it, and these icons render as blank in the exported app'
     ]);
+  });
+
+  test('an icon set the project DOES have earns no note, and its stylesheet is linked', () => {
+    // 🔴 The control the note above cannot be read without. A test that only sees the note fire
+    // proves the sentence exists, not that it discriminates — and this note's whole job is to
+    // separate a set that ships from one that does not. Same graph, same icons; the only thing
+    // varied is whether the sets are installed.
+    const base = irWithShowcase();
+    const withSets: ExportIR = {
+      ...base,
+      project: {
+        ...base.project,
+        modules: [
+          {
+            dirName: 'lucide-icons',
+            displayName: 'Lucide',
+            kind: 'iconset',
+            status: 'no-nodes-declared',
+            nodes: [],
+            stylesheets: ['noodl_modules/lucide-icons/styles.css'],
+            iconClass: 'lucide',
+            assets: ['noodl_modules/lucide-icons/styles.css', 'noodl_modules/lucide-icons/lucide.woff2'],
+            runtimes: ['browser']
+          }
+        ]
+      }
+    };
+    const result = emitApp(withSets, catalog);
+    const iconNotes = result.notes.filter((n) => n.includes('font icon set'));
+
+    expect(iconNotes).toEqual([
+      'Components/Showcase: font icon set "material-icons" is not a noodl_modules icon set in this project with a stylesheet — the export has nothing to ship for it, and these icons render as blank in the exported app'
+    ]);
+    expect(result.files['index.html']).toContain('<link rel="stylesheet" href="/noodl_modules/lucide-icons/styles.css" />');
+    expect(result.copies).toContainEqual({
+      from: 'noodl_modules/lucide-icons/lucide.woff2',
+      to: 'public/noodl_modules/lucide-icons/lucide.woff2'
+    });
   });
 });
 

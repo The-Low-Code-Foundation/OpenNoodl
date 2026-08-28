@@ -25,7 +25,7 @@
  */
 
 import { CatalogIndex } from '../catalog';
-import { ComponentIR, Disposition, ExportIR, NodeIR } from '../ir/types';
+import { ComponentIR, ConnectionIR, Disposition, ExportIR, KitNodeIR, ModuleIR, NodeIR } from '../ir/types';
 import { componentReachability, Reachability } from './reach';
 import { routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
@@ -77,8 +77,16 @@ export type {
   VariablePlan
 } from './appState';
 
-/** How a node participates in the render, or null for pure logic nodes. */
-export type RenderRole = StyleRole | 'instance' | 'repeater';
+/**
+ * How a node participates in the render, or null for pure logic nodes.
+ *
+ * `'custom'` is EXP-010's: a visual node from a `noodl_modules` kit. It is its own role rather
+ * than a `StyleRole` because a kit node has no Noodl style ports at all — every parameter on one
+ * is a port the kit itself declared (measured across every project on this machine: not one custom
+ * node carries a `width`, a `margin` or a `backgroundColor`), so the style tables have nothing to
+ * say about it and `computeNodeStyle` must not be asked.
+ */
+export type RenderRole = StyleRole | 'instance' | 'repeater' | 'custom';
 
 /** The per-component-instance record node (COMPONENT-OBJECT-TARGET; componentobject.ts). */
 const COMPONENT_OBJECT = 'net.noodl.ComponentObject';
@@ -580,6 +588,34 @@ export interface ComponentPlan {
   /** Render children per node, collapse applied, logic nodes filtered out. */
   childrenOf: Record<string, string[]>;
   roleOf: Record<string, RenderRole>;
+  /**
+   * EXP-010. The kit node definition behind each rendered `'custom'` node, plus the module it came
+   * from. Carried on the plan rather than looked up again at emit time so there is one answer to
+   * "which kit owns this node" — the emitted wrapper's import path is derived from it.
+   */
+  customNodes: Record<string, { moduleDir: string; def: KitNodeIR }>;
+  /**
+   * EXP-010. A custom node's value outputs that something in this component reads, as local state:
+   * the wrapper calls `onXChanged`, the setter writes the row, and the sink binds to it.
+   *
+   * ⚠️ Local, unlike {@link instanceLifted}, and that is not an oversight. A component instance's
+   * value output has to wait for `planProject`'s second phase because whether the *child* lifted
+   * the port is a fact about another plan. A kit node publishes its own outputs from its own
+   * definition, which this component already has — there is nothing to wait for.
+   */
+  customLifted: Record<string, Array<{ port: string; setterName: string }>>;
+  /**
+   * EXP-010 AC3. Visual children of a rendered node that the export could not identify at all,
+   * per parent id, in child order — the emitter prints a comment where each one sat.
+   *
+   * 🔴 **Unidentifiable, not merely undrawn**, and the difference is the whole criterion. A
+   * `Masonry` that defers is a built-in with a reason the report can state and a slice that will
+   * one day handle it. A node whose type is in no catalog and no loaded kit is *the author's own
+   * node*, and before EXP-010 it left the emitted JSX with a gap and nothing in the file to say a
+   * node had ever been there. That silence is the defect this task exists to end, and it is not
+   * ended by a kit that loads — it is ended by the case where the kit does **not**.
+   */
+  droppedChildren: Record<string, Array<{ nodeId: string; type: string; reason: string }>>;
   /** nodeId → toProperty → source, for value wires landing on rendered nodes. */
   bindings: Record<string, Record<string, BindingSource>>;
   /** nodeId → source signal port → actions, for signal wires resolved to handler statements. */
@@ -665,6 +701,15 @@ export interface ProjectPlan {
    * the difference between 85.00% and 93.38%.
    */
   reachability: Reachability;
+  /**
+   * EXP-010. Node types more than one kit registers, as `type (kit that lost)`.
+   *
+   * 🔴 A collision, not a warning about one: `registerModule` refuses the second registration, so
+   * the running app shows the *first* kit's node. The export follows that rule and says which kit
+   * it therefore ignored — silently taking either one would emit an app that does not match the
+   * one the author is looking at.
+   */
+  kitDuplicates: string[];
 }
 
 export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
@@ -676,8 +721,23 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
   const usedPageNames = new Set(pages.map((p) => p.fileBase));
   const usedComponentNames = new Set<string>();
 
+  // EXP-010: one index for the whole project, built before any component is planned — a kit node
+  // type is a project-level fact and re-deriving it per component would report a duplicate once
+  // per component that happens to use one.
+  const { index: kits, duplicates: kitDuplicates } = indexKitNodes(ir.project.modules);
+
   const plans = ir.components.map((component) =>
-    planComponent(component, ir, catalog, registry, urlPathByLegacy, pageFileByPath, usedPageNames, usedComponentNames)
+    planComponent(
+      component,
+      ir,
+      catalog,
+      registry,
+      urlPathByLegacy,
+      pageFileByPath,
+      usedPageNames,
+      usedComponentNames,
+      kits
+    )
   );
 
   const byLegacyPath = new Map(plans.map((p) => [p.legacyPath, p]));
@@ -743,7 +803,8 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
     channels: [...registry.channels.values()],
     stores: [...registry.stores.values()],
     collections: [...registry.collections.values()],
-    reachability: componentReachability(ir)
+    reachability: componentReachability(ir),
+    kitDuplicates
   };
 }
 
@@ -755,7 +816,8 @@ function planComponent(
   urlPathByLegacy: Map<string, string>,
   pageFileByPath: Map<string, { fileBase: string; symbol: string }>,
   usedPageNames: Set<string>,
-  usedComponentNames: Set<string>
+  usedComponentNames: Set<string>,
+  kits: KitIndex
 ): ComponentPlan {
   const nodeById = new Map(component.nodes.map((n) => [n.id, n]));
   const dispositions: Record<string, Disposition> = {};
@@ -771,6 +833,9 @@ function planComponent(
     outputProps: [],
     childrenOf: {},
     roleOf: {},
+    customNodes: {},
+    customLifted: {},
+    droppedChildren: {},
     bindings: {},
     handlers: {},
     changeHandlers: {},
@@ -820,8 +885,13 @@ function planComponent(
   const wiredIn = new Map(component.connections.map((c) => [`${c.toId}:${c.toProperty}`, nodeById.get(c.fromId)?.type ?? 'a wire']));
   const deferReasons = new Map<string, string>();
   const roleOf = (node: NodeIR): RenderRole | 'unsupported' | null => {
-    const role = renderRole(node, catalog);
+    const role = renderRole(node, catalog, kits);
     if (role === null || role === 'unsupported' || role === 'instance' || role === 'repeater') return role;
+    // EXP-010: the structure/content walls are statements about *built-in* ports — a wired
+    // `layoutString`, a wire-fed icon source. A kit node has none of those ports; every port it
+    // has is one the kit declared, and whether a wire into it is translatable is decided by the
+    // definition, in the custom-node passes below.
+    if (role === 'custom') return role;
     const reason = visualDeferReason(node, role, wiredIn, catalog);
     if (reason !== null) {
       deferReasons.set(node.id, reason);
@@ -858,7 +928,7 @@ function planComponent(
     for (const node of component.nodes) {
       const named = recordNeighbourDefer(node, component, nodeById, pageFileByPath.has(component.path), null);
       dispositions[node.id] =
-        named !== undefined ? { kind: 'deferred', to: 'EXP-003', reason: named } : dispositionForLogic(node);
+        named !== undefined ? { kind: 'deferred', to: 'EXP-003', reason: named } : dispositionForLogic(node, kits);
     }
     plan.skipReason = 'no visual root — logic-only components defer to EXP-003';
     return plan;
@@ -893,6 +963,15 @@ function planComponent(
     rendered.add(node.id);
     plan.roleOf[node.id] = role;
     dispositions[node.id] = { kind: 'static' };
+    if (role === 'custom') {
+      const kit = kits.get(node.type)!;
+      plan.customNodes[node.id] = { moduleDir: kit.moduleDir, def: kit.def };
+      if (!kit.def.allowChildren && (node.children ?? []).length > 0) {
+        notes.push(
+          `node ${node.id} (${node.type}) has children but the kit declares allowChildren: false — they are rendered as this node's children and the kit decides whether it draws them`
+        );
+      }
+    }
     const children = (node.children ?? [])
       .map((id) => nodeById.get(id))
       .filter((c): c is NodeIR => c !== undefined);
@@ -917,6 +996,17 @@ function planComponent(
             ? `node ${child.id} (${child.type}) deferred: ${reason}`
             : `node ${child.id} (${child.type || 'untyped'}) is in the visual tree but has no generator yet`
         );
+        // EXP-010 AC3. A child the export cannot *identify* — no catalog entry, no component, no
+        // loaded kit — is marked where it stood. See `droppedChildren`: this is the population the
+        // silent-hole defect was about, and a kit that failed to load puts its nodes here.
+        if (child.type !== '' && !child.type.startsWith('/') && child.catalogRef === null && !kits.has(child.type)) {
+          const list = (plan.droppedChildren[node.id] = plan.droppedChildren[node.id] ?? []);
+          list.push({
+            nodeId: child.id,
+            type: child.type,
+            reason: `No catalog entry, and no kit in noodl_modules registered this type — if it came from a custom kit, that kit did not load`
+          });
+        }
         continue;
       }
       plan.childrenOf[node.id].push(child.id);
@@ -977,6 +1067,16 @@ function planComponent(
       const groupId = rootChildren[0];
       plan.collapsedGroupId = groupId;
       plan.childrenOf[root.id] = plan.childrenOf[groupId];
+      // 🔴 The dropped children move with the rendered ones. The collapse rehomes the Group's
+      // subtree onto the page div, and a marker left keyed to the Group would be looked up under
+      // an id the emitter never renders — so the one node in the file that says "something was
+      // here" would be the node that disappeared. Concatenated, not assigned: a Page can have a
+      // dropped child of its own beside the single Group that made it collapsible.
+      plan.droppedChildren[root.id] = [
+        ...(plan.droppedChildren[root.id] ?? []),
+        ...(plan.droppedChildren[groupId] ?? [])
+      ];
+      delete plan.droppedChildren[groupId];
       dispositions[groupId] = { kind: 'collapsed', into: root.id };
     }
   }
@@ -2522,7 +2622,7 @@ function planComponent(
     }
     const rootable = targetComp.nodes.some((n) => {
       if (n.parent !== undefined) return false;
-      const role = renderRole(n, catalog);
+      const role = renderRole(n, catalog, kits);
       return role !== null && role !== 'unsupported' && role !== 'radio';
     });
     if (!rootable) return { defer: `popup target ${target} exports no component (no visual root)` };
@@ -3346,6 +3446,20 @@ function planComponent(
   };
 
   /**
+   * A custom node's signal outputs, from its kit definition (EXP-010).
+   *
+   * The same blindness `instanceSignalOutputs` exists for, from a different direction: parse
+   * resolves a source port's kind from the node's own `dynamicports` or the catalog, and a kit
+   * node has neither — so every wire out of one parses as `'value'` and a `Money Pill`'s
+   * `dropped` would compile as a value read of a port that never has a value.
+   */
+  const customSignalOutputs = (node: NodeIR): Set<string> => {
+    const def = kits.get(node.type)?.def;
+    if (!def) return new Set();
+    return new Set(def.outputs.filter((o) => o.kind === 'signal').map((o) => o.name));
+  };
+
+  /**
    * A Component Outputs node as an action sink with dynamic trigger ports (§4): a declared
    * signal port compiles to the prop call; a value port, a failed prop, or a For Each relay
    * fails the node; a port nothing declares drops alone — the runtime's own `hasOutput`
@@ -3656,6 +3770,82 @@ function planComponent(
       toNodeId: toNode.id,
       toProperty: c.toProperty
     });
+  }
+
+  // EXP-010 AC2, the value half: a custom node's value output feeding a rendered sink becomes a
+  // local `useState` row, written by the wrapper's `onXChanged` callback and read by the sink.
+  //
+  // ⚠️ **Local, and settled here rather than in `planProject`'s second phase.** The instance pass
+  // above has to wait because whether the child lifted the port is a fact about *another plan*. A
+  // kit node's outputs are in its own definition, which this component already holds — deferring
+  // would buy nothing and would make the two passes look like they share a constraint they do not.
+  const customLiftedVarByKey = new Map<string, string>();
+  for (const c of component.connections) {
+    if (consumed.has(c.key)) continue;
+    const fromNode = nodeById.get(c.fromId);
+    if (!fromNode || plan.roleOf[fromNode.id] !== 'custom' || !rendered.has(fromNode.id)) continue;
+    const def = kits.get(fromNode.type)?.def;
+    if (!def) continue;
+    const output = def.outputs.find((o) => o.name === c.fromProperty);
+    // 🔴 An output the kit does not declare is named, never skipped past. This is the `rename-kit`
+    // case on the output side: a port removed from the definition while a wire still used it. The
+    // running app drops that wire too — the difference is that here it is said out loud.
+    if (output === undefined) {
+      consumed.add(c.key);
+      notes.push(
+        `wire ${c.key} dropped: ${fromNode.type} declares no output "${c.fromProperty}" — the kit's definition has no such port, so the running app delivers nothing either`
+      );
+      continue;
+    }
+    if (output.kind === 'signal') continue; // handled by the handler pass above
+    const toNode = nodeById.get(c.toId);
+    if (!toNode || !rendered.has(toNode.id)) {
+      consumed.add(c.key);
+      notes.push(
+        `wire ${c.key} dropped: custom node output "${c.fromProperty}" feeds an unrendered sink — lifted values land only in rendered sinks in this slice`
+      );
+      continue;
+    }
+    const bindable = customSinkIsBindable(toNode, c.toProperty, plan.roleOf[toNode.id], kits);
+    if (bindable !== true) {
+      consumed.add(c.key);
+      notes.push(`wire ${c.key} dropped: custom node output "${c.fromProperty}" ${bindable}`);
+      continue;
+    }
+    if (c.toProperty === 'mounted' && toNode.id === plan.rootId) {
+      consumed.add(c.key);
+      notes.push(`wire ${c.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+      continue;
+    }
+
+    const varKey = `${fromNode.id}:${c.fromProperty}`;
+    let name = customLiftedVarByKey.get(varKey);
+    if (name === undefined) {
+      const taken = takenNamesOf(plan);
+      const cleaned = c.fromProperty.replace(/[^A-Za-z0-9_$]+/g, '_').replace(/^_+|_+$/g, '');
+      const base = cleaned.length > 0 && !/^[0-9]/.test(cleaned) ? cleaned : `_${cleaned || 'lifted'}`;
+      name = base;
+      let counter = 2;
+      while (taken.has(name) || taken.has(setterNameOf(name))) name = `${base}${counter++}`;
+      customLiftedVarByKey.set(varKey, name);
+      plan.stateVars.push({
+        name,
+        setterName: setterNameOf(name),
+        tsType: `${valueTsTypeOf(output.type)} | undefined`,
+        boot: null,
+        originNodeId: fromNode.id,
+        origin: 'lifted',
+        comment: `Lifted from ${fromNode.type}'s value output "${c.fromProperty}" — undefined until the kit node first publishes it.`
+      });
+      const list = (plan.customLifted[fromNode.id] = plan.customLifted[fromNode.id] ?? []);
+      list.push({ port: c.fromProperty, setterName: setterNameOf(name) });
+    }
+    consumed.add(c.key);
+    plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
+    plan.bindings[toNode.id][c.toProperty] = {
+      kind: 'computed',
+      expr: { kind: 'state-get', name, maybeUndefined: true }
+    };
   }
 
   // ---- the chain-local snapshot rule (§3) -------------------------------------------------
@@ -4082,7 +4272,13 @@ function planComponent(
       fromNode !== undefined &&
       plan.roleOf[fromNode.id] === 'instance' &&
       instanceSignalOutputs(fromNode).has(connection.fromProperty);
-    if (fromNode && rendered.has(fromNode.id) && (connection.kind === 'signal' || instanceSignal)) {
+    // EXP-010, the same rule for a kit node: the wire parses as 'value' because nothing static
+    // knows the port, and the definition is what decides.
+    const customSignal =
+      fromNode !== undefined &&
+      plan.roleOf[fromNode.id] === 'custom' &&
+      customSignalOutputs(fromNode).has(connection.fromProperty);
+    if (fromNode && rendered.has(fromNode.id) && (connection.kind === 'signal' || instanceSignal || customSignal)) {
       if (!actionsValidIn([compiled.action], { kind: 'dom', nodeId: fromNode.id })) {
         const reason = 'the action reads values that only exist in another handler';
         if (outputsSink) {
@@ -4964,7 +5160,18 @@ function planComponent(
   // Pass 6: report every wire nothing translated.
   for (const connection of component.connections) {
     if (consumed.has(connection.key)) continue;
-    notes.push(`wire ${connection.key} has no deterministic translation in step 5 (deferred to EXP-003)`);
+    // EXP-010 AC3: a wire whose end is a kit port the kit no longer declares is not "not yet
+    // translated" — it is a wire the running app already delivers nothing through, which is a
+    // different thing to tell an author and the only one they can act on. (The `rename-kit`
+    // fixture is exactly this: `caption` was removed from the definition while a live connection
+    // was using it.) Named here rather than earlier because a wire that *did* translate never
+    // reaches this pass, so this cannot mask a working one.
+    const kitEndpoint = undeclaredKitPortOf(connection, nodeById, kits);
+    notes.push(
+      kitEndpoint !== null
+        ? `wire ${connection.key} dropped: ${kitEndpoint}`
+        : `wire ${connection.key} has no deterministic translation in step 5 (deferred to EXP-003)`
+    );
   }
 
   // Variables collapse into the stores module — the node is the module's provenance.
@@ -5136,9 +5343,16 @@ function planComponent(
   // Whatever analysis has not classified yet is logic: EXP-003's, or unknown-type debris.
   for (const node of component.nodes) {
     if (dispositions[node.id] === undefined) {
-      dispositions[node.id] = dispositionForLogic(node);
-      if (dispositions[node.id].kind === 'unknown-type') {
+      const disposition = dispositionForLogic(node, kits);
+      dispositions[node.id] = disposition;
+      if (disposition.kind === 'unknown-type') {
         notes.push(`node ${node.id} has no resolvable type — exported nowhere, reported here`);
+      } else if (kits.has(node.type)) {
+        // A custom node reaching here is named, not left to the silent `deferred` majority. Every
+        // other node on this path is a built-in the export has an established position on; this
+        // one is the author's own, and "it is not in the output" is the fact this task exists to
+        // stop the export leaving unsaid.
+        notes.push(`node ${node.id} (${node.type}) deferred: ${disposition.kind === 'deferred' ? disposition.reason : ''}`);
       }
     }
   }
@@ -5251,8 +5465,95 @@ function takenNamesOf(plan: ComponentPlan): Set<string> {
   return taken;
 }
 
-function renderRole(node: NodeIR, catalog: CatalogIndex): RenderRole | 'unsupported' | null {
+/**
+ * Can a value land on this sink port, and if not, why — phrased to complete
+ * `custom node output "x" …`.
+ *
+ * The built-in half is `CONTENT_PARAMS`'s, unchanged: a value binds where the emitter renders one
+ * (`children`, an `attr:`) or into a truthiness port. The custom half is new and answers from the
+ * *kit's own definition*, because a kit port's bindability is a fact about the kit — an input the
+ * definition declares is a prop the wrapper passes, and one it does not declare is a wire the
+ * running app already drops.
+ */
+function customSinkIsBindable(
+  toNode: NodeIR,
+  toProperty: string,
+  toRole: RenderRole | undefined,
+  kits: KitIndex
+): true | string {
+  if (toRole === 'custom') {
+    const def = kits.get(toNode.type)?.def;
+    if (def && def.inputs.some((i) => i.name === toProperty)) return true;
+    return `feeds ${toNode.type}.${toProperty}, which the kit declares no input port for — the running app delivers nothing there either`;
+  }
+  if (toProperty === 'visible' || toProperty === 'mounted') return true;
+  const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[toProperty];
+  if (contentRole === 'children' || contentRole === 'attr-not:disabled') return true;
+  if (contentRole !== undefined && contentRole.startsWith('attr:')) return true;
+  return `feeds ${toNode.type}.${toProperty}, which has no static binding in this slice`;
+}
+
+/**
+ * Does either end of this wire name a kit port the kit does not declare? If so, say which.
+ *
+ * 🔴 **This is a statement about the *running app*, not about the export.** A port a kit's
+ * definition does not carry is one the runtime never delivers: the wire is in `connections.json`,
+ * the editor may still draw it, and nothing arrives. Reporting it as "not translated yet" would
+ * send an author waiting for a slice that will never make it work.
+ */
+function undeclaredKitPortOf(
+  connection: ConnectionIR,
+  nodeById: Map<string, NodeIR>,
+  kits: KitIndex
+): string | null {
+  const fromDef = kits.get(nodeById.get(connection.fromId)?.type ?? '')?.def;
+  if (fromDef && !fromDef.outputs.some((o) => o.name === connection.fromProperty)) {
+    return `${fromDef.type} declares no output "${connection.fromProperty}" — the kit's definition has no such port, so the running app delivers nothing through this wire either`;
+  }
+  const toDef = kits.get(nodeById.get(connection.toId)?.type ?? '')?.def;
+  if (toDef && !toDef.inputs.some((i) => i.name === connection.toProperty)) {
+    return `${toDef.type} declares no input "${connection.toProperty}" — the kit's definition has no such port, so the running app delivers nothing through this wire either`;
+  }
+  return null;
+}
+
+/** node type → the kit node that registers it, and which module folder that kit is. */
+export type KitIndex = Map<string, { moduleDir: string; def: KitNodeIR }>;
+
+/**
+ * Every node type the project's kits register (EXP-010).
+ *
+ * ⚠️ **First registration wins, and a duplicate is not silently discarded** — the running app has
+ * the same collision (`registerModule` refuses the second) so the export must agree with it rather
+ * than pick the later one and render a different node than the app does. The caller reports it.
+ */
+export function indexKitNodes(modules: ModuleIR[]): { index: KitIndex; duplicates: string[] } {
+  const index: KitIndex = new Map();
+  const duplicates: string[] = [];
+  for (const module of modules) {
+    for (const def of module.nodes) {
+      if (index.has(def.type)) {
+        duplicates.push(`${def.type} (${module.displayName})`);
+        continue;
+      }
+      index.set(def.type, { moduleDir: module.dirName, def });
+    }
+  }
+  return { index, duplicates };
+}
+
+function renderRole(node: NodeIR, catalog: CatalogIndex, kits: KitIndex): RenderRole | 'unsupported' | null {
   if (node.type.startsWith('/')) return 'instance';
+  // EXP-010. Checked before the switch so a kit can never shadow a built-in: `registerModule`
+  // refuses a node type the library already has, and an export that let one through would emit a
+  // different app than the one the author is looking at.
+  const kit = kits.get(node.type);
+  if (kit !== undefined && catalog.get(node.type) === undefined) {
+    // A logic node from a kit (`nodes:` rather than `reactNodes:`) has no React component to
+    // render. It is not "unsupported" — it draws nothing in the running app either — so it takes
+    // the same null a Variable takes, and the sweep at the bottom of planComponent names it.
+    return kit.def.visual ? 'custom' : null;
+  }
   switch (node.type) {
     case 'Group':
       return 'group';
@@ -5493,7 +5794,23 @@ function recordNeighbourDefer(
   return undefined;
 }
 
-function dispositionForLogic(node: NodeIR): Disposition {
+function dispositionForLogic(node: NodeIR, kits: KitIndex): Disposition {
+  // 🔴 EXP-010. A kit node's `catalogRef` is null by construction — there is no catalog entry for a
+  // node type a project's own `noodl_modules` registered — so before this the whole custom-node
+  // vocabulary landed on `type X is not in the catalog`, which reads as "we do not know what this
+  // is". We do know: the kit said. The distinction that matters is between a node this export
+  // renders and one it does not, and for a kit logic node the answer is a fact about the export's
+  // scope rather than about the node.
+  const kit = kits.get(node.type);
+  if (kit !== undefined) {
+    return {
+      kind: 'deferred',
+      to: 'EXP-003',
+      reason: kit.def.visual
+        ? `custom visual node (${node.type}) that nothing in this component's render tree reaches`
+        : `custom logic node (${node.type}) from the kit in noodl_modules/${kit.moduleDir} — this export renders a kit's visual nodes and does not run its logic nodes`
+    };
+  }
   if (node.type === '' || (node.catalogRef === null && !node.type.startsWith('/'))) {
     return { kind: 'unknown-type', reason: node.type === '' ? 'node has no type (editor debris)' : `type ${node.type} is not in the catalog` };
   }

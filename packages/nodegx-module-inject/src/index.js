@@ -101,6 +101,73 @@ function warn(name, message) {
 // ─── Core scan ───────────────────────────────────────────────────────────────
 
 /**
+ * The module directory names under `<projectDirectory>/noodl_modules`, or `null`
+ * when there is no such folder (a fresh project — not an error).
+ *
+ * Shared by both scan entry points so the "what counts as a module folder" rule
+ * — `isDirectory() || isSymbolicLink()`, which is what lets a symlinked kit work
+ * and what keeps `kit-provenance.json` invisible — has exactly one statement.
+ *
+ * @param {string} modulesPath
+ * @param {string[] | null} entries directory listing, already read
+ * @returns {string[]}
+ */
+function moduleDirectories(modulesPath, entries) {
+  return entries.filter((f) => {
+    try {
+      const stats = fs.lstatSync(modulesPath + '/' + f);
+      return stats.isDirectory() || stats.isSymbolicLink();
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
+ * One directory's manifest text → its `ScannedModule` entry, with the warnings
+ * the "loud, never silent" contract owes.
+ *
+ * ⚠️ **`raw === null` means the read failed**, which is a different statement
+ * from an empty file: a module folder with no `manifest.json` is skipped and
+ * named, while a zero-byte one fails JSON parsing and is skipped and named
+ * differently. Both must stay distinguishable, so the read outcome is passed in
+ * rather than re-derived from the string.
+ *
+ * @param {string} dir
+ * @param {string | null} raw
+ * @returns {import('./index').ScannedModule}
+ */
+function manifestEntry(dir, raw) {
+  const entry = { name: dir, dirPath: 'noodl_modules/' + dir, manifest: null, warnings: [] };
+
+  if (raw === null) {
+    entry.warnings.push(warn(dir, 'manifest.json is missing or unreadable — module skipped'));
+    return entry;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    entry.warnings.push(
+      warn(dir, `manifest.json is not valid JSON (${e && e.message ? e.message : 'parse error'}) — module skipped`)
+    );
+    return entry;
+  }
+
+  if (!validateManifest(parsed)) {
+    const detail = (validateManifest.errors || [])
+      .map((err) => `${err.instancePath || '/'} ${err.message}`)
+      .join('; ');
+    // Kept, not skipped: JSON parsed, so best-effort use it — but loudly.
+    entry.warnings.push(warn(dir, `manifest.json failed schema validation (${detail}) — using it anyway`));
+  }
+
+  entry.manifest = parsed;
+  return entry;
+}
+
+/**
  * Read every module directory under `<projectDirectory>/noodl_modules`, parse
  * and validate each manifest. Returns one `ScannedModule` per directory (in
  * directory order); a missing `noodl_modules` folder (fresh project) resolves to
@@ -123,52 +190,60 @@ async function scanModuleManifests(projectDirectory) {
     throw error;
   }
 
-  const directories = entries.filter((f) => {
+  const scanned = [];
+  for (const dir of moduleDirectories(modulesPath, entries)) {
+    let raw = null;
     try {
-      const stats = fs.lstatSync(modulesPath + '/' + f);
-      return stats.isDirectory() || stats.isSymbolicLink();
+      raw = await fs.promises.readFile(modulesPath + '/' + dir + '/manifest.json', 'utf8');
     } catch {
-      return false;
+      raw = null;
     }
-  });
+    scanned.push(manifestEntry(dir, raw));
+  }
+
+  return scanned;
+}
+
+/**
+ * {@link scanModuleManifests}, synchronously. **Same core, same warnings, same
+ * order** — `moduleDirectories` and `manifestEntry` are shared, so the two
+ * cannot answer differently about the same folder.
+ *
+ * 🔴 **A twin, not a second scanner.** LIB-003 merged two `noodl_modules`
+ * readers precisely because they had drifted; adding a sync one that re-read the
+ * directory itself would restore the defect in a new place. What differs here is
+ * only which `fs` call is used, and that difference is four lines wide.
+ *
+ * Exists for `@nodegx/export`'s `parseProject`, which is synchronous by contract
+ * (v2 files in, IR out, no promises anywhere in the pipeline) and must read the
+ * same module list the preview and the deploy read — the export dropping a kit
+ * the running app renders is the EXP-010 defect itself.
+ *
+ * @param {string | undefined} projectDirectory
+ * @returns {import('./index').ScannedModule[]}
+ */
+function scanModuleManifestsSync(projectDirectory) {
+  if (!projectDirectory) return [];
+
+  const modulesPath = projectDirectory + '/noodl_modules';
+
+  let entries;
+  try {
+    entries = fs.readdirSync(modulesPath);
+  } catch (error) {
+    if (error && (error.code === 'ENOENT' || error.code === 'ENOTDIR')) return [];
+    throw error;
+  }
 
   const scanned = [];
-
-  for (const dir of directories) {
-    const dirPath = 'noodl_modules/' + dir;
-    const manifestPath = modulesPath + '/' + dir + '/manifest.json';
-    const entry = { name: dir, dirPath, manifest: null, warnings: [] };
-
-    let raw;
+  for (const dir of moduleDirectories(modulesPath, entries)) {
+    let raw = null;
     try {
-      raw = await fs.promises.readFile(manifestPath, 'utf8');
+      raw = fs.readFileSync(modulesPath + '/' + dir + '/manifest.json', 'utf8');
     } catch {
-      entry.warnings.push(warn(dir, 'manifest.json is missing or unreadable — module skipped'));
-      scanned.push(entry);
-      continue;
+      raw = null;
     }
-
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (e) {
-      entry.warnings.push(
-        warn(dir, `manifest.json is not valid JSON (${e && e.message ? e.message : 'parse error'}) — module skipped`)
-      );
-      scanned.push(entry);
-      continue;
-    }
-
-    if (!validateManifest(parsed)) {
-      const detail = (validateManifest.errors || [])
-        .map((err) => `${err.instancePath || '/'} ${err.message}`)
-        .join('; ');
-      // Kept, not skipped: JSON parsed, so best-effort use it — but loudly.
-      entry.warnings.push(warn(dir, `manifest.json failed schema validation (${detail}) — using it anyway`));
-    }
-
-    entry.manifest = parsed;
-    scanned.push(entry);
+    scanned.push(manifestEntry(dir, raw));
   }
 
   return scanned;
@@ -583,6 +658,7 @@ module.exports = {
   DEPENDENCIES_PLACEHOLDER,
   MAIN_PLACEHOLDER,
   scanModuleManifests,
+  scanModuleManifestsSync,
   toInjectModules,
   buildInjectionTags,
   injectIntoTemplate,

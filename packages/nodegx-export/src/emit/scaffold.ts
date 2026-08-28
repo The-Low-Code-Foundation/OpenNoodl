@@ -168,13 +168,40 @@ function indexHtml(ir: ExportIR): string {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(ir.project.name)}</title>
-  </head>
+${moduleStylesheetLinks(ir)}  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
 `;
+}
+
+/**
+ * The `<link>` tags a project's `noodl_modules` stylesheets earn (EXP-010 AC5).
+ *
+ * 🔴 **Plain `<link>` against `public/`, not a bundler import**, and the reason is the icon font.
+ * `lucide-icons/styles.css` carries `url(lucide.woff2)` relative to itself; an `import` would put
+ * the stylesheet through Vite's asset pipeline, and while that *does* rewrite the URL it also
+ * moves both files, which is exactly the "ships verbatim" contract `iconsets.ts` documents for a
+ * deploy. Copying the folder untouched and linking it means the export and the deploy serve the
+ * same bytes at the same paths, so an icon that renders in the preview renders here.
+ *
+ * A `http(s)` stylesheet (an ERG-002 library's CDN skin) is linked at its own URL — the export
+ * cannot bundle it and inventing a local path would 404.
+ */
+function moduleStylesheetLinks(ir: ExportIR): string {
+  const hrefs: string[] = [];
+  for (const module of ir.project.modules) {
+    // A module declaring only `cloud` contributes nothing to a browser page — the same
+    // `runtimes` filter `buildInjectionTags` applies, so the export and the preview agree.
+    if (!module.runtimes.includes('browser')) continue;
+    for (const sheet of module.stylesheets) {
+      hrefs.push(/^https?:\/\//.test(sheet) ? sheet : `/${sheet}`);
+    }
+  }
+  if (hrefs.length === 0) return '';
+  return hrefs.map((href) => `    <link rel="stylesheet" href="${escapeHtml(href)}" />\n`).join('');
 }
 
 function mainTsx(): string {

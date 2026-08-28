@@ -1,0 +1,8 @@
+{
+  "name": "Dots",
+  "type": "iconset",
+  "browser": { "stylesheets": ["noodl_modules/dots-icons/styles.css"] },
+  "iconClass": "dots",
+  "codeAsClass": true,
+  "icons": ["icon-dot", "icon-ring"]
+}

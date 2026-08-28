@@ -133,6 +133,11 @@ export declare const DEPENDENCIES_PLACEHOLDER: '<%modules_dependencies%>';
 export declare const MAIN_PLACEHOLDER: '<%modules_main%>';
 
 export declare function scanModuleManifests(projectDirectory: string | undefined): Promise<ScannedModule[]>;
+/**
+ * `scanModuleManifests`, synchronously — a twin sharing the same core, not a
+ * second scanner. For `@nodegx/export`'s synchronous `parseProject`.
+ */
+export declare function scanModuleManifestsSync(projectDirectory: string | undefined): ScannedModule[];
 export declare function toInjectModules(scanned: ScannedModule[]): InjectModule[];
 export declare function buildInjectionTags(modules: InjectModule[] | undefined, pathPrefix: string): InjectionTags;
 export declare function injectIntoTemplate(template: string, tags: InjectionTags): string;

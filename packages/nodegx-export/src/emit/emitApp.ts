@@ -9,6 +9,7 @@ import { Catalog, CatalogIndex } from '../catalog';
 import { planProject, ProjectPlan, QueryPlan, SessionCallPlan } from '../analyze/plan';
 import { CloudServicesIR, ExportIR } from '../ir/types';
 import { emitComponent } from './component';
+import { EmittedCopy, emitKits } from './kits';
 import { emitScaffold } from './scaffold';
 import { emitStateModules } from './state';
 
@@ -19,6 +20,18 @@ const GENERATED_CLIENT_TS = '// @nodegx:generated (api client — provenance mar
 export interface EmittedApp {
   /** Path → content, sorted by path (D-rules). */
   files: Record<string, string>;
+  /**
+   * Files that travel byte-for-byte rather than being generated (EXP-010 AC5) — every
+   * `noodl_modules` file, sorted by destination.
+   *
+   * 🔴 **A separate channel because `files` is `Record<string, string>` and a font is not a
+   * string.** `noodl_modules/inter/` ships four `.ttf` files and `lucide-icons/` a `.woff2`;
+   * reading one into a UTF-8 string to put it in `files` would corrupt it silently, and the
+   * failure would render as blank glyphs rather than as an error. Emission stays pure — this is a
+   * list of paths, not a filesystem operation — and the caller that writes `files` to disk copies
+   * these alongside.
+   */
+  copies: EmittedCopy[];
   /** EXP-004's feed: everything analysis or emission dropped or deferred, per component. */
   notes: string[];
 }
@@ -28,6 +41,18 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
   const project = planProject(ir, index);
   const files = emitScaffold(ir);
   const notes: string[] = [];
+
+  // EXP-010. The kit bridge is built from the node types the plans actually render, so a project
+  // with five kits and one node used ships one wrapper — but every module's *files* travel
+  // regardless, because an icon set contributes no node and is still what makes the page look
+  // right.
+  const usedCustomTypes = new Set<string>();
+  for (const plan of project.plans) {
+    for (const custom of Object.values(plan.customNodes)) usedCustomTypes.add(custom.def.type);
+  }
+  const kits = emitKits(ir, usedCustomTypes);
+  Object.assign(files, kits.files);
+  notes.push(...kits.notes, ...moduleNotes(ir, project));
 
   if (ir.project.cloudComponents.length > 0) {
     notes.push(
@@ -50,7 +75,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
       if (plan.rootId === null && !plan.file) notes.push(`${plan.path}: ${plan.skipReason}`);
       continue;
     }
-    const emitted = emitComponent(plan, project, ir, index);
+    const emitted = emitComponent(plan, project, ir, index, kits.bindings);
     if (!emitted) continue;
     Object.assign(files, emitted.files);
     notes.push(...emitted.notes);
@@ -75,8 +100,34 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
 
   return {
     files: Object.fromEntries(Object.entries(files).sort(([a], [b]) => (a < b ? -1 : 1))),
+    copies: [...kits.copies].sort((a, b) => (a.to < b.to ? -1 : a.to > b.to ? 1 : 0)),
     notes
   };
+}
+
+/**
+ * One line per `noodl_modules` folder that could not contribute its nodes — EXP-010 AC4.
+ *
+ * 🔴 **Every failing module gets a line, and a working one gets none.** A report that listed all
+ * five modules would bury the one that broke; a report that listed none would reproduce the defect
+ * this task closed. `status` is the discriminator and it already carries the distinction between
+ * "nothing to load" (an icon set, a font) and "something went wrong", which is why an asset module
+ * cannot appear here by construction rather than by a filter someone has to remember.
+ */
+function moduleNotes(ir: ExportIR, project: ProjectPlan): string[] {
+  const notes: string[] = [];
+  for (const module of ir.project.modules) {
+    if (module.status === 'loaded' || module.status === 'no-nodes-declared') continue;
+    notes.push(
+      `noodl_modules/${module.dirName}: ${module.message ?? `could not be loaded (${module.status})`} Its files still ship with the app.`
+    );
+  }
+  for (const duplicate of project.kitDuplicates) {
+    notes.push(
+      `two kits register the node type ${duplicate} — the first registration wins, here and in the running app, so this one's definition is ignored`
+    );
+  }
+  return notes;
 }
 
 function withCoreDependency(packageJson: string): string {

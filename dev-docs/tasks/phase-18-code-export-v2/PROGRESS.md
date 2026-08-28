@@ -84,3 +84,20 @@ writes round-trip; no master key in the bundle. Design in
 [EXP-009-CLIENT-TARGET-OUTPUT.md](./EXP-009-CLIENT-TARGET-OUTPUT.md), drive record in
 [EXP-009 §8](./EXP-009-BACKEND-CONNECTION.md). Gates: 519/519 · corpus 40/40 · 85.00% unchanged
 · picker ratchet holds 51/127. AC4 (cloud functions) waits on EXP-011's node translation.
+
+**Session 34 (2026-08-28) — EXP-010 built and driven: custom nodes stop being holes.**
+`parseProject` had **zero references to `noodl_modules`** — the directory was never opened, so
+every node from a project's own kit fell out of the render tree and left the JSX with a gap and no
+marker. Route B now ships each kit verbatim behind a one-file shim, with a typed React wrapper per
+node type at every call site. `cn027-drive` — a real 25-component site — exports, builds
+(`tsc -b && vite build`) and renders **all four** of its custom nodes in a headless browser.
+Ports were driven in both directions, each path separately: an `outputProps` signal, an `outputs`
+signal fired from `initialize` (the shape a partial reader loses), and a value output landing in a
+bound element. A kit that throws, one with no `index.js`, an ES-module build and a plain library
+each export the rest of the app and are named once with their own status; a node whose kit did not
+load leaves a `TODO(export)` **in the file**. Icon-set stylesheets and their binary fonts now ship
+verbatim and are linked, which quietly fixes the bundled Inter font and Lucide set in **24** corpus
+projects. AC6 is settled as a decision, not a number, recorded in `coverage-ledger.json`'s
+`$customNodesComment`. Details and the five near-misses in
+[EXP-010 §7–§9](./EXP-010-CUSTOM-NODES-AND-MODULES.md). Gates: 554/554 · module-inject 31/31 ·
+corpus sweep 47/47 emit clean · picker ratchet holds 51/127 · `export-ledger:check` OK.

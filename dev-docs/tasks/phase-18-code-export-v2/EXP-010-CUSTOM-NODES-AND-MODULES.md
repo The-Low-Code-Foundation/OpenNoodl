@@ -1,6 +1,7 @@
 # EXP-010 — Custom nodes, modules and prefabs export
 
-**Status:** 🔴 Not started (new, 2026-08-28, session 32)
+**Status:** 🟢 **Route B built and driven (2026-08-28, session 34).** AC1–AC5 met and measured in a
+browser; AC6 settled as a decision (§8). Route A is not built and is not owed by this task — see §9.
 **Depends on:** EXP-002 (props, callback props and lifted outputs already exist)
 **Related:** phase 69 (`dev-docs/tasks/phase-69-the-node-you-write-yourself/`) — the authoring side
 
@@ -130,3 +131,100 @@ Route A needs a kit's React component reachable as a value. That is a small, add
 on the kit format — e.g. the module may attach its components to the definition object, or export
 them — and it belongs in phase 69's authoring contract rather than being reverse-engineered here.
 **Agree it there, then build Route A against it.** Route B needs nothing from anyone.
+
+---
+
+## §7 What was built — session 34
+
+Route B, as §3 recommended, with one improvement it did not ask for: the shim is confined to a
+single generated file and every *call site* is a typed React wrapper, so the emitted pages read as
+ordinary React (`<Dial reading={42} onPress={…} />`) rather than as node-model plumbing.
+
+**Parse.** `src/parse/parseModules.ts` reads `noodl_modules/` through
+`@nodegx/module-inject`'s scanner — the LIB-003 one, not a fourth copy; the package gained a
+`scanModuleManifestsSync` twin sharing the async one's core, because `parseProject` is synchronous
+by contract. `src/parse/kitSource.ts` then *runs* each kit's `index.js` in a `vm` context and reads
+its definitions, because a custom node's ports are declared nowhere else on disk. ⚠️ **Exporting a
+project now runs that project's kit code on the machine doing the export.** That is stated in both
+files rather than buried.
+
+**Analysis.** A new `RenderRole`, `'custom'`. A kit node participates in the tree walk, its
+parameters become props, its signal outputs become handler props (the `instanceSignalOutputs`
+pattern, for the same reason — the wire parses as `'value'` because nothing static knows the port),
+and its value outputs lift into local `useState` and bind. `dispositionForLogic` is kit-aware, so a
+kit's logic node no longer reads `type X is not in the catalog`.
+
+**Emit.** `src/emit/kits.ts` writes `src/kits/runtime.tsx` (the shim), one typed wrapper module per
+kit, and the copy list. `EmittedApp` gained a `copies` channel — `files` is `Record<string, string>`
+and a `.woff2` is not a string.
+
+### The five things that were nearly wrong
+
+1. 🔴 **A kit whose nodes the project does not use reached neither destination.** Kit scripts go to
+   `src/kits/modules/` and everything else to `public/`; excluding *every* module's `main` from the
+   verbatim copy meant an unused kit's `index.js` was in neither. That is this task's own defect,
+   one directory over. The exclusion is now keyed on the scripts actually bundled, and a test
+   asserts every module asset appears exactly once as a copy source.
+2. 🔴 **`isStyledRole` returned true for a kit node**, so `computeNodeStyle` ran over ports it knows
+   nothing about and reported *every* one as unmapped — six "dropped, reported" lines about
+   `label`, `amount` and `day`, each of which the wrapper passes through perfectly.
+3. 🔴 **The page collapse orphaned the AC3 markers.** A `Page` whose sole child is a `Group` rehomes
+   that Group's children onto the page div; a marker still keyed to the Group would be looked up
+   under an id the emitter never renders — the one line in the file saying "something was here"
+   would itself have disappeared.
+4. ⚠️ **The drive could not tell the two signals apart.** Both fired into the same popup slot, so
+   the second to arrive satisfied the observation whether or not the first ever ran. The fixture's
+   dial now has two separate targets.
+5. ⚠️ **The icon `codeAsClass` question was left alone deliberately.** The runtime reads
+   `codeAsClass` from the *parameter*, not the manifest (`IconGlyph.tsx:63`), and the editor writes
+   it there at pick time. Teaching the export to consult the manifest would have made it render
+   **differently from the running app** — which is the opposite of what shipping the stylesheet is
+   for. `cn015-editor-drive`'s icon parameter lacks the flag, so it renders as text in the preview
+   too; that is a fixture defect, not an export one.
+
+## §8 The acceptance criteria, and how each was measured
+
+Suite: `packages/nodegx-export/tests/custom-nodes.test.ts` (34 tests) over
+`tests/fixtures/kits`, a project carrying one of every module shape — a kit that loads, one that
+throws, one whose `index.js` is missing, an ES-module build, a plain library, and an icon set with a
+binary font.
+
+| AC | Verdict | How |
+|---|---|---|
+| 1. Nodes render | ✅ | **Driven.** `cn027-drive` — a real 25-component site — exported, `tsc -b && vite build` clean, and headless Chrome shows all four of its custom nodes: `SSRPROBEPILL`, `BADGE:(none)`, `GROW-ALPHA:GROWTAG`, `BROKEN-KIT-INTACT:v1`. Every one was a hole in the JSX before. |
+| 2. Ports both ways | ✅ | **Driven, each path separately.** From a fresh load: clicking `[data-dial-press]` (an `outputProps` signal) shows `SIGNAL-PRESSED`; clicking `[data-dial-settle]` shows `SIGNAL-SETTLED` (an `outputs` signal fired by `sendSignalOnOutput` from `initialize`, with no `outputProps` entry — the shape a partial reader loses) **and** puts `42` into a bound `<p>` (the `liveReading` value output). Parameters are visible in the render itself. |
+| 3. Nothing dropped silently | ✅ | Three shapes: a node whose kit did not load leaves a `{/* TODO(export): … */}` **in the emitted file**; a parameter or wire naming a port the kit no longer declares says *the running app delivers nothing there either* rather than "deferred"; a kit's logic node is named as out of scope. |
+| 4. A broken kit does not take the app down | ✅ | Five of six modules in the fixture cannot contribute a node; the page still exports with its built-ins, its working kit nodes and its state. Each failure is named once with its own status (`threw` / `unreadable` / `es-module` / `no-define-module`), and a module that loaded or has nothing to load is **not** in the report. |
+| 5. Assets ship | ✅ | **Over real HTTP.** `/noodl_modules/dots-icons/dots.woff2` → 200; `styles.css` → 200 with its relative `url(dots.woff2)` intact, because the folder is copied verbatim rather than put through the bundler. The stylesheet is `<link>`ed from `index.html`. A binary is a copy, never a string in `files`. |
+| 6. The picker ratchet | ✅ *(decision)* | See below. |
+
+**AC6 — settled, and deliberately not a number.** Custom node types stay out of the picker
+denominator and out of `coverage-ledger.json`; the decision and its reasoning are recorded in that
+file's `$customNodesComment`, which is where someone asking "where are custom nodes?" will look.
+The short version: a custom type's population is per-project and unbounded, so a percentage over it
+has a denominator that moves with whichever project you point the tool at — which is exactly the
+instance-weighted corpus number this phase lost twelve sessions to. The claim is categorical
+instead: **a kit's visual nodes export and render; a kit's logic nodes do not, and every instance
+is named.** `tests/custom-nodes.test.ts` is the ratchet for it.
+
+### Regression net
+
+47 corpus projects parse and emit, 0 failures. 24 have modules — mostly the bundled Inter font and
+Lucide icon set, which now ship and link in every one of those exports. Full suite 554/554;
+`@nodegx/module-inject` 31/31; `export-ledger:check` and `export-ledger:picker` (51/127) unchanged.
+
+## §9 What is left
+
+- **Route A** — a generated wrapper per node kind with no shim at all. Needs the kit-format
+  convention §6 asks phase 69 to settle. Route B is the floor it gets diffed against, and nothing
+  about it is load-bearing: a node kind can be moved to Route A one wrapper at a time.
+- **A kit's logic nodes** (`nodes:` rather than `reactNodes:`). `tally-kit` is an entire vocabulary
+  of them and every instance exports as a named deferral. They are `set`/`get` functions over
+  `_internal` — the same shape the shim already drives for visual nodes — so this is a smaller
+  slice than it sounds, but it is a slice.
+- **npm-dependency kits**, still out of scope (§5). Every kit on this machine has
+  `dependencies: []`; when one does not, the export has to merge them into the emitted
+  `package.json`.
+- **The `broken-kit` fixture no longer breaks.** An earlier session repaired it ("Repaired: the
+  syntax error is gone"), so `cn015-editor-drive` no longer covers the throwing case it was built
+  for. `tests/fixtures/kits/noodl_modules/thrower-kit` covers it now; the drive fixture does not.
