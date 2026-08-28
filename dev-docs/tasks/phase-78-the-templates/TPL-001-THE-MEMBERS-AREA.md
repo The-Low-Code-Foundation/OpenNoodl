@@ -254,3 +254,103 @@ edge and one message.**
   is what a collection read falls back to when nobody wrote a rule. `nobody` means a class
   somebody adds later is refused **loudly** rather than opened silently.
 
+
+## 12. The drive (s3, 2026-08-28) — 🟢 AC2, AC3, AC4, AC5 measured
+
+**The template has been run.** Nineteen components that had never executed now have
+**45 specs across two files** taken against a real enforcing backend and a real headless browser.
+
+| | |
+|---|---|
+| the drive | `packages/nodegx-backend/tests/tpl001-members-drive.test.ts` — 39 specs |
+| D4's arm | `packages/nodegx-backend/tests/tpl001-refused-query.test.ts` — 6 specs |
+| the harness | `packages/nodegx-backend/tests/helpers/members-drive.ts` |
+| subject | `templates/members-area/` — **the shipped directory**, copied and served, not re-authored |
+| conditions | `devOpen: false` asserted from `started.security.enforced`; policy read from the shipped file |
+| gates | nodegx-backend **1280 passed / 10 skipped, 111 suites** · `typecheck` clean · noodl-mcp **834/834** · `typecheck:mcp` clean |
+
+⚠️ **`test:ci` was not run** — nothing in the editor was touched, and a peer held the editor stack
+for SBR-004 for the whole session.
+
+### What each criterion now rests on
+
+- **AC2** — a moderator and an approved member read the announcement, over HTTP *and* in the
+  browser (the known-firing signal). Signed out, `/members` and `/meetings` **navigate the
+  stranger back to the public landing page** — `standing.Visitor → toLanding.navigate`, so it is a
+  refusal and not an empty screen — the announcement appears nowhere in `outerHTML`, and the
+  server answers **403** rather than an empty list.
+- **AC3** — a **pending** person, signed in (asserted: a real session token from the app's own
+  form), gets the pending notice, no announcement anywhere in the document, no moderator tools,
+  and **the same 403 with the same body as an anonymous stranger**. That comparison is the AC's
+  whole sentence.
+- **AC4** — the moderator is offered `Post something` / `Requests to join` and the member is not
+  (same run, same instrument); `/post` reached by URL says *Only a moderator can post here*; and
+  the server answers **403** to a member's `POST /classes/Announcement` and to a member's
+  `decideMembership`. UI-only enforcement would have passed the first three and failed the fourth.
+- **AC5** — the moderator saw both names in the queue, **Approve was clicked in Mo's own row**,
+  the queue then listed only Pat, and Mo signed in and read — while Pat, in the same run, is
+  still refused. The only difference between the two readings is that click.
+- **AC1** — 🔴 **still not gradeable, and it is not a gap in the work.** It says *pick "Members'
+  area" and finish the wizard*, and delivery is **curated**: until Richard publishes there is no
+  picker row to pick. What the drive does grade is every part that does not depend on
+  publication — the directory boots, binds, and renders its landing page to a stranger with no
+  white void. **The rest of AC1 belongs to T5.**
+- **AC6** — the empty states were not measured this session: content is seeded before the first
+  visit. Cheap to add and it is the only acceptance criterion with no reading against it.
+
+### 🔴 The Post page was driven, because the door cannot check any of it
+
+The seeded announcement exercises nothing the template writes. So the moderator **types** into the
+Post page and submits: five `prop-*` wires across two `NewDbModelProperties` nodes, plus
+`stampAnnouncement.out-go`. All of it works — the confirmation lines appear, and a **different
+person in a later session** reads the row back with `body`, `when`, `place` and `details` intact.
+That is the class TPL-001 §11 says the door is silent about, and it is now covered by execution.
+
+Between them the drive exercises every wire class D1 names: the eight component-instance ports,
+`in-*`/`out-*` on all four `CloudFunction2` nodes, `prop-*` on both records nodes, and `qp-today`
+on the meetings filter. **None of them was wrong.** The door's silence hid nothing here — which is
+worth saying plainly, because it is evidence about this template and not about the door.
+
+## 13. Findings (s3, 2026-08-28)
+
+- 🔴 **D4 is answered, and the answer reverses what was recorded.** A refused query **is**
+  distinguishable from an empty one: `DbCollection2.failure` fires on a 403. Measured with a
+  two-wire twin (`didMount → storageFetch`, `failure → toLanding.navigate`) and a control — the
+  allowed person drew rows and stayed on `/members`; the refused person was navigated to `/`. The
+  runtime also logs `query-records/query-failed`, only for the refused arm. **This downgrades D2
+  from a necessity to a convenience.** ⚠️ It does not loosen this template's design: branching on
+  `failure` means issuing the members-only query for every stranger and flickering through
+  "nothing here" on the way to "you may not", where `myStanding` stops it being issued at all.
+- 🔴 **The first version of that twin was wired through the platform's own broken seam and read
+  exactly inverted.** `failure` (a **signal**) into `unknownNotice.visible` (a **value** port)
+  painted the notice for the person whose query **succeeded** and left it dark for the person who
+  was **refused**. A fourth sighting of the signal-into-a-value-port class, in a new shape — not
+  "the signal never arrives" but "it arrives on the wrong arm". **An instrument built out of a
+  seam you already know is broken measures the seam.** The fix was to make the twin
+  signal-to-signal throughout.
+- 🔴 **An absence read off a button's `innerText` is not a measurement.** `innerText` **skips**
+  `display: none`; `textContent` does not. Every "the member was not offered the moderator tools"
+  assertion here passed on that quirk before it passed on anything else — the buttons were on the
+  page. The harness now separates **`present`** (in the document), **`painted`** (has a box) and
+  **`reachable`** (hit-testable at this scroll), and an absence claim belongs on `painted`.
+- 🔴 **…and `reachable` alone would have made the absence satisfiable by scrolling.**
+  `elementFromPoint` answers `null` for any coordinate outside the viewport, so a button four
+  hundred pixels down reads exactly like one behind a modal. It cost two false "the button is
+  blocked" findings before both click helpers learned to scroll to the control and *then* say so.
+- ⚠️ **The moderator's form ships in every member's document, unpainted.** `tools` is gated with
+  `visible: false`, so both forms and both submit buttons are in the markup a member's browser
+  holds. Not a leak — the forms are empty and the write is refused server-side — but "the member's
+  UI does not offer it" is true only of what is *painted*. ✅ **The rule the template gets right is
+  the one that matters**: every members-only **fetch** is gated on a standing signal, so hiding is
+  never what keeps the data out.
+- ⚠️ **The viewer bundle's mtime is not evidence about its contents.** The bundle predated three
+  commits and was rebuilt on that reasoning; it then turned out to be **byte-for-byte the same
+  size** as a fresh build and to already contain `_inputCauseQueue`, `_inputValuesQueue` and
+  `textInputValue`. The changes were in the working tree before they were committed, and the
+  third commit blamed (SB-018) touched **no runtime source at all**. ✅ **Grep the artefact for a
+  marker; never infer staleness from mtime against a commit date.** The drive now stamps the
+  bundle at both ends of the run and reddens if it moved, because a peer's dev stack rewrites it.
+- ⚠️ **A stranger at `/members` is redirected, not shown an empty page.** Read as a routing bug
+  for several minutes — `location.pathname` was `/` after navigating to `/members` — before
+  `standing.Visitor → toLanding.navigate` explained it. It is the designed behaviour and it is
+  better than the alternative; recorded so the next reader does not re-derive it.

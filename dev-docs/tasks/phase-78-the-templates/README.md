@@ -31,7 +31,10 @@ here is blocked on knowing what we are building.
 - ⬜ **T1** — the list (above).
 - ⬜ **T2** — build the first small batch. Each template is a working project plus a couple of
   sentences of description (the shelf will not publish without them).
-  - 🟡 **[TPL-001 — the members' area](TPL-001-THE-MEMBERS-AREA.md)**, `data-app`. Richard's
+  - 🟢 **[TPL-001 — the members' area](TPL-001-THE-MEMBERS-AREA.md)**, `data-app`. **Built,
+    gated and DRIVEN** (§12, s3 2026-08-28): AC2–AC5 measured against a real enforcing backend in
+    a real browser, 45 specs. **AC1 waits on T5** — until it is published there is no picker row
+    to pick — and AC6's empty states are the one criterion with no reading against them. Richard's
     choice, 2026-08-28: a members-only site for a charity, club or church — restricted content,
     moderators, meetings, behind a simple public landing page. Chosen **without waiting on T1**;
     it fills the largest category gap (of six ruled slugs only `starter` and `site` are spoken

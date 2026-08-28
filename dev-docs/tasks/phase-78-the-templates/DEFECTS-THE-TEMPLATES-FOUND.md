@@ -57,13 +57,20 @@ having on its own: **emit an info naming the wires that were not verified**, the
 that reads as "checked and fine".
 
 **Interim cover:** `packages/noodl-mcp/tests/tpl001Template.test.ts` §3 does the instance-port
-check over the shipped artefact. It covers one template, not the door.
+check over the shipped artefact, and since 2026-08-28 `tpl001-members-drive.test.ts` **executes**
+every class named above — the eight instance ports, `in-*`/`out-*` on all four `CloudFunction2`
+nodes, `prop-*` on both records nodes, `qp-today` on the meetings filter — and none of them was
+wrong. ⚠️ That is evidence about **this template**, not about the door: it says the silence hid
+nothing here, and costs a drive per template to say it anywhere else. The door is still silent.
 
 ---
 
-## D2 — 🔴 The browser cannot read the current user's roles at all
+## D2 — 🟠 The browser cannot read the current user's roles at all
 
-**Severity: high — it is a hole in the concept, not just the code.**
+**Severity: was high; ⬇️ MEDIUM since D4 was answered on the drive (2026-08-28).** It is still a
+hole in the concept — but D4 shows an app *can* branch on the refusal of the query it was going to
+run, so this is a convenience and a quality-of-result question rather than the only way through.
+Read D4 before acting on this row.
 
 - `_Role` is a system class: `isSystemCollection` gives every `_`-prefixed class a fixed `nobody`
   posture **regardless of config**, so no query reaches it.
@@ -83,6 +90,12 @@ same way enforcement resolves it (`SecurityState.rolesForUser`). Reading one's o
 nothing — the server still decides every request — and it would remove the round trip from the
 most common branch in the product.
 
+⚠️ **What D4 changed about the "where it bites" above.** Inferring membership from an empty query
+is wrong, but inferring it from a **refused** one is not — `failure` fires. So the cost of not
+having this is a screen that must issue a members-only query, have it refused, and *then* say "you
+may not", flickering through "nothing here" on the way. That is worse than a round trip, not
+impossible without one.
+
 ---
 
 ## D3 — 🔴 Nothing enumerates the members of a role
@@ -101,25 +114,39 @@ resolver already walks it in one direction.
 
 ---
 
-## D4 — ⬜ Is a refused query distinguishable from an empty one? (the drive answers this)
+## D4 — ✅ ANSWERED on the drive, 2026-08-28: **yes, `failure` fires.** Not a defect.
 
-**Open. Filed here because the answer decides whether D2 is a convenience or a necessity.**
+**Closed. The answer reverses what a prior session recorded, so read this before trusting any
+note that says a refused query looks empty.**
 
 `DbCollection2` has a `failure` signal and an `error` output, and `setError` raises a runtime error
 code — so **if** a 403 reaches that path, an app can tell "you may not read this" from "there is
 nothing here". Prior sessions recorded the opposite (a refused query publishing `[]` like an empty
 one), which is why every members-only screen in TPL-001 is branched on `myStanding` instead.
 
-**What to observe on the drive**, with the policy enforcing (`devOpen: false`): sign in as a
-**pending** member, let a members-only query run, and record whether `failure` fires and `error`
-carries a message, or whether `items` simply publishes `[]`.
+**What was measured** (`packages/nodegx-backend/tests/tpl001-refused-query.test.ts`), with the
+shipped policy enforcing, on one backend, in one browser, two arms minutes apart:
 
-- If `[]` with no failure → that is a **defect** with a real product consequence, and it belongs
-  above this line with the others.
-- If `failure` fires → the trap is narrower than recorded, the memory note should be corrected,
-  and screens can branch locally in the common case.
+| arm | server | the page |
+|---|---|---|
+| an approved **member** | `200`, one row | list drew the row, stayed on `/members`, console clean |
+| a **pending** person | `403` | **navigated away** — `failure` fired — and the console named `query-records/query-failed` |
 
-⚠️ Either way TPL-001's design stands: the standing check is what stops the query running at all.
+TPL-001 never runs a members-only query as a non-member, so the twin adds **two wires and nothing
+else**: `page.didMount → announcements.storageFetch` (so the query runs whoever you are) and
+`announcements.failure → toLanding.navigate` (so a refusal, if legible, is unmissable). The member
+arm is the control that the added fetch is live; without it a silent pending arm would be equally
+consistent with "the mutation did nothing".
+
+🔴 **The first version of this twin got the opposite answer, and it was the instrument's fault.**
+It wired `failure` → `unknownNotice.visible` — a **signal** into a **value** port — and the notice
+painted for the person whose query **succeeded** and not for the one who was **refused**. Exactly
+inverted. That is the SB-018 class, and it is the reason the twin is now signal-to-signal
+throughout. **An instrument built out of a seam you already know is broken measures the seam.**
+
+⚠️ **TPL-001's design still stands.** Branching on `failure` means issuing the members-only query
+for every stranger and flickering through "nothing here" on the way to "you may not"; the standing
+check stops the query being made at all.
 
 ---
 
@@ -152,3 +179,47 @@ diagnostics.
 
 Both are now collected and printed (`built.remaps`, `built.diagnostics`). 🔴 **The lesson is about
 the caller, not the door: an absence you have not looked for is not an absence the tool has.**
+
+---
+
+## D7 — ⚠️ A `visible: false` group ships its whole subtree to everyone
+
+**Severity: low as a defect, high as a habit.** Measured on TPL-001's drive: an approved member
+loading `/post` receives the moderator's announcement form, meeting form and both submit buttons
+in their document, behind `display: none`. `Post it` is absent from what is *painted* and present
+in what is *in the document*, in the same reading.
+
+It is **not** a leak here — the forms are empty and the server answers `403` to the write — and
+`visible` is documented as holding its space rather than removing the node. It is filed because of
+what it makes false: *"the member's UI does not offer it"* is a claim about painting, and anyone
+who reaches for `visible` to hide **content** rather than a control has built a leak that every
+structural spec will pass. The template itself gets this right — every members-only **fetch** is
+gated on a standing signal, so hiding is never what keeps data out.
+
+**Where it bites a person.** The first builder who puts a members-only announcement inside a
+`visible: false` group instead of gating its query. `mounted` removes the subtree; `visible` does
+not, and nothing in the editor says which one this decision needs.
+
+---
+
+## D8 — ✅ DISPROVED: "the viewer bundle was stale, so the drive measured an old runtime"
+
+**Filed and withdrawn in one session, kept because the reasoning was seductive and wrong.**
+
+`packages/noodl-editor/src/external/viewer/noodl.viewer.js` had an mtime of **08-27 20:23** and
+three commits touching `noodl-runtime` / `noodl-viewer-react` carried later timestamps, so it was
+rebuilt before driving anything.
+
+**It was already current.** The pre-existing bundle was **byte-for-byte the same size** as a fresh
+build, and grepping it found `_inputCauseQueue`, `_inputValuesQueue` (FB-025) and `textInputValue`
+(FB-026) already present: the changes were in the working tree when the bundle was built and were
+committed thirty-two minutes later. And the third commit blamed — 354b4525, SB-018 — touched
+**no runtime source at all**, only tests and template content.
+
+🔴 **The lesson is the inverse of the usual one.** *Commit time is not authorship time*, so an
+artefact older than a commit may still contain it. ✅ **Grep the artefact for a marker.** Never
+infer staleness from an mtime against a commit date — in either direction.
+
+⚠️ **What was worth doing anyway**: the drive now stamps the bundle at both ends of the run and
+reddens if it moved. On a shared checkout a peer's dev stack rewrites that file, and a bundle
+swapped mid-drive would surface as a flake in whichever spec happened to be running.
