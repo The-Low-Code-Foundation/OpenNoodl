@@ -77,9 +77,25 @@ describe('component reachability', () => {
   });
 
   it('and that page is reachable BECAUSE of the route, not by accident', () => {
+    // This is the test that found the defect it now guards. Dropping the route left the page
+    // reachable, because the walk was also reading the App shell's own `pages` parameter — a
+    // second copy of the route list, reached as an ordinary instantiation edge. Routes are roots
+    // and come from `RouterIR` alone now, so removing one really does remove the page.
     const ir = clone(puppyIr);
     ir.project.routers[0].routes = ir.project.routers[0].routes.filter((r) => r !== '/#__page__/Home');
     expect(componentReachability(ir).unreachable).toContain('/#__page__/Home');
+  });
+
+  it('and a Router node cannot re-route a page through its own parameter blob', () => {
+    // The direct statement of the same rule, so it survives a rewrite of the test above: with the
+    // route gone from RouterIR, the parameter that still lists it must buy nothing.
+    const ir = clone(puppyIr);
+    ir.project.routers[0].routes = [];
+    delete ir.project.routers[0].startPage;
+    const router = nodeOfType(ir, 'App', 'Router');
+    expect(JSON.stringify(router.parameters)).toContain('/#__page__/Home');
+    expect(componentReachability(ir).unreachable).toContain('/#__page__/Home');
+    expect(componentReachability(ir).unreachable).toContain('/Pages/Landing');
   });
 
   it("counts a For Each's template as an edge", () => {

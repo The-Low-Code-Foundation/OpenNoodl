@@ -1484,10 +1484,11 @@ uniformity result that arrives too easily as a claim about the instrument.
 
 ## §20 The wall is in a room with no door (session 31 — §19f(1); **the top item is dead code**)
 
-> ⚠️ **Nothing in this section was executed.** Richard's machine-wide freeze on CPU/RAM-intensive
-> runs was in force for the whole session, so the code and tests below are written and **unrun**,
-> and every number here comes from raw project files measured with python — never from the
-> exporter, which was not invoked. §20f lists what is waiting, in run order, with what to expect.
+> ✅ **All of it ran.** Richard lifted the freeze at the end of the session and the full list was
+> swept in one pass — **typecheck clean, 504/504 tests, coverage 85.00% byte-identical per project,
+> census 666, corpus 40/40** — and the reachable figure the raw files predicted came back **exact**.
+> §20h is the sweep, including the one red, which was a real defect in this slice that its own
+> control test caught. Sessions 30's unrun work was verified in the same pass.
 
 **The result: 904 of the corpus's 4,441 nodes (20.4%) sit in components that no route can reach,
 and they hold 432 of the 666 deferrals (64.9%). The export translates 93.38% of the nodes a
@@ -1622,7 +1623,7 @@ came back as JS comment lines and a `/puppies/{id}` URL, none of which name a co
 residual gone unprinted, a missed edge — the error that marks a live component dead — would have
 looked identical to no error at all.
 
-### 20f — What is unrun, in run order
+### 20f — The run list (written before the sweep; §20h is what it produced)
 
 1. `npm run typecheck` in `packages/nodegx-export` — new module `src/analyze/reach.ts`, a new
    required field on `ProjectPlan`, one new import in `plan.ts`, one new block in `emitApp.ts`.
@@ -1659,3 +1660,74 @@ The old list ranked walls by node count. This one ranks by whether anything rend
    one downloaded artefact counted eight times and they are 83% of the deferrals. s19 already
    recorded that the corpus "has stopped measuring what matters"; this is the same finding with a
    number on it.
+
+### 20h — The sweep, and the defect the control caught
+
+Richard lifted the freeze the same day; both sessions' unrun work went through in one pass.
+
+| # | run | predicted | measured |
+|---|---|---|---|
+| 1 | `tsc --noEmit` | clean | **exit 0** |
+| 2 | `jest` | 503 | **503, 1 red** → fixed → **504/504** |
+| 3 | coverage headline | 85.00% unchanged | **3,775/4,441 = 85.00%, per-project rows byte-identical to s29** |
+| 4 | coverage `REACH` | 3,303/3,537 = 93.38% | **3,303/3,537 = 93.38%, exact** |
+| 5 | `deferred-census` | 666 | **666, and the same 666 nodes as s29** |
+| 6 | `build-corpus` | 40/40 | **40/40 projects typecheck** |
+
+The reachable figure matching a raw-file prediction **to the node** is the strongest form of the
+s20a reconciliation: two instruments that share no code, one reading `nodes.json` in python and one
+running `planProject`, agreeing on a number neither was tuned to produce.
+
+s30's work was verified in the same pass and is sound: the census holds **the same 666 nodes** as
+s29, and the only diff is the reason strings — `its label arrives over a wire…` became `its label
+is fed by Model2 …` / `… by net.noodl.ComponentObject …`, which is exactly what §19 said it would
+do. **No node moved between translated and deferred.**
+
+**🔴 The one red was real, and it was the control test doing its job.** *"That page is reachable
+BECAUSE of the route, not by accident"* removed `/#__page__/Home` from `RouterIR.routes` and the
+page stayed reachable — because `edgesFrom` was also scanning the App shell's **own `pages`
+parameter**, a second copy of the route list, reached as an ordinary instantiation edge. Benign
+while the two copies agree (they are parsed from one blob, so in a real project they always do) and
+**fatal to the control**, which is how it surfaced. Routes are roots and now come from `RouterIR`
+alone — the same field `routedPages` builds the scaffold's route table from, so reachability agrees
+with the scaffold by construction. A second test states the rule directly, so it survives a rewrite
+of the first. Corpus answer unchanged (the blob and the parsed routes are the same list).
+
+**A control that cannot fail is not a control** — and the way to find out is to break the thing it
+claims to prove. Every other test in the file passed first run; only the one built to prove a
+negative found anything. Same family as §14's "build the negative control into the helper name".
+
+**The guard fired in production, which is better evidence than a test.** Three corpus projects
+(`cn001-kit-drive`, `cn012-drive`, `cn015-editor-drive`) have no Router, and the audit prints
+`INCONCLUSIVE: the project has no Router, so there is no route to walk from` with **0 components
+reported unreachable** — instead of declaring all of every one of them dead, which is what a walk
+without the guard would have done.
+
+⚠️ **Bound on the reachable figure.** Those 3 inconclusive projects contribute 17 nodes counted
+optimistically as reachable. Over the 37 projects where the walk *did* answer, the figure is
+**3,293/3,520 = 93.55%**; including the three, **93.38%**. Quote either, but say which.
+
+### 20i — The reachable backlog, measured
+
+With the sweep green, §20g(2)'s first question is answered: **all 45 "detached from the node tree"
+deferrals are in components a route DOES reach** — none is kit collateral. But they are still
+correctly refused, and they are not 45 problems:
+
+- **40 of them are `Components/Header` in the eight clones** — 4 buttons and a text input each,
+  under discarded visual roots. s29 found this: the component declares six visual roots and the
+  runtime draws `roots[0]` alone, so **those nav links have never rendered in the running app
+  either**. The export is faithfully reproducing an authoring defect, and the fix is in the
+  author's project, not here.
+- The other 5 are one page in `Puppy test`, same shape.
+
+**But "beside the router shell" is not the same kind of thing, and checking mattered.** Its 20 rows
+are 8 `String`, 8 `CSS Definition`, 3 `Group` and one kit node, all in `App`. A `CSS Definition`
+**does** affect the running app — it injects global CSS — so that is a genuine gap, not correctly
+refused. Reading a reason as "inert" because a neighbouring one was would have written off eight
+real rows.
+
+**The tail is long and flat.** The 234 reachable deferrals spread over **56 distinct reasons**,
+nothing above 22 once the 45 and the 20 are set aside: 22 script outputs feeding nothing
+translatable, 18 row-output relays, 17 unhandled triggers, 10 `Javascript2`, 7 `DbCollection2`, and
+then singletons. **There is no next slice here** — there is a list of small, unrelated jobs, which
+is what the end of a deterministic export looks like.

@@ -1,21 +1,22 @@
 # Next session — the wall is in a room with no door
 
-## 🔴🔴 FIRST: the testing freeze is still on until Richard clears it
+## ✅ The freeze is OVER — Richard, 2026-08-28: *"Freeze is off, go nuts"*
 
-**Richard asked (2026-08-28, mid-session 30) for no CPU/RAM-intensive runs machine-wide until he
-explicitly says to start again.** Session 31 ran nothing either. **Keep this notice at the top of
-this file until Richard says it is lifted — do not remove it just because a session ends, and a
-peer's "I think it's fine now" is not the signal.**
+Both sessions' unrun work was swept in one pass and is green. **Delete nothing else from this
+section; there is no hold.** What the sweep produced is in
+[EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md) **§20h**:
 
-That means **no** jest suite, **no** `build-corpus.ts`, **no** `coverage-audit.ts`, **no**
-`npm run typecheck`, **no** `export-ledger:check`, **no** editor launch. His words: *"Save the
-tests, we'll run them later and sweep up all the work done at once."*
+| run | result |
+|---|---|
+| `tsc --noEmit` | exit 0 |
+| `jest` | **504/504** (one red, a real defect, fixed — §20h) |
+| coverage headline | **3,775/4,441 = 85.00%**, per-project byte-identical to s29 |
+| coverage `REACH` | **3,303/3,537 = 93.38%** — matched the raw-file prediction exactly |
+| `deferred-census` | **666**, the same 666 nodes as s29 |
+| `build-corpus` | **40/40 projects typecheck** |
 
-Reading, raw-file measurement with python/awk, and writing code and tests are all fine and are
-what sessions 30 and 31 did. **Two sessions of work are now waiting for the sweep** — §19e in the
-previous prompt and **§20f** below, in that order.
-
----
+s30's unrun work verified too: same 666 nodes, only the reason strings improved, nothing moved
+between translated and deferred.
 
 ## 🔴 Read this before picking anything: the list from the last four sessions is void
 
@@ -38,10 +39,14 @@ licence to quote any of it.
 
 **Which denominator is the goal?**
 
-- *Reach over code that runs* ⇒ the export is at **93.38%**, and the work left is the **234**
-  reachable deferrals in §20g(2) — long-tailed, no single artefact dominating, and the first
-  question about the biggest row (45 "detached from the node tree") is whether it is a *second*
-  block of correctly refused dead code rather than work owed.
+- *Reach over code that runs* ⇒ the export is at **93.38%** (93.55% over the 37 projects where
+  reachability was decidable), and the work left is the **234** reachable deferrals — now measured
+  in **§20i** and genuinely long-tailed: **56 distinct reasons, nothing above 22** once you set
+  aside the 45 "detached" (correctly refused — 40 of them are one authoring defect in
+  `Components/Header`, whose nav links have never rendered in the running app either) and the 20
+  "beside the router shell" (**not** all inert — 8 are `CSS Definition` nodes that really do inject
+  global CSS, so those are a genuine gap). **There is no next slice there, only a list of small
+  unrelated jobs** — which is what the end of a deterministic export looks like.
 - *The headline* ⇒ the work is a JavaScript interpreter at export time for a filter kit nobody
   placed on a page.
 
@@ -88,24 +93,24 @@ parse of an aligned summary read *"Puppy"* and silently dropped two projects —
 counting list entries reports 7 where the exporter reports 4, and that one project was the entire
 4,444-vs-4,441 gap. Dedupe by id.
 
-## 🔴 §20f — what is unrun and waiting, in run order
+## Nothing is waiting to be run
 
-Run **§19e from the previous handoff first** (it is s30's list), then these:
+Both lists are spent. The standing recipe, for when the next slice needs grading:
 
-1. `npm run typecheck` in `packages/nodegx-export` — new `src/analyze/reach.ts`, a new **required**
-   field on `ProjectPlan`, one import in `plan.ts`, one block in `emitApp.ts`.
-2. `../../node_modules/.bin/jest` from the package dir — **487 + 16 new = 503 expected**.
-   ⚠️ **Eight existing tests assert `app.notes` by exact list equality.** All eight are on the
-   `cheer` fixture, hand-checked under the product's own rules to have 0 unreachable components and
-   no live dynamic template, so no new note appears in them. That is **reasoned from a raw-file
-   walk, not observed** — if one goes red, this is why, and the fixture is what to check first.
-3. `coverage-audit.ts` — patched this session to print a `REACH` line per project. **Expect the
-   headline 85.00% byte-identical**, and the REACH lines to sum to **3,303/3,537 = 93.38%**. A
-   moved headline means reachability leaked into a disposition, which it must not.
-4. `deferred-census.ts` (`EXPECT=666`) — expect **666 unchanged**; no gate changed.
-5. `build-corpus.ts` — expect **40/40**. Read the last line, never `echo $?`.
+```
+cd packages/nodegx-export
+../../node_modules/.bin/tsc --noEmit                       # exit 0
+../../node_modules/.bin/jest                               # 504/504, never pipe it
+../../node_modules/.bin/ts-node --transpileOnly --compiler-options '{"module":"commonjs"}' \
+    $S/coverage-audit.ts "${(@f)$(cat $S/projects.txt)}"   # 85.00% + a REACH line per project
+EXPECT=666 ... $S/deferred-census.ts ...                   # refuses to run unless it reconciles
+... /abs/path/scripts/build-corpus.ts --app $S/app "${(@f)$(cat $S/projects.txt)}"   # 40/40
+```
 
-**A lone suite-level red with 0 failing tests is a flake until re-run.**
+⚠️ **Sum the audit anchored on `^=== `** — the new `REACH` line also contains the words *"nodes
+translated"*, and an unanchored `awk` double-counts it into a confident, wrong **88.72%**.
+⚠️ **`build-corpus.ts` lives at `scripts/`, not in the scratchpad**, and needs the harness `app/`
+copied with **`cp -a`** so the `@nodegx/core` symlink survives.
 
 ## Instruments (session 31 scratchpad `4fdc2703-…`)
 
@@ -118,11 +123,15 @@ Run **§19e from the previous handoff first** (it is s30's list), then these:
   This is the one that showed 72/72 behind a script-written source, 0 with static items.
 - **`dumpcomp.py`** (new) — one component's raw node tree + every connection. How
   `Filters/Multi Choice/Item` was read in six wires.
-- `reach-s31.tsv` / `reach-s31.txt` / `unreachable-s31.tsv` — this session's outputs, joinable
-  against `census-final-s29.tsv` on `(project, component)`.
-- s29/s30's `deferred-census.ts`, `coverage-audit.ts` (**patched**), `wirefeed.py`, `walls.py`
-  (**patterns still stale since s30**), `rank2.ts`, `build-corpus.ts`, `mutate.py`, `dumpall.ts`,
-  `showfile.ts`, `ifaces.ts` — all copied in.
+- `reach-s31.tsv` / `reach-s31.txt` / `unreachable-s31.tsv` — reachability outputs, joinable
+  against **`census-s31.tsv`** (the post-sweep census — use this, not `census-final-s29.tsv`, whose
+  reason strings predate s30) on `(project, component)`. Also `cov-s31.txt`, `build-s31.txt`, and
+  the harness `app/`.
+- s29/s30's `deferred-census.ts`, `coverage-audit.ts` (**patched with the REACH line**),
+  `wirefeed.py`, `walls.py` (**patterns still stale since s30 — the census confirms the reason
+  strings changed, so update them before quoting a wall census**), `rank2.ts`, `mutate.py`,
+  `dumpall.ts`, `showfile.ts`, `ifaces.ts` — copied in. ⚠️ **`build-corpus.ts` is NOT** — it is
+  committed at `packages/nodegx-export/scripts/`.
 
 ⚠️ Still true: **`ts-node` needs an absolute path**, `--compiler-options '{"module":"commonjs"}'`,
 run **from `packages/nodegx-export`**. Instruments take projects as argv; **zsh:

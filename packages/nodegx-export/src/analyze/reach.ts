@@ -73,6 +73,14 @@ function edgesFrom(component: ComponentIR): string[] {
   const out: string[] = [];
   for (const node of component.nodes) {
     if (node.type.startsWith('/')) out.push(node.type);
+    // 🔴 A Router's own `pages` parameter is NOT an edge. Its routes are roots, read from the
+    // parsed `RouterIR` — the same field `routedPages` builds the scaffold's route table from.
+    // Scanning the blob as well makes the module answer from two independent copies of one fact:
+    // benign while they agree, and it silently defeated the control that was supposed to prove a
+    // page's reachability comes from its route (removing the route from `RouterIR` left the
+    // component reachable through the App shell's stale parameter). One source of truth, and
+    // reachability now agrees with the scaffold by construction.
+    if (node.type === 'Router') continue;
     for (const param of node.parameters) {
       const raw =
         param.value.kind === 'literal' ? param.value.value : param.value.kind === 'json' ? param.value.value : null;
