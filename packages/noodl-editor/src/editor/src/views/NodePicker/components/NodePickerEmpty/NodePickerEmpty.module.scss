@@ -37,7 +37,9 @@
 
 .Action {
   padding: 5px 12px;
-  border: 1px solid var(--theme-color-border-default);
+  // A `<button type="button">`; its pill edge is the only thing that identifies
+  // it as one, since the fill is the same `bg-1` the empty state sits on.
+  border: 1px solid var(--theme-color-border-control);
   border-radius: 999px;
   background-color: var(--theme-color-bg-1);
   color: var(--theme-color-fg-default);

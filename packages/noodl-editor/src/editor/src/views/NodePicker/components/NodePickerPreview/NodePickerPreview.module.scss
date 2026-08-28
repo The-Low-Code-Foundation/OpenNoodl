@@ -263,7 +263,7 @@
   gap: 7px;
   width: 100%;
   padding: 7px 13px;
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-7);
   background-color: var(--theme-color-bg-1);
   color: var(--theme-color-fg-default);
@@ -273,7 +273,8 @@
   cursor: pointer;
 
   &:hover {
-    border-color: var(--theme-color-border-strong);
+    // 🔴 Same trap as the card: `border-strong` is a DIVIDER tone, so restoring a
+    // `border-color` here would drop this button's edge from 4.17 to 1.74.
     color: var(--theme-color-fg-highlight);
   }
 }

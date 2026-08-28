@@ -13,7 +13,10 @@
   gap: 10px;
   min-width: 0;
   padding: 9px 12px;
-  border: 1px solid var(--theme-color-border-default);
+  // The visible boundary of the `<input>` this <label> wraps — a control edge,
+  // not a divider. ⚠️ This site is NOT in the sweep's 60: that query needs
+  // `cursor: pointer` in the block and a text field never sets one.
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-10);
   background-color: var(--theme-color-bg-2);
   color: var(--theme-color-fg-muted);

@@ -9,7 +9,10 @@
   width: 100%;
   min-width: 0;
   padding: 8px 10px;
-  border: 1px solid var(--theme-color-border-default);
+  // POL-016's CONTROL tone, not a divider: this is a `<button>` and its resting
+  // edge is what identifies it as one. `border-default` measured 1.07:1 dark /
+  // 1.15:1 light on this fill — see the border sweep in phase 75.
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-lg);
   background-color: var(--theme-color-bg-2);
   color: var(--theme-color-fg-default);
@@ -20,8 +23,11 @@
     border-color var(--speed-turbo) var(--easing-base), box-shadow var(--speed-turbo) var(--easing-base);
 
   &:hover {
+    // 🔴 No `border-color` here on purpose. `border-strong` is one of the three
+    // DIVIDER tones (1.74:1 dark / 1.53:1 light), so pointing at the card would
+    // have DROPPED its edge from 3.57 to 1.74. The fill lightening to `bg-1`
+    // already carries hover, and it lifts the same border to 4.17 / 3.72.
     background-color: var(--theme-color-bg-1);
-    border-color: var(--theme-color-border-strong);
     box-shadow: var(--shadow-card);
   }
 
@@ -111,7 +117,9 @@
    information. */
 .is-unavailable {
   border-style: dashed;
-  border-color: color-mix(in srgb, var(--theme-color-warning) 55%, var(--theme-color-border-default));
+  // Mixed against the CONTROL tone: against the divider this landed at 2.52:1
+  // in light, i.e. an insertable card with no identifiable edge. Now 4.48 / 5.05.
+  border-color: color-mix(in srgb, var(--theme-color-warning) 55%, var(--theme-color-border-control));
 
   .Glyph {
     opacity: 0.5;

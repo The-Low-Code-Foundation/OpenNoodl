@@ -63,6 +63,77 @@ the card rather than the palette. Three mutants, each killed by a named row:
 
 The last two are the point: this file refuses *both* the under-fix and the over-fix.
 
+## What session 61 fixed — the node picker, read exhaustively
+
+**Unit of work: one surface family**, as recommended below. The picker was chosen because it is
+small enough to read in full rather than trust the list against.
+
+**Six declarations across four stylesheets**, all controls:
+
+- `NodePickerCard .Root` — a `<button>`; fill `bg-2` on the `bg-1` column. Was 1.07 dark / 1.15 light.
+- `NodePickerSearchBar .Field` — the `<label>` that draws the `<input>`'s boundary. Was 1.07 / 1.15.
+- `NodePickerEmpty .Action` — a `<button type="button">`; its fill is the same `bg-1` it sits on, so
+  the edge is the *only* thing identifying it. Was 1.26 / 1.27.
+- `NodePickerPreview .DocsButton` — a `<button>`. Was 1.26 / 1.27.
+- **plus two hover states** — see the finding below.
+- `.is-unavailable` (BCN-010's dashed amber card) — the `color-mix` base moved from the divider to
+  the control tone: **2.52:1 in light**, i.e. a card that still inserts with no identifiable edge.
+  Now 4.48 light / 5.05 dark.
+
+All four controls now measure **3.37–4.17:1** on both sides in both themes.
+
+**Deliberately left on `border-default`** (ten sites, asserted as such): the panel `.Root` itself, the
+rail/footer/preview/library hairlines, `.GroupRule`, and the two **keycap chips** `.Kbd` and
+`.Enter` — hints, not things a reader operates.
+
+Pinned by `tests-unit/border-sweep/node-picker-control-borders.test.ts` — 40 rows, both themes,
+resolving every selector's own border, fill **and ground** out of the `.scss` files.
+
+### 🔴 The finding: `border-strong` is a DIVIDER, so the resting-state fix alone is a REGRESSION
+
+`--theme-color-border-default` is not the only divider tone. **`--theme-color-border-strong` is one
+of the same three** (`colors.css`, NAT-003's block), measuring **1.74:1 dark / 1.53:1 light** — and
+both `.Root:hover` and `.DocsButton:hover` moved their edge to it.
+
+That is harmless while the resting edge is also a divider. **It stops being harmless the moment the
+resting edge is raised to a real control tone**: the boundary then goes 3.57 → 1.74 *when a reader
+points at it*. **A find-and-replace over the inventory below would have shipped exactly that**,
+because the inventory lists resting declarations and says nothing about states.
+
+Both hover rules now drop `border-color` entirely. On the card this is not a loss: the hover fill
+lightens `bg-2` → `bg-1`, which lifts the *same* border to **4.17 / 3.72** on its own.
+
+⚠️ **So the unit of work is a rule, not a declaration** — every state a control has (`:hover`,
+`:focus`, `.is-*`) is part of the same claim.
+
+### ⚠️ A threshold is a property of the GROUND, not of the token
+
+The shelf spec's negative control asserts `border-default` < **1.2**; this file's asserts < **1.4**,
+and both are right. The shelf measures against `bg-2`; the picker panel is `bg-1`, where `colors.css`
+documents the divider at **1.254 by design**. Copying the other file's bound read the correct value
+as a defect. **Re-derive the bound per surface.**
+
+### Mutants — six, each killed by a named row
+
+| mutant | killed by |
+|---|---|
+| revert `.Root` to `border-default` | its own fill/ground rows (6 reds) |
+| **restore `:hover`'s `border-strong`** | **the hover row ONLY (2 reds)** — nothing else sees it |
+| raise the shared `border-default` in `colors.css` | the negative control (1 red) |
+| over-correct — sweep the `.Enter` keycap too | the non-controls row (1 red) |
+| revert `.Field` (the site the inventory missed) | its own rows (4 reds) |
+| revert the `.is-unavailable` mix base | the unavailable row, **in light only** (1 red) |
+
+The last is worth noting: it reddens in **light and not dark**, which is what the 2.52 / 3.19 split
+predicts. A row that fails in exactly one theme is measuring the surface, not the string.
+
+### 🔴 Third independent proof that 60 is a FLOOR
+
+The inventory listed **three** picker sites (`.Root`, `.Action`, `.DocsButton`). **Nine stylesheets
+in that tree name `border-default`, and one of the misses — `.Field` — was a real defect**: a text
+input never sets `cursor: pointer`, so the query cannot see it. This is the same shape as
+`.TemplateFilter-search`. **Read the family; do not work the list.**
+
 ## ⬜ What is left — 60 sites, and that number is a FLOOR
 
 🔴 **The inventory is bounded by its own query and reports that bound.** It selects blocks
@@ -89,8 +160,7 @@ The 60, by package:
   `.FrameDefault` / `.ScopeChip` (PreviewChrome), `.AiPill` (CanvasHud), `.TrailChip`
 - **Canvas tabs & overlays** (6): `.Tab` / `.WindowButton` / `.WindowCloseButton` (CanvasTabs),
   `.badge` (ExecutionNodeBadge), `.closeButton` (ExecutionOverlay), `.navButton` (ExecutionTimeline)
-- **Node picker** (3): `.Root` (NodePickerCard), `.Action` (NodePickerEmpty), `.DocsButton`
-  (NodePickerPreview)
+- ~~**Node picker** (3)~~ — ✅ **DONE, session 61**, and it was 6 declarations rather than 3
 - **Version control / GitHub** (6): `.LoadMoreButton` ×2, `.IssueItem`, `.PRItem`,
   `.SecondaryButton`, `.RepoItem`
 - **Panels** (18): `.HeaderAction` / `.TriggerButton` (ComponentsPanel), `.PageButton`
