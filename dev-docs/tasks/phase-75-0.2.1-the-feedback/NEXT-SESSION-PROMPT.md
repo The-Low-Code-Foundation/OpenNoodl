@@ -94,6 +94,22 @@ its own string is telling you about the tree, not about the mutant.**
 - `test:ci` **not run by this lane, and not owed**: the change is three `.module.scss` files plus a
   `tests-unit` file. **Checked** — no Electron source spec references the bench; the only hit is
   `tests/index.bundle.js`, a **gitignored build artifact**.
+- ✅ **`test:ci` HAS NOW BEEN RUN, by the s60 lane, on tree `1da48500` — i.e. covering s60 + s61 +
+  s62 together.** `overallStatus: failed`, **2863 total / 4 failed**, seed `60505`, 64s, and **all
+  four are `AIX-006 style vocabulary` by name** — the recorded floor exactly, none of them from any
+  border-sweep change. ⚠️ **This is a TREE reading, not a per-lane one**: three lanes' work is in it
+  and it cannot attribute a red to any one of them. It was run against a **freshly deleted**
+  `test-results.json` (the stale one was stamped **09:23**, before all three lanes — it would have
+  read as a clean pass on none of this work).
+  🔴 **`REAL_EXIT=1`, and the harness's own task notification said "exit code 0"** — that 0 was the
+  *compound's* status, because the run was followed by an `echo` that succeeded. **Write the exit to
+  the log inside the backgrounded command and read it there.**
+  🔴 **"No Electron spec names it" needs TWO filters, and s60 got it wrong with one.** s60's handoff
+  claimed no Electron spec named its wizard change. False: `tests/models/ProjectCreationWizard.test.ts`
+  names it and is exported from `tests/models/index.ts`, so it runs. The conclusion survived only
+  because that spec grades `WizardContext`'s step sequence and validation, which a border colour
+  cannot reach. **Filtering out `index.bundle.js` is necessary but not sufficient — read what is
+  underneath it, then read what the surviving spec actually asserts.**
 - ⚠️ A peer's editor stack was live throughout (`start-electron-dev.js` + 3 webpacks, ~1h25m). No
   jest/vitest suite was running, so no concurrent-suite flake risk. Nothing of theirs was touched.
 
