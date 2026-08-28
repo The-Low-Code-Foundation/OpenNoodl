@@ -1,0 +1,55 @@
+# Phase 79 — the syllabus
+
+**Opened 2026-08-28**, at Richard's request: *"Let's make a phase to fill in the syllabus."*
+
+## Why this phase exists
+
+The University syllabus has **15 lessons that exist as titles with no words in them**. They are all
+marked `in-writing`, and P67b recorded the prose as Richard's. The route, the data model and the
+surfaces are built; the lessons are empty.
+
+## What "filling it in" means
+
+Each lesson needs: what it teaches, who it is for, the words a learner reads, and — where the lesson
+has a practical half — a bundle that the lesson-check gate accepts.
+
+⚠️ **This phase overlaps [phase-78](../phase-78-the-templates/) and the P75 tutorial workshop, and
+the overlap is deliberate**: a syllabus lesson and a tutorial are the same shape of artefact from
+different doors. Where a lesson wants a hands-on half, reuse the workshop's flow
+([TUTORIAL-WORKSHOP.md](../phase-75-0.2.1-the-feedback/TUTORIAL-WORKSHOP.md)) rather than inventing a
+second authoring path.
+
+## Scope
+
+- ✅ **T0 — closed 2026-08-28. The list is a checked-in file, not deployed data.**
+  `src/lib/curriculum.json` in the **`nodegx-community`** repo (`~/vscode_projects/nodegx-community`)
+  — hand-edited by design; its own note says adding a lesson changes `/university` and touches no
+  `.ts`. 🔴 The 15 are **not fifteen tutorials**: a **12-lesson spine that builds one app (a virtual
+  creature)**, plus *Data & backends* (2) and *Custom nodes* (1). ~9¼ hours end to end. Every spine
+  lesson `needs` the one before it, so they **share one project** — see
+  [RICHARD-RULINGS-2026-08-28.md](RICHARD-RULINGS-2026-08-28.md) R1 for what that costs.
+- 🟡 **T1** — agree the split with Richard: which lessons are prose-only, which need a built artefact.
+  **Partly ruled**: the spine stands as written (R1) and gains a responsive lesson at position 2
+  (R2). The prose-only / built-artefact split itself is **not** agreed.
+- ⬜ **T2** — the writing loop, per lesson: Richard supplies the substance and the voice, I build any
+  artefact, check it against the gate, and publish.
+- 🟡 **T3** — tag each lesson with a **level** (beginner / intermediate / advanced) and a **function
+  style** (visual functions ↔ code functions). ⚠️ **Half of this already exists**: `requires` fields
+  carry `logic` and `building` today. 🔴 **`experience` is used by nothing** — 0 occurrences in
+  `curriculum.json` — so one of the three intake questions changes nothing a learner can see.
+  ✅ **Ruled (R3): `experience` changes the voice and hand-holding *inside* a lesson, never the
+  lesson set** — which the lesson format cannot express today. 🔴 **These two tags are the input to
+  FIX-027 item 22**
+  — Richard ruled that the three intake questions should change what a learner is recommended, and
+  the recommender cannot be built until the content carries the tags. See
+  [RICHARD-RULINGS-2026-08-28.md](../phase-75-0.2.1-the-feedback/RICHARD-RULINGS-2026-08-28.md) §6.
+
+## Standing facts
+
+- 🔴 The prose is **Richard's**, and this phase cannot proceed without him — that is its nature, not
+  a blocker to work around. **Rulings so far: [RICHARD-RULINGS-2026-08-28.md](RICHARD-RULINGS-2026-08-28.md).**
+- 🔴 **The one lesson bundle that exists does not fit the spine.** `project-examples/lessons/log-a-thing`
+  is built and validates clean, but it is a log app teaching the Visual-Function/async rule; the
+  spine's data lesson is a snack cupboard. It is a good **standalone article**, not spine lesson 8.
+- ⚠️ Lessons are **served**, like tutorials and templates: published content reaches every existing
+  install with no update.

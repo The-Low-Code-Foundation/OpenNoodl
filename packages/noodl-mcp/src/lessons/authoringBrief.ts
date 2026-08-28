@@ -152,8 +152,9 @@ with the two directories.
 ${JSON.stringify(EXAMPLE_MANIFEST, null, 2)}
 
 Step fields: \`title\` (the timeline card), \`body\` (Markdown, shown when the step
-is active), \`kind\` ('card' by default, 'popup' for an intro or outro with no
-card), \`completeWhen\`, \`actions\`, \`media\`, \`width\`.
+is active), \`detail\` (Markdown, the hand-holding half — see below), \`kind\`
+('card' by default, 'popup' for an intro or outro with no card), \`completeWhen\`,
+\`actions\`, \`media\`, \`width\`.
 
 A step with **no** \`completeWhen\` is a Next card the learner clicks through. It
 is neither passed nor failed when graded — which is the right shape for
@@ -308,6 +309,17 @@ downstream will tell you, because to the gate that starter is correct.
   not a style rule.
 - \`suggestedNodes\` on a step is currently **not read by anything**. Do not rely
   on it to surface a node in the picker.
+- \`detail\` **is** read: it renders as a disclosure under the body, open by
+  default, that the learner can collapse. Put the "where is that button" half
+  there — *"the node picker is the + in the top left"* — and keep \`body\` to the
+  instruction itself. 🔴 **Split rather than omit.** An experienced learner
+  closing a disclosure is a click; a beginner who was never told where the
+  picker is has nowhere to look. If you find yourself writing a body that
+  explains the editor's furniture before it says what to do, the furniture is a
+  \`detail\`.
+- The two are graded and escaped identically — Markdown, same allowed URL
+  schemes. A step may have \`detail\` with no \`body\`, but that is almost always
+  a step whose instruction went missing.
 
 ## Pedagogy — what no gate can check
 

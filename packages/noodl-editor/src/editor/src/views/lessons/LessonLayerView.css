@@ -447,3 +447,68 @@
   color: var(--theme-color-fg-muted);
   cursor: default;
 }
+
+/* ── SYL-001: the hand-holding half ──────────────────────────────────────────
+   A step's `detail` — where the button is, as opposed to what to do — compiles
+   to a native <details>, open by default. No script and no runner state: the
+   disclosure works on its own, and the learner's `experience` answer will only
+   ever change which way it starts. See `lessonformat.renderDetail`.
+
+   The default marker is replaced rather than kept, because the popup's prose is
+   the only other thing in this panel and a UA triangle sits at a different
+   optical weight from everything around it. */
+.lesson-item-popup .lesson-detail {
+  margin: 16px 24px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--theme-color-bg-4);
+}
+
+.lesson-item-popup .lesson-detail > summary {
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-weight: var(--font-weight-semibold);
+  font-size: 12px;
+  color: var(--theme-color-fg-muted);
+}
+
+.lesson-item-popup .lesson-detail > summary::-webkit-details-marker {
+  display: none;
+}
+
+.lesson-item-popup .lesson-detail > summary::before {
+  content: '▸ ';
+}
+
+.lesson-item-popup .lesson-detail[open] > summary::before {
+  content: '▾ ';
+}
+
+.lesson-item-popup .lesson-detail > summary:hover {
+  color: var(--theme-color-fg-highlight);
+}
+
+/* The gutter is on the <details>, so the prose inside must not take it a second
+   time — `.lesson-item-popup p` sets it for every paragraph in the panel. */
+.lesson-item-popup .lesson-detail h2,
+.lesson-item-popup .lesson-detail h3,
+.lesson-item-popup .lesson-detail p {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.lesson-item-popup .lesson-detail p {
+  font-size: 13px;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.lesson-item-popup .lesson-detail ul,
+.lesson-item-popup .lesson-detail ol {
+  font-weight: var(--font-weight-light);
+  color: var(--theme-color-fg-highlight);
+  font-size: 13px;
+  line-height: 20px;
+  margin: 8px 0 0;
+  padding-left: 20px;
+}

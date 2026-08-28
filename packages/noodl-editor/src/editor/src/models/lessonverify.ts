@@ -542,7 +542,11 @@ export function urlsInStep(step: LessonStepDef | undefined): Array<{ field: stri
     found.push({ field: 'media.src', url: step.media.src, kind: 'media' });
   }
 
-  for (const field of ['title', 'body'] as const) {
+  // SYL-001 added `detail`. 🔴 It belongs here, not only at the sink: `renderMarkdown` would drop a
+  // `javascript:` href in a step's hand-holding silently, and the author would be left with a link
+  // that stopped working and no finding saying why. The neutraliser and the report are a pair, and
+  // a field added to one half only has half the protection.
+  for (const field of ['title', 'body', 'detail'] as const) {
     const text = step[field];
     if (typeof text !== 'string') continue;
     for (const match of text.matchAll(MARKDOWN_LINK)) {

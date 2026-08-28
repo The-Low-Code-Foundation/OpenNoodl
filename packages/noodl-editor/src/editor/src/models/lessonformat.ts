@@ -89,6 +89,25 @@ export interface LessonStepDef {
   title?: string;
   /** Fuller instructions shown in the popup when the step is active (Markdown). */
   body?: string;
+  /**
+   * SYL-001 — the hand-holding half, authored beside the instruction instead of mixed into it.
+   *
+   * 🔴 **THE SPLIT IS THE POINT.** Richard's ruling on the University intake's `experience`
+   * answer: it *"change[s] the voice and level of hand holding throughout the tutorial, don't
+   * need to explain to an intermediate user how to access the node picker."* A step with one
+   * `body` cannot express that — the beginner's *"the node picker is the + button, top left"*
+   * and the instruction *"add a Group"* are one string, so serving one audience strands the
+   * other. `body` says what to do; `detail` says where the button is.
+   *
+   * ⚠️ **It renders on its own, today, and that is deliberate.** This compiles to a native
+   * `<details>`: no runner, no preference, no script — a learner can open and close it the day
+   * it lands, whatever their intake says. The alternative (a field waiting for a caller) is
+   * the defect this format already contains one of: `suggestedNodes` below compiles to an
+   * attribute that `LessonModel.getCurrentSuggestedNodes` reads and **nothing calls**, and
+   * `noodl-mcp`'s authoring brief has to tell models not to rely on it. Once the `experience`
+   * answer reaches the editor it changes the **default open state** and nothing else.
+   */
+  detail?: string;
   media?: LessonMediaDef;
   /**
    * 'card' (default) puts a card on the timeline; 'popup' is a modal-only step
@@ -144,6 +163,11 @@ export interface CompiledStepSource {
   title?: string;
   /** Markdown, exactly as authored. Stripped at the point of use, not here. */
   body?: string;
+  /**
+   * SYL-001 — the step's `detail`, exactly as authored, for the same reason `body` is here:
+   * recovering it by un-rendering the compiled HTML would be a second reader of this format.
+   */
+  detail?: string;
 }
 
 export interface CompiledLesson {
@@ -490,6 +514,31 @@ const LESSON_CHECKMARK_HTML =
   'fill="currentColor"/></svg>' +
   '</span>';
 
+/**
+ * SYL-001 — the fixed label on a step's `detail` disclosure.
+ *
+ * ⚠️ Fixed rather than authored: an authorable summary would be a second string per step for a
+ * curriculum author to write, and nobody asked for one. If that changes, it becomes a field.
+ */
+const LESSON_DETAIL_SUMMARY = 'Show me how';
+
+/**
+ * A step's hand-holding half as a native disclosure, or '' when the step has none.
+ *
+ * 🔴 **`open` by default, and the default is the safe direction.** Nothing sets the learner's
+ * `experience` preference yet, so a collapsed default would hide the hand-holding from precisely
+ * the beginner it was written for, with no mechanism to reveal it. Expanded, the experienced
+ * learner closes it; that is the failure worth having until slice B lands.
+ *
+ * The content goes through `renderMarkdown` — the same escaping and the same URL-scheme filter as
+ * `body`. Nothing here builds inner HTML by hand.
+ */
+function renderDetail(detail: string | undefined): string {
+  const html = renderMarkdown(detail);
+  if (!html) return '';
+  return `<details class="lesson-detail" open><summary>${LESSON_DETAIL_SUMMARY}</summary>${html}</details>`;
+}
+
 /** Compile one authored step into a legacy-shaped HTML string. */
 export function compileStep(step: LessonStepDef, index: number): string {
   const where = `Step ${index + 1}${step && step.title ? ` ("${step.title}")` : ''}`;
@@ -502,10 +551,13 @@ export function compileStep(step: LessonStepDef, index: number): string {
 
   const bodyHtml = renderMarkdown(step.body);
   const mediaHtml = renderMedia(step.media);
+  // SYL-001. Empty for every step that has no `detail`, so a lesson authored before this field
+  // existed compiles to byte-identical HTML — the corpus does not move under the curriculum.
+  const detailHtml = renderDetail(step.detail);
 
   // A modal-only step is just a popup with no timeline card.
   if (kind === 'popup') {
-    return `<div data-template="popup">${mediaHtml}${bodyHtml}</div>`;
+    return `<div data-template="popup">${mediaHtml}${bodyHtml}${detailHtml}</div>`;
   }
 
   // Card step: a wrapper carrying data-* metadata, an item card, and a popup.
@@ -522,7 +574,10 @@ export function compileStep(step: LessonStepDef, index: number): string {
   const titleHtml = step.title ? inlineMarkdown(step.title) : '';
 
   const item = `<div data-template="item"${itemStyle}><header>${header}</header><h3>${titleHtml}</h3></div>`;
-  const popup = mediaHtml || bodyHtml ? `<div data-template="popup">${mediaHtml}${bodyHtml}</div>` : '';
+  const popup =
+    mediaHtml || bodyHtml || detailHtml
+      ? `<div data-template="popup">${mediaHtml}${bodyHtml}${detailHtml}</div>`
+      : '';
 
   return `<div${wrapperAttrs.length ? ' ' + wrapperAttrs.join(' ') : ''}>${item}${popup}</div>`;
 }
@@ -543,7 +598,7 @@ export function compileLessonManifest(manifest: LessonManifest): CompiledLesson 
     // UNI-007. Read from the same array in the same order as `steps` above, so
     // the two cannot fall out of alignment: an index into one is an index into
     // the other by construction rather than by convention.
-    stepSources: manifest.steps.map((step) => ({ title: step?.title, body: step?.body }))
+    stepSources: manifest.steps.map((step) => ({ title: step?.title, body: step?.body, detail: step?.detail }))
   };
 }
 

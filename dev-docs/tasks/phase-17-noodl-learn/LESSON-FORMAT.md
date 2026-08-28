@@ -69,6 +69,7 @@ format still runs (the 8 legacy lessons use it) but new lessons should use this.
 |---|---|---|
 | `title` | for cards | Short imperative shown on the timeline card, e.g. "Create a Group". |
 | `body` | optional | Fuller instructions shown in the popup (Markdown — see §4). |
+| `detail` | optional | The hand-holding half — a disclosure under the body, open by default (§4a). |
 | `media` | optional | A `video` or `image` shown in the popup (§5). |
 | `kind` | optional | `"card"` (default) or `"popup"` (modal-only, no card). |
 | `completeWhen` | optional | Conditions that auto-advance the step (§3). Omit for a manual *Next* button. |
@@ -217,6 +218,32 @@ learner is told they have not done a step they have in fact done.
 Supported: `**bold**`, `*italic*`, `` `code` ``, `[links](https://…)`, `#`–`####`
 headings, `- ` bullet lists, `1. ` numbered lists, and blank-line-separated
 paragraphs. HTML in prose is escaped, so a stray `<` can never break the step.
+
+### 4a. `detail` — the hand-holding half
+
+**SYL-001.** `detail` is Markdown on the same terms as `body`, rendered as a native
+`<details>` disclosure beneath it, **open by default**, which the learner can collapse.
+
+The split is by *audience*, not by importance:
+
+| | |
+|---|---|
+| `body` | what to do — *"Add a **Group** and set its direction to Horizontal."* |
+| `detail` | where the thing is — *"The node picker is the **+** in the top left; type to filter it."* |
+
+🔴 **Why the field exists.** The University intake asks how much programming experience a
+learner has, and Richard's ruling is that the answer *"change[s] the voice and level of hand
+holding throughout the tutorial — don't need to explain to an intermediate user how to access
+the node picker."* One `body` per step cannot express that: serving the beginner buries the
+instruction, and serving the experienced learner strands the beginner. Two fields can.
+
+⚠️ **Split, do not omit.** Closing a disclosure costs an experienced learner one click. A
+beginner who was never told where the picker is has nowhere to look at all. If a body explains
+the editor's furniture before it says what to do, the furniture is a `detail`.
+
+**What reads it today:** the disclosure itself — no script, no runner state, no preference. When
+the `experience` answer reaches the editor it will set the **default open state** and nothing
+else, so a lesson authored now needs no revision then.
 
 ---
 
