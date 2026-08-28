@@ -144,7 +144,19 @@
   align-items: center;
   gap: var(--spacing-2);
   padding: var(--spacing-1-5) var(--spacing-3);
-  border: 1px solid var(--theme-color-border-strong);
+  /**
+   * 🔴 `fg-default-shy`, and NOT the sweep's usual `border-control` — this is the second site in
+   * the sweep where the standard remedy is itself the defect. `.ChoiceItem` paints no fill, so it
+   * is seen against the surface behind it, and that surface is `Modal .Root` = `bg-4`. POL-016
+   * scopes `border-control`'s guarantee to bg-1/2/3; on `bg-4` it is 2.64:1 dark / 2.77:1 light,
+   * UNDER 1.4.11's 3:1. `fg-default-shy` is 5.85 / 4.61 there.
+   *
+   * It wore `border-strong` — a NAT-003 divider tone, 1.10:1 dark / 1.14:1 light on `bg-4`. These
+   * are the radio pills of a closed vocabulary and the file's own note below says the SELECTED
+   * state is carried by the border, so an unselected pill nobody can see is both a 1.4.11 failure
+   * and the thing the selection is supposed to contrast against.
+   */
+  border: 1px solid var(--theme-color-fg-default-shy);
   border-radius: var(--radius-full);
   color: var(--theme-color-fg-default);
   cursor: pointer;

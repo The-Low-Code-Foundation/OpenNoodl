@@ -40,9 +40,26 @@
   }
 }
 
+/**
+ * 🔴 POL-016's CONTROL tone, not one of NAT-003's three DIVIDER tones. This is a `<button>` whose
+ * fill is `bg-2`, and it is placed on THREE different surfaces — `LauncherHeader` (`bg-1`),
+ * `CommunityAccountCard` (`bg-2`) and the Projects folder-picker footer (`bg-2`). On the two
+ * `bg-2` grounds the fill step is literally 1.00:1, so the edge is the ONLY thing identifying it.
+ *
+ * It wore `--theme-color-border-strong`, which `colors.css` documents as a divider: 1.49:1 dark /
+ * 1.39:1 light on its own fill and 1.74 / 1.53 on the header — a button nobody can find the shape
+ * of. `border-control` measures 3.57 / 3.37 on the fill and on the `bg-2` grounds, 4.17 / 3.72 on
+ * the header.
+ *
+ * ⚠️ The hover DELIBERATELY declares no border and inherits this one. It fills DOWN the ramp
+ * (`bg-2` -> `bg-3`), which is the direction that broke `.FolderPickerItem` in session 64 — but
+ * `border-control` is 3.08 / 3.05 on `bg-3`, so it still clears. That is measured rather than
+ * assumed, and `launcher-button-control-borders.test.ts` reddens if the hover fill is ever moved
+ * one step further to `bg-4`, where this tone is 2.64 / 2.77.
+ */
 .is-secondary {
   background: var(--theme-color-bg-2);
-  border-color: var(--theme-color-border-strong);
+  border-color: var(--theme-color-border-control);
   color: var(--theme-color-fg-highlight);
 
   &:hover:not(:disabled) {

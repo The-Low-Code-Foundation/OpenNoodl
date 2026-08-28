@@ -451,8 +451,129 @@ filed, seen again at scale:
   `.ChoiceItem` is very likely a control and the other two very likely regions. **Membership is a
   judgement, as always.**
 
-**Recommended next: `LauncherButton` first** — it is one file, it is shared, and it would close a
-defect that appears on every launcher surface at once.
+~~**Recommended next: `LauncherButton` first**~~ — ✅ **DONE, session 65**, together with
+`ShareTemplateModal`.
+
+## What session 65 fixed — the shared button, and the first family with TWO grounds per control
+
+`LauncherButton .is-secondary` and `ShareTemplateModal .ChoiceItem` — **the slice that closes the
+launcher's `border-strong` sites**, i.e. the two that session 64 found *while reading* and that
+**appear in no count in this document**, because the inventory's query is bounded by
+`border-default`. Two controls, four stylesheets read, **22 rows, twelve mutants**.
+
+| control | element | fill | ground(s) | was | now (dark / light) |
+|---|---|---|---|---|---|
+| `LauncherButton .is-secondary` | `<button>` | `bg-2` | `LauncherHeader` (`bg-1`), `CommunityAccountCard` (`bg-2`), `Projects .FolderPickerDialog` (`bg-2`) | 1.49 / 1.39 on its fill | **3.57 / 3.37** fill, **4.17 / 3.72** on the titlebar |
+| `ShareTemplateModal .ChoiceItem` | radio pill, `cursor` + `:focus-within` | none | `Modal .Root` (`bg-4`) | 1.10 / 1.14 | **5.85 / 4.61** |
+
+**Deliberately left on the divider token** (six sites, asserted as such): `.Preamble` and `.Result`
+(static `bg-2` regions on the modal, carried by their fill step), `Modal .Root`, the titlebar's
+`border-bottom`, `CommunityAccountCard .Root` and `.FolderPickerDialog`.
+
+🧭 **Noted, not swept, and NOT a token question**: `.is-ghost` paints neither fill nor border and is
+identified by its label text; `.Root:disabled` drops `opacity` to 0.55, a composited value
+`themeTokens` explicitly refuses to grade. Both are recorded in the spec rather than measured,
+because a made-up number is worse than an admitted gap — the `.ResizeHandle` precedent from s62.
+
+Pinned by `tests-unit/border-sweep/launcher-button-control-borders.test.ts`.
+
+### 🔴 The finding: A SHARED CONTROL HAS MANY GROUNDS, and this document's table shape cannot say so
+
+Every slice from session 60 to 64 mapped **one control to one ground**, and the `CONTROLS` table in
+all four specs is built that way. `.is-secondary` is the launcher's **shared** button and is placed
+on **three surfaces**: the titlebar (`bg-1`), the community card (`bg-2`) and the folder picker's
+footer (`bg-2`).
+
+🔴 **A tone chosen by reading one call site is a real measurement of the wrong question.** Reading
+only the titlebar would have reported 4.17 / 3.72 and missed that on the two `bg-2` grounds the fill
+step is **literally 1.00:1** — the `.Button` shape from session 63, where the edge is the only thing
+that exists. ✅ **The fix is only correct if it clears on the WORST ground**, so the spec's ground
+is a *list* and the row is titled "on EVERY surface it is placed on". **Any component in
+`components/` rather than a view has this shape; the remaining `noodl-core-ui` sites should be
+assumed to until their call sites are counted.**
+
+### 🔴 `border-control` is the DEFECT at `.ChoiceItem` — session 63's exclusion, reached from the other side
+
+`.ChoiceItem` paints no fill, so it is seen against the surface behind it — and that surface is
+**`Modal .Root` = `bg-4`**, where `border-control` is **2.64 / 2.77, under 3:1**. Session 63 met
+this exclusion at `.CloseButton`, which was **FILLED** `bg-4`; this pill is **GROUNDED** on it.
+
+🔴 **So "what step is it on?" has to be asked of BOTH sides of the edge, not just the fill.** A
+worker applying the sweep's usual remedy here reddens four rows at 2.64 / 2.77 — the mutant is in
+the table below. It uses `fg-default-shy` (**5.85 / 4.61**), following s63's precedent exactly.
+
+⚠️ **And raising a resting edge is not always free.** This file's own note says the SELECTED state
+of these pills is carried by the **border**, so a stronger resting tone eats into the signal the
+selection contrasts against. It survives on three channels — hue, a doubled weight via
+`box-shadow`, and the label colour — and there is now a row that refuses to let the pair collapse.
+
+### 🔴 The first family that needs BOTH state-discovery mechanisms in one spec
+
+The code-editor and launcher specs walk **nested `&` blocks**; the bench spec matches **top-level
+rules that extend the selector**. This family contains both spellings — `.is-secondary` nests
+`&:hover:not(:disabled)`, while `ShareTemplateModal` writes `.ChoiceItem:hover` and
+`.ChoiceItem.is-selected` as top-level rules.
+
+🔴 **Copying either existing helper alone leaves half the states unmeasured, and every contrast row
+stays GREEN while it does** — proved by two mutants that each remove one mechanism and redden
+*only* the row added to detect exactly that. ✅ **A spec whose state reader is half-blind is the
+s63 defect in a new costume; assert that both spellings are reachable rather than trusting it.**
+
+### 🔴 `own()` is INERT in this family — and s64's instruction was inherited, not measured
+
+Session 64 raised "copy `code-editor-control-borders.test.ts`, `own()` is load-bearing" from advice
+to instruction. **Measured here, it kills nothing**: breaking it alone leaves all 22 rows green, and
+breaking it *with* the `.is-secondary` revert applied still kills the same six rows the revert kills
+on its own.
+
+The reason is specific and checkable: **no nested state in either file declares `border-color`.**
+`.is-secondary`'s nested hover sets only `background`, and `.ChoiceItem`'s states are top-level,
+which a nested-block stripper never sees. ✅ **Keep `own()` — it is correct, and the next
+`border-color` added inside a nested state needs it — but do not report it as this file's strength.**
+🔴 **A guard inherited from a sibling family is an untested guard until its mutant is run here.**
+
+### ✅ The ground pin by name earned its place again, and more cheaply than s64's version
+
+s64 needed two coinciding faults to make the ground misread. Here **one** does it: `Modal .Content`
+nests scrollbar rules painting `bg-3` and `bg-5`. Moving the modal's ground to `bg-3` reddens ten
+rows — **but only because the ground is pinned BY NAME**. `fg-default-shy` clears 3:1 on `bg-3`
+(6.81 / 5.07) exactly as on `bg-4`, so **every contrast row would have passed on the wrong ground.**
+Failure text confirmed: `modalShell .Root paints --theme-color-bg-3`, expected `bg-4`.
+
+### ⚠️ A correction to this document's own number
+
+s64 recorded `.is-secondary` as *"`bg-2` fill, `border-color: border-strong` = **1.74 / 1.53**"*.
+The tone and the defect are right; **the number is the ratio against `bg-1`**, the titlebar ground.
+Against its own `bg-2` fill it is **1.49 / 1.39** — *worse* than recorded. Not a large error, but it
+is the fill figure that decides whether the edge is load-bearing, and it was the one not taken.
+
+### The twelve mutants, each killed by a named row
+
+| mutant | killed by |
+|---|---|
+| revert `.is-secondary` to `border-strong` | its fill, ground and state rows (6 reds) |
+| revert `.ChoiceItem` to `border-strong` | its own rows (4 reds) |
+| **"tidy" `.ChoiceItem` to `border-control` — the SWEEP'S OWN REMEDY** | **its fill + ground rows (4 reds)** — `2.64:1` dark, `2.77:1` light |
+| break `own()` **alone** | **NOTHING — 22/22, and that is the finding** |
+| break `own()` **with the revert applied** | the same 6 rows the revert kills alone — `own()` adds nothing here |
+| **`statesOf` loses the TOP-LEVEL mechanism** | **the both-spellings row ONLY (2 reds)** — every contrast row green |
+| **`statesOf` loses the NESTED mechanism** | **the both-spellings row ONLY (2 reds)** — every contrast row green |
+| hover fill moves one step further, `bg-3` → `bg-4` | **the state row ONLY (2 reds)** — s64's `.FolderPickerItem` trap, guarded prospectively |
+| over-fix — sweep the `.Preamble` REGION | the non-controls row (2 reds) |
+| raise the shared `border-strong` in `colors.css` (dark) | the negative control, **in dark only** (1 red) |
+| **move the modal's ground to `bg-3`** | **the ground-pin rows (10 reds)** — by NAME; every contrast row would have passed |
+| the selected pill loses its `box-shadow`, or collapses to the resting tone | the selection row (2 reds each) |
+
+⚠️ Failure **text** was read for the `border-control` and ground-pin kills, not just counts.
+
+### ⚠️ The hover direction check, run as instructed — and a fifth variant
+
+s64 flagged that `.is-secondary`'s hover fills **down** the ramp (`bg-2` → `bg-3`) and said to run
+the direction check before picking a tone. Run: `border-control` is **3.08 / 3.05 on `bg-3`**, so it
+**still clears** and inheritance is correct. But the variant is new — **the hover declares no border
+at all**, so there is nothing to *delete*; the only question is whether inheriting the raised
+resting tone is safe. That is s64's third shape (a state that changes only the fill) with a **safe**
+outcome rather than a failing one, and it is asserted rather than assumed.
 
 ## ⬜ What is left — 40 sites, and that number is a FLOOR
 
@@ -483,8 +604,10 @@ By package (43 left):
   this list and was a real defect. **5 left**: `.DismissButton` (SuggestionBanner),
   `.VariantSelector-trigger`, `.TokenPicker-trigger`,
   `.DeleteConfirmationCancelButton` (FolderTree), `.Option` / `.Ghost` (LearnerPathSection)
-  — ⚠️ **plus `LauncherButton .is-secondary` and three `ShareTemplateModal` sites, which name
-  `border-strong` and so appear in no count in this document.**
+  — ~~⚠️ **plus `LauncherButton .is-secondary` and three `ShareTemplateModal` sites**~~ — ✅ **DONE,
+  session 65**, and of those four **two were controls and two were regions**: `.is-secondary` and
+  `.ChoiceItem` were real defects, `.Preamble` and `.Result` are static regions and were asserted as
+  such. Neither control appears in any count in this document — both name `border-strong`.
 - **Canvas / bench** (11): ~~`.Action` / `.Empty` / `.PickerChip` (BenchScenarioBar), `.Clear`
   (BenchOutputsRail), `.ResetAll` / `.SignalButton` (BenchInputsRail)~~ — ✅ **DONE, session 62**,
   and it was 7 declarations + 2 hover rules rather than 6. **5 left**: `.FrameChip` /
