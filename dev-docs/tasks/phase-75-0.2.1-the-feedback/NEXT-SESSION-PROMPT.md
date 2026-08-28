@@ -1,114 +1,129 @@
 # Next session — phase 75
 
-_Written 2026-08-27 at the end of session 58, which closed the one item in this phase that was
-measured, precedented, unowned and **not** waiting on Richard: the invisible selected filter pill.
-Read `TASKS.md` for the rest of the phase; this file is only about what that session left._
+_Written 2026-08-28 at the end of session 59. Session 58 handed over a phase where everything was
+blocked on Richard. **Richard cleared all four blockers at the top of this session**, so this file
+is mostly about what that unlocked and what is still standing._
 
 ## What happened
 
-Session 57 left the phase with everything open blocked on Richard except one thing it had
-deliberately declined to fix at the end of a session: the shared `.FilterPill`'s selected state,
-recorded as a defect three times across three shipped tabs. That is now done, driven and closed.
-
-**One commit on `cline-dev`, not pushed** (`1768c72d`).
+**Two commits on `cline-dev`** (`ad642433`, `bcd59bed`), **one on `nodegx-community` `main`**
+(`2bce720`), and **chat is deployed to production**.
 
 ## Start here
 
-🔒 **The two things that need Richard are unchanged and are still the gate on FB-013:**
+⬜ **THE ONE THING THAT IS READY AND UNFINISHED: deploy C5 and drive it.** The hide route is built,
+specced and committed, and **`NODEGX_MODERATORS` is unset on nexus-1** — so today the route 404s
+for *everybody*, Richard included. It needs his handle in `~/nodegx-community-deploy.env`, a
+deploy, and then the hide driven against production. **The verb has never run outside a spec.**
 
-1. **R-chat-mod** — the moderation posture the ruling required be asked. `FB-013-SCOPE.md` §8 lays
-   out A/B/C, recommending **B** (hide-by-moderator, no reader-facing report). **C5 and the chat
-   composer are both behind it** — posting is what creates the messages a posture is about.
-2. **Deploying `nodegx-community`.** The chat routes are built, on `main` there (`c5be57b`,
-   `91d8b0c`), and **not shipped** — `/api/v1/community/chat` is still 404 on production while
-   `/threads` is 200 and an invented path is 404. The launcher's Chat tab is a correct surface
-   with nothing to talk to.
+🧭 **Two of Richard's four are still his**, and neither is code:
+- **Content for FB-005 / FB-009 / FB-012** — templates, syllabus lessons, the tutorial batch. He
+  selected these, which reads as intent to supply them rather than as work to invent.
+- **`--theme-color-border-default`** — selected, **not started this session**. FB-005 T4 measured
+  it at **1.07:1 dark / 1.15:1 light** against the panel, which makes an *unselected* card or pill
+  boundary invisible. It reaches every surface in the editor, so it wants a session of its own.
 
-⚠️ **FB-012, FB-009 and FB-005 are all still blocked on content from Richard**, and they are the
-largest open items in the phase. There is now **no substantial unblocked build work left in P75**
-that does not need one of the above. A session picking this up should probably confirm that with
-Richard rather than invent something.
+🔒 **Free tags are still unruled.** §8 asked it in the same breath as R-chat-mod and **B did not
+answer it**. v1 keeps the channel as the category by *default*, not by decision.
 
-## ✅ What session 58 closed, and the part worth keeping
+## ✅ R-chat-mod is ruled B, and C5 is built
 
-The pill's selected state was carried by **fill alone** — 1.36:1 against the card, with the border
-**identical** in both states. Labels were all fine at 8.46:1, which is exactly why it survived:
-**state visibility is not text contrast**, and every check anybody had run was a text check.
+**B = A + hide-by-moderator, no reader-facing report.** B's delete-own half was already shipped in
+C2, so what was missing was the sanction verb and a way to authorise it.
 
-It reached three surfaces because the seven-line pill markup was **copied into three view
-components over one shared class** — one home for the defect, three for the fix. It is now one
-`CommunityFilterPill`, and a spec asserts the class is named in exactly one file.
+🔴 **`accounts` has no role column, and C5 does not add one.** Ruled with Richard: the moderator set
+is an **env allowlist** (`NODEGX_MODERATORS`). A column puts *who may sanction* into the table
+anybody can create a row in, and needs a second mechanism to set it anyway.
 
-🔴 **The numbers were produced twice, by two instruments, and they agree to the second decimal.**
-`tests-unit/fb-002/filter-pill-state.test.tsx` computes them from the stylesheet; the drive
-measured painted pixels in the running editor. The arithmetic says the contrast is *available*; the
-paint says the rule *wins*. Neither says both.
+🔴 **Read per call, never at module scope.** A `const` would freeze the set at import, so the first
+spec file to run would decide the moderator set for the whole run — and the arms that happened to
+pass would look deliberate.
 
-| pair | dark | light |
-|---|---|---|
-| active border vs card | **5.60:1** | **4.57:1** |
-| active border vs its own fill | **4.13:1** | **3.74:1** |
-| active **fill** vs card | 1.36:1 | 1.22:1 — *unchanged, deliberately* |
+🔴 **Unset or empty means NOBODY, and it has its own row.** `''.split(',')` is `['']`, so without
+the length filter `includes('')` is true and an empty handle moderates the site — on every fresh
+checkout, where the var is unset.
 
-⚠️ **The fill was left exactly as it was.** The state simply stopped depending on it; delete the
-`background` line and the selection survives. That is the property the spec pins.
+**21 specs, 4 mutants, all killed by name**: delete the route's `isModerator` line, delete the
+empty-handle filter, delete the mandatory-reason refusal, delete `listRiver`'s `hidden_at` filter.
 
-## 🔴 The finding that was worth more than the fix
+## 🔴 The findings worth more than the code
 
-The first mutant — `is-active` losing its `border-color`, i.e. **the exact regression that
-shipped** — scored **`Tests: 0 total`**, not a named red. `tokenFor` called `expect()` at module
-scope, so a deleted declaration threw during *collection*: no sentence naming the defect, and the
-other fourteen rows in the file silently stopped running with it.
+**1. The spec file had a hole shaped like the defect, and I nearly shipped it.** Every predicate row
+and every verb row still passes on a build whose `PATCH` never calls `isModerator` at all — the
+predicate is right in isolation, the verb hides correctly when called, and the sweep only checks
+that the route *names* the verb. **The one property C5 has to have is that a stranger cannot hide
+somebody else's message.** The route block is that assertion, and it asserts the message is **still
+visible** after the 404, because a refusal that 404s and hides anyway passes a status-only check.
 
-🔴 **A spec that cannot run is not a spec that failed, and a summary line makes them look alike.**
-`tokenFor` returns `null` now and the rows grade it; the same mutant produces six named reds and
-everything else still runs. **Any spec that derives its subject from a file should be mutated by
-deleting that subject**, not only by corrupting it — deletion is the case that takes the file out.
+**2. An absence check reported the opposite result before it stripped comments.** Posture C is
+guarded by *"nothing in the product calls `reportContent`"*. `chat.ts` and `bench.ts` both **discuss**
+`upholdReport` in prose, and my first grep read those sentences as callers — I wrote a paragraph
+declaring the moderation library unreachable before the caller list corrected me. **Strip comments,
+exclude the defining file, and list the callers rather than counting them.**
 
-## ⚠️ Left undone, on purpose
+**3. `origin/main..main` is the wrong population for "is it deployed".** s31 measured `acd4a9a..main`
+empty and concluded nothing was waiting to ship — an ancestry check against **local** `main`, silent
+about both `origin/main` and the box. Measured properly: **`origin/main` is 18 commits behind** while
+the host was only **2** behind, and the two never had to agree because **`ops/deploy.sh` rsyncs the
+working tree, not a commit**. The conclusion survived by luck.
+🔴 **The push gap is real and unowned**: ~15,600 lines that are **live on production** exist only on
+this laptop. ⬜ **Push `nodegx-community` `main`.**
 
-- 🔴 **`--theme-color-border-default` is still Richard's, and is a DIFFERENT defect.** FB-005 T4
-  measured it at **1.07:1 dark / 1.15:1 light** against the panel, which makes an **unselected**
-  card or pill boundary invisible. This session moved the *selected* state and touched no resting
-  boundary. It is a token decision that reaches every surface in the editor.
-- ⚠️ **Chat's pills were not driven** — its routes 404 on production, so driving them needs the
-  local-platform recipe in session 57's handoff (scratch Postgres + `next dev` on 3399, and a
-  one-line revert of `COMMUNITY_URL`). Bench and People were driven; Chat draws the identical
-  component and is covered by the spec's rendered row.
-- ⚠️ **The people directory's `ChipRow` has no `role="group"`/`aria-label`**, where the Bench and
-  Chat both do. Noticed while extracting the component, out of scope, unowned, tiny.
+**4. A stale index line cost nothing this time only because I checked.** P75's FIX-027 line read
+`17 ⬜ · 19/20 ⬜` for three days after `f6d25d19` and `fada53fd` landed. **Third under-claiming line
+in this phase** (FB-002 and FB-010 were the others). Corrected from the source, not the task file.
+
+## The deploy, as measured
+
+`ops/deploy.sh 49.12.102.195` — host stamped **`91d8b0c4ed4e`**, migration `0024_fb013_chat.sql`
+applied over `already applied: 23`, all three neighbours **200 → 200**.
+
+⚠️ **`0024` is not additive** — it rewrites enum columns on `content_reports`, `notifications` and
+`notification_suppressions`. Before migrating, all three were read on the host and were **empty**,
+beside a control that drew **5 accounts and 14 enum labels**: an empty result and a broken query are
+the same bytes. `src/db/migrate.ts` wraps each migration in a transaction, so a bad cast would have
+rolled back rather than half-applied.
+
+✅ **Verified as a consequence, not from the deploy's own report**: `/api/v1/community/chat` answers
+**200** with a real envelope and honours `?channel=lounge`; `/threads` still **200**; an invented
+path still **404**, which is what makes the 200 a measurement.
+
+## Also closed: the people directory's filter bar (`ad642433`)
+
+The Bench and Chat both wrapped their pills in `role="group"` with an `aria-label` from the day they
+were written; **People never did**, so a screen reader met two loose toggles announcing *"Available
+for work, pressed"* with nothing saying what was being narrowed. ⚠️ **It announces less here than on
+either sibling**, because these two pills AND together.
+
+Every row in `filter-pill-state` could already see the pills render, the marker draw and the contrast
+clear 3:1, and **none of them could see this**. Three rows added; both mutants — deleting the
+attributes, and collapsing the three labels — produce **one named red with the other 21 rows still
+running**, which is the `Tests: 0 total` trap session 58 recorded and this file is now clear of.
 
 ## Gates, as measured this session
 
-- `tsc -p packages/noodl-editor`: clean, and **proven to see the new component by a planted error**
-  (1 → 0). ⚠️ It does not cover `tests-unit/`; ts-jest does, and that ran green.
-- Editor `test:main`: **0 failures**. First run **357 suites / 5897** — exactly session 57's
-  356/5879 plus this session's 1 suite and 18 rows.
+- `tsc -p packages/noodl-editor`: **exit 0**, and **proven to reach the changed line by a planted
+  error** (exit 2, naming `CommunityDirectoryView.tsx:122`). ⚠️ My first reading of this was wrong:
+  `${PIPESTATUS[0]}` is bash, so `cmd | tail; echo $?` read **`tail`'s** status. Re-run to a file.
 - `noodl-core-ui`: **28 / 527 / 0**, unchanged.
-- 🔴 **A second `test:main` twenty minutes later read 358 / 5898 and I could not fully account for
-  it.** A peer's `tests-unit/sb-017/` appeared between the runs (1 suite, **6** tests), which
-  explains the suite but leaves **five tests missing** — and that peer was actively editing
-  `registeradapters.ts` and `cloudDynamicPorts.ts`, which specs enumerate. **Quote the tree, not
-  the number.** Both runs were 0 failures, which is the claim that survives.
-- `test:ci` **not run by this lane — but the P76 lane's run covered this change anyway.** They ran
-  it while this session was writing up, and `test:ci` builds the **working tree**, which had held
-  these `noodl-core-ui` edits for hours. Relayed result: **2863 specs / 4 failures — the documented
-  AIX-006 floor, by name.** So the change adds nothing to the Electron suite, which until then was
-  only an argument from absence (no source spec under `packages/noodl-editor/tests/` names the
-  community components; the sole match is a build artefact). 🔴 **Relayed, not measured here.**
+- Editor `test:main`: **358 suites / 5907 / 0** on tree `e78f35fb`. **This change is +3 tests, +0
+  suites**, measured against the file at HEAD. ⚠️ I did **not** try to reconcile the rest of the
+  movement from session 58's `358 / 5898` — that reading was taken on a different tree with a peer
+  mid-edit. **Quote the tree.**
+- `nodegx-community` `tsc --noEmit`: **exit 0**. Full suite: **64 files / 1603 passed / 8 skipped /
+  0 failures**. ⚠️ **The "1277 specs" figure in TASKS.md is stale** — that was 08-22.
+- `test:ci` **not run by this lane.** The only match for the community components under
+  `packages/noodl-editor/tests/` is `index.bundle.js`, a **build artefact** — so no Electron spec
+  names them and this change cannot appear in a peer's reds. That is why no peer was warned.
 
 ## Standing facts for this area
 
-- ⚠️ **Four peer sessions were live and the machine was traded cleanly.** All four cleared the
-  launch, two by checking `ps` rather than recollection. **Keep announcing launch AND teardown.**
-- ⚠️ **P76 asks that the local backend "sb015 site backend" (port 8588) be left alone** in the
-  Backend Services panel — staged for SB-017 acceptance. Not touched this session.
-- ✅ **The `test:ci` floor is back to 4, and the "expect 6" note is now STALE.** SB-017 landed on
-  2026-08-27 and its two deliberately-red parity specs are green; the suite is **2863** specs.
-  🔴 A stale-HIGH floor hides regressions, which is why this is worth correcting rather than
-  leaving. Still: **`rm -rf packages/noodl-editor/.webpack-cache`
-  before running it**: a poisoned cache fails the *build* with ~47 unresolved-alias errors in files
-  nobody touched, and reads as your own regression.
+- 🔴 **Docker is not running, so `npm run db:up` fails.** The community suite was run against a
+  **scratch database on the local 5432**: `createdb nodegx_c5_s59`, then
+  `DATABASE_URL="postgres://richardosborne@localhost:5432/nodegx_c5_s59" npx vitest run`. **It is
+  still there** and can be reused. The repo's own default is port **55432**, which is Docker's.
+- ⚠️ **Four peer sessions were live.** No editor and no peer suite ran during this session's gates.
+- ⚠️ **P76 asks that the local backend "sb015 site backend" (port 8588) be left alone.** Not touched.
 - ⚠️ **Not mine and still uncommitted, leave them**: `packages/nodegx-export/*` (P18),
   `tests/cloud/sb017-*`, `tests-unit/sb-017/`, `registeradapters.ts` (P76), and
   `AskAboutNodeDialog.module.scss`, uncommitted since **08-20** and belonging to nobody in this lane.

@@ -330,7 +330,41 @@ Ordered so the early steps are shippable and independent of R-chat-mod.
 | **C2** | the five routes, envelope-compliant, D15 verdicts | **M** | ✅ **DONE s51** |
 | **C3** | the web tab: river + facet bar + thread view + composer | **M** | ✅ **DONE s52** |
 | **C4** | the launcher tab, inside FB-006's structure (**done 2026-08-22**, so not a blocker) | **S–M** | 🟡 **READ HALF BUILT s57** — see §10a |
-| **C5** | moderation verbs | **S** | 🔒 R-chat-mod |
+| **C5** | moderation verbs | **S** | ✅ **BUILT s59** — `2bce720` in `nodegx-community`, NOT deployed |
+
+### 10b. ✅ What C5 built (session 59), and the one thing it cannot do yet
+
+`isModerator`/`moderatorHandles` in `moderation.ts`, `setChatMessageHidden` in `chat.ts`, and a
+**`PATCH`** on the existing `/api/v1/community/chat/[messageId]` — not a new path, so it inherits
+the envelope and the single `notFound()` producer. **21 specs, 4 mutants, all killed by name.**
+
+🔴 **THE MODERATOR SET IS AN ENV ALLOWLIST (`NODEGX_MODERATORS`), NOT A COLUMN.** Ruled with
+Richard: `accounts` has no role column and this adds none. A column puts *who may sanction* in the
+table anybody can create a row in and still needs a second mechanism to set it; an env var is set
+by whoever can already deploy, which is the person B is about. ⚠️ **Read per call** — a module-scope
+`const` would freeze the set at import and let the first spec file to run decide it for the whole
+run. 🔴 **Unset or empty means NOBODY**, and that has its own row: `''.split(',')` is `['']`, so
+without the length filter `includes('')` is true and an empty handle moderates the site.
+
+🔴 **NOT DEPLOYED, AND INERT UNTIL IT IS CONFIGURED — which is the safe direction.** The route is
+live-able but `NODEGX_MODERATORS` is unset on nexus-1, so today it would 404 for *everybody*,
+including Richard. ⬜ **Left: set the var to Richard's handle in the deploy env, deploy, and drive
+the hide against production.** Until then the verb has never run outside a spec.
+
+🔴 **The rest of the file had a HOLE SHAPED LIKE THE DEFECT and the route block is the patch.**
+Every predicate and verb row still passes on a build whose `PATCH` never calls `isModerator` at
+all — the one property C5 has to have is that a stranger cannot hide somebody else's message, and
+nothing else could see it. That row asserts the message is **still visible** after the 404, because
+a refusal that 404s and hides anyway satisfies a status-only check.
+
+⚠️ **Posture C is guarded by an ABSENCE, and the first version of that guard reported the opposite
+result.** `reportContent` must have no product caller — but `chat.ts` and `bench.ts` both *discuss*
+`upholdReport` in prose, and an unstripped grep reads those sentences as callers. Comments are
+stripped, and `moderation.ts` is excluded because it DEFINES the function.
+
+✅ **Both route sweeps graded the new verb rather than passing by not looking**: `nat006` enumerates
+`PATCH` in its verb list, and `api-malformed-id` carries a row asserting it *reaches* `PATCH` —
+written for FB-001 after a `PATCH`-only route was discovered and driven zero times.
 
 ⚠️ **C4's precondition is already met.** FB-013's sequencing note says *"do not ship chat before the
 restructure or it lands in the one-big-list"* — the restructure is FB-006, and TASKS.md records the
