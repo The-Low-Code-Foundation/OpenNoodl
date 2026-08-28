@@ -5,13 +5,13 @@
   "connections": [
     {
       "fromId": "email",
-      "fromProperty": "text",
+      "fromProperty": "onTextChanged",
       "toId": "login",
       "toProperty": "username"
     },
     {
       "fromId": "password",
-      "fromProperty": "text",
+      "fromProperty": "onTextChanged",
       "toId": "login",
       "toProperty": "password"
     },
@@ -30,7 +30,13 @@
     {
       "fromId": "login",
       "fromProperty": "done",
-      "toId": "to_members",
+      "toId": "toMembers-5",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "joinButton-2",
+      "fromProperty": "onClick",
+      "toId": "toJoin-2",
       "toProperty": "navigate"
     }
   ]

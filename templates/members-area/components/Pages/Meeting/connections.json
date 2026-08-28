@@ -1,0 +1,79 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "2db49227-5ca3-54b1-8b7d-3b236081db7e",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "pageInputs-2",
+      "fromProperty": "pm-meetingId",
+      "toId": "hold-2",
+      "toProperty": "in-meetingId"
+    },
+    {
+      "fromId": "page-6",
+      "fromProperty": "didMount",
+      "toId": "hold-2",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "hold-2",
+      "fromProperty": "out-meetingId",
+      "toId": "record-2",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "hold-2",
+      "fromProperty": "out-ready",
+      "toId": "record-2",
+      "toProperty": "fetch"
+    },
+    {
+      "fromId": "record-2",
+      "fromProperty": "prop-title",
+      "toId": "title-2",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record-2",
+      "fromProperty": "prop-place",
+      "toId": "place",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record-2",
+      "fromProperty": "prop-details",
+      "toId": "details",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record-2",
+      "fromProperty": "prop-when",
+      "toId": "whenLabel-2",
+      "toProperty": "in-when"
+    },
+    {
+      "fromId": "whenLabel-2",
+      "fromProperty": "out-label",
+      "toId": "when-3",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record-2",
+      "fromProperty": "failure",
+      "toId": "refusalGate-2",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "refusalGate-2",
+      "fromProperty": "result",
+      "toId": "refusal-2",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "backButton-3",
+      "fromProperty": "onClick",
+      "toId": "toMeetings",
+      "toProperty": "navigate"
+    }
+  ]
+}

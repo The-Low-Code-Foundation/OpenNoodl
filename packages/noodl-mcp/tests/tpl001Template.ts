@@ -38,6 +38,7 @@
  *
  * @module noodl-mcp/tests/tpl001Template
  */
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -49,6 +50,7 @@ import type { LegacyProject } from '../../noodl-editor/src/editor/src/io/Project
 import { createServer } from '../src/server';
 
 import { readAsLegacyProject } from './sb007Template';
+import { TPL001_CLOUD_COMPONENTS } from './tpl001Cloud';
 import { APP_NODES, APP_WIRES, TPL001_COMPONENTS, createPass } from './tpl001Components';
 
 /** The template's id and the directory name it is prepared into. */
@@ -78,6 +80,18 @@ export interface AuthoredTemplate {
    */
   registrations: Record<string, { router: string; added: string[]; startPage?: string }>;
   projectDir: string;
+  /**
+   * Every non-error diagnostic the door raised, by component.
+   *
+   * 🔴 **Without this, "the authoring run was clean" is a claim about the
+   * `isError` flag and nothing else.** A `warning` that does not reach `isError`
+   * is a check that fired, decided something was wrong, and was thrown away by
+   * the caller — and this template's graphs are full of ports the door
+   * *cannot* verify (`dynamic-port-skipped`: "unverified by that check rather
+   * than verified as correct"). Reporting what it did say is the only way the
+   * silence is evidence rather than an absence nobody looked at.
+   */
+  diagnostics: Array<{ component: string; code: string; severity: string; message: string }>;
 }
 
 /** An empty v2 project: the state a person is in before they pick a template. */
@@ -127,9 +141,16 @@ function writeSkeleton(dir: string): void {
  * ## The order
  *
  * 1. **`App` first.** Every page written after it registers into its router.
- * 2. **Pages, in `TPL001_COMPONENTS` order** — the first one written wins
- *    `startPage`, and for this template that must be the landing page.
- * 3. **The deferred pass.** Pages that link to each other are a genuine cycle;
+ * 2. **The cloud half.** No ordering constraint of its own — a `CloudFunction2`
+ *    names its endpoint by string, so nothing in the browser half resolves
+ *    against these components — but a reader meets the endpoints before the
+ *    screens that call them, and an authoring failure surfaces on the graphs
+ *    that carry the security model rather than eight pages later.
+ * 3. **The parts, then the pages, in `TPL001_COMPONENTS` order.** The rows come
+ *    before the pages that place them because `For Each.template` IS checked at
+ *    the door; the first *page* written wins `startPage`, and for this template
+ *    that must be the landing page.
+ * 4. **The deferred pass.** Pages that link to each other are a genuine cycle;
  *    the create pass omits those wires and an `update_component` restores them.
  */
 export interface BuildOptions {
@@ -155,16 +176,28 @@ export async function buildMembersTemplateProject(options: BuildOptions = {}): P
 
   const order: string[] = [];
   const registrations: AuthoredTemplate['registrations'] = {};
+  const diagnostics: AuthoredTemplate['diagnostics'] = [];
 
   const call = async (name: string, args: Record<string, unknown>, label: string): Promise<unknown> => {
     const res = (await client.callTool({ name, arguments: args })) as ToolResult;
     // A rejection here is evidence, not a mystery — print what the door said.
     if (res.isError) throw new Error(`${name} ${label} refused:\n${res.content?.[0]?.text}`);
+    let payload: Record<string, unknown> = {};
     try {
-      return JSON.parse(res.content?.[0]?.text ?? '{}');
+      payload = JSON.parse(res.content?.[0]?.text ?? '{}') as Record<string, unknown>;
     } catch {
       return {};
     }
+    const raised = (payload.validation as { diagnostics?: Array<Record<string, unknown>> } | undefined)?.diagnostics;
+    for (const d of raised ?? []) {
+      diagnostics.push({
+        component: label,
+        code: String(d.code ?? ''),
+        severity: String(d.severity ?? ''),
+        message: String(d.message ?? '')
+      });
+    }
+    return payload;
   };
 
   const create = async (key: string, nodes: unknown[], connections: unknown[]): Promise<void> => {
@@ -176,6 +209,10 @@ export async function buildMembersTemplateProject(options: BuildOptions = {}): P
   };
 
   if (!options.omitApp) await create(APP_COMPONENT, APP_NODES, APP_WIRES);
+
+  for (const c of TPL001_CLOUD_COMPONENTS) {
+    await create(c.path, c.nodes, c.connections);
+  }
 
   for (const c of TPL001_COMPONENTS) {
     const payload = createPass(c);
@@ -189,5 +226,147 @@ export async function buildMembersTemplateProject(options: BuildOptions = {}): P
   await client.close();
   await server.close();
 
-  return { project: readAsLegacyProject(dir), order, registrations, projectDir: dir };
+  return { project: readAsLegacyProject(dir), order, registrations, projectDir: dir, diagnostics };
+}
+
+// ── Preparing the directory a person is handed ───────────────────────────────
+
+/**
+ * 🔴 **Three fields per component would make every run differ, so they are FIXED.**
+ *
+ * `toTemplateContent` (the site builder's, for an embedded template) DROPS `id`,
+ * `created` and `modifiedBy`, and says why: *"dropping them is what makes the
+ * artefact comparable to a fresh run at all… the drift gate would have to
+ * compare SOME of the artefact, which is the check that passes while the thing
+ * it guards rots."*
+ *
+ * A project directory cannot drop them — the v2 component schema carries them —
+ * so this does the other half of the same idea and **pins** them. Everything
+ * else is left exactly as the door wrote it: the point of generating through the
+ * door is that the artefact IS the door's output, and a normaliser that reached
+ * further would start being a second author.
+ *
+ * ⚠️ **It lives here rather than in `scripts/` because the drift gate has to run
+ * it.** A gate that regenerated the components but not the artefact would be
+ * comparing something the generator does not produce — and the pinning is
+ * exactly where the last defect was (the id is written in THREE files, found by
+ * regenerating twice and diffing).
+ */
+export const TEMPLATE_EPOCH = '2026-08-28T00:00:00.000Z';
+
+/** The file the hand-authored policy lands as, inside the artefact. */
+export const POLICY_FILE = 'nodegx.security.json';
+
+/** A stable UUID-shaped id for a component, derived from its path alone. */
+export function stableId(componentPath: string): string {
+  const h = createHash('sha1').update(`tpl001:${componentPath}`).digest('hex');
+  // UUIDv5 layout: version nibble 5, variant nibble 8.
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
+/**
+ * Pin every per-run field in one component's directory.
+ *
+ * 🔴 **The id is written in THREE files, not one.** `component.json` carries
+ * `id`; `nodes.json` and `connections.json` each carry a `componentId` naming
+ * the same component. Pinning only the first left the other two fresh per run —
+ * found by regenerating twice and diffing, which is the only reason this
+ * function is correct rather than merely plausible.
+ */
+function pinComponentDirectory(dir: string): void {
+  const componentFile = path.join(dir, 'component.json');
+  const doc = JSON.parse(fs.readFileSync(componentFile, 'utf-8')) as Record<string, unknown>;
+  const id = stableId(String(doc.path));
+
+  doc.id = id;
+  doc.created = TEMPLATE_EPOCH;
+  doc.modified = TEMPLATE_EPOCH;
+  fs.writeFileSync(componentFile, `${JSON.stringify(doc, null, 2)}\n`);
+
+  for (const name of ['nodes.json', 'connections.json']) {
+    const file = path.join(dir, name);
+    if (!fs.existsSync(file)) continue;
+    const sidecar = JSON.parse(fs.readFileSync(file, 'utf-8')) as Record<string, unknown>;
+    if ('componentId' in sidecar) sidecar.componentId = id;
+    fs.writeFileSync(file, `${JSON.stringify(sidecar, null, 2)}\n`);
+  }
+}
+
+function pinComponentFiles(dir: string): void {
+  const stack = [dir];
+  while (stack.length) {
+    const current = stack.pop() as string;
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      stack.push(path.join(current, entry.name));
+    }
+    if (fs.existsSync(path.join(current, 'component.json'))) pinComponentDirectory(current);
+  }
+}
+
+/**
+ * The registry keeps its OWN `created`/`modified` per component, beside the
+ * top-level `lastUpdated`. Same run-twice finding.
+ */
+function pinRegistry(dir: string): void {
+  const file = path.join(dir, 'components', '_registry.json');
+  const doc = JSON.parse(fs.readFileSync(file, 'utf-8')) as {
+    lastUpdated?: string;
+    components?: Record<string, Record<string, unknown>>;
+  };
+  doc.lastUpdated = TEMPLATE_EPOCH;
+  for (const row of Object.values(doc.components ?? {})) {
+    if ('created' in row) row.created = TEMPLATE_EPOCH;
+    if ('modified' in row) row.modified = TEMPLATE_EPOCH;
+  }
+  fs.writeFileSync(file, `${JSON.stringify(doc, null, 2)}\n`);
+}
+
+function copyTree(from: string, to: string): void {
+  fs.mkdirSync(to, { recursive: true });
+  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+    const src = path.join(from, entry.name);
+    const dst = path.join(to, entry.name);
+    if (entry.isDirectory()) copyTree(src, dst);
+    else fs.copyFileSync(src, dst);
+  }
+}
+
+/**
+ * Turn an authored project directory into the artefact a person is handed.
+ *
+ * @param built the result of {@link buildMembersTemplateProject}
+ * @param output where the artefact goes — cleared first, so it is the door's
+ *   output and nothing that survived from a previous shape
+ * @param policySource the hand-authored `nodegx.security.json`, copied in last
+ */
+export function prepareArtefact(built: AuthoredTemplate, output: string, policySource: string): void {
+  // 🔴 The guard `generate-site-template.ts` carries, for the same reason: a
+  // page written before its router exists is written, reported green, and never
+  // routed — `pageRegistration.ts` states that a project with no router is not
+  // an error. An artefact with an empty registration map is an app that opens on
+  // nothing, and it must not be possible to ship one by accident.
+  if (Object.keys(built.registrations).length === 0) {
+    throw new Error('refusing to write: no page registered into a router — the app would open on nothing');
+  }
+
+  pinComponentFiles(built.projectDir);
+  pinRegistry(built.projectDir);
+
+  // ⚠️ Replaced wholesale rather than merged: the door's output IS the artefact,
+  // so a file surviving here that the door no longer writes would be a component
+  // nothing generates and nothing gates. Guarded on the path so a mistyped
+  // output directory cannot delete something else.
+  if (path.basename(output) !== TEMPLATE_ID) throw new Error(`refusing to clear ${output}`);
+  fs.rmSync(output, { recursive: true, force: true });
+  copyTree(built.projectDir, output);
+
+  // 🔴 The policy IS the product here, so an artefact without one must not be
+  // writable by accident. This refuses rather than warns: a members' area
+  // provisioned onto `defaultSecurityConfig()` has `authenticated` collection
+  // defaults, which is every pending member reading everything.
+  if (!fs.existsSync(policySource)) {
+    throw new Error(`refusing to write: the hand-authored policy ${policySource} is missing`);
+  }
+  fs.copyFileSync(policySource, path.join(output, POLICY_FILE));
 }

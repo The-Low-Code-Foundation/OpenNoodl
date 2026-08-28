@@ -1,0 +1,189 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "6d8c5bb3-6024-52d7-8a41-859aae1dcbe4",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-4",
+      "type": "Page",
+      "label": "Announcement",
+      "children": [
+        "ground-4"
+      ],
+      "parameters": {
+        "title": "Announcement",
+        "urlPath": "announcements/{announcementId}"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "ground-4",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "page-4",
+      "children": [
+        "title",
+        "date",
+        "body",
+        "refusal",
+        "backButton"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingTop": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 24,
+          "unit": "px"
+        },
+        "flexDirection": "column"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "title",
+      "type": "Text",
+      "label": "Title",
+      "parent": "ground-4",
+      "parameters": {
+        "text": "",
+        "fontWeight": "var(--font-bold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "date",
+      "type": "Text",
+      "label": "Posted",
+      "parent": "ground-4",
+      "parameters": {
+        "text": ""
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "body",
+      "type": "Text",
+      "label": "Body",
+      "parent": "ground-4",
+      "parameters": {
+        "text": ""
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "refusal",
+      "type": "Text",
+      "label": "Not available",
+      "parent": "ground-4",
+      "parameters": {
+        "text": "This announcement is not available to you.",
+        "visible": false
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "backButton",
+      "type": "net.noodl.controls.button",
+      "label": "Back",
+      "parent": "ground-4",
+      "parameters": {
+        "label": "Back to announcements"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "pageInputs",
+      "type": "PageInputs",
+      "label": "Which announcement",
+      "parameters": {
+        "pathParams": "announcementId"
+      },
+      "x": 410,
+      "y": 880
+    },
+    {
+      "id": "hold",
+      "type": "JavaScriptFunction",
+      "label": "Hold the id",
+      "parameters": {
+        "functionScript": "if (Inputs.announcementId === undefined || Inputs.announcementId === '') return;\nOutputs.announcementId = Inputs.announcementId;\nOutputs.ready();"
+      },
+      "ports": [
+        {
+          "name": "out-ready",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 410,
+      "y": 40
+    },
+    {
+      "id": "record",
+      "type": "DbModel2",
+      "label": "The announcement",
+      "parameters": {
+        "collectionName": "Announcement",
+        "idSource": "explicit"
+      },
+      "x": 410,
+      "y": 280
+    },
+    {
+      "id": "when-2",
+      "type": "JavaScriptFunction",
+      "label": "The date, as a person writes it",
+      "parameters": {
+        "functionScript": "if (Inputs.postedAt === undefined) return;\nconst at = new Date(Inputs.postedAt || '');\nOutputs.label = isNaN(at.getTime()) ? '' : at.toLocaleDateString();"
+      },
+      "x": 410,
+      "y": 400
+    },
+    {
+      "id": "refusalGate",
+      "type": "Condition",
+      "label": "Show the refusal",
+      "parameters": {
+        "condition": true
+      },
+      "x": 410,
+      "y": 640
+    },
+    {
+      "id": "toMembers",
+      "type": "RouterNavigate",
+      "label": "Back to the members area",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Members"
+      },
+      "x": 410,
+      "y": 760
+    }
+  ],
+  "visualRoots": [
+    "page-4"
+  ]
+}

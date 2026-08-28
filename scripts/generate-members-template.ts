@@ -21,7 +21,8 @@
  * that passes while the thing it guards rots."*
  *
  * A project directory cannot drop them — the v2 component schema carries them —
- * so this script does the other half of the same idea and **pins** them:
+ * so `prepareArtefact` (in `tpl001Template.ts`, where the drift gate can run the
+ * same code rather than a twin of it) does the other half and **pins** them:
  *
  * - `id` — a UUIDv5-shaped digest of the component's own path. Deterministic,
  *   unique within the project, and stable across regenerations.
@@ -32,127 +33,73 @@
  * generating through the door is that the artefact IS the door's output; a
  * normaliser that reached further would start being a second author.
  *
- * ## What this does NOT write
+ * ## The policy is COPIED, never generated — and it lives outside the output
  *
- * 🔴 **`nodegx.security.json`.** It is hand-authored and lives beside this
- * script's output rather than in it — the same split `site-builder.security.json`
- * has ("hand-edited, NOT generated"). This template's whole product is its
- * policy; a generated one would be a policy nobody read.
+ * 🔴 **`nodegx.security.json` is hand-authored** — the same split
+ * `site-builder.security.json` has ("hand-edited, NOT generated"). This
+ * template's whole product is its policy; a generated one would be a policy
+ * nobody read.
+ *
+ * ⚠️ **And the hand-authored file cannot live in `templates/members-area/`**,
+ * because this script clears that directory wholesale before copying the door's
+ * output into it. A policy sitting there would be deleted by the next
+ * regeneration — silently, and in the direction that leaves the artefact
+ * looking complete. So the source of truth is
+ * `templates/members-area.security.json`, beside the directory rather than in
+ * it, and this script copies it in as the last step.
+ *
+ * That also makes the drift gate simpler than TPL-001 §"next" expected: there is
+ * no file to *exclude* from byte-comparison, because a regeneration reproduces
+ * the whole artefact including the policy. The two populations are the two
+ * SOURCES — a generated one and a hand-edited one — and they stay separate on
+ * disk rather than by a rule in a spec.
  */
-import { createHash } from 'crypto';
-import * as fs from 'fs';
 import * as path from 'path';
 
-import { buildMembersTemplateProject, TEMPLATE_ID } from '../packages/noodl-mcp/tests/tpl001Template';
-
-/** Written, not sampled: `new Date()` here would make every run differ. */
-const TEMPLATE_EPOCH = '2026-08-28T00:00:00.000Z';
+import {
+  buildMembersTemplateProject,
+  POLICY_FILE,
+  prepareArtefact,
+  TEMPLATE_ID
+} from '../packages/noodl-mcp/tests/tpl001Template';
 
 const OUTPUT = path.join(__dirname, '..', 'templates', TEMPLATE_ID);
 
-/** A stable UUID-shaped id for a component, derived from its path alone. */
-function stableId(componentPath: string): string {
-  const h = createHash('sha1').update(`tpl001:${componentPath}`).digest('hex');
-  // UUIDv5 layout: version nibble 5, variant nibble 8.
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
-}
-
-/**
- * Pin every per-run field in one component's directory.
- *
- * 🔴 **The id is written in THREE files, not one.** `component.json` carries
- * `id`; `nodes.json` and `connections.json` each carry a `componentId` naming
- * the same component. Pinning only the first left the other two fresh per run —
- * found by regenerating twice and diffing, which is the only reason this
- * function is correct rather than merely plausible.
- */
-function pinComponentDirectory(dir: string): void {
-  const componentFile = path.join(dir, 'component.json');
-  const doc = JSON.parse(fs.readFileSync(componentFile, 'utf-8')) as Record<string, unknown>;
-  const id = stableId(String(doc.path));
-
-  doc.id = id;
-  doc.created = TEMPLATE_EPOCH;
-  doc.modified = TEMPLATE_EPOCH;
-  fs.writeFileSync(componentFile, `${JSON.stringify(doc, null, 2)}\n`);
-
-  for (const name of ['nodes.json', 'connections.json']) {
-    const file = path.join(dir, name);
-    if (!fs.existsSync(file)) continue;
-    const sidecar = JSON.parse(fs.readFileSync(file, 'utf-8')) as Record<string, unknown>;
-    if ('componentId' in sidecar) sidecar.componentId = id;
-    fs.writeFileSync(file, `${JSON.stringify(sidecar, null, 2)}\n`);
-  }
-}
-
-function pinComponentFiles(dir: string): void {
-  const stack = [dir];
-  while (stack.length) {
-    const current = stack.pop() as string;
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      stack.push(path.join(current, entry.name));
-    }
-    if (fs.existsSync(path.join(current, 'component.json'))) pinComponentDirectory(current);
-  }
-}
-
-/**
- * The registry keeps its OWN `created`/`modified` per component, beside the
- * top-level `lastUpdated`. Same run-twice finding.
- */
-function pinRegistry(dir: string): void {
-  const file = path.join(dir, 'components', '_registry.json');
-  const doc = JSON.parse(fs.readFileSync(file, 'utf-8')) as {
-    lastUpdated?: string;
-    components?: Record<string, Record<string, unknown>>;
-  };
-  doc.lastUpdated = TEMPLATE_EPOCH;
-  for (const row of Object.values(doc.components ?? {})) {
-    if ('created' in row) row.created = TEMPLATE_EPOCH;
-    if ('modified' in row) row.modified = TEMPLATE_EPOCH;
-  }
-  fs.writeFileSync(file, `${JSON.stringify(doc, null, 2)}\n`);
-}
-
-function copyTree(from: string, to: string): void {
-  fs.mkdirSync(to, { recursive: true });
-  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
-    const src = path.join(from, entry.name);
-    const dst = path.join(to, entry.name);
-    if (entry.isDirectory()) copyTree(src, dst);
-    else fs.copyFileSync(src, dst);
-  }
-}
+/** The hand-authored policy: the source of truth, beside the artefact rather than in it. */
+const POLICY_SOURCE = path.join(__dirname, '..', 'templates', `${TEMPLATE_ID}.security.json`);
 
 (async () => {
   const built = await buildMembersTemplateProject();
 
-  // 🔴 The guard `generate-site-template.ts` carries, for the same reason: a
-  // page written before its router exists is written, reported green, and never
-  // routed — `pageRegistration.ts` states that a project with no router is not
-  // an error. An artefact with an empty registration map is an app that opens
-  // on nothing, and it must not be possible to ship one by accident.
-  const registered = Object.keys(built.registrations);
-  if (registered.length === 0) {
-    throw new Error('refusing to write: no page registered into a router — the app would open on nothing');
-  }
+  // 🔴 `prepareArtefact` lives in `tpl001Template.ts` rather than here, and that
+  // is the drift gate's requirement rather than tidiness: a gate that
+  // regenerated the components but ran a DIFFERENT normaliser would be comparing
+  // something this script does not produce. The pinning is exactly where the
+  // last defect was — the component id is written in three files — so the spec
+  // has to run this code and not a twin of it.
+  prepareArtefact(built, OUTPUT, POLICY_SOURCE);
 
-  pinComponentFiles(built.projectDir);
-  pinRegistry(built.projectDir);
-
-  // ⚠️ Replaced wholesale rather than merged: the door's output IS the artefact,
-  // so a file surviving here that the door no longer writes would be a component
-  // nothing generates and nothing gates. Guarded on the path so a mistyped
-  // OUTPUT cannot delete something else.
-  if (path.basename(OUTPUT) !== TEMPLATE_ID) throw new Error(`refusing to clear ${OUTPUT}`);
-  fs.rmSync(OUTPUT, { recursive: true, force: true });
-  copyTree(built.projectDir, OUTPUT);
-
-  const pages = registered.length;
+  const pages = Object.keys(built.registrations).length;
   const start = Object.values(built.registrations).find((r) => r.startPage)?.startPage ?? '(none)';
   console.log(`wrote ${OUTPUT}`);
   console.log(`  ${built.order.length} components, ${pages} pages registered, start page ${start}`);
+  console.log(`  policy ${POLICY_SOURCE} copied in as ${POLICY_FILE}`);
+
+  // 🔴 Printed rather than counted. A warning that never reaches `isError` is a
+  // check that fired, decided something was wrong, and was dropped by the
+  // caller — and "the run was clean" said about a payload nobody read is the
+  // absence of a measurement, not a measurement of absence.
+  const byCode = new Map<string, number>();
+  for (const d of built.diagnostics) {
+    const key = `${d.severity} ${d.code}`;
+    byCode.set(key, (byCode.get(key) ?? 0) + 1);
+  }
+  if (byCode.size === 0) {
+    console.log('  no diagnostics raised on any write');
+  } else {
+    console.log(`  ${built.diagnostics.length} diagnostics the door raised and did not refuse over:`);
+    for (const [key, count] of [...byCode.entries()].sort()) console.log(`    ${count.toString().padStart(3)} × ${key}`);
+  }
 })().catch((error) => {
   console.error(error?.message ?? error);
   process.exit(1);

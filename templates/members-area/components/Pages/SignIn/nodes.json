@@ -27,7 +27,9 @@
         "email",
         "password",
         "submit",
-        "error"
+        "error",
+        "joinHint",
+        "joinButton-2"
       ],
       "parameters": {
         "sizeMode": "explicit",
@@ -51,6 +53,7 @@
           "value": 24,
           "unit": "px"
         },
+        "flexDirection": "column",
         "alignX": "center"
       },
       "x": 100,
@@ -62,7 +65,8 @@
       "label": "Heading",
       "parent": "ground-2",
       "parameters": {
-        "text": "Members sign in"
+        "text": "Members sign in",
+        "fontWeight": "var(--font-bold)"
       },
       "x": 160,
       "y": 280
@@ -73,7 +77,9 @@
       "label": "Email",
       "parent": "ground-2",
       "parameters": {
-        "label": "Email"
+        "useLabel": true,
+        "label": "Email",
+        "type": "email"
       },
       "x": 160,
       "y": 400
@@ -84,6 +90,7 @@
       "label": "Password",
       "parent": "ground-2",
       "parameters": {
+        "useLabel": true,
         "label": "Password",
         "type": "password"
       },
@@ -113,6 +120,28 @@
       "y": 760
     },
     {
+      "id": "joinHint",
+      "type": "Text",
+      "label": "Not a member yet",
+      "parent": "ground-2",
+      "parameters": {
+        "text": "Not a member yet?"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "joinButton-2",
+      "type": "net.noodl.controls.button",
+      "label": "Ask to join",
+      "parent": "ground-2",
+      "parameters": {
+        "label": "Ask to join"
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
       "id": "login",
       "type": "net.noodl.user.LogIn",
       "label": "Log in",
@@ -120,7 +149,7 @@
       "y": 760
     },
     {
-      "id": "to_members",
+      "id": "toMembers-5",
       "type": "RouterNavigate",
       "label": "Go to members area",
       "parameters": {
@@ -128,7 +157,18 @@
         "target": "/Pages/Members"
       },
       "x": 410,
-      "y": 880
+      "y": 1120
+    },
+    {
+      "id": "toJoin-2",
+      "type": "RouterNavigate",
+      "label": "Go to the join form",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Join"
+      },
+      "x": 410,
+      "y": 1000
     }
   ],
   "visualRoots": [

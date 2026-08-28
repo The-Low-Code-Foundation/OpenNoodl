@@ -4,7 +4,91 @@
   "version": 1,
   "connections": [
     {
-      "fromId": "signout",
+      "fromId": "page-3",
+      "fromProperty": "didMount",
+      "toId": "standing",
+      "toProperty": "Check"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isMember",
+      "toId": "memberArea",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isModerator",
+      "toId": "moderatorTools",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isPending",
+      "toId": "pendingNotice",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isUnknown",
+      "toId": "unknownNotice",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "Member",
+      "toId": "announcements",
+      "toProperty": "storageFetch"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "Visitor",
+      "toId": "toLanding",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "announcements",
+      "fromProperty": "items",
+      "toId": "list",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "announcements",
+      "fromProperty": "count",
+      "toId": "emptyGate",
+      "toProperty": "in-count"
+    },
+    {
+      "fromId": "announcements",
+      "fromProperty": "fetched",
+      "toId": "emptyGate",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "emptyGate",
+      "fromProperty": "out-empty",
+      "toId": "emptyState",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "meetingsButton",
+      "fromProperty": "onClick",
+      "toId": "toMeetings-2",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "postButton",
+      "fromProperty": "onClick",
+      "toId": "toPost",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "requestsButton",
+      "fromProperty": "onClick",
+      "toId": "toRequests",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "signOutButton",
       "fromProperty": "onClick",
       "toId": "logout",
       "toProperty": "login"
@@ -12,7 +96,7 @@
     {
       "fromId": "logout",
       "fromProperty": "done",
-      "toId": "to_landing",
+      "toId": "toLanding",
       "toProperty": "navigate"
     }
   ]

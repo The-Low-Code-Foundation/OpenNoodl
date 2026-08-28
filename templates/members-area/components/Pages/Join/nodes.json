@@ -1,0 +1,230 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "4868de1b-9633-5cf0-80d8-bd8cc2fb96da",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-7",
+      "type": "Page",
+      "label": "Ask to join",
+      "children": [
+        "ground-7"
+      ],
+      "parameters": {
+        "title": "Ask to join",
+        "urlPath": "join"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "ground-7",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "page-7",
+      "children": [
+        "heading-5",
+        "nameField",
+        "emailField",
+        "passwordField",
+        "messageField",
+        "sendButton",
+        "sent",
+        "refusal-3",
+        "hint",
+        "signInButton-2"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingTop": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 24,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignX": "center"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading-5",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "ground-7",
+      "parameters": {
+        "text": "Ask to join",
+        "fontWeight": "var(--font-bold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "nameField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Your name",
+      "parent": "ground-7",
+      "parameters": {
+        "useLabel": true,
+        "label": "Your name"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "emailField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Email",
+      "parent": "ground-7",
+      "parameters": {
+        "useLabel": true,
+        "label": "Email",
+        "type": "email"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "passwordField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Choose a password",
+      "parent": "ground-7",
+      "parameters": {
+        "useLabel": true,
+        "label": "Choose a password",
+        "type": "password"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "messageField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Why you would like to join",
+      "parent": "ground-7",
+      "parameters": {
+        "useLabel": true,
+        "label": "Why you’d like to join",
+        "type": "textArea"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "sendButton",
+      "type": "net.noodl.controls.button",
+      "label": "Send",
+      "parent": "ground-7",
+      "parameters": {
+        "label": "Send my request"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "sent",
+      "type": "Text",
+      "label": "Request received",
+      "parent": "ground-7",
+      "parameters": {
+        "text": "Thank you. Your request has been passed to the moderators.",
+        "visible": false
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "refusal-3",
+      "type": "Text",
+      "label": "The one refusal",
+      "parent": "ground-7",
+      "parameters": {
+        "text": "That request could not be sent. Please check the form and try again.",
+        "visible": false
+      },
+      "x": 160,
+      "y": 1120
+    },
+    {
+      "id": "hint",
+      "type": "Text",
+      "label": "Already a member",
+      "parent": "ground-7",
+      "parameters": {
+        "text": "Already have an account? Sign in instead."
+      },
+      "x": 160,
+      "y": 1240
+    },
+    {
+      "id": "signInButton-2",
+      "type": "net.noodl.controls.button",
+      "label": "Sign in",
+      "parent": "ground-7",
+      "parameters": {
+        "label": "Sign in"
+      },
+      "x": 160,
+      "y": 1360
+    },
+    {
+      "id": "send",
+      "type": "CloudFunction2",
+      "label": "requestAccess",
+      "parameters": {
+        "function": "requestAccess"
+      },
+      "x": 410,
+      "y": 400
+    },
+    {
+      "id": "sentGate",
+      "type": "Condition",
+      "label": "Show the confirmation",
+      "parameters": {
+        "condition": true
+      },
+      "x": 410,
+      "y": 1000
+    },
+    {
+      "id": "refusalGate-3",
+      "type": "Condition",
+      "label": "Show the refusal",
+      "parameters": {
+        "condition": true
+      },
+      "x": 410,
+      "y": 1120
+    },
+    {
+      "id": "toSignIn",
+      "type": "RouterNavigate",
+      "label": "Go to sign in",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/SignIn"
+      },
+      "x": 410,
+      "y": 1360
+    }
+  ],
+  "visualRoots": [
+    "page-7"
+  ]
+}

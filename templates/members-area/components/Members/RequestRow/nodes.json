@@ -1,0 +1,148 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "5660d284-6f7d-563b-89db-f520178e829c",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "row-3",
+      "type": "Group",
+      "label": "One request to join",
+      "children": [
+        "rowName",
+        "rowMessage",
+        "buttons"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "paddingTop": 8,
+        "paddingBottom": 8
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rowName",
+      "type": "Text",
+      "label": "Who",
+      "parent": "row-3",
+      "parameters": {
+        "text": "",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "rowMessage",
+      "type": "Text",
+      "label": "Why",
+      "parent": "row-3",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "buttons",
+      "type": "Group",
+      "label": "Decide",
+      "parent": "row-3",
+      "children": [
+        "approveButton",
+        "declineButton"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "approveButton",
+      "type": "net.noodl.controls.button",
+      "label": "Approve",
+      "parent": "buttons",
+      "parameters": {
+        "label": "Approve"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "declineButton",
+      "type": "net.noodl.controls.button",
+      "label": "Decline",
+      "parent": "buttons",
+      "parameters": {
+        "label": "Decline"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "inputs-4",
+      "type": "Component Inputs",
+      "label": "The request",
+      "ports": [
+        {
+          "name": "id",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "message",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 410,
+      "y": 160
+    },
+    {
+      "id": "approve",
+      "type": "CloudFunction2",
+      "label": "decideMembership(approve: true)",
+      "parameters": {
+        "function": "decideMembership",
+        "in-approve": true
+      },
+      "x": 410,
+      "y": 520
+    },
+    {
+      "id": "decline",
+      "type": "CloudFunction2",
+      "label": "decideMembership(approve: false)",
+      "parameters": {
+        "function": "decideMembership",
+        "in-approve": false
+      },
+      "x": 410,
+      "y": 640
+    },
+    {
+      "id": "outputs-2",
+      "type": "Component Outputs",
+      "label": "Tell the queue something changed",
+      "ports": [
+        {
+          "name": "Changed",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 410,
+      "y": 760
+    }
+  ],
+  "visualRoots": [
+    "row-3"
+  ]
+}

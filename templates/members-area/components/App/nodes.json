@@ -36,7 +36,14 @@
           "routes": [
             "/Pages/Landing",
             "/Pages/SignIn",
-            "/Pages/Members"
+            "/Pages/Members",
+            "/Pages/Announcement",
+            "/Pages/Meetings",
+            "/Pages/Meeting",
+            "/Pages/Join",
+            "/Pages/Setup",
+            "/Pages/Post",
+            "/Pages/Requests"
           ]
         }
       },

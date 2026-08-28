@@ -1,0 +1,61 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "568b05ff-bd29-5171-80c3-3933e9bf9272",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "nameField-2",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-associationName"
+    },
+    {
+      "fromId": "aboutField",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-blurb"
+    },
+    {
+      "fromId": "emailField-2",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-email"
+    },
+    {
+      "fromId": "passwordField-2",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-password"
+    },
+    {
+      "fromId": "tokenField",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-setupToken"
+    },
+    {
+      "fromId": "claimButton",
+      "fromProperty": "onClick",
+      "toId": "claim",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "claim",
+      "fromProperty": "done",
+      "toId": "toSignIn-2",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "claim",
+      "fromProperty": "failure",
+      "toId": "refusalGate-4",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "refusalGate-4",
+      "fromProperty": "result",
+      "toId": "refusal-4",
+      "toProperty": "visible"
+    }
+  ]
+}

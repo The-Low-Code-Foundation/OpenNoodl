@@ -25,7 +25,8 @@
       "children": [
         "heading",
         "blurb",
-        "signin_button"
+        "actions",
+        "setupCard"
       ],
       "parameters": {
         "sizeMode": "explicit",
@@ -49,6 +50,7 @@
           "value": 24,
           "unit": "px"
         },
+        "flexDirection": "column",
         "alignX": "center"
       },
       "x": 100,
@@ -60,7 +62,8 @@
       "label": "Association name",
       "parent": "ground",
       "parameters": {
-        "text": "St. Anywhere Community Association"
+        "text": "",
+        "fontWeight": "var(--font-bold)"
       },
       "x": 160,
       "y": 280
@@ -71,32 +74,139 @@
       "label": "What we do",
       "parent": "ground",
       "parameters": {
-        "text": "We meet on the first Tuesday of every month. Members can sign in to read announcements and see what is coming up."
+        "text": ""
       },
       "x": 160,
       "y": 400
     },
     {
-      "id": "signin_button",
-      "type": "net.noodl.controls.button",
-      "label": "Members sign in",
+      "id": "actions",
+      "type": "Group",
+      "label": "Ways in",
       "parent": "ground",
+      "children": [
+        "signInButton",
+        "joinButton"
+      ],
       "parameters": {
-        "label": "Members sign in"
+        "flexDirection": "row",
+        "alignItems": "center"
       },
       "x": 160,
       "y": 520
     },
     {
-      "id": "to_signin",
+      "id": "signInButton",
+      "type": "net.noodl.controls.button",
+      "label": "Members sign in",
+      "parent": "actions",
+      "parameters": {
+        "label": "Members sign in"
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
+      "id": "joinButton",
+      "type": "net.noodl.controls.button",
+      "label": "Ask to join",
+      "parent": "actions",
+      "parameters": {
+        "label": "Ask to join"
+      },
+      "x": 220,
+      "y": 760
+    },
+    {
+      "id": "setupCard",
+      "type": "Group",
+      "label": "Nobody has set this up yet",
+      "parent": "ground",
+      "children": [
+        "setupText",
+        "setupButton"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "visible": false
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "setupText",
+      "type": "Text",
+      "label": "Setup notice",
+      "parent": "setupCard",
+      "parameters": {
+        "text": "This members’ area has not been set up yet."
+      },
+      "x": 220,
+      "y": 1000
+    },
+    {
+      "id": "setupButton",
+      "type": "net.noodl.controls.button",
+      "label": "Set it up",
+      "parent": "setupCard",
+      "parameters": {
+        "label": "Set it up"
+      },
+      "x": 220,
+      "y": 1120
+    },
+    {
+      "id": "association",
+      "type": "DbCollection2",
+      "label": "The association",
+      "parameters": {
+        "collectionName": "Association"
+      },
+      "x": 470,
+      "y": 1240
+    },
+    {
+      "id": "read",
+      "type": "JavaScriptFunction",
+      "label": "The association, or the invitation to set one up",
+      "parameters": {
+        "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows.length > 0 ? rows[0] : undefined;\nOutputs.name = row ? (row.name || '') : '';\nOutputs.blurb = row ? (row.blurb || '') : '';\nOutputs.hasAssociation = rows.length > 0;\nOutputs.needsSetup = rows.length === 0;"
+      },
+      "x": 470,
+      "y": 280
+    },
+    {
+      "id": "toSignIn-3",
       "type": "RouterNavigate",
       "label": "Go to sign in",
       "parameters": {
         "router": "Main",
         "target": "/Pages/SignIn"
       },
-      "x": 410,
-      "y": 520
+      "x": 470,
+      "y": 640
+    },
+    {
+      "id": "toJoin",
+      "type": "RouterNavigate",
+      "label": "Go to the join form",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Join"
+      },
+      "x": 470,
+      "y": 760
+    },
+    {
+      "id": "toSetup",
+      "type": "RouterNavigate",
+      "label": "Go to setup",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Setup"
+      },
+      "x": 470,
+      "y": 1120
     }
   ],
   "visualRoots": [

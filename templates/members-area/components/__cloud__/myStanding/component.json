@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "6c592aa9-38bf-57a2-857e-e9a2ce60c740",
+  "name": "myStanding",
+  "path": "/#__cloud__/myStanding",
+  "type": "cloud",
+  "created": "2026-08-28T00:00:00.000Z",
+  "modified": "2026-08-28T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

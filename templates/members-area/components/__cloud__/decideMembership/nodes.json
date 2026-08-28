@@ -1,0 +1,115 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c8ca97ac-ee6a-52eb-8198-3b3dee821e55",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "req-4",
+      "type": "noodl.cloud.request",
+      "label": "decideMembership(requestId, approve)",
+      "parameters": {
+        "params": "requestId,approve",
+        "ptype-requestId": "string",
+        "preq-requestId": true,
+        "ptype-approve": "boolean",
+        "preq-approve": true,
+        "allowNoAuth": false
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "prep-2",
+      "type": "JavaScriptFunction",
+      "label": "Hold the decision until both parameters are here",
+      "parameters": {
+        "functionScript": "// `approve: false` is a real answer, so the guard tests `undefined`\n// and never falsiness — a decline read as \"not ready yet\" is a queue\n// entry nothing ever removes.\nif (Inputs.requestId === undefined || Inputs.approve === undefined) return;\nif (String(Inputs.requestId).length === 0) return;\nOutputs.requestId = Inputs.requestId;\nOutputs.approve = Inputs.approve === true;\nOutputs.ready();"
+      },
+      "ports": [
+        {
+          "name": "out-ready",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "request",
+      "type": "DbModel2",
+      "label": "The request being decided",
+      "parameters": {
+        "collectionName": "MemberRequest",
+        "idSource": "explicit"
+      },
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "route",
+      "type": "JavaScriptFunction",
+      "label": "Grant, or simply remove",
+      "parameters": {
+        "functionScript": "// Two producers — the row supplies the user id, the request supplies the\n// decision — so this opens with the readiness guard rule 2 prescribes.\nif (Inputs.userId === undefined || Inputs.approve === undefined) return;\nconst userId = Inputs.userId === null ? '' : String(Inputs.userId);\nOutputs.userId = userId;\nOutputs.approved = Inputs.approve === true;\n// A row whose userId is missing cannot be approved into anything. It is\n// still a queue entry a moderator asked to be rid of, so it declines.\nif (Inputs.approve === true && userId.length > 0) {\n  Outputs.grant();\n  return;\n}\nOutputs.decline();"
+      },
+      "ports": [
+        {
+          "name": "out-grant",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-decline",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 400
+    },
+    {
+      "id": "grant-2",
+      "type": "noodl.cloud.addusertorole",
+      "label": "Make them a member",
+      "parameters": {
+        "role": "member",
+        "createRole": true
+      },
+      "x": 40,
+      "y": 520
+    },
+    {
+      "id": "remove",
+      "type": "DeleteDbModelProperties",
+      "label": "Take the request off the queue",
+      "parameters": {
+        "collectionName": "MemberRequest",
+        "idSource": "explicit"
+      },
+      "x": 40,
+      "y": 640
+    },
+    {
+      "id": "res-4",
+      "type": "noodl.cloud.response",
+      "label": "Decided",
+      "parameters": {
+        "params": "approved"
+      },
+      "x": 40,
+      "y": 760
+    },
+    {
+      "id": "deny-3",
+      "type": "noodl.cloud.response",
+      "label": "Refused",
+      "parameters": {
+        "status": "failure",
+        "errorMessage": "That request could not be decided."
+      },
+      "x": 40,
+      "y": 880
+    }
+  ]
+}

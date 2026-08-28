@@ -1,0 +1,187 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "8c74118f-e74c-5892-8887-67aee46d76af",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "req",
+      "fromProperty": "receive",
+      "toId": "secret",
+      "toProperty": "fetch"
+    },
+    {
+      "fromId": "secret",
+      "fromProperty": "done",
+      "toId": "existing",
+      "toProperty": "storageFetch"
+    },
+    {
+      "fromId": "secret",
+      "fromProperty": "value",
+      "toId": "gate",
+      "toProperty": "in-expected"
+    },
+    {
+      "fromId": "req",
+      "fromProperty": "pm-setupToken",
+      "toId": "gate",
+      "toProperty": "in-supplied"
+    },
+    {
+      "fromId": "req",
+      "fromProperty": "pm-associationName",
+      "toId": "gate",
+      "toProperty": "in-name"
+    },
+    {
+      "fromId": "req",
+      "fromProperty": "pm-blurb",
+      "toId": "gate",
+      "toProperty": "in-blurb"
+    },
+    {
+      "fromId": "req",
+      "fromProperty": "pm-email",
+      "toId": "gate",
+      "toProperty": "in-email"
+    },
+    {
+      "fromId": "req",
+      "fromProperty": "pm-password",
+      "toId": "gate",
+      "toProperty": "in-password"
+    },
+    {
+      "fromId": "existing",
+      "fromProperty": "isEmpty",
+      "toId": "gate",
+      "toProperty": "in-unclaimed"
+    },
+    {
+      "fromId": "existing",
+      "fromProperty": "items",
+      "toId": "gate",
+      "toProperty": "in-rows"
+    },
+    {
+      "fromId": "existing",
+      "fromProperty": "fetched",
+      "toId": "gate",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "gate",
+      "fromProperty": "out-username",
+      "toId": "create",
+      "toProperty": "username"
+    },
+    {
+      "fromId": "gate",
+      "fromProperty": "out-email",
+      "toId": "create",
+      "toProperty": "email"
+    },
+    {
+      "fromId": "gate",
+      "fromProperty": "out-password",
+      "toId": "create",
+      "toProperty": "password"
+    },
+    {
+      "fromId": "gate",
+      "fromProperty": "out-ok",
+      "toId": "create",
+      "toProperty": "create"
+    },
+    {
+      "fromId": "create",
+      "fromProperty": "userId",
+      "toId": "grant",
+      "toProperty": "userId"
+    },
+    {
+      "fromId": "create",
+      "fromProperty": "done",
+      "toId": "grant",
+      "toProperty": "add"
+    },
+    {
+      "fromId": "create",
+      "fromProperty": "unchanged",
+      "toId": "grant",
+      "toProperty": "add"
+    },
+    {
+      "fromId": "gate",
+      "fromProperty": "out-name",
+      "toId": "mark",
+      "toProperty": "prop-name"
+    },
+    {
+      "fromId": "gate",
+      "fromProperty": "out-blurb",
+      "toId": "mark",
+      "toProperty": "prop-blurb"
+    },
+    {
+      "fromId": "grant",
+      "fromProperty": "done",
+      "toId": "mark",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "grant",
+      "fromProperty": "unchanged",
+      "toId": "mark",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "gate",
+      "fromProperty": "out-claimed",
+      "toId": "res",
+      "toProperty": "pm-claimed"
+    },
+    {
+      "fromId": "mark",
+      "fromProperty": "done",
+      "toId": "res",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "mark",
+      "fromProperty": "failure",
+      "toId": "res",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "secret",
+      "fromProperty": "failure",
+      "toId": "deny",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "existing",
+      "fromProperty": "failure",
+      "toId": "deny",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "gate",
+      "fromProperty": "out-denied",
+      "toId": "deny",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "create",
+      "fromProperty": "failure",
+      "toId": "deny",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "grant",
+      "fromProperty": "failure",
+      "toId": "deny",
+      "toProperty": "send"
+    }
+  ]
+}

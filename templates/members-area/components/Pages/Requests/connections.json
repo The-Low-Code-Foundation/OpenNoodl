@@ -1,0 +1,79 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "3b77a55e-f29a-5549-8930-5fd45029ec5f",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "page-10",
+      "fromProperty": "didMount",
+      "toId": "standing-4",
+      "toProperty": "Check"
+    },
+    {
+      "fromId": "standing-4",
+      "fromProperty": "isModerator",
+      "toId": "queue",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "standing-4",
+      "fromProperty": "isModerator",
+      "toId": "notModerator-2",
+      "toProperty": "in-isModerator"
+    },
+    {
+      "fromId": "notModerator-2",
+      "fromProperty": "out-no",
+      "toId": "notAllowed-2",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "standing-4",
+      "fromProperty": "Moderator",
+      "toId": "requests",
+      "toProperty": "storageFetch"
+    },
+    {
+      "fromId": "standing-4",
+      "fromProperty": "Visitor",
+      "toId": "toLanding-4",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "requests",
+      "fromProperty": "items",
+      "toId": "list-3",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "requests",
+      "fromProperty": "count",
+      "toId": "emptyGate-3",
+      "toProperty": "in-count"
+    },
+    {
+      "fromId": "requests",
+      "fromProperty": "fetched",
+      "toId": "emptyGate-3",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "emptyGate-3",
+      "fromProperty": "out-empty",
+      "toId": "emptyState-3",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "list-3",
+      "fromProperty": "itemOutputSignal-Changed",
+      "toId": "requests",
+      "toProperty": "storageFetch"
+    },
+    {
+      "fromId": "backButton-5",
+      "fromProperty": "onClick",
+      "toId": "toMembers-4",
+      "toProperty": "navigate"
+    }
+  ]
+}

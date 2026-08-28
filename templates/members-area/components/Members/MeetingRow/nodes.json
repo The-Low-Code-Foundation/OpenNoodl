@@ -1,0 +1,123 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "5e4970aa-ec79-566e-81d0-a0013f158429",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "row-2",
+      "type": "Group",
+      "label": "One meeting",
+      "children": [
+        "rowTitle-2",
+        "rowWhen",
+        "rowPlace",
+        "detailButton"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "paddingTop": 8,
+        "paddingBottom": 8
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rowTitle-2",
+      "type": "Text",
+      "label": "Title",
+      "parent": "row-2",
+      "parameters": {
+        "text": "",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "rowWhen",
+      "type": "Text",
+      "label": "When",
+      "parent": "row-2",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "rowPlace",
+      "type": "Text",
+      "label": "Where",
+      "parent": "row-2",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "detailButton",
+      "type": "net.noodl.controls.button",
+      "label": "Details",
+      "parent": "row-2",
+      "parameters": {
+        "label": "Details"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "inputs-3",
+      "type": "Component Inputs",
+      "label": "The meeting",
+      "ports": [
+        {
+          "name": "id",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "when",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "place",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "whenLabel",
+      "type": "JavaScriptFunction",
+      "label": "The date, as a person writes it",
+      "parameters": {
+        "functionScript": "if (Inputs.when === undefined) return;\nconst raw = Inputs.when || '';\nconst at = new Date(raw);\nOutputs.label = isNaN(at.getTime()) ? raw : at.toLocaleDateString();"
+      },
+      "x": 350,
+      "y": 280
+    },
+    {
+      "id": "goDetail-2",
+      "type": "RouterNavigate",
+      "label": "Open the meeting",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Meeting"
+      },
+      "x": 350,
+      "y": 520
+    }
+  ],
+  "visualRoots": [
+    "row-2"
+  ]
+}

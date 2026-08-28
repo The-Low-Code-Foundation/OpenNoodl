@@ -24,8 +24,11 @@
       "parent": "page-3",
       "children": [
         "heading-3",
-        "empty_state",
-        "signout"
+        "pendingNotice",
+        "unknownNotice",
+        "memberArea",
+        "moderatorTools",
+        "signOutButton"
       ],
       "parameters": {
         "sizeMode": "explicit",
@@ -48,7 +51,8 @@
         "paddingRight": {
           "value": 24,
           "unit": "px"
-        }
+        },
+        "flexDirection": "column"
       },
       "x": 100,
       "y": 160
@@ -59,24 +63,142 @@
       "label": "Heading",
       "parent": "ground-3",
       "parameters": {
-        "text": "Members"
+        "text": "Members",
+        "fontWeight": "var(--font-bold)"
       },
       "x": 160,
       "y": 280
     },
     {
-      "id": "empty_state",
+      "id": "pendingNotice",
       "type": "Text",
-      "label": "Empty state",
+      "label": "Waiting to be approved",
       "parent": "ground-3",
       "parameters": {
-        "text": "Nothing has been posted yet. When a moderator posts an announcement it will appear here."
+        "text": "Your request to join is with the moderators. You will be able to see announcements and meetings once it has been approved.",
+        "visible": false
       },
       "x": 160,
       "y": 400
     },
     {
-      "id": "signout",
+      "id": "unknownNotice",
+      "type": "Text",
+      "label": "Membership could not be checked",
+      "parent": "ground-3",
+      "parameters": {
+        "text": "We could not check your membership just now. Please try again in a moment.",
+        "visible": false
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "memberArea",
+      "type": "Group",
+      "label": "What a member sees",
+      "parent": "ground-3",
+      "children": [
+        "listHeading",
+        "list",
+        "emptyState",
+        "meetingsButton"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "visible": false
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "listHeading",
+      "type": "Text",
+      "label": "Announcements",
+      "parent": "memberArea",
+      "parameters": {
+        "text": "Announcements",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 220,
+      "y": 760
+    },
+    {
+      "id": "list",
+      "type": "For Each",
+      "label": "One row per announcement",
+      "parent": "memberArea",
+      "parameters": {
+        "templateType": "explicit",
+        "template": "/Members/AnnouncementRow"
+      },
+      "x": 220,
+      "y": 880
+    },
+    {
+      "id": "emptyState",
+      "type": "Text",
+      "label": "Nothing posted yet",
+      "parent": "memberArea",
+      "parameters": {
+        "text": "Nothing has been posted yet. When a moderator posts an announcement it will appear here.",
+        "visible": false
+      },
+      "x": 220,
+      "y": 1000
+    },
+    {
+      "id": "meetingsButton",
+      "type": "net.noodl.controls.button",
+      "label": "What is coming up",
+      "parent": "memberArea",
+      "parameters": {
+        "label": "What’s coming up"
+      },
+      "x": 220,
+      "y": 1120
+    },
+    {
+      "id": "moderatorTools",
+      "type": "Group",
+      "label": "What only a moderator sees",
+      "parent": "ground-3",
+      "children": [
+        "postButton",
+        "requestsButton"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "visible": false
+      },
+      "x": 160,
+      "y": 1240
+    },
+    {
+      "id": "postButton",
+      "type": "net.noodl.controls.button",
+      "label": "Post something",
+      "parent": "moderatorTools",
+      "parameters": {
+        "label": "Post something"
+      },
+      "x": 220,
+      "y": 1360
+    },
+    {
+      "id": "requestsButton",
+      "type": "net.noodl.controls.button",
+      "label": "Requests to join",
+      "parent": "moderatorTools",
+      "parameters": {
+        "label": "Requests to join"
+      },
+      "x": 220,
+      "y": 1480
+    },
+    {
+      "id": "signOutButton",
       "type": "net.noodl.controls.button",
       "label": "Sign out",
       "parent": "ground-3",
@@ -84,25 +206,93 @@
         "label": "Sign out"
       },
       "x": 160,
-      "y": 520
+      "y": 1600
+    },
+    {
+      "id": "standing",
+      "type": "/Members/Standing",
+      "label": "Who is this?",
+      "x": 470,
+      "y": 640
+    },
+    {
+      "id": "announcements",
+      "type": "DbCollection2",
+      "label": "The announcements",
+      "parameters": {
+        "collectionName": "Announcement",
+        "runOnChange-collectionName": false,
+        "runOnChange-querySettings": false,
+        "visualSort": [
+          {
+            "property": "postedAt",
+            "order": "descending"
+          }
+        ]
+      },
+      "x": 470,
+      "y": 880
+    },
+    {
+      "id": "emptyGate",
+      "type": "JavaScriptFunction",
+      "label": "Is the noticeboard really empty?",
+      "parameters": {
+        "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
+      },
+      "x": 470,
+      "y": 1000
     },
     {
       "id": "logout",
       "type": "net.noodl.user.LogOut",
       "label": "Log out",
-      "x": 410,
-      "y": 520
+      "x": 470,
+      "y": 1600
     },
     {
-      "id": "to_landing",
+      "id": "toLanding",
       "type": "RouterNavigate",
       "label": "Back to the landing page",
       "parameters": {
         "router": "Main",
         "target": "/Pages/Landing"
       },
-      "x": 410,
-      "y": 640
+      "x": 470,
+      "y": 1720
+    },
+    {
+      "id": "toMeetings-2",
+      "type": "RouterNavigate",
+      "label": "To the diary",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Meetings"
+      },
+      "x": 470,
+      "y": 1120
+    },
+    {
+      "id": "toPost",
+      "type": "RouterNavigate",
+      "label": "To the posting form",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Post"
+      },
+      "x": 470,
+      "y": 1360
+    },
+    {
+      "id": "toRequests",
+      "type": "RouterNavigate",
+      "label": "To the queue",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Requests"
+      },
+      "x": 470,
+      "y": 1480
     }
   ],
   "visualRoots": [

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "5660d284-6f7d-563b-89db-f520178e829c",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "inputs-4",
+      "fromProperty": "name",
+      "toId": "rowName",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-4",
+      "fromProperty": "message",
+      "toId": "rowMessage",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-4",
+      "fromProperty": "id",
+      "toId": "approve",
+      "toProperty": "in-requestId"
+    },
+    {
+      "fromId": "inputs-4",
+      "fromProperty": "id",
+      "toId": "decline",
+      "toProperty": "in-requestId"
+    },
+    {
+      "fromId": "approveButton",
+      "fromProperty": "onClick",
+      "toId": "approve",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "declineButton",
+      "fromProperty": "onClick",
+      "toId": "decline",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "approve",
+      "fromProperty": "done",
+      "toId": "outputs-2",
+      "toProperty": "Changed"
+    },
+    {
+      "fromId": "decline",
+      "fromProperty": "done",
+      "toId": "outputs-2",
+      "toProperty": "Changed"
+    }
+  ]
+}

@@ -4,9 +4,57 @@
   "version": 1,
   "connections": [
     {
-      "fromId": "signin_button",
+      "fromId": "association",
+      "fromProperty": "items",
+      "toId": "read",
+      "toProperty": "in-rows"
+    },
+    {
+      "fromId": "association",
+      "fromProperty": "fetched",
+      "toId": "read",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "read",
+      "fromProperty": "out-name",
+      "toId": "heading",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "read",
+      "fromProperty": "out-blurb",
+      "toId": "blurb",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "read",
+      "fromProperty": "out-needsSetup",
+      "toId": "setupCard",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "read",
+      "fromProperty": "out-hasAssociation",
+      "toId": "actions",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "signInButton",
       "fromProperty": "onClick",
-      "toId": "to_signin",
+      "toId": "toSignIn-3",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "joinButton",
+      "fromProperty": "onClick",
+      "toId": "toJoin",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "setupButton",
+      "fromProperty": "onClick",
+      "toId": "toSetup",
       "toProperty": "navigate"
     }
   ]

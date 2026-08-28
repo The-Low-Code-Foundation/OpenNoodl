@@ -1,0 +1,127 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "113b3fbd-9686-5b97-89ed-5fe291685bd4",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "page-9",
+      "fromProperty": "didMount",
+      "toId": "standing-3",
+      "toProperty": "Check"
+    },
+    {
+      "fromId": "standing-3",
+      "fromProperty": "isModerator",
+      "toId": "tools",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "standing-3",
+      "fromProperty": "isModerator",
+      "toId": "notModerator",
+      "toProperty": "in-isModerator"
+    },
+    {
+      "fromId": "notModerator",
+      "fromProperty": "out-no",
+      "toId": "notAllowed",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "standing-3",
+      "fromProperty": "Visitor",
+      "toId": "toLanding-3",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "aTitle",
+      "fromProperty": "onTextChanged",
+      "toId": "createAnnouncement",
+      "toProperty": "prop-title"
+    },
+    {
+      "fromId": "aBody",
+      "fromProperty": "onTextChanged",
+      "toId": "createAnnouncement",
+      "toProperty": "prop-body"
+    },
+    {
+      "fromId": "aButton",
+      "fromProperty": "onClick",
+      "toId": "stampAnnouncement",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "stampAnnouncement",
+      "fromProperty": "out-postedAt",
+      "toId": "createAnnouncement",
+      "toProperty": "prop-postedAt"
+    },
+    {
+      "fromId": "stampAnnouncement",
+      "fromProperty": "out-go",
+      "toId": "createAnnouncement",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "createAnnouncement",
+      "fromProperty": "done",
+      "toId": "aDoneGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "aDoneGate",
+      "fromProperty": "result",
+      "toId": "aDone",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "mTitle",
+      "fromProperty": "onTextChanged",
+      "toId": "createMeeting",
+      "toProperty": "prop-title"
+    },
+    {
+      "fromId": "mWhen",
+      "fromProperty": "onTextChanged",
+      "toId": "createMeeting",
+      "toProperty": "prop-when"
+    },
+    {
+      "fromId": "mPlace",
+      "fromProperty": "onTextChanged",
+      "toId": "createMeeting",
+      "toProperty": "prop-place"
+    },
+    {
+      "fromId": "mDetails",
+      "fromProperty": "onTextChanged",
+      "toId": "createMeeting",
+      "toProperty": "prop-details"
+    },
+    {
+      "fromId": "mButton",
+      "fromProperty": "onClick",
+      "toId": "createMeeting",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "createMeeting",
+      "fromProperty": "done",
+      "toId": "mDoneGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "mDoneGate",
+      "fromProperty": "result",
+      "toId": "mDone",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "backButton-4",
+      "fromProperty": "onClick",
+      "toId": "toMembers-3",
+      "toProperty": "navigate"
+    }
+  ]
+}

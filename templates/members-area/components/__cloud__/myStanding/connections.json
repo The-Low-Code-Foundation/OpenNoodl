@@ -1,0 +1,79 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "6c592aa9-38bf-57a2-857e-e9a2ce60c740",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "req-3",
+      "fromProperty": "userId",
+      "toId": "gate-2",
+      "toProperty": "in-userId"
+    },
+    {
+      "fromId": "req-3",
+      "fromProperty": "receive",
+      "toId": "gate-2",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "gate-2",
+      "fromProperty": "out-userId",
+      "toId": "roles",
+      "toProperty": "userId"
+    },
+    {
+      "fromId": "gate-2",
+      "fromProperty": "out-known",
+      "toId": "roles",
+      "toProperty": "read"
+    },
+    {
+      "fromId": "roles",
+      "fromProperty": "roles",
+      "toId": "decide",
+      "toProperty": "in-roles"
+    },
+    {
+      "fromId": "roles",
+      "fromProperty": "done",
+      "toId": "decide",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "roles",
+      "fromProperty": "unchanged",
+      "toId": "decide",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "gate-2",
+      "fromProperty": "out-standing",
+      "toId": "res-3",
+      "toProperty": "pm-standing"
+    },
+    {
+      "fromId": "gate-2",
+      "fromProperty": "out-anonymous",
+      "toId": "res-3",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "decide",
+      "fromProperty": "out-standing",
+      "toId": "res-3",
+      "toProperty": "pm-standing"
+    },
+    {
+      "fromId": "decide",
+      "fromProperty": "out-answered",
+      "toId": "res-3",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "roles",
+      "fromProperty": "failure",
+      "toId": "unknown",
+      "toProperty": "send"
+    }
+  ]
+}

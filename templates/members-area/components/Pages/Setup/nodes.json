@@ -1,0 +1,209 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "568b05ff-bd29-5171-80c3-3933e9bf9272",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-8",
+      "type": "Page",
+      "label": "Set up",
+      "children": [
+        "ground-8"
+      ],
+      "parameters": {
+        "title": "Set up this members’ area",
+        "urlPath": "setup"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "ground-8",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "page-8",
+      "children": [
+        "heading-6",
+        "blurb-2",
+        "nameField-2",
+        "aboutField",
+        "emailField-2",
+        "passwordField-2",
+        "tokenField",
+        "claimButton",
+        "refusal-4"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingTop": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 24,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignX": "center"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading-6",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "ground-8",
+      "parameters": {
+        "text": "Set up this members’ area",
+        "fontWeight": "var(--font-bold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "blurb-2",
+      "type": "Text",
+      "label": "What this does",
+      "parent": "ground-8",
+      "parameters": {
+        "text": "Name your association and create the first moderator account. The setup token comes from your backend configuration."
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "nameField-2",
+      "type": "net.noodl.controls.textinput",
+      "label": "Association name",
+      "parent": "ground-8",
+      "parameters": {
+        "useLabel": true,
+        "label": "Association name"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "aboutField",
+      "type": "net.noodl.controls.textinput",
+      "label": "About the association",
+      "parent": "ground-8",
+      "parameters": {
+        "useLabel": true,
+        "label": "About the association",
+        "type": "textArea"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "emailField-2",
+      "type": "net.noodl.controls.textinput",
+      "label": "Moderator email",
+      "parent": "ground-8",
+      "parameters": {
+        "useLabel": true,
+        "label": "Your email",
+        "type": "email"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "passwordField-2",
+      "type": "net.noodl.controls.textinput",
+      "label": "Moderator password",
+      "parent": "ground-8",
+      "parameters": {
+        "useLabel": true,
+        "label": "Choose a password",
+        "type": "password"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "tokenField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Setup token",
+      "parent": "ground-8",
+      "parameters": {
+        "useLabel": true,
+        "label": "Setup token",
+        "type": "password"
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "claimButton",
+      "type": "net.noodl.controls.button",
+      "label": "Set up",
+      "parent": "ground-8",
+      "parameters": {
+        "label": "Set up this members’ area"
+      },
+      "x": 160,
+      "y": 1120
+    },
+    {
+      "id": "refusal-4",
+      "type": "Text",
+      "label": "The one refusal",
+      "parent": "ground-8",
+      "parameters": {
+        "text": "This members’ area cannot be set up with those details.",
+        "visible": false
+      },
+      "x": 160,
+      "y": 1240
+    },
+    {
+      "id": "claim",
+      "type": "CloudFunction2",
+      "label": "claimAssociation",
+      "parameters": {
+        "function": "claimAssociation"
+      },
+      "x": 410,
+      "y": 520
+    },
+    {
+      "id": "refusalGate-4",
+      "type": "Condition",
+      "label": "Show the refusal",
+      "parameters": {
+        "condition": true
+      },
+      "x": 410,
+      "y": 1240
+    },
+    {
+      "id": "toSignIn-2",
+      "type": "RouterNavigate",
+      "label": "Sign in as the moderator",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/SignIn"
+      },
+      "x": 410,
+      "y": 1360
+    }
+  ],
+  "visualRoots": [
+    "page-8"
+  ]
+}

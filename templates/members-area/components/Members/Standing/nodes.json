@@ -1,0 +1,117 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "db7bd7ec-aacc-5fdc-8523-6f16da932799",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "inputs",
+      "type": "Component Inputs",
+      "label": "Ask",
+      "ports": [
+        {
+          "name": "Check",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "call",
+      "type": "CloudFunction2",
+      "label": "myStanding",
+      "parameters": {
+        "function": "myStanding"
+      },
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "decide-2",
+      "type": "JavaScriptFunction",
+      "label": "Turn the standing into what each screen needs",
+      "parameters": {
+        "functionScript": "if (Inputs.standing === undefined) return;\nconst s = String(Inputs.standing);\nconst moderator = s === 'moderator';\nconst member = moderator || s === 'member';\nOutputs.standing = s;\n// 🔴 A moderator IS shown the members’ content. The roles are flat and\n// a moderator need not hold `member`, so every screen that asks \"may\n// this person read?\" has to ask for both — in the graph here, and in\n// the policy as a two-atom rule.\nOutputs.isMember = member;\nOutputs.isModerator = moderator;\nOutputs.isPending = s === 'pending';\nOutputs.isUnknown = false;\nif (moderator) Outputs.moderator();\nif (member) Outputs.member();\nif (s === 'visitor') Outputs.visitor();"
+      },
+      "ports": [
+        {
+          "name": "out-member",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-moderator",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-visitor",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "failed",
+      "type": "JavaScriptFunction",
+      "label": "The roles could not be read",
+      "parameters": {
+        "functionScript": "Outputs.standing = 'unknown';\nOutputs.isUnknown = true;"
+      },
+      "x": 40,
+      "y": 400
+    },
+    {
+      "id": "outputs",
+      "type": "Component Outputs",
+      "label": "What the screen may show",
+      "ports": [
+        {
+          "name": "standing",
+          "plug": "input",
+          "type": "string"
+        },
+        {
+          "name": "isMember",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "isModerator",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "isPending",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "isUnknown",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "Member",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "Moderator",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "Visitor",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 520
+    }
+  ]
+}

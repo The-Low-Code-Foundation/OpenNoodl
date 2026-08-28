@@ -1,0 +1,85 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "6c592aa9-38bf-57a2-857e-e9a2ce60c740",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "req-3",
+      "type": "noodl.cloud.request",
+      "label": "myStanding()",
+      "parameters": {
+        "allowNoAuth": true
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "gate-2",
+      "type": "JavaScriptFunction",
+      "label": "Is anybody signed in?",
+      "parameters": {
+        "functionScript": "// `userId` is blank for an unauthenticated request — the Request node’s\n// own contract — and a blank id is a Failure on the roles node, so the\n// two cases are separated here rather than through an error branch.\nconst id = Inputs.userId === undefined || Inputs.userId === null ? '' : String(Inputs.userId);\nif (id.length === 0) {\n  Outputs.standing = 'visitor';\n  Outputs.anonymous();\n  return;\n}\nOutputs.userId = id;\nOutputs.known();"
+      },
+      "ports": [
+        {
+          "name": "out-anonymous",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-known",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "roles",
+      "type": "noodl.cloud.getuserroles",
+      "label": "What roles is this caller in?",
+      "parameters": {},
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "decide",
+      "type": "JavaScriptFunction",
+      "label": "Moderator, member, or still waiting",
+      "parameters": {
+        "functionScript": "const roles = Inputs.roles || [];\n// A moderator is not implicitly a member: the roles are flat and\n// separate, so the check is by name and `admin` is reported first\n// because it is the standing that unlocks more.\nOutputs.standing = roles.indexOf('admin') !== -1\n  ? 'moderator'\n  : roles.indexOf('member') !== -1\n    ? 'member'\n    : 'pending';\nOutputs.answered();"
+      },
+      "ports": [
+        {
+          "name": "out-answered",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 400
+    },
+    {
+      "id": "res-3",
+      "type": "noodl.cloud.response",
+      "label": "Your standing",
+      "parameters": {
+        "params": "standing"
+      },
+      "x": 40,
+      "y": 520
+    },
+    {
+      "id": "unknown",
+      "type": "noodl.cloud.response",
+      "label": "Could not be checked",
+      "parameters": {
+        "status": "failure",
+        "errorMessage": "Your membership could not be checked."
+      },
+      "x": 40,
+      "y": 640
+    }
+  ]
+}

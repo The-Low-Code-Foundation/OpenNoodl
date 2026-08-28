@@ -1,0 +1,121 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "c8ca97ac-ee6a-52eb-8198-3b3dee821e55",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "req-4",
+      "fromProperty": "pm-requestId",
+      "toId": "prep-2",
+      "toProperty": "in-requestId"
+    },
+    {
+      "fromId": "req-4",
+      "fromProperty": "pm-approve",
+      "toId": "prep-2",
+      "toProperty": "in-approve"
+    },
+    {
+      "fromId": "req-4",
+      "fromProperty": "receive",
+      "toId": "prep-2",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "prep-2",
+      "fromProperty": "out-requestId",
+      "toId": "request",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "prep-2",
+      "fromProperty": "out-ready",
+      "toId": "request",
+      "toProperty": "fetch"
+    },
+    {
+      "fromId": "request",
+      "fromProperty": "prop-userId",
+      "toId": "route",
+      "toProperty": "in-userId"
+    },
+    {
+      "fromId": "prep-2",
+      "fromProperty": "out-approve",
+      "toId": "route",
+      "toProperty": "in-approve"
+    },
+    {
+      "fromId": "request",
+      "fromProperty": "done",
+      "toId": "route",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "route",
+      "fromProperty": "out-userId",
+      "toId": "grant-2",
+      "toProperty": "userId"
+    },
+    {
+      "fromId": "route",
+      "fromProperty": "out-grant",
+      "toId": "grant-2",
+      "toProperty": "add"
+    },
+    {
+      "fromId": "prep-2",
+      "fromProperty": "out-requestId",
+      "toId": "remove",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "grant-2",
+      "fromProperty": "done",
+      "toId": "remove",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "grant-2",
+      "fromProperty": "unchanged",
+      "toId": "remove",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "route",
+      "fromProperty": "out-decline",
+      "toId": "remove",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "route",
+      "fromProperty": "out-approved",
+      "toId": "res-4",
+      "toProperty": "pm-approved"
+    },
+    {
+      "fromId": "remove",
+      "fromProperty": "done",
+      "toId": "res-4",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "request",
+      "fromProperty": "failure",
+      "toId": "deny-3",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "grant-2",
+      "fromProperty": "failure",
+      "toId": "deny-3",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "remove",
+      "fromProperty": "failure",
+      "toId": "deny-3",
+      "toProperty": "send"
+    }
+  ]
+}

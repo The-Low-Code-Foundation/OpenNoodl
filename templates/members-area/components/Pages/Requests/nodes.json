@@ -1,0 +1,204 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "3b77a55e-f29a-5549-8930-5fd45029ec5f",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-10",
+      "type": "Page",
+      "label": "Requests",
+      "children": [
+        "ground-10"
+      ],
+      "parameters": {
+        "title": "Requests to join",
+        "urlPath": "requests"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "ground-10",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "page-10",
+      "children": [
+        "heading-8",
+        "notAllowed-2",
+        "queue",
+        "backButton-5"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingTop": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 24,
+          "unit": "px"
+        },
+        "flexDirection": "column"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading-8",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "ground-10",
+      "parameters": {
+        "text": "Requests to join",
+        "fontWeight": "var(--font-bold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "notAllowed-2",
+      "type": "Text",
+      "label": "Not a moderator",
+      "parent": "ground-10",
+      "parameters": {
+        "text": "Only a moderator can see who is waiting to join.",
+        "visible": false
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "queue",
+      "type": "Group",
+      "label": "The queue",
+      "parent": "ground-10",
+      "children": [
+        "list-3",
+        "emptyState-3"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "visible": false
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "list-3",
+      "type": "For Each",
+      "label": "One row per request",
+      "parent": "queue",
+      "parameters": {
+        "templateType": "explicit",
+        "template": "/Members/RequestRow"
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
+      "id": "emptyState-3",
+      "type": "Text",
+      "label": "Nobody waiting",
+      "parent": "queue",
+      "parameters": {
+        "text": "Nobody is waiting to join.",
+        "visible": false
+      },
+      "x": 220,
+      "y": 760
+    },
+    {
+      "id": "backButton-5",
+      "type": "net.noodl.controls.button",
+      "label": "Back",
+      "parent": "ground-10",
+      "parameters": {
+        "label": "Back to the members area"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "standing-4",
+      "type": "/Members/Standing",
+      "label": "Who is this?",
+      "x": 470,
+      "y": 520
+    },
+    {
+      "id": "notModerator-2",
+      "type": "JavaScriptFunction",
+      "label": "Is this person not a moderator?",
+      "parameters": {
+        "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
+      },
+      "x": 470,
+      "y": 400
+    },
+    {
+      "id": "requests",
+      "type": "DbCollection2",
+      "label": "People waiting to join",
+      "parameters": {
+        "collectionName": "MemberRequest",
+        "runOnChange-collectionName": false,
+        "runOnChange-querySettings": false,
+        "visualSort": [
+          {
+            "property": "requestedAt",
+            "order": "ascending"
+          }
+        ]
+      },
+      "x": 470,
+      "y": 640
+    },
+    {
+      "id": "emptyGate-3",
+      "type": "JavaScriptFunction",
+      "label": "Is the queue really empty?",
+      "parameters": {
+        "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
+      },
+      "x": 470,
+      "y": 760
+    },
+    {
+      "id": "toMembers-4",
+      "type": "RouterNavigate",
+      "label": "Back to the members area",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Members"
+      },
+      "x": 470,
+      "y": 880
+    },
+    {
+      "id": "toLanding-4",
+      "type": "RouterNavigate",
+      "label": "Out of the members area",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Landing"
+      },
+      "x": 470,
+      "y": 1000
+    }
+  ],
+  "visualRoots": [
+    "page-10"
+  ]
+}

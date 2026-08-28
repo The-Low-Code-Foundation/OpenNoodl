@@ -1,0 +1,428 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "113b3fbd-9686-5b97-89ed-5fe291685bd4",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-9",
+      "type": "Page",
+      "label": "Post",
+      "children": [
+        "ground-9"
+      ],
+      "parameters": {
+        "title": "Post something",
+        "urlPath": "post"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "ground-9",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "page-9",
+      "children": [
+        "heading-7",
+        "notAllowed",
+        "tools",
+        "backButton-4"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingTop": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 24,
+          "unit": "px"
+        },
+        "flexDirection": "column"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading-7",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "ground-9",
+      "parameters": {
+        "text": "Post something",
+        "fontWeight": "var(--font-bold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "notAllowed",
+      "type": "Text",
+      "label": "Not a moderator",
+      "parent": "ground-9",
+      "parameters": {
+        "text": "Only a moderator can post here.",
+        "visible": false
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "tools",
+      "type": "Group",
+      "label": "The two forms",
+      "parent": "ground-9",
+      "children": [
+        "announcementForm",
+        "meetingForm"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "visible": false
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "announcementForm",
+      "type": "Group",
+      "label": "An announcement",
+      "parent": "tools",
+      "children": [
+        "aHeading",
+        "aTitle",
+        "aBody",
+        "aButton",
+        "aDone"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "paddingBottom": 24
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
+      "id": "aHeading",
+      "type": "Text",
+      "label": "Announcement heading",
+      "parent": "announcementForm",
+      "parameters": {
+        "text": "Post an announcement",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 280,
+      "y": 760
+    },
+    {
+      "id": "aTitle",
+      "type": "net.noodl.controls.textinput",
+      "label": "Announcement title",
+      "parent": "announcementForm",
+      "parameters": {
+        "useLabel": true,
+        "label": "Title"
+      },
+      "x": 280,
+      "y": 880
+    },
+    {
+      "id": "aBody",
+      "type": "net.noodl.controls.textinput",
+      "label": "Announcement body",
+      "parent": "announcementForm",
+      "parameters": {
+        "useLabel": true,
+        "label": "What you want to say",
+        "type": "textArea"
+      },
+      "x": 280,
+      "y": 1000
+    },
+    {
+      "id": "aButton",
+      "type": "net.noodl.controls.button",
+      "label": "Post",
+      "parent": "announcementForm",
+      "parameters": {
+        "label": "Post it"
+      },
+      "x": 280,
+      "y": 1120
+    },
+    {
+      "id": "aDone",
+      "type": "Text",
+      "label": "Announcement posted",
+      "parent": "announcementForm",
+      "parameters": {
+        "text": "Posted. Members can see it now.",
+        "visible": false
+      },
+      "x": 280,
+      "y": 1240
+    },
+    {
+      "id": "meetingForm",
+      "type": "Group",
+      "label": "A meeting",
+      "parent": "tools",
+      "children": [
+        "mHeading",
+        "mTitle",
+        "mWhen",
+        "mPlace",
+        "mDetails",
+        "mButton",
+        "mDone"
+      ],
+      "parameters": {
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 1360
+    },
+    {
+      "id": "mHeading",
+      "type": "Text",
+      "label": "Meeting heading",
+      "parent": "meetingForm",
+      "parameters": {
+        "text": "Add a meeting",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 280,
+      "y": 1480
+    },
+    {
+      "id": "mTitle",
+      "type": "net.noodl.controls.textinput",
+      "label": "Meeting title",
+      "parent": "meetingForm",
+      "parameters": {
+        "useLabel": true,
+        "label": "Title"
+      },
+      "x": 280,
+      "y": 1600
+    },
+    {
+      "id": "mWhen",
+      "type": "net.noodl.controls.textinput",
+      "label": "Meeting date",
+      "parent": "meetingForm",
+      "parameters": {
+        "useLabel": true,
+        "label": "Date (YYYY-MM-DD)"
+      },
+      "x": 280,
+      "y": 1720
+    },
+    {
+      "id": "mPlace",
+      "type": "net.noodl.controls.textinput",
+      "label": "Meeting place",
+      "parent": "meetingForm",
+      "parameters": {
+        "useLabel": true,
+        "label": "Where"
+      },
+      "x": 280,
+      "y": 1840
+    },
+    {
+      "id": "mDetails",
+      "type": "net.noodl.controls.textinput",
+      "label": "Meeting details",
+      "parent": "meetingForm",
+      "parameters": {
+        "useLabel": true,
+        "label": "Details",
+        "type": "textArea"
+      },
+      "x": 280,
+      "y": 1960
+    },
+    {
+      "id": "mButton",
+      "type": "net.noodl.controls.button",
+      "label": "Add",
+      "parent": "meetingForm",
+      "parameters": {
+        "label": "Add it to the diary"
+      },
+      "x": 280,
+      "y": 2080
+    },
+    {
+      "id": "mDone",
+      "type": "Text",
+      "label": "Meeting added",
+      "parent": "meetingForm",
+      "parameters": {
+        "text": "Added. Members can see it now.",
+        "visible": false
+      },
+      "x": 280,
+      "y": 2200
+    },
+    {
+      "id": "backButton-4",
+      "type": "net.noodl.controls.button",
+      "label": "Back",
+      "parent": "ground-9",
+      "parameters": {
+        "label": "Back to the members area"
+      },
+      "x": 160,
+      "y": 2320
+    },
+    {
+      "id": "standing-3",
+      "type": "/Members/Standing",
+      "label": "Who is this?",
+      "x": 530,
+      "y": 520
+    },
+    {
+      "id": "notModerator",
+      "type": "JavaScriptFunction",
+      "label": "Is this person not a moderator?",
+      "parameters": {
+        "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
+      },
+      "x": 530,
+      "y": 400
+    },
+    {
+      "id": "stampAnnouncement",
+      "type": "JavaScriptFunction",
+      "label": "When it was posted",
+      "parameters": {
+        "functionScript": "Outputs.postedAt = new Date().toISOString();\nOutputs.go();"
+      },
+      "ports": [
+        {
+          "name": "out-go",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 530,
+      "y": 1120
+    },
+    {
+      "id": "createAnnouncement",
+      "type": "NewDbModelProperties",
+      "label": "Post the announcement",
+      "parameters": {
+        "collectionName": "Announcement",
+        "accessControl": [
+          {
+            "id": "admin",
+            "label": "Moderators"
+          },
+          {
+            "id": "member",
+            "label": "Members"
+          }
+        ],
+        "acl-admin-target": "role",
+        "acl-admin-role": "admin",
+        "acl-admin-read": true,
+        "acl-admin-write": true,
+        "acl-member-target": "role",
+        "acl-member-role": "member",
+        "acl-member-read": true,
+        "acl-member-write": false
+      },
+      "x": 530,
+      "y": 880
+    },
+    {
+      "id": "createMeeting",
+      "type": "NewDbModelProperties",
+      "label": "Add the meeting",
+      "parameters": {
+        "collectionName": "Meeting",
+        "accessControl": [
+          {
+            "id": "admin",
+            "label": "Moderators"
+          },
+          {
+            "id": "member",
+            "label": "Members"
+          }
+        ],
+        "acl-admin-target": "role",
+        "acl-admin-role": "admin",
+        "acl-admin-read": true,
+        "acl-admin-write": true,
+        "acl-member-target": "role",
+        "acl-member-role": "member",
+        "acl-member-read": true,
+        "acl-member-write": false
+      },
+      "x": 530,
+      "y": 1600
+    },
+    {
+      "id": "aDoneGate",
+      "type": "Condition",
+      "label": "Show the confirmation",
+      "parameters": {
+        "condition": true
+      },
+      "x": 530,
+      "y": 1240
+    },
+    {
+      "id": "mDoneGate",
+      "type": "Condition",
+      "label": "Show the confirmation",
+      "parameters": {
+        "condition": true
+      },
+      "x": 530,
+      "y": 2200
+    },
+    {
+      "id": "toMembers-3",
+      "type": "RouterNavigate",
+      "label": "Back to the members area",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Members"
+      },
+      "x": 530,
+      "y": 2320
+    },
+    {
+      "id": "toLanding-3",
+      "type": "RouterNavigate",
+      "label": "Out of the members area",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Landing"
+      },
+      "x": 530,
+      "y": 2440
+    }
+  ],
+  "visualRoots": [
+    "page-9"
+  ]
+}

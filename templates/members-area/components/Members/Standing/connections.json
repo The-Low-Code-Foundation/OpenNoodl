@@ -1,0 +1,91 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "db7bd7ec-aacc-5fdc-8523-6f16da932799",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "inputs",
+      "fromProperty": "Check",
+      "toId": "call",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "call",
+      "fromProperty": "out-standing",
+      "toId": "decide-2",
+      "toProperty": "in-standing"
+    },
+    {
+      "fromId": "call",
+      "fromProperty": "done",
+      "toId": "decide-2",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "call",
+      "fromProperty": "failure",
+      "toId": "failed",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "decide-2",
+      "fromProperty": "out-standing",
+      "toId": "outputs",
+      "toProperty": "standing"
+    },
+    {
+      "fromId": "decide-2",
+      "fromProperty": "out-isMember",
+      "toId": "outputs",
+      "toProperty": "isMember"
+    },
+    {
+      "fromId": "decide-2",
+      "fromProperty": "out-isModerator",
+      "toId": "outputs",
+      "toProperty": "isModerator"
+    },
+    {
+      "fromId": "decide-2",
+      "fromProperty": "out-isPending",
+      "toId": "outputs",
+      "toProperty": "isPending"
+    },
+    {
+      "fromId": "decide-2",
+      "fromProperty": "out-isUnknown",
+      "toId": "outputs",
+      "toProperty": "isUnknown"
+    },
+    {
+      "fromId": "decide-2",
+      "fromProperty": "out-member",
+      "toId": "outputs",
+      "toProperty": "Member"
+    },
+    {
+      "fromId": "decide-2",
+      "fromProperty": "out-moderator",
+      "toId": "outputs",
+      "toProperty": "Moderator"
+    },
+    {
+      "fromId": "decide-2",
+      "fromProperty": "out-visitor",
+      "toId": "outputs",
+      "toProperty": "Visitor"
+    },
+    {
+      "fromId": "failed",
+      "fromProperty": "out-standing",
+      "toId": "outputs",
+      "toProperty": "standing"
+    },
+    {
+      "fromId": "failed",
+      "fromProperty": "out-isUnknown",
+      "toId": "outputs",
+      "toProperty": "isUnknown"
+    }
+  ]
+}

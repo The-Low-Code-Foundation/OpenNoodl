@@ -1,0 +1,73 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "6d8c5bb3-6024-52d7-8a41-859aae1dcbe4",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "pageInputs",
+      "fromProperty": "pm-announcementId",
+      "toId": "hold",
+      "toProperty": "in-announcementId"
+    },
+    {
+      "fromId": "page-4",
+      "fromProperty": "didMount",
+      "toId": "hold",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "hold",
+      "fromProperty": "out-announcementId",
+      "toId": "record",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "hold",
+      "fromProperty": "out-ready",
+      "toId": "record",
+      "toProperty": "fetch"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "prop-title",
+      "toId": "title",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "prop-body",
+      "toId": "body",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "prop-postedAt",
+      "toId": "when-2",
+      "toProperty": "in-postedAt"
+    },
+    {
+      "fromId": "when-2",
+      "fromProperty": "out-label",
+      "toId": "date",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record",
+      "fromProperty": "failure",
+      "toId": "refusalGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "refusalGate",
+      "fromProperty": "result",
+      "toId": "refusal",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "backButton",
+      "fromProperty": "onClick",
+      "toId": "toMembers",
+      "toProperty": "navigate"
+    }
+  ]
+}

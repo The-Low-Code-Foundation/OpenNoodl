@@ -1,0 +1,106 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "4f5c2adb-068c-5a26-863a-ab66de012c6b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "row",
+      "type": "Group",
+      "label": "One announcement",
+      "children": [
+        "rowTitle",
+        "rowDate",
+        "readButton"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "paddingTop": 8,
+        "paddingBottom": 8
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rowTitle",
+      "type": "Text",
+      "label": "Title",
+      "parent": "row",
+      "parameters": {
+        "text": "",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "rowDate",
+      "type": "Text",
+      "label": "Posted",
+      "parent": "row",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "readButton",
+      "type": "net.noodl.controls.button",
+      "label": "Read",
+      "parent": "row",
+      "parameters": {
+        "label": "Read"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "inputs-2",
+      "type": "Component Inputs",
+      "label": "The announcement",
+      "ports": [
+        {
+          "name": "id",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "postedAt",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "when",
+      "type": "JavaScriptFunction",
+      "label": "The date, as a person writes it",
+      "parameters": {
+        "functionScript": "if (Inputs.postedAt === undefined) return;\nconst raw = Inputs.postedAt || '';\nconst at = new Date(raw);\nOutputs.label = isNaN(at.getTime()) ? '' : at.toLocaleDateString();"
+      },
+      "x": 350,
+      "y": 280
+    },
+    {
+      "id": "goDetail",
+      "type": "RouterNavigate",
+      "label": "Open the announcement",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Announcement"
+      },
+      "x": 350,
+      "y": 400
+    }
+  ],
+  "visualRoots": [
+    "row"
+  ]
+}
