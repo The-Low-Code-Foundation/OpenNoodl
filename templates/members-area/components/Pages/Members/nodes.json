@@ -1,0 +1,111 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "131f4366-b550-56fe-870b-331bfb8843f2",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-3",
+      "type": "Page",
+      "label": "Members",
+      "children": [
+        "ground-3"
+      ],
+      "parameters": {
+        "title": "Members",
+        "urlPath": "members"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "ground-3",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "page-3",
+      "children": [
+        "heading-3",
+        "empty_state",
+        "signout"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingTop": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 24,
+          "unit": "px"
+        }
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading-3",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "ground-3",
+      "parameters": {
+        "text": "Members"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "empty_state",
+      "type": "Text",
+      "label": "Empty state",
+      "parent": "ground-3",
+      "parameters": {
+        "text": "Nothing has been posted yet. When a moderator posts an announcement it will appear here."
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "signout",
+      "type": "net.noodl.controls.button",
+      "label": "Sign out",
+      "parent": "ground-3",
+      "parameters": {
+        "label": "Sign out"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "logout",
+      "type": "net.noodl.user.LogOut",
+      "label": "Log out",
+      "x": 410,
+      "y": 520
+    },
+    {
+      "id": "to_landing",
+      "type": "RouterNavigate",
+      "label": "Back to the landing page",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Landing"
+      },
+      "x": 410,
+      "y": 640
+    }
+  ],
+  "visualRoots": [
+    "page-3"
+  ]
+}

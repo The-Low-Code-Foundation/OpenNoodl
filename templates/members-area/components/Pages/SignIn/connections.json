@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "4a5dff26-a4d2-5774-85d9-5b4999b0c09b",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "email",
+      "fromProperty": "text",
+      "toId": "login",
+      "toProperty": "username"
+    },
+    {
+      "fromId": "password",
+      "fromProperty": "text",
+      "toId": "login",
+      "toProperty": "password"
+    },
+    {
+      "fromId": "submit",
+      "fromProperty": "onClick",
+      "toId": "login",
+      "toProperty": "login"
+    },
+    {
+      "fromId": "login",
+      "fromProperty": "error",
+      "toId": "error",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "login",
+      "fromProperty": "done",
+      "toId": "to_members",
+      "toProperty": "navigate"
+    }
+  ]
+}

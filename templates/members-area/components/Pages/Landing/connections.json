@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "7568a224-ee61-5dd2-8887-065a6db656b3",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "signin_button",
+      "fromProperty": "onClick",
+      "toId": "to_signin",
+      "toProperty": "navigate"
+    }
+  ]
+}

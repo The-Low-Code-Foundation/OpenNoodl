@@ -1,0 +1,105 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "7568a224-ee61-5dd2-8887-065a6db656b3",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Landing",
+      "children": [
+        "ground"
+      ],
+      "parameters": {
+        "title": "Welcome",
+        "urlPath": ""
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "ground",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "page",
+      "children": [
+        "heading",
+        "blurb",
+        "signin_button"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingTop": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 24,
+          "unit": "px"
+        },
+        "alignX": "center"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Association name",
+      "parent": "ground",
+      "parameters": {
+        "text": "St. Anywhere Community Association"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "blurb",
+      "type": "Text",
+      "label": "What we do",
+      "parent": "ground",
+      "parameters": {
+        "text": "We meet on the first Tuesday of every month. Members can sign in to read announcements and see what is coming up."
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "signin_button",
+      "type": "net.noodl.controls.button",
+      "label": "Members sign in",
+      "parent": "ground",
+      "parameters": {
+        "label": "Members sign in"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "to_signin",
+      "type": "RouterNavigate",
+      "label": "Go to sign in",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/SignIn"
+      },
+      "x": 410,
+      "y": 520
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

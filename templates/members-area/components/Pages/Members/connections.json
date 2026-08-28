@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "131f4366-b550-56fe-870b-331bfb8843f2",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "signout",
+      "fromProperty": "onClick",
+      "toId": "logout",
+      "toProperty": "login"
+    },
+    {
+      "fromId": "logout",
+      "fromProperty": "done",
+      "toId": "to_landing",
+      "toProperty": "navigate"
+    }
+  ]
+}
