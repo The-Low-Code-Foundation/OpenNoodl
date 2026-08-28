@@ -1,0 +1,51 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "61f9e398-9cc7-4b18-ba3b-94424ea4d54d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "7799a2e4-7eda-4df1-aba5-4c90c43eeb44",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell-0001"
+      ],
+      "parameters": {
+        "title": "Home",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell-0001",
+      "type": "Group",
+      "label": "Page shell",
+      "parent": "7799a2e4-7eda-4df1-aba5-4c90c43eeb44",
+      "children": [],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--background)",
+        "paddingTop": "var(--space-20)"
+      },
+      "metadata": {
+        "comment": "Ungraded furniture, already in the starter. justifyContent:center does not resolve here because the Page root gives no definite height, so the top spacing is padding rather than centring — deliberate, and the reason height:100% is left in place is that it costs nothing and is what a learner would write."
+      },
+      "x": 100,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "7799a2e4-7eda-4df1-aba5-4c90c43eeb44"
+  ]
+}
