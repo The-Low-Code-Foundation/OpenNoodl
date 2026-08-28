@@ -1,146 +1,134 @@
-# Next session — the list ran out, and the map replaced it
+# Next session — the map was wrong about the map
 
-**Where the phase stands (2026-08-28, after twenty-eight sessions).** Session 28 closed §16a(1),
-the relation verbs, and the result is that **it buys no coverage** — 3,775/4,441 (**85.00%**),
-unchanged. That is not a failed slice. It is the measurement that retired the standing claim
-*"everything left buys coverage"*, and it came with the census that replaces the list.
+**Where the phase stands (2026-08-28, after twenty-nine sessions).** Session 28 said *"pick a
+wall"*. Session 29 did not, because measuring the walls by **artefact** instead of by node type
+dissolved most of them into one thing — and the leftover turned out to be a latent defect in how
+the export decides what a component renders at all.
 
-`build-corpus.ts` holds at **40/40**. The ledger is unchanged (175 types: 101 deferred /
-58 translated / 1 stubbed / 15 backend-only — no node type changed category, because none became
-translated). **468 tests (22 new).**
+**Coverage 3,775/4,441 (85.00%) → 3,775/4,441 (85.00%)**, unchanged again, and again that is the
+result rather than a failure. `build-corpus.ts` **40/40**. Ledger unchanged (175 types: 101
+deferred / 58 translated / 1 stubbed / 15 backend-only). **481 tests (13 new).**
+`logic node (…)` catch-alls **221 → 176**.
 
 Written up in [EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md)
-**§17**. Commit: `git log` for `feat(exp-002)`.
+**§18**. Commit: `22a0f969`.
 
 ---
 
 ## 🔴 Read this before picking anything
 
-**Do not open by looking for a node type to translate.** That is what the last four handoffs said
-to do and §17b is why it stopped working. The corpus's 666 deferred nodes, bucketed by *the wall
-that blocks them* rather than by type:
+**85.00% is a node-weighted average dominated by eight clones of one project.** The deferred
+population, grouped by project rather than by type:
 
 ```
-  197   29.6%  script tiers (EXP-003 Tier B + the component-record tier)
-  136   20.4%  row identity (the s10 wall)
-  117   17.6%  outside the render — logic nodes and the router shell
-   82   12.3%  collateral — its feed or its sink already deferred
-   69   10.4%  wire-fed rendered structure
-   36    5.4%  trigger outside the handler vocabulary
-    9    1.4%  unknown type / editor debris
-    8    1.2%  no shape in the api stub / emit vocabulary
-    7    1.1%  translated behind a typed api stub (not a wall at all)
-    5    0.8%  named runtime refusal — the node always fails as authored
+  555  83.3%   eight clones of one e-commerce project (68–73 deferred each)
+   32   4.8%   Puppy test
+   79  11.9%   the other 31 projects
 ```
 
-**The top three hold 450 of 666 — 67.6% — and none of them is a slice.** The next real movement
-costs a wall, not a node. `walls.py` (scratchpad) regenerates this from `rank2.ts`'s reasons axis;
-it refuses to run unless its total reconciles against the audit's deferred count, and it prints
-its residual in full.
+**13 of the 40 projects export at 100%.** By component, `Filters/*` alone holds **376 of 666
+(56.5%)** — exactly **47 per project × 8**. And §17b's top two walls are the *same kit*: **136 of
+170 `JavaScriptFunction` nodes and all 72 `Model2` nodes are inside it.**
 
-## What landed — §17
+So the honest framing is not "ten walls" and not even "three walls". It is: **one third-party kit,
+cloned eight times, is most of what is left** — and the headline number measures the corpus's
+shape at least as much as the export's reach. Decide whether moving that number is the goal before
+optimising it.
 
-Three `logic node (…)` catch-alls became the verdict the **runtime** reaches:
+`deferred-census.ts` (new) is what answers this: one row per deferred node,
+`project ⇥ component ⇥ type ⇥ reason`, refusing to run unless it reconciles against the audit's
+666. Group it however the question needs.
 
-- 🔴 **`AddDbModelRelation`** — the corpus's only instance authors `collectionName` and nothing
-  else. With no `relationProperty`, `validateInputs` answers *"No relation property specified"*,
-  `setError` fires and `cloudstore.addRelation` is **never called**. The node has never worked and
-  cannot. Translating it would have been a hole shaped exactly like the defect (gate 1's rule,
-  §5.1, reaching a second node type). §4c's target output stands; what it lacks is a well-formed
-  instance to build against, not a design.
-- **`DbModel2`** — reads its Id from a `PageInputs` on a component with no `Page` node that the
-  Router does not list. No route ⇒ no URL ⇒ no path parameter. Inventing one is fabrication.
-- **`PageInputs`** — says exactly that, and names the parameters it declares.
+## What landed — §18
 
-`RemoveDbModelRelation` has **zero corpus instances** and is gated identically anyway. The gates
-run in `validateInputs`'s own order, including NDA-012's check that a Target Record Id came from a
-node that actually *loaded* a record — the failing write is what burns the relation column into
-the class schema as `Relation<undefined>` for the life of the class.
+`plan.ts` computed visual roots from `n.parent === undefined` while the tree walk twelve lines
+below read hierarchy from `children` — **two notions of the same thing in one function**.
 
-**Also measured: all 72 `Model2` nodes are `idSource: "foreach"`** — nine distinct instances cloned
-across eight projects. The largest non-Tier-B row in the ranking is one wall, not a backlog.
+`nodes.json` states the answer outright in `visualRoots`. That list feeds `componentModel.roots`,
+and `componentinstance.ts:326` is `return this._internal.roots[0].render();` — **one root draws**.
+The editor sends *"This node is detached from the main node tree and won't be rendered"* against
+roots[1..] (`graph-warnings.ts`) and re-derives the field on every save. `noodl-mcp`'s
+`visualRoots.ts` already documents the whole chain; F43 is what taught it.
+
+**Measured on the raw files before changing anything** — the IR was the suspect, so it could not be
+the instrument — **across 437 components the two rules never disagreed about roots[0]**. No emitted
+tree was ever wrong. The export was right by coincidence of source order, one reordering away from
+rendering the wrong subtree. Roots now come from the declared list; the parentless rule remains the
+fallback for older files.
+
+The **45 nodes under a discarded root** were deferring as `logic node (…)`, which says *not yet*.
+The truth is *never*. They now carry that verdict. `Components/Header`, in the same eight clones,
+declares six visual roots — a bar plus four nav links and a search input — so **those nav links
+have never rendered in the running app.**
 
 ## The list
 
-1. **EXP-003 Tier B** — ~350 nodes, one third-party kit copied into eight projects, behind four
-   things that do not exist. `tb-survey.ts` dumps every body of it; **read that before committing.**
-   The largest wall, and the only one whose size is mostly one artefact.
-2. **Row identity (the s10 wall)** — 136 nodes, now measured rather than assumed. Every `Model2`,
-   the `SetModelProperties` beside them, the repeater output relays, the `For Each.items` feeds.
-   One design question: what a row's identity *is* in the emit.
-3. **The two `ProductCard` projects' missing interface** (§11d(2)/(3)) — ruled in §13b, built in
-   §14. The export refuses and names it. Still the disposition, not a defect.
+1. **EXP-003 Tier B, read as the kit it is** — ~350 script-tier nodes sharing an artefact with the
+   row-identity wall. One kit, two walls, ×8. `tb-survey.ts` dumps every body; read it first.
+2. **Row identity (the s10 wall)** — 136 nodes, **112 inside that same kit**. Not independent of
+   (1). Scoping them together is what §18a argues for.
+3. **The two `ProductCard` projects' missing interface** (§11d(2)/(3)) — ruled §13b, built §14.
+   Still the disposition, not a defect.
 
 ## 🔴 Traps this session paid for
 
-**A ranking row is not a slice, and a slice is not coverage.** Session 27 filed *"a rank row counts
-what deferred, never what is there"*; the answer then was a population. Here the population was
-confirmed exactly — 1 `AddDbModelRelation`, 1 `DbModel2`, 0 `RemoveDbModelRelation` — and the slice
-**still** bought nothing, because the population was never the constraint. The count, the wall and
-the yield are three different questions.
+**A probe built on the suspect artefact inherits its defect.** The first detached census read the
+IR and said **67**; the raw files say **49**; the implementation names **45**. Every gap was the
+instrument's — 11 nodes were phantom multi-roots in `children`-only files (*the very defect under
+investigation*), one was a `Page Stack` this side does not call visual, and two Apps declare roots
+that are also children of roots[0] and therefore do render. **When the artefact is the suspect,
+the instrument has to come from somewhere else.**
 
-**A mutant that kills nothing is a claim about the mutant.** Two of ten:
+**A number in a message is a claim from whichever predicate produced it.** The first draft said
+"the component declares N visual roots". `Puppy test`'s Home2 declares 7 by the editor's
+`allowAsChild` and 6 by this side's `isVisual`. Quoting either states the other's answer as fact,
+so the reason now carries no count — the claim that matters does not need one.
 
-- The sweep's `if (dispositions[node.id] !== undefined) continue;` guard killed nothing. Chasing
-  why found the real hole: a component with **no visual root** dispositions every node and
-  **returns early**, before the sweep runs — so a relation verb there fell to the catch-all anyway.
-  No coverage number could have said so; nothing in the corpus exhibits it. Closed, with four rows
-  that redden when it re-opens. The guard stays: the moment a later slice teaches pass 4c about
-  `DbModel2`, dropping it would overwrite `collapsed` with `deferred`.
-- The `DbModel2` row-identity mutant killed nothing because its anchor text occurs **twice** and it
-  patched `compileRecordOp` (line 2713) instead. Re-aimed by line number, each site kills its own
-  row, and they are *different* rows. **Mutate by line, or by an anchor you have counted.**
-
-**Two control rows failed on first write, and both were the control's fault.** *"Adding the relation
-graph moves nothing"* — it moves exactly one thing, the Create, to gate 11. And the catch-all
-control used `Counter`, which has a reason of its own and never reaches the catch-all;
-`net.noodl.WebSocket` does. **A control that never reaches what it controls for proves nothing.**
-
-**An instrument's residual is where its errors live.** `walls.py` put 51 of 666 in `UNCLASSIFIED`
-first time — because `rank2` truncates every reason at ~95 characters and the patterns matched
-tails that are not there. Printing the residual in full, and refusing to run unless the totals
-reconcile, made it visible in one pass.
+**Two of five mutants killed nothing, and both were redundancy rather than missing coverage.**
+Mutated by line number (§17c's rule, which held). Dropping `rendered.has(node.id) ||` killed
+nothing because `walk()` dispositions exactly the nodes in `rendered`; splitting it proved
+**either half alone passes the whole suite and dropping both fails**, so it is now one guard using
+the idiom fourteen later passes already share. `roots.slice(1)` → `roots` is genuinely equivalent
+given that guard, and is recorded in the code rather than covered by a test that cannot fail.
+The `Array.isArray` mutant survived first time because **`[]` is truthy** — only a non-array value
+separates them. That is now a test.
 
 ⚠️ Still true: **`ts-node` needs an absolute path**, `--compiler-options '{"module":"commonjs"}'`,
-and to be run **from `packages/nodegx-export`**. `rank2.ts` / `coverage-audit.ts` / `dumpall.ts` /
-`probe27.ts` take projects as argv; **zsh: `"${(@f)$(cat projects.txt)}"`** — the paths contain
-spaces, so `$(cat … | tr '\n' ' ')` silently shreds them and rank2 reports on *one* project without
-erroring. `build-corpus.ts` needs **both** `--app <harnessDir>` **and** the project list, and
-**exits with the failure count** — read the last line (`N/40 projects typecheck.`), never
-`echo $?`.
+run **from `packages/nodegx-export`**. Instruments take projects as argv; **zsh:
+`"${(@f)$(cat projects.txt)}"`** — the paths contain spaces, so `$(cat … | tr '\n' ' ')` shreds
+them and rank2 silently reports on *one* project. `build-corpus.ts` needs **both** `--app
+<harnessDir>` **and** the project list, and **exits with the failure count** — read the last line
+(`N/40 projects typecheck.`), never `echo $?`. The coverage audit prints no corpus total; sum it
+with `awk '/ ok, .* deferred$/{…}'` (the `↳ deferred:` lines double-count if you don't anchor).
 
-🔴 **Never `git checkout <path>` to undo a source mutation.** Copy the file to the scratchpad,
-mutate, run, copy back, and **`md5` both** to prove the restore. That is how this session's ten
-mutants were taken.
+🔴 **Never `git checkout <path>` to undo a source mutation.** `mutate.py` (new) patches one line by
+number, restores from a pristine copy and **prints both md5s** to prove it.
 
-## Instruments (session 28 scratchpad `628793ab-…`)
+## Instruments (session 29 scratchpad `46041da2-…`)
 
-- **`walls.py`** (new) — `python3 walls.py reasons-s28.tsv 666`. The wall census: buckets every
-  deferred node by what blocks it. Refuses to run unless its total reconciles against the audit,
-  and prints its residual in full. Regenerate its input from `rank2`'s reasons axis (the awk
-  one-liner is in the file's header). Output: `walls-s28.txt`.
-- **`probe27.ts`** — `TYPES=<a,b,c> ts-node probe27.ts <projectDir>…`; every node of those types
-  with every incident wire, both port names, plus a parameter tally. **Run it before believing any
-  claim about how many of a node the corpus has.** Outputs: `probe28-relations.txt`,
-  `probe28-model2.txt`, `probe28-button.txt`.
-- **`rank2.ts`** — the ranking instrument; `rank2-s28.txt` (before, byte-identical to s27-after)
-  and `rank2-s28-after.txt`. **Run first, every session** — but read §17b before acting on it.
-- `coverage-audit.ts` + `projects.txt`; `cov-base-s28.txt` and `cov-after-s28.txt` (both 85.00%,
-  differing in exactly the three reason lines). Sum it with the awk one-liner in §16's handoff —
-  it prints no corpus total of its own.
-- `build-corpus.ts` (committed, `--app <harnessDir>`; the harness needs `@nodegx/core` symlinked
-  into its `node_modules` — a prepared `app/` is in the scratchpad, **one per concurrent run**,
-  copy it with `cp -a` so the symlink survives). Result: `build-corpus-s28.txt` (**40/40**).
-- `mut-s28/plan.ts.pristine2` — the restore point the ten mutants were taken against.
-- Also `dumpall.ts`, `probe26.ts`, `mutprobe.ts`, `probe25.ts`, `showfile.ts`, `ifaces.ts`,
-  `vfout.ts`, `vfws.ts`, `props2.ts`, `dump.ts`, `probe.ts`, `propnames.ts`, `rv-survey.ts`,
-  `emit-to-app.ts` (**never overwrite the app's `package.json`**). Worktrees:
-  `scripts/devtools/make-worktree.sh <name> HEAD`. **Never** `git stash` here.
+- **`deferred-census.ts`** (new) — the artefact view. `EXPECT=666 ts-node deferred-census.ts
+  <projectDir>…` → TSV `project ⇥ component ⇥ type ⇥ reason`; exits 2 if it does not reconcile.
+  Outputs: `census-s29.tsv` (before), `census-final-s29.tsv` (after).
+- **`rootsource.ts`** (new) — reads the **raw** `nodes.json` files, never the IR: declared
+  `visualRoots` vs the parentless rule, and whether they disagree about the rendered root.
+  `rootsource-s29.txt`.
+- **`detached.ts`** (new) — the IR-side detached census, **kept as the cautionary one**: it mirrors
+  `plan.ts:renderRole` and validates the mirror against the plan's own note, and it was *still*
+  wrong (67 vs 45) because the IR was the defect. Read §18d before believing it.
+- **`mutate.py`** (new) — one-line mutation by line number, with md5-proved restore.
+- **`walls.py`** (s28) — the wall census; feed it a reasons axis. Splitting it by kit membership is
+  what produced §18a: `awk -F'\t' '$2 ~ /^\/?Filters/ {c[$4]++} …' census-s29.tsv`.
+- `rank2.ts` (`rank2-s29.txt` / `rank2-s29-after.txt`), `coverage-audit.ts` + `projects.txt`
+  (`cov-base-s29.txt` / `cov-final-s29.txt`, both 85.00%), `probe27.ts` (`probe29-jsfun.txt`),
+  `roots.ts`, and s28's `dumpall.ts` / `showfile.ts` / `ifaces.ts` / `tb-survey.ts` / the rest.
+- `build-corpus.ts` is committed at `scripts/`; the harness needs `@nodegx/core` symlinked into its
+  `node_modules` — a prepared `app/` is in the scratchpad, **one per concurrent run**, copy with
+  `cp -a` so the symlink survives. `build-corpus-s29-final.txt` (**40/40**).
+- `pristine-s29/` — the restore points the mutants were taken against.
 
-**Standing practice:** work on `cline-dev`; commit by pathspec (`packages/nodegx-export`,
-`dev-docs/tasks/phase-18-code-export-v2`), untracked files add+commit in one chain, never stage —
-peers were editing `packages/noodl-editor` and the `dev-docs/tasks/phase-7x` trees throughout s28.
-468 tests (~5s, from the package dir: `../../node_modules/.bin/jest`); a lone suite-level red with
-0 failing tests is a flake until re-run. `npm run typecheck` in the package. `npm run
-export-ledger:check` from the root gates the ledger. ts-morph and Prettier stay uninstalled; the
-package is not in root `test:packages`.
+**Standing practice:** work on `cline-dev`; commit by **exact file pathspecs** (never a directory,
+never stage) — peers were editing `packages/noodl-editor`, `packages/noodl-mcp` and
+`packages/noodl-core-ui` throughout s29. 481 tests (~7s, from the package dir:
+`../../node_modules/.bin/jest`); a lone suite-level red with 0 failing tests is a flake until
+re-run. `npm run typecheck` in the package; `npm run export-ledger:check` from the root gates the
+ledger. ts-morph and Prettier stay uninstalled; the package is not in root `test:packages`.
