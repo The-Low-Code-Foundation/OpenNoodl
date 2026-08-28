@@ -2,30 +2,24 @@
 
 ## ✅ No hold. Freeze cleared 2026-08-28 (s4): *"Freeze is off, go nuts."*
 
-## 🔴 Start here: s8 fixed the root URL's cause but could not drive it
+## ✅ s8b drove it. SBR-004's ACs are done; start on the open tasks
 
-Richard was hand-driving the only editor stack on this machine for the whole of s8 (pid 6774,
-TPL-001, owned by session 65956). Two editors cannot coexist, so **the fix is built, gated and
-unverified on a real page.** This is the first job.
+The root URL fix is **driven with a control pair**, not asserted. Detail in SBR-004 §11.
 
-**Drive it on `SBR-004 Mounted Drive`** — claimed, `SITE_SETUP_TOKEN` provisioned, three
-published pages (`home`/`about`/`studio`), owner `owner@example.com` / `drive-password-1`.
-Apply the regenerated `site-builder.content.json`'s parameter values into the drive project
-**by label** — never retype them, or you measure something that does not ship.
+🔴 **Two things from that drive that change what other tasks assume:**
 
-| probe | at | expect (was) |
-|---|---|---|
-| `Object.keys(Noodl.Variables).length` | `http://localhost:8574/` | > 0 (**0**) |
-| `Noodl.Variables.siteCurrentSlug` | `/` | `'home'` (`undefined`) |
-| the `h1` | `/` | the home page's title (empty) |
-| the body text | `/` | a page between nav and footer (nav + footer only) |
-| regression | `/home`, `/about` | unchanged from §9.1 |
-
-**And one open probe worth a minute** (SBR-004 §10.2): click the nav from `/home` to `/about`
-and read whether `didMount` fired. `router.tsx:518-534` updates page inputs and returns
-**without re-mounting** when the page snapshot is unchanged — and every public page is the same
-`{slug}` component. If mount did not fire, then `runOnChange-in-slug: true` fixed a second live
-defect nobody had named. §9.1 saw in-app nav work pre-fix, so something does not add up yet.
+1. **The defect was never the empty-slug path.** §9.2 said `/home` and `/about` were fine and
+   only `/` broke. With the `SiteSettings` fetch slowed by 1500ms, **all three render no page** —
+   the guard `if (Inputs.homeSlug === undefined) return;` gates every slug, not the empty one.
+   The root URL was just the path that lost the race on a warm local backend. **A cold backend
+   over a real network is the arm this template has never been driven in — carry that into
+   SBR-014.**
+2. **A single pass on a race proves nothing.** The first pre-fix reading of `/` was a PASS, and
+   so were twelve consecutive reloads. Both arms would have agreed. The instrument that worked:
+   `Fetch.requestPaused` on `*8594*` in the viewer target, delaying **only** backend requests so
+   `didMount` still fires on its own clock. Kept as
+   `scripts/devtools/slow-backend-probe.js <delayMs> <label> <path>` — **reuse it for anything with a
+   fetch-vs-mount ordering.**
 
 ## What s8 built
 

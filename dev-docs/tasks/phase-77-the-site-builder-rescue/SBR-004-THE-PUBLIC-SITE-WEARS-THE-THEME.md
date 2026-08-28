@@ -597,3 +597,97 @@ after applying the regenerated artefact's parameters by label:**
 | the body text | `/` | a page between the nav and the footer |
 | regression | `/home`, `/about` | unchanged from §9.1 |
 | §10.2's open probe | click nav `/home` → `/about` | did `didMount` fire? |
+
+## 11. Driven (s8b) — the fix holds, and §9.2's characterisation of the defect was wrong
+
+Seat freed mid-session. Driven on `SBR-004 Mounted Drive`, claimed, three published pages,
+backend `backend_mtd6grazfqnxl` on 8594 (`SiteSettings.homeSlug = 'home'`, `home`/`about`/`studio`
+all `published=1`, read off the backend's own sqlite before driving).
+
+🔴 **The project was a genuine before/after control on one artefact.** Its saved
+`The slug to show` still carried `runOnChange-in-slug: false` / `-in-homeSlug: false` — written
+by the migration on an earlier load, untouched since 21:00 — so arm 1 is the defect as it
+shipped, not a reconstruction. Only then were the two shipped values applied **by label** out of
+the regenerated `site-builder.content.json`.
+
+### 11.1 🔴 The first reading was a PASS, and it proved nothing
+
+Pre-fix, at `/`: `varKeys: 1`, `siteCurrentSlug: 'home'`, `h1: "Home"`. The page rendered.
+**Twelve consecutive reloads: twelve passes.** §9.2's own words are why this is not a
+refutation — *"a race it wins only by luck on a local backend"* — and a race won by luck reads
+exactly like a race that has been fixed. Both arms would have agreed, which is a **broken
+instrument, not a result**.
+
+So the race was forced to lose. `Fetch.requestPaused` on `*8594*` in the viewer target delays
+**only** the backend requests by 1500ms; the page bundle is untouched, so `Page.didMount` still
+fires on its own clock. That is precisely the ordering the defect needs, and nothing about the
+graph is altered to produce it.
+
+### 11.2 ✅ The control pair, 1500ms delay held constant, only the two parameters varied
+
+| path | **pre-fix** (`false`/`false`) | **post-fix** (`true`/`true`) |
+|---|---|---|
+| `/` | `varKeys 0`, `h1 ""`, body `Home About Studio My site My site Home` | `varKeys 1`, slug **`home`**, `h1 "Home"` |
+| `/home` | `varKeys 0`, `h1 ""`, same bodyless body | `varKeys 1`, slug **`home`**, `h1 "Home"` |
+| `/about` | `varKeys 0`, `h1 ""`, same bodyless body | `varKeys 1`, slug **`about`**, `h1 "About"` |
+
+`/about` resolving to `about` rather than `home` is what says the fix re-runs the resolver
+rather than merely forcing the home slug.
+
+⚠️ **Corroborating detail, unplanned**: the delayed-request count rose **3 → 5** across the
+arms. Pre-fix the page query never fires at all, because `out-slug` never publishes. The two
+extra requests *are* the page and its sections being fetched — the mechanism, visible in the
+network rather than inferred from the DOM.
+
+**No-delay regression, post-fix**: `/`, `/home`, `/about` all render, slugs `home`/`home`/`about`.
+**AC2 re-measured**: `rgb(30,77,140)`/600 on the current link, `rgb(86,83,76)`/400 on its
+siblings, on both routes — unchanged from §9.1. **AC1 re-measured**: all three links at y=24.
+
+### 11.3 🔴 The correction: this was never the empty-slug path
+
+§9.2 wrote *"`/home` and `/about` are fine, so this is the **empty-slug path specifically**,
+which is the one that needs `homeSlug`."* **That is wrong, and the table above is the
+refutation**: with the fetch slowed, all three paths render no page.
+
+The guard is `if (Inputs.homeSlug === undefined) return;` and it gates **every** slug, not the
+empty one. `/home` does not need `homeSlug` to *compute* its answer, but it still has to get
+past a line that returns before the computation. So the true statement is:
+
+> **Every page on the site fails whenever the `SiteSettings` fetch answers after mount.** The
+> root URL was not a special case — it was the case that happened to lose the race on a warm
+> local backend, which is the least representative environment the site will ever run in.
+
+That makes the defect materially worse than recorded, and it is worth carrying into SBR-014:
+the first visitor to a deployed site, on a cold backend over a real network, is the arm this
+template had never been driven in.
+
+### 11.4 ✅ §10.2's open probe, answered — and the first instrument was wrong
+
+Question: does an in-app nav click take `router.tsx:518-534`'s same-page branch (no `didMount`)?
+
+First attempt stamped the `h1` with an expando, clicked `About`, and found the stamp gone —
+but a React re-render can replace an element for reasons that have nothing to do with mounting,
+so that reading does not discriminate. The stamp was widened to the nav and the footer as a
+control, and **all three died**, which looked like a full document load.
+
+**The decisive probe is a `window`-level marker**, because it separates the two candidates a DOM
+stamp cannot: `window.__docMarker` **survived** the click while every element stamp died, and
+`performance.navigation.type` stayed `navigate`. So: **same document, whole page subtree rebuilt
+— the page component remounts and `didMount` does fire.**
+
+⚠️ And a correction to §10.2's framing while it is here: the nav and footer are **not** outside
+the page component — `SITE_WIRES` puts `footerName`/`goHome`/`footerHome` in `/Pages/Site`, and
+`Site/Nav` is an instance placed inside it. Everything visible is inside the page, so all stamps
+dying was consistent with a page remount all along; it was the *control* that was misdescribed,
+not the measurement.
+
+**Consequence**: `runOnChange-in-slug: true` did **not** fix a second live defect on this path,
+and §10.2's suggestion that it might is closed. It remains correct to ship — `in-slug`'s producer
+is `PageInputs`, the spec grades it as ordered-before-mount, and it costs nothing — but it is
+defensive, and the sentence claiming otherwise should not be relayed.
+
+### 11.5 AC status
+
+**AC1 ✅, AC2 ✅, AC4 ✅** (§9, re-measured here). **The root URL renders**, driven, with a
+control pair rather than a single pass. AC3 remains SBR-012's. 🔴 §11.3's widening — every page,
+not just `/` — is the thing to carry forward.
