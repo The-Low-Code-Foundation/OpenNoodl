@@ -29,15 +29,19 @@ import {
 } from './sb005Components';
 import {
   CONTACT_REFUSAL_TEXT,
+  FOOTER_HOME_TEXT,
   NO_BACKEND_DEADLINE_MS,
   NO_BACKEND_TEXT,
   NOT_AVAILABLE_TEXT,
   NOT_FOUND_TEXT,
   NOT_SET_UP_TEXT,
+  RAW_DIMENSION_EXEMPTIONS,
   SB006_COMPONENTS,
+  SITE_CURRENT_SLUG_VAR,
   SITE_URL_PATH,
   THEME_KEYS,
-  createPass
+  createPass,
+  exemptionKey
 } from './sb006Components';
 
 jest.setTimeout(120000);
@@ -313,9 +317,26 @@ export function assertNotFoundIsNotIsEmpty(w: Written): void {
 
   const notFound = w.graph.nodes.find((n) => n.parameters?.text === NOT_FOUND_TEXT);
   expect(notFound).toBeDefined();
+
+  /**
+   * 🔴 SBR-004 moved the visibility one node OUT, and the invariant moved with
+   * it rather than being dropped: the panel is now a centred card and the
+   * `Text` is its only child, so the thing that must be authored hidden — and
+   * revealed by a code node and nothing else — is the CARD.
+   *
+   * Found by walking `children` rather than by name, because the id the door
+   * assigned is not the id that was sent (SB-004 F9) and a label is a string
+   * someone will reword.
+   */
+  const card = w.graph.nodes.find((n) => (n.children ?? []).includes(notFound!.id));
+  expect(`the not-found text has a wrapper: ${card !== undefined}`).toBe('the not-found text has a wrapper: true');
   // Authored hidden, and only a code node may reveal it.
-  expect(notFound?.parameters?.visible).toBe(false);
-  const feeds = w.wires.filter((c) => c.toId === notFound?.id && c.toProperty === 'visible');
+  expect(card?.parameters?.visible).toBe(false);
+  // And the Text inside it must NOT carry a second visibility owner.
+  expect(notFound?.parameters?.visible).toBeUndefined();
+  expect(w.wires.filter((c) => c.toId === notFound?.id && c.toProperty === 'visible')).toEqual([]);
+
+  const feeds = w.wires.filter((c) => c.toId === card?.id && c.toProperty === 'visible');
   expect(feeds.length).toBe(1);
   const source = w.graph.nodes.find((n) => n.id === feeds[0].fromId);
   expect(source?.type).toBe('JavaScriptFunction');
@@ -382,6 +403,141 @@ export function assertSeoSplit(w: Written): void {
  * server-rendered, so an unguarded reference is a page that fails to render
  * rather than a page that renders plainly.
  */
+/**
+ * SBR-004 AC3 / the seed of SBR-012 — every style value in the public site is a
+ * `var(--token)` or a named exemption.
+ *
+ * ⚠️ **Deliberately narrower than SBR-012.** This scans the five SB-006
+ * component sets as they came back from the door. SBR-012 widens the same idea
+ * to the generated artefact and the other two sets, adds the "every consumed
+ * token resolves" arm (a `var(--tpyo)` renders as *nothing*, which no
+ * raw-colour check can see) and owns the global severity question. Leaving the
+ * artefact out here is a scope line, not an oversight — it is written down so
+ * the next reader does not mistake this green for that one.
+ *
+ * Two arms, because the port a raw value arrives on decides which one can see
+ * it:
+ *
+ *  1. **Any string value anywhere** that looks like a literal colour. This
+ *     catches the hole `RawColorLiteral` has by construction — it reads only
+ *     *colour-typed* ports (`parameterValues.ts:976`), so a hex smuggled through
+ *     a `*` port or a code node's script body evades it entirely.
+ *  2. **A numeric or `{value, unit}` value on a port whose NAME is a dimension,
+ *     colour or typography port.** Enum-ish style ports (`flexDirection: 'row'`,
+ *     `borderStyle: 'solid'`, `textAlignX: 'center'`) are values the vocabulary
+ *     has no token for and never should — they are arrangement, not measurement
+ *     — so the arm only fires on numbers and unit objects.
+ */
+const RAW_COLOR_LITERAL = /#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(/;
+const STYLE_VALUE_PORT =
+  /^(padding|margin|border|font|color|background|width|height|maxWidth|minWidth|maxHeight|minHeight|rowGap|columnGap|letterSpacing|lineHeight|opacity)/i;
+
+export function rawStyleValues(entries: ReadonlyArray<readonly [string, Written]>): string[] {
+  const found: string[] = [];
+  for (const [key, w] of entries) {
+    for (const node of w.graph.nodes) {
+      const label = node.label ?? node.type;
+      for (const [port, value] of Object.entries(node.parameters ?? {})) {
+        // Arm 1: a colour literal, wherever it is hiding — including a script.
+        if (typeof value === 'string' && RAW_COLOR_LITERAL.test(value)) {
+          found.push(`${key} :: ${exemptionKey(label, port)} (raw colour)`);
+          continue;
+        }
+        if (!STYLE_VALUE_PORT.test(port)) continue;
+        // Arm 2: a measurement that is not a token.
+        const isUnitObject = typeof value === 'object' && value !== null && 'value' in (value as object);
+        if (typeof value === 'number' || isUnitObject) {
+          found.push(`${key} :: ${exemptionKey(label, port)}`);
+        }
+      }
+    }
+  }
+  return found.sort();
+}
+
+/**
+ * SBR-004 AC2 — the current-page distinction is DERIVED, in both channels.
+ *
+ * Extracted rather than written inline so the mutants below can run the real
+ * assertion. A mutant that only re-checks the edit it just made kills nothing,
+ * and reads exactly like one that kills something.
+ */
+export function assertNavLinkStateIsDerived(w: Written): void {
+  const state = w.graph.nodes.find(
+    (n) => n.type === 'JavaScriptFunction' && scriptOf(n).includes('Outputs.color')
+  )!;
+  expect(state).toBeDefined();
+  const link = w.graph.nodes.find((n) => n.type === 'Text')!;
+
+  // Both style ports are OWNED by the decider — an authored colour here would
+  // be overwritten on every link and look like a rendering bug on none.
+  for (const port of ['color', 'fontWeight']) {
+    const feeds = w.wires.filter((c) => c.toId === link.id && c.toProperty === port);
+    expect(`${port} fed by the decider: ${feeds.length === 1 && feeds[0].fromId === state.id}`).toBe(
+      `${port} fed by the decider: true`
+    );
+    expect(`${port} authored on the link: ${link.parameters?.[port] !== undefined}`).toBe(
+      `${port} authored on the link: false`
+    );
+  }
+
+  // The two answers differ, and they differ in BOTH channels. Colour alone is
+  // not a distinction every reader can see.
+  const script = scriptOf(state);
+  for (const token of ['var(--primary)', 'var(--muted-foreground)', 'var(--font-semibold)', 'var(--font-normal)']) {
+    expect(`${token} in the decider: ${script.includes(token)}`).toBe(`${token} in the decider: true`);
+  }
+
+  // The comparison is against the record's own slug and the app-wide variable.
+  expect(w.wires.some((c) => c.toId === state.id && c.toProperty === 'in-slug')).toBe(true);
+  const variable = w.graph.nodes.find((n) => n.type === 'Variable2')!;
+  expect(variable?.parameters?.name).toBe(SITE_CURRENT_SLUG_VAR);
+  // Both producers: the value, and the signal that the value moved.
+  expect(
+    w.wires
+      .filter((c) => c.fromId === variable.id)
+      .map((c) => c.fromProperty)
+      .sort()
+  ).toEqual(['changed', 'value']);
+}
+
+/** SBR-004 — the footer names the site and links to the home the RECORD names. */
+export function assertFooter(w: Written): void {
+  const footer = w.graph.nodes.find((n) => n.parameters?.as === 'footer');
+  expect(`the page has a footer element: ${footer !== undefined}`).toBe('the page has a footer element: true');
+
+  // The name is the record's, and it comes from the SAME read the header uses —
+  // one settings reader, two consumers, no second query.
+  const settingsReader = w.graph.nodes.find(
+    (n) => n.type === 'JavaScriptFunction' && scriptOf(n).includes('Outputs.siteName')
+  )!;
+  const nameTargets = w.wires
+    .filter((c) => c.fromId === settingsReader.id && c.fromProperty === 'out-siteName')
+    .map((c) => w.graph.nodes.find((n) => n.id === c.toId)?.label)
+    .sort();
+  expect(nameTargets).toEqual(['Footer site name', 'Site name']);
+
+  // 🔴 SB-018 (3): the footer's record-fed Text carries a standing value, or it
+  // renders the literal word "Text" until the settings row lands.
+  const footerName = w.graph.nodes.find((n) => n.label === 'Footer site name')!;
+  expect(footerName?.parameters?.text).toBe('');
+
+  // The way back is the home slug the RECORD names, never a hard-coded 'home'.
+  const home = w.graph.nodes.find((n) => n.parameters?.text === FOOTER_HOME_TEXT)!;
+  const nav = w.graph.nodes.find((n) => n.type === 'RouterNavigate' && n.label === 'To the home page')!;
+  expect(w.wires.some((c) => c.fromId === home.id && c.toId === nav.id && c.toProperty === 'navigate')).toBe(true);
+  const slugFeed = w.wires.find((c) => c.toId === nav.id && c.toProperty === 'pm-slug');
+  expect(`the home link's slug arrives over a wire: ${slugFeed !== undefined}`).toBe(
+    "the home link's slug arrives over a wire: true"
+  );
+  expect(w.graph.nodes.find((n) => n.id === slugFeed!.fromId)?.label).toBe('Read the settings row');
+  expect(slugFeed!.fromProperty).toBe('out-homeSlug');
+  // And nothing authored a literal beside it — a parameter and a wire on one
+  // port is two owners, and the parameter is the one that survives a deploy
+  // where the wire never publishes.
+  expect(nav.parameters?.['pm-slug']).toBeUndefined();
+}
+
 export function assertGlobalsGuarded(entries: ReadonlyArray<readonly [string, Written]>): string[] {
   const guarded: string[] = [];
   for (const [key, w] of entries) {
@@ -394,11 +550,26 @@ export function assertGlobalsGuarded(entries: ReadonlyArray<readonly [string, Wr
         ).toBe(`${row} document guarded`);
         guarded.push(`${row}:document`);
       }
-      if (/\bNoodl\./.test(script)) {
-        expect(`${row} Noodl${/if \(!Noodl \|\| !Noodl\./.test(script) ? ' guarded' : ' UNGUARDED'}`).toBe(
-          `${row} Noodl guarded`
+      // 🔴 SBR-004 widened this arm from per-SCRIPT to per-PROPERTY. It used to
+      // ask "does this script contain a `Noodl` guard anywhere", which a script
+      // touching `Noodl.SEO` and `Noodl.Variables` passes on one guard — the
+      // hole shaped like the defect, since the second reference is the one that
+      // throws. Now every distinct `Noodl.<prop>` must be named by a guard of
+      // its own.
+      //
+      // Two accepted shapes, because two are genuinely needed: the early return
+      // (`if (!Noodl || !Noodl.SEO) return;`) when the whole node is about that
+      // global, and the inline test (`if (Noodl && Noodl.Variables) { … }`) when
+      // the write is one step of a script that must finish either way —
+      // `resolveSlug` still owes its `Outputs.ready()` on a server render.
+      const properties = [...new Set([...script.matchAll(/\bNoodl\.(\w+)/g)].map((m) => m[1]))].sort();
+      for (const property of properties) {
+        const early = new RegExp(`if \\(!Noodl \\|\\| !Noodl\\.${property}\\b`).test(script);
+        const inline = new RegExp(`Noodl && Noodl\\.${property}\\b`).test(script);
+        expect(`${row} Noodl.${property}${early || inline ? ' guarded' : ' UNGUARDED'}`).toBe(
+          `${row} Noodl.${property} guarded`
         );
-        guarded.push(`${row}:Noodl`);
+        guarded.push(`${row}:Noodl.${property}`);
       }
     }
   }
@@ -712,7 +883,11 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
   it('MUTANT: a not-found reader that acts before its inputs arrive reddens', () => {
     const mutant = clone(written['Pages/Site']);
     const notFound = mutant.graph.nodes.find((n) => n.parameters?.text === NOT_FOUND_TEXT)!;
-    const feed = mutant.wires.find((c) => c.toId === notFound.id && c.toProperty === 'visible')!;
+    // SBR-004: the `visible` wire lands on the card that WRAPS the text, so the
+    // walk is one hop longer. Still resolved structurally — through `children`
+    // and then the wire — rather than by any name the graph happens to use.
+    const card = mutant.graph.nodes.find((n) => (n.children ?? []).includes(notFound.id))!;
+    const feed = mutant.wires.find((c) => c.toId === card.id && c.toProperty === 'visible')!;
     const reader = mutant.graph.nodes.find((n) => n.id === feed.fromId)!;
     // Strip every early return, whatever it guards on: the property under test
     // is "publishes nothing before an answer", not any one spelling of it.
@@ -934,12 +1109,29 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
 
   it('every browser global a code node touches is guarded (acceptance 8)', () => {
     const guarded = assertGlobalsGuarded(siteEntries());
-    // The census half: the loop must have SEEN both globals, or "no unguarded
-    // references" would mean "no references".
+    // The census half: the loop must have SEEN every global reference, or "no
+    // unguarded references" would mean "no references". SBR-004 added the two
+    // `Noodl.Variables` rows — the write on the page and the read in the link —
+    // and made every row name its property rather than just the object.
     expect(guarded.sort()).toEqual([
-      'Pages/Site/The document title:Noodl',
-      'Pages/Site/The theme record, as CSS variables:document'
+      'Pages/Site/The document title:Noodl.SEO',
+      'Pages/Site/The slug to show:Noodl.Variables',
+      'Pages/Site/The theme record, as CSS variables:document',
+      'Site/NavLink/Is this the page being read:Noodl.Variables'
     ]);
+  });
+
+  it('MUTANT: a second Noodl property guarded by the first one reddens (SBR-004)', () => {
+    // 🔴 The hole this arm used to have, planted deliberately: a script whose
+    // `Noodl.SEO` guard stands and whose `Noodl.Variables` dereference has none.
+    // Per-script the guard is present and the old checker said "guarded"; the
+    // reference that throws on a server render is the second one.
+    const mutant = clone(written['Pages/Site']);
+    const seo = mutant.graph.nodes.find(
+      (n) => n.type === 'JavaScriptFunction' && scriptOf(n).includes('Noodl.SEO.setTitle')
+    )!;
+    seo.parameters!.functionScript = scriptOf(seo) + '\nNoodl.Variables.lastTitle = Inputs.title;';
+    expect(() => assertGlobalsGuarded([['Pages/Site', mutant]])).toThrow();
   });
 
   it('MUTANT: dropping the SSR guard from the theme applier reddens', () => {
@@ -1037,8 +1229,9 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     // The census half: the loop must have seen every code node, and three of
     // them must actually declare something — otherwise "no mismatches" could
     // mean the door never persisted `ports` and the check compared '' with ''.
-    // 9 since SB-015 F27 added `diagnoseNotFound` to `Site`.
-    expect(rows.length).toBe(9);
+    // 9 since SB-015 F27 added `diagnoseNotFound` to `Site`; 10 since SBR-004
+    // added `linkState` to `NavLink`.
+    expect(rows.length).toBe(10);
     expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(3);
   });
 
@@ -1067,6 +1260,179 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     expect(errorReads).toEqual([]);
   });
 
+  // ── SBR-004: the public site wears the theme ──────────────────────────────
+
+  /**
+   * AC3. The scan, its exemption list, and the census that stops "no raw values"
+   * from meaning "nothing was scanned".
+   */
+  it('SBR-004 AC3: every style value is a token, or a named exemption', () => {
+    const found = rawStyleValues(siteEntries());
+    // Strip the component prefix: an exemption is about the node, and the same
+    // node is never in two component sets.
+    const bare = found.map((row) => row.split(' :: ')[1]).sort();
+    const named = RAW_DIMENSION_EXEMPTIONS.map((e) => exemptionKey(e.label, e.port)).sort();
+    expect(bare).toEqual(named);
+
+    // AC3 of SBR-012 early: an exemption without a reason is a relaxation with
+    // extra steps.
+    for (const e of RAW_DIMENSION_EXEMPTIONS) {
+      expect(`${e.label}/${e.port} reason length ${e.why.length > 60}`).toBe(
+        `${e.label}/${e.port} reason length true`
+      );
+    }
+
+    // The census half. The scanner must have SEEN the ports it clears — a
+    // regex that matched nothing would produce the same empty list as a site
+    // authored entirely in tokens.
+    const tokenValues = siteEntries().flatMap(([key, w]) =>
+      w.graph.nodes.flatMap((n) =>
+        Object.entries(n.parameters ?? {})
+          .filter(([, v]) => typeof v === 'string' && v.startsWith('var(--'))
+          .map(([port]) => `${key}/${n.label}/${port}`)
+      )
+    );
+    expect(`token-valued ports across the five components: ${tokenValues.length >= 60}`).toBe(
+      'token-valued ports across the five components: true'
+    );
+  });
+
+  it('MUTANT: a planted hex on a colour port reddens the token scan', () => {
+    const mutant = clone(written['Pages/Site']);
+    const title = mutant.graph.nodes.find((n) => n.parameters?.as === 'h1')!;
+    title.parameters!.color = '#1e4d8c';
+    expect(rawStyleValues([['Pages/Site', mutant]])).toContain('Pages/Site :: Page title | color (raw colour)');
+  });
+
+  it('MUTANT: a planted hex inside a SCRIPT reddens the token scan', () => {
+    // 🔴 The arm that exists because `RawColorLiteral` cannot see this. It reads
+    // colour-TYPED ports only, and a script body is a string on a `*` port.
+    const mutant = clone(written['Site/NavLink']);
+    const state = mutant.graph.nodes.find(
+      (n) => n.type === 'JavaScriptFunction' && scriptOf(n).includes('Outputs.color')
+    )!;
+    state.parameters!.functionScript = scriptOf(state).replace("'var(--primary)'", "'#1e4d8c'");
+    expect(rawStyleValues([['Site/NavLink', mutant]]).join('\n')).toContain('(raw colour)');
+  });
+
+  it('MUTANT: a planted bare number on a spacing port reddens the token scan', () => {
+    const mutant = clone(written['Pages/Site']);
+    const shell = mutant.graph.nodes.find((n) => n.parameters?.maxWidth !== undefined)!;
+    shell.parameters!.rowGap = 32;
+    expect(rawStyleValues([['Pages/Site', mutant]])).toContain('Pages/Site :: Page shell | rowGap');
+  });
+
+  /**
+   * The reading measure, and the reason SBR-003 carried its last probe here:
+   * this is the first task that puts a measure on a real box.
+   *
+   * The *source* half is asserted here — the port carries the token rather than
+   * a px literal. Whether the browser then constrains the box is a question only
+   * a drive can answer, and it is AC5's last row.
+   */
+  it('SBR-004: the reading measure is the minted token, not a pixel literal', () => {
+    const w = written['Pages/Site'];
+    const shell = w.graph.nodes.find((n) => n.parameters?.maxWidth !== undefined)!;
+    expect(shell.parameters?.maxWidth).toBe('var(--site-measure)');
+    // And the ground beneath it consumes the background token — before SBR-004
+    // nothing did, so a Theme record could change `--background` and no element
+    // ever read it (`TokenResolver.generateCss` stamps `:root` and a body FONT,
+    // and nothing else).
+    const ground = w.graph.nodes.find((n) => n.parameters?.backgroundColor === 'var(--background)');
+    expect(`a node consumes --background: ${ground !== undefined}`).toBe('a node consumes --background: true');
+  });
+
+  /**
+   * AC2 — the current page is visibly distinct, and the distinction is derived
+   * rather than authored.
+   */
+  it('SBR-004 AC2: the nav link takes its colour and weight from a slug comparison', () => {
+    assertNavLinkStateIsDerived(written['Site/NavLink']);
+  });
+
+  it('SBR-004 AC2: the current slug has exactly one writer, and it is the resolver', () => {
+    // 🔴 An app-wide variable with two writers is a race nobody can read. The
+    // writer must be the node that already decides what "the page being read"
+    // means — the URL alone cannot, because an empty URL slug is the home page
+    // and only `SiteSettings.homeSlug` names that record.
+    const writers = siteEntries().flatMap(([key, w]) =>
+      w.graph.nodes
+        .filter((n) => scriptOf(n).includes(`Noodl.Variables[${JSON.stringify(SITE_CURRENT_SLUG_VAR)}] =`))
+        .map((n) => `${key}/${n.label}`)
+    );
+    expect(writers).toEqual(['Pages/Site/The slug to show']);
+  });
+
+  it('MUTANT: a nav link that authors its own colour reddens AC2', () => {
+    // The version an author writes when the nav "obviously" just needs a colour:
+    // a parameter on the link, and the decider's wire removed because it was
+    // fighting it. Both halves, because either alone leaves the other's
+    // assertion standing.
+    const mutant = clone(written['Site/NavLink']);
+    const link = mutant.graph.nodes.find((n) => n.type === 'Text')!;
+    const state = mutant.graph.nodes.find(
+      (n) => n.type === 'JavaScriptFunction' && scriptOf(n).includes('Outputs.color')
+    )!;
+    mutant.wires = mutant.wires.filter((c) => !(c.fromId === state.id && c.toProperty === 'color'));
+    link.parameters!.color = 'var(--foreground)';
+    expect(() => assertNavLinkStateIsDerived(mutant)).toThrow();
+  });
+
+  it('MUTANT: a current state that changes colour and not weight reddens AC2', () => {
+    // 🔴 The half a sighted author never notices is missing. Colour alone is
+    // the distinction, and the spec must refuse it.
+    const mutant = clone(written['Site/NavLink']);
+    const state = mutant.graph.nodes.find(
+      (n) => n.type === 'JavaScriptFunction' && scriptOf(n).includes('Outputs.color')
+    )!;
+    state.parameters!.functionScript = scriptOf(state).replace(
+      "Outputs.weight = isCurrent ? 'var(--font-semibold)' : 'var(--font-normal)';",
+      "Outputs.weight = 'var(--font-normal)';"
+    );
+    expect(() => assertNavLinkStateIsDerived(mutant)).toThrow();
+  });
+
+  /**
+   * AC1's third piece of shape — before SBR-004 the page simply stopped.
+   */
+  it('SBR-004: the page has a footer that names the site and links home', () => {
+    assertFooter(written['Pages/Site']);
+  });
+
+  it('MUTANT: a footer home link with a hard-coded slug reddens', () => {
+    const mutant = clone(written['Pages/Site']);
+    const nav = mutant.graph.nodes.find((n) => n.type === 'RouterNavigate' && n.label === 'To the home page')!;
+    mutant.wires = mutant.wires.filter((c) => !(c.toId === nav.id && c.toProperty === 'pm-slug'));
+    nav.parameters!['pm-slug'] = 'home';
+    expect(() => assertFooter(mutant)).toThrow();
+  });
+
+  it('MUTANT: a footer name with no standing value reddens (SB-018 (3))', () => {
+    const mutant = clone(written['Pages/Site']);
+    const footerName = mutant.graph.nodes.find((n) => n.label === 'Footer site name')!;
+    delete footerName.parameters!.text;
+    expect(() => assertFooter(mutant)).toThrow();
+  });
+
+  /**
+   * AC4's authorable half. The measured half — that a 375px viewport neither
+   * scrolls sideways nor overlaps — is the drive's, because only a browser can
+   * answer it.
+   */
+  it('SBR-004 AC4: the nav wraps rather than overflowing, and carries no gutter', () => {
+    const bar = written['Site/Nav'].graph.nodes.find((n) => n.parameters?.as === 'nav')!;
+    expect(bar.parameters?.flexWrap).toBe('wrap');
+    // 🔴 And no `columnGap`. A wrapped row around a Repeater WITH a gutter is
+    // `uncollapsible-multi-column` arm B (`responsiveArrangement.ts:238-256`);
+    // the gutter is the discriminator there, and the door refuses the create
+    // call over it. The spacing lives on the link instead.
+    expect(bar.parameters?.columnGap).toBeUndefined();
+    const link = written['Site/NavLink'].graph.nodes.find((n) => n.type === 'Text')!;
+    expect(link.parameters?.marginRight).toBe('var(--space-6)');
+    // The vertical step is what separates the ROWS once the bar has wrapped.
+    expect(link.parameters?.marginTop).toBe('var(--space-2)');
+  });
+
   /**
    * The census, and it is not decoration.
    *
@@ -1092,12 +1458,15 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
       functions: 1,
       // Sections, and nav links.
       repeaters: 2,
-      // NavLink 0, SectionView 1, ContactForm 1, Nav 0, Site 7 — Site gained
-      // `diagnoseNotFound` with SB-015 F27.
-      code: 9,
+      // NavLink 1, SectionView 1, ContactForm 1, Nav 0, Site 7 — Site gained
+      // `diagnoseNotFound` with SB-015 F27, and NavLink gained `linkState` with
+      // SBR-004 (the current-page state, AC2).
+      code: 10,
       pages: 1,
-      // One: the nav link. The site never navigates away from itself.
-      navigations: 1,
+      // Two: the nav link, and SBR-004's footer link home. The site still never
+      // navigates away from ITSELF — both target the one catch-all component and
+      // differ only in the slug they carry.
+      navigations: 2,
       pageInputs: 1,
       // SBR-002's answer deadline, and only that — a second Timer would be a
       // second writer racing the first onto the same watchdog port.

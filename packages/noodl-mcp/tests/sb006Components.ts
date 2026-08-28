@@ -105,6 +105,70 @@ export { ROUTER } from './sb005Components';
 export const SITE_PAGE = '/Pages/Site';
 
 /**
+ * SBR-004 AC2 — the app-wide variable carrying the slug the page is currently
+ * showing, written once by `/Pages/Site` and read by every nav link.
+ *
+ * 🔴 **A variable rather than a component input, and that is a measurement.**
+ * `For Each` sets `id` and the model's own fields on each item and nothing else
+ * (`foreach.tsx:586-597`), so a value that is *constant across items* cannot
+ * reach a repeated component as a port — the same limit that put the contact
+ * form outside the section list. `Noodl.Variables` is a `Noodl.Object` proxy
+ * over the `'--ndl--global-variables'` model (`noodl-js-api.ts:28`), so a write
+ * through it goes through `Model.set` and every `Variable` node reading the name
+ * is notified. That is the platform's own answer to this exact shape.
+ *
+ * ⚠️ The name is deliberately site-prefixed: variables are app-wide, and the
+ * admin panel runs in the same app.
+ */
+export const SITE_CURRENT_SLUG_VAR = 'siteCurrentSlug';
+
+/**
+ * SBR-004 AC3 / SBR-012's seed — the dimensions in this template that are NOT a
+ * token, each with the reason it cannot be one.
+ *
+ * An **exemption list, not a relaxation** (the `REMOVED_BY_SB018` pattern): the
+ * suite scans the five component sets for raw style values and every hit must be
+ * named here, so adding a raw value reds the gate until someone writes down why.
+ * SBR-012 widens the same scan to the generated artefact and the other two
+ * component sets.
+ *
+ * 🔴 Colour, radius, gap, face and font size have **no** entries and must not
+ * gain any — the vocabulary covers all five, so a raw one there is a defect
+ * rather than a gap.
+ */
+export const RAW_DIMENSION_EXEMPTIONS: ReadonlyArray<{ label: string; port: string; why: string }> = [
+  {
+    label: 'Section image',
+    port: 'height',
+    why: 'A section image band is a picture crop, not a rhythm step — the spacing scale tops out at 96px and this is 320px. No vocabulary token names a media height.'
+  },
+  {
+    label: 'Section image',
+    port: 'width',
+    why: '100% is a layout instruction ("fill the column"), not a measurement — there is no token for "all of it" and there should not be.'
+  },
+  {
+    label: 'Page ground',
+    port: 'minHeight',
+    why: '100vh is a viewport relation; the vocabulary is deliberately viewport-free, and this is what keeps a one-section page from ending halfway down the screen.'
+  },
+  {
+    label: 'Page shell',
+    port: 'width',
+    why: 'Same as the image width: 100% under a max-width IS the centred-measure idiom, and the measure itself is --site-measure.'
+  }
+];
+
+/**
+ * 🔴 Keyed by **label**, not by the `id` authored above, and that is SB-004 F9:
+ * the door reallocates node ids to be unique across the project, so `image` can
+ * land as `image-2` and an exemption keyed on the sent id would silently stop
+ * matching — an exemption that matches nothing reads exactly like a raw value
+ * that was never introduced.
+ */
+export const exemptionKey = (label: string, port: string): string => `${label} | ${port}`;
+
+/**
  * 🔴 **The catch-all, and the reason SB-005's page paths changed.**
  *
  * The public site is one page component at `{slug}`, because a site builder's
@@ -190,6 +254,16 @@ export const CONTACT_SUCCESS_TEXT = 'Thanks — your message has been sent.';
 export const NOT_FOUND_TEXT = 'That page could not be found.';
 
 /**
+ * SBR-004's footer link, and the only string on the public site that is authored
+ * copy rather than a placeholder waiting for a record.
+ *
+ * ⚠️ "Home" and not the site name: the footer already carries the site name on
+ * the line above it, and a link labelled with the same words as the text beside
+ * it reads as a repetition rather than as a way back.
+ */
+export const FOOTER_HOME_TEXT = 'Home';
+
+/**
  * The site has no `SiteSettings` row, i.e. nobody has completed setup.
  *
  * This is what F27 actually measured: with `claimSite` refused there is no
@@ -273,7 +347,23 @@ export const NAV_LINK_NODES = [
     // `as: 'span'` inside the `nav` band: a heading level here would compete
     // with the page's own `h1`, which is the SEO surface this whole component
     // exists to serve.
-    parameters: { as: 'span', text: 'Page', marginRight: 16 }
+    //
+    // SBR-004: every value is a token. `color` and `fontWeight` are deliberately
+    // NOT authored here — they arrive from `linkState` below, and that is the
+    // whole of AC2. The standing `text` stays for SB-018 (3).
+    parameters: {
+      as: 'span',
+      text: 'Page',
+      // ⚠️ MARGIN, not padding. `Text` is given `addMarginInputs` and NOT
+      // `addPaddingInputs` (`text.ts:149-158`), so a `paddingTop` here is a port
+      // that does not exist — the door refuses it and the runtime would discard
+      // it. The vertical step is what gives the bar its height either way.
+      marginRight: 'var(--space-6)',
+      marginTop: 'var(--space-2)',
+      marginBottom: 'var(--space-2)',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-base)'
+    }
   },
   {
     id: 'inputs',
@@ -286,6 +376,53 @@ export const NAV_LINK_NODES = [
     ]
   },
   {
+    id: 'currentSlug',
+    type: 'Variable2',
+    label: 'Which slug the page is showing',
+    // 🔴 SBR-004 AC2, and the reason it is a Variable rather than a component
+    // input. A `For Each` sets `id` and **the model's own fields** and nothing
+    // else (`foreach.tsx:586-597`) — the same limit SB-004 §5 recorded for `Run
+    // Tasks` and this file already records for the contact form's `pageSlug`. So
+    // the one value every link needs, and which is constant across them, cannot
+    // arrive as a port on a repeated component. `/Pages/Site`'s `resolveSlug`
+    // writes it (see `SITE_CURRENT_SLUG_VAR`); this node is how a link notices.
+    parameters: { name: SITE_CURRENT_SLUG_VAR }
+  },
+  {
+    id: 'linkState',
+    type: 'JavaScriptFunction',
+    label: 'Is this the page being read',
+    parameters: {
+      // 🔴 Two producers, and the second one is not redundant. `changed` fires
+      // when the variable is written from anywhere, which covers "the link
+      // existed before the page resolved its slug". The direct read covers the
+      // other order — a link created AFTER the write, where nothing changes
+      // again and no signal is owed. Neither alone is both.
+      //
+      // 🔴 Guarded for a server render like every other code node in this file:
+      // `createNoodlAPI` returns `{}` when there is no `window.Noodl`
+      // (`javascriptnodeparser.js:497-501`).
+      //
+      // The two answers are tokens, not colours — `--primary` against
+      // `--muted-foreground` is the current//not-current pair the theme record
+      // re-themes for free, and the weight step is what carries the distinction
+      // where colour alone would not (SBR-012's own rule, and AA contrast).
+      functionScript:
+        'if (Inputs.slug === undefined) return;\n' +
+        'let current = Inputs.current;\n' +
+        // The template's one `Noodl` guard idiom (`seo` uses the same shape):
+        // `createNoodlAPI` returns `{}` rather than undefined, so testing the
+        // object and the property is the whole check.
+        'if (current === undefined && Noodl && Noodl.Variables) {\n' +
+        '  current = Noodl.Variables[' + JSON.stringify(SITE_CURRENT_SLUG_VAR) + '];\n' +
+        '}\n' +
+        "const isCurrent = current !== undefined && current !== null && current !== '' && String(current) === String(Inputs.slug);\n" +
+        "Outputs.color = isCurrent ? 'var(--primary)' : 'var(--muted-foreground)';\n" +
+        "Outputs.weight = isCurrent ? 'var(--font-semibold)' : 'var(--font-normal)';\n" +
+        'Outputs.current = isCurrent;'
+    }
+  },
+  {
     id: 'goPage',
     type: 'RouterNavigate',
     label: 'To that page',
@@ -296,7 +433,15 @@ export const NAV_LINK_NODES = [
 export const NAV_LINK_WIRES = [
   { fromId: 'inputs', fromProperty: 'title', toId: 'link', toProperty: 'text' },
   { fromId: 'inputs', fromProperty: 'slug', toId: 'goPage', toProperty: 'pm-slug' },
-  { fromId: 'link', fromProperty: 'onClick', toId: 'goPage', toProperty: 'navigate' }
+  { fromId: 'link', fromProperty: 'onClick', toId: 'goPage', toProperty: 'navigate' },
+
+  // SBR-004 AC2. The record's slug is what this link IS; the variable is what
+  // the page is showing; the state node compares them and owns both style ports.
+  { fromId: 'inputs', fromProperty: 'slug', toId: 'linkState', toProperty: 'in-slug' },
+  { fromId: 'currentSlug', fromProperty: 'value', toId: 'linkState', toProperty: 'in-current' },
+  { fromId: 'currentSlug', fromProperty: 'changed', toId: 'linkState', toProperty: 'run' },
+  { fromId: 'linkState', fromProperty: 'out-color', toId: 'link', toProperty: 'color' },
+  { fromId: 'linkState', fromProperty: 'out-weight', toId: 'link', toProperty: 'fontWeight' }
 ];
 
 // ── 2. Site/SectionView — one section of the page being read ─────────────────
@@ -339,12 +484,15 @@ export const SECTION_VIEW_NODES = [
     label: 'One section',
     // `as: 'section'` — this is the public HTML, and a site made of `div`s is
     // the thing a client's SEO consultant will complain about first.
+    // SBR-004: the rhythm between sections is two steps of the spacing scale.
+    // The values are the same 32/16 they were — what changed is where they come
+    // from, so the look is unmoved and the provenance is single.
     parameters: {
       as: 'section',
       flexDirection: 'column',
-      paddingTop: 32,
-      paddingBottom: 32,
-      rowGap: 16
+      paddingTop: 'var(--space-8)',
+      paddingBottom: 'var(--space-8)',
+      rowGap: 'var(--space-4)'
     },
     children: ['image', 'body']
   },
@@ -358,11 +506,16 @@ export const SECTION_VIEW_NODES = [
     // other mode. And both dimensions carry a unit — a bare number on a
     // dimension port is read as a **percentage** (`unitless-dimension`), so
     // `height: 320` would have been 320% of the section.
+    //
+    // SBR-004: both dimensions stay raw and both are named in
+    // `RAW_DIMENSION_EXEMPTIONS` — a media crop is not a rhythm step. The
+    // corner radius is a token, because that one the vocabulary does name.
     parameters: {
       sizeMode: 'explicit',
       objectFit: 'cover',
       width: { value: 100, unit: '%' },
       height: { value: 320, unit: 'px' },
+      borderRadius: 'var(--radius-md)',
       visible: false
     }
   },
@@ -378,7 +531,18 @@ export const SECTION_VIEW_NODES = [
     // wired `Text` in this template already carried one (`link`, `rowStatus`,
     // `notFound`); these were the four that did not, and s19's census over the
     // shipped artefact is what found them rather than the one the drive saw.
-    parameters: { as: 'p', visible: false, text: '' }
+    //
+    // SBR-004: `color` and `lineHeight` are authored because they are the same
+    // for every kind. `fontSize`, `fontWeight` and `fontFamily` are NOT — the
+    // kind decides all three and `unpack` below owns them, so authoring one here
+    // would be a value that is overwritten on every row that renders.
+    parameters: {
+      as: 'p',
+      visible: false,
+      text: '',
+      color: 'var(--foreground)',
+      lineHeight: 'var(--leading-relaxed)'
+    }
   },
   {
     id: 'inputs',
@@ -417,7 +581,12 @@ export const SECTION_VIEW_NODES = [
         // The weight is what tells a hero from a paragraph, and the door's
         // `monotone-typography` check is answered by setting one at all.
         "Outputs.weight = (kind === 'hero' || kind === 'cta') ? 'var(--font-bold)' : 'var(--font-normal)';\n" +
-        "Outputs.size = kind === 'hero' ? 'var(--text-3xl)' : 'var(--text-base)';"
+        "Outputs.size = kind === 'hero' ? 'var(--text-3xl)' : 'var(--text-base)';\n" +
+        // SBR-004: a hero is the display face, body copy is the interface face.
+        // Both are ROLE slots in the shipped vocabulary (siteTheme.ts's first
+        // deliberate wrinkle) — Night puts a sans stack in `--font-serif` and
+        // that is intended, so this reads "display" and not "serif".
+        "Outputs.family = kind === 'hero' ? 'var(--font-serif)' : 'var(--font-sans)';"
     }
   }
 ];
@@ -431,7 +600,8 @@ export const SECTION_VIEW_WIRES = [
   { fromId: 'unpack', fromProperty: 'out-body', toId: 'body', toProperty: 'text' },
   { fromId: 'unpack', fromProperty: 'out-showBody', toId: 'body', toProperty: 'visible' },
   { fromId: 'unpack', fromProperty: 'out-weight', toId: 'body', toProperty: 'fontWeight' },
-  { fromId: 'unpack', fromProperty: 'out-size', toId: 'body', toProperty: 'fontSize' }
+  { fromId: 'unpack', fromProperty: 'out-size', toId: 'body', toProperty: 'fontSize' },
+  { fromId: 'unpack', fromProperty: 'out-family', toId: 'body', toProperty: 'fontFamily' }
 ];
 
 // ── 3. Site/ContactForm — the one surface a visitor writes through ───────────
@@ -461,7 +631,24 @@ export const CONTACT_FORM_NODES = [
     id: 'form',
     type: 'Group',
     label: 'Contact form',
-    parameters: { as: 'section', flexDirection: 'column', rowGap: 12, paddingTop: 24, paddingBottom: 24 },
+    // SBR-004: the form is the one card on the page — a raised surface with the
+    // shared border and radius, so it reads as a thing you fill in rather than
+    // as more of the article. Every value is a token, `--surface` included, so
+    // the card follows the Theme record like everything else.
+    parameters: {
+      as: 'section',
+      flexDirection: 'column',
+      rowGap: 'var(--space-3)',
+      paddingTop: 'var(--space-6)',
+      paddingBottom: 'var(--space-6)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)',
+      backgroundColor: 'var(--surface)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      borderRadius: 'var(--radius-md)'
+    },
     children: ['heading', 'nameField', 'emailField', 'messageField', 'sendButton', 'sent', 'refused']
   },
   {
@@ -469,7 +656,14 @@ export const CONTACT_FORM_NODES = [
     type: 'Text',
     label: 'Contact heading',
     parent: 'form',
-    parameters: { as: 'h2', text: 'Get in touch', fontWeight: 'var(--font-bold)' }
+    parameters: {
+      as: 'h2',
+      text: 'Get in touch',
+      fontWeight: 'var(--font-bold)',
+      fontFamily: 'var(--font-serif)',
+      fontSize: 'var(--text-xl)',
+      color: 'var(--foreground)'
+    }
   },
   {
     id: 'nameField',
@@ -504,14 +698,28 @@ export const CONTACT_FORM_NODES = [
     type: 'Text',
     label: 'The one confirmation',
     parent: 'form',
-    parameters: { text: CONTACT_SUCCESS_TEXT, visible: false }
+    // SBR-004: both answers are `--foreground` and not a green/red pair. The
+    // vocabulary's `--destructive` would be a second palette on a page whose
+    // whole colour story is one primary, and a refusal a visitor can do nothing
+    // about does not earn an alarm colour.
+    parameters: {
+      text: CONTACT_SUCCESS_TEXT,
+      visible: false,
+      color: 'var(--foreground)',
+      fontSize: 'var(--text-sm)'
+    }
   },
   {
     id: 'refused',
     type: 'Text',
     label: 'The one refusal',
     parent: 'form',
-    parameters: { text: CONTACT_REFUSAL_TEXT, visible: false }
+    parameters: {
+      text: CONTACT_REFUSAL_TEXT,
+      visible: false,
+      color: 'var(--foreground)',
+      fontSize: 'var(--text-sm)'
+    }
   },
   {
     id: 'inputs',
@@ -604,7 +812,32 @@ export const NAV_NODES = [
     id: 'bar',
     type: 'Group',
     label: 'Navigation',
-    parameters: { as: 'nav', flexDirection: 'row', alignItems: 'center', paddingTop: 16, paddingBottom: 16 },
+    // SBR-004: a bar with a bottom rule, and `flexWrap` is AC4's half of it —
+    // a row of links on a 375px screen must run onto a second line rather than
+    // overflow the page sideways. `borderBottomWidth`/`Color` are dynamic ports
+    // gated on `borderBottomStyle` being a real line style
+    // (`node-shared-port-definitions.ts:1096-1101`), so the style is authored
+    // first and not as decoration.
+    //
+    // 🔴 **No `columnGap`, and the door is what settled it.** A wrapped row
+    // around a Repeater WITH a gutter is `uncollapsible-multi-column` arm B
+    // (`responsiveArrangement.ts:238-256`) — and the gutter is the whole
+    // discriminator there, because a Group-level gutter is how the corpus's
+    // three real defects were authored. The spacing between links belongs to the
+    // link anyway: `NavLink` carries its own `marginRight`/`marginTop`, which is
+    // also what separates the rows once the bar wraps. Adding a gutter back here
+    // reds the create call.
+    parameters: {
+      as: 'nav',
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      paddingTop: 'var(--space-4)',
+      paddingBottom: 'var(--space-4)',
+      borderBottomStyle: 'solid',
+      borderBottomWidth: 'var(--border-1)',
+      borderBottomColor: 'var(--border)'
+    },
     children: ['links']
   },
   {
@@ -662,23 +895,64 @@ export const SITE_NODES = [
     // `title` is the static fallback the Router will actually use for the tab
     // until `seo` runs; `urlPath` is the catch-all.
     parameters: { title: 'Site', urlPath: SITE_URL_PATH },
+    children: ['frame']
+  },
+  {
+    id: 'frame',
+    type: 'Group',
+    label: 'Page ground',
+    parent: 'page',
+    // 🔴 SBR-004, and this node is the whole reason the theme is visible at all.
+    // `TokenResolver.generateCss` stamps `:root { …tokens }` and
+    // `body { font-family: var(--font-sans) }` — and **nothing else**
+    // (`TokenResolver.ts:137`). So `--background` and `--foreground` are
+    // declared on every deploy and read by no element: before this, a site with
+    // Night selected still rendered black on white, because the record changed a
+    // custom property that nothing consumed. The ground is a node, or it is not
+    // there.
+    //
+    // Centring happens here (`alignItems`) and the measure lives on `shell`,
+    // which is the one arrangement where the background spans the window and the
+    // text does not.
+    parameters: {
+      flexDirection: 'column',
+      alignItems: 'center',
+      // ⚠️ `backgroundColor` only. A `Group` gets `addBorderInputs` and
+      // `addPaddingInputs` but NOT `addTextStyleInputs` (`group.ts:492-500`), so
+      // there is no inheritable text `color` port on a container here — every
+      // `Text` on the page names its own colour, and that is why `--foreground`
+      // appears on the leaves rather than once at the top.
+      backgroundColor: 'var(--background)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)',
+      // Named in `RAW_DIMENSION_EXEMPTIONS`: a viewport relation, and the
+      // vocabulary is deliberately viewport-free.
+      minHeight: { value: 100, unit: 'vh' }
+    },
     children: ['shell']
   },
   {
     id: 'shell',
     type: 'Group',
     label: 'Page shell',
-    parent: 'page',
+    parent: 'frame',
+    // 🔴 The reading measure, and it is the one custom token this template mints
+    // (`--site-measure`, SBR-003 §2). A units-typed port takes a `var(--token)`
+    // string first-class — `isTokenReference` in `react-component-node.ts:586`
+    // is AIB-001's fix and the validator asks for exactly this form
+    // (`parameterValues.ts:199`). The old `{ value: 960, unit: 'px' }` was
+    // correct and unthemeable; this one moves when the record does.
+    //
+    // `width: 100%` under it is the centred-measure idiom, and is named in
+    // `RAW_DIMENSION_EXEMPTIONS` for what it is: a layout instruction.
     parameters: {
       flexDirection: 'column',
-      paddingTop: 24,
-      paddingLeft: 24,
-      paddingRight: 24,
-      // ⚠️ A bare `960` here is read as **960%** — `unitless-dimension`, which
-      // the door raises as a blocking warning with both unit forms offered.
-      maxWidth: { value: 960, unit: 'px' }
+      width: { value: 100, unit: '%' },
+      maxWidth: 'var(--site-measure)',
+      rowGap: 'var(--space-8)',
+      paddingBottom: 'var(--space-12)'
     },
-    children: ['nav', 'header', 'sectionList', 'contactWrap', 'notFound']
+    children: ['nav', 'header', 'sectionList', 'contactWrap', 'notFoundCard', 'footer']
   },
   { id: 'nav', type: '/Site/Nav', label: 'Navigation', parent: 'shell' },
   {
@@ -686,7 +960,7 @@ export const SITE_NODES = [
     type: 'Group',
     label: 'Header',
     parent: 'shell',
-    parameters: { as: 'header', flexDirection: 'column', rowGap: 4 },
+    parameters: { as: 'header', flexDirection: 'column', rowGap: 'var(--space-1)', paddingTop: 'var(--space-8)' },
     children: ['siteName', 'pageTitle']
   },
   {
@@ -706,7 +980,19 @@ export const SITE_NODES = [
     // site's own copy and would be wrong for the fraction of a second before the
     // record lands.
     parent: 'header',
-    parameters: { as: 'span', fontWeight: 'var(--font-semibold)', text: '' }
+    // SBR-004: the site name is the small line ABOVE the page title — the
+    // interface face, muted, uppercase-free. It is not the masthead; the page's
+    // own `h1` is, and two competing large strings is the "column of controls"
+    // look this task exists to end.
+    parameters: {
+      as: 'span',
+      fontWeight: 'var(--font-semibold)',
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--muted-foreground)',
+      letterSpacing: 'var(--tracking-wide)'
+    }
   },
   {
     id: 'pageTitle',
@@ -717,7 +1003,19 @@ export const SITE_NODES = [
     // note) — this is a `Text` fed from the record. `text: ''` for SB-018 (3);
     // this is the node the drive caught, and `siteName` above is the same shape
     // caught with it rather than left to be found later.
-    parameters: { as: 'h1', fontWeight: 'var(--font-bold)', fontSize: 'var(--text-3xl)', text: '' }
+    //
+    // SBR-004: the display face and the tight leading are what make this read as
+    // a masthead rather than as big body copy. `--font-serif` is the ROLE slot,
+    // not a promise of serifs (siteTheme.ts's first wrinkle).
+    parameters: {
+      as: 'h1',
+      fontWeight: 'var(--font-bold)',
+      fontSize: 'var(--text-4xl)',
+      text: '',
+      fontFamily: 'var(--font-serif)',
+      color: 'var(--foreground)',
+      lineHeight: 'var(--leading-tight)'
+    }
   },
   {
     id: 'sectionList',
@@ -742,18 +1040,116 @@ export const SITE_NODES = [
   },
   { id: 'contact', type: '/Site/ContactForm', label: 'Contact form', parent: 'contactWrap' },
   {
+    id: 'notFoundCard',
+    type: 'Group',
+    label: 'The empty-screen card',
+    parent: 'shell',
+    // 🔴 SBR-004 moves the `visible` wire from the Text to this wrapper, and the
+    // contract it carries moves with it unchanged: `visible: false` is the
+    // authored default and must stay standing until a fetch has happened (see
+    // the module header on `isEmpty`). Nothing wired can publish before
+    // `pageQuery` has answered once, so an author who deletes the wire gets a
+    // hidden card rather than a 404 on every page.
+    //
+    // A wrapper rather than styling the Text because the four states SBR-002
+    // named are *panels* — a centred card on the surface colour is what tells a
+    // visitor "this is the whole answer" instead of "this paragraph failed".
+    parameters: {
+      flexDirection: 'column',
+      alignItems: 'center',
+      visible: false,
+      backgroundColor: 'var(--surface)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      borderRadius: 'var(--radius-md)',
+      paddingTop: 'var(--space-12)',
+      paddingBottom: 'var(--space-12)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)'
+    },
+    children: ['notFound']
+  },
+  {
     id: 'notFound',
     type: 'Text',
     label: 'Not found',
-    parent: 'shell',
-    // 🔴 `visible: false` is the authored default and it must stay standing until
-    // a fetch has happened — see the module header on `isEmpty`. Nothing wired
-    // here can publish before `pageQuery` has answered once.
-    //
+    parent: 'notFoundCard',
     // `text` keeps the plain 404 as its authored value so the node still reads
-    // correctly with nothing wired; `diagnoseNotFound` overwrites it on the two
-    // occasions it is wrong.
-    parameters: { as: 'p', text: NOT_FOUND_TEXT, visible: false }
+    // correctly with nothing wired; `diagnoseNotFound` overwrites it on the
+    // three occasions it is wrong. No `visible` here any more — the card owns
+    // it, and a node with two visibility owners is a node nobody can reason
+    // about.
+    parameters: {
+      as: 'p',
+      text: NOT_FOUND_TEXT,
+      color: 'var(--muted-foreground)',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-base)',
+      textAlignX: 'center'
+    }
+  },
+  {
+    id: 'footer',
+    type: 'Group',
+    label: 'Footer',
+    parent: 'shell',
+    // SBR-004's third piece of shape. Before this the page simply stopped —
+    // the last section's bottom padding and then the window. A rule, the site's
+    // name and a way back to the home page is the minimum that reads as a
+    // published site rather than a fragment.
+    parameters: {
+      as: 'footer',
+      flexDirection: 'column',
+      rowGap: 'var(--space-2)',
+      paddingTop: 'var(--space-8)',
+      borderTopStyle: 'solid',
+      borderTopWidth: 'var(--border-1)',
+      borderTopColor: 'var(--border)'
+    },
+    children: ['footerName', 'footerHome']
+  },
+  {
+    id: 'footerName',
+    type: 'Text',
+    label: 'Footer site name',
+    parent: 'footer',
+    // SB-018 (3) again: standing `text: ''`, because the only writer is a wire
+    // and `Text` defaults to the literal word "Text" until a port is set.
+    parameters: {
+      as: 'span',
+      text: '',
+      color: 'var(--muted-foreground)',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)'
+    }
+  },
+  {
+    id: 'footerHome',
+    type: 'Text',
+    label: 'Back to home',
+    parent: 'footer',
+    // A standing value that is also the final one: this string is the same on
+    // every page and comes from no record, so unlike every other `Text` here it
+    // is authored copy rather than a placeholder.
+    parameters: {
+      as: 'span',
+      text: FOOTER_HOME_TEXT,
+      color: 'var(--primary)',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      fontWeight: 'var(--font-semibold)'
+    }
+  },
+  {
+    id: 'goHome',
+    type: 'RouterNavigate',
+    label: 'To the home page',
+    // 🔴 The target is the same catch-all component every link points at; what
+    // makes it "home" is the `pm-slug` it carries, and that value comes from
+    // `SiteSettings.homeSlug` rather than a hard-coded 'home' — the record is
+    // what decides which page is the front door, and `claimSite` writes it.
+    parameters: { router: ROUTER, target: SITE_PAGE }
   },
   {
     id: 'diagnoseNotFound',
@@ -892,6 +1288,19 @@ export const SITE_NODES = [
         "const slug = fromUrl === '' ? Inputs.homeSlug : fromUrl;\n" +
         "if (slug === '') return;\n" +
         'Outputs.slug = slug;\n' +
+        // 🔴 SBR-004 AC2. The one write of the app-wide current slug, here
+        // because this is the node that decides what "the page being read"
+        // means — the URL alone cannot, since an empty URL slug is the home
+        // page and only `SiteSettings.homeSlug` says which record that is.
+        //
+        // `Noodl.Variables` is a `Noodl.Object` proxy (`noodl-js-api.ts:28`), so
+        // this goes through `Model.set` and every `Variable` node reading the
+        // name is notified. Guarded like every other code node here:
+        // `createNoodlAPI` returns `{}` with no `window.Noodl`, and this bundle
+        // is the one most likely to be server-rendered.
+        'if (Noodl && Noodl.Variables) {\n' +
+        '  Noodl.Variables[' + JSON.stringify(SITE_CURRENT_SLUG_VAR) + '] = slug;\n' +
+        '}\n' +
         'Outputs.ready();'
     }
   },
@@ -1085,7 +1494,9 @@ export const SITE_WIRES = [
   // The settings query's own refusal, which is what separates "not set up"
   // from "you may not read this" — see the node's script.
   { fromId: 'settings', fromProperty: 'error', toId: 'diagnoseNotFound', toProperty: 'in-settingsError' },
-  { fromId: 'diagnoseNotFound', fromProperty: 'out-visible', toId: 'notFound', toProperty: 'visible' },
+  // SBR-004: the visibility moved to the CARD (the Text is always visible
+  // inside it); the text still lands on the Text. Two nodes, one decider.
+  { fromId: 'diagnoseNotFound', fromProperty: 'out-visible', toId: 'notFoundCard', toProperty: 'visible' },
   { fromId: 'diagnoseNotFound', fromProperty: 'out-text', toId: 'notFound', toProperty: 'text' },
   // SBR-002: the deadline. Mount starts the clock; its finish arms the
   // watchdog arm — a value port, so the signal's true-then-false COALESCES to a
@@ -1109,7 +1520,14 @@ export const SITE_WIRES = [
   { fromId: 'readPage', fromProperty: 'out-slug', toId: 'contact', toProperty: 'pageSlug' },
 
   { fromId: 'theme', fromProperty: 'items', toId: 'applyTheme', toProperty: 'in-rows' },
-  { fromId: 'theme', fromProperty: 'fetched', toId: 'applyTheme', toProperty: 'run' }
+  { fromId: 'theme', fromProperty: 'fetched', toId: 'applyTheme', toProperty: 'run' },
+
+  // SBR-004's footer. The name is the same one the header shows — one read of
+  // the settings row feeds both — and the link's destination is the home slug
+  // the record names, not a hard-coded 'home'.
+  { fromId: 'readSettings', fromProperty: 'out-siteName', toId: 'footerName', toProperty: 'text' },
+  { fromId: 'readSettings', fromProperty: 'out-homeSlug', toId: 'goHome', toProperty: 'pm-slug' },
+  { fromId: 'footerHome', fromProperty: 'onClick', toId: 'goHome', toProperty: 'navigate' }
 ];
 
 // ── The set, in an order the door will accept ────────────────────────────────

@@ -73,7 +73,11 @@
             "parameters": {
               "as": "span",
               "text": "Page",
-              "marginRight": 16
+              "marginRight": "var(--space-6)",
+              "marginTop": "var(--space-2)",
+              "marginBottom": "var(--space-2)",
+              "fontFamily": "var(--font-sans)",
+              "fontSize": "var(--text-base)"
             },
             "ports": [],
             "dynamicports": []
@@ -106,12 +110,38 @@
             "dynamicports": []
           },
           {
+            "id": "currentSlug",
+            "type": "Variable2",
+            "children": [],
+            "label": "Which slug the page is showing",
+            "x": 290,
+            "y": 400,
+            "parameters": {
+              "name": "siteCurrentSlug"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "linkState",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Is this the page being read",
+            "x": 290,
+            "y": 160,
+            "parameters": {
+              "functionScript": "if (Inputs.slug === undefined) return;\nlet current = Inputs.current;\nif (current === undefined && Noodl && Noodl.Variables) {\n  current = Noodl.Variables[\"siteCurrentSlug\"];\n}\nconst isCurrent = current !== undefined && current !== null && current !== '' && String(current) === String(Inputs.slug);\nOutputs.color = isCurrent ? 'var(--primary)' : 'var(--muted-foreground)';\nOutputs.weight = isCurrent ? 'var(--font-semibold)' : 'var(--font-normal)';\nOutputs.current = isCurrent;"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
             "id": "goPage",
             "type": "RouterNavigate",
             "children": [],
             "label": "To that page",
             "x": 290,
-            "y": 160,
+            "y": 280,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Site"
@@ -138,6 +168,36 @@
             "fromProperty": "onClick",
             "toId": "goPage",
             "toProperty": "navigate"
+          },
+          {
+            "fromId": "inputs",
+            "fromProperty": "slug",
+            "toId": "linkState",
+            "toProperty": "in-slug"
+          },
+          {
+            "fromId": "currentSlug",
+            "fromProperty": "value",
+            "toId": "linkState",
+            "toProperty": "in-current"
+          },
+          {
+            "fromId": "currentSlug",
+            "fromProperty": "changed",
+            "toId": "linkState",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "linkState",
+            "fromProperty": "out-color",
+            "toId": "link",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "linkState",
+            "fromProperty": "out-weight",
+            "toId": "link",
+            "toProperty": "fontWeight"
           }
         ],
         "visualRoots": [
@@ -171,6 +231,7 @@
                     "value": 320,
                     "unit": "px"
                   },
+                  "borderRadius": "var(--radius-md)",
                   "visible": false
                 },
                 "ports": [],
@@ -186,7 +247,9 @@
                 "parameters": {
                   "as": "p",
                   "visible": false,
-                  "text": ""
+                  "text": "",
+                  "color": "var(--foreground)",
+                  "lineHeight": "var(--leading-relaxed)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -198,9 +261,9 @@
             "parameters": {
               "as": "section",
               "flexDirection": "column",
-              "paddingTop": 32,
-              "paddingBottom": 32,
-              "rowGap": 16
+              "paddingTop": "var(--space-8)",
+              "paddingBottom": "var(--space-8)",
+              "rowGap": "var(--space-4)"
             },
             "ports": [],
             "dynamicports": []
@@ -245,7 +308,7 @@
             "x": 350,
             "y": 160,
             "parameters": {
-              "functionScript": "const kind = Inputs.kind || 'richText';\nconst d = Inputs.data || {};\nconst body = d.body || '';\nconst image = (d.image && d.image.url) || '';\nOutputs.showImage = image !== '' && (kind === 'hero' || kind === 'gallery');\nOutputs.showBody = body !== '' && kind !== 'gallery';\nOutputs.body = body;\nOutputs.image = image;\nOutputs.weight = (kind === 'hero' || kind === 'cta') ? 'var(--font-bold)' : 'var(--font-normal)';\nOutputs.size = kind === 'hero' ? 'var(--text-3xl)' : 'var(--text-base)';"
+              "functionScript": "const kind = Inputs.kind || 'richText';\nconst d = Inputs.data || {};\nconst body = d.body || '';\nconst image = (d.image && d.image.url) || '';\nOutputs.showImage = image !== '' && (kind === 'hero' || kind === 'gallery');\nOutputs.showBody = body !== '' && kind !== 'gallery';\nOutputs.body = body;\nOutputs.image = image;\nOutputs.weight = (kind === 'hero' || kind === 'cta') ? 'var(--font-bold)' : 'var(--font-normal)';\nOutputs.size = kind === 'hero' ? 'var(--text-3xl)' : 'var(--text-base)';\nOutputs.family = kind === 'hero' ? 'var(--font-serif)' : 'var(--font-sans)';"
             },
             "ports": [],
             "dynamicports": []
@@ -299,6 +362,12 @@
             "fromProperty": "out-size",
             "toId": "body",
             "toProperty": "fontSize"
+          },
+          {
+            "fromId": "unpack",
+            "fromProperty": "out-family",
+            "toId": "body",
+            "toProperty": "fontFamily"
           }
         ],
         "visualRoots": [
@@ -324,7 +393,10 @@
                 "parameters": {
                   "as": "h2",
                   "text": "Get in touch",
-                  "fontWeight": "var(--font-bold)"
+                  "fontWeight": "var(--font-bold)",
+                  "fontFamily": "var(--font-serif)",
+                  "fontSize": "var(--text-xl)",
+                  "color": "var(--foreground)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -395,7 +467,9 @@
                 "y": 760,
                 "parameters": {
                   "text": "Thanks — your message has been sent.",
-                  "visible": false
+                  "visible": false,
+                  "color": "var(--foreground)",
+                  "fontSize": "var(--text-sm)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -409,7 +483,9 @@
                 "y": 880,
                 "parameters": {
                   "text": "That message could not be sent.",
-                  "visible": false
+                  "visible": false,
+                  "color": "var(--foreground)",
+                  "fontSize": "var(--text-sm)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -421,9 +497,16 @@
             "parameters": {
               "as": "section",
               "flexDirection": "column",
-              "rowGap": 12,
-              "paddingTop": 24,
-              "paddingBottom": 24
+              "rowGap": "var(--space-3)",
+              "paddingTop": "var(--space-6)",
+              "paddingBottom": "var(--space-6)",
+              "paddingLeft": "var(--space-6)",
+              "paddingRight": "var(--space-6)",
+              "backgroundColor": "var(--surface)",
+              "borderStyle": "solid",
+              "borderWidth": "var(--border-1)",
+              "borderColor": "var(--border)",
+              "borderRadius": "var(--radius-md)"
             },
             "ports": [],
             "dynamicports": []
@@ -625,8 +708,12 @@
               "as": "nav",
               "flexDirection": "row",
               "alignItems": "center",
-              "paddingTop": 16,
-              "paddingBottom": 16
+              "flexWrap": "wrap",
+              "paddingTop": "var(--space-4)",
+              "paddingBottom": "var(--space-4)",
+              "borderBottomStyle": "solid",
+              "borderBottomWidth": "var(--border-1)",
+              "borderBottomColor": "var(--border)"
             },
             "ports": [],
             "dynamicports": []
@@ -683,134 +770,247 @@
             "type": "Page",
             "children": [
               {
-                "id": "shell",
+                "id": "frame",
                 "type": "Group",
                 "children": [
                   {
-                    "id": "nav",
-                    "type": "/Site/Nav",
-                    "children": [],
-                    "label": "Navigation",
-                    "x": 160,
-                    "y": 280,
-                    "parameters": {},
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "header",
+                    "id": "shell",
                     "type": "Group",
                     "children": [
                       {
-                        "id": "siteName",
-                        "type": "Text",
+                        "id": "nav",
+                        "type": "/Site/Nav",
                         "children": [],
-                        "label": "Site name",
+                        "label": "Navigation",
+                        "x": 220,
+                        "y": 400,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "header",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "siteName",
+                            "type": "Text",
+                            "children": [],
+                            "label": "Site name",
+                            "x": 280,
+                            "y": 640,
+                            "parameters": {
+                              "as": "span",
+                              "fontWeight": "var(--font-semibold)",
+                              "text": "",
+                              "fontFamily": "var(--font-sans)",
+                              "fontSize": "var(--text-sm)",
+                              "color": "var(--muted-foreground)",
+                              "letterSpacing": "var(--tracking-wide)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "pageTitle",
+                            "type": "Text",
+                            "children": [],
+                            "label": "Page title",
+                            "x": 280,
+                            "y": 760,
+                            "parameters": {
+                              "as": "h1",
+                              "fontWeight": "var(--font-bold)",
+                              "fontSize": "var(--text-4xl)",
+                              "text": "",
+                              "fontFamily": "var(--font-serif)",
+                              "color": "var(--foreground)",
+                              "lineHeight": "var(--leading-tight)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "Header",
                         "x": 220,
                         "y": 520,
                         "parameters": {
-                          "as": "span",
-                          "fontWeight": "var(--font-semibold)",
-                          "text": ""
+                          "as": "header",
+                          "flexDirection": "column",
+                          "rowGap": "var(--space-1)",
+                          "paddingTop": "var(--space-8)"
                         },
                         "ports": [],
                         "dynamicports": []
                       },
                       {
-                        "id": "pageTitle",
-                        "type": "Text",
+                        "id": "sectionList",
+                        "type": "For Each",
                         "children": [],
-                        "label": "Page title",
+                        "label": "One view per section",
                         "x": 220,
-                        "y": 640,
+                        "y": 880,
                         "parameters": {
-                          "as": "h1",
-                          "fontWeight": "var(--font-bold)",
-                          "fontSize": "var(--text-3xl)",
-                          "text": ""
+                          "templateType": "explicit",
+                          "template": "/Site/SectionView"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "contactWrap",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "contact",
+                            "type": "/Site/ContactForm",
+                            "children": [],
+                            "label": "Contact form",
+                            "x": 280,
+                            "y": 1120,
+                            "parameters": {},
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "Contact form, when the page asked for one",
+                        "x": 220,
+                        "y": 1000,
+                        "parameters": {
+                          "flexDirection": "column",
+                          "visible": false
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "notFoundCard",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "notFound",
+                            "type": "Text",
+                            "children": [],
+                            "label": "Not found",
+                            "x": 280,
+                            "y": 1360,
+                            "parameters": {
+                              "as": "p",
+                              "text": "That page could not be found.",
+                              "color": "var(--muted-foreground)",
+                              "fontFamily": "var(--font-sans)",
+                              "fontSize": "var(--text-base)",
+                              "textAlignX": "center"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "The empty-screen card",
+                        "x": 220,
+                        "y": 1240,
+                        "parameters": {
+                          "flexDirection": "column",
+                          "alignItems": "center",
+                          "visible": false,
+                          "backgroundColor": "var(--surface)",
+                          "borderStyle": "solid",
+                          "borderWidth": "var(--border-1)",
+                          "borderColor": "var(--border)",
+                          "borderRadius": "var(--radius-md)",
+                          "paddingTop": "var(--space-12)",
+                          "paddingBottom": "var(--space-12)",
+                          "paddingLeft": "var(--space-6)",
+                          "paddingRight": "var(--space-6)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "footer",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "footerName",
+                            "type": "Text",
+                            "children": [],
+                            "label": "Footer site name",
+                            "x": 280,
+                            "y": 1600,
+                            "parameters": {
+                              "as": "span",
+                              "text": "",
+                              "color": "var(--muted-foreground)",
+                              "fontFamily": "var(--font-sans)",
+                              "fontSize": "var(--text-sm)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "footerHome",
+                            "type": "Text",
+                            "children": [],
+                            "label": "Back to home",
+                            "x": 280,
+                            "y": 1720,
+                            "parameters": {
+                              "as": "span",
+                              "text": "Home",
+                              "color": "var(--primary)",
+                              "fontFamily": "var(--font-sans)",
+                              "fontSize": "var(--text-sm)",
+                              "fontWeight": "var(--font-semibold)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "Footer",
+                        "x": 220,
+                        "y": 1480,
+                        "parameters": {
+                          "as": "footer",
+                          "flexDirection": "column",
+                          "rowGap": "var(--space-2)",
+                          "paddingTop": "var(--space-8)",
+                          "borderTopStyle": "solid",
+                          "borderTopWidth": "var(--border-1)",
+                          "borderTopColor": "var(--border)"
                         },
                         "ports": [],
                         "dynamicports": []
                       }
                     ],
-                    "label": "Header",
+                    "label": "Page shell",
                     "x": 160,
-                    "y": 400,
-                    "parameters": {
-                      "as": "header",
-                      "flexDirection": "column",
-                      "rowGap": 4
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "sectionList",
-                    "type": "For Each",
-                    "children": [],
-                    "label": "One view per section",
-                    "x": 160,
-                    "y": 760,
-                    "parameters": {
-                      "templateType": "explicit",
-                      "template": "/Site/SectionView"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "contactWrap",
-                    "type": "Group",
-                    "children": [
-                      {
-                        "id": "contact",
-                        "type": "/Site/ContactForm",
-                        "children": [],
-                        "label": "Contact form",
-                        "x": 220,
-                        "y": 1000,
-                        "parameters": {},
-                        "ports": [],
-                        "dynamicports": []
-                      }
-                    ],
-                    "label": "Contact form, when the page asked for one",
-                    "x": 160,
-                    "y": 880,
+                    "y": 280,
                     "parameters": {
                       "flexDirection": "column",
-                      "visible": false
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "notFound",
-                    "type": "Text",
-                    "children": [],
-                    "label": "Not found",
-                    "x": 160,
-                    "y": 1120,
-                    "parameters": {
-                      "as": "p",
-                      "text": "That page could not be found.",
-                      "visible": false
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "maxWidth": "var(--site-measure)",
+                      "rowGap": "var(--space-8)",
+                      "paddingBottom": "var(--space-12)"
                     },
                     "ports": [],
                     "dynamicports": []
                   }
                 ],
-                "label": "Page shell",
+                "label": "Page ground",
                 "x": 100,
                 "y": 160,
                 "parameters": {
                   "flexDirection": "column",
-                  "paddingTop": 24,
-                  "paddingLeft": 24,
-                  "paddingRight": 24,
-                  "maxWidth": {
-                    "value": 960,
-                    "unit": "px"
+                  "alignItems": "center",
+                  "backgroundColor": "var(--background)",
+                  "paddingLeft": "var(--space-6)",
+                  "paddingRight": "var(--space-6)",
+                  "minHeight": {
+                    "value": 100,
+                    "unit": "vh"
                   }
                 },
                 "ports": [],
@@ -828,12 +1028,26 @@
             "dynamicports": []
           },
           {
+            "id": "goHome",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "To the home page",
+            "x": 530,
+            "y": 1720,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Site"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
             "id": "diagnoseNotFound",
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Which of the three empty screens is this?",
-            "x": 470,
-            "y": 1120,
+            "x": 530,
+            "y": 1240,
             "parameters": {
               "functionScript": "const pageRefused = Inputs.error !== undefined && Inputs.error !== null && Inputs.error !== \"\";\nconst settingsRefused = Inputs.settingsError !== undefined && Inputs.settingsError !== null && Inputs.settingsError !== \"\";\nif (settingsRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.claimed === false) {\n  Outputs.text = \"This site has not been set up yet.\";\n  Outputs.visible = true;\n  return;\n}\nif (pageRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.watchdog !== undefined && Inputs.claimed === undefined && Inputs.missing === undefined) {\n  Outputs.text = \"No backend connected. This project needs a backend before it can store pages — add one from Backend Services.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.missing === undefined) return;\nif (!Inputs.missing) {\n  Outputs.visible = false;\n  return;\n}\nOutputs.text = \"That page could not be found.\";\nOutputs.visible = true;"
             },
@@ -845,7 +1059,7 @@
             "type": "Timer",
             "children": [],
             "label": "The answer deadline",
-            "x": 470,
+            "x": 530,
             "y": 40,
             "parameters": {
               "duration": 4000
@@ -858,8 +1072,8 @@
             "type": "PageInputs",
             "children": [],
             "label": "The slug from the URL",
-            "x": 470,
-            "y": 1240,
+            "x": 530,
+            "y": 1840,
             "parameters": {
               "pathParams": "slug"
             },
@@ -871,8 +1085,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "SiteSettings (one row)",
-            "x": 470,
-            "y": 1360,
+            "x": 530,
+            "y": 1960,
             "parameters": {
               "collectionName": "SiteSettings"
             },
@@ -884,8 +1098,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Read the settings row",
-            "x": 470,
-            "y": 520,
+            "x": 530,
+            "y": 640,
             "parameters": {
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.claimed = rows.length > 0;\nOutputs.homeSlug = first.homeSlug || 'home';"
             },
@@ -897,10 +1111,10 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "The slug to show",
-            "x": 470,
+            "x": 530,
             "y": 160,
             "parameters": {
-              "functionScript": "if (Inputs.homeSlug === undefined) return;\nconst fromUrl = Inputs.slug === undefined || Inputs.slug === null ? '' : String(Inputs.slug);\nconst slug = fromUrl === '' ? Inputs.homeSlug : fromUrl;\nif (slug === '') return;\nOutputs.slug = slug;\nOutputs.ready();"
+              "functionScript": "if (Inputs.homeSlug === undefined) return;\nconst fromUrl = Inputs.slug === undefined || Inputs.slug === null ? '' : String(Inputs.slug);\nconst slug = fromUrl === '' ? Inputs.homeSlug : fromUrl;\nif (slug === '') return;\nOutputs.slug = slug;\nif (Noodl && Noodl.Variables) {\n  Noodl.Variables[\"siteCurrentSlug\"] = slug;\n}\nOutputs.ready();"
             },
             "ports": [
               {
@@ -916,8 +1130,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "The page with this slug",
-            "x": 470,
-            "y": 1480,
+            "x": 530,
+            "y": 2080,
             "parameters": {
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false,
@@ -941,8 +1155,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Read the page record",
-            "x": 470,
-            "y": 640,
+            "x": 530,
+            "y": 760,
             "parameters": {
               "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows[0];\nconst d = row ? row.data || row : undefined;\nOutputs.missing = d === undefined;\nOutputs.title = d ? d.title || '' : '';\nOutputs.seoDescription = d ? d.seoDescription || '' : '';\nOutputs.slug = d ? d.slug || '' : '';\nif (d === undefined) return;\nOutputs.pageId = row.getId ? row.getId() : (d.objectId || '');\nOutputs.found();"
             },
@@ -960,8 +1174,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "This page's sections",
-            "x": 470,
-            "y": 760,
+            "x": 530,
+            "y": 880,
             "parameters": {
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false,
@@ -991,8 +1205,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Is there a contact section",
-            "x": 470,
-            "y": 880,
+            "x": 530,
+            "y": 1000,
             "parameters": {
               "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nOutputs.hasContact = rows.some(function (r) {\n  const d = r.data || r;\n  return d.kind === 'contact';\n});"
             },
@@ -1004,8 +1218,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "Theme (one row)",
-            "x": 470,
-            "y": 1600,
+            "x": 530,
+            "y": 2200,
             "parameters": {
               "collectionName": "Theme"
             },
@@ -1017,8 +1231,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "The theme record, as CSS variables",
-            "x": 470,
-            "y": 1720,
+            "x": 530,
+            "y": 2320,
             "parameters": {
               "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) {\n  root.style.setProperty('--primary', t.colorPrimary);\n  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n  root.style.setProperty('--ring', t.colorPrimary);\n  root.style.setProperty('--accent-foreground', t.colorPrimary);\n}\nif (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorSurface) {\n  root.style.setProperty('--surface', t.colorSurface);\n  root.style.setProperty('--surface-raised', t.colorSurface);\n}\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\nif (t.colorBorder) {\n  root.style.setProperty('--border', t.colorBorder);\n  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n}\nif (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\nif (t.radius) root.style.setProperty('--radius-md', t.radius);\nif (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\nif (t.fontUi) {\n  root.style.setProperty('--font-sans', t.fontUi);\n  root.style.fontFamily = t.fontUi;\n}\nif (t.measure) root.style.setProperty('--site-measure', t.measure);"
             },
@@ -1030,8 +1244,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "The document title",
-            "x": 470,
-            "y": 1840,
+            "x": 530,
+            "y": 2440,
             "parameters": {
               "functionScript": "if (!Inputs.title) return;\nif (!Noodl || !Noodl.SEO) return;\nNoodl.SEO.setTitle(Inputs.title);"
             },
@@ -1127,7 +1341,7 @@
           {
             "fromId": "diagnoseNotFound",
             "fromProperty": "out-visible",
-            "toId": "notFound",
+            "toId": "notFoundCard",
             "toProperty": "visible"
           },
           {
@@ -1207,6 +1421,24 @@
             "fromProperty": "fetched",
             "toId": "applyTheme",
             "toProperty": "run"
+          },
+          {
+            "fromId": "readSettings",
+            "fromProperty": "out-siteName",
+            "toId": "footerName",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "readSettings",
+            "fromProperty": "out-homeSlug",
+            "toId": "goHome",
+            "toProperty": "pm-slug"
+          },
+          {
+            "fromId": "footerHome",
+            "fromProperty": "onClick",
+            "toId": "goHome",
+            "toProperty": "navigate"
           }
         ],
         "visualRoots": [

@@ -322,8 +322,11 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // writer on the same `setDynamicPorts` with a shorter list, and the two would
     // overwrite each other on every parameter change.
     //
-    // 17 Function nodes across 8 browser components, and none of them may have
-    // been touched. Asserted on `dynamicports` rather than on an export, because
+    // 18 Function nodes across 9 browser components, and none of them may have
+    // been touched. 17 across 8 until SBR-004 gave `/Site/NavLink` its
+    // current-page state function — the first Function node that component has
+    // ever carried, which is why the component count moved with it.
+    // Asserted on `dynamicports` rather than on an export, because
     // the export here is measured against the *cloud* node library — the browser
     // half's deploy is `build/deployer.ts`, and measuring it is SB-017 §6.5's
     // separate, still-open question.
@@ -338,7 +341,7 @@ describe('SB-017: the editor deploy path ships every connection the template hol
         return nodes;
       });
 
-    expect(browserFunctions.length).toBe(17);
+    expect(browserFunctions.length).toBe(18);
     expect(browserFunctions.filter((node) => (node.dynamicports || []).length > 0)).toEqual([]);
 
     // …and the same sweep on the cloud side did write ports, so the assertion

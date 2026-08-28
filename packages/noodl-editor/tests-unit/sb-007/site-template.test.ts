@@ -160,14 +160,17 @@ describe('SB-007 — install writes a project that opens', () => {
     const second = await installOnce('/projects/b');
     const a = nodeIdsOf(first);
     const b = nodeIdsOf(second);
-    // 195 since SBR-002 added the answer deadline (`Timer`) to `Pages/Site` —
-    // the watchdog that gives "no backend at all" a visible sentence. 194 was
-    // SB-018 (5)'s `stored` on `submitContactForm`; 193 was SB-015 F27's
-    // `diagnoseNotFound` on `Pages/Site`; 192 was SB-014's `Theme` creator.
-    // The literal is the point: a rewrite that renamed ids instead of
-    // regenerating them would keep the disjointness assertion below green on a
-    // set that had SHRUNK.
-    expect(a.size).toBe(195);
+    // 203 since SBR-004 gave the public site its shape: `Site/NavLink` gained
+    // the current-page pair (`Variable2` + the state function, AC2) and
+    // `Pages/Site` gained six — the `frame` that consumes `--background`, the
+    // `notFoundCard` the empty-screen text now sits in, and the footer's four
+    // (group, name, link, `RouterNavigate`). +2 and +6 against SBR-002's 195,
+    // which was the answer deadline (`Timer`); 194 was SB-018 (5)'s `stored` on
+    // `submitContactForm`; 193 was SB-015 F27's `diagnoseNotFound`; 192 was
+    // SB-014's `Theme` creator. The literal is the point: a rewrite that renamed
+    // ids instead of regenerating them would keep the disjointness assertion
+    // below green on a set that had SHRUNK.
+    expect(a.size).toBe(203);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 
