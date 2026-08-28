@@ -310,7 +310,8 @@ downstream will tell you, because to the gate that starter is correct.
 - \`suggestedNodes\` on a step is currently **not read by anything**. Do not rely
   on it to surface a node in the picker.
 - \`detail\` **is** read: it renders as a disclosure under the body, open by
-  default, that the learner can collapse. Put the "where is that button" half
+  default, that the learner can collapse — and once they do, this editor keeps
+  them collapsed, so write \`body\` to stand on its own. Put the "where is that button" half
   there — *"the node picker is the + in the top left"* — and keep \`body\` to the
   instruction itself. 🔴 **Split rather than omit.** An experienced learner
   closing a disclosure is a click; a beginner who was never told where the

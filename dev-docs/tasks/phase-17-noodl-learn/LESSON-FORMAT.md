@@ -241,9 +241,23 @@ instruction, and serving the experienced learner strands the beginner. Two field
 beginner who was never told where the picker is has nowhere to look at all. If a body explains
 the editor's furniture before it says what to do, the furniture is a `detail`.
 
-**What reads it today:** the disclosure itself — no script, no runner state, no preference. When
-the `experience` answer reaches the editor it will set the **default open state** and nothing
-else, so a lesson authored now needs no revision then.
+**What reads it today:** the disclosure itself, and — since SYL-001 slice B — the editor's own
+record of whether this learner wants the hand-holding. The **default open state** is the only
+thing that varies, so a lesson authored before slice B needed no revision after it, and one
+authored now needs none when the platform's `experience` answer can reach the editor.
+
+🔴 **The bundle never carries the answer.** `experience` is asked on the platform and the
+disclosure is drawn by the editor, and the thing that must not close that gap is the bundle: D17
+requires a lesson stay installable from a local directory with no origin, and a bundle carrying
+one learner's preference is not that. The editor holds the preference; the bundle carries both
+halves; the runner picks which to expand.
+
+**How the editor learns it, today:** the learner collapsing a `Show me how` is the answer, and
+opening one again is the answer changing back — stored under `lessons.detailOpenByDefault` in
+editor settings, read on every step. ⚠️ Absent means *open*: a learner we know nothing about gets
+the hand-holding. When the platform answer can cross, it seeds that same key — **none** opens,
+**some** and **fluent** collapse, which is Richard's sentence ("*don't need to explain to an
+intermediate user how to access the node picker*") read literally.
 
 ---
 

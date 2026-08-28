@@ -2,12 +2,14 @@ import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
 import { App } from '@noodl-models/app';
+import { EditorSettings } from '@noodl-utils/editorsettings';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 import KeyboardHandler, { KeyboardCommand } from '@noodl-utils/keyboardhandler';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import { isResetOffered, LearningFolderModel } from '../models/learningfolder';
 import { checkMyWork, liveCheckMyWorkDeps, summariseSubmission } from '../models/lessoncheck';
+import { applyDetailPreference } from '../models/lessonhandholding';
 import { ProjectModel } from '../models/projectmodel';
 import { liveLessonDatabaseSnapshot } from '../models/lessondatabase.live';
 import { liveLessonEvalContext } from './lessons/lessonevalconditions.live';
@@ -670,6 +672,17 @@ export class LessonLayer {
 
           step.hasNextButton = !isLastStep;
         }
+
+        /*
+         * SYL-001 slice B — the learner's hand-holding preference, applied to the step they are
+         * about to see, and re-read here rather than cached because they can change it by
+         * collapsing any disclosure at any point in the lesson.
+         *
+         * 🔴 Applied to `root` — the element that is actually displayed — and not to the parsed
+         * `stepElement` above, because the popup's content is copied through `innerHTML` on the
+         * way here and a listener bound before that copy would be bound to a discarded node.
+         */
+        applyDetailPreference(root, EditorSettings.instance);
 
         step.popupContent = root;
       }

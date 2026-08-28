@@ -1,6 +1,6 @@
 # Phase 79 — next session
 
-**Written 2026-08-28, end of session 1.** Read [README](README.md) and
+**Written 2026-08-28, end of session 2.** Read [README](README.md) and
 [RICHARD-RULINGS-2026-08-28.md](RICHARD-RULINGS-2026-08-28.md) first; this file is the working
 state, not the phase.
 
@@ -17,8 +17,12 @@ checked-in file:
 plus *Data & backends* (2) and *Custom nodes* (1). ~9¼ hours. Every spine lesson `needs` the one
 before it and they **share one project**.
 
-**Richard ruled all three open questions** (R1/R2/R3 in the rulings file). **SYL-001 slice A is
-built, gated and committed.** **SYL-002 is written and deliberately blocked.**
+**Richard ruled all three open questions** (R1/R2/R3 in the rulings file). **SYL-001 is finished —
+slice A and slice B, both built, gated and committed.** **SYL-002 is written and deliberately
+blocked.**
+
+🔴 **Nothing on this phase's list is engineerable any more.** Every remaining item waits on
+Richard's words. Session 2 closed the last one that did not.
 
 ## 2. 🔴 The one thing everything else waits on
 
@@ -39,9 +43,14 @@ creature, but not to any particular first screen.
 
 ## 3. What is ready and needs no more thought
 
-### The `detail` field is live — author into it from lesson 1
+### `detail` is live, and so is the preference behind it — author into it from lesson 1
 
-`body` says what to do; `detail` says where the button is, as a disclosure open by default.
+`body` says what to do; `detail` says where the button is, as a disclosure open by default — and
+since slice B, **the learner collapsing one is remembered**, so every later step comes up the way
+they last left it. That is Richard's R3 ruling ("*don't need to explain to an intermediate user how
+to access the node picker*") as far as it can go without the platform's `experience` answer being
+able to reach the editor. 🔴 **Nothing about the authored prose changes when that day comes** — the
+answer only seeds the same key.
 Documented in [LESSON-FORMAT.md §4a](../phase-17-noodl-learn/LESSON-FORMAT.md) and in `noodl-mcp`'s
 authoring brief. 🔴 **This is why the field was built first**: lesson 1 is the most beginner-facing
 lesson in the curriculum, and splitting one `body` later is a re-cut of Richard's words.
@@ -50,11 +59,17 @@ lesson in the curriculum, and splitting one `body` later is a re-cut of Richard'
 
 | gate | reading |
 |---|---|
-| `test:ci` | **2875 specs, 4 failures @ seed 22416, 71s** — all four **AIX-006 style vocabulary**, the recorded floor, **by name** |
-| the 12 new specs | suite **2863 → 2875 = +12**. They ran. |
-| `test:main` | 375 suites / 6254 tests / 0 failures, exit 0 |
-| `typecheck:editor-tests`, `typecheck:mcp` | exit 0 |
+| `test:ci` | **2887 specs, 4 failures @ seed 11307** — all four **AIX-006 style vocabulary**, the recorded floor, **by name**. ⚠️ The floor is 4; the suite size has moved **2863 → 2875 → 2887** across the two slices. |
+| slice A's 12 specs | **2863 → 2875 = +12** |
+| slice B's 12 specs | **2875 → 2887 = +12**, all twelve named in the run's `[spec-start]` lines |
+| 🔴 the slice-B mutant | guard removed → **5 failures @ seed 47904**, the fifth exactly the negative control. The specs can fail. |
+| `test:main` | 375 suites / 6254 tests. ⚠️ **1 failure in session 2 was a load flake** — `BLD-004 reasoningChannel`, a timing spec, green 8/8 on its own. |
+| `typecheck:editor`, `typecheck:editor-tests`, `typecheck:mcp` | exit 0 |
 | `lessons:check` | exit 0, `log-a-thing` clean |
+
+⚠️ **`test-results.json` records failures ONLY.** Grepping it for a new spec's name returns 0
+whether the spec passed or never ran. The `[spec-start]` lines in the run log and the total-count
+delta are the evidence that a spec executed; that file is not.
 
 ⚠️ **`typecheck:editor` does NOT cover `packages/noodl-editor/tests/`.** `typecheck:editor-tests`
 is the gate that grades a spec there, and `tests/` is the **Electron/jasmine** suite (`test:ci`) —
@@ -71,7 +86,11 @@ it does **not** use jest matchers. `toHaveLength` and `toContainEqual` do not ex
 3. **Lesson 2.**
 4. **[SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md)**, the moment two lessons exist — not
    before, and not after lesson 12.
-5. **SYL-001 slice B** whenever convenient. Blocks nothing.
+
+⬜ **One loose end, five minutes, needs a free editor.** SYL-001 slice B has **no drive** — a peer
+session held the editor and the CDP port all of session 2, and two editors cannot coexist here.
+Open a lesson with a `detail` step, collapse a disclosure, advance a step, confirm the next comes
+up collapsed. Do it at the start of the next session that has the editor to itself.
 
 ## 5. Traps carried out of this session
 

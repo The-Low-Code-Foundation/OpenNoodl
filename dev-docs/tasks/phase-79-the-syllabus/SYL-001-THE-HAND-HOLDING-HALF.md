@@ -142,3 +142,93 @@ field ships **live**:
 
 - ⬜ **Slice B** (items 7–8): the `experience` preference sets the default open state. Not started,
   and **not blocking any lesson** — prose authored now needs no revision when it lands.
+
+---
+
+## Slice B — built and measured, 2026-08-28
+
+**Item 8 ruled by Richard, this session:** *the editor asks once, and the answer is changeable.*
+Not: read the platform answer when signed in. So the preference lives in `EditorSettings`, under
+`lessons.detailOpenByDefault`, and no new path from platform to editor was built.
+
+### 🔴 How "asks once" was taken — one sentence for Richard to overrule
+
+**The disclosure itself is the question.** A learner collapsing a `Show me how` *is* the answer,
+and opening one again is the answer changing back. There is no modal in front of lesson 1 and no
+settings row.
+
+That reading was chosen over an explicit prompt for a reason worth stating: the ruling's other
+half is *changeable*, and a modal asked once at first launch is the version of this that is
+hardest to change later — a learner who answered "fluent" in month one and wants the help back in
+month three has to find a settings screen. Collapsing and opening a disclosure is the same gesture
+in both directions. ⬜ **If Richard wants a literal question, it writes the same key from a
+different place, and nothing built here changes.**
+
+### 🔴 What was deliberately NOT built, and why that is the point of this task
+
+**No `experience` field anywhere in the editor.** The mapping is decided — *none* opens, *some* and
+*fluent* collapse, which is Richard's sentence ("*don't need to explain to an **intermediate** user
+how to access the node picker*") read literally — but the platform answer cannot reach the editor
+today, so a key holding it would be **set by nothing**. That is the `suggestedNodes` defect exactly,
+in the task written to avoid it. The mapping is recorded in prose in
+[LESSON-FORMAT.md §4a](../phase-17-noodl-learn/LESSON-FORMAT.md), and seeds the one live key on the
+day the answer can cross.
+
+### What is live
+
+| piece | where | who writes it | who reads it |
+|---|---|---|---|
+| `lessons.detailOpenByDefault` | `EditorSettings` | the learner, by collapsing or opening a disclosure | every step render |
+| `applyDetailPreference` | [`lessonhandholding.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonhandholding.ts) | — | [`lessonlayer2.ts` `loadSteps`](../../../packages/noodl-editor/src/editor/src/views/lessonlayer2.ts) |
+
+The compiled HTML **did not change**. Every learner and every install still gets the same bundle,
+`open`; one attribute is flipped at render time. That is what keeps D17 intact — a lesson installed
+from a local directory with no origin contains both halves and neither learner's answer.
+
+### What the build found
+
+- 🔴 **`toggle` fires asynchronously, so the listener can hear its own write.** Bind a handler and
+  set the attribute in the same tick and the editor records *its own guess* back as though a person
+  had said it — a preference that confirms itself is indistinguishable from one a learner set.
+  The guard is that **only a state differing from the applied default is persisted**, and the spec
+  that proves it is a negative control (`does NOT record a toggle that merely agrees`). Without
+  that control every other spec in the file also passes on the broken handler.
+- 🔴 **Where it is applied is what matters, not how.** `loadSteps` copies the popup through
+  `innerHTML` on its way to the screen, so a preference applied to the parsed `stepElement` would
+  be applied to a node that is then discarded — and a listener bound there would never fire. It is
+  applied to `root`, the element actually displayed, and there is a spec for the `innerHTML` round
+  trip itself.
+  ⚠️ **A claim written first and then checked: "the attribute, not the property".** `open` is a
+  *reflected* IDL attribute, so `el.open = false` removes the content attribute too and would have
+  survived the copy identically. `setAttribute` is explicitness, not a fix — and the spec for the
+  round trip does not discriminate between the two. Recorded because it is the shape of thing that
+  gets relayed forward as a lesson when it is not one.
+- ⚠️ **One consumer, checked rather than assumed.** `data-template="popup"` is parsed in exactly one
+  place in the editor, so there is no second renderer that would show the preference not applying.
+- ⚠️ `applyDetailDefaultOpen` returns a **count**. A call that matched nothing and a call that
+  changed everything read identically otherwise, and the selector is a coupling to the compiler's
+  class name — the count is what would notice it being renamed.
+
+### Gates
+
+| gate | reading |
+|---|---|
+| `test:ci` | **2887 specs, 4 failures @ seed 11307, HEAD `d4c8eeb9`** — 🔴 all four **AIX-006 style vocabulary**, the recorded floor, **separated by name**. Suite **2875 → 2887 = +12**. |
+| the 12 new specs | all twelve appear by name in the run's `[spec-start]` lines and none in the failure list. ⚠️ `test-results.json` records **failures only** — a grep for the new names there returns 0 whether they passed or never ran, so the evidence is the spec-start lines and the +12 delta, not that file. |
+| 🔴 **the mutant** | guard removed (`if (isOpen === open) return;`) → **5 failures @ seed 47904**, and the fifth is **exactly** *"does NOT record a toggle that merely agrees with what was applied"*. Nothing else moved. The negative control kills what it was written to kill. Module restored and md5-matched against the pre-mutation copy. |
+| `test:main` | 375 suites / 6254 tests, **1 failure — a flake, not this change**: `BLD-004 reasoningChannel` *"counts a reasoning delta as life"*, a timing spec that reported *"nothing arrived for 0 seconds"* while a peer session had an editor stack up. Re-run alone: **8/8, exit 0**. It touches no lesson code. |
+| `typecheck:editor` | exit 0 |
+| `typecheck:editor-tests` | exit 0 |
+| `typecheck:mcp` | exit 0 |
+| `lessons:check` | exit 0, `log-a-thing` clean |
+
+### 🔴 The one thing NOT verified
+
+**No drive.** Every claim above is a spec. The single line that connects them to a running editor —
+`applyDetailPreference(root, EditorSettings.instance)` in `loadSteps` — is graded by reading, and
+this repo's own recorded rule is that a surface can pass its specs and be dead in the app.
+
+⚠️ **It was blocked, not skipped**: a peer session held the editor and the CDP port for a P77 drive
+for the whole of this session, and two editors cannot coexist here. ⬜ **Open a lesson with a
+`detail` step, collapse one disclosure, advance a step, and confirm the next one comes up
+collapsed.** That is the whole drive.
