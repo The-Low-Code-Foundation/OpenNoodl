@@ -206,6 +206,45 @@ export const NOT_SET_UP_TEXT = 'This site has not been set up yet.';
  */
 export const NOT_AVAILABLE_TEXT = 'This site’s pages are not available right now.';
 
+/**
+ * SBR-002 (finding 2) — nothing answered at all.
+ *
+ * 🔴 **This state has no signal of its own, and the drive proved it cannot get
+ * one from the queries.** With no backend bound, the legacy store's endpoint is
+ * `undefined`, the XHR goes to `undefined/classes/…` — a RELATIVE url — and the
+ * editor's preview server answers it with the SPA fallback: **200 and HTML**.
+ * `ParseWireAdapter.query`'s success handler then throws on
+ * `response.results` (`response` is the failed JSON parse, `undefined`) inside
+ * the XHR callback, so the query publishes neither `fetched` nor `error` —
+ * measured 2026-08-28: `visibleText: 0`, three `undefined/classes/*` requests,
+ * all 200, chain dead. F27's diagnoser abstains forever on a graph where
+ * nothing answers, which is correct for "answer pending" and a white void here.
+ *
+ * So the state's signal is a DEADLINE, not a failure output: a Delay started at
+ * page mount arms `diagnoseNotFound`'s watchdog arm, which speaks only when
+ * NOTHING has answered — any real signal (rows, refusal, absence) beats it on
+ * arrival, in both directions, because the diagnoser re-runs on every input
+ * and overwrites its own outputs. A slow backend shows this sentence for a
+ * moment and then the truth; that is the cost of saying anything at all on a
+ * dead graph.
+ *
+ * ⚠️ Unlike the three strings above, this one names an editor surface — a
+ * deliberate break from the visitor-string rule, because the state it reports
+ * is an AUTHOR's: only a project run before a backend is attached (or deployed
+ * without one) can reach it. A visitor on a healthy site can see refusals and
+ * absences; they cannot see "no backend was ever configured".
+ */
+export const NO_BACKEND_TEXT =
+  'No backend connected. This project needs a backend before it can store pages — add one from Backend Services.';
+
+/**
+ * How long the page waits for ANY answer before concluding nobody is there.
+ * Long enough that a local backend's first answer (tens of ms, s2 measured
+ * ~5ms probes) never races it; short enough that a person watching a white
+ * page reads the sentence rather than closing the window.
+ */
+export const NO_BACKEND_DEADLINE_MS = 4000;
+
 /** SB-004 §5's public endpoint. */
 export const FN_CONTACT = 'submitContactForm';
 
@@ -764,6 +803,18 @@ export const SITE_NODES = [
         '  Outputs.visible = true;\n' +
         '  return;\n' +
         '}\n' +
+        // 🔴 SBR-002: the fourth cause, and the only one with NO signal of its
+        // own — see NO_BACKEND_TEXT for the measurement. The deadline arm
+        // speaks only when NOTHING has answered: every real signal above beats
+        // it here by order, and any that arrives later overwrites it because
+        // this node re-runs on every input. `=== true` because the Delay's
+        // signal lands on a value port as true-then-false; the false pass
+        // falls through to the abstain and the latched outputs stand.
+        'if (Inputs.watchdog === true && Inputs.claimed === undefined && Inputs.missing === undefined) {\n' +
+        '  Outputs.text = ' + JSON.stringify(NO_BACKEND_TEXT) + ';\n' +
+        '  Outputs.visible = true;\n' +
+        '  return;\n' +
+        '}\n' +
         // The abstain, and it is what keeps the authored `visible: false`
         // standing until something has actually answered.
         'if (Inputs.missing === undefined) return;\n' +
@@ -774,6 +825,17 @@ export const SITE_NODES = [
         'Outputs.text = ' + JSON.stringify(NOT_FOUND_TEXT) + ';\n' +
         'Outputs.visible = true;'
     }
+  },
+
+  {
+    id: 'noBackendDeadline',
+    type: 'Timer',
+    label: 'The answer deadline',
+    // SBR-002: started at page mount, it arms `diagnoseNotFound`'s watchdog
+    // arm. It does NOT decide anything — the decider still owns the answer,
+    // and any query signal beats the deadline whenever one exists. See
+    // NO_BACKEND_TEXT for why a deadline is the only signal this state has.
+    parameters: { duration: NO_BACKEND_DEADLINE_MS }
   },
 
   { id: 'pageInputs', type: 'PageInputs', label: 'The slug from the URL', parameters: { pathParams: 'slug' } },
@@ -983,6 +1045,11 @@ export const SITE_WIRES = [
   { fromId: 'settings', fromProperty: 'error', toId: 'diagnoseNotFound', toProperty: 'in-settingsError' },
   { fromId: 'diagnoseNotFound', fromProperty: 'out-visible', toId: 'notFound', toProperty: 'visible' },
   { fromId: 'diagnoseNotFound', fromProperty: 'out-text', toId: 'notFound', toProperty: 'text' },
+  // SBR-002: the deadline. Mount starts the clock; its finish arms the
+  // watchdog arm — a value port, so the signal writes true-then-false and the
+  // decider's `=== true` guard is load-bearing.
+  { fromId: 'page', fromProperty: 'didMount', toId: 'noBackendDeadline', toProperty: 'start' },
+  { fromId: 'noBackendDeadline', fromProperty: 'timerFinished', toId: 'diagnoseNotFound', toProperty: 'in-watchdog' },
   // ✅ The metatag half that DOES work from the port (`Page.tsx:162-168`).
   { fromId: 'readPage', fromProperty: 'out-seoDescription', toId: 'page', toProperty: 'description' },
   // 🔴 And the half that does not: the title goes through `Noodl.SEO`.

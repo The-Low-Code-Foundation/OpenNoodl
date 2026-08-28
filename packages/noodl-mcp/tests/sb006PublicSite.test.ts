@@ -29,6 +29,8 @@ import {
 } from './sb005Components';
 import {
   CONTACT_REFUSAL_TEXT,
+  NO_BACKEND_DEADLINE_MS,
+  NO_BACKEND_TEXT,
   NOT_AVAILABLE_TEXT,
   NOT_FOUND_TEXT,
   NOT_SET_UP_TEXT,
@@ -808,6 +810,105 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     }
   });
 
+  /**
+   * SBR-002 — the FOURTH state: nothing answered at all.
+   *
+   * 🔴 It has no signal of its own and cannot get one from the queries: with no
+   * backend the editor preview's SPA fallback answers `undefined/classes/…`
+   * with 200 + HTML, the wire adapter throws on `response.results`, and the
+   * query publishes neither `fetched` nor `error` (measured 2026-08-28,
+   * `visibleText: 0`). So the signal is a deadline — a Delay armed at mount —
+   * and the decider's watchdog arm speaks ONLY when nothing has answered.
+   */
+  it('SBR-002: the deadline shows the no-backend sentence only when NOTHING answered', () => {
+    const w = written['Pages/Site'];
+    const notFound = w.graph.nodes.find((n) => n.parameters?.text === NOT_FOUND_TEXT)!;
+    const feed = w.wires.find((c) => c.toId === notFound.id && c.toProperty === 'text')!;
+    const decider = w.graph.nodes.find((n) => n.id === feed.fromId)!;
+    const script = scriptOf(decider);
+
+    const run = (inputs: Record<string, unknown>) => {
+      const out: Record<string, unknown> = {};
+      // eslint-disable-next-line no-new-func
+      new Function('Inputs', 'Outputs', script)(inputs, out);
+      return out;
+    };
+
+    // The state itself: deadline passed, no query ever spoke.
+    const dead = run({ watchdog: true });
+    expect(dead.visible).toBe(true);
+    expect(dead.text).toBe(NO_BACKEND_TEXT);
+
+    // 🔴 The twin the task file demands: a backend that ANSWERED keeps the
+    // panel down even after the deadline — without this row, "the panel shows"
+    // is satisfiable by an always-on div.
+    expect(run({ watchdog: true, missing: false, claimed: true })).toEqual({ visible: false });
+
+    // And the control where a DIFFERENT state fires instead: same deadline,
+    // but the site answered "no such page" — the 404 wins, not the watchdog.
+    const found404 = run({ watchdog: true, missing: true, claimed: true });
+    expect(found404.text).toBe(NOT_FOUND_TEXT);
+
+    // Every real signal beats the deadline: an answered-empty settings row is
+    // "not set up", a refused read is "not available" — never "no backend".
+    expect(run({ watchdog: true, claimed: false }).text).toBe(NOT_SET_UP_TEXT);
+    expect(run({ watchdog: true, settingsError: 'refused' }).text).toBe(NOT_AVAILABLE_TEXT);
+    expect(run({ watchdog: true, error: 'refused' }).text).toBe(NOT_AVAILABLE_TEXT);
+
+    // 🔴 The signal lands on a VALUE port, so it writes true then false; the
+    // false pass must abstain (outputs latched from the true pass), not erase.
+    expect(run({ watchdog: false })).toEqual({});
+
+    // The fourth sentence is genuinely a fourth sentence.
+    expect(new Set([NO_BACKEND_TEXT, NOT_FOUND_TEXT, NOT_SET_UP_TEXT, NOT_AVAILABLE_TEXT]).size).toBe(4);
+  });
+
+  it('SBR-002: the deadline is armed at mount and lands on the decider watchdog port', () => {
+    const w = written['Pages/Site'];
+    // Cardinality where two producers could meet: exactly one deadline.
+    const timers = byType(w, 'Timer');
+    expect(timers.length).toBe(1);
+    const timer = timers[0];
+    expect(timer.parameters?.duration).toBe(NO_BACKEND_DEADLINE_MS);
+
+    const page = w.graph.nodes.find((n) => n.type === 'Page')!;
+    expect(
+      w.wires.some((c) => c.fromId === page.id && c.fromProperty === 'didMount' && c.toId === timer.id && c.toProperty === 'start')
+    ).toBe(true);
+
+    const notFound = w.graph.nodes.find((n) => n.parameters?.text === NOT_FOUND_TEXT)!;
+    const decider = w.graph.nodes.find((n) => n.id === w.wires.find((c) => c.toId === notFound.id && c.toProperty === 'text')!.fromId)!;
+    expect(
+      w.wires.some(
+        (c) => c.fromId === timer.id && c.fromProperty === 'timerFinished' && c.toId === decider.id && c.toProperty === 'in-watchdog'
+      )
+    ).toBe(true);
+  });
+
+  it('MUTANT: a watchdog arm that ignores an arrived answer reddens', () => {
+    // The defect the guard exists for: a deadline that speaks over a site that
+    // answered. Strip the arm's nothing-answered guard and the twin above must
+    // catch it.
+    const w = written['Pages/Site'];
+    const notFound = w.graph.nodes.find((n) => n.parameters?.text === NOT_FOUND_TEXT)!;
+    const decider = w.graph.nodes.find((n) => n.id === w.wires.find((c) => c.toId === notFound.id && c.toProperty === 'text')!.fromId)!;
+    const mutantScript = scriptOf(decider).replace(
+      "Inputs.watchdog === true && Inputs.claimed === undefined && Inputs.missing === undefined",
+      'Inputs.watchdog === true'
+    );
+    expect(mutantScript).not.toBe(scriptOf(decider));
+    const out: Record<string, unknown> = {};
+    // eslint-disable-next-line no-new-func
+    new Function('Inputs', 'Outputs', mutantScript)({ watchdog: true, missing: false, claimed: true }, out);
+    // The mutant answers "no backend" over a healthy page — the property the
+    // real script must not have.
+    expect(out.text).toBe(NO_BACKEND_TEXT);
+    const real: Record<string, unknown> = {};
+    // eslint-disable-next-line no-new-func
+    new Function('Inputs', 'Outputs', scriptOf(decider))({ watchdog: true, missing: false, claimed: true }, real);
+    expect(real).toEqual({ visible: false });
+  });
+
   it('the title goes through Noodl.SEO and the description through the port (acceptance 7)', () => {
     assertSeoSplit(written['Pages/Site']);
   });
@@ -975,7 +1076,8 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
       code: count('JavaScriptFunction'),
       pages: count('Page'),
       navigations: count('RouterNavigate'),
-      pageInputs: count('PageInputs')
+      pageInputs: count('PageInputs'),
+      timers: count('Timer')
     }).toEqual({
       // The page by slug, its sections, the two singletons, and the nav's.
       queries: 5,
@@ -989,7 +1091,10 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
       pages: 1,
       // One: the nav link. The site never navigates away from itself.
       navigations: 1,
-      pageInputs: 1
+      pageInputs: 1,
+      // SBR-002's answer deadline, and only that — a second Timer would be a
+      // second writer racing the first onto the same watchdog port.
+      timers: 1
     });
   });
 });

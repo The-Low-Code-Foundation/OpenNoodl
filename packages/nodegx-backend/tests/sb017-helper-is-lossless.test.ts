@@ -156,6 +156,10 @@ describe('SB-017 acceptance 1 (backend half): the authored-bundle helper is loss
     // `save.done` and `mail.send`: one wire out, three in, net +1 on
     // `submitContactForm`. That component's own count is asserted above, so a
     // future change landing here has to say which component moved.
+    //
+    // ⚠️ SBR-002's +2 on `Pages/Site` does NOT land here — this population is
+    // the seven `/#__cloud__/` components only (the control above pins it), so
+    // a browser-side template edit leaves this total alone by design.
     expect(fromHelper['/#__cloud__/submitContactForm']).toBe(20);
     expect(Object.values(fromHelper).reduce((total, n) => total + n, 0)).toBe(101);
   });

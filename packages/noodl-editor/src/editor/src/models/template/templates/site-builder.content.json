@@ -835,7 +835,20 @@
             "x": 470,
             "y": 1120,
             "parameters": {
-              "functionScript": "const pageRefused = Inputs.error !== undefined && Inputs.error !== null && Inputs.error !== \"\";\nconst settingsRefused = Inputs.settingsError !== undefined && Inputs.settingsError !== null && Inputs.settingsError !== \"\";\nif (settingsRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.claimed === false) {\n  Outputs.text = \"This site has not been set up yet.\";\n  Outputs.visible = true;\n  return;\n}\nif (pageRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.missing === undefined) return;\nif (!Inputs.missing) {\n  Outputs.visible = false;\n  return;\n}\nOutputs.text = \"That page could not be found.\";\nOutputs.visible = true;"
+              "functionScript": "const pageRefused = Inputs.error !== undefined && Inputs.error !== null && Inputs.error !== \"\";\nconst settingsRefused = Inputs.settingsError !== undefined && Inputs.settingsError !== null && Inputs.settingsError !== \"\";\nif (settingsRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.claimed === false) {\n  Outputs.text = \"This site has not been set up yet.\";\n  Outputs.visible = true;\n  return;\n}\nif (pageRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.watchdog === true && Inputs.claimed === undefined && Inputs.missing === undefined) {\n  Outputs.text = \"No backend connected. This project needs a backend before it can store pages — add one from Backend Services.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.missing === undefined) return;\nif (!Inputs.missing) {\n  Outputs.visible = false;\n  return;\n}\nOutputs.text = \"That page could not be found.\";\nOutputs.visible = true;"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "noBackendDeadline",
+            "type": "Timer",
+            "children": [],
+            "label": "The answer deadline",
+            "x": 470,
+            "y": 40,
+            "parameters": {
+              "duration": 4000
             },
             "ports": [],
             "dynamicports": []
@@ -885,7 +898,7 @@
             "children": [],
             "label": "The slug to show",
             "x": 470,
-            "y": 40,
+            "y": 160,
             "parameters": {
               "functionScript": "if (Inputs.homeSlug === undefined) return;\nconst fromUrl = Inputs.slug === undefined || Inputs.slug === null ? '' : String(Inputs.slug);\nconst slug = fromUrl === '' ? Inputs.homeSlug : fromUrl;\nif (slug === '') return;\nOutputs.slug = slug;\nOutputs.ready();"
             },
@@ -1122,6 +1135,18 @@
             "fromProperty": "out-text",
             "toId": "notFound",
             "toProperty": "text"
+          },
+          {
+            "fromId": "page",
+            "fromProperty": "didMount",
+            "toId": "noBackendDeadline",
+            "toProperty": "start"
+          },
+          {
+            "fromId": "noBackendDeadline",
+            "fromProperty": "timerFinished",
+            "toId": "diagnoseNotFound",
+            "toProperty": "in-watchdog"
           },
           {
             "fromId": "readPage",

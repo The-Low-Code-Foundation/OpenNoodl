@@ -80,6 +80,27 @@ export interface ProjectTemplate {
    * exactly what that does and does not bound.
    */
   securityPolicy?: Record<string, unknown>;
+
+  /**
+   * SBR-002 — the component the editor should land on the first time this
+   * project opens, as a full component name (e.g. `/Pages/Setup`).
+   *
+   * Written into the new project's metadata at install and read by
+   * `getDefaultComponent`, which is what `useSwitchToDefaultComponent` calls
+   * unconditionally on every open — so the hint rides the switch that always
+   * wins instead of racing it (a layered "restore" that ran *before* that
+   * switch lost every time; `utils/launcher/launcherHandoff.ts` records the
+   * post-mortem). A returning user's persisted `selectedComponentName`
+   * (`EditorDocument`) is applied after and still wins.
+   *
+   * 🔴 NOT `content.rootComponent` — that is the runtime home/export root,
+   * resolved to `rootNodeId` at install. Repointing it changes what the app
+   * runs; this only changes what the editor shows first.
+   *
+   * Optional and self-healing: a name that matches no component is ignored and
+   * the default chain (`/Main`, `/Start`, root, …) answers as before.
+   */
+  initialOpenComponent?: string;
 }
 
 /**

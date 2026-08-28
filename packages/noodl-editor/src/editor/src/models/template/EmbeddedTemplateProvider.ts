@@ -10,6 +10,7 @@
 
 import { CLOUD_COMPONENT_PREFIX } from '../../validation/runtimeContext';
 import { ITemplateProvider, TemplateItem } from '../../utils/forge/template/template';
+import { INITIAL_OPEN_COMPONENT_METADATA_KEY } from './firstOpenComponent';
 import { ProjectContent, NodeDefinition, ProjectTemplate } from './ProjectTemplate';
 import { helloWorldTemplate } from './templates/hello-world.template';
 import { siteBuilderTemplate } from './templates/site-builder.template';
@@ -123,6 +124,18 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
     // project is saved with no home component. A concrete `rootNodeId` is
     // resolved purely by id lookup, independent of the NodeLibrary.
     const projectContent = this.instantiateContent(template.content);
+
+    // SBR-002: the first-open hint rides project metadata, where
+    // `getDefaultComponent` reads it back. Set only when the template declares
+    // one — every other template's project.json is byte-identical to before.
+    // The name is NOT id-remapped: component names are stable through
+    // `instantiateContent` (only node ids are regenerated).
+    if (template.initialOpenComponent) {
+      projectContent.metadata = {
+        ...(projectContent.metadata || {}),
+        [INITIAL_OPEN_COMPONENT_METADATA_KEY]: template.initialOpenComponent
+      };
+    }
 
     // Ensure destination directory exists
     const { filesystem } = await import('@noodl/platform');

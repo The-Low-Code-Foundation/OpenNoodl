@@ -8,7 +8,7 @@ per-task status and the session log.
 | id | status | note |
 |---|---|---|
 | SBR-001 | ✅ closed s2 | driven end-to-end; ACs 1–5,7 verified live, AC6 by spec + shelf listing |
-| SBR-002 | ⬜ open | |
+| SBR-002 | 🟡 s3: built, half-driven | editor half CLOSED (AC1–3 driven); template half built + spec-graded; **owed: AC4 drive + this lane's `test:ci`** — deferred under Richard's CPU hold (s3) |
 | SBR-003 | ⬜ open | contract settled at scoping (s1) — the task is to *implement and verify* it |
 | SBR-004 | ⬜ open | |
 | SBR-005 | ⬜ open | |
@@ -47,6 +47,48 @@ per-task status and the session log.
 
 ## Session log
 
+- **s3 (2026-08-28)** — **SBR-002 built; editor half closed and driven; AC4 + gates deferred
+  under Richard's CPU hold** (*"avoid CPU/RAM intensive testing until I explicitly say to
+  start again"* — mid-session, stands until he clears it).
+  **Editor half (AC1–3 all driven live):** `ProjectTemplate.initialOpenComponent` (hand-set
+  like `securityPolicy`; site-builder declares `/Pages/Setup`) → `install()` writes it into
+  project metadata (`INITIAL_OPEN_COMPONENT_METADATA_KEY`) → `getDefaultComponent` resolves it
+  FIRST via `resolveFirstOpenComponent` (`models/template/firstOpenComponent.ts` — pure,
+  import-free module, because `projectmodel.utils`'s import chain cannot load in plain-Node
+  jest; the hook's unconditional switch now IS the hinted switch, no layering). Driven:
+  wizard-created "SBR Setup Drive" opened on `Pages/Setup` (`aria-current`), metadata verified
+  on disk through the v2 re-save, SBR-001 binding intact (`backend_mtcvrppkyv22t`:8590);
+  reopen landed on the saved place (App) — `selectedComponentName` still wins; hint-less
+  "SBR Hello Control" opened on App as always. Unit: `tests-unit/sbr-002/` 8/8.
+  **Template half (built, spec-graded, artefact regenerated — NOT yet driven):** the fourth
+  state. 🔴 Measured first: with no backend the preview's SPA fallback answers
+  `undefined/classes/…` with **200 + HTML**, `ParseWireAdapter.query`'s success handler throws
+  on `response.results` (undefined), so the query publishes **neither `fetched` nor `error`**
+  — the white void is a silently dead chain, and no failure-output wiring can ever see it. So
+  the signal is a deadline: `Timer` ("The answer deadline", `NO_BACKEND_DEADLINE_MS` = 4000)
+  armed by `page.didMount`, into a new watchdog arm in `diagnoseNotFound` that speaks ONLY
+  when nothing has answered (`watchdog === true && claimed === undefined && missing ===
+  undefined`; the value-port true-then-false double-write is handled — false pass abstains,
+  outputs stay latched; any later real answer overwrites). New visitor-facing string
+  `NO_BACKEND_TEXT` (deliberately names Backend Services — author-only state, noted in file).
+  `sb006PublicSite.test.ts`: +3 specs incl. the ignores-an-answer mutant, census +`timers: 1`;
+  33/33. Regenerated (`npm run template:site-builder`): **id count 194 → 195**
+  (`sb-007/site-template.test.ts` updated). ⚠️ **The sb017 helper total stays 101** — its
+  population is the seven `/#__cloud__/` components ONLY (comment added there); the standing
+  "node count moves the backend helper's total" note is true only for cloud-component edits.
+  **Gates run before the hold:** `typecheck:editor` **0 errors** (the WFA-002 5-error baseline
+  is GONE), `typecheck:mcp` clean, sb007Template byte-gate 22/22, sb-007/sb-015/sbr-001/
+  sbr-002/sb017-lossless/sb015-project-policy all green.
+  **Owed by this lane (deferred, do NOT run until Richard clears the hold):** (1) AC4 drive —
+  three states, three answers, negative controls, on a fresh wizard project (old projects
+  carry the pre-deadline graph); (2) `test:ci` floor for SBR-002 (P75's 11:47 run predates
+  this work); (3) one `test:main` had 2 failed suites (truncated log, only
+  "'siteBuilder' was also declared here." survived — suspects import
+  `site-builder.content.json` via `require`; ran beside webpack builds, so possibly the
+  two-suites flake) — identify and re-run clean. Drive artefacts: "SBR Setup Drive" (new
+  backend `backend_mtcvrppkyv22t`:8590, binding restored after the strip test) and scratch
+  "SBR No Backend" in NodeGX test projects. ⚠️ dev:debug launcher exited unexpectedly twice
+  mid-session (stack reaped cleanly both times); cause not identified.
 - **s2 (2026-08-28)** — **SBR-001 closed, driven.** The wizard now attaches the backend:
   `TemplateItem`/`TemplateChoice` widened with a **derived** `needsBackend`
   (`templateNeedsBackend` = shipped `securityPolicy` OR `/#__cloud__/` components; community

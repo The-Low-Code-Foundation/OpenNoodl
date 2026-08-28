@@ -83,6 +83,18 @@ export const siteBuilderTemplate: ProjectTemplate = {
   content,
 
   /**
+   * SBR-002 — a person whose project just opened sees the setup screen, not an
+   * empty canvas. `/Pages/Setup` ships in the template; the editor lands there
+   * on first open, and a saved place wins on every later one.
+   *
+   * ⚠️ Hand-set like `securityPolicy`, and checked the same way: a spec asserts
+   * this names a component the generated content actually contains, so a rename
+   * in the component sets reddens instead of silently landing new projects on
+   * the fallback chain.
+   */
+  initialOpenComponent: '/Pages/Setup',
+
+  /**
    * SB-015 — SB-004 §4's policy, as the shipped artefact rather than as prose.
    *
    * ⚠️ **Hand-edited, unlike `content`.** The graphs are generated from the
