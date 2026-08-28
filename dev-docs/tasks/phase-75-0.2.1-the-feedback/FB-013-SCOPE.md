@@ -251,9 +251,29 @@ R-chat's second inherited consequence. Concretely:
   the omission is legible. It is a genuinely different feature (ranking across two row shapes) and
   R-chat did not ask for it.
 
-## 8. 🔒 The posture question R-chat required be raised — **R-chat-mod**
+## 8. ✅ The posture question R-chat required be raised — **R-chat-mod, RULED B on 2026-08-28**
 
-This is the section the ruling explicitly demanded, and it is a real open decision.
+✅ **RICHARD RULED B (2026-08-28, session 59): A + hide-by-moderator, no reader-facing report.**
+That is the recommendation this section made, taken unchanged. **C5 is unblocked**, and so is the
+launcher's chat composer, which was behind it only because posting is what creates the messages a
+posture is about. What B commits to, restated so C5 can be graded against it:
+
+1. **Delete-own, always** — and `delete-unanswered` is *not* inherited, because its condition has
+   no referent in chat (see the argument below). A message's author may remove it, full stop.
+2. **Hide-by-moderator exists as a route.** The columns are already in §5's table; B is the
+   decision that something may reach them.
+3. **No reader-facing report.** ⚠️ This is the half that is easy to drift back into: `content_reports`
+   already carries a `chat_message` subject (§4.2, and `0024` shipped it), so the *storage* for C
+   is live on production as of this session. **C is a route away, and v1 must not add that route.**
+   A reader who wants something taken down tells Richard out of band; that is the accepted cost.
+
+🔒 **STILL UNRULED in this section: free tags.** The question below was asked in the same breath
+and was **not** answered by the B ruling. v1 continues to treat the channel as the category and
+adds no tag table — which is the reversible default, but it is a default and not a decision.
+
+---
+
+_The argument that produced the recommendation, kept because C5 is graded against its reasons:_
 
 **What D7 ruled, 2026-08-22, on the bench and only on the bench:** edit-own, delete-**unanswered**,
 **no report/flag, no hide**.
