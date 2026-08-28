@@ -28,7 +28,17 @@ import * as path from 'path';
 import type { TestSession } from './helpers';
 import { call, connect, copyFixture } from './helpers';
 import { ADMIN_ONLY_RULES } from './sb004Components';
-import { CLAIM_REFUSAL_TEXT, FN_PUBLISH, SB005_COMPONENTS, createPass } from './sb005Components';
+import {
+  ADMIN_FILL_EXEMPTIONS,
+  ADMIN_LAYOUT_OWED,
+  CLAIM_REFUSAL_TEXT,
+  FN_PUBLISH,
+  IN_A_ROW,
+  SB005_COMPONENTS,
+  STACKED,
+  createPass
+} from './sb005Components';
+import { SB006_COMPONENTS, STACKED_IN_A_COLUMN, createPass as createPass006 } from './sb006Components';
 
 jest.setTimeout(120000);
 
@@ -332,6 +342,27 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     });
     say(`CONTROL: ${cyclic.path} with its back-link, nothing else authored`, results.__control__);
 
+    // 🔴 The public site FIRST, because `buildSiteTemplateProject` writes it
+    // first and `/Admin/Shell`'s "View site" names `/Pages/Site`. This spec used
+    // to author the admin set into an otherwise empty project, which is a
+    // population the panel never ships into — and the difference was silent
+    // until a component here referred outward for the first time.
+    for (const c of SB006_COMPONENTS) {
+      const payload = createPass006(c);
+      await call<Either>(session, 'create_component', {
+        path: c.path,
+        nodes: payload.nodes,
+        connections: payload.connections
+      });
+    }
+    for (const c of SB006_COMPONENTS) {
+      if (!c.deferred?.length) continue;
+      await call<Either>(session, 'update_component', {
+        path: c.path,
+        set: { nodes: c.nodes, connections: c.connections }
+      });
+    }
+
     // Pass one: create, in the order that resolves every forward reference.
     for (const c of SB005_COMPONENTS) {
       const payload = createPass(c);
@@ -393,7 +424,8 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       for (const n of byType(written[c.key], 'For Each')) refs.push(String(n.parameters?.template));
       for (const n of byType(written[c.key], 'RouterNavigate')) refs.push(String(n.parameters?.target));
     }
-    expect(refs.length).toBe(7);
+    // 7 → 9: `/Admin/Shell` adds Pages, Theme & settings and View site.
+    expect(refs.length).toBe(9);
     for (const r of refs) expect(`${r}:${known.has(r)}`).toBe(`${r}:true`);
   });
 
@@ -559,7 +591,8 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     // The census half: this loop must have seen every code node, and four of
     // them must actually declare something — otherwise "no mismatches" could
     // mean the door never persisted `ports` and the check compared '' with ''.
-    expect(rows.length).toBe(8);
+    // 8 → 10: the shell's `navStyle` and the page list's row-count sentence.
+    expect(rows.length).toBe(10);
     expect(rows.filter((r) => !r.endsWith('declared=')).length).toBe(4);
   });
 
@@ -615,9 +648,296 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       functions: 4,
       repeaters: 2,
       // PageRow 1, SectionRow 2, Setup 1, PageEditor 1, ThemeEditor 3.
-      code: 8,
+      code: 10,
       pages: 4
     });
+  });
+
+
+  // ── SBR-006: the admin shell ───────────────────────────────────────────────
+
+  /**
+   * 🔴 **The check the admin set never had.** `sb006PublicSite.test.ts` walks the
+   * PUBLIC site with this rule and reds on anything that takes space it was not
+   * given; the admin screens were outside its population, and running the same
+   * rule over the shipped artefact for the first time reported **eleven** growing
+   * nodes here against two there — `/Admin/PageRow` alone had four, so the page
+   * rows divided the list's height between them instead of stacking.
+   *
+   * 🔴 **One hop this walk has and the public site's does not: `Component
+   * Children`.** `/Admin/Shell` renders each screen's body at its slot
+   * (`nodescope.ts:217`), so a screen's own nodes are laid out by a Group inside
+   * a DIFFERENT component. Without that hop the walk stops at the shell instance
+   * and never grades the body at all — it reached 41 nodes instead of 61, and
+   * `/Admin/PageRow` silently vanished from the report rather than being fixed.
+   * That was measured on this artefact, not imagined: the first run after the
+   * rebuild looked like an improvement because the check had stopped looking.
+   */
+  const DEFAULT_SIZE_MODE: Record<string, string> = { Group: 'explicit', Text: 'contentHeight', Image: 'contentSize' };
+  const assignsWidth = (mode: string) => mode === 'explicit' || mode === 'contentHeight';
+  const assignsHeight = (mode: string) => mode === 'explicit' || mode === 'contentWidth';
+
+  /** A slot handed down so `Component Children` can expand the instance's own children. */
+  type Slot = { key: string; ids: string[] } | null;
+
+  /**
+   * The walk as ONE function, because the mutants below have to run **this** and
+   * not a restatement of it — a sabotage that reddens a second implementation
+   * proves only that the second implementation exists.
+   *
+   * Returns the graded population as well as the growing set, so an empty result
+   * can be told apart from a walk that never ran.
+   */
+  function findGrowingNodes(
+    source: Record<string, Written>,
+    owed: ReadonlyArray<{ component: string; label: string }> = ADMIN_LAYOUT_OWED
+  ): { graded: string[]; growing: string[] } {
+    const exempt = new Set(
+      [...ADMIN_FILL_EXEMPTIONS.map((e) => `${e.component} | ${e.label}`)].concat(
+        owed.map((e) => `${e.component} | ${e.label}`)
+      )
+    );
+    const componentOf = new Map(SB005_COMPONENTS.map((c) => [c.legacyName, c.key] as const));
+    const graded: string[] = [];
+    const growing: string[] = [];
+
+    const walk = (key: string, ids: string[], parentLayout: string, seen: Set<string>, slot: Slot): void => {
+      const source_ = source[key];
+      if (!source_) return;
+      const nodes = new Map(source_.graph.nodes.map((n) => [n.id, n]));
+      for (const id of ids) {
+        const node = nodes.get(id);
+        if (!node) continue;
+
+        const target = componentOf.get(node.type);
+        if (target) {
+          // Descend into the placed component, carrying THIS instance's children
+          // as the slot its `Component Children` will render.
+          walk(target, source[target]?.graph.visualRoots ?? [], parentLayout, new Set([...seen, target]), {
+            key,
+            ids: node.children ?? []
+          });
+          continue;
+        }
+
+        if (node.type === 'Component Children') {
+          if (slot) walk(slot.key, slot.ids, parentLayout, seen, null);
+          continue;
+        }
+
+        if (node.type === 'For Each') {
+          const template = componentOf.get(String(node.parameters?.template ?? ''));
+          if (template && !seen.has(template)) {
+            walk(template, source[template]?.graph.visualRoots ?? [], parentLayout, new Set([...seen, template]), null);
+          }
+          continue;
+        }
+
+        const defaultMode = DEFAULT_SIZE_MODE[node.type];
+        if (defaultMode !== undefined) {
+          const mode = String(node.parameters?.sizeMode ?? defaultMode);
+          const alongAxis = parentLayout === 'row' ? 'width' : 'height';
+          const assigned = parentLayout === 'row' ? assignsWidth(mode) : assignsHeight(mode);
+          const authored = node.parameters?.[alongAxis] !== undefined;
+          const name = `${key} | ${node.label ?? node.type}`;
+          graded.push(name);
+          if (assigned && !authored && !exempt.has(name)) {
+            growing.push(`${name} — ${alongAxis} defaults to 100% along its parent's ${parentLayout}`);
+          }
+        }
+
+        const layout = node.type === 'Group' ? String(node.parameters?.flexDirection ?? 'column') : parentLayout;
+        walk(key, node.children ?? [], layout, seen, slot);
+      }
+    };
+
+    for (const c of SB005_COMPONENTS) {
+      if (!c.isPage) continue;
+      walk(c.key, source[c.key]?.graph.visualRoots ?? [], 'column', new Set([c.key]), null);
+    }
+    return { graded, growing };
+  }
+
+  it('AC1: nothing on an admin screen takes space it was not given', () => {
+    const { graded, growing } = findGrowingNodes(written);
+    // 🔴 The population, asserted first — and by NAME rather than by a count,
+    // because the hole this walk shipped with made the count go DOWN quietly.
+    // Both of these are reachable only through the shell's `Component Children`
+    // slot, and the second only through the `For Each` beyond it: if the hop
+    // regresses, they disappear from the graded set and this reds instead of
+    // reporting a cheerful empty `growing`.
+    expect(graded).toContain('Pages/Admin | Heading');
+    expect(graded).toContain('Admin/PageRow | Title');
+    expect(graded.length).toBeGreaterThan(35);
+    expect(growing).toEqual([]);
+  });
+
+  it('AC1 MUTANT: the page row without its size mode reds, and names the row', () => {
+    const mutant = { ...written, 'Admin/PageRow': clone(written['Admin/PageRow']) };
+    delete byLabel(mutant['Admin/PageRow'], 'Group', 'One page').parameters!.sizeMode;
+    const { growing } = findGrowingNodes(mutant);
+    expect(growing).toEqual(["Admin/PageRow | One page — height defaults to 100% along its parent's column"]);
+  });
+
+  it('AC1 MUTANT: the walk without its Component Children hop stops grading the body', () => {
+    // The hole this gate was nearly shipped with. Removing the shell's slot node
+    // is the same thing as not following it: the screens' own bodies stop being
+    // reachable, and the report gets QUIETER rather than louder.
+    const mutant = { ...written, 'Admin/Shell': clone(written['Admin/Shell']) };
+    mutant['Admin/Shell'].graph.nodes = mutant['Admin/Shell'].graph.nodes.filter((n) => n.type !== 'Component Children');
+    const { graded } = findGrowingNodes(mutant);
+    expect(graded.length).toBeLessThan(findGrowingNodes(written).graded.length);
+  });
+
+  it('the two size-mode constants have not drifted apart', () => {
+    // `sb005` cannot import `sb006`'s copy — that module already imports ROUTER
+    // from this one and the reverse edge is a cycle — so the value is held twice
+    // and this is what stops the copies disagreeing.
+    expect(STACKED).toEqual(STACKED_IN_A_COLUMN);
+    // ...and the row twin is genuinely different, which is the whole trap:
+    // `contentHeight` still assigns WIDTH.
+    expect(IN_A_ROW.sizeMode).toBe('contentSize');
+    expect(assignsWidth(STACKED.sizeMode)).toBe(true);
+    expect(assignsWidth(IN_A_ROW.sizeMode)).toBe(false);
+  });
+
+  it('the growing nodes that remain are owed to a named task, exactly', () => {
+    // An exclusion list cannot fail, so this grades the LIST: every owed row must
+    // still be a real growing node. A fix that lands without deleting its row
+    // reds here.
+    const owedNames = ADMIN_LAYOUT_OWED.map((e) => `${e.component} | ${e.label}`);
+    const bare = findGrowingNodes(written);
+    expect(bare.growing).toEqual([]);
+    for (const e of ADMIN_LAYOUT_OWED) expect(e.owner).toMatch(/SBR-\d+/);
+    // Each owed node really does grow: drop it from the exemptions and it appears.
+    const stillGrowing = owedNames.filter((n) => {
+      const probe = findGrowingNodesWithout(n);
+      return probe.some((g) => g.startsWith(n + ' —'));
+    });
+    expect(stillGrowing.sort()).toEqual(owedNames.sort());
+  });
+
+  /** The same walk with ONE name un-exempted, so an owed row can be shown to be real. */
+  function findGrowingNodesWithout(name: string): string[] {
+    return findGrowingNodes(
+      written,
+      ADMIN_LAYOUT_OWED.filter((e) => `${e.component} | ${e.label}` !== name)
+    ).growing;
+  }
+
+  it('AC5: the shell is placed by two screens, and they do not render the same', () => {
+    const placements = SB005_COMPONENTS.filter((c) =>
+      written[c.key]?.graph.nodes.some((n) => n.type === '/Admin/Shell')
+    ).map((c) => c.key);
+    expect(placements.sort()).toEqual(['Pages/Admin', 'Pages/ThemeEditor']);
+
+    // 🔴 The half a shell fails silently: the MCP guidance's ghost is a component
+    // that "renders identically however many times you place it". The interface
+    // has to CARRY something, and the two placements have to disagree.
+    const active = placements.map(
+      (k) => written[k].graph.nodes.find((n) => n.type === '/Admin/Shell')!.parameters?.active
+    );
+    expect(active).toEqual(['pages', 'theme']);
+    expect(new Set(active).size).toBe(placements.length);
+
+    // ...and `active` is a real declared port, not a parameter nobody reads.
+    const inputs = byLabel(written['Admin/Shell'], 'Component Inputs', 'Which item is current');
+    expect(JSON.stringify(inputs.ports ?? [])).toContain('"active"');
+  });
+
+  it('AC2: the dialog is what creates a page, and the fields reach it', () => {
+    const admin = written['Pages/Admin'];
+    const popup = byType(admin, 'NavigationShowPopup')[0];
+    expect(popup.parameters?.target).toBe('/Admin/NewPageDialog');
+
+    const create = byType(admin, 'NewDbModelProperties')[0];
+    const into = (port: string) =>
+      admin.wires.find((w) => w.toId === create.id && w.toProperty === port && w.fromId === popup.id);
+
+    // ⚠️ `closeResult-*` on Show Popup, `result-*` on Close Popup — two spellings,
+    // one mechanism, and using the wrong one is a wire to a port that does not exist.
+    expect(into('prop-title')?.fromProperty).toBe('closeResult-title');
+    expect(into('prop-slug')?.fromProperty).toBe('closeResult-slug');
+    expect(into('store')?.fromProperty).toBe('closeAction-create');
+
+    // The two bare inputs above the list are gone — §2's third bullet.
+    expect(byType(admin, 'net.noodl.controls.textinput')).toHaveLength(0);
+  });
+
+  it('AC2: the dialog declares both results and both close actions', () => {
+    const close = byType(written['Admin/NewPageDialog'], 'NavigationClosePopup')[0];
+    // These stringlists are what MINT the ports the screen wires to; a typo here
+    // is a silently absent port on the other component.
+    expect(String(close.parameters?.results).split(',').sort()).toEqual(['slug', 'title']);
+    expect(String(close.parameters?.closeActions).split(',').sort()).toEqual(['cancel', 'create']);
+    const wires = written['Admin/NewPageDialog'].wires;
+    expect(wires.some((w) => w.toProperty === 'result-title')).toBe(true);
+    expect(wires.some((w) => w.toProperty === 'result-slug')).toBe(true);
+    expect(wires.some((w) => w.toProperty === 'closeAction-create')).toBe(true);
+    expect(wires.some((w) => w.toProperty === 'closeAction-cancel')).toBe(true);
+  });
+
+  it('AC3: the three row actions moved behind one control, and the menu is unmounted', () => {
+    const row = written['Admin/PageRow'];
+    const menu = byLabel(row, 'Group', 'Row actions menu');
+    // 🔴 `mounted`, not `visible`. SBR-004 drove that `visible: false` is
+    // `visibility: hidden` and HOLDS ITS SPACE — 365px of empty page.
+    expect(menu.parameters?.mounted).toBe(false);
+    expect(menu.parameters?.visible).toBeUndefined();
+
+    // The three actions are INSIDE the menu, not siblings of the row.
+    const inMenu = (menu.children ?? []).map((id) => row.graph.nodes.find((n) => n.id === id)?.label);
+    expect(inMenu.sort()).toEqual(['Duplicate', 'Publish', 'Unpublish']);
+
+    // ...and each one closes the menu on its way out, so the row is readable again.
+    const state = byType(row, 'States')[0];
+    const closers = row.wires.filter((w) => w.toId === state.id && w.toProperty === 'to-Closed');
+    expect(closers).toHaveLength(3);
+  });
+
+  it('AC1: the status is a pill whose colour is derived, not authored per row', () => {
+    const row = written['Admin/PageRow'];
+    const status = byType(row, 'JavaScriptFunction').find((n) => String(n.parameters?.functionScript).includes('Published'))!;
+    const pill = byLabel(row, 'Group', 'Status pill');
+    const text = byLabel(row, 'Text', 'Draft or published');
+
+    const wired = (toId: string, port: string) =>
+      row.wires.find((w) => w.fromId === status.id && w.toId === toId && w.toProperty === port);
+    expect(wired(pill.id, 'backgroundColor')?.fromProperty).toBe('out-pillBackground');
+    expect(wired(text.id, 'color')?.fromProperty).toBe('out-pillColor');
+    expect(wired(text.id, 'text')?.fromProperty).toBe('out-label');
+
+    // SB-018 (3): both ports are ALSO authored, so a draft never flashes the
+    // published colour before the function first publishes.
+    expect(pill.parameters?.backgroundColor).toBe('var(--accent)');
+    expect(text.parameters?.text).toBe('Draft');
+
+    // 🔴 SBR-004 §9.2: an explicit `true` survives the NDA-017 migration, an
+    // absent key does not — and this node's control signal is exactly what that
+    // migration keys on.
+    expect(status.parameters?.['runOnChange-in-published']).toBe(true);
+  });
+
+  it('§4: the refresh wire still names the row output it is derived from', () => {
+    // The trap this task was warned about: the wire is name-derived from the item
+    // component's port, so renaming `Changed` orphans it silently.
+    const outputs = byType(written['Admin/PageRow'], 'Component Outputs')[0];
+    expect(JSON.stringify(outputs.ports ?? [])).toContain('"Changed"');
+    const admin = written['Pages/Admin'];
+    const list = byType(admin, 'For Each')[0];
+    expect(
+      admin.wires.some((w) => w.fromId === list.id && w.fromProperty === 'itemOutputSignal-Changed')
+    ).toBe(true);
+  });
+
+  it('the theme editor is reachable from every admin screen, not one button', () => {
+    // What SBR-006 §2 says is wrong today: "the theme editor is reachable only by
+    // a button at the bottom of the list".
+    const admin = written['Pages/Admin'];
+    expect(byType(admin, 'RouterNavigate').map((n) => n.parameters?.target)).not.toContain('/Pages/ThemeEditor');
+    const shell = written['Admin/Shell'];
+    const targets = byType(shell, 'RouterNavigate').map((n) => n.parameters?.target);
+    expect(targets.sort()).toEqual(['/Pages/Admin', '/Pages/Site', '/Pages/ThemeEditor']);
   });
 
   it('MUTANT: rendering the cloud function error reddens', () => {

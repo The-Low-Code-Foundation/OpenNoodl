@@ -114,6 +114,139 @@ export const ROUTER = 'Main';
 export const ADMIN_PATH_PREFIX = 'admin';
 
 /**
+ * SBR-006 §4 / SBR-004 AC1. **The admin set had none of this**, and the census
+ * that found it is the reason it is here: applying `sb006PublicSite.test.ts`'s
+ * own `findGrowingNodes` rule to the shipped artefact reported **eleven** growing
+ * nodes across the admin screens, against two on the public site — and both of
+ * those two are the named, legitimate ones. `/Admin/PageRow` alone had four: its
+ * title, slug and status each defaulted to `width: 100%` along the row, and the
+ * row itself defaulted to `height: 100%` along the list's column, so the rows
+ * divided the page between them instead of stacking.
+ *
+ * The rule (`layout.ts:83-98`) is that a percentage size ALONG the parent's
+ * direction becomes `flexGrow`, and every node's size on that axis defaults to
+ * `100` with `defaultUnit: '%'`. So the opt-out depends on which way the parent
+ * stacks, and using the wrong one is silent:
+ *
+ * - child of a **column** ⇒ {@link STACKED} (`contentHeight` stops assigning
+ *   height, keeps assigning width, so the child still spans the column);
+ * - child of a **row** ⇒ {@link IN_A_ROW} (`contentSize` assigns neither —
+ *   `contentHeight` is NOT the answer here, because `assignsWidth` is true for
+ *   it, `sb006PublicSite.test.ts:1680`).
+ *
+ * 🔴 `STACKED` is `sb006Components.ts`'s `STACKED_IN_A_COLUMN` value, held
+ * separately because that module already imports `ROUTER` from this one and the
+ * reverse edge would be a cycle. A second copy of a constant drifts silently, so
+ * `sb006PublicSite.test.ts` asserts the two are equal rather than trusting this
+ * comment.
+ */
+export const STACKED = { sizeMode: 'contentHeight' } as const;
+
+/** The row-direction twin of {@link STACKED}. See there for why they differ. */
+export const IN_A_ROW = { sizeMode: 'contentSize' } as const;
+
+/**
+ * The admin rail's width. A raw dimension, in the same shape and for the same
+ * reason as `sb006Components.ts`'s `RAW_DIMENSION_EXEMPTIONS`: a fixed rail has
+ * no token because the token vocabulary is the SITE's contract (a client themes
+ * their public site, not the admin chrome they were given), and an unstated
+ * width here does not mean "auto" — it means 100% along the frame's row, which
+ * `Layout.size` turns into a sidebar that eats half the screen.
+ *
+ * 🔴 **The object form is not decoration.** The door refuses a bare `240` with
+ * `unitless-dimension`: these ports are read as a PERCENTAGE when no unit is
+ * given, so `width: 240` is `240%` — a rail two and a half screens wide. The
+ * bare number was authored, refused, and corrected here.
+ */
+export const SIDEBAR_WIDTH = { value: 240, unit: 'px' } as const;
+
+/**
+ * The dialog card's width. Raw for the same reason as {@link SIDEBAR_WIDTH}: the
+ * token contract is the client's SITE theme, and the admin chrome they were
+ * handed is not part of it.
+ */
+export const DIALOG_WIDTH = { value: 420, unit: 'px' } as const;
+
+/**
+ * The admin nodes that are SUPPOSED to take the space their parent gives them —
+ * an exemption list, not a relaxation, in the same shape as
+ * `FILL_THE_PARENT_EXEMPTIONS` and keyed by **label** for the same reason (the
+ * door reallocates ids, SB-004 F9). Adding a growing node reds the gate until
+ * someone writes down why it grows.
+ */
+export const ADMIN_FILL_EXEMPTIONS: ReadonlyArray<{ component: string; label: string; why: string }> = [
+  {
+    component: 'Admin/Shell',
+    label: 'Admin frame',
+    why: 'the shell IS the admin page ground — it is meant to be the whole viewport'
+  },
+  {
+    component: 'Admin/Shell',
+    label: 'Admin content',
+    why: 'the content column takes whatever width the fixed rail leaves, which is the point of a rail'
+  },
+  {
+    component: 'Admin/PageRow',
+    label: 'Name and slug',
+    why: 'the name column takes the width the pill and the two buttons leave — the fixed cells state their size, this one absorbs the rest'
+  }
+];
+
+/**
+ * Growing nodes that are **defects, not exemptions** — measured, named, and owned
+ * by another task. They are here rather than in {@link ADMIN_FILL_EXEMPTIONS}
+ * because an exemption list that absorbs everything cannot fail, and the reason
+ * column is the only thing separating "this is meant to fill" from "nobody has
+ * got to this yet". The gate asserts this list EXACTLY, so fixing one of these
+ * without deleting its row reds just as loudly as adding a new one.
+ *
+ * All four were found by running `sb006PublicSite.test.ts`'s own rule over the
+ * shipped artefact for the first time: the admin screens had never been walked
+ * by it, and had **eleven** growing nodes to the public site's two.
+ */
+export const ADMIN_LAYOUT_OWED: ReadonlyArray<{ component: string; label: string; owner: string }> = [
+  { component: 'Admin/SectionRow', label: 'One section', owner: 'SBR-007 — the section rows stack the same way the page rows did' },
+  { component: 'Pages/PageEditor', label: 'Editor', owner: 'SBR-007 — the page editor is rebuilt there' },
+  { component: 'Pages/PageEditor', label: 'Add a section', owner: 'SBR-007 — the page editor is rebuilt there' },
+  { component: 'Pages/Setup', label: 'Form', owner: 'SBR-002 — the claim screen is driven and passing; changing its size mode without re-driving it would be a blind edit to another task’s verified AC' }
+];
+
+/** One `Text` in the sidebar rail: same shape three times, so it is written once. */
+function navItem(id: string, text: string) {
+  return [
+    {
+      id,
+      type: 'Text',
+      label: text,
+      parent: 'sidebar',
+      parameters: {
+        // Child of the rail's COLUMN, so `contentHeight` — and it keeps assigning
+        // width, which is what makes the whole rail width the hit area.
+        ...STACKED,
+        text,
+        fontFamily: 'var(--font-sans)',
+        fontSize: 'var(--text-base)',
+        // 🔴 Authored, even though `navStyle` wires both. SB-018 (3)'s rule
+        // generalised: a port whose ONLY source is a wire renders the node's own
+        // default until that wire first publishes, and `active` arrives as a
+        // component input. Without these two the sidebar flashes the `Text`
+        // default before it settles.
+        color: 'var(--foreground)',
+        fontWeight: 'var(--font-normal)',
+        // 🔴 Margins, not padding, and the door is what settled it: `Text`
+        // declares NO `paddingTop`/`paddingBottom`/`paddingLeft` and no
+        // `borderRadius` — all four came back as `unknown-parameter`, "so this
+        // parameter is never read". A padded pill-shaped hit area on a bare
+        // `Text` is not authorable; it would need a wrapping `Group`, and the
+        // current item is distinguished by colour and weight instead.
+        marginTop: 'var(--space-1)',
+        marginBottom: 'var(--space-1)'
+      }
+    }
+  ];
+}
+
+/**
  * The filtered query's shape, and only the half that transfers — see the module
  * header. Both boxes off kills the load-time unfiltered fetch; the `Do` wire is
  * a separate decision made per query, at its wire.
@@ -157,49 +290,174 @@ export const PAGE_ROW_NODES = [
     id: 'row',
     type: 'Group',
     label: 'One page',
-    parameters: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, paddingBottom: 8 },
-    children: ['rowTitle', 'rowSlug', 'rowStatus', 'editButton', 'publishButton', 'unpublishButton', 'duplicateButton']
+    // Child of the list's COLUMN. 🔴 Without `STACKED` this row defaulted to
+    // `height: 100%` along that column, so N rows divided the page between them
+    // instead of stacking — one of the eleven the census found. See {@link STACKED}.
+    parameters: {
+      ...STACKED,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingTop: 'var(--space-3)',
+      paddingBottom: 'var(--space-3)',
+      borderBottomStyle: 'solid',
+      borderBottomWidth: 'var(--border-1)',
+      borderBottomColor: 'var(--border)'
+    },
+    children: ['titleCell', 'pill', 'editButton', 'menuButton', 'menu']
+  },
+  {
+    id: 'titleCell',
+    type: 'Group',
+    label: 'Name and slug',
+    parent: 'row',
+    // The one node in the row that legitimately grows: the fixed things (pill,
+    // buttons) state their size and the name column takes what is left.
+    // `ADMIN_FILL_EXEMPTIONS` carries that sentence.
+    parameters: { flexDirection: 'column' },
+    children: ['rowTitle', 'rowSlug']
   },
   // 🔴 SB-018 (3). Standing `text`, for the reason spelled out on
   // `/Pages/Site`'s headings: `Text` declares `default: 'Text'`, a default
   // applies until the port is set, and a node whose only `text` is a wire
-  // renders the literal word **Text** until that wire publishes. Every other
-  // wired `Text` in this template already carried one (`link`, `rowStatus`,
-  // `notFound`); these were the four that did not, and s19's census over the
-  // shipped artefact is what found them rather than the one the drive saw.
-  { id: 'rowTitle', type: 'Text', label: 'Title', parent: 'row', parameters: { fontWeight: 'var(--font-semibold)', text: '' } },
-  { id: 'rowSlug', type: 'Text', label: 'Slug', parent: 'row', parameters: { text: '' } },
+  // renders the literal word **Text** until that wire publishes.
+  {
+    id: 'rowTitle',
+    type: 'Text',
+    label: 'Title',
+    parent: 'titleCell',
+    parameters: {
+      ...STACKED,
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-base)',
+      fontWeight: 'var(--font-semibold)',
+      color: 'var(--foreground)'
+    }
+  },
+  {
+    id: 'rowSlug',
+    type: 'Text',
+    label: 'Slug',
+    parent: 'titleCell',
+    parameters: {
+      ...STACKED,
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+  {
+    id: 'pill',
+    type: 'Group',
+    label: 'Status pill',
+    parent: 'row',
+    // Child of the row, so `contentSize` — `contentHeight` would still assign
+    // width and the pill would eat the row.
+    parameters: {
+      ...IN_A_ROW,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingTop: 'var(--space-1)',
+      paddingBottom: 'var(--space-1)',
+      paddingLeft: 'var(--space-3)',
+      paddingRight: 'var(--space-3)',
+      borderRadius: 'var(--radius-md)',
+      marginRight: 'var(--space-4)',
+      // Authored as well as wired, SB-018 (3): a draft row must not flash the
+      // published colour before `status` first publishes.
+      backgroundColor: 'var(--accent)'
+    },
+    children: ['rowStatus']
+  },
   {
     id: 'rowStatus',
     type: 'Text',
     label: 'Draft or published',
-    parent: 'row',
+    parent: 'pill',
     // Fed from `status`, below: the panel is the one reader `published` exists
     // for (SB-004 §3), and it reads the mirror rather than trying to infer the
     // ACL, which no browser query can see.
-    parameters: { text: 'Draft' }
+    parameters: {
+      ...IN_A_ROW,
+      text: 'Draft',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      fontWeight: 'var(--font-semibold)',
+      color: 'var(--muted-foreground)'
+    }
   },
   { id: 'editButton', type: 'net.noodl.controls.button', label: 'Edit', parent: 'row', parameters: { label: 'Edit' } },
+  {
+    id: 'menuButton',
+    type: 'net.noodl.controls.button',
+    label: 'More actions',
+    parent: 'row',
+    // SBR-006 §2: publish/unpublish/duplicate move off the row and behind one
+    // control, because four buttons per row IS the current design and the task
+    // is to stop it being that.
+    parameters: { label: 'More' }
+  },
+  {
+    id: 'menu',
+    type: 'Group',
+    label: 'Row actions menu',
+    parent: 'row',
+    // 🔴 `mounted`, never `visible`. SBR-004's drive: `visible: false` is
+    // `visibility: hidden` and HOLDS ITS SPACE — a hidden wrapper measured 365px
+    // of empty page. A closed menu must take no room at all.
+    parameters: {
+      ...IN_A_ROW,
+      mounted: false,
+      flexDirection: 'column',
+      backgroundColor: 'var(--surface)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      borderRadius: 'var(--radius-md)',
+      paddingTop: 'var(--space-1)',
+      paddingBottom: 'var(--space-1)'
+    },
+    children: ['publishButton', 'unpublishButton', 'duplicateButton']
+  },
   {
     id: 'publishButton',
     type: 'net.noodl.controls.button',
     label: 'Publish',
-    parent: 'row',
+    parent: 'menu',
     parameters: { label: 'Publish' }
   },
   {
     id: 'unpublishButton',
     type: 'net.noodl.controls.button',
     label: 'Unpublish',
-    parent: 'row',
+    parent: 'menu',
     parameters: { label: 'Unpublish' }
   },
   {
     id: 'duplicateButton',
     type: 'net.noodl.controls.button',
     label: 'Duplicate',
-    parent: 'row',
+    parent: 'menu',
     parameters: { label: 'Duplicate' }
+  },
+  {
+    id: 'menuState',
+    type: 'States',
+    label: 'Menu open or closed',
+    // `states[0]` is the start state when `startState` is unset
+    // (`states.ts:243`), so the menu begins Closed without a second parameter
+    // saying so. `menuOpen` is a value name and becomes an output port verbatim
+    // — deliberately not one of `RESERVED_OUTPUTS` (`states.ts:119`), where a
+    // value called `done` would silently resolve to the outcome contract's
+    // signal and the author's output would simply not exist.
+    parameters: {
+      states: 'Closed,Open',
+      values: 'menuOpen',
+      'type-menuOpen': 'boolean',
+      'value-Closed-menuOpen': false,
+      'value-Open-menuOpen': true
+    }
   },
   {
     id: 'inputs',
@@ -215,11 +473,22 @@ export const PAGE_ROW_NODES = [
   {
     id: 'status',
     type: 'JavaScriptFunction',
-    label: 'Draft or published, as a word',
+    label: 'Draft or published, as a word and a colour',
     // Rule 1: no custom signal outputs on this node, so nothing to declare —
     // `Outputs.label` is a value and values need no port declaration.
+    //
+    // 🔴 `runOnChange-in-published: true` is authored for SBR-004 §9.2's reason:
+    // the NDA-017 migration writes `runOnChange-<input>: false` on every value
+    // input of a node whose control signal is wired, on every project load. An
+    // explicit `true` survives it; an absent key does not.
     parameters: {
-      functionScript: "Outputs.label = Inputs.published === true ? 'Published' : 'Draft';"
+      'runOnChange-in-published': true,
+      functionScript: [
+        'const published = Inputs.published === true;',
+        "Outputs.label = published ? 'Published' : 'Draft';",
+        "Outputs.pillBackground = published ? 'var(--primary)' : 'var(--accent)';",
+        "Outputs.pillColor = published ? 'var(--primary-foreground)' : 'var(--muted-foreground)';"
+      ].join('\n')
     }
   },
   {
@@ -261,6 +530,10 @@ export const PAGE_ROW_NODES = [
     // Component Outputs signal as an output of its own, named
     // `itemOutputSignal-Changed` — SB-018 (1) is the five sessions this comment
     // was right and the wire below it named the port wrong.
+    //
+    // 🔴 §4's trap: this port name is what `/Pages/Admin`'s refresh wire is
+    // derived from. Renaming `Changed` here silently orphans that wire, and
+    // `the-list-refreshes-when-a-row-changes.test.ts` is the guard.
     ports: [{ name: 'Changed', type: 'signal', plug: 'input' }]
   }
 ];
@@ -270,11 +543,18 @@ export const PAGE_ROW_WIRES = [
   { fromId: 'inputs', fromProperty: 'slug', toId: 'rowSlug', toProperty: 'text' },
   { fromId: 'inputs', fromProperty: 'published', toId: 'status', toProperty: 'in-published' },
   { fromId: 'status', fromProperty: 'out-label', toId: 'rowStatus', toProperty: 'text' },
+  { fromId: 'status', fromProperty: 'out-pillBackground', toId: 'pill', toProperty: 'backgroundColor' },
+  { fromId: 'status', fromProperty: 'out-pillColor', toId: 'rowStatus', toProperty: 'color' },
 
   { fromId: 'inputs', fromProperty: 'id', toId: 'publish', toProperty: 'in-pageId' },
   { fromId: 'inputs', fromProperty: 'id', toId: 'unpublish', toProperty: 'in-pageId' },
   { fromId: 'inputs', fromProperty: 'id', toId: 'duplicate', toProperty: 'in-pageId' },
   { fromId: 'inputs', fromProperty: 'id', toId: 'goEdit', toProperty: 'pm-pageId' },
+
+  // The overflow menu. `toggle` moves to the next state and wraps
+  // (`states.ts:288-300`), which for a two-state list is exactly "open/close".
+  { fromId: 'menuButton', fromProperty: 'onClick', toId: 'menuState', toProperty: 'toggle' },
+  { fromId: 'menuState', fromProperty: 'menuOpen', toId: 'menu', toProperty: 'mounted' },
 
   { fromId: 'publishButton', fromProperty: 'onClick', toId: 'publish', toProperty: 'call' },
   { fromId: 'unpublishButton', fromProperty: 'onClick', toId: 'unpublish', toProperty: 'call' },
@@ -285,7 +565,13 @@ export const PAGE_ROW_WIRES = [
   // a refetch after a failure would redraw the same rows for no reason.
   { fromId: 'publish', fromProperty: 'done', toId: 'outputs', toProperty: 'Changed' },
   { fromId: 'unpublish', fromProperty: 'done', toId: 'outputs', toProperty: 'Changed' },
-  { fromId: 'duplicate', fromProperty: 'done', toId: 'outputs', toProperty: 'Changed' }
+  { fromId: 'duplicate', fromProperty: 'done', toId: 'outputs', toProperty: 'Changed' },
+
+  // ...and the menu closes itself on the way out, so the row it belongs to is
+  // readable again the moment the list redraws.
+  { fromId: 'publish', fromProperty: 'done', toId: 'menuState', toProperty: 'to-Closed' },
+  { fromId: 'unpublish', fromProperty: 'done', toId: 'menuState', toProperty: 'to-Closed' },
+  { fromId: 'duplicate', fromProperty: 'done', toId: 'menuState', toProperty: 'to-Closed' }
 ];
 
 // ── 2. Admin/SectionRow — one section, with the image upload ─────────────────
@@ -636,73 +922,111 @@ export const ADMIN_NODES = [
   },
   {
     id: 'shell',
-    type: 'Group',
-    label: 'Panel',
+    type: '/Admin/Shell',
+    label: 'Admin shell',
     parent: 'page',
-    parameters: { flexDirection: 'column', paddingTop: 24, paddingLeft: 24, paddingRight: 24 },
-    children: ['heading', 'newRow', 'list', 'themeLink']
+    // 🔴 AC5, and the half a shell can fail silently: `active` is what makes the
+    // two placements of this component render differently. `/Pages/ThemeEditor`
+    // places the same component with `active: 'theme'`.
+    parameters: { active: 'pages' },
+    // The screen's own body goes INSIDE the instance and arrives at the shell's
+    // `Component Children` (`nodescope.ts:217`). The shell owns the chrome, this
+    // component owns the page.
+    children: ['body']
+  },
+  {
+    id: 'body',
+    type: 'Group',
+    label: 'Pages body',
+    parent: 'shell',
+    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-4)' },
+    children: ['headerRow', 'countLine', 'list']
+  },
+  {
+    id: 'headerRow',
+    type: 'Group',
+    label: 'Pages header',
+    parent: 'body',
+    parameters: { ...STACKED, flexDirection: 'row', alignItems: 'center' },
+    children: ['heading', 'newButton']
   },
   {
     id: 'heading',
     type: 'Text',
     label: 'Heading',
-    parent: 'shell',
-    parameters: { text: 'Pages', fontWeight: 'var(--font-bold)' }
-  },
-  {
-    id: 'newRow',
-    type: 'Group',
-    label: 'New page',
-    parent: 'shell',
-    parameters: { flexDirection: 'row', alignItems: 'center' },
-    children: ['newTitle', 'newSlug', 'newButton']
-  },
-  {
-    id: 'newTitle',
-    type: 'net.noodl.controls.textinput',
-    label: 'New title',
-    parent: 'newRow',
-    parameters: { useLabel: true, label: 'Title' }
-  },
-  {
-    id: 'newSlug',
-    type: 'net.noodl.controls.textinput',
-    label: 'New slug',
-    parent: 'newRow',
-    parameters: { useLabel: true, label: 'Slug' }
+    parent: 'headerRow',
+    // Child of a ROW, so `contentSize` and not `contentHeight` — the latter
+    // still assigns width and the heading would push the one primary action off
+    // the screen. This is the distinction {@link STACKED} exists to keep straight.
+    parameters: {
+      ...IN_A_ROW,
+      text: 'Pages',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-3xl)',
+      fontWeight: 'var(--font-bold)',
+      color: 'var(--foreground)'
+    }
   },
   {
     id: 'newButton',
     type: 'net.noodl.controls.button',
-    label: 'Create',
-    parent: 'newRow',
-    parameters: { label: 'New page' }
+    label: 'New page',
+    parent: 'headerRow',
+    // ⚠️ SBR-006 §8.5 / SBR-004: at 360px this button's centre was off-screen
+    // and a click landed on nothing. It now sits in a row with one heading
+    // rather than after two text fields, which is what put it there.
+    parameters: { label: 'New page', marginLeft: 'var(--space-6)' }
+  },
+  {
+    id: 'countLine',
+    type: 'Text',
+    label: 'How many pages',
+    parent: 'body',
+    // §2's last bullet: derived, cheap, and it proves the query returned
+    // something. Standing `text` per SB-018 (3).
+    parameters: {
+      ...STACKED,
+      text: '',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--muted-foreground)'
+    }
   },
   {
     id: 'list',
     type: 'For Each',
     label: 'One row per page',
-    parent: 'shell',
+    parent: 'body',
     // ✅ `template` IS checked at the door — measured, not assumed:
     // `repeater-template-unresolved`, blocking, with the available names listed.
-    // It is one of the two known-firing controls SB-009 names, so it is the
-    // opposite of that task's finding rather than an instance of it; SB-009 is
-    // about `RunTasks.taskTemplate` and the twelve other `component`-typed ports
-    // with no owner.
     parameters: { templateType: 'explicit', template: '/Admin/PageRow' }
-  },
-  {
-    id: 'themeLink',
-    type: 'net.noodl.controls.button',
-    label: 'Theme and settings',
-    parent: 'shell',
-    parameters: { label: 'Theme and settings' }
   },
   {
     id: 'pages',
     type: 'DbCollection2',
     label: 'Every page, draft and published',
     parameters: { collectionName: 'Page' }
+  },
+  {
+    id: 'count',
+    type: 'JavaScriptFunction',
+    label: 'The row-count sentence',
+    // 🔴 `runOnChange-in-rows: true` authored — SBR-004 §9.2. The NDA-017
+    // migration silences value inputs on any node whose control signal is wired,
+    // every load; an explicit `true` survives, an absent key does not. This node
+    // HAS a wired control signal (`fetched`), so it is squarely in that
+    // population and the parameter is doing real work.
+    parameters: {
+      'runOnChange-in-rows': true,
+      functionScript: [
+        'const rows = Array.isArray(Inputs.rows) ? Inputs.rows : [];',
+        'const published = rows.filter((r) => r && r.published === true).length;',
+        "const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];",
+        'const word = (n) => (n < WORDS.length ? WORDS[n] : String(n));',
+        "const pages = rows.length === 1 ? 'page' : 'pages';",
+        "Outputs.sentence = word(rows.length) + ' ' + pages + ', ' + word(published).toLowerCase() + ' published';"
+      ].join('\n')
+    }
   },
   {
     id: 'create',
@@ -722,19 +1046,28 @@ export const ADMIN_NODES = [
     }
   },
   {
-    id: 'goTheme',
-    type: 'RouterNavigate',
-    label: 'To the theme editor',
-    parameters: { router: ROUTER, target: '/Pages/ThemeEditor' }
+    id: 'newPageDialog',
+    type: 'NavigationShowPopup',
+    label: 'Ask for a title and a slug',
+    parameters: { target: '/Admin/NewPageDialog' }
   }
 ];
 
 export const ADMIN_WIRES = [
   { fromId: 'pages', fromProperty: 'items', toId: 'list', toProperty: 'items' },
 
-  { fromId: 'newTitle', fromProperty: 'onTextChanged', toId: 'create', toProperty: 'prop-title' },
-  { fromId: 'newSlug', fromProperty: 'onTextChanged', toId: 'create', toProperty: 'prop-slug' },
-  { fromId: 'newButton', fromProperty: 'onClick', toId: 'create', toProperty: 'store' },
+  { fromId: 'pages', fromProperty: 'items', toId: 'count', toProperty: 'in-rows' },
+  { fromId: 'pages', fromProperty: 'fetched', toId: 'count', toProperty: 'run' },
+  { fromId: 'count', fromProperty: 'out-sentence', toId: 'countLine', toProperty: 'text' },
+
+  // The dialog replaces the two bare inputs. `closeResult-*` are Show Popup's
+  // OUTPUTS (`showpopup.ts:342`) — the mirror of Close Popup's `result-*`
+  // inputs — and they are up to date before `closeAction-create` fires
+  // (`showpopup.ts:204-210`), so the store below never runs on an empty title.
+  { fromId: 'newButton', fromProperty: 'onClick', toId: 'newPageDialog', toProperty: 'show' },
+  { fromId: 'newPageDialog', fromProperty: 'closeResult-title', toId: 'create', toProperty: 'prop-title' },
+  { fromId: 'newPageDialog', fromProperty: 'closeResult-slug', toId: 'create', toProperty: 'prop-slug' },
+  { fromId: 'newPageDialog', fromProperty: 'closeAction-create', toId: 'create', toProperty: 'store' },
 
   // The refresh, and both of its sources are write completions. See the module
   // header: on an UNFILTERED query this is unremarkable, because there is no
@@ -748,9 +1081,12 @@ export const ADMIN_WIRES = [
   // `itemOutputSignal-<name>` (`foreach.tsx:1030-1037`), derived from the template
   // component's own output ports, so the port the author wanted exists — under a
   // name they did not use. Measured through the real module, not read off it.
-  { fromId: 'list', fromProperty: 'itemOutputSignal-Changed', toId: 'pages', toProperty: 'storageFetch' },
+  { fromId: 'list', fromProperty: 'itemOutputSignal-Changed', toId: 'pages', toProperty: 'storageFetch' }
 
-  { fromId: 'themeLink', fromProperty: 'onClick', toId: 'goTheme', toProperty: 'navigate' }
+  // 🔴 The "Theme and settings" button is GONE from this screen, and that is the
+  // point of SBR-006: it was reachable only from a button at the bottom of the
+  // page list. It is now a permanent sidebar item in `/Admin/Shell`, on every
+  // admin screen.
 ];
 
 // ── 5. Pages/PageEditor — one page, and its sections ─────────────────────────
@@ -1025,14 +1361,30 @@ export const THEME_EDITOR_NODES = [
     type: 'Page',
     label: 'Theme and settings',
     parameters: { title: 'Theme and settings', urlPath: `${ADMIN_PATH_PREFIX}/theme` },
+    children: ['adminShell']
+  },
+  {
+    id: 'adminShell',
+    type: '/Admin/Shell',
+    label: 'Admin shell',
+    parent: 'page',
+    // 🔴 AC5: the SECOND placement of `/Admin/Shell`, and the one that proves the
+    // `Component Inputs` interface does something — same component as
+    // `/Pages/Admin` places, different `active`, so the sidebar's current item
+    // moves. A shell whose current item were hard-coded would render identically
+    // here and nobody would notice until a person used it.
+    parameters: { active: 'theme' },
     children: ['shell']
   },
   {
     id: 'shell',
     type: 'Group',
     label: 'Editor',
-    parent: 'page',
-    parameters: { flexDirection: 'column', paddingTop: 24, paddingLeft: 24, paddingRight: 24 },
+    parent: 'adminShell',
+    // Child of the shell's content COLUMN now, so it stops assigning height —
+    // and the paddings are gone because the shell supplies them; keeping both
+    // would double the inset.
+    parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-4)' },
     children: ['heading', 'siteNameField', 'homeSlugField', 'settingsButton', 'tokensHeading', 'primaryField', 'backgroundField', 'textField', 'fontField', 'themeButton', 'backButton']
   },
   {
@@ -1241,6 +1593,343 @@ export const THEME_EDITOR_WIRES = [
   { fromId: 'backButton', fromProperty: 'onClick', toId: 'goBack', toProperty: 'navigate' }
 ];
 
+// ── 7. Admin/Shell — the frame every admin screen sits inside ────────────────
+
+/**
+ * SBR-006 acceptance 5, and the reason it is a component rather than a copied
+ * band of nodes: the phase brief asks for "no copy-paste shells", and a shell
+ * that is placed twice is the only kind whose sidebar cannot disagree with
+ * itself between two screens.
+ *
+ * The content of each screen arrives through `Component Children`
+ * (`nodescope.ts:217`), so a screen places the shell and puts its own body
+ * inside the instance — the shell owns the chrome, the screen owns the page.
+ *
+ * 🔴 **The `active` input is the AC5 half that a shell without one fails
+ * silently.** The MCP guidance's ghost is "a component without a Component
+ * Inputs renders identically however many times you place it", which is exactly
+ * what a sidebar with a hard-coded current item does: it would say Pages on the
+ * theme screen and nobody would notice until a person used it. `active` is read
+ * by `navStyle` below and reaches the colour AND the weight of one item, so the
+ * two placements are observably different renders of one component.
+ */
+export const ADMIN_SHELL_NODES = [
+  {
+    id: 'frame',
+    type: 'Group',
+    label: 'Admin frame',
+    // The frame IS the page's ground — it is supposed to take the whole
+    // viewport, which is why it is one of the two nodes here that legitimately
+    // fill. See `ADMIN_FILL_EXEMPTIONS`.
+    parameters: { flexDirection: 'row', backgroundColor: 'var(--background)' },
+    children: ['sidebar', 'main']
+  },
+  {
+    id: 'sidebar',
+    type: 'Group',
+    label: 'Sidebar',
+    parent: 'frame',
+    // 🔴 `width` is authored, and that is the point rather than a style choice:
+    // a rail with no stated width defaults to 100% along its parent's ROW, which
+    // `Layout.size` turns into `flexGrow` and the sidebar eats half the screen.
+    // An authored size on the axis is what `findGrowingNodes` accepts as "the
+    // author said a size out loud". `SIDEBAR_WIDTH` is a raw dimension with a
+    // reason, in `ADMIN_RAW_DIMENSIONS`.
+    parameters: {
+      sizeMode: 'explicit',
+      width: SIDEBAR_WIDTH,
+      flexDirection: 'column',
+      backgroundColor: 'var(--surface)',
+      paddingTop: 'var(--space-6)',
+      paddingBottom: 'var(--space-6)',
+      paddingLeft: 'var(--space-4)',
+      paddingRight: 'var(--space-4)',
+      rowGap: 'var(--space-1)',
+      borderRightStyle: 'solid',
+      borderRightWidth: 'var(--border-1)',
+      borderRightColor: 'var(--border)'
+    },
+    children: ['brand', 'navPages', 'navTheme', 'navMessages', 'viewSite']
+  },
+  {
+    id: 'brand',
+    type: 'Text',
+    label: 'Brand',
+    parent: 'sidebar',
+    parameters: {
+      ...STACKED,
+      text: 'Site admin',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      fontWeight: 'var(--font-bold)',
+      letterSpacing: 'var(--tracking-wide)',
+      color: 'var(--muted-foreground)',
+      marginBottom: 'var(--space-4)'
+    }
+  },
+  ...navItem('navPages', 'Pages'),
+  ...navItem('navTheme', 'Theme & settings'),
+  ...navItem('navMessages', 'Messages'),
+  {
+    id: 'viewSite',
+    type: 'Text',
+    label: 'View site',
+    parent: 'sidebar',
+    parameters: {
+      ...STACKED,
+      text: 'View site',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--primary)',
+      marginTop: 'var(--space-6)'
+    }
+  },
+  {
+    id: 'main',
+    type: 'Group',
+    label: 'Admin content',
+    parent: 'frame',
+    // The other legitimate filler: the content column takes whatever the rail
+    // leaves. Named in `ADMIN_FILL_EXEMPTIONS` with that sentence.
+    parameters: {
+      flexDirection: 'column',
+      paddingTop: 'var(--space-8)',
+      paddingBottom: 'var(--space-8)',
+      paddingLeft: 'var(--space-8)',
+      paddingRight: 'var(--space-8)'
+    },
+    children: ['slot']
+  },
+  {
+    id: 'slot',
+    type: 'Component Children',
+    label: 'The screen that placed this shell',
+    parent: 'main'
+  },
+  {
+    id: 'inputs',
+    type: 'Component Inputs',
+    label: 'Which item is current',
+    ports: [{ name: 'active', type: 'string', plug: 'output' }]
+  },
+  {
+    id: 'navStyle',
+    type: 'JavaScriptFunction',
+    label: 'Colour and weight for the current item',
+    parameters: {
+      // 🔴 `runOnChange-in-active: true`, authored. SBR-004 §9.2: the NDA-017
+      // back-compat migration writes `runOnChange-<input>: false` on every value
+      // input of a node whose control signal is wired, on EVERY project load —
+      // an explicit `true` survives it, an absent key does not. This node has no
+      // wired control signal today, so the migration does not reach it; the
+      // parameter is here so that wiring one later cannot silently unstyle the
+      // sidebar.
+      'runOnChange-in-active': true,
+      functionScript: [
+        "const active = Inputs.active || '';",
+        "const colour = (k) => (active === k ? 'var(--primary)' : 'var(--foreground)');",
+        "const weight = (k) => (active === k ? 'var(--font-semibold)' : 'var(--font-normal)');",
+        'Outputs.pagesColor = colour("pages");',
+        'Outputs.pagesWeight = weight("pages");',
+        'Outputs.themeColor = colour("theme");',
+        'Outputs.themeWeight = weight("theme");',
+        'Outputs.messagesColor = colour("messages");',
+        'Outputs.messagesWeight = weight("messages");'
+      ].join('\n')
+    }
+  },
+  {
+    id: 'goPages',
+    type: 'RouterNavigate',
+    label: 'To the pages list',
+    parameters: { router: ROUTER, target: '/Pages/Admin' }
+  },
+  {
+    id: 'goTheme',
+    type: 'RouterNavigate',
+    label: 'To the theme editor',
+    parameters: { router: ROUTER, target: '/Pages/ThemeEditor' }
+  },
+  {
+    id: 'goSite',
+    type: 'RouterNavigate',
+    label: 'To the public site',
+    // `/Pages/Site` belongs to the SB-006 set, which `buildSiteTemplateProject`
+    // writes BEFORE this one — so the target resolves on the create pass and,
+    // unlike the two above, needs no deferral.
+    //
+    // 🔴 That ordering used to be invisible to `sb005AdminPanel.test.ts`, which
+    // authored the admin set into a project containing NOTHING else: the door
+    // refused this component with `unresolved-navigation` and all twenty of that
+    // file's other assertions failed with it. Two populations that disagreed
+    // about what a component may name. The spec now writes the public site
+    // first, exactly as the generator does, so it grades the admin panel in the
+    // project the admin panel actually ships into.
+    //
+    // ⚠️ A path (`PageStackNavigateToPath`, `path: '/'`) was tried instead and is
+    // ALSO refused: the door checks paths against the `urlPath` every Page
+    // declares, and no page declares the bare root.
+    parameters: { router: ROUTER, target: '/Pages/Site' }
+  }
+];
+
+export const ADMIN_SHELL_WIRES = [
+  { fromId: 'inputs', fromProperty: 'active', toId: 'navStyle', toProperty: 'in-active' },
+
+  { fromId: 'navStyle', fromProperty: 'out-pagesColor', toId: 'navPages', toProperty: 'color' },
+  { fromId: 'navStyle', fromProperty: 'out-pagesWeight', toId: 'navPages', toProperty: 'fontWeight' },
+  { fromId: 'navStyle', fromProperty: 'out-themeColor', toId: 'navTheme', toProperty: 'color' },
+  { fromId: 'navStyle', fromProperty: 'out-themeWeight', toId: 'navTheme', toProperty: 'fontWeight' },
+  { fromId: 'navStyle', fromProperty: 'out-messagesColor', toId: 'navMessages', toProperty: 'color' },
+  { fromId: 'navStyle', fromProperty: 'out-messagesWeight', toId: 'navMessages', toProperty: 'fontWeight' },
+
+  { fromId: 'navPages', fromProperty: 'onClick', toId: 'goPages', toProperty: 'navigate' },
+  { fromId: 'navTheme', fromProperty: 'onClick', toId: 'goTheme', toProperty: 'navigate' },
+  { fromId: 'viewSite', fromProperty: 'onClick', toId: 'goSite', toProperty: 'navigate' }
+
+  // 🔴 `navMessages` has NO navigate wire, and the gap is recorded rather than
+  // papered over: `/Pages/Messages` is SBR-010's component and does not exist
+  // yet, and `RouterNavigate.target` takes a component legacyName — aiming it at
+  // an invented URL path is the mistake the MCP guidance names outright. The
+  // item renders and takes the current-item styling like its siblings; SBR-010
+  // adds the one wire and the `deferred` entry that carries it.
+];
+
+// ── 8. Admin/NewPageDialog — "New page", as a dialog ────────────────────────
+
+/**
+ * SBR-006 §2's third bullet. The two bare inputs that used to sit above the list
+ * move in here, and the screen keeps one primary action instead of a form it
+ * never asked for.
+ *
+ * 🔴 **The popup mechanism is real and was measured before this was authored**,
+ * because §4 says not to invent one. `NavigationShowPopup` opens a component as
+ * an overlay; the viewer installs the popup layer itself, unconditionally, in
+ * its constructor (`viewer.jsx:174`), so this does not need a Page Stack and
+ * works under a Router. ⚠️ `showPopup` opens with `if (!this.onShowPopup) return;`
+ * (`nodecontext.ts:1166`) — a host without that layer drops the popup silently,
+ * which is why the caller was checked rather than assumed.
+ *
+ * ✅ **The ordering that would have made this a repeat of SB-017 §11.1**: the
+ * results land and are flagged dirty BEFORE the close action fires
+ * (`showpopup.ts:204-210`), so `create` cannot be triggered by `closeAction-create`
+ * while `prop-title` is still empty. Measured in the module, not assumed from the
+ * port names — this phase has now been bitten twice by a value that arrives after
+ * the signal that reads it.
+ *
+ * ⚠️ Note the two spellings, which are NOT the same port family: Close Popup
+ * takes `result-<name>` INPUTS (`closepopup.ts:344`), Show Popup publishes
+ * `closeResult-<name>` OUTPUTS (`showpopup.ts:342`).
+ */
+export const NEW_PAGE_DIALOG_NODES = [
+  {
+    id: 'layer',
+    type: 'Group',
+    label: 'Dialog layer',
+    // `position: 'fixed'` — "stays put and takes no space"
+    // (`node-shared-port-definitions.ts:549`). The runtime's own popup wrapper
+    // carries the class `noodl-popup` and NOTHING styles it (grepped: the class
+    // is stamped at `nodecontext.ts:1214` and appears in no stylesheet), so
+    // centring the card is the author's job and not the layer's.
+    parameters: { position: 'fixed', flexDirection: 'column' },
+    children: ['card']
+  },
+  {
+    id: 'card',
+    type: 'Group',
+    label: 'Dialog card',
+    parent: 'layer',
+    // `alignX`/`alignY` are the platform's centring ports
+    // (`node-shared-port-definitions.ts:560-590`) — there are no `top`/`left`
+    // offset ports to reach for.
+    parameters: {
+      ...STACKED,
+      width: DIALOG_WIDTH,
+      alignX: 'center',
+      alignY: 'center',
+      flexDirection: 'column',
+      rowGap: 'var(--space-4)',
+      backgroundColor: 'var(--surface)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border)',
+      borderRadius: 'var(--radius-md)',
+      paddingTop: 'var(--space-6)',
+      paddingBottom: 'var(--space-6)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)'
+    },
+    children: ['dialogHeading', 'titleField', 'slugField', 'actions']
+  },
+  {
+    id: 'dialogHeading',
+    type: 'Text',
+    label: 'Dialog heading',
+    parent: 'card',
+    parameters: {
+      ...STACKED,
+      text: 'New page',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-xl)',
+      fontWeight: 'var(--font-bold)',
+      color: 'var(--foreground)'
+    }
+  },
+  {
+    id: 'titleField',
+    type: 'net.noodl.controls.textinput',
+    label: 'Title',
+    parent: 'card',
+    parameters: { useLabel: true, label: 'Title' }
+  },
+  {
+    id: 'slugField',
+    type: 'net.noodl.controls.textinput',
+    label: 'Slug',
+    parent: 'card',
+    parameters: { useLabel: true, label: 'Slug' }
+  },
+  {
+    id: 'actions',
+    type: 'Group',
+    label: 'Dialog actions',
+    parent: 'card',
+    parameters: { ...STACKED, flexDirection: 'row', alignItems: 'center' },
+    children: ['cancelButton', 'createButton']
+  },
+  {
+    id: 'cancelButton',
+    type: 'net.noodl.controls.button',
+    label: 'Cancel',
+    parent: 'actions',
+    parameters: { label: 'Cancel' }
+  },
+  {
+    id: 'createButton',
+    type: 'net.noodl.controls.button',
+    label: 'Create page',
+    parent: 'actions',
+    parameters: { label: 'Create page' }
+  },
+  {
+    id: 'close',
+    type: 'NavigationClosePopup',
+    label: 'Close, and say what happened',
+    // Both stringlists declare dynamic ports: `results` mints `result-<name>`
+    // inputs here and `closeResult-<name>` outputs on the Show Popup node,
+    // `closeActions` mints `closeAction-<name>` on both. The host reacts to
+    // `create` without knowing anything about this dialog's internals.
+    parameters: { results: 'title,slug', closeActions: 'create,cancel' }
+  }
+];
+
+export const NEW_PAGE_DIALOG_WIRES = [
+  { fromId: 'titleField', fromProperty: 'onTextChanged', toId: 'close', toProperty: 'result-title' },
+  { fromId: 'slugField', fromProperty: 'onTextChanged', toId: 'close', toProperty: 'result-slug' },
+  { fromId: 'createButton', fromProperty: 'onClick', toId: 'close', toProperty: 'closeAction-create' },
+  { fromId: 'cancelButton', fromProperty: 'onClick', toId: 'close', toProperty: 'closeAction-cancel' }
+];
+
 // ── The set, in an order the door will accept ────────────────────────────────
 
 /** One component: what to send, and where it lands. */
@@ -1292,6 +1981,20 @@ export interface Sb005Component {
  */
 export const SB005_COMPONENTS: Sb005Component[] = [
   {
+    // FIRST: `/Pages/ThemeEditor` and `/Pages/Admin` both PLACE this component,
+    // so it has to exist before either is written. Its own two nav targets point
+    // the other way (at those same two pages), which is what `deferred` is for.
+    path: 'Admin/Shell',
+    key: 'Admin/Shell',
+    legacyName: '/Admin/Shell',
+    isPage: false,
+    nodes: ADMIN_SHELL_NODES,
+    connections: ADMIN_SHELL_WIRES,
+    // `goSite` is NOT deferred: `/Pages/Site` belongs to the SB-006 set, which
+    // `buildSiteTemplateProject` writes before this one.
+    deferred: ['goPages', 'goTheme']
+  },
+  {
     path: 'Admin/SectionRow',
     key: 'Admin/SectionRow',
     legacyName: '/Admin/SectionRow',
@@ -1326,6 +2029,15 @@ export const SB005_COMPONENTS: Sb005Component[] = [
     nodes: THEME_EDITOR_NODES,
     connections: THEME_EDITOR_WIRES,
     deferred: ['goBack']
+  },
+  {
+    // Before `/Pages/Admin`, which names it as a Show Popup target.
+    path: 'Admin/NewPageDialog',
+    key: 'Admin/NewPageDialog',
+    legacyName: '/Admin/NewPageDialog',
+    isPage: false,
+    nodes: NEW_PAGE_DIALOG_NODES,
+    connections: NEW_PAGE_DIALOG_WIRES
   },
   {
     path: 'Pages/Admin',

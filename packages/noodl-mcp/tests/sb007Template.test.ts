@@ -165,7 +165,8 @@ describe('SB-007 — the committed template is a regeneration, not a copy', () =
     // 🔴 Without this, the comparison above is satisfiable by two empty strings,
     // and a build that silently authored nothing would read as agreement.
     const built = await buildSiteTemplateProject();
-    expect(built.project.components).toHaveLength(19);
+    // 19 → 21: SBR-006 adds `/Admin/Shell` and `/Admin/NewPageDialog`.
+    expect(built.project.components).toHaveLength(21);
     expect(built.order[0]).toBe(APP_COMPONENT);
   });
 });
@@ -196,7 +197,8 @@ describe('SB-007 — the App component is the difference between a router and no
 
     // The pages were written. This is not a run that fell over.
     expect(built.order.filter((key) => key.startsWith('Pages/'))).toHaveLength(5);
-    expect(built.project.components).toHaveLength(18);
+    // 18 → 20, same two components, minus the App this arm deliberately omits.
+    expect(built.project.components).toHaveLength(20);
 
     // And not one of them landed in a router, with no diagnostic anywhere.
     expect(built.registrations).toEqual({});

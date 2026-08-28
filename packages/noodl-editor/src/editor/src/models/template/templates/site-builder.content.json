@@ -1459,6 +1459,321 @@
       }
     },
     {
+      "name": "/Admin/Shell",
+      "graph": {
+        "roots": [
+          {
+            "id": "frame-2",
+            "type": "Group",
+            "children": [
+              {
+                "id": "sidebar",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "brand",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Brand",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "Site admin",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-sm)",
+                      "fontWeight": "var(--font-bold)",
+                      "letterSpacing": "var(--tracking-wide)",
+                      "color": "var(--muted-foreground)",
+                      "marginBottom": "var(--space-4)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "navPages",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Pages",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "Pages",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-base)",
+                      "color": "var(--foreground)",
+                      "fontWeight": "var(--font-normal)",
+                      "marginTop": "var(--space-1)",
+                      "marginBottom": "var(--space-1)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "navTheme",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Theme & settings",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "Theme & settings",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-base)",
+                      "color": "var(--foreground)",
+                      "fontWeight": "var(--font-normal)",
+                      "marginTop": "var(--space-1)",
+                      "marginBottom": "var(--space-1)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "navMessages",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Messages",
+                    "x": 160,
+                    "y": 640,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "Messages",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-base)",
+                      "color": "var(--foreground)",
+                      "fontWeight": "var(--font-normal)",
+                      "marginTop": "var(--space-1)",
+                      "marginBottom": "var(--space-1)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "viewSite",
+                    "type": "Text",
+                    "children": [],
+                    "label": "View site",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "View site",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--primary)",
+                      "marginTop": "var(--space-6)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Sidebar",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "sizeMode": "explicit",
+                  "width": {
+                    "value": 240,
+                    "unit": "px"
+                  },
+                  "flexDirection": "column",
+                  "backgroundColor": "var(--surface)",
+                  "paddingTop": "var(--space-6)",
+                  "paddingBottom": "var(--space-6)",
+                  "paddingLeft": "var(--space-4)",
+                  "paddingRight": "var(--space-4)",
+                  "rowGap": "var(--space-1)",
+                  "borderRightStyle": "solid",
+                  "borderRightWidth": "var(--border-1)",
+                  "borderRightColor": "var(--border)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "main",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "slot",
+                    "type": "Component Children",
+                    "children": [],
+                    "label": "The screen that placed this shell",
+                    "x": 160,
+                    "y": 1000,
+                    "parameters": {},
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Admin content",
+                "x": 100,
+                "y": 880,
+                "parameters": {
+                  "flexDirection": "column",
+                  "paddingTop": "var(--space-8)",
+                  "paddingBottom": "var(--space-8)",
+                  "paddingLeft": "var(--space-8)",
+                  "paddingRight": "var(--space-8)"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Admin frame",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "flexDirection": "row",
+              "backgroundColor": "var(--background)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-4",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "Which item is current",
+            "x": 410,
+            "y": 880,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "active",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "navStyle",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Colour and weight for the current item",
+            "x": 410,
+            "y": 400,
+            "parameters": {
+              "runOnChange-in-active": true,
+              "functionScript": "const active = Inputs.active || '';\nconst colour = (k) => (active === k ? 'var(--primary)' : 'var(--foreground)');\nconst weight = (k) => (active === k ? 'var(--font-semibold)' : 'var(--font-normal)');\nOutputs.pagesColor = colour(\"pages\");\nOutputs.pagesWeight = weight(\"pages\");\nOutputs.themeColor = colour(\"theme\");\nOutputs.themeWeight = weight(\"theme\");\nOutputs.messagesColor = colour(\"messages\");\nOutputs.messagesWeight = weight(\"messages\");"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goPages",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "To the pages list",
+            "x": 410,
+            "y": 520,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Admin"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goTheme",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "To the theme editor",
+            "x": 410,
+            "y": 640,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/ThemeEditor"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goSite",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "To the public site",
+            "x": 410,
+            "y": 760,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Site"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "inputs-4",
+            "fromProperty": "active",
+            "toId": "navStyle",
+            "toProperty": "in-active"
+          },
+          {
+            "fromId": "navStyle",
+            "fromProperty": "out-pagesColor",
+            "toId": "navPages",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "navStyle",
+            "fromProperty": "out-pagesWeight",
+            "toId": "navPages",
+            "toProperty": "fontWeight"
+          },
+          {
+            "fromId": "navStyle",
+            "fromProperty": "out-themeColor",
+            "toId": "navTheme",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "navStyle",
+            "fromProperty": "out-themeWeight",
+            "toId": "navTheme",
+            "toProperty": "fontWeight"
+          },
+          {
+            "fromId": "navStyle",
+            "fromProperty": "out-messagesColor",
+            "toId": "navMessages",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "navStyle",
+            "fromProperty": "out-messagesWeight",
+            "toId": "navMessages",
+            "toProperty": "fontWeight"
+          },
+          {
+            "fromId": "navPages",
+            "fromProperty": "onClick",
+            "toId": "goPages",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "navTheme",
+            "fromProperty": "onClick",
+            "toId": "goTheme",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "viewSite",
+            "fromProperty": "onClick",
+            "toId": "goSite",
+            "toProperty": "navigate"
+          }
+        ],
+        "visualRoots": [
+          "frame-2"
+        ]
+      }
+    },
+    {
       "name": "/Admin/SectionRow",
       "graph": {
         "roots": [
@@ -1558,7 +1873,7 @@
             "dynamicports": []
           },
           {
-            "id": "inputs-4",
+            "id": "inputs-5",
             "type": "Component Inputs",
             "children": [],
             "label": "The section record",
@@ -1694,13 +2009,13 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-4",
+            "fromId": "inputs-5",
             "fromProperty": "kind",
             "toId": "kindText",
             "toProperty": "text"
           },
           {
-            "fromId": "inputs-4",
+            "fromId": "inputs-5",
             "fromProperty": "data",
             "toId": "unpack-2",
             "toProperty": "in-data"
@@ -1742,7 +2057,7 @@
             "toProperty": "in-image"
           },
           {
-            "fromId": "inputs-4",
+            "fromId": "inputs-5",
             "fromProperty": "data",
             "toId": "merge",
             "toProperty": "in-data"
@@ -1766,7 +2081,7 @@
             "toProperty": "run"
           },
           {
-            "fromId": "inputs-4",
+            "fromId": "inputs-5",
             "fromProperty": "id",
             "toId": "save",
             "toProperty": "modelId"
@@ -1784,7 +2099,7 @@
             "toProperty": "store"
           },
           {
-            "fromId": "inputs-4",
+            "fromId": "inputs-5",
             "fromProperty": "id",
             "toId": "remove",
             "toProperty": "modelId"
@@ -2327,41 +2642,91 @@
             "type": "Group",
             "children": [
               {
-                "id": "rowTitle",
-                "type": "Text",
-                "children": [],
-                "label": "Title",
+                "id": "titleCell",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "rowTitle",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Title",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-base)",
+                      "fontWeight": "var(--font-semibold)",
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "rowSlug",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Slug",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Name and slug",
                 "x": 100,
                 "y": 160,
                 "parameters": {
-                  "fontWeight": "var(--font-semibold)",
-                  "text": ""
+                  "flexDirection": "column"
                 },
                 "ports": [],
                 "dynamicports": []
               },
               {
-                "id": "rowSlug",
-                "type": "Text",
-                "children": [],
-                "label": "Slug",
+                "id": "pill",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "rowStatus",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Draft or published",
+                    "x": 160,
+                    "y": 640,
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "text": "Draft",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-sm)",
+                      "fontWeight": "var(--font-semibold)",
+                      "color": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Status pill",
                 "x": 100,
-                "y": 280,
+                "y": 520,
                 "parameters": {
-                  "text": ""
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "rowStatus",
-                "type": "Text",
-                "children": [],
-                "label": "Draft or published",
-                "x": 100,
-                "y": 400,
-                "parameters": {
-                  "text": "Draft"
+                  "sizeMode": "contentSize",
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "paddingTop": "var(--space-1)",
+                  "paddingBottom": "var(--space-1)",
+                  "paddingLeft": "var(--space-3)",
+                  "paddingRight": "var(--space-3)",
+                  "borderRadius": "var(--radius-md)",
+                  "marginRight": "var(--space-4)",
+                  "backgroundColor": "var(--accent)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -2372,7 +2737,7 @@
                 "children": [],
                 "label": "Edit",
                 "x": 100,
-                "y": 520,
+                "y": 760,
                 "parameters": {
                   "label": "Edit"
                 },
@@ -2380,40 +2745,76 @@
                 "dynamicports": []
               },
               {
-                "id": "publishButton",
+                "id": "menuButton",
                 "type": "net.noodl.controls.button",
                 "children": [],
-                "label": "Publish",
-                "x": 100,
-                "y": 640,
-                "parameters": {
-                  "label": "Publish"
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "unpublishButton",
-                "type": "net.noodl.controls.button",
-                "children": [],
-                "label": "Unpublish",
-                "x": 100,
-                "y": 760,
-                "parameters": {
-                  "label": "Unpublish"
-                },
-                "ports": [],
-                "dynamicports": []
-              },
-              {
-                "id": "duplicateButton",
-                "type": "net.noodl.controls.button",
-                "children": [],
-                "label": "Duplicate",
+                "label": "More actions",
                 "x": 100,
                 "y": 880,
                 "parameters": {
-                  "label": "Duplicate"
+                  "label": "More"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "menu",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "publishButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Publish",
+                    "x": 160,
+                    "y": 1120,
+                    "parameters": {
+                      "label": "Publish"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "unpublishButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Unpublish",
+                    "x": 160,
+                    "y": 1240,
+                    "parameters": {
+                      "label": "Unpublish"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "duplicateButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Duplicate",
+                    "x": 160,
+                    "y": 1360,
+                    "parameters": {
+                      "label": "Duplicate"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Row actions menu",
+                "x": 100,
+                "y": 1000,
+                "parameters": {
+                  "sizeMode": "contentSize",
+                  "mounted": false,
+                  "flexDirection": "column",
+                  "backgroundColor": "var(--surface)",
+                  "borderStyle": "solid",
+                  "borderWidth": "var(--border-1)",
+                  "borderColor": "var(--border)",
+                  "borderRadius": "var(--radius-md)",
+                  "paddingTop": "var(--space-1)",
+                  "paddingBottom": "var(--space-1)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -2423,21 +2824,42 @@
             "x": 40,
             "y": 40,
             "parameters": {
+              "sizeMode": "contentHeight",
               "flexDirection": "row",
               "alignItems": "center",
-              "paddingTop": 8,
-              "paddingBottom": 8
+              "paddingTop": "var(--space-3)",
+              "paddingBottom": "var(--space-3)",
+              "borderBottomStyle": "solid",
+              "borderBottomWidth": "var(--border-1)",
+              "borderBottomColor": "var(--border)"
             },
             "ports": [],
             "dynamicports": []
           },
           {
-            "id": "inputs-5",
+            "id": "menuState",
+            "type": "States",
+            "children": [],
+            "label": "Menu open or closed",
+            "x": 410,
+            "y": 1000,
+            "parameters": {
+              "states": "Closed,Open",
+              "values": "menuOpen",
+              "type-menuOpen": "boolean",
+              "value-Closed-menuOpen": false,
+              "value-Open-menuOpen": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "inputs-6",
             "type": "Component Inputs",
             "children": [],
             "label": "The page record",
-            "x": 350,
-            "y": 160,
+            "x": 410,
+            "y": 280,
             "parameters": {},
             "ports": [
               {
@@ -2467,11 +2889,12 @@
             "id": "status",
             "type": "JavaScriptFunction",
             "children": [],
-            "label": "Draft or published, as a word",
-            "x": 350,
-            "y": 400,
+            "label": "Draft or published, as a word and a colour",
+            "x": 410,
+            "y": 640,
             "parameters": {
-              "functionScript": "Outputs.label = Inputs.published === true ? 'Published' : 'Draft';"
+              "runOnChange-in-published": true,
+              "functionScript": "const published = Inputs.published === true;\nOutputs.label = published ? 'Published' : 'Draft';\nOutputs.pillBackground = published ? 'var(--primary)' : 'var(--accent)';\nOutputs.pillColor = published ? 'var(--primary-foreground)' : 'var(--muted-foreground)';"
             },
             "ports": [],
             "dynamicports": []
@@ -2481,8 +2904,8 @@
             "type": "CloudFunction2",
             "children": [],
             "label": "publishPage(publish: true)",
-            "x": 350,
-            "y": 640,
+            "x": 410,
+            "y": 1120,
             "parameters": {
               "function": "publishPage",
               "in-publish": true
@@ -2495,8 +2918,8 @@
             "type": "CloudFunction2",
             "children": [],
             "label": "publishPage(publish: false)",
-            "x": 350,
-            "y": 760,
+            "x": 410,
+            "y": 1240,
             "parameters": {
               "function": "publishPage",
               "in-publish": false
@@ -2509,8 +2932,8 @@
             "type": "CloudFunction2",
             "children": [],
             "label": "duplicatePage",
-            "x": 350,
-            "y": 880,
+            "x": 410,
+            "y": 1360,
             "parameters": {
               "function": "duplicatePage"
             },
@@ -2522,8 +2945,8 @@
             "type": "RouterNavigate",
             "children": [],
             "label": "Open the page editor",
-            "x": 350,
-            "y": 520,
+            "x": 410,
+            "y": 760,
             "parameters": {
               "router": "Main",
               "target": "/Pages/PageEditor"
@@ -2536,8 +2959,8 @@
             "type": "Component Outputs",
             "children": [],
             "label": "Tell the list something changed",
-            "x": 350,
-            "y": 1000,
+            "x": 410,
+            "y": 1480,
             "parameters": {},
             "ports": [
               {
@@ -2551,19 +2974,19 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-5",
+            "fromId": "inputs-6",
             "fromProperty": "title",
             "toId": "rowTitle",
             "toProperty": "text"
           },
           {
-            "fromId": "inputs-5",
+            "fromId": "inputs-6",
             "fromProperty": "slug",
             "toId": "rowSlug",
             "toProperty": "text"
           },
           {
-            "fromId": "inputs-5",
+            "fromId": "inputs-6",
             "fromProperty": "published",
             "toId": "status",
             "toProperty": "in-published"
@@ -2575,28 +2998,52 @@
             "toProperty": "text"
           },
           {
-            "fromId": "inputs-5",
+            "fromId": "status",
+            "fromProperty": "out-pillBackground",
+            "toId": "pill",
+            "toProperty": "backgroundColor"
+          },
+          {
+            "fromId": "status",
+            "fromProperty": "out-pillColor",
+            "toId": "rowStatus",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "inputs-6",
             "fromProperty": "id",
             "toId": "publish",
             "toProperty": "in-pageId"
           },
           {
-            "fromId": "inputs-5",
+            "fromId": "inputs-6",
             "fromProperty": "id",
             "toId": "unpublish",
             "toProperty": "in-pageId"
           },
           {
-            "fromId": "inputs-5",
+            "fromId": "inputs-6",
             "fromProperty": "id",
             "toId": "duplicate",
             "toProperty": "in-pageId"
           },
           {
-            "fromId": "inputs-5",
+            "fromId": "inputs-6",
             "fromProperty": "id",
             "toId": "goEdit",
             "toProperty": "pm-pageId"
+          },
+          {
+            "fromId": "menuButton",
+            "fromProperty": "onClick",
+            "toId": "menuState",
+            "toProperty": "toggle"
+          },
+          {
+            "fromId": "menuState",
+            "fromProperty": "menuOpen",
+            "toId": "menu",
+            "toProperty": "mounted"
           },
           {
             "fromId": "publishButton",
@@ -2639,6 +3086,24 @@
             "fromProperty": "done",
             "toId": "outputs-2",
             "toProperty": "Changed"
+          },
+          {
+            "fromId": "publish",
+            "fromProperty": "done",
+            "toId": "menuState",
+            "toProperty": "to-Closed"
+          },
+          {
+            "fromId": "unpublish",
+            "fromProperty": "done",
+            "toId": "menuState",
+            "toProperty": "to-Closed"
+          },
+          {
+            "fromId": "duplicate",
+            "fromProperty": "done",
+            "toId": "menuState",
+            "toProperty": "to-Closed"
           }
         ],
         "visualRoots": [
@@ -2655,169 +3120,182 @@
             "type": "Page",
             "children": [
               {
-                "id": "shell-3",
-                "type": "Group",
+                "id": "adminShell",
+                "type": "/Admin/Shell",
                 "children": [
                   {
-                    "id": "heading-3",
-                    "type": "Text",
-                    "children": [],
-                    "label": "Heading",
+                    "id": "shell-3",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "heading-3",
+                        "type": "Text",
+                        "children": [],
+                        "label": "Heading",
+                        "x": 220,
+                        "y": 400,
+                        "parameters": {
+                          "text": "Theme and settings",
+                          "fontWeight": "var(--font-bold)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "siteNameField",
+                        "type": "net.noodl.controls.textinput",
+                        "children": [],
+                        "label": "Site name",
+                        "x": 220,
+                        "y": 520,
+                        "parameters": {
+                          "useLabel": true,
+                          "label": "Site name"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "homeSlugField",
+                        "type": "net.noodl.controls.textinput",
+                        "children": [],
+                        "label": "Home slug",
+                        "x": 220,
+                        "y": 640,
+                        "parameters": {
+                          "useLabel": true,
+                          "label": "Home page slug"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "settingsButton",
+                        "type": "net.noodl.controls.button",
+                        "children": [],
+                        "label": "Save settings",
+                        "x": 220,
+                        "y": 760,
+                        "parameters": {
+                          "label": "Save settings"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "tokensHeading",
+                        "type": "Text",
+                        "children": [],
+                        "label": "Tokens heading",
+                        "x": 220,
+                        "y": 880,
+                        "parameters": {
+                          "text": "Theme",
+                          "fontWeight": "var(--font-semibold)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "primaryField",
+                        "type": "net.noodl.controls.textinput",
+                        "children": [],
+                        "label": "Primary colour",
+                        "x": 220,
+                        "y": 1000,
+                        "parameters": {
+                          "useLabel": true,
+                          "label": "Primary colour"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "backgroundField",
+                        "type": "net.noodl.controls.textinput",
+                        "children": [],
+                        "label": "Background colour",
+                        "x": 220,
+                        "y": 1120,
+                        "parameters": {
+                          "useLabel": true,
+                          "label": "Background colour"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "textField",
+                        "type": "net.noodl.controls.textinput",
+                        "children": [],
+                        "label": "Text colour",
+                        "x": 220,
+                        "y": 1240,
+                        "parameters": {
+                          "useLabel": true,
+                          "label": "Text colour"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "fontField",
+                        "type": "net.noodl.controls.textinput",
+                        "children": [],
+                        "label": "Font family",
+                        "x": 220,
+                        "y": 1360,
+                        "parameters": {
+                          "useLabel": true,
+                          "label": "Font family"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "themeButton",
+                        "type": "net.noodl.controls.button",
+                        "children": [],
+                        "label": "Save theme",
+                        "x": 220,
+                        "y": 1480,
+                        "parameters": {
+                          "label": "Save theme"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "backButton-2",
+                        "type": "net.noodl.controls.button",
+                        "children": [],
+                        "label": "Back",
+                        "x": 220,
+                        "y": 1600,
+                        "parameters": {
+                          "label": "Back to pages"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "Editor",
                     "x": 160,
                     "y": 280,
                     "parameters": {
-                      "text": "Theme and settings",
-                      "fontWeight": "var(--font-bold)"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "siteNameField",
-                    "type": "net.noodl.controls.textinput",
-                    "children": [],
-                    "label": "Site name",
-                    "x": 160,
-                    "y": 400,
-                    "parameters": {
-                      "useLabel": true,
-                      "label": "Site name"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "homeSlugField",
-                    "type": "net.noodl.controls.textinput",
-                    "children": [],
-                    "label": "Home slug",
-                    "x": 160,
-                    "y": 520,
-                    "parameters": {
-                      "useLabel": true,
-                      "label": "Home page slug"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "settingsButton",
-                    "type": "net.noodl.controls.button",
-                    "children": [],
-                    "label": "Save settings",
-                    "x": 160,
-                    "y": 640,
-                    "parameters": {
-                      "label": "Save settings"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "tokensHeading",
-                    "type": "Text",
-                    "children": [],
-                    "label": "Tokens heading",
-                    "x": 160,
-                    "y": 760,
-                    "parameters": {
-                      "text": "Theme",
-                      "fontWeight": "var(--font-semibold)"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "primaryField",
-                    "type": "net.noodl.controls.textinput",
-                    "children": [],
-                    "label": "Primary colour",
-                    "x": 160,
-                    "y": 880,
-                    "parameters": {
-                      "useLabel": true,
-                      "label": "Primary colour"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "backgroundField",
-                    "type": "net.noodl.controls.textinput",
-                    "children": [],
-                    "label": "Background colour",
-                    "x": 160,
-                    "y": 1000,
-                    "parameters": {
-                      "useLabel": true,
-                      "label": "Background colour"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "textField",
-                    "type": "net.noodl.controls.textinput",
-                    "children": [],
-                    "label": "Text colour",
-                    "x": 160,
-                    "y": 1120,
-                    "parameters": {
-                      "useLabel": true,
-                      "label": "Text colour"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "fontField",
-                    "type": "net.noodl.controls.textinput",
-                    "children": [],
-                    "label": "Font family",
-                    "x": 160,
-                    "y": 1240,
-                    "parameters": {
-                      "useLabel": true,
-                      "label": "Font family"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "themeButton",
-                    "type": "net.noodl.controls.button",
-                    "children": [],
-                    "label": "Save theme",
-                    "x": 160,
-                    "y": 1360,
-                    "parameters": {
-                      "label": "Save theme"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "backButton-2",
-                    "type": "net.noodl.controls.button",
-                    "children": [],
-                    "label": "Back",
-                    "x": 160,
-                    "y": 1480,
-                    "parameters": {
-                      "label": "Back to pages"
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "column",
+                      "rowGap": "var(--space-4)"
                     },
                     "ports": [],
                     "dynamicports": []
                   }
                 ],
-                "label": "Editor",
+                "label": "Admin shell",
                 "x": 100,
                 "y": 160,
                 "parameters": {
-                  "flexDirection": "column",
-                  "paddingTop": 24,
-                  "paddingLeft": 24,
-                  "paddingRight": 24
+                  "active": "theme"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -2838,8 +3316,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "SiteSettings (one row)",
-            "x": 410,
-            "y": 1600,
+            "x": 470,
+            "y": 1720,
             "parameters": {
               "collectionName": "SiteSettings"
             },
@@ -2851,8 +3329,8 @@
             "type": "DbCollection2",
             "children": [],
             "label": "Theme (one row)",
-            "x": 410,
-            "y": 1720,
+            "x": 470,
+            "y": 1840,
             "parameters": {
               "collectionName": "Theme"
             },
@@ -2864,8 +3342,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Read the settings row",
-            "x": 410,
-            "y": 400,
+            "x": 470,
+            "y": 520,
             "parameters": {
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.homeSlug = first.homeSlug || 'home';"
             },
@@ -2877,8 +3355,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "Read the theme tokens",
-            "x": 410,
-            "y": 880,
+            "x": 470,
+            "y": 1000,
             "parameters": {
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nOutputs.primary = t.colorPrimary || '';\nOutputs.onPrimary = t.colorOnPrimary || '';\nOutputs.background = t.colorBackground || '';\nOutputs.surface = t.colorSurface || '';\nOutputs.text = t.colorText || '';\nOutputs.textSoft = t.colorTextSoft || '';\nOutputs.border = t.colorBorder || '';\nOutputs.accentSoft = t.colorAccentSoft || '';\nOutputs.radius = t.radius || '';\nOutputs.fontDisplay = t.fontDisplay || '';\nOutputs.fontUi = t.fontUi || '';\nOutputs.measure = t.measure || '';"
             },
@@ -2890,8 +3368,8 @@
             "type": "JavaScriptFunction",
             "children": [],
             "label": "The theme tokens, as one object",
-            "x": 410,
-            "y": 1000,
+            "x": 470,
+            "y": 1120,
             "parameters": {
               "functionScript": "Outputs.tokens = {\n  colorPrimary: Inputs.primary || '',\n  colorOnPrimary: Inputs.onPrimary || '',\n  colorBackground: Inputs.background || '',\n  colorSurface: Inputs.surface || '',\n  colorText: Inputs.text || '',\n  colorTextSoft: Inputs.textSoft || '',\n  colorBorder: Inputs.border || '',\n  colorAccentSoft: Inputs.accentSoft || '',\n  radius: Inputs.radius || '',\n  fontDisplay: Inputs.fontDisplay || '',\n  fontUi: Inputs.fontUi || '',\n  measure: Inputs.measure || ''\n};\nOutputs.built();"
             },
@@ -2909,8 +3387,8 @@
             "type": "SetDbModelProperties",
             "children": [],
             "label": "Save the settings row",
-            "x": 410,
-            "y": 520,
+            "x": 470,
+            "y": 640,
             "parameters": {
               "collectionName": "SiteSettings",
               "idSource": "explicit",
@@ -2924,8 +3402,8 @@
             "type": "SetDbModelProperties",
             "children": [],
             "label": "Save the theme row",
-            "x": 410,
-            "y": 1840,
+            "x": 470,
+            "y": 1960,
             "parameters": {
               "collectionName": "Theme",
               "idSource": "explicit",
@@ -2939,8 +3417,8 @@
             "type": "RouterNavigate",
             "children": [],
             "label": "Back to the list",
-            "x": 410,
-            "y": 1480,
+            "x": 470,
+            "y": 1600,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Admin"
@@ -3095,6 +3573,190 @@
       }
     },
     {
+      "name": "/Admin/NewPageDialog",
+      "graph": {
+        "roots": [
+          {
+            "id": "layer",
+            "type": "Group",
+            "children": [
+              {
+                "id": "card",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "dialogHeading",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Dialog heading",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "New page",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-xl)",
+                      "fontWeight": "var(--font-bold)",
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "titleField-2",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Title",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Title"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "slugField-2",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Slug",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Slug"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "actions",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "cancelButton",
+                        "type": "net.noodl.controls.button",
+                        "children": [],
+                        "label": "Cancel",
+                        "x": 220,
+                        "y": 760,
+                        "parameters": {
+                          "label": "Cancel"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "createButton",
+                        "type": "net.noodl.controls.button",
+                        "children": [],
+                        "label": "Create page",
+                        "x": 220,
+                        "y": 880,
+                        "parameters": {
+                          "label": "Create page"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "Dialog actions",
+                    "x": 160,
+                    "y": 640,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "row",
+                      "alignItems": "center"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Dialog card",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 420,
+                    "unit": "px"
+                  },
+                  "alignX": "center",
+                  "alignY": "center",
+                  "flexDirection": "column",
+                  "rowGap": "var(--space-4)",
+                  "backgroundColor": "var(--surface)",
+                  "borderStyle": "solid",
+                  "borderWidth": "var(--border-1)",
+                  "borderColor": "var(--border)",
+                  "borderRadius": "var(--radius-md)",
+                  "paddingTop": "var(--space-6)",
+                  "paddingBottom": "var(--space-6)",
+                  "paddingLeft": "var(--space-6)",
+                  "paddingRight": "var(--space-6)"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Dialog layer",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "position": "fixed",
+              "flexDirection": "column"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "close",
+            "type": "NavigationClosePopup",
+            "children": [],
+            "label": "Close, and say what happened",
+            "x": 470,
+            "y": 400,
+            "parameters": {
+              "results": "title,slug",
+              "closeActions": "create,cancel"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "titleField-2",
+            "fromProperty": "onTextChanged",
+            "toId": "close",
+            "toProperty": "result-title"
+          },
+          {
+            "fromId": "slugField-2",
+            "fromProperty": "onTextChanged",
+            "toId": "close",
+            "toProperty": "result-slug"
+          },
+          {
+            "fromId": "createButton",
+            "fromProperty": "onClick",
+            "toId": "close",
+            "toProperty": "closeAction-create"
+          },
+          {
+            "fromId": "cancelButton",
+            "fromProperty": "onClick",
+            "toId": "close",
+            "toProperty": "closeAction-cancel"
+          }
+        ],
+        "visualRoots": [
+          "layer"
+        ]
+      }
+    },
+    {
       "name": "/Pages/Admin",
       "graph": {
         "roots": [
@@ -3104,114 +3766,109 @@
             "children": [
               {
                 "id": "shell-4",
-                "type": "Group",
+                "type": "/Admin/Shell",
                 "children": [
                   {
-                    "id": "heading-4",
-                    "type": "Text",
-                    "children": [],
-                    "label": "Heading",
-                    "x": 160,
-                    "y": 280,
-                    "parameters": {
-                      "text": "Pages",
-                      "fontWeight": "var(--font-bold)"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "newRow",
+                    "id": "body-2",
                     "type": "Group",
                     "children": [
                       {
-                        "id": "newTitle",
-                        "type": "net.noodl.controls.textinput",
-                        "children": [],
-                        "label": "New title",
+                        "id": "headerRow",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "heading-4",
+                            "type": "Text",
+                            "children": [],
+                            "label": "Heading",
+                            "x": 280,
+                            "y": 520,
+                            "parameters": {
+                              "sizeMode": "contentSize",
+                              "text": "Pages",
+                              "fontFamily": "var(--font-sans)",
+                              "fontSize": "var(--text-3xl)",
+                              "fontWeight": "var(--font-bold)",
+                              "color": "var(--foreground)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "newButton",
+                            "type": "net.noodl.controls.button",
+                            "children": [],
+                            "label": "New page",
+                            "x": 280,
+                            "y": 640,
+                            "parameters": {
+                              "label": "New page",
+                              "marginLeft": "var(--space-6)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "Pages header",
                         "x": 220,
-                        "y": 520,
+                        "y": 400,
                         "parameters": {
-                          "useLabel": true,
-                          "label": "Title"
+                          "sizeMode": "contentHeight",
+                          "flexDirection": "row",
+                          "alignItems": "center"
                         },
                         "ports": [],
                         "dynamicports": []
                       },
                       {
-                        "id": "newSlug",
-                        "type": "net.noodl.controls.textinput",
+                        "id": "countLine",
+                        "type": "Text",
                         "children": [],
-                        "label": "New slug",
-                        "x": 220,
-                        "y": 640,
-                        "parameters": {
-                          "useLabel": true,
-                          "label": "Slug"
-                        },
-                        "ports": [],
-                        "dynamicports": []
-                      },
-                      {
-                        "id": "newButton",
-                        "type": "net.noodl.controls.button",
-                        "children": [],
-                        "label": "Create",
+                        "label": "How many pages",
                         "x": 220,
                         "y": 760,
                         "parameters": {
-                          "label": "New page"
+                          "sizeMode": "contentHeight",
+                          "text": "",
+                          "fontFamily": "var(--font-sans)",
+                          "fontSize": "var(--text-sm)",
+                          "color": "var(--muted-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "list",
+                        "type": "For Each",
+                        "children": [],
+                        "label": "One row per page",
+                        "x": 220,
+                        "y": 880,
+                        "parameters": {
+                          "templateType": "explicit",
+                          "template": "/Admin/PageRow"
                         },
                         "ports": [],
                         "dynamicports": []
                       }
                     ],
-                    "label": "New page",
+                    "label": "Pages body",
                     "x": 160,
-                    "y": 400,
+                    "y": 280,
                     "parameters": {
-                      "flexDirection": "row",
-                      "alignItems": "center"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "list",
-                    "type": "For Each",
-                    "children": [],
-                    "label": "One row per page",
-                    "x": 160,
-                    "y": 880,
-                    "parameters": {
-                      "templateType": "explicit",
-                      "template": "/Admin/PageRow"
-                    },
-                    "ports": [],
-                    "dynamicports": []
-                  },
-                  {
-                    "id": "themeLink",
-                    "type": "net.noodl.controls.button",
-                    "children": [],
-                    "label": "Theme and settings",
-                    "x": 160,
-                    "y": 1000,
-                    "parameters": {
-                      "label": "Theme and settings"
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "column",
+                      "rowGap": "var(--space-4)"
                     },
                     "ports": [],
                     "dynamicports": []
                   }
                 ],
-                "label": "Panel",
+                "label": "Admin shell",
                 "x": 100,
                 "y": 160,
                 "parameters": {
-                  "flexDirection": "column",
-                  "paddingTop": 24,
-                  "paddingLeft": 24,
-                  "paddingRight": 24
+                  "active": "pages"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -3232,10 +3889,24 @@
             "type": "DbCollection2",
             "children": [],
             "label": "Every page, draft and published",
-            "x": 470,
+            "x": 530,
             "y": 880,
             "parameters": {
               "collectionName": "Page"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "count",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The row-count sentence",
+            "x": 530,
+            "y": 760,
+            "parameters": {
+              "runOnChange-in-rows": true,
+              "functionScript": "const rows = Array.isArray(Inputs.rows) ? Inputs.rows : [];\nconst published = rows.filter((r) => r && r.published === true).length;\nconst WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];\nconst word = (n) => (n < WORDS.length ? WORDS[n] : String(n));\nconst pages = rows.length === 1 ? 'page' : 'pages';\nOutputs.sentence = word(rows.length) + ' ' + pages + ', ' + word(published).toLowerCase() + ' published';"
             },
             "ports": [],
             "dynamicports": []
@@ -3245,8 +3916,8 @@
             "type": "NewDbModelProperties",
             "children": [],
             "label": "Create a draft page",
-            "x": 470,
-            "y": 520,
+            "x": 530,
+            "y": 1000,
             "parameters": {
               "collectionName": "Page",
               "accessControl": [
@@ -3267,15 +3938,14 @@
             "dynamicports": []
           },
           {
-            "id": "goTheme",
-            "type": "RouterNavigate",
+            "id": "newPageDialog",
+            "type": "NavigationShowPopup",
             "children": [],
-            "label": "To the theme editor",
-            "x": 470,
-            "y": 1000,
+            "label": "Ask for a title and a slug",
+            "x": 530,
+            "y": 640,
             "parameters": {
-              "router": "Main",
-              "target": "/Pages/ThemeEditor"
+              "target": "/Admin/NewPageDialog"
             },
             "ports": [],
             "dynamicports": []
@@ -3289,20 +3959,44 @@
             "toProperty": "items"
           },
           {
-            "fromId": "newTitle",
-            "fromProperty": "onTextChanged",
-            "toId": "create",
-            "toProperty": "prop-title"
+            "fromId": "pages-2",
+            "fromProperty": "items",
+            "toId": "count",
+            "toProperty": "in-rows"
           },
           {
-            "fromId": "newSlug",
-            "fromProperty": "onTextChanged",
-            "toId": "create",
-            "toProperty": "prop-slug"
+            "fromId": "pages-2",
+            "fromProperty": "fetched",
+            "toId": "count",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "count",
+            "fromProperty": "out-sentence",
+            "toId": "countLine",
+            "toProperty": "text"
           },
           {
             "fromId": "newButton",
             "fromProperty": "onClick",
+            "toId": "newPageDialog",
+            "toProperty": "show"
+          },
+          {
+            "fromId": "newPageDialog",
+            "fromProperty": "closeResult-title",
+            "toId": "create",
+            "toProperty": "prop-title"
+          },
+          {
+            "fromId": "newPageDialog",
+            "fromProperty": "closeResult-slug",
+            "toId": "create",
+            "toProperty": "prop-slug"
+          },
+          {
+            "fromId": "newPageDialog",
+            "fromProperty": "closeAction-create",
             "toId": "create",
             "toProperty": "store"
           },
@@ -3317,12 +4011,6 @@
             "fromProperty": "itemOutputSignal-Changed",
             "toId": "pages-2",
             "toProperty": "storageFetch"
-          },
-          {
-            "fromId": "themeLink",
-            "fromProperty": "onClick",
-            "toId": "goTheme",
-            "toProperty": "navigate"
           }
         ],
         "visualRoots": [
@@ -3653,7 +4341,7 @@
       "graph": {
         "roots": [
           {
-            "id": "inputs-6",
+            "id": "inputs-7",
             "type": "Component Inputs",
             "children": [],
             "label": "The section, and whether it goes public",
@@ -3735,19 +4423,19 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-6",
+            "fromId": "inputs-7",
             "fromProperty": "objectId",
             "toId": "write",
             "toProperty": "modelId"
           },
           {
-            "fromId": "inputs-6",
+            "fromId": "inputs-7",
             "fromProperty": "isPublic",
             "toId": "write",
             "toProperty": "acl-world-read"
           },
           {
-            "fromId": "inputs-6",
+            "fromId": "inputs-7",
             "fromProperty": "Do",
             "toId": "write",
             "toProperty": "store"
@@ -3772,7 +4460,7 @@
       "graph": {
         "roots": [
           {
-            "id": "inputs-7",
+            "id": "inputs-8",
             "type": "Component Inputs",
             "children": [],
             "label": "One section, and the page it is being copied onto",
@@ -3875,13 +4563,13 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-7",
+            "fromId": "inputs-8",
             "fromProperty": "newPageId",
             "toId": "link-2",
             "toProperty": "in-newPageId"
           },
           {
-            "fromId": "inputs-7",
+            "fromId": "inputs-8",
             "fromProperty": "Do",
             "toId": "link-2",
             "toProperty": "run"
@@ -3893,19 +4581,19 @@
             "toProperty": "prop-pageId"
           },
           {
-            "fromId": "inputs-7",
+            "fromId": "inputs-8",
             "fromProperty": "kind",
             "toId": "create-2",
             "toProperty": "prop-kind"
           },
           {
-            "fromId": "inputs-7",
+            "fromId": "inputs-8",
             "fromProperty": "order",
             "toId": "create-2",
             "toProperty": "prop-order"
           },
           {
-            "fromId": "inputs-7",
+            "fromId": "inputs-8",
             "fromProperty": "data",
             "toId": "create-2",
             "toProperty": "prop-data"
@@ -3936,7 +4624,7 @@
       "graph": {
         "roots": [
           {
-            "id": "inputs-8",
+            "id": "inputs-9",
             "type": "Component Inputs",
             "children": [],
             "label": "Ask for the address",
@@ -4032,7 +4720,7 @@
         ],
         "connections": [
           {
-            "fromId": "inputs-8",
+            "fromId": "inputs-9",
             "fromProperty": "Fetch",
             "toId": "settings-3",
             "toProperty": "storageFetch"

@@ -15,7 +15,7 @@
  * being data and starts being a project, and it is the only code in the path
  * that has to *understand* the content. `hello-world` is 150 lines of
  * hand-written graph with no `visualRoots`, no repeaters and no cross-component
- * references; this template is nineteen door-written components with all three.
+ * references; this template is twenty-one door-written components with all three.
  * Every assertion below is about something the existing template could not have
  * exercised.
  */
@@ -118,7 +118,7 @@ describe('SB-007 — install writes a project that opens', () => {
     madeDirectories.length = 0;
   });
 
-  it('writes a project.json holding all nineteen components, and its policy, and nothing else', async () => {
+  it('writes a project.json holding all twenty-one components, and its policy, and nothing else', async () => {
     const project = await installOnce('/projects/a');
     // 🔴 The list is EXHAUSTIVE on purpose, and it earned that in s12: SB-015
     // added a second write (`nodegx.security.json`, the backend policy the
@@ -133,7 +133,8 @@ describe('SB-007 — install writes a project that opens', () => {
       '/projects/a/nodegx.security.json',
       '/projects/a/docs/THEME.md'
     ]);
-    expect(project.components).toHaveLength(19);
+    // 19 → 21: SBR-006's `/Admin/Shell` and `/Admin/NewPageDialog`.
+    expect(project.components).toHaveLength(21);
   });
 
   it('🔴 resolves a concrete rootNodeId, so the project has a home component', async () => {
@@ -170,7 +171,8 @@ describe('SB-007 — install writes a project that opens', () => {
     // SB-014's `Theme` creator. The literal is the point: a rewrite that renamed
     // ids instead of regenerating them would keep the disjointness assertion
     // below green on a set that had SHRUNK.
-    expect(a.size).toBe(203);
+    // 203 → 232: the shell, the dialog, and the rebuilt page row / page list.
+    expect(a.size).toBe(232);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 
@@ -213,7 +215,7 @@ describe('SB-007 — the id rewrite reaches everything that carries an id', () =
     //
     // `instantiateContent` regenerates node ids and rewrites `connections`. It
     // does not touch `graph.visualRoots`, which twelve of this template's
-    // nineteen components carry — because `hello-world` is hand-written and has
+    // twenty-one components carry — because `hello-world` is hand-written and has
     // none, and no other embedded template exists. So the field went unremapped
     // for the whole life of the provider with nothing to expose it.
     //
@@ -241,7 +243,8 @@ describe('SB-007 — the id rewrite reaches everything that carries an id', () =
     const withVisualRoots = (project.components ?? []).filter(
       (c) => ((c.graph as unknown as { visualRoots?: string[] })?.visualRoots ?? []).length > 0
     );
-    expect(withVisualRoots).toHaveLength(12);
+    // 12 → 14: both new components carry visual trees.
+    expect(withVisualRoots).toHaveLength(14);
     expect((project.components ?? []).flatMap((c) => c.graph?.connections ?? []).length).toBeGreaterThan(200);
   });
 });
