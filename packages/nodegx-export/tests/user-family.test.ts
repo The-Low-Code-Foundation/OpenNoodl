@@ -7,9 +7,11 @@
  * `Pages/Admin` carries Log Out with **no Error wire at all**, which is the case the record
  * verbs never exercised and no hand-authored fixture would have thought to include.
  *
- * ⚠️ The fixture's `User` node feeds a Condition that defers on its own gate (§7), so the
- * session *read* is graded here by asserting exactly that — it resolves and then leaves nothing
- * behind — and by the mutations below that give it a rendered sink.
+ * ⚠️ The fixture's `User` node feeds a Condition, and that used to be the end of it: the
+ * Condition deferred on its own gate, so the session *read* was graded by asserting it resolved
+ * and left nothing behind. LOGIC-TARGET §10 translated the reactive Condition, so the auth gate
+ * now lands — the read is graded by the effect it earns, and the nothing-behind case is built by
+ * cutting the Condition's arm rather than read off the untouched fixture.
  *
  * Every §5 gate is exercised by mutating the parsed IR, the controlled-state suite's method.
  */
@@ -161,18 +163,29 @@ describe('§4d — the session api stub: one module, writes throw, the read answ
 
   test('the page imports exactly the functions it calls', () => {
     expect(loginSource(app)).toContain("import { logIn } from '../api/session';");
-    expect(adminSource(app)).toContain("import { logOut } from '../api/session';");
+    expect(adminSource(app)).toContain("import { logOut, useSession } from '../api/session';");
   });
 });
 
 describe('§4c — the User node: a session read, earned by a surviving expression', () => {
-  test('the fixture read resolves but lands nowhere, so no useSession is emitted', () => {
-    // `authenticated → Condition.condition` and the Condition defers on its own gate (it
-    // re-tests on every change), so the read has no surviving sink. The module must not carry a
-    // `useSession` nothing imports, and the page must not carry a `const session` nothing reads.
-    expect(sessionApi(app)).not.toContain('useSession');
-    expect(adminSource(app)).not.toContain('const session = useSession()');
-    expect(reasonFor(baseIr, ADMIN, 'authGate')).toContain('Condition re-tests on every change');
+  test('a read that lands nowhere emits no useSession', () => {
+    // ⚠️ This was read off the untouched fixture until LOGIC-TARGET §10 translated the reactive Condition:
+    // `authenticated → Condition.condition → onfalse → navigate` is now an auth-gate effect, so
+    // the fixture's read *does* land. The rule under test is unchanged and still needs a
+    // negative control, so the nowhere-landing case is now built rather than found — cut the
+    // Condition's only arm and it goes back to driving nothing.
+    const ir = cloneIr();
+    unwire(ir, ADMIN, 'authGate:onfalse->navigateNotAuth:navigate');
+    const built = emitApp(ir, catalog);
+    expect(sessionApi(built)).not.toContain('useSession');
+    expect(adminSource(built)).not.toContain('const session = useSession()');
+  });
+
+  test('and the fixture as authored does land it — the auth gate is the read', () => {
+    // The positive half of the pair, on the same fixture the assertion above used to read.
+    expect(sessionApi(app)!).toContain('useSession');
+    expect(adminSource(app)).toContain('const session = useSession();');
+    expect(adminSource(app)).toContain("if (!session.authenticated) navigate('/admin-login');");
   });
 
   test('given a rendered sink, the read becomes one useSession local read at each site', () => {

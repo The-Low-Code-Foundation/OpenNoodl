@@ -453,3 +453,134 @@ literal's truthiness); double negation folds (`Inverter → Inverter`, `isfalse`
 the value outputs' `null`-until-first-test boot window; And's answer-change-only dirty flag
 (no observable difference in React); the sparse-holes subtlety for an operand whose source
 never pushes (unreachable through translatable sources, which all push at boot).
+
+# Extension (session 27): the reactive Condition — the other half of the node
+
+§3 translated the Condition that a handler pulses. This extension translates the one nobody
+pulses: the box ticked, `Evaluate` unwired, re-testing on its own. It was the last untranslated
+shape of a node the slice otherwise owned, and in the corpus it is one idiom — the auth gate.
+
+## 10. The reactive Condition is a `useEffect`, not a handler
+
+**What the runtime does** (`packages/noodl-runtime/src/nodes/std-library/condition.ts`). The
+`condition` setter calls `scheduleEvaluate` whenever `shouldRunOnValueChange('condition')` — the
+ticked box — answers true. The scheduled test flags both value outputs dirty and then
+`sendSignalOnOutput(condition ? 'ontrue' : 'onfalse')`: **exactly one arm fires per test**, and a
+test happens per arrival, coalesced to one per frame by `hasScheduledEvaluation`.
+
+A test-per-arrival firing one branch is a re-run keyed on a value. That is `useEffect`:
+
+```tsx
+const session = useSession();
+
+// Require Login — re-tested whenever its condition changes (LOGIC-TARGET §10).
+useEffect(() => {
+  if (!session.authenticated) navigate('/admin-login');
+}, [session.authenticated]);
+```
+
+The branch itself is the **same `branch` action** §3 already compiles, so `actionCode` prints it
+unchanged — including the negated single-arm form, which is what the auth-gate idiom (`On False`
+→ navigate, no `On True`) reduces to. The two halves of the node differ in *what fires the
+branch*, never in what the branch does, and the analysis says so: one
+`compileConditionBranch` behind two gates.
+
+### 10a — Why a literal condition still fires once, and an unfed one never does
+
+`NodeScope` applies authored parameters through `node.queueInput`, which reaches the same setter a
+wire does — so a Condition with a literal `condition` and a ticked box tests **once at boot** and
+never again, which is `useEffect(…, [])`. A Condition with neither a wire nor a parameter is never
+set at all, so it never tests and never fires an arm; the existing `nothing statically known feeds
+condition` gate already refuses that one, and refusing it is correct rather than conservative.
+
+### 10b — The gates (any hit ⇒ the node defers, reason named)
+
+- **`Evaluate` is wired *and* the box is ticked** — the node does both, independently (NDA-017
+  made `Evaluate` additive). A handler reproduces the pulse and drops the re-tests; an effect
+  reproduces the re-tests and drops the pulse. Neither is faithful, so it defers, and the reason
+  now says which: *"the two fire independently"*.
+- **A value output (`result`/`isfalse`) or `done` is wired** — the existing stray-output check.
+  One node cannot be a comparator and a branch at once; `conditionValueExprOf` refuses the mirror
+  case with its own named reason.
+- **No arm at all** — not an effect; that is the pure-comparator shape the value pass owns.
+- **An arm reads a handler-only value** (an input's text, an event's value, a receiver's payload)
+  — an effect body reads the render closure, so `actionsValidIn(…, { kind: 'render' })` refuses
+  it. Same rule the DOM and receiver attachments already apply, with `render` as the context.
+- **The component emits no file** — nowhere to host the effect.
+- Plus everything `compileConditionBranch` already refused: an unresolvable condition, an arm
+  driving nothing translatable, a nested Condition.
+
+### 10c — Two walkers, twice, and the file said so both times
+
+The emit layer keeps `collectExprUse` (handler actions) and `hookExprSources` (render bindings)
+separately, with a ⚠️ on the second recording that a `session-get` set in only one of them emitted
+`session.authenticated` with no `const session` above it — *"and only building the emitted app
+caught it"* (USER-FAMILY §9). This slice met the same shape twice:
+
+1. **`effectDeps` had no `session-get` case.** It fell through `default:` and added nothing, so
+   the auth gate would have emitted `useEffect(…, [])` — a **mount-only** gate that never
+   re-tests on sign-out. The dependency list is a third place a value kind has to be enumerated.
+2. **A branch effect's condition earns a render local.** The arms print in handler mode
+   (`store.get()`), so they earn nothing; but the *condition* is also the dependency list, and
+   `effectDeps` spells a dependency as the render local. Registering only in `collectExprUse`
+   would have named a `const` no line declares.
+
+The body reading `visitorName.get()` while the dep reads `name` is deliberate, not a slip: the
+arm reads the store when the effect runs, and the dep is the reactive local that re-runs it. Two
+spellings of one variable, and only one of them can be a dependency.
+
+### 10d — 🔴 The session read is earned in a fourth place
+
+`planProject`'s pass 5 collapses a `User` node only when a surviving expression reads it, walking
+`bindings`, `handlers`, `changeHandlers` and `receivers`. A reactive Condition's own test is the
+commonest session read there is and lives in **none** of those. Without adding `branchEffects` to
+that walk the page imports `useSession` from a module that never exports it — a compile error in
+the emitted app, in the three projects the slice exists to fix. Grepping the consumers of
+`sessionCalls` before writing the pass is what found it; the corpus build would have found it too,
+one step later and with a worse error.
+
+## 11. What it bought, same instrument both sides
+
+**Coverage 3,766/4,441 (84.80%) → 3,775/4,441 (85.00%)** — `coverage-audit.ts` over the 40-project
+corpus. **The first coverage movement since session 21.** All nine are the predicted set, three
+per project across `Puppy test 3`, `puppy-test-3-fix008c` and `tut001-drive`: the `Condition`, the
+`net.noodl.user.User` it gated, and the one `RouterNavigate` its arm drives. `rank2.ts` loses all
+three deferral rows outright rather than shrinking them.
+
+**`build-corpus.ts`: 40/40, unchanged** — the floor held, which is all it can now say (§15g).
+
+**The emit diff is bounded to the three projects**: `dumpall.ts` into two trees, **9 files, 66
+lines** — three `Admin.tsx` (the effect, `const session`, the `useEffect` import), three
+`session.ts` (`useSession` minted with its provenance), three `__NOTES__.txt` (three deferral
+notes gone). Every other project is byte-identical, which is also the measured bound on the
+`effectDeps` change: **no other effect in the corpus reads a session.** A bound from the corpus,
+not a guarantee from the mechanism.
+
+**Consequence, not just mechanism:** before this slice the exported admin page had no gate at all
+— it rendered to anyone. The emitted app now redirects a signed-out visitor, against a session
+stub that always answers signed-out until someone connects it.
+
+## 12. Tests (10 new, 446 total)
+
+`tests/logic.test.ts` §10, plus the user-family pair. **Both primary cases are real fixture
+artefacts**: `puppy-test-3`'s auth gate is authored reactive, and `cheer`'s two Conditions are
+authored Evaluate-only — the rule and its control are each read off a graph somebody built.
+
+The discriminating pair runs **both directions**: unticking the puppy fixture's `authGate` moves
+it out of the effect, and ticking `cheer`'s `hasVisitor` moves it out of a handler and into one —
+via the additive case, which must defer while `Evaluate` is still wired.
+
+Mutation-checked against HEAD's analysis and emit: **9 red, and the controls green on both sides**
+— the nowhere-landing session read, the no-arm shape, the unticked direction, and the branch
+inventory. A control that cannot pass on both sides is a second opinion, not a control.
+
+🔴 **One pre-existing test had to keep passing and does:** *"a ticked Run On Value Change defers
+the Condition — Evaluate is additive"* unticks nothing and leaves `Evaluate` wired, so it lands on
+§10b's first gate. Its message assertion survives because the new reason deliberately keeps the
+phrase *"Run On Value Change is ticked"*. A gate that changed the wording would have made that
+test pass for the wrong reason or fail for a cosmetic one.
+
+⚠️ **`the puppy fixture is untouched by the slice` is now an inventory, not an absence.** Its
+`not.toContain('if (')` stood in for "no Condition branch"; this slice puts one there on purpose.
+The claim is now that every branch in the fixture was put there by a slice deliberately, pinned as
+a list — an unlisted `if (` is still the regression it catches.

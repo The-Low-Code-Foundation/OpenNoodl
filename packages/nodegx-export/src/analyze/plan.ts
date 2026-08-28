@@ -377,6 +377,22 @@ export interface PushEffectPlan {
   expr: ValueExpr;
 }
 
+/**
+ * A reactive Condition (LOGIC-TARGET §10): the box is ticked, so the node re-tests on every
+ * arrival on `condition` and fires exactly one arm — a re-run keyed on the condition, which is
+ * a `useEffect`, not a handler. The Evaluate-only Condition is the other half and compiles to a
+ * `branch` action inside whatever handler drives it (§3).
+ *
+ * `action` is always a `branch`, so every emit-side sweep that already walks branch arms — the
+ * import, navigate and state-reference collectors — reaches these arms for free.
+ */
+export interface BranchEffectPlan {
+  nodeId: string;
+  action: HandlerAction;
+  /** The provenance comment above the effect — the node's authored label when it has one. */
+  comment: string;
+}
+
 export interface PropPlan {
   name: string;
   tsType: string;
@@ -576,6 +592,8 @@ export interface ComponentPlan {
   syncEffects: SyncEffectPlan[];
   /** Push effects (§3.5), registration order — the lifted value outputs' child side. */
   pushEffects: PushEffectPlan[];
+  /** Reactive Conditions (LOGIC-TARGET §10), compile order — one useEffect each. */
+  branchEffects: BranchEffectPlan[];
   /**
    * Value output ports this component lifts (§4d child side) — the parent side consults this
    * list off the target's plan, so parent and child agree by construction (the s10 rule).
@@ -736,6 +754,7 @@ function planComponent(
     stateVars: [],
     syncEffects: [],
     pushEffects: [],
+    branchEffects: [],
     liftedOutputProps: [],
     instanceLifted: {},
     pendingLifted: [],
@@ -3018,10 +3037,24 @@ function planComponent(
    */
   const compileCondition = (node: NodeIR): CompiledSink => {
     if (literalParam(node, 'runOnChange-condition') !== false) {
+      // Ticked: the node also re-tests on every arrival, which a handler cannot carry. §10's
+      // effect takes it instead — but only when `Evaluate` is unwired, because a ticked node
+      // with `Evaluate` wired does *both* and neither shape alone is faithful.
       return {
-        defer: 'Condition re-tests on every change of its input (Run On Value Change is ticked) — only an Evaluate-only condition translates in this slice'
+        defer: wiredPorts.has(`${node.id}:eval`)
+          ? 'Condition re-tests on every change of its input *and* on Evaluate (Run On Value Change is ticked) — the two fire independently, which neither a handler nor an effect reproduces alone'
+          : 'Condition re-tests on every change of its input (Run On Value Change is ticked) — only an Evaluate-only condition translates in this slice'
       };
     }
+    return compileConditionBranch(node);
+  };
+
+  /**
+   * Everything a Condition compiles to once its Run On Value Change gate has been settled: the
+   * condition expression and the two arms. Shared by the Evaluate-only sink (§3) and the
+   * reactive effect (LOGIC-TARGET §10) — they differ in *what fires the branch*, never in what it does.
+   */
+  const compileConditionBranch = (node: NodeIR): CompiledSink => {
     const stray = component.connections.find(
       (c) => c.fromId === node.id && c.fromProperty !== 'ontrue' && c.fromProperty !== 'onfalse'
     );
@@ -3090,6 +3123,12 @@ function planComponent(
 
   /** Keyed `${nodeId}:${port}` — the popup nodes compile per trigger port (`closeAction-*`). */
   const compiledSinks = new Map<string, CompiledSink>();
+  /**
+   * Why a reactive Condition (LOGIC-TARGET §10) did not become an effect, by node id. The Condition sweep
+   * prefers this over the `:eval` sink's reason: for a ticked node that sink only ever says
+   * "the box is ticked", which is the gate the effect pass has already passed.
+   */
+  const reactiveConditionDefers = new Map<string, string>();
   const compiling = new Set<string>();
   const compiledOf = (node: NodeIR, port: string): CompiledSink => {
     const key = `${node.id}:${port}`;
@@ -4715,6 +4754,57 @@ function planComponent(
     dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
   }
 
+  // Reactive Conditions (LOGIC-TARGET §10): the box is ticked and nothing drives `Evaluate`, so
+  // the node re-tests whenever a value arrives on `condition` and fires exactly one arm. That is
+  // a re-run keyed on the condition — a useEffect, not a handler. The Evaluate-only twin (§3) is
+  // a `branch` inside whatever handler pulses it, and the two are mutually exclusive by
+  // construction: the same literal read decides which, and a node with both defers.
+  //
+  // Runs before the session sweep below so a session read inside an arm is seen as surviving,
+  // and before the wire sweep so the arms it consumes are not reported as dropped.
+  for (const node of component.nodes) {
+    if (node.type !== 'Condition' || dispositions[node.id] !== undefined) continue;
+    if (literalParam(node, 'runOnChange-condition') === false) continue;
+    if (wiredPorts.has(`${node.id}:eval`)) continue;
+    const arms = component.connections.filter(
+      (c) => c.fromId === node.id && (c.fromProperty === 'ontrue' || c.fromProperty === 'onfalse')
+    );
+    // No arm is the pure-comparator shape `conditionValueExprOf` owns — leave it to that pass.
+    if (arms.length === 0) continue;
+    if (!plan.file) {
+      reactiveConditionDefers.set(node.id, 'component emits no file to host the effect');
+      continue;
+    }
+    const compiled = compileConditionBranch(node);
+    if ('defer' in compiled) {
+      reactiveConditionDefers.set(node.id, compiled.defer);
+      continue;
+    }
+    // An effect body reads the render closure, so anything that only exists inside a specific
+    // DOM handler (an input's text, an event's value, a receiver's payload) cannot appear here.
+    if (!actionsValidIn([compiled.action], { kind: 'render' })) {
+      reactiveConditionDefers.set(node.id, 'its arms read values that only exist inside a handler');
+      continue;
+    }
+    // The effect body is a chain like any other: a later read of something the chain just set
+    // must see the set value, not the render closure's.
+    const snapped = snapAction(compiled.action, chainSnapshotFor(`effect:${node.id}`));
+    if ('defer' in snapped) {
+      reactiveConditionDefers.set(node.id, snapped.defer);
+      continue;
+    }
+    const into = `src/${plan.file.dir}/${plan.file.fileBase}.tsx`;
+    plan.branchEffects.push({
+      nodeId: node.id,
+      action: snapped,
+      comment: `${node.authoredLabel ?? 'Condition'} — re-tested whenever its condition changes (LOGIC-TARGET §10).`
+    });
+    dispositions[node.id] = { kind: 'collapsed', into };
+    for (const id of compiled.collapses ?? []) dispositions[id] = { kind: 'collapsed', into };
+    for (const key of compiled.consumes) consumed.add(key);
+    for (const id of compiled.subscribes ?? []) boundSubscribers.add(id);
+  }
+
   // The session read is earned by a surviving expression (USER-FAMILY-TARGET §4c), the same
   // discipline the popup slots and the api-stub mutations take: `resolveExpr` runs
   // speculatively, so a `User` node whose every read was dropped by a later pass must leave no
@@ -4763,6 +4853,11 @@ function planComponent(
     for (const byPort of Object.values(plan.handlers)) for (const actions of Object.values(byPort)) walkActions(actions);
     for (const actions of Object.values(plan.changeHandlers)) walkActions(actions);
     for (const receiver of plan.receivers) walkActions(receiver.actions);
+    // A reactive Condition's own test is the commonest session read there is (the auth-gate
+    // idiom), and it lives in neither a binding nor a handler. Without this the `User` node
+    // reads as unread: no `useSession` in `src/api/session.ts`, and the page imports a symbol
+    // the module does not export.
+    for (const effect of plan.branchEffects) walkActions([effect.action]);
     for (const nodeId of readNodeIds) {
       plan.sessionCalls.push({ nodeId, verb: 'read', fnName: 'useSession' });
     }
@@ -4849,10 +4944,12 @@ function planComponent(
     if (dispositions[node.id] !== undefined) continue;
     if (node.type === 'Condition') {
       const compiled = compiledSinks.get(`${node.id}:eval`);
+      const reactive = reactiveConditionDefers.get(node.id);
       const reason =
-        compiled !== undefined && 'defer' in compiled
+        reactive ??
+        (compiled !== undefined && 'defer' in compiled
           ? compiled.defer
-          : 'no Evaluate wire attaches this condition to a handler';
+          : 'no Evaluate wire attaches this condition to a handler');
       dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
       notes.push(`node ${node.id} (Condition) deferred: ${reason}`);
     } else if (node.type === 'String Format') {

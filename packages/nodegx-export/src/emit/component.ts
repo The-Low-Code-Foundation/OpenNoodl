@@ -310,7 +310,10 @@ export function emitComponent(
   const allActions: HandlerAction[] = [
     ...Object.values(plan.handlers).flatMap((byPort) => Object.values(byPort).flat()),
     ...Object.values(plan.changeHandlers).flat(),
-    ...plan.receivers.flatMap((r) => r.actions)
+    ...plan.receivers.flatMap((r) => r.actions),
+    // A reactive Condition's branch earns imports, `navigate` and state references exactly as a
+    // handler's does — it just runs from an effect instead of an event (LOGIC-TARGET §10).
+    ...plan.branchEffects.map((e) => e.action)
   ];
   allActions.forEach(collectActionUse);
   /** Nested actions (branch arms, popup done-chains) flattened — the `usesNavigate` sweep. */
@@ -396,6 +399,13 @@ export function emitComponent(
   // The state effects' sources earn their hooks exactly as bindings do (CONTROLLED-STATE §3).
   for (const sync of plan.syncEffects) hookExprSources(sync.source);
   for (const push of plan.pushEffects) hookExprSources(push.expr);
+  // The second walker again (LOGIC-TARGET §10). A reactive Condition's arms print in handler mode, so they
+  // earn nothing here — but its *condition* is also the effect's dependency list, and
+  // `effectDeps` spells a dependency as the render local. Without this the dep names a `const`
+  // no line declares.
+  for (const effect of plan.branchEffects) {
+    if (effect.action.kind === 'branch') hookExprSources(effect.action.cond);
+  }
   // A rendered stateful control references its own row (value/checked + onChange), a sync
   // effect its target, a lifted callback its setter — whether or not any expression reads it.
   for (const stateVar of plan.stateVars) {
@@ -724,6 +734,12 @@ export function emitComponent(
         case 'state-get':
           add(e.name);
           break;
+        // The session is a hook's return value, so its fields are ordinary reactive reads — an
+        // effect that tests one must re-run when it changes. `useSession` is a stub today, which
+        // makes the dep constant; it is the shape a real session hook needs.
+        case 'session-get':
+          add(exprCode(e, 'render'));
+          break;
         case 'store-get':
           add(hookLocals.get(e.variableName) ?? e.variableName);
           break;
@@ -940,7 +956,7 @@ export function emitComponent(
   if (plan.popups.length > 0 && !reactImports.includes('useState')) reactImports.push('useState');
   if (referencedStateVars.length > 0 && !reactImports.includes('useState')) reactImports.push('useState');
   if (
-    (plan.syncEffects.length > 0 || plan.pushEffects.length > 0) &&
+    (plan.syncEffects.length > 0 || plan.pushEffects.length > 0 || plan.branchEffects.length > 0) &&
     !reactImports.includes('useEffect')
   ) {
     reactImports.push('useEffect');
@@ -2003,6 +2019,21 @@ export function emitComponent(
     body.push(
       '  useEffect(() => {',
       `    ${push.prop}?.(${exprCode(push.expr, 'render')});`,
+      `  }, [${deps}]);`,
+      ''
+    );
+  }
+  // Reactive Conditions (LOGIC-TARGET §10): the node re-tests whenever its condition arrives and
+  // fires one arm, so the branch runs from an effect keyed on the condition. `actionCode` already
+  // prints the negated single-arm form, which is what the auth-gate idiom (`On False` → navigate)
+  // reduces to.
+  for (const effect of plan.branchEffects) {
+    const action = effect.action as Extract<HandlerAction, { kind: 'branch' }>;
+    const deps = effectDeps(action.cond).join(', ');
+    body.push(
+      `  // ${effect.comment}`,
+      '  useEffect(() => {',
+      `    ${actionCode(action, 4)};`,
       `  }, [${deps}]);`,
       ''
     );

@@ -232,6 +232,114 @@ describe('what defers, all with notes (LOGIC-TARGET §4)', () => {
   });
 });
 
+// ---------------------------------------------------------------------------------------------
+// §10 — the reactive Condition. Ticked and with `Evaluate` unwired, the node re-tests on every
+// arrival on `condition` and fires one arm: a re-run keyed on the condition, which is a
+// useEffect. Both primary cases are real fixture artefacts — `puppy-test-3`'s auth gate is
+// authored reactive, `cheer`'s two Conditions are authored Evaluate-only — so the rule and its
+// negative control are each read off a graph somebody actually built.
+// ---------------------------------------------------------------------------------------------
+
+describe('the reactive Condition is an effect (LOGIC-TARGET §10)', () => {
+  const PUPPY = path.join(__dirname, 'fixtures', 'puppy-test-3');
+  const puppyIr = parseProject(PUPPY, catalog);
+  const clonePuppy = (): ExportIR => structuredClone(puppyIr);
+  const ADMIN = 'Pages/Admin';
+  const adminOf = (source: ExportIR) => emitApp(source, catalog).files['src/pages/Admin.tsx'];
+  const notesOf = (source: ExportIR) => emitApp(source, catalog).notes.join('\n');
+
+  test('the auth gate becomes a useEffect keyed on the condition, not a handler', () => {
+    const source = adminOf(clonePuppy());
+    expect(source).toContain('  useEffect(() => {');
+    expect(source).toContain("    if (!session.authenticated) navigate('/admin-login');");
+    expect(source).toContain('  }, [session.authenticated]);');
+    // The effect is the node's whole translation — no handler anywhere fires this branch.
+    expect(source).not.toContain('onClick={() => { if (!session.authenticated)');
+  });
+
+  test('the dependency is the session read itself — an effect that tests it re-runs on it', () => {
+    // The `effectDeps` walker had no `session-get` case, so the deps printed empty. An effect
+    // over a session with `[]` is a mount-only gate: it would not re-test on sign-out.
+    const source = adminOf(clonePuppy());
+    expect(source).not.toContain('}, []);');
+    expect(source).toMatch(/\}, \[session\.authenticated\]\);/);
+  });
+
+  test('the condition and the arm both collapse — the User and the navigate are translated', () => {
+    const result = emitApp(clonePuppy(), catalog);
+    const notes = result.notes.join('\n');
+    expect(notes).not.toContain('userCheck:authenticated->authGate:condition');
+    expect(notes).not.toContain('authGate:onfalse->navigateNotAuth:navigate');
+    expect(notes).not.toContain('node authGate (Condition) deferred');
+  });
+
+  // --- the discriminating pair: one fixture, both directions -------------------------------
+
+  test('unticking the same Condition moves it out of the effect and into a handler', () => {
+    const mutated = clonePuppy();
+    setParam(nodeOf(mutated, ADMIN, 'authGate'), 'runOnChange-condition', { kind: 'literal', value: false });
+    const source = adminOf(mutated);
+    // Evaluate-only and nothing pulses Evaluate here, so it becomes neither — but the reason
+    // must be the *unwired trigger*, never the reactive gate it no longer trips.
+    expect(source).not.toContain('}, [session.authenticated]);');
+    expect(notesOf(mutated)).toContain('no Evaluate wire attaches this condition to a handler');
+  });
+
+  test('ticking an Evaluate-only Condition moves it out of a handler and into an effect', () => {
+    // The mirror, on the other fixture: `cheer`'s Mood page authors `hasVisitor` unticked with
+    // a button pulsing Evaluate — a handler branch today.
+    expect(app.files['src/pages/Mood.tsx']).toContain('if (visitorName.get()) mood.set(');
+    const mutated = cloneIr();
+    setParam(nodeOf(mutated, 'Pages/Mood', 'hasVisitor'), 'runOnChange-condition', { kind: 'literal', value: true });
+    // Ticked *and* Evaluate still wired is the additive case — it does both, so it defers.
+    expect(emitApp(mutated, catalog).notes.join('\n')).toContain('the two fire independently');
+    // Cut Evaluate and the same node is a plain reactive Condition: now an effect.
+    unwire(mutated, 'Pages/Mood', 'themeButton:onClick->hasVisitor:eval');
+    const source = emitApp(mutated, catalog).files['src/pages/Mood.tsx'];
+    expect(source).toContain('useEffect(() => {');
+    // The same branch, moved verbatim out of the onClick and into the effect.
+    expect(source).toContain('if (visitorName.get()) mood.set({ theme: visitorName.get() });');
+    expect(source).not.toContain('onClick={() => { if (visitorName.get())');
+    // The arm reads the store live (`.get()` — the value when the effect runs) while the
+    // dependency is that variable's render local, which is what re-runs the effect. Two
+    // spellings of one variable, and the dep has to be the reactive one.
+    expect(source).toContain('}, [name]);');
+  });
+
+  // --- the gates, each deferring with its named reason ---------------------------------------
+
+  test('a stray value output defers — one node cannot be a comparator and a branch at once', () => {
+    const mutated = clonePuppy();
+    wire(mutated, ADMIN, 'authGate', 'result', 'listCard', 'visible');
+    expect(notesOf(mutated)).toContain('output drives logic this slice does not translate');
+    expect(adminOf(mutated)).not.toContain('}, [session.authenticated]);');
+  });
+
+  test('an arm driving nothing translatable defers with that reason, not the ticked-box one', () => {
+    const mutated = clonePuppy();
+    unwire(mutated, ADMIN, 'authGate:onfalse->navigateNotAuth:navigate');
+    wire(mutated, ADMIN, 'authGate', 'onfalse', 'formatList', 'items', 'signal');
+    const notes = notesOf(mutated);
+    expect(notes).toContain('node authGate (Condition) deferred');
+    expect(notes).not.toContain('only an Evaluate-only condition translates in this slice');
+  });
+
+  test('nothing statically known feeding condition defers', () => {
+    const mutated = clonePuppy();
+    unwire(mutated, ADMIN, 'userCheck:authenticated->authGate:condition');
+    expect(notesOf(mutated)).toContain('nothing statically known feeds condition');
+    expect(adminOf(mutated)).not.toContain('useEffect(() => {');
+  });
+
+  test('no arm at all is not an effect — the pure comparator pass owns that shape', () => {
+    const mutated = clonePuppy();
+    unwire(mutated, ADMIN, 'authGate:onfalse->navigateNotAuth:navigate');
+    const source = adminOf(mutated);
+    expect(source).not.toContain('useEffect(() => {');
+    expect(source).not.toContain('const session = useSession()');
+  });
+});
+
 describe('the puppy fixture is untouched by the slice', () => {
   test('the puppy export emits no template literals and no branches', () => {
     const PUPPY_FIXTURE = path.join(__dirname, 'fixtures', 'puppy-test-3');
@@ -245,8 +353,16 @@ describe('the puppy fixture is untouched by the slice', () => {
         if (/^\s*(\*|\/\*|\/\/)/.test(line)) continue;
         expect(`${name}: ${line}`).not.toContain('`');
       }
+      // …and then LOGIC-TARGET §10 translated the auth gate, which is a Condition branch and belongs here.
+      // The claim is no longer "this fixture has no branch" — it is that every branch in it was
+      // put there by a slice on purpose. An unlisted `if (` is still the regression this catches;
+      // pinning the inventory is what keeps it one.
+      const EXPECTED_BRANCHES = [
+        "if (!puppyIdInput) throw new Error('Missing Record Id');",
+        "if (!session.authenticated) navigate('/admin-login');"
+      ];
       for (const line of content.split('\n')) {
-        if (line.includes("if (!puppyIdInput) throw new Error('Missing Record Id');")) continue;
+        if (EXPECTED_BRANCHES.some((b) => line.includes(b))) continue;
         expect(`${name}: ${line}`).not.toContain('if (');
       }
     }

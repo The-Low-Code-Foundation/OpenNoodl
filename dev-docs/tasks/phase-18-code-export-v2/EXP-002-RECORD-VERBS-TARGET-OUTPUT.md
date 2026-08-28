@@ -1039,3 +1039,52 @@ The compilation work is done; everything remaining buys **coverage**.
 anyone anything by moving. A grader pinned at 40/40 reports "no regression" and "no progress" with
 the same number, so the *next* slice's evidence has to come from `coverage-audit.ts` and the emit
 trees, not from the row count. The instrument that closed five causes is now a floor, not a needle.
+
+## §16 The reactive Condition (session 27 — §15g(1), closed; **coverage moves again**)
+
+Built in **EXP-002-LOGIC-TARGET-OUTPUT.md §10–§12** — the design, the gates, the traps and the
+tests all live there, because it is the Condition's slice and this node's other half was already
+written up as §3 of that file.
+
+The one-paragraph version: a Condition whose box is ticked and whose `Evaluate` nobody wires
+re-tests on every arrival and fires one arm, which is a re-run keyed on a value — a `useEffect`
+around the **same `branch` action** §3 already compiles. One `compileConditionBranch` behind two
+gates; a node that does both (ticked *and* `Evaluate` wired) defers, because neither shape carries
+it alone.
+
+**Coverage 3,766/4,441 (84.80%) → 3,775/4,441 (85.00%)** — the first movement since session 21,
+and the first slice in six sessions whose result is a coverage delta rather than a compile fix.
+All nine are the predicted set: the `Condition`, the `net.noodl.user.User` it gated, and the one
+`RouterNavigate` its arm drives, across the three auth-gate projects. `build-corpus.ts` holds at
+**40/40** and the emit diff is bounded to those three projects (9 files, 66 lines). 446 tests.
+
+🔴 **The handoff's count was low, and one measurement fixed it.** §15g said "3 nodes / 3
+projects". `probe27.ts` found **15** Conditions in the corpus in three distinct shapes — nine
+`has_reviews` comparators and one `hasName` already collapsing through the value pass, two
+Evaluate-only handler chains, and only then the three reactive auth gates. The deferral *tally*
+was right; reading it as the node population was not. **A rank row counts what deferred, never
+what is there** — the population and the deferral list are different questions, and the slice's
+real blast radius is the first one.
+
+🔴 **And the probe lied first.** Its initial version printed `fromProperty` on both ends of an
+incoming wire, so every `IN` row named the source port twice — `condition` never appeared, and the
+`eval` wires read as `onClick`. It was caught by the rows looking wrong rather than by anything
+structural. **A new instrument's first output is a claim about the instrument**; the shapes only
+became readable after fixing it.
+
+### §16a — What is left
+
+Unchanged from §15g except that (1) is closed. Everything remaining still buys coverage, and
+`build-corpus.ts` is still a floor rather than a needle.
+
+1. **Relation verbs + `DbModel2`** (3 nodes, 1 project) — §4c is already written for it.
+   `RemoveDbModelRelation` has **zero corpus instances**, so it is target-output-only. Now the
+   top of the list.
+2. **EXP-003 Tier B** — ~350 nodes, one third-party kit copied into eight projects, behind four
+   things that do not exist. `tb-survey.ts` dumps every body of it; read that before committing.
+3. **The two `ProductCard` projects' missing interface** (§11d(2)/(3)) — ruled in §13b and built
+   in §14: the export refuses and names it. That is the disposition, not a defect to fix.
+
+The nine `has_reviews` Conditions are **already translated** (they collapse into the `isfalse →
+Text.visible` binding), so the Condition node is now fully covered in the corpus — no shape of it
+defers anywhere. `probe27.ts` is the instrument that says so.
