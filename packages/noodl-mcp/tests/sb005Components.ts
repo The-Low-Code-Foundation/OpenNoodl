@@ -1769,7 +1769,15 @@ export const ADMIN_SHELL_NODES = [
     // ⚠️ A path (`PageStackNavigateToPath`, `path: '/'`) was tried instead and is
     // ALSO refused: the door checks paths against the `urlPath` every Page
     // declares, and no page declares the bare root.
-    parameters: { router: ROUTER, target: '/Pages/Site' }
+    // 🔴 `pm-slug: ''` is the whole fix, and the drive is what found it. With the
+    // target alone the Router substituted nothing and the browser landed on the
+    // LITERAL template: `location.pathname` read `/%7Bslug%7D` — `/{slug}` — and
+    // the site answered "That page could not be found." A component target is
+    // necessary and not sufficient; a page whose `urlPath` carries a parameter
+    // needs that parameter supplied, exactly as `goEdit` supplies `pm-pageId`.
+    //
+    // The empty slug IS the site root, which is the page SBR-004 §11 drove.
+    parameters: { router: ROUTER, target: '/Pages/Site', 'pm-slug': '' }
   }
 ];
 

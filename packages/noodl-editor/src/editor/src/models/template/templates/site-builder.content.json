@@ -1700,7 +1700,8 @@
             "y": 760,
             "parameters": {
               "router": "Main",
-              "target": "/Pages/Site"
+              "target": "/Pages/Site",
+              "pm-slug": ""
             },
             "ports": [],
             "dynamicports": []
