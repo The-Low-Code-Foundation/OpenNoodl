@@ -805,7 +805,10 @@ function planComponent(
 
   // A supported visual type can still be un-renderable statically (wire-fed structure, masonry,
   // an inline icon) — those nodes read 'unsupported' with a recorded reason (VISUALS-TARGET).
-  const wiredIn = new Set(component.connections.map((c) => `${c.toId}:${c.toProperty}`));
+  // Sink key → the type feeding it. A Set answered "is this port wired?", which is all the
+  // structure check needs; the content check (§19) has to name what feeds the port, because
+  // that — not the port — is the wall the node is actually behind.
+  const wiredIn = new Map(component.connections.map((c) => [`${c.toId}:${c.toProperty}`, nodeById.get(c.fromId)?.type ?? 'a wire']));
   const deferReasons = new Map<string, string>();
   const roleOf = (node: NodeIR): RenderRole | 'unsupported' | null => {
     const role = renderRole(node, catalog);
@@ -5312,11 +5315,15 @@ const STRUCTURE_PORTS: Partial<Record<RenderRole, string[]>> = {
   // A wired `checked`/`value` no longer defers the control whole: it is the controlled-state
   // slice's local-state + sync-effect shape (CONTROLLED-STATE-TARGET §4c). The ports that
   // stay here still shape structure a static render cannot follow (tracks, options, marks).
-  checkbox: ['useLabel', 'useIcon', 'label'],
-  radio: ['useLabel', 'useIcon', 'label', 'value'],
+  //
+  // `useLabel`/`useIcon` decide whether the `<label>` wrapper and the mark exist at all
+  // (Checkbox.tsx:70,170); a radio's `value` and a group's `value` decide which child prints
+  // `defaultChecked` (component.ts:1343,1373). Those are structure. `label`, `min`, `max` and
+  // `step` are NOT — see CONTENT_BOUND_PORTS below.
+  checkbox: ['useLabel', 'useIcon'],
+  radio: ['useLabel', 'useIcon', 'value'],
   radiogroup: ['value'],
   select: ['items', 'placeholder', 'useLabel'],
-  range: ['min', 'max', 'step'],
   circle: [
     'size',
     'fillEnabled',
@@ -5331,13 +5338,42 @@ const STRUCTURE_PORTS: Partial<Record<RenderRole, string[]>> = {
 };
 
 /**
+ * Ports that carry *content* into a control — text, bounds, increments. A wire into one does
+ * not move the rendered structure: `label` is the single text child of `<label>`
+ * (Checkbox.tsx:191, RadioButton.tsx:200) and `min`/`max`/`step` are plain attributes the
+ * emitter already orders (CONTENT_ATTR_ORDER), with nothing in the emitted CSS derived from
+ * them (style.ts's `range` rule reads `thumbColor` and `width` only).
+ *
+ * They still defer, because omitting an unknown bound renders a 0–100 slider where the running
+ * app renders the row's — wrong output, confidently emitted. But the wall is the *source*, not
+ * the port, and every one of them in the corpus resolves to one of the two walls already on the
+ * list: a `Model2` row property, or a component-record property only a runtime script writes.
+ * Naming the source is what lets the census group them there instead of inventing a third wall
+ * (RECORD-VERBS §19).
+ */
+const CONTENT_BOUND_PORTS: Partial<Record<RenderRole, string[]>> = {
+  checkbox: ['label'],
+  radio: ['label'],
+  range: ['min', 'max', 'step']
+};
+
+/**
  * Why a node of a supported visual type still cannot render statically, or null when it can.
  * The checks mirror the target doc's defers: JS-measured layouts, wire-fed structure, custom
  * control marks, and the inline icon kind.
  */
-function visualDeferReason(node: NodeIR, role: RenderRole, wiredIn: Set<string>, catalog: CatalogIndex): string | null {
+function visualDeferReason(
+  node: NodeIR,
+  role: RenderRole,
+  wiredIn: ReadonlyMap<string, string>,
+  catalog: CatalogIndex
+): string | null {
   const wired = (STRUCTURE_PORTS[role] ?? []).find((port) => wiredIn.has(`${node.id}:${port}`));
   if (wired !== undefined) return `its ${wired} arrives over a wire, so the rendered structure is not static`;
+  const contentPort = (CONTENT_BOUND_PORTS[role] ?? []).find((port) => wiredIn.has(`${node.id}:${port}`));
+  if (contentPort !== undefined) {
+    return `its ${contentPort} is fed by ${wiredIn.get(`${node.id}:${contentPort}`)} — the structure renders, the value is not statically known`;
+  }
   const literal = (name: string) => {
     const value = node.parameters.find((p) => p.name === name)?.value;
     return value?.kind === 'literal' ? value.value : undefined;

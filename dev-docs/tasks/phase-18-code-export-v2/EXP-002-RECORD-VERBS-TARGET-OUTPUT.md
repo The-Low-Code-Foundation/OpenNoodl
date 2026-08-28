@@ -1334,3 +1334,148 @@ line number (§17c's rule):
 and the median project is far above the headline. Before optimising the number, decide whether
 that number is the goal — §18a is the argument that it measures the corpus's shape more than the
 export's reach.
+
+---
+
+## §19 The wall that was not there (session 30 — §18e(1)+(2); **a true verdict from a false premise**)
+
+§18e said to read the kit as one artefact and to scope walls 1 and 2 together. Reading it did
+that and one thing more: a third wall on §17b's census — *"wire-fed rendered structure"* — turns
+out not to exist. Its members are real deferrals, but every one of them is behind a wall already
+on the list, and the reason string was pointing at the wrong thing.
+
+⚠️ **Nothing was executed this session.** Richard asked for a machine-wide freeze on
+CPU/RAM-intensive runs partway through, so no suite, corpus build, coverage audit or typecheck
+was run. Everything below is measured from **raw project files and source reading**; the code
+change is argued, not verified. **Run the gates before believing the numbers** — §19e says which.
+
+### 19a — The eight clones are one artefact, confirmed rather than assumed
+
+§18a inferred the kit from a per-component count. Fingerprinting is the stronger check: for each
+of the eight clones, the sorted `component|type|reason` triples of the `Filters/*` subtree hash
+to **one md5** (`cf84c41a…`), 47 rows each. The clones differ only outside it — two carry five
+extra probe nodes on `Pages/Home`, one an extra `Logic Builder` — so 68/69/73 is three variants
+of one project, not eight projects.
+
+The kit is named on disk. `IMPORT-REPORT.md` records it as
+`…nodegx-content-static-library/prefabs/filters/filters-0-1.zip`, imported 2026-08-14, **79
+constructs, 0 placeholders, 0 dropped** — a clean third-party import. The remaining 15% is
+substantially one downloaded prefab.
+
+### 19b — 🔴 `label`, `min`, `max` and `step` do not shape any structure
+
+Fifty-eight nodes defer with *"its X arrives over a wire, so the rendered structure is not
+static"*. The premise is checkable at the runtime, and it is false for most of them:
+
+- **`Checkbox.tsx:191`** — `props.label` occurs exactly once, as the text child of `<label>`.
+  What decides whether that element exists at all is `props.useLabel` (lines 70, 170).
+  `RadioButton.tsx:200` is the same shape.
+- **`Slider.tsx:116–121`** — `min`/`max`/`step` go straight into `inputProps`. Nothing branches
+  on them.
+- On the export's own side they are already content: `CONTENT_ATTR_ORDER` lists `min`, `max`,
+  `step`, and `style.ts`'s entire `range` rule reads `thumbColor` and `width` — **no emitted CSS
+  derives from a bound.** The emitter's checkbox/radio branch already calls
+  `childText(node, 'label')` (`component.ts:1353`), the same bindable-content path `button` uses.
+
+So the emitter has had the shape all along, and the planner's gate is what stops any node
+reaching it. The gate's own comment says the rule — *"ports that merely carry content (src, label
+text) stay bindable"* — and then lists `label` as structure, two lines below.
+
+**The verdict is still right.** A wired bound the export cannot resolve would emit
+`<input type="range" />` with the attribute simply absent — a 0–100 slider where the running app
+shows the row's. Wrong output, confidently emitted, is what this phase exists to avoid. What was
+wrong was the *report*, and the report is what three sessions have picked work from.
+
+### 19c — What actually feeds those ports
+
+`wirefeed.py` (new) reads the **raw** files and follows every wire into a `STRUCTURE_PORTS` sink
+to its source type. 114 wires over 40 projects, and they are not diverse:
+
+```
+  48   net.noodl.controls.range .min/.max/.step   <-  net.noodl.ComponentObject.value-*
+  24   net.noodl.controls.range .min/.max/.step   <-  Model2.prop-*
+  16   checkbox.label / radiobutton.label         <-  Model2.prop-Label / prop-Text
+   8   radiobutton.value                          <-  Model2.prop-Value
+   8   Radio Button Group.value                   <-  net.noodl.ComponentObject.value-Value
+   2   icon.iconIconSource                        <-  JavaScriptFunction / Component Inputs
+```
+
+By node, the 58 resolve exactly: `Filters/Range` 16 · `Filters/Slider` 8 ·
+`Filters/Single Choice/Item` 8 · `Filters/Single Choice` 8 · `Filters/Multi Choice/Item` 8 ·
+`Filters/Checkbox` 8 · `Components/TrustItem` 2.
+
+`Filters/Multi Choice/Item` is the whole argument in six wires: `Model2.prop-Label → checkbox.label`,
+`Model2.prop-Checked → checkbox.checked`, `Model2.id → SetModelProperties.modelId`. That is a
+repeated row, and its label is `row.Label`. **The wire-fed wall and the row-identity wall are the
+same wall** for these components, exactly as §18a predicted for the kit.
+
+🔴 **And one hop further back inverts the tractable-looking half.** `Filters/Range`'s bounds come
+from a `ComponentObject` — which pass 4d already binds for `attr:` roles, so it reads like free
+coverage. It is not: **no connection ends at that node.** Its `Min` is written by a
+`JavaScriptFunction` through the Noodl API, and *that* reads `Model2.prop-Min`. Had the gate been
+lifted on the strength of the runtime evidence alone, pass 4d would have bound `min` to the
+record's **boot value** — `undefined` — and shipped the 0–100 slider with a note. **The gate is
+load-bearing for a reason it does not state**, which is the most dangerous kind of correct.
+
+### 19d — The change: same verdict, true reason
+
+`STRUCTURE_PORTS` keeps only ports that move emitted structure — `useLabel`/`useIcon` (the
+`<label>` wrapper and the mark), a radio's and a group's `value` (which child prints
+`defaultChecked`, `component.ts:1343,1373`), plus the columns/select/icon/circle entries, all
+unchanged. A new `CONTENT_BOUND_PORTS` holds `checkbox.label`, `radio.label` and
+`range.min/max/step`, and its reason **names the source type**, because that is what a census can
+group on. `wiredIn` became a `Map` from sink key to source type to carry it.
+
+Predicted effect, by reading — **no coverage change, because no verdict changes**:
+
+| nodes | today | after |
+|---|---|---|
+| 16 `Filters/Range` | `its min arrives over a wire…` | `its min is fed by net.noodl.ComponentObject…` |
+| 8 `Filters/Slider` | `its min arrives over a wire…` | `its min is fed by Model2…` |
+| 8 `Filters/Checkbox` + 8 `Multi Choice/Item` | `its label arrives over a wire…` | `its label is fed by Model2…` |
+| 8 `Single Choice/Item` | `its label arrives over a wire…` | `its **value** arrives over a wire…` |
+| 8 `Single Choice` + 2 `TrustItem` | unchanged | unchanged |
+
+The fourth row is the one to watch: those radios wire **both** `label` and `value` from the row,
+and `value` is genuinely structural, so they keep a structure verdict and merely stop naming the
+wrong port. The other 40 join a wall that already existed — **24 onto row identity** (taking the
+s10 wall from 136 to ~160) and **16 onto the script-written component record**.
+
+⚠️ **`walls.py` will not classify the new strings.** Its patterns were written against the old
+sentences; it refuses to run unless totals reconcile, so this surfaces as `UNCLASSIFIED`
+residual rather than a silent miscount (§17c). Update its patterns before quoting a wall census.
+
+**Six tests written, none run** (`tests/visual-controls.test.ts`, §19 block). Five hold the two
+halves apart; the discriminating one asserts that the *same* port fed by two *different* sources
+reads as two different walls — that is the row that fails if the reason ever collapses back to a
+constant, which is the only thing making these nodes groupable.
+
+### 19e — 🔴 Traps this session paid for
+
+**A gate can be right for a reason it does not give, and the reason is what gets read.** §17a and
+§18c both drew the "not yet" vs "never" distinction on *verdicts*. This is the third instance and
+the first where the verdict was already correct: the export deferred the right 58 nodes for
+three sessions while advertising a wall that does not exist. **A census is an instrument, and its
+rows are only as true as the sentences the gate writes into them.**
+
+**Reading the runtime was necessary and not sufficient.** The runtime proves `label` and `min`
+are content — and acting on that alone would have shipped wrong output, because the blocker is
+the *source*, one hop past anything the runtime shows. §18d said the instrument must come from
+somewhere else when the artefact is the suspect; the companion rule is that **evidence about the
+sink does not settle a question about the source.**
+
+**zsh does not word-split an unquoted variable.** `for p in $KITS` over a plain string ran once
+with the whole list as one value; every `awk` matched nothing and the fingerprints came back as
+`d41d8cd9…` — the md5 of empty — eight times, which reads exactly like eight identical clones.
+The right answer, by luck, was also "they are identical". ✅ **Use an array**, and treat a
+uniformity result that arrives too easily as a claim about the instrument.
+
+### 19f — What is left
+
+1. **Row identity (the s10 wall), now ~160 nodes** — promoted above Tier B. §19c is the argument:
+   the labels, the bounds and the `Model2` reads are one question — *what is a row's identity in
+   the emit* — and answering it unblocks four `Filters/*` components at once, ×8.
+2. **EXP-003 Tier B** — ~350 script-tier nodes in the same kit. `Filters/Range`'s geometry script
+   is the shape of it: it writes the component record that everything downstream reads.
+3. **The two `ProductCard` projects' missing interface** (§11d(2)/(3)) — ruled §13b, built §14.
+   Still the disposition, not a defect.

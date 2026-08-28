@@ -385,6 +385,76 @@ describe('range, dropdown, video, circle (VISUALS-TARGET §4–§7)', () => {
   });
 });
 
+/**
+ * Session 30 (RECORD-VERBS §19). A control whose `label`/`min`/`max`/`step` arrives over a wire
+ * reported "the rendered structure is not static". It is not: the runtime spends `label` as the
+ * single text child of `<label>` and `min`/`max`/`step` as plain attributes, and no emitted CSS
+ * reads them. The node must still defer — an omitted bound renders a 0–100 slider where the app
+ * renders the row's — but the wall is whatever feeds the port, and every such node in the corpus
+ * is behind a wall already on the list. These assertions hold the two halves apart: a genuinely
+ * structural port keeps the old verdict, a content port names its source.
+ */
+describe('wire-fed controls name their source, not a phantom structure wall (§19)', () => {
+  const wire = (fromId: string, fromProperty: string, toId: string, toProperty: string) => ({
+    key: `${fromId}:${fromProperty}->${toId}:${toProperty}`,
+    fromId,
+    fromProperty,
+    toId,
+    toProperty,
+    kind: 'value' as const
+  });
+
+  /** A row record and a component record, so a reason can name two different sources. */
+  const withSource = (type: string, id: string, from: string, to: string, port: string) =>
+    withShowcase((component) => {
+      component.nodes.push(node(id, type, {}, { parent: undefined }));
+      component.connections.push(wire(id, from, to, port));
+    });
+
+  test('a wired checkbox label names the record feeding it', () => {
+    const result = withSource('Model2', 'row', 'prop-Label', 'remember', 'label');
+    const notes = result.notes.join('\n');
+    expect(notes).toContain('its label is fed by Model2 — the structure renders, the value is not statically known');
+    expect(notes).not.toContain('its label arrives over a wire');
+  });
+
+  test('a wired range bound names the record feeding it', () => {
+    const result = withSource('net.noodl.ComponentObject', 'rec', 'value-Min', 'volume', 'min');
+    expect(result.notes.join('\n')).toContain(
+      'its min is fed by net.noodl.ComponentObject — the structure renders, the value is not statically known'
+    );
+  });
+
+  /**
+   * The discriminating row. If the reason ever collapses back to one constant sentence, the two
+   * sources stop being distinguishable and the census can no longer group these nodes onto the
+   * wall they are actually behind — which is the whole point of the change.
+   */
+  test('the same port fed by two different sources reads as two different walls', () => {
+    const fromRow = withSource('Model2', 'row', 'prop-Min', 'volume', 'min').notes.join('\n');
+    const fromRecord = withSource('net.noodl.ComponentObject', 'rec', 'value-Min', 'volume', 'min').notes.join('\n');
+    expect(fromRow).toContain('its min is fed by Model2');
+    expect(fromRecord).toContain('its min is fed by net.noodl.ComponentObject');
+    expect(fromRow).not.toContain('net.noodl.ComponentObject');
+  });
+
+  test('useLabel still defers as structure — it decides whether the label element exists', () => {
+    const result = withSource('Model2', 'row', 'prop-Show', 'remember', 'useLabel');
+    expect(result.notes.join('\n')).toContain('its useLabel arrives over a wire, so the rendered structure is not static');
+  });
+
+  test("a radio's wired value still defers as structure — it decides which child is checked", () => {
+    const result = withSource('Model2', 'row', 'prop-Value', 'small', 'value');
+    expect(result.notes.join('\n')).toContain('its value arrives over a wire, so the rendered structure is not static');
+  });
+
+  test('an unwired control is untouched by the split', () => {
+    const notes = withShowcase().notes.join('\n');
+    expect(notes).not.toContain('is fed by');
+    expect(notes).not.toContain('arrives over a wire');
+  });
+});
+
 describe('nothing regresses on the untouched fixture', () => {
   test('the cheer fixture emits with only the router-shell note', () => {
     const plain = emitApp(structuredClone(baseIr), catalog);
