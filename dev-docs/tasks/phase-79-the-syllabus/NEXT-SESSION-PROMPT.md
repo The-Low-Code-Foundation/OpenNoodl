@@ -82,6 +82,8 @@ it does **not** use jest matchers. `toHaveLength` and `toContainEqual` do not ex
 2. **R2's curriculum edit** — the responsive lesson, `it-breaks-on-a-phone`, at spine position 2.
    ⬜ **Richard has not written its `description` yet**; a draft is in the rulings file. ⚠️ It is
    **two edits**: the new entry, and `poke-it`'s `needs` moving onto it. Spine 12 → 13.
+   ✅ **Session 3 checked the mechanics — the edit is de-risked, and it is still exactly two edits.**
+   🔴 **But the draft description cannot land as a placeholder**: see §5.
 3. **Lesson 2.**
 4. **[SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md)**, the moment two lessons exist — not
    before, and not after lesson 12.
@@ -94,8 +96,40 @@ reopened the lesson. Fixed, and graded by two new specs that both fail on the ol
 which is exactly what the app does not do.** A spec that rebuilds the world in the middle cannot
 see a staleness bug.
 
+## 4a. Session 3 — what was checked, so nobody re-derives it
+
+Nothing was built. Session 3 verified the handoff and pre-cleared R2's mechanics; the phase still
+waits on the same brief.
+
+- ✅ **The handoff is true.** Slice A, slice B and the drive's fix are committed (`00877b87`,
+  `0a374c20`, `8012e63d` = HEAD); `lessonhandholding.ts` and `lessondetail.test.ts` exist; nothing
+  lesson-related is uncommitted.
+- ✅ **Nothing hardcodes the spine order.** Across the community repo's `src/`, the only mention of
+  a spine slug outside `curriculum.json` is a **doc comment** in
+  `api/v1/me/path/project/route.ts:14`. `pathing.ts` names no lesson, by design (UNI-022 AC4).
+- ✅ **No spec breaks on an insert.** `uni022-syllabus.test.ts` asserts
+  `toBeGreaterThanOrEqual(12)` (lines 132/133/218), and its total-count specs (480/481) derive from
+  the file itself. Spine 12 → 13 and curriculum 15 → 16 move nothing red.
+- ✅ **The draft entry is structurally complete.** Its key set is exactly the key set every
+  *unconditional* spine lesson carries. Only **one** spine lesson has a `requires` block at all
+  (`the-same-ideas-in-code`, on `logic: code`), and `satisfies()` treats an absent `requires` as
+  satisfied by everyone — so the responsive lesson reaching every learner is the default, and needs
+  no field to say so.
+- ✅ **Both node names are real.** `Group`, and `Columns` — `displayName: 'Columns'` in
+  `packages/noodl-viewer-react/src/nodes/visual/columns.ts:49`. ⚠️ It is keyed `displayName`, not
+  `displayNodeName`; the narrower grep returns nothing and reads as "no such node".
+- ✅ **The insert composes with branching.** `omitLesson` repairs the chain by handing an omitted
+  lesson's own `needs` down to whatever depended on it — **by `needs`, not by array position**.
+  🔴 That is also the live code confirming **SYL-002 AC4** was specified correctly.
+
 ## 5. Traps carried out of this session
 
+- 🔴 **`in-writing` hides nothing. `/university` serves the `description` of every lesson,
+  whatever its state** — `page.tsx:71` renders `lesson.description` unconditionally, and the state
+  only tints a badge (`'in-writing': 'warn'`, line 45). So a **placeholder description written by
+  anyone but Richard is live prose on a public page the moment it lands**, sitting beside fifteen
+  descriptions that are his. This is why R2 waits on his words and not just on tidiness, and it is
+  the reason a "land the shape now, fix the wording later" move is not available here.
 - 🔴 **A field is not shipped until something reads it.** This format contains a live example:
   `suggestedNodes` → `data-suggested-nodes` → `LessonModel.getCurrentSuggestedNodes`, **no callers**,
   and the MCP brief has to warn models off it. SYL-001 ships a native `<details>` for exactly this
