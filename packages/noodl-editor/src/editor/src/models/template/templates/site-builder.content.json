@@ -73,6 +73,7 @@
             "parameters": {
               "as": "span",
               "text": "Page",
+              "sizeMode": "contentSize",
               "marginRight": "var(--space-6)",
               "marginTop": "var(--space-2)",
               "marginBottom": "var(--space-2)",
@@ -130,6 +131,8 @@
             "x": 290,
             "y": 160,
             "parameters": {
+              "runOnChange-in-slug": true,
+              "runOnChange-in-current": true,
               "functionScript": "if (Inputs.slug === undefined) return;\nlet current = Inputs.current;\nif (current === undefined && Noodl && Noodl.Variables) {\n  current = Noodl.Variables[\"siteCurrentSlug\"];\n}\nconst isCurrent = current !== undefined && current !== null && current !== '' && String(current) === String(Inputs.slug);\nOutputs.color = isCurrent ? 'var(--primary)' : 'var(--muted-foreground)';\nOutputs.weight = isCurrent ? 'var(--font-semibold)' : 'var(--font-normal)';\nOutputs.current = isCurrent;"
             },
             "ports": [],
@@ -259,6 +262,7 @@
             "x": 40,
             "y": 40,
             "parameters": {
+              "sizeMode": "contentHeight",
               "as": "section",
               "flexDirection": "column",
               "paddingTop": "var(--space-8)",
@@ -495,6 +499,7 @@
             "x": 40,
             "y": 40,
             "parameters": {
+              "sizeMode": "contentHeight",
               "as": "section",
               "flexDirection": "column",
               "rowGap": "var(--space-3)",
@@ -705,6 +710,7 @@
             "x": 40,
             "y": 40,
             "parameters": {
+              "sizeMode": "contentHeight",
               "as": "nav",
               "flexDirection": "row",
               "alignItems": "center",
@@ -835,6 +841,7 @@
                         "x": 220,
                         "y": 520,
                         "parameters": {
+                          "sizeMode": "contentHeight",
                           "as": "header",
                           "flexDirection": "column",
                           "rowGap": "var(--space-1)",
@@ -877,6 +884,7 @@
                         "x": 220,
                         "y": 1000,
                         "parameters": {
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "mounted": false
                         },
@@ -910,6 +918,7 @@
                         "x": 220,
                         "y": 1240,
                         "parameters": {
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "mounted": false,
@@ -970,6 +979,7 @@
                         "x": 220,
                         "y": 1480,
                         "parameters": {
+                          "sizeMode": "contentHeight",
                           "as": "footer",
                           "flexDirection": "column",
                           "rowGap": "var(--space-2)",

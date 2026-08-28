@@ -223,6 +223,64 @@ export const NO_LOAD_TIME_FETCH = {
   'runOnChange-querySettings': false
 };
 
+/**
+ * 🔴 **SBR-004 AC1, half B — what every band stacked down this page has to say
+ * out loud, because the platform's default is against it.**
+ *
+ * `addDimensions` gives every visual node `height: 100` with **defaultUnit `%`**
+ * (`node-shared-port-definitions.ts:830-846`) and `Group`'s `defaultSizeMode` is
+ * `explicit` (`group.ts:492` takes the default), so **an unstyled `Group` is
+ * `width:100%; height:100%`**. `Layout.size` then converts a percentage *along* the
+ * parent's direction into `flexGrow` (`layout.ts:92-98`), so three unstyled bands in
+ * a column do not stack — they divide the page between them. Measured on the built
+ * template: nav **219** / header **218** / footer **219** in a 768px viewport, with
+ * the control arm (`height: auto` on the three) reading **138 / 98 / 74** (§8.2 arm B).
+ *
+ * `contentHeight` keeps the width assignment (these bands do span the measure) and
+ * stops assigning a height, which is the `auto` the control restored. `Group`'s
+ * `defaultCss` carries no height (`group.ts:30-34`), so nothing is left behind.
+ *
+ * ⚠️ **Not a style, and not optional.** It goes on every Group that is *placed in a
+ * column and sized by what is in it* — which on the public site is all of them. The
+ * exceptions are deliberate and each says so where it is authored: `Page ground` and
+ * `Page shell` are the two nodes that SHOULD fill, and `Section image` is `explicit`
+ * because a crop has a stated height.
+ *
+ * 🔴 **`flex-grow: 0` is not this fix.** §8.2 measured that arm: grow verified 0 in
+ * computed style, heights held at 219/218/219. The height comes from `height: 100%`,
+ * so the size mode is the only lever that reaches it.
+ */
+export const STACKED_IN_A_COLUMN = { sizeMode: 'contentHeight' };
+
+/**
+ * The nodes on the public site that are SUPPOSED to take the space their parent
+ * gives them — an **exemption list, not a relaxation**, in the same shape as
+ * {@link RAW_DIMENSION_EXEMPTIONS} and for the same reason.
+ *
+ * `sb006PublicSite.test.ts` walks the whole placed tree (across component
+ * boundaries, because a component's visual root is laid out by whatever placed
+ * the instance) and reds on any `Group`/`Text`/`Image` whose size along its
+ * parent's direction is still the defaulted percentage — which `Layout.size`
+ * turns into `flexGrow`. Every legitimate one is here with the sentence that
+ * makes it legitimate, so *adding* a growing node reds the gate until someone
+ * writes down why it grows.
+ *
+ * 🔴 Keyed by **label**, not by the authored id, for SB-004 F9 — the door
+ * reallocates ids to be unique across the project.
+ */
+export const FILL_THE_PARENT_EXEMPTIONS: ReadonlyArray<{ component: string; label: string; why: string }> = [
+  {
+    component: 'Pages/Site',
+    label: 'Page ground',
+    why: 'This is the themed ground and it must reach the bottom of the window — it is the node carrying --background and minHeight 100vh. A content-height ground is the "the page just stops" defect SBR-004 exists to end.'
+  },
+  {
+    component: 'Pages/Site',
+    label: 'Page shell',
+    why: 'The centred measure column. It grows inside the ground so the ground has something spanning it; its own children are the bands, and those are all contentHeight.'
+  }
+];
+
 export const PAGE_BY_SLUG_FILTER = {
   combinator: 'and',
   rules: [{ property: 'slug', operator: 'equal to', input: 'slug' }]
@@ -380,6 +438,38 @@ export const NAV_LINK_NODES = [
     parameters: {
       as: 'span',
       text: 'Page',
+      // 🔴 **SBR-004 AC1, half A: without this the nav bar renders as a column.**
+      // `Text`'s `defaultSizeMode` is `contentHeight` (`text.ts:149-152`), which
+      // still assigns `width` — and `width` defaults to **100 with defaultUnit `%`**
+      // (`node-shared-port-definitions.ts:812-828`). `Layout.size` converts a
+      // percentage *along* the parent's direction into `flexGrow`
+      // (`layout.ts:83-88`), and this node's parent is `Site/Nav`'s `flexWrap: wrap`
+      // ROW. So every link claimed a whole line and three links stacked: measured
+      // nav 219px, links at y=37/99/161 (§8.2 arm A).
+      //
+      // `contentSize` assigns neither axis, which is the `width: auto` the control
+      // arm restored. 🔴 **`flex-grow: 0` is NOT the lever** and §8.2 spent an arm
+      // proving it: grow reads 0 in computed style with the stack still stacked,
+      // because the width is what wraps, not the grow.
+      sizeMode: 'contentSize',
+      // ⚠️ **No `maxWidth` here, and that is a measurement rather than an
+      // omission.** `contentSize` leaves the link unshrinkable (`Layout.size`
+      // sets `flexShrink: 0` and only opts back in on the percentage paths it has
+      // just stopped taking), so the obvious guard is `maxWidth: 100%` to keep a
+      // very long page TITLE from running past a phone screen. It was authored,
+      // driven, and **removed**: on a `Text` the parameter never reaches the DOM.
+      // Measured on the claimed site at 360px, same page load: the link's
+      // `getComputedStyle(...).maxWidth` reads **`none`** with the parameter set,
+      // while `Page ground`'s `minHeight` and `Page shell`'s `maxWidth` — the same
+      // port family, same `{ value, unit }` shape — both render on their `Group`s.
+      // Shipping it would have been a parameter nothing reads.
+      //
+      // ✅ AC4 holds without it, and that was measured too rather than assumed: at
+      // 360px with a 51-character title the link's box overhangs by 63px but
+      // `documentElement.scrollLeft` stays **0** (control: a planted 2000px
+      // element reads 1640), so the page does not scroll sideways — the long link
+      // is clipped, the same shape as §8.5's admin button. Recorded as SBR-006's
+      // rather than papered over here. See SBR-004 §9.3.
       // ⚠️ MARGIN, not padding. `Text` is given `addMarginInputs` and NOT
       // `addPaddingInputs` (`text.ts:149-158`), so a `paddingTop` here is a port
       // that does not exist — the door refuses it and the runtime would discard
@@ -419,6 +509,37 @@ export const NAV_LINK_NODES = [
     type: 'JavaScriptFunction',
     label: 'Is this the page being read',
     parameters: {
+      // 🔴 **Both boxes are written explicitly, and the reason is not the panel
+      // default — it is a migration that fires on this very graph.** NDA-017 §2 made
+      // "run on value change" default to ticked, and `runOnValueChange` reads an
+      // absent key as ticked (`run-on-value-change.ts:178-181`), so leaving these
+      // out ought to be the same as writing `true`. It is not.
+      //
+      // `applyPatches` runs {@link applyRunOnValueChangeMigration} on every project
+      // load (`applypatches.js:71`), and its rule is: for any node in the fifteen
+      // families whose **control signal is connected**, write
+      // `runOnChange-<input>: false` for the value inputs that signal used to
+      // silence. This node wires `run` (from `currentSlug.changed`, below), so the
+      // migration writes `false` on `in-slug` and `in-current` — turning off the
+      // one behaviour AC2 depends on. Measured on the shipped artefact: **37 nodes
+      // in a freshly created project carry a migrated `false` and not one carries a
+      // `true`** (SBR-004 §8.1). The migration is for pre-§2 graphs and cannot tell
+      // this one from those, because the project format has nowhere to record that
+      // it already ran — an open question §2 recorded and did not close.
+      //
+      // ✅ **An already-present key is never touched, whatever its value** (the
+      // migration's idempotence clause), so writing `true` here is the one thing
+      // that survives the load. Absent does not.
+      //
+      // 🔴 And both, not one. The three producers arrive in an order this node does
+      // not control — `slug` from the `For Each`, `current` from the Variable, `run`
+      // from the Variable's `changed`. With only `in-current` ticked, a `current`
+      // that lands before `slug` hits the guard on the first line and nothing ever
+      // runs the body again. Two ticked inputs changing in one frame still produce
+      // ONE run (NDA-017 constraint 3), so this costs nothing.
+      'runOnChange-in-slug': true,
+      'runOnChange-in-current': true,
+
       // 🔴 Two producers, and the second one is not redundant. `changed` fires
       // when the variable is written from anywhere, which covers "the link
       // existed before the page resolved its slug". The direct read covers the
@@ -514,6 +635,8 @@ export const SECTION_VIEW_NODES = [
     // The values are the same 32/16 they were — what changed is where they come
     // from, so the look is unmoved and the provenance is single.
     parameters: {
+      // AC1 half B — see `STACKED_IN_A_COLUMN`.
+      ...STACKED_IN_A_COLUMN,
       as: 'section',
       flexDirection: 'column',
       paddingTop: 'var(--space-8)',
@@ -662,6 +785,8 @@ export const CONTACT_FORM_NODES = [
     // as more of the article. Every value is a token, `--surface` included, so
     // the card follows the Theme record like everything else.
     parameters: {
+      // AC1 half B — see `STACKED_IN_A_COLUMN`.
+      ...STACKED_IN_A_COLUMN,
       as: 'section',
       flexDirection: 'column',
       rowGap: 'var(--space-3)',
@@ -854,6 +979,8 @@ export const NAV_NODES = [
     // also what separates the rows once the bar wraps. Adding a gutter back here
     // reds the create call.
     parameters: {
+      // AC1 half B — see `STACKED_IN_A_COLUMN`.
+      ...STACKED_IN_A_COLUMN,
       as: 'nav',
       flexDirection: 'row',
       alignItems: 'center',
@@ -986,7 +1113,7 @@ export const SITE_NODES = [
     type: 'Group',
     label: 'Header',
     parent: 'shell',
-    parameters: { as: 'header', flexDirection: 'column', rowGap: 'var(--space-1)', paddingTop: 'var(--space-8)' },
+    parameters: { ...STACKED_IN_A_COLUMN, as: 'header', flexDirection: 'column', rowGap: 'var(--space-1)', paddingTop: 'var(--space-8)' },
     children: ['siteName', 'pageTitle']
   },
   {
@@ -1061,7 +1188,7 @@ export const SITE_NODES = [
     // (`instance-unknown-parameter`, blocking: *"The value is discarded"*). So
     // `visible` cannot go on the instance, and a graph that put it there would
     // have shown the contact form on every page.
-    parameters: { flexDirection: 'column', mounted: false },
+    parameters: { ...STACKED_IN_A_COLUMN, flexDirection: 'column', mounted: false },
     children: ['contact']
   },
   { id: 'contact', type: '/Site/ContactForm', label: 'Contact form', parent: 'contactWrap' },
@@ -1081,6 +1208,8 @@ export const SITE_NODES = [
     // named are *panels* — a centred card on the surface colour is what tells a
     // visitor "this is the whole answer" instead of "this paragraph failed".
     parameters: {
+      // AC1 half B — see `STACKED_IN_A_COLUMN`.
+      ...STACKED_IN_A_COLUMN,
       flexDirection: 'column',
       alignItems: 'center',
       mounted: false,
@@ -1125,6 +1254,8 @@ export const SITE_NODES = [
     // name and a way back to the home page is the minimum that reads as a
     // published site rather than a fragment.
     parameters: {
+      // AC1 half B — see `STACKED_IN_A_COLUMN`.
+      ...STACKED_IN_A_COLUMN,
       as: 'footer',
       flexDirection: 'column',
       rowGap: 'var(--space-2)',

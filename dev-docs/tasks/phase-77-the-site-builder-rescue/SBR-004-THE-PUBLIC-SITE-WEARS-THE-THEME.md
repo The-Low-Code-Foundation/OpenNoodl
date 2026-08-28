@@ -259,6 +259,16 @@ produced it had to write the variable while the links stayed mounted.
 arrive instead of only on a signal that has already passed. Not applied here — it belongs
 in `sb006Components.ts`, the template's source, not in a drive project.
 
+> 🔴 **s7 correction — this section's account of WHERE the `false` comes from is wrong,
+> and the correct answer is a product defect rather than a template one.**
+> `sb006Components.ts` does not author `runOnChange-in-slug`/`-in-current` at all, and
+> never did; a reader who went looking for them there would have found nothing. They are
+> written on **project load** by the NDA-017 back-compat migration
+> (`applypatches.js:71` → `runOnValueChangeMigration.ts`), whose rule is: for any node in
+> the fifteen families **whose control signal is connected**, write
+> `runOnChange-<input>: false` for the value inputs that signal used to silence. This node
+> wires `run`, so it qualifies. See §9.2 — it is not one node, it is 37.
+
 ### 8.2 🔴 AC1 FAILS — the nav is a column, and three sections split the viewport
 
 `/home` at 1024×768, claimed, three published pages. The Studio look **is** worn: ground
@@ -348,3 +358,131 @@ Known-firing signal beside the absence, so the `0` means "nothing overflows".
    this is what AC1 turns on, and it is where the "no short paths" ruling bites: the shape
    has to be authored, because the platform's defaults are actively against it.
 3. AC3 remains SBR-012's.
+
+> ✅ **1 and 2 are done and driven — see §9.** 3 is still SBR-012's.
+
+## 9. Built and driven (s7) — AC1 and AC2 both PASS, and one finding is bigger than both
+
+§8 left two named fixes. Both are authored in `sb006Components.ts`, regenerated into the
+shipped `site-builder.content.json`, and **driven on the claimed site** — the same
+`SBR-004 Mounted Drive`, three published pages, nothing hand-poked.
+
+🔴 **What was driven is the shipped artefact, not a retyped copy.** The 11 parameter values
+were read out of the regenerated `site-builder.content.json` and applied into the drive
+project by label, so a value that differed from what ships could not have been measured.
+
+### 9.1 ✅ AC2 PASSES on a real page load, and after in-app navigation
+
+§8.1's second row, now produced by the running app with nothing poked:
+
+| arm | Home | About | Studio |
+|---|---|---|---|
+| **`/home`, fresh load** | **`rgb(30,77,140)` / 600** | `rgb(86,83,76)` / 400 | `rgb(86,83,76)` / 400 |
+| **`/about`, after clicking the nav** | `rgb(86,83,76)` / 400 | **`rgb(30,77,140)` / 600** | `rgb(86,83,76)` / 400 |
+
+`--primary` + `--font-semibold` on the current link, `--muted-foreground` + `--font-normal`
+on its siblings. Both channels, both routes. §8.1's *"there is no path through the running
+app on which the current-page state appears"* is no longer true.
+
+**The fix is two parameters and neither could be omitted**: `runOnChange-in-slug: true` and
+`runOnChange-in-current: true`. Both, because the three producers arrive in an order the node
+does not control — with only `in-current` ticked, a `current` that lands before `slug` hits
+the `if (Inputs.slug === undefined) return;` guard and nothing runs the body again.
+
+### 9.2 🔴 The finding: the migration silences the whole template, not one node
+
+**`sb006Components.ts` never authored those `false`s.** They are written on every project
+load by the NDA-017 back-compat migration (`applypatches.js:71` →
+`runOnValueChangeMigration.ts`): for any node in the fifteen families whose **control signal
+is connected**, it writes `runOnChange-<input>: false` for the value inputs that signal used
+to silence. That is exactly right for a graph authored before NDA-017 §2 — and the migration
+**cannot tell such a graph from one created this morning**, because the project format has
+nowhere to record that it already ran (an open question §2 recorded and did not close).
+
+Measured over the drive project, which is a freshly created site-builder project:
+
+> **37 nodes carry a migrated `runOnChange-*: false`. Not one node in the project carries a
+> `true`.** Four of those `false`s are the template's own deliberate `NO_LOAD_TIME_FETCH`
+> pairs; the other 33 are the migration's.
+
+✅ **Why the fix works anyway**: an already-present key is **never touched, whatever its
+value** (the migration's idempotence clause). So writing `true` survives the load — and
+*absent* does not. That asymmetry is the whole fix, and it is why the spec asserts the
+literal `true` rather than "not `false`".
+
+⚠️ **Most of the other 33 are harmless, and one is not.** They are harmless where the `run`
+wire is a real trigger that fires *after* the values — `ContactForm/gather` runs on the send
+button's click, and the button is clicked after the fields are typed. The exception is
+`/Pages/Site`'s **`The slug to show`**, whose `run` is `Page.didMount` and whose
+`in-homeSlug` is now passive: if the `SiteSettings` fetch answers *after* mount, the guard
+`if (Inputs.homeSlug === undefined) return;` fires once and nothing ever re-runs it.
+
+**Driven, at the root URL `/`**: `Noodl.Variables` holds **0 keys**, `siteCurrentSlug` is
+`undefined`, the `h1` is empty and the page body is `Home About Studio / My site / My site /
+Home` — nav and footer, no page. The front door renders no page. `/home` and `/about` are
+fine, so this is the empty-slug path specifically, which is the one that needs `homeSlug`.
+
+🔴 Nothing this session changed is upstream of that node — `sizeMode` is pure layout and the
+`NavLink` state node only *reads* the variable this one writes — so it is not a regression
+from §9.1, but it was not measured before either. **It is the next thing to fix on this
+template and it is worth more than the two above**: it is the URL every first visitor types.
+
+### 9.3 ✅ AC1 PASSES — the bar is a bar and the bands are their own height
+
+`/home` at 1024×768, claimed, three published pages:
+
+| | §8.2 as built | §8.2 control | **s7 as authored** |
+|---|---|---|---|
+| nav | 219px, links at y=37/99/161 | 68px, one row | **68px, all three at y=24** |
+| header | 218 | 98 | **98** |
+| footer | 219 | 74 | **74** |
+
+The rendered page is AC1's sentence: `Home  About  Studio` on one rule-bottomed row, Home in
+`--primary` semibold, serif display `h1`, 704px measure, warm ground.
+
+The lever is `sizeMode`, on seven `Group`s (`contentHeight`) and the nav link `Text`
+(`contentSize`) — collected as `STACKED_IN_A_COLUMN` so the reason is written once.
+🔴 **Confirming §8.2: `flex-grow` is not the lever and must not be re-tried.**
+
+⚠️ **`maxWidth` was authored as AC4's guard, driven, and REMOVED — the parameter never
+reaches the DOM on a `Text`.** With `maxWidth: { value: 100, unit: '%' }` set on the nav
+link, `getComputedStyle(link).maxWidth` reads **`none`** on the claimed site, while on the
+same page load `Page ground`'s `minHeight` (`100vh`) and `Page shell`'s `maxWidth`
+(`var(--site-measure)`) — same port family — both render on their `Group`s. Shipping it
+would have been a parameter nothing reads. **This is a product defect worth its own look**:
+`maxWidth` is a declared, unconditional port on `Text` (confirmed in the catalog) that the
+runtime does not apply.
+
+### 9.4 ✅ AC4 still holds, measured rather than assumed
+
+The reason the removal above is safe. 360×800, `/home`, claimed:
+
+| probe | `documentElement.scrollLeft` after `= 9999` |
+|---|---|
+| as built, three real links | **0** |
+| **control:** a planted 2000px element | **1640** |
+| after removing it | **0** |
+| **a 51-character page title in the nav** | **0** (box overhangs by 63px, but nothing scrolls) |
+
+So a very long title is **clipped**, not scrolled — the same shape as §8.5's admin button,
+and SBR-006's rather than this task's. AC4 as written holds either way, which is what makes
+`maxWidth`'s removal a correction rather than a regression.
+
+### 9.5 🔴 The gate had a hole shaped exactly like both defects
+
+**All 49 specs in `sb006PublicSite.test.ts` were green while AC1 and AC2 both failed on a
+real page.** Three checks now close it, each with a mutant that reddens:
+
+1. **AC2** runs the *real* `planRunOnValueChangeMigration` over the *real* written artefact
+   and asserts no write names `/Site/NavLink` — beside `plan.writes.length > 0` and
+   `plan.signalDrivenNodes > 0` as the known-firing signal, because "no write names the
+   link" passes for free on a plan that writes nothing. It imports the migration rather than
+   restating its rule: a re-implementation would agree with a migration that had changed
+   underneath it, which is the failure being fixed.
+2. **AC1** walks the whole *placed* tree across component boundaries — a component's visual
+   root is laid out by whatever placed the instance, which is how `Site/Nav`'s row reaches
+   the nav link's `Text` two components away — and reds on any `Group`/`Text`/`Image` still
+   on the defaulted percentage along its parent's direction. Legitimate growers are named in
+   `FILL_THE_PARENT_EXEMPTIONS` with a reason. Its census asserts the **ordered list of every
+   node reached**, so a hop that silently stops reds rather than reporting a clean page.
+3. Both mutants call **the same function the green arm calls**, not a restatement of it.

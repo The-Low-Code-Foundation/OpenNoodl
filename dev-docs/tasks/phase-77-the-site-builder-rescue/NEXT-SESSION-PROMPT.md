@@ -9,109 +9,120 @@
 | SBR-001 | ✅ closed s2, driven |
 | SBR-002 | ✅ closed s4, driven |
 | SBR-003 | ✅ closed s5 |
-| SBR-004 | 🟡 **built s5, driven on a claimed site s6 — AC1 and AC2 both FAIL, both diagnosed.** The fixes are small and named below |
+| SBR-004 | 🟢 **s7: AC1, AC2 and AC4 all driven PASS on a claimed site.** AC3 is SBR-012's. Two findings came out of it and both are below |
 | SBR-005…014 | ⬜ open |
 
-**s6 did what s5 owed**: claimed the site through the real Secrets panel + `/admin/setup`,
-published three pages, and drove the public site with a nav that finally has links in it.
-Everything below is measured, each with a control pair on the same page load. Full detail is
-**SBR-004 §8** — read it before touching the graph.
+**s7 did what s6 owed.** Both fixes are authored in `packages/noodl-mcp/tests/sb006Components.ts`,
+regenerated into the shipped `site-builder.content.json` (`npm run template:site-builder`), and
+driven. Full detail is **SBR-004 §9** — read it before touching the graph.
 
-## 🔴 Start here: two small fixes in `sb006Components.ts`, then re-drive §8's tables
+- **AC1**: nav **219 → 68px**, all three links on **one row at y=24**; header 98, footer 74.
+  The lever is `sizeMode` (`STACKED_IN_A_COLUMN`). 🔴 `flex-grow` is not the lever — twice measured.
+- **AC2**: `--primary`/600 on the current link and muted/400 on its siblings, on a fresh `/home`
+  load **and** after clicking through to `/about`. Nothing poked.
+- **AC4**: re-confirmed at 360px with a control pair.
 
-Both are in the template source (`packages/noodl-mcp/tests/sb006Components.ts`), **not** in a
-drive project, and §8 already contains the acceptance table for each.
+## 🔴 Start here: the root URL `/` renders no page
 
-### 1. AC2 — the current-page state never runs (one parameter)
+Bigger than either AC that was just fixed, and it is the URL a first visitor types.
 
-`Site/NavLink`'s `Is this the page being read` has `runOnChange-in-slug: false` and
-`runOnChange-in-current: false`, so its only trigger is `Which slug the page is showing.changed`.
-`/Pages/Site` writes `siteCurrentSlug` **before** the nav's `For Each` builds the links, so
-`changed` has already fired and never fires again. Measured: all three links render
-`rgb(0,0,0)`/400 on load, and on `/about` after in-app navigation too (the page re-mounts).
+**Driven at `http://localhost:8574/` on the claimed site**: `Noodl.Variables` holds **0 keys**,
+`siteCurrentSlug` is `undefined`, the `h1` is empty, and the whole body is
+`Home About Studio / My site / My site / Home` — the nav and the footer, no page.
+`/home` and `/about` render correctly, so it is the **empty-slug path** specifically.
 
-🔴 **§5's mitigation cannot help and the reason is worth keeping**: the direct
-`Noodl.Variables[...]` read is *inside the function body*, and the body never executes. A
-fallback inside a function does not cover "the function is never called."
+**The mechanism is named and is the same family as AC2's.** `/Pages/Site`'s
+`The slug to show` (`resolveSlug`) guards on `if (Inputs.homeSlug === undefined) return;`.
+Its `run` is `Page.didMount`; its `runOnChange-in-homeSlug` is `false`. So if the
+`SiteSettings` fetch answers *after* mount — which is a race it wins only by luck on a local
+backend — the guard fires once and nothing re-runs it. The empty URL slug is the one case that
+*needs* `homeSlug`, which is why only `/` breaks.
 
-✅ Set `runOnChange-in-current: true`. Proof it is sufficient: poking the variable while the
-links are mounted produces **`rgb(30,77,140)`/600 for the current link and `rgb(86,83,76)`/400
-for its siblings** — both channels, exactly as built.
+✅ The fix has the same shape as AC2's: write `runOnChange-in-homeSlug: true` (and
+`-in-slug`) explicitly in `sb006Components.ts`. Verify it the way AC2 was verified — load `/`
+and read `Noodl.Variables.siteCurrentSlug` and the `h1`, on a claimed site.
+⚠️ Check the ordering consequence first: `resolveSlug` writes the app-wide current slug and
+gates the filtered page query, so making it re-run on every input change is a real behaviour
+change, not just a re-trigger. §9.2 has the reasoning; the other 33 migrated nodes are fine.
 
-⚠️ While there, look at the **footer's `Home` link**, which is `--primary` + semibold on every
-page. Until AC2 works the footer is the only thing on the page that looks like a current-page
-indicator, and afterwards the two need to not disagree.
+## 🔴 The finding that is bigger than this template: the NDA-017 migration fires on new projects
 
-### 2. AC1 — the nav is a column and the sections split the viewport
+`sb006Components.ts` never authored the `runOnChange-*: false` that broke AC2. They are written
+on **every project load** by the NDA-017 back-compat migration (`applypatches.js:71` →
+`ProjectPatches/runOnValueChangeMigration.ts`): for any node in the fifteen families whose
+**control signal is connected**, write `runOnChange-<input>: false` for the value inputs that
+signal used to silence.
 
-Neither is authored; both are platform defaults the template has to override explicitly.
+That is correct for a graph authored before NDA-017 §2, and the migration **cannot tell such a
+graph from one created this morning** — the project format has nowhere to record that it ran, an
+open question §2 recorded and did not close.
 
-| | as built | control | varied |
-|---|---|---|---|
-| nav is a column | nav **219px**, links on 3 lines | nav **68px**, one row | `width:auto; flex-grow:0` on the links |
-| sections split the page | 219 / 218 / 219 | **138 / 98 / 74** | `height:auto` on nav, header, footer |
+**Measured over a freshly created site-builder project: 37 nodes carry a migrated `false`, and
+not one node in the project carries a `true`.** Four are the template's deliberate
+`NO_LOAD_TIME_FETCH` pairs; the other 33 are the migration's.
 
-- `addDimensions` defaults every node to `width: 100`, `height: 100`, unit **`%`**
-  (`node-shared-port-definitions.ts:813-846`); `Group`'s `defaultSizeMode` is `explicit`. So an
-  unstyled `Group` is `width:100%; height:100%` and three stacked ones take a third each.
-- `Text` is `defaultSizeMode: 'contentHeight'` (`text.ts:149-152`) so it still takes
-  `width:100%`, and `Layout.size` converts a percentage *along* the parent's direction into
-  `flexGrow` (`layout.ts:83-88`) — the measured `flex: 100 1 auto`. **In a `flex-wrap: wrap`
-  row every `Text` claims the whole line, so a "bar" renders as a stack.**
+✅ **What makes the fix work**: an already-present `runOnChange-<input>` key is **never touched,
+whatever its value**. So an explicit `true` survives the load and *absent* does not — which is
+why the spec asserts the literal `true` rather than "not `false`".
 
-🔴 **This also closes s5's undiagnosed 151px/150px note, and s5's lever was the wrong one.**
-`flex-grow: 0` changes nothing (verified 0 in computed style, heights held) — the height comes
-from `height: 100%`. **Do not re-test this with flex-grow.**
+🔴 **This is a product defect, not a template one**, and it deserves a task of its own: every
+author who wires `Run` on a new graph gets their value inputs silently turned passive on the
+next load, and the property panel will show them unticked with no explanation. Worth reading
+§2's "once and stamp" open question again — a project-format marker is the obvious answer.
 
-✅ With both neutralised the page is AC1's sentence: `Home  About  Studio` on one rule-bottomed
-row, Home in `--primary` semibold, serif display, 704px measure, warm ground. Three inline
-overrides, no graph change — the distance to AC1 is small.
+## ⚠️ `maxWidth` is inert on `Text`
 
-## 🔴 The other thing s6 found, and it is bigger than SBR-004
+Authored as AC4's guard, driven, and removed. With `maxWidth: { value: 100, unit: '%' }` set on
+the nav link, `getComputedStyle(link).maxWidth` reads **`none`** on the claimed site — while on
+the same page load `Page ground`'s `minHeight` and `Page shell`'s `maxWidth`, the same port
+family and the same `{ value, unit }` shape, both render on their `Group`s. `maxWidth` is a
+declared, unconditional port on `Text` in the catalog. **Do not re-add it from the armchair**;
+the spec pins its absence. AC4 holds without it (measured, §9.4).
 
-**SB-017 §11.1's predicted `prop-title`/`prop-slug` drop is now driven.** Typing a title and a
-slug in `/Pages/Admin` and pressing `New page` POSTs
+## 🔴 Still standing from s6, unchanged
+
+**SB-017 §11.1's `prop-title`/`prop-slug` drop is driven.** Typing a title and a slug in
+`/Pages/Admin` and pressing `New page` POSTs
 `{"published":false,"showInNav":true,"navOrder":0,"ACL":{…}}` — **HTTP 201, no title, no slug**.
 The three `prop-*` that arrive are exactly the three set as *parameters*; `prop-title`/`prop-slug`
-exist only as **connection targets** and the node's saved `dynamicports` holds no `prop-*` at all.
+exist only as **connection targets**. Discriminators in SBR-004 §8.3. So the ruled SBR-008 fix is
+**not only a deploy fix** — the admin→site loop is broken in the local preview.
 
-Discriminators (so nobody re-derives it): `/Pages/Setup` uses the same node type and the same
-`onTextChanged → port` wire and **its three values all arrived**, so the instrument fires; and a
-create issued after the columns existed, and again after a full viewer reload, dropped them
-identically — not a schema race.
+⚠️ **`/Pages/Admin` at 360px: the `New page` button's centre is off-screen** (box 310→410 in a
+360px viewport; clipped, not scrollable, so a `cdp click` lands on nothing). SBR-006's.
 
-🔴 **A slug-less page is unreachable and a title-less one renders a blank nav link.** So the
-ruled SBR-008 fix (README §1: derive `prop-<field>` in the runtime from the node's own wires) is
-**not only a deploy fix** — the admin→site loop is broken in the local preview, which is where
-every first impression of this template happens. Worth re-reading SBR-008's scope against this.
+🔴 **The footer's `Home` link is `--primary` + semibold on every page.** Now that the nav has a
+real current-page indicator, the footer is a second one that disagrees on every page except home.
 
-## What s6 settled, so nobody re-derives it
+## What s6/s7 settled, so nobody re-derives it
 
 - ✅ **The Secrets panel works.** `···  → Secrets` on the backend card wrote `SITE_SETUP_TOKEN`
   into `~/.noodl/backends/<id>/secrets.json` under the **`functions`** namespace, which is what
-  `resolveFunctionSecret` reads (`service.ts:793`). s5's "blocked" was about hand-editing the
-  file, not the panel. `claimSite` then granted the role and wrote both singletons.
-- ✅ **AC4's overflow half holds on a claimed page at 360px**: `scrollLeft` 0 as built, **1640**
-  with a planted 2000px control, 0 after removing it.
-- ⚠️ **`/Pages/Admin` at 360px: the `New page` button's centre is off-screen** (box 310→410 in a
-  360px viewport; hit at x=355, missed at x=360; `scrollWidth` stays 360, so it is clipped).
-  A `cdp click` aims at the centre and lands on nothing. SBR-006's, but a real one.
+  `resolveFunctionSecret` reads (`service.ts:793`). s5's "blocked" was about hand-editing the file.
+- ✅ **49 specs were green while AC1 and AC2 both failed on a real page.** Three checks now close
+  the hole (SBR-004 §9.5): the AC2 one imports and runs the **real** migration over the **real**
+  written artefact; the AC1 one walks the whole *placed* tree across component boundaries and
+  asserts the ordered census of every node it reached. Both mutants call the same function the
+  green arm calls.
+- ✅ Driving the shipped artefact: read the 11 parameter values out of the regenerated
+  `site-builder.content.json` and apply them into the drive project **by label** — never retype
+  them, or you measure something that does not ship.
 
 ## Traps this session paid for
 
-- 🔴 **A refused write and a filtered read look identical.** A `DELETE` loop with output to
-  `/dev/null`, "confirmed" by an *anonymous* query, reported six rows gone that were still
-  there — they were admin-ACL rows the anonymous query could never see, and they sat in the nav
-  as blank links through the first pass of the measurements. ✅ **Check the HTTP status, and
-  verify on the same population you wrote to.**
-- 🔴 **Panels are all mounted; only one has a box.** `document.querySelector('[class*=PanelHeader-module__Title]')`
-  returns the *first* — a hidden, zero-sized "Components" — so ten rail clicks all read as
-  "nothing happened" when every one had worked. ✅ **Filter by `getBoundingClientRect().width > 0`.**
-- ⚠️ Menu items double (the `BaseDialog` ghost) — pick the copy with no `MeasuringContainer`
-  ancestor. DOM stamps survive across `cdp` calls but **a click that re-renders wipes them**;
-  re-stamp before each click.
-- ⚠️ The preview device size is the editor topbar's **first** `EditorTopbar-module__ZoomSelect`.
-  At 360px a button whose centre is at x≥360 cannot be clicked by selector at all.
+- 🔴 **A control pair that clears an inline style clears the RUNTIME's value too.** The first
+  `maxWidth` control read 399px in both arms — because setting `el.style.maxWidth = ''` to
+  "restore" it deleted the value the runtime had written. Both arms ran without the thing under
+  test and agreed, which reads exactly like "the parameter does nothing". ✅ **Read the property
+  first and restore what you read**, and treat two identical arms as a broken instrument before a
+  finding.
+- 🔴 **The viewer target is listed as `webview`, not `viewer`.** `cdp targets | grep viewer`
+  never matches, so an until-loop on it spins forever. `--target=viewer` itself works fine.
+- ⚠️ There is no CDP emulation command in `cdp.js`. To drive a phone width, set the editor's
+  `webview` element width directly (`document.querySelector('webview').style.width='360px'` plus
+  its parent) and wait on `window.innerWidth` in the viewer.
+- ⚠️ A hand-copied project does **not** appear in the launcher's list, and `Open project…` is a
+  native dialog. Patch the project the launcher already knows, after backing it up.
 
 ## Standing context
 
@@ -120,9 +131,10 @@ every first impression of this template happens. Worth re-reading SBR-008's scop
   https://claude.ai/code/artifact/f4b2077a-7a78-4c33-8bf7-8b7f343f0b0b .
 - 🔴 Never scope by time. Every task's ACs include a person sentence — verify as written, and if
   the platform cannot express what an AC asks for, **say so and record the gap** rather than
-  quietly substituting.
+  quietly substituting. (`maxWidth` above is exactly that case.)
 - Drive artefacts: **`SBR-004 Mounted Drive`** is claimed, has `SITE_SETUP_TOKEN` provisioned and
-  three published pages (`home`/`about`/`studio`), owner `owner@example.com` / `drive-password-1`.
-  Re-usable as-is. `SBR-004 Theme Drive` still carries the pre-`mounted` graph — do not reuse it.
+  three published pages (`home`/`about`/`studio`), owner `owner@example.com` /
+  `drive-password-1`, and **now carries the s7 graph**. A pre-s7 copy is `SBR-004 AC1AC2 Drive`.
+  `SBR-004 Theme Drive` still carries the pre-`mounted` graph — do not reuse it.
 - Shared checkout: **pathspec commits only**; announce editor launches **and** teardowns;
   `test:ci` alone.

@@ -35,6 +35,7 @@ import {
   NOT_AVAILABLE_TEXT,
   NOT_FOUND_TEXT,
   NOT_SET_UP_TEXT,
+  FILL_THE_PARENT_EXEMPTIONS,
   RAW_DIMENSION_EXEMPTIONS,
   SB006_COMPONENTS,
   SITE_CURRENT_SLUG_VAR,
@@ -43,6 +44,10 @@ import {
   createPass,
   exemptionKey
 } from './sb006Components';
+import {
+  planRunOnValueChangeMigration,
+  type MigrationProjectLike
+} from '../../noodl-editor/src/editor/src/models/ProjectPatches/runOnValueChangeMigration';
 
 jest.setTimeout(120000);
 
@@ -1491,6 +1496,277 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     expect(link.parameters?.marginRight).toBe('var(--space-6)');
     // The vertical step is what separates the ROWS once the bar has wrapped.
     expect(link.parameters?.marginTop).toBe('var(--space-2)');
+  });
+
+  // ── SBR-004 AC1 and AC2: the two the DRIVE found and 49 greens did not ──────
+
+  /**
+   * The five written components in the shape the NDA-017 migration reads.
+   *
+   * 🔴 `eachNode` recurses through `children`, and the saved v2 graph's `children`
+   * are id **strings**, not nodes. The field is dropped rather than reinterpreted:
+   * the migration only ever needs ids, types, parameters and the connection list —
+   * it decides per node, never per subtree — so a flat root list is the whole graph
+   * as far as it is concerned.
+   */
+  const migrationProject = (source: Record<string, Written> = written): MigrationProjectLike => ({
+    components: SB006_COMPONENTS.map((c) => ({
+      name: c.legacyName,
+      graph: {
+        roots: source[c.key].graph.nodes.map(({ children, ...node }) => node),
+        connections: source[c.key].wires
+      }
+    }))
+  });
+
+  const LINK_STATE = 'Is this the page being read';
+
+  /**
+   * 🔴 **The check that would have caught AC2, and it is not about a parameter —
+   * it runs the real migration over the real artefact.**
+   *
+   * SBR-004 §8.1 drove this: on every real page load all three nav links rendered
+   * `rgb(0,0,0)`/400, while poking the variable with the links mounted produced
+   * `rgb(30,77,140)`/600 and `rgb(86,83,76)`/400. So the graph was right and the
+   * body never ran. The cause was `runOnChange-in-slug`/`-in-current` sitting at
+   * `false` in the saved project — which **nothing in this file authored**.
+   *
+   * `applyPatches` runs the NDA-017 migration on every project load
+   * (`applypatches.js:71`) and writes `false` on the value inputs of any node in
+   * the fifteen families whose control signal is wired. This node wires `run`. The
+   * migration is for graphs authored before NDA-017 §2 and cannot tell this one
+   * from those, because the project format has nowhere to record that it ran.
+   *
+   * So the spec imports {@link planRunOnValueChangeMigration} itself rather than
+   * restating its rule: a spec that re-implemented the rule would agree with a
+   * migration that had changed underneath it, which is the whole failure being
+   * fixed here.
+   */
+  it('SBR-004 AC2: the real NDA-017 migration cannot silence the nav link', () => {
+    const plan = planRunOnValueChangeMigration(migrationProject());
+
+    // 🔴 THE KNOWN-FIRING SIGNAL BESIDE THE ABSENCE. "No write names the link
+    // state" passes for free on a plan that writes nothing at all — and a plan
+    // that writes nothing is exactly what a broken import, an empty `written` or
+    // a renamed family would produce. The migration genuinely fires on this
+    // template, in bulk, and these two numbers are what say so.
+    expect(plan.writes.length).toBeGreaterThan(0);
+    expect(plan.signalDrivenNodes).toBeGreaterThan(0);
+
+    // …and the link state is not among them.
+    const silenced = plan.writes.filter((w) => w.component === '/Site/NavLink').map((w) => w.parameter);
+    expect(silenced).toEqual([]);
+
+    // The reason it is not: an already-present key is never touched, whatever its
+    // value (the migration's idempotence clause). ABSENT is not good enough —
+    // absent is precisely what the migration converts — so this asserts the
+    // literal `true` rather than `not false`.
+    const state = byLabel(written['Site/NavLink'], 'JavaScriptFunction', LINK_STATE);
+    expect(state.parameters?.['runOnChange-in-slug']).toBe(true);
+    expect(state.parameters?.['runOnChange-in-current']).toBe(true);
+
+    // Both, not one. `run` fires from the Variable's `changed`, which on a real
+    // load has already passed by the time a repeated link exists — so the two
+    // value inputs are the only triggers there are, and either arriving first
+    // must be able to run the body.
+    expect(written['Site/NavLink'].wires).toContainEqual(
+      expect.objectContaining({ toId: state.id, toProperty: 'run' })
+    );
+  });
+
+  it('MUTANT: dropping the explicit checkboxes lets the migration silence AC2', () => {
+    const mutant: Record<string, Written> = { ...written, 'Site/NavLink': clone(written['Site/NavLink']) };
+    const state = byLabel(mutant['Site/NavLink'], 'JavaScriptFunction', LINK_STATE);
+    delete state.parameters!['runOnChange-in-slug'];
+    delete state.parameters!['runOnChange-in-current'];
+
+    const plan = planRunOnValueChangeMigration(migrationProject(mutant));
+    expect(plan.writes.filter((w) => w.component === '/Site/NavLink').map((w) => w.parameter).sort()).toEqual([
+      'runOnChange-in-current',
+      'runOnChange-in-slug'
+    ]);
+  });
+
+  // ── AC1: nothing on this page may take space it was not given ───────────────
+
+  /**
+   * `addDimensions`' per-type default size mode, from the three call sites this
+   * template places. Stated here rather than inferred because it is the whole
+   * mechanism: the default is what applies when the author writes nothing, and
+   * writing nothing is what AC1 failed on.
+   */
+  const DEFAULT_SIZE_MODE: Record<string, string> = {
+    // `group.ts:492` takes `addDimensions`' own default.
+    Group: 'explicit',
+    // `text.ts:149-152`.
+    Text: 'contentHeight',
+    // `image.ts:175-178`.
+    Image: 'contentSize'
+  };
+
+  /** Whether `Layout.size` assigns this axis at all (`layout.ts:60-71`). */
+  const assignsWidth = (mode: string) => mode === 'explicit' || mode === 'contentHeight';
+  const assignsHeight = (mode: string) => mode === 'explicit' || mode === 'contentWidth';
+
+  /**
+   * 🔴 **The check that would have caught AC1**, and the reason it walks the tree
+   * instead of naming nodes: **a component's visual root is laid out by whatever
+   * placed the instance**, so the nav link's `Text` is a child of `Site/Nav`'s
+   * `flexWrap: wrap` ROW even though nothing in `Site/NavLink` says so. A
+   * per-component check cannot see that, and it is where half of AC1 lived.
+   *
+   * The rule being enforced is `Layout.size`'s (`layout.ts:83-98`): a percentage
+   * size **along the parent's direction** becomes `flexGrow`. Every node's size on
+   * that axis defaults to `100` with `defaultUnit: '%'`
+   * (`node-shared-port-definitions.ts:812-846`), so a node that neither sets an
+   * explicit size nor opts out via `sizeMode` **grows** — which is why three
+   * unstyled bands took 219/218/219 of a 768px page and three links took a line
+   * each.
+   *
+   * Anything that legitimately grows is named in {@link FILL_THE_PARENT_EXEMPTIONS}
+   * with the sentence that makes it legitimate.
+   */
+  /**
+   * The walk itself, as one function, because the mutant below has to run **this**
+   * and not a restatement of it. A sabotage that reddens a second implementation
+   * proves only that the second implementation exists.
+   *
+   * Returns every node it graded and every node that grows, so the green arm can
+   * assert the absence AND the population — an empty walk reports "nothing grows"
+   * exactly as loudly as a correct one.
+   */
+  function findGrowingNodes(source: Record<string, Written>): { graded: string[]; growing: string[] } {
+    const exempt = new Set(FILL_THE_PARENT_EXEMPTIONS.map((e) => `${e.component} | ${e.label}`));
+    const componentOf = new Map(SB006_COMPONENTS.map((c) => [c.legacyName, c.key] as const));
+    const graded: string[] = [];
+    const growing: string[] = [];
+
+    /** Walk `key`'s nodes `ids`, laid out by a parent stacking `parentLayout`. */
+    const walk = (key: string, ids: string[], parentLayout: string, seen: Set<string>): void => {
+      const nodes = new Map(source[key].graph.nodes.map((n) => [n.id, n]));
+      for (const id of ids) {
+        const node = nodes.get(id);
+        if (!node) continue;
+
+        // A component instance: descend with the layout of the place it sits in.
+        const target = componentOf.get(node.type);
+        if (target) {
+          if (!seen.has(target)) {
+            walk(target, source[target].graph.visualRoots ?? [], parentLayout, new Set([...seen, target]));
+          }
+          continue;
+        }
+
+        // `For Each` is not visual: its template's roots render where IT sits, so
+        // the layout passes straight through it. This is the hop that carries
+        // `Site/Nav`'s ROW down onto the nav link's `Text` — the half of AC1 no
+        // per-component check could ever see.
+        if (node.type === 'For Each') {
+          const template = componentOf.get(String(node.parameters?.template ?? ''));
+          if (template && !seen.has(template)) {
+            walk(template, source[template].graph.visualRoots ?? [], parentLayout, new Set([...seen, template]));
+          }
+          continue;
+        }
+
+        const defaultMode = DEFAULT_SIZE_MODE[node.type];
+        if (defaultMode !== undefined) {
+          const mode = String(node.parameters?.sizeMode ?? defaultMode);
+          const alongAxis = parentLayout === 'row' ? 'width' : 'height';
+          const assigned = parentLayout === 'row' ? assignsWidth(mode) : assignsHeight(mode);
+          // An authored value on that axis is the author saying a size out loud;
+          // only the DEFAULTED 100% is the trap. A raw one is AC3's problem.
+          const authored = node.parameters?.[alongAxis] !== undefined;
+          const name = `${key} | ${node.label ?? node.type}`;
+          graded.push(name);
+          if (assigned && !authored && !exempt.has(name)) {
+            growing.push(`${name} — ${alongAxis} defaults to 100% along its parent's ${parentLayout}, so Layout.size makes it flexGrow`);
+          }
+        }
+
+        const layout = node.type === 'Group' ? String(node.parameters?.flexDirection ?? 'column') : parentLayout;
+        walk(key, node.children ?? [], layout, seen);
+      }
+    };
+
+    walk('Pages/Site', source['Pages/Site'].graph.visualRoots ?? [], 'column', new Set(['Pages/Site']));
+    return { graded, growing };
+  }
+
+  it('SBR-004 AC1: nothing on the public site grows into space it was not given', () => {
+    const { graded, growing } = findGrowingNodes(written);
+    expect(growing).toEqual([]);
+    // 🔴 The census half, and it is what makes the green above mean "checked".
+    // Every node the walk reached, in the order it reached them — so a hop that
+    // silently stops (the `For Each` one especially) reds here rather than
+    // reporting a clean page.
+    //
+    // ⚠️ The four `net.noodl.controls.*` in the contact form are deliberately OUT
+    // of the population: they are prefab components whose `defaultSizeMode` is
+    // theirs and not `addDimensions`', so grading them here would be guessing at
+    // a default this spec has not read. They are the panel's shape, not the
+    // public site's, and SBR-006 owns them.
+    expect(graded).toEqual([
+      'Pages/Site | Page ground',
+      'Pages/Site | Page shell',
+      'Site/Nav | Navigation',
+      'Site/NavLink | Nav link',
+      'Pages/Site | Header',
+      'Pages/Site | Site name',
+      'Pages/Site | Page title',
+      'Site/SectionView | One section',
+      'Site/SectionView | Section image',
+      'Site/SectionView | Section body',
+      'Pages/Site | Contact form, when the page asked for one',
+      'Site/ContactForm | Contact form',
+      'Site/ContactForm | Contact heading',
+      'Site/ContactForm | The one confirmation',
+      'Site/ContactForm | The one refusal',
+      'Pages/Site | The empty-screen card',
+      'Pages/Site | Not found',
+      'Pages/Site | Footer',
+      'Pages/Site | Footer site name',
+      'Pages/Site | Back to home'
+    ]);
+  });
+
+  it('MUTANT: a band back on the platform default reddens AC1', () => {
+    // Exactly the state the drive measured: `Footer` with nothing said about its
+    // size, on a page whose 768px was being split 219/218/219.
+    const mutant: Record<string, Written> = { ...written, 'Pages/Site': clone(written['Pages/Site']) };
+    delete byLabel(mutant['Pages/Site'], 'Group', 'Footer').parameters!.sizeMode;
+
+    const { growing } = findGrowingNodes(mutant);
+    expect(growing).toEqual(["Pages/Site | Footer — height defaults to 100% along its parent's column, so Layout.size makes it flexGrow"]);
+  });
+
+  it('MUTANT: a nav link back on the platform default reddens AC1 — across the component boundary', () => {
+    // The second half, and the one a per-component check cannot reach: `Text`
+    // defaults to `contentHeight`, which still assigns WIDTH, and the link's
+    // parent is `Site/Nav`'s wrapping ROW two components away.
+    const mutant: Record<string, Written> = { ...written, 'Site/NavLink': clone(written['Site/NavLink']) };
+    delete byLabel(mutant['Site/NavLink'], 'Text', 'Nav link').parameters!.sizeMode;
+
+    const { growing } = findGrowingNodes(mutant);
+    expect(growing).toEqual(["Site/NavLink | Nav link — width defaults to 100% along its parent's row, so Layout.size makes it flexGrow"]);
+  });
+
+  it('SBR-004 AC1: the nav link is content-sized, and capped so AC4 still holds', () => {
+    const link = byLabel(written['Site/NavLink'], 'Text', 'Nav link');
+    // `contentSize` assigns neither axis, which is the `width: auto` that turned
+    // §8.2's 219px three-line stack into a 68px one-row bar.
+    expect(link.parameters?.sizeMode).toBe('contentSize');
+    // 🔴 And NO `maxWidth` beside it. The guard was authored, driven, and removed:
+    // on a `Text` the parameter never reaches the DOM (computed `maxWidth: none`
+    // on the claimed site, while the same port family renders on the `Group`s in
+    // the same page load). Pinned as an ABSENCE so nobody re-adds it from the
+    // armchair — the reasoning that produces it is sound, and the platform does
+    // not honour it. SBR-004 §9.3.
+    expect(link.parameters?.maxWidth).toBeUndefined();
+    // The bar it sits in is still the wrapping row AC4 asserts.
+    const bar = byLabel(written['Site/Nav'], 'Group', 'Navigation');
+    expect(bar.parameters?.flexDirection).toBe('row');
+    expect(bar.parameters?.flexWrap).toBe('wrap');
   });
 
   /**
