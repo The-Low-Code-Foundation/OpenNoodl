@@ -86,6 +86,7 @@ The artifacts were a proposal; this is what challenging them found (2026-08-28 s
 | 5 | Five section kinds, one rendering (1 Image + 1 Text) | SBR-005 |
 | 6 | Live preview promised twice (README §2, SB-005), occurrences in template: **0** | SBR-011 |
 | 7 | Deployed admin panel drops all 19 record-field wires — saves nothing | SBR-008 |
+| 8 | 🔴 **The NDA-017 back-compat migration fires on projects created today** — 37 nodes silenced in a project the template minted that morning, zero `true`s. One of them left the site's root URL rendering no page. **A platform defect, not a template one; needs a task** | SBR-004 §10.3 fixed the template's instance and gated the artefact; the product half is unowned |
 
 ## 5. Tasks
 

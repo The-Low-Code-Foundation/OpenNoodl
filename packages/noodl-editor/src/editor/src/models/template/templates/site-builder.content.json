@@ -1124,6 +1124,8 @@
             "x": 530,
             "y": 160,
             "parameters": {
+              "runOnChange-in-slug": true,
+              "runOnChange-in-homeSlug": true,
               "functionScript": "if (Inputs.homeSlug === undefined) return;\nconst fromUrl = Inputs.slug === undefined || Inputs.slug === null ? '' : String(Inputs.slug);\nconst slug = fromUrl === '' ? Inputs.homeSlug : fromUrl;\nif (slug === '') return;\nOutputs.slug = slug;\nif (Noodl && Noodl.Variables) {\n  Noodl.Variables[\"siteCurrentSlug\"] = slug;\n}\nOutputs.ready();"
             },
             "ports": [

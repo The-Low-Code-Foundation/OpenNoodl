@@ -38,6 +38,10 @@ import * as path from 'path';
 import { ROUTER } from './sb005Components';
 import { SITE_URL_PATH } from './sb006Components';
 import { APP_COMPONENT, buildSiteTemplateProject, toTemplateContent } from './sb007Template';
+import {
+  planRunOnValueChangeMigration,
+  type MigrationProjectLike
+} from '../../noodl-editor/src/editor/src/models/ProjectPatches/runOnValueChangeMigration';
 
 jest.setTimeout(600000);
 
@@ -392,5 +396,176 @@ describe('SB-007 — what the template contains', () => {
       expect(component).not.toHaveProperty('created');
       expect(component).not.toHaveProperty('modifiedBy');
     }
+  });
+});
+
+// ── 3. The migration fires on this artefact, and one shape of node it silences
+//       is a defect rather than a no-op ─────────────────────────────────────────
+
+/**
+ * 🔴 **SBR-004 §9.2 and §10. This is the check that would have found the root
+ * URL, and it is artefact-wide because the defect was never SBR-004's.**
+ *
+ * Nothing in the component sets authors `runOnChange-*: false`. The NDA-017
+ * back-compat migration writes it on **every project load** (`applypatches.js`),
+ * for the value inputs of any node in the fifteen families whose control signal
+ * is wired — and it cannot tell a graph authored before NDA-017 §2 from one this
+ * template minted this morning. Over the shipped artefact it silences 27 nodes.
+ *
+ * Most of those are harmless: the control signal is a *consequence* — a query's
+ * `fetched`, a button's `onClick`, a request's `receive` — and a consequence
+ * arrives after the values that caused it. **The exception is a control signal
+ * that fires on a clock the values do not share, and the template has exactly one
+ * such signal: `Page.didMount`.** A node triggered by mount, whose value comes
+ * from something asynchronous, hits its own `undefined` guard once and never runs
+ * again. That was `/Pages/Site`'s `The slug to show`, whose `in-homeSlug` comes
+ * from the `SiteSettings` fetch — driven at `/`: zero variables, empty `h1`, no
+ * page (§9.2).
+ *
+ * ✅ **Graded, not exempted.** The rule is not a list of forgiven node names — it
+ * is a property of the producer. `PageInputs` is the one producer guaranteed to
+ * have delivered before mount: `router.tsx:586` calls `_updatePageInputs` before
+ * `addChild(group)` puts the page in the tree. Every other producer into a
+ * mount-triggered node has to answer for itself, which is what a reason column
+ * that cannot fail would not have made anyone do.
+ */
+describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node', () => {
+  /**
+   * The artefact in the shape the migration reads — concrete rather than
+   * `MigrationProjectLike`, whose fields are all optional because it also has to
+   * describe a half-loaded project. Grading needs them present, and
+   * `typecheck:mcp` is right to insist.
+   */
+  interface GradableNode {
+    id: string;
+    type: string;
+    parameters?: Record<string, unknown>;
+  }
+  interface GradableComponent {
+    name: string;
+    graph: {
+      roots: GradableNode[];
+      connections: Array<{ fromId: string; fromProperty: string; toId: string; toProperty: string }>;
+    };
+  }
+  interface GradableProject {
+    components: GradableComponent[];
+  }
+
+  const migrationProject = (): GradableProject => ({
+    components: shipped.components.map((c) => ({
+      name: c.name,
+      // `eachNode` recurses through `children`, and a saved v2 graph's `children`
+      // are id strings rather than nodes. The migration decides per node and never
+      // per subtree, so a flat list of every node is the whole graph to it.
+      graph: {
+        roots: nodesOf(c).map(({ children, ...node }) => node),
+        connections: c.graph.connections ?? []
+      } as GradableComponent['graph']
+    }))
+  });
+
+  /** The signals that fire on the page lifecycle rather than on a value. */
+  const MOUNT_SIGNALS = ['didMount'];
+
+  /**
+   * The one producer that is ordered before mount by the runtime itself, so a
+   * value from it is present when `didMount` fires. Anything else is a race.
+   */
+  const ORDERED_BEFORE_MOUNT = ['PageInputs'];
+
+  it('the migration really does fire on this template, in bulk', () => {
+    // 🔴 THE KNOWN-FIRING SIGNAL. Every absence asserted below passes for free on
+    // a plan that writes nothing, and a plan that writes nothing is what a broken
+    // import or a renamed family would produce.
+    const plan = planRunOnValueChangeMigration(migrationProject() as MigrationProjectLike);
+    expect(plan.signalDrivenNodes).toBeGreaterThan(0);
+    expect(plan.writes.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * The grading pass itself, as a function, so the mutant below can call **this**
+   * rather than a restatement of it. A mutant that re-implements the rule proves
+   * the rule is writable, not that the check runs.
+   */
+  function gradeMountTriggered(project: GradableProject): { offenders: string[]; graded: string[] } {
+    const plan = planRunOnValueChangeMigration(project as MigrationProjectLike);
+    const byComponent = new Map(project.components.map((c) => [c.name, c]));
+    const nodeIndex = new Map<string, { id: string; type: string }>();
+    for (const c of project.components) for (const n of c.graph.roots) nodeIndex.set(`${c.name}::${n.id}`, n);
+
+    const offenders: string[] = [];
+    const graded: string[] = [];
+
+    for (const write of plan.writes) {
+      const component = byComponent.get(write.component);
+      if (!component) continue;
+      const incoming = component.graph.connections.filter((w) => w.toId === write.nodeId);
+
+      // Is this node triggered by the page lifecycle at all? If not, its control
+      // signal is a consequence and arrives after the values that caused it.
+      if (!incoming.some((w) => MOUNT_SIGNALS.includes(w.fromProperty))) continue;
+
+      // It is. Then every producer of the input being silenced must be one the
+      // runtime orders before mount — or there must be no producer at all, in
+      // which case a stored parameter is the only value there ever was and
+      // silencing the port changes nothing.
+      const producers = incoming.filter((w) => w.toProperty === write.input);
+      const target = nodeIndex.get(`${write.component}::${write.nodeId}`);
+      const label = `${write.component} ${target?.type}#${write.nodeId}.${write.input}`;
+
+      if (producers.length === 0) {
+        graded.push(`${label} — no wire, a stored parameter is its only value`);
+        continue;
+      }
+      for (const producer of producers) {
+        const type = nodeIndex.get(`${write.component}::${producer.fromId}`)?.type ?? '(missing)';
+        if (ORDERED_BEFORE_MOUNT.includes(type)) {
+          graded.push(`${label} <= ${type} — set before addChild, router.tsx:586`);
+        } else {
+          offenders.push(`${label} <= ${type}.${producer.fromProperty}`);
+        }
+      }
+    }
+    return { offenders: offenders.sort(), graded: graded.sort() };
+  }
+
+  it('no node the migration silences is triggered by mount off an unordered producer', () => {
+    const { offenders, graded } = gradeMountTriggered(migrationProject());
+
+    // 🔴 The reason column is asserted, not just the emptiness. A grading pass that
+    // graded nothing satisfies `offenders == []` exactly as well as one that
+    // cleared every row for a stated reason, and those are not the same claim.
+    expect(graded).toEqual([
+      '/Pages/PageEditor JavaScriptFunction#hold.in-pageId <= PageInputs — set before addChild, router.tsx:586'
+    ]);
+    expect(offenders).toEqual([]);
+  });
+
+  it('MUTANT: the defect as it actually shipped reddens the grader', () => {
+    // `/Pages/Site`'s slug resolver with its explicit checkboxes dropped — which is
+    // exactly what the migration converts, and exactly the state the site shipped
+    // in when `/` rendered no page. Calls the same grader the green arm calls.
+    const project = migrationProject();
+    const site = project.components.find((c) => c.name === '/Pages/Site')!;
+    const resolver = site.graph.roots.find((n) => n.parameters?.['runOnChange-in-homeSlug'] !== undefined)!;
+    expect(resolver).toBeDefined();
+    delete (resolver.parameters as Record<string, unknown>)['runOnChange-in-homeSlug'];
+    delete (resolver.parameters as Record<string, unknown>)['runOnChange-in-slug'];
+
+    const { offenders, graded } = gradeMountTriggered(project);
+
+    // 🔴 It reds on `in-homeSlug` alone, and that is the finding rather than a
+    // detail: the migration silences BOTH of this node's inputs, and only one of
+    // them is a race. `in-slug` comes from `PageInputs`, which the router sets
+    // before the page is in the tree, so mount genuinely has it. `in-homeSlug`
+    // comes from the settings read, which answers when the backend answers.
+    // A grader that named both would be naming the port list, not the defect.
+    expect(offenders).toEqual([
+      `/Pages/Site JavaScriptFunction#${resolver.id}.in-homeSlug <= JavaScriptFunction.out-homeSlug`
+    ]);
+    expect(graded).toContain(
+      `/Pages/Site JavaScriptFunction#${resolver.id}.in-slug <= PageInputs — set before addChild, router.tsx:586`
+    );
   });
 });

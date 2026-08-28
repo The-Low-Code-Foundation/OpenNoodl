@@ -486,3 +486,114 @@ real page.** Three checks now close it, each with a mutant that reddens:
    `FILL_THE_PARENT_EXEMPTIONS` with a reason. Its census asserts the **ordered list of every
    node reached**, so a hop that silently stops reds rather than reporting a clean page.
 3. Both mutants call **the same function the green arm calls**, not a restatement of it.
+
+## 10. Built (s8) — the root URL's cause is fixed, and the census found how many more there were
+
+§9.2 named `/Pages/Site`'s `The slug to show` and left it. This section fixes it, and then
+stops trusting the sentence §9.2 used to wave the other 32 nodes through.
+
+⚠️ **The drive is owed and could not run.** Richard was hand-driving the only editor stack on
+this machine (pid 6774, TPL-001) for the whole session; a second editor cannot coexist and
+launching would have taken the app out from under him. Everything below is source, artefact and
+spec. **AC-grade verification of the root URL is the first thing s9 owes** — the exact probe is
+in §10.4.
+
+### 10.1 The fix
+
+Two parameters on `resolveSlug` in `sb006Components.ts`, regenerated into
+`site-builder.content.json`:
+
+```
+'runOnChange-in-slug': true,
+'runOnChange-in-homeSlug': true,
+```
+
+Same asymmetry as §9.1's: the migration never touches an already-present key, so `true`
+survives the load and *absent* does not.
+
+**The ordering consequence §9's handoff asked to check first, checked.** `out-slug` is
+`pageQuery`'s only trigger — a `qp-` set calls `scheduleFetch` (`dbcollectionnode2.ts:1069`) —
+so "runs again" really does mean "the page queries again". It costs nothing here, and the reason
+is the guard rather than luck: a run before `homeSlug` publishes **nothing**, so the first run
+that reaches the body is the first fetch, not a second one. `homeSlug` is published once per
+load by a singleton read.
+
+### 10.2 🔴 `in-slug` is not merely defensive, and the reason is a branch in the router
+
+§9.1 justified the `NavLink` pair with "the producers arrive in an order the node does not
+control". For `resolveSlug` there is a sharper reason, and it is in `router.tsx`:
+
+- **`router.tsx:586`** calls `_updatePageInputs` **before** `addChild(group)` puts the page in
+  the tree. So a `PageInputs` value is present when `didMount` fires. That is what makes
+  `in-slug` safe at mount — and it is the measured version of the wire comment that asserted it.
+- **`router.tsx:518-534`** is the *same-page* branch: navigating to a page whose snapshot is
+  unchanged with **different parameters** updates the page inputs, reports `done`, and
+  **returns without re-mounting**. No `didMount`.
+
+`/Pages/Site` is `{slug}` — every public page is that one component. So on the same-page branch
+the *only* thing that can re-resolve the slug is `in-slug` changing, and with it silenced
+nothing would.
+
+⚠️ **This is not yet a claim that in-app nav was broken.** §9.1 drove `/home` → `/about`
+pre-fix and the current-page state followed, which means that click did not take the same-page
+branch (or something else re-ran the node). **Unresolved, and worth one probe in s9**: click
+between two site pages and read whether `didMount` fired. Either answer is worth knowing — if
+it did not, `in-slug: true` fixed a second live defect nobody had named.
+
+### 10.3 🔴 The census: 27 nodes silenced, and only one of them was a bug
+
+§9.2 cleared the other nodes with a sentence — *"they are harmless where the `run` wire is a
+real trigger that fires after the values"*. That is a claim about 32 nodes, made from the
+armchair. Run mechanically over the shipped artefact, the real migration silences:
+
+| | |
+|---|---|
+| family nodes in the artefact | 49 |
+| …with the control signal wired | 32 |
+| **nodes written** | **27** (48 parameters) |
+| already answered, so preserved | 12 |
+
+And the sentence turns out to be **right, for a reason it did not state**. Every control signal
+in the census except one is a *consequence* — a query's `fetched`, a button's `onClick`, a
+request's `receive`, a secret's `completed`, a `For Each`'s row signal — and a consequence
+arrives after the values that caused it. **The template has exactly one control signal that
+fires on a clock its values do not share: `Page.didMount`.** Two nodes are triggered by it:
+
+| node | silenced input | verdict |
+|---|---|---|
+| `/Pages/Site` `The slug to show` | `in-homeSlug` ← the `SiteSettings` read | 🔴 **the defect** — an async producer against a mount |
+| `/Pages/PageEditor` `Hold the page id` | `in-pageId` ← `PageInputs` | ✅ safe, and *measured* safe: `router.tsx:586` |
+
+So the finding is not "one node was unlucky". It is that the property which separates a harmless
+silencing from a page that never renders is **whether the silenced input's producer is ordered
+before the control signal**, and the template has exactly one producer with that guarantee.
+
+### 10.4 The gate that now holds it, and what s9 must still drive
+
+`sb007Template.test.ts` — artefact-wide, because the defect was never SBR-004's:
+
+1. **Known-firing signal first**: the migration writes on this artefact in bulk. Every absence
+   below would pass for free on a plan that writes nothing.
+2. **The grader**: for every node the migration silences that is triggered by a mount signal,
+   each silenced input's producer must be one the runtime orders before mount (`PageInputs`) or
+   there must be no producer at all. It asserts the **reason column**, not just the emptiness —
+   a pass that graded nothing satisfies `offenders == []` exactly as well as one that cleared
+   every row for a stated reason, and those are not the same claim.
+3. **The mutant calls the grader**, not a restatement of it: drop the two checkboxes and the
+   artefact reddens with the defect as it actually shipped.
+
+🔴 **The mutant discriminates more finely than the fix does, and that is worth keeping.** It
+reds on `in-homeSlug` **alone** and *clears* `in-slug` for a stated reason. The migration
+silences both; only one is a race. A grader that named both would be naming the port list.
+
+**Owed in s9 — the AC-grade drive, on `SBR-004 Mounted Drive` (claimed, three published pages),
+after applying the regenerated artefact's parameters by label:**
+
+| probe | at | expect |
+|---|---|---|
+| `Noodl.Variables` key count | `http://localhost:8574/` | > 0 (was **0**) |
+| `Noodl.Variables.siteCurrentSlug` | `/` | `'home'` (was `undefined`) |
+| the `h1` | `/` | the home page's title (was empty) |
+| the body text | `/` | a page between the nav and the footer |
+| regression | `/home`, `/about` | unchanged from §9.1 |
+| §10.2's open probe | click nav `/home` → `/about` | did `didMount` fire? |

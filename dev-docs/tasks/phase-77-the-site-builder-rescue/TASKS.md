@@ -10,7 +10,7 @@ per-task status and the session log.
 | SBR-001 | ✅ closed s2 | driven end-to-end; ACs 1–5,7 verified live, AC6 by spec + shelf listing |
 | SBR-002 | ✅ closed s4 | AC4 driven — all three states, each with its negative control; the drive **found and fixed a real defect** (the watchdog could never bark — see s4 log) |
 | SBR-003 | 🟡 s4: built, swept, driven | AC1–4 verified live (floor stamps, overlay beats it, delete falls back); AC5 spec half green. **Owed: the `var(--token)` dimension-port probe — carried into SBR-004.** Person-sentences complete with SBR-004/006/009 |
-| SBR-004 | 🟢 s7: AC1, AC2, AC4 driven PASS on a claimed site | **AC1 ✅** nav 219→**68px, three links on one row at y=24**; header **98**, footer **74** (were 218/219) — the lever is `sizeMode` on seven Groups + the nav link, collected as `STACKED_IN_A_COLUMN`. 🔴 `flex-grow` is NOT the lever. **AC2 ✅** `--primary`/600 on the current link, muted/400 on siblings, on a fresh `/home` load **and** after in-app nav to `/about`, nothing poked. 🔴 **The AC2 cause was NOT in the template**: the NDA-017 migration writes `runOnChange-*: false` on load for every node whose control signal is wired — **37 nodes in a fresh project, zero `true`s**; an explicit `true` survives, absent does not (§9.2). **AC4 ✅** re-confirmed at 360px with control; a 51-char title is clipped, not scrolled. ⚠️ **`maxWidth` is inert on `Text`** — authored, driven (`computed: none`), removed (§9.3). 🔴 **Next and bigger than either AC: the root URL `/` renders NO page** — `The slug to show` is the one migrated node whose `run` (`didMount`) genuinely races its `in-homeSlug` (§9.2). 🔴 49 specs were green while both ACs failed; three new checks + mutants close it (§9.5). AC3 remains SBR-012's |
+| SBR-004 | 🟡 s8: AC1/2/4 driven PASS (s7); root-URL fix BUILT, drive OWED | **AC1 ✅** nav 219→**68px, three links on one row at y=24**; header **98**, footer **74** (were 218/219) — the lever is `sizeMode` on seven Groups + the nav link, collected as `STACKED_IN_A_COLUMN`. 🔴 `flex-grow` is NOT the lever. **AC2 ✅** `--primary`/600 on the current link, muted/400 on siblings, on a fresh `/home` load **and** after in-app nav to `/about`, nothing poked. 🔴 **The AC2 cause was NOT in the template**: the NDA-017 migration writes `runOnChange-*: false` on load for every node whose control signal is wired — **37 nodes in a fresh project, zero `true`s**; an explicit `true` survives, absent does not (§9.2). **AC4 ✅** re-confirmed at 360px with control; a 51-char title is clipped, not scrolled. ⚠️ **`maxWidth` is inert on `Text`** — authored, driven (`computed: none`), removed (§9.3). 🔴 **Next and bigger than either AC: the root URL `/` renders NO page** — `The slug to show` is the one migrated node whose `run` (`didMount`) genuinely races its `in-homeSlug` (§9.2). 🔴 49 specs were green while both ACs failed; three new checks + mutants close it (§9.5). AC3 remains SBR-012's. **s8**: the root URL's cause is fixed (`runOnChange-in-slug`/`-in-homeSlug: true` on `The slug to show`) and gated artefact-wide in `sb007Template.test.ts`, but 🔴 **the drive is OWED** — Richard hand-drove the only editor stack all session. §10.3's census replaced §9.2's armchair clearance of the other 32 silenced nodes: 27 nodes / 48 parameters, and the property that separates a harmless silencing from a blank page is whether the input's producer is ordered before the control signal — `PageInputs` is the template's only such producer (`router.tsx:586`) |
 | SBR-005 | ⬜ open | |
 | SBR-006 | ⬜ open | |
 | SBR-007 | ⬜ open | deployed-save half blocked on SBR-008 |
@@ -46,6 +46,26 @@ per-task status and the session log.
   announce editor launches AND teardowns; `test:ci` alone.
 
 ## Session log
+
+- **s8 (2026-08-28)** — **the root URL's cause is fixed and gated; the drive is owed.**
+  `resolveSlug` now carries `runOnChange-in-slug`/`-in-homeSlug: true` in `sb006Components.ts`,
+  regenerated into the artefact. The ordering consequence the handoff asked to check first was
+  checked and is benign: `out-slug` is `pageQuery`'s only trigger, but a run before `homeSlug`
+  publishes nothing, so the first run that reaches the body is the first fetch.
+  🔴 **§9.2's clearance of the other 32 silenced nodes was an armchair claim and is now a
+  census**: 27 nodes / 48 parameters, and the discriminating property is whether the silenced
+  input's producer is ordered before the control signal. The template has exactly one control
+  signal that fires on a clock its values do not share (`Page.didMount`) and exactly one
+  producer with that ordering guarantee (`PageInputs`, `router.tsx:586`). Two mount-triggered
+  nodes; one was the defect, one is measurably safe. New gate in `sb007Template.test.ts` —
+  known-firing signal, a grader that asserts its **reason column**, and a mutant that calls the
+  grader and reds on `in-homeSlug` **alone** while clearing `in-slug`.
+  Gates: `template:site-builder` regenerated · `typecheck:editor` 0 · `typecheck:mcp` 0 ·
+  mcp sb004/005/006/007 **122/122** · editor sb-007/015/017/018 + sbr-001/002/003 + fb-005
+  **377/377**. `test:ci` NOT run — see below.
+  🔴 **No editor seat all session**: Richard was hand-driving the only stack (pid 6774, TPL-001,
+  owned by session 65956), and two editors cannot coexist. The AC-grade drive of `/` is s9's
+  first job; the probe table is SBR-004 §10.4.
 
 - **s4b (2026-08-28, hold cleared mid-session)** — **the owed sweep ran clean and both drives
   landed.** Gates: template regenerated · `typecheck:editor` 0 · `typecheck:mcp` 0 · **`test:ci`

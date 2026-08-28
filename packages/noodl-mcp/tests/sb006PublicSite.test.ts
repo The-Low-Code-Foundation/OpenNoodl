@@ -1587,6 +1587,78 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     ]);
   });
 
+  const RESOLVE_SLUG = 'The slug to show';
+
+  /**
+   * 🔴 **The same migration, the same asymmetry, and this one costs the front
+   * door.** SBR-004 §9.2 drove `http://localhost:8574/` on a claimed site with
+   * three published pages: `Noodl.Variables` held 0 keys, `siteCurrentSlug` was
+   * `undefined`, the `h1` was empty and the whole body was the nav and the
+   * footer. `/home` and `/about` rendered correctly.
+   *
+   * The reason only the empty slug breaks is the node's own guard: a non-empty
+   * URL slug does not need `homeSlug`, and the root does. With `in-homeSlug`
+   * silenced, `run` (`Page.didMount`) fires once, the guard returns because the
+   * `SiteSettings` fetch has not answered yet, and nothing re-runs the body.
+   *
+   * Same discipline as the AC2 check above: the real migration over the real
+   * artefact, with a known-firing signal beside the absence, and the literal
+   * `true` rather than "not `false`" — absent is exactly what the migration
+   * converts.
+   */
+  it('SBR-004 §9.2: the migration cannot silence the slug the root URL needs', () => {
+    const plan = planRunOnValueChangeMigration(migrationProject());
+
+    // The known-firing signal. "No write names this node" passes for free on a
+    // plan that writes nothing at all.
+    expect(plan.writes.length).toBeGreaterThan(0);
+    expect(plan.signalDrivenNodes).toBeGreaterThan(0);
+
+    const resolve = byLabel(written['Pages/Site'], 'JavaScriptFunction', RESOLVE_SLUG);
+    const silenced = plan.writes
+      .filter((w) => w.component === '/Pages/Site' && w.nodeId === resolve.id)
+      .map((w) => w.parameter);
+    expect(silenced).toEqual([]);
+
+    expect(resolve.parameters?.['runOnChange-in-slug']).toBe(true);
+    expect(resolve.parameters?.['runOnChange-in-homeSlug']).toBe(true);
+
+    // The three producers this node does not control the order of, and the one
+    // that makes the pair necessary: `run` is the page's mount, so it cannot wait
+    // for a fetch.
+    expect(written['Pages/Site'].wires).toContainEqual(
+      expect.objectContaining({ toId: resolve.id, toProperty: 'run', fromProperty: 'didMount' })
+    );
+    expect(written['Pages/Site'].wires).toContainEqual(
+      expect.objectContaining({ toId: resolve.id, toProperty: 'in-homeSlug' })
+    );
+    expect(written['Pages/Site'].wires).toContainEqual(
+      expect.objectContaining({ toId: resolve.id, toProperty: 'in-slug' })
+    );
+
+    // 🔴 And the guard the whole finding turns on is still the first line — if it
+    // ever stops returning early, a run before `homeSlug` queries for the empty
+    // slug and 404s the home page, which is the defect this guard was authored
+    // against and the reason the fix had to be a re-run rather than a dropped
+    // guard.
+    expect(scriptOf(resolve).split('\n')[0]).toBe('if (Inputs.homeSlug === undefined) return;');
+  });
+
+  it('MUTANT: dropping the slug resolver checkboxes lets the migration silence the root URL', () => {
+    const mutant: Record<string, Written> = { ...written, 'Pages/Site': clone(written['Pages/Site']) };
+    const resolve = byLabel(mutant['Pages/Site'], 'JavaScriptFunction', RESOLVE_SLUG);
+    delete resolve.parameters!['runOnChange-in-slug'];
+    delete resolve.parameters!['runOnChange-in-homeSlug'];
+
+    const plan = planRunOnValueChangeMigration(migrationProject(mutant));
+    expect(
+      plan.writes
+        .filter((w) => w.component === '/Pages/Site' && w.nodeId === resolve.id)
+        .map((w) => w.parameter)
+        .sort()
+    ).toEqual(['runOnChange-in-homeSlug', 'runOnChange-in-slug']);
+  });
+
   // ── AC1: nothing on this page may take space it was not given ───────────────
 
   /**

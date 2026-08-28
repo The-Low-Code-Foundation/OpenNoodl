@@ -1431,6 +1431,46 @@ export const SITE_NODES = [
     // Rule 1.
     ports: [{ name: 'out-ready', plug: 'output', type: 'signal' }],
     parameters: {
+      // 🔴 **SBR-004 §9.2's finding, and it is the front door.** Same mechanism as
+      // `NavLink`'s two boxes above and the same asymmetry — the NDA-017 migration
+      // writes `runOnChange-<input>: false` on every load for the value inputs of
+      // any node in the fifteen families whose control signal is wired, and this
+      // node wires `run` (from `Page.didMount`). An already-present key is never
+      // touched, so `true` survives the load and *absent* does not.
+      //
+      // 🔴 **Of the 33 nodes the migration silences in this template, this is the
+      // one where it breaks a page.** Elsewhere the `run` wire is a real trigger
+      // that fires after the values (`ContactForm/gather` runs on the send
+      // button's click, and the button is clicked after the fields are typed).
+      // Here `run` is `didMount` and `in-homeSlug` comes from a `SiteSettings`
+      // fetch that answers whenever the backend answers. Passive, the guard on the
+      // first line fires once at mount and nothing ever re-runs the body.
+      //
+      // Driven at the root URL `/` with both passive: `Noodl.Variables` held 0
+      // keys, `siteCurrentSlug` was `undefined`, the `h1` was empty and the body
+      // was the nav and the footer with no page between them. `/home` and `/about`
+      // were fine, because a non-empty URL slug is the one case that does not need
+      // `homeSlug` — and the empty one is what a first visitor types.
+      //
+      // ⚠️ **This is a re-run, not just a re-trigger, and that was checked rather
+      // than assumed.** The body writes the app-wide current slug and its
+      // `out-slug` is the only trigger `pageQuery` has (`qp-` sets call
+      // `scheduleFetch`, `dbcollectionnode2.ts:1069`), so "runs again" means "the
+      // page queries again". It costs nothing here: the guard means a run before
+      // `homeSlug` publishes *nothing*, so the first run that reaches the body is
+      // the first fetch, not a second one. `homeSlug` is published once per load by
+      // a singleton read, and `slug` changing without a remount is precisely the
+      // case that *should* re-query.
+      //
+      // 🔴 And both, not one — `NavLink`'s reason exactly. With only `in-homeSlug`
+      // ticked, a settings row that answers *before* the Router has set the page
+      // parameters runs the body against an undefined `slug`, resolves the home
+      // slug, and nothing re-runs it when the real one arrives. Two ticked inputs
+      // changing in one frame still produce ONE run (`scheduleRun`'s
+      // `runScheduled` guard), so the pair is not two fetches.
+      'runOnChange-in-slug': true,
+      'runOnChange-in-homeSlug': true,
+
       // 🔴 Rule 2's guard, and it is doing real work: two producers reach this
       // node — the URL and the settings row — and an empty URL slug is the
       // ordinary case (the root), not a missing value. Acting before `homeSlug`
