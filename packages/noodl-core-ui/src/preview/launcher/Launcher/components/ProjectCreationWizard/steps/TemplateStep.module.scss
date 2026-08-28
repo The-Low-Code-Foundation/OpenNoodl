@@ -73,7 +73,14 @@
   background-color: var(--theme-color-bg-3);
   // 🔴 2px in BOTH states, so selecting a card never moves the text inside it. A border that
   // grows on selection reflows the row it is in, which reads as the list jumping.
-  border: 2px solid var(--theme-color-border-default);
+  // 🔴 `border-control`, NOT `border-default`. T4 measured the unselected card's edge at 1.08:1
+  // dark / 1.04:1 light on its own fill and filed it as a token decision "touching every surface
+  // in the editor". It is the opposite: `border-default` is a DIVIDER tone and is SUPPOSED to be
+  // invisible (`colors.css`, NAT-003 — the day the ramp moved without it, a hairline became a
+  // line and that was the bug). This card is a `<button aria-pressed>`, so 1.4.11 asks 3:1 of its
+  // boundary, and POL-016 already defined the token for that. Fill step alone is 1.156 dark /
+  // 1.085 light — the latter is under NAT-001's own 1.09 bar, so the edge is load-bearing here.
+  border: 2px solid var(--theme-color-border-control);
   border-radius: var(--radius-default);
   transition: border-color 0.15s ease, background-color 0.15s ease;
 
@@ -160,7 +167,8 @@
   font-family: inherit;
   color: var(--theme-color-fg-default);
   background-color: var(--theme-color-bg-2);
-  border: 1px solid var(--theme-color-border-default);
+  // A text input is a control: same reason as `.TemplateCard`, same token.
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-default);
 
   &::placeholder {
@@ -188,7 +196,9 @@
   background-color: var(--theme-color-bg-2);
   // 🔴 1px in both states would move the text on activation; 2px here matches `.TemplateCard`'s
   // reason — a border that grows reflows the row and reads as the list jumping.
-  border: 2px solid var(--theme-color-border-default);
+  // ⚠️ `border-control` for the INACTIVE state — the active state is still `primary` plus a ✓, so
+  // raising the resting edge does not weaken which-one-is-on; it makes the pill a pill when off.
+  border: 2px solid var(--theme-color-border-control);
   border-radius: var(--radius-default);
   padding: 2px var(--spacing-2);
   cursor: pointer;
