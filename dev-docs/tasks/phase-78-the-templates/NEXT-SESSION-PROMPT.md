@@ -18,6 +18,34 @@ changes how you work: **the door does not check a connection to a component-inst
 — no error, no warning, not even an info — and every gate in this template is an instance port.
 The spec is the only thing that checks them.
 
+## 🔴 Defects to fix — [DEFECTS-THE-TEMPLATES-FOUND.md](DEFECTS-THE-TEMPLATES-FOUND.md)
+
+**Richard, 2026-08-28:** *"If you find a problem with the codebase or MCP or whatever, add it to
+the next session prompt to fix. We're making templates to surface bugs and issues with the whole
+NodeGX concept as well."* So building the template is only half the job — **what it turned up is
+the other half, and it is a deliverable.**
+
+Five rows so far, measured while building TPL-001. The two worth doing something about:
+
+- **D1 — the MCP door accepts wires to ports that do not exist**, in three classes
+  (component-instance ports, `CloudFunction2` `in-*`/`out-*`, `RouterNavigate` `pm-*`), all
+  silently, all resolvable from components the door has already read off disk. Measured by
+  sabotage: three runs, each diagnostically **identical** to the clean one. This is the class
+  SB-018 (1) lived in for five sessions, and it is the one an agent authoring through the door
+  cannot detect for itself. Cheap half if the full check is too big: **emit an info naming the
+  wires it did not verify**, as it already does for parameters.
+- **D2/D3 — the browser cannot read its own roles, and nothing can enumerate a role's members.**
+  Together these mean every membership app needs a bespoke cloud function to decide whether to
+  show a page, and the ordinary "member list" screen cannot be built at all. These are concept
+  gaps rather than bugs, which is precisely what this exercise is for.
+
+**D4 is an open question the drive answers** (does a refused query look different from an empty
+one?) — do not skip it, it decides whether D2 is a convenience or a necessity. **D6 is a
+disproved candidate**, kept so nobody re-derives it.
+
+⚠️ **Add to that file as you go**, and keep its house rules: a row is a measurement, disproved
+candidates stay marked, and each row says where it bites a person.
+
 ## Next, in order
 
 1. **🔴 THE DRIVE. It is the whole of what is left, and nothing else should start before it.**

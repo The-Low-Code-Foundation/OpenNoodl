@@ -92,6 +92,19 @@ export interface AuthoredTemplate {
    * silence is evidence rather than an absence nobody looked at.
    */
   diagnostics: Array<{ component: string; code: string; severity: string; message: string }>;
+  /**
+   * Node ids the door had to move, by component.
+   *
+   * 🔴 **The door DOES report this and the first caller here threw it away.** Ids
+   * are de-duplicated project-wide, so a second component reusing `emptyState`
+   * is written as `emptyState-2` — and `create_component` says so, in
+   * `remappedNodeIds`/`remapNote`, precisely because *"a caller that intends a
+   * follow-up `update_component` keyed on the id it just sent needs to know the
+   * id changed"*. Two assertions were written against authored ids and failed on
+   * the artefact before this was collected. The absence was in the caller, not
+   * in the door.
+   */
+  remaps: Array<{ component: string; from: string; to: string }>;
 }
 
 /** An empty v2 project: the state a person is in before they pick a template. */
@@ -177,6 +190,7 @@ export async function buildMembersTemplateProject(options: BuildOptions = {}): P
   const order: string[] = [];
   const registrations: AuthoredTemplate['registrations'] = {};
   const diagnostics: AuthoredTemplate['diagnostics'] = [];
+  const remaps: AuthoredTemplate['remaps'] = [];
 
   const call = async (name: string, args: Record<string, unknown>, label: string): Promise<unknown> => {
     const res = (await client.callTool({ name, arguments: args })) as ToolResult;
@@ -187,6 +201,9 @@ export async function buildMembersTemplateProject(options: BuildOptions = {}): P
       payload = JSON.parse(res.content?.[0]?.text ?? '{}') as Record<string, unknown>;
     } catch {
       return {};
+    }
+    for (const r of (payload.remappedNodeIds as Array<{ from: string; to: string }> | undefined) ?? []) {
+      remaps.push({ component: label, from: r.from, to: r.to });
     }
     const raised = (payload.validation as { diagnostics?: Array<Record<string, unknown>> } | undefined)?.diagnostics;
     for (const d of raised ?? []) {
@@ -226,7 +243,7 @@ export async function buildMembersTemplateProject(options: BuildOptions = {}): P
   await client.close();
   await server.close();
 
-  return { project: readAsLegacyProject(dir), order, registrations, projectDir: dir, diagnostics };
+  return { project: readAsLegacyProject(dir), order, registrations, projectDir: dir, diagnostics, remaps };
 }
 
 // ── Preparing the directory a person is handed ───────────────────────────────

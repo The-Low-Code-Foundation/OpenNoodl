@@ -85,6 +85,15 @@ const POLICY_SOURCE = path.join(__dirname, '..', 'templates', `${TEMPLATE_ID}.se
   console.log(`  ${built.order.length} components, ${pages} pages registered, start page ${start}`);
   console.log(`  policy ${POLICY_SOURCE} copied in as ${POLICY_FILE}`);
 
+  // 🔴 The door reports every node id it moved, and the first version of this
+  // script threw that away. Ids are de-duplicated PROJECT-WIDE, so a second
+  // component reusing `emptyState` lands as `emptyState-2` — which is exactly
+  // what a caller keying a follow-up write on an id it just sent needs to know.
+  if (built.remaps.length > 0) {
+    console.log(`  ${built.remaps.length} node ids the door moved to keep them unique project-wide:`);
+    for (const r of built.remaps) console.log(`    ${r.component}: ${r.from} → ${r.to}`);
+  }
+
   // 🔴 Printed rather than counted. A warning that never reaches `isError` is a
   // check that fired, decided something was wrong, and was dropped by the
   // caller — and "the run was clean" said about a payload nobody read is the
