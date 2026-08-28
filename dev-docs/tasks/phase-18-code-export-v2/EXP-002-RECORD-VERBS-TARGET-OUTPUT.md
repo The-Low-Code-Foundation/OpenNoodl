@@ -783,3 +783,109 @@ diagnostics (TypeScript reports `IntrinsicAttributes` once per element, not once
 while 36 matches nothing. **A census of what the graph contains is not a census of what the
 emitter writes**, and the gate has to be keyed on the second. Re-run `ifaces.ts` against the
 emitted files, not the IR, before touching `targetPropName`.
+
+## §14 The missing interface, closed (session 25 — §13 built, both ends)
+
+§13's ruling, implemented at four sites and measured on the emitter's own population. The corpus
+goes **35/40 → 38/40 projects typechecking**, and **35 → 4 diagnostics**. Coverage is byte-identical
+to sessions 21–24 (**3,766/4,441, 84.80%**), as it must be: this retires no node, it removes
+emissions that never had a runtime behind them. `rank2-s25.txt` is byte-identical to s22/s23/s24.
+
+### 14a — The refusal, at both ends
+
+**Child end** (`plan.ts`). One predicate beside the prop list — `declaresProp`, plus one reason
+string spelled once — and two read sites use it:
+
+| site | before | after |
+|---|---|---|
+| `resolveExpr`, the `Component Inputs` branch | `{kind:'prop', name}` for any port | `ctx.defer` names the port; the reading node defers with the reason |
+| the binding pass (`fromNode.type === 'Component Inputs'`) | recorded the binding | `consumed` + a named note, so pass 6 does not re-report it vaguely |
+
+The reason distinguishes the two authoring defects, because their fixes differ: *"declares no
+component inputs at all"* (every port plugged backwards, or no node) versus *"is not one of this
+component's declared inputs (`text`)"* — one port plugged the wrong way while its siblings are
+right. The second wording lists what the component **does** declare, which is the shortest route
+from the note to the editor.
+
+**Parent end** (`emit/component.ts`). `targetPropName` now returns `string | null`, and its three
+call sites (literal parameter, wire binding, popup slot) drop and name. The repeater's row
+attributes went the same way: `templateProp` became `rowAttrs`, one place instead of four
+`.map`s. The note is one helper, `undeclaredAttrNote`, so all four sites say the same sentence.
+
+### 14b — What the corpus does with it
+
+Nine emitted files change, in exactly the three projects §13 named, and **nothing in the other 37
+moves** — measured by emitting all 40 projects before and after into two trees and diffing them,
+not by re-reading the census.
+
+- **`phase55-replay-haiku`** — **30** attributes dropped across 7 elements (3 × 2 on
+  `CategoryCard`, 4 × 6 on `ProductCard`), matching the emitted-population figure §13c derived and
+  not the graph's 36. `<CategoryCard categoryName="Ceramics" itemCount="126 pieces" />` becomes
+  `<CategoryCard />`.
+- **`ecommerce-example` / `ecom-responsive-probe`** — 12 wires each dropped, and the card falls
+  back to **its authored parameters**: `{name}` becomes `Product name`, `{price}` becomes `0`.
+  That is the faithful reading, and §14c is why.
+- `.module.css` loses `.hiddenKeepSpace` in both, because the only conditional class was
+  `!badge && …` — a refused read takes its dependents with it.
+
+**Remaining: 4 diagnostics, 2 projects**, both type mismatches, both static-data rows into a
+`string`-declared prop:
+
+| project | line | mismatch |
+|---|---|---|
+| `leg001-comment-measure` | `CategoryBrowse.tsx:44`, `FeaturedProducts.tsx:110` | `number` → `string` (`count`, `reviewCount`) |
+| `phase58-awp006-deepseek` | `Home.tsx:16` | `number` → `string` (`basketCount={3}`) |
+| `leg001-comment-measure` | `SiteFooter.tsx:155` | `readonly unknown[]` → `string` (`links`) |
+
+### 14c — Why the export may not mint the prop, checked against the runtime
+
+`componentinputs.ts` registers each output as a **getter over the owner's
+`_internal.inputValues`**, flushed only when the owner sets an input. A port the interface does
+not publish is never set by any instance, so nothing is ever sent down the wire and **the sink
+keeps its authored parameter** — which is precisely what the emitted card now renders. Minting
+`ProductCard`'s eleven props from its wires would have made the card render *data*, and the
+running app renders *placeholders*. The refusal is not a limitation being confessed; it is the
+agreement being kept.
+
+### 14d — 🔴 The hazard §13c warned about is structurally absent at the emit site
+
+The six-attribute gap between the graph census (36) and the emitter (30) is
+`phase55-replay-sonnet`'s `minWidth`/`width` on `</Cards/Category Card>`, and the mechanism is
+one line: `instanceAttrs` only pushes `param.value.kind === 'literal'`, and those two parameters
+parse as **`{kind:'dimension'}`**, which the style path consumes. So a refusal keyed at the emit
+site *cannot* reach them, whatever the census says. Reading the mechanism is worth more than
+re-keying the instrument: the instrument tells you the number is different, the mechanism tells
+you the difference cannot bite.
+
+The before/after emit-tree diff is the check that this reasoning is not just plausible: 9 files,
+3 projects, 0 collateral.
+
+### 14e — Two branches that turned out to be dead, and one gate that already existed
+
+- The "target with no plan ⇒ keep the bare mapping" fallback, written first as the cautious
+  reading of §13b, is **unreachable**: every site that mints an attribute has already gone through
+  `requireInstance`, which drops the element whole when the target exports no component. Removed;
+  the emit trees before and after removal are byte-identical, which is how it was confirmed rather
+  than argued.
+- 🔴 **The popup path already implemented this ruling.** `plan.ts`'s Show Popup translation builds
+  `targetInputs` from ports plugged `output` and drops a param that names no input, with a note —
+  POPUPS-TARGET got there first. So the popup call site's refusal is a second gate on a population
+  the first already filtered. It stays as the `null` arm the type demands, not as a check anything
+  reaches. **Read the sibling pipeline before writing a gate: this one had a working precedent
+  three sites away, and the other three sites had gone without it for fifteen sessions.**
+
+### 14f — Tests (9 new, 428 total)
+
+`tests/missing-interface.test.ts`, on the `cheer` fixture, mutated two ways whose helper names
+carry their own control: `plugComponentInputsBackwards` (the ecommerce defect — the node is
+there, the plugs are inverted) and `deleteComponentInputsNode` (the haiku defect — no node, and
+its wires go with it, as the editor's own delete does).
+
+Both ends are pinned separately, because in the corpus they never meet; in the fixture they do,
+which is what lets the parent-end and child-end refusals be shown composing on one component. Two
+control tests assert the *un*mutated fixture still reaches all three surfaces and refuses nothing
+— an absence beside a known-firing signal.
+
+Mutation-checked, and the two halves are disjoint: forcing `declaresProp` true fails exactly the
+2 child tests; restoring the parent-end fallback fails exactly the 4 parent tests. The controls
+survive both, as controls must.

@@ -880,6 +880,24 @@ function planComponent(
     }
   }
 
+  /**
+   * §13b — a component's interface is what a `Component Inputs` node *declares*, and a port it
+   * does not declare delivers nothing at runtime however many wires read it. `getPorts()` inverts
+   * the plug (a Component Inputs *input* port is a component *output*), so a node whose ports are
+   * all plugged `input` advertises outputs and no inputs at all, and a component with no
+   * `Component Inputs` node declares nothing. Both are authoring defects the corpus carries.
+   *
+   * A read of an undeclared name is dropped and named, never minted: minting the prop from the
+   * wire would make the exported app disagree with the runtime about what arrives, which is the
+   * one thing this phase does not do. The blank card in the export is the blank card in the app.
+   */
+  const declaresProp = (name: string): boolean => plan.props.some((p) => p.name === name);
+  /** The named drop, spelled once so both read sites (expression and binding) say the same thing. */
+  const undeclaredPropReason = (name: string): string =>
+    plan.props.length === 0
+      ? `"${name}" is read from Component Inputs, which declares no component inputs at all — nothing is delivered to it at runtime`
+      : `"${name}" is not one of this component's declared inputs (${plan.props.map((p) => p.name).join(', ')}) — nothing is delivered to it at runtime`;
+
   // Output props: every declared signal output port is an optional callback prop
   // (COMPONENT-OUTPUTS-TARGET §2). Ports that cannot become props, and value-kind ports,
   // are reported here once; wires into them are reported where they drop.
@@ -1852,7 +1870,13 @@ function planComponent(
 
   const resolveExpr = (fromNode: NodeIR | undefined, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
     if (!fromNode) return null;
-    if (fromNode.type === 'Component Inputs') return { kind: 'prop', name: fromProperty };
+    if (fromNode.type === 'Component Inputs') {
+      if (!declaresProp(fromProperty)) {
+        ctx.defer = undeclaredPropReason(fromProperty);
+        return null;
+      }
+      return { kind: 'prop', name: fromProperty };
+    }
     if (fromNode.type === COMPONENT_OBJECT && fromProperty.startsWith('value-')) {
       return componentObjectReadExpr(fromNode, fromProperty, ctx);
     }
@@ -4467,6 +4491,11 @@ function planComponent(
       if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
         consumed.add(connection.key);
         notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+        continue;
+      }
+      if (!declaresProp(connection.fromProperty)) {
+        consumed.add(connection.key);
+        notes.push(`wire ${connection.key} dropped: ${undeclaredPropReason(connection.fromProperty)}`);
         continue;
       }
       plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};

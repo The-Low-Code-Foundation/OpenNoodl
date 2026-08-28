@@ -440,20 +440,29 @@ export function emitComponent(
   const propName = (portName: string) => propIdentByName.get(portName) ?? propIdentifier(portName);
   const targetIdents = new Map<string, Map<string, string>>();
   /**
-   * The attribute name a caller writes for one of `targetLegacy`'s input ports. A port the
-   * target does not declare (or a target with no plan at all) falls back to the bare mapping:
-   * the attribute is still syntactically an identifier, and whether it belongs on that component
-   * is §10d(2)/(3)'s question, not this one's.
+   * The attribute name a caller writes for one of `targetLegacy`'s input ports, or `null` when the
+   * target declares no such port — §13b, the parent end of the missing interface. A component that
+   * never declares the port receives nothing through it at runtime, so the faithful emission is the
+   * attribute's *absence* plus a named note, not an attribute that lands on `IntrinsicAttributes`.
+   * Minting the prop on the target instead would make the exported app disagree with the running
+   * one, which is the one thing this phase does not do.
+   *
+   * The target's plan is always there: every site that mints an attribute has already resolved the
+   * instance through `requireInstance`, which drops the element whole when the target exports no
+   * component. An empty map therefore means "declares no inputs", never "was not looked up".
    */
-  const targetPropName = (targetLegacy: string, portName: string): string => {
+  const targetPropName = (targetLegacy: string, portName: string): string | null => {
     let idents = targetIdents.get(targetLegacy);
     if (idents === undefined) {
       const targetPlan = project.byLegacyPath.get(targetLegacy);
       idents = targetPlan ? propIdentifiers(targetPlan) : new Map<string, string>();
       targetIdents.set(targetLegacy, idents);
     }
-    return idents.get(portName) ?? propIdentifier(portName);
+    return idents.get(portName) ?? null;
   };
+  /** The note a refused attribute files, spelled once so all three call sites agree. */
+  const undeclaredAttrNote = (targetLegacy: string, portName: string, where: string): string =>
+    `${plan.path}: ${where} sets "${portName}" on ${targetLegacy}, which does not declare it as a component input — dropped, reported`;
   plan.props.forEach((p) => reserved.add(propName(p.name)));
   plan.outputProps.forEach((o) => reserved.add(o.prop));
   plan.liftedOutputProps.forEach((l) => reserved.add(l.prop));
@@ -1393,7 +1402,25 @@ export function emitComponent(
     const templatePlan = repeater?.templatePath ? project.byLegacyPath.get(repeater.templatePath) : undefined;
     // The row's attribute names are the template's props, so they take the template's mapping.
     const templateIdents = templatePlan ? propIdentifiers(templatePlan) : new Map<string, string>();
-    const templateProp = (input: string) => templateIdents.get(input) ?? propIdentifier(input);
+    const templateLegacy = repeater?.templatePath ?? '(unresolved template)';
+    /**
+     * One row's attributes. Same ruling as `targetPropName` (§13b): a mapped input the template
+     * does not declare as a component input receives nothing at runtime, so it is dropped and
+     * named rather than written onto `IntrinsicAttributes`. The rows below run only past the
+     * `!target` guard, so an absent template plan never reaches here.
+     */
+    const rowAttrs = (entries: ReadonlyArray<{ input: string; field: string }>, itemRef: string): string[] => {
+      const out: string[] = [];
+      for (const { input, field } of entries) {
+        const attr = templateIdents.get(input) ?? null;
+        if (attr === null) {
+          notes.push(undeclaredAttrNote(templateLegacy, input, `For Each ${node.id}`));
+          continue;
+        }
+        out.push(`${attr}={${memberExpr(itemRef, field)}}`);
+      }
+      return out;
+    };
     if (!repeater || noFeed || !target || repeater.mapping === null) {
       const reason = !repeater?.templatePath
         ? 'no template component'
@@ -1425,7 +1452,7 @@ export function emitComponent(
       // §3.2: `id` keys only when every row has a unique one, mirroring the runtime's own
       // record identity; otherwise index, which is the same information the runtime has.
       const keyAttr = staticData.keyField ? `key={${itemLocal}.${staticData.keyField}}` : `key={${indexLocal}}`;
-      const attrs = [keyAttr, ...keptStatic.map(({ input, field }) => `${templateProp(input)}={${memberExpr(itemLocal, field)}}`)];
+      const attrs = [keyAttr, ...rowAttrs(keptStatic, itemLocal)];
       const lines = element(target.symbol, attrs, null, indent + 2, false);
       const params = staticData.keyField ? itemLocal : `${itemLocal}, ${indexLocal}`;
       return [`${pad(indent)}{${staticData.constName}.map((${params}) => (`, ...lines, `${pad(indent)}))}`];
@@ -1433,10 +1460,7 @@ export function emitComponent(
     // §4e: a plain-list feed has no statically-known item shape — fields read as `any` off the
     // untyped list (the §10 ruling), so every mapped input is kept.
     if (itemsExpr !== undefined) {
-      const attrs = [
-        `key={${indexLocal}}`,
-        ...mapping.map(({ input, field }) => `${templateProp(input)}={${memberExpr(itemLocal, field)}}`)
-      ];
+      const attrs = [`key={${indexLocal}}`, ...rowAttrs(mapping, itemLocal)];
       const lines = element(target.symbol, attrs, null, indent + 2, false);
       const srcCode = exprCode(itemsExpr, 'render');
       // `?? []` is foreach.tsx's own "empty arrival clears the list".
@@ -1455,16 +1479,13 @@ export function emitComponent(
       );
     }
     if (collection) {
-      const attrs = [
-        `key={${indexLocal}}`,
-        ...kept.map(({ input, field }) => `${templateProp(input)}={${memberExpr(itemLocal, field)}}`)
-      ];
+      const attrs = [`key={${indexLocal}}`, ...rowAttrs(kept, itemLocal)];
       const lines = element(target.symbol, attrs, null, indent + 2, false);
       const local = collectionLocals.get(collection.name)!;
       return [`${pad(indent)}{${local}.map((${itemLocal}, ${indexLocal}) => (`, ...lines, `${pad(indent)}))}`];
     }
     const item = query!.itemName;
-    const attrs = [`key={${item}.id}`, ...kept.map(({ input, field }) => `${templateProp(input)}={${memberExpr(item, field)}}`)];
+    const attrs = [`key={${item}.id}`, ...rowAttrs(kept, item)];
     const lines = element(target.symbol, attrs, null, indent + 2, false);
     return [`${pad(indent)}{${query!.stateName}.map((${item}) => (`, ...lines, `${pad(indent)}))}`];
   };
@@ -1590,7 +1611,13 @@ export function emitComponent(
     const attrs: string[] = [];
     for (const param of node.parameters) {
       if (param.name === 'visible' || param.name === 'mounted') continue; // §4b: not target props
-      if (param.value.kind === 'literal') attrs.push(jsxAttr(targetPropName(node.type, param.name), param.value.value));
+      if (param.value.kind !== 'literal') continue;
+      const attr = targetPropName(node.type, param.name);
+      if (attr === null) {
+        notes.push(undeclaredAttrNote(node.type, param.name, `instance ${node.id}`));
+        continue;
+      }
+      attrs.push(jsxAttr(attr, param.value.value));
     }
     for (const [toProperty, source] of Object.entries(plan.bindings[node.id] ?? {})) {
       // mounted rides the render wrapper; visible has no class to toggle on an instance.
@@ -1602,8 +1629,16 @@ export function emitComponent(
         continue;
       }
       const expr = bindingExpr(source);
-      if (expr !== null) attrs.push(`${targetPropName(node.type, toProperty)}={${expr}}`);
-      else notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
+      if (expr === null) {
+        notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
+        continue;
+      }
+      const attr = targetPropName(node.type, toProperty);
+      if (attr === null) {
+        notes.push(undeclaredAttrNote(node.type, toProperty, `the wire into ${node.id}.${toProperty}`));
+        continue;
+      }
+      attrs.push(`${attr}={${expr}}`);
     }
     // The lifted callbacks (§4d parent side): `onXChanged={setX}` writes the parent state var.
     for (const lifted of plan.instanceLifted[node.id] ?? []) {
@@ -1624,10 +1659,16 @@ export function emitComponent(
       // A target with no translated Close Popup declares no onClose — passing one would fail
       // the emitted app's own typecheck, and such a popup never closes at runtime either.
       const closable = project.byLegacyPath.get(slot.targetLegacy)?.closesPopup === true;
-      const attrs = [
-        ...slot.params.map((p) => jsxAttr(targetPropName(slot.targetLegacy, p.input), p.value)),
-        ...(closable ? [`onClose={() => ${popupSetter}(null)}`] : [])
-      ];
+      const slotAttrs: string[] = [];
+      for (const p of slot.params) {
+        const attr = targetPropName(slot.targetLegacy, p.input);
+        if (attr === null) {
+          notes.push(undeclaredAttrNote(slot.targetLegacy, p.input, `popup slot ${slot.slotKey}`));
+          continue;
+        }
+        slotAttrs.push(jsxAttr(attr, p.value));
+      }
+      const attrs = [...slotAttrs, ...(closable ? [`onClose={() => ${popupSetter}(null)}`] : [])];
       return [
         `${pad(indent)}{${popupState} === ${tsLiteral(slot.slotKey)} &&`,
         `${pad(indent + 2)}createPortal(`,
