@@ -17,6 +17,7 @@ import { DEFAULT_TOKENS } from '../../../noodl-editor/src/editor/src/models/Styl
 import { Catalog, CatalogIndex, EXECUTION_REVEALED_TYPES, isCodeEditorType, isSignalPort, portTypeName } from '../catalog';
 import {
   AuthoringIntent,
+  CloudServicesIR,
   ComponentIR,
   ConnectionIR,
   ExportIR,
@@ -81,8 +82,31 @@ export function parseProject(projectDir: string, catalog: Catalog): ExportIR {
     routers: collectRouters(components),
     cloudComponents
   };
+  const cloudservices = parseCloudServices(projectFile.metadata?.cloudservices);
+  if (cloudservices !== undefined) project.cloudservices = cloudservices;
 
   return { project, components };
+}
+
+/**
+ * The deployed backend's address (EXP-009). Exactly four fields are copied — everything in the
+ * IR is presumed emittable into a browser bundle, so a privileged credential pasted into project
+ * metadata (a master key, an admin token) is dropped here, by construction rather than by grep.
+ * Absent unless both endpoint and appId are non-empty strings; a half-declared backend is no
+ * backend, and the api modules stay stubs with the reason named in the report.
+ */
+function parseCloudServices(raw: unknown): CloudServicesIR | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined;
+  const record = raw as Record<string, unknown>;
+  const { endpoint, appId, instanceId, type } = record;
+  if (typeof endpoint !== 'string' || endpoint.length === 0) return undefined;
+  if (typeof appId !== 'string' || appId.length === 0) return undefined;
+  return {
+    endpoint,
+    appId,
+    ...(typeof instanceId === 'string' ? { instanceId } : {}),
+    ...(typeof type === 'string' ? { type } : {})
+  };
 }
 
 /**

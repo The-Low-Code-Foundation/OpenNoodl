@@ -31,10 +31,30 @@ export interface ProjectIR {
   /** One per Router node found in the project. */
   routers: RouterIR[];
   /**
+   * From nodegx.project.json metadata.cloudservices — the deployed backend this project's data,
+   * auth and cloud-function nodes already talk to. EXP-009 emits a real client against it.
+   * Absent when the project declares no backend, and the api modules stay stubs (AC7).
+   *
+   * Exactly these four fields are copied and nothing else: anything privileged someone pastes
+   * into project metadata (a master key, an admin token) must never reach the IR, because
+   * everything in the IR is presumed emittable into a browser bundle.
+   */
+  cloudservices?: CloudServicesIR;
+  /**
    * Component paths under components/__cloud__ — cloud functions, executed by the backend's
    * interpreter. The frontend export skips them entirely; they surface as one report note.
    */
   cloudComponents: string[];
+}
+
+export interface CloudServicesIR {
+  /** "http://localhost:8581" — the backend's base URL. */
+  endpoint: string;
+  /** The Parse application id — the non-secret identifier every deployed app ships with. */
+  appId: string;
+  instanceId?: string;
+  /** "nodegx" — the discriminator EXP-009 §6 leaves room for BYOB backends on. */
+  type?: string;
 }
 
 export interface TokenIR {

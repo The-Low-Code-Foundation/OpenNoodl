@@ -26,6 +26,16 @@ const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
 const baseIr = parseProject(FIXTURE, catalog);
 const app = emitApp(baseIr, catalog);
 
+// EXP-009: the fixture declares its backend, so `app` above is the *connected* form. The stub
+// semantics this file pins are the no-backend form (AC7) — the same graph exported without
+// metadata.cloudservices, whose api files are byte-for-byte what this emitted before EXP-009.
+const withoutBackend = (): ExportIR => {
+  const ir = structuredClone(baseIr);
+  delete ir.project.cloudservices;
+  return ir;
+};
+const stubApp = emitApp(withoutBackend(), catalog);
+
 const ADMIN = 'Pages/Admin';
 const cloneIr = (): ExportIR => structuredClone(baseIr);
 const componentOf = (source: ExportIR, componentPath: string): ComponentIR =>
@@ -156,23 +166,23 @@ describe('§3 — a form field earns local state because the submit chain reads 
   });
 });
 
-describe('§4d — the api stub module: reads answer empty, writes throw', () => {
+describe('§4d — the api stub module (no backend, AC7): reads answer empty, writes throw', () => {
   test('one module carries the query and the mutations for the same class', () => {
-    const api = puppiesApi(app);
+    const api = puppiesApi(stubApp);
     expect(api).toContain('export async function fetchPuppies(): Promise<Puppy[]> {\n  return [];\n}');
     expect(api).toContain('export async function createPuppy(data: Partial<Puppy>): Promise<Puppy> {');
     expect(api).toContain('export async function updatePuppy(id: string, data: Partial<Puppy>): Promise<Puppy> {');
-    expect(adminSource(app)).toContain("import { createPuppy, updatePuppy } from '../api/puppies';");
+    expect(adminSource(stubApp)).toContain("import { createPuppy, updatePuppy } from '../api/puppies';");
   });
 
   test('a write stub throws rather than fabricating a stored record', () => {
-    const api = puppiesApi(app);
+    const api = puppiesApi(stubApp);
     expect(api).toContain("throw new Error('createPuppy is not connected to a backend yet');");
     expect(api).toContain("throw new Error('updatePuppy is not connected to a backend yet');");
   });
 
   test('each stub names its call sites', () => {
-    expect(puppiesApi(app)).toContain(
+    expect(puppiesApi(stubApp)).toContain(
       'TODO(export): "Create Puppy" (NewDbModelProperties `createRecord` on /Pages/Admin)'
     );
   });

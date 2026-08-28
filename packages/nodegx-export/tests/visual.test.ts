@@ -354,7 +354,11 @@ describe('emitApp', () => {
   });
 
   test('the api stub is typed from the collection schema and returns empty (builds before a backend)', () => {
-    const stub = app.files['src/api/puppies.ts'];
+    // EXP-009: the fixture declares its backend, so the stub form under test here is the
+    // no-backend export (AC7) — metadata.cloudservices stripped from the parsed IR.
+    const stripped = structuredClone(ir);
+    delete stripped.project.cloudservices;
+    const stub = emitApp(stripped, catalog).files['src/api/puppies.ts'];
     expect(stub).toContain('export interface Puppy {');
     expect(stub).toContain('id: string;');
     expect(stub).toContain('available?: boolean;');

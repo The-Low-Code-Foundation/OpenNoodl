@@ -112,7 +112,7 @@ where export means *taking your app with its backend*. Everything downstream fol
 | [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) | Export carries authoring intent | Not started |
 | [EXP-007](./EXP-007-EXPORT-PROVENANCE.md) | Export provenance & regeneration safety | Not started |
 | [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Coverage ledger & contributor gate | ✅ Built — **picker ratchet added 2026-08-28** |
-| [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **The exported app talks to its deployed backend** | 🔴 **NEW — highest priority** |
+| [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **The exported app talks to its deployed backend** | 🟢 **Built + driven s33** — AC4 (cloud functions) waits on EXP-011's node |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **NEW** |
 | [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🔴 **NEW** |
 

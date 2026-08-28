@@ -31,6 +31,16 @@ const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
 const baseIr = parseProject(FIXTURE, catalog);
 const app = emitApp(baseIr, catalog);
 
+// EXP-009: the fixture declares its backend, so `app` above is the *connected* form. The stub
+// semantics this file pins are the no-backend form (AC7) — strip metadata.cloudservices and the
+// api files are byte-for-byte what this emitted before EXP-009.
+const withoutBackend = (): ExportIR => {
+  const ir = structuredClone(baseIr);
+  delete ir.project.cloudservices;
+  return ir;
+};
+const stubApp = emitApp(withoutBackend(), catalog);
+
 const LOGIN_PAGE = 'Pages/Admin Login';
 const ADMIN = 'Pages/Admin';
 
@@ -150,13 +160,13 @@ describe('§4d — the session api stub: one module, writes throw, the read answ
   });
 
   test('a write stub throws — a fabricated successful sign-in is a plausible state of nothing', () => {
-    const api = sessionApi(app)!;
+    const api = sessionApi(stubApp)!;
     expect(api).toContain("throw new Error('logIn is not connected to a backend yet');");
     expect(api).toContain("throw new Error('logOut is not connected to a backend yet');");
   });
 
   test('each export carries its call site, node type and component', () => {
-    expect(sessionApi(app)!).toContain(
+    expect(sessionApi(stubApp)!).toContain(
       'TODO(export): "Log In Action" (net.noodl.user.LogIn `login` on /Pages/Admin Login)'
     );
   });
@@ -208,7 +218,7 @@ describe('§4c — the User node: a session read, earned by a surviving expressi
   });
 
   test('the read stub is the module\'s only non-throwing export', () => {
-    const ir = cloneIr();
+    const ir = withoutBackend();
     unwire(ir, ADMIN, 'userCheck:authenticated->authGate:condition');
     wire(ir, ADMIN, 'userCheck', 'username', 'titleText', 'text');
     const api = sessionApi(emitApp(ir, catalog))!;

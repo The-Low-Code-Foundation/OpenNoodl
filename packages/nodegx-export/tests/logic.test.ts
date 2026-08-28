@@ -345,6 +345,10 @@ describe('the puppy fixture is untouched by the slice', () => {
     const PUPPY_FIXTURE = path.join(__dirname, 'fixtures', 'puppy-test-3');
     const puppy = emitApp(parseProject(PUPPY_FIXTURE, catalog), catalog);
     for (const [name, content] of Object.entries(puppy.files)) {
+      // EXP-009: the backend client is protocol code, not graph translation — template
+      // literals and branches are its normal idiom, and backend-client.test.ts pins the
+      // whole file byte-for-byte, a stronger claim than this scan. README.md is prose.
+      if (name === 'src/api/client.ts' || name === 'README.md') continue;
       // A bare `not.toContain('if (')` stood in for "no Condition branch" until the record
       // verbs' Missing Record Id guard put a legitimate `if` in this fixture. The proxy was
       // always wider than the claim; assert the claim. Backticks appear in the api stubs' doc
@@ -359,7 +363,10 @@ describe('the puppy fixture is untouched by the slice', () => {
       // pinning the inventory is what keeps it one.
       const EXPECTED_BRANCHES = [
         "if (!puppyIdInput) throw new Error('Missing Record Id');",
-        "if (!session.authenticated) navigate('/admin-login');"
+        "if (!session.authenticated) navigate('/admin-login');",
+        // EXP-009: the connected useSession parses the stored session, and "no stored
+        // session" is a branch of that read.
+        'if (raw === undefined) return { authenticated: false, user: null };'
       ];
       for (const line of content.split('\n')) {
         if (EXPECTED_BRANCHES.some((b) => line.includes(b))) continue;

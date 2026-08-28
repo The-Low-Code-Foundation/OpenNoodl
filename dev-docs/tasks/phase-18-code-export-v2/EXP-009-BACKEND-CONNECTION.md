@@ -1,6 +1,8 @@
 # EXP-009 — The exported app talks to its deployed backend
 
-**Status:** 🔴 Not started — **highest priority in the phase** (re-scoped 2026-08-28, session 32)
+**Status:** 🟢 Built and driven, session 33 (2026-08-28) — AC1/2/3/5/6/7 verified, AC4 open.
+See [EXP-009-CLIENT-TARGET-OUTPUT.md](./EXP-009-CLIENT-TARGET-OUTPUT.md) for the design and
+§8 below for what the drive measured and what remains.
 **Depends on:** EXP-002 (the call sites already exist and are already typed)
 **Supersedes:** phase-18 README's inherited out-of-scope line
 *"Database/cloud node full export — generated as typed API-service stubs, not working backends."*
@@ -141,3 +143,35 @@ decides whether the thing that comes out is an app at all.
 It is also the item most likely to reveal that a "translated" node is only translated on paper:
 the record verbs, the user family and `DbCollection2` have all been graded by whether they emit
 plausible calls, never by whether the calls return anything.
+
+## §8 What session 33 built, measured, and left open
+
+Built exactly to §4's shape: `metadata.cloudservices` parsed into the IR (four fields copied,
+anything privileged dropped by construction), `src/api/client.ts` emitted when the project has a
+backend and at least one api module, stub bodies replaced with client calls, `useSession` made a
+real `useSyncExternalStore` hook over `Parse/<appId>/currentUser`, `.env.example` + README
+emitted. The no-backend export is byte-identical to before (AC7), with the reason as a report
+note. Goldens: `tests/goldens/exp009/`; design: EXP-009-CLIENT-TARGET-OUTPUT.md.
+
+**The drive (real `Puppy test 3`, real `nodegx-backend` from `~/.noodl/backends/…msjck…`, port
+8581):**
+
+- **AC1 ✓ in the DOM.** `vite build`, served, headless Chrome: the Landing page lists Biscuit,
+  Pepper, Mochi, Waffles, Juniper and Alfie — the six rows in the database. Negative control:
+  backend stopped, same page renders, **zero** puppies — the rows were wire-fed, not baked.
+- **AC2 ✓ / AC3 ✓ at the wire**, using byte-for-byte the request shapes the pinned client makes:
+  sign-up (`POST /users` answers objectId+createdAt+sessionToken only — confirming the identity
+  merge the client carries), login tunnel (`_method:'GET'`), `/users/me` with the token, logout;
+  a create with the session token attached appeared in the next query and was deleted after.
+  ⚠️ **The DOM-level login/admin form drive was not run** — the handlers are the same pinned
+  code paths, but nobody has clicked the exported forms yet. Do it when driving AC4.
+- **AC5 ✓ on the built bundle**: no `master-key`/`masterKey` in `dist/`; the only credential
+  string is `X-Parse-Application-Id`. Also pinned as tests, including a parser test that a
+  masterKey pasted into project metadata never reaches the IR.
+- **AC6 ✓** (`VITE_NODEGX_ENDPOINT` / `VITE_NODEGX_APP_ID`, defaults = the project's own).
+- **AC4 open.** The `Cloud Function` node is not *translated* yet — it is EXP-011 picker-gap
+  work; the client gains `/functions/<name>` (POST, session token, `{result}` envelope) when the
+  node does. Nothing in the seam precludes it.
+
+Residue: the drive created user `exp009-drive` in the local backend's `_User` collection
+(its test puppy and session were cleaned up; the user row is inert).
