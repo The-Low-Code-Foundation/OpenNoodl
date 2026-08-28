@@ -115,7 +115,11 @@ export function CommunityDirectoryView({
       </div>
 
       {view.filters.length > 0 && (
-        <div className={css['ChipRow']}>
+        /* ⚠️ A named group, as the Bench's and the Chat's already are — and here it does MORE work
+           than on either of them: these two pills are toggles that AND together (`matchesFilters`),
+           so "Offers coaching" standing on its own says what it selects and nothing at all about
+           what it is narrowing. */
+        <div className={css['ChipRow']} role="group" aria-label="Show people">
           {view.filters.map((filter) => (
             <FilterPill key={filter.key} filter={filter} onSelect={onToggleFilter} />
           ))}

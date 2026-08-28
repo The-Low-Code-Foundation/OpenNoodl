@@ -277,6 +277,39 @@ describe('🔴 all three surfaces draw through the ONE pill, which is how this d
     three shipped tabs, and this phase has already lost a day to a nav list that was copied in two
     places. The class may be named in exactly one component.
   */
+  /*
+    🔴 THE PILLS WERE FINE AND THE GROUP WAS NAMELESS. Every row above passes on a surface
+    whose filter bar is two loose buttons: they render, the marker draws, the contrast is there,
+    and a screen reader still meets "Available for work, pressed" with nothing saying what is
+    being narrowed. The Bench and the Chat carried `role="group"` and a label from the day they
+    were written; the People directory never did, and no check in this file could see the gap.
+
+    ⚠️ `ChipRow` names TWO different things in this directory — this filter bar, and the skill
+    chips inside `CommunityPersonRow`. These surfaces render with `section.state === 'empty'`, so
+    no person row exists and the row below is the filter bar; the length assertion is what makes
+    that a claim rather than a coincidence.
+  */
+  const groupOf = (node: React.ReactNode) => {
+    const rows = byClass(render(node), 'ChipRow');
+    expect(rows).toHaveLength(1);
+    return rows[0];
+  };
+
+  it.each(surfaces)('%s wraps its pills in a group that has a name', (_name, node) => {
+    const row = groupOf(node);
+    expect(row.props.role).toBe('group');
+    expect(String(row.props['aria-label'] ?? '')).not.toHaveLength(0);
+  });
+
+  /*
+    ⚠️ A name that does not distinguish is the same defect wearing a label: three bars all called
+    "Filters" announce identically in a rotor listing every group on the page.
+  */
+  it('🔴 the three group names are DISTINCT — each says what IT is narrowing', () => {
+    const labels = surfaces.map(([, node]) => groupOf(node).props['aria-label']);
+    expect(new Set(labels).size).toBe(surfaces.length);
+  });
+
   it('🔴 `FilterPill` is referenced by exactly ONE component in the directory', () => {
     const owners = fs
       .readdirSync(COMMUNITY_DIR)

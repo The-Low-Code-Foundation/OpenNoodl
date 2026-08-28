@@ -263,7 +263,20 @@ Status legend: ⬜ open · 🟡 partial · ✅ done · 🔒 blocked on a ruling 
   and need not be: `replyLatency`'s row call site is *inside the shared component*
   (`CommunityBenchView.tsx:136`), grepped — there is no second renderer to drift.
 - 🧭 FIX-026 — restore source decision (a)/(b), then build
-- 🟡 FIX-027 — 14/15/16 🧭 · 17 ⬜ · 19/20 ⬜ · 22 🧭 · `state-on-a-page` needs a home ⬜
+- 🟡 FIX-027 — **this line was stale on THREE of its five entries, corrected 2026-08-28 (s59).**
+  It read `17 ⬜ · 19/20 ⬜` for three days after the work landed. ✅ **17, 19 and 20 are FIXED AND
+  DRIVEN (2026-08-25)** — `f6d25d19` (a task step opens its own instructions, once, and a dismissal
+  sticks) and `fada53fd` (finishing a lesson says so, and offers a way to start again). Corrected
+  from **the artefacts, not from the task file**: `FIX-027`'s own table already said so, and the
+  source carries both fixes — `lessons/lessoninstructionopen.ts` with `LessonLayerView.jsx:74`
+  naming the old `showPopupWhenSelected={hasConditions === false}` it replaced, and
+  `lessonlayer2.ts` with `_startAgainTarget`/`_onStartAgain` and §19/§20 markers at `:429`/`:544`.
+  🔴 **Third time an index line in this phase has been stale in the safe direction** — FB-002 and
+  FB-010 both said `🟡 open` after their commits. A line that under-claims costs a session
+  re-deriving work that exists; **check the artefact before believing either the tick or the box**.
+  ⬜ **Still genuinely open**: 14/15/16 🧭 · 22 🧭 · `state-on-a-page` needs a home ⬜ — and that
+  last one **cannot be cleaned from this repo** (the bundle ships from a place neither checkout
+  sees), so it is a decision about where it lives, not code waiting to be written.
 - 🧭 `tsfixme` baseline decision
 - 🧭 Prod `ANTHROPIC_API_KEY` (⚠️ intro pricing ends 2026-08-31)
 
