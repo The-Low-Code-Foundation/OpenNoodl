@@ -256,11 +256,21 @@ describe('SB-008 — the public site in a browser, against an enforcing backend'
     const theme = await client.put<Row>(
       `/classes/Theme/${ids.theme}`,
       {
+        // SBR-003: the panel writes all twelve contract keys, filled or empty —
+        // this update mirrors a Save with four fields filled.
         tokens: {
           colorPrimary: '#1f6feb',
+          colorOnPrimary: '',
           colorBackground: '#fffdf7',
+          colorSurface: '',
           colorText: '#12202e',
-          fontFamily: 'Georgia, serif'
+          colorTextSoft: '',
+          colorBorder: '',
+          colorAccentSoft: '',
+          radius: '',
+          fontDisplay: 'Georgia, serif',
+          fontUi: '',
+          measure: ''
         }
       },
       asUser(owner)

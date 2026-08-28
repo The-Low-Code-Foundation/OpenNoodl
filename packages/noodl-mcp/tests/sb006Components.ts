@@ -14,10 +14,10 @@
  * `sb006PublicSite.test.ts`, because a contract nothing checks is a contract
  * that drifts on the first edit that reaches one side.
  *
- *  1. **The theme keys.** SB-005's `buildTokens` writes exactly
- *     `{ colorPrimary, colorBackground, colorText, fontFamily }` into
- *     `Theme.tokens`; `THEME_KEYS` below is that list, and `applyTheme` reads
- *     those keys and nothing else.
+ *  1. **The theme keys.** SB-005's `buildTokens` writes exactly the
+ *     `THEME_TOKEN_FIELDS` keys (SBR-003's twelve-field contract, single-sourced
+ *     in the editor's `siteTheme.ts` and re-exported below as `THEME_KEYS`) into
+ *     `Theme.tokens`; `applyTheme` reads those keys and nothing else.
  *  2. **The section payload.** SB-005's `Admin/SectionRow` edits exactly
  *     `data.body` and `data.image` (a `cloudfile`, rendered through its `url`),
  *     so those two are all a section view may read. Anything else would be a
@@ -72,25 +72,27 @@
  */
 
 /**
- * The theme keys, and the one place they are written down on this side.
+ * The theme keys — SBR-003's contract, imported rather than restated.
  *
  * The values are CSS custom properties from the project's own style vocabulary
- * (`get_style_vocabulary`, category `color-semantic`) — not invented names, so a
- * component authored with `var(--primary)` follows the record.
+ * (`get_style_vocabulary`) plus the one custom token the template mints
+ * (`--site-measure`) — not invented names, so a component authored with
+ * `var(--primary)` follows the record. The map lives in the editor's
+ * `siteTheme.ts` beside the `designTokens` floor and the presets, because a
+ * second copy of a palette drifts silently.
  *
- * ⚠️ `fontFamily` has no token to override: the vocabulary has weights
- * (`--font-bold`) and sizes (`--text-2xl`) and no family. It is applied as an
- * inline style on the document element instead, which inherits — nothing in the
- * viewer's stylesheet pins a family (`assets/style.css` sets only
- * `font-family: inherit`, on controls).
+ * ⚠️ The old `fontFamily` special case is now `fontUi`: the vocabulary DOES
+ * have family tokens (`--font-sans`/`--font-serif`), and POL-006's floor in
+ * `TokenResolver.generateCss` stamps `body { font-family: var(--font-sans) }`
+ * on every stamped surface — so overriding the token IS overriding the base
+ * face there. `applyTheme` writes the token and, belt-and-braces, mirrors the
+ * value onto the document element's inline `font-family` for any surface the
+ * stamp never reached (a declared token default alone never runs a setter).
  */
+import { THEME_TOKEN_FIELDS } from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
 import { ROUTER } from './sb005Components';
 
-export const THEME_KEYS = {
-  colorPrimary: '--primary',
-  colorBackground: '--background',
-  colorText: '--foreground'
-} as const;
+export const THEME_KEYS = THEME_TOKEN_FIELDS;
 
 /**
  * The Router the template's `App` component hosts — **imported, not restated**.
@@ -971,11 +973,22 @@ export const SITE_NODES = [
     type: 'JavaScriptFunction',
     label: 'The theme record, as CSS variables',
     parameters: {
-      // 🔴 The four keys are SB-005's `buildTokens` contract, and the three
-      // custom properties are names from the project's own style vocabulary —
-      // so a component authored with `var(--primary)` follows the record.
-      // `fontFamily` has no token to override and is applied as an inline style,
-      // which inherits.
+      // 🔴 The twelve keys are SBR-003's contract (`THEME_KEYS` /
+      // `siteTheme.ts`), written by SB-005's `buildTokens` and read here and
+      // nowhere else. Every custom property is a vocabulary name (plus the one
+      // minted `--site-measure`), so a component authored with `var(--primary)`
+      // follows the record; empty/absent values fall back to the `designTokens`
+      // floor the deploy stamps into `:root` — Studio, by construction.
+      //
+      // 🔴 The companion writes are DERIVATIONS, not record fields: hover/ring/
+      // accent-foreground follow the primary, raised follows the surface, the
+      // border steps mix toward ground and ink (color-mix is resolved by the
+      // browser — no colour math, no second palette to drift). And `fontUi` is
+      // mirrored onto the element's inline font-family as well as the token:
+      // the stamped CSS carries `body { font-family: var(--font-sans) }`
+      // (POL-006's floor in `TokenResolver.generateCss`), so the token write is
+      // the effective channel there — the mirror covers any surface the stamp
+      // never reached, where a declared token default alone lands no family.
       //
       // 🔴 Guarded for a server render. This bundle is the one most likely to be
       // deployed SSR or SSG, and `document` does not exist there.
@@ -985,10 +998,33 @@ export const SITE_NODES = [
         'const first = rows[0] ? rows[0].data || rows[0] : {};\n' +
         'const t = first.tokens || {};\n' +
         'const root = document.documentElement;\n' +
-        "if (t.colorPrimary) root.style.setProperty('--primary', t.colorPrimary);\n" +
+        'if (t.colorPrimary) {\n' +
+        "  root.style.setProperty('--primary', t.colorPrimary);\n" +
+        "  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n" +
+        "  root.style.setProperty('--ring', t.colorPrimary);\n" +
+        "  root.style.setProperty('--accent-foreground', t.colorPrimary);\n" +
+        '}\n' +
+        "if (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\n" +
         "if (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\n" +
+        'if (t.colorSurface) {\n' +
+        "  root.style.setProperty('--surface', t.colorSurface);\n" +
+        "  root.style.setProperty('--surface-raised', t.colorSurface);\n" +
+        '}\n' +
         "if (t.colorText) root.style.setProperty('--foreground', t.colorText);\n" +
-        'if (t.fontFamily) root.style.fontFamily = t.fontFamily;'
+        "if (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\n" +
+        'if (t.colorBorder) {\n' +
+        "  root.style.setProperty('--border', t.colorBorder);\n" +
+        "  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n" +
+        "  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n" +
+        '}\n' +
+        "if (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\n" +
+        "if (t.radius) root.style.setProperty('--radius-md', t.radius);\n" +
+        "if (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\n" +
+        'if (t.fontUi) {\n' +
+        "  root.style.setProperty('--font-sans', t.fontUi);\n" +
+        '  root.style.fontFamily = t.fontUi;\n' +
+        '}\n' +
+        "if (t.measure) root.style.setProperty('--site-measure', t.measure);"
     }
   },
   {

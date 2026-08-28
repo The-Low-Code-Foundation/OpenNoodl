@@ -407,14 +407,25 @@ describe('SB-004 §7 — the publication invariant on a real backend', () => {
       // is what `theme.firstItemId` yields, which was `undefined` on the empty
       // collection and made Save write nowhere and say nothing.
       expect(themes.json.results[0].objectId).toBeTruthy();
-      // The seeded tokens are the four keys `buildTokens` writes, all empty —
-      // the same state as an author saving the form with every field blank, so
-      // seeding decides no palette and `applyTheme` overrides nothing.
+      // The seeded tokens are the twelve keys `buildTokens` writes (SBR-003's
+      // `THEME_TOKEN_FIELDS` contract), all empty — the same state as an author
+      // saving the form with every field blank, so seeding decides no palette
+      // and `applyTheme` overrides nothing. (A literal rather than an import:
+      // this package's tests only `require` JSON from the editor tree;
+      // `sb004Authoring.test.ts` is where the seed is bound to the contract.)
       expect(themes.json.results[0].tokens).toEqual({
         colorPrimary: '',
+        colorOnPrimary: '',
         colorBackground: '',
+        colorSurface: '',
         colorText: '',
-        fontFamily: ''
+        colorTextSoft: '',
+        colorBorder: '',
+        colorAccentSoft: '',
+        radius: '',
+        fontDisplay: '',
+        fontUi: '',
+        measure: ''
       });
       // 🔴 And it is world-readable, because the PUBLIC site reads the theme
       // with no session. A row created with no rules would read as public today

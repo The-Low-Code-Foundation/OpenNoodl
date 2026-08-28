@@ -9,7 +9,7 @@ per-task status and the session log.
 |---|---|---|
 | SBR-001 | ✅ closed s2 | driven end-to-end; ACs 1–5,7 verified live, AC6 by spec + shelf listing |
 | SBR-002 | 🟡 s3: built, half-driven | editor half CLOSED (AC1–3 driven); template half built + spec-graded; **owed: AC4 drive + this lane's `test:ci`** — deferred under Richard's CPU hold (s3) |
-| SBR-003 | ⬜ open | contract settled at scoping (s1) — the task is to *implement and verify* it |
+| SBR-003 | 🟡 s4: built, unrun | contract implemented end-to-end + specs written under the CPU hold; **owed: template regeneration, typechecks, suites** (see task §5); person-ACs verify after SBR-004/006/009 |
 | SBR-004 | ⬜ open | |
 | SBR-005 | ⬜ open | |
 | SBR-006 | ⬜ open | |
@@ -46,6 +46,28 @@ per-task status and the session log.
   announce editor launches AND teardowns; `test:ci` alone.
 
 ## Session log
+
+- **s4 (2026-08-28)** — **SBR-003 built end-to-end under the CPU hold; NOTHING EXECUTED**
+  (code + specs saved for the sweep, per Richard's freeze). The contract is single-sourced in
+  `models/template/templates/siteTheme.ts`: `THEME_TOKEN_FIELDS` (12 fields — the final list,
+  AC deliverable), `SITE_THEME_PRESETS` (Studio/Press/Night verbatim from the screens
+  artifact), `buildSiteDesignTokens()` (Studio floor + 7 companions), `buildThemeDoc()`
+  (generated `docs/THEME.md`). Channels: `ProjectTemplate.designTokens`/`docs` →
+  `install()` writes `metadata.designTokens` + validated `docs/*.md`
+  (`assertTemplateDocPath` throws on escapes); overlay = `applyTheme` extended to the 12
+  keys + `color-mix` companion derivations; writers = `buildTokens` (12 keys, font field →
+  `fontDisplay`), `seedTheme` (12 empty). Pins updated in `sb004Authoring` (seed bound to the
+  contract), `sb004-publication-invariant` + `sb008` drive (12-key literals). New
+  `tests-unit/sbr-003/token-contract.test.ts` (vocabulary/presets/floor/install/doc/stamp,
+  every absence beside a firing positive, refusal table for the doc-path validator, and a
+  post-regeneration artefact gate). 🔴 **The artefact was NOT regenerated** (ts-node boots
+  the door's validation tree — held): `sb007Template.test.ts` byte gate + the sbr-003
+  artefact spec are red until `npm run template:site-builder` runs, which is therefore STEP 1
+  of the sweep. Learned en route: `TokenResolver.generateCss` resolves a pure `var(--x)`
+  token value inline at stamp time (freezes the link — floor companions are static hexes,
+  runtime derivations use `color-mix`, which passes through verbatim); POL-006's
+  `body{font-family:var(--font-sans)}` floor makes the token the effective font channel on
+  stamped surfaces.
 
 - **s3 (2026-08-28)** — **SBR-002 built; editor half closed and driven; AC4 + gates deferred
   under Richard's CPU hold** (*"avoid CPU/RAM intensive testing until I explicitly say to

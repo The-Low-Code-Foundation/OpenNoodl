@@ -70,3 +70,52 @@ platform, not by new machinery.
    `buildEffectiveTokens` semantics, mirrored at runtime).
 5. The probe specs of §2 exist and are green — each one paired with a control that proves the
    instrument can fail (an unknown token does NOT constrain the box).
+
+## 5. Status (s4, 2026-08-28 — built under the CPU hold, NOTHING EXECUTED)
+
+**Built, specs written, all UNRUN** (Richard's freeze — code + tests saved for the sweep):
+
+- **The contract module**: `models/template/templates/siteTheme.ts` — `THEME_TOKEN_FIELDS`
+  (the final field list, 12 fields: `colorPrimary`, `colorOnPrimary`, `colorBackground`,
+  `colorSurface`, `colorText`, `colorTextSoft`, `colorBorder`, `colorAccentSoft`, `radius`,
+  `fontDisplay`, `fontUi`, `measure`), `SITE_THEME_PRESETS` (Studio/Press/Night, values
+  verbatim from the screens artifact), `buildSiteDesignTokens()` (Studio + 7 static
+  companions: `--primary-hover --ring --accent-foreground --surface-raised --border-subtle
+  --border-strong --muted`), `buildThemeDoc()` (docs/THEME.md, generated). One source; the
+  descriptor, the doc and the graphs all read it.
+- **The floor**: `ProjectTemplate.designTokens` + `docs` fields; `EmbeddedTemplateProvider.
+  install` writes `metadata.designTokens` (`STYLE_TOKENS_METADATA_KEY`) and validated
+  `docs/*.md` files (`assertTemplateDocPath` — throws on any path outside docs/).
+  `site-builder.template.ts` declares both.
+- **The overlay**: `applyTheme` (sb006) reads the 12 keys, writes the same-name tokens onto
+  `documentElement.style`, derives companions via `color-mix` (hover 82% black; border steps
+  45%/65% toward `var(--background)`/`var(--foreground)`), mirrors `fontUi` onto inline
+  `font-family` (belt-and-braces: the stamp's `body{font-family:var(--font-sans)}` floor —
+  POL-006 — is the effective channel on stamped surfaces).
+- **Writers**: `buildTokens` (sb005) writes all 12 (unwired inputs ⇒ `''` = no override;
+  the font field now feeds `fontDisplay`); `seedTheme` (sb004) seeds all 12 empty.
+- **Pins updated**: `sb004Authoring.test.ts` (seed bound to `THEME_TOKEN_FIELDS`),
+  `sb004-publication-invariant.test.ts` (12-key literal, binding is on the mcp side),
+  `sb008-public-site-drive.test.ts` (PUT body 12 keys).
+- **New specs**: `tests-unit/sbr-003/token-contract.test.ts` — vocabulary resolution (+
+  can-fail control), preset completeness/hex validity (+ non-hex control), floor = Studio,
+  install writes metadata+doc for site-builder and NOT hello-world, doc path validator
+  refusal table, `generateProjectTokenCss` stamps `#1e4d8c`/`6px`/`44rem` and DROPS
+  `#3b82f6` (bare-project control keeps it, lacks `--site-measure`), and a post-regeneration
+  gate: the shipped artefact's applier reads every contract field.
+
+**Owed (in the sweep, in this order):** `npm run template:site-builder` (the artefact still
+carries the 4-key scripts — `sb007Template.test.ts` byte gate and the sbr-003 artefact spec
+are RED until then, by design) → `typecheck:editor` (expect 0) + `typecheck:mcp` →
+`test:ci` → mcp vitest (sb004/005/006/007) → backend suites when their build/pg is fair game.
+
+**§2 probes that are drives, still owed after the sweep:** the `var(--token)` dimension-port
+rendered probe (+ unknown-token control), and applyTheme-beats-`:root` (flip primary, read a
+button in a second eval).
+
+**AC status:** AC3 done (doc ships, generated). AC5 half done (spec-able probes written;
+drive probes owed). AC1/AC2/AC4 are person-sentence drives that CANNOT pass yet on visuals:
+nothing in the template consumes tokens until SBR-004/006 author with `var(--token)` — the
+artifact's own diagnosis ("nothing reads the tokens"). They verify after SBR-004 (public
+site), SBR-006 (admin), SBR-009 (preset row picks Night). The contract they verify against
+is now fixed and documented.

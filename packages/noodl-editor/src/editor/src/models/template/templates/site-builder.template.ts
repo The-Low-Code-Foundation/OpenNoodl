@@ -56,6 +56,7 @@ import { ProjectContent, ProjectTemplate } from '../ProjectTemplate';
 
 import siteBuilderContent from './site-builder.content.json';
 import siteBuilderSecurity from './site-builder.security.json';
+import { buildSiteDesignTokens, buildThemeDoc } from './siteTheme';
 
 /**
  * ⚠️ The cast is over one field the interface does not declare and the editor
@@ -93,6 +94,22 @@ export const siteBuilderTemplate: ProjectTemplate = {
    * the fallback chain.
    */
   initialOpenComponent: '/Pages/Setup',
+
+  /**
+   * SBR-003 — the Studio look as the project's own token overrides, written
+   * into metadata at install (`STYLE_TOKENS_METADATA_KEY`). The deploy stamps
+   * these into `:root {}`, so a never-claimed, zero-record site already wears
+   * Studio; the `Theme` record is a runtime overlay of the same names. Derived
+   * from `SITE_THEME_PRESETS.studio` — one source, no drifting copy.
+   */
+  designTokens: buildSiteDesignTokens(),
+
+  /**
+   * SBR-003 AC3 — the token contract, shipped as `docs/THEME.md` where
+   * `get_project_doc` lists it. Generated from the same module as the
+   * `designTokens` block, so the doc and the data cannot disagree.
+   */
+  docs: [{ path: 'docs/THEME.md', content: buildThemeDoc() }],
 
   /**
    * SB-015 — SB-004 §4's policy, as the shipped artefact rather than as prose.

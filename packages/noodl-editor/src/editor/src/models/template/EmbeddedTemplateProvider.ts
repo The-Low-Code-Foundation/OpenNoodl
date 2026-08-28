@@ -10,8 +10,9 @@
 
 import { CLOUD_COMPONENT_PREFIX } from '../../validation/runtimeContext';
 import { ITemplateProvider, TemplateItem } from '../../utils/forge/template/template';
+import { STYLE_TOKENS_METADATA_KEY } from '../StyleTokensModel/ProjectTokenCss';
 import { INITIAL_OPEN_COMPONENT_METADATA_KEY } from './firstOpenComponent';
-import { ProjectContent, NodeDefinition, ProjectTemplate } from './ProjectTemplate';
+import { assertTemplateDocPath, ProjectContent, NodeDefinition, ProjectTemplate } from './ProjectTemplate';
 import { helloWorldTemplate } from './templates/hello-world.template';
 import { siteBuilderTemplate } from './templates/site-builder.template';
 
@@ -137,6 +138,17 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
       };
     }
 
+    // SBR-003: the template's look, as the project's own token overrides —
+    // the same metadata key the style panel persists to, read by the deploy's
+    // `:root` stamp and the preview injector. Metadata, not a stylesheet, so
+    // the recipient can open the style panel and see (and change) every value.
+    if (template.designTokens) {
+      projectContent.metadata = {
+        ...(projectContent.metadata || {}),
+        [STYLE_TOKENS_METADATA_KEY]: template.designTokens
+      };
+    }
+
     // Ensure destination directory exists
     const { filesystem } = await import('@noodl/platform');
 
@@ -163,6 +175,22 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
     if (template.securityPolicy) {
       const policyPath = filesystem.join(destination, 'nodegx.security.json');
       await filesystem.writeFile(policyPath, JSON.stringify(template.securityPolicy, null, 2) + '\n');
+    }
+
+    // SBR-003: docs the template ships — `docs/` only, validated per entry
+    // (`assertTemplateDocPath` throws rather than skips, so a bad path cannot
+    // ship a doc-less project silently). `docs/` is the door's
+    // `get_project_doc` surface: this is how the next authoring session reads
+    // the template's contracts instead of rediscovering them.
+    if (template.docs) {
+      for (const doc of template.docs) {
+        assertTemplateDocPath(doc.path);
+        const docDir = filesystem.join(destination, doc.path.split('/').slice(0, -1).join('/'));
+        if (!filesystem.exists(docDir)) {
+          await filesystem.makeDirectory(docDir);
+        }
+        await filesystem.writeFile(filesystem.join(destination, doc.path), doc.content);
+      }
     }
   }
 

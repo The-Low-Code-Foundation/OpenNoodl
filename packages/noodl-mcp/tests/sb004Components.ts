@@ -1092,11 +1092,26 @@ export const CLAIM_NODES = [
     // produces from a form the author saved with every field blank, so the
     // seeded state and the authored state are the same state.
     //
-    // The four keys are written rather than left out: a missing key and an
-    // empty one are different things to a reader doing `tokens.colorText`.
+    // All twelve SBR-003 contract keys are written rather than left out: a
+    // missing key and an empty one are different things to a reader doing
+    // `tokens.colorText`. (Keys single-sourced in the editor's `siteTheme.ts`;
+    // `sb004Authoring.test.ts` holds this literal to that list.)
     parameters: {
       collectionName: 'Theme',
-      'prop-tokens': { colorPrimary: '', colorBackground: '', colorText: '', fontFamily: '' },
+      'prop-tokens': {
+        colorPrimary: '',
+        colorOnPrimary: '',
+        colorBackground: '',
+        colorSurface: '',
+        colorText: '',
+        colorTextSoft: '',
+        colorBorder: '',
+        colorAccentSoft: '',
+        radius: '',
+        fontDisplay: '',
+        fontUi: '',
+        measure: ''
+      },
       // The public site reads the theme as an anonymous visitor, so this row
       // carries the same world-read rule as `SiteSettings` and for the same
       // reason.

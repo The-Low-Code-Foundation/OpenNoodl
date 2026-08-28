@@ -6,6 +6,37 @@
  *
  * @module noodl-editor/models/template
  */
+import { StyleTokensData } from '../StyleTokensModel/TokenCategories';
+
+/**
+ * A markdown document a template ships into the new project's `docs/` folder
+ * (the door's `get_project_doc` surface — any file under `docs/` is listed and
+ * pull-injectable, per `ProjectDocs/docsText.ts`).
+ */
+export interface TemplateDoc {
+  /** Project-relative, forward-slashed, inside `docs/` — see `assertTemplateDocPath`. */
+  path: string;
+  /** The file's full markdown content, front matter included. */
+  content: string;
+}
+
+/**
+ * SBR-003 — refuse a template doc path that could land outside `docs/`.
+ *
+ * The provider's `securityPolicy` comment rules that a template must never be
+ * a general "extra files" channel: a template installs a project somebody else
+ * may have written. Docs keep that boundary — one known directory, markdown
+ * only, every segment a plain name. Throwing (rather than skipping) means a
+ * bad path cannot ship silently doc-less.
+ */
+export function assertTemplateDocPath(docPath: string): void {
+  const segments = docPath.split('/');
+  const insideDocs = segments[0] === 'docs' && segments.length > 1;
+  const plainSegments = segments.every((s) => s !== '' && s !== '.' && s !== '..' && !s.includes('\\'));
+  if (!insideDocs || !plainSegments || !docPath.endsWith('.md')) {
+    throw new Error(`template doc path must be a .md file inside docs/: "${docPath}"`);
+  }
+}
 
 /**
  * Represents a complete project template structure
@@ -101,6 +132,30 @@ export interface ProjectTemplate {
    * the default chain (`/Main`, `/Start`, root, …) answers as before.
    */
   initialOpenComponent?: string;
+
+  /**
+   * SBR-003 — token overrides written into the new project's metadata under
+   * `STYLE_TOKENS_METADATA_KEY` (`'designTokens'`) at install, exactly where
+   * the style panel persists a user's own overrides.
+   *
+   * This is how a template ships a *look* rather than a stylesheet: the deploy
+   * stamps defaults+overrides into `:root {}` of index.html
+   * (`generateProjectTokenCss`), the editor preview injects the same CSS, and
+   * a runtime `Theme` record overlays the same names on top. Rides the same
+   * channel as `initialOpenComponent` and shares its property: a template
+   * without the field writes a project.json byte-identical to before.
+   */
+  designTokens?: StyleTokensData;
+
+  /**
+   * SBR-003 — markdown docs written into the new project's `docs/` folder at
+   * install, so an authoring session's door (`get_project_doc`) can read the
+   * template's contracts instead of rediscovering them.
+   *
+   * ⚠️ Not a general file channel — see `assertTemplateDocPath`, which install
+   * applies to every entry and which refuses anything outside `docs/`.
+   */
+  docs?: ReadonlyArray<TemplateDoc>;
 }
 
 /**

@@ -59,6 +59,7 @@ import {
   WORKER_NODES,
   WORKER_WIRES
 } from './sb004Components';
+import { THEME_TOKEN_FIELDS } from '../../noodl-editor/src/editor/src/models/template/templates/siteTheme';
 
 interface Diag {
   code: string;
@@ -449,12 +450,12 @@ describe('SB-004: duplicate and contact, through create_component', () => {
     //     theme editor saves by `firstItemId`, so with no row its Save wrote
     //     nowhere and said nothing.
     expect(from(wired('theme', 'store'))).toBe('mark');
-    expect(node('theme')?.parameters?.['prop-tokens']).toEqual({
-      colorPrimary: '',
-      colorBackground: '',
-      colorText: '',
-      fontFamily: ''
-    });
+    // SBR-003: the seeded shape is the twelve-field contract, every key '' —
+    // derived from `THEME_TOKEN_FIELDS` so a field added to the contract with
+    // no seed (or a seeded key the contract dropped) reddens here.
+    expect(node('theme')?.parameters?.['prop-tokens']).toEqual(
+      Object.fromEntries(Object.keys(THEME_TOKEN_FIELDS).map((k) => [k, '']))
+    );
     // The public site reads the theme with no session, so the row is born
     // world-readable — the same rule `SiteSettings` carries.
     expect(node('theme')?.parameters?.['acl-world-read']).toBe(true);

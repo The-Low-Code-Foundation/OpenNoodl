@@ -1131,32 +1131,55 @@ export const THEME_EDITOR_NODES = [
     type: 'JavaScriptFunction',
     label: 'Read the theme tokens',
     parameters: {
+      // SBR-003: all twelve contract fields come back out, so SBR-009's grouped
+      // fields have a startValue to wire to as they land. Unread-by-any-field
+      // outputs are just unwired ports until then.
       functionScript:
         'const rows = Inputs.rows || [];\n' +
         'const first = rows[0] ? rows[0].data || rows[0] : {};\n' +
         'const t = first.tokens || {};\n' +
         "Outputs.primary = t.colorPrimary || '';\n" +
+        "Outputs.onPrimary = t.colorOnPrimary || '';\n" +
         "Outputs.background = t.colorBackground || '';\n" +
+        "Outputs.surface = t.colorSurface || '';\n" +
         "Outputs.text = t.colorText || '';\n" +
-        "Outputs.font = t.fontFamily || '';"
+        "Outputs.textSoft = t.colorTextSoft || '';\n" +
+        "Outputs.border = t.colorBorder || '';\n" +
+        "Outputs.accentSoft = t.colorAccentSoft || '';\n" +
+        "Outputs.radius = t.radius || '';\n" +
+        "Outputs.fontDisplay = t.fontDisplay || '';\n" +
+        "Outputs.fontUi = t.fontUi || '';\n" +
+        "Outputs.measure = t.measure || '';"
     }
   },
   {
     id: 'buildTokens',
     type: 'JavaScriptFunction',
-    label: 'The four tokens, as one object',
+    label: 'The theme tokens, as one object',
     // Rule 1.
     ports: [{ name: 'out-built', plug: 'output', type: 'signal' }],
     parameters: {
-      // The keys are the contract with the public site, so they are written here
-      // whether or not the author filled every field — a missing key and an
-      // empty one are different things to a reader that does `tokens.colorText`.
+      // The keys are SBR-003's contract with the public site (`THEME_KEYS` /
+      // `siteTheme.ts`), so all twelve are written whether or not the author
+      // filled every field — a missing key and an empty one are different
+      // things to a reader that does `tokens.colorText`. Fields the current
+      // screen does not yet expose arrive as `undefined` (an unconnected input
+      // has NO default) and save as '' — "no override" — until SBR-009 wires
+      // them and the preset row fills them.
       functionScript:
         'Outputs.tokens = {\n' +
         "  colorPrimary: Inputs.primary || '',\n" +
+        "  colorOnPrimary: Inputs.onPrimary || '',\n" +
         "  colorBackground: Inputs.background || '',\n" +
+        "  colorSurface: Inputs.surface || '',\n" +
         "  colorText: Inputs.text || '',\n" +
-        "  fontFamily: Inputs.font || ''\n" +
+        "  colorTextSoft: Inputs.textSoft || '',\n" +
+        "  colorBorder: Inputs.border || '',\n" +
+        "  colorAccentSoft: Inputs.accentSoft || '',\n" +
+        "  radius: Inputs.radius || '',\n" +
+        "  fontDisplay: Inputs.fontDisplay || '',\n" +
+        "  fontUi: Inputs.fontUi || '',\n" +
+        "  measure: Inputs.measure || ''\n" +
         '};\n' +
         'Outputs.built();'
     }
@@ -1196,7 +1219,9 @@ export const THEME_EDITOR_WIRES = [
   { fromId: 'readTheme', fromProperty: 'out-primary', toId: 'primaryField', toProperty: 'startValue' },
   { fromId: 'readTheme', fromProperty: 'out-background', toId: 'backgroundField', toProperty: 'startValue' },
   { fromId: 'readTheme', fromProperty: 'out-text', toId: 'textField', toProperty: 'startValue' },
-  { fromId: 'readTheme', fromProperty: 'out-font', toId: 'fontField', toProperty: 'startValue' },
+  // SBR-003: the existing font field edits the DISPLAY face (SBR-009 groups it
+  // as "heading font"); `fontUi` gets its own field there.
+  { fromId: 'readTheme', fromProperty: 'out-fontDisplay', toId: 'fontField', toProperty: 'startValue' },
 
   // `firstItemId` is the singleton's id — the row `claimSite` wrote.
   { fromId: 'settings', fromProperty: 'firstItemId', toId: 'saveSettings', toProperty: 'modelId' },
@@ -1207,7 +1232,7 @@ export const THEME_EDITOR_WIRES = [
   { fromId: 'primaryField', fromProperty: 'onTextChanged', toId: 'buildTokens', toProperty: 'in-primary' },
   { fromId: 'backgroundField', fromProperty: 'onTextChanged', toId: 'buildTokens', toProperty: 'in-background' },
   { fromId: 'textField', fromProperty: 'onTextChanged', toId: 'buildTokens', toProperty: 'in-text' },
-  { fromId: 'fontField', fromProperty: 'onTextChanged', toId: 'buildTokens', toProperty: 'in-font' },
+  { fromId: 'fontField', fromProperty: 'onTextChanged', toId: 'buildTokens', toProperty: 'in-fontDisplay' },
   { fromId: 'themeButton', fromProperty: 'onClick', toId: 'buildTokens', toProperty: 'run' },
   { fromId: 'theme', fromProperty: 'firstItemId', toId: 'saveTheme', toProperty: 'modelId' },
   { fromId: 'buildTokens', fromProperty: 'out-tokens', toId: 'saveTheme', toProperty: 'prop-tokens' },
