@@ -42,7 +42,7 @@ const wire = (
 interface Block {
   type: string;
   fields?: Record<string, string>;
-  inputs?: Record<string, { block?: Block }>;
+  inputs?: Record<string, { block?: Block; shadow?: Block }>;
   next?: { block?: Block };
 }
 const workspace = (...blocks: Block[]): string => JSON.stringify({ blocks: { blocks } });
@@ -55,7 +55,18 @@ const defineOutput = (name: string, type = 'string'): Block => ({
   type: 'noodl_define_output',
   fields: { NAME: name, TYPE: type }
 });
+/**
+ * A `set output` with **nothing plugged into its value socket** — which the block editor's own
+ * generator turns into `Outputs["name"] = null;` (`NoodlGenerators.ts`, `valueToCode(…) || 'null'`).
+ * Use `setOutputTo` for the plugged-in shape; the two are not interchangeable.
+ */
 const setOutput = (name: string): Block => ({ type: 'noodl_set_output', fields: { NAME: name } });
+const setOutputTo = (name: string, value: Block): Block => ({
+  type: 'noodl_set_output',
+  fields: { NAME: name },
+  inputs: { VALUE: { block: value } }
+});
+const text = (value: string): Block => ({ type: 'text', fields: { TEXT: value } });
 const getInput = (name: string): Block => ({ type: 'noodl_get_input', fields: { NAME: name } });
 const setVariable = (name: string): Block => ({ type: 'noodl_set_variable', fields: { NAME: name } });
 const getVariable = (name: string): Block => ({ type: 'noodl_get_variable', fields: { NAME: name } });
@@ -97,12 +108,16 @@ const notesOf = (source: ExportIR): string[] => emitApp(source, catalog).notes;
 // The canonical shape: a guarded branch reading an input, writing an output, round-tripping a
 // Variable. This is `tut003-log-a-thing-solution`'s program, which is the only corpus Visual
 // Function that does real work (LOGIC-BUILDER-TARGET §2 body #4).
+// ⚠️ The `set output` sockets are **filled**, as tut003's really are. That is not decoration: an
+// empty socket is a different program — the generator writes `null` into it — and this fixture is
+// the one every other test here reads as "the canonical complete program".
 const GUARD_WORKSPACE = workspace(
   defineInput('entry'),
   defineOutput('message'),
-  setOutput('message'),
+  setOutputTo('message', text('Type something first.')),
   getInput('entry'),
   setVariable('lastEntryTitle'),
+  setOutputTo('message', getVariable('lastEntryTitle')),
   getVariable('lastEntryTitle')
 );
 const GUARD_CODE = `if (!Inputs["entry"]) {
@@ -129,6 +144,26 @@ describe('the workspace census reads blocks, not generated text', () => {
   test('an unreadable workspace reports empty rather than throwing', () => {
     expect(censusOf('{not json').empty).toBe(true);
     expect(censusOf(undefined).empty).toBe(true);
+  });
+
+  test('an empty `set output` socket is reported apart from a filled one', () => {
+    // The generator's rule, restated: `valueToCode(block, 'VALUE', …) || 'null'`. A filled socket
+    // must NOT appear here, or every output in the corpus would widen.
+    const census = censusOf(workspace(setOutput('bare'), setOutputTo('filled', text('x'))));
+    expect(census.outputWrites).toEqual(['bare', 'filled']);
+    expect(census.emptyOutputWrites).toEqual(['bare']);
+  });
+
+  test('a shadow in the socket counts as plugged in — Blockly generates from it', () => {
+    // `valueToCode` resolves the socket's target block, and for a shadow-only connection the
+    // target IS the shadow. A census that only looked at `.block` would call this empty.
+    const shadowed = workspace({
+      type: 'noodl_set_output',
+      fields: { NAME: 'shadowed' },
+      inputs: { VALUE: { shadow: text('0') } }
+    });
+    expect(censusOf(shadowed).outputWrites).toEqual(['shadowed']);
+    expect(censusOf(shadowed).emptyOutputWrites).toEqual([]);
   });
 
   test('nested blocks under inputs and next are censused', () => {
@@ -342,6 +377,79 @@ describe('the re-host: the body is verbatim and the shims are supplied (§3.2–
     const source = homeSource(built());
     expect(source).toContain('CheckEntry(');
     expect(source).toMatch(/setCheckEntryOut\(/);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Session 24 (RECORD-VERBS §12). A `Define output … type number` is a claim about the port, not a
+// check on the writes: the generator emits `Outputs["result"] = null;` for an empty value socket
+// without consulting it, and the runtime stores that null verbatim and sends it down the wire.
+// This was 16 of the corpus's 51 remaining diagnostics, across the whole eight-project clone
+// family — and it stayed invisible until §11 cleared the syntax errors that suppressed the
+// semantic pass.
+// ---------------------------------------------------------------------------------------------
+
+describe('an empty `set output` socket writes null, so the wrapper admits it (§12)', () => {
+  const NULL_CODE = 'Outputs["result"] = 1 + 2;\nOutputs["result"] = null;';
+
+  /** One Visual Function on Home, run from the button, its `result` landing on a Text. */
+  const withVisual = (workspaceJson: string, code = NULL_CODE) => {
+    const ir = cloneIr();
+    addVisual(ir, 'vf', workspaceJson, code, 'Blocks');
+    addText(ir, 'resultText');
+    wire(ir, 'Pages/Home', 'cheerButton', 'onClick', 'vf', 'run', 'signal');
+    wire(ir, 'Pages/Home', 'vf', 'result', 'resultText', 'text');
+    return ir;
+  };
+
+  // The discriminating pair: same declared type, same generated code, ONE difference — whether
+  // the `set output` block has anything plugged into it.
+  const EMPTY_SOCKET = workspace(defineOutput('result', 'number'), setOutput('result'));
+  const FILLED_SOCKET = workspace(
+    defineOutput('result', 'number'),
+    setOutputTo('result', { type: 'math_number', fields: { NUM: '0' } })
+  );
+
+  test('the empty socket widens the field, the filled one does not', () => {
+    expect(homeSource(withVisual(EMPTY_SOCKET))).toContain(
+      'function Blocks(Inputs: Record<string, never>): { result?: number | null } {'
+    );
+    expect(homeSource(withVisual(FILLED_SOCKET))).toContain(
+      'function Blocks(Inputs: Record<string, never>): { result?: number } {'
+    );
+  });
+
+  test('the local Outputs record is widened too — it is what the body assigns into', () => {
+    // Widening only the return type would leave `Outputs["result"] = null` failing on the line
+    // that caused all of this. (One string builds both today; this pins that it stays that way.)
+    expect(homeSource(withVisual(EMPTY_SOCKET))).toContain('const Outputs: { result?: number | null } = {};');
+  });
+
+  test('the materialized last-run state carries the widened type', () => {
+    // A second surface: §4f's useState builds its own type from the same output list, and a
+    // narrow state row would reintroduce the error one hop downstream.
+    expect(homeSource(withVisual(EMPTY_SOCKET))).toContain('useState<{ result?: number | null } | undefined>()');
+  });
+
+  test('the body is still verbatim — the null is admitted, never coerced away', () => {
+    // 🔴 The whole reason widening is the answer and coercion is not: the re-host preserves the
+    // block program exactly (EXP-003 §4), so the app agrees with the graph about what it sends.
+    const source = homeSource(withVisual(EMPTY_SOCKET));
+    expect(source).toContain('Outputs["result"] = null;');
+    expect(source).not.toContain('Outputs["result"] = 0;');
+  });
+
+  test('an undeclared port stays `any` — `any | null` would be noise, not information', () => {
+    const undeclared = workspace(setOutput('result'));
+    expect(homeSource(withVisual(undeclared))).toContain(
+      'function Blocks(Inputs: Record<string, never>): { result?: any } {'
+    );
+  });
+
+  test('the widening names the block it came from, so the reader can go and plug it in', () => {
+    const source = homeSource(withVisual(EMPTY_SOCKET));
+    expect(source).toContain('// `result`: a `set output` block below has an empty value socket, which');
+    expect(homeSource(withVisual(FILLED_SOCKET))).not.toContain('empty value socket');
   });
 });
 

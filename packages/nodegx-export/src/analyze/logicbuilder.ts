@@ -187,6 +187,26 @@ export interface WorkspaceCensus {
   signalSends: string[];
   /** Names written by `noodl_set_output`. */
   outputWrites: string[];
+  /**
+   * Names written by a `noodl_set_output` whose **value socket is empty** — the subset of
+   * `outputWrites` whose generated statement is `Outputs["name"] = null;`.
+   *
+   * 🔴 This is the block editor's own rule, not an inference:
+   * `NoodlGenerators.ts` emits `valueToCode(block, 'VALUE', …) || 'null'`, so an unplugged
+   * socket generates the literal `null` — and the runtime stores it verbatim
+   * (`logic-builder.ts`: `internal.outputValues[name] = context.Outputs[name]`), with no
+   * coercion against the port's declared type on either side of the wire. A `number` output
+   * really does deliver `null`, so the emitted wrapper's field type has to admit it.
+   *
+   * Read here off the workspace rather than mined out of `generatedCode`, for the reason
+   * `variables` is: the workspace is the authored artefact and the code is its projection.
+   *
+   * ⚠️ **An under-approximation, deliberately.** A *filled* socket can still evaluate to null at
+   * runtime (`get variable` on an unset variable is the corpus case). Those paths reach the
+   * field through `any`-typed shims, so they neither typecheck wrong nor widen anything; this
+   * list is the set that is null by construction, which is the set that needs the type.
+   */
+  emptyOutputWrites: string[];
   /** True when the workspace held no blocks at all (or would not parse). */
   empty: boolean;
 }
@@ -209,6 +229,7 @@ export function censusOf(workspaceJson: string | undefined): WorkspaceCensus {
     variableWrites: [],
     signalSends: [],
     outputWrites: [],
+    emptyOutputWrites: [],
     empty: true
   };
   if (workspaceJson === undefined || workspaceJson.trim().length === 0) return census;
@@ -242,9 +263,17 @@ export function censusOf(workspaceJson: string | undefined): WorkspaceCensus {
       case 'noodl_send_signal':
         push(census.signalSends, name);
         break;
-      case 'noodl_set_output':
+      case 'noodl_set_output': {
         push(census.outputWrites, name);
+        // Blockly's `valueToCode` resolves the socket's *target* block, which is the shadow when
+        // only a shadow is attached — so a shadow counts as plugged in, exactly as it does in
+        // the editor. Empty means no socket entry at all, or one holding neither.
+        const socket = block.inputs?.VALUE;
+        if (socket === undefined || (socket.block === undefined && socket.shadow === undefined)) {
+          push(census.emptyOutputWrites, name);
+        }
         break;
+      }
     }
 
     for (const key of Object.keys(block.inputs ?? {})) {

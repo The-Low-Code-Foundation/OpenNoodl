@@ -572,10 +572,10 @@ over a corpus that does not parse reports its bound, not its content** — and t
 
 **13 projects, 51 diagnostics, six distinct causes:**
 
-1. **`null` into a Visual Function wrapper's typed output** — 16 diagnostics, **8 projects**
+1. ~~**`null` into a Visual Function wrapper's typed output**~~ — 16 diagnostics, **8 projects**
    (the clone family). The block program writes `Outputs["result"] = null`; the wrapper types the
    field from the port's catalog type as `number | undefined`. Largest remaining, and the only one
-   §10d could not see.
+   §10d could not see. **Closed in session 24 — §12.**
 2. **A component reading a prop it never declared** — 18 diagnostics, 2 projects
    (`ecommerce-example`, `ecom-responsive-probe`, both `ProductCard.tsx`): `Cannot find name
    'image' / 'badge' / 'rating' / …`. §10d(3), unchanged.
@@ -588,3 +588,129 @@ over a corpus that does not parse reports its bound, not its content** — and t
 
 Ranked by projects unblocked, (1) and (2) are worth the rest together: (1) alone would take the
 corpus from 27/40 to 35/40.
+
+## §12 The null a Visual Function writes into a typed output (session 24 — §11d(1), closed)
+
+### 12a — What the runtime does, and why that decides between coercing and widening
+
+The corpus's eight clone projects all emit the same `Header.tsx`:
+
+```ts
+function blocks(Inputs: Record<string, never>): { result?: number } {
+  const Outputs: { result?: number } = {};
+  …
+  Outputs["result"] = null;   // TS2322 — an optional `number` cannot take null
+```
+
+Two candidate fixes, and §11d left the choice open pending the runtime, exactly the way §10a and
+§10b were settled from §1. **Three readings of the sources settle it, and all three point the
+same way:**
+
+1. **The block editor's generator writes the null, and never consults the declared type.**
+   `NoodlGenerators.ts`: `valueToCode(block, 'VALUE', Order.ASSIGNMENT) || 'null'`. A `set output`
+   block with **nothing plugged into its value socket** generates the literal `null`. The
+   `Define output result type number` block is a *different* block, and the generator does not
+   read it.
+2. **The runtime stores what was written, verbatim.** `logic-builder.ts:386` —
+   `internal.outputValues[outputName] = context.Outputs[outputName]`, then
+   `registerOutputIfNeeded` and `flagOutputDirty`. `typeOfPort` supplies the port's declared type
+   to `registerOutput`, and the getter hands back the stored value untouched.
+3. **Nothing coerces it on the way out, either.** The one cast on a connection is NDA-014
+   (`node.ts:1026`), and it is `object`/`array` → `string` with an explicit `value !== null`
+   guard. A `number`-typed output really does deliver `null` to whatever consumes it.
+
+So **the declared output type is a claim about the port, not a check on the writes** — and the
+faithful translation widens the field rather than coercing the assignment. Coercion would make
+the exported app disagree with the graph about what the port sends; it is also mechanically out
+of reach, because the body is re-hosted **verbatim** — the same ruling that shims `__p`/`__s`
+rather than stripping them (EXP-003 §4), for the same reason: rewriting an assignment inside
+generated code needs an AST.
+
+### 12b — The mapping, and where the condition is read from
+
+`WorkspaceCensus.emptyOutputWrites` — the subset of `outputWrites` whose `set output` block has
+an empty value socket, i.e. **the generator's own condition, restated**. It is read off the
+**workspace**, not mined out of `generatedCode`, for the reason `variables` is: the workspace is
+the authored artefact and the code is its projection.
+
+- A shadow in the socket **counts as plugged in**. `valueToCode` resolves the socket's *target*
+  block, and for a shadow-only connection the target is the shadow, which generates code. A
+  census reading only `.block` would call that empty and widen a port that never takes null.
+- The plan widens `${declared} | null` for exactly those names, in the `kind === 'visual'` branch.
+- **An already-`any` port is left alone.** `any` admits null, and `any | null` is `any` — the
+  widening would be noise carrying no information.
+
+Three surfaces take it, and the wrapper's own comment names the block so the reader can go and
+plug it in:
+
+```ts
+// `result`: a `set output` block below has an empty value socket, which
+// the block editor generates as a literal `null` — so the type admits one.
+function blocks(Inputs: Record<string, never>): { result?: number | null } {
+  const Outputs: { result?: number | null } = {};
+```
+
+…and §4f's materialized last-run state builds its type from the same output list, so
+`useState<{ result?: number | null } | undefined>()` follows. That is the second surface, and it
+has its own test: a narrow state row would put the error back one hop downstream.
+
+⚠️ **This is an under-approximation, and deliberately so.** A *filled* socket can still evaluate
+to null at runtime — `Outputs["title"] = Noodl.Variables["lastEntryTitle"]` is the corpus case,
+in `tut003`. Those paths reach the field through the `Noodl.Variables` facade, which is `any` on
+both sides by EXP-003 §4's own ruling, so they neither fail to typecheck nor need widening. The
+list here is the set that is **null by construction**, which is the set that needs the type.
+
+### 12c — What it bought, same instrument both sides
+
+`scripts/build-corpus.ts` over all 40 projects; the before column is s23's after-run, byte for
+byte, on the same harness copy.
+
+| | before (s23) | after (s24) |
+|---|---|---|
+| projects that typecheck | 27 / 40 | **35 / 40** |
+| total diagnostics | 51 | **35** |
+| visual-function diagnostics (TS2322 on `Outputs[…]`) | **16** | **0** |
+
+All eight clone projects now typecheck. **Nothing new surfaced** — §11c warned that clearing one
+cause can reveal another it was hiding, and here it did not, because s23 had already cleared the
+*syntax* errors that were suppressing the semantic pass. The remaining 35 diagnostics are
+§11d(2)–(6) unchanged, over five projects.
+
+Coverage is **byte-identical to sessions 21–23 — 3,766/4,441, 84.80%** — as it must be: this
+retires no node, it makes an already-translated one compile. The ranking is unchanged from
+`rank2-s23.txt`. **419 tests (8 new).**
+
+### 12d — 🔴 The fixture said one thing and the artefact said another
+
+`GUARD_WORKSPACE` in `visual-function.test.ts` is documented as "`tut003`'s program", and it used
+the bare `setOutput('message')` helper — **an empty socket**, while `tut003`'s real workspace has
+both of its sockets filled. The fixture and the artefact it claimed to be had disagreed since
+session 19, and nothing noticed, because until this session the difference generated no code the
+tests read.
+
+The tell was that adding the widening turned that fixture's wrapper into `{ message?: string | null }`
+and broke a test asserting the *tight* type. The wrong fix was to update the expectation; the
+right one was to fill the sockets, because the fixture is the thing that was wrong. It now uses
+`setOutputTo(name, valueBlock)`, `setOutput` carries a doc comment saying the two are **not
+interchangeable**, and reverting either socket kills exactly one test.
+
+**Build the negative control into the helper names.** `setOutput` vs `setOutputTo` is a
+one-difference pair that a reader cannot use by accident; a single `setOutput` with an optional
+second argument would have left the empty case as the default, which is how it got here.
+
+### 12e — What is left after this
+
+**5 projects, 35 diagnostics, five causes** — §11d's list with (1) struck out:
+
+1. **A component reading a prop it never declared** — 18 diagnostics, 2 projects
+   (`ecommerce-example`, `ecom-responsive-probe`, both `ProductCard.tsx`). Now the largest by
+   both measures.
+2. **Props passed to a component that declares none** (`IntrinsicAttributes`) — 7 diagnostics,
+   `phase55-replay-haiku`. The parent's end of (1): the same missing `Component Inputs` node.
+   Scope them together.
+3. **`void` into `ReactNode`** — 2 diagnostics, travelling with (1).
+4. **`number` into a `string` prop** — 4 diagnostics, 2 projects.
+5. **`readonly unknown[]` into a `string` prop** — 1 diagnostic, 1 project.
+
+Closing (1)+(2)+(3) would take the corpus to **38/40**; only the two `string`-prop causes would
+remain.

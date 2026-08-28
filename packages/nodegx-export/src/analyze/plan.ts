@@ -1351,9 +1351,28 @@ function planComponent(
         for (const name of visualIo!.signalOutputs) {
           if (!signals.includes(name)) signals.push(name);
         }
+        /**
+         * 🔴 **A `Define output … type number` is a claim about the port, not a check on the
+         * writes** (RECORD-VERBS §12). Nothing enforces it: the block editor's generator emits
+         * `Outputs["result"] = null;` for a `set output` with an empty value socket without ever
+         * consulting the declaration, and the runtime stores that null verbatim and delivers it
+         * down the wire — the one typecast on the way (`node.ts` NDA-014, object/array → string)
+         * excludes null by its own guard.
+         *
+         * So the emitted field has to admit the null. It cannot be coerced away: the body is
+         * re-hosted **verbatim**, which is the same ruling that shims `__p`/`__s` instead of
+         * stripping them (EXP-003 §4) — rewriting an assignment inside it would need an AST over
+         * generated code, and would make the exported app disagree with the graph about what the
+         * port sends.
+         *
+         * An already-`any` port is left alone: `any` admits null, and `any | null` is `any`.
+         */
+        const emptyWrites = new Set(censusOf(workspaceOf(node)).emptyOutputWrites);
         for (const port of visualIo!.outputs) {
           if (signals.includes(port.name)) continue;
-          outputs.push({ name: port.name, tsType: jsOutputTsType(port.type === '*' ? undefined : port.type) });
+          const declared = jsOutputTsType(port.type === '*' ? undefined : port.type);
+          const tsType = declared !== 'any' && emptyWrites.has(port.name) ? `${declared} | null` : declared;
+          outputs.push({ name: port.name, tsType });
         }
       }
 

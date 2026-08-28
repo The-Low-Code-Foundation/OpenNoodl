@@ -1697,6 +1697,15 @@ export function emitComponent(
         `// From the Visual Function "${def.fnName}" — the block program's generated code, verbatim.`,
         '// Authored as blocks; regenerate from the block editor rather than editing this by hand.'
       );
+      // The `| null` in the signature is not a hedge — it names a specific block below, so the
+      // reader can go and plug it in.
+      const nulled = def.outputs.filter((o) => o.tsType.endsWith(' | null')).map((o) => o.name);
+      if (nulled.length > 0) {
+        lines.push(
+          `// ${nulled.map((n) => `\`${n}\``).join(', ')}: a \`set output\` block below has an empty value socket, which`,
+          '// the block editor generates as a literal `null` — so the type admits one.'
+        );
+      }
       lines.push(`function ${def.fnName}(Inputs: ${inputsType}): ${outputsType} {`);
       lines.push(`  const Outputs: ${outputsType} = {};`);
       // A `send signal` whose output nobody wired is a no-op in the runtime too
