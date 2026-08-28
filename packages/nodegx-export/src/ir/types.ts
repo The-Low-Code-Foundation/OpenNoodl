@@ -73,6 +73,14 @@ export interface ComponentIR {
   nodes: NodeIR[];
   /** Source order from connections.json (D2). */
   connections: ConnectionIR[];
+  /**
+   * nodes.json's own `visualRoots` — the ids the *runtime* renders the component from, in order.
+   * `componentModel.roots` is fed from this list and `componentinstance.ts:326` renders
+   * `roots[0]` alone, so it is the authoritative answer to "what draws"; the editor re-derives it
+   * on every save (`getVisualRootIds()`). Undefined for files that predate the field, where the
+   * planner falls back to its own parentless-node rule.
+   */
+  visualRoots?: string[];
   intent: AuthoringIntent;
 }
 

@@ -1207,3 +1207,130 @@ run at all unless the totals reconcile against the audit, is what made that visi
 
 ⚠️ **Do not open the next session by looking for a node type to translate.** §17b is the map now:
 pick a wall, or accept that 85.00% is where node-at-a-time work ends.
+
+---
+
+## §18 What actually draws (session 29 — §17d; **the map was wrong about the map**)
+
+§17d said to pick a wall. This session did not, because measuring the walls by *artefact* rather
+than by type dissolved most of them into one thing, and the leftover pointed at a latent defect in
+how the export decides what a component renders at all.
+
+**Coverage 3,775/4,441 (85.00%) → 3,775/4,441 (85.00%).** `build-corpus.ts` **40/40**, ledger
+unchanged (175 types: 101 deferred / 58 translated / 1 stubbed / 15 backend-only). **481 tests
+(13 new).** `logic node (…)` catch-alls **221 → 176**.
+
+### 18a — The remaining 15% is mostly one project, cloned eight times
+
+`rank2.ts` buckets by node type; `walls.py` (§17b) by wall. Neither can say *which artefact* the
+deferrals live in, and in a corpus that is largely clones that is the question that decides
+whether a wall is one design problem or eight. `deferred-census.ts` emits one row per deferred
+node — `project ⇥ component ⇥ type ⇥ reason` — and refuses to run unless it reconciles against
+the audit's 666.
+
+Grouped by project:
+
+```
+  555  83.3%   eight clones of one e-commerce project (68–73 deferred each)
+   32   4.8%   Puppy test
+   79  11.9%   the other 31 projects
+```
+
+**13 of the 40 projects export at 100%.** Grouped by component, `Filters/*` alone holds **376 of
+666 (56.5%)** — exactly **47 per project × 8**, a uniformity that says one artefact, not eight
+problems. Splitting §17b's census by kit membership shows the top two walls are the *same* kit:
+**136 of the 170 `JavaScriptFunction` nodes and all 72 `Model2` nodes are inside it.** Breaking a
+kit wall multiplies by eight; breaking anything else moves a number that was never bottlenecked.
+
+The one wall that is entirely *outside* the kit is §17b's third — "outside the render", 117 nodes,
+100% non-kit. That is what this session opened.
+
+### 18b — 🔴 The planner answered "what draws?" itself, from the wrong field
+
+Inside that wall: **35 `net.noodl.controls.button` deferring as `logic node (…)`**, plus `Text`,
+`Group`, `Image`, `columns`, `icon`. Rendered types falling to a *logic* catch-all is the shape of
+§17c's no-visual-root hole, so it was worth chasing. It was not that hole.
+
+`nodes.json` states its answer outright in `visualRoots`, and that list is what the runtime uses:
+it feeds `componentModel.roots`, and `componentinstance.ts:326` is
+`return this._internal.roots[0].render();` — **one root draws, the rest are detached.** The editor
+agrees, sending *"This node is detached from the main node tree and won't be rendered"* against
+roots[1..] (`graph-warnings.ts`), and re-derives the field on every save. `noodl-mcp`'s
+`visualRoots.ts` already documents this chain, and F43 — an app that rendered nothing while every
+instrument reported a pass — is what taught it.
+
+`plan.ts` read none of that. It computed roots from `n.parent === undefined` while the tree walk
+twelve lines below read hierarchy from `children` — **two notions of the same thing in one
+function**. A file that expresses nesting only through `children` therefore reads as all-parentless
+and gets one "visual root" per node.
+
+**Measured before changing anything**, on the raw files rather than the IR (the IR was the thing
+under suspicion, so it could not be the instrument): across **437 components the two rules never
+disagreed about roots[0]**, so no emitted tree was ever wrong. The export got the right answer
+because source order happened to put the real root first. That is the whole finding — not a broken
+output, a correct output resting on a coincidence, one reordering away from rendering the wrong
+subtree.
+
+Roots now come from the declared list when present, with the parentless rule kept as the fallback
+for files that predate the field.
+
+### 18c — "Not yet" and "never" are different reports
+
+The 45 nodes under a discarded root were deferring as `logic node (…)` — which says *EXP-003 will
+get to this*. The truth is that they do not draw in the running app at all, and translating them
+would emit a page the runtime never shows. They now defer with that verdict, the same distinction
+§17a drew for the record verbs that always fail.
+
+`Components/Header` — the same eight clones — declares six visual roots: a header bar, four nav
+link buttons and a search input, all parentless. **The nav links have never rendered.** The export
+was right to drop them and wrong about why.
+
+### 18d — 🔴 Traps this session paid for
+
+**A probe built on the suspect artefact inherits its defect.** The first detached census read the
+IR and reported **67** nodes; the files say **49**; the implementation names **45**. Every gap was
+the instrument's:
+
+- 3 components (11 nodes) were *phantom* multi-root — `children`-only files, the very defect under
+  investigation, counted by a probe that read `parent`.
+- `Puppy test`'s Home2 declares a `Page Stack` root that this side's `isVisual` rejects — so it
+  defers with its own reason, not as detached.
+- Two Apps declare roots that are **also children of roots[0]**; rendering roots[0] renders them,
+  so they are not detached at all.
+
+The raw-file probe was written second, precisely because the IR could not be trusted to measure a
+defect in the IR. **When the artefact is the suspect, the instrument has to come from somewhere
+else.**
+
+**A number in a message is a claim from whichever predicate produced it.** The first draft said
+"the component declares N visual roots". `Puppy test`'s Home2 declares 7 by the editor's
+`allowAsChild` and 6 by this side's `isVisual` — quoting either states the other's answer as fact.
+The claim that matters (only the first root draws) needs no count, so it no longer carries one.
+
+**Two mutants killed nothing, and both were about redundancy, not coverage.** Five were run, by
+line number (§17c's rule):
+
+- Dropping `rendered.has(node.id) ||` from the detached guard killed nothing — because `walk()`
+  dispositions exactly the nodes in `rendered`. Splitting it proved the point: **either half alone
+  passes the whole suite; dropping both fails.** The disjunction was untestable by construction,
+  so it is now one guard — the same `dispositions[node.id] !== undefined` idiom fourteen later
+  passes already use.
+- `roots.slice(1)` → `roots` also killed nothing, for the same reason: roots[0] is already
+  dispositioned when the marking runs. That one is genuinely equivalent given the guard, so it is
+  recorded in the code rather than papered over with a test that cannot fail.
+- The `Array.isArray` mutant survived first time because **`[]` is truthy** — only a *non-array*
+  value tells the two apart. That gap is now a test, and the mutant dies.
+
+### 18e — What is left
+
+1. **EXP-003 Tier B, read as the kit it is** — ~350 script-tier nodes, and §18a shows they share
+   an artefact with the row-identity wall. One kit, two walls, ×8. `tb-survey.ts` first.
+2. **Row identity (the s10 wall)** — 136 nodes, 112 of them inside that same kit. Not independent
+   of (1); scoping them together is the measurement §18a argues for.
+3. **The two `ProductCard` projects' missing interface** (§11d(2)/(3)) — ruled §13b, built §14.
+   Still the disposition, not a defect.
+
+⚠️ **85.00% is a node-weighted average dominated by eight clones.** 13 of 40 projects are at 100%
+and the median project is far above the headline. Before optimising the number, decide whether
+that number is the goal — §18a is the argument that it measures the corpus's shape more than the
+export's reach.

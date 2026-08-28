@@ -164,6 +164,11 @@ function parseComponent(dir: string, catalog: CatalogIndex): ComponentIR {
     role: meta.type === 'page' ? 'page' : 'component',
     nodes,
     connections,
+    // Carried verbatim, including the empty array: `visualRoots: []` means "this component draws
+    // nothing", which is a different statement from the field being absent (an older file, where
+    // the planner must fall back to its own rule). Collapsing the two would turn a component the
+    // author emptied into one the planner guesses a root for.
+    ...(Array.isArray(nodesFile.visualRoots) ? { visualRoots: nodesFile.visualRoots as string[] } : {}),
     intent
   };
 }

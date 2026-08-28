@@ -821,9 +821,22 @@ function planComponent(
   // Visual roots: parentless nodes that render. Order is source order (D2), which matches the
   // file's visualRoots in every observed project. A Radio Button cannot root a component — it
   // only works inside a Radio Button Group (the runtime raises radio-button/no-group).
-  const roots = component.nodes.filter(
-    (n) => n.parent === undefined && roleOf(n) !== null && roleOf(n) !== 'unsupported' && roleOf(n) !== 'radio'
-  );
+  // The file states this outright. `nodes.json.visualRoots` is what feeds `componentModel.roots`,
+  // and `componentinstance.ts:326` renders `roots[0]` and nothing else — so the declared list is
+  // the runtime's own answer, and the editor recomputes it on every save. The parentless rule
+  // below is only a fallback for files that predate the field: it reads hierarchy from `parent`
+  // while the tree walk at `walk()` reads it from `children`, so a file that expresses nesting
+  // ONLY through `children` (two in the corpus) makes every node look parentless and invents a
+  // root per node. Measured before changing this: across 437 components the two rules never
+  // disagreed about roots[0], so the emitted tree is unchanged — what changes is that the answer
+  // is now derived from the field that decides it rather than from source order happening to
+  // put the real root first.
+  const rootable = (n: NodeIR) =>
+    roleOf(n) !== null && roleOf(n) !== 'unsupported' && roleOf(n) !== 'radio';
+  const declaredRoots = component.visualRoots
+    ?.map((id) => nodeById.get(id))
+    .filter((n): n is NodeIR => n !== undefined);
+  const roots = (declaredRoots ?? component.nodes.filter((n) => n.parent === undefined)).filter(rootable);
   const rendered = new Set<string>();
   if (roots.length === 0) {
     // The record-neighbour sweep reaches here too (§17). This path returns before the sweep at
@@ -899,6 +912,44 @@ function planComponent(
     }
   };
   walk(root, false);
+
+  // Everything hanging off a root the runtime discards. `componentinstance.ts:326` renders
+  // `roots[0]` alone, and the editor already tells the author so — graph-warnings.ts sends
+  // "This node is detached from the main node tree and won't be rendered" against exactly
+  // roots[1..]. These nodes are therefore not waiting on EXP-003 to grow a generator; they do
+  // not draw in the running app at all, and translating them would emit a page the runtime
+  // never shows. Naming that here is the difference between "not yet" and "never" in the report
+  // — the same distinction §17a drew for the record verbs that always fail.
+  if (roots.length > 1) {
+    // No count in the message. `roots` here is the file's list filtered by THIS side's notion of
+    // a drawing node, and the two predicates are not identical: `Puppy test`'s Home2 declares a
+    // `Page Stack` root that the editor's `allowAsChild` accepted and the export's `isVisual`
+    // rejects. Quoting either number would state the other one's answer as fact; the claim that
+    // matters — only the first root draws — needs no count to be true.
+    const detachedReason =
+      'detached from the node tree — the runtime renders only the first of this component\'s ' +
+      'visual roots, so this node never draws (the editor flags it too)';
+    const markDetached = (node: NodeIR) => {
+      // A node the real root already reached is not detached — two corpus Apps declare roots that
+      // are also children of roots[0], and what draws wins over what does not. Testing
+      // `dispositions` rather than `rendered` is deliberate: `walk()` dispositions every node it
+      // renders, so the two conditions select the same set, and a mutation run showed either
+      // alone passes the whole suite while dropping both fails. One guard that is also the idiom
+      // every later pass uses beats two that cannot be told apart.
+      if (dispositions[node.id] !== undefined) return;
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: detachedReason };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${detachedReason}`);
+      for (const id of node.children ?? []) {
+        const child = nodeById.get(id);
+        if (child !== undefined) markDetached(child);
+      }
+    };
+    // `slice(1)` and the guard above overlap: `walk()` has already dispositioned roots[0], so
+    // passing the whole list here would behave identically and no test can tell the two apart.
+    // The slice stays because it says which roots are the discarded ones; the guard is what makes
+    // that safe.
+    for (const discarded of roots.slice(1)) markDetached(discarded);
+  }
 
   // TARGET-OUTPUT §2's page shape: a Page whose sole visual child is a Group merges that Group
   // into the page div — one wrapper, classed after the Page node, styled by both.
