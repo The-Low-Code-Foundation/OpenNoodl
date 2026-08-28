@@ -707,7 +707,171 @@ reads a correct value as a defect on two of the three.
 
 ⚠️ Failure **text** was read for the `.Primary` and ground-pin kills, not just counts.
 
-## ⬜ What is left — 39 sites, and that number is a FLOOR
+## What session 67 fixed — the folder tree, and a modal that is its own second ground
+
+**Unit of work: one component family, read whole** — `FolderTree` plus its sibling `FolderTreeItem`
+and the view that places them. Suggested by session 66 as the natural follow-on, and the last
+`noodl-core-ui` file on the remaining list with more than one entry.
+
+**Two declarations fixed, two more graded**, and — as in every session since 60 — the list was
+wrong in both directions:
+
+- `.RenameInputField` / `.CreateFolderInputField` — **two native `<input>`s sharing one rule**.
+  1.26:1 dark / 1.27:1 light against the `bg-1` sidebar, 1.07 / 1.15 against their own `bg-2` fill.
+  → `border-control` (4.17 / 3.72 on the ground, 3.57 / 3.37 on the fill).
+  🔴 **Neither is on the inventory, for exactly the documented reason**: neither sets `cursor`, the
+  blind spot the list already admits at `.TemplateFilter-search`. **Third confirmation** that the
+  query is a floor.
+  ✅ `:focus` already names `primary` (4.80 / 4.14) — *stronger* than the raised resting tone, so
+  the focus signal is not eaten. Checked, not assumed.
+- `.DeleteConfirmationCancelButton` — the one entry that WAS on the list. 1.07 / 1.15 on the
+  dialog. → `border-control` + a hover remedy, below.
+- `.DeleteConfirmationDeleteButton` — edge and fill the same tone, **graded not excused** (below).
+- `.NewFolderButton` — a `<button>` with **no border and no fill at all**, graded by its label.
+
+### 🔴 The finding: the SECOND GROUND is a modal the component renders itself
+
+Session 66 found a control with two grounds from one call site and filed **count PLACEMENTS, not
+call sites**. `FolderTree` has one call site (`Projects.tsx:193`) and **two grounds again** — but
+the second is not another spot in the layout. It is a `position: fixed` confirmation dialog that
+this component renders into the centre of the screen.
+
+🔴 **A placement count that walks the component's own layout tree still misses it, because the
+dialog ESCAPES that tree.** The file's own header comment says "the 224px **bg-1** sidebar… this
+component fills it", and that sentence is true of everything except **the two buttons that matter
+most**, which are on the dialog's `bg-2`. A tone picked by believing the header comment is a real
+measurement of the wrong surface.
+
+✅ **Read what the component RENDERS, including its modals and portals** — not where it is placed.
+
+The two grounds are one ramp step apart (1.168:1 in dark), so **every contrast row would have
+passed on the wrong one**. Only the ground pin by NAME catches it — see the mutants.
+
+### 🔴 The fill step decides whether the edge is graded at all — session 66's branch, generalised
+
+Session 66 added a branch for `edge === fill` and graded `.Primary` by its fill step. This family is
+where that special case stops being enough, because the same question arises when the edge and fill
+are *different* tones and the fill still carries the object on its own.
+
+Session 60 already wrote the general rule down, at `.TemplateCard`: an edge is *"load-bearing or not
+depending on whether the fill step carries the object on its own."* **That has been prose in this
+document for six sessions.** It is now the spec's one criterion:
+
+> A control is identified by its **outermost tone** — the border if it paints one, else the fill —
+> and that ratio against the ground is asserted always. The second question, *is the ring visible as
+> a ring against the fill it encloses*, is asked **only when the fill does NOT clear 3:1 on the
+> ground**, i.e. when the ring is doing the identifying on its own.
+
+`edge === fill` is simply the degenerate case where the outermost tone IS the fill.
+
+⚠️ **It stays strict exactly where this sweep has always been strict.** Every `bg-N` control here has
+a fill step of 1.10–1.17 on its ground, so the ring is load-bearing and both ratios are graded —
+mutants M1 and M2 confirm it, each reporting *both* numbers. It relaxes only for the destructive
+button, whose `danger` fill is 4.52 / 4.38 on the dialog.
+
+### ✅ Session 64's hover remedy transfers — and was MEASURED here, not inherited
+
+`.DeleteConfirmationCancelButton` is the same shape as `.FolderPickerCancelButton`, which session 64
+fixed **in this same view, one component over**: a `bg-3` button whose hover moves the fill DOWN to
+`bg-4`, naming no border of its own. `border-control` is **2.64 dark / 2.77 light** on `bg-4`, so
+the raised resting tone would be inherited onto a step where it fails 1.4.11 — and only while the
+pointer is on the button.
+
+Session 65 filed that **a guard inherited is untested until its mutant runs in the new family**.
+Run here it kills, at the same two numbers (mutant M3). Remedy: `border-color: var(--theme-color-primary)`
+on hover — 3.54 / 3.40 on the hover fill, 4.80 / 4.14 on the dialog ground.
+
+### 🔴 A defect this sweep CANNOT fix, recorded as a number rather than as prose
+
+`.DeleteConfirmationDeleteButton:hover` drops **both** fill and edge to `danger-dim`, which is
+**2.61:1 on the dialog in DARK** — a real 1.4.11 failure, found only because session 66's branch
+made the resting state gradeable and the same rule was then applied to the states.
+
+🔴 **It is not fixable inside this file, and the reason is a genuine conflict:**
+
+| | dark | light |
+|---|---|---|
+| white label on `danger` (the resting fill) | **2.79:1** ❌ | 4.83:1 |
+| white label on `danger-dim` (the hover fill) | 4.83:1 | 6.57:1 |
+| boundary: `danger` on the dialog | 4.52:1 | 4.38:1 |
+| boundary: `danger-dim` on the dialog | **2.61:1** ❌ | 5.96:1 |
+
+**The label needs the dim step; the boundary needs the bright one.** They cannot both be satisfied
+by one tone in dark. `LauncherHeader.module.scss:183` already ruled on the label half — *"only the
+dim step carries a white glyph legibly in BOTH themes"* — and **the resting fill of this button
+contradicts that ruling**, at 2.79:1.
+
+🔴 **This is not local.** `danger` as a white-labelled fill appears in at least **seven** stylesheets:
+`PrimaryButton`, `CellEditor`, `DataGrid`, `EasyMode`, `AddColumnForm`, `TitleBar` and this one.
+**It is a platform token decision, not a border-sweep edit**, and changing it in one dialog would
+be a divergence from six other places.
+
+✅ **So it is PINNED by its measured value** rather than excluded in prose — the row asserts the
+hover boundary is *still exactly 2.61 / 5.96*, and reddens if anyone moves it. ⚠️ **The row does
+not claim the button passes.** It claims the defect is still the size it was when written up.
+
+### ✅ The exclusion rule applied rather than the exclusion list extended
+
+`.NewFolderButton` is a real `<button>` painting `border: 0` and `background: none` — under the
+inventory's own membership test, a control with **no boundary whatsoever**, which reads as the worst
+defect in the file. It is not one: what identifies it is its **label**, and a label is a number —
+**9.24:1 dark / 6.18:1 light** on the sidebar, and 10.84 / 13.33 on the step its hover moves to.
+
+Writing *"a text button, deliberately left alone"* would have been the claim session 66 warned
+cannot fail. Mutant M9b moves the label tone and the row reds **at 1.49:1**.
+
+### 🔴 `own()` is load-bearing here — predicted from the code, then proved by the two-part mutant
+
+The two `<input>`s nest `&:focus { border-color: var(--theme-color-primary) }`, and `tokenOf` tries
+`border-color` before `border` — so a reader without `own()` resolves the **resting** edge of an
+unfocused field to `primary`, which clears 3:1 everywhere.
+
+**Broken alone** it kills 3 rows. **Broken with the M1 revert applied**, the revert's two reds
+**vanish** — M6b kills exactly the same three rows as M6a, with no `.RenameInputField` row among
+them. Third family, third distinct answer (s65 inert, s66 live, s67 live).
+
+### 🔴 The suffix guard is UNEXERCISED here — and the mirror image is why
+
+This was **predicted to be live and the prediction was wrong**, which is the more useful outcome.
+`.RenameInput` is the wrapper that HOLDS `.RenameInputField`, and `.CreateFolderInput` holds
+`.CreateFolderInputField` — which looks exactly like session 66's `.Option` / `.Options` hazard.
+
+🔴 **It is the MIRROR IMAGE of it.** The guard fires only when the **queried** selector is a prefix
+of another; here the queried selector is the **longer** of the pair, so nothing is ever a candidate.
+Removing the guard kills **no row** (mutant M11).
+
+⚠️ **A common prefix is not enough to conclude the guard is live — the DIRECTION is the whole
+question.** The comment in the spec now says so, and says it because the mutant said so.
+
+### ⚠️ Three negative-control bounds again, and the third is a control's own fill
+
+1.4 on the sidebar (`bg-1`), 1.2 on the dialog (`bg-2`), 1.2 on the cancel button's own `bg-3` fill.
+**Sixth session** to file that the bound belongs to the GROUND.
+
+### The mutants — eleven run, ten killed by a named row, and the eleventh is a finding
+
+| mutant | killed by |
+|---|---|
+| M1 revert the two `<input>`s to `border-default` | the inputs' resting row, **both themes** — text read: 1.26 / 1.27 on the ground *and* 1.07 / 1.15 on the fill |
+| M2 revert `.DeleteConfirmationCancelButton` | its resting row, both themes (1.07 / 1.15 on the dialog) |
+| M3 delete the hover `primary` | its **state** row, both themes — **2.64 / 2.77**, session 64's numbers |
+| M4 over-fix: raise `.Divider` to `border-control` | the **REGION** row, both themes |
+| M5 raise the shared `border-default` token | the **negative control** — all three bounds named |
+| M6a break `own()` alone | 3 rows |
+| M6b break `own()` **with M1 applied** | **the revert's 2 reds VANISH** — the finding |
+| M7 move the pinned ground to `bg-0` | **5 rows, by NAME** — every contrast row would have passed |
+| M8 change the pinned hover tone | the **known-open pin**, both themes |
+| M9 change the label token name | the borderless row (name pin) |
+| M9b change the label **value** | the borderless row **at a number** — 1.49:1 |
+| M10 add a border to `FolderTreeItem` | the **sibling** row — reports `.Root` |
+| **M11 remove the suffix guard** | 🔴 **NOTHING — see the finding above** |
+
+⚠️ **The mutant runner itself was wrong first.** Run from the repo root, jest used the root config
+and the spec failed to **parse** — `Tests: 0 total`, reported as a kill. Every mutant would have
+read as "killed" while nothing ran. The runner now **refuses a run that failed to RUN** before
+reporting reds. (Filed under the standing "a failed install reads as a failed test" trap.)
+
+## ⬜ What is left — 38 sites, and that number is a FLOOR
 
 🔴 **The inventory is bounded by its own query and reports that bound.** It selects blocks
 containing both `border-default` and `cursor: pointer` — so it **misses native `<input>`,
@@ -735,10 +899,14 @@ By package (43 left):
   — ✅ **DONE, session 64**, and it was **four** controls: `.Search` (LauncherSearchBar) is not on
   this list and was a real defect. **5 left**: `.DismissButton` (SuggestionBanner),
   `.VariantSelector-trigger`, `.TokenPicker-trigger`,
-  `.DeleteConfirmationCancelButton` (FolderTree)
+  ~~`.DeleteConfirmationCancelButton` (FolderTree)~~ — ✅ **DONE, session 67**, and it was **two
+  declarations fixed plus two graded** rather than one: the two `<input>`s
+  (`.RenameInputField` / `.CreateFolderInputField`) are on no list because neither sets `cursor`,
+  `.DeleteConfirmationDeleteButton` is a **known-open platform defect pinned by number**, and
+  `.NewFolderButton` is graded by its LABEL rather than added to an exclusion list. **3 left.**
   ~~, `.Option` / `.Ghost` (LearnerPathSection)~~ — ✅ **DONE, session 66**, and it was **three**
   controls rather than two: `.Primary` is not on this list, is not a defect, and is now GRADED by
-  its fill step rather than excused as a false positive. **4 left.**
+  its fill step rather than excused as a false positive. ~~**4 left.**~~ **3 left after session 67.**
   — ~~⚠️ **plus `LauncherButton .is-secondary` and three `ShareTemplateModal` sites**~~ — ✅ **DONE,
   session 65**, and of those four **two were controls and two were regions**: `.is-secondary` and
   `.ChoiceItem` were real defects, `.Preamble` and `.Result` are static regions and were asserted as
