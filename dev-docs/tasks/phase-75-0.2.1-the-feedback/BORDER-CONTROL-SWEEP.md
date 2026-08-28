@@ -170,6 +170,29 @@ The 60, by package:
   `.ColourSwatch` (Settings), `.Run` (BuildThread), `.TopologyMapPanel__backButton`,
   `.TopologyMapView__button`, `.Shelf` (MyBlocksSaveDialog)
 
+### 🔴 The hover trap is laid across MOST of what is left — check it per site
+
+`border-color: var(--theme-color-border-{strong,hover,highlight})` (all three resolve to the same
+divider tone) appears in a hover/focus rule in **20 stylesheets**. **At least 17 of the sites still
+on the list below are in them**:
+
+- `.Button` (CodeHistoryButton), `.CancelButton` (CodeHistoryDiffModal), `.Card` (LauncherProjectCard)
+- `.Action` / `.Empty` / `.PickerChip` (BenchScenarioBar), `.ResetAll` / `.SignalButton`
+  (BenchInputsRail), `.AiPill` (CanvasHud)
+- `.LoadMoreButton` ×2 (IssuesList, PRsList), `.IssueItem`, `.PRItem`, `.SecondaryButton`
+  (ConnectToGitHub)
+- `.PresetCard` (AddBackendDialog), `.Endpoint` (LocalBackendCard), `.FilterBuilderButton`
+  (ByobFilterBuilder), `.Shelf` (MyBlocksSaveDialog)
+
+⚠️ **None of these is a defect today.** While the resting edge is also a divider, hover moving
+1.26 → 1.74 is an *improvement*. It becomes a regression **only when the resting edge is raised and
+the hover is left behind** — which is exactly what working from the inventory would do. So for every
+site: read the whole rule, and fix the states with it.
+
+✅ **Session 60's shelf work is clean on this** — `.TemplateCard:hover` and `.TemplateFilter-pill:hover`
+both use `--theme-color-primary` (5.60 dark / 4.57 light), *stronger* than the resting control tone,
+and `.TemplateFilter-search` has no hover. Checked, not assumed.
+
 ### How to do the rest
 
 Not as one sweep. Each site needs its **own ground read out of its own stylesheet** — several of
