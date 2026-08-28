@@ -134,6 +134,92 @@ in that tree name `border-default`, and one of the misses — `.Field` — was a
 input never sets `cursor: pointer`, so the query cannot see it. This is the same shape as
 `.TemplateFilter-search`. **Read the family; do not work the list.**
 
+## What session 62 fixed — the component bench, and the picker's remedy did NOT transfer
+
+**Unit of work: one surface family** — `ComponentBench` and the three rails it holds
+(`BenchScenarioBar`, `BenchInputsRail`, `BenchOutputsRail`), read in full rather than worked from
+the list. **Seven control declarations plus two hover rules**, across three stylesheets. All three
+rails sit in `ComponentBench .Rail`, so the ground is `bg-2` for every site here — read from the
+file that actually paints it, not from the file the control lives in.
+
+| control | element | was | now (dark / light) |
+|---|---|---|---|
+| `BenchScenarioBar .PickerChip` | `<button>` | 1.08 / 1.04 on its `bg-3` fill | **3.08 / 3.05** fill, **3.57 / 3.37** ground |
+| `BenchScenarioBar .Action` | `<button>` ×4 | 1.07 / 1.15 | **3.57 / 3.37** (transparent fill ⇒ ground both sides) |
+| `BenchScenarioBar .Empty` | `<button>` | 1.07 / 1.15 | **3.57 / 3.37** |
+| `BenchScenarioBar .NameField` | `<input>` | **1.74 / 1.53** (`border-strong`) | **4.17 / 3.72** on its `bg-1` fill |
+| `BenchInputsRail .SignalButton` | `<button>` | 1.08 / 1.04 | **3.08 / 3.05** fill |
+| `BenchInputsRail .ResetAll` | `<button>` | 1.07 / 1.15 | **3.57 / 3.37** |
+| `BenchOutputsRail .Clear` | `<button>` | 1.07 / 1.15 | **3.57 / 3.37** |
+
+**Deliberately left on the divider token** (two sites, asserted as such): `ComponentBench .Frame` —
+the preview box's own edge, a REGION boundary — and `BenchScenarioBar .Menu`, a popup surface.
+
+Pinned by `tests-unit/border-sweep/bench-control-borders.test.ts` — 50 rows, both themes, eight
+mutants.
+
+### 🔴 The finding: the node picker's hover remedy does NOT generalise, because it depended on the DIRECTION the fill moved
+
+Session 61 closed its two hover traps by **deleting `border-color` entirely**, and that was safe
+there for a reason that is easy to mistake for a rule: the picker's hover fill lightens `bg-2 →
+bg-1`, which *raises the very same border* to 4.17 / 3.72 on its own.
+
+**Both hover rules here move the fill the other way — `bg-3 → bg-4` — and `border-control` measures
+2.64:1 dark / 2.77:1 light on `bg-4`.** Under 3:1. So deleting `border-color`, the remedy that
+worked one family ago, would have left `.PickerChip` and `.SignalButton` failing 1.4.11 **exactly
+while the pointer is on them** — the same defect the sweep is closing, reintroduced by the fix for
+it. Nor can the fill carry the boundary alone: **`bg-4` on `bg-2` is 1.35 / 1.22.**
+
+Both now use `--theme-color-primary` — **3.54 / 3.40** on the hover fill, **4.80 / 4.14** on the
+rail behind it — which is also what the template shelf's hovers already use.
+
+🔴 **So the hover trap has (at least) two shapes, and which one a site has depends on its own ramp
+direction.** "Drop the hover border" is not the fix; it is one of two fixes, and reading which
+applies costs one measurement. ⚠️ **Nine of the ~13 remaining trap sites listed below fill DOWN the
+ramp on hover** — check the fill, not just the border.
+
+### 🔴 Fourth independent proof the inventory is a FLOOR — and this one missed on BOTH counts
+
+The inventory listed **six** sites in this family. `BenchScenarioBar .NameField` is a seventh, and
+it is invisible to that query twice over: it is a text `<input>`, so it **sets no `cursor: pointer`**,
+*and* its edge named **`border-strong` rather than `border-default`**. It measured **1.74:1** on its
+own fill — a real defect, on the field you type a scenario's name into. Found by reading the file,
+as `.TemplateFilter-search` and `NodePickerSearchBar .Field` were.
+
+⚠️ **The query's token half is as leaky as its cursor half.** Every count in this document is
+bounded by `border-default`; `border-strong` sites are not in it at all.
+
+### The eight mutants, each killed by a named row
+
+| mutant | killed by |
+|---|---|
+| revert `.PickerChip` resting | its own fill + ground rows (4 reds) |
+| **restore `.PickerChip:hover`'s `border-strong`** | **the state row ONLY (2 reds)** — `.PickerChip:hover is 1.10:1 on its own fill` / `1.49:1 on the rail` |
+| **restore `.SignalButton:hover`'s `border-strong`** | **the state row ONLY (2 reds)** |
+| revert `.NameField` (the site the inventory cannot see) | its own rows (4 reds) |
+| revert `.Action` (transparent fill) | its rows **and** its `:hover` state row (6 reds) |
+| revert `.Clear` | same shape (6 reds) |
+| over-correct — sweep `.Frame`, a region | the non-controls row (1 red) |
+| raise the shared `border-default` in `colors.css` | the negative control — **in this file AND the picker's** (2 reds) |
+
+⚠️ The state row is discovered from disk: it enumerates every top-level rule whose selector extends
+the control's (`:hover`, `:disabled`, `.is-primary`, `.is-hidden`) and measures any that changes the
+border or the fill. **A state added later is measured without anyone remembering to add a row.**
+
+### ⚠️ The negative control's bound is 1.2 here and 1.4 in the picker, and both are right
+
+Session 61's finding, confirmed a second time from the other direction: the bench rail is `bg-2`,
+where the divider measures 1.07 / 1.15; the picker panel is `bg-1`, where `colors.css` documents it
+at 1.254 **by design**. **Re-derive the bound per surface.**
+
+### 🧭 Out of scope, but found while reading: `.ResizeHandle` has no resting visual at all
+
+`ComponentBench .ResizeHandle` — the frame's six resize grips — is `background-color: transparent`
+until `:hover`. That is a 1.4.11 question about a control that cannot be *seen* rather than one whose
+edge is too faint, and **no border token fixes it**; it is a deliberate design choice recorded in the
+file ("six visible grips would make the bench look like a dialog"). Noted rather than swept, because
+it needs a design answer, not a token.
+
 ## ⬜ What is left — 60 sites, and that number is a FLOOR
 
 🔴 **The inventory is bounded by its own query and reports that bound.** It selects blocks
@@ -155,8 +241,9 @@ The 60, by package:
   `.Card` (LauncherProjectCard), `.Select` (LauncherSearchBar),
   `.DeleteConfirmationCancelButton` (FolderTree), `.Option` / `.Ghost` (LearnerPathSection),
   `.FolderPickerItem` (Projects)
-- **Canvas / bench** (11): `.Action` / `.Empty` / `.PickerChip` (BenchScenarioBar), `.Clear`
-  (BenchOutputsRail), `.ResetAll` / `.SignalButton` (BenchInputsRail), `.FrameChip` /
+- **Canvas / bench** (11): ~~`.Action` / `.Empty` / `.PickerChip` (BenchScenarioBar), `.Clear`
+  (BenchOutputsRail), `.ResetAll` / `.SignalButton` (BenchInputsRail)~~ — ✅ **DONE, session 62**,
+  and it was 7 declarations + 2 hover rules rather than 6. **5 left**: `.FrameChip` /
   `.FrameDefault` / `.ScopeChip` (PreviewChrome), `.AiPill` (CanvasHud), `.TrailChip`
 - **Canvas tabs & overlays** (6): `.Tab` / `.WindowButton` / `.WindowCloseButton` (CanvasTabs),
   `.badge` (ExecutionNodeBadge), `.closeButton` (ExecutionOverlay), `.navButton` (ExecutionTimeline)
@@ -177,12 +264,19 @@ divider tone) appears in a hover/focus rule in **20 stylesheets**. **At least 17
 on the list below are in them**:
 
 - `.Button` (CodeHistoryButton), `.CancelButton` (CodeHistoryDiffModal), `.Card` (LauncherProjectCard)
-- `.Action` / `.Empty` / `.PickerChip` (BenchScenarioBar), `.ResetAll` / `.SignalButton`
-  (BenchInputsRail), `.AiPill` (CanvasHud)
+- ~~`.Action` / `.Empty` / `.PickerChip` (BenchScenarioBar), `.ResetAll` / `.SignalButton`
+  (BenchInputsRail)~~ — ✅ done s62, and **two of them needed `primary` rather than a deletion**;
+  `.AiPill` (CanvasHud) remains
 - `.LoadMoreButton` ×2 (IssuesList, PRsList), `.IssueItem`, `.PRItem`, `.SecondaryButton`
   (ConnectToGitHub)
 - `.PresetCard` (AddBackendDialog), `.Endpoint` (LocalBackendCard), `.FilterBuilderButton`
   (ByobFilterBuilder), `.Shelf` (MyBlocksSaveDialog)
+
+🔴 **s62: there are TWO fixes, not one — check which by reading the hover FILL.** If it moves
+*up* the ramp (toward the lighter end) the control tone survives on its own and the hover
+`border-color` can simply be deleted, as in the node picker. If it moves *down* (`bg-3 → bg-4`,
+where `border-control` is 2.64 / 2.77) deletion reintroduces the defect, and the rule needs
+`primary`. Both cases are worked above.
 
 ⚠️ **None of these is a defect today.** While the resting edge is also a divider, hover moving
 1.26 → 1.74 is an *improvement*. It becomes a regression **only when the resting edge is raised and
