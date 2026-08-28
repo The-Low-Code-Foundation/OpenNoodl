@@ -77,3 +77,10 @@ Sessions 1–31 are recorded in the target-output docs, principally
 [EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md) §1–§21, which is
 the phase's working log. §20 is the session-31 measurement that forced this re-scope; §21 marks
 its own "what is left" lists void.
+
+**Session 33 (2026-08-28, `b83161c5`) — EXP-009 built and driven.** The exported `Puppy test 3`
+lists its real database rows in a headless browser (zero with the backend stopped); auth and
+writes round-trip; no master key in the bundle. Design in
+[EXP-009-CLIENT-TARGET-OUTPUT.md](./EXP-009-CLIENT-TARGET-OUTPUT.md), drive record in
+[EXP-009 §8](./EXP-009-BACKEND-CONNECTION.md). Gates: 519/519 · corpus 40/40 · 85.00% unchanged
+· picker ratchet holds 51/127. AC4 (cloud functions) waits on EXP-011's node translation.
