@@ -830,10 +830,52 @@ export const CONTACT_NODES = [
     parameters: { template: 'none' }
   },
   {
+    id: 'stored',
+    type: 'JavaScriptFunction',
+    label: 'The answer the visitor gets',
+    // 🔴 SB-018 (5), fixed s19, and the fix is NOT the one that file proposed.
+    //
+    // `received` used to come from `compose.out-built`, a **signal**, wired into
+    // `res.pm-received`, a **value** parameter port. `canCastPortTypes` allows
+    // that cast, so nothing warned. What it produced was not "the port never got
+    // a value": a pulse into a value port is delivered as `true` and then
+    // `false` in the same drain pass (`node.ts:686-692`), so the port was SET
+    // TWICE and settled on the falling edge. The endpoint answered
+    // `{"received": false}` about a message it had stored — measured over real
+    // HTTP in SB-017 §10.5.
+    //
+    // 🔴 And "publish a value instead of a signal" — SB-018 (5)'s own suggested
+    // fix — would only have swapped one constant for another. `compose` runs on
+    // `req.receive`, BEFORE anything is stored, so a `true` published there is
+    // true on the failure path as well: the visitor whose message was lost would
+    // be told it arrived. That is worse than the bug, not better.
+    //
+    // So the flag is raised where the outcome is actually known — after the row
+    // is written — and the `false` case is a parameter on the Response node
+    // itself rather than an unset port (see `res` below). `save.failure ->
+    // res.send` is the only other route to a response, and it does not pass
+    // through here.
+    ports: [{ name: 'out-ready', plug: 'output', type: 'signal' }],
+    parameters: {
+      functionScript: 'Outputs.received = true;\n' + 'Outputs.ready();'
+    }
+  },
+  {
     id: 'res',
     type: 'noodl.cloud.response',
     label: 'Answer the visitor',
-    parameters: { params: 'received' }
+    // 🔴 SB-018 (5)'s other half. `pm-received: false` as a PARAMETER, so the
+    // failure path answers `{"received": false}` rather than dropping the key:
+    // `responseParameters` starts `{}` and only a port that is set puts anything
+    // in the body, so without this the two paths would answer with different
+    // SHAPES, and a caller would have to tell `false` from absent.
+    //
+    // A parameter, not a wire, and that distinction is SB-017 §11's: a parameter
+    // is copied verbatim by the export and the runtime registers the input on
+    // that path (`response.ts:212-220`) with no dynamic port needed. So this
+    // survives a deploy whatever happens to `pm-`'s port list, which is the
+    // property the wire above does not have on its own.
+    parameters: { params: 'received', 'pm-received': false }
   }
 ];
 
@@ -856,14 +898,20 @@ export const CONTACT_WIRES = [
   { fromId: 'recipient', fromProperty: 'recipient', toId: 'mail', toProperty: 'to' },
   { fromId: 'compose', fromProperty: 'out-subject', toId: 'mail', toProperty: 'subject' },
   { fromId: 'compose', fromProperty: 'out-text', toId: 'mail', toProperty: 'text' },
-  { fromId: 'save', fromProperty: 'done', toId: 'mail', toProperty: 'send' },
+  // 🔴 SB-018 (5). `stored` sits IN the success chain rather than hanging off
+  // `save.done` beside `mail.send`, so the ordering is written down instead of
+  // depending on whether `sendemail` can answer `completed` synchronously.
+  // `res.pm-received` is set before `res.send` can be reached, on the one path
+  // where it is true.
+  { fromId: 'save', fromProperty: 'done', toId: 'stored', toProperty: 'run' },
+  { fromId: 'stored', fromProperty: 'out-received', toId: 'res', toProperty: 'pm-received' },
+  { fromId: 'stored', fromProperty: 'out-ready', toId: 'mail', toProperty: 'send' },
   // `completed`, so a bounced or unconfigured mail service still answers the
   // visitor. `send` "can only happen once" (catalog), so the two paths cannot
   // both fire: `mail.completed` covers success and failure alike, and
   // `save.failure` is the case where `mail.send` never ran at all.
   { fromId: 'mail', fromProperty: 'completed', toId: 'res', toProperty: 'send' },
-  { fromId: 'save', fromProperty: 'failure', toId: 'res', toProperty: 'send' },
-  { fromId: 'compose', fromProperty: 'out-built', toId: 'res', toProperty: 'pm-received' }
+  { fromId: 'save', fromProperty: 'failure', toId: 'res', toProperty: 'send' }
 ];
 
 // ── claimSite: the function that makes the first admin (§6 F7) ───────────────

@@ -330,7 +330,14 @@ export const SECTION_VIEW_NODES = [
     type: 'Text',
     label: 'Section body',
     parent: 'section',
-    parameters: { as: 'p', visible: false }
+    // 🔴 SB-018 (3). Standing `text`, for the reason spelled out on
+    // `/Pages/Site`'s headings: `Text` declares `default: 'Text'`, a default
+    // applies until the port is set, and a node whose only `text` is a wire
+    // renders the literal word **Text** until that wire publishes. Every other
+    // wired `Text` in this template already carried one (`link`, `rowStatus`,
+    // `notFound`); these were the four that did not, and s19's census over the
+    // shipped artefact is what found them rather than the one the drive saw.
+    parameters: { as: 'p', visible: false, text: '' }
   },
   {
     id: 'inputs',
@@ -645,8 +652,20 @@ export const SITE_NODES = [
     id: 'siteName',
     type: 'Text',
     label: 'Site name',
+    // 🔴 SB-018 (3). `text: ''` is not decoration and it is not a default being
+    // restated: `Text` declares `default: 'Text'` (`visual/text.ts:41`), and a
+    // default applies until the port is *set*, so a node whose only `text` is a
+    // wire renders the literal word **Text** for as long as the wire has
+    // published nothing. On a site nobody has claimed that is forever, which is
+    // the `<h1>Text</h1>` s15 drove. The empty parameter sets the port at load,
+    // and the wire then overrides a blank instead of filling one.
+    //
+    // ⚠️ Blank rather than a placeholder phrase on purpose. This is a heading on
+    // a live page mid-load, so anything with words in it would be read as the
+    // site's own copy and would be wrong for the fraction of a second before the
+    // record lands.
     parent: 'header',
-    parameters: { as: 'span', fontWeight: 'var(--font-semibold)' }
+    parameters: { as: 'span', fontWeight: 'var(--font-semibold)', text: '' }
   },
   {
     id: 'pageTitle',
@@ -654,8 +673,10 @@ export const SITE_NODES = [
     label: 'Page title',
     parent: 'header',
     // The page's one `h1`. `Page.title` cannot produce it (see the component
-    // note) — this is a `Text` fed from the record.
-    parameters: { as: 'h1', fontWeight: 'var(--font-bold)', fontSize: 'var(--text-3xl)' }
+    // note) — this is a `Text` fed from the record. `text: ''` for SB-018 (3);
+    // this is the node the drive caught, and `siteName` above is the same shape
+    // caught with it rather than left to be found later.
+    parameters: { as: 'h1', fontWeight: 'var(--font-bold)', fontSize: 'var(--text-3xl)', text: '' }
   },
   {
     id: 'sectionList',

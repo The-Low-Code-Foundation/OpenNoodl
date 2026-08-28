@@ -26,7 +26,11 @@
  * says so at line 285. `cloud-node-library.json` replaced it with a static
  * snapshot, which carries declared ports and nothing a node computes.
  *
- * So 51 of 100 connections never reach the backend. 32 are lost to
+ * So 51 of 100 connections never reach the backend. (⚠️ **100 is the template as
+ * it stood when this was measured.** SB-018 (5) has since made it 101 — one wire
+ * out of `submitContactForm` and three in. Every number in this header is a
+ * record of the defect as it shipped and is left as it was read; the assertions
+ * below derive theirs.) 32 are lost to
  * `JavaScriptFunction` script ports alone; the other 19 involve a Db-node port,
  * and one of those 19 is `claimSite`'s `secret.done -> DbCollection2.storageFetch`
  * — the wire that starts the function. **A fix scoped to script ports leaves
@@ -115,6 +119,33 @@ function shortfall(want: Record<string, number>, have: Record<string, number>): 
   return missing;
 }
 
+/**
+ * 🔴 The two wires the **template deliberately removed** after this bundle was
+ * recorded, and the only ones a shortfall against the frozen bundle is allowed
+ * to contain.
+ *
+ * `sb017-deployed-bundle.workflow.json` is a record of one deploy of one version
+ * of the template. Both cases below ask "is anything the deploy shipped missing
+ * now?", and that question silently changes meaning the moment the template
+ * itself drops a wire on purpose — the fixture stops being a floor and starts
+ * being a claim about a graph that no longer exists.
+ *
+ * So the answer is stated rather than zeroed. SB-018 (5) replaced
+ * `compose.out-built -> res.pm-received` — a **signal** cast into a **value**
+ * parameter, which made the endpoint answer `{"received": false}` about a
+ * message it had stored — with a `stored` node between `save.done` and
+ * `mail.send`. That removes exactly these two and adds three.
+ *
+ * ⚠️ **This is an exemption list, not a relaxation.** Both cases still assert
+ * the shortfall EQUALS this set: a wire that goes missing for any other reason
+ * reddens exactly as before, and so does one of these two coming back without
+ * the list being updated.
+ */
+const REMOVED_BY_SB018: string[] = [
+  'NewDbModelProperties.done -> noodl.cloud.sendemail.send',
+  'JavaScriptFunction.out-built -> noodl.cloud.response.pm-received'
+];
+
 describe('SB-017: the editor deploy path ships every connection the template holds', () => {
   let project: ProjectModel;
   let previousLibrary: unknown;
@@ -144,9 +175,12 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // boot. Constructed and driven directly rather than importing that module,
     // which registers every adapter on a shared EventDispatcher for the whole
     // spec bundle. **Without it this spec is not a faithful stand-in**: measured
-    // against s15's surviving bundle, its absence costs exactly one connection,
-    // `compose.out-built -> Response.pm-received` in `submitContactForm` — and a
-    // spec that could never reach parity would read as a failed fix.
+    // against s15's surviving bundle, its absence costs exactly one connection —
+    // the single wire into a `pm-` parameter port, which in `submitContactForm`
+    // is now `stored.out-received -> Response.pm-received` (it was
+    // `compose.out-built -> Response.pm-received` until SB-018 (5) replaced the
+    // signal with a value raised after the write). A spec that could never reach
+    // parity would read as a failed fix.
     new NamedPortsAdapter().events.projectLoaded();
 
     // SB-017's own adapters, constructed the same way and for the same reason.
@@ -325,8 +359,10 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // what makes the header's "49 of 100" re-derivable rather than remembered.
     //
     // It also says something the connection counts alone do not: the deploy only
-    // ever *drops*. Not one deployed wire is absent from the template, so no
-    // connection was rewritten or re-pointed on the way out.
+    // ever *drops*. No deployed wire is absent from the template except the two
+    // the template itself removed afterwards, so no connection was rewritten or
+    // re-pointed on the way out.
+    const missing: string[] = [];
     for (const deployed of (deployedBundle as TSFixme).components) {
       const authored = (siteBuilderContent as TSFixme).components.find(
         (c: TSFixme) => c.name === deployed.name
@@ -335,8 +371,11 @@ describe('SB-017: the editor deploy path ships every connection the template hol
       const inBundle = wireCounts(deployed.nodes, deployed.connections, 'bundle');
       const inTemplate = wireCounts(authored.graph.roots, authored.graph.connections, 'authored');
 
-      expect(shortfall(inBundle, inTemplate)).toEqual([]);
+      missing.push(...shortfall(inBundle, inTemplate));
     }
+
+    // Equality, not containment — see `REMOVED_BY_SB018`.
+    expect(missing.sort()).toEqual([...REMOVED_BY_SB018].sort());
   });
 
   it('never loses a connection production already had', () => {
@@ -347,13 +386,19 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // at 100.
     const exported = exportCloudFunctionsToJSON(project) as TSFixme;
 
+    const missing: string[] = [];
     for (const deployed of (deployedBundle as TSFixme).components) {
       const now = exported.components.find((c: TSFixme) => c.name === deployed.name);
 
       const inBundle = wireCounts(deployed.nodes, deployed.connections, 'bundle');
       const inExport = wireCounts(now.nodes, now.connections, 'bundle');
 
-      expect(shortfall(inBundle, inExport)).toEqual([]);
+      missing.push(...shortfall(inBundle, inExport));
     }
+
+    // 🔴 The SAME set as the case above, which is the load-bearing part: a wire
+    // the template still holds but the export loses would land here and not
+    // there, and this equality is what tells the two apart.
+    expect(missing.sort()).toEqual([...REMOVED_BY_SB018].sort());
   });
 });

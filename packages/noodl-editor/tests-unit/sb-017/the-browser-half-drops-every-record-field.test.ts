@@ -21,6 +21,22 @@
  * and trusted the chip for the total. The per-component split it read — 14/3/3/1
  * — is what this file reproduces, and it reproduces it exactly.)
  *
+ * ## 🔴 s19: the residue is gone, and the census is 19
+ *
+ * The two `For Each.Changed` wires were SB-018 (1), and that file's disposition
+ * — delete them — turned out to be wrong. `For Each` republishes an item
+ * component's signal outputs as `itemOutputSignal-<name>`, so the port the author
+ * wanted existed under a different name; the template now wires that, the viewer
+ * announces it, and the wires resolve. They are measured in
+ * `tests-unit/sb-018/the-list-refreshes-when-a-row-changes.test.ts`.
+ *
+ * ⚠️ **So this file's numbers moved, and the reason is a fix rather than a
+ * remeasurement.** 14/3/3/1 was s17's reading of the panel and remains the right
+ * record of what it read; what the artefact carries now is **13/2/3/1 = 19**,
+ * and the two rows that left are named below so the difference cannot be mistaken
+ * for drift. Everything else about §11 is unchanged: the 19 are one family, they
+ * are §10.2's family, and 11.4's fix is about them.
+ *
  * ## Why `prop-` and nothing else
  *
  * The browser is not missing a runtime client the way the cloud was (§6.1: the
@@ -226,11 +242,23 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
       perComponent[row.component] = (perComponent[row.component] ?? 0) + 1;
     }
 
-    expect(perComponent).toEqual({
+    // s17's panel reading was 14/3/3/1 = 21 unique. SB-018 (1)'s fix removed
+    // exactly one `For Each.Changed` from each of the first two, and nothing
+    // else — asserted as the arithmetic rather than as four new constants, so a
+    // number that moves for any OTHER reason still reddens.
+    const s17PanelReading: Record<string, number> = {
       '/Pages/PageEditor': 14,
       '/Pages/Admin': 3,
       '/Pages/ThemeEditor': 3,
       '/Admin/SectionRow': 1
+    };
+    const fixedBySb018: Record<string, number> = { '/Pages/PageEditor': 1, '/Pages/Admin': 1 };
+
+    expect(perComponent).toEqual({
+      '/Pages/PageEditor': s17PanelReading['/Pages/PageEditor'] - fixedBySb018['/Pages/PageEditor'],
+      '/Pages/Admin': s17PanelReading['/Pages/Admin'] - fixedBySb018['/Pages/Admin'],
+      '/Pages/ThemeEditor': s17PanelReading['/Pages/ThemeEditor'],
+      '/Admin/SectionRow': s17PanelReading['/Admin/SectionRow']
     });
 
     // And the public site and the Setup page are clean, which is what bounds
@@ -244,19 +272,24 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
     ]);
   });
 
-  it('is 19 record fields and 2 dead signals — the residue is SB-018`s, not this one`s', () => {
+  it('is 19 record fields and NOTHING else — SB-018`s two have been fixed away', () => {
     const rows = unresolvedWires();
 
     expect(rows.filter((r) => r.port.startsWith('prop-')).length).toBe(19);
 
-    // The other two are `For Each.Changed`, already filed as SB-018 (1) and
-    // bounded there: a valid `done` wire sits beside each, so the refresh still
-    // fires. Separated rather than lumped in, because they want a different fix
-    // — that wire is wrong, and these 19 are right.
-    expect(rows.filter((r) => r.ownerType === 'For Each')).toEqual([
-      { component: '/Pages/PageEditor', ownerType: 'For Each', port: 'Changed' },
-      { component: '/Pages/Admin', ownerType: 'For Each', port: 'Changed' }
-    ]);
+    // 🔴 The residue was two `For Each.Changed` wires, separated here rather than
+    // lumped in because they wanted a different fix — and they got one. SB-018 (1)
+    // renamed both to `itemOutputSignal-Changed`, a dynamic port the viewer DOES
+    // announce, so they resolve and leave this census entirely.
+    //
+    // Kept as an assertion rather than deleted: this is the one place that says
+    // the two families are now separated in the artefact and not just in prose,
+    // and it reddens if a `Changed` ever comes back.
+    expect(rows.filter((r) => r.ownerType === 'For Each')).toEqual([]);
+
+    // …which makes the whole census one family, and 11.4's decision is about it.
+    expect(rows.length).toBe(19);
+    expect(rows.every((r) => r.port.startsWith('prop-'))).toBe(true);
   });
 
   it('🔴 the runtime announces NO `prop-` port for any Record node in this template', () => {
@@ -338,6 +371,11 @@ describe('SB-017 §10.8: what the browser deploy drops, and what it costs', () =
 
     // And the classes those fieldless writes land in, named — so this reads as a
     // broken product rather than as a number.
+    //
+    // ⚠️ s19 note: `/Admin/PageRow`'s title and slug now carry a standing `text`
+    // (SB-018 (3)), so a deployed panel lists these fieldless rows as blank
+    // rather than as the literal word `Text`. That changes what the failure
+    // LOOKS like and nothing about what it is.
     const classes = [...new Set(dropped.map((r) => r.collection))].sort();
     expect(classes).toEqual(['Page', 'Section', 'SiteSettings', 'Theme']);
   });

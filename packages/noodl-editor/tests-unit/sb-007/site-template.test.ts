@@ -153,11 +153,13 @@ describe('SB-007 — install writes a project that opens', () => {
     const second = await installOnce('/projects/b');
     const a = nodeIdsOf(first);
     const b = nodeIdsOf(second);
-    // 193 since SB-015 F27 added `diagnoseNotFound` to `Pages/Site` (192 was
-    // SB-014's `Theme` creator). The literal is the point: a rewrite that
+    // 194 since SB-018 (5) added `stored` to `submitContactForm` — the node that
+    // raises `received` after the row is written, replacing a signal cast into a
+    // value parameter. 193 was SB-015 F27's `diagnoseNotFound` on `Pages/Site`;
+    // 192 was SB-014's `Theme` creator. The literal is the point: a rewrite that
     // renamed ids instead of regenerating them would keep the disjointness
     // assertion below green on a set that had SHRUNK.
-    expect(a.size).toBe(193);
+    expect(a.size).toBe(194);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 

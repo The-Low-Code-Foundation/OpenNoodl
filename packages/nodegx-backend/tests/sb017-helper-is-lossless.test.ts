@@ -146,9 +146,18 @@ describe('SB-017 acceptance 1 (backend half): the authored-bundle helper is loss
 
     expect(fromHelper).toEqual(fromTemplate);
 
-    // And it is the same 100 the editor's half now reaches, so the two ends meet
-    // on a number rather than only on a shape.
-    expect(Object.values(fromHelper).reduce((total, n) => total + n, 0)).toBe(100);
+    // And it is the same total the editor's half reaches, so the two ends meet on
+    // a number rather than only on a shape.
+    //
+    // ⚠️ **101 and not s18's 100, and the difference is a template edit, not
+    // drift in this converter.** SB-018 (5) replaced `compose.out-built ->
+    // res.pm-received` (a signal cast into a value parameter, which answered
+    // `{"received": false}` about a stored message) with a `stored` node between
+    // `save.done` and `mail.send`: one wire out, three in, net +1 on
+    // `submitContactForm`. That component's own count is asserted above, so a
+    // future change landing here has to say which component moved.
+    expect(fromHelper['/#__cloud__/submitContactForm']).toBe(20);
+    expect(Object.values(fromHelper).reduce((total, n) => total + n, 0)).toBe(101);
   });
 
   it('loses no wire, and re-points none — asserted as a multiset, not a count', () => {

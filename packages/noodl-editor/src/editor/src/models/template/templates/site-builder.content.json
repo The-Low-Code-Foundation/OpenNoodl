@@ -185,7 +185,8 @@
                 "y": 280,
                 "parameters": {
                   "as": "p",
-                  "visible": false
+                  "visible": false,
+                  "text": ""
                 },
                 "ports": [],
                 "dynamicports": []
@@ -709,7 +710,8 @@
                         "y": 520,
                         "parameters": {
                           "as": "span",
-                          "fontWeight": "var(--font-semibold)"
+                          "fontWeight": "var(--font-semibold)",
+                          "text": ""
                         },
                         "ports": [],
                         "dynamicports": []
@@ -724,7 +726,8 @@
                         "parameters": {
                           "as": "h1",
                           "fontWeight": "var(--font-bold)",
-                          "fontSize": "var(--text-3xl)"
+                          "fontSize": "var(--text-3xl)",
+                          "text": ""
                         },
                         "ports": [],
                         "dynamicports": []
@@ -1202,7 +1205,8 @@
                 "x": 100,
                 "y": 160,
                 "parameters": {
-                  "fontWeight": "var(--font-semibold)"
+                  "fontWeight": "var(--font-semibold)",
+                  "text": ""
                 },
                 "ports": [],
                 "dynamicports": []
@@ -2023,7 +2027,7 @@
           },
           {
             "fromId": "sectionList-2",
-            "fromProperty": "Changed",
+            "fromProperty": "itemOutputSignal-Changed",
             "toId": "sections-2",
             "toProperty": "storageFetch"
           },
@@ -2061,7 +2065,8 @@
                 "x": 100,
                 "y": 160,
                 "parameters": {
-                  "fontWeight": "var(--font-semibold)"
+                  "fontWeight": "var(--font-semibold)",
+                  "text": ""
                 },
                 "ports": [],
                 "dynamicports": []
@@ -2073,7 +2078,9 @@
                 "label": "Slug",
                 "x": 100,
                 "y": 280,
-                "parameters": {},
+                "parameters": {
+                  "text": ""
+                },
                 "ports": [],
                 "dynamicports": []
               },
@@ -3038,7 +3045,7 @@
           },
           {
             "fromId": "list",
-            "fromProperty": "Changed",
+            "fromProperty": "itemOutputSignal-Changed",
             "toId": "pages-2",
             "toProperty": "storageFetch"
           },
@@ -4474,14 +4481,34 @@
             "dynamicports": []
           },
           {
+            "id": "stored",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The answer the visitor gets",
+            "x": 40,
+            "y": 640,
+            "parameters": {
+              "functionScript": "Outputs.received = true;\nOutputs.ready();"
+            },
+            "ports": [
+              {
+                "name": "out-ready",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
             "id": "res-3",
             "type": "noodl.cloud.response",
             "children": [],
             "label": "Answer the visitor",
             "x": 40,
-            "y": 640,
+            "y": 760,
             "parameters": {
-              "params": "received"
+              "params": "received",
+              "pm-received": false
             },
             "ports": [],
             "dynamicports": []
@@ -4581,6 +4608,18 @@
           {
             "fromId": "save-3",
             "fromProperty": "done",
+            "toId": "stored",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "stored",
+            "fromProperty": "out-received",
+            "toId": "res-3",
+            "toProperty": "pm-received"
+          },
+          {
+            "fromId": "stored",
+            "fromProperty": "out-ready",
             "toId": "mail",
             "toProperty": "send"
           },
@@ -4595,12 +4634,6 @@
             "fromProperty": "failure",
             "toId": "res-3",
             "toProperty": "send"
-          },
-          {
-            "fromId": "compose",
-            "fromProperty": "out-built",
-            "toId": "res-3",
-            "toProperty": "pm-received"
           }
         ]
       }

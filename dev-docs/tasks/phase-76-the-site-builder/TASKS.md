@@ -551,8 +551,28 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   ⚠️ **Unbounded and worth measuring before 0.2.1**: `build/deployer.ts` exports through the *same*
   `exportComponent`, so the browser half is exposed to the same drop. 32 of its 40 warnings are
   `prop-`. SB-008 drove the public site; **nothing has clicked the admin panel.**
-- ⬜ **SB-018** — [two dead wires, a port that resolves in one runtime and not the other, and a
-  heading that says "Text"](SB-018-TWO-DEAD-WIRES-AND-A-PLACEHOLDER-HEADING.md) — **MEASURED s15.**
+- ✅ **SB-018** — [two dead wires, a port that resolves in one runtime and not the other, and a
+  heading that says "Text"](SB-018-TWO-DEAD-WIRES-AND-A-PLACEHOLDER-HEADING.md) — **MEASURED s15,
+  ALL THREE FIXED s19 — and 🔴 all three dispositions this file recorded were WRONG (§7).**
+  (1) not a redundant wire to delete: `For Each` republishes an item component's signal outputs as
+  **`itemOutputSignal-<name>`**, so the port existed under another name and the fix is a RENAME —
+  deleting it would have made "the list does not refresh after you publish" permanent, because
+  `create.done` covers the page's create and publish/duplicate/remove happen in the ROW.
+  (3) not one heading but **six** `Text` nodes: the census over the shipped artefact is the
+  finding, and the template already had the rule (`link`, `rowStatus`, `notFound` carried a
+  standing value) — four broke it. ⚠️ `''` and not a phrase: these are headings mid-load.
+  (5) the port was **not unset**: a `pm-` port is typed `*` with no default and
+  `responseParameters` starts `{}`, so an unset port drops the KEY — `{"received": false}` proved
+  it was set TWICE, because a pulse into a value port arrives as `true` then `false`
+  (`node.ts:686-692`). 🔴 That is why this file's own suggested fix was insufficient: `compose`
+  runs on `req.receive`, so a value published there is `true` on the FAILURE path too. The flag
+  now rises on `save.done` and `pm-received: false` is a PARAMETER, so both paths answer the same
+  shape. **13 specs / 6 mutants** across four packages; four existing suites moved with reasons
+  (193→194 ids, 100→101 connections, census 21→19, and the frozen deploy-bundle fixture given a
+  named two-wire exemption rather than being zeroed).
+  ⬜ **Still open — §1's "interesting half"**: no door checks that a wired port exists on a
+  STANDARD node. It accepted `Changed` for five sessions.
+  ⚠️ **None of the three has been driven.** Superseded detail below is left as the s15 record:
   (1) **`For Each` has no `Changed` output** and the template wires one twice (`PageEditor`,
   `Admin`); both dead. ⚠️ Bounded — a valid `NewDbModelProperties.done` wire sits beside each, so
   the refresh still fires. The gap it names: **no door checks that a wired port exists on a
@@ -1038,3 +1058,54 @@ flush out), then SB-004..006 authored *with* the new surface, then SB-007/008.
   `typecheck:backend-tests` clean (exit 0); the `tests-unit/` file is typechecked by ts-jest
   against `tsconfig.tests-main.json` at run time, **confirmed by a deliberate canary** that made
   the suite fail *to run* (`Tests: 0 total`) rather than fail a case.
+
+- **s19 (2026-08-28)** — **SB-018 CLOSED, and all three of its dispositions were wrong.** No
+  drive; every correction came from running the module that owns the behaviour instead of
+  re-reading the graph that exhibits it. Detail in **SB-018 §7** and **SB-017 §12**.
+  🔴 **(1) "Delete the dead wire" would have deleted a working feature.** `For Each` republishes
+  an item component's signal outputs as **`itemOutputSignal-<name>`**, derived from the template
+  component's own port list. The author's comment said exactly that; the wire under it used the
+  wrong name. And the wire is **not** redundant: `create.done` beside it covers the page's create,
+  while publish / unpublish / duplicate / save / remove all happen inside the ROW, which does not
+  own the query. Renamed, both components.
+  🔴 **(2) The `Text` defect was six nodes, and the census is the finding.** SB-018 §3 filed one
+  `<h1>`. Running the rule over the shipped artefact found `/Pages/Site` ×2, `/Site/SectionView`,
+  `/Admin/PageRow` ×2 and `/Admin/SectionRow` — and the template **already had the rule**
+  (`link`, `rowStatus`, `notFound` all carried a standing value). ⚠️ It also compounds SB-017 §11:
+  a deployed panel's title-less rows used to list as the literal word **"Text"**. They now list
+  blank. The defect is unchanged; only its disguise.
+  🔴 **(3) `{"received": false}` was not a default — it was the falling edge of a pulse.** A `pm-`
+  port is typed `*` with no default and `responseParameters` starts `{}`, so an unset port drops
+  the key entirely; the key being present proved the port was written. `OutputProperty.sendPulse`
+  delivers a signal into a value port as `true` **then** `false` in one drain pass. **That is why
+  SB-018's own suggested fix was insufficient** — `compose` runs on `req.receive`, so a value
+  published there is `true` on the failure path too, telling a visitor whose message was lost that
+  it arrived. The flag now rises on `save.done`, sits IN the success chain before `mail.send`, and
+  the failure case is a **parameter** (`pm-received: false`) so both paths answer the same shape.
+  ✅ **13 specs across four packages, 6 mutants graded and killed.** Two of the mutants are worth
+  keeping: dropping `editorImportComplete` from the For Each harness reddened the announce case
+  and left the **negative control green** — *that* assertion alone proves nothing; and making the
+  `Text` setter treat `''` as unset reddened only the mechanism case, which is the whole reason
+  the fix is measured rather than assumed (`''` is falsy).
+  🔴 **A frozen fixture answers a different question once the thing it recorded moves.**
+  `sb017-deploy-connection-parity.test.ts` compared template and export against a recorded deploy
+  and asserted the shortfall was `[]`. A deliberate template removal made that `[2]`. Both cases
+  now assert the shortfall **equals** a named `REMOVED_BY_SB018` list — an exemption, not a
+  relaxation. See SB-017 §12.1.
+  🔴 **A poisoned jest transform cache reads as four unrelated red specs with EMPTY messages.**
+  Mutating `noodl-runtime/src/node.ts` and `react-component-node.ts` for grading, then restoring
+  them, left the editor's ts-jest cache serving a broken module: the SB-017 suites failed with
+  `failureMessages: ['']` on exactly the Record-family cases. **HEAD's template failed
+  identically**, which is what proved it was not the session's change; `--no-cache` was green and
+  `npx jest --clearCache` fixed it. Same shape as the `.webpack-cache` trap, different cache.
+  ⚠️ **`typecheck:backend-tests` OOMs and it is NOT this session's.** V8 heap exhaustion at both
+  4 GB and 8 GB. Reverting this session's one file in that program (`sb017-helper-is-lossless`) to
+  HEAD reproduces it exactly, and `git diff e78f35fb..HEAD` over the program's include set is
+  otherwise **empty** — the inputs are byte-identical to s18's clean run, and `dist-types` /
+  `node_modules` are weeks old. Environmental to this machine, and it needs an owner.
+  ✅ **Gates:** `test:ci` **2863 specs, 4 failures**, all four `AIX-006 style vocabulary` by name,
+  seed 88522, HEAD `b385049e`, 71 s, `test-results.json` mtime checked fresh. `test:main`
+  **362 suites / 5928 tests, 0 failures**. `nodegx-backend` **109 / 1245, 0**. `noodl-mcp`
+  **64 / 774, 0**. `noodl-runtime` **143 / 2571, 0**. `noodl-viewer-cloud` **10 / 193, 0**.
+  `typecheck:editor`, `typecheck:editor-tests`, `typecheck:mcp` all exit 0. No editor stack
+  launched; every suite run alone.

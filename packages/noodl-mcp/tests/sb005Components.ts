@@ -160,8 +160,15 @@ export const PAGE_ROW_NODES = [
     parameters: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, paddingBottom: 8 },
     children: ['rowTitle', 'rowSlug', 'rowStatus', 'editButton', 'publishButton', 'unpublishButton', 'duplicateButton']
   },
-  { id: 'rowTitle', type: 'Text', label: 'Title', parent: 'row', parameters: { fontWeight: 'var(--font-semibold)' } },
-  { id: 'rowSlug', type: 'Text', label: 'Slug', parent: 'row' },
+  // 🔴 SB-018 (3). Standing `text`, for the reason spelled out on
+  // `/Pages/Site`'s headings: `Text` declares `default: 'Text'`, a default
+  // applies until the port is set, and a node whose only `text` is a wire
+  // renders the literal word **Text** until that wire publishes. Every other
+  // wired `Text` in this template already carried one (`link`, `rowStatus`,
+  // `notFound`); these were the four that did not, and s19's census over the
+  // shipped artefact is what found them rather than the one the drive saw.
+  { id: 'rowTitle', type: 'Text', label: 'Title', parent: 'row', parameters: { fontWeight: 'var(--font-semibold)', text: '' } },
+  { id: 'rowSlug', type: 'Text', label: 'Slug', parent: 'row', parameters: { text: '' } },
   {
     id: 'rowStatus',
     type: 'Text',
@@ -250,8 +257,10 @@ export const PAGE_ROW_NODES = [
     type: 'Component Outputs',
     label: 'Tell the list something changed',
     // The list owns the query, so the row cannot refresh it — it says what
-    // happened and the page decides. `For Each` forwards an item component's
-    // Component Outputs signal as an output port of its own.
+    // happened and the page decides. `For Each` republishes an item component's
+    // Component Outputs signal as an output of its own, named
+    // `itemOutputSignal-Changed` — SB-018 (1) is the five sessions this comment
+    // was right and the wire below it named the port wrong.
     ports: [{ name: 'Changed', type: 'signal', plug: 'input' }]
   }
 ];
@@ -301,7 +310,8 @@ export const SECTION_ROW_NODES = [
     parameters: { flexDirection: 'column', paddingTop: 8, paddingBottom: 8 },
     children: ['kindText', 'bodyField', 'preview', 'pickButton', 'saveButton', 'deleteButton']
   },
-  { id: 'kindText', type: 'Text', label: 'Kind', parent: 'row', parameters: { fontWeight: 'var(--font-semibold)' } },
+  // SB-018 (3), same standing `text` as `/Admin/PageRow`'s two — see the note there.
+  { id: 'kindText', type: 'Text', label: 'Kind', parent: 'row', parameters: { fontWeight: 'var(--font-semibold)', text: '' } },
   {
     id: 'bodyField',
     type: 'net.noodl.controls.textinput',
@@ -730,7 +740,15 @@ export const ADMIN_WIRES = [
   // header: on an UNFILTERED query this is unremarkable, because there is no
   // filter for the fetch to be early for.
   { fromId: 'create', fromProperty: 'done', toId: 'pages', toProperty: 'storageFetch' },
-  { fromId: 'list', fromProperty: 'Changed', toId: 'pages', toProperty: 'storageFetch' },
+  // 🔴 SB-018 (1), fixed s19. This wire read `Changed` for five sessions and there
+  // is no such port on `For Each` in any runtime, so it was dead — and it is NOT
+  // the redundant second trigger SB-018 first called it: `create.done` beside it
+  // covers creation only, and publish/unpublish/duplicate happen in the ROW.
+  // `For Each` republishes an item component's signal outputs under
+  // `itemOutputSignal-<name>` (`foreach.tsx:1030-1037`), derived from the template
+  // component's own output ports, so the port the author wanted exists — under a
+  // name they did not use. Measured through the real module, not read off it.
+  { fromId: 'list', fromProperty: 'itemOutputSignal-Changed', toId: 'pages', toProperty: 'storageFetch' },
 
   { fromId: 'themeLink', fromProperty: 'onClick', toId: 'goTheme', toProperty: 'navigate' }
 ];
@@ -976,7 +994,8 @@ export const PAGE_EDITOR_WIRES = [
   { fromId: 'addButton', fromProperty: 'onClick', toId: 'addSection', toProperty: 'store' },
 
   { fromId: 'addSection', fromProperty: 'done', toId: 'sections', toProperty: 'storageFetch' },
-  { fromId: 'sectionList', fromProperty: 'Changed', toId: 'sections', toProperty: 'storageFetch' },
+  // SB-018 (1) again, same fix and same reason — see `/Pages/Admin` above.
+  { fromId: 'sectionList', fromProperty: 'itemOutputSignal-Changed', toId: 'sections', toProperty: 'storageFetch' },
 
   { fromId: 'sections', fromProperty: 'items', toId: 'sectionList', toProperty: 'items' },
   { fromId: 'backButton', fromProperty: 'onClick', toId: 'goBack', toProperty: 'navigate' }

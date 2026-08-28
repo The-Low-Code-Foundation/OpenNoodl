@@ -617,3 +617,64 @@ to (the shipped template) because the two converters cannot run in one process.
 right total by re-pointing a wire would satisfy every count and still be wrong. **That mutant
 was run**: re-pointing `storageFetch` to `items` left every per-component count correct and
 reddened the multiset case. The counts alone would have passed it.
+
+## 12. s19 — the census is 19, and two of the 23 left by being fixed
+
+§11.1 counted **19 `prop-` + 2 `For Each.Changed` = 21 unique** against a chip of
+23. The two are gone, and not by 11.4's fix: they were SB-018 (1), and that file's
+disposition — delete them — was wrong.
+
+`For Each` republishes an item component's **signal** output ports as
+`itemOutputSignal-<name>` (`foreach.tsx:1030-1037`). The author's comment on
+`/Admin/PageRow` had said exactly that and the wire beneath it used the wrong
+name, so the fix is a rename. Measured through the real module against the shipped
+artefact in `tests-unit/sb-018/the-list-refreshes-when-a-row-changes.test.ts`.
+
+🔴 **Why they resolve and the 19 do not, which is the part worth carrying.**
+`itemOutputSignal-Changed` is derived from the **template component**, which is
+always in the graph. `prop-<field>` is derived from the **columns of a class**,
+and a site nobody has written to has none. Same viewer, same dynamic-port
+mechanism, one of them satisfiable from the project alone and one of them not.
+That is §10.2's finding stated as a boundary rather than as a family name, and it
+is what makes 11.4's list one family long.
+
+So:
+
+- The census is **19**, all `prop-`, all one family. `/Pages/PageEditor` 13,
+  `/Pages/Admin` 2, `/Pages/ThemeEditor` 3, `/Admin/SectionRow` 1. The spec
+  asserts these as s17's panel reading **minus** the two, so a number that moves
+  for any other reason still reddens.
+- **§11.4 is unchanged and still Richard's.** Nothing here bears on it: the
+  constraint (`setDynamicPorts` replaces, so a fourth adapter cannot exist) and
+  the three options are exactly as written.
+- §6 of SB-018 said this file's fix *must not restore* the two. It no longer has
+  to avoid them — but the property it was protecting still holds and is now
+  asserted as that file's own negative control: **a wire to a port that exists on
+  nothing has to keep being dropped**, and `Changed` is still such a port.
+
+⚠️ **One more thing changed, and it is cosmetic in the worst way.** §11.3's cost —
+a deployed panel writing `Page` rows with no title and no slug — used to *display*
+those rows as the literal word **"Text"**, because `/Admin/PageRow`'s title and
+slug had no standing value and fell back to the runtime default. SB-018 (3) fixed
+that across six nodes. The rows now list blank. **Nothing about the defect changed;
+only how convincingly it disguises itself.**
+
+### 12.1 The frozen bundle needed care, and that is a trap worth naming
+
+`tests/cloud/sb017-deploy-connection-parity.test.ts` compares the current template
+*and* the current export against `fixtures/sb017-deployed-bundle.workflow.json` —
+a record of one real deploy — and asserted the shortfall was `[]`: **the deploy
+only ever drops, it never re-points**.
+
+🔴 **A frozen fixture answers a different question the moment the thing it recorded
+moves.** SB-018 (5) deliberately removed two wires from `submitContactForm`, so
+"is anything the deploy shipped missing now?" started returning them, and the
+honest answer is *yes, on purpose*. Zeroing it again by deleting the two cases, or
+by weakening them to "no unexpected extras", would have retired a control that
+exists precisely because a converter reaching the right total by re-pointing wires
+would satisfy every count.
+
+Both cases now assert the shortfall **equals** a named `REMOVED_BY_SB018` list of
+exactly two wires. An exemption list, not a relaxation: a wire that goes missing
+for any other reason reddens as before, and so does one of these two coming back
+without the list being updated.
