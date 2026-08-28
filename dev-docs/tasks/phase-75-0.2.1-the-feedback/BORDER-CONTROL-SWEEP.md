@@ -220,7 +220,111 @@ edge is too faint, and **no border token fixes it**; it is a deliberate design c
 file ("six visible grips would make the bench look like a dialog"). Noted rather than swept, because
 it needs a design answer, not a token.
 
-## ⬜ What is left — 60 sites, and that number is a FLOOR
+## What session 63 fixed — the code-editor family, and the token that is NOT always the answer
+
+`CodeHistoryButton`, `CodeHistoryDropdown`, `CodeHistoryDiffModal` and `JavaScriptEditor` in
+**`noodl-core-ui`** — the first slice outside `noodl-editor`. Session 62 wanted to know whether a
+ground can still be read from a sibling stylesheet in another package. **It can**; the difference is
+that there is no single shared rail, so each control names the rule that paints *its* surface.
+`JavaScriptEditor.tsx` renders `CodeHistoryButton`, `.FormatButton`, `.SaveButton` and
+`.CloseButton` into the **same toolbar**, so four of the five grounds resolve to `.Toolbar`.
+
+Five controls fixed, all measured on **both sides in both themes**:
+
+| control | fill | ground | was | now |
+|---|---|---|---|---|
+| `CodeHistoryButton .Button` | `bg-2` | `.Toolbar` (`bg-2`) | 1.07 | **3.57 / 3.37** |
+| `CodeHistoryDropdown .PreviewButton` | `bg-3` | `.Dropdown` (`bg-1`) | 1.08 | **3.08 / 3.05** fill, 4.17 / 3.72 ground |
+| `CodeHistoryDiffModal .CancelButton` | `bg-2` | `.Modal` (`bg-1`) | 1.07 | **3.57 / 3.37** fill, 4.17 / 3.72 ground |
+| `JavaScriptEditor .FormatButton` | `bg-3` | `.Toolbar` (`bg-2`) | 1.08 | **3.08 / 3.05** fill, 3.57 / 3.37 ground |
+| `JavaScriptEditor .CloseButton` | `bg-4` | `.Toolbar` (`bg-2`) | 1.26 | **5.85 / 4.61** fill, 7.91 / 5.61 ground |
+
+Two hover rules (`.Button:hover`, `.CancelButton:hover`) moved off `border-highlight` to `primary`.
+Pinned by `tests-unit/border-sweep/code-editor-control-borders.test.ts` — **38 rows, ten mutants**.
+
+⚠️ `.Button`'s fill is `bg-2` and its ground is `bg-2` — **the fill step is literally 1.00:1**, so
+the border is the *only* thing that identifies it. It is the clearest case in the sweep so far of
+why the resting edge is load-bearing rather than decorative.
+
+### 🔴 The finding: `border-control` is NOT the answer everywhere, and this family proves it
+
+POL-016's own comment scopes the token's guarantee to **"bg-1, bg-2 and bg-3"**. `.CloseButton` is
+filled **`bg-4`**, where `border-control` measures **2.64:1 dark / 2.77:1 light — under 3:1**.
+
+🔴 **Swapping the token in there would have looked exactly like the other four edits and shipped a
+control that still fails 1.4.11.** The sweep's own remedy is the defect at that site. It uses
+`fg-default-shy` instead (5.85 / 4.61 on the fill, 7.91 / 5.61 on the toolbar).
+
+✅ **And the rule already contained its own answer** — `.CloseButton:hover` has used
+`fg-default-shy` all along; only the *resting* state was left behind. **That is the shape of all
+three fixes in this family**: both hover remedies took `primary` from `.FormatButton:hover`, which
+was already correct in the same file. **Before inventing a tone for a site, read the rest of its own
+rule and its neighbours** — this family needed no new decision, only consistency.
+
+⚠️ **So the sweep now has two exclusion tests, not one.** Beyond "is it a control?" there is
+**"what step is it filled on?"** — any control on `bg-4` or `bg-5` (`border-control` is **2.41 /
+2.54** on `bg-5`) is outside the token's guarantee and needs a different tone.
+
+### 🔴 The inventory is wrong in BOTH directions — the first FALSE POSITIVE
+
+The list has `.SaveButton` and not `.FormatButton`. They **share one comma-separated declaration**,
+and `.SaveButton` **overrides `border-color` to `primary` immediately below it** — so it was never
+part of this defect, while `.FormatButton`, which really did wear the divider, was invisible to the
+query. Fifth proof the count is a floor, and **the first proof it also contains entries that are not
+defects**. ⚠️ A worker trusting the list would have "fixed" a correct control and left a broken one.
+
+### 🔴 A THIRD case for session 62's up/down rule
+
+s62 filed: hover fill moves *up* the ramp ⇒ delete `border-color`; *down* ⇒ use `primary`.
+`.CancelButton:hover` fills **down** (`bg-2 → bg-3`) and yet lands at **3.08 / 3.05 — it would have
+PASSED on a deletion**. `primary` is used anyway, because **a rule whose job is to emphasise on
+hover must not go quieter under the pointer** (3.57 → 3.08 is a fix that makes the thing worse where
+the user is looking).
+
+🔴 **So the decision is three steps, not one: the direction, then the number, then what the rule is
+for.** Direction alone tells you when deletion is *unsafe*; it does not tell you when it is *right*.
+
+### The ten mutants, each killed by a named row
+
+| mutant | killed by |
+|---|---|
+| revert `.Button` to `border-default` | its own fill + ground rows (4 reds) |
+| **restore `.Button:hover`'s `border-highlight`** | **the state row ONLY** (2 reds) — 1.28 / 1.25 on the fill |
+| revert `.CancelButton` | its own rows (4 reds) |
+| **restore `.CancelButton:hover`'s `border-highlight`** | **the state row ONLY** (2 reds) — 1.28 on fill, 1.74 on `.Modal` |
+| revert `.PreviewButton` | its own rows (4 reds) |
+| revert the SHARED `.FormatButton`/`.SaveButton` declaration | `.FormatButton`'s rows **and** the false-positive row (6 reds) |
+| **"tidy" `.CloseButton` to `border-control` like its neighbours** | **its fill row ONLY** — *"2.64:1 on its own fill in dark"* |
+| drop `.SaveButton`'s `border-color` override | the false-positive row (2 reds) |
+| raise the shared `border-default` in `colors.css` | the negative control (1 red) |
+| over-fix — sweep the `.Modal` REGION edge | the non-controls row (2 reds) |
+
+### 🔴 The finding worth more than any of the above: the spec was GREEN while reading the wrong declaration
+
+The first draft passed **38/38 — and four of these ten mutants survived it.** Reverting three of the
+five controls to `border-default` changed nothing the spec looked at.
+
+**Why:** it read `border-color` out of the whole SCSS rule body, and in SCSS **a rule body contains
+its nested `&:hover`**. So `.CancelButton`'s *resting* edge resolved to its *hover's* `primary`, and
+the resting rows were measuring a declaration that was never under test.
+
+🔴 **The tell was not the survivor count — it was a mutant that touched ONLY a `:hover` and reddened
+the RESTING rows.** A kill attributed to the wrong row is a broken reader wearing a strong spec's
+clothes. ✅ **Read which row died, not how many.** The fix is `own()` in the spec, which strips
+nested blocks before any declaration is read, and it is commented there at length.
+
+⚠️ **This generalises to the whole sweep.** Every remaining family nests its states, and the two
+existing specs' helpers do too — the bench and picker files happened to use *top-level* state rules
+(`.X:hover { }`), so they were never exposed. **A future slice on a nested family that copies those
+helpers inherits the defect.** Copy `code-editor-control-borders.test.ts` instead.
+
+### ⚠️ The negative control's bound, a third time
+
+Three grounds in one file, and they do not share a bound: `.Modal` and `.Dropdown` are `bg-1` (bound
+**1.4**), `.Toolbar` is `bg-2` (bound **1.2**). All three are asserted separately. **Re-derive per
+surface** — this is now the third session to file it.
+
+## ⬜ What is left — 43 sites, and that number is a FLOOR
 
 🔴 **The inventory is bounded by its own query and reports that bound.** It selects blocks
 containing both `border-default` and `cursor: pointer` — so it **misses native `<input>`,
@@ -233,10 +337,17 @@ the list because they set a cursor, but they may well be regions rather than con
 whether a reader must identify the thing as an interactive component** (1.4.11), not whether it is
 clickable.
 
-The 60, by package:
+⚠️ **s63: the headline number has never matched this list.** Counting the entries below gives
+**57** originally, not 60, and **43** remaining after sessions 60–63 — the "60" appears to have been
+a count of `border-default` declarations rather than of sites. Both are floors either way, and the
+discrepancy is unexplained rather than resolved; **the count is not the artefact, the files are.**
 
-- **`noodl-core-ui`** (13): `.Button` (CodeHistoryButton), `.CancelButton` (CodeHistoryDiffModal),
-  `.PreviewButton` (CodeHistoryDropdown), `.SaveButton` / `.CloseButton` (JavaScriptEditor),
+By package (43 left):
+
+- **`noodl-core-ui`** (13): ~~`.Button` (CodeHistoryButton), `.CancelButton` (CodeHistoryDiffModal),
+  `.PreviewButton` (CodeHistoryDropdown), `.SaveButton` / `.CloseButton` (JavaScriptEditor)~~ —
+  ✅ **DONE, session 63**. ⚠️ It was **five controls, but not these five**: `.SaveButton` was a
+  FALSE POSITIVE and `.FormatButton`, which is not on this list, was a real defect. **8 left**:
   `.DismissButton` (SuggestionBanner), `.VariantSelector-trigger`, `.TokenPicker-trigger`,
   `.Card` (LauncherProjectCard), `.Select` (LauncherSearchBar),
   `.DeleteConfirmationCancelButton` (FolderTree), `.Option` / `.Ghost` (LearnerPathSection),
@@ -263,7 +374,8 @@ The 60, by package:
 divider tone) appears in a hover/focus rule in **20 stylesheets**. **At least 17 of the sites still
 on the list below are in them**:
 
-- `.Button` (CodeHistoryButton), `.CancelButton` (CodeHistoryDiffModal), `.Card` (LauncherProjectCard)
+- ~~`.Button` (CodeHistoryButton), `.CancelButton` (CodeHistoryDiffModal)~~ — ✅ done s63, **both
+  needed `primary`**; `.Card` (LauncherProjectCard) remains
 - ~~`.Action` / `.Empty` / `.PickerChip` (BenchScenarioBar), `.ResetAll` / `.SignalButton`
   (BenchInputsRail)~~ — ✅ done s62, and **two of them needed `primary` rather than a deletion**;
   `.AiPill` (CanvasHud) remains
