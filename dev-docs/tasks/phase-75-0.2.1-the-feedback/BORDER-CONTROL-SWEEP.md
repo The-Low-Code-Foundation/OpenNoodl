@@ -575,7 +575,139 @@ at all**, so there is nothing to *delete*; the only question is whether inheriti
 resting tone is safe. That is s64's third shape (a state that changes only the fill) with a **safe**
 outcome rather than a failing one, and it is asserted rather than assumed.
 
-## ⬜ What is left — 40 sites, and that number is a FLOOR
+## What session 66 fixed — the learner path, and a control whose edge IS its fill
+
+`LearnerPathSection` — the intake questions and the path they produce, in the launcher's Learning
+tab. **One stylesheet, three controls, three regions, 26 rows, twelve mutants.** The first slice
+whose recommended target came with a scouted disposition attached, and **one of the three scouted
+calls was wrong**: `.Primary` was flagged as a likely false positive to be *left alone*, and the
+right answer was to **grade it** instead.
+
+| control | element | fill | ground(s) | was | now (dark / light) |
+|---|---|---|---|---|---|
+| `.Option` | `<button aria-pressed>` | `bg-2` | `Launcher .ContentArea` (`bg-0`) | 1.07 / 1.15 on its fill | **3.57 / 3.37** fill, **4.86 / 3.28** ground |
+| `.Ghost` | `<button>`, **no fill** | none | `.ContentArea` (`bg-0`) **and `.Step` (`bg-1`)** | 1.46 / 1.12 and 1.26 / 1.27 | **4.86 / 3.28** and **4.17 / 3.72** |
+| `.Primary` | `<button>` | `primary` | `.ContentArea` (`bg-0`) | edge **= fill, 1.00:1** | **unchanged — and now GRADED at 6.53 / 4.03** |
+
+⚠️ **`.Option`'s edge is load-bearing in a way the dark theme hides.** Its `bg-2` fill on the
+`bg-0` content area is a step of 1.361 dark but **1.028 light** — far under NAT-001's own 1.09
+perceptual bar. With a divider edge, an unchosen option in light theme was a label.
+
+**Deliberately left on the divider token** (three sites, asserted as such): `.Truth`, `.Step` and
+`.Omitted`, all static `bg-1` boxes carried by a fill step of 1.165 / 1.133.
+
+🧭 **Noted, not swept, and NOT a token question**: every `:disabled` here drops `opacity` to
+0.5–0.55, a composited value `themeTokens` refuses to grade — the `.ResizeHandle` precedent.
+
+Pinned by `tests-unit/border-sweep/learner-path-control-borders.test.ts`.
+
+### 🔴 The finding: TWO GROUNDS FROM ONE CALL SITE — counting call sites is the wrong instrument
+
+Session 65 found that a shared control must clear on the worst of its surfaces, and closed with an
+instruction: **"any component in `components/` rather than a view should be assumed to have this
+shape until its CALL SITES are counted."** Counted here, `LearnerPathSection` has **exactly one**
+call site (`views/Learning.tsx`), which under that instruction reads as *one ground, no hazard*.
+
+🔴 **It has two, and the second is inside the component itself.** `.Ghost` is placed twice by its
+own JSX: once in the head row, on the launcher's `bg-0` content area, and once inside a `.Step`,
+which paints `bg-1`. A call-site count returns 1 and **cannot see the second placement at all.**
+
+✅ **Count PLACEMENTS, not call sites** — the question is how many distinct surfaces the element is
+drawn on, and a component that draws its own regions answers part of that question itself. The
+mutant is in the table below: deepening `.Step` to `bg-4` reddens **`.Ghost` and nothing else**.
+
+⚠️ Note also that **which ground is worst swaps by theme** — `border-control` is 4.86 on `bg-0` and
+4.17 on `bg-1` in dark, but 3.28 and 3.72 in light. A slice that measured only the worse-in-dark
+ground would have picked the wrong one to defend in light.
+
+### 🔴 A CONTROL WHOSE EDGE IS ITS FILL IS GRADED BY ITS FILL STEP, NOT EXCUSED BY JUDGEMENT
+
+`.Primary` paints `border: 1px solid primary` on `background: primary` — **1.00:1 between them**,
+which reads as the worst defect in the file. Session 63 met this shape at `.SaveButton` and
+disposed of it as a **false positive**, and this session's scouting note predicted the same
+disposition: *"measure before touching it."*
+
+🔴 **Both dispositions stop one step early.** "False positive" is a claim about *today*, recorded
+in prose, that no row can defend — the `.SaveButton` precedent adds a control to an exclusion list
+and the list cannot fail. What is actually true is narrower and checkable: **the object is
+identified by its FILL**, at 6.53 / 4.03 on its ground, and the border is only keeping its box the
+same size as `.Ghost` and `.Option` beside it.
+
+✅ **So the resting row now branches**: when a control's edge and fill resolve to the same token, it
+grades the **fill step against the ground** instead of the edge against the fill. `.Primary` passes
+that at 6.53 / 4.03 — and reddens the moment the fill moves. Mutant M3 does exactly that and the
+failure text reads *".Primary paints its edge the same tone as its fill, and that fill is only
+1.16:1 on the launcher's content area (bg-0) in dark — nothing identifies it."*
+
+⚠️ **An exclusion list cannot make that assertion.** Every earlier slice's "deliberately left
+alone" prose is in the same position; the region row below is a weaker instrument than this one for
+the same reason, and it is worth asking of each excluded site whether the reason it was excluded is
+itself gradeable.
+
+### 🔴 `own()` IS load-bearing here — and session 65's instruction cuts BOTH ways
+
+Session 65 broke `own()` in its own family and killed **nothing**, and filed the right rule:
+**a guard inherited from a sibling family is untested until its mutant is run here.**
+
+Run here, it kills. `.Option` nests `&[data-chosen='yes'] { border-color: var(--theme-color-primary) }`,
+and `tokenOf` tries `border-color` before `border`, so a reader without `own()` resolves the
+**resting** edge of an *unchosen* option to `primary`. Measured:
+
+- `.Option` reverted to `border-default`, `own()` intact → **6 reds**
+- `.Option` reverted to `border-default`, `own()` broken → **26/26 GREEN**
+
+🔴 **The revert vanishes.** So s65's rule is confirmed by its own opposite: the answer was INERT
+there and load-bearing here, and neither session could have known without running the mutant. It
+also protects the ground — `.ContentArea` nests a scrollbar track painting `bg-1`.
+
+### ⚠️ The other half of the state reader draws NOTHING here, and the spec says so
+
+Session 65's `statesOf` reads states from nested `&` blocks **and** from top-level rules extending
+the selector. In this family **only the nested branch fires** — every state is nested. It is kept
+because it is correct, but reporting a two-mechanism reader as this file's strength would be s65's
+own warning repeated by the session that received it. **The row asserts the states this file
+relies on, and asserts the other branch is unexercised**, so that adding a top-level `.Option:hover`
+later reddens it and the next reader learns the branch has started to matter.
+
+✅ **And the suffix guard on that row is load-bearing, found by reddening**: `.Options` is the flex
+row that *holds* the options, and a plain prefix match reads it as a state of `.Option`. It failed
+on the first run, which is how it is known to be live rather than decorative.
+
+### ✅ The ground pin by name earned its place a third time
+
+Moving `.ContentArea` to `bg-1` reddens **ten rows** — but every one of them is a `groundToken`
+name check. `border-control` clears 3:1 on `bg-1` (4.17 / 3.72) exactly as on `bg-0` (4.86 / 3.28),
+and `primary` clears on both, so **every contrast number in this file would have passed on the
+wrong ground.** Failure text confirmed: *"launcherShell .ContentArea paints --theme-color-bg-1"*,
+expected `bg-0`.
+
+### ⚠️ THREE negative-control bounds in one file, the first family to need that many
+
+Sessions 61, 62, 64 and 65 each filed that the bound belongs to the **ground**. This family's
+controls touch three steps at once, so it carries three: **1.5** on `bg-0` (1.46 dark), **1.4** on
+`bg-1` (1.27 light) and **1.2** on `bg-2` (1.15 light). Copying any single earlier file's bound
+reads a correct value as a defect on two of the three.
+
+### The twelve mutants, each killed by a named row
+
+| mutant | killed by |
+|---|---|
+| revert `.Option` to `border-default` | its fill, ground **and state** rows (6 reds) |
+| revert `.Ghost` to `border-default` | its own rows (6 reds) |
+| **`.Primary` loses the fill that identified it** | **its resting row (2 reds)** — 1.16 / 1.13, text read |
+| break `own()` **alone** | **nothing — 26/26** |
+| **break `own()` WITH the `.Option` revert applied** | **nothing — 26/26, and THAT is the finding**: the revert's six reds vanish |
+| **`.Step` deepens to `bg-4`** | **`.Ghost` ONLY (6 reds)** — the second ground, proved to be measured |
+| over-fix — sweep the `.Truth` REGION | the non-controls row (2 reds) |
+| raise the shared `border-default` in `colors.css` (dark) | the negative control, **in dark only** (1 red) |
+| **`.Option:hover` fills DOWN to `bg-4`** | **the state row ONLY (2 reds)** — s64's trap, guarded prospectively |
+| the chosen option collapses to the resting tone | the selection row (2 reds) |
+| **the state row loses its SUFFIX guard** | **itself (2 reds)** — `.Options` read as a state of `.Option` |
+| move the ground to `bg-1` | **10 rows, all by NAME**; every contrast row would have passed |
+
+⚠️ Failure **text** was read for the `.Primary` and ground-pin kills, not just counts.
+
+## ⬜ What is left — 39 sites, and that number is a FLOOR
 
 🔴 **The inventory is bounded by its own query and reports that bound.** It selects blocks
 containing both `border-default` and `cursor: pointer` — so it **misses native `<input>`,
@@ -603,7 +735,10 @@ By package (43 left):
   — ✅ **DONE, session 64**, and it was **four** controls: `.Search` (LauncherSearchBar) is not on
   this list and was a real defect. **5 left**: `.DismissButton` (SuggestionBanner),
   `.VariantSelector-trigger`, `.TokenPicker-trigger`,
-  `.DeleteConfirmationCancelButton` (FolderTree), `.Option` / `.Ghost` (LearnerPathSection)
+  `.DeleteConfirmationCancelButton` (FolderTree)
+  ~~, `.Option` / `.Ghost` (LearnerPathSection)~~ — ✅ **DONE, session 66**, and it was **three**
+  controls rather than two: `.Primary` is not on this list, is not a defect, and is now GRADED by
+  its fill step rather than excused as a false positive. **4 left.**
   — ~~⚠️ **plus `LauncherButton .is-secondary` and three `ShareTemplateModal` sites**~~ — ✅ **DONE,
   session 65**, and of those four **two were controls and two were regions**: `.is-secondary` and
   `.ChoiceItem` were real defects, `.Preamble` and `.Result` are static regions and were asserted as

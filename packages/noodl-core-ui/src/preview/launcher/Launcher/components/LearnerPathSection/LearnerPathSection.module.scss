@@ -92,12 +92,22 @@
   gap: 8px;
 }
 
+/*
+ * 🔴 phase-75 border sweep. `.Option` is a `<button aria-pressed>`, so 1.4.11 asks that a reader
+ * can identify it — and `border-default` is a DIVIDER tone (colors.css, NAT-003/POL-016), which
+ * measured 1.07:1 dark / 1.15:1 light on this button's own `bg-2` fill.
+ *
+ * The edge is entirely load-bearing here, because the fill does not carry the object on its own:
+ * `bg-2` on the launcher's `bg-0` content area is a step of 1.361 dark and **1.028 light** — the
+ * light figure is far under NAT-001's own 1.09 perceptual bar. With a divider edge, an unchosen
+ * option in light theme is a label.
+ */
 .Option {
   font-family: inherit;
   font-size: 12px;
   padding: 7px 12px;
   border-radius: var(--radius-7);
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   background: var(--theme-color-bg-2);
   color: var(--theme-color-fg-default);
   cursor: pointer;
@@ -119,6 +129,14 @@
   }
 }
 
+/*
+ * ⚠️ DELIBERATELY NOT SWEPT, and it is not a judgement call — it is a measurement. `.Primary`
+ * paints its edge the SAME tone as its fill (1.00:1 between them), which reads as a defect until
+ * you ask what the fill is doing: `primary` on the `bg-0` content area is 6.53:1 dark / 4.03:1
+ * light, so the object is identified by its fill many times over and the border is only keeping
+ * its box the same size as `.Ghost` and `.Option` beside it. Same shape as `.SaveButton`, the
+ * false positive session 63 found. The spec grades this by its FILL STEP rather than excusing it.
+ */
 .Primary {
   font-family: inherit;
   font-size: 12px;
@@ -136,12 +154,22 @@
   }
 }
 
+/*
+ * 🔴 phase-75 border sweep, and the harder of the two: `.Ghost` paints NO fill, so the edge is the
+ * only thing that identifies it — the `.Action` / `.Button` shape from sessions 61 and 63.
+ *
+ * ⚠️ It is also placed on TWO different grounds from this one file: the head row sits on the
+ * launcher's `bg-0` content area, and the "Explain this for me" button sits inside a `.Step`,
+ * which paints `bg-1`. `border-default` was 1.46 / 1.12 on the first and 1.26 / 1.27 on the
+ * second; `border-control` is 4.86 / 3.28 and 4.17 / 3.72. Counting the component's CALL SITES
+ * would have found one and missed the second ground entirely.
+ */
 .Ghost {
   font-family: inherit;
   font-size: 12px;
   padding: 6px 10px;
   border-radius: var(--radius-7);
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   background: transparent;
   color: var(--theme-color-fg-default);
   cursor: pointer;
