@@ -8,95 +8,110 @@
 |---|---|
 | SBR-001 | ✅ closed s2, driven |
 | SBR-002 | ✅ closed s4, driven |
-| SBR-003 | ✅ **closed s5** — its carried `var(--token)` dimension probe is answered (below) |
-| SBR-004 | 🟡 **built, swept, driven — but AC1 and AC2 are NOT verified**; see "start here" |
+| SBR-003 | ✅ closed s5 |
+| SBR-004 | 🟡 **built s5, driven on a claimed site s6 — AC1 and AC2 both FAIL, both diagnosed.** The fixes are small and named below |
 | SBR-005…014 | ⬜ open |
 
-**s5 gate readings** (tree `78a04e69`, everything committed):
-`typecheck:editor` 0 · `typecheck:mcp` 0 · mcp sb006+sb007 **71/71** ·
-`test:main` **375 suites / 6254 tests** · `test:ci` **2875 specs / 4 failures, all
-`AIX-006 style vocabulary` by name** (seed 79133).
+**s6 did what s5 owed**: claimed the site through the real Secrets panel + `/admin/setup`,
+published three pages, and drove the public site with a nav that finally has links in it.
+Everything below is measured, each with a control pair on the same page load. Full detail is
+**SBR-004 §8** — read it before touching the graph.
 
-⚠️ The floor moved from **2863 to 2875** — a peer's TPL-001 (members-area template) landed 12
-specs mid-session. Separate failures **by name**, never by count.
+## 🔴 Start here: two small fixes in `sb006Components.ts`, then re-drive §8's tables
 
-## 🔴 Start here: claim a site and re-drive AC1 and AC2
+Both are in the template source (`packages/noodl-mcp/tests/sb006Components.ts`), **not** in a
+drive project, and §8 already contains the acceptance table for each.
 
-**This is the one thing s5 could not do, and it is two of SBR-004's four ACs.** Both s5 drives
-were of an **unclaimed** site, where the nav renders **zero links**. So:
+### 1. AC2 — the current-page state never runs (one parameter)
 
-- **AC2 has never been observed in a browser.** The current-page distinction is asserted in
-  specs only. The mechanism is `/Pages/Site`'s `resolveSlug` writing `Noodl.Variables
-  .siteCurrentSlug`, and each `/Site/NavLink` reading it through a `Variable2` node **plus** a
-  direct read in its state function. The direct read exists for the ordering the spec cannot
-  see — a link created *after* the page resolved its slug gets no `changed` signal. **A running
-  nav is the only thing that can tell you whether both halves work.**
-- **AC1's person sentence has only been seen on a "This site has not been set up yet." page.**
+`Site/NavLink`'s `Is this the page being read` has `runOnChange-in-slug: false` and
+`runOnChange-in-current: false`, so its only trigger is `Which slug the page is showing.changed`.
+`/Pages/Site` writes `siteCurrentSlug` **before** the nav's `For Each` builds the links, so
+`changed` has already fired and never fires again. Measured: all three links render
+`rgb(0,0,0)`/400 on load, and on `/about` after in-app navigation too (the page re-mounts).
 
-To claim: provision `SITE_SETUP_TOKEN` through the backend card's overflow "···" → **Secrets**
-panel (writing `~/.noodl/backends/<id>/secrets.json` by hand is blocked), then run the setup
-flow. Use **`SBR-004 Mounted Drive`** — it is the only drive project carrying the current graph.
-`SBR-004 Theme Drive` has the pre-`mounted` graph; do not reuse it.
+🔴 **§5's mitigation cannot help and the reason is worth keeping**: the direct
+`Noodl.Variables[...]` read is *inside the function body*, and the body never executes. A
+fallback inside a function does not cover "the function is never called."
 
-⚠️ **One observation s5 recorded and did NOT diagnose:** on the unclaimed page at 360px the
-`nav` measured **151px** tall and `header` **150px**, against ~33px and ~36px of apparent
-content. `flex-grow: 0` on the shell's children changed neither, so it is not the parent
-distributing space; every `Group` computes `flex: 100 1 auto` (Noodl's default). **Measure it on
-a claimed page before treating it as a defect** — a page with a title and sections may absorb it
-entirely. It is what makes the unclaimed screenshot look sparse.
+✅ Set `runOnChange-in-current: true`. Proof it is sufficient: poking the variable while the
+links are mounted produces **`rgb(30,77,140)`/600 for the current link and `rgb(86,83,76)`/400
+for its siblings** — both channels, exactly as built.
 
-## What s5 settled, so nobody re-derives it
+⚠️ While there, look at the **footer's `Home` link**, which is `--primary` + semibold on every
+page. Until AC2 works the footer is the only thing on the page that looks like a current-page
+indicator, and afterwards the two need to not disagree.
 
-- ✅ **A `var(--token)` on a dimension port constrains a real box.** `max-width:
-  var(--site-measure)` → computed `704px`, rendered **704px**; the unknown-token control
-  → computed `none`, rendered **940px**. Same element, same viewport, one variable.
-  🔴 The control is also SBR-012's arm 3 in miniature: **a typo'd token renders as nothing**, and
-  no raw-colour check can see it.
-- ✅ **AC4's overflow half.** `scrollLeft` reaches 0; a planted 2000px control reaches 1640, so
-  the absence has a known-firing signal. ⚠️ `body.scrollLeft` reads 0 in *both* arms — `html` is
-  the scroller, and a body-only reading fails in the same shape as a pass.
-- 🔴 **`visible` holds its space; `mounted` does not.** `visible: false` is `visibility: hidden`
-  — the port's own text says "keeping the space it occupies in the layout". At 360px the hidden
-  contact wrapper was **365px** of empty page. Six public-site surfaces are now `mounted`, and a
-  spec refuses `visible` anywhere on the public site (parameters AND wires). **Use `mounted` for
-  anything shown conditionally, everywhere in this phase.**
-- 🔴 **Nothing consumed `--background`/`--foreground` before SBR-004.**
-  `TokenResolver.generateCss` stamps `:root {…}` and `body { font-family }` and nothing else
-  (`TokenResolver.ts:137`). A token nothing reads is a theme nobody sees — **every new surface
-  must name its own colours.**
-- 🔴 **A `For Each` cannot carry a constant** (`foreach.tsx:586-597`) — only `id` and the model's
-  own fields. The app-wide-variable route is the answer; SBR-006/007 will hit this again.
-- 🔴 **`aria-current` is unauthorable — no ARIA anywhere in the platform.** No visual node
-  declares an aria or attribute port; the only ARIA in `noodl-viewer-react` is a hard-coded
-  `aria-hidden` on `IconGlyph`'s svg. This is the runtime-accessibility hole that blocks four
-  adjacent markets. **Worth its own task; it is not SBR-004's to fix.**
-- ⚠️ **A wrapped row around a Repeater WITH a gutter is refused** (`uncollapsible-multi-column`
-  arm B, `responsiveArrangement.ts:238-256`) — the `columnGap` is the discriminator. Put the
-  spacing on the item.
-- ⚠️ **`Text` has no padding ports; `Group` has no text `color` port.** Margin on text, colours
-  on leaves.
-- ✅ **The 2-suite `test:main` failure s4 left owed was never a flake.** Four
-  `tests-unit/sb-01{7,8}` specs declared `const siteBuilder` with no top-level import/export, so
-  TypeScript treated them as global **scripts** and ts-jest typechecks all of `tests-unit` in one
-  program; whichever pair shared a worker failed TS2451 and the whole **suite failed to run** —
-  2 failed suites, **0 failed tests**, 6244 instead of 6254. `export {}` scopes them. **A suite
-  that fails to RUN reads like a flake and is not one — reconcile the test COUNT, not just the
-  failure list.**
+### 2. AC1 — the nav is a column and the sections split the viewport
 
-## Wizard-driving recipe (s5 used it twice; it works)
+Neither is authored; both are platform defaults the template has to override explicitly.
 
-1. Stamp and click **"New project"** — it needs **two** clicks the first time.
-2. Stamp the `Start from a Template` **BUTTON** (`EntryModeStep-module__ModeCard-hit`).
-3. Type the name into the modal's one `input`, then **Next**.
-4. 🔴 Click the `button[class*=TemplateCard--]` **root** and **verify `--selected` landed** —
-   clicking the title span reports success and selects nothing, and Review then says
-   "Hello World".
-5. Check Review names **Site Builder**, then **Create Project**.
-6. Preview appears as a **separate CDP target** (`--target=viewer`), titled by the page.
-7. 🔴 **The preview is 988×313 until you pick a device size** — topbar `ZoomSelect` (the *first*
-   `EditorTopbar-module__ZoomSelect`) → "Mobile, common (360 x 800)".
-8. ⚠️ `cdp eval` shares one context across calls — `const x` twice is a `SyntaxError`. Use IIFEs.
-9. ⚠️ An HMR abort reloads the renderer back to the **launcher**, losing your stamps. Re-stamp.
+| | as built | control | varied |
+|---|---|---|---|
+| nav is a column | nav **219px**, links on 3 lines | nav **68px**, one row | `width:auto; flex-grow:0` on the links |
+| sections split the page | 219 / 218 / 219 | **138 / 98 / 74** | `height:auto` on nav, header, footer |
+
+- `addDimensions` defaults every node to `width: 100`, `height: 100`, unit **`%`**
+  (`node-shared-port-definitions.ts:813-846`); `Group`'s `defaultSizeMode` is `explicit`. So an
+  unstyled `Group` is `width:100%; height:100%` and three stacked ones take a third each.
+- `Text` is `defaultSizeMode: 'contentHeight'` (`text.ts:149-152`) so it still takes
+  `width:100%`, and `Layout.size` converts a percentage *along* the parent's direction into
+  `flexGrow` (`layout.ts:83-88`) — the measured `flex: 100 1 auto`. **In a `flex-wrap: wrap`
+  row every `Text` claims the whole line, so a "bar" renders as a stack.**
+
+🔴 **This also closes s5's undiagnosed 151px/150px note, and s5's lever was the wrong one.**
+`flex-grow: 0` changes nothing (verified 0 in computed style, heights held) — the height comes
+from `height: 100%`. **Do not re-test this with flex-grow.**
+
+✅ With both neutralised the page is AC1's sentence: `Home  About  Studio` on one rule-bottomed
+row, Home in `--primary` semibold, serif display, 704px measure, warm ground. Three inline
+overrides, no graph change — the distance to AC1 is small.
+
+## 🔴 The other thing s6 found, and it is bigger than SBR-004
+
+**SB-017 §11.1's predicted `prop-title`/`prop-slug` drop is now driven.** Typing a title and a
+slug in `/Pages/Admin` and pressing `New page` POSTs
+`{"published":false,"showInNav":true,"navOrder":0,"ACL":{…}}` — **HTTP 201, no title, no slug**.
+The three `prop-*` that arrive are exactly the three set as *parameters*; `prop-title`/`prop-slug`
+exist only as **connection targets** and the node's saved `dynamicports` holds no `prop-*` at all.
+
+Discriminators (so nobody re-derives it): `/Pages/Setup` uses the same node type and the same
+`onTextChanged → port` wire and **its three values all arrived**, so the instrument fires; and a
+create issued after the columns existed, and again after a full viewer reload, dropped them
+identically — not a schema race.
+
+🔴 **A slug-less page is unreachable and a title-less one renders a blank nav link.** So the
+ruled SBR-008 fix (README §1: derive `prop-<field>` in the runtime from the node's own wires) is
+**not only a deploy fix** — the admin→site loop is broken in the local preview, which is where
+every first impression of this template happens. Worth re-reading SBR-008's scope against this.
+
+## What s6 settled, so nobody re-derives it
+
+- ✅ **The Secrets panel works.** `···  → Secrets` on the backend card wrote `SITE_SETUP_TOKEN`
+  into `~/.noodl/backends/<id>/secrets.json` under the **`functions`** namespace, which is what
+  `resolveFunctionSecret` reads (`service.ts:793`). s5's "blocked" was about hand-editing the
+  file, not the panel. `claimSite` then granted the role and wrote both singletons.
+- ✅ **AC4's overflow half holds on a claimed page at 360px**: `scrollLeft` 0 as built, **1640**
+  with a planted 2000px control, 0 after removing it.
+- ⚠️ **`/Pages/Admin` at 360px: the `New page` button's centre is off-screen** (box 310→410 in a
+  360px viewport; hit at x=355, missed at x=360; `scrollWidth` stays 360, so it is clipped).
+  A `cdp click` aims at the centre and lands on nothing. SBR-006's, but a real one.
+
+## Traps this session paid for
+
+- 🔴 **A refused write and a filtered read look identical.** A `DELETE` loop with output to
+  `/dev/null`, "confirmed" by an *anonymous* query, reported six rows gone that were still
+  there — they were admin-ACL rows the anonymous query could never see, and they sat in the nav
+  as blank links through the first pass of the measurements. ✅ **Check the HTTP status, and
+  verify on the same population you wrote to.**
+- 🔴 **Panels are all mounted; only one has a box.** `document.querySelector('[class*=PanelHeader-module__Title]')`
+  returns the *first* — a hidden, zero-sized "Components" — so ten rail clicks all read as
+  "nothing happened" when every one had worked. ✅ **Filter by `getBoundingClientRect().width > 0`.**
+- ⚠️ Menu items double (the `BaseDialog` ghost) — pick the copy with no `MeasuringContainer`
+  ancestor. DOM stamps survive across `cdp` calls but **a click that re-renders wipes them**;
+  re-stamp before each click.
+- ⚠️ The preview device size is the editor topbar's **first** `EditorTopbar-module__ZoomSelect`.
+  At 360px a button whose centre is at x≥360 cannot be clicked by selector at all.
 
 ## Standing context
 
@@ -106,5 +121,8 @@ entirely. It is what makes the unclaimed screenshot look sparse.
 - 🔴 Never scope by time. Every task's ACs include a person sentence — verify as written, and if
   the platform cannot express what an AC asks for, **say so and record the gap** rather than
   quietly substituting.
-- Shared checkout: **pathspec commits only** (peers were mid-edit on lessons and the members-area
-  template all session); announce editor launches **and** teardowns; `test:ci` alone.
+- Drive artefacts: **`SBR-004 Mounted Drive`** is claimed, has `SITE_SETUP_TOKEN` provisioned and
+  three published pages (`home`/`about`/`studio`), owner `owner@example.com` / `drive-password-1`.
+  Re-usable as-is. `SBR-004 Theme Drive` still carries the pre-`mounted` graph — do not reuse it.
+- Shared checkout: **pathspec commits only**; announce editor launches **and** teardowns;
+  `test:ci` alone.

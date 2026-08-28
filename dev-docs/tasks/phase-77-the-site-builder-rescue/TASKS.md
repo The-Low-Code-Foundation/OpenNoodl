@@ -10,7 +10,7 @@ per-task status and the session log.
 | SBR-001 | ✅ closed s2 | driven end-to-end; ACs 1–5,7 verified live, AC6 by spec + shelf listing |
 | SBR-002 | ✅ closed s4 | AC4 driven — all three states, each with its negative control; the drive **found and fixed a real defect** (the watchdog could never bark — see s4 log) |
 | SBR-003 | 🟡 s4: built, swept, driven | AC1–4 verified live (floor stamps, overlay beats it, delete falls back); AC5 spec half green. **Owed: the `var(--token)` dimension-port probe — carried into SBR-004.** Person-sentences complete with SBR-004/006/009 |
-| SBR-004 | ⬜ open | |
+| SBR-004 | 🟡 s5 built + s6 driven on a CLAIMED site | **AC1 and AC2 FAIL, both diagnosed with control pairs (§8).** AC2: the state function never runs — `runOnChange` false and `changed` fires before the links exist; poke the variable and both channels are correct (`--primary`/600 vs muted/400). AC1: nav renders as a **column** and nav/header/footer each take a third of the viewport — both are platform size defaults (`width/height: 100%`), not authored. AC4 overflow half ✅ re-confirmed claimed at 360px. Also **drove SB-017 §11.1's predicted `prop-title`/`prop-slug` drop: the admin creates title-less, slug-less rows** — the admin→site loop is broken in the *preview*, not only on deploy |
 | SBR-005 | ⬜ open | |
 | SBR-006 | ⬜ open | |
 | SBR-007 | ⬜ open | deployed-save half blocked on SBR-008 |

@@ -207,3 +207,144 @@ did not reach. So:
 
 **The next session should claim a site and re-drive AC1 and AC2.** That is one
 session's work and it is the half of this task a spec cannot reach.
+
+---
+
+## 8. Driven on a CLAIMED site (s6) — AC1 and AC2 both FAIL, and why
+
+s5 left §7 owing "claim a site and re-drive AC1 and AC2". Done. The site is claimed,
+three pages are published, and **the nav renders links for the first time**. Both ACs
+fail, each for a reason a spec could not have reached, and each is now pinned with a
+control pair taken on the same page load.
+
+**How the site was claimed** (the recipe works, unchanged from §7's plan):
+`SITE_SETUP_TOKEN` written through the backend card's **···  → Secrets** panel — it
+landed in `~/.noodl/backends/backend_mtd6grazfqnxl/secrets.json` under the `functions`
+namespace, which is the namespace `resolveFunctionSecret` reads (`service.ts:793`).
+Then `/admin/setup` with an email, a password and that token. `claimSite` granted the
+role and wrote the `SiteSettings` and `Theme` singletons. ✅ **The Secrets panel path
+works; s5's note that provisioning by hand was "blocked" was about the file, not the panel.**
+
+### 8.1 🔴 AC2 FAILS on every real page load — the mechanism is right and never runs
+
+| arm (same page, same code, one thing varied) | Home | About | Studio |
+|---|---|---|---|
+| **as loaded** (`/home`, fresh) | `rgb(0,0,0)` / 400 | `rgb(0,0,0)` / 400 | `rgb(0,0,0)` / 400 |
+| **after `Noodl.Variables.siteCurrentSlug` is poked** | **`rgb(30,77,140)` / 600** | `rgb(86,83,76)` / 400 | `rgb(86,83,76)` / 400 |
+
+`rgb(30,77,140)` is `--primary`, `rgb(86,83,76)` is `--muted-foreground`, 600 is
+`--font-semibold`. **So both channels §5 built are correct** — colour *and* weight, exactly
+as `MUTANT: a current state that changes colour and not weight reddens AC2` demands. What
+is wrong is that on a real load the state function **never executes**, so the `Text` keeps
+its unstyled defaults and all three links render identically black.
+
+🔴 **The cause is the one §5 predicted and the mitigation does not cover.**
+`Site/NavLink`'s `Is this the page being read` carries `runOnChange-in-slug: false` and
+`runOnChange-in-current: false`, so its only trigger is the `run` signal from
+`Which slug the page is showing.changed`. `/Pages/Site` writes `siteCurrentSlug` *before*
+the nav's `For Each` builds the links, so `changed` has already fired by the time a link
+exists — and it never fires again. §5's second channel, the direct
+`Noodl.Variables["siteCurrentSlug"]` read, is **inside the function body**, so it cannot
+help: the body never runs. *A fallback inside a function does not cover the case where the
+function is never called.*
+
+⚠️ **And in-app navigation does not rescue it.** Clicking `About` reaches `/about` with
+`siteCurrentSlug === 'about'` and the links still measure black/400 — the page component
+re-mounts on navigation, so the links are again created after the write. **There is no
+path through the running app on which the current-page state appears.** The one arm that
+produced it had to write the variable while the links stayed mounted.
+
+✅ **The fix is one parameter, and the table above is its acceptance test**:
+`runOnChange-in-current: true` (or `-in-slug`) makes the function run when its inputs
+arrive instead of only on a signal that has already passed. Not applied here — it belongs
+in `sb006Components.ts`, the template's source, not in a drive project.
+
+### 8.2 🔴 AC1 FAILS — the nav is a column, and three sections split the viewport
+
+`/home` at 1024×768, claimed, three published pages. The Studio look **is** worn: ground
+`#fbfaf8`, serif display face on the `h1`, `--primary` on the footer link, rules under the
+nav and above the footer, and the 704px measure. The *shape* is not a site a studio published.
+
+**Two independent defects, each with a control pair on the same load:**
+
+| | as built | control | what varied |
+|---|---|---|---|
+| **A — nav is a column** | nav **219px**, links at y=37/99/161 (three lines) | nav **68px**, all three links at y=24 in one row | `width: auto; flex-grow: 0` on the links |
+| **B — sections split the page** | nav **219** / header **218** / footer **219** | **138** / **98** / **74** | `height: auto` on the three |
+
+🔴 **Both are the platform's own defaults, not something this task authored.** The template
+sets only `flexDirection` on these Groups and no size at all.
+- `addDimensions` gives every node `width: 100`, `height: 100`, **defaultUnit `%`**
+  (`node-shared-port-definitions.ts:813-846`), and `Group`'s `defaultSizeMode` is
+  `explicit`, so **an unstyled `Group` is `width:100%; height:100%`** — three stacked
+  sections each demand the whole page and end up with a third of it each.
+- `Text` is `defaultSizeMode: 'contentHeight'` (`text.ts:149-152`), so it still takes
+  `width: 100%`; and `Layout.size` turns a percentage *along* the parent's direction into
+  `flexGrow` (`layout.ts:83-88`), which is the measured `flex: 100 1 auto`. **In a
+  `flex-wrap: wrap` row every `Text` claims the entire line, so a "bar" renders as a stack.**
+
+⚠️ **This answers §7's undiagnosed 151px/150px observation, and s5's instrument was the
+wrong lever.** `flex-grow: 0` changed nothing here either — it is verified 0 in computed
+style and the heights held at 219/218/219 — because the height comes from `height: 100%`,
+not from grow. The unclaimed page's sparse thirds were the same defect with no links in it.
+
+✅ **What a corrected render looks like** is captured: with A and B neutralised the nav is a
+real bar — `Home  About  Studio`, Home in `--primary` semibold — which is AC1's sentence.
+That took three inline overrides and no graph change, so the distance to AC1 is small.
+
+### 8.3 🔴 SB-017 §11.1's predicted `prop-` drop is now DRIVEN: the admin cannot create a page
+
+SB-017 §11 priced the browser half by derivation and said *"nothing has ever clicked the
+admin panel, so what those 23 cost is still unknown."* It has now been clicked. Its
+prediction for `/Pages/Admin` — *"`prop-title`, `prop-slug` on the create node"* — is exact.
+
+**Typing a title and a slug and pressing `New page` POSTs this:**
+`{"published":false,"showInNav":true,"navOrder":0,"ACL":{"role:admin":{…}}}` — HTTP **201**,
+and **no `title`, no `slug`**. Every row the admin creates has `title: null, slug: null`.
+
+The discriminators, so this is not read as a typing artefact:
+- ✅ **Control**: `/Pages/Setup` uses the *same* `net.noodl.controls.textinput` and the *same*
+  `onTextChanged → <input port>` wire shape, and all three of its values arrived — the user
+  exists and `claimSite` matched the token. The instrument fires.
+- ✅ The three `prop-*` that **do** arrive (`published`, `showInNav`, `navOrder`) are exactly
+  the three set as **parameters** on the node. `prop-title` and `prop-slug` exist **only as
+  connection targets**, and the node's saved `dynamicports` list contains no `prop-*` at all.
+- ✅ Not a schema race: a create issued *after* `title`/`slug` columns existed, and again
+  after a full viewer reload, dropped them identically.
+
+🔴 **Consequence, and it compounds.** A slug-less page is unreachable (`/Pages/Site` resolves
+by slug) and a title-less one renders a **blank nav link** — six of them were sitting in the
+nav during the first pass of these measurements. So the ruled SBR-008 fix is not only about
+deploy: **the admin→site loop is broken in the local preview too**, which is where every
+first impression of this template happens.
+
+### 8.4 ✅ AC4's overflow half re-confirmed on a claimed page
+
+Mobile 360×800, `/home`, three links, real content — the arm §7 could not run.
+
+| probe | `document.documentElement.scrollLeft` after `= 9999` |
+|---|---|
+| the page as built | **0** |
+| **control:** a planted 2000px element | **1640** |
+| after removing it | **0** |
+
+Known-firing signal beside the absence, so the `0` means "nothing overflows".
+
+### 8.5 Smaller things this drive found
+
+- ⚠️ **`/Pages/Admin` at 360px: the `New page` button's centre is off-screen.** Its box is
+  `left 310 → right 410` in a 360px viewport; `elementFromPoint` hits it at x=355 and
+  misses at x=360, and `documentElement.scrollWidth` stays 360, so it is clipped rather
+  than scrollable. A `cdp click`, which aims at the centre, lands on nothing. SBR-006's, not
+  this task's, but it is a primary action a thumb cannot reliably reach.
+- 🔴 **The footer's `Home` link is `--primary` and semibold on every page**, while the nav's
+  current link is not (8.1). On the rendered page the *footer* reads as the current-page
+  indicator. Whatever fixes 8.1 should be looked at beside the footer, or the two disagree.
+
+### 8.6 What is still owed on this task
+
+1. **8.1's one-parameter fix in `sb006Components.ts`**, with §8.1's table as its test.
+2. **8.2's two size defaults**, named explicitly on the public-site Groups and the nav link —
+   this is what AC1 turns on, and it is where the "no short paths" ruling bites: the shape
+   has to be authored, because the platform's defaults are actively against it.
+3. AC3 remains SBR-012's.
