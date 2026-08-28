@@ -5196,6 +5196,29 @@ export function parseIdentityMapping(script: string): Array<{ input: string; fie
   return entries;
 }
 
+/**
+ * §15 — a component prop's type is what the port *declares*, and `any` when it declares nothing.
+ *
+ * A port type is **free text** (`AiAssistant/authoring/plan.ts`: *"names are what bind"*), so
+ * there is no closed vocabulary to fall through to a default with. The editor's own PortEditor
+ * panel opens a new Component Inputs port as `type: { name: '*' }` (`componentinputs.ts`), and
+ * `*` is normatively the untyped wildcard — the Port Type Contract describes "an untyped Function
+ * output defaulted to `*` and connected anywhere". It is two thirds of the corpus's component
+ * ports (471 of 714).
+ *
+ * Mapping that to `string` was the emitter claiming a type the graph refused to make, and it is
+ * the same disagreement §12 refused in the other direction: the declared type is a claim about
+ * the port, not a check on what reaches it. Nothing coerces on delivery — `componentinputs.ts`
+ * registers each output as a bare getter over `_internal.inputValues`, and the one cast on a
+ * connection (`node.ts` `_setValueFromConnection`) is `object`/`array` → `string` only.
+ *
+ * `any` rather than `unknown` for the reason the `array` case already gives, and the reason the
+ * two sibling mappers in this file — `jsOutputTsType` and `valueTsTypeOf` — both already default
+ * to `any`: strict tsc rejects an `unknown` read at the sites that consume these values.
+ *
+ * ⚠️ `string` must stay an explicit case. It is 224 ports, and it reached its type through the
+ * old default — folding it into this one would widen every genuinely-typed prop in the corpus.
+ */
 function tsTypeOf(portType: string | undefined, kind: 'value' | 'signal'): string {
   if (kind === 'signal') return '() => void';
   switch (portType) {
@@ -5203,12 +5226,14 @@ function tsTypeOf(portType: string | undefined, kind: 'value' | 'signal'): strin
       return 'boolean';
     case 'number':
       return 'number';
+    case 'string':
+      return 'string';
     // Fields read off an untyped list must be `any` — strict tsc rejects them under unknown
     // (the §10 ruling); the list itself is the §4e repeater feed.
     case 'array':
       return 'any[]';
     default:
-      return 'string';
+      return 'any';
   }
 }
 

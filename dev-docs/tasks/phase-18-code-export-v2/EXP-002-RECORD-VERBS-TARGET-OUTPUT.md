@@ -889,3 +889,153 @@ control tests assert the *un*mutated fixture still reaches all three surfaces an
 Mutation-checked, and the two halves are disjoint: forcing `declaresProp` true fails exactly the
 2 child tests; restoring the parent-end fallback fails exactly the 4 parent tests. The controls
 survive both, as controls must.
+
+## §15 The type the port never claimed (session 26 — §11d(4)+(5), closed; **40/40**)
+
+The corpus's last four diagnostics were all "X is not assignable to `string`", and every previous
+session's list read them as a type *mismatch* — a number reaching a string port, to be settled by
+asking whether the runtime coerces on delivery. That framing was wrong, and one measurement before
+any code retired it: **none of the four ports declares `string`.** All four declare `*`.
+
+The mismatch was the emitter's own claim being contradicted by the graph. There was nothing to
+coerce, because nothing had ever been promised.
+
+### 15a — What a port actually declares, measured before deciding
+
+`probe26.ts` reads the declared `type` of every Component Inputs output port in the corpus:
+
+| declared type | ports |
+|---|---|
+| **`*`** | **471** |
+| `string` | 224 |
+| `number` | 10 |
+| `boolean` | 5 |
+| `image URL` / `text` / `icon` | 4 |
+| **total** | **714** |
+
+`*` is **two thirds of every component prop in the corpus**, and `tsTypeOf` sent all of it through
+a `default:` branch to `string`. The four failing sites are ordinary members of that majority —
+`CategoryCard.count`, `ProductCard.reviewCount`, `FooterColumn.links`, `NavBar.basketCount`, each
+authored `*`.
+
+### 15b — Why `*` is "untyped", from the sources
+
+Three readings, and they agree:
+
+1. **The editor writes it when nobody chooses.** `componentinputs.ts` gives the node its PortEditor
+   panel with `type: { name: '*' }` — the type a new component input is born with.
+2. **`*` is normatively the wildcard.** `PORT-TYPE-CONTRACT.md` describes "an untyped Function
+   output defaulted to `*` and **connected anywhere**", and rejects option B — *making `*` the
+   honest default* — as a direction, which only makes sense because `*` already means untyped.
+3. **A port type is free text.** `AiAssistant/authoring/plan.ts:181` documents the field as
+   *"What kind of value it carries (\"string\", \"number\", \"an image URL\") — free text, names
+   are what bind"*. There is **no closed vocabulary**, so there is no set of "the string-valued
+   type names" to fall through to a default with. `image URL` is not a registered editor type; it
+   is that description's own example, written into projects by AI authors following it.
+
+And nothing coerces on delivery, which is what would have made the old mapping true anyway:
+`componentinputs.ts` registers each output as a bare getter over `_internal.inputValues`, and the
+single cast on a connection — `node.ts`'s `_setValueFromConnection` — is `object`/`array` →
+`string`, guarded on the **source** port being declared `object`/`array`. A number arriving at a
+component input arrives as a number.
+
+**So the ruling is §12's, one level up:** the declared type is a claim about the port, not a check
+on what reaches it — and a port that declares nothing must have nothing claimed for it.
+
+### 15c — The change, and the one line that would have made it a disaster
+
+```ts
+case 'string':
+  return 'string';   // ← 224 ports reached their type through the OLD default
+…
+default:
+  return 'any';
+```
+
+`any` and not `unknown`, for the reason the `array` case beside it already gives and the reason
+**both sibling mappers in this same file already default to `any`**: `jsOutputTsType`
+(*"`any` is the honest type of an untyped runtime delivery — `unknown` would fail the emitted
+app's tsc"*) and `valueTsTypeOf`, whose doc comment cites **§10 by name**. `tsTypeOf` was the odd
+one of three. 🔴 **The ruling had already been written twice in this file; only one site had not
+implemented it** — the same shape as §14e, one session later.
+
+⚠️ The explicit `case 'string'` is the whole risk of the change. `string` reached its type through
+the branch being replaced, so folding it in would have widened all 224 genuinely-typed ports along
+with the 471 untyped ones. It has its own test, and that test is the row that goes red.
+
+### 15d — What it bought, same instrument both sides
+
+`scripts/build-corpus.ts` over all 40 projects, before-column taken this session from the working
+tree at HEAD:
+
+| | before (s25) | after (s26) |
+|---|---|---|
+| projects that typecheck | 38 / 40 | **40 / 40** |
+| total diagnostics | 4 | **0** |
+
+Exactly the two failing rows moved — `leg001-comment-measure`, `phase58-awp006-deepseek` — and
+none of the other 38 regressed. Coverage is **byte-identical to sessions 21–25** (3,766/4,441,
+**84.80%**) and `rank2-s26.txt` is byte-identical to s22–s25: this retires no node, it stops the
+emitter contradicting the graph.
+
+**The corpus now typechecks end to end** — the goal §10c's grader was built for, seventeen
+sessions and five causes ago.
+
+### 15e — The blast radius, measured on the emitter's population
+
+`dumpall.ts` into two trees, `diff -ru`. **96 files change, and the diff is 471 lines against 471:**
+
+- **468** are one prop declaration each, every one `string;` → `any;`.
+- **3** are `__NOTES__.txt` lines that quote the type name inside an unchanged sentence
+  (*"items are fed by a source not statically typed as a list (`string`)"* → `(any)`).
+- **Zero JSX, zero logic, zero CSS.**
+
+🔴 **That last line was a prediction that nearly went the other way, and it is worth the ink.**
+`plan.ts`'s **format-collapse gate** reads exactly this type: a Text whose format is a single
+placeholder collapses to the bare expression `{count}` only when `exprTsType(...) === 'string'`,
+and otherwise emits `` {`${count}`} ``. Widening a prop to `any` therefore *can* change emitted
+markup, not merely types. It changes none here — the corpus's format sites all carry surrounding
+text (`` {`${breed ?? ''} · ${age ?? ''}`} ``), so `parts.length === 1` never coincides with a
+wildcard prop.
+
+**This is a bound from the corpus, not a guarantee from the mechanism.** A project with a Text
+whose whole format is `{someWildcardProp}` would emit a template literal where it used to emit a
+bare read — and that is the *more* faithful of the two, because the runtime's placeholder
+substitution always produces a string, which is why the gate is conditioned on `string` in the
+first place. The old mapping had been collapsing untyped props on a promise it could not keep;
+for an array-valued one the two forms genuinely differ (React joins `['a','b']` to `ab`, the
+template literal to `a,b`).
+
+### 15f — Tests (8 new, 436 total)
+
+`tests/port-types.test.ts`. Both primary cases are **real fixture artefacts, not mutations**:
+`puppy-test-3`'s `BenchProbe` authors all seven ports `*`, and `cheer`'s `NoteRow` authors both
+`string` — so the change and its negative control are each read off a graph somebody actually
+built.
+
+`retypePort` moves the declared type and **nothing else** — not a wire, not a caller's parameter,
+not the name — and throws when it matches no port, so a mutation that hit nothing cannot leave a
+vacuous assertion behind. The discriminating pair runs both directions on the same fixture:
+declaring a wildcard `string` narrows exactly one row and leaves its siblings identical; declaring
+a `string` port `*` widens it. A mapping that read the *feed* rather than the declaration — the
+reading §10 refused — would not move under either.
+
+Mutation-checked against HEAD's mapping: the **5** tests asserting the new behaviour go red, and
+the **3** negative controls (`string`, `number`/`boolean`, `array`) stay green on both sides,
+which is what makes them controls rather than a second opinion.
+
+### 15g — What is left
+
+The compilation work is done; everything remaining buys **coverage**.
+
+1. **The reactive Condition** — 3 nodes / 3 projects. Gates the three remaining `User` nodes (the
+   auth-gate idiom) and retires ~6 nodes. Now the top of the list.
+2. **Relation verbs + `DbModel2`** (3 nodes, 1 project) — §4c is written for it already.
+   `RemoveDbModelRelation` has **zero corpus instances**.
+3. **EXP-003 Tier B** — ~350 nodes, one third-party kit copied into eight projects, behind four
+   things that do not exist. `tb-survey.ts` dumps every body of it; read that before committing.
+
+🔴 **And a standing caution now that the corpus is green:** `build-corpus.ts` can no longer tell
+anyone anything by moving. A grader pinned at 40/40 reports "no regression" and "no progress" with
+the same number, so the *next* slice's evidence has to come from `coverage-audit.ts` and the emit
+trees, not from the row count. The instrument that closed five causes is now a floor, not a needle.
