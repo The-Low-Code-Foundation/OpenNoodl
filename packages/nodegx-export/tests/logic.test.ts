@@ -236,8 +236,19 @@ describe('the puppy fixture is untouched by the slice', () => {
   test('the puppy export emits no template literals and no branches', () => {
     const PUPPY_FIXTURE = path.join(__dirname, 'fixtures', 'puppy-test-3');
     const puppy = emitApp(parseProject(PUPPY_FIXTURE, catalog), catalog);
-    for (const content of Object.values(puppy.files)) {
-      expect(content).not.toContain('if (');
+    for (const [name, content] of Object.entries(puppy.files)) {
+      // A bare `not.toContain('if (')` stood in for "no Condition branch" until the record
+      // verbs' Missing Record Id guard put a legitimate `if` in this fixture. The proxy was
+      // always wider than the claim; assert the claim. Backticks appear in the api stubs' doc
+      // comments, so the template-literal half is read off code lines only.
+      for (const line of content.split('\n')) {
+        if (/^\s*(\*|\/\*|\/\/)/.test(line)) continue;
+        expect(`${name}: ${line}`).not.toContain('`');
+      }
+      for (const line of content.split('\n')) {
+        if (line.includes("if (!puppyIdInput) throw new Error('Missing Record Id');")) continue;
+        expect(`${name}: ${line}`).not.toContain('if (');
+      }
     }
   });
 });

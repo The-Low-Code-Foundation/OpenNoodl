@@ -824,6 +824,18 @@ export function emitComponent(
         );
         const inner = pad(indent + 2);
         const body = [
+          // The runtime's "Missing Record Id" (RECORD-VERBS-TARGET §1), thrown rather than
+          // branched so it lands in the catch below — which is already the graph's own error
+          // path — skips the call and the done chain, and narrows the id for the call itself.
+          // `!id` is exactly the runtime's set — `setModelID` clears the binding on `undefined`,
+          // `null` **and** `''` alike — and unlike `=== undefined` it does not become a
+          // no-overlap comparison (TS2367) when the id is a plain `string`, which it is whenever
+          // the graph wires a form field rather than a component prop.
+          ...(action.guardId
+            ? [
+                `${inner}if (${SIMPLE_REF.test(args[0]) ? `!${args[0]}` : `!(${args[0]})`}) throw new Error('Missing Record Id');`
+              ]
+            : []),
           `${inner}await ${action.fnName}(${args.join(', ')});`,
           ...expandActions(action.then).map((a) => `${inner}${actionCode(a, indent + 2)};`)
         ];

@@ -262,6 +262,18 @@ export type HandlerAction =
        * `logIn(u, p)` is `[expr, expr]`, `logOut()` is `[]`.
        */
       args: ApiCallArg[];
+      /**
+       * Refuse before calling when the leading id argument is absent or empty, the way the
+       * runtime does (RECORD-VERBS-TARGET §1): `setModelID` reads `undefined`/`null`/`''` as
+       * *clear the binding*, after which every verb answers `setError('Missing Record Id')` and
+       * never reaches the backend. Gate 9 already defers an id that is **statically** absent;
+       * this is its dynamic twin, and the corpus reaches it because every emitted component prop
+       * is optional, so an id wired from one is `string | undefined` at the call.
+       *
+       * False only where the guard is provably dead — a non-empty literal id, and every `create`,
+       * which takes no id at all.
+       */
+      guardId: boolean;
       errorState: string;
       then: HandlerAction[];
     };
@@ -395,6 +407,18 @@ export interface MutationPlan {
   fnName: string;
   typeName: string;
   moduleBase: string;
+  /**
+   * The columns this verb actually writes, with the type its argument resolves to — the graph's
+   * own evidence of the record's shape (RECORD-VERBS-TARGET §4d).
+   *
+   * The interface is minted from the project's collection **schema snapshot**, and 32 of the 39
+   * corpus projects carry none at all: `metadata.dbCollections` is absent, so every collection
+   * types as `{ id: string }` and *any* `create`/`update` that writes a property emits a call
+   * that does not compile. The schema is the authority where it exists and silent where it does
+   * not; a `prop-` the graph writes is direct evidence of a column, so the two union. Empty for
+   * `delete`, which writes nothing.
+   */
+  writes: Array<{ name: string; tsType: string }>;
 }
 
 /**
@@ -2690,7 +2714,20 @@ function planComponent(
 
     const { typeName, moduleBase } = collectionModuleNames(collectionName);
     const fnName = `${verb}${typeName}`;
-    plan.mutations.push({ nodeId: node.id, verb, collectionName, fnName, typeName, moduleBase });
+    plan.mutations.push({
+      nodeId: node.id,
+      verb,
+      collectionName,
+      fnName,
+      typeName,
+      moduleBase,
+      writes: props.map(({ key, expr }) => {
+        // `unknown` where the argument's type is not statically known: honest, and still
+        // assignable from whatever the call passes because every field is optional.
+        const t = exprTsType(expr);
+        return { name: key, tsType: t === 'string' || t === 'number' || t === 'boolean' ? t : 'unknown' };
+      })
+    });
 
     return {
       action: {
@@ -2703,6 +2740,7 @@ function planComponent(
           ...(idExpr === undefined ? [] : [{ kind: 'expr' as const, expr: idExpr }]),
           ...(verb === 'delete' ? [] : [{ kind: 'data' as const, props }])
         ],
+        guardId: idExpr !== undefined && idExpr.kind !== 'literal',
         errorState: verbErrorStateOf(node).name,
         then: chain.then
       },
@@ -2791,6 +2829,8 @@ function planComponent(
                 kind: 'expr' as const,
                 expr: props.find((p) => p.key === key)?.expr ?? { kind: 'literal' as const, value: '' }
               })),
+        // No leading id argument: the user verbs act on the session, not on a record.
+        guardId: false,
         errorState: verbErrorStateOf(node).name,
         then: chain.then
       },

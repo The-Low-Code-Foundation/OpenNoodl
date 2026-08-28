@@ -363,3 +363,115 @@ rulings where the paper met the compiler.
 `phase58-backend-deferred`), no project regressed. Every remaining defer in those projects reads
 as one of §5's gates in its own words. 369 tests (25 new); the emitted `puppy-test-3` app
 `tsc -b` and `vite build` clean.
+
+## §10 The two typing defects (session 22 — what a corpus-wide build found)
+
+The slice shipped emitting an app that **did not compile**, in a project nobody built. Both
+defects are the same shape — the emitted text was right and the emitted *types* were not — and
+neither was reachable by a unit test, because every assertion about the text passed. §9's last
+line is exactly why: *"the emitted `puppy-test-3` app builds"* is a claim about **one** project.
+
+### 10a — The record interface is the schema **and** the graph
+
+`createStockItem({ name, count, supplier })` against `Partial<StockItem>` where `StockItem` was
+`{ id: string }` — TS2353, *'name' does not exist*. The interface is minted from the project's
+collection **schema snapshot**, and the measurement that settles the design is this:
+
+| `metadata.dbCollections` | projects |
+|---|---|
+| absent entirely | **32 of 39** |
+| present, with columns | 7 |
+
+So this is not an edge case, it is the default: for most of the corpus every collection types as
+`{ id: string }`, and *any* Create or Update that writes a property emits a call that cannot
+compile. The Static Data `allowedFields` precedent — drop the column with a note — is the wrong
+transplant here, and §4d's own reasoning says so: dropping every property would emit
+`createStockItem({})`, a call that reports storing a record while carrying nothing, which is the
+one failure this slice exists to make visible.
+
+**The ruling: the schema is the authority where it exists and silent where it does not, and a
+`prop-` the graph writes is direct evidence of a column.** The two union — schema order first,
+then graph-written columns in first-use order, the schema's declared type winning any conflict.
+The type of a graph-written column is whatever its argument resolves to (`unknown` when that is
+not statically known; every field is optional, so it stays assignable).
+
+This was never really an open question. **§4d above already hand-writes `name?: string;
+count?: number;` into `StockItem` — for this very project, whose snapshot carries no columns at
+all.** The target output settled it; the implementation minted the interface from the schema
+alone, and nobody compared the two.
+
+### 10b — An absent record id refuses, it does not call
+
+`deleteStockItem(id)` with `id: string | undefined` — TS2345. The id came from a component input
+prop, and **every emitted component prop is optional** (`${prop.name}?: ${prop.tsType}`), so this
+is structural: any verb whose `modelId` is wired from a component input has a possibly-absent id.
+
+§1 already answers what should happen: `setModelID` reads `undefined`/`null`/`''` as *clear the
+binding*, after which every verb answers `setError('Missing Record Id')` and **never reaches the
+backend**. So the export refuses too. Gate 9 already defers an id that is *statically* absent;
+this is its dynamic twin:
+
+```tsx
+try {
+  if (!itemId) throw new Error('Missing Record Id');
+  await deleteStockItem(itemId);
+  onItemDeleted?.();
+} catch (error) {
+  setDeleteItemError(error instanceof Error ? error.message : String(error));
+}
+```
+
+Thrown rather than branched, for three reasons that agree: it lands in the catch that is already
+the graph's own error path (so the Error output fills exactly as the runtime's `setError` does),
+it skips the done chain the way a refusal must, and it narrows the id for the call. `!id` — not
+`id === undefined` — is deliberate: it is precisely the runtime's `undefined`/`null`/`''` triple,
+**and** it avoids TS2367 when the id is a plain `string`, which it is whenever the graph wires a
+form field instead of a prop. Emitted whenever the id is not a literal; a literal is always
+non-empty, because gate 9 rejected the empty one.
+
+### 10c — The grader that found them: `scripts/build-corpus.ts`
+
+`tsc` over one emitted project is not `tsc` over the corpus, and that is exactly how these
+survived. The script emits **every** project into a prepared harness and typechecks each, one row
+per project, exiting with the failure count.
+
+**Same instrument both sides — worktree at HEAD, then the working tree:**
+
+| | projects that typecheck |
+|---|---|
+| before | 25 / 40 |
+| after | **26 / 40** |
+
+Exactly one row moved: `phase58-backend-deferred`, 2 errors → ok. Nothing regressed, and the
+coverage report is **byte-identical** to session 21's — this slice buys correctness, not nodes.
+
+🔴 **And the instrument lied first.** The initial run said 18 projects failed, 13 diagnostics of
+them *"Cannot find module '@nodegx/core'"* — because the harness never had `@nodegx/core`
+installed at all. Those failures were the grader's, not the product's. Linking the package in
+moved the *baseline* from 21/40 to 25/40. **A new checker's first finding is a claim about the
+checker.**
+
+### 10d — What the corpus check found beyond this slice (open, not this session's work)
+
+**14 projects still do not typecheck**, and the count overstates the work: 8 of them produce
+byte-identical diagnostics (they are clones), so the failures reduce to roughly **five distinct
+causes**. None is a record-verb defect, and none is a regression — all reproduce at HEAD.
+
+1. 🔴 **A non-identifier component prop name is emitted verbatim as a TypeScript identifier** —
+   ~10 projects, and **every syntax diagnostic in the run — 558 of 593** (TS1109/TS1005/TS1434
+   and friends). A `Date Picker` with an input port named `Align X` emits `Align X?: string;` and
+   destructures `{ Value, Align X, … }`. Port names are user text, and the rest of the emitter
+   already knows it — `tsFieldKey`, `recordDataObject` and the static-data field emitter all guard
+   the same way. The props path does not. **The single biggest correctness hole in the export.**
+2. **An instance passes props to a component that declares none** — `Type '{ categoryName: string;
+   … }' is not assignable to 'IntrinsicAttributes'` (`phase55-replay-haiku`). The child has no
+   `Component Inputs` node, so it has no Props interface, but the parent sets parameters on the
+   instance and emit writes them out.
+3. **A component reads a prop it never declared** — `Cannot find name 'image'. Did you mean
+   'Image'?` (`ecommerce-example`, `ecom-responsive-probe`). Case/identity mismatch between the
+   declared port and the reader; the sibling of (2) from the child's side.
+4. **`number` fed into a `string` prop** — TS2322, 3 projects (`phase58-awp006-deepseek`,
+   `leg001-comment-measure`). A parameter's catalog type and the prop's emitted type disagree.
+5. **`readonly unknown[]` fed into a `string` prop** — the same family, from a collection binding.
+
+Ranked by projects unblocked, (1) is worth more than the other four together.

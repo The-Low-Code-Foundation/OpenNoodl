@@ -201,6 +201,83 @@ describe('§4d — the api stub module: reads answer empty, writes throw', () =>
   });
 });
 
+/**
+ * Session 22. Both of these shipped broken in session 21 and no unit test could have caught
+ * either from the generated *text* — every assertion about it was correct; the text simply did
+ * not typecheck. `scripts/build-corpus.ts` is the grader that found them. These lock the
+ * behaviour once found.
+ */
+describe('§4d — the record interface is the schema and the graph together', () => {
+  /** The 32-of-39 corpus case: `metadata.dbCollections` absent, so the schema says nothing. */
+  const withoutSchema = (): ExportIR => {
+    const ir = cloneIr();
+    ir.project.collections = [];
+    return ir;
+  };
+
+  test('a column the schema does not carry still types, because the graph writes it', () => {
+    const api = puppiesApi(emitApp(withoutSchema(), catalog));
+    // Without this the interface is `{ id: string }` and `createPuppy({ name: … })` is TS2353.
+    expect(api).toContain(
+      'export interface Puppy {\n  id: string;\n  name?: string;\n  photo?: string;\n  breed?: string;\n  age?: string;\n  description?: string;\n}'
+    );
+  });
+
+  test("the schema's declared type wins over the argument's, where the schema has one", () => {
+    const ir = cloneIr();
+    // The graph feeds `available` from a text input; the schema calls it a Boolean.
+    setParam(nodeOf(ir, ADMIN, 'createRecord'), 'prop-available', lit('yes'));
+    expect(puppiesApi(emitApp(ir, catalog))).toContain('  available?: boolean;');
+  });
+
+  test('a Delete contributes no columns — it writes nothing', () => {
+    const ir = withoutSchema();
+    for (const component of ir.components) {
+      component.nodes = component.nodes.filter((n) => n.type !== 'NewDbModelProperties' && n.type !== 'SetDbModelProperties');
+    }
+    setParam(nodeOf(ir, ADMIN, 'deleteRecord'), 'collectionName', lit('Puppy'));
+    expect(puppiesApi(emitApp(ir, catalog))).toContain('export interface Puppy {\n  id: string;\n}');
+  });
+});
+
+describe('§1 — an absent record id refuses, the way the runtime does', () => {
+  test('the guard throws Missing Record Id ahead of the call, inside the graph\'s own error path', () => {
+    const source = adminSource(app);
+    expect(source).toContain(
+      "if (!puppyIdInput) throw new Error('Missing Record Id');\n                await updatePuppy(puppyIdInput, "
+    );
+    // It lands in the catch that already writes the Error output — the runtime's `setError`.
+    expect(source).toContain('setUpdatePuppyError(error instanceof Error ? error.message : String(error));');
+  });
+
+  test('the done chain does not run when the id is missing — the throw skips it', () => {
+    // `onItemAdded?.()`-style continuations sit after the await inside the same try, so a
+    // refusal cannot reach them. Asserting the order is asserting that.
+    const source = adminSource(app);
+    const guard = source.indexOf("throw new Error('Missing Record Id')");
+    const call = source.indexOf('await updatePuppy(');
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(call);
+  });
+
+  test('a literal id needs no guard — gate 9 already rejected the empty one', () => {
+    const ir = cloneIr();
+    unwire(ir, ADMIN, 'idInput:onTextChanged->updateRecord:modelId');
+    setParam(nodeOf(ir, ADMIN, 'updateRecord'), 'modelId', lit('abc123'));
+    const source = adminSource(emitApp(ir, catalog));
+    expect(source).toContain("await updatePuppy('abc123', ");
+    expect(source).not.toContain("Missing Record Id");
+  });
+
+  test('a Create takes no id, so it carries no guard', () => {
+    const ir = cloneIr();
+    for (const component of ir.components) {
+      component.nodes = component.nodes.filter((n) => n.type !== 'SetDbModelProperties');
+    }
+    expect(adminSource(emitApp(ir, catalog))).not.toContain('Missing Record Id');
+  });
+});
+
 describe('§5 — the gates, each with its named reason', () => {
   test('1: no class name — the runtime never reaches the backend, so neither does the export', () => {
     // Verbatim from the corpus: `puppy-test-3`'s Delete Puppy has no collectionName at all.

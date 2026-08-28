@@ -1,139 +1,139 @@
-# Next session — fix the two record-verb typing defects first, then the reactive Condition
+# Next session — sanitise the component prop names, then the reactive Condition
 
-**Where the phase stands (2026-08-27, after twenty-one sessions).** Session 21 re-ran the ranking
-instrument at HEAD, which **inverted the s20 handoff's top two**, and built the slice that came
-out first: **the user family** —
-[EXP-002-USER-FAMILY-TARGET-OUTPUT.md](./EXP-002-USER-FAMILY-TARGET-OUTPUT.md), commit `9d8f79db`.
-Read its **§4e, §5 and §9** before touching the awaited action, the session stub, or any new
-`ValueExpr` kind.
+**Where the phase stands (2026-08-28, after twenty-two sessions).** Session 22 closed the two
+record-verb typing defects the s21 handoff named, and built the corpus-wide build check it asked
+for. That check immediately found something larger than either defect: **14 of 40 projects emit an
+app that does not compile**, and the biggest cause is a one-line-shaped hole in the props path.
+Everything is written up in
+[EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md) **§10** — read
+§10a, §10b and **§10d** before starting.
 
-**What landed.** Log In / Log Out / Sign Up and the `User` session read all translate, on a
-**generalised** version of the record verbs' action: `record-op` is now **`api-call`** with
-positional `args`, one kind serving both families. `User` becomes a `useSession()` that answers
-signed-out — consistent with the write stubs that throw, and what the runtime documents for a
-server render. **390 tests (21 new); ledger 101 deferred / 58 translated / 1 stubbed / 15
-backend-only.**
+**What landed.** Both defects, plus their tests, plus the grader.
+
+- **§10a — the record interface is the schema *and* the graph.** `MutationPlan.writes` carries the
+  columns a verb actually writes with the type its argument resolves to; the stub unions them with
+  the schema snapshot, schema first and schema winning any type conflict. This was **not** an open
+  design question: §4d already hand-wrote `name?: string; count?: number;` into `StockItem` for the
+  very project that failed. The measurement that makes it obvious: **`metadata.dbCollections` is
+  absent in 32 of 39 corpus projects**, so "mint the interface from the schema" means `{ id: string }`
+  for most of the corpus, and *any* Create/Update that writes a property cannot compile.
+- **§10b — an absent record id refuses.** `if (!itemId) throw new Error('Missing Record Id');`
+  ahead of the call, inside the try that is already the graph's error path. That is exactly §1's
+  runtime contract (`setModelID` reads `undefined`/`null`/`''` as clear-the-binding, then every
+  verb answers `setError('Missing Record Id')` and never calls the backend). Gate 9 already defers
+  a *statically* absent id; this is its dynamic twin, and the corpus reaches it because **every
+  emitted component prop is optional**.
+- **`scripts/build-corpus.ts`** — emits every project into a prepared harness and typechecks each.
+  Committed, because the scratchpad is where the last one would have died.
 
 **Measured, same instrument both sides** — a worktree at HEAD, then the working tree:
 
-| | translated / total | % |
-|---|---|---|
-| before | 3,749 / 4,441 | 84.42 |
-| after | 3,766 / 4,441 | **84.80** |
+| | projects that typecheck |
+|---|---|
+| before | 25 / 40 |
+| after | **26 / 40** |
 
-**+17 nodes on an unchanged denominator over four projects**; no project regressed; the
-before-run reproduces `cov-after-s20.txt` exactly. Per-type: `LogIn` 0→4, `LogOut` 0→4, `SignUp`
-0→1, `User` 0→1 **of four**, plus collateral `RouterNavigate` 50→56 and `Inverter` 2→3.
+Exactly one row moved (`phase58-backend-deferred`, 2 errors → ok); nothing regressed. **The
+coverage report is byte-identical to session 21's** — 3,766/4,441, **84.80%**. This session bought
+correctness, not nodes, and the numbers say so honestly. **397 tests (7 new).**
+
+**The ranking was re-run first, as standing practice requires, and is identical to
+`rank2-s21-after.txt`** — the tree has not moved, so the inherited order still stands where §10d
+does not overtake it.
 
 ---
 
-## 🔴 The ranking was invalidated by the change that motivated it
+## 🔴 A new checker's first finding is a claim about the checker
 
-The s20 handoff ranked **relation verbs + `DbModel2`** first. Re-running `rank2.ts` at HEAD —
-`rank2-out.txt` described a tree that no longer existed, because the s20 slice landed *after* the
-ranking that chose it — gave:
+The first corpus run reported **18 failures**, 13 diagnostics of them *"Cannot find module
+'@nodegx/core'"*. The harness had never had `@nodegx/core` installed at all — those projects were
+failing the grader, not the product. Linking the package moved the **baseline** from 21/40 to
+25/40, and the after-run from 22 to 26.
 
-| slice | nodes | projects | distinct components | collateral |
-|---|---|---|---|---|
-| relation verbs + `DbModel2` + consumed `Id` | **3** | **1** | **1** | none |
-| the user family | **13** | **4** | **7** | **6** |
-
-`RemoveDbModelRelation` has **zero corpus instances** — it was in the plan for being a neighbour,
-not for being measured. The handoff had ranked the relation verbs first on *"it completes one real
-page end to end"*, a demo criterion rather than the coverage criterion the phase is measured by;
-its own sentence calling the user family *"the cheapest remaining breadth"* was the correct
-reading, filed under the wrong rank.
-
-> **A ranking is invalidated by the change it motivated.** Re-run `rank2.ts` at the start of every
-> session, before trusting any inherited order. Fifth session running that this changed the plan;
-> second in which the previous session's own handoff was the thing corrected.
+Had that run been reported as-is, it would have described the export as far more broken than it
+is, and the 13 fabricated failures would have outnumbered the real finding in the smaller
+projects. **Before a new instrument's output is evidence about the subject, spend one pass asking
+what it says about the instrument.**
 
 ## Next, in order
 
-1. 🔴 **The two record-verb typing defects — a shipped slice emits an app that does not compile.**
-   Building `phase58-backend-deferred` (which s20 never did — it built only `puppy-test-3`) fails
-   `tsc -b`, and **both errors reproduce at the pre-s21 baseline**, so they are the record verbs':
-   - `AddStockForm.tsx:50` — `createStockItem({ name: … })` where `Partial<StockItem>` has no
-     `name`. The interface is minted from the project's collection **schema**, and the graph
-     writes a `prop-` the schema snapshot does not carry. *Design question: does a graph-written
-     column join the interface, or is it dropped with a note (the Static Data `allowedFields`
-     precedent)?*
-   - `StockItemRow.tsx:51` — `deleteStockItem(id)` with `id: string | undefined` from an optional
-     component prop. *Design question: does an absent id call the stub, or refuse the way the
-     runtime's "Missing Record Id" does?*
-
-   Both belong in RECORD-VERBS §4d. Small, and they close a correctness hole rather than adding
-   coverage. **Also add a corpus-wide build check** — `tsc` over one emitted project is not `tsc`
-   over the corpus, and that is exactly how these survived.
-2. **The reactive Condition** (`Condition re-tests on every change of its input`, 3 nodes / 3
-   projects) — and it is worth more than three, because it is precisely what gates the **three
-   remaining `User` nodes** (the auth-gate idiom `authenticated → Condition → onfalse →
-   RouterNavigate`). Retires ~6 nodes over 3 projects and finishes the page this session left
-   half-done. This session's work is what made it the coherent next slice.
-3. **Relation verbs + `DbModel2`** (3 nodes, 1 project) — still small, still the only consumer of
-   the record verbs' consumed-`Id` gate; §4c of RECORD-VERBS is already written for it.
-4. **EXP-003 Tier B** stays where it is: ~350 nodes that are **one third-party kit copied into
-   eight projects**, gated behind Model2, a dynamic-template For Each and a reactive-object
-   vocabulary none of which exist. `tb-survey.ts` dumps every body of it — **read that before
-   anyone commits to it.**
+1. 🔴 **Sanitise component prop names — ~10 projects emit code that does not parse.** A component
+   input port named `Align X` is emitted verbatim as a TypeScript identifier: `Align X?: string;`
+   in the Props interface, and `{ Value, Align X, … }` in the destructuring. This is **every
+   syntax diagnostic in the corpus run — 558 of 593**. Port names are user text, and the rest of
+   the emitter already knows it (`tsFieldKey`, `recordDataObject` and the static-data field
+   emitter all guard identically); the props path is the one that does not. It needs a name→
+   identifier mapping that survives into the JSX attribute and the instance call site, so it is a
+   little more than a `tsFieldKey` call — but it is small, and **it unblocks a quarter of the
+   corpus's output**. Ranked first because a project whose export does not compile is worth
+   nothing whatever its coverage percentage says. §10d(1).
+2. **The reactive Condition** (`Condition re-tests on every change of its input`, **3 nodes / 3
+   projects**, confirmed at HEAD) — still worth more than three, because it gates the **three
+   remaining `User` nodes** (`authenticated → Condition → onfalse → RouterNavigate`, the auth-gate
+   idiom, 3 nodes / 3 projects). Retires ~6 nodes over 3 projects and finishes the page session 21
+   left half-done.
+3. **The other four compile defects** — §10d(2)–(5): props passed to a component that declares
+   none (`IntrinsicAttributes`), a component reading a prop it never declared, and two
+   type-mismatch families (`number` and `readonly unknown[]` into a `string` prop). Smaller than
+   (1) and independent of it.
+4. **Relation verbs + `DbModel2`** (3 nodes, 1 project) — still the only consumer of the record
+   verbs' consumed-`Id` gate; §4c of RECORD-VERBS is already written for it. Note
+   `RemoveDbModelRelation` has **zero corpus instances**.
+5. **EXP-003 Tier B** stays where it is: ~350 nodes that are one third-party kit copied into eight
+   projects, gated behind Model2, a dynamic-template For Each and a reactive-object vocabulary
+   none of which exist. `tb-survey.ts` dumps every body of it — **read that before committing.**
 
 ## 🔴 Traps this session paid for
 
-**Two expression walkers, and only one was updated.** `emit/component.ts` has `collectExprUse`
-(handler actions) **and `hookExprSources` (render bindings)**, each enumerating the kinds it cares
-about. Adding `session-get` to the first only emitted `session.authenticated` in four bindings
-with **no `const session` above them**. No unit test could catch it — every assertion about the
-binding text was correct. It took `tsc -b` over the emitted app.
+**The design questions were already answered in the document.** Both were carried forward as open
+— *"does a graph-written column join the interface?"*, *"does an absent id call the stub or
+refuse?"* — and both were settled in writing: §4d hand-writes the unioned interface for the exact
+failing project, and §1 states the runtime's refusal in one sentence. Re-deriving them cost real
+time. **Before treating a question as open, grep the target document for the artefact it would
+have produced** — a hand-written target block is an answer, not an illustration.
 
-**A predicate that enumerated one family.** Pass 4f's `isRecordErrorRead` named `RECORD_VERBS`
-while `resolveExpr` named both, and the mismatch **failed silently with a note**: the Log In
-status line rendered `<p></p>` where the interpreted app shows the refusal. Caught by dumping the
-artefact, not by 369 passing tests.
+**A guard test's proxy was wider than its claim.** `logic.test.ts`'s *"the puppy export emits no
+template literals and no branches"* asserted `not.toContain('if (')` — a stand-in for "no
+Condition branch" that a legitimate `if` from a different slice broke. The proxy had always been
+wider than the claim; it only became visible when another slice earned an `if`. It now asserts the
+claim, and the template-literal half its name promises (which was **never asserted at all**).
+**A slice-isolation guard written as a substring ban will eventually fail on a correct change —
+and when it does, the answer is to narrow the assertion, not to widen the exception.**
 
-> Together these sharpen s19's dispatcher rule: **the compiler only helps where the site is an
-> exhaustive switch. Every site that is a *predicate* — an `if`, a `some`, a lookup table — is
-> silent, and those are the ones to grep for by hand.** ✅ And the stronger form of s18's rule:
-> **build the artefact, do not merely read it.** Reading caught one of these; only building caught
-> the other.
+✅ **A required field made the second construction site a compile error.** Adding `guardId` as
+non-optional to the `api-call` action surfaced the user-family's construction immediately. This is
+s21's rename lesson holding: **when a shape must grow, make the new field required and let the
+compiler enumerate the sites** — the alternative is a default that silently does the wrong thing at
+whichever site you forgot.
 
-✅ **The rename was the right call.** `record-op` → `api-call` produced compile errors at all ten
-dispatch sites and left **every record-verb golden byte-identical**. A sibling case would have
-made each of those ten a silent fallthrough. **When a vocabulary must grow, prefer the rename.**
+✅ **Mutation-checked the new tests.** Reverting each fix in place killed 3 of the 7 new tests
+(the other 4 assert absences and correctly stay green). A test that cannot fail is not a test —
+and this cost about a minute.
 
-🔴 **`plan.sessionCalls` had no attachment filter** where `plan.mutations` did, so an unwired Log
-In deferred correctly *and still exported `logIn`*. Caught only because the §5.1 test asserts what
-the gate **removes**, not merely what it reports. **Assert the absence, not just the reason.**
+⚠️ Still true, and cost time again: **`ts-node` must be given an absolute path** — a relative one
+in a compound command fails and `; echo $?` reports the *compound's* exit, so it read as success.
+**`rank2.ts` takes its projects as argv**, not from `projects.txt`; without them it prints
+*"over 0 projects"* and a clean, empty, entirely wrong ranking. zsh: `"${(@f)$(cat projects.txt)}"`.
 
-⚠️ **A test can hang the runner.** A single spanning regex with `(\s+.*\n)*` over a whole emitted
-page backtracks catastrophically; jest never returns and it reads exactly like a product infinite
-loop. Fixed substrings assert the same thing. (Also: a 120s tool timeout **backgrounds** the run
-and leaves an **empty** log — the process is still alive; find it with `ps` and kill your own PID.)
+## Instruments (session 22 scratchpad `2c63ae09-…`)
 
-⚠️ Still true: **zsh does not glob unquoted parameter expansions** — `"${(@f)$(cat projects.txt)}"`
-for the project list, and `grep` on that file returns *all* matches, so `$(grep -i phase58 …)` is
-three paths, not one. ⚠️ No `tsx` in this tree; use `../../node_modules/.bin/ts-node
---transpile-only --skipProject` with `TS_NODE_COMPILER_OPTIONS`. ⚠️ The ledger is
-`ensure_ascii=True` JSON — a rewrite with `False` churns every em-dash.
-
-## Instruments (session 21 scratchpad `30c14fe6-…`)
-
-- **`rank2.ts`** — the ranking instrument; `rank2-s21.txt` (before) and `rank2-s21-after.txt`
-  (after). **Run this first, every session.**
-- `probe.ts` — `TYPE=<typeName> ts-node probe.ts <projects…>`: every deferred instance with its
-  reason, parent, params and wires. `user-probe.txt` is what showed all seven user instances are
-  one idiom with **not a single authored parameter**.
-- `coverage-audit.ts` + `cov-base-s21.ts` (the worktree twin) + `projects.txt`;
-  `cov-before-s21.txt` / `cov-after-s21-final.txt`. Worktree recipe:
-  `scripts/devtools/make-worktree.sh <name> HEAD`, then `sed` the absolute import paths.
-  **Never** `git stash` here.
-- **`emit-to-app.ts`** — new, and the one that found both defects: emits a project into a
-  buildable app copy (`app/`, which keeps `node_modules` and the `file:` core pin — **never
-  overwrite its `package.json`**), so `tsc -b` and `vite build` can grade the real output.
-  `emit-to-app-base.ts` is the worktree twin that attributes an error to a slice.
-- `dump.ts` — `ts-node dump.ts <projectDir> [fileFilter]`, `NOTES=1` for the note list.
+- **`scripts/build-corpus.ts`** (committed, in the package) — `ts-node -P tsconfig.json
+  scripts/build-corpus.ts --app <harnessDir> <projectDir>…`. One row per project, exits with the
+  failure count. **The harness needs `@nodegx/core` linked into its `node_modules`** or a quarter
+  of the corpus fails for the grader's reasons; the header says so. Run it before claiming a slice
+  works. Results: `build-corpus-before2.txt` / `build-corpus-after2.txt` (the `*-before.txt` /
+  `*-after.txt` pair is the dishonest first run, kept only as the record of §10c's trap).
+- **`rank2.ts`** — the ranking instrument; `rank2-s22.txt`. **Run this first, every session.**
+- `coverage-audit.ts` + `cov-base-s21.ts` (the worktree twin) + `projects.txt`; `cov-after-s22.txt`
+  is byte-identical to `cov-after-s21-final.txt`. Worktree recipe:
+  `scripts/devtools/make-worktree.sh <name> HEAD`. **Never** `git stash` here.
+- `emit-to-app.ts` / `emit-to-app-base.ts` — one project into a buildable app copy (**never
+  overwrite its `package.json`**). `dump.ts` — `ts-node dump.ts <projectDir> [fileFilter]`,
+  `NOTES=1` for the note list. `probe.ts` — `TYPE=<typeName> ts-node probe.ts <projects…>`.
 
 **Standing practice:** work on `cline-dev`; commit by pathspec (`packages/nodegx-export`,
 `dev-docs/tasks/phase-18-code-export-v2`), untracked files add+commit in one chain, never stage.
-390 tests (~4s, from the package dir `../../node_modules/.bin/jest`); a lone suite-level red with
+397 tests (~3s, from the package dir `../../node_modules/.bin/jest`); a lone suite-level red with
 0 failing tests is a flake until re-run. `npm run export-ledger:check` from the root gates the
-ledger. ts-morph/Prettier stay uninstalled; the package is not in root `test:packages`.
+ledger (175 types: 101 deferred / 58 translated / 1 stubbed / 15 backend-only). ts-morph and
+Prettier stay uninstalled; the package is not in root `test:packages`.

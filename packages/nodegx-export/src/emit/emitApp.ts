@@ -89,12 +89,17 @@ function apiStubs(ir: ExportIR, project: ProjectPlan): Array<[string, string]> {
     querySites: Site[];
     /** Mutation function name → its call sites, first-use order (RECORD-VERBS-TARGET §4d). */
     mutations: Map<string, { verb: 'create' | 'update' | 'delete'; sites: Site[] }>;
+    /** Column → type, from the graph's writes; first-use order, first writer wins. */
+    writes: Map<string, string>;
   };
   const byCollection = new Map<string, Module>();
   const moduleFor = (collectionName: string, typeName: string, moduleBase: string): Module => {
     let entry = byCollection.get(collectionName);
     if (entry === undefined) {
-      byCollection.set(collectionName, (entry = { typeName, moduleBase, querySites: [], mutations: new Map() }));
+      byCollection.set(
+        collectionName,
+        (entry = { typeName, moduleBase, querySites: [], mutations: new Map(), writes: new Map() })
+      );
     }
     return entry;
   };
@@ -109,6 +114,9 @@ function apiStubs(ir: ExportIR, project: ProjectPlan): Array<[string, string]> {
       let fn = entry.mutations.get(mutation.fnName);
       if (fn === undefined) entry.mutations.set(mutation.fnName, (fn = { verb: mutation.verb, sites: [] }));
       fn.sites.push({ componentPath: plan.path, nodeId: mutation.nodeId });
+      for (const write of mutation.writes) {
+        if (!entry.writes.has(write.name)) entry.writes.set(write.name, write.tsType);
+      }
     }
   }
 
@@ -122,9 +130,17 @@ function apiStubs(ir: ExportIR, project: ProjectPlan): Array<[string, string]> {
   const stubs: Array<[string, string]> = [];
   for (const [collectionName, module] of byCollection) {
     const schema = ir.project.collections.find((c) => c.name === collectionName);
-    const { typeName, moduleBase, fetchName, querySites, mutations } = module;
+    const { typeName, moduleBase, fetchName, querySites, mutations, writes } = module;
 
-    const fields = (schema?.columns ?? []).map((col) => `  ${col.name}?: ${tsColumnType(col.type)};`);
+    // The schema snapshot is the authority on a column's declared type, and the graph's writes
+    // are evidence of columns the snapshot does not carry — most of the corpus has no snapshot
+    // at all (MutationPlan.writes). Schema order first, then graph-written extras in first-use
+    // order; `id` is emitted above and never repeated.
+    const columns = new Map<string, string>();
+    for (const col of schema?.columns ?? []) columns.set(col.name, tsColumnType(col.type));
+    for (const [name, tsType] of writes) if (!columns.has(name)) columns.set(name, tsType);
+    columns.delete('id');
+    const fields = [...columns].map(([name, tsType]) => `  ${tsFieldKey(name)}?: ${tsType};`);
     const parts: string[] = [
       `export interface ${typeName} {\n  id: string;\n${fields.join('\n')}${fields.length > 0 ? '\n' : ''}}\n`
     ];
@@ -238,6 +254,11 @@ function sessionStub(ir: ExportIR, project: ProjectPlan): [string, string] | nul
     );
   }
   return ['src/api/session.ts', GENERATED_TS + parts.join('\n')];
+}
+
+/** A column name is user text; only an identifier can be a bare interface key. */
+function tsFieldKey(name: string): string {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name);
 }
 
 function tsColumnType(columnType: string): string {
