@@ -1,139 +1,143 @@
-# Next session — sanitise the component prop names, then the reactive Condition
+# Next session — the Visual Function's null outputs, then the missing Component Inputs
 
-**Where the phase stands (2026-08-28, after twenty-two sessions).** Session 22 closed the two
-record-verb typing defects the s21 handoff named, and built the corpus-wide build check it asked
-for. That check immediately found something larger than either defect: **14 of 40 projects emit an
-app that does not compile**, and the biggest cause is a one-line-shaped hole in the props path.
-Everything is written up in
-[EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md) **§10** — read
-§10a, §10b and **§10d** before starting.
+**Where the phase stands (2026-08-28, after twenty-three sessions).** Session 23 closed §10d(1),
+the biggest correctness hole in the export: **a component input port name is user text and was
+being emitted verbatim as a TypeScript identifier.** The corpus's syntax diagnostics went from
+**558 to zero**. Everything is written up in
+[EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md) **§11** — read
+**§11c** and **§11d** before starting, because §11c changes what the remaining work *is*.
 
-**What landed.** Both defects, plus their tests, plus the grader.
+**What landed.** One mapping, four surfaces, fourteen tests.
 
-- **§10a — the record interface is the schema *and* the graph.** `MutationPlan.writes` carries the
-  columns a verb actually writes with the type its argument resolves to; the stub unions them with
-  the schema snapshot, schema first and schema winning any type conflict. This was **not** an open
-  design question: §4d already hand-wrote `name?: string; count?: number;` into `StockItem` for the
-  very project that failed. The measurement that makes it obvious: **`metadata.dbCollections` is
-  absent in 32 of 39 corpus projects**, so "mint the interface from the schema" means `{ id: string }`
-  for most of the corpus, and *any* Create/Update that writes a property cannot compile.
-- **§10b — an absent record id refuses.** `if (!itemId) throw new Error('Missing Record Id');`
-  ahead of the call, inside the try that is already the graph's error path. That is exactly §1's
-  runtime contract (`setModelID` reads `undefined`/`null`/`''` as clear-the-binding, then every
-  verb answers `setError('Missing Record Id')` and never calls the backend). Gate 9 already defers
-  a *statically* absent id; this is its dynamic twin, and the corpus reaches it because **every
-  emitted component prop is optional**.
-- **`scripts/build-corpus.ts`** — emits every project into a prepared harness and typechecks each.
-  Committed, because the scratchpad is where the last one would have died.
+- **§11a — the port name is the graph's vocabulary; the identifier is the emitted app's.**
+  `propIdentifier` / `propIdentifiers` in `emit/naming.ts`. Nine distinct non-identifier names in
+  the corpus, every one of them words separated by a space (`Align X` ×17, `Margin Bottom` ×17,
+  `Alternate text` ×8, …). The rest of the emitter guards by *quoting* — and that is precisely why
+  this path could not: a record field is only a property key, but a prop is a key **and** a binding
+  identifier **and** a JSX attribute name, and the last two cannot be quoted.
+- **The mapping is a pure function of the plan's own prop list**, which is how parent and child
+  agree without threading anything between them: the caller resolves an attribute name by running
+  `propIdentifiers` over the *child's* plan, exactly as the child does. Four surfaces take it —
+  interface/destructuring, every reader, an instance's parameters and wired attributes, and a
+  repeater row's template inputs — and **each is killed independently by its own test**
+  (mutation-checked: revert one, exactly one test fails).
+- An already-legal name is untouched. A reserved word is renamed too (`class` → `classProp`) —
+  reasoned, not measured; zero corpus instances, and §11a says so.
 
 **Measured, same instrument both sides** — a worktree at HEAD, then the working tree:
 
-| | projects that typecheck |
-|---|---|
-| before | 25 / 40 |
-| after | **26 / 40** |
+| | before | after |
+|---|---|---|
+| projects that typecheck | 26 / 40 | **27 / 40** |
+| total diagnostics | 593 | **51** |
+| syntax diagnostics (TS1xxx) | **558** | **0** |
 
-Exactly one row moved (`phase58-backend-deferred`, 2 errors → ok); nothing regressed. **The
-coverage report is byte-identical to session 21's** — 3,766/4,441, **84.80%**. This session bought
-correctness, not nodes, and the numbers say so honestly. **397 tests (7 new).**
-
-**The ranking was re-run first, as standing practice requires, and is identical to
-`rank2-s21-after.txt`** — the tree has not moved, so the inherited order still stands where §10d
-does not overtake it.
+`Puppy test` now typechecks outright; the eight clone projects went from 66 errors each to 2.
+**The coverage report is byte-identical to sessions 21 and 22 — 3,766/4,441, 84.80%** — as it must
+be: this retires no node, it makes the ones already translated compile. **The ranking is unchanged
+from `rank2-s22.txt`, re-run first as standing practice requires.** **411 tests (14 new).**
 
 ---
 
-## 🔴 A new checker's first finding is a claim about the checker
+## 🔴 A syntax error suppresses the whole semantic pass — §10d's census was a bound
 
-The first corpus run reported **18 failures**, 13 diagnostics of them *"Cannot find module
-'@nodegx/core'"*. The harness had never had `@nodegx/core` installed at all — those projects were
-failing the grader, not the product. Linking the package moved the **baseline** from 21/40 to
-25/40, and the after-run from 22 to 26.
+`tsc` reports parse errors and then **does not run the checker**. Eight of the fourteen failing
+projects had syntax errors, so for those projects the s22 run reported **no semantic diagnostics at
+all** — and §10d read that silence as "these projects fail for reason (1)".
 
-Had that run been reported as-is, it would have described the export as far more broken than it
-is, and the 13 fabricated failures would have outnumbered the real finding in the smaller
-projects. **Before a new instrument's output is evidence about the subject, spend one pass asking
-what it says about the instrument.**
+They do not. With the syntax errors gone, each of the eight reports **two errors that had never
+appeared in any run**, in a slice §10d never named. So "roughly five distinct causes" was never a
+count of what is wrong with the export; it was a count of what the instrument could still see past
+the parse failures. **A diagnostic census over a corpus that does not parse reports its bound, not
+its content** — "14 projects fail for five reasons" was always "for *at least* five reasons".
 
-## Next, in order
+The same shape will recur: **cause (1) below hides whatever sits behind it in eight projects.**
+Expect the next after-run to surface something new, and treat that as the instrument working.
 
-1. 🔴 **Sanitise component prop names — ~10 projects emit code that does not parse.** A component
-   input port named `Align X` is emitted verbatim as a TypeScript identifier: `Align X?: string;`
-   in the Props interface, and `{ Value, Align X, … }` in the destructuring. This is **every
-   syntax diagnostic in the corpus run — 558 of 593**. Port names are user text, and the rest of
-   the emitter already knows it (`tsFieldKey`, `recordDataObject` and the static-data field
-   emitter all guard identically); the props path is the one that does not. It needs a name→
-   identifier mapping that survives into the JSX attribute and the instance call site, so it is a
-   little more than a `tsFieldKey` call — but it is small, and **it unblocks a quarter of the
-   corpus's output**. Ranked first because a project whose export does not compile is worth
-   nothing whatever its coverage percentage says. §10d(1).
-2. **The reactive Condition** (`Condition re-tests on every change of its input`, **3 nodes / 3
+## Next, in order — re-derived from the s23 after-run, not inherited
+
+1. 🔴 **`null` into a Visual Function wrapper's typed output** — 16 diagnostics, **8 projects**,
+   the whole clone family, and the only thing standing between the corpus and **35/40**. The block
+   program emits `Outputs["result"] = null;` while the re-host wrapper types the field from the
+   port's catalog type: `function blocks(…): { result?: number }`. An optional `number` cannot take
+   `null`. The wrapper is EXP-003 §4 (`jsWrapperLines` in `emit/component.ts`); the question to
+   settle is whether the output type widens (`number | null`) whenever the body can write null, or
+   whether the emitted assignment coerces — decide it from what the *runtime* does with a null
+   write to a typed output, the way §10a and §10b were settled from §1. Reproduce with
+   `showfile.ts <projectDir> src/components/Header.tsx` on `cn019-drive`.
+2. **A component reading a prop it never declared** — 18 diagnostics, 2 projects
+   (`ecommerce-example`, `ecom-responsive-probe`, both `ProductCard.tsx`): `Cannot find name
+   'image' / 'badge' / 'rating' / …`, plus the two `void` → `ReactNode` that travel with it.
+   Second by projects, first by diagnostic count. §11d(2)/(6).
+3. **Props passed to a component that declares none** (`IntrinsicAttributes`, 7 diagnostics,
+   `phase55-replay-haiku`). **This is (2) seen from the parent's end** — the child has no
+   `Component Inputs` node — so scope them together and check whether one ruling closes both.
+4. **The reactive Condition** (`Condition re-tests on every change of its input`, **3 nodes / 3
    projects**, confirmed at HEAD) — still worth more than three, because it gates the **three
    remaining `User` nodes** (`authenticated → Condition → onfalse → RouterNavigate`, the auth-gate
-   idiom, 3 nodes / 3 projects). Retires ~6 nodes over 3 projects and finishes the page session 21
-   left half-done.
-3. **The other four compile defects** — §10d(2)–(5): props passed to a component that declares
-   none (`IntrinsicAttributes`), a component reading a prop it never declared, and two
-   type-mismatch families (`number` and `readonly unknown[]` into a `string` prop). Smaller than
-   (1) and independent of it.
-4. **Relation verbs + `DbModel2`** (3 nodes, 1 project) — still the only consumer of the record
+   idiom). Retires ~6 nodes over 3 projects and finishes the page session 21 left half-done. This
+   is the first item that buys *coverage* rather than *compilation*; everything above it buys
+   compilation, and a project whose export does not compile is worth nothing whatever its coverage
+   percentage says.
+5. **`number` / `readonly unknown[]` into a `string` prop** — 5 diagnostics, 2 projects. §11d(4)/(5).
+6. **Relation verbs + `DbModel2`** (3 nodes, 1 project) — still the only consumer of the record
    verbs' consumed-`Id` gate; §4c of RECORD-VERBS is already written for it. Note
    `RemoveDbModelRelation` has **zero corpus instances**.
-5. **EXP-003 Tier B** stays where it is: ~350 nodes that are one third-party kit copied into eight
-   projects, gated behind Model2, a dynamic-template For Each and a reactive-object vocabulary
-   none of which exist. `tb-survey.ts` dumps every body of it — **read that before committing.**
+7. **EXP-003 Tier B** stays where it is: ~350 nodes that are one third-party kit copied into eight
+   projects, gated behind Model2, a dynamic-template For Each and a reactive-object vocabulary none
+   of which exist. `tb-survey.ts` dumps every body of it — **read that before committing.**
 
 ## 🔴 Traps this session paid for
 
-**The design questions were already answered in the document.** Both were carried forward as open
-— *"does a graph-written column join the interface?"*, *"does an absent id call the stub or
-refuse?"* — and both were settled in writing: §4d hand-writes the unioned interface for the exact
-failing project, and §1 states the runtime's refusal in one sentence. Re-deriving them cost real
-time. **Before treating a question as open, grep the target document for the artefact it would
-have produced** — a hand-written target block is an answer, not an illustration.
+**The measurement came before the design, and it shrank the design.** One pass over the corpus
+(`propnames.ts`) said: nine names, all spaces, no leading digits, **no collisions**, and the
+callback props unaffected. That turned an open-ended "sanitiser" into a small mapping with a
+stated fallback — and it also said honestly which parts (reserved words, leading digits,
+collisions) are *reasoned* rather than measured, which is now written down beside them.
 
-**A guard test's proxy was wider than its claim.** `logic.test.ts`'s *"the puppy export emits no
-template literals and no branches"* asserted `not.toContain('if (')` — a stand-in for "no
-Condition branch" that a legitimate `if` from a different slice broke. The proxy had always been
-wider than the claim; it only became visible when another slice earned an `if`. It now asserts the
-claim, and the template-literal half its name promises (which was **never asserted at all**).
-**A slice-isolation guard written as a substring ban will eventually fail on a correct change —
-and when it does, the answer is to narrow the assertion, not to widen the exception.**
+**The obvious guard was the wrong guard.** `tsFieldKey` and friends quote, and quoting is exactly
+what a prop cannot do. **When three sites already solve "what if this name is user text" and a
+fourth still does not, check whether the fourth has the same degrees of freedom before copying
+them** — here it had three surfaces instead of one, and two of them have no quoting syntax at all.
 
-✅ **A required field made the second construction site a compile error.** Adding `guardId` as
-non-optional to the `api-call` action surfaced the user-family's construction immediately. This is
-s21's rename lesson holding: **when a shape must grow, make the new field required and let the
-compiler enumerate the sites** — the alternative is a default that silently does the wrong thing at
-whichever site you forgot.
+**A four-surface fix needs four independent tests, and the way to know you have them is to break
+each surface separately.** Reverting the caller side alone killed exactly the two caller tests and
+nothing else; reverting the repeater path killed exactly the repeater test. Without that pass the
+repeater surface would have looked covered by the parent-side tests, and it is not — it is a
+different code path.
 
-✅ **Mutation-checked the new tests.** Reverting each fix in place killed 3 of the 7 new tests
-(the other 4 assert absences and correctly stay green). A test that cannot fail is not a test —
-and this cost about a minute.
+⚠️ Still true, and cost time again: **`ts-node` must be given an absolute path**, and a scratchpad
+script needs `--compiler-options '{"module":"commonjs"}'`. **`rank2.ts` and `coverage-audit.ts`
+take their projects as argv**, not from `projects.txt`; zsh: `"${(@f)$(cat projects.txt)}"`.
+`build-corpus.ts` **exits with the failure count**, so `cmd > out; echo $?` reports the *compound* —
+read the file's last line (`N/40 projects typecheck.`) instead of trusting the harness's exit code.
 
-⚠️ Still true, and cost time again: **`ts-node` must be given an absolute path** — a relative one
-in a compound command fails and `; echo $?` reports the *compound's* exit, so it read as success.
-**`rank2.ts` takes its projects as argv**, not from `projects.txt`; without them it prints
-*"over 0 projects"* and a clean, empty, entirely wrong ranking. zsh: `"${(@f)$(cat projects.txt)}"`.
-
-## Instruments (session 22 scratchpad `2c63ae09-…`)
+## Instruments (session 23 scratchpad `41ed698f-…`)
 
 - **`scripts/build-corpus.ts`** (committed, in the package) — `ts-node -P tsconfig.json
-  scripts/build-corpus.ts --app <harnessDir> <projectDir>…`. One row per project, exits with the
-  failure count. **The harness needs `@nodegx/core` linked into its `node_modules`** or a quarter
-  of the corpus fails for the grader's reasons; the header says so. Run it before claiming a slice
-  works. Results: `build-corpus-before2.txt` / `build-corpus-after2.txt` (the `*-before.txt` /
-  `*-after.txt` pair is the dishonest first run, kept only as the record of §10c's trap).
-- **`rank2.ts`** — the ranking instrument; `rank2-s22.txt`. **Run this first, every session.**
-- `coverage-audit.ts` + `cov-base-s21.ts` (the worktree twin) + `projects.txt`; `cov-after-s22.txt`
-  is byte-identical to `cov-after-s21-final.txt`. Worktree recipe:
-  `scripts/devtools/make-worktree.sh <name> HEAD`. **Never** `git stash` here.
+  scripts/build-corpus.ts --app <harnessDir> <projectDir>…`. **The harness needs `@nodegx/core`
+  symlinked into its `node_modules`** or a quarter of the corpus fails for the grader's reasons
+  (§10c). Two prepared copies are in the scratchpad: `app/` and `app-before/` — **use a separate
+  one per concurrent run**, they both write into `src/`. Results:
+  `build-corpus-s23-before.txt` / `build-corpus-s23-after.txt`.
+- **`propnames.ts`** (scratchpad) — every non-identifier component input port name in the corpus,
+  with its sites, plus the parent-side attribute names and a collision check. Re-run it if the
+  mapping ever needs to change.
+- **`showfile.ts`** (scratchpad) — `ts-node showfile.ts <projectDir> <src/path.tsx>` prints one
+  emitted file with line numbers; no argument for the path lists them. This is how you read a
+  diagnostic's actual line.
+- **`rank2.ts`** — the ranking instrument; `rank2-s23.txt`, identical to s22. **Run this first,
+  every session.**
+- `coverage-audit.ts` + `projects.txt`; `cov-after-s23.txt` is byte-identical to `cov-after-s22.txt`.
+  Worktree recipe: `scripts/devtools/make-worktree.sh <name> HEAD`. **Never** `git stash` here.
 - `emit-to-app.ts` / `emit-to-app-base.ts` — one project into a buildable app copy (**never
   overwrite its `package.json`**). `dump.ts` — `ts-node dump.ts <projectDir> [fileFilter]`,
   `NOTES=1` for the note list. `probe.ts` — `TYPE=<typeName> ts-node probe.ts <projects…>`.
 
 **Standing practice:** work on `cline-dev`; commit by pathspec (`packages/nodegx-export`,
-`dev-docs/tasks/phase-18-code-export-v2`), untracked files add+commit in one chain, never stage.
-397 tests (~3s, from the package dir `../../node_modules/.bin/jest`); a lone suite-level red with
+`dev-docs/tasks/phase-18-code-export-v2`), untracked files add+commit in one chain, never stage —
+peers were actively editing `packages/noodl-mcp` and `packages/noodl-editor` throughout s23.
+411 tests (~4s, from the package dir `../../node_modules/.bin/jest`); a lone suite-level red with
 0 failing tests is a flake until re-run. `npm run export-ledger:check` from the root gates the
 ledger (175 types: 101 deferred / 58 translated / 1 stubbed / 15 backend-only). ts-morph and
 Prettier stay uninstalled; the package is not in root `test:packages`.
