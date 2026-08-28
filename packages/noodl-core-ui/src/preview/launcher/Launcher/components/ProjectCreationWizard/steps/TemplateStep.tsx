@@ -48,6 +48,13 @@ export interface TemplateChoice {
   category: string;
   /** Where the row came from, for the badge. `undefined` draws no badge. */
   origin?: string;
+  /**
+   * SBR-001 — whether creating from this row should also attach a local
+   * backend. Derived by the provider (see `TemplateItem.needsBackend`), carried
+   * here so the host can act on it at confirm time. `undefined` means the
+   * provider could not say, and is read as "no".
+   */
+  needsBackend?: boolean;
 }
 
 /**

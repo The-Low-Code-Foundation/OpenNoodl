@@ -60,7 +60,8 @@ import { describeInstallCheck } from '../../models/lessoninstallpolicy';
 import { attachLearningLesson } from '../../models/learninglesson';
 import { LessonsProjectsModel } from '../../models/LessonsProjectModel';
 import LessonTemplatesModel from '../../models/lessontemplatesmodel';
-import { projectFromDirectory } from '../../models/projectmodel.editor';
+import { getCloudServices, projectFromDirectory, setCloudServices } from '../../models/projectmodel.editor';
+import { ensureTemplateBackend } from '../../models/templatebackend';
 import { ProjectDocsModel } from '../../models/ProjectDocs/ProjectDocsModel';
 import type { ProjectModel } from '../../models/projectmodel';
 import { upgradeProjectAgentConfigForDocs } from '../../models/template/installAgentConfig';
@@ -94,6 +95,7 @@ import { useLearnerPath } from '../../hooks/useLearnerPath';
 import { useCommunityPeople } from '@noodl-hooks/useCommunityPeople';
 import { useCommunityThread } from '@noodl-hooks/useCommunityThread';
 
+import { getIpc } from '@noodl-utils/ipc';
 import { takeLauncherLanding, takeLessonReset } from '@noodl-utils/launcher/launcherHandoff';
 
 import { useCommunityAccount } from './useCommunityAccount';
@@ -1027,9 +1029,61 @@ export function ProjectsPage(props: ProjectsPageProps) {
     }
   }, []);
 
+  /**
+   * SBR-001 — a template that asked for a backend gets one before the route.
+   *
+   * Create + bind only. 🔴 Deliberately NO `backend:start` and NO cloud-function
+   * deploy from here: the route sets `ProjectModel.instance`, and
+   * `ProjectBackendLifecycle` then starts the bound backend **with the project
+   * dir** (so `nodegx.security.json` is enforced) and reaches
+   * `CloudFunctionDeployer.onBackendStarted` (so the template's cloud functions
+   * exist). A backend started on the launcher would be *adopted* by that
+   * reconcile instead, and the adopted path never deploys functions —
+   * `templatebackend.ts`'s header holds the full argument.
+   *
+   * The binding is applied HERE, not in the model, for `EditorPage`'s reason:
+   * `setCloudServices` raises `cloudServicesChanged`, and the helper stays
+   * plain-Node gradeable.
+   */
+  const finishTemplateBackend = useCallback(async (project: ProjectModel) => {
+    const ipc = getIpc();
+    if (!ipc) return;
+
+    const outcome = await ensureTemplateBackend({
+      needsBackend: true,
+      projectId: project.id,
+      projectName: project.name,
+      boundEndpoint: getCloudServices(project).endpoint,
+      invoke: (channel, ...args) => ipc.invoke(channel, ...args)
+    });
+
+    if (outcome.status === 'attached') {
+      setCloudServices(project, {
+        id: outcome.backendId,
+        endpoint: outcome.endpoint,
+        appId: outcome.backendId,
+        type: 'nodegx'
+      });
+      console.log(`[SBR-001] backend ${outcome.reused ? 'adopted' : 'created'} for template project at ${outcome.endpoint}`);
+    } else if (outcome.status === 'failed') {
+      // Advisory, never fatal: the project still opens, and the screen says so
+      // (SBR-002). This sentence names the repair.
+      ToastLayer.showError(
+        `The project was created, but its backend could not be attached: ${outcome.reason}. You can attach one from Backend Services.`
+      );
+    }
+  }, []);
+
   const handleCreateProjectConfirm = useCallback(
     async (name: string, location: string, presetId: string, mode: WizardMode, templateUrl: string) => {
       setIsCreateModalVisible(false);
+
+      // SBR-001 — read the chosen row's derived need while the gallery is still
+      // in state. `undefined` (a community row, which has no column to say) is
+      // "no": a template that did not ask for a backend must not grow one.
+      const templateNeedsBackend =
+        mode === 'template' &&
+        projectTemplates.items.find((item) => item.url === templateUrl)?.needsBackend === true;
 
       // Store the chosen preset — StyleTokensModel will consume it on editor startup.
       //
@@ -1059,6 +1113,23 @@ export function ProjectsPage(props: ProjectsPageProps) {
               setPendingPresetId(null);
               setPendingScopePlan(null);
               ToastLayer.showError('Could not create project');
+              return;
+            }
+
+            if (templateNeedsBackend) {
+              // Awaited before the route, like `finishScopedProject` below: the
+              // editor must open on a project that is already bound, because the
+              // binding is what `ProjectBackendLifecycle` starts from. A failure
+              // costs the backend, never the project.
+              finishTemplateBackend(project)
+                .catch((error) => {
+                  console.error('[SBR-001] Failed to attach the template backend:', error);
+                  ToastLayer.showError('The project was created, but its backend could not be attached.');
+                })
+                .finally(() => {
+                  ToastLayer.hideActivity(activityId);
+                  props.route.router.route({ to: 'editor', project });
+                });
               return;
             }
 
@@ -1093,7 +1164,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
         ToastLayer.showError('Failed to create project');
       }
     },
-    [props.route, scopingScope, finishScopedProject]
+    [props.route, scopingScope, finishScopedProject, finishTemplateBackend, projectTemplates.items]
   );
 
   const handleCreateModalClose = useCallback(() => {

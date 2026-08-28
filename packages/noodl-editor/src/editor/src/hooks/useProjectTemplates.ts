@@ -52,7 +52,8 @@ export function galleryFromListing(listing: TemplateListing): {
     title: item.title,
     description: item.desc,
     category: item.category,
-    origin: ORIGIN_LABELS[provider] ?? provider
+    origin: ORIGIN_LABELS[provider] ?? provider,
+    needsBackend: item.needsBackend
   }));
 
   if (listing.failures.length === 0) return { items };

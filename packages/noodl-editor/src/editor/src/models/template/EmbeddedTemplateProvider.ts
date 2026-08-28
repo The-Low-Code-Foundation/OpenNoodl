@@ -8,10 +8,27 @@
  * @module noodl-editor/models/template
  */
 
+import { CLOUD_COMPONENT_PREFIX } from '../../validation/runtimeContext';
 import { ITemplateProvider, TemplateItem } from '../../utils/forge/template/template';
 import { ProjectContent, NodeDefinition, ProjectTemplate } from './ProjectTemplate';
 import { helloWorldTemplate } from './templates/hello-world.template';
 import { siteBuilderTemplate } from './templates/site-builder.template';
+
+/**
+ * SBR-001 — does a project made from this template need a local backend?
+ *
+ * Derived from what the template ships, never declared beside it: a security
+ * policy is a set of rules for a backend to enforce, and a `/#__cloud__/`
+ * component is a function only a backend can run — either one without a backend
+ * is a template that can do nothing at all (finding 1: Site Builder shipped
+ * `devOpen: false` into a project with no backend attached). A hand-written
+ * `requiresBackend:` flag would be a second statement of the same fact;
+ * `lessonbackend.ts` records why that drifts.
+ */
+export function templateNeedsBackend(template: ProjectTemplate): boolean {
+  if (template.securityPolicy) return true;
+  return (template.content.components ?? []).some((c) => c.name?.startsWith(CLOUD_COMPONENT_PREFIX));
+}
 
 /**
  * Generate a fresh unique node id (UUID v4-ish, matching the editor's format).
@@ -57,7 +74,8 @@ export class EmbeddedTemplateProvider implements ITemplateProvider {
         desc: template.description,
         category: template.category,
         iconURL: template.thumbnail || '',
-        projectURL: `embedded://${id}`
+        projectURL: `embedded://${id}`,
+        needsBackend: templateNeedsBackend(template)
       });
     }
 

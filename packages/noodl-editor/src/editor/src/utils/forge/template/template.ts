@@ -6,6 +6,19 @@ export interface TemplateItem {
   desc: string;
   category: string;
   projectURL: string;
+  /**
+   * SBR-001 — whether a project made from this template needs a local backend
+   * attached at creation. **Derived by the provider from what the template
+   * ships** (a security policy, `/#__cloud__/` components), never hand-written:
+   * a declared flag is a second statement of the same fact and drifts on the
+   * first edit — `lessonbackend.ts` records the rule for lessons.
+   *
+   * ⚠️ Optional because the community wire has no column for it
+   * (`communityapi.ts` `TemplateSummary`), so a community row cannot say.
+   * `undefined` is read as "no": a template that did not ask for a backend
+   * must not grow one.
+   */
+  needsBackend?: boolean;
 }
 
 /**

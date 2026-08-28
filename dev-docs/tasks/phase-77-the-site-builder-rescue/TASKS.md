@@ -7,7 +7,7 @@ per-task status and the session log.
 
 | id | status | note |
 |---|---|---|
-| SBR-001 | ⬜ open | |
+| SBR-001 | ✅ closed s2 | driven end-to-end; ACs 1–5,7 verified live, AC6 by spec + shelf listing |
 | SBR-002 | ⬜ open | |
 | SBR-003 | ⬜ open | contract settled at scoping (s1) — the task is to *implement and verify* it |
 | SBR-004 | ⬜ open | |
@@ -47,6 +47,30 @@ per-task status and the session log.
 
 ## Session log
 
+- **s2 (2026-08-28)** — **SBR-001 closed, driven.** The wizard now attaches the backend:
+  `TemplateItem`/`TemplateChoice` widened with a **derived** `needsBackend`
+  (`templateNeedsBackend` = shipped `securityPolicy` OR `/#__cloud__/` components; community
+  rows stay `undefined` = no), and `ensureTemplateBackend` (`models/templatebackend.ts`,
+  mirrors `ensureLessonBackend`) runs in `handleCreateProjectConfirm` before the route:
+  create owned (`backend:create` **with `{projectId}`**) + bind via `setCloudServices`.
+  🔴 **Deliberately NO start and NO deploy from the launcher** — `CloudFunctionDeployer`
+  exports `ProjectModel.instance` (wrong project on the launcher), and a backend started
+  pre-route gets **adopted** by `ProjectBackendLifecycle`, whose adopted path never deploys
+  functions. Create+bind hands start (with `--project-dir` ⇒ policy) and function deploy to
+  the lifecycle at open, which its own SB-015 comment says it exists for. Verified by driving
+  the real wizard: "SBR Drive Site" landed bound to a fresh owned backend, running,
+  `security.json` byte-identical to the template's (`devOpen: false`), ACL probes discriminate
+  (Page find 200 / ContactMessage find 403 / Page create 403), functions answer
+  (`submitContactForm` 200 `received:true`, `publishPage` anon 403); hello-world control
+  created with **no** backend, count unchanged. ⚠️ The template's cloud fns are **4 top-level**
+  (claimSite, publishPage, duplicatePage, submitContactForm) — the three `site/*` components
+  are nested helpers, and SBR-001's task file's `resolveSlug` does not exist; probe
+  `submitContactForm`. Unit: `tests-unit/sbr-001/` 15/15 (jest/`test:main`). Floor:
+  **2863 specs, 4 failures, all `AIX-006 style vocabulary` by name** (seed 65452). Drive
+  artefacts left in place: projects "SBR Drive Site" + "SBR Hello Control" in NodeGX test
+  projects, backend `backend_mtctpzoolycw4`. ⚠️ `typecheck:editor` has a pre-existing 5-error
+  baseline (`@noodl-viewer-cloud/execution-history` unresolved in `src/main/execution-history`,
+  since WFA-002) — not this session's.
 - **s1 (2026-08-28)** — **Phase scoped.** Both artifacts read and challenged; the challenge
   found the platform already ships the token system the proposal wanted to invent (182 defaults,
   project overrides deployed as `:root` in index.html, `RawColorLiteral` warning) — recorded in
