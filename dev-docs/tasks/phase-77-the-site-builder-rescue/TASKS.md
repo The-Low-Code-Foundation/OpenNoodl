@@ -20,7 +20,7 @@ per-task status and the session log.
 | SBR-011 | ⬜ open | ruled BUILD, not strike |
 | SBR-012 | ⬜ open | |
 | SBR-013 | ⬜ open | |
-| SBR-015 | ⬜ open | **found by SBR-006 s9, diagnosed s10.** Neither `publishPage` nor `duplicatePage` wires a single `failure` edge — every node's only exit is the happy path, so any error is a 30s 504 with no status and no node named. `claimSite` (same file, same author, 5 failure wires → 7 send edges) answers in **29ms** and is the control. 🔴 **The two do NOT disagree**: both stall at the same kind of point and differ only in where their write sits relative to it — duplicate creates its copy *before* the barrier, publish writes *after* it. Three tempting causes were each REFUTED (undeclared signal ports — the artefact declares all six; RunTasks on an empty list — NDA-012 §B3 ends it `done`; an empty query not publishing `items` — `setCollection` flags it unconditionally). Which node broke is deliberately still OPEN: wiring the failures is what makes the backend able to say. 🔴 `execution_steps` is EMPTY for all three executions — the table exists and nothing writes to it |
+| SBR-015 | 🟢 s10: built + gated, **drive owed** | **found by SBR-006 s9, built s10.** Neither `publishPage` nor `duplicatePage` wires a single `failure` edge — every node's only exit is the happy path, so any error is a 30s 504 with no status and no node named. `claimSite` (same file, same author, 5 failure wires → 7 send edges) answers in **29ms** and is the control. 🔴 **The two do NOT disagree**: both stall at the same kind of point and differ only in where their write sits relative to it — duplicate creates its copy *before* the barrier, publish writes *after* it. Three tempting causes were each REFUTED (undeclared signal ports — the artefact declares all six; RunTasks on an empty list — NDA-012 §B3 ends it `done`; an empty query not publishing `items` — `setCollection` flags it unconditionally). Which node broke is deliberately still OPEN: wiring the failures is what makes the backend able to say. 🔴 `execution_steps` is EMPTY for all three executions — the table exists and nothing writes to it |
 | SBR-014 | ⬜ open | last; re-verifies every person-sentence AC |
 
 ## Standing gates and traps (carried from phase 76 — still live)
@@ -47,6 +47,35 @@ per-task status and the session log.
   announce editor launches AND teardowns; `test:ci` alone.
 
 ## Session log
+
+- **s10 (2026-08-28)** — **SBR-015 written, built and gated; the drive is owed.**
+  The unowned 30s-timeout defect §5.7 handed on is **one cause, not two**: neither
+  `publishPage` nor `duplicatePage` wired a single `failure` edge, so every node in both graphs
+  had exactly one way out and any error became a silent 504 naming nothing. `claimSite` (same
+  file, 5 failure edges, 29ms) is the control that made it diagnosable. The two "disagree" only
+  because duplicate creates its copy **before** the point it stalls at and publish writes
+  **after** one.
+  🔴 **Four candidate causes each FITTED and each was refuted** — undeclared signal ports (the
+  artefact declares all six), RunTasks on an empty list (NDA-012 §B3 ends it `done`), an empty
+  query not publishing `items` (`setCollection` flags unconditionally), `.map` on a Collection
+  (it extends Array). **Which node broke is still open on purpose**: wiring the failures is what
+  lets the backend say, and a fifth guess would waste the measurement.
+  🔴 **A second defect fell out of proving the first**: both Run Tasks were wired by
+  `completed`, which *"fires after every invocation, whatever the outcome"* — publish marked a
+  page published after a run that set **no** section's access rules, duplicate answered with a
+  page id after a failed section copy. Both now `done`. Two more silent exits the new gate then
+  found: `submitContactForm`'s `stored` (a throw hung the template's one **public** endpoint)
+  and `claimSite`'s own `gate`, whose two hand-written signals only *look* exhaustive.
+  🔴 **The gate's own first version had a hole shaped like the defect** — it asked "does this
+  node reach a Response?", which every node on a happy path does, so it would have passed the
+  unfixed `publishPage`. It grades the failure **edge** now; the mutant is what caught it.
+  🔴 **A pin had been red since SBR-006 landed and nobody saw it** — browser Function nodes
+  18 → 20 (`/Admin/Shell`, `/Pages/ThemeEditor`), red from `dc931e01` because s9 never ran
+  `test:ci`. The first `test:ci` of this session showed **7**; three were real.
+  Gates: **`test:ci` 2889 specs, 4 failures, all four `AIX-006` by name — the floor exactly** ·
+  mcp sb00* **155/155** · editor sb-007/015/017/018 + sbr-001/002/003 + fb-005 **377/377** ·
+  backend sb0* **141/141** · `typecheck:editor` 0 · `typecheck:mcp` 0. Template regenerated;
+  connection total 101 → **118**, node ids 232 → **234**, both with named movers.
 
 - **s9 (2026-08-28)** — **SBR-006 built and driven.** `/Admin/Shell` (sidebar, brand,
   Pages · Theme & settings · Messages, View site, screen body via `Component Children`) and
