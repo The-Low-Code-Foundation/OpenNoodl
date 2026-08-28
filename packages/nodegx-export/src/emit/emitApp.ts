@@ -9,12 +9,14 @@ import { Catalog, CatalogIndex } from '../catalog';
 import { HttpCallPlan, HttpValuePlan, planProject, ProjectPlan, QueryPlan, SessionCallPlan } from '../analyze/plan';
 import { CloudServicesIR, ExportIR } from '../ir/types';
 import { emitComponent } from './component';
+import { DATE_LIB_PATH, dateLibSource } from './dateLib';
 import { EmittedCopy, emitKits } from './kits';
 import { emitScaffold } from './scaffold';
 import { emitStateModules } from './state';
 
 const GENERATED_TS = '// @nodegx:generated (api stub — provenance markers complete in EXP-007)\n';
 const GENERATED_MODULE_TS = '// @nodegx:generated (api module — provenance markers complete in EXP-007)\n';
+
 const GENERATED_CLIENT_TS = '// @nodegx:generated (api client — provenance markers complete in EXP-007)\n';
 
 export interface EmittedApp {
@@ -70,6 +72,8 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     );
   }
 
+  /** Date helpers any component imports — the gate on emitting `src/lib/date.ts` at all. */
+  const dateHelpersUsed = new Set<string>();
   for (const plan of project.plans) {
     if (plan.skipReason) {
       if (plan.rootId === null && !plan.file) notes.push(`${plan.path}: ${plan.skipReason}`);
@@ -80,6 +84,18 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     Object.assign(files, emitted.files);
     notes.push(...emitted.notes);
     notes.push(...plan.notes.map((note) => `${plan.path}: ${note}`));
+    for (const helper of emitted.dateHelpers) dateHelpersUsed.add(helper);
+  }
+
+  /**
+   * `src/lib/date.ts` (EXP-011 Tier 1.3) — emitted exactly when a component imports it.
+   *
+   * The whole module ships whenever any one helper is called: they share `toDate`, `addToDate`
+   * and `truncateTo`, and a per-helper subset would have to slice a dependency graph to save a
+   * few hundred bytes a bundler already tree-shakes.
+   */
+  if (dateHelpersUsed.size > 0) {
+    files[DATE_LIB_PATH] = GENERATED_MODULE_TS + dateLibSource();
   }
 
   const api = apiModules(ir, project);

@@ -1,7 +1,7 @@
 {
   "$comment": "Every catalog node type, classified for code export (EXP-008). Gate: scripts/export-ledger/check.js (export-ledger:check) refuses an unclassified type; scripts/export-ledger/picker-coverage.js (export-ledger:picker) is the PHASE'S HEADLINE NUMBER and ratchets `pickerCoverageFloor`. Read EXP-008 before changing either: the corpus instance-coverage number this phase used to quote is a regression detector, not a priority oracle, and treating it as one cost twelve sessions.",
   "catalogFormatVersion": "1.1.0",
-  "pickerCoverageFloor": 60,
+  "pickerCoverageFloor": 66,
   "$pickerCoverageFloorComment": "Placeable picker nodes (inNodePicker, not deprecated, browser-capable) that export. Ratchet: export-ledger:picker --check fails if it falls AND if it rises without this number moving, so every gain is held and every loss is a decision in the diff. 60 of 127 at 2026-08-28 (51 before Tier 1.4 added the four value Variables, 55 before Tier 1.1 added the client-side data vocabulary, 59 before Tier 1.2 added HTTP Request).",
   "$customNodesComment": "EXP-010 AC6, settled 2026-08-28: custom nodes are DELIBERATELY not in this file and not in the picker number, and the statement about them is categorical rather than a percentage. A custom node type comes from a project's own noodl_modules/, so its population is per-project and unbounded — putting it in the numerator inflates a ratio, and putting it in both halves makes the denominator move with whichever project you point the tool at. That is precisely the instance-weighted corpus number this phase spent twelve sessions being misled by (see $comment). Adding these types as `entries` would also be a false claim about the catalog, which is what this file is a ledger OF. The claim instead: a kit's VISUAL nodes (`reactNodes`, i.e. a definition with getReactComponent) export and render; a kit's LOGIC nodes (`nodes`, e.g. tally-kit's whole vocabulary) do not, and every instance of one is named in the report. Both halves are graded by tests/custom-nodes.test.ts, which is the ratchet for this claim.",
   "entries": [
@@ -136,8 +136,8 @@
     },
     {
       "typeName": "Date To String",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (§9) — a date rendered through its format template, timezone included. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
     },
     {
       "typeName": "DbCollection",
@@ -551,23 +551,23 @@
     },
     {
       "typeName": "net.noodl.DateAdd",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (§9) — a date shifted by an amount of a unit, months and years clamping. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
     },
     {
       "typeName": "net.noodl.DateCompare",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (§9) — two instants compared at a granularity, one call per answer. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
     },
     {
       "typeName": "net.noodl.DateDifference",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (§9) — the signed distance between two instants, counted in a unit. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
     },
     {
       "typeName": "net.noodl.DateParts",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (§9) — one field of an instant, in the local zone. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
     },
     {
       "typeName": "net.noodl.GlobalStore",
@@ -606,8 +606,8 @@
     },
     {
       "typeName": "net.noodl.Now",
-      "status": "deferred",
-      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (§9) — the clock, read once at mount and again on every Read — a lazy useState seed plus a bound instant per press. Emitted as a call into src/lib/date.ts, a transcription of the interpreter’s own datemath.ts."
     },
     {
       "typeName": "net.noodl.ObjectChanged",

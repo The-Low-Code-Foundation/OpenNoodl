@@ -29,6 +29,7 @@ import { ComponentIR, ConnectionIR, Disposition, ExportIR, KitNodeIR, ModuleIR, 
 import { componentReachability, Reachability } from './reach';
 import { routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
+import { DateHelper } from '../emit/dateLib';
 import { CONTENT_PARAMS, iconSourceOf, StyleRole } from '../emit/style';
 import {
   expressionIdentifiersOf,
@@ -128,6 +129,115 @@ const HTTP_CONFIG_PORTS = [
 
 /** The standard value outputs, minus `error` — which is a state row of its own, never in the answer. */
 const HTTP_VALUE_OUTPUTS = ['response', 'statusCode', 'responseHeaders'];
+
+/** `Now` (EXP-011 Tier 1.3) — the one date node that is not a pure function of its inputs. */
+const NOW_TYPE = 'net.noodl.Now';
+
+/** `Now`'s three value outputs, and what each reads off the instant. */
+const NOW_OUTPUTS: Record<string, 'date' | 'timestamp' | 'iso'> = {
+  date: 'date',
+  timestamp: 'timestamp',
+  iso: 'iso'
+};
+
+/**
+ * One argument of an emitted date helper, in the helper's own parameter order.
+ *
+ * `enum: true` marks a port the editor constrains to a fixed set. A wire on one of those defers
+ * the node — not out of caution, but because the interpreter **throws** on a unit it does not
+ * know (`addToDate`'s final `else`) rather than answering, and an export whose failure mode is a
+ * crash in someone's page is worse than one that says it did not translate the node.
+ */
+interface DateArgSpec {
+  port: string;
+  /** What `initialize` writes — the real default. A declared `default` never runs its setter. */
+  fallback?: string | number | boolean;
+  enum?: true;
+}
+
+/**
+ * The five **pure** date nodes (EXP-011 Tier 1.3), each as one call into `src/lib/date.ts`.
+ *
+ * 🔴 **The fallbacks are `initialize`'s, not the declared `default`s.** Every one of these nodes
+ * says so in its own comment — *"A declared `default` never runs its setter — these two lines are
+ * the real defaults"*. They happen to agree here, node by node, and that agreement was checked
+ * rather than assumed: a node whose panel the author never opened must export as the value the
+ * interpreter is actually holding.
+ *
+ * `outputs` maps a value output port to the trailing literal argument that selects it, or `null`
+ * where the node has one answer and the helper takes no selector. `Date Compare` and
+ * `Date Parts` are the two with several answers off one instant, and one call per answer is
+ * cheaper than an object read the expression vocabulary has no member access for.
+ */
+const DATE_NODES: Record<string, { fn: DateHelper; args: DateArgSpec[]; outputs: Record<string, string | null> }> = {
+  'net.noodl.DateAdd': {
+    fn: 'dateAdd',
+    args: [{ port: 'input' }, { port: 'amount', fallback: 0 }, { port: 'unit', fallback: 'days', enum: true }],
+    outputs: { result: null }
+  },
+  'net.noodl.DateDifference': {
+    fn: 'dateDifference',
+    args: [
+      { port: 'from' },
+      { port: 'to' },
+      { port: 'unit', fallback: 'days', enum: true },
+      { port: 'absolute', fallback: false }
+    ],
+    outputs: { difference: null }
+  },
+  'net.noodl.DateCompare': {
+    fn: 'dateCompare',
+    args: [{ port: 'a' }, { port: 'b' }, { port: 'granularity', fallback: 'millisecond', enum: true }],
+    outputs: { before: 'before', after: 'after', same: 'same' }
+  },
+  'net.noodl.DateParts': {
+    fn: 'datePart',
+    args: [{ port: 'input' }],
+    outputs: {
+      year: 'year',
+      month: 'month',
+      date: 'date',
+      hours: 'hours',
+      minutes: 'minutes',
+      seconds: 'seconds',
+      milliseconds: 'milliseconds',
+      dayOfWeek: 'dayOfWeek',
+      dayName: 'dayName',
+      isoWeek: 'isoWeek',
+      timestamp: 'timestamp'
+    }
+  },
+  'Date To String': {
+    fn: 'dateToString',
+    args: [
+      { port: 'input' },
+      { port: 'formatString', fallback: '{year}-{month}-{date}' },
+      { port: 'timeZone', fallback: '' }
+    ],
+    outputs: { currentValue: null }
+  }
+};
+
+/**
+ * The signal outputs of the five pure date nodes, with the sentence each defers on.
+ *
+ * All of them are *recomputation* events: the node announces that it re-derived its answer, which
+ * in an emitted component is a `useEffect` over the expression rather than anything a handler can
+ * carry. `Now`'s `done` is the family's one translatable pulse, and it is translatable precisely
+ * because it is **invoked** — a Read happened, in a handler, at a point in a chain.
+ */
+const DATE_SIGNAL_OUTPUTS: Record<string, string> = {
+  changed: 'its Changed output is consumed — that pulse announces a recomputation, and a recomputation in the emitted component is a render, not an event a chain can hang off',
+  inputChanged:
+    'its Date Changed output is consumed — that pulse announces a recomputation, and a recomputation in the emitted component is a render, not an event a chain can hang off',
+  failure:
+    'its Invalid Date output is consumed — the node re-derives its answer on every arrival, so the failure is a value this slice renders as an absent one rather than a pulse it can fire',
+  onError:
+    'its Invalid Date output is consumed — the node re-derives its answer on every arrival, so the failure is a value this slice renders as an absent one rather than a pulse it can fire',
+  isBefore: 'its On Before output is consumed — the comparison is a value this slice reads, not an event it fires',
+  isAfter: 'its On After output is consumed — the comparison is a value this slice reads, not an event it fires',
+  isSame: 'its On Same output is consumed — the comparison is a value this slice reads, not an event it fires'
+};
 
 /**
  * `extractByPath`'s path grammar, compiled to accessor steps (`$.items[0].name` → `['items', 0,
@@ -345,7 +455,50 @@ export type ValueExpr =
    * an author's Response Mapping as `out-<name>` (`registerOutputIfNeeded` prefixes every one of
    * them, so a mapping an author calls "response" is `out-response` and cannot collide).
    */
-  | { kind: 'http-out'; nodeId: string; output: string; viaState?: string };
+  | { kind: 'http-out'; nodeId: string; output: string; viaState?: string }
+  /**
+   * A `Now` output (EXP-011 Tier 1.3) — the instant of the last Read.
+   *
+   * 🔴 **`Now` is not a live clock, and reading it as one is the trap this kind exists to avoid.**
+   * The node's own port description says the outputs "hold the instant of the last Read, not a
+   * live value", and `initialize` seeds `_internal.now` so they are never empty before the first
+   * one. That is a `useState` with a **lazy initializer** — `useState(() => new Date())`, read
+   * once per mount exactly as `initialize` runs once per node. A bare `new Date()` in render
+   * would recompute on every pass and re-render forever; the runtime's own `runOnChange`
+   * vocabulary answered this rather than the export choosing.
+   *
+   * Two forms, and which one a read takes is decided by **where the read is** — the `http-out`
+   * rule (§8.2) reaching the second construct that needs it. `setNow(...)` does not change `now`
+   * inside the closure that called it, so a state read inside the Read chain would deliver the
+   * *previous* instant; the chain binds the instant to a local and reads that. Two bare
+   * `new Date()` calls in one chain could also straddle a millisecond boundary, which is the
+   * same bug wearing a different hat.
+   *
+   * ⚠️ Never maybe-undefined, alone in this family: the row is seeded at mount and every write
+   * is a fresh `Date`, so `now.getTime()` needs no guard.
+   */
+  | { kind: 'now-out'; nodeId: string; output: 'date' | 'timestamp' | 'iso'; viaState?: string }
+  /**
+   * One of the five **pure** date nodes (EXP-011 Tier 1.3) — `Date Add`, `Date Compare`,
+   * `Date Difference`, `Date Parts`, `Date To String`.
+   *
+   * They are value-driven: each recomputes whenever any input changes and holds nothing else, so
+   * a node becomes **an ordinary function call** the way Tier 1.1's arrays became ordinary value
+   * expressions. `fn` names a helper in the emitted `src/lib/date.ts`, and `args` are its
+   * arguments in position order — a wired input is the expression that feeds it, an authored one
+   * a literal. They compose, which is the whole point: `Now → Date Add → Date To String` is one
+   * nested expression and needs no per-consumer field to carry it.
+   *
+   * ⚠️ **The configuration arguments are literals by gate, not by luck.** A wired `Unit` or
+   * `Granularity` defers: the enum is a value the editor constrains, a wire can deliver any
+   * string, and the interpreter *throws* on one it does not know rather than answering. Every
+   * other input may be wired, because none of them has a throwing branch.
+   */
+  | {
+      kind: 'date-call';
+      fn: DateHelper;
+      args: ValueExpr[];
+    };
 
 export type HandlerAction =
   | { kind: 'navigate'; to: string }
@@ -478,6 +631,33 @@ export type HandlerAction =
       errorState: string;
       then: HandlerAction[];
       failThen: HandlerAction[];
+    }
+  /**
+   * `Now`'s `Read` (EXP-011 Tier 1.3) — re-read the clock, then run the `done` chain.
+   *
+   * ```
+   * const nowRead = new Date();   // bound, so every read in the chain is the SAME instant
+   * setNow(nowRead);              // only where something outside the chain reads it
+   * …then
+   * ```
+   *
+   * Synchronous, so `done` is the statements that follow rather than an arm: `_read` flags the
+   * three outputs dirty and reports `done` in the same call, with no branch where it declines.
+   * There is deliberately no failure arm — the node's own comment says reading the clock cannot
+   * fail, and two Reads in the same millisecond still re-read.
+   *
+   * `materialize` is filled in the verdict sweep, never at compile time: a render read of
+   * `Timestamp` resolves passes later, so asking "does anything read this" here answers *no* for
+   * every render read there is (§8.3's allocation-order rule, third instance).
+   */
+  | {
+      kind: 'date-now-read';
+      nodeId: string;
+      /** The chain-local the instant binds to — what a read inside `then` says. */
+      local: string;
+      /** The state row the instant is written to, where anything outside the chain reads it. */
+      materialize?: string;
+      then: HandlerAction[];
     };
 
 /**
@@ -549,8 +729,28 @@ export interface StateVarPlan {
   tsType: string;
   /** Boot value; null is the `undefined` boot (`useState<T | undefined>()`). */
   boot: string | number | boolean | null;
+  /**
+   * An initializer expression emitted verbatim, used **instead of** `boot` (EXP-011 Tier 1.3).
+   *
+   * 🔴 The one row that needs it is `Now`'s, and it needs it to be a *lazy* initializer:
+   * `useState(() => new Date())` constructs once per mount, which is what `initialize` does,
+   * where `useState(new Date())` would construct on every render. No other origin has a boot
+   * value that is not a literal, which is why this is an exception rather than the field's
+   * general form.
+   */
+  bootCode?: string;
   originNodeId: string;
-  origin: 'switch' | 'counter' | 'control' | 'lifted' | 'jsfun' | 'record-error' | 'variable' | 'http' | 'http-error';
+  origin:
+    | 'switch'
+    | 'counter'
+    | 'control'
+    | 'lifted'
+    | 'jsfun'
+    | 'record-error'
+    | 'variable'
+    | 'http'
+    | 'http-error'
+    | 'now';
   /** The provenance comment above the row. */
   comment: string;
 }
@@ -2324,6 +2524,71 @@ function planComponent(
   /** HTTP nodes whose `Fetch` actually attached to a handler — the record verbs' rule (§4). */
   const attachedHttpNodes = new Set<string>();
 
+  // ---- `Now` (EXP-011 Tier 1.3) -----------------------------------------------------------
+  //
+  // The date family's one stateful node, and the only one in the whole vocabulary whose value
+  // depends on *when* it is read. The shape is the HTTP one, for the HTTP reason: a chain reads
+  // the local, everything else reads the row.
+
+  /** Node ids whose Read chain is being compiled — a read inside one takes the chain-local form. */
+  const nowChainScope = new Set<string>();
+
+  /** The chain-local one `Now` binds its instant to, minted once so every reader agrees. */
+  const nowLocals = new Map<string, string>();
+  const nowLocalOf = (node: NodeIR): string => {
+    let local = nowLocals.get(node.id);
+    if (local === undefined) {
+      const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+      const stem = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'Clock';
+      const base = `${stem.charAt(0).toLowerCase()}${stem.slice(1)}Read`;
+      let name = base;
+      let counter = 2;
+      while (stateNameTaken(name)) name = `${base}${counter++}`;
+      usedStateVarNames.add(name);
+      nowLocals.set(node.id, name);
+      local = name;
+    }
+    return local;
+  };
+
+  /**
+   * `Now`'s instant as a state row — the mount instant, re-read by every Read.
+   *
+   * 🔴 **Seeded lazily, and it has to be.** `initialize` reads the clock once when the node is
+   * created, so the outputs are never empty before the first Read (the node says so in its own
+   * comment). `useState(() => new Date())` is that: one construction per mount. The eager
+   * `useState(new Date())` would construct a Date on every render — the *time-dependent read in
+   * render* this family had to decide about, answered by the runtime rather than by taste.
+   *
+   * Never `undefined`, alone in this family, which is why `now.getTime()` needs no guard.
+   */
+  const nowVars = new Map<string, StateVarPlan>();
+  const nowStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = nowVars.get(node.id);
+    if (stateVar === undefined) {
+      stateVar = allocStateVar(
+        node.authoredLabel,
+        'now',
+        'Date',
+        null,
+        node.id,
+        'now',
+        `The instant ${node.authoredLabel ? `"${node.authoredLabel}"` : 'Now'} last read. Seeded at mount, as the node's own initialize seeds it, and re-read by Read — not a live clock.`
+      );
+      // The one non-literal boot in the vocabulary: a lazy initializer, so the clock is read once
+      // per mount rather than once per render.
+      stateVar.bootCode = '() => new Date()';
+      nowVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+
+  /**
+   * `Now` nodes whose `Read` attached to a handler. Only meaningful where `Read` is *wired*: a
+   * `Now` with nothing on Read is the mount instant and is complete without any action at all.
+   */
+  const attachedNowNodes = new Set<string>();
+
   // ---- Static Data: the authored blob as a build-time constant (STATIC-DATA-TARGET) --------
   //
   // `type`, `csv` and `json` are all `allowEditOnly` (staticdata.ts), so this is not a solver
@@ -2987,6 +3252,106 @@ function planComponent(
     return { kind: 'list-filter', source, tests, sort, ...(skip ? { skip } : {}), ...(limit !== undefined ? { limit } : {}) };
   };
 
+  /**
+   * One of the five pure date nodes read as a value (EXP-011 Tier 1.3).
+   *
+   * The node is a function of its inputs and holds nothing else, so the read is the call. Every
+   * argument is either the expression feeding its port or the literal the panel holds, and the
+   * whole thing composes: `Now → Date Add → Date To String` nests three of these.
+   *
+   * ⚠️ **The one place the emitted form is not the interpreter's** is an input that goes from a
+   * value back to *empty*. `_recompute` abstains on `inputSupplied === false` and the node keeps
+   * its previous answer, where a pure call answers undefined. It is one transition wide, it needs
+   * a wire that can actually deliver an empty — and the interpreter is already inconsistent with
+   * itself about it, since an *invalid* date does clear the answer while an absent one does not.
+   * A note is filed wherever a wire can reach that state, rather than the whole family deferring
+   * on a case most graphs cannot produce.
+   */
+  const dateReadExpr = (
+    node: NodeIR,
+    fromProperty: string,
+    spec: { fn: DateHelper; args: DateArgSpec[]; outputs: Record<string, string | null> },
+    ctx: ResolveCtx
+  ): ValueExpr | null => {
+    const selector = spec.outputs[fromProperty];
+    if (selector === undefined) {
+      const signal = DATE_SIGNAL_OUTPUTS[fromProperty];
+      ctx.defer = signal ?? `its ${fromProperty} output is not a port this slice reads`;
+      return null;
+    }
+    if (ctx.visited.has(node.id)) {
+      ctx.defer = 'a wire cycle through logic nodes';
+      return null;
+    }
+    ctx.visited.add(node.id);
+
+    const args: ValueExpr[] = [];
+    for (const arg of spec.args) {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === arg.port);
+      if (wires.length > 1) {
+        ctx.defer = `two wires feed its ${arg.port} input — last-writer-wins is not statically ordered`;
+        return null;
+      }
+      if (wires.length === 1) {
+        /**
+         * 🔴 A wired enum defers, and the reason is a throw rather than a doubt. `unit` and
+         * `granularity` are `allowEditOnly` in the editor, so the port set the runtime publishes
+         * admits a wire the panel would never draw — and `addToDate`'s final `else` throws on a
+         * unit it does not recognise. An export that reproduced that would put an uncaught
+         * exception in somebody's page; one that reproduced it *loosely* would answer a different
+         * date. Neither is worth the case.
+         */
+        if (arg.enum === true) {
+          ctx.defer = `its ${arg.port} is wired — that input is an editor-constrained list, and the interpreter throws on a value outside it rather than answering`;
+          return null;
+        }
+        const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (expr === null) {
+          if (ctx.defer === undefined) ctx.defer = `its ${arg.port} input has no statically known source`;
+          return null;
+        }
+        if (isBooleanExpr(expr)) {
+          ctx.defer = `its ${arg.port} input is fed a logic truth value — only truthiness sinks take one in this slice`;
+          return null;
+        }
+        /**
+         * The abstain divergence, reported **where the emptiness enters the graph** — not at
+         * every link that would pass it on.
+         *
+         * A `date-call` source is itself pure and recomputes, so a chain of them propagates one
+         * root cause; naming it per link would file three notes about one wire and bury the wire
+         * that actually matters. `now-out` never reaches here at all, being the one read in this
+         * family that cannot be undefined.
+         */
+        if (maybeUndefinedExpr(expr) && expr.kind !== 'date-call') {
+          notes.push(
+            `node ${node.id} (${node.type}) reads ${arg.port} from a source that can be empty — the interpreter keeps its previous answer when that input goes away, and the exported call answers nothing instead`
+          );
+        }
+        ctx.consumes.push(wires[0].key);
+        args.push(expr);
+        continue;
+      }
+      // Unwired: the panel's value, or what `initialize` wrote when the author never opened it.
+      const literal = literalParam(node, arg.port);
+      if (literal !== undefined) {
+        args.push({ kind: 'literal', value: literal });
+        continue;
+      }
+      if (arg.fallback === undefined) {
+        // The Date input itself, with nothing on it and nothing authored: the node never runs
+        // `_recompute` past its abstain, so every output is unset for the life of the app.
+        ctx.defer = `nothing is wired into its ${arg.port} input and none is authored, so the node never produces an answer`;
+        return null;
+      }
+      args.push({ kind: 'literal', value: arg.fallback });
+    }
+
+    if (selector !== null) args.push({ kind: 'literal', value: selector });
+    ctx.logicNodeIds.push(node.id);
+    return { kind: 'date-call', fn: spec.fn, args };
+  };
+
   const resolveExpr = (fromNode: NodeIR | undefined, fromProperty: string, ctx: ResolveCtx): ValueExpr | null => {
     if (!fromNode) return null;
     if (LIST_PRODUCERS.has(fromNode.type) && fromProperty === 'items') return listReadOf(fromNode, ctx);
@@ -3154,6 +3519,43 @@ function planComponent(
         ? { kind: 'http-out', nodeId: fromNode.id, output: fromProperty }
         : { kind: 'http-out', nodeId: fromNode.id, output: fromProperty, viaState: httpAnswerStateOf(fromNode).name };
     }
+    /**
+     * `Now`'s outputs (EXP-011 Tier 1.3) — the instant of the last Read, in the chain-local form
+     * inside the Read chain and through the state row everywhere else (§8.2's rule, second
+     * construct). `setNow(...)` does not change `now` inside the closure that called it, so a
+     * state read in the Read chain would deliver the *previous* instant.
+     */
+    if (fromNode.type === NOW_TYPE) {
+      const output = NOW_OUTPUTS[fromProperty];
+      if (output === undefined) {
+        ctx.defer =
+          fromProperty === 'done'
+            ? 'its Done output is consumed as a value — a pulse carries nothing to read'
+            : `its ${fromProperty} output is not a port this slice reads`;
+        return null;
+      }
+      const inChain = nowChainScope.has(fromNode.id);
+      /**
+       * A wired Read that never attached is the record verbs' rule (§4a) in this family: the
+       * interpreter still re-reads the clock on every Read, and binding to a row nothing writes
+       * would freeze the app at its mount instant with nothing to say why. A Read that is
+       * *unwired* needs no such check — the mount instant is then the whole of the node.
+       */
+      if (!inChain && wiredPorts.has(`${fromNode.id}:read`) && !attachedNowNodes.has(fromNode.id)) {
+        const compiled = compiledOf(fromNode, 'read');
+        ctx.defer = 'defer' in compiled ? compiled.defer : 'its Read is never fired by a translatable trigger';
+        return null;
+      }
+      ctx.logicNodeIds.push(fromNode.id);
+      return inChain
+        ? { kind: 'now-out', nodeId: fromNode.id, output }
+        : { kind: 'now-out', nodeId: fromNode.id, output, viaState: nowStateOf(fromNode).name };
+    }
+    // The five pure date nodes (EXP-011 Tier 1.3) — each an ordinary function call.
+    {
+      const spec = DATE_NODES[fromNode.type];
+      if (spec !== undefined) return dateReadExpr(fromNode, fromProperty, spec, ctx);
+    }
     // The `User` node's session reads (USER-FAMILY-TARGET §4c). Not an action: the runtime's
     // outputs are getters over `UserService`, re-read on four session events, so the faithful
     // translation is a read of the session and not a stored value.
@@ -3274,6 +3676,20 @@ function planComponent(
        */
       case 'http-out':
         return true;
+      /**
+       * Always, and every road there is one the interpreter takes too (EXP-011 Tier 1.3): a date
+       * that could not be read answers unset on all five nodes, `Date To String` is unset before
+       * its first format, and `Date Compare` abstains until both sides have arrived.
+       */
+      case 'date-call':
+        return true;
+      /**
+       * Never — alone in the date family. `initialize` reads the clock when the node is created,
+       * so the outputs are never empty before the first Read, and the emitted row is seeded at
+       * mount by a lazy `useState` initializer. This is what lets `now.getTime()` print unguarded.
+       */
+      case 'now-out':
+        return false;
       case 'state-get':
         return expr.maybeUndefined === true;
       // A list is never undefined: a named array is a module-scope `collection([])` that exists
@@ -3511,6 +3927,23 @@ function planComponent(
        */
       case 'http-out':
         return expr.output === 'error' ? 'string' : expr.output === 'statusCode' ? 'number' : 'unknown';
+      /**
+       * `unknown` for all five, `dateToString` included (EXP-011 Tier 1.3).
+       *
+       * ⚠️ Claiming `string` for `dateToString` would be the tempting one and would be wrong at
+       * the sink this function exists to gate: a single-placeholder String Format collapses to
+       * the bare expression when it is `string`-typed, and this one is **undefined before its
+       * first format**. Collapsed, that prints the word "undefined" where the runtime substitutes
+       * `''`; left as a format, the `?? ''` interpolation does what the runtime does.
+       */
+      case 'date-call':
+        return 'unknown';
+      /**
+       * The instant is a `Date`, and `Date` is not a type this vocabulary's sinks fold — the two
+       * derived reads are the ones with ordinary types.
+       */
+      case 'now-out':
+        return expr.output === 'timestamp' ? 'number' : expr.output === 'iso' ? 'string' : 'unknown';
       case 'state-get':
         return plan.stateVars.find((v) => v.name === expr.name)?.tsType.replace(' | undefined', '') ?? 'unknown';
       case 'control-event':
@@ -3548,6 +3981,9 @@ function planComponent(
     CollectionClear: 'clear',
     // EXP-011 Tier 1.2. `cancel` is the node's second action port and defers the node (§8).
     [HTTP_TYPE]: 'fetch',
+    // EXP-011 Tier 1.3. `Now` is the date family's only action; the other five are pure and have
+    // no trigger port at all — they recompute, which is not something a chain can fire.
+    [NOW_TYPE]: 'read',
     Condition: 'eval',
     NewDbModelProperties: 'store',
     SetDbModelProperties: 'store',
@@ -4473,6 +4909,36 @@ function planComponent(
     };
   };
 
+  /**
+   * `Now`'s `Read` (EXP-011 Tier 1.3) — the date family's one action.
+   *
+   * Simpler than every other asynchronous-looking node here because it is not asynchronous:
+   * `_read` re-reads the clock, flags the three outputs dirty and reports `done`, all in the one
+   * call. So `done` is the statements that follow, not an arm — and there is deliberately no
+   * failure arm to compile, because the node's own comment says reading the clock cannot fail and
+   * two Reads in the same millisecond still re-read.
+   *
+   * The chain is compiled with this node in `nowChainScope`, so a read of `Timestamp` *inside* it
+   * resolves to the bound local rather than to the state row.
+   */
+  const compileNowRead = (node: NodeIR): CompiledSink => {
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (wire.fromProperty === 'done' || NOW_OUTPUTS[wire.fromProperty] !== undefined) continue;
+      return { defer: `its ${wire.fromProperty} output is consumed, and this slice reads only Date, Timestamp and ISO String` };
+    }
+    const local = nowLocalOf(node);
+    nowChainScope.add(node.id);
+    const done = doneChainOf(node, 'done');
+    nowChainScope.delete(node.id);
+    if ('defer' in done) return { defer: done.defer };
+    return {
+      action: { kind: 'date-now-read', nodeId: node.id, local, then: done.then },
+      consumes: done.consumes,
+      collapses: done.collapses,
+      subscribes: done.subscribes
+    };
+  };
+
   const compileSink = (node: NodeIR, port: string): CompiledSink => {
     if (RECORD_VERBS[node.type] !== undefined && port === 'store') return compileRecordOp(node);
     if (USER_VERBS[node.type] !== undefined && port === USER_VERBS[node.type].trigger) return compileUserOp(node);
@@ -4578,7 +5044,17 @@ function planComponent(
     }
     if (node.type === 'CollectionClear') return compileCollectionClear(node);
     if (node.type === HTTP_TYPE) return compileHttpFetch(node);
+    if (node.type === NOW_TYPE) return compileNowRead(node);
     if (node.type === 'Condition') return compileCondition(node);
+    /**
+     * ⚠️ **Everything below this line is the Set Variable case, and there is no `default`.**
+     *
+     * Adding a trigger port to `TRIGGER_PORTS` without adding a dispatch above lands the new node
+     * here, where it defers with *"variable name is not a literal"* — a reason about a node type
+     * it is not. That is how EXP-011 Tier 1.2 first "translated" an HTTP Request (§8.3), and the
+     * shape is worth naming because it is not the failure the file's other warnings describe: not
+     * a switch that stops compiling, a fall-through that answers plausibly.
+     */
     // Set Variable
     const variableName = variableNameOf(node);
     if (variableName === undefined) return { defer: 'variable name is not a literal' };
@@ -4770,6 +5246,16 @@ function planComponent(
        */
       case 'http-out':
         return true;
+      /** `Now`, on the same footing as `http-out` and for the same reason. */
+      case 'now-out':
+        return true;
+      /**
+       * A pure date call is valid wherever its arguments are — it reads nothing but them
+       * (EXP-011 Tier 1.3). Recursing rather than answering `true` is the point: an argument may
+       * be an `input-text` or a `payload`, and those are context-bound.
+       */
+      case 'date-call':
+        return expr.args.every((a) => exprValidIn(a, context, invokedScope));
     }
   };
 
@@ -4827,6 +5313,15 @@ function planComponent(
             actionsValidIn(action.then, context, invokedScope) &&
             actionsValidIn(action.failThen, context, invokedScope)
           );
+        /**
+         * The Read itself reads nothing, so only its chain constrains anything (EXP-011 Tier 1.3).
+         *
+         * ⚠️ This case had to be written by hand: the callback below has no return annotation, so
+         * `every`'s `unknown` return swallowed the missing case and `tsc` said nothing. Of the
+         * nine sites that enumerate this union, this is the one the compiler does not hold.
+         */
+        case 'date-now-read':
+          return actionsValidIn(action.then, context, invokedScope);
         case 'navigate':
         case 'output-signal':
           return true;
@@ -5279,6 +5774,16 @@ function planComponent(
         return exprTouchesSnap(e.operand, snap);
       case 'jsfun-out':
         return (plan.jsFunctions[e.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap));
+      /**
+       * 🔴 A walker with a `default`, and the third construct to nearly die in one (§8.3).
+       *
+       * A date call's arguments are ordinary expressions, so `Set Variable → read the variable
+       * through a Date Add` inside one chain is a state read the snapshot rule has to see. The
+       * `default` below would have answered `false` and let the stale read through — silently,
+       * because the emitted code is well-formed and merely wrong by one chain step.
+       */
+      case 'date-call':
+        return e.args.some((a) => exprTouchesSnap(a, snap));
       default:
         return false;
     }
@@ -5330,6 +5835,20 @@ function planComponent(
           return { defer: 'a Function argument reads state written earlier in this chain — not translated in this slice' };
         }
         return expr;
+      }
+      /**
+       * The other half of the walker above: having *seen* the read, rewrite it. A date call is a
+       * fresh object per site — no shared argument record — so the substitution lands, unlike
+       * `jsfun-out`'s, which has to gate instead.
+       */
+      case 'date-call': {
+        const args: ValueExpr[] = [];
+        for (const a of expr.args) {
+          const r = snapExpr(a, snap);
+          if ('defer' in r) return r;
+          args.push(r);
+        }
+        return { ...expr, args };
       }
       default:
         return expr;
@@ -5459,6 +5978,17 @@ function planComponent(
         if ((plan.jsFunctions[action.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap))) {
           return { defer: 'a Function argument reads state written earlier in this chain — not translated in this slice' };
         }
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        return { ...action, then };
+      }
+      /**
+       * `Now`'s Read (EXP-011 Tier 1.3). It reads no expression of its own, so there is nothing
+       * here to substitute — only the chain to carry the map onward, which runs in this same
+       * closure. The row it writes is deliberately **not** entered in the snapshot: every read
+       * inside this chain takes the local form, so there is no row read here to rewrite.
+       */
+      case 'date-now-read': {
         const then = snapActionList(action.then, snap);
         if (!Array.isArray(then)) return then;
         return { ...action, then };
@@ -5868,6 +6398,9 @@ function planComponent(
           attachedHttpNodes.add(action.nodeId);
           scanActions(action.then);
           scanActions(action.failThen);
+        } else if (action.kind === 'date-now-read') {
+          attachedNowNodes.add(action.nodeId);
+          scanActions(action.then);
         } else if (action.kind === 'branch') {
           scanActions(action.whenTrue);
           scanActions(action.whenFalse);
@@ -6204,6 +6737,27 @@ function planComponent(
       (HTTP_VALUE_OUTPUTS.includes(connection.fromProperty) ||
         connection.fromProperty === 'error' ||
         connection.fromProperty.startsWith('out-'));
+    /**
+     * The date family's value outputs into a rendered sink (EXP-011 Tier 1.3) — a formatted date
+     * in a Text, a `Is Same` gating `visible`, a `Day Name` in a label. Same rationale as the
+     * three predicates above: `resolveExpr` decides what the read *is*, and this decides only
+     * where it lands.
+     *
+     * 🔴 **Derived from the tables `resolveExpr` dispatches on, not restated beside them.** The
+     * warning above this block says a narrower predicate here lets a read resolve and then fall
+     * through to the catch-all — a blank element with a note about the wrong thing. Deriving it
+     * is the only spelling under which the two cannot drift, and this family has eighteen value
+     * outputs across six nodes, which is more than enough to get a hand-copied list wrong.
+     *
+     * ⚠️ This whole clause is the gap §7.5 named and Tier 1.2 did not close: **a new readable
+     * node has at least two consumers in this package, and the second one is silent.** The date
+     * nodes translated in `resolveExpr` for a full test run before anything reached a page,
+     * because Pass 4c's whitelist and this predicate are both opt-in and neither errors.
+     */
+    const isDateRead =
+      DATE_NODES[fromNode.type] !== undefined &&
+      DATE_NODES[fromNode.type].outputs[connection.fromProperty] !== undefined;
+    const isNowRead = fromNode.type === NOW_TYPE && NOW_OUTPUTS[connection.fromProperty] !== undefined;
     if (
       !isLatchRead &&
       !isControlRead &&
@@ -6211,7 +6765,9 @@ function planComponent(
       !isRecordErrorRead &&
       !isSessionRead &&
       !isValueVariableRead &&
-      !isHttpRead
+      !isHttpRead &&
+      !isDateRead &&
+      !isNowRead
     ) {
       continue;
     }
@@ -6247,6 +6803,29 @@ function planComponent(
     stateLandedKeys.add(connection.key);
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
     plan.bindings[toNode.id][connection.toProperty] = { kind: 'computed', expr };
+    /**
+     * 🔴 **The tree's own wires and nodes, which this pass did not claim until EXP-011 Tier 1.3.**
+     *
+     * Every earlier client of this pass reads a *leaf*: a latch's state, a control's value, an
+     * HTTP output, a value Variable's constant. None of them has upstream wires, so dropping
+     * `ctx.consumes` and `ctx.logicNodeIds` cost nothing and nobody noticed. The date family is
+     * the first vocabulary to arrive here with a **composed** expression — `Now → Date Add →
+     * Date To String` is three nodes and two wires resolved inside one call — and without this
+     * the report said those wires *"have no deterministic translation"* and deferred `Date Add`
+     * for feeding a sink with "no static binding", about a page that had in fact emitted the
+     * whole nested call correctly.
+     *
+     * The emitted app was right and the report was wrong, which is the worse way round: a note
+     * claiming a working wire was dropped sends an author looking for a feature that is there.
+     * Pass 4c has done exactly this since it was written; this is that block, verbatim.
+     */
+    for (const key of ctx.consumes) consumed.add(key);
+    for (const id of ctx.subscriberIds) boundSubscribers.add(id);
+    if (plan.file) {
+      for (const id of ctx.logicNodeIds) {
+        dispositions[id] = { kind: 'collapsed', into: `src/${plan.file.dir}/${plan.file.fileBase}.tsx` };
+      }
+    }
   }
 
   /**
@@ -6621,6 +7200,59 @@ function planComponent(
     dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
   }
 
+  /**
+   * The date family's verdict (EXP-011 Tier 1.3) — the latch sweep's shape.
+   *
+   * 🔴 **Without this the family's whole vocabulary of reasons is unreachable.** Pass 4f
+   * deliberately does not consume a wire whose read resolved to null, so the reason
+   * `resolveExpr` produced — the wired enum, the consumed Changed, the abstaining Date input —
+   * dies in a `ctx` nobody reads, and Pass 6 reports the generic *"no deterministic translation
+   * in step 5"* instead. A gate that fires with the wrong reason is the failure this task's §7.3
+   * and §8.4 exist to prevent, and it looks *exactly* like a gate that works.
+   *
+   * The read is re-resolved here rather than cached, for the value Variables' stated reason: the
+   * gates that live in `resolveExpr` are about the **port**, not the node, and reporting a
+   * sink-shaped reason for them would blame the sink for a refusal the source made.
+   */
+  for (const node of component.nodes) {
+    const isDateNode = DATE_NODES[node.type] !== undefined || node.type === NOW_TYPE;
+    if (!isDateNode || dispositions[node.id] !== undefined) continue;
+    let verdict: string | null = null;
+    for (const c of component.connections) {
+      if (consumed.has(c.key)) continue;
+      // Its own Read trigger: the chain's own reason wins over anything the outputs say.
+      if (node.type === NOW_TYPE && c.toId === node.id && c.toProperty === 'read') {
+        const compiled = compiledSinks.get(`${node.id}:read`);
+        verdict =
+          compiled !== undefined && 'defer' in compiled
+            ? compiled.defer
+            : 'its Read is never fired by a translatable source';
+        break;
+      }
+      if (c.fromId === node.id) {
+        const ctx = newCtx();
+        const reason = resolveExpr(node, c.fromProperty, ctx) === null ? ctx.defer : undefined;
+        const sink = nodeById.get(c.toId);
+        verdict =
+          reason ??
+          `its ${c.fromProperty} read feeds ${sink?.type ?? 'a missing node'}.${c.toProperty}, which has no static binding in this slice`;
+        break;
+      }
+    }
+    // A date node nothing reads computes an answer no line of the app prints. The latches' rule:
+    // that is a node dropped, not a node translated, and the report is where the difference shows.
+    if (verdict === null && !component.connections.some((c) => c.fromId === node.id)) {
+      verdict = 'its answer is read by nothing statically translatable';
+    }
+    if (verdict === null && !plan.file) verdict = 'component emits no file to host its answer';
+    if (verdict !== null) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: verdict };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${verdict}`);
+      continue;
+    }
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+  }
+
   // Reactive Conditions (LOGIC-TARGET §10): the box is ticked and nothing drives `Evaluate`, so
   // the node re-tests whenever a value arrives on `condition` and fires exactly one arm. That is
   // a re-run keyed on the condition — a useEffect, not a handler. The Evaluate-only twin (§3) is
@@ -6957,6 +7589,19 @@ function planComponent(
             if (answer !== undefined && plan.stateVars.includes(answer)) action.materialize = answer.name;
             fillMaterialize(action.then);
             fillMaterialize(action.failThen);
+            break;
+          }
+          /**
+           * `Now`'s row, on the same rule and for the same reason (EXP-011 Tier 1.3): a render
+           * read of `Timestamp` resolves passes after the Read compiled, so asking here whether
+           * anything reads the row is the only place that can answer truthfully. Unlike HTTP's,
+           * this row is *also* earned without any action at all — a `Now` with nothing on Read is
+           * the mount instant — so the row is never removed here, only wired to its writer.
+           */
+          case 'date-now-read': {
+            const row = nowVars.get(action.nodeId);
+            if (row !== undefined && plan.stateVars.includes(row)) action.materialize = row.name;
+            fillMaterialize(action.then);
             break;
           }
           case 'branch':

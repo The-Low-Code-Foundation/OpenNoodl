@@ -114,7 +114,7 @@ where export means *taking your app with its backend*. Everything downstream fol
 | [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Coverage ledger & contributor gate | ✅ Built — **picker ratchet added 2026-08-28** |
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **The exported app talks to its deployed backend** | 🟢 **Built + driven s33** — AC4 (cloud functions) waits on EXP-011's node |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **NEW** |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **Tier 1.1, 1.2, 1.4 built + driven** — 60/127 (47.2%); Tier 1.3 (the date family) is the rest of Tier 1 |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **TIER 1 COMPLETE** — 66/127 (52.0%); Tier 2 (Navigation, Cloud Services, string/math) is next |
 
 ### Order, and why
 

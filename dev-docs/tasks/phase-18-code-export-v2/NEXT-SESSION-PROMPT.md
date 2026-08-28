@@ -1,16 +1,15 @@
-# Next session — EXP-011 Tier 1.2 landed; next is Tier 1.3, the date family
+# Next session — Tier 1 is closed; the next question is whether to keep counting the picker
 
 ## Where the phase stands
 
-**EXP-011 Tier 1.2 is built, driven and gated (session 37).** `HTTP Request` exports: one function
-per node in `src/api/http.ts`, both outcome arms, the `Error` value, the Response Mapping compiled
-to accessors. Read [EXP-011 §8](./EXP-011-PICKER-COVERAGE.md) before touching this family — §8.3 is
-the one that matters most, because **three of its four near-misses are older than the slice** and
-the next slice can walk into all three unchanged.
+**EXP-011 Tier 1.3 is built, driven and gated (session 38), and that closes Tier 1.** All six date
+nodes translate: five are pure functions that became one composable expression kind, and `Now`
+became one action with a lazily-seeded state row. Read [EXP-011 §9](./EXP-011-PICKER-COVERAGE.md)
+before touching this family — **§9.4 is the one that matters most**, because four of its five
+near-misses are older than the slice and two of them are the *same rule failing for the third and
+fourth time*.
 
-**59 → 60 of 127 (46.5% → 47.2%).** Floor raised in the same commit.
-
-**Only Tier 1.3 is left of Tier 1.**
+**60 → 66 of 127 (52.0%).** Floor raised in the same commit. Past half, for the first time.
 
 ## The objective, so it cannot drift
 
@@ -20,7 +19,7 @@ a deployed NodeGX backend — exports to a React repo that builds, runs, and sti
 ## The number
 
 ```
-npm run export-ledger:picker      # ratcheted in PR CI — holds at 60/127 (47.2%)
+npm run export-ledger:picker      # ratcheted in PR CI — holds at 66/127 (52.0%)
 npm run export-ledger:check       # also enforces the SHAPE of a deferral (EXP-011 AC4)
 ```
 
@@ -28,66 +27,75 @@ npm run export-ledger:check       # also enforces the SHAPE of a deferral (EXP-0
 🔴 Custom node types are **deliberately** outside the picker number — `$customNodesComment` in
 `packages/nodegx-export/coverage-ledger.json` says why. Do not "fix" it by adding them.
 
-## Do this next: EXP-011 Tier 1.3 — the date family
+## Do this next — and the first decision is which of these two it is
 
-**[EXP-011 §3 Tier 1](./EXP-011-PICKER-COVERAGE.md), item 3.** `Now`, `Date To String`, `Date Add`,
-`Date Compare`, `Date Difference`, `Date Parts` — six Utilities nodes, and anything with a
-timestamp needs two of them. Read their runtime sources first, the way §8 read `httpnode.ts` and
-§7 read `filtercollectionnode.ts`: the export's job is to reproduce what those files do, including
-what they get wrong.
+Tier 1 was ranked by *"can you build a normal app without it"*. That question is answered, and the
+honest next step is **not** automatically Tier 2. Two candidates, and they are not the same kind
+of work:
 
-⚠️ **`Now` is time-dependent**, which no node in this vocabulary has been. Decide early whether it
-is a render read (recomputed every render — wrong: it would re-render forever) or an invoked read,
-and let the runtime's own `runOnChange` answer it rather than choosing.
+### A. 🔴 The `unknown`-typed Variable — [§8.7](./EXP-011-PICKER-COVERAGE.md), still open
+
+A Variable written from a **Function output or an event payload** types as `unknown`, and Pass 4
+**drops every read of it**. Session 38 closed the four cases it could name one at a time —
+`String`, HTTP's `Error`, `Now`'s `ISO String`, `Date To String`'s `Date String` — and each one
+was found the same way: by building an app and seeing a placeholder where a value should be.
+
+⚠️ **That per-node whack-a-mole is the finding, not the fix.** Four sessions have now each added a
+line to `typeOfSource` after being bitten. The real fix is §8.7's: let a variable be `unknown` and
+**coerce at its render sinks**, the way `childText` already coerces an HTTP read — then no future
+node needs a line there at all. It costs nothing in the ledger and unblocks the shape every slice
+above Tier 1.4 produces. **This is the highest-value non-picker work in the phase.**
+
+### B. Tier 2, and `Page Inputs` is the whole of it
+
+**Navigation (5).** `Page Inputs` is the one that matters — no path parameters means no detail
+pages, which is the shape of most real apps. Then `Navigate To Path`, `External Link`, the
+component stack pair. **Cloud Services (9)** should be *re-measured* after EXP-009 rather than
+planned against the old list; several may fall out for free.
+
+**Recommendation: A first, then B.** A is one slice, it deletes a recurring failure mode rather
+than adding a node, and B's detail pages will write variables from page inputs — which is A's
+problem again.
 
 ## Then, in the order they are worth doing
 
-1. 🔴 **The `unknown`-typed Variable** — [§8.7](./EXP-011-PICKER-COVERAGE.md). A Variable written
-   from an HTTP output (or a Function output, or an event payload) types as `unknown`, and Pass 4
-   **drops every read of it**: *fetch → Set Variable → show it*, the first thing anyone builds,
-   exports a blank element with a note. The fix is the one `childText` just made for an HTTP read —
-   let the variable be `unknown` and coerce at its render sinks — and it needs an audit of the
-   other sinks (`contentAttrs` emits `src={expr}` raw). This is the highest-value non-picker work
-   in the phase right now: it costs nothing in the ledger and unblocks the shape every slice above
-   Tier 1.4 produces.
-2. **`updatePorts` in `httpnode.ts` still publishes `success`** — [§8.5](./EXP-011-PICKER-COVERAGE.md).
-   The node fires `done` (ERG-001 renamed it); the editor draws **both**, because a node's port set
-   is type-ports concat dynamic-ports. So an author can wire a `Success` that runs nothing, in the
-   editor and in the deployed app. One line to delete, plus a look at whether `canceled`/`error`
-   should stay in that list at all now that the static definition declares them. ⚠️ Deleting a port
-   an existing project may have wired is a migration question, not only a fix.
-3. **EXP-004** — the honesty UX (a report file into the output). Still owed: EXP-010's emitted
-   `TODO(export)` markers and module report both end with "See the export report", and there is no
-   report. Tier 1.1's, 1.2's and 1.4's deferral notes now join them.
-4. **The collection-state slice** — it unblocks `Set Object Properties` and (with the row-output
+1. **`updatePorts` in `httpnode.ts` still publishes `success`** — [§8.5](./EXP-011-PICKER-COVERAGE.md).
+   The node fires `done`; the editor draws **both**, so an author can wire a `Success` that runs
+   nothing, in the editor and in the deployed app. One line to delete. ⚠️ Deleting a port an
+   existing project may have wired is a migration question, not only a fix.
+2. **EXP-004** — the honesty UX (a report file into the output). EXP-010's `TODO(export)` markers
+   and module report both end with "See the export report", and there is no report. Tier 1.1–1.4's
+   deferral notes now join them.
+3. **The collection-state slice** — unblocks `Set Object Properties` and (with the row-output
    relay) `Remove Object From Array`. Both ledger entries name it.
+4. **The date family's signals** — every `Changed` / `Invalid Date` / `On Before` defers, and they
+   all defer on the same sentence: a recomputation is a render, not an event. Closing them is an
+   `effect()` slice, not a date slice (§9.6).
 5. **EXP-009 leftovers**: drive the exported login/admin forms in a browser, and delete the
    drive-residue user `exp009-drive` from the local Puppy backend's `_User`.
 
-## 🔴 What session 37 would tell you if it could only say four things
+## 🔴 What session 38 would tell you if it could only say four things
 
-1. **A walker with a `default` is where a new construct dies quietly.** `collectExprUse` had no
-   case for the asynchronous actions, so nothing inside a `done` or `failure` chain earned its
-   state row or its import — the emitted page read an identifier it never declared. `compileSink`
-   is worse: no `default` at all, just a fall-through to the Set Variable case, so an unhandled
-   node type **defers with a plausible reason about a different node**. When you add an action or
-   an expression kind, grep for every site that enumerates the union — the compiler only catches
-   the exhaustive ones.
-2. **A collision you can see is not necessarily the collision that can fire.** The emitted page had
-   `const error = useValue(postError)` beside `catch (error)`, and the fix went into the render
-   locals, where it was **inert** — a handler reads a variable through `.get()`, never through the
-   render local. The reachable case was a *state row* named `error`, which prints bare in both
-   modes. Measure which one can actually be reached before fixing either.
-3. **Allocation order decides whether a row exists.** The answer row is allocated by the read that
-   needs it, and render reads resolve two passes after the action compiles — so asking "does
-   anything read this?" at compile time answered *no* for every render read there is. §6.2 moved a
-   push *later* to stop emitting a row nothing read; §8.3 moved one *later* to stop dropping a row
-   something does. Both live in the verdict sweep now, and that is where this kind of question
-   belongs.
-4. **Make the server tell you what it received.** The drive's strongest row is the echo line: a
-   quote appearing on screen is consistent with the query parameter and the header never leaving
-   the app. A local server that reports what actually arrived turns "it looks right" into a reading
-   that can exclude.
+1. **A new readable node has at least two consumers, and only the first one errors.** This is the
+   third and fourth time this rule has been written down after being violated. `resolveExpr` is
+   the loud one. The silent ones are **Pass 4c's whitelist**, **Pass 4f's predicate** and
+   **`typeOfSource`** — a type missing from any of them renders nothing, reports nothing, and
+   passes the whole suite. Pass 4f's predicate is now *derived* from the tables `resolveExpr`
+   dispatches on; do that everywhere you can, because a hand-copied list of eighteen ports across
+   six nodes is a list that will drift.
+2. **Test a transcription against the thing it transcribes, and then prove the comparison can
+   fail.** The date math was checked by loading the *emitted* module and running it against the
+   interpreter's own `datemath.ts` over ~900 combinations — and by breaking one copy of it on
+   purpose to confirm the grid disagrees. A test against a second copy of the same logic proves
+   only that both copies say the same thing.
+3. **A green suite that parses every emitted file still shipped code that does not parse.** Every
+   fixture that reached the broken construct wired it to a button that *already had another
+   action*, and two actions take the block form. The single-action case — the shape a real project
+   has — was never built until an app was. **Ask what your fixtures have in common.**
+4. **When the app is right and the report is wrong, that is the worse way round.** Pass 4f
+   discarded the expression tree's own consumed wires, so the export said working wires had "no
+   deterministic translation". An author reading that goes looking for a feature that is already
+   there.
 
 ## Standing practice
 
@@ -97,15 +105,20 @@ ts-morph and Prettier stay uninstalled; `packages/nodegx-export` is not in root 
 ```
 cd packages/nodegx-export
 ../../node_modules/.bin/tsc --noEmit          # exit 0
-../../node_modules/.bin/jest                  # 658/658
+../../node_modules/.bin/jest                  # 704/704
 cd ../nodegx-module-inject && ../../node_modules/.bin/jest --config jest.config.js   # 31/31
-npm run export-ledger:picker                  # from the repo root — holds at 60/127
+npm run export-ledger:picker                  # from the repo root — holds at 66/127
 ```
 
 ⚠️ `ts-node` needs an **absolute** path and `--compiler-options '{"module":"commonjs"}'`, run from
 `packages/nodegx-export`. Copy the harness with **`cp -a`** so the `@nodegx/core` symlink survives.
 Sum the corpus audit's `^=== ` lines with a **regex**, not awk fields — project names contain
 spaces, which silently shifts `$3/$4`.
+
+⚠️ **A runtime file may not typecheck under this package's tsconfig.** `datetostring.ts` does not,
+because its `_format` reads a `Date | undefined` as a `Date` — the load-bearing throw its own catch
+depends on. `ts.transpileModule` erases types without checking them, which is how a test here runs
+the interpreter's real code. Do not "fix" the runtime file to make a test import work.
 
 ## Authoring a project without an MCP server bound to it (unchanged, and it works)
 
@@ -115,35 +128,36 @@ spaces, which silently shifts `$3/$4`.
 2. Drive a **second server over stdio from a script**: `mcp-client.mjs`, ~50 lines over `spawn` +
    newline-delimited JSON-RPC. It runs the server from **`src` via ts-node**, never from `dist/`.
 3. `update_component` takes `{ path, set: { nodes, connections, visualRoots } }` — a whole
-   component in one call, which is the simplest way in. The `operations` discriminators are
-   **snake_case** (`add_node`, `add_connection`, …); `addNode` returns *"Invalid discriminator
-   value"*. ⚠️ `get_node_type` takes **`type_names`** (an array), not `typeName`.
+   component in one call. ⚠️ `nodes` is a **flat list** and `children` holds **id strings**, not
+   nested objects. `get_node_type` takes **`type_names`** (an array), not `typeName`.
 4. ⚠️ `mcp-client.mjs` truncates each result to 6000 chars, so a big `render_report` comes back as
    **unparseable JSON**. Grep the raw text for what you need rather than `JSON.parse`-ing it.
-5. `render_report` confirms the **interpreter** runs it, before you ask whether the export does.
+5. `render_report` confirms the **interpreter** runs it, before you ask whether the export does —
+   and its `text.onScreen` count is a cheap check that the panels you expect to be hidden are.
 
-## Building and driving an exported app (what session 37 reused)
+## Building and driving an exported app (what session 38 reused)
 
 - Harness: `cp -a` the prepared `corpus-harness/` (a Vite app with `node_modules` and the
   `@nodegx/core` symlink), `rm -rf src dist public`, then emit into it. **Never overwrite its
   `package.json`.**
-- `npm run build` runs `tsc -b && vite build`, so the generated wrappers are typechecked. **This is
-  the step that finds what tests cannot.**
-- Serve with `npx vite preview --port 5199 --strictPort`; stop it by port
-  (`lsof -ti :5199 -sTCP:LISTEN | xargs kill`). Chrome on a **non-default** debug port (9333).
-- 🔴 **Typing into a React-controlled input needs the native value setter**, not `el.value = x`.
-- 🔴 **Read `textContent` per element, never `body.innerText`** — `innerText` collapses empty
-  elements away, and an empty readout is exactly what an honest deferral leaves behind.
-- 🔴 **Give the drive something that must NOT happen**, and **sabotage the project** afterwards to
-  prove the drive can fail at all.
+- `npm run build` runs `tsc -b && vite build`. **This is the step that finds what tests cannot.**
+- Serve with `npx vite preview --port 5211 --strictPort`; stop it by port
+  (`lsof -ti :5211 -sTCP:LISTEN | xargs kill`). Chrome on a **non-default** debug port (9334) —
+  a peer's editor holds 9222.
+- 🔴 **Read `textContent` per element, never `body.innerText`.**
+- 🔴 **Gate a "must not appear" panel on `mounted`, never `visible`** — `visible` keeps the element
+  in the DOM with its text intact, so an absence read off it is not an absence.
+- 🔴 **Write the expected answers down before the app runs**, and **sabotage the project**
+  afterwards to prove the drive can fail. Session 38's sabotage moved exactly 3 rows of 14.
 
 ## Instruments
 
-s37 scratchpad `796c6d71-…`: `mcp-client.mjs`, `emit-to-app.ts`, `quotes-api.mjs` (the local server
-the drive points at), `drive-quote.mjs`, `corpus-harness/`, the built `quoteapp/`, and
-`quote-desk/` (also landed as `tests/fixtures/quote-desk`).
-s36's `9001618b-…` has `coverage-audit.ts`, `projects-42.txt`, `drive-shelf.mjs`, `shelfapp/`.
-s35's `91a5e120-…` has `harness/`, `dialapp/`, `drive.mjs`, `projects.txt` (41).
+s38 scratchpad `e94a3353-…`: `mcp-client.mjs`, `emit-to-app.ts`, `drive-dates.mjs`,
+`corpus-harness/`, the built `dateapp/`, and `sabotaged/` + `sabapp/` (the three-way mutant).
+The project also landed as `tests/fixtures/deadline-desk`, and lives at
+`~/vscode_projects/NodeGX test projects/Deadline Desk`.
+s37's `796c6d71-…` has `quotes-api.mjs`, `drive-quote.mjs`, `quote-desk/`.
+s36's `9001618b-…` has `coverage-audit.ts`, `projects-42.txt`, `drive-shelf.mjs`.
 
 ⚠️ `packages/nodegx-export/src/analyze/appState.ts` contains **four raw NUL bytes** (a map-key
 separator written literally into template strings). `grep` and `rg` treat the whole file as

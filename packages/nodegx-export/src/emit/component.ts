@@ -88,6 +88,16 @@ export interface EmittedComponent {
   /** { "src/pages/Landing.tsx": …, "src/pages/Landing.module.css": … } */
   files: Record<string, string>;
   notes: string[];
+  /**
+   * `src/lib/date.ts` helpers this component imports (EXP-011 Tier 1.3), or an empty set.
+   *
+   * 🔴 Reported from **here** rather than derived from the plan, and the difference is the
+   * dead-module trap one construct over: `resolveExpr` runs speculatively, so a plan-side flag
+   * would be set by a date read a later pass then dropped, and the app would ship a `lib/date.ts`
+   * no line imports. This set is filled by the same walkers that write the import line, so the
+   * module exists exactly when something names it.
+   */
+  dateHelpers: Set<string>;
 }
 
 export function emitComponent(
@@ -234,6 +244,8 @@ export function emitComponent(
   const usedChannelNames = new Set<string>();
   const usedStoreNames = new Set<string>();
   const usedCollectionNames = new Set<string>();
+  /** Which `src/lib/date.ts` helpers this component calls — the import list (EXP-011 Tier 1.3). */
+  const usedDateHelpers = new Set<string>();
   // Re-host wrappers (EXP-003 §4): only definitions that surviving expressions/actions
   // reference print — the plan registers every resolved definition, referenced or not.
   const jsFunByNode = plan.jsFunctions;
@@ -261,6 +273,18 @@ export function emitComponent(
     // the walker this one's comment warns must be kept in step.
     if (expr.kind === 'collection-get') usedCollectionNames.add(expr.collectionName);
     if (expr.kind === 'list-map' || expr.kind === 'list-filter') collectExprUse(expr.source);
+    /**
+     * EXP-011 Tier 1.3. A date call earns the helper's import, and its arguments earn whatever
+     * they read — a variable, a state row, another date call. Missing the recursion here would
+     * emit `dateAdd(startedAt, …)` with no `import` line and no `useValue` above it.
+     */
+    if (expr.kind === 'date-call') {
+      usedDateHelpers.add(expr.fn);
+      expr.args.forEach(collectExprUse);
+    }
+    // A read through the row earns that row; the chain-local form names a local the enclosing
+    // action declares and earns nothing (the `http-out` rule).
+    if (expr.kind === 'now-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'format') {
       for (const part of expr.parts) if (typeof part !== 'string') collectExprUse(part);
     }
@@ -339,6 +363,12 @@ export function emitComponent(
       action.then.forEach(collectActionUse);
       action.failThen.forEach(collectActionUse);
     }
+    // EXP-011 Tier 1.3. The Read reads nothing itself; its chain does, and the row it writes is
+    // a reference whether or not anything reads it — the record verbs' rule for a written row.
+    if (action.kind === 'date-now-read') {
+      if (action.materialize !== undefined) referencedStateNames.add(action.materialize);
+      action.then.forEach(collectActionUse);
+    }
     if (action.kind === 'jsfun-run') {
       referencedJsIds.add(action.nodeId);
       jsArgExprs(action.nodeId).forEach(collectExprUse);
@@ -365,7 +395,11 @@ export function emitComponent(
         ? [a, ...deepActions(a.whenTrue), ...deepActions(a.whenFalse)]
         : a.kind === 'http-call'
           ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
-          : a.kind === 'popup-show' || a.kind === 'popup-close' || a.kind === 'jsfun-run' || a.kind === 'api-call'
+          : a.kind === 'popup-show' ||
+              a.kind === 'popup-close' ||
+              a.kind === 'jsfun-run' ||
+              a.kind === 'api-call' ||
+              a.kind === 'date-now-read'
             ? [a, ...deepActions(a.then)]
             : [a]
     );
@@ -416,6 +450,14 @@ export function emitComponent(
     // The second walker, per the warning above: a render binding on an HTTP output reads the
     // state row the request writes, and the row has to survive the `referencedStateNames` filter.
     if (expr.kind === 'http-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
+    // EXP-011 Tier 1.3, the same clause twice more. A date call's arguments earn their hooks
+    // through this walker, and a render read of `Now` earns the row it goes through — a render
+    // read is *always* the row form, since the local exists only inside the Read chain.
+    if (expr.kind === 'date-call') {
+      usedDateHelpers.add(expr.fn);
+      expr.args.forEach(hookExprSources);
+    }
+    if (expr.kind === 'now-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'jsfun-out') {
       if (expr.viaState !== undefined) {
         // A materialized read (§4f) goes through the state var, not a render local.
@@ -670,6 +712,14 @@ export function emitComponent(
       // nothing has written. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.2).
       case 'http-out':
         return true;
+      // Always — an unreadable date answers unset on all five, and Date To String is unset before
+      // its first format. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.3).
+      case 'date-call':
+        return true;
+      // Never: the row is seeded at mount by a lazy initializer and every write is a fresh Date,
+      // which is what lets `now.getTime()` print without a guard.
+      case 'now-out':
+        return false;
       case 'state-get':
         return expr.maybeUndefined === true;
       // A list is always an array — the module-scope `collection([])` exists from module load,
@@ -790,6 +840,17 @@ export function emitComponent(
     // future path that breaks the invariant emits something a reader can find.
     return call ?? { answerLocal: 'answer', messageLocal: 'message', fnName: 'fetch', typeName: 'Answer' };
   };
+  /**
+   * The chain-local one `Now` binds its instant to (EXP-011 Tier 1.3), read off the plan so the
+   * expression side and the action side cannot disagree about a name — `httpNamesOf`'s rule.
+   */
+  const nowLocalOf = (nodeId: string): string => {
+    const action = deepActions(allActions).find((a) => a.kind === 'date-now-read' && a.nodeId === nodeId);
+    // Unreachable: a local-form `now-out` is minted only inside the chain of a Read that
+    // attached. Total rather than `!`, so a future path that breaks the invariant emits
+    // something a reader can find rather than crashing here.
+    return action !== undefined && action.kind === 'date-now-read' ? action.local : 'clockRead';
+  };
   const exprCode = (expr: ValueExpr, mode: 'handler' | 'render'): string => {
     switch (expr.kind) {
       case 'prop':
@@ -818,6 +879,24 @@ export function emitComponent(
           ? `${base}fields.${field}`
           : `${base}fields[${JSON.stringify(field)}]`;
       }
+      /**
+       * A `Now` output (EXP-011 Tier 1.3) — the row anywhere, the chain's own local inside the
+       * Read chain. The two derived outputs are member reads off whichever one it is, and they
+       * need no optional chaining: the row is seeded at mount and the local is a fresh `Date`.
+       */
+      case 'now-out': {
+        const base = expr.viaState ?? nowLocalOf(expr.nodeId);
+        if (expr.output === 'timestamp') return `${base}.getTime()`;
+        if (expr.output === 'iso') return `${base}.toISOString()`;
+        return base;
+      }
+      /**
+       * One of the five pure date nodes (EXP-011 Tier 1.3) — the node *is* the call, and the
+       * arguments print in the same mode, so a nested `Now → Date Add → Date To String` comes
+       * out as one nested expression in either context.
+       */
+      case 'date-call':
+        return `${expr.fn}(${expr.args.map((a) => exprCode(a, mode)).join(', ')})`;
       // One `const session = useSession()` per component, read the same way in both modes — the
       // hook is a render local and a handler closes over it (USER-FAMILY §4c).
       case 'session-get':
@@ -1001,6 +1080,15 @@ export function emitComponent(
         case 'http-out':
           if (e.viaState !== undefined) add(e.viaState);
           break;
+        // EXP-011 Tier 1.3, same clause: an effect reading `Now` reads the row, so the row is
+        // the dependency. A pure date call depends on whatever its arguments depend on — it
+        // holds nothing of its own, so it adds no dep of its own either.
+        case 'now-out':
+          if (e.viaState !== undefined) add(e.viaState);
+          break;
+        case 'date-call':
+          e.args.forEach(walk);
+          break;
         case 'jsfun-out': {
           if (e.viaState !== undefined) {
             add(e.viaState);
@@ -1067,6 +1155,60 @@ export function emitComponent(
     if (elseArm === null) return head;
     return `${head}${thenArm.startsWith('{') ? '' : ';'} else ${elseArm}`;
   };
+  /**
+   * Whether anything in a `Now` Read chain reads the bound instant (EXP-011 Tier 1.3) — the test
+   * that decides whether the `const` is emitted at all.
+   *
+   * ⚠️ **A hoisted `function`, and deliberately not a `const` arrow reusing `actionExprsOf`.**
+   * `actionCode` runs from `render`, which is hundreds of lines above where `actionExprsOf` is
+   * declared — reading that `const` here is a `ReferenceError` at emit time, not a compile error,
+   * because a `const` arrow read before its declaration *executes* is in its temporal dead zone.
+   * That is the §7.2 trap this package has already been bitten by twice; a `function` declaration
+   * is hoisted whole and cannot reproduce it.
+   */
+  function chainReadsNowLocal(actions: HandlerAction[], nodeId: string): boolean {
+    const reads = (e: ValueExpr): boolean => {
+      if (e.kind === 'now-out') return e.nodeId === nodeId && e.viaState === undefined;
+      if (e.kind === 'date-call') return e.args.some(reads);
+      if (e.kind === 'format') return e.parts.some((p) => typeof p !== 'string' && reads(p));
+      if (e.kind === 'logical') return e.operands.some(reads);
+      if (e.kind === 'not' || e.kind === 'truthy') return reads(e.operand);
+      if (e.kind === 'list-map' || e.kind === 'list-filter') return reads(e.source);
+      return false;
+    };
+    const inAction = (a: HandlerAction): boolean => {
+      switch (a.kind) {
+        case 'store-set':
+        case 'globalstore-set':
+          return reads(a.expr);
+        case 'state-set':
+          return a.expr !== undefined && reads(a.expr);
+        case 'emit':
+          return a.payload.some((p) => reads(p.expr));
+        case 'collection-add':
+          return a.entries.some((e) => reads(e.expr));
+        case 'collection-clear':
+          return a.then.some(inAction) || a.unchangedThen.some(inAction);
+        case 'branch':
+          return reads(a.cond) || a.whenTrue.some(inAction) || a.whenFalse.some(inAction);
+        case 'api-call':
+          return (
+            a.args.some((arg) => (arg.kind === 'expr' ? reads(arg.expr) : arg.props.some((p) => reads(p.expr)))) ||
+            a.then.some(inAction)
+          );
+        case 'http-call':
+          return a.args.some((arg) => reads(arg.expr)) || a.then.some(inAction) || a.failThen.some(inAction);
+        case 'popup-show':
+        case 'popup-close':
+        case 'jsfun-run':
+        case 'date-now-read':
+          return a.then.some(inAction);
+        default:
+          return false;
+      }
+    };
+    return actions.some(inAction);
+  }
   const actionCode = (action: HandlerAction, indent = 0): string => {
     switch (action.kind) {
       case 'navigate':
@@ -1233,6 +1375,34 @@ export function emitComponent(
           `${pad(indent)}}`
         ].join('\n');
       }
+      /**
+       * `Now`'s Read (EXP-011 Tier 1.3) — read the clock once, then run the chain.
+       *
+       * 🔴 **The instant is bound to a local, and the binding is the correctness.** Two bare
+       * `new Date()` calls in one chain are two different instants that can straddle a
+       * millisecond, so `Timestamp` and `ISO String` read in the same chain could disagree about
+       * which second it is — where the interpreter reads the clock once and publishes three views
+       * of it. The local is also what a chain read *must* say: `setNow(...)` does not change the
+       * row inside the closure that called it.
+       *
+       * The `const` is emitted only where something reads it. A Read whose outputs nobody
+       * consumes is a no-op in the interpreter too — `_read` flags three outputs dirty and
+       * nothing is listening — so emitting the chain alone is exact rather than a shortcut.
+       */
+      case 'date-now-read': {
+        const at = pad(indent);
+        const readsLocal = chainReadsNowLocal(action.then, action.nodeId);
+        const statements: string[] = [];
+        if (action.materialize !== undefined || readsLocal) {
+          statements.push(`const ${action.local} = new Date()`);
+        }
+        if (action.materialize !== undefined) {
+          statements.push(`${stateSetterOf(action.materialize)}(${action.local})`);
+        }
+        statements.push(...expandActions(action.then).map((a) => actionCode(a, indent)));
+        // An empty Read is `new Date()` discarded — what the node does when nothing consumes it.
+        return statements.length > 0 ? statements.join(`;\n${at}`) : 'new Date()';
+      }
       case 'branch': {
         const armCode = (armActions: HandlerAction[]): string => {
           const list = expandActions(armActions);
@@ -1266,7 +1436,20 @@ export function emitComponent(
     const isStatement = (a: HandlerAction) =>
       a.kind === 'branch' ||
       (a.kind === 'popup-close' && a.then.length > 0) ||
-      (a.kind === 'collection-clear' && (a.then.length > 0 || a.unchangedThen.length > 0));
+      (a.kind === 'collection-clear' && (a.then.length > 0 || a.unchangedThen.length > 0)) ||
+      /**
+       * 🔴 `Now`'s Read declares a `const`, and a `const` is a statement (EXP-011 Tier 1.3).
+       * `() => const clockRead = new Date(); setClock(clockRead)` does not parse — the fourth
+       * instance of this file's oldest hazard, after the `}; else`, the gated popup close and the
+       * Clear Array `if`.
+       *
+       * ⚠️ It survived a suite that parses every emitted file, because every fixture that reached
+       * it wired the Read to a button **that already had another action** — two actions take the
+       * `{ a; b; }` form at the foot of this function and parse fine. Only a Read that is the
+       * *whole* handler reaches the expression body, and that is the shape a real project has.
+       * Found by building the exported app, not by the tests.
+       */
+      a.kind === 'date-now-read';
     if (isAsync || expanded.some(isStatement)) {
       // A try/catch is a statement, not an expression: it prints at the handler's own column and
       // takes no terminator. Every other action keeps the semicolon the existing goldens pin.
@@ -1274,7 +1457,10 @@ export function emitComponent(
         .map((a) =>
           a.kind === 'api-call' || a.kind === 'http-call'
             ? `${pad(indent + 2)}${actionCode(a, indent + 2)}`
-            : `${pad(indent + 2)}${actionCode(a)};`
+            : // A `Now` Read prints several statements and needs the column too, or its second
+              // and third lines start at column 0 (EXP-011 Tier 1.3). Valid either way — this is
+              // about the emitted code being read by a person, which is EXP-002's whole standard.
+              `${pad(indent + 2)}${actionCode(a, a.kind === 'date-now-read' ? indent + 2 : 0)};`
         )
         .join('\n');
       return `${head} => {\n${body}\n${pad(indent)}}`;
@@ -1355,6 +1541,15 @@ export function emitComponent(
       specifier,
       `import { ${[...fnNames, ...typeNames.map((t) => `type ${t}`)].join(', ')} } from '${specifier}';`
     );
+  }
+  /**
+   * EXP-011 Tier 1.3. One module for the whole project, like the session's and HTTP's — but
+   * unlike those two it is the *same text* everywhere, so only the helpers this component
+   * actually calls are named in the import.
+   */
+  if (usedDateHelpers.size > 0) {
+    const specifier = `${relRoot}/lib/date`;
+    internalImports.set(specifier, `import { ${[...usedDateHelpers].sort().join(', ')} } from '${specifier}';`);
   }
   if (usedVariableNames.size > 0) {
     const specifier = `${relRoot}/stores/variables`;
@@ -2476,8 +2671,10 @@ export function emitComponent(
   for (const stateVar of referencedStateVars) {
     body.push(`  // ${stateVar.comment}`);
     body.push(
+      // `bootCode` is emitted verbatim and wins over `boot` — the one row that needs it is
+      // `Now`'s, whose initializer must be the lazy `() => new Date()` (EXP-011 Tier 1.3).
       `  const [${stateVar.name}, ${stateVar.setterName}] = useState<${stateVar.tsType}>(${
-        stateVar.boot === null ? '' : tsLiteral(stateVar.boot)
+        stateVar.bootCode ?? (stateVar.boot === null ? '' : tsLiteral(stateVar.boot))
       });`
     );
   }
@@ -2631,6 +2828,10 @@ export function emitComponent(
           ...a.args.flatMap((arg) => (arg.kind === 'expr' ? [arg.expr] : arg.props.map((p) => p.expr))),
           ...a.then.flatMap(actionExprsOf)
         ];
+      // EXP-011 Tier 1.3. The Read reads nothing of its own; the chain is where the expressions
+      // are, and a reader of this function wants them (the `usesPayload` test below is one).
+      case 'date-now-read':
+        return a.then.flatMap(actionExprsOf);
       case 'navigate':
       case 'output-signal':
         return [];
@@ -2641,6 +2842,10 @@ export function emitComponent(
     (e.kind === 'format' && e.parts.some((p) => typeof p !== 'string' && containsPayload(p))) ||
     (e.kind === 'logical' && e.operands.some(containsPayload)) ||
     ((e.kind === 'not' || e.kind === 'truthy') && containsPayload(e.operand)) ||
+    // EXP-011 Tier 1.3 — a receiver whose payload feeds a date node still takes `(payload)`.
+    // Without this the emitted `useSignal` callback takes no argument and the call inside it
+    // reads a `payload` nothing bound.
+    (e.kind === 'date-call' && e.args.some(containsPayload)) ||
     (e.kind === 'jsfun-out' && jsArgExprs(e.nodeId).some(containsPayload));
   for (const receiver of plan.receivers) {
     const channel = channelByName.get(receiver.channelName)!;
@@ -2689,7 +2894,7 @@ export function emitComponent(
     files[`${baseDir}/${plan.file.fileBase}.module.css`] = GENERATED_CSS + '\n' + cssBlocks.join('\n\n') + '\n';
   }
 
-  return { files, notes };
+  return { files, notes, dateHelpers: usedDateHelpers };
 }
 
 /** Pre-order walk of the render tree, root first — CSS class order and naming order. */

@@ -1,0 +1,377 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "aa76001e-171e-423c-ae74-8e1dc380961b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "3069706e-d2b4-421a-821f-5c108c1a1b55",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "board"
+      ],
+      "parameters": {
+        "title": "Deadline Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "board",
+      "type": "Group",
+      "label": "Board",
+      "parent": "3069706e-d2b4-421a-821f-5c108c1a1b55",
+      "children": [
+        "anchorText",
+        "reviewText",
+        "dayNameText",
+        "isoWeekText",
+        "daysText",
+        "monthsText",
+        "tokyoText",
+        "sameDayText",
+        "sameMsText",
+        "futureText",
+        "pastText",
+        "clockIsoText",
+        "clockTimeText",
+        "savedText",
+        "refreshButton"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "paddingLeft": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 24,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "anchorText",
+      "type": "Text",
+      "label": "anchorText",
+      "parent": "board",
+      "parameters": {
+        "text": "—"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "reviewText",
+      "type": "Text",
+      "label": "reviewText",
+      "parent": "board",
+      "parameters": {
+        "text": "—"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "dayNameText",
+      "type": "Text",
+      "label": "dayNameText",
+      "parent": "board",
+      "parameters": {
+        "text": "—"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "isoWeekText",
+      "type": "Text",
+      "label": "isoWeekText",
+      "parent": "board",
+      "parameters": {
+        "text": "—"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "daysText",
+      "type": "Text",
+      "label": "daysText",
+      "parent": "board",
+      "parameters": {
+        "text": "—"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "monthsText",
+      "type": "Text",
+      "label": "monthsText",
+      "parent": "board",
+      "parameters": {
+        "text": "—"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "tokyoText",
+      "type": "Text",
+      "label": "tokyoText",
+      "parent": "board",
+      "parameters": {
+        "text": "—"
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "sameDayText",
+      "type": "Text",
+      "label": "sameDayText",
+      "parent": "board",
+      "parameters": {
+        "text": "Both stamps fall on the same working day."
+      },
+      "x": 160,
+      "y": 1120
+    },
+    {
+      "id": "sameMsText",
+      "type": "Text",
+      "label": "sameMsText",
+      "parent": "board",
+      "parameters": {
+        "text": "Both stamps are the same instant."
+      },
+      "x": 160,
+      "y": 1240
+    },
+    {
+      "id": "futureText",
+      "type": "Text",
+      "label": "futureText",
+      "parent": "board",
+      "parameters": {
+        "text": "The launch date has passed."
+      },
+      "x": 160,
+      "y": 1360
+    },
+    {
+      "id": "pastText",
+      "type": "Text",
+      "label": "pastText",
+      "parent": "board",
+      "parameters": {
+        "text": "The launch date is still ahead."
+      },
+      "x": 160,
+      "y": 1480
+    },
+    {
+      "id": "clockIsoText",
+      "type": "Text",
+      "label": "clockIsoText",
+      "parent": "board",
+      "parameters": {
+        "text": "—"
+      },
+      "x": 160,
+      "y": 1600
+    },
+    {
+      "id": "clockTimeText",
+      "type": "Text",
+      "label": "clockTimeText",
+      "parent": "board",
+      "parameters": {
+        "text": "—"
+      },
+      "x": 160,
+      "y": 1720
+    },
+    {
+      "id": "savedText",
+      "type": "Text",
+      "label": "savedText",
+      "parent": "board",
+      "parameters": {
+        "text": "—"
+      },
+      "x": 160,
+      "y": 1840
+    },
+    {
+      "id": "refreshButton",
+      "type": "net.noodl.controls.button",
+      "label": "refreshButton",
+      "parent": "board",
+      "parameters": {
+        "label": "Refresh the clock"
+      },
+      "x": 160,
+      "y": 1960
+    },
+    {
+      "id": "anchorFmt",
+      "type": "Date To String",
+      "label": "anchorFmt",
+      "x": 600,
+      "y": 40,
+      "parameters": {
+        "input": "2024-01-31T12:00:00",
+        "formatString": "{monthShort} {date}, {year}"
+      }
+    },
+    {
+      "id": "shift",
+      "type": "net.noodl.DateAdd",
+      "label": "shift",
+      "x": 600,
+      "y": 140,
+      "parameters": {
+        "input": "2024-01-31T12:00:00",
+        "amount": 1,
+        "unit": "months"
+      }
+    },
+    {
+      "id": "reviewFmt",
+      "type": "Date To String",
+      "label": "reviewFmt",
+      "x": 600,
+      "y": 240,
+      "parameters": {
+        "formatString": "{monthShort} {date}, {year}"
+      }
+    },
+    {
+      "id": "parts",
+      "type": "net.noodl.DateParts",
+      "label": "parts",
+      "x": 600,
+      "y": 340,
+      "parameters": {
+        "input": "2024-01-31T12:00:00"
+      }
+    },
+    {
+      "id": "gapDays",
+      "type": "net.noodl.DateDifference",
+      "label": "gapDays",
+      "x": 600,
+      "y": 440,
+      "parameters": {
+        "from": "2024-01-31T12:00:00",
+        "to": "2024-03-20T12:00:00",
+        "unit": "days"
+      }
+    },
+    {
+      "id": "gapMonths",
+      "type": "net.noodl.DateDifference",
+      "label": "gapMonths",
+      "x": 600,
+      "y": 540,
+      "parameters": {
+        "from": "2024-01-31T12:00:00",
+        "to": "2024-06-01T12:00:00",
+        "unit": "months"
+      }
+    },
+    {
+      "id": "tokyoFmt",
+      "type": "Date To String",
+      "label": "tokyoFmt",
+      "x": 600,
+      "y": 640,
+      "parameters": {
+        "input": "2024-06-01T23:30:00Z",
+        "formatString": "{year}-{month}-{date} {hours}:{minutes}",
+        "timeZone": "Asia/Tokyo"
+      }
+    },
+    {
+      "id": "cmpDay",
+      "type": "net.noodl.DateCompare",
+      "label": "cmpDay",
+      "x": 600,
+      "y": 740,
+      "parameters": {
+        "a": "2024-05-08T09:00:00",
+        "b": "2024-05-08T21:30:00",
+        "granularity": "day"
+      }
+    },
+    {
+      "id": "cmpMs",
+      "type": "net.noodl.DateCompare",
+      "label": "cmpMs",
+      "x": 600,
+      "y": 840,
+      "parameters": {
+        "a": "2024-05-08T09:00:00",
+        "b": "2024-05-08T21:30:00",
+        "granularity": "millisecond"
+      }
+    },
+    {
+      "id": "cmpNow",
+      "type": "net.noodl.DateCompare",
+      "label": "cmpNow",
+      "x": 600,
+      "y": 940,
+      "parameters": {
+        "b": "2024-06-01T12:00:00",
+        "granularity": "day"
+      }
+    },
+    {
+      "id": "clock",
+      "type": "net.noodl.Now",
+      "label": "clock",
+      "x": 600,
+      "y": 1040
+    },
+    {
+      "id": "clockFmt",
+      "type": "Date To String",
+      "label": "clockFmt",
+      "x": 600,
+      "y": 1140,
+      "parameters": {
+        "formatString": "{hours}:{minutes}:{seconds}"
+      }
+    },
+    {
+      "id": "saveStamp",
+      "type": "Set Variable",
+      "label": "saveStamp",
+      "x": 600,
+      "y": 1240,
+      "parameters": {
+        "name": "lastRead"
+      }
+    },
+    {
+      "id": "lastReadVar",
+      "type": "Variable2",
+      "label": "lastReadVar",
+      "x": 600,
+      "y": 1340,
+      "parameters": {
+        "name": "lastRead"
+      }
+    }
+  ],
+  "visualRoots": [
+    "3069706e-d2b4-421a-821f-5c108c1a1b55"
+  ]
+}

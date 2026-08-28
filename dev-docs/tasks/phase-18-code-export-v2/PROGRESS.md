@@ -33,7 +33,7 @@ README §*What went wrong* has the mechanism.
 | [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Coverage ledger & contributor gate | ✅ **Built**, + picker ratchet 2026-08-28. ⚠️ 96 of 101 `deferred` entries share one auto-generated exemption sentence — EXP-011 §4 rewrites them |
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **Exported app talks to its deployed backend** | 🔴 **Not started — do this first** |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **Not started.** `parseProject` never opens `noodl_modules` |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **Tier 1.1, 1.2 and 1.4 built, driven and gated** — 60/127 (47.2%). Only Tier 1.3, the date family, is left of Tier 1 |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **TIER 1 COMPLETE** — 1.1–1.4 built, driven and gated, 66/127 (52.0%). Tier 2 is next |
 
 ## What actually works today
 
@@ -219,3 +219,56 @@ reproducing the silence; the one-line fix belongs in `httpnode.ts`.
 *fetch → Set Variable → show it* exports a blank element. Not about HTTP; it blocks a Function
 output in the same words. Gates: **658/658** · module-inject 31/31 · `tsc --noEmit` clean ·
 picker ratchet **59 → 60 of 127 (47.2%)**.
+
+## Session 38 — EXP-011 Tier 1.3: the date family, and Tier 1 closes (2026-08-29)
+
+**60 → 66 of 127 (47.2% → 52.0%).** All six date nodes — `Now`, `Date To String`, `Date Add`,
+`Date Compare`, `Date Difference`, `Date Parts` — translate. **Tier 1 is complete**, and this is
+the only tier item that yielded every node it named. Full write-up: [EXP-011 §9](./EXP-011-PICKER-COVERAGE.md).
+
+The organising split is not the picker's: **`Now` is stateful and the other five are pure**. The
+five became one `date-call` expression kind that composes (`Now → Date Add → Date To String` is
+one nested call), and `Now` became one action. `src/lib/date.ts` is a transcription of the
+interpreter's own `datemath.ts` and `Date To String`'s `_format`, and — unlike `src/api/http.ts` —
+it is the same text in every project, so it is a constant that ships only where something imports
+it.
+
+🔴 **`Now` is not a live clock, and the runtime said so rather than the export choosing.** Its
+ports say the outputs *"hold the instant of the last Read"*, and `initialize` seeds them — which
+is `useState<Date>(() => new Date())`, a **lazy** initializer read once per mount. The eager form
+constructs on every render. A read inside the Read chain takes the bound local, not the row,
+because `setClock` does not update the closure that called it (§8.2's rule, second construct) —
+and because two bare `new Date()` calls in one chain can straddle a millisecond.
+
+🔴 **The transcription is tested against the thing it transcribes.** §A of the test suite
+transpiles the *emitted* module and runs it against the runtime's own `datemath.ts` over 896
+date/amount/unit combinations, every ordered pair for the difference, and 400 consecutive days for
+the ISO week — plus `Date To String`'s real `_format`, driven through the node definition's own
+setters. **A deliberately broken copy of the emitted module must disagree, and does**; without
+that control "they agree" is a reading that fits rather than one that excludes.
+
+🔴 **The second-consumer rule failed twice more.** §7.5 wrote it, §8.7 repeated it, and this slice
+still shipped six nodes that translated in `resolveExpr` and rendered nothing: **Pass 4c matches
+on a whitelist and Pass 4f on a predicate, and neither errors when a type is missing.** Then
+`typeOfSource` had no case either, so *save the clock → show it* exported a placeholder. Pass 4f's
+predicate is now derived from the same tables `resolveExpr` dispatches on.
+
+🔴 **Three defects only building and driving could find**: `const` is a statement, so `Now`'s Read
+emitted `() => const clockRead = …`, which does not parse — and it survived a suite that parses
+every emitted file, because every fixture wired the Read to a button that already had an action
+(two actions take the block form; only a Read that is the *whole* handler breaks). Pass 4f dropped
+the expression tree's own `consumes` and `collapses`, so the report claimed working wires were
+dropped — **the app was right and the report was wrong, which is the worse way round**. And two
+silent walkers (`exprTouchesSnap`, `snapExpr`) would have passed a stale chain-local read through:
+of the eleven sites enumerating these unions, the compiler holds six.
+
+**The drive.** `tests/fixtures/deadline-desk` — authored through the MCP, one routed page, nothing
+dropped. Every expected answer was written down before it ran, and the anchor is 31 January 2024
+because adding a month to it has two defensible answers: the page shows **Feb 29**, not Mar 02.
+Two control *pairs* carry the measurement — the same two instants compared at `day` and at
+`millisecond`, where the second panel must be absent, and the same device over the clock. Both use
+`mounted`, not `visible`, because `visible` keeps the element in the DOM with its text intact.
+**Sabotaged in three places, exactly three rows moved and eleven held.**
+
+Gates: **704/704** · module-inject 31/31 · `tsc --noEmit` clean · `export-ledger:check` OK ·
+picker ratchet **60 → 66 of 127 (52.0%)**.

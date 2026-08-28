@@ -589,6 +589,27 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
      * be the exporter asserting a cast the runtime does not perform.
      */
     if (node.type === 'net.noodl.HTTP' && ref.fromProperty === 'error') return 'string';
+    /**
+     * `Now`'s `ISO String` and `Date To String`'s `Date String` (EXP-011 Tier 1.3).
+     *
+     * 🔴 **The same gap, a third and fourth time, and found the same way — by building the app.**
+     * §7.5 wrote the rule after Tier 1.4 missed it, §8.7 named it again after Tier 1.2 missed it,
+     * and this slice missed it too: *"save the moment I pressed the button"* — a `Now` into a Set
+     * Variable, the variable in a Text — exported a Text still showing its authored placeholder,
+     * because the variable had no `string`-typed writer and Pass 4 drops every read of an
+     * `unknown` one. The graph could not be more ordinary.
+     *
+     * The rule this keeps failing against is worth stating plainly: **a new readable node has at
+     * least two consumers in this package, and `resolveExpr` is only the first.** The others are
+     * this function, Pass 4f's predicate and Pass 4c's whitelist, and none of them errors when
+     * missed — each just quietly renders nothing.
+     *
+     * Only the two string-typed outputs. `Now`'s `Date` is a `Date` and its `Timestamp` a number;
+     * this function's whole vocabulary is string-or-unknown, and claiming `string` for either
+     * would be the exporter asserting a cast the runtime does not perform.
+     */
+    if (node.type === 'net.noodl.Now' && ref.fromProperty === 'iso') return 'string';
+    if (node.type === 'Date To String' && ref.fromProperty === 'currentValue') return 'string';
     return 'unknown';
   };
 

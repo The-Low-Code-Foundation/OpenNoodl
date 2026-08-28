@@ -1,6 +1,6 @@
 # EXP-011 — Close the picker gap, ranked by what apps need
 
-**Status:** 🟡 In progress — **Tier 1.2 (`HTTP Request`) is built, driven and gated**, session 37
+**Status:** 🟡 In progress — **Tier 1 is COMPLETE. Tier 1.3 (the date family) built, driven and gated**, session 38
 **Depends on:** nothing — but sequenced after EXP-009 and EXP-010, which are worth more per hour
 **Replaces:** every "what to build next" list in this phase from sessions 20–31
 
@@ -12,14 +12,15 @@
 node scripts/export-ledger/picker-coverage.js
 ```
 
-> **PICKER COVERAGE: 60 of 127 placeable nodes export (47.2%)** — 2026-08-28, session 37
+> **PICKER COVERAGE: 66 of 127 placeable nodes export (52.0%)** — 2026-08-29, session 38
 > (51 / 40.2% when this task was written; **Variables** left the table in session 35, four of the
-> eight Data nodes of Tier 1.1 left it in session 36, and `HTTP Request` left it in session 37)
+> eight Data nodes of Tier 1.1 left it in session 36, `HTTP Request` in session 37, and the whole
+> **date family** — all six — in session 38, which is what takes this past half)
 
 | category | nodes a user can place and cannot export |
 |---|---|
 | **Data** | 22 |
-| **Utilities** | 16 |
+| **Utilities** | 10 |
 | **Cloud Services** | 9 |
 | **Navigation** | 5 |
 | Visual · Component Utilities | 3 · 3 |
@@ -50,7 +51,7 @@ to exercise the picker:
 
 Ranked by *"can you build a normal app without it"*, not by corpus frequency.
 
-### Tier 1 — an ordinary app hits these on day one
+### Tier 1 — an ordinary app hits these on day one  ✅ **complete, session 38**
 
 1. ✅ **The client-side data vocabulary (Data, 8).** `Object`, `Array Filter`, `Array Map` and
    `Clear Array` are **built, driven and gated in session 36 — §7**. The other four defer, each
@@ -58,8 +59,9 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
    something other than themselves — §7.3.
 2. ✅ **`HTTP Request`.** Any app that talks to anything that is not its own backend. **Built,
    driven and gated in session 37 — §8.**
-3. **The date family (Utilities, 6).** `Now`, `Date To String`, `Date Add`, `Date Compare`,
-   `Date Difference`, `Date Parts`. Anything with a timestamp needs at least two of these.
+3. ✅ **The date family (Utilities, 6).** `Now`, `Date To String`, `Date Add`, `Date Compare`,
+   `Date Difference`, `Date Parts`. **All six built, driven and gated in session 38 — §9.** The
+   only tier item that yielded every node it named.
 4. ✅ **`String` / `Number` / `Boolean` / `Color` (Variables, 4).** The plain value nodes. Cheap, and
    embarrassing to be missing. **Built, driven and gated in session 35 — §6.**
 
@@ -96,15 +98,17 @@ nobody will ever do. Most of the current 101 exemptions say the latter, verbatim
 ## §4 Acceptance criteria
 
 1. ✅ **The picker number moves and holds.** Every slice raises `pickerCoverageFloor` in the same
-   commit — `export-ledger:picker` fails if it does not. *(51 → 55 → 59 → 60, sessions 35–37.)*
-2. 🟡 **Tier 1 complete ⇒ 51 → ~72 of 127 (≈57%).** Tiers 1+2 ⇒ ≈87 (≈68%). Everything except the
-   "not a target" list ⇒ ≈108 (≈85%). *(1.1, 1.2 and 1.4 done — 60 of 127; only 1.3, the date
-   family, remains. ⚠️ Tier 1.1 yields 4 of its 8 nodes, not 8: the projection above counted node
-   types, and four of these defer on mechanisms named in §7.3. So Tier 1 will finish nearer 66
-   than 72, and the six date nodes are the whole of the difference left to find out about.)*
+   commit — `export-ledger:picker` fails if it does not. *(51 → 55 → 59 → 60 → 66, sessions 35–38.)*
+2. ✅ **Tier 1 complete ⇒ 66 of 127 (52.0%).** Tiers 1+2 ⇒ ≈87 (≈68%). Everything except the
+   "not a target" list ⇒ ≈108 (≈85%).
+   *(The original projection said ~72. Session 37 revised it to "nearer 66 than 72", because
+   Tier 1.1 yields 4 of its 8 nodes rather than 8 — and it landed on **exactly 66**. The revised
+   number was right because it was derived from the deferrals actually taken rather than from
+   counting node types, which is the difference between a projection and a wish.)*
 3. ✅ **Each slice has a picker-exercising project** that exports, builds and runs (§2).
    *(Tier 1.4's is `tests/fixtures/variable-dial` — §6.4; Tier 1.1's is
-   `tests/fixtures/reading-shelf` — §7.4; Tier 1.2's is `tests/fixtures/quote-desk` — §8.6.)*
+   `tests/fixtures/reading-shelf` — §7.4; Tier 1.2's is `tests/fixtures/quote-desk` — §8.6;
+   Tier 1.3's is `tests/fixtures/deadline-desk` — §9.5.)*
 4. ✅ **The exemption sentences get rewritten** so that "deferred" means one of *deliberately out of
    scope* (with the reason) or *scheduled* (with the tier), never "pre-gate backlog".
    *(All 97, session 35, and `export-ledger:check` now enforces the shape — §6.5.)*
@@ -536,3 +540,191 @@ the fix is the same one — let a variable be `unknown`-typed and coerce at its 
 way `childText` now coerces an HTTP read. It is a slice of its own, named in the next-session
 prompt. Within one page the direct binding works and is what Quote Desk does; only `Error`, which
 `typeOfSource` now types (§7.5's case, extended), crosses into a Variable.
+
+---
+
+## §9 Tier 1.3 as built — the date family (session 38, 2026-08-29)
+
+**60 → 66 of 127 (47.2% → 52.0%).** `pickerCoverageFloor` raised in the same commit. **Tier 1 is
+complete**, and this is the only tier item that yielded every node it named.
+
+Six nodes, and the split that organises them is not the picker's: **`Now` is stateful and the
+other five are pure functions of their inputs.** The five became one expression kind and the
+sixth became one action, and almost every decision below follows from that one line.
+
+### §9.1 What the family turned out to be
+
+| the author's graph | what is emitted |
+|---|---|
+| `Date Add`, `Date Compare`, `Date Difference`, `Date Parts`, `Date To String` | **one call** into `src/lib/date.ts` — `dateAdd(d, 1, 'months')` — with wired inputs as argument expressions and authored ones as literals |
+| a chain of them | **one nested call.** `Now → Date Add → Date To String` is `dateToString(dateAdd(clock, 7, 'days'), '…', '')` |
+| `Now`, nothing on `Read` | `useState<Date>(() => new Date())` — the mount instant |
+| `Now`, `Read` wired | the same row, plus `const clockRead = new Date(); setClock(clockRead);` per press |
+| a read inside the `Read` chain | the **bound local**; anywhere else, the row |
+| any `Changed` / `Invalid Date` / `On Before` | deferred, named — a recomputation is a render, not an event |
+
+🔴 **`Now` is not a live clock, and that is the question this slice existed to answer.** The
+prompt asked whether it is a render read or an invoked read, and said to let the runtime answer
+rather than choosing. It does, twice over: the port description says the outputs *"hold the
+instant of the last Read, not a live value"*, and `initialize` reads the clock once so they are
+never empty before the first Read. That is a `useState` with a **lazy initializer** — one
+construction per mount, exactly as `initialize` runs once per node. `useState(new Date())` would
+construct on every render, and a bare `new Date()` in render would re-render forever.
+
+`src/lib/date.ts` is a transcription of two runtime files, and unlike `src/api/http.ts` it is the
+**same text in every project** — so it is a constant rather than a builder, and it ships only when
+a component imports it. Three details are the runtime being specific rather than the export being
+clever, and each is a test:
+
+- **Months and years clamp.** 31 January + 1 month is **28/29 February**, never 2 March. Both
+  answers are defensible; only one is the interpreter's, and the driven page shows it.
+- **`Date To String` reads its input differently from the other four, and that is faithful.** It
+  predates the shared date math, and its setter is `typeof value === 'string' ? new Date(value) :
+  value` — so a millisecond **number** arrives unconverted, `getDate()` throws on it, and the
+  node's own catch turns that into a blank. The other four read a number as epoch milliseconds.
+  Normalising the two would "fix" a blank an author has already worked around.
+- **Every value parameter of every emitted helper is `unknown`, and the coercion inside is the
+  interpreter's setter** — `Number(amount)`, `!!absolute`, a Format that is not a string throwing
+  into the catch. A narrower parameter would also make the exported app fail to build on a graph
+  the editor allows.
+
+### §9.2 What defers, and why
+
+- **A wired `Unit` or `Granularity`** — *deliberately out of scope*, and the reason is a throw
+  rather than a doubt: those inputs are `allowEditOnly` enums, a wire can deliver any string, and
+  `addToDate`'s final `else` **throws** rather than answering. An export that reproduced that
+  would put an uncaught exception in someone's page. Every other input may be wired, including
+  `Amount`, `Absolute`, `Format` and `Timezone`, because none of them has a throwing branch.
+- **Every signal but `Now`'s `done`** — *scheduled*. `Changed`, `Date Changed`, `Invalid Date`,
+  `On Before/After/Same` all announce a **recomputation**, which in an emitted component is a
+  render, not an event a chain can hang off. `Now`'s `done` translates precisely because it is
+  *invoked*: a Read happened, in a handler, at a point in a chain.
+- **A node with nothing on its Date input and nothing authored** — it never runs `_recompute`
+  past its abstain, so every output is unset for the life of the app. Said, rather than emitted as
+  a call that would answer undefined for a different reason.
+
+⚠️ **One divergence ships, and it is reported.** These functions are pure; the nodes are not. When
+a Date input goes from a value back to *unset*, `_recompute` abstains and the interpreter keeps
+its previous answer, where a pure call answers undefined. It is one transition wide and needs a
+wire that can actually deliver an empty — and the interpreter is already inconsistent with itself
+about it, since an *invalid* date clears the answer while an absent one does not. A note is filed
+where the emptiness **enters** the graph, not at every link that would pass it on.
+
+### §9.3 The transcription is tested against the thing it transcribes
+
+🔴 **A transcription is exactly the kind of work that goes subtly wrong while reading correctly**,
+so `tests/date-family.test.ts` §A does not assert what the transcription says. It transpiles the
+**emitted module** — the artefact that ships, not a copy kept beside the generator — and runs it
+against the interpreter's own `datemath.ts` over a grid of 8 dates × 14 amounts × 8 units, every
+ordered pair of dates for the difference, and 400 consecutive days for the ISO week rule. Month
+ends and leap days are over-represented, because the clamp and the whole-calendar-step trim only
+show at a month boundary.
+
+`Date To String` has no exported function to compare against, so the test drives **the node
+definition's own `_format`**, reached through its `methods` and its real setters.
+
+⚠️ It had to be **transpiled rather than imported**: `datetostring.ts` does not typecheck under
+this package's stricter tsconfig, because `_format` reads a `Date | undefined` as a `Date` — which
+is the load-bearing throw the node's catch depends on. `transpileModule` erases types without
+checking them, which is what running the interpreter's real code from a stricter package takes.
+
+🔴 **And the comparison is proved able to fail.** One deliberately broken copy of the emitted
+module — the clamp's `result.setDate(1)` commented out — must disagree, and does. Without that
+control, "the two agree" is a reading that fits rather than one that excludes.
+
+### §9.4 The five things that were nearly wrong
+
+🔴 **A new readable node has two consumers, and the second one is silent — for the third time.**
+§7.5 wrote this rule after Tier 1.4 missed it and §8.7 named it again after Tier 1.2 missed it,
+and this slice missed it **twice more**. `resolveExpr` translated all six nodes and a full test run
+went green before anything reached a page, because Pass 4c matches on a **whitelist** and Pass 4f
+on a **predicate**, and neither errors when a type is absent — each just quietly renders nothing.
+Then `typeOfSource` had no case either, so *"save the moment I pressed the button, then show it"*
+exported a Text still showing its authored placeholder. Pass 4f's predicate is now **derived from
+the same tables `resolveExpr` dispatches on**, which is the only spelling under which the two
+cannot drift.
+
+🔴 **`const` is a statement, and an arrow's expression body cannot hold one.** `Now`'s Read emits
+`const clockRead = new Date(); setClock(clockRead); …`, and `handlerArrow` gave it the expression
+form: `() => const clockRead = …`, which does not parse. It is the fourth instance of this file's
+oldest hazard, after the `}; else`, the gated popup close and the Clear Array `if` — **and it
+survived a suite that parses every emitted file**, because every fixture that reached it wired the
+Read to a button *that already had another action*, and two actions take the block form. Only a
+Read that is the **whole** handler reaches the expression body, and that is the shape a real
+project has. Found by building the exported app.
+
+🔴 **Pass 4f dropped the expression tree's own wires and nodes.** Every earlier client of that pass
+reads a *leaf* — a latch's state, a control's value, an HTTP output — so discarding `ctx.consumes`
+and `ctx.logicNodeIds` cost nothing and nobody noticed. The date family is the first vocabulary to
+arrive there **composed**, and the report answered *"wire shift:result→reviewFmt:input has no
+deterministic translation"* and deferred `Date Add` for feeding a sink with "no static binding",
+about a page that had emitted the whole nested call correctly. **The app was right and the report
+was wrong, which is the worse way round**: a note claiming a working wire was dropped sends an
+author looking for a feature that is already there.
+
+🔴 **Two silent walkers would have emitted a stale read.** `exprTouchesSnap` and `snapExpr` both
+end in a `default`, so a date call whose argument reads a variable written earlier in the same
+chain would have answered "does not touch the snapshot" and passed the pre-write value through —
+well-formed code, wrong by one chain step. Of the **eleven** sites that enumerate these unions,
+the compiler holds six; the other five are if-chains, `default`s, or — in `actionsValidIn`'s case
+— an exhaustive switch whose callback has no return annotation, so `every`'s `unknown` swallowed
+the missing case entirely.
+
+⚠️ **A temporal dead zone, walked into with the trap written down.** The emit-side test for
+"does this chain read the local" first reused `actionExprsOf`, a `const` arrow declared hundreds
+of lines below where `actionCode` runs — a `ReferenceError` at emit time, not a compile error. It
+is a hoisted `function` now, which cannot reproduce it.
+
+### §9.5 The project (§2's requirement), and the drive
+
+`tests/fixtures/deadline-desk` — **Deadline Desk**, authored through the MCP server, one routed
+page, every node placed on it. It reports **nothing dropped** beyond the router shell.
+
+🔴 **Every expected answer was written down before the app ran**, and each is a rule stated in a
+node's own description. The anchor is 31 January 2024 precisely because adding a month to it has
+two defensible answers — a board built on *today's* date would look identical whether the
+arithmetic was right or wrong, which is the trap §2 exists to avoid.
+
+It exports, builds under `tsc -b && vite build`, and runs. Driven in headless Chrome over CDP,
+reading `textContent` per element:
+
+```
+anchor  Jan 31, 2024   review  Feb 29, 2024   ← THE CLAMP, not Mar 02
+dayName Wednesday      isoWeek 5
+days    49             months  4              ← fixed unit exact; calendar unit whole steps
+tokyo   2024-06-02 08:30                      ← 23:30Z on 1 June, in Asia/Tokyo, from Europe/Paris
+sentences present: ["…same working day."]     ← and NOT "…the same instant."
+                   ["The launch date has passed."]  ← and NOT "…is still ahead."
+clock   2026-08-28T22:01:44.493Z | 00:01:44   ← ISO and formatted agree to the second
+after 2s, no click: UNCHANGED                 ← Now is not a live clock
+after Refresh:      moved, and saved == the row it wrote
+console errors: []
+```
+
+Three of those are readings that **exclude** rather than fit:
+
+🔴 **The granularity pair.** The same two instants are compared twice, at `day` and at
+`millisecond`, and the second panel must be **absent**. "The same-day panel showed" is otherwise
+consistent with granularity having been dropped entirely. Both use `mounted`, not `visible` —
+`visible` keeps the element in the DOM with its text intact, so an absence read off `visible` is
+not an absence at all.
+
+🔴 **The clock's before/after pair**, the same device over a value that is not a literal.
+
+🔴 **"Unchanged after two seconds with no click."** This is the row that answers the render-read
+question from outside. Had `Now` been emitted as a render read, this moves — and it moves without
+the app looking wrong in any other way.
+
+**The mutant.** The project was sabotaged in three specific places — `Date Add`'s unit months →
+days, `Date Compare`'s granularity millisecond → day, `Date To String`'s timezone emptied —
+rebuilt and re-driven. **Exactly three rows changed and eleven held**: `review` read "Feb 01,
+2024", `tokyo` read the Paris time "2024-06-02 01:30", and the same-instant panel appeared.
+Before that, every row above was equally consistent with a drive that cannot fail.
+
+### §9.6 What this leaves
+
+`Now`'s `Completed` is untranslated and unmentioned by any wire in the fixture — it is the same
+join-of-two-arms deferral `HTTP Request`'s `Completed` takes (§8.4). The signals of the five pure
+nodes are the family's one real gap, and closing them is an `effect()` slice rather than a date
+slice: they are all "this value was recomputed", which is a render, and the construct that turns a
+recomputed value into a fired chain does not exist in this vocabulary yet.

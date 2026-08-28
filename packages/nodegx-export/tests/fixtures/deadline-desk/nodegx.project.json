@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Deadline Desk",
+  "id": "35ad6c29-f947-40ef-a131-09e4d6a55cfb",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-08-28T21:49:25.847Z",
+  "modified": "2026-08-28T21:49:25.847Z",
+  "settings": {
+    "htmlTitle": "Deadline Desk",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "45f5a32c-faa3-4b15-b3fb-f29727dd14aa"
+}
