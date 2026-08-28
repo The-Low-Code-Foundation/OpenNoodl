@@ -17,6 +17,16 @@
  * to be raised where the outcome is known, which is after the write.
  */
 
+// 🔴 This file declares `siteBuilder` at top level and has no `import`/`export`,
+// which makes it a global SCRIPT to TypeScript rather than a module — and
+// ts-jest typechecks all of `tests-unit/` in one program. Five spec files spell
+// the same `const siteBuilder`, so whichever pair landed in one worker's program
+// failed with TS2451 "Cannot redeclare block-scoped variable" and the whole
+// SUITE failed to run: `test:main` reported 2 failed suites with 0 failed tests,
+// which reads like a flake and is not one. `export {}` makes this a module and
+// scopes the name to the file.
+export {};
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const siteBuilder = require('../../src/editor/src/models/template/templates/site-builder.content.json');
 

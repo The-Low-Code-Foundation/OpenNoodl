@@ -232,7 +232,7 @@
                     "unit": "px"
                   },
                   "borderRadius": "var(--radius-md)",
-                  "visible": false
+                  "mounted": false
                 },
                 "ports": [],
                 "dynamicports": []
@@ -246,7 +246,7 @@
                 "y": 280,
                 "parameters": {
                   "as": "p",
-                  "visible": false,
+                  "mounted": false,
                   "text": "",
                   "color": "var(--foreground)",
                   "lineHeight": "var(--leading-relaxed)"
@@ -337,7 +337,7 @@
             "fromId": "unpack",
             "fromProperty": "out-showImage",
             "toId": "image",
-            "toProperty": "visible"
+            "toProperty": "mounted"
           },
           {
             "fromId": "unpack",
@@ -349,7 +349,7 @@
             "fromId": "unpack",
             "fromProperty": "out-showBody",
             "toId": "body",
-            "toProperty": "visible"
+            "toProperty": "mounted"
           },
           {
             "fromId": "unpack",
@@ -467,7 +467,7 @@
                 "y": 760,
                 "parameters": {
                   "text": "Thanks — your message has been sent.",
-                  "visible": false,
+                  "mounted": false,
                   "color": "var(--foreground)",
                   "fontSize": "var(--text-sm)"
                 },
@@ -483,7 +483,7 @@
                 "y": 880,
                 "parameters": {
                   "text": "That message could not be sent.",
-                  "visible": false,
+                  "mounted": false,
                   "color": "var(--foreground)",
                   "fontSize": "var(--text-sm)"
                 },
@@ -658,7 +658,7 @@
             "fromId": "sentGate",
             "fromProperty": "result",
             "toId": "sent",
-            "toProperty": "visible"
+            "toProperty": "mounted"
           },
           {
             "fromId": "send",
@@ -670,7 +670,7 @@
             "fromId": "refusedGate",
             "fromProperty": "result",
             "toId": "refused",
-            "toProperty": "visible"
+            "toProperty": "mounted"
           }
         ],
         "visualRoots": [
@@ -878,7 +878,7 @@
                         "y": 1000,
                         "parameters": {
                           "flexDirection": "column",
-                          "visible": false
+                          "mounted": false
                         },
                         "ports": [],
                         "dynamicports": []
@@ -912,7 +912,7 @@
                         "parameters": {
                           "flexDirection": "column",
                           "alignItems": "center",
-                          "visible": false,
+                          "mounted": false,
                           "backgroundColor": "var(--surface)",
                           "borderStyle": "solid",
                           "borderWidth": "var(--border-1)",
@@ -1342,7 +1342,7 @@
             "fromId": "diagnoseNotFound",
             "fromProperty": "out-visible",
             "toId": "notFoundCard",
-            "toProperty": "visible"
+            "toProperty": "mounted"
           },
           {
             "fromId": "diagnoseNotFound",
@@ -1402,7 +1402,7 @@
             "fromId": "readSections",
             "fromProperty": "out-hasContact",
             "toId": "contactWrap",
-            "toProperty": "visible"
+            "toProperty": "mounted"
           },
           {
             "fromId": "readPage",

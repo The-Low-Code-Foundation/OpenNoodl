@@ -53,6 +53,32 @@
  * fetch's rows. F11 was a producer emitting in two passes of its own; this
  * producer emits in one.
  *
+ * ── `mounted`, not `visible`, for anything conditionally shown ──────────────
+ *
+ * 🔴 **SBR-004's drive found this and it is the difference between a shape and a
+ * shape with a hole in it.** `visible: false` sets `visibility: hidden`, and the
+ * port's own description says what that means: *"Hides the element while keeping
+ * the space it occupies in the layout"*
+ * (`node-shared-port-definitions.ts:215-228`). Measured in the preview at 360px
+ * on an unclaimed site: the hidden contact-form wrapper was **365px tall**, an
+ * empty band between the nav and the only thing on the page.
+ *
+ * Every visual node also has `mounted` — *"Removes the element from the page
+ * entirely when false, unlike Visible which leaves its space behind"*
+ * (`react-component-node.ts:1835-1857`). That is the port this template wanted
+ * everywhere a surface is shown *conditionally*: the contact wrapper, the
+ * empty-screen card, a section's image and body, and the form's two answers.
+ * A `richText` section was reserving a 320px image band it never draws, on every
+ * page — the same defect, repeated once per row.
+ *
+ * ⚠️ The reasoning the old `visible: false` carried transfers unchanged: the
+ * authored `false` still stands until a code node publishes, and it is still
+ * only a code node that may reveal these. What changed is whether a hidden thing
+ * costs the reader 365 pixels.
+ *
+ * `visible` is right for something whose space should be *held* — this template
+ * has no such surface, which is why the word does not appear on one any more.
+ *
  * 🔴 **3. `isEmpty` is true before the first fetch, by contract**
  * (`dbcollectionnode2.ts:410-419`, in its own description). A "page not found"
  * panel wired from `isEmpty` is therefore visible to every visitor until the
@@ -516,7 +542,7 @@ export const SECTION_VIEW_NODES = [
       width: { value: 100, unit: '%' },
       height: { value: 320, unit: 'px' },
       borderRadius: 'var(--radius-md)',
-      visible: false
+      mounted: false
     }
   },
   {
@@ -538,7 +564,7 @@ export const SECTION_VIEW_NODES = [
     // would be a value that is overwritten on every row that renders.
     parameters: {
       as: 'p',
-      visible: false,
+      mounted: false,
       text: '',
       color: 'var(--foreground)',
       lineHeight: 'var(--leading-relaxed)'
@@ -596,9 +622,9 @@ export const SECTION_VIEW_WIRES = [
   { fromId: 'inputs', fromProperty: 'data', toId: 'unpack', toProperty: 'in-data' },
 
   { fromId: 'unpack', fromProperty: 'out-image', toId: 'image', toProperty: 'src' },
-  { fromId: 'unpack', fromProperty: 'out-showImage', toId: 'image', toProperty: 'visible' },
+  { fromId: 'unpack', fromProperty: 'out-showImage', toId: 'image', toProperty: 'mounted' },
   { fromId: 'unpack', fromProperty: 'out-body', toId: 'body', toProperty: 'text' },
-  { fromId: 'unpack', fromProperty: 'out-showBody', toId: 'body', toProperty: 'visible' },
+  { fromId: 'unpack', fromProperty: 'out-showBody', toId: 'body', toProperty: 'mounted' },
   { fromId: 'unpack', fromProperty: 'out-weight', toId: 'body', toProperty: 'fontWeight' },
   { fromId: 'unpack', fromProperty: 'out-size', toId: 'body', toProperty: 'fontSize' },
   { fromId: 'unpack', fromProperty: 'out-family', toId: 'body', toProperty: 'fontFamily' }
@@ -704,7 +730,7 @@ export const CONTACT_FORM_NODES = [
     // about does not earn an alarm colour.
     parameters: {
       text: CONTACT_SUCCESS_TEXT,
-      visible: false,
+      mounted: false,
       color: 'var(--foreground)',
       fontSize: 'var(--text-sm)'
     }
@@ -716,7 +742,7 @@ export const CONTACT_FORM_NODES = [
     parent: 'form',
     parameters: {
       text: CONTACT_REFUSAL_TEXT,
-      visible: false,
+      mounted: false,
       color: 'var(--foreground)',
       fontSize: 'var(--text-sm)'
     }
@@ -789,11 +815,11 @@ export const CONTACT_FORM_WIRES = [
   { fromId: 'gather', fromProperty: 'out-go', toId: 'send', toProperty: 'call' },
 
   { fromId: 'send', fromProperty: 'done', toId: 'sentGate', toProperty: 'eval' },
-  { fromId: 'sentGate', fromProperty: 'result', toId: 'sent', toProperty: 'visible' },
+  { fromId: 'sentGate', fromProperty: 'result', toId: 'sent', toProperty: 'mounted' },
   // `send.error` is deliberately not read: it is the backend's words, and this
   // caller is anonymous.
   { fromId: 'send', fromProperty: 'failure', toId: 'refusedGate', toProperty: 'eval' },
-  { fromId: 'refusedGate', fromProperty: 'result', toId: 'refused', toProperty: 'visible' }
+  { fromId: 'refusedGate', fromProperty: 'result', toId: 'refused', toProperty: 'mounted' }
 ];
 
 // ── 4. Site/Nav — the navigation, derived and never stored ───────────────────
@@ -1035,7 +1061,7 @@ export const SITE_NODES = [
     // (`instance-unknown-parameter`, blocking: *"The value is discarded"*). So
     // `visible` cannot go on the instance, and a graph that put it there would
     // have shown the contact form on every page.
-    parameters: { flexDirection: 'column', visible: false },
+    parameters: { flexDirection: 'column', mounted: false },
     children: ['contact']
   },
   { id: 'contact', type: '/Site/ContactForm', label: 'Contact form', parent: 'contactWrap' },
@@ -1044,8 +1070,8 @@ export const SITE_NODES = [
     type: 'Group',
     label: 'The empty-screen card',
     parent: 'shell',
-    // 🔴 SBR-004 moves the `visible` wire from the Text to this wrapper, and the
-    // contract it carries moves with it unchanged: `visible: false` is the
+    // 🔴 SBR-004 moves the visibility wire from the Text to this wrapper, and
+    // the contract it carries moves with it unchanged: `mounted: false` is the
     // authored default and must stay standing until a fetch has happened (see
     // the module header on `isEmpty`). Nothing wired can publish before
     // `pageQuery` has answered once, so an author who deletes the wire gets a
@@ -1057,7 +1083,7 @@ export const SITE_NODES = [
     parameters: {
       flexDirection: 'column',
       alignItems: 'center',
-      visible: false,
+      mounted: false,
       backgroundColor: 'var(--surface)',
       borderStyle: 'solid',
       borderWidth: 'var(--border-1)',
@@ -1077,8 +1103,8 @@ export const SITE_NODES = [
     parent: 'notFoundCard',
     // `text` keeps the plain 404 as its authored value so the node still reads
     // correctly with nothing wired; `diagnoseNotFound` overwrites it on the
-    // three occasions it is wrong. No `visible` here any more — the card owns
-    // it, and a node with two visibility owners is a node nobody can reason
+    // three occasions it is wrong. No visibility port here at all — the card
+    // owns it, and a node with two visibility owners is a node nobody can reason
     // about.
     parameters: {
       as: 'p',
@@ -1496,7 +1522,7 @@ export const SITE_WIRES = [
   { fromId: 'settings', fromProperty: 'error', toId: 'diagnoseNotFound', toProperty: 'in-settingsError' },
   // SBR-004: the visibility moved to the CARD (the Text is always visible
   // inside it); the text still lands on the Text. Two nodes, one decider.
-  { fromId: 'diagnoseNotFound', fromProperty: 'out-visible', toId: 'notFoundCard', toProperty: 'visible' },
+  { fromId: 'diagnoseNotFound', fromProperty: 'out-visible', toId: 'notFoundCard', toProperty: 'mounted' },
   { fromId: 'diagnoseNotFound', fromProperty: 'out-text', toId: 'notFound', toProperty: 'text' },
   // SBR-002: the deadline. Mount starts the clock; its finish arms the
   // watchdog arm — a value port, so the signal's true-then-false COALESCES to a
@@ -1515,7 +1541,7 @@ export const SITE_WIRES = [
   { fromId: 'sections', fromProperty: 'items', toId: 'sectionList', toProperty: 'items' },
   { fromId: 'sections', fromProperty: 'items', toId: 'readSections', toProperty: 'in-rows' },
   { fromId: 'sections', fromProperty: 'fetched', toId: 'readSections', toProperty: 'run' },
-  { fromId: 'readSections', fromProperty: 'out-hasContact', toId: 'contactWrap', toProperty: 'visible' },
+  { fromId: 'readSections', fromProperty: 'out-hasContact', toId: 'contactWrap', toProperty: 'mounted' },
   // The value a repeater could not carry.
   { fromId: 'readPage', fromProperty: 'out-slug', toId: 'contact', toProperty: 'pageSlug' },
 

@@ -330,13 +330,24 @@ export function assertNotFoundIsNotIsEmpty(w: Written): void {
    */
   const card = w.graph.nodes.find((n) => (n.children ?? []).includes(notFound!.id));
   expect(`the not-found text has a wrapper: ${card !== undefined}`).toBe('the not-found text has a wrapper: true');
-  // Authored hidden, and only a code node may reveal it.
-  expect(card?.parameters?.visible).toBe(false);
+
+  // 🔴 `mounted`, NOT `visible`. `visible: false` is `visibility: hidden`, which
+  // "keeps the space it occupies in the layout" by the port's own description —
+  // SBR-004's drive measured a hidden wrapper holding 365px of empty page.
+  // `mounted: false` removes the element. Authored hidden either way, and only a
+  // code node may reveal it.
+  expect(card?.parameters?.mounted).toBe(false);
+  expect(`the card holds its space when hidden: ${card?.parameters?.visible !== undefined}`).toBe(
+    'the card holds its space when hidden: false'
+  );
   // And the Text inside it must NOT carry a second visibility owner.
   expect(notFound?.parameters?.visible).toBeUndefined();
-  expect(w.wires.filter((c) => c.toId === notFound?.id && c.toProperty === 'visible')).toEqual([]);
+  expect(notFound?.parameters?.mounted).toBeUndefined();
+  expect(
+    w.wires.filter((c) => c.toId === notFound?.id && (c.toProperty === 'visible' || c.toProperty === 'mounted'))
+  ).toEqual([]);
 
-  const feeds = w.wires.filter((c) => c.toId === card?.id && c.toProperty === 'visible');
+  const feeds = w.wires.filter((c) => c.toId === card?.id && c.toProperty === 'mounted');
   expect(feeds.length).toBe(1);
   const source = w.graph.nodes.find((n) => n.id === feeds[0].fromId);
   expect(source?.type).toBe('JavaScriptFunction');
@@ -887,7 +898,7 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     // walk is one hop longer. Still resolved structurally — through `children`
     // and then the wire — rather than by any name the graph happens to use.
     const card = mutant.graph.nodes.find((n) => (n.children ?? []).includes(notFound.id))!;
-    const feed = mutant.wires.find((c) => c.toId === card.id && c.toProperty === 'visible')!;
+    const feed = mutant.wires.find((c) => c.toId === card.id && c.toProperty === 'mounted')!;
     const reader = mutant.graph.nodes.find((n) => n.id === feed.fromId)!;
     // Strip every early return, whatever it guards on: the property under test
     // is "publishes nothing before an answer", not any one spelling of it.
@@ -1412,6 +1423,55 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     const footerName = mutant.graph.nodes.find((n) => n.label === 'Footer site name')!;
     delete footerName.parameters!.text;
     expect(() => assertFooter(mutant)).toThrow();
+  });
+
+  /**
+   * 🔴 The drive's find, as a standing check.
+   *
+   * `visible: false` is `visibility: hidden` — the port's own description says it
+   * "keeps the space it occupies in the layout"
+   * (`node-shared-port-definitions.ts:215-228`). Measured in the preview at
+   * 360px: the hidden contact wrapper held **365px** of empty page above the
+   * only thing on it, and a `richText` section reserved a 320px image band it
+   * never draws. `mounted` removes the element instead
+   * (`react-component-node.ts:1835-1857`).
+   *
+   * Nothing on the public site wants its space held, so nothing on it may use
+   * `visible` — asserted over the union of parameters and wires, because a
+   * surface can acquire either one without the other.
+   */
+  it('SBR-004: nothing conditionally shown holds its space — mounted, never visible', () => {
+    const offenders = siteEntries().flatMap(([key, w]) => [
+      ...w.graph.nodes
+        .filter((n) => n.parameters?.visible !== undefined)
+        .map((n) => `${key}/${n.label} parameter`),
+      ...w.wires
+        .filter((c) => c.toProperty === 'visible')
+        .map((c) => `${key}/${w.graph.nodes.find((n) => n.id === c.toId)?.label} wire`)
+    ]);
+    expect(`surfaces still using visible: ${offenders.join(', ')}`).toBe('surfaces still using visible: ');
+
+    // The census half — `mounted` must actually be in use, or "no `visible`"
+    // would be satisfied by a template that hides nothing at all.
+    const mountedWires = siteEntries().flatMap(([key, w]) =>
+      w.wires.filter((c) => c.toProperty === 'mounted').map((c) => `${key}/${c.toId}`)
+    );
+    const mountedParams = siteEntries().flatMap(([key, w]) =>
+      w.graph.nodes.filter((n) => n.parameters?.mounted === false).map((n) => `${key}/${n.label}`)
+    );
+    // image, body, sent, refused, contactWrap, notFoundCard — six surfaces, each
+    // authored hidden AND wired to a decider.
+    expect(`${mountedParams.length} authored, ${mountedWires.length} wired`).toBe('6 authored, 6 wired');
+  });
+
+  it('MUTANT: a conditional surface back on `visible` reddens', () => {
+    const mutant = clone(written['Pages/Site']);
+    const wrap = mutant.graph.nodes.find((n) => n.parameters?.mounted === false && (n.children ?? []).length > 0)!;
+    delete wrap.parameters!.mounted;
+    wrap.parameters!.visible = false;
+    for (const c of mutant.wires) if (c.toId === wrap.id && c.toProperty === 'mounted') c.toProperty = 'visible';
+    const offenders = mutant.graph.nodes.filter((n) => n.parameters?.visible !== undefined);
+    expect(() => expect(`still using visible: ${offenders.length}`).toBe('still using visible: 0')).toThrow();
   });
 
   /**
