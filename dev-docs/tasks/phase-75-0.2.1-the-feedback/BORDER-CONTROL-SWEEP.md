@@ -324,7 +324,137 @@ Three grounds in one file, and they do not share a bound: `.Modal` and `.Dropdow
 **1.4**), `.Toolbar` is `bg-2` (bound **1.2**). All three are asserted separately. **Re-derive per
 surface** — this is now the third session to file it.
 
-## ⬜ What is left — 43 sites, and that number is a FLOOR
+## What session 64 fixed — the launcher's Projects view, and a hover trap no grep can find
+
+`LauncherProjectCard`, `LauncherSearchBar` and the `Projects` view in **`noodl-core-ui`** — the
+second slice outside `noodl-editor`. **Four controls, one of them not on the inventory**, plus two
+hover rules. ⚠️ The Projects view sets no background on `.Main`, so three of the four are seen
+against the launcher's own `.ContentArea` — **a ground in a different stylesheet from every control
+that sits on it**, and `bg-0`, a step no previous slice has worked on.
+
+| control | element | fill | ground | was | now (dark / light) |
+|---|---|---|---|---|---|
+| `LauncherProjectCard .Card` | `role="button"` | `bg-1` | `.ContentArea` (`bg-0`) | 1.26 / 1.27 | **4.17 / 3.72** fill, **4.86 / 3.28** ground |
+| `LauncherSearchBar .Search` | `<input>` box | `bg-1` | `.ContentArea` (`bg-0`) | 1.26 / 1.27 | **4.17 / 3.72** fill |
+| `LauncherSearchBar .Select` | `<select>` box | `bg-1` | `.ContentArea` (`bg-0`) | 1.26 / 1.27 | **4.17 / 3.72** fill |
+| `Projects .FolderPickerItem` | `<button>` | `bg-3` | `.FolderPickerDialog` (`bg-2`) | 1.08 / 1.04 | **3.08 / 3.05** fill, **3.57 / 3.37** ground |
+
+**Deliberately left on the divider token** (three sites, asserted as such): `.Sidebar` (a region
+boundary), `.FolderPickerDialog` (a modal surface edge) and `LauncherSearchBar .Kbd` — the ⌘K
+keycap, a hint rather than something a reader operates, left for the reason session 61 left the
+picker's `.Kbd` and `.Enter`.
+
+Pinned by `tests-unit/border-sweep/launcher-control-borders.test.ts` — 38 rows, both themes,
+**eleven mutants**.
+
+### 🔴 The finding: a THIRD SHAPE of the hover trap, and the first that is INVISIBLE TO A GREP
+
+Sessions 61, 62 and 63 each found hover rules that **name** a divider tone (`border-strong`,
+`border-highlight`). That is a findable defect — the "20 stylesheets" list below was built by
+searching hover rules for `border-color`, and every trap site named in it was found that way.
+
+**`.FolderPickerItem:hover` declares no border at all.** It moves the *fill* down the ramp
+(`bg-3 → bg-4`), and POL-016 scopes `border-control` to bg-1/2/3 — it is **2.64:1 dark / 2.77:1
+light on `bg-4`**. So the resting fix is **inherited onto a step where it fails 1.4.11**, and only
+while the pointer is on the button.
+
+🔴 **A hover can therefore break a resting fix without mentioning the border, and no search over
+border declarations can find it.** The trap list below is bounded by the same query shape as the
+inventory, and this is the proof it has the same kind of hole. ✅ **The check that works is
+measuring every state that changes the border *or the fill*** — which is what the spec's state row
+does, and it is why that row reddens here at `2.64:1 on its own fill`.
+
+Fixed with `primary`: **3.54 / 3.40** on the hover fill, **4.80 / 4.14** on the dialog.
+
+### 🔴 A FOURTH case for the up/down rule — and a new direction: the fill does not move
+
+`.Card:hover` moves the fill **not at all** (it lifts with `transform` and a shadow). Deleting its
+`border-color` — the node picker's remedy — was **measured and passes**: the resting tone is simply
+inherited at 4.17 / 3.72. It was rejected anyway, for two reasons that are not about the number:
+the rule lists `border-color` in **its own `transition`**, so a deletion leaves a declared
+transition animating nothing; and the sibling `.TemplateCard:hover` — the same object one component
+away — already uses `primary`. **Consistency and the rule's purpose decided this one, not the
+measurement.**
+
+So the sweep's hover decision now has four cases: fill **up** ⇒ deletion is right; fill **down past
+3:1** ⇒ deletion reintroduces the defect; fill **down but still clearing** ⇒ deletion passes but
+goes quieter; fill **stationary** ⇒ deletion passes and is still usually wrong.
+
+### 🔴 SIXTH proof the inventory is a floor
+
+The list has `.Card`, `.Select` and `.FolderPickerItem` from this family. **`.Search` is a fourth**
+— the box that draws the search `<input>`'s boundary, measured at 1.26 / 1.27. Invisible to the
+query for the fourth time running, and always the same way: **a text field sets no
+`cursor: pointer`.** `.TemplateFilter-search`, `NodePickerSearchBar .Field`,
+`BenchScenarioBar .NameField`, and now `.Search`. **Every slice so far has contained at least one.**
+
+### ⚠️ A FOURTH distinct negative-control bound, and it is the highest yet
+
+Sessions 61 and 62 filed that the bound belongs to the **ground**: 1.4 on `bg-1`, 1.2 on `bg-2`.
+This family sits on **`bg-0`, where the divider is 1.46 dark / 1.12 light** — needing **1.5**.
+Copying either earlier file's bound would have read the correct value as a defect. **Re-derive per
+surface; this is the fourth session to file it and the first where the bound went UP.**
+
+### 🔴 `own()` is load-bearing here, and it was proved by reproduction rather than assumed
+
+Session 63 warned that a slice on a nested family copying the bench or picker helpers inherits its
+defect. **Measured directly: replacing `own()` with `return body` makes this spec pass 38/38 with
+the `.Card` revert applied.** `.Card` nests `&:hover { border-color: primary }` and the reader tries
+`border-color` before `border`, so the resting rows resolve to the hover's tone — session 63's
+defect, reproduced exactly, in the next family to be worked. ✅ **The instruction to copy
+`code-editor-control-borders.test.ts` is now load-bearing rather than advisory.**
+
+### ✅ A row a number cannot replace — pinning the ground BY NAME
+
+`.ContentArea` paints `bg-0` and nests a scrollbar-track rule painting `bg-1`. Two faults must
+coincide for the ground to become that scrollbar — `own()` regressing **and** the nested rule using
+the other spelling (`background-color` where the outer uses `background`, which the reader tries
+first). **Both were reproduced together: the ground row reddens six times and every contrast row
+stays green**, because `border-control` clears 3:1 on `bg-1` (4.17 / 3.72) just as on `bg-0`
+(4.86 / 3.28).
+
+🔴 **When the wrong answer also passes, the only check that works is naming the right one.** Every
+control in this file therefore pins its ground token by name, and future slices should too — the
+grounds in this sweep are increasingly read from a *different stylesheet* than the control.
+
+### The eleven mutants, each killed by a named row
+
+| mutant | killed by |
+|---|---|
+| revert `.Card` resting | its own fill + ground rows (4 reds) |
+| **restore `.Card:hover`'s `border-strong`** | **the state row ONLY** (2 reds) — `.Card&:hover is 1.74:1 on its own fill` / `2.03:1 on .ContentArea` |
+| revert `.Search` (the site the inventory cannot see) | its own rows (4 reds) |
+| revert `.Select` | its own rows (4 reds) |
+| revert `.FolderPickerItem` resting | its own rows (4 reds) |
+| **delete `.FolderPickerItem:hover`'s border — the PICKER's remedy** | **the state row ONLY** (2 reds) — `2.64:1` dark, `2.77:1` light |
+| over-fix — sweep the `.Kbd` keycap | the non-controls row (2 reds) |
+| over-fix — sweep the `.FolderPickerDialog` region | the non-controls row (2 reds) |
+| raise the shared `border-default` in `colors.css` (dark) | the negative control, **in dark only** (1 red) |
+| **break `own()` in the spec, with the `.Card` revert applied** | **NOTHING — 38/38, which is the finding** |
+| **break `own()` + the nested-spelling hazard** | **the ground-pin rows ONLY** (6 reds), every contrast row green |
+
+⚠️ Failure **text** was read for the two state-row kills, not just the counts — session 63's lesson
+that a kill attributed to the wrong row is a broken reader. Both name the right control and land on
+the predicted numbers.
+
+### 🧭 Found while reading, NOT swept — the launcher tree has `border-strong` controls
+
+The inventory is bounded by `border-default`, so these are not in it at all — the leak session 62
+filed, seen again at scale:
+
+- 🔴 **`LauncherButton .is-secondary`** — a `<button>` modifier, `bg-2` fill, `border-color:
+  border-strong` = **1.74 / 1.53**. Invisible on **both** counts (a modifier class, and the wrong
+  token), and this is the launcher's **shared** button, so it is a defect wherever a secondary
+  button appears. ⚠️ Its hover fills `bg-2 → bg-3` — **down** the ramp, so it needs the direction
+  check before a tone is picked.
+- **`ShareTemplateModal`** — `.Preamble`, `.Result` and `.ChoiceItem` all name `border-strong`;
+  `.ChoiceItem` is very likely a control and the other two very likely regions. **Membership is a
+  judgement, as always.**
+
+**Recommended next: `LauncherButton` first** — it is one file, it is shared, and it would close a
+defect that appears on every launcher surface at once.
+
+## ⬜ What is left — 40 sites, and that number is a FLOOR
 
 🔴 **The inventory is bounded by its own query and reports that bound.** It selects blocks
 containing both `border-default` and `cursor: pointer` — so it **misses native `<input>`,
@@ -347,11 +477,14 @@ By package (43 left):
 - **`noodl-core-ui`** (13): ~~`.Button` (CodeHistoryButton), `.CancelButton` (CodeHistoryDiffModal),
   `.PreviewButton` (CodeHistoryDropdown), `.SaveButton` / `.CloseButton` (JavaScriptEditor)~~ —
   ✅ **DONE, session 63**. ⚠️ It was **five controls, but not these five**: `.SaveButton` was a
-  FALSE POSITIVE and `.FormatButton`, which is not on this list, was a real defect. **8 left**:
-  `.DismissButton` (SuggestionBanner), `.VariantSelector-trigger`, `.TokenPicker-trigger`,
-  `.Card` (LauncherProjectCard), `.Select` (LauncherSearchBar),
-  `.DeleteConfirmationCancelButton` (FolderTree), `.Option` / `.Ghost` (LearnerPathSection),
-  `.FolderPickerItem` (Projects)
+  FALSE POSITIVE and `.FormatButton`, which is not on this list, was a real defect.
+  ~~`.Card` (LauncherProjectCard), `.Select` (LauncherSearchBar), `.FolderPickerItem` (Projects)~~
+  — ✅ **DONE, session 64**, and it was **four** controls: `.Search` (LauncherSearchBar) is not on
+  this list and was a real defect. **5 left**: `.DismissButton` (SuggestionBanner),
+  `.VariantSelector-trigger`, `.TokenPicker-trigger`,
+  `.DeleteConfirmationCancelButton` (FolderTree), `.Option` / `.Ghost` (LearnerPathSection)
+  — ⚠️ **plus `LauncherButton .is-secondary` and three `ShareTemplateModal` sites, which name
+  `border-strong` and so appear in no count in this document.**
 - **Canvas / bench** (11): ~~`.Action` / `.Empty` / `.PickerChip` (BenchScenarioBar), `.Clear`
   (BenchOutputsRail), `.ResetAll` / `.SignalButton` (BenchInputsRail)~~ — ✅ **DONE, session 62**,
   and it was 7 declarations + 2 hover rules rather than 6. **5 left**: `.FrameChip` /
@@ -375,7 +508,9 @@ divider tone) appears in a hover/focus rule in **20 stylesheets**. **At least 17
 on the list below are in them**:
 
 - ~~`.Button` (CodeHistoryButton), `.CancelButton` (CodeHistoryDiffModal)~~ — ✅ done s63, **both
-  needed `primary`**; `.Card` (LauncherProjectCard) remains
+  needed `primary`**; ~~`.Card` (LauncherProjectCard)~~ — ✅ done s64, **also `primary`**, and see
+  s64's finding: `.FolderPickerItem:hover` was a trap site this list **could never have contained**,
+  because it names no border at all
 - ~~`.Action` / `.Empty` / `.PickerChip` (BenchScenarioBar), `.ResetAll` / `.SignalButton`
   (BenchInputsRail)~~ — ✅ done s62, and **two of them needed `primary` rather than a deletion**;
   `.AiPill` (CanvasHud) remains

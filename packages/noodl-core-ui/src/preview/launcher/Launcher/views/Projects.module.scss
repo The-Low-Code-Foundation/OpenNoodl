@@ -130,7 +130,9 @@
   padding: 7px 10px;
   margin-bottom: var(--spacing-1);
   background-color: var(--theme-color-bg-3);
-  border: 1px solid var(--theme-color-border-default);
+  /* A <button>, so POL-016's control tone rather than the divider: 3.08 dark /
+     3.05 light on its own bg-3 fill, 3.57 / 3.37 on the bg-2 dialog behind it. */
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-7);
   color: var(--theme-color-fg-highlight);
   font-family: var(--font-family);
@@ -139,6 +141,14 @@
 
   &:hover {
     background-color: var(--theme-color-bg-4);
+    /* 🔴 A THIRD SHAPE OF THE SWEEP'S HOVER TRAP, and the only one so far that is
+       invisible to a grep. Sessions 61-63 all found hovers that NAME a divider tone;
+       this rule names no border at all. It moves the FILL down the ramp (bg-3 ->
+       bg-4), and POL-016 scopes `border-control` to bg-1/2/3 — it is 2.64 dark /
+       2.77 light on bg-4. So the resting fix above would have been inherited onto a
+       step where it fails 1.4.11, and only while the pointer is on the button.
+       `primary` is 3.54 / 3.40 on the hover fill and 4.80 / 4.14 on the dialog. */
+    border-color: var(--theme-color-primary);
   }
 }
 

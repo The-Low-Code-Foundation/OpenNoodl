@@ -8,7 +8,10 @@
   overflow: hidden;
   text-align: left;
   background: var(--theme-color-bg-1);
-  border: 1px solid var(--theme-color-border-default);
+  /* POL-016 control tone, not the divider: this is a role="button" and 1.4.11 asks
+     that a reader can identify it. bg-1 fill on the bg-0 content area, so the edge
+     measures 4.17 dark / 3.72 light on the card and 4.86 / 3.28 on the ground. */
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-10);
   box-shadow: var(--shadow-card);
   cursor: pointer;
@@ -19,7 +22,19 @@
 
   &:hover {
     transform: translateY(-2px);
-    border-color: var(--theme-color-border-strong);
+    /* `border-strong` is one of NAT-003's three DIVIDER tones (1.74 / 1.53 here), so
+       leaving it would have dropped the edge 4.17 -> 1.74 exactly while the pointer
+       is on the card. `primary` is what the sibling `.TemplateCard:hover` already
+       uses for the same object: 5.60 / 4.57 on the fill.
+
+       ⚠️ DELETING this line instead — the node picker's remedy — measures fine and
+       was rejected on purpose: this hover does not move the fill at all, so the
+       resting tone is simply inherited at 4.17 / 3.72. Two reasons not to. The rule
+       lists `border-color` in its own `transition` above, so a deletion leaves a
+       declared transition animating nothing; and a hover whose job is to lift the
+       card should not be the one state with no edge change. A fourth case for the
+       sweep's up/down rule, and a new direction: the fill is STATIONARY. */
+    border-color: var(--theme-color-primary);
     box-shadow: var(--shadow-card-hover);
   }
 
