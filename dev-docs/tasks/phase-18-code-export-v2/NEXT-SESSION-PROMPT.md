@@ -1,143 +1,167 @@
-# Next session — the Visual Function's null outputs, then the missing Component Inputs
+# Next session — the missing interface, both ends (design settled, not built)
 
-**Where the phase stands (2026-08-28, after twenty-three sessions).** Session 23 closed §10d(1),
-the biggest correctness hole in the export: **a component input port name is user text and was
-being emitted verbatim as a TypeScript identifier.** The corpus's syntax diagnostics went from
-**558 to zero**. Everything is written up in
-[EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md) **§11** — read
-**§11c** and **§11d** before starting, because §11c changes what the remaining work *is*.
+**Where the phase stands (2026-08-28, after twenty-four sessions).** Session 24 closed §11d(1),
+the last of the *large* export defects: **a Visual Function's declared output type is a claim
+about the port, not a check on the writes.** The corpus went from **27/40 to 35/40 projects
+typechecking**, and 51 diagnostics to 35. It also diagnosed the whole of the remaining work,
+which turns out to be one authoring defect seen from two ends — read **§13** before starting,
+because it changes what the next fix *is*.
 
-**What landed.** One mapping, four surfaces, fourteen tests.
-
-- **§11a — the port name is the graph's vocabulary; the identifier is the emitted app's.**
-  `propIdentifier` / `propIdentifiers` in `emit/naming.ts`. Nine distinct non-identifier names in
-  the corpus, every one of them words separated by a space (`Align X` ×17, `Margin Bottom` ×17,
-  `Alternate text` ×8, …). The rest of the emitter guards by *quoting* — and that is precisely why
-  this path could not: a record field is only a property key, but a prop is a key **and** a binding
-  identifier **and** a JSX attribute name, and the last two cannot be quoted.
-- **The mapping is a pure function of the plan's own prop list**, which is how parent and child
-  agree without threading anything between them: the caller resolves an attribute name by running
-  `propIdentifiers` over the *child's* plan, exactly as the child does. Four surfaces take it —
-  interface/destructuring, every reader, an instance's parameters and wired attributes, and a
-  repeater row's template inputs — and **each is killed independently by its own test**
-  (mutation-checked: revert one, exactly one test fails).
-- An already-legal name is untouched. A reserved word is renamed too (`class` → `classProp`) —
-  reasoned, not measured; zero corpus instances, and §11a says so.
-
-**Measured, same instrument both sides** — a worktree at HEAD, then the working tree:
-
-| | before | after |
-|---|---|---|
-| projects that typecheck | 26 / 40 | **27 / 40** |
-| total diagnostics | 593 | **51** |
-| syntax diagnostics (TS1xxx) | **558** | **0** |
-
-`Puppy test` now typechecks outright; the eight clone projects went from 66 errors each to 2.
-**The coverage report is byte-identical to sessions 21 and 22 — 3,766/4,441, 84.80%** — as it must
-be: this retires no node, it makes the ones already translated compile. **The ranking is unchanged
-from `rank2-s22.txt`, re-run first as standing practice requires.** **411 tests (14 new).**
+Everything is in [EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md):
+**§12** is what landed, **§13** is what is next and why. Commit `107e2870`.
 
 ---
 
-## 🔴 A syntax error suppresses the whole semantic pass — §10d's census was a bound
+## What landed — §12
 
-`tsc` reports parse errors and then **does not run the checker**. Eight of the fourteen failing
-projects had syntax errors, so for those projects the s22 run reported **no semantic diagnostics at
-all** — and §10d read that silence as "these projects fail for reason (1)".
+An empty `set output` value socket generates the literal `null`. That is not an inference: it is
+`NoodlGenerators.ts`'s own `valueToCode(block, 'VALUE', …) || 'null'`. The runtime then stores it
+verbatim (`logic-builder.ts:386`) and delivers it down the wire — the one typecast on the way
+(NDA-014, `node.ts:1026`) is object/array → string and excludes null by an explicit guard. **So a
+`number`-typed output really does send null, and the wrapper's field has to admit it.**
 
-They do not. With the syntax errors gone, each of the eight reports **two errors that had never
-appeared in any run**, in a slice §10d never named. So "roughly five distinct causes" was never a
-count of what is wrong with the export; it was a count of what the instrument could still see past
-the parse failures. **A diagnostic census over a corpus that does not parse reports its bound, not
-its content** — "14 projects fail for five reasons" was always "for *at least* five reasons".
+Widened, not coerced. Coercion would make the exported app disagree with the graph about what the
+port sends, and it is out of reach anyway: the body is re-hosted **verbatim**, the same ruling
+that shims `__p`/`__s` rather than stripping them (EXP-003 §4).
 
-The same shape will recur: **cause (1) below hides whatever sits behind it in eight projects.**
-Expect the next after-run to surface something new, and treat that as the instrument working.
+- `WorkspaceCensus.emptyOutputWrites` — read off the **workspace**, never mined out of
+  `generatedCode`, for the reason `variables` is. **A shadow in the socket counts as plugged in**
+  (`valueToCode` resolves the socket's *target*, which for a shadow-only connection is the shadow).
+- The plan widens `${declared} | null` for exactly those names, in the `kind === 'visual'` branch.
+  An already-`any` port is untouched — `any | null` is `any`, noise carrying no information.
+- §4f's materialized `useState` builds its type from the same output list, so it follows; that is
+  a second surface with its own test.
 
-## Next, in order — re-derived from the s23 after-run, not inherited
+| | before (s23) | after (s24) |
+|---|---|---|
+| projects that typecheck | 27 / 40 | **35 / 40** |
+| total diagnostics | 51 | **35** |
+| this cause | 16 | **0** |
 
-1. 🔴 **`null` into a Visual Function wrapper's typed output** — 16 diagnostics, **8 projects**,
-   the whole clone family, and the only thing standing between the corpus and **35/40**. The block
-   program emits `Outputs["result"] = null;` while the re-host wrapper types the field from the
-   port's catalog type: `function blocks(…): { result?: number }`. An optional `number` cannot take
-   `null`. The wrapper is EXP-003 §4 (`jsWrapperLines` in `emit/component.ts`); the question to
-   settle is whether the output type widens (`number | null`) whenever the body can write null, or
-   whether the emitted assignment coerces — decide it from what the *runtime* does with a null
-   write to a typed output, the way §10a and §10b were settled from §1. Reproduce with
-   `showfile.ts <projectDir> src/components/Header.tsx` on `cn019-drive`.
-2. **A component reading a prop it never declared** — 18 diagnostics, 2 projects
-   (`ecommerce-example`, `ecom-responsive-probe`, both `ProductCard.tsx`): `Cannot find name
-   'image' / 'badge' / 'rating' / …`, plus the two `void` → `ReactNode` that travel with it.
-   Second by projects, first by diagnostic count. §11d(2)/(6).
-3. **Props passed to a component that declares none** (`IntrinsicAttributes`, 7 diagnostics,
-   `phase55-replay-haiku`). **This is (2) seen from the parent's end** — the child has no
-   `Component Inputs` node — so scope them together and check whether one ruling closes both.
-4. **The reactive Condition** (`Condition re-tests on every change of its input`, **3 nodes / 3
-   projects**, confirmed at HEAD) — still worth more than three, because it gates the **three
-   remaining `User` nodes** (`authenticated → Condition → onfalse → RouterNavigate`, the auth-gate
-   idiom). Retires ~6 nodes over 3 projects and finishes the page session 21 left half-done. This
-   is the first item that buys *coverage* rather than *compilation*; everything above it buys
-   compilation, and a project whose export does not compile is worth nothing whatever its coverage
-   percentage says.
-5. **`number` / `readonly unknown[]` into a `string` prop** — 5 diagnostics, 2 projects. §11d(4)/(5).
-6. **Relation verbs + `DbModel2`** (3 nodes, 1 project) — still the only consumer of the record
-   verbs' consumed-`Id` gate; §4c of RECORD-VERBS is already written for it. Note
+Coverage **byte-identical to sessions 21–23 — 3,766/4,441, 84.80%**, as it must be: this retires
+no node, it makes a translated one compile. Ranking unchanged from `rank2-s23.txt` (re-run first,
+as standing practice requires — `rank2-s24.txt` is byte-identical). **419 tests (8 new).**
+
+---
+
+## 🔴 Next: the missing interface — read §13 first, it is not what §11d called it
+
+§11d called it "a component reading a prop it never declared", which reads as though the export
+invented the read. **It did not.** One corpus pass reframes all three remaining prop items:
+
+- **`ecommerce-example` / `ecom-responsive-probe`** (18 diagnostics): `ProductCard`'s
+  `Component Inputs` node has all 11 ports serialised **`plug: "input"`**. Corpus-wide there are
+  **714 such ports plugged `output` and 22 plugged `input` — and the 22 are this one component,
+  cloned twice.** `ComponentModel.getPorts()` inverts the plug when deriving the interface, so
+  this component advertises **eleven outputs and zero inputs**: in the running app nothing
+  arrives and the card renders blank. **`plan.props` is correctly empty.** The bug is that the
+  readers still emit `{image}`.
+- **`phase55-replay-haiku`** (7 diagnostics): the same defect from the other end — the cards have
+  **no `Component Inputs` node at all**, and the sections place them with parameters.
+
+⚠️ **The two ends never meet in one project** — `ProductCard` is never instantiated in either
+ecommerce project, and haiku's cards are never read from inside. So the fix must be written and
+tested **twice**, not once.
+
+**The ruling (§13b): refuse and name it, do not infer the interface.** Minting props from the
+wires would make `ProductCard` render — and would make the export disagree with the runtime,
+which is the one thing this phase does not do. A read or write of a port the interface does not
+declare is **dropped with a named note**, at two sites:
+
+| end | site | today |
+|---|---|---|
+| child | `resolveExpr` (plan.ts:1855) and the binding loop (plan.ts:~4473) | emits `{image}`, TS2304 |
+| parent | `targetPropName`, three call sites in `emit/component.ts:448` | emits the attr, TS2322 |
+
+Session 23 already left the seam marked: the comment on `targetPropName` says a port the target
+does not declare "is §10d(2)/(3)'s question, not this one's". This is that question.
+
+### 🔴 Before touching it: re-key the census to the emitter's population
+
+`ifaces.ts` (scratchpad) counts **36** undeclared parent-end attributes. The emitter writes
+**30**. The gap is `phase55-replay-sonnet`'s `</Cards/Category Card> minWidth` / `width` —
+**layout parameters the style path consumes, which never reach the JSX**. That project typechecks
+today, and a refusal keyed on the census as written would break six correct attributes.
+
+The tell was arithmetic: 30 attributes over 7 JSX elements is exactly the 7 `TS2322` diagnostics
+(TypeScript reports `IntrinsicAttributes` once per *element*), while 36 matches nothing.
+**Re-run `ifaces.ts` against the emitted files, not the IR.**
+
+## After that — the whole remaining list, 5 projects / 35 diagnostics
+
+1. **The missing interface, both ends** — 25 diagnostics, 3 projects. Above. Closing it takes the
+   corpus to **38/40**.
+2. **`void` into `ReactNode`** — 2 diagnostics, travels with (1)'s child end.
+3. **`number` into a `string` prop** — 4 diagnostics, 2 projects (`leg001-comment-measure`,
+   `phase58-awp006-deepseek`). §11d(4).
+4. **`readonly unknown[]` into a `string` prop** — 1 diagnostic, `leg001-comment-measure`. §11d(5).
+5. **The reactive Condition** — 3 nodes / 3 projects. The first item that buys *coverage* rather
+   than compilation; it gates the three remaining `User` nodes (the auth-gate idiom) and retires
+   ~6 nodes.
+6. **Relation verbs + `DbModel2`** (3 nodes, 1 project) — §4c is already written for it.
    `RemoveDbModelRelation` has **zero corpus instances**.
-7. **EXP-003 Tier B** stays where it is: ~350 nodes that are one third-party kit copied into eight
-   projects, gated behind Model2, a dynamic-template For Each and a reactive-object vocabulary none
-   of which exist. `tb-survey.ts` dumps every body of it — **read that before committing.**
+7. **EXP-003 Tier B** stays where it is: ~350 nodes, one third-party kit copied into eight
+   projects, gated behind four things that do not exist. `tb-survey.ts` dumps every body of it —
+   **read that before committing.**
 
 ## 🔴 Traps this session paid for
 
-**The measurement came before the design, and it shrank the design.** One pass over the corpus
-(`propnames.ts`) said: nine names, all spaces, no leading digits, **no collisions**, and the
-callback props unaffected. That turned an open-ended "sanitiser" into a small mapping with a
-stated fallback — and it also said honestly which parts (reserved words, leading digits,
-collisions) are *reasoned* rather than measured, which is now written down beside them.
+**A fixture claimed to be an artefact and was not.** `GUARD_WORKSPACE` is documented as
+"tut003's program" and used the bare `setOutput('message')` helper — an *empty socket* — while
+tut003's real workspace has both sockets filled. It had been wrong since session 19 and nothing
+noticed, because until this session the difference generated no code any test read. The tell was
+that adding the widening broke a test asserting the *tight* type; the wrong fix was to update the
+expectation, the right one was to fix the fixture. **Build the negative control into the helper
+names** — `setOutput` vs `setOutputTo` is a pair a reader cannot confuse by accident, where one
+helper with an optional second argument would have left the broken case as the default.
 
-**The obvious guard was the wrong guard.** `tsFieldKey` and friends quote, and quoting is exactly
-what a prop cannot do. **When three sites already solve "what if this name is user text" and a
-fourth still does not, check whether the fourth has the same degrees of freedom before copying
-them** — here it had three surfaces instead of one, and two of them have no quoting syntax at all.
+**A census of what the graph contains is not a census of what the emitter writes** (§13c, above).
+Six of thirty-six. The arithmetic against the diagnostic count is what caught it.
 
-**A four-surface fix needs four independent tests, and the way to know you have them is to break
-each surface separately.** Reverting the caller side alone killed exactly the two caller tests and
-nothing else; reverting the repeater path killed exactly the repeater test. Without that pass the
-repeater surface would have looked covered by the parent-side tests, and it is not — it is a
-different code path.
+**Two of the eight new tests share a surface today** — the wrapper signature and the local
+`Outputs` declaration are built from one string, so no mutation separates them. Kept deliberately:
+they diverge exactly under the design that was rejected (a loose local, a narrow return type), so
+the pair pins that rejection.
 
 ⚠️ Still true, and cost time again: **`ts-node` must be given an absolute path**, and a scratchpad
-script needs `--compiler-options '{"module":"commonjs"}'`. **`rank2.ts` and `coverage-audit.ts`
-take their projects as argv**, not from `projects.txt`; zsh: `"${(@f)$(cat projects.txt)}"`.
-`build-corpus.ts` **exits with the failure count**, so `cmd > out; echo $?` reports the *compound* —
-read the file's last line (`N/40 projects typecheck.`) instead of trusting the harness's exit code.
+script needs `--compiler-options '{"module":"commonjs"}'` and to be run **from the package
+directory** (`packages/nodegx-export`). `rank2.ts` / `coverage-audit.ts` / `ifaces.ts` take their
+projects as argv, not from `projects.txt`; zsh: `"${(@f)$(cat projects.txt)}"`. `build-corpus.ts`
+**exits with the failure count**, so read the file's last line (`N/40 projects typecheck.`) rather
+than trusting `echo $?`.
 
-## Instruments (session 23 scratchpad `41ed698f-…`)
+🔴 **Never `git checkout <path>` to undo a source mutation while test edits are live in the same
+file** — it discards the whole file. Copy to `/tmp` and copy back instead; that is what the source
+mutations here did, and the one `git checkout` cost a full re-application of five test edits.
 
-- **`scripts/build-corpus.ts`** (committed, in the package) — `ts-node -P tsconfig.json
-  scripts/build-corpus.ts --app <harnessDir> <projectDir>…`. **The harness needs `@nodegx/core`
-  symlinked into its `node_modules`** or a quarter of the corpus fails for the grader's reasons
-  (§10c). Two prepared copies are in the scratchpad: `app/` and `app-before/` — **use a separate
-  one per concurrent run**, they both write into `src/`. Results:
-  `build-corpus-s23-before.txt` / `build-corpus-s23-after.txt`.
-- **`propnames.ts`** (scratchpad) — every non-identifier component input port name in the corpus,
-  with its sites, plus the parent-side attribute names and a collision check. Re-run it if the
-  mapping ever needs to change.
-- **`showfile.ts`** (scratchpad) — `ts-node showfile.ts <projectDir> <src/path.tsx>` prints one
-  emitted file with line numbers; no argument for the path lists them. This is how you read a
-  diagnostic's actual line.
-- **`rank2.ts`** — the ranking instrument; `rank2-s23.txt`, identical to s22. **Run this first,
+## Instruments (session 24 scratchpad `16416069-…`)
+
+- **`scripts/build-corpus.ts`** (committed) — `ts-node -P tsconfig.json scripts/build-corpus.ts
+  --app <harnessDir> <projectDir>…`. **The harness needs `@nodegx/core` symlinked into its
+  `node_modules`**; a prepared `app/` copy is in the scratchpad — **one per concurrent run**, it
+  writes into `src/`. Results: `build-corpus-s24-after.txt` (35/40).
+- **`vfout.ts`** (new) — every JS wrapper's outputs, declared types, and what the body assigns to
+  each, plus which wrapper results are read downstream. This is the census that settled §12.
+- **`vfws.ts`** (new) — dumps the raw `noodl_set_output` / `noodl_define_output` blocks of one
+  project's Visual Functions, so the empty-socket condition is read off the workspace.
+- **`ifaces.ts`** (new) — the interface census, both ends. **Re-key it to the emitted files
+  before using it as a gate** (§13c).
+- **`props2.ts`** (new) — one component's `Component Inputs`/`Outputs` nodes, their declared
+  ports, the wires off them, and what `plan.props` ended up with.
+- **`showfile.ts`** — `ts-node showfile.ts <projectDir> <src/path.tsx>` prints one emitted file
+  with line numbers; no path argument lists them. This is how you read a diagnostic's line.
+- **`rank2.ts`** — the ranking instrument; `rank2-s24.txt`, identical to s22/s23. **Run first,
   every session.**
-- `coverage-audit.ts` + `projects.txt`; `cov-after-s23.txt` is byte-identical to `cov-after-s22.txt`.
+- `coverage-audit.ts` + `projects.txt`; `cov-after-s24.txt` byte-identical to s23.
   Worktree recipe: `scripts/devtools/make-worktree.sh <name> HEAD`. **Never** `git stash` here.
-- `emit-to-app.ts` / `emit-to-app-base.ts` — one project into a buildable app copy (**never
-  overwrite its `package.json`**). `dump.ts` — `ts-node dump.ts <projectDir> [fileFilter]`,
-  `NOTES=1` for the note list. `probe.ts` — `TYPE=<typeName> ts-node probe.ts <projects…>`.
+- `emit-to-app.ts` / `emit-to-app-base.ts` (**never overwrite the app's `package.json`**),
+  `dump.ts`, `probe.ts`, `propnames.ts`, `rv-survey.ts`.
 
 **Standing practice:** work on `cline-dev`; commit by pathspec (`packages/nodegx-export`,
 `dev-docs/tasks/phase-18-code-export-v2`), untracked files add+commit in one chain, never stage —
-peers were actively editing `packages/noodl-mcp` and `packages/noodl-editor` throughout s23.
-411 tests (~4s, from the package dir `../../node_modules/.bin/jest`); a lone suite-level red with
-0 failing tests is a flake until re-run. `npm run export-ledger:check` from the root gates the
-ledger (175 types: 101 deferred / 58 translated / 1 stubbed / 15 backend-only). ts-morph and
-Prettier stay uninstalled; the package is not in root `test:packages`.
+peers were editing `packages/noodl-editor`, `packages/noodl-mcp` and `packages/nodegx-backend`
+throughout s24. 419 tests (~4s, from the package dir: `../../node_modules/.bin/jest`); a lone
+suite-level red with 0 failing tests is a flake until re-run. `npm run typecheck` in the package.
+`npm run export-ledger:check` from the root gates the ledger (175 types: 101 deferred / 58
+translated / 1 stubbed / 15 backend-only). ts-morph and Prettier stay uninstalled; the package is
+not in root `test:packages`.

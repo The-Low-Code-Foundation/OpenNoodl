@@ -714,3 +714,72 @@ second argument would have left the empty case as the default, which is how it g
 
 Closing (1)+(2)+(3) would take the corpus to **38/40**; only the two `string`-prop causes would
 remain.
+
+## §13 The missing interface, diagnosed (session 24 — §12e(1)+(2)+(3), designed, not built)
+
+§11d called the next item "a component reading a prop it never declared", which reads as though
+the export invented the read. **It did not.** One pass over the corpus reframes all three items,
+and the reframing changes what the fix is.
+
+### 13a — Both ends are one authoring defect, and the export is right about the interface
+
+The editor derives a component's interface in `ComponentModel.getPorts()` (`componentmodel.ts`),
+and **it inverts the plug**: a `haveComponentPorts` node's *input* ports become component ports
+plugged `output`, and its *output* ports become component ports plugged `input`. That inversion is
+correct — on the `Component Inputs` node a port is an output (it feeds the graph); on an
+*instance* of the component the same port is an input (the parent sets it).
+
+Against that, the corpus:
+
+| `Component Inputs` node ports | count |
+|---|---|
+| plugged `output` (correct) | **714** |
+| plugged `input` | **22** — all of them one component, cloned into two projects |
+
+`Component Outputs` ports are 342, all `input`, with no exceptions. So the 22 are anomalous by a
+factor of thirty, and `ecommerce-example` / `ecom-responsive-probe` are one mis-authored
+`ProductCard` counted twice. Under `getPorts()` those 11 ports surface as component **outputs**,
+so the component advertises eleven outputs and **zero inputs**: in the running app nothing arrives
+and the card renders blank. `plan.props` is empty because the interface *is* empty.
+
+`phase55-replay-haiku` is the same defect from the other end — `ProductCard` and `CategoryCard`
+have **no `Component Inputs` node at all**, and `FeaturedProducts` / `BrowseCategories` place them
+with six and two parameters each.
+
+⚠️ **The two ends never meet in one project.** `ProductCard` is never instantiated in either
+ecommerce project, and `phase55-replay-haiku`'s cards are never read from inside. §11d(3) called
+them "the same thing seen from two ends" — true of the *defect*, but not of any single artefact,
+so a fix has to be written and tested twice.
+
+### 13b — The ruling: refuse and name it, do not infer the interface
+
+The tempting fix is to mint the props from the wires, so `ProductCard` renders. **That would make
+the export disagree with the runtime**, which is the one thing this phase does not do: the port
+does not exist, nothing is delivered, and the faithful emission is the *absence* of the binding
+plus a note saying why — not a bare identifier that happens to compile if you squint.
+
+So: **a read or a write of a component port the interface does not declare is dropped with a named
+note**, at the two sites that mint it —
+
+| end | site | today |
+|---|---|---|
+| child | `resolveExpr` (`Component Inputs` → `{kind:'prop'}`) and the binding loop | emits `{image}`, TS2304 |
+| parent | `targetPropName`, three call sites in `emit/component.ts` | emits the attribute, TS2322 `IntrinsicAttributes` |
+
+`targetPropName` is already the designated seam: session 23 left a comment there saying a port the
+target does not declare "is §10d(2)/(3)'s question, not this one's". This is that question.
+
+### 13c — 🔴 The census's population was not the emitter's, and it showed
+
+The parent-end census counted every `node.parameters` entry on a component instance and found
+**36** undeclared attributes. The emitter writes **30**. The six-attribute gap is
+`phase55-replay-sonnet`'s `</Cards/Category Card> minWidth` and `width` — **layout parameters the
+style path consumes, which never reach the JSX at all.** That project typechecks today, and a
+refusal keyed on the census as first written would have dropped six attributes that are already
+correct.
+
+The tell was arithmetic: 30 emitted attributes over 7 JSX elements is exactly the 7 `TS2322`
+diagnostics (TypeScript reports `IntrinsicAttributes` once per element, not once per attribute),
+while 36 matches nothing. **A census of what the graph contains is not a census of what the
+emitter writes**, and the gate has to be keyed on the second. Re-run `ifaces.ts` against the
+emitted files, not the IR, before touching `targetPropName`.
