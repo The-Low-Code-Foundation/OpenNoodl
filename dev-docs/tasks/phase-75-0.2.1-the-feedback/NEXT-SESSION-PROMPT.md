@@ -1,112 +1,96 @@
 # Next session — phase 75
 
-_Written 2026-08-28 at the end of session 60. Session 59 handed over three blockers that are
-Richard's and one item that was described as his and turned out not to be._
+_Written 2026-08-28 at the end of session 61. Session 60 handed over two blockers that are
+Richard's, and one ready unit of sweep work. The sweep unit is done; the blockers are unchanged._
 
 ## What happened
 
-**One commit on `cline-dev`**, **`nodegx-community` `main` pushed to `origin`**, and the
-`--theme-color-border-default` item closed for T4's shelf — after finding the *fix* it was filed
-with would have made things worse.
+**Two commits on `cline-dev`** (`40b6e3a3`, `c8ec4f8c`), both the border sweep. The node picker
+family is closed — and the way it closed changes how the rest of the sweep must be done.
 
 ## Start here
 
-⬜ **STILL THE ONE READY, UNFINISHED THING: deploy C5 and drive it.** Unchanged from s59 and still
-blocked on one line. **`NODEGX_MODERATORS` is not in `~/nodegx-community-deploy.env`** — I checked
-this session; the file's mtime is **08-26**, i.e. untouched since before C5 existed. Until Richard's
-handle is in it, the hide route 404s for *everybody*, and **the verb has still never run outside a
-spec.** It needs: his handle in that file, `ops/deploy.sh 49.12.102.195`, then the hide driven
-against production.
+⬜ **STILL THE ONE READY, UNFINISHED THING, AND STILL BLOCKED ON THE SAME LINE: deploy C5 and drive
+it.** Unchanged from s59 *and* s60. **`NODEGX_MODERATORS` is still absent from
+`~/nodegx-community-deploy.env`** — re-checked this session, mtime still **08-26**, i.e. untouched
+since before C5 existed. Until Richard's handle is in it the hide route 404s for *everybody*, and
+**the verb has still never run outside a spec.** Needs: his handle in that file,
+`ops/deploy.sh 49.12.102.195`, then the hide driven against production. ⚠️ Three sessions have now
+opened on this same sentence — it is not going to move without Richard.
 
 🧭 **Richard's, and neither is code:**
 - **Content for FB-005 / FB-009 / FB-012** — templates, syllabus lessons, the tutorial batch.
-- 🔒 **Free tags are still unruled.** §8 asked it in the same breath as R-chat-mod and B did not
-  answer it. v1 keeps the channel as the category by *default*, not by decision.
+- 🔒 **Free tags are still unruled.** §8 asked it alongside R-chat-mod and B did not answer it. v1
+  keeps the channel as the category by *default*, not by decision.
 
-⬜ **The border sweep continues**: 60 known control sites, sized and listed in
-[BORDER-CONTROL-SWEEP.md](BORDER-CONTROL-SWEEP.md). **Do not do it as one sweep** — see below.
+⬜ **The border sweep continues — ~57 sites left**, in
+[BORDER-CONTROL-SWEEP.md](BORDER-CONTROL-SWEEP.md). **Read the new "hover trap" section before
+picking one up.** Suggested next family: **the bench/canvas group** (BenchScenarioBar,
+BenchInputsRail, CanvasHud) — 6 listed sites, all three files carry the hover trap, so it exercises
+the finding immediately.
 
-## ✅ Closed: the shelf's control boundaries — and the framing was the finding
+## ✅ Closed: the node picker, and it was six declarations rather than three
 
-s59 listed `--theme-color-border-default` as *"selected, not started… it reaches every surface in
-the editor, so it wants a session of its own."* **It did not want a session of its own, and the
-reason it reaches every surface is the reason not to touch it.**
+Full detail is in the sweep doc. The short version:
 
-🔴 **`border-default` is a DIVIDER tone and is SUPPOSED to be invisible.** `colors.css` says so in
-two separate blocks. NAT-003's note records the exact regression raising it would restage — *"it
-stopped being a hair off `bg-3` (1.01) and became a visible line on it (1.34), **which is the
-opposite of what it is for**."* And **VFN-002's c3 asserts `border-default` is invisible on bg-3**,
-so the proposed fix would have gone red by construction.
+Four controls moved to `--theme-color-border-control` — `NodePickerCard .Root` (a `<button>`),
+`NodePickerSearchBar .Field` (draws the `<input>`'s edge), `NodePickerEmpty .Action`,
+`NodePickerPreview .DocsButton`. All now **3.37–4.17:1** both sides, both themes. Ten sites in the
+same family were **deliberately left** on the divider token and are asserted as such.
 
-✅ **The token for a control boundary already existed.** `--theme-color-border-control` (POL-016),
-measured this session at **3.08–4.86:1 dark / 3.05–3.72:1 light** across bg-0/1/2/3. So the defect
-was never 376 declarations; it is the subset that are **controls wearing a divider's token**.
-
-**Fixed in `TemplateStep.module.scss`**: `.TemplateCard` (a `<button aria-pressed>`),
-`.TemplateFilter-pill` (inactive state) and `.TemplateFilter-search` (an input). **Left alone**:
-`.TemplateStep-notice` and `.TemplateCard-tag` — genuine dividers.
-
-⚠️ **On this card the edge is load-bearing and that had to be measured, not assumed**: the fill step
-is **1.156 dark / 1.085 light**, and the light figure is *under* NAT-001's own 1.09 perceptual bar.
-A card elsewhere whose fill carries it may not need the same change — which is why the rest is not a
-find-and-replace.
+Pinned by `tests-unit/border-sweep/node-picker-control-borders.test.ts` — 40 rows, six mutants.
 
 ## 🔴 The findings worth more than the code
 
-**1. A recommendation arrived carrying a real measurement and the wrong conclusion.** T4's
-1.07/1.15 was correct and reproduced. What did not survive was *"changing the token touches every
-surface, so it's a token decision"* — the breadth was the argument for the opposite. **Both prior
-sessions relayed the conclusion; neither re-read `colors.css`, which answers it in a comment.**
+**1. `border-strong` is a DIVIDER tone, so the resting-state fix alone is a REGRESSION.** It is one
+of NAT-003's three (1.74:1 dark / 1.53:1 light), and both `.Root:hover` and `.DocsButton:hover`
+moved their edge to it. Harmless while the resting edge is also a divider; the moment the resting
+edge becomes a real 3:1 control tone, **pointing at the control makes its boundary harder to see**
+(3.57 → 1.74). **A find-and-replace over the inventory would have shipped exactly that.**
+🔴 **The unit of work is a RULE, not a declaration** — every `:hover` / `:focus` / `.is-*` state is
+part of the same claim.
 
-**2. The spec had to refuse the over-fix as well as the under-fix, and that took its own mutant.**
-Rows asserting "≥3:1" are all satisfied by sweeping *every* `border-default` in the file to
-`border-control` — the exact over-correction this task exists to refuse. Two negative controls now
-carry it: the shared token is still <1.2 on the panel, and the two non-controls still wear it.
-**Three mutants, each killed by a named row**: revert the card (4 reds), raise the shared token
-(1 red), sweep the tag too (2 reds).
+**2. The trap is laid across most of what is left: 20 stylesheets repo-wide, ≥17 of the remaining
+sites.** Named in the sweep doc. ✅ Session 60's shelf work was **checked, not assumed**, and is
+clean — its hovers use `primary`, which is *stronger* than the resting tone.
 
-**3. The spec reads the stylesheet, not the palette.** Asserting `border-control` clears 3:1 passes
-on a build where `TemplateStep` never names it — that ratio is a property of the *token*, and the
-claim is about the *card*. Each row resolves the selector's own border and background out of the
-`.scss`, so a revert fails at a **number**.
+**3. A threshold is a property of the GROUND, not of the token.** I copied the shelf spec's
+`border-default < 1.2` negative control and it went red at **1.255** — which is the value
+`colors.css` *documents by design* for the divider on `bg-1` ("1.109 / 1.254 / 1.730"). The shelf
+measures against `bg-2`. **The bound was wrong, not the token**; a copied threshold reads a correct
+value as a defect. Re-derive per surface.
 
-**4. 🔴 The 60-site inventory reports its own bound and must be read as a floor.** The query needs
-`cursor: pointer` in the block, so it **misses native `<input>`/`<select>`/`<button>`**. Proof:
-`.TemplateFilter-search` is a control, it was part of this defect, and **the query did not find
-it** — it was found by reading the file. Also ⚠️ **membership is a judgement**: `.Matrix`,
-`.OpSummary`, `.TriggerInfoCopy` set a cursor but may be regions. The test is 1.4.11's — must a
-reader *identify it as a component* — not "is it clickable".
+**4. Third independent proof the 60-site inventory is a FLOOR.** It listed three picker sites; nine
+stylesheets in that tree name the token, and one of the misses — `.Field` — was a real defect. A
+text input never sets `cursor: pointer`, so the query cannot see it. Same shape as
+`.TemplateFilter-search`. **Read the family; do not work the list.**
 
-**5. `origin/main` was 19 behind, not 18.** s59 measured 18 and the number moved because s59's own
-C5 commit landed after the reading. **Pushed this session** — the ~16,121-line single-copy gap is
-closed, verified by consequence (`origin/main` = `2bce720`, and `git branch -r --contains` names it,
-rather than trusting the push's own output). ⚠️ The repo is **private** and the range was scanned
-for env-shaped files and secret literals before pushing; both clean.
+**5. One mutant reddened in light only** — the `.is-unavailable` mix, 2.52 light vs 3.19 dark. A row
+that fails in exactly one theme is measuring the surface rather than matching a string.
 
 ## Gates, as measured this session
 
-- `tsc -p packages/noodl-editor --noEmit`: **exit 0**, written to a file (not piped — `PIPESTATUS`
-  is bash and this is zsh; s59 got caught by the same thing).
-- `fb-005` + `nat-001` + `vfn-002`: **10 suites / 524 / 0**. VFN-002's c3 negative control was the
-  main risk and it is green.
-- `noodl-core-ui`: **28 / 527 / 0**, unchanged from the recorded baseline.
-- Editor `test:main`: **363 suites / 5944 passed** on tree `e250ee02`. ⚠️ One red,
-  `bld-004/reasoningChannel.test.ts` — **a flake**: 8/8 on re-run, two timing rows (249ms, 67ms), a
-  peer's `tsc` was competing for CPU, and the file is neither mine nor locally modified.
-  ⚠️ **This change is +1 suite / +16 tests**; the rest of the movement from s59's `358 / 5907` is
-  peer work on a different tree and I did **not** reconcile it. **Quote the tree.**
+- Editor `test:main`: **364 suites / 5984 passed / 0**, exit 0, on tree `40b6e3a3`.
+  ✅ **Reconciles exactly** with s60's `363 / 5944`: this change is +1 suite / +40 tests. No flake;
+  s60's `bld-004/reasoningChannel.test.ts` red did not recur.
+- `tsc -p packages/noodl-editor --noEmit`: **exit 0**, 0 lines, written to a file not piped.
+  ⚠️ It does not cover `tests-unit/`; **ts-jest does**, and the new spec ran.
+- Targeted `border-sweep` + `fb-005`: **8 suites / 289 / 0**.
 - `npm run tokens:css`: **exit 0**, 322 stylesheets.
-- `test:ci` **not run by this lane** — the change is a `.module.scss` in the launcher wizard plus a
-  `tests-unit` file; no Electron spec names either.
+- `test:ci` **not run by this lane, and not owed**: the change is four `.module.scss` files plus a
+  `tests-unit` file. The Electron node-picker specs (`tests/nodepicker/`) are reducer and search
+  logic — **checked**, they assert nothing about styling.
+- ⚠️ A peer's editor build (webpack ×3) was running throughout. `test:main` is plain Node and came
+  out clean, but that is the context for any timing question.
 
 ## Standing facts for this area
 
-- 🔴 **`NODEGX_MODERATORS` is absent from `~/nodegx-community-deploy.env`** (mtime 08-26). C5 is
+- 🔴 **`NODEGX_MODERATORS` absent from `~/nodegx-community-deploy.env`** (mtime 08-26). C5 is
   deployed-but-inert until it is there.
 - 🔴 **Docker is not running**, so `npm run db:up` fails. The community suite runs against a scratch
   DB on local **5432**: `DATABASE_URL="postgres://richardosborne@localhost:5432/nodegx_c5_s59"`.
-  **`nodegx_c5_s59` still exists** and can be reused. The repo default is **55432** (Docker's).
+  `nodegx_c5_s59` still exists and can be reused. Repo default is **55432** (Docker's).
 - ⚠️ **P76 asks that the local backend "sb015 site backend" (port 8588) be left alone.** Not touched.
 - ⚠️ **Not mine and still uncommitted, leave them**: `packages/nodegx-export/*` (P18),
-  `tests/cloud/sb017-*`, `tests-unit/sb-017/`, `registeradapters.ts` (P76), and
-  `AskAboutNodeDialog.module.scss`, uncommitted since **08-20** and belonging to nobody in this lane.
+  `tests/cloud/sb017-*`, `tests-unit/sb-017/`, `registeradapters.ts` (P76), the P70/P71 task files,
+  and `AskAboutNodeDialog.module.scss`, uncommitted since **08-20** and belonging to nobody here.
