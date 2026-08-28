@@ -571,3 +571,227 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     );
   });
 });
+
+/**
+ * SBR-015 — every terminal path of a cloud function reaches a Response.
+ *
+ * The defect this gate exists for: `publishPage` and `duplicatePage` shipped with
+ * **no `failure` wire at all**. Every node in both graphs had exactly one way out,
+ * the happy path, so any error anywhere became a thirty-second 504 with no status,
+ * no message and no node named — while `claimSite`, the same file and the same
+ * mechanism, answered in 29 ms because all five of its failure edges land on a
+ * `status: 'failure'` Response.
+ *
+ * 🔴 **The population is derived, not listed.** An endpoint is a component holding
+ * a `noodl.cloud.request` node. The three worker components (`SetSectionAccess`,
+ * `CopySectionToPage`, `ContactRecipient`) have no Response node at all — they
+ * answer through the Run Tasks template contract's own `Failure` output — so they
+ * are a genuinely different population, and the control below pins that the split
+ * is two-and-not-one rather than letting the rule quietly widen to both.
+ */
+describe('SBR-015 — a cloud function has no silent exit', () => {
+  /**
+   * ⚠️ **Classified, not filtered.** A bare list of failure-capable types is an
+   * exclusion list that cannot fail: a node type added to a cloud function later
+   * would simply not appear, and the gate would go green by not looking. So every
+   * type actually present in an endpoint is classified here, and the first test
+   * is that the classification is TOTAL — an unclassified type reds before any
+   * failure wire is graded.
+   */
+  const FAILURE_CAPABLE: Record<string, string> = {
+    JavaScriptFunction: 'fires Failure when the script throws (simplejavascript.ts)',
+    DbCollection2: 'query error → setError → Failure (dbcollectionnode2.ts:812)',
+    DbModel2: 'modelcrudbase addFailure mixin',
+    SetDbModelProperties: 'modelcrudbase addFailure mixin',
+    NewDbModelProperties: 'modelcrudbase addFailure mixin',
+    RunTasks: 'outcome contract — done / unchanged / failure',
+    'noodl.cloud.secret': 'an unprovisioned secret is a Failure',
+    'noodl.cloud.addusertorole': 'a role write can fail',
+    'noodl.cloud.sendemail': 'a bounced or unconfigured mail service is a Failure',
+    // A component instance answers through its own `Component Outputs`, which
+    // this one declares a `Failure` signal on. Same obligation, different port.
+    '/#__cloud__/site/ContactRecipient': 'its Component Outputs declares a Failure signal'
+  };
+  const CANNOT_FAIL: Record<string, string> = {
+    'noodl.cloud.request': 'the entry point — it has no failure to report',
+    'noodl.cloud.response': 'the exit itself'
+  };
+
+  /**
+   * 🔴 **Graded, not skipped.** An exclusion list cannot fail — so each entry
+   * carries a reason, the reason is asserted non-empty, and a stale entry (a node
+   * that no longer exists, or one that now DOES answer) reds rather than sitting
+   * there forever. That last half is the one that usually rots.
+   */
+  const EXEMPT: Record<string, string> = {
+    '/#__cloud__/submitContactForm recipient':
+      'its Failure is handled by CONTINUING rather than by answering: both Ready and Failure ' +
+      'wire to save.store, so a recipient that cannot be resolved still records the message ' +
+      'and the answer still comes from mail.completed / save.failure downstream.',
+    '/#__cloud__/submitContactForm compose':
+      'a throw here degrades the email rather than stalling: it does not gate save, ' +
+      'stored still runs and mail.completed still answers. Answering on its failure ' +
+      'would pre-empt the save and tell the visitor "received" before the row exists.'
+  };
+
+  const endpoints = shipped.components.filter((c) => nodesOf(c).some((n) => n.type === 'noodl.cloud.request'));
+
+  it('control: there are endpoints to grade, and workers that are NOT endpoints', () => {
+    // Both halves matter. The first says the population is not empty (a gate over
+    // nothing is green for the wrong reason); the second says the split is real,
+    // because a rule that had silently widened to the workers would demand a
+    // Response node on components that correctly have none.
+    expect(endpoints.map((c) => c.name).sort()).toEqual([
+      '/#__cloud__/claimSite',
+      '/#__cloud__/duplicatePage',
+      '/#__cloud__/publishPage',
+      '/#__cloud__/submitContactForm'
+    ]);
+    const workers = shipped.components.filter(
+      (c) => c.name.startsWith('/#__cloud__/') && !nodesOf(c).some((n) => n.type === 'noodl.cloud.request')
+    );
+    expect(workers).toHaveLength(3);
+    expect(workers.every((c) => nodesOf(c).every((n) => n.type !== 'noodl.cloud.response'))).toBe(true);
+  });
+
+  it('🔴 every node type inside an endpoint is classified — the rule cannot skip one by not knowing it', () => {
+    const unclassified = [
+      ...new Set(
+        endpoints.flatMap((c) =>
+          nodesOf(c)
+            .map((n) => n.type)
+            .filter((t) => FAILURE_CAPABLE[t] === undefined && CANNOT_FAIL[t] === undefined)
+        )
+      )
+    ].sort();
+    expect(unclassified).toEqual([]);
+  });
+
+  /** Nodes whose `failure` reaches a Response `send`, per endpoint. */
+  function unanswered(component: Component): string[] {
+    const nodes = nodesOf(component);
+    const responses = new Set(nodes.filter((n) => n.type === 'noodl.cloud.response').map((n) => n.id));
+    // 🔴 The edge, not the node. The first version of this grader asked "does
+    // this node reach a Response's send?" — and every node on a happy path does,
+    // so a node with `done -> res.send` and NO failure wire graded as answered.
+    // That is a hole exactly the shape of the defect: it would have passed the
+    // unfixed `publishPage`, whose `page.done -> res.send` was the one edge it
+    // had. The mutant below is what caught it.
+    //
+    // `completed` counts as well as `failure`, and correctly: it "fires after
+    // every invocation, whatever the outcome" (`outcome.ts`), so a node wired by
+    // it does answer on its failure path — that is exactly why
+    // `submitContactForm` uses it for the mail.
+    const answered = new Set(
+      component.graph.connections
+        .filter(
+          (w) =>
+            responses.has(w.toId) &&
+            w.toProperty === 'send' &&
+            (w.fromProperty === 'failure' || w.fromProperty === 'completed')
+        )
+        .map((w) => w.fromId)
+    );
+    return nodes
+      .filter((n) => FAILURE_CAPABLE[n.type] !== undefined && !answered.has(n.id))
+      .filter((n) => EXEMPT[`${component.name} ${n.id}`] === undefined)
+      .map((n) => `${component.name} ${n.type}#${n.id} ${(n as { label?: string }).label ?? ''}`.trim());
+  }
+
+  /** Every exempted node, whether it still exists and whether it still needs the exemption. */
+  function exemptionState(): Array<{ key: string; exists: boolean; stillNeeded: boolean; reason: string }> {
+    return Object.entries(EXEMPT).map(([key, reason]) => {
+      const [componentName, nodeId] = [key.slice(0, key.lastIndexOf(' ')), key.slice(key.lastIndexOf(' ') + 1)];
+      const component = shipped.components.find((c) => c.name === componentName);
+      const node = component && nodesOf(component).find((n) => n.id === nodeId);
+      if (!component || !node) return { key, exists: false, stillNeeded: false, reason };
+      const responses = new Set(nodesOf(component).filter((n) => n.type === 'noodl.cloud.response').map((n) => n.id));
+      const answers = component.graph.connections.some(
+        (w) =>
+          w.fromId === nodeId &&
+          responses.has(w.toId) &&
+          w.toProperty === 'send' &&
+          (w.fromProperty === 'failure' || w.fromProperty === 'completed')
+      );
+      return { key, exists: true, stillNeeded: !answers, reason };
+    });
+  }
+
+  it('🔴 every exemption still names a real node, still needs exempting, and says why', () => {
+    // Three ways an exclusion list rots, all three graded: the node was deleted,
+    // the node was fixed and the entry outlived it, and the entry never had a
+    // reason in the first place.
+    expect(exemptionState().filter((e) => !e.exists).map((e) => e.key)).toEqual([]);
+    expect(exemptionState().filter((e) => !e.stillNeeded).map((e) => e.key)).toEqual([]);
+    expect(exemptionState().filter((e) => e.reason.trim().length < 40).map((e) => e.key)).toEqual([]);
+  });
+
+  it('🔴 no failure-capable node in any endpoint fails into nothing', () => {
+    const offenders = endpoints.flatMap(unanswered).sort();
+    expect(offenders).toEqual([]);
+  });
+
+  it('control: the grader discriminates — removing one failure wire reds, and names the node', () => {
+    // 🔴 The mutant is the point. `toEqual([])` on a list built by a filter is
+    // green when the filter is wrong, when the population is empty, and when the
+    // walk never reached the nodes — three ways to pass without measuring. This
+    // proves the grader can go red, and that what it says when it does is the
+    // offending node rather than a count.
+    const publish = endpoints.find((c) => c.name === '/#__cloud__/publishPage') as Component;
+    const mutant = JSON.parse(JSON.stringify(publish)) as Component;
+    const nodes = nodesOf(mutant);
+    const page = nodes.find((n) => (n as { label?: string }).label === 'Write the page: mirror + access rules');
+    expect(page).toBeDefined();
+    mutant.graph.connections = mutant.graph.connections.filter(
+      (w) => !(w.fromId === page?.id && w.fromProperty === 'failure')
+    );
+    // It must red, and the node it names must be the one whose wire was cut —
+    // not merely "something is wrong".
+    const offenders = unanswered(mutant);
+    expect(offenders).toHaveLength(1);
+    expect(offenders[0]).toContain('Write the page: mirror + access rules');
+    // …and the unmutated original is clean, so the difference is the wire.
+    expect(unanswered(publish)).toEqual([]);
+  });
+
+  it('🔴 Run Tasks is never wired by `completed` where the graph means success', () => {
+    // `completed` "fires after every invocation, whatever the outcome"
+    // (`outcome.ts`, COMPLETED_WITH_OTHER_OUTCOMES). Wired into a writer or a
+    // Response it reports success after a run that FAILED — publishPage marked a
+    // page published having set no section's access rules, and duplicatePage
+    // answered with a page id after a section copy that failed, which is exactly
+    // the partial-copy-that-looks-like-success its own graph warns about.
+    //
+    // ⚠️ `completed` is legitimate for "carry on regardless" and two wires use it
+    // that way on purpose, so this grades WHERE it lands rather than banning it:
+    // into a Response `send` or a record write is a success claim; into another
+    // node's `run` is not.
+    const claims = shipped.components
+      .filter((c) => c.name.startsWith('/#__cloud__/'))
+      .flatMap((c) => {
+        const nodes = nodesOf(c);
+        const type = new Map(nodes.map((n) => [n.id, n.type]));
+        return c.graph.connections
+          .filter(
+            (w) =>
+              w.fromProperty === 'completed' &&
+              type.get(w.fromId) === 'RunTasks' &&
+              (w.toProperty === 'send' || w.toProperty === 'store')
+          )
+          .map((w) => `${c.name} ${w.fromId}.completed -> ${w.toProperty}`);
+      });
+    expect(claims).toEqual([]);
+  });
+
+  it('control: the two deliberate `completed` wires survive — this rule did not ban the port', () => {
+    // If the rule above had been "no `completed` anywhere" it would have gone
+    // green by deleting two correct wires. Both are documented in
+    // `sb004Components.ts`: an unprovisioned secret must still reach the picker,
+    // and a bounced mail must still answer the visitor.
+    const kept = shipped.components
+      .filter((c) => c.name.startsWith('/#__cloud__/'))
+      .flatMap((c) => c.graph.connections.filter((w) => w.fromProperty === 'completed').map(() => c.name))
+      .sort();
+    expect(kept).toEqual(['/#__cloud__/site/ContactRecipient', '/#__cloud__/submitContactForm']);
+  });
+});

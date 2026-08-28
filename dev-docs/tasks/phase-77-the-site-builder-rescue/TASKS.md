@@ -20,6 +20,7 @@ per-task status and the session log.
 | SBR-011 | ⬜ open | ruled BUILD, not strike |
 | SBR-012 | ⬜ open | |
 | SBR-013 | ⬜ open | |
+| SBR-015 | ⬜ open | **found by SBR-006 s9, diagnosed s10.** Neither `publishPage` nor `duplicatePage` wires a single `failure` edge — every node's only exit is the happy path, so any error is a 30s 504 with no status and no node named. `claimSite` (same file, same author, 5 failure wires → 7 send edges) answers in **29ms** and is the control. 🔴 **The two do NOT disagree**: both stall at the same kind of point and differ only in where their write sits relative to it — duplicate creates its copy *before* the barrier, publish writes *after* it. Three tempting causes were each REFUTED (undeclared signal ports — the artefact declares all six; RunTasks on an empty list — NDA-012 §B3 ends it `done`; an empty query not publishing `items` — `setCollection` flags it unconditionally). Which node broke is deliberately still OPEN: wiring the failures is what makes the backend able to say. 🔴 `execution_steps` is EMPTY for all three executions — the table exists and nothing writes to it |
 | SBR-014 | ⬜ open | last; re-verifies every person-sentence AC |
 
 ## Standing gates and traps (carried from phase 76 — still live)

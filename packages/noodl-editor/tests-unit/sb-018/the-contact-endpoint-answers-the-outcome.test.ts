@@ -142,7 +142,19 @@ describe('SB-018 (5): `received` reports the write, not a pulse rearming', () =>
     // `save.done` beside it. Ordering written down instead of depending on
     // whether `sendemail` can answer `completed` synchronously.
     expect(feeding(MAIL, 'send')).toEqual([`${ANSWER}.out-ready`]);
-    expect(feeding(RESPONSE, 'send')).toEqual([`${WRITE}.failure`, `${MAIL}.completed`]);
+    // 🔴 SBR-015 added the third sender, and it closes a hang this spec's own
+    // ordering created: `stored` is the ONLY thing that fires `mail.send`, and
+    // `mail.completed` is the only thing that answers — so a throw in `stored`
+    // reached neither and a visitor watched the template's one PUBLIC endpoint
+    // hang for the backend's full thirty seconds. Its script is two lines, but
+    // `Outputs.ready is not a function` — the documented deployed failure of an
+    // undeclared signal port — is exactly a throw here, and this graph has had
+    // that bug before.
+    expect(feeding(RESPONSE, 'send')).toEqual([
+      `${WRITE}.failure`,
+      `${MAIL}.completed`,
+      `${ANSWER}.failure`
+    ]);
   });
 
   it('🔴 …and the node SB-018 (5) would have flagged runs on the REQUEST, which is why it could not', () => {

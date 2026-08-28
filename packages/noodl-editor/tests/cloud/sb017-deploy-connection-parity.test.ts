@@ -136,14 +136,28 @@ function shortfall(want: Record<string, number>, have: Record<string, number>): 
  * message it had stored — with a `stored` node between `save.done` and
  * `mail.send`. That removes exactly these two and adds three.
  *
+ * 🔴 SBR-015 added the second group. `RunTasks.completed` was wired straight
+ * into the thing that means success in both graphs — the page write in
+ * `publishPage`, the Response in `duplicatePage` — and `completed` is the one
+ * outcome port that cannot mean it: it *"fires after every invocation, whatever
+ * the outcome"* (`outcome.ts`). So publish marked a page published after a run
+ * that failed to set a single section's access rules, and duplicate answered
+ * with a page id after a section copy that failed. Both are now `.done ->`,
+ * which is why the `completed` spellings are missing from the template and
+ * present in the frozen bundle.
+ *
  * ⚠️ **This is an exemption list, not a relaxation.** Both cases still assert
  * the shortfall EQUALS this set: a wire that goes missing for any other reason
- * reddens exactly as before, and so does one of these two coming back without
- * the list being updated.
+ * reddens exactly as before, and so does one of these coming back without the
+ * list being updated.
  */
-const REMOVED_BY_SB018: string[] = [
+const REMOVED_SINCE_THE_BUNDLE: string[] = [
+  // SB-018 (5)
   'NewDbModelProperties.done -> noodl.cloud.sendemail.send',
-  'JavaScriptFunction.out-built -> noodl.cloud.response.pm-received'
+  'JavaScriptFunction.out-built -> noodl.cloud.response.pm-received',
+  // SBR-015 — `completed` replaced by `done` on both Run Tasks nodes
+  'RunTasks.completed -> SetDbModelProperties.store',
+  'RunTasks.completed -> noodl.cloud.response.send'
 ];
 
 describe('SB-017: the editor deploy path ships every connection the template holds', () => {
@@ -322,10 +336,17 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // writer on the same `setDynamicPorts` with a shorter list, and the two would
     // overwrite each other on every parameter change.
     //
-    // 18 Function nodes across 9 browser components, and none of them may have
+    // 20 Function nodes across 11 browser components, and none of them may have
     // been touched. 17 across 8 until SBR-004 gave `/Site/NavLink` its
     // current-page state function — the first Function node that component has
-    // ever carried, which is why the component count moved with it.
+    // ever carried, which is why the component count moved with it; 18 until
+    // SBR-006 built the admin shell.
+    //
+    // 🔴 18 → 20 is SBR-006's (`/Admin/Shell` and the rebuilt `/Pages/ThemeEditor`),
+    // and it sat red from the moment that task landed because s9 never ran
+    // `test:ci` — the count was stale for a whole session before this run found
+    // it. That is the argument for the gate being a literal: it only works if
+    // somebody runs it.
     // Asserted on `dynamicports` rather than on an export, because
     // the export here is measured against the *cloud* node library — the browser
     // half's deploy is `build/deployer.ts`, and measuring it is SB-017 §6.5's
@@ -341,7 +362,7 @@ describe('SB-017: the editor deploy path ships every connection the template hol
         return nodes;
       });
 
-    expect(browserFunctions.length).toBe(18);
+    expect(browserFunctions.length).toBe(20);
     expect(browserFunctions.filter((node) => (node.dynamicports || []).length > 0)).toEqual([]);
 
     // …and the same sweep on the cloud side did write ports, so the assertion
@@ -377,8 +398,8 @@ describe('SB-017: the editor deploy path ships every connection the template hol
       missing.push(...shortfall(inBundle, inTemplate));
     }
 
-    // Equality, not containment — see `REMOVED_BY_SB018`.
-    expect(missing.sort()).toEqual([...REMOVED_BY_SB018].sort());
+    // Equality, not containment — see `REMOVED_SINCE_THE_BUNDLE`.
+    expect(missing.sort()).toEqual([...REMOVED_SINCE_THE_BUNDLE].sort());
   });
 
   it('never loses a connection production already had', () => {
@@ -402,6 +423,6 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // 🔴 The SAME set as the case above, which is the load-bearing part: a wire
     // the template still holds but the export loses would land here and not
     // there, and this equality is what tells the two apart.
-    expect(missing.sort()).toEqual([...REMOVED_BY_SB018].sort());
+    expect(missing.sort()).toEqual([...REMOVED_SINCE_THE_BUNDLE].sort());
   });
 });

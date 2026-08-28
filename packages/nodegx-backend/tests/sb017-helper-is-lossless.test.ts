@@ -160,8 +160,26 @@ describe('SB-017 acceptance 1 (backend half): the authored-bundle helper is loss
     // ⚠️ SBR-002's +2 on `Pages/Site` does NOT land here — this population is
     // the seven `/#__cloud__/` components only (the control above pins it), so
     // a browser-side template edit leaves this total alone by design.
-    expect(fromHelper['/#__cloud__/submitContactForm']).toBe(20);
-    expect(Object.values(fromHelper).reduce((total, n) => total + n, 0)).toBe(101);
+    // ⚠️ **118 and not 101, and again it is a template edit rather than converter
+    // drift.** SBR-015 gave every cloud endpoint the failure edges it never had —
+    // each failure-capable node's `failure` into a `status: 'failure'` Response,
+    // plus each Run Tasks' `unchanged`. All four movers, named:
+    //
+    //   publishPage       +6  (16 → 22) — had NO failure wire at all
+    //   duplicatePage     +9  (22 → 31) — had NO failure wire at all
+    //   submitContactForm +1  (20 → 21) — `stored` throwing hung the one PUBLIC endpoint
+    //   claimSite         +1  (20 → 21) — `gate`'s two custom signals only look exhaustive
+    //
+    // Before it, publish and duplicate had exactly one way out — the happy path —
+    // so any error was a thirty-second timeout with no status and no node named,
+    // while claimSite answered in 29ms and was the control that made the
+    // difference diagnosable. The three worker components are untouched: they
+    // have no Response node and answer through the Run Tasks contract instead.
+    expect(fromHelper['/#__cloud__/publishPage']).toBe(22);
+    expect(fromHelper['/#__cloud__/duplicatePage']).toBe(31);
+    expect(fromHelper['/#__cloud__/submitContactForm']).toBe(21);
+    expect(fromHelper['/#__cloud__/claimSite']).toBe(21);
+    expect(Object.values(fromHelper).reduce((total, n) => total + n, 0)).toBe(118);
   });
 
   it('loses no wire, and re-points none — asserted as a multiset, not a count', () => {

@@ -172,7 +172,9 @@ describe('SB-007 — install writes a project that opens', () => {
     // ids instead of regenerating them would keep the disjointness assertion
     // below green on a set that had SHRUNK.
     // 203 → 232: the shell, the dialog, and the rebuilt page row / page list.
-    expect(a.size).toBe(232);
+    // 232 → 234: SBR-015's two `status: 'failure'` Response nodes, one each on
+    // `publishPage` and `duplicatePage` — the graphs had no failure exit at all.
+    expect(a.size).toBe(234);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 

@@ -105,6 +105,7 @@ The artifacts were a proposal; this is what challenging them found (2026-08-28 s
 | SBR-011 | **Live preview over the realtime hub** — `Subscribe to Changes` (SSE) into the site's query chains; an admin edit updates an open site without reload | SBR-001, SBR-004, SBR-005 |
 | SBR-012 | **The raw-colour gate** — promote `RawColorLiteral` to a failing template gate over component sets AND generated artefact; unresolvable `var(--x)` also fails | SBR-003 |
 | SBR-013 | **The doctrine rule** — MCP authoring guidance requires a token set and screens before components; the task template requires a person-sentence AC | — |
+| SBR-015 | **A failure with nowhere to go** — `publishPage`/`duplicatePage` wire no `failure` edge at all, so any error is a silent 30s 504; `claimSite` wires five and answers in 29ms | SBR-006 found it; blocks SBR-006 AC3 |
 | SBR-014 | **The drive** — the whole story end-to-end through the panel's own UI with a backend attached: the half SB-008 never did | everything |
 
 **Build order:** SBR-001 → SBR-002 · SBR-003 → {SBR-004, SBR-006} → {SBR-005, SBR-007,

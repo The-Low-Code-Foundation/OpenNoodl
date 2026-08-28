@@ -480,7 +480,21 @@ describe('SB-004: duplicate and contact, through create_component', () => {
     //    "wrong token" from "already claimed". Every failing node reaches it.
     expect(node('deny')?.parameters?.status).toBe('failure');
     const denials = wires.connections.filter((c) => c.toId === ids.deny && c.toProperty === 'send');
-    expect(denials.map(from).sort()).toEqual(['gate', 'grant', 'mark', 'secret', 'settings']);
+    // 🔴 SBR-015 — `gate` appears TWICE, and the two are different things: its
+    // `out-denied` is the refusal it decided on, its `failure` is the script
+    // throwing. Only the first existed, so a throw in the gate hung claimSite
+    // for thirty seconds exactly as publishPage did — the one silent exit left
+    // in the endpoint that was otherwise the template's model for answering
+    // everything. Asserted by `node.port` rather than by node, because the whole
+    // point is that two edges from one node are not a duplicate here.
+    expect(denials.map((c) => `${from(c)}.${c.fromProperty}`).sort()).toEqual([
+      'gate.failure',
+      'gate.out-denied',
+      'grant.failure',
+      'mark.failure',
+      'secret.failure',
+      'settings.failure'
+    ]);
   });
 
   it('copies only the source page\'s sections, and both endpoints answer with a body', () => {

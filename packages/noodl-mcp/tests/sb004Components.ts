@@ -339,6 +339,20 @@ export const ENDPOINT_NODES = [
     type: 'noodl.cloud.response',
     label: 'Answer',
     parameters: { params: 'pageId,published' }
+  },
+  {
+    id: 'deny',
+    type: 'noodl.cloud.response',
+    label: 'Could not publish',
+    parameters: {
+      status: 'failure',
+      // SBR-015. Unlike `claimSite`'s single message, there is nothing to
+      // conceal here — the caller is already an admin holding this page's id.
+      // The message is still one string because the node cannot carry a
+      // per-edge one; *which* node failed belongs in the execution log, and
+      // that it is not there yet is SBR-015 AC4.
+      errorMessage: 'This page could not be published.'
+    }
   }
 ];
 
@@ -367,7 +381,14 @@ export const ENDPOINT_WIRES = [
   { fromId: 'sections', fromProperty: 'fetched', toId: 'withFlag', toProperty: 'run' },
   { fromId: 'withFlag', fromProperty: 'out-tasks', toId: 'tasks', toProperty: 'items' },
   { fromId: 'withFlag', fromProperty: 'out-built', toId: 'tasks', toProperty: 'run' },
-  { fromId: 'tasks', fromProperty: 'completed', toId: 'page', toProperty: 'store' },
+  // 🔴 SBR-015 — this was `completed`, and `completed` is the ONE outcome port
+  // that cannot mean success: "Fires after every invocation, whatever the
+  // outcome" (`outcome.ts`, COMPLETED_WITH_OTHER_OUTCOMES). Wired to `store`
+  // it marked the page published after a Run Tasks that FAILED to set a single
+  // section's access rules — a publish that answers 200 having published
+  // nothing readable. `done` is the port that means the work happened: every
+  // task completed without failing, or the list was empty.
+  { fromId: 'tasks', fromProperty: 'done', toId: 'page', toProperty: 'store' },
   { fromId: 'prep', fromProperty: 'out-pageId', toId: 'page', toProperty: 'modelId' },
   { fromId: 'prep', fromProperty: 'out-isPublic', toId: 'page', toProperty: 'prop-published' },
   { fromId: 'prep', fromProperty: 'out-isPublic', toId: 'page', toProperty: 'acl-world-read' },
@@ -377,7 +398,37 @@ export const ENDPOINT_WIRES = [
   // neither — as this graph first did — answers 200 with `{}`.
   { fromId: 'prep', fromProperty: 'out-pageId', toId: 'res', toProperty: 'pm-pageId' },
   { fromId: 'prep', fromProperty: 'out-isPublic', toId: 'res', toProperty: 'pm-published' },
-  { fromId: 'page', fromProperty: 'done', toId: 'res', toProperty: 'send' }
+  { fromId: 'page', fromProperty: 'done', toId: 'res', toProperty: 'send' },
+
+  // 🔴 SBR-015. Every one of these was unwired, and that is the whole defect:
+  // this graph had exactly one way out — `page.done` — so ANY error anywhere
+  // became a thirty-second 504 with no status, no message and no node named.
+  // Measured on the SBR-006 drive: publish took 30004ms, wrote nothing, and
+  // said nothing, while `claimSite` — five failure edges into a `Refused`
+  // response, in this same file — answered in 29ms. The disagreement between
+  // publish and duplicate was never two causes; it is where each graph's write
+  // sits relative to the point it stalls at.
+  //
+  // ⚠️ The two code nodes are here for a specific reason as well as the general
+  // one: a `JavaScriptFunction` fires `failure` when its script THROWS, and the
+  // documented deployed failure mode of these nodes is `Outputs.built is not a
+  // function` when a custom signal port was not declared (rule 1 at the top of
+  // this file). That is precisely the error these edges would have named.
+  // A guarded `return` is NOT a failure and does not fire this — the guards
+  // stay silent, as they should.
+  { fromId: 'prep', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'sections', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'withFlag', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  // ⚠️ The outcome ports, and deliberately NOT `aborted`. `aborted` is an event
+  // that fires *alongside* an outcome, not instead of one — an author-requested
+  // abort is `Done` — so wiring it here would race a second Response against the
+  // first for the same run. `done` / `unchanged` / `failure` are exhaustive and
+  // mutually exclusive, which is exactly the property this fix needs.
+  { fromId: 'tasks', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  // `unchanged` means the run never happened, so the section rules were never
+  // written — refusing is the honest answer, not a quiet success.
+  { fromId: 'tasks', fromProperty: 'unchanged', toId: 'deny', toProperty: 'send' },
+  { fromId: 'page', fromProperty: 'failure', toId: 'deny', toProperty: 'send' }
 ];
 
 // ── duplicatePage, and the worker it composes ────────────────────────────────
@@ -617,6 +668,21 @@ export const DUPLICATE_NODES = [
     type: 'noodl.cloud.response',
     label: 'Answer with the new page id',
     parameters: { params: 'pageId' }
+  },
+  {
+    id: 'deny',
+    type: 'noodl.cloud.response',
+    label: 'Could not duplicate',
+    parameters: {
+      status: 'failure',
+      // ⚠️ The message says "may exist" because it may. `copy` writes the new
+      // page before the sections are gathered, so a failure after that point
+      // leaves a real, empty page behind — which the SBR-006 drive saw happen
+      // (`Copy of Untitled` / `page-copy-np3ui4`, created while the call
+      // answered nothing). A message claiming nothing was created would be a
+      // lie the admin can disprove by reloading the list.
+      errorMessage: 'This page could not be duplicated. A partial copy may exist.'
+    }
   }
 ];
 
@@ -648,7 +714,36 @@ export const DUPLICATE_WIRES = [
   { fromId: 'tasks', fromProperty: 'out-tasks', toId: 'run', toProperty: 'items' },
   { fromId: 'tasks', fromProperty: 'out-built', toId: 'run', toProperty: 'run' },
   { fromId: 'afterCopy', fromProperty: 'out-newPageId', toId: 'res', toProperty: 'pm-pageId' },
-  { fromId: 'run', fromProperty: 'completed', toId: 'res', toProperty: 'send' }
+  // 🔴 SBR-015 — was `completed`, which fires whatever the outcome; see
+  // publishPage's note. Answering the new page id after a section copy that
+  // FAILED is the partial-copy-reported-as-success that `afterCopy`'s own
+  // comment calls the worst of the three outcomes.
+  { fromId: 'run', fromProperty: 'done', toId: 'res', toProperty: 'send' },
+
+  // 🔴 SBR-015 — the same defect as publishPage's, and this is the graph that
+  // showed why "they disagree" was the wrong reading. Duplicate creates its
+  // copy BEFORE the barrier it stalls at, publish writes AFTER one; the same
+  // silent stall therefore left a copy on disk here and nothing at all there,
+  // and both answered with a thirty-second timeout.
+  //
+  // 🔴 **Every failure refuses — including the ones after the copy exists.**
+  // The tempting alternative is `claimSite`'s: once the contract has been met,
+  // answer success and let a later convenience step fail quietly. It does not
+  // apply here, and `afterCopy`'s own note says why — a copy carrying some of
+  // its sections is "a partial result, which is the worst of the three
+  // outcomes because it looks like a success". Answering `res` on a
+  // section-copy failure would manufacture exactly that. The response says a
+  // partial copy may exist instead, which is the true statement.
+  { fromId: 'prep', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'source', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'newProps', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'copy', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'afterCopy', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'sections', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'tasks', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  // The outcome ports only — see publishPage's note on why `aborted` is not here.
+  { fromId: 'run', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
+  { fromId: 'run', fromProperty: 'unchanged', toId: 'deny', toProperty: 'send' }
 ];
 
 // ── submitContactForm, and the settings helper it composes ───────────────────
@@ -911,7 +1006,22 @@ export const CONTACT_WIRES = [
   // both fire: `mail.completed` covers success and failure alike, and
   // `save.failure` is the case where `mail.send` never ran at all.
   { fromId: 'mail', fromProperty: 'completed', toId: 'res', toProperty: 'send' },
-  { fromId: 'save', fromProperty: 'failure', toId: 'res', toProperty: 'send' }
+  { fromId: 'save', fromProperty: 'failure', toId: 'res', toProperty: 'send' },
+  // 🔴 SBR-015 — the third silent exit, and the worst-placed one: this is the
+  // template's ONE public endpoint. `stored` is the only thing that fires
+  // `mail.send`, and `mail.completed` is the only thing that answers, so a throw
+  // in `stored` reaches neither and a visitor watches the form hang for thirty
+  // seconds. Its script is two lines and cannot realistically throw on its own —
+  // but `Outputs.ready is not a function`, the documented deployed failure of an
+  // undeclared signal port (rule 1 at the top of this file), is exactly a throw
+  // here, and that is the bug this graph has already had once.
+  //
+  // ⚠️ It answers `{"received": false}` via the Response's parameter default,
+  // and by this point `save.done` HAS fired, so the message really was stored.
+  // That is pessimistic rather than wrong-in-the-dangerous-direction: a visitor
+  // who sends twice costs a duplicate row, a visitor who hangs is told nothing
+  // at all and the message is lost to them either way.
+  { fromId: 'stored', fromProperty: 'failure', toId: 'res', toProperty: 'send' }
 ];
 
 // ── claimSite: the function that makes the first admin (§6 F7) ───────────────
@@ -1175,6 +1285,12 @@ export const CLAIM_WIRES = [
   { fromId: 'secret', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
   { fromId: 'settings', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
   { fromId: 'gate', fromProperty: 'out-denied', toId: 'deny', toProperty: 'send' },
+  // 🔴 SBR-015 — `out-denied` is the gate's *decision*, not its *failure*. If the
+  // script throws, neither custom signal fires and this function hangs exactly as
+  // publishPage did. The one silent exit left in the endpoint that was otherwise
+  // the template's model for answering everything, and it went unnoticed because
+  // the node has two hand-written signal outputs that look exhaustive.
+  { fromId: 'gate', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
   { fromId: 'grant', fromProperty: 'failure', toId: 'deny', toProperty: 'send' },
   { fromId: 'mark', fromProperty: 'failure', toId: 'deny', toProperty: 'send' }
 ];

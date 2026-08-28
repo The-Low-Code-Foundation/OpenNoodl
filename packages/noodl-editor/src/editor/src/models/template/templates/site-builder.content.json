@@ -4919,6 +4919,20 @@
             },
             "ports": [],
             "dynamicports": []
+          },
+          {
+            "id": "deny",
+            "type": "noodl.cloud.response",
+            "children": [],
+            "label": "Could not publish",
+            "x": 40,
+            "y": 880,
+            "parameters": {
+              "status": "failure",
+              "errorMessage": "This page could not be published."
+            },
+            "ports": [],
+            "dynamicports": []
           }
         ],
         "connections": [
@@ -4978,7 +4992,7 @@
           },
           {
             "fromId": "tasks",
-            "fromProperty": "completed",
+            "fromProperty": "done",
             "toId": "page-6",
             "toProperty": "store"
           },
@@ -5016,6 +5030,42 @@
             "fromId": "page-6",
             "fromProperty": "done",
             "toId": "res",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "prep",
+            "fromProperty": "failure",
+            "toId": "deny",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "sections-3",
+            "fromProperty": "failure",
+            "toId": "deny",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "withFlag",
+            "fromProperty": "failure",
+            "toId": "deny",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "tasks",
+            "fromProperty": "failure",
+            "toId": "deny",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "tasks",
+            "fromProperty": "unchanged",
+            "toId": "deny",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "page-6",
+            "fromProperty": "failure",
+            "toId": "deny",
             "toProperty": "send"
           }
         ]
@@ -5207,6 +5257,20 @@
             },
             "ports": [],
             "dynamicports": []
+          },
+          {
+            "id": "deny-2",
+            "type": "noodl.cloud.response",
+            "children": [],
+            "label": "Could not duplicate",
+            "x": 40,
+            "y": 1240,
+            "parameters": {
+              "status": "failure",
+              "errorMessage": "This page could not be duplicated. A partial copy may exist."
+            },
+            "ports": [],
+            "dynamicports": []
           }
         ],
         "connections": [
@@ -5338,8 +5402,62 @@
           },
           {
             "fromId": "run",
-            "fromProperty": "completed",
+            "fromProperty": "done",
             "toId": "res-2",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "prep-2",
+            "fromProperty": "failure",
+            "toId": "deny-2",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "source",
+            "fromProperty": "failure",
+            "toId": "deny-2",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "newProps",
+            "fromProperty": "failure",
+            "toId": "deny-2",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "copy",
+            "fromProperty": "failure",
+            "toId": "deny-2",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "afterCopy",
+            "fromProperty": "failure",
+            "toId": "deny-2",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "sections-4",
+            "fromProperty": "failure",
+            "toId": "deny-2",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "tasks-2",
+            "fromProperty": "failure",
+            "toId": "deny-2",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "run",
+            "fromProperty": "failure",
+            "toId": "deny-2",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "run",
+            "fromProperty": "unchanged",
+            "toId": "deny-2",
             "toProperty": "send"
           }
         ]
@@ -5592,6 +5710,12 @@
             "fromProperty": "failure",
             "toId": "res-3",
             "toProperty": "send"
+          },
+          {
+            "fromId": "stored",
+            "fromProperty": "failure",
+            "toId": "res-3",
+            "toProperty": "send"
           }
         ]
       }
@@ -5776,7 +5900,7 @@
             "dynamicports": []
           },
           {
-            "id": "deny",
+            "id": "deny-3",
             "type": "noodl.cloud.response",
             "children": [],
             "label": "Refused",
@@ -5884,31 +6008,37 @@
           {
             "fromId": "secret",
             "fromProperty": "failure",
-            "toId": "deny",
+            "toId": "deny-3",
             "toProperty": "send"
           },
           {
             "fromId": "settings-4",
             "fromProperty": "failure",
-            "toId": "deny",
+            "toId": "deny-3",
             "toProperty": "send"
           },
           {
             "fromId": "gate",
             "fromProperty": "out-denied",
-            "toId": "deny",
+            "toId": "deny-3",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "gate",
+            "fromProperty": "failure",
+            "toId": "deny-3",
             "toProperty": "send"
           },
           {
             "fromId": "grant",
             "fromProperty": "failure",
-            "toId": "deny",
+            "toId": "deny-3",
             "toProperty": "send"
           },
           {
             "fromId": "mark",
             "fromProperty": "failure",
-            "toId": "deny",
+            "toId": "deny-3",
             "toProperty": "send"
           }
         ]
