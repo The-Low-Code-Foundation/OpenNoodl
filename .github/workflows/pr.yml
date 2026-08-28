@@ -222,6 +222,12 @@ jobs:
       # are the one thing this forbids. Runs after catalog:check so a stale
       # catalog fails as staleness, not as a missing classification.
       - run: npm run export-ledger:check
+      # EXP-008, part two: the number the phase is actually judged on. `export-ledger:check`
+      # only forces every node to be CLASSIFIED, and a node may ship classified `deferred`
+      # with an exemption sentence — which is how the picker drifted to 51 of 127 placeable
+      # nodes exporting while the corpus metric read a healthy 85%. This ratchets picker
+      # coverage: a fall fails, and a rise fails until the floor is raised in the same commit.
+      - run: npm run export-ledger:picker
       # SUB-012: the catalog validator's duplicate-node-id rule, against its
       # committed corrupt/clean fixture pair. A project with two nodes sharing
       # an id used to pass every gate with zero failures.

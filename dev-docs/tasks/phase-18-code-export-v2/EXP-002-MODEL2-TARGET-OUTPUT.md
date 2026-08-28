@@ -1,5 +1,19 @@
 # EXP-002 Model2 — the paper design, and the ruling not to build it yet (session 17)
 
+> ## 🔴 SUPERSEDED IN PART, 2026-08-28 (session 32) — read this before acting on anything below
+>
+> **§2, §3 and §7 are void as a priority argument.** They rank this work by how often `Model2`
+> appears in the ~40-project corpus. Every one of those 72 instances is inside a downloaded
+> third-party Noodl prefab kit (`filters-0-1.zip`) that **no project ever places on a page** —
+> session 31 measured it. Sessions 17–31 repeatedly promoted "row identity" to the top of the
+> list on the strength of those counts. It was dead code the whole time.
+>
+> **§1, §4, §5 and §6 are still good and should be reused.** The runtime reading is correct, and
+> §4's design — a foreach-mode Object compiles away into props, the repeater's row read sideways —
+> is the right shape. Rebuild it against the **picker** (`Object` is one of the 27 Data-category
+> nodes a user can place today and cannot export), verified against a project somebody would
+> actually build. See [EXP-011](./EXP-011-PICKER-COVERAGE.md) §3 Tier 1.
+
 > **Read this before writing any Model2, repeater-item or `_forEachModel` code, and before
 > ranking another slice by node count.** The headline is a negative result, measured: the
 > deterministic Model2 slice would translate **0 of the corpus's 27 Model2 nodes**, because

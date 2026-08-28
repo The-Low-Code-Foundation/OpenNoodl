@@ -1731,3 +1731,27 @@ nothing above 22 once the 45 and the 20 are set aside: 22 script outputs feeding
 translatable, 18 row-output relays, 17 unhandled triggers, 10 `Javascript2`, 7 `DbCollection2`, and
 then singletons. **There is no next slice here** — there is a list of small, unrelated jobs, which
 is what the end of a deterministic export looks like.
+
+
+---
+
+## §21 The re-scope (session 32) — this file's "what is left" lists are void
+
+Everything in §17b, §18a, §19f and §20g that ranks work is superseded. They all rank by the
+**corpus**, and the corpus was never the question — see the phase [README](./README.md)
+§*What went wrong* and [EXP-011](./EXP-011-PICKER-COVERAGE.md).
+
+The measurement that matters is **picker coverage: 51 of 127 placeable nodes export (40.2%)**,
+ratcheted by `npm run export-ledger:picker`. The corpus numbers this file spent thirty sessions
+computing — 85.00% headline, 93.38% reachable, 40/40 typecheck, 666 deferrals — remain **true and
+useful as a regression net**, and §20h's sweep is the proof they are sound. They are not a plan.
+
+What this file's work is still worth, plainly: the visual vocabulary, the controls, repeaters, the
+record verbs, the user family, stores, events, navigation, popups, Static Data, the Visual
+Function and the expression family are **51 picker nodes that genuinely export**, and they were
+built to a standard — hand-written targets, byte-for-byte goldens, mutation checks, corpus
+typechecks — that the next three tasks should copy exactly. The method was never the problem. The
+denominator was.
+
+**Next work is [EXP-009](./EXP-009-BACKEND-CONNECTION.md), then
+[EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md), then [EXP-011](./EXP-011-PICKER-COVERAGE.md).**

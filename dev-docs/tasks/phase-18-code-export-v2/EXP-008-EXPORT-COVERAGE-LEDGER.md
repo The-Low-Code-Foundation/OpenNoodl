@@ -1,7 +1,38 @@
 # EXP-008 — The export coverage ledger and its gate
 
-**Status:** Built (2026-08-27, session 8)
-**Artifacts:** `packages/nodegx-export/coverage-ledger.json` · `scripts/export-ledger/check.js` · `export-ledger:check` in the PR workflow's `node-catalog` job
+**Status:** Built (2026-08-27, session 8) · **picker ratchet added 2026-08-28, session 32**
+**Artifacts:** `packages/nodegx-export/coverage-ledger.json` · `scripts/export-ledger/check.js`
+(`export-ledger:check`) · `scripts/export-ledger/picker-coverage.js` (`export-ledger:picker`) —
+both in the PR workflow's `node-catalog` job
+
+---
+
+## 🔴 Read this first: the gate was not enough, and the audit below is not the metric
+
+This task shipped a gate that forces every catalog node to be **classified**. It works, and it has
+never let an unclassified node through. But `deferred` + a one-sentence exemption is a valid
+classification, so the gate permits unlimited drift as long as each step is written down — and
+that is exactly what happened. **101 of 175 types are `deferred`, and 96 of them carry the same
+auto-generated sentence: *"pre-gate backlog — classified by the 2026-08-27 coverage audit"*.**
+A gate whose escape hatch is used 96 times is recording drift, not preventing it.
+
+Worse, the audit in §"The audit that sized it" below is a **corpus instance-coverage** number, and
+sessions 20–31 used it to choose what to build. It is not fit for that (README §*What went
+wrong*): it is weighted by ~40 old drive fixtures, 83% of its remaining complaints are one
+unplaced third-party Noodl prefab, and it cannot see a node those projects never used.
+
+**The metric is now picker coverage**, ratcheted:
+
+```
+npm run export-ledger:picker      # CI: fails on a fall, and on a rise that does not raise the floor
+node scripts/export-ledger/picker-coverage.js
+```
+
+> **51 of 127 placeable nodes export (40.2%)** — 2026-08-28
+
+`pickerCoverageFloor` in the ledger is the ratchet. The corpus audit stays as a **regression
+detector** and is genuinely good at that; the historical numbers below are kept as a record of
+what was measured when, not as a target.
 
 ## What this is
 

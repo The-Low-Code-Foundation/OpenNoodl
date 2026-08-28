@@ -1,65 +1,149 @@
-# Phase 18: Code Export v2 (Revival Track F)
+# Phase 18: Code Export v2
 
-**Status:** 🟡 In progress — EXP-001 built (2026-08-07)
-**Total Estimated Effort:** 20-26 weeks (tasks overlap; calendar ~4-6 months)
-**Source:** `dev-docs/reviews/NOODL-REVIVAL-ROADMAP.md` — Track F (F-01..F-05)
-**Design Input:** `dev-docs/tasks/phase-7-code-export/` (complete 12-16 wk design, 0% built)
+**Status:** 🟡 In progress — re-scoped 2026-08-28 (session 32) after twelve sessions built the
+wrong thing well. Read [§ What went wrong](#what-went-wrong-and-the-mechanism-that-caused-it)
+before picking any work.
 
 ---
 
-## What This Phase Is
+## The objective, in one sentence
 
-Phase 18 is the **funded execution of phase 7's code-export design**, plus what 2026 makes possible that the 2025 design could not assume: AI-assisted translation of the runtime-interpreted parts, **verified mechanically by a trace harness** instead of trusted on faith.
+**An app somebody builds in NodeGX today — with the 0.2.0 editor, the nodes in the picker, custom
+nodes written by the MCP, and a deployed NodeGX backend — exports to a React repo that builds,
+runs, and still works.**
 
-The phase-7 docs (`CODE-EXPORT-overview.md`, `CODE-001`..`CODE-008`) remain the design of record — companion library `@nodegx/core` (~8KB reactive primitives preserving Noodl's push-signal semantics), per-node-type generators, ts-morph AST + Prettier output, Vite scaffold, React 19 target. None of it was ever built: `phase-7-code-export/PROGRESS.md` records 0/8 tasks, and no `@nodegx/core` or codegen code exists anywhere in `packages/`. This phase does not redesign that work; it executes it, re-sequenced and extended.
+"Still works" is the load-bearing half. An export that produces a beautiful React app whose
+buttons do nothing and whose database calls return `[]` has not exported the app; it has exported
+a picture of the app.
 
-## Why Export Matters
+### What that commits us to
 
-Export is the anti-lock-in answer. The strategic pitch of OpenNoodl is comprehension and ownership — and ownership is hollow if projects can never leave the tool. The exit criterion for this phase, taken verbatim from the revival roadmap:
+| | commitment |
+|---|---|
+| **Nodes** | Every node in the picker exports, or the picker stops offering it. New nodes ship exportable. |
+| **Custom nodes** | Nodes from `noodl_modules` — MCP-written, module, prefab — export as the React they already are. |
+| **Backend** | The exported frontend talks to the **project's existing deployed NodeGX backend**: its database, its cloud functions, its auth. Not a stub. Not a TODO. |
+| **Honesty** | Anything that cannot export says so **in the artefact**, not only in a console log nobody keeps. |
 
-> **A UI-heavy real project exports to a React 19 + Vite repo that builds, passes trace verification, and a React developer accepts as inheritable.**
+### What it explicitly does NOT commit us to
 
-Two architectural facts make this feasible (both verified in code):
+- **Exporting old Noodl projects.** Downloaded Noodl prefabs, legacy kits, `Model2`-era idioms:
+  if a NodeGX user would not build it today, it is not a target. This reverses twelve sessions of
+  de-facto priority.
+- Round-trip editing of exported code back into the graph.
+- Native Svelte/Vue compilers (EXP-005 remains AI post-processing of the React output).
+- SSR/SSG export targets.
 
-1. **The runtime node model is framework-neutral.** `packages/noodl-runtime/src` contains zero React imports; only ~27 of ~100 node types are React-bound, via a single binding hub (`packages/noodl-viewer-react/src/react-component-node.js`). The graph really is a spec that generators can consume.
-2. **The hard cases are known and bounded.** They are the runtime-interpreted dynamics: Function nodes compile user code via `new AsyncFunction` with Proxy-discovered dynamic output ports (`packages/noodl-runtime/src/nodes/std-library/simplejavascript.js:19-37,187`), Expression nodes compile strings via `new Function` (`expression-evaluator.js:177`), and dynamic ports generally (`dev-docs/reference/LEARNINGS.md:1288-1300`). Deterministic generators cannot fully capture these — which is exactly what EXP-003's AI translation + trace verification addresses.
+---
 
-## What 2026 Adds to the 2025 Design
+## The number this phase is judged on
 
-- **EXP-003 (AI logic translation + trace harness):** LLMs translate Function/Expression/dynamic-port nodes against the documented `@nodegx/core` API. Every translation is checked by running the original (interpreted) and exported (compiled) versions side-by-side on recorded input/output traces; humans review only mismatches. The study's hardest problem becomes machine-checked instead of trusted.
-- **EXP-005 (multi-framework via post-processing):** Svelte/Vue arrive by AI-porting the *exported React codebase*, verified by the same trace harness — explicitly **not** by maintaining N native compilers.
+```
+npm run export-ledger:picker          # ratcheted in PR CI
+node scripts/export-ledger/picker-coverage.js    # the readable report
+```
 
-## Phase-Level Prerequisites
+> **PICKER COVERAGE: 51 of 127 placeable nodes export (40.2%)** — 2026-08-28
 
-Sequenced **after phase 13 (Revival Track A — Format & AI Substrate)**, because generators and LLMs both consume the same substrate:
+"Placeable" means `inNodePicker`, not deprecated, browser-capable: what a person can actually drop
+on a canvas. The floor lives in `coverage-ledger.json` as `pickerCoverageFloor` and ratchets both
+ways — a fall fails CI, and a rise fails until the floor is raised in the same commit, so no gain
+is ever lost quietly.
 
-- **SUB-001 (phase-13):** editor natively reads/writes the v2 decomposed format — generators walk per-component files instead of a monolithic `project.json`.
-- **SUB-004 (phase-13):** the node catalog (`node-catalog.json` generated from `noderegister.js` metadata) — the enumerable node/port/parameter vocabulary both the deterministic generators and the EXP-003 LLM prompts are built against.
+**🔴 There is a second number and it must never again drive priority.** The corpus audit
+(`coverage-audit.ts` over ~40 old test projects) reads **85.00%**, or **93.38%** over components a
+route can reach. Both are true and both are about *those projects*, not about NodeGX. Keep the
+corpus as a **regression detector** — it is a good one, and it catches real breakage. Never rank
+work with it.
 
-## Task List
+---
 
-| Task | Name | Effort | Depends On |
-|------|------|--------|------------|
-| EXP-001 | `@nodegx/core` companion library | 3 wks | phase-13 SUB-004 |
-| EXP-002 | Deterministic generators | 6-8 wks | EXP-001 |
-| EXP-003 | AI logic translation + trace harness | 6-8 wks | EXP-001, EXP-002 |
-| EXP-004 | Export report & honesty UX | 1 wk | EXP-002, EXP-003 |
-| EXP-005 | Multi-framework pipeline (Svelte/Vue) | 4-6 wks | EXP-002, EXP-003 |
-| EXP-006 | Export carries authoring intent | 1-1.5 wks | EXP-002 |
-| EXP-007 | Export provenance & regeneration safety | 1 wk | EXP-002 |
-| EXP-008 | Export coverage ledger & contributor gate | built 2026-08-27 | EXP-002 |
+## What went wrong, and the mechanism that caused it
 
-EXP-001/002 are the mechanical ~70% (phase-7 CODE-001/002/003/005/006, updated). EXP-003 is the new hard part made tractable. EXP-004 keeps the honesty framing `dev-docs/future-projects/CODE-EXPORT-STUDY.md` was right about. EXP-005 dissolves the last lock-in objection.
+Sessions 20–31 chose their work by running `rank2.ts` / `coverage-audit.ts` over a corpus of ~40
+projects that had accumulated since phase 7 as drive fixtures for *other* phases. Whatever those
+projects deferred most became the next slice.
 
-## Out of Scope (Phase-Level)
+**Session 19 diagnosed this exactly and it was ignored:**
 
-- **Round-trip editing** of exported code back into the graph (per phase-7 overview "Out of Scope").
-- **Database/cloud node full export** — generated as typed API-service stubs (per CODE-EXPORT-STUDY's proposal), not working backends.
-- **Native multi-framework compilers** — the roadmap's "what stays dead" list is explicit; EXP-005 is post-processing only.
-- **SSR/SSG export targets** — client-side Vite app first; SSR export can follow Track D's D-02 if demanded.
+> *"THE CORPUS HAS STOPPED MEASURING WHAT MATTERS. 40 projects that exist because earlier phases
+> needed something to drive; never sampled for library coverage, never refreshed… treat the audit
+> as a **regression detector, not a priority oracle**."*
+
+Twelve sessions ranked off it anyway. The consequences, measured in session 31:
+
+- **83% of everything the metric still complained about was one downloaded third-party Noodl
+  prefab kit** (`filters-0-1.zip`), copied into eight projects, and **never placed on a page in
+  any of them**. Four sessions of design work went into walls inside code no app renders.
+- A fifth of the corpus's node count is in components no route reaches.
+- The metric is structurally blind to a node nobody in the corpus used — which is most of the
+  picker. It read 85% healthy while 76 of 127 placeable nodes did not export at all.
+
+**The deeper cause is this file.** Phase 18 was written as *"the funded execution of phase 7's
+2025 code-export design"*, and that design's own out-of-scope list said:
+
+> ~~*Database/cloud node full export — generated as typed API-service stubs, not working
+> backends.*~~ **Reversed 2026-08-28. See EXP-009.**
+
+That was correct for 2025 Noodl, where export meant *leaving the tool*. It is wrong for NodeGX,
+where export means *taking your app with its backend*. Everything downstream followed from it.
+
+### The three mechanisms that stop it recurring
+
+1. **The metric changed.** `export-ledger:picker` is ratcheted in PR CI and reports the picker,
+   not the corpus. It cannot be blind to an unused node, because it counts nodes, not instances.
+2. **The gate got teeth.** EXP-008's classification gate lets a node ship `deferred` with a
+   one-line exemption. That is still allowed — but the picker ratchet now means the *aggregate*
+   cannot slide, so exemptions cost something.
+3. **The out-of-scope list is now an explicit reversal with a task behind it**, not an inherited
+   assumption nobody re-read.
+
+---
+
+## Task list
+
+| Task | Name | Status |
+|------|------|--------|
+| [EXP-001](./EXP-001-NODEGX-CORE.md) | `@nodegx/core` companion library | ✅ Built |
+| [EXP-002](./EXP-002-DETERMINISTIC-GENERATORS.md) | Deterministic generators | 🟡 In progress — **re-aimed at the picker** |
+| [EXP-003](./EXP-003-AI-LOGIC-TRANSLATION.md) | AI logic translation + trace harness | Not started |
+| [EXP-004](./EXP-004-EXPORT-REPORT-UX.md) | Export report & honesty UX | 🔴 **Promoted** — the report exists only as stdout today |
+| [EXP-005](./EXP-005-MULTIFRAMEWORK-PIPELINE.md) | Multi-framework pipeline | Not started (unchanged) |
+| [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) | Export carries authoring intent | Not started |
+| [EXP-007](./EXP-007-EXPORT-PROVENANCE.md) | Export provenance & regeneration safety | Not started |
+| [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Coverage ledger & contributor gate | ✅ Built — **picker ratchet added 2026-08-28** |
+| [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **The exported app talks to its deployed backend** | 🔴 **NEW — highest priority** |
+| [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **NEW** |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🔴 **NEW** |
+
+### Order, and why
+
+1. **EXP-009 — the backend.** The largest single gap between "exports" and "works". Every data,
+   auth and cloud-function call currently emits a stub that returns `[]` or throws. Nothing else
+   on this list changes whether an exported app can show a user their own data.
+2. **EXP-010 — custom nodes.** Cheap and currently zero: `parseProject` never opens
+   `noodl_modules`, so MCP-written nodes are dropped silently. They are already React
+   (`window.React` + `createElement` + ports), which makes this far less work than it sounds — and
+   it unblocks every module and prefab at once.
+3. **EXP-011 — the picker gap**, ranked by what an app needs: the `Object`/array vocabulary,
+   `HTTP Request`, the date family, `Page Inputs`.
+4. **EXP-004 — the honesty UX**, promoted because today a deferral is *invisible in the output*.
+
+---
+
+## The corpus, and what it is still for
+
+`projects.txt` and the 40 fixtures stay. They are a genuine regression net: they caught real
+defects in sessions 21–31 that no unit test did, and the `build-corpus.ts` 40/40 typecheck gate is
+worth keeping. **Their new job description is "tell me if I broke something", and nothing else.**
+
+They should also be *joined*, not replaced, by a small set of apps built in the 0.2.0 editor and
+by the MCP, covering the picker — see EXP-011 §2.
 
 ## References
 
-- `dev-docs/reviews/NOODL-REVIVAL-ROADMAP.md` §3 Track F, §5 (what stays dead)
-- `dev-docs/tasks/phase-7-code-export/CODE-EXPORT-overview.md` (ADR-001 companion library, ADR-002 ts-morph, ADR-003 styling)
-- `dev-docs/future-projects/CODE-EXPORT-STUDY.md` (why export is hard; expectations framing)
+- `dev-docs/reviews/NOODL-REVIVAL-ROADMAP.md` §3 Track F
+- `dev-docs/tasks/phase-7-code-export/` — the 2025 design. Sound on generators; **its scoping
+  assumptions about the backend are superseded here.**
+- [EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md) §20 — the
+  session-31 measurement that forced this re-scope.

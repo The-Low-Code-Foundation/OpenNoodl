@@ -1,52 +1,79 @@
 # Phase 18 Progress — Code Export v2
 
-**Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track F
-**Last updated:** 2026-08-27 (eleventh session)
-**Overall status:** 🟡 In progress — 2 / 8 tasks built (EXP-001, EXP-008); EXP-002 through step 6 + named stores + collections + the expression family + the second visual wave (sessions 1–7, 9; see NEXT-SESSION-PROMPT.md for the live state). Session 8 audited real-graph coverage — 66% then — fixed the `__cloud__` walk bug, and built the EXP-008 coverage ledger + CI gate ([EXP-008-EXPORT-COVERAGE-LEDGER.md](./EXP-008-EXPORT-COVERAGE-LEDGER.md)). **Session 9 built the audit's #1 item — the eight missing visual generators ([EXP-002-VISUALS-TARGET-OUTPUT.md](./EXP-002-VISUALS-TARGET-OUTPUT.md)) — and the re-run audit reads 82% of nodes translated across 28 distinct projects (2,689 nodes), up from 66%. Session 10 built Component Outputs as callback props ([EXP-002-COMPONENT-OUTPUTS-TARGET-OUTPUT.md](./EXP-002-COMPONENT-OUTPUTS-TARGET-OUTPUT.md)) — 83% (2,248/2,695). Session 11 built popups as parent-owned modal slots ([EXP-002-POPUPS-TARGET-OUTPUT.md](./EXP-002-POPUPS-TARGET-OUTPUT.md)) — 86% (2,320/2,703)**
+**Created:** 2026-07-22 · **Re-scoped:** 2026-08-28 (session 32)
+**Objective:** an app built in NodeGX today — picker nodes, MCP-written custom nodes, a deployed
+NodeGX backend — exports to a React repo that **builds, runs, and still works**. See
+[README.md](./README.md).
 
-## Status vocabulary
+## 🔴 The headline number
 
-Not started · In progress · **Built–not wired** · Complete · Superseded
+```
+npm run export-ledger:picker
+node scripts/export-ledger/picker-coverage.js
+```
+
+> **PICKER COVERAGE: 51 of 127 placeable nodes export (40.2%)** — 2026-08-28
+
+**Do not report the corpus number as progress.** `coverage-audit.ts` reads 85.00% (93.38% over
+components a route reaches) across ~40 old drive fixtures. It is a **regression detector** and a
+good one. Sessions 20–31 used it as a priority oracle and it cost the phase twelve sessions —
+README §*What went wrong* has the mechanism.
 
 ## Tasks
 
-| ID | Title | Status | Estimate | Notes |
-|---|---|---|---|---|
-| [EXP-001](./EXP-001-NODEGX-CORE.md) | `@nodegx/core` companion library | **Built–not wired** | 3 wks | `packages/nodegx-core`. Behaviour contract read from the runtime ([CONTRACT.md](../../../packages/nodegx-core/CONTRACT.md)), API derived by hand-writing the wanted output first ([EXP-001-TARGET-OUTPUT.md](./EXP-001-TARGET-OUTPUT.md)). 69 tests in-package + 8 parity tests running the same scenario through the real interpreter. 2.8 KB gzipped against an 8 KB budget, gated in CI. **No call sites until EXP-002**; npm scope ownership + publish are human-gated |
-| [EXP-002](./EXP-002-DETERMINISTIC-GENERATORS.md) | Deterministic generators | **In progress** (started 2026-08-27) | 6–8 wks | Steps 1–4 done: IR designed as the shared contract ([EXP-002-IR-DESIGN.md](./EXP-002-IR-DESIGN.md)), target output hand-written from the real v2 project Puppy test 3 ([EXP-002-TARGET-OUTPUT.md](./EXP-002-TARGET-OUTPUT.md) — headline: zero `@nodegx/core` imports), `packages/nodegx-export` walking skeleton, and the **visual-node generator + style extraction** (analysis stage with dispositions, catalog-driven content-vs-style split, class naming with vocabulary-gated merging, JSX/CSS-module emitter, For Each identity mapping, DbCollection2 typed stubs, RouterNavigate resolution). 45 tests incl. a byte-for-byte PuppyCard golden vs TARGET-OUTPUT §1; emitted app `npm install && npm run build` clean, Landing/ThankYou/PuppyCard render (SSR + jsdom client render with seeded fetch → 2 cards in the grid). **Step 5 done (session 3)**: Variables → `src/stores/variables.ts` (`value()` per variable, writer-typed), Send/Receive Event → `src/events.ts` (typed `channel()`), signal wires compile to handler *actions* (navigate / `.set` / `.emit`) attached to DOM events or `useSignal`, wired `onTextChanged` → `onChange` write-through, `@nodegx/core` joins package.json only when imported. New fixture: **Cheer** (`tests/fixtures/cheer`, MCP-authored `exp002-step5-cheer`); target hand-written first ([EXP-002-STEP5-TARGET-OUTPUT.md](./EXP-002-STEP5-TARGET-OUTPUT.md)); 64 tests, 5 byte-for-byte goldens; emitted Cheer app builds (tsc+vite, local-packed core) and a jsdom drive proves the chain: type → shared variable → badge re-renders; click → event → receiver → Set Variable → banner shows the payload. Also fixed: `tokens.css` now emits the **effective** token set (182 shipped defaults merged with overrides — every prior export had unresolved `var()` refs). **Named-stores slice done (session 4, 2026-08-27)**: the `net.noodl.GlobalStore` family → one module per named store (`store(name, initial)` + state interface from the initial-state literal, writer-typed optional keys), single-key `Subscribe.value → rendered sink` → `useStore(mood, (s) => s.key)` selector hooks, `Set` → `mood.set({ key: expr })` as a fourth handler-action kind, and the write-through pair (`onTextChanged → value` + `textChanged → set`) collapsing into one `onChange`. Target hand-written first ([EXP-002-NAMED-STORES-TARGET-OUTPUT.md](./EXP-002-NAMED-STORES-TARGET-OUTPUT.md), which also decides Collection2's write idiom on paper and defers Model2 with reasons); fixture: Cheer extended via MCP with a Mood page (validated, render-reported, snapshot updated). 80 tests incl. 2 new byte-for-byte goldens; extended app `tsc -b` + `vite build` clean and a jsdom drive proves both pages: type → echo re-renders through the selector, click → `visitorName.get()` lands in the store's theme key. Deferrals all noted: persist, merge/transaction, multi-key/whole-store subscribe, non-literal names, non-string-typed key writes. **Collections slice done (session 5, 2026-08-27)**: a named client-side array (`Collection2` by literal `collectionId`) → one `src/collections/<name>.ts` module (`collection<Item>([])`, item interface = optional-keyed union of statically-known inserted property sets), the `NewModel → CollectionInsert` chain → **one `notes.add({...})`** in the handler that owns `NewModel.new` (conditions: properties statically sourced — wires via the step-5 expr machinery plus a new `literal` expr kind; literal array id; the created object's outputs feed exactly this insert — anything else is Model2 territory and defers), read side `Collection2.items → For Each.items` → `useCollection`, rows keyed by index (append-only by construction; no fabricated ids). Also fixed a silently-wrong step-4 rule found by reading `foreach.tsx`: **a repeater with no mapping script identity-maps the template's inputs at runtime** — the plan's old `[]` fallback emitted prop-less rows; now `'template-inputs'` resolves against the template's props at emit, filtered to fields the item type carries (per-entry drop with a note, both feed paths). Target hand-written first ([EXP-002-COLLECTIONS-TARGET-OUTPUT.md](./EXP-002-COLLECTIONS-TARGET-OUTPUT.md)); fixture: Cheer extended via MCP with a Notes page + NoteRow row component (validated, render-reported, snapshot updated). 92 tests incl. 2 new byte-for-byte goldens; extended app `tsc -b` + `vite build` clean; jsdom drives prove all three pages (Notes: draft write-through → click appends `{text, mood}` → list re-renders, order preserved, input stays uncontrolled). Next: step 6 (statically-knowable logic — Condition/String Format → `derived()`), then Model2. **Second visual wave done (session 9, 2026-08-27)**: Columns → CSS Grid (fr tracks from the layout string, `gap` gutters, `repeat(auto-fit, minmax())` for Auto Fit, breakpoints as `@container` rules on a container-type wrapper — the runtime keys off container width, so container queries are the faithful spelling), Icon (font span / sprite `use` / img; inline defers; per-set note that the export does not bundle icon-set stylesheets), Checkbox + Radio Button (+ Group) as `appearance: none` native inputs with the runtime's default box and the FB-020 mark-colour fallback (tick as a `mask` so `var()` border colours survive; radio names scoped per component instance with `useId()`; label wrap = a `<label>` around the input, no ids), Range (`accent-color` from thumbColor), Dropdown (literal items → options, placeholder as the hidden disabled option; wired items defer), Video, Circle (arc paths computed at generation, the runtime's own math + epsilon). Structure-shaping ports arriving over wires defer the node with a named reason; masonry/vertical columns/custom marks/labelled dropdowns defer, all corpus-rare. Target hand-written first ([EXP-002-VISUALS-TARGET-OUTPUT.md](./EXP-002-VISUALS-TARGET-OUTPUT.md)); 159 tests (25 new over a synthetic Showcase component grafted onto Cheer); ledger: 13 entries flipped to `translated` in the same commit, gate green (41 translated); emitted Showcase app `tsc -b` + `vite build` clean and a jsdom drive proves the behaviour (checkbox toggles, radio selection moves within one useId-named group, placeholder shows, range seeds, grid holds 3 items, glyph text renders). Re-run coverage audit: **82% of 2,689 nodes across 28 distinct graphs** (was 66%); icon/columns vanish from the gap list. Note: work is on `cline-dev` per repo practice, not the task branch the checklist names. **Component Outputs slice done (session 10, 2026-08-27)**: a declared **signal** output becomes an optional callback prop (`onWaved?: () => void`) — callback props, not a `useImperativeHandle` handle, argued on paper first ([EXP-002-COMPONENT-OUTPUTS-TARGET-OUTPUT.md](./EXP-002-COMPONENT-OUTPUTS-TARGET-OUTPUT.md)); the child fires it from the same handler machinery every action uses (`onClick={() => onWaved?.()}`, receivers, Condition arms), and a parent wire from a rendered instance's signal output into a translatable trigger port compiles to the arrow passed as that prop (`<FarewellCard onWaved={() => navigate('/mood')} />`). Prop names derive deterministically from port names on the child's declarations (`on` + PascalCase; an existing `onX` identifier is kept; collisions fail the port with a note instead of renaming). Value outputs defer named — lifted state, the component-state slice (zero statically-translatable value feeds in the whole corpus). For Each output relays defer named (which row fired is not expressible yet). Mixed outputs nodes count deferred while their good ports keep firing — the audit under-claims. Fixture: Cheer grew `Components/FarewellCard` + a Home instance wired to RouterNavigate (MCP-authored, snapshot re-copied). 176 tests (17 new incl. a byte-for-byte FarewellCard golden); ledger flipped `Component Outputs` → `translated` in the same commit (gate green, 42); emitted app `tsc -b` + `vite build` clean; jsdom drive proves the chain: click Wave → child callback → parent arrow → Mood page renders. Re-run audit: **83% (2,248/2,695 across 28 distinct graphs)**, and the parent-side rail is what the popups slice (now the top non-JS gap, ~135 nodes) rides next. **Popups slice done (session 11, 2026-08-27)**: `NavigationShowPopup`/`NavigationClosePopup` translate as **parent-owned modal state** — one `useState` slot per hosting component (`openPopup`/`setOpenPopup`, slot keys shared across openers of one target with identical literal params), a conditional `createPortal(…, document.body)` render inside a `position: fixed; inset: 0` overlay class (the runtime mounts popups as siblings after the app root — the portal is that, spelled in React), and a reserved `onClose?: (action?: string) => void` prop on the popup component fired by `close`/`closeAction-*` triggers with the `done`-chain gated on the prop's presence (`if (onClose) { onClose('ok'); onClosed?.(); }` — outside a popup the prop is absent and nothing fires, the runtime's popup-in-scope check). A target with no translated Close Popup gets no `onClose` passed (such a popup never closes at runtime either). Argued on paper first ([EXP-002-POPUPS-TARGET-OUTPUT.md](./EXP-002-POPUPS-TARGET-OUTPUT.md)) over a corpus survey: 135 ShowPopups/9 ClosePopups are nine clones of one NoticeDialog shape — all literal targets, default replace policy, zero params, zero results, zero consumed show-side outputs. Everything unexercised defers named: wired target (8 in corpus), `stack` policy, wired/non-literal params, consumed close outcomes (`Closed`/`Dismissed`/`closeAction-*`/`closeResult-*`/failure/error — §7 records the future dispatch arrow), declared `results` (value outputs → lifted state), `targetComponent`, and Close Popup outside every popup target (the runtime's ancestor walk is not statically threadable). Fixture: Cheer grew `Components/AboutDialog` + a Home About button (MCP-authored, snapshot re-copied). 197 tests (21 new incl. a byte-for-byte AboutDialog golden); ledger flipped both nav-popup entries → `translated` same commit (gate green, 44); emitted app `tsc -b` + `vite build` clean; jsdom drive proves the loop: click About → dialog portals in under `document.body` → click OK → `onClose('ok')` resets the slot, dialog gone, Home intact. Re-run audit: **86% (2,320/2,703 across 28 distinct graphs)** |
-| EXP-003 | AI logic translation + trace verification | Not started | 6–8 wks | **The 2026 addition** — machine-checked translation of Function/Expression/dynamic-port nodes |
-| EXP-004 | Export report & honesty UX | Not started | 1 wk | What exported clean, what is best-effort, what needs review |
-| EXP-005 | Multi-framework pipeline | Not started | 4–6 wks | AI ports the *exported React* to Svelte/Vue, same trace harness — not native multi-compilers |
-| [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) | Export carries authoring intent | Not started | 1–1.5 wks | Node comments, wire labels, authored titles and comment-box regions become comments and identifiers. Design is [CAN-005](../phase-28-canvas-legibility/CAN-005-EXPORT-AUTHORING-INTENT.md); rescues CODE-008 (F57). Blocked on EXP-002 |
-| [EXP-007](./EXP-007-EXPORT-PROVENANCE.md) | Export provenance & regeneration safety | Not started | 1 wk | Generated files carry node id, component, catalog/exporter version and a content hash, so a re-export knows what a human has edited. Harvests `FileChangeTracker` from the [Rise assessment](../../../docs/research/rise-assessment.md). Same injection point as EXP-006, different payload. Blocked on EXP-002 |
-| [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Export coverage ledger & contributor gate | **Complete** (2026-08-27) | — | Every catalog type classified in `packages/nodegx-export/coverage-ledger.json`; `export-ledger:check` in the PR `node-catalog` job refuses an unclassified type, so a new frontend node ships with a translation or a reviewed exemption sentence in the diff. Gate verified against four hand-made mutants. Doc carries the 2026-08-27 real-graph audit (66% of nodes translate today across 29 distinct projects; ranked gaps to ~90–95%) |
+| ID | Title | Status |
+|---|---|---|
+| [EXP-001](./EXP-001-NODEGX-CORE.md) | `@nodegx/core` companion library | ✅ **Built** — `packages/nodegx-core`, 2.8 KB gzipped against an 8 KB budget, gated. No call sites: EXP-002 emits zero imports of it, by design |
+| [EXP-002](./EXP-002-DETERMINISTIC-GENERATORS.md) | Deterministic generators | 🟡 **In progress, re-aimed.** 51 picker nodes translate. `packages/nodegx-export`: 504 tests, 40/40 corpus projects typecheck. Remaining work moved to EXP-011 |
+| [EXP-003](./EXP-003-AI-LOGIC-TRANSLATION.md) | AI logic translation + trace harness | ⚪ Not started. **Reconsider the sizing** — it was scoped against corpus JS-node counts, most of which are in the unplaced prefab kit |
+| [EXP-004](./EXP-004-EXPORT-REPORT-UX.md) | Export report & honesty UX | 🔴 **Promoted.** The report exists **only as stdout**. A deferred node leaves *no marker in the emitted file* — see §"What a gap looks like" |
+| [EXP-005](./EXP-005-MULTIFRAMEWORK-PIPELINE.md) | Multi-framework pipeline | ⚪ Not started |
+| [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) | Export carries authoring intent | ⚪ Not started |
+| [EXP-007](./EXP-007-EXPORT-PROVENANCE.md) | Export provenance & regeneration safety | ⚪ Not started |
+| [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Coverage ledger & contributor gate | ✅ **Built**, + picker ratchet 2026-08-28. ⚠️ 96 of 101 `deferred` entries share one auto-generated exemption sentence — EXP-011 §4 rewrites them |
+| [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **Exported app talks to its deployed backend** | 🔴 **Not started — do this first** |
+| [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **Not started.** `parseProject` never opens `noodl_modules` |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🔴 Not started |
 
-## Relationship to the original Phase 7
+## What actually works today
 
-This phase **supersedes** `dev-docs/tasks/phase-7-code-export/` rather than replacing its thinking. That phase's design work — the companion-library approach, per-node-type generators, the ts-morph pipeline — is sound and is what EXP-001/002 implement. What this phase adds is:
+51 picker nodes, built to a standard worth copying — hand-written target output first,
+byte-for-byte goldens, mutation checks, a 40/40 corpus typecheck gate:
 
-1. **Funding and sequencing.** Phase 7 sat at 0 of 8 tasks with no start date. Here it is scheduled after the Phase 13 substrate work, because generators and LLMs both consume per-component files plus a node catalog.
-2. **EXP-003, which did not exist in 2025.** The original design and the earlier `CODE-EXPORT-STUDY.md` both concluded that translating Function and Expression nodes was the intractable part, and proposed leaving TODO comments. Machine-verified AI translation is a genuinely new option, and it changes the achievable fidelity.
-3. **EXP-005's reframing of multi-framework support.** Rather than maintaining N compiler backends, export to React once and let AI port the output, verified by the same trace harness.
+- **Visual:** Group, Text, Image, Columns (CSS Grid + container queries), Icon, Video, Circle,
+  Button, Checkbox, Radio Button (+ Group), Slider, Dropdown, Text Input, Repeater, Page, Router
+- **Data:** Query Records, Create/Update/Delete Record, Array, Static Array, Create New Object,
+  Insert Object Into Array, Variable, Set Variable, Global Store (+ Set, Subscribe)
+- **Logic:** Condition, And, Or, Inverter, Switch, Counter, String Format, Expression, Function,
+  Visual Function
+- **Structure:** Component Inputs, Component Outputs (callback props), Component Object
+- **Flow:** Send/Receive Event, Navigate, Show/Close Popup
+- **Auth:** Log In, Log Out, Sign Up, User
 
-~~Mark `phase-7-code-export/PROGRESS.md` as superseded when EXP-001 begins.~~ Done, 2026-08-07.
+## What a gap looks like — and why EXP-004 is promoted
 
-**CODE-008 is resolved — it is [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) now** (2026-07-29).
-`phase-7-code-export/CODE-008-node-comments-export.md` specs node-comment export in full detail, and
-nothing in EXP-001…005's scope mentioned comments, labels or titles — so stamping phase 7 superseded
-would have orphaned a complete design referenced by nothing live. That was phase 28's finding F57; the
-scope now lives in EXP-006, with the expanded version from
-[CAN-005](../phase-28-canvas-legibility/CAN-005-EXPORT-AUTHORING-INTENT.md) (wire labels, authored
-titles and comment-box regions as well as node comments) and CODE-008's formatters adopted rather than
-rewritten. Phase 7 can be stamped without losing anything.
+A deferred node is **invisible in the output**. Exported from `Puppy test 3`:
 
-## Phase-level prerequisites
+```jsx
+<button className={styles.deleteBtn}>Delete Puppy</button>   {/* no onClick — chain deferred */}
+<p className={styles.listText} />                            {/* empty — a Function fed it */}
+```
 
-- **SUB-001** (Phase 13) — the editor reads and writes per-component v2 files
-- **SUB-004** (Phase 13) — the node catalog gives generators a typed vocabulary of node types and ports
-- **SUB-005** is highly desirable — semantic descriptions materially improve AI translation quality
-- **RUN-001** (Phase 16) — export targets React 19, so the runtime should be there too
+No `TODO`, no comment, no marker; grep finds zero. No report file is written into the output at
+all — the notes go to the export console and nothing keeps them. **The failure mode is a silently
+half-working app**, which is worse than a loud one. Every dropped wire already has a good sentence
+written about it; none of it survives into the artefact.
 
-## The honest expectation
+## The corpus, and its new job description
 
-Export fidelity will always be a spectrum. UI-heavy projects should export to clean, idiomatic code. Projects built largely from Function nodes, expressions, and dynamic ports will export to code that needs human review. EXP-004 exists to make that spectrum visible to the user rather than surprising them. The viability assessment's ranking stands: **React-only export is realistic and is enough**; direct multi-framework export from the graph is not promised.
+`projects.txt` + the 40 fixtures + `build-corpus.ts` (40/40 typecheck) stay. They caught real
+defects in sessions 21–31 that no unit test did. **They tell you if you broke something. They do
+not tell you what to build.** EXP-011 §2 adds picker-exercising projects built in the 0.2.0 editor
+and by the MCP, which is what should be ranked against.
+
+## Session history
+
+Sessions 1–31 are recorded in the target-output docs, principally
+[EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md) §1–§21, which is
+the phase's working log. §20 is the session-31 measurement that forced this re-scope; §21 marks
+its own "what is left" lists void.
