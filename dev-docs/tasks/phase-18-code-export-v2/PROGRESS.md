@@ -101,3 +101,26 @@ projects. AC6 is settled as a decision, not a number, recorded in `coverage-ledg
 `$customNodesComment`. Details and the five near-misses in
 [EXP-010 §7–§9](./EXP-010-CUSTOM-NODES-AND-MODULES.md). Gates: 554/554 · module-inject 31/31 ·
 corpus sweep 47/47 emit clean · picker ratchet holds 51/127 · `export-ledger:check` OK.
+
+**Session 35 (2026-08-28) — EXP-011 Tier 1.4 built, driven and gated: the value Variables.**
+`String`, `Number`, `Boolean` and `Color` export. They are one runtime definition
+(`variablebase.createDefinition`), so they became one translation with a four-row cast table, and
+which shape a node takes is decided by its wires rather than its type: nothing wired into `value`
+or `Set` folds the read to a literal (String's `Length` folds with it); a wired `value` under Run
+On Value Change becomes a `useState` plus a sync effect carrying `setValueTo`'s own table —
+`undefined` abstains, `null` stores the `Treat empty as` coercion, otherwise `args.cast`, and
+`NaN` is banned as a stored value because `NaN !== NaN` breaks the runtime's `changed` guard
+permanently. A wired `Set` is **deliberately** outside the slice and says so in the author's terms:
+it commits a *pending* value, which needs an abstain guard and a cast around an expression, and a
+state write has room for neither. **Variable Dial** — authored through the MCP server, not by
+hand-editing JSON — exports, builds and runs; a headless Chrome typed into it and watched
+`Number("cake")` land on `0`, `Number("42")` land on `42`, the Boolean flag mount and unmount, and
+the deferred latch stay honestly empty. The near-miss worth reading is
+[EXP-011 §6.2](./EXP-011-PICKER-COVERAGE.md): a sync effect is referenced *unconditionally* at
+emit, so pushing one where a **speculative** `resolveExpr` had resolved would have emitted a
+`useState` and a `useEffect` nothing reads — the dead-`useSession` trap, one construct over.
+**AC4 is also done:** all 97 deferred ledger entries now say *deliberately out of scope* (with the
+reason) or *scheduled* (with the tier), where 95 said "pre-gate backlog" verbatim, and
+`export-ledger:check` now enforces that shape — proved with a control pair before being believed.
+Gates: **580/580** · module-inject 31/31 · corpus **41/41** · audit **85.27%** (from 85.00%) ·
+picker ratchet **51 → 55 of 127 (43.3%)**.

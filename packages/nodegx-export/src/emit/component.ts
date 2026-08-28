@@ -2137,6 +2137,37 @@ export function emitComponent(
         `  }, [${deps}]);`,
         ''
       );
+    } else if (sync.coerce.startsWith('variable-')) {
+      // The value Variables (EXP-011 Tier 1.4). One body per cast, all four sharing
+      // `variablebase.setValueTo`'s order: `undefined` abstains and leaves the stored value
+      // alone, `null` stores the `Treat empty as` coercion, anything else goes through
+      // `args.cast` — and for Number a cast that produced `NaN` is banned as a stored value and
+      // takes the empty coercion too, because `NaN !== NaN` would break the runtime's own
+      // `changed` guard permanently once it landed.
+      const empty = tsLiteral(sync.empty === undefined ? null : sync.empty);
+      const cast =
+        sync.coerce === 'variable-string'
+          ? `String(arrival)`
+          : sync.coerce === 'variable-boolean'
+            ? `Boolean(arrival)`
+            : sync.coerce === 'variable-number'
+              ? `Number(arrival)`
+              : 'arrival';
+      body.push(
+        `  // Graph-path sync (Variable): undefined abstains, null stores ${empty} — Changed never fires.`,
+        '  useEffect(() => {',
+        `    const arrival = ${src};`,
+        '    if (arrival === undefined) return;',
+        ...(sync.coerce === 'variable-number'
+          ? [
+              `    if (arrival === null) { ${setter}(${empty}); return; }`,
+              '    const next = Number(arrival);',
+              `    ${setter}(Number.isNaN(next) ? ${empty} : next);`
+            ]
+          : [`    ${setter}(arrival === null ? ${empty} : ${cast});`]),
+        `  }, [${deps}]);`,
+        ''
+      );
     } else {
       body.push(
         '  // Graph-path sync (text input): undefined abstains, null clears (FB-026) — Changed never fires.',

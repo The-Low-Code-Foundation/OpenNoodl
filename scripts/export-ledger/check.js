@@ -42,6 +42,9 @@ const HOW_TO =
   '    "exemption" saying why that is acceptable, which the ledger diff puts in front of\n' +
   '    review. See dev-docs/tasks/phase-18-code-export-v2/EXP-008-EXPORT-COVERAGE-LEDGER.md.';
 
+/** EXP-011 AC4 — the two shapes a deferral is allowed to have. See the check below. */
+const EXEMPTION_SHAPE = /^(deliberately out of scope|scheduled)\s+—\s+\S/;
+
 const errors = [];
 
 if (ledger.catalogFormatVersion !== catalog.catalogFormatVersion) {
@@ -86,6 +89,19 @@ for (const [typeName, entry] of ledgerByName) {
   }
   if ((entry.status === 'deferred' || entry.status === 'stubbed') && !(typeof entry.exemption === 'string' && entry.exemption.trim().length > 0)) {
     errors.push(`"${typeName}" is "${entry.status}" without an exemption sentence.\n${HOW_TO}`);
+  }
+  // EXP-011 AC4. An exemption has to say WHICH KIND of "not yet" it is, because the two are
+  // different decisions and only one of them is work: *deliberately out of scope* is a decision
+  // somebody made and can be argued with; *scheduled* is a commitment with a tier attached.
+  // "pre-gate backlog" was neither — 95 of the 97 deferrals said it verbatim, which reads as a
+  // to-do list nobody will ever do, and is how a whole vocabulary can sit unexported for twelve
+  // sessions while the ledger looks maintained.
+  if (entry.status === 'deferred' && typeof entry.exemption === 'string' && !EXEMPTION_SHAPE.test(entry.exemption)) {
+    errors.push(
+      `"${typeName}" is deferred with an exemption that does not say which kind it is.\n` +
+        '  → Start it with "deliberately out of scope — <reason>" or "scheduled — <tier and why>".\n' +
+        '    EXP-011 AC4: "deferred" must be a decision or a commitment, never a backlog line.'
+    );
   }
 }
 

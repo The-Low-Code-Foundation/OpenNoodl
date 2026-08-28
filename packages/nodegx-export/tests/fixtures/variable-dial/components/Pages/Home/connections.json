@@ -1,0 +1,97 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "5e1f517c-01c3-463b-b871-879510d68129",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "labelInput",
+      "fromProperty": "onTextChanged",
+      "toId": "labelVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "labelVar",
+      "fromProperty": "value",
+      "toId": "echoedLabel",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "echoedLabel",
+      "fromProperty": "savedValue",
+      "toId": "mirrorString",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "labelVar",
+      "fromProperty": "value",
+      "toId": "parsedNumber",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "parsedNumber",
+      "fromProperty": "savedValue",
+      "toId": "mirrorNumber",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "labelVar",
+      "fromProperty": "value",
+      "toId": "hasLabel",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "hasLabel",
+      "fromProperty": "savedValue",
+      "toId": "mirrorFlag",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "greeting",
+      "fromProperty": "savedValue",
+      "toId": "constString",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "greeting",
+      "fromProperty": "length",
+      "toId": "constLength",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "answer",
+      "fromProperty": "savedValue",
+      "toId": "constNumber",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "accent",
+      "fromProperty": "savedValue",
+      "toId": "constColor",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "showBadge",
+      "fromProperty": "savedValue",
+      "toId": "constBadge",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "labelVar",
+      "fromProperty": "value",
+      "toId": "latched",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "latchButton",
+      "fromProperty": "onClick",
+      "toId": "latched",
+      "toProperty": "saveValue"
+    },
+    {
+      "fromId": "latched",
+      "fromProperty": "savedValue",
+      "toId": "latchedText",
+      "toProperty": "text"
+    }
+  ]
+}

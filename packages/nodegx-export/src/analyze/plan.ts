@@ -380,7 +380,7 @@ export interface StateVarPlan {
   /** Boot value; null is the `undefined` boot (`useState<T | undefined>()`). */
   boot: string | number | boolean | null;
   originNodeId: string;
-  origin: 'switch' | 'counter' | 'control' | 'lifted' | 'jsfun' | 'record-error';
+  origin: 'switch' | 'counter' | 'control' | 'lifted' | 'jsfun' | 'record-error' | 'variable';
   /** The provenance comment above the row. */
   comment: string;
 }
@@ -393,10 +393,20 @@ export interface StateVarPlan {
 export interface SyncEffectPlan {
   stateName: string;
   source: ValueExpr;
-  coerce: 'checkbox' | 'slider' | 'dropdown' | 'textinput';
+  /**
+   * The `variable-*` forms are the value Variables (EXP-011 Tier 1.4) reaching the same
+   * construct from the other direction: their `value` input under Run On Value Change is a
+   * graph path that stores without firing `Changed`, exactly as a control's is, so
+   * `variablebase.setValueTo`'s table — abstain on `undefined`, `Treat empty as` on `null`,
+   * `args.cast` otherwise, `NaN` banned — is written here as one more coercion. `variable-none`
+   * is Color's identity cast.
+   */
+  coerce: 'checkbox' | 'slider' | 'dropdown' | 'textinput' | 'variable-string' | 'variable-number' | 'variable-boolean' | 'variable-none';
   /** Slider only: the literal clamp bounds (a wired min/max defers the node before this). */
   min?: number;
   max?: number;
+  /** `variable-*` only: what a `null` arrival stores — the selected `Treat empty as` coercion. */
+  empty?: string | number | boolean | null;
 }
 
 /**
@@ -2021,6 +2031,179 @@ function planComponent(
     return result;
   };
 
+  // ---- the value Variables (EXP-011 Tier 1.4): String / Number / Boolean / Color -----------
+
+  /**
+   * A value-Variable node reads as one of two things, and which one is decided by its wires.
+   *
+   * **Constant** — nothing wired into `value` and nothing wired into `Set`. `savedValue` can
+   * then only ever report the authored parameter (cast by the node's own `cast`), or the
+   * type's `startValue` when the author left the panel alone. No state row is minted: the read
+   * is a literal, because in the interpreter it is one too.
+   *
+   * **Mirror** — `value` is wired and Run On Value Change is ticked (the default, and *absent
+   * means ticked* per `run-on-value-change.ts`). Arrivals write straight through, so the node
+   * is a `useState` fed by a sync effect carrying `variablebase.setValueTo`'s own rules: an
+   * `undefined` arrival abstains, a `null` one stores the `Treat empty as` value, anything else
+   * goes through `cast`, and a cast that produced `NaN` is banned and becomes the empty value.
+   * That is the §3.4 dual-path shape the four controls already use, with this family's table.
+   *
+   * ⚠️ **`Set` is deliberately outside this slice**, and the reason is a real one rather than
+   * effort: with `saveValue` wired the node stops writing through and parks arrivals in
+   * `latestValue`, so the store is *the value that last arrived, cast, unless it was undefined*
+   * — an abstain guard and a cast around a value expression, and `state-set` carries an
+   * expression with no room for either. Naming it is honest; faking it would store an
+   * uncast `undefined` where the interpreter stores nothing.
+   */
+  type ValueVariableSpec = {
+    /** The `useState` type before nullability is decided. */
+    tsType: 'string' | 'number' | 'boolean';
+    /** How the emit layer writes `args.cast` — 'none' is Color's identity cast. */
+    cast: 'string' | 'number' | 'boolean' | 'none';
+    /** `args.startValue`: what `initialize` seeds, and what `savedValue` reports unauthored. */
+    start: string | number | boolean;
+    /** `args.emptyOptions` by enum value, first entry the default — `coerce`, keyed. */
+    empties: Record<string, string | number | boolean | null>;
+    /** The state row's name when the author left the node unlabelled. */
+    fallbackName: string;
+  };
+  const VALUE_VARIABLES: Record<string, ValueVariableSpec> = {
+    String: { tsType: 'string', cast: 'string', start: '', empties: { null: null, 'empty-string': '' }, fallbackName: 'text' },
+    Number: { tsType: 'number', cast: 'number', start: 0, empties: { null: null, zero: 0 }, fallbackName: 'count' },
+    Boolean: { tsType: 'boolean', cast: 'boolean', start: false, empties: { null: null, false: false }, fallbackName: 'flag' },
+    // Color's `cast` is `function (value) { return value; }` — a colour needs no coercion, it
+    // already arrives as the string the property panel or a style produced (color.ts).
+    Color: { tsType: 'string', cast: 'none', start: '#f1f2f4', empties: { null: null, 'empty-string': '' }, fallbackName: 'color' }
+  };
+  /** Outputs whose consumption makes a value Variable change-conditional — the latch rule. */
+  const VALUE_VARIABLE_PULSES = ['changed', 'done', 'unchanged'];
+
+  /**
+   * `args.cast` applied to an authored parameter, as `setValueTo` would apply it. `empty` is the
+   * node's *selected* `Treat empty as` coercion and not the family default — deriving it here
+   * instead read every unparseable Number as null even where the author had ticked Zero.
+   */
+  const castLiteral = (
+    spec: ValueVariableSpec,
+    value: string | number | boolean,
+    empty: string | number | boolean | null
+  ): string | number | boolean | null => {
+    if (spec.cast === 'string') return String(value);
+    if (spec.cast === 'boolean') return Boolean(value);
+    if (spec.cast === 'number') {
+      const next = Number(value);
+      // `NaN` is banned as a stored value outright (variablebase): it becomes the empty value.
+      return Number.isNaN(next) ? empty : next;
+    }
+    return value;
+  };
+
+  /** The selected `Treat empty as` coercion — `emptyOptions[0]` (null) unless the panel says. */
+  function emptyValueOf(spec: ValueVariableSpec, selected: unknown): string | number | boolean | null {
+    if (typeof selected === 'string' && selected in spec.empties) return spec.empties[selected];
+    return spec.empties[Object.keys(spec.empties)[0]];
+  }
+
+  type ValueVariableRec =
+    | { constant: string | number | boolean | null }
+    | { stateVar: StateVarPlan; sync: SyncEffectPlan; wireKey: string; ctx: ResolveCtx }
+    | { defer: string };
+
+  const valueVariableMemo = new Map<string, ValueVariableRec>();
+  const valueVariableOf = (node: NodeIR): ValueVariableRec => {
+    const cached = valueVariableMemo.get(node.id);
+    if (cached !== undefined) return cached;
+    const result = ((): ValueVariableRec => {
+      const spec = VALUE_VARIABLES[node.type];
+      const empty = emptyValueOf(spec, literalParam(node, 'treatEmptyAs'));
+
+      // The latch rule (§4a), for the same reason: `Changed` fires only when the stored value
+      // actually differs, and the interpreter's `hasBeenSet` guard makes the *first* store a
+      // change even when it stores the value the node booted with. Nothing here reproduces that,
+      // so a consumed pulse defers rather than firing on React's terms.
+      const consumedPulse = component.connections.find(
+        (c) => c.fromId === node.id && VALUE_VARIABLE_PULSES.includes(c.fromProperty)
+      );
+      if (consumedPulse) {
+        return {
+          defer: `its ${consumedPulse.fromProperty} signal is consumed — change-conditional pulses are not translated in this slice`
+        };
+      }
+
+      const valueWire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'value');
+      const setWired = wiredPorts.has(`${node.id}:saveValue`);
+      // *Absent means ticked* (run-on-value-change.ts): only a deliberate `false` unticks.
+      const runsOnChange = literalParam(node, 'runOnChange-value') !== false;
+
+      if (setWired) {
+        return {
+          defer:
+            'its Set commits a pending value — the node parks arrivals in `latestValue` and stores them only when Set fires, applying its cast and abstaining on undefined (variablebase.setValueTo), and a state write carries an expression with room for neither'
+        };
+      }
+
+      if (valueWire === undefined) {
+        // A constant. An authored parameter reaches `currentValue` through the setter, so it is
+        // cast; an unauthored one never runs a setter at all and `initialize`'s `startValue` is
+        // what `savedValue` reports. Run On Value Change does not enter into it — with no Set to
+        // park behind, the parameter lands either way.
+        const authored = literalParam(node, 'value');
+        return { constant: authored === undefined ? spec.start : castLiteral(spec, authored, empty) };
+      }
+
+      if (!runsOnChange) {
+        return {
+          defer:
+            'Run On Value Change is unticked on Value and no Set is wired, so nothing ever stores — the node reports its start value for the life of the app, which is not what the wire says it is for'
+        };
+      }
+
+      const ctx = newCtx();
+      const source = resolveExpr(nodeById.get(valueWire.fromId), valueWire.fromProperty, ctx);
+      if (source === null) return { defer: ctx.defer ?? 'the Value wire has no statically known source' };
+      if (isBooleanExpr(source)) {
+        return { defer: 'its Value is fed a logic truth value — only truthiness sinks take one in this slice' };
+      }
+      // The effect runs in render, so a handler-only read (an input's own event value, a
+      // receiver's payload) is not in scope there — the control sync effect's own gate.
+      if (!exprValidIn(source, { kind: 'render' })) {
+        return { defer: 'its Value reads a value that only exists inside a handler' };
+      }
+      if (source.kind === 'undefined') {
+        return { defer: 'its Value arrival is statically undefined, which abstains — nothing ever stores' };
+      }
+
+      // `null` only ever reaches the store from a wire, so a node nothing wires cannot be
+      // nullable — and one that is wired is nullable exactly when `Treat empty as` left the
+      // default. Widening further would type a row `null` that nothing can write.
+      const tsType = empty === null ? `${spec.tsType} | null` : spec.tsType;
+      const stateVar = allocStateVar(
+        node.authoredLabel,
+        spec.fallbackName,
+        tsType,
+        spec.start,
+        node.id,
+        'variable',
+        `From the ${node.type} node${node.authoredLabel ? ` "${node.authoredLabel}"` : ''} — Value writes it under Run On Value Change, Value reads it.`
+      );
+      // ⚠️ The effect is **not** pushed here. `resolveExpr` runs speculatively and a pass may
+      // drop the wire it resolved; a sync effect is referenced unconditionally at emit
+      // (component.ts's `referencedStateNames` sweep), so pushing one for a read that never
+      // landed would emit a `useState` and a `useEffect` no line of the component reads — the
+      // dead-`useSession` trap this file already names for the session reads. The verdict sweep
+      // pushes it once the node has actually collapsed.
+      const sync: SyncEffectPlan = {
+        stateName: stateVar.name,
+        source,
+        coerce: `variable-${spec.cast}` as SyncEffectPlan['coerce'],
+        empty
+      };
+      return { stateVar, sync, wireKey: valueWire.key, ctx };
+    })();
+    valueVariableMemo.set(node.id, result);
+    return result;
+  };
+
   // ---- the controls (§4c): local state + sync effect, the dual-path contract --------------
 
   type ControlSpec = {
@@ -2126,6 +2309,41 @@ function planComponent(
       if ('defer' in rec) {
         ctx.defer = rec.defer;
         return null;
+      }
+      return { kind: 'state-get', name: rec.stateVar.name };
+    }
+    // Value Variable reads (EXP-011 Tier 1.4): `savedValue` is the constant the node reports or
+    // the row its Value wire mirrors. `length` is String's extra output — exact over a constant
+    // (`typeof value === 'string' ? value.length : 0`, string.ts, folded here because the string
+    // is known) and deferred over a row, where the expression vocabulary has no member access.
+    if (VALUE_VARIABLES[fromNode.type] !== undefined && (fromProperty === 'savedValue' || fromProperty === 'length')) {
+      const rec = valueVariableOf(fromNode);
+      if ('defer' in rec) {
+        ctx.defer = rec.defer;
+        return null;
+      }
+      if (fromProperty === 'length') {
+        if (fromNode.type !== 'String') {
+          ctx.defer = `its ${fromProperty} output is not a port this slice reads`;
+          return null;
+        }
+        if (!('constant' in rec)) {
+          ctx.defer = 'its Length reads a stored string — a member read has no shape in this slice’s expressions';
+          return null;
+        }
+        return { kind: 'literal', value: typeof rec.constant === 'string' ? rec.constant.length : 0 };
+      }
+      if ('constant' in rec) {
+        // A cleared Variable reports `null`, and `undefined` is the expression vocabulary's only
+        // absent value — but a constant reaches `null` solely through `Treat empty as`, which
+        // needs a stored null to coerce, and a constant never stores one. So this cannot fire
+        // today; it is here because `constant` is typed to admit null and silently emitting
+        // `null` as a literal would be a lie the type allows.
+        if (rec.constant === null) {
+          ctx.defer = 'it reports a cleared (null) value, which this slice’s expressions cannot carry';
+          return null;
+        }
+        return { kind: 'literal', value: rec.constant };
       }
       return { kind: 'state-get', name: rec.stateVar.name };
     }
@@ -4721,7 +4939,16 @@ function planComponent(
     // and the `authenticated` visibility gates. It rides this pass for the same reason the
     // Error read does: it is a read of ambient state into a bindable sink.
     const isSessionRead = fromNode.type === 'net.noodl.user.User' && SESSION_READS[connection.fromProperty] !== undefined;
-    if (!isLatchRead && !isControlRead && !isStaticCountRead && !isRecordErrorRead && !isSessionRead) continue;
+    // A value Variable's `savedValue` (and String's `length`) into a rendered sink (EXP-011
+    // Tier 1.4). It rides this pass for the reason the two above do: whether it resolves to a
+    // literal or to a state row is a fact about the node's wires, and both are reads of ambient
+    // state into a bindable sink. `resolveExpr` decides which; this only decides where it lands.
+    const isValueVariableRead =
+      VALUE_VARIABLES[fromNode.type] !== undefined &&
+      (connection.fromProperty === 'savedValue' || connection.fromProperty === 'length');
+    if (!isLatchRead && !isControlRead && !isStaticCountRead && !isRecordErrorRead && !isSessionRead && !isValueVariableRead) {
+      continue;
+    }
     const toNode = nodeById.get(connection.toId);
     if (!toNode || !rendered.has(toNode.id)) continue; // handler reads resolve at compile; the sweep names the rest
     const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
@@ -5038,6 +5265,64 @@ function planComponent(
       dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: verdict };
       notes.push(`node ${node.id} (${node.type}) deferred: ${verdict}`);
       continue;
+    }
+    dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+  }
+
+  // The value Variable verdict (EXP-011 Tier 1.4) — the latch sweep's shape, with one addition:
+  // a mirror row's sync effect is pushed *here*, not where the read resolved, because a read
+  // that resolved speculatively and was then dropped would otherwise leave an effect emit
+  // references unconditionally. A node reaching this sweep collapsed means a read landed.
+  for (const node of component.nodes) {
+    if (VALUE_VARIABLES[node.type] === undefined || dispositions[node.id] !== undefined) continue;
+    let verdict: string | null = null;
+    const rec = valueVariableOf(node);
+    if ('defer' in rec) verdict = rec.defer;
+    if (verdict === null) {
+      for (const c of component.connections) {
+        if (consumed.has(c.key)) continue;
+        // Its own Value feed is not an unlanded wire — the sweep below consumes it.
+        if ('stateVar' in rec && c.key === rec.wireKey) continue;
+        if (c.toId === node.id && c.toProperty === 'value') {
+          verdict = 'its Value is fed by a source with no static translation in this slice';
+          break;
+        }
+        if (c.fromId === node.id) {
+          // Re-resolve the read so its own reason wins over the sink's. The gates that live in
+          // `resolveExpr` rather than in `valueVariableOf` — a Length over a stored string, a
+          // Length on a type that has none, a constant that cleared to null — are about the
+          // *port*, not the node, and reporting "no static binding in this slice" for them
+          // would blame the sink for a refusal the source made.
+          const ctx = newCtx();
+          const reason = resolveExpr(node, c.fromProperty, ctx) === null ? ctx.defer : undefined;
+          const sink = nodeById.get(c.toId);
+          verdict =
+            reason ??
+            `its ${c.fromProperty} read feeds ${sink?.type ?? 'a missing node'}.${c.toProperty}, which has no static binding in this slice`;
+          break;
+        }
+      }
+    }
+    // A constant nothing reads is not a value the app ever shows. Said the latches' way: a node
+    // whose whole contribution is a number no line prints has not been translated, it has been
+    // dropped, and the report is the only place that difference can be seen.
+    if (verdict === null && !component.connections.some((c) => c.fromId === node.id)) {
+      verdict = 'its Value is read by nothing statically translatable';
+    }
+    if (verdict === null && !plan.file) verdict = 'component emits no file to host its state';
+    if (verdict !== null) {
+      dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason: verdict };
+      notes.push(`node ${node.id} (${node.type}) deferred: ${verdict}`);
+      continue;
+    }
+    if ('stateVar' in rec) {
+      plan.syncEffects.push(rec.sync);
+      consumed.add(rec.wireKey);
+      for (const k of rec.ctx.consumes) consumed.add(k);
+      for (const s of rec.ctx.subscriberIds) boundSubscribers.add(s);
+      for (const l of rec.ctx.logicNodeIds) {
+        dispositions[l] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
+      }
     }
     dispositions[node.id] = { kind: 'collapsed', into: `src/${plan.file!.dir}/${plan.file!.fileBase}.tsx` };
   }

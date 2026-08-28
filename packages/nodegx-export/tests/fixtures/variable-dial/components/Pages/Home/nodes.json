@@ -1,0 +1,300 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "5e1f517c-01c3-463b-b871-879510d68129",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Variable Dial",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "labelInput",
+        "mirrorString",
+        "mirrorNumber",
+        "mirrorFlag",
+        "constString",
+        "constLength",
+        "constNumber",
+        "constColor",
+        "constBadge",
+        "latchButton",
+        "latchedText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Variable Dial",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "labelInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Label",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Type a label, or a number",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-md)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "fontSize": "var(--text-base)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "labelVar",
+      "type": "Variable2",
+      "label": "label variable",
+      "x": 520,
+      "y": 200,
+      "parameters": {
+        "name": "label"
+      }
+    },
+    {
+      "id": "echoedLabel",
+      "type": "String",
+      "label": "Echoed label",
+      "x": 760,
+      "y": 200
+    },
+    {
+      "id": "mirrorString",
+      "type": "Text",
+      "label": "Mirror string",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "parsedNumber",
+      "type": "Number",
+      "label": "Parsed number",
+      "x": 760,
+      "y": 320,
+      "parameters": {
+        "treatEmptyAs": "zero"
+      }
+    },
+    {
+      "id": "mirrorNumber",
+      "type": "Text",
+      "label": "Mirror number",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "hasLabel",
+      "type": "Boolean",
+      "label": "Has label",
+      "x": 760,
+      "y": 440
+    },
+    {
+      "id": "mirrorFlag",
+      "type": "Text",
+      "label": "Mirror flag",
+      "parent": "shell",
+      "parameters": {
+        "text": "You typed something.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--success, var(--foreground))"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "greeting",
+      "type": "String",
+      "label": "Greeting",
+      "x": 520,
+      "y": 620,
+      "parameters": {
+        "value": "Bring cake"
+      }
+    },
+    {
+      "id": "constString",
+      "type": "Text",
+      "label": "Const string",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "constLength",
+      "type": "Text",
+      "label": "Const length",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "answer",
+      "type": "Number",
+      "label": "Answer",
+      "x": 520,
+      "y": 740,
+      "parameters": {
+        "value": 42
+      }
+    },
+    {
+      "id": "constNumber",
+      "type": "Text",
+      "label": "Const number",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 1120
+    },
+    {
+      "id": "accent",
+      "type": "Color",
+      "label": "Accent",
+      "x": 520,
+      "y": 860,
+      "parameters": {
+        "value": "var(--primary)"
+      }
+    },
+    {
+      "id": "constColor",
+      "type": "Text",
+      "label": "Const color",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 1240
+    },
+    {
+      "id": "showBadge",
+      "type": "Boolean",
+      "label": "Show badge",
+      "x": 520,
+      "y": 980,
+      "parameters": {
+        "value": true
+      }
+    },
+    {
+      "id": "constBadge",
+      "type": "Text",
+      "label": "Const badge",
+      "parent": "shell",
+      "parameters": {
+        "text": "Badge is on.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 1360
+    },
+    {
+      "id": "latchButton",
+      "type": "net.noodl.controls.button",
+      "label": "Latch",
+      "parent": "shell",
+      "parameters": {
+        "label": "Latch the label",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 1480
+    },
+    {
+      "id": "latched",
+      "type": "String",
+      "label": "Latched label",
+      "x": 1000,
+      "y": 1100
+    },
+    {
+      "id": "latchedText",
+      "type": "Text",
+      "label": "Latched text",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 1600
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

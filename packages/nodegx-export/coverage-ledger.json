@@ -1,14 +1,14 @@
 {
   "$comment": "Every catalog node type, classified for code export (EXP-008). Gate: scripts/export-ledger/check.js (export-ledger:check) refuses an unclassified type; scripts/export-ledger/picker-coverage.js (export-ledger:picker) is the PHASE'S HEADLINE NUMBER and ratchets `pickerCoverageFloor`. Read EXP-008 before changing either: the corpus instance-coverage number this phase used to quote is a regression detector, not a priority oracle, and treating it as one cost twelve sessions.",
   "catalogFormatVersion": "1.1.0",
-  "pickerCoverageFloor": 51,
-  "$pickerCoverageFloorComment": "Placeable picker nodes (inNodePicker, not deprecated, browser-capable) that export. Ratchet: export-ledger:picker --check fails if it falls AND if it rises without this number moving, so every gain is held and every loss is a decision in the diff. 51 of 127 at 2026-08-28.",
+  "pickerCoverageFloor": 55,
+  "$pickerCoverageFloorComment": "Placeable picker nodes (inNodePicker, not deprecated, browser-capable) that export. Ratchet: export-ledger:picker --check fails if it falls AND if it rises without this number moving, so every gain is held and every loss is a decision in the diff. 55 of 127 at 2026-08-28 (51 before EXP-011 Tier 1.4 added the four value Variables).",
   "$customNodesComment": "EXP-010 AC6, settled 2026-08-28: custom nodes are DELIBERATELY not in this file and not in the picker number, and the statement about them is categorical rather than a percentage. A custom node type comes from a project's own noodl_modules/, so its population is per-project and unbounded — putting it in the numerator inflates a ratio, and putting it in both halves makes the denominator move with whichever project you point the tool at. That is precisely the instance-weighted corpus number this phase spent twelve sessions being misled by (see $comment). Adding these types as `entries` would also be a false claim about the catalog, which is what this file is a ledger OF. The claim instead: a kit's VISUAL nodes (`reactNodes`, i.e. a definition with getReactComponent) export and render; a kit's LOGIC nodes (`nodes`, e.g. tally-kit's whole vocabulary) do not, and every instance of one is named in the report. Both halves are graded by tests/custom-nodes.test.ts, which is the ratchet for this claim.",
   "entries": [
     {
       "typeName": "AddDbModelRelation",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: the record verbs’ backend neighbours — §3 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
     },
     {
       "typeName": "And",
@@ -18,17 +18,17 @@
     {
       "typeName": "Animation",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Boolean",
-      "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "EXP-011 Tier 1.4 (session 35): as String, with Boolean(value) as the cast - the string \"false\" is truthy and stores true, which is the runtime being surprising and the export agreeing with it"
     },
     {
       "typeName": "Boolean To String",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: scheduled Tier 2 in session 35 — §3’s ranking did not name it, and it is a small ordinary node with no design question standing in front of it"
     },
     {
       "typeName": "Button",
@@ -38,7 +38,7 @@
     {
       "typeName": "CSS Definition",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 3: global CSS (§3 Tier 3.9). ⚠️ Every instance in the corpus is the empty stub \".group1 \", so it would buy nothing measurable there — build it against a real project"
     },
     {
       "typeName": "Checkbox",
@@ -53,22 +53,22 @@
     {
       "typeName": "Cloud File",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
     },
     {
       "typeName": "Cloud Function",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "CloudFunction2",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
     },
     {
       "typeName": "Collection",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Collection2",
@@ -78,7 +78,7 @@
     {
       "typeName": "CollectionClear",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
     },
     {
       "typeName": "CollectionInsert",
@@ -88,27 +88,27 @@
     {
       "typeName": "CollectionNew",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
     },
     {
       "typeName": "CollectionRemove",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
     },
     {
       "typeName": "Color",
-      "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "EXP-011 Tier 1.4 (session 35): as String, with the identity cast (color.ts: a colour needs no coercion) - a var(--token) authored in the panel survives verbatim into the emitted binding"
     },
     {
       "typeName": "Color Blend",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: scheduled Tier 2 in session 35 — §3’s ranking did not name it, and it is a small ordinary node with no design question standing in front of it"
     },
     {
       "typeName": "Component Children",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
     },
     {
       "typeName": "Component Inputs",
@@ -123,7 +123,7 @@
     {
       "typeName": "Component State",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Condition",
@@ -138,12 +138,12 @@
     {
       "typeName": "Date To String",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
     },
     {
       "typeName": "DbCollection",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "DbCollection2",
@@ -153,12 +153,12 @@
     {
       "typeName": "DbModel",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "DbModel2",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
     },
     {
       "typeName": "DeleteDbModelProperties",
@@ -168,7 +168,7 @@
     {
       "typeName": "Drag",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
     },
     {
       "typeName": "Event Receiver",
@@ -187,17 +187,17 @@
     {
       "typeName": "Field Set",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Filter Collection",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
     },
     {
       "typeName": "FilterDBModels",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: the record verbs’ backend neighbours — §3 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
     },
     {
       "typeName": "For Each",
@@ -207,17 +207,17 @@
     {
       "typeName": "For Each Actions",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
     },
     {
       "typeName": "Form",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Globals",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Group",
@@ -227,7 +227,7 @@
     {
       "typeName": "Gyroscope",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Image",
@@ -246,7 +246,7 @@
     {
       "typeName": "Javascript2",
       "status": "deferred",
-      "exemption": "a hand-written node definition (three generations of define/script/Node.* DSL, lifecycle methods, an external-URL mode), not a function — its faithful target is a hand-written React component, the export-side twin of P69 custom nodes (EXP-003-JS-TARGET-OUTPUT §1); the corpus is browser-coupled date-picker code and junk, zero cost"
+      "exemption": "scheduled — EXP-011 Tier 3 (§3 Tier 3.9, \"CSS Definition and Script\"): a hand-written node definition (three generations of define/script/Node.* DSL, lifecycle methods, an external-URL mode), not a function — its faithful target is a hand-written React component, the export-side twin of P69 custom nodes (EXP-003-JS-TARGET-OUTPUT §1); the corpus is browser-coupled date-picker code and junk, zero cost"
     },
     {
       "typeName": "Label",
@@ -261,17 +261,17 @@
     {
       "typeName": "Map Collection",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
     },
     {
       "typeName": "Model",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Model2",
       "status": "deferred",
-      "exemption": "blocked by its hosts, not by itself — all 27 corpus instances are idSource:foreach, and every one sits in a component reached only through a dynamically-templated repeater or one whose items are minted by a script (EXP-002-MODEL2-TARGET-OUTPUT.md §2). Translating it before EXP-003 Tier B would emit template props no call site passes; the foreach design is settled on paper in §4"
+      "exemption": "scheduled — EXP-011 Tier 1: blocked by its hosts, not by itself — all 27 corpus instances are idSource:foreach, and every one sits in a component reached only through a dynamically-templated repeater or one whose items are minted by a script (EXP-002-MODEL2-TARGET-OUTPUT.md §2). Translating it before EXP-003 Tier B would emit template props no call site passes; the foreach design is settled on paper in §4"
     },
     {
       "typeName": "NavigationClosePopup",
@@ -295,28 +295,28 @@
     },
     {
       "typeName": "Number",
-      "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "EXP-011 Tier 1.4 (session 35): as String, with Number(value) as the cast and NaN banned as a stored value - an unparseable arrival takes the Treat empty as coercion, never NaN, because NaN !== NaN breaks the runtime's own changed guard permanently"
     },
     {
       "typeName": "Number Blend",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Number Remapper",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: the small string/math utilities (§3 Tier 2.7)"
     },
     {
       "typeName": "On App Error",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": a global error hook — an app-shell concern the scaffold owns, not a page-level node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "Open File Picker",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": a browser file dialog; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "Options",
@@ -336,37 +336,37 @@
     {
       "typeName": "Page Stack",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
     },
     {
       "typeName": "PageInputs",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: navigation (§3 Tier 2.5) — Page Inputs is the one that matters: no path parameters means no detail pages"
     },
     {
       "typeName": "PageStackNavigate",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: navigation (§3 Tier 2.5) — Page Inputs is the one that matters: no path parameters means no detail pages"
     },
     {
       "typeName": "PageStackNavigateBack",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: navigation (§3 Tier 2.5) — Page Inputs is the one that matters: no path parameters means no detail pages"
     },
     {
       "typeName": "PageStackNavigateToPath",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: navigation (§3 Tier 2.5) — Page Inputs is the one that matters: no path parameters means no detail pages"
     },
     {
       "typeName": "Parent Component State",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "REST2",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Radio Button",
@@ -386,7 +386,7 @@
     {
       "typeName": "RemoveDbModelRelation",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: the record verbs’ backend neighbours — §3 did not name them; grouped with Tier 2.6 in session 35 because they are the same backend work and land with it or not at all"
     },
     {
       "typeName": "Router",
@@ -401,17 +401,17 @@
     {
       "typeName": "RunTasks",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": a parallel task runner — control flow the emitted app expresses as ordinary async code, not as a node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "Screen Resolution",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": ambient device measurement; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "Script Downloader",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Set Variable",
@@ -426,22 +426,22 @@
     {
       "typeName": "SetModelProperties",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the client-side data vocabulary (§3 Tier 1.1) — how anyone holds a working set of rows in the UI; EXP-002-MODEL2-TARGET-OUTPUT §4 has the design"
     },
     {
       "typeName": "Sign File URL",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
     },
     {
       "typeName": "Signal To Index",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "States",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 3: the animation pair (§3 Tier 3.8) — time-based and stateful, worth doing properly rather than early"
     },
     {
       "typeName": "Static Data",
@@ -450,8 +450,8 @@
     },
     {
       "typeName": "String",
-      "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "status": "translated",
+      "note": "EXP-011 Tier 1.4 (session 35): a value Variable is a constant when nothing writes it (the read folds to a literal, and Length folds with it) and a useState plus a sync effect carrying variablebase.setValueTo's table when Value is wired under Run On Value Change; a wired Set, a consumed Changed/done/unchanged, an unticked Run On Value Change and a Length over a stored string defer named"
     },
     {
       "typeName": "String Format",
@@ -461,22 +461,22 @@
     {
       "typeName": "String Mapper",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: the small string/math utilities (§3 Tier 2.7)"
     },
     {
       "typeName": "String Selector",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "SubscribeToChanges",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
     },
     {
       "typeName": "Substring",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: the small string/math utilities (§3 Tier 2.7)"
     },
     {
       "typeName": "Switch",
@@ -496,32 +496,32 @@
     {
       "typeName": "Timer",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: scheduled Tier 2 in session 35 — §3’s ranking did not name it, and it is a small ordinary node with no design question standing in front of it"
     },
     {
       "typeName": "Transition",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Unique Id",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: the small string/math utilities (§3 Tier 2.7)"
     },
     {
       "typeName": "Upload File",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
     },
     {
       "typeName": "Value Changed",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: scheduled Tier 2 in session 35 — §3’s ranking did not name it, and it is a small ordinary node with no design question standing in front of it"
     },
     {
       "typeName": "Variable",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "Variable2",
@@ -536,17 +536,17 @@
     {
       "typeName": "net.noodl.ActionDispatcher",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": an app-wide action bus — a routing indirection whose faithful translation is a design decision about the emitted app’s architecture, not a node translation. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.ActionHandler",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": the receiving half of the action bus, and out of scope for the same reason. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.ArrayChanged",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — not offered in the node picker, so it cannot be placed. It exists for graphs that already have one, and those export as named deferrals"
     },
     {
       "typeName": "net.noodl.ComponentObject",
@@ -556,22 +556,22 @@
     {
       "typeName": "net.noodl.DateAdd",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
     },
     {
       "typeName": "net.noodl.DateCompare",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
     },
     {
       "typeName": "net.noodl.DateDifference",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
     },
     {
       "typeName": "net.noodl.DateParts",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
     },
     {
       "typeName": "net.noodl.GlobalStore",
@@ -591,117 +591,117 @@
     {
       "typeName": "net.noodl.HTTP",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: any app that talks to anything that is not its own backend (§3 Tier 1.2)"
     },
     {
       "typeName": "net.noodl.Hash",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": hashing; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.JSONStreamParser",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": incremental JSON over a stream; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.Log",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: scheduled Tier 2 in session 35 — §3’s ranking did not name it, and it is a small ordinary node with no design question standing in front of it"
     },
     {
       "typeName": "net.noodl.Now",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 1: the date family (§3 Tier 1.3) — anything with a timestamp needs at least two of these"
     },
     {
       "typeName": "net.noodl.ObjectChanged",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — not offered in the node picker, so it cannot be placed. It exists for graphs that already have one, and those export as named deferrals"
     },
     {
       "typeName": "net.noodl.OptimisticUpdate",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": optimistic mutation with rollback — a data-layer policy, not a value the graph computes. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.ParentComponentObject",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
     },
     {
       "typeName": "net.noodl.ParseCSV",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": CSV import; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.PatternExtractor",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": regex-shaped extraction; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.RandomBytes",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": cryptographic randomness; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.SSE",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": a live server connection; specialist, and nothing in the emitted app holds one. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.SetComponentObjectProperties",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
     },
     {
       "typeName": "net.noodl.SetParentComponentObjectProperties",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 3: the component-tree family (§3 Tier 3.10) — real, but a smaller audience"
     },
     {
       "typeName": "net.noodl.StateHistory",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": undo/redo history — a whole state architecture rather than a node. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.StateHistory.Undo",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": the verb half of undo/redo, out of scope with it. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.StateSnapshot",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": the snapshot half of undo/redo; §3 named the family and this is its third member. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.StreamBuffer",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": streaming plumbing — specialist, and the emitted app has no stream vocabulary to put it in. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.TextAccumulator",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": token accumulation for streamed text; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.ToCSV",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": CSV export; specialist. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.UUID",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: the small string/math utilities (§3 Tier 2.7)"
     },
     {
       "typeName": "net.noodl.WebSocket",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — EXP-011 §3 \"Not a target\": a live socket; specialist, same reason. A real node and some of them excellent; this says nobody is waiting on it, not that it is bad"
     },
     {
       "typeName": "net.noodl.animatetovalue",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 3: the animation pair (§3 Tier 3.8) — time-based and stateful, worth doing properly rather than early"
     },
     {
       "typeName": "net.noodl.controls.button",
@@ -736,7 +736,7 @@
     {
       "typeName": "net.noodl.externallink",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: navigation (§3 Tier 2.5) — Page Inputs is the one that matters: no path parameters means no detail pages"
     },
     {
       "typeName": "net.noodl.user.LogIn",
@@ -751,32 +751,32 @@
     {
       "typeName": "net.noodl.user.RequestMagicLink",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
     },
     {
       "typeName": "net.noodl.user.RequestPasswordReset",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "net.noodl.user.ResetPassword",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "net.noodl.user.SendEmailVerification",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "net.noodl.user.SetUserProperties",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
     },
     {
       "typeName": "net.noodl.user.SignInWith",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "scheduled — EXP-011 Tier 2: Cloud Services (§3 Tier 2.6), mostly unblocked by EXP-009 — re-measure after it lands rather than planning against today’s list"
     },
     {
       "typeName": "net.noodl.user.SignUp",
@@ -791,7 +791,7 @@
     {
       "typeName": "net.noodl.user.VerifyEmail",
       "status": "deferred",
-      "exemption": "pre-gate backlog — classified by the 2026-08-27 coverage audit (EXP-008); translating it is tracked phase work, not a regression"
+      "exemption": "deliberately out of scope — the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
     },
     {
       "typeName": "net.noodl.visual.columns",
