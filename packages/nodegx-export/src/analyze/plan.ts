@@ -26,6 +26,7 @@
 
 import { CatalogIndex } from '../catalog';
 import { ComponentIR, Disposition, ExportIR, NodeIR } from '../ir/types';
+import { componentReachability, Reachability } from './reach';
 import { routedPages } from '../emit/scaffold';
 import { pascalCase } from '../emit/naming';
 import { CONTENT_PARAMS, iconSourceOf, StyleRole } from '../emit/style';
@@ -657,6 +658,13 @@ export interface ProjectPlan {
   stores: StorePlan[];
   /** Named client-side arrays, discovery order — one src/collections/<exportName>.ts each. */
   collections: CollectionPlan[];
+  /**
+   * Which components a route can reach (reach.ts). Not a disposition and never a reason to emit
+   * less — every component is still emitted. It is what lets the report say whether a deferral is
+   * work the app is missing or a node in a component nothing renders, which over this corpus is
+   * the difference between 85.00% and 93.38%.
+   */
+  reachability: Reachability;
 }
 
 export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
@@ -734,7 +742,8 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
     variables: [...registry.variables.values()],
     channels: [...registry.channels.values()],
     stores: [...registry.stores.values()],
-    collections: [...registry.collections.values()]
+    collections: [...registry.collections.values()],
+    reachability: componentReachability(ir)
   };
 }
 

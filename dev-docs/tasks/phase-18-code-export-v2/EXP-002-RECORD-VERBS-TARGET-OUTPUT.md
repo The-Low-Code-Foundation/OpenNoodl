@@ -1479,3 +1479,183 @@ uniformity result that arrives too easily as a claim about the instrument.
    is the shape of it: it writes the component record that everything downstream reads.
 3. **The two `ProductCard` projects' missing interface** (§11d(2)/(3)) — ruled §13b, built §14.
    Still the disposition, not a defect.
+
+---
+
+## §20 The wall is in a room with no door (session 31 — §19f(1); **the top item is dead code**)
+
+> ⚠️ **Nothing in this section was executed.** Richard's machine-wide freeze on CPU/RAM-intensive
+> runs was in force for the whole session, so the code and tests below are written and **unrun**,
+> and every number here comes from raw project files measured with python — never from the
+> exporter, which was not invoked. §20f lists what is waiting, in run order, with what to expect.
+
+**The result: 904 of the corpus's 4,441 nodes (20.4%) sit in components that no route can reach,
+and they hold 432 of the 666 deferrals (64.9%). The export translates 93.38% of the nodes a
+running app can actually reach (3,303/3,537). §19f's item 1 — row identity, ~160 nodes — is
+entirely inside that dead code, and so is every node it would have unblocked.**
+
+### 20a — What was measured, and how it reconciles
+
+Two independent instruments over the same 40 projects, agreeing exactly:
+
+| | nodes | source |
+|---|---|---|
+| the audit's denominator | 4,441 | `coverage-audit.ts`, through `planProject` |
+| `reach.py`'s node count | 4,441 | the raw `nodes.json` files, deduped by id |
+| per-project mismatches | **0 of 40** | |
+
+That reconciliation is the licence to quote the rest. It cost two corrections to earn: project
+names contain spaces, so a whitespace-delimited parse of the summary read *"Puppy"* and silently
+dropped two projects; and `cn015-editor-drive/components/App/nodes.json` **lists three of its four
+nodes twice, the same id as two entries**, so counting list entries reported 7 where the exporter
+reports 4. That one project was the whole 4,444-vs-4,441 gap.
+
+Splitting the 666 deferrals by reachability:
+
+| | count | share |
+|---|---|---|
+| deferrals in components **no route reaches** | **432** | 64.9% |
+| deferrals in components the app renders | **234** | 35.1% |
+
+and the two coverage numbers those produce:
+
+| | | |
+|---|---|---|
+| headline | 3,775 / 4,441 | **85.00%** |
+| over reachable components only | 3,303 / 3,537 | **93.38%** |
+
+### 20b — 🔴 The wall three handoffs put first has no door into it
+
+`/Filters` and its nine sub-components — 79 nodes, the kit `IMPORT-REPORT.md` names as
+`filters-0-1.zip` — are **instantiated by nothing** in any of the eight clone projects. Not by a
+page, not by a component, not by a repeater template. The absence was checked against a firing
+control: the same grep over the same files finds `/Components/TrustItem` ×3, `/Components/Header`,
+`/Components/Footer` and eight more in every one of those projects. The pattern works; there is
+simply no `/Filters` instance to find.
+
+So the chain §19c and MODEL2 §2 traced — `Model2` foreach reads → the host's For Each → the
+`ComponentObject` key only a script writes — has one more link, and it is the last one:
+
+```
+   ???              nothing instantiates /Filters
+    └─ /Filters                        For Each, templateType: dynamic
+        └─ /Filters/Multi Choice       For Each over ComponentObject.value-Checkboxes
+            └─ …/Item                  Model2(foreach): prop-Label → checkbox.label
+```
+
+Measured over the whole corpus (`rowhosts.py`), **all 72 foreach-mode `Model2` nodes** sit behind
+this: 56 in the seven filter components that only the dynamic-template For Each could reach, and
+16 in the two `Item` components whose repeater's `items` come from a script-written component
+record. **Zero** have a host whose repeater has statically-known items. MODEL2 §3 already refused
+to build the slice because *"no call site renders them"*; the stronger fact is that **the call site
+does not exist**, and that is not a wall the export can climb — it is a component the author never
+placed.
+
+🔴 **A ranked list inherits the frame of whoever wrote it.** §19f ranked by node count within a
+frame — *"what blocks this node?"* — that has no way to ask whether anything renders the node at
+all. Four sessions ran inside that frame. The question that dissolved it (*"who instantiates
+`/Filters`?"*) is one grep, and no amount of care about deferral reasons would have reached it,
+because **every reason on those rows was true**. This is the fifth of the "rank row ≠ population ≠
+yield" family (§17b, s27, s28) and the first where the missing dimension was *existence*.
+
+### 20c — 🔴 A component is named by its legacy name, and that is not its folder
+
+Deriving component names from directories made **nine of the forty projects** look as though their
+router pointed at components they did not have — `/#__page__/Home` against a folder
+`components/__page__/Home` — and six of them looked like they exported an app with **no routed page
+at all**. Written up as far as "a shipped defect the 40/40 typecheck cannot see, because an empty
+router still compiles" before the check that retired it.
+
+There is no such defect. `component.json` carries its own `path` field, `/#__page__/Home`, and
+`parseProject.ts:163` reads exactly it (`meta.path ?? meta.name`). Both sides already agreed; only
+the instrument disagreed with both. The repo had already paid for this once and left the receipt:
+`lessonprojectcontext.ts:19-29` — *"a harness that named components after their folders would fail
+every condition in a correct lesson and report the author's own solution as class F2 — a
+manufactured failure, which is the one output a gate must never produce."*
+
+✅ **Before reporting a defect found by a new join, check the join.** The tell was available and
+free: the artefact the defect predicts is *an exported app with no pages*, and one `ls` of an
+emitted tree would have shown pages. **A defect predicts an artefact — go and look at it.**
+
+### 20d — What was built: reachability, reported and never acted on
+
+`src/analyze/reach.ts` — `componentReachability(ir)`, hung on `ProjectPlan.reachability`, and one
+note per unreachable component in `emitApp`'s report. The export still emits every component: an
+author mid-build has half-placed components all the time, and the export is not the place to rule
+on that. What changes is that the *rest of the report* becomes readable — a deferral under such a
+component is not reach the export owes anybody.
+
+The three rules that make the claim safe rather than lucky:
+
+1. **Join on the legacy name** (`/${component.path}`), never a reconstructed path — §20c.
+2. **Edges come from `parameters` only, never `declaredPorts`.** A RouterNavigate's `target` port
+   declares its type as a *menu of every routable page*; counting that would make every page
+   reachable from every navigate node and report zero orphans forever. The menu is what the author
+   could pick, the parameter is what they did. (`parseProject` flattens `PortIR.type` to a string
+   and drops the list, so this hazard is structurally absent in the IR — recorded in the code
+   rather than pinned by a test that could only assert a shape the IR cannot hold, which is §14's
+   rule about a mutation building a defect the corpus has not.)
+3. **The walk refuses to answer rather than guess.** No resolvable route ⇒ no root ⇒
+   `inconclusive`, not "every component is dead". A For Each with `templateType: 'dynamic'` in a
+   **reachable** component picks its row component from row data, so any component could be the
+   one — also `inconclusive`. Every dynamic template in this corpus sits inside the unplaced kit
+   and therefore cannot rescue anything, but the guard is what makes that a finding instead of a
+   coincidence. A non-literal `templateType` counts as dynamic: unknowable has to read as opaque,
+   because the other reading is the one that calls a live component dead.
+
+`unreachable: []` means two opposite things — everything is placed, or nothing could be decided —
+so `inconclusive` is the field that separates them and the tests assert both arms.
+
+### 20e — 🔴 Traps this session paid for
+
+**A defect found by a new join is a claim about the join.** Companion to the s27/s28 rule that a
+new instrument's first output is about the instrument — here the instrument had already agreed with
+the audit to the node on 39 of 40 projects, which is exactly what made its one disagreement
+persuasive. **Agreement on the aggregate is not agreement on the key.**
+
+**`unreachable: []` and `inconclusive` are the same shape and opposite facts** — the
+refused-vs-never-requested family again, met in a return value rather than a log.
+
+**A generous scan is the safe direction only when its residual is printed.** `reach.py` keeps every
+`/`-leading string in every parameter and filters against the real component list; the residual
+came back as JS comment lines and a `/puppies/{id}` URL, none of which name a component. Had the
+residual gone unprinted, a missed edge — the error that marks a live component dead — would have
+looked identical to no error at all.
+
+### 20f — What is unrun, in run order
+
+1. `npm run typecheck` in `packages/nodegx-export` — new module `src/analyze/reach.ts`, a new
+   required field on `ProjectPlan`, one new import in `plan.ts`, one new block in `emitApp.ts`.
+2. `../../node_modules/.bin/jest` from the package dir — **487 + 16 new = 503 expected**. The 16
+   are `tests/reachability.test.ts`. **Eight existing tests assert `app.notes` by exact list
+   equality and all eight are on the `cheer` fixture, which was hand-checked under the product's
+   own rules to have 0 unreachable components and no live dynamic template** — so no new note
+   appears in any of them. That is reasoned from a raw-file walk, not observed; if one of those
+   eight goes red, this is why, and the fixture is the thing to check first.
+3. `coverage-audit.ts` (patched this session to print a `REACH` line per project) — **expect the
+   headline 85.00% byte-identical**, and the new line to sum to **3,303/3,537 = 93.38%**. A moved
+   headline means reachability leaked into a disposition, which it must not.
+4. `deferred-census.ts` (`EXPECT=666`) — **expect 666 unchanged**; no gate changed.
+5. `build-corpus.ts` — expect **40/40**. Read the last line, never `echo $?`.
+
+### 20g — What is left, re-ranked on this evidence
+
+The old list ranked walls by node count. This one ranks by whether anything renders the node.
+
+1. **Decide the denominator first, and it is Richard's call, not the next session's.** If the
+   number that matters is reach over code that runs, the export is at **93.38%** and the remaining
+   work is the 234 below. If the headline is the goal, the work is a JS interpreter at export time
+   for a kit nobody placed. These are different projects. §18a and §19a argued the corpus's shape
+   was distorting the number; this measures the distortion.
+2. **The 234 reachable deferrals, which are long-tailed and no longer dominated by one artefact.**
+   Largest rows: **45 detached from the node tree** (s29's finding — nodes under a discarded visual
+   root, which do not render in the running app either, so this may be a second block of correctly
+   refused dead code rather than work owed); **22 outputs feed nothing statically translatable**;
+   **20 beside the router shell**; then a tail of 10-and-under. Nothing here is a slice; the first
+   question is how many of the 45 and the 20 are, like the kit, correctly refused.
+3. **Row identity and EXP-003 Tier B drop off the list entirely** unless (1) says the headline is
+   the goal. They are not blocked; there is nothing behind them to unblock.
+4. **Consider retiring the eight clones from `projects.txt`, or weighting by project.** They are
+   one downloaded artefact counted eight times and they are 83% of the deferrals. s19 already
+   recorded that the corpus "has stopped measuring what matters"; this is the same finding with a
+   number on it.

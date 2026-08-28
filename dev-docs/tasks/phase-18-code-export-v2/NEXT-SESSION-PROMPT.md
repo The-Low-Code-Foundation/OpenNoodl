@@ -1,128 +1,137 @@
-# Next session — the wall that was not there
+# Next session — the wall is in a room with no door
 
 ## 🔴🔴 FIRST: the testing freeze is still on until Richard clears it
 
 **Richard asked (2026-08-28, mid-session 30) for no CPU/RAM-intensive runs machine-wide until he
-explicitly says to start again.** A peer session confirmed it and deferred its own `test:ci`.
-**Keep this notice at the top of this file until Richard says it is lifted — do not remove it
-just because a session ends.**
+explicitly says to start again.** Session 31 ran nothing either. **Keep this notice at the top of
+this file until Richard says it is lifted — do not remove it just because a session ends, and a
+peer's "I think it's fine now" is not the signal.**
 
 That means **no** jest suite, **no** `build-corpus.ts`, **no** `coverage-audit.ts`, **no**
 `npm run typecheck`, **no** `export-ledger:check`, **no** editor launch. His words: *"Save the
 tests, we'll run them later and sweep up all the work done at once."*
 
-**There is unrun work waiting for that sweep** — see §19e below. Reading, raw-file measurement
-with python/awk, and writing code and tests are all fine and are what session 30 did.
+Reading, raw-file measurement with python/awk, and writing code and tests are all fine and are
+what sessions 30 and 31 did. **Two sessions of work are now waiting for the sweep** — §19e in the
+previous prompt and **§20f** below, in that order.
 
 ---
 
-**Where the phase stands (2026-08-28, after thirty sessions).** Session 29 said to read the kit
-as one artefact. Session 30 did, and found that one of §17b's ten walls **does not exist**: its
-58 nodes are real deferrals, correctly refused, but every one sits behind a wall already on the
-list, and the reason string sent three sessions looking at the wrong thing.
+## 🔴 Read this before picking anything: the list from the last four sessions is void
 
-**Coverage: expected unchanged at 3,775/4,441 (85.00%) — not measured, see the freeze.** No
-verdict changed; only reason strings did. Written up in
-[EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md) **§19**.
+Session 31 asked one question nobody had asked — **who instantiates `/Filters`?** — and the answer
+is **nothing does, in any of the eight clone projects**.
 
-## 🔴 Read this before picking anything
+- **904 of 4,441 nodes (20.4%) sit in components no route can reach**, and they hold **432 of the
+  666 deferrals (64.9%)**.
+- **The export translates 93.38% of the nodes a running app can reach** (3,303/3,537), against the
+  85.00% headline.
+- **Item 1 on the old list — row identity, ~160 nodes — is entirely inside that dead code**, and so
+  is EXP-003 Tier B's ~350. All 72 foreach-mode `Model2` nodes are behind an unplaced kit. There is
+  nothing behind them to unblock.
 
-**The list re-ordered.** Row identity is now item 1, ahead of Tier B:
+Written up in [EXP-002-RECORD-VERBS-TARGET-OUTPUT.md](./EXP-002-RECORD-VERBS-TARGET-OUTPUT.md)
+**§20**. Both instruments reconcile to **4,441 nodes with 0 per-project mismatches**, which is the
+licence to quote any of it.
 
-1. **Row identity (the s10 wall), ~160 nodes** — was 136; §19c moves 24 more onto it. Four
-   `Filters/*` components ×8 clones turn on one question: **what is a row's identity in the
-   emit?** `Filters/Multi Choice/Item` is the whole thing in six wires —
-   `Model2.prop-Label → checkbox.label`, `Model2.prop-Checked → checkbox.checked`,
-   `Model2.id → SetModelProperties.modelId`. That is `items.map(row => …)`.
-2. **EXP-003 Tier B** — ~350 script-tier nodes, same kit. `Filters/Range`'s geometry script is
-   the shape: it writes the component record everything downstream reads.
-3. **The two `ProductCard` projects' missing interface** (§11d(2)/(3)) — ruled §13b, built §14.
-   Still the disposition, not a defect.
+## 🔴 The decision that comes before any slice — and it is Richard's
 
-**85.00% is a node-weighted average dominated by eight clones of one downloaded prefab**
-(`filters-0-1`, named in the kit's own `IMPORT-REPORT.md`). 13 of 40 projects export at 100%.
-Decide whether moving the headline is the goal before optimising it — §18a and §19a are the
-argument that it measures the corpus's shape more than the export's reach.
+**Which denominator is the goal?**
 
-## What landed — §19
+- *Reach over code that runs* ⇒ the export is at **93.38%**, and the work left is the **234**
+  reachable deferrals in §20g(2) — long-tailed, no single artefact dominating, and the first
+  question about the biggest row (45 "detached from the node tree") is whether it is a *second*
+  block of correctly refused dead code rather than work owed.
+- *The headline* ⇒ the work is a JavaScript interpreter at export time for a filter kit nobody
+  placed on a page.
 
-`STRUCTURE_PORTS` claimed a wired `label`/`min`/`max`/`step` meant *"the rendered structure is not
-static"*. It does not. `Checkbox.tsx:191` spends `props.label` once, as the text child of
-`<label>`; `useLabel` (lines 70, 170) is what decides the element exists. `Slider.tsx:116–121`
-passes `min`/`max`/`step` straight into `inputProps`. On the export's side they are already
-content — `CONTENT_ATTR_ORDER` lists all three, `style.ts`'s `range` rule reads only `thumbColor`
-and `width`, and `component.ts:1353` already calls `childText(node, 'label')`.
+These are different projects. Do not pick a slice before this is answered — four sessions ranked
+work inside a frame that could not ask whether anything rendered the node.
 
-**The verdict was still right, and lifting the gate would have been a bug.** `Filters/Range`'s
-bounds come from a `ComponentObject` that pass 4d would happily bind — but **no wire writes it**;
-a `JavaScriptFunction` writes it through the Noodl API from `Model2.prop-Min`. Binding it would
-have emitted the record's *boot value*, shipping a 0–100 slider where the app renders the row's.
+Also worth putting to him: **retire the eight clones from `projects.txt`, or weight coverage by
+project.** They are one downloaded artefact counted eight times and 83% of all deferrals.
 
-So: verdict unchanged, reason corrected. `CONTENT_BOUND_PORTS` (new) holds the three content
-ports and **names the source type**, so the census groups these nodes onto the wall they are
-actually behind — 24 onto row identity, 16 onto the script-written component record.
+## What landed — §20
 
-## 🔴 Traps session 30 paid for
+`src/analyze/reach.ts` (new): `componentReachability(ir)` → `ProjectPlan.reachability`, plus one
+note per unreachable component in `emitApp`'s report. **Reported, never acted on** — every
+component is still emitted; what changes is that the rest of the report becomes readable.
 
-**A gate can be right for a reason it does not give, and the reason is what gets read.** Third
-instance of the "not yet" vs "never" family (§17a, §18c), and the first where the verdict was
-already correct. **A census's rows are only as true as the sentences the gate writes into them.**
+Three rules make the claim safe rather than lucky, and all three are in the module's header:
+join on the **legacy name** (`/${component.path}`), take edges from **`parameters` only** (a
+RouterNavigate's `target` port declares a *menu* of every routable page — counting it would report
+zero orphans forever), and **refuse to answer rather than guess** (no resolvable route, or a
+dynamic-template For Each in a *reachable* component ⇒ `inconclusive`, not "everything is dead").
 
-**Evidence about the sink does not settle a question about the source.** The runtime proves
-`label` and `min` are content; acting on that alone ships wrong output, because the blocker is one
-hop past anything the runtime shows. Companion to §18d's rule.
+## 🔴 Traps session 31 paid for
 
-**zsh does not word-split an unquoted variable.** `for p in $KITS` ran once with the whole string;
-every `awk` matched nothing and eight fingerprints came back `d41d8cd9…` — the md5 of empty —
-which reads exactly like eight identical clones. The true answer was also "identical". ✅ **Use an
-array**, and distrust a uniformity result that arrives too easily.
+**A component is named by its legacy name, and that is not its folder.** `components/__page__/Home`
+is named `/#__page__/Home`. Deriving names from directories made 9 of 40 projects look as though
+their routes pointed at nothing and 6 look as though they exported an app with no pages — written
+up as a shipped defect before the check that retired it. `parseProject.ts:163` already reads
+`component.json`'s own `path`; both sides agreed and only the instrument did not. The repo had paid
+for this once already and left the receipt at `lessonprojectcontext.ts:19-29`. ✅ **A defect
+predicts an artefact — go and look at it.** One `ls` of an emitted tree would have shown pages.
 
-## 🔴 §19e — what is unrun and waiting for the sweep
+**A defect found by a new join is a claim about the join.** What made the false positive
+persuasive was that the instrument agreed with the audit *to the node* on 39 of 40 projects.
+**Agreement on the aggregate is not agreement on the key.**
 
-When Richard lifts the freeze, run these **in this order** and reconcile before believing
-anything:
+**A ranked list inherits the frame of whoever wrote it.** Every deferral reason on those ~160 rows
+was *true*. The frame — "what blocks this node?" — simply had no way to ask whether anything
+rendered it. Fifth of the "rank row ≠ population ≠ yield" family, first where the missing dimension
+was *existence*.
 
-1. `npm run typecheck` in `packages/nodegx-export` — `wiredIn` changed from `Set<string>` to
-   `Map<string, string>`; `visualDeferReason` now takes `ReadonlyMap<string, string>`. Single
-   call site (plan.ts:813), checked by reading only.
-2. The suite from the package dir: `../../node_modules/.bin/jest` — **481 + 6 new = 487
-   expected**. The 6 are the §19 block in `tests/visual-controls.test.ts`. Two pre-existing
-   assertions cover `layoutString` and `items`, both genuinely structural and deliberately
-   untouched.
-3. `coverage-audit.ts` — **expect 85.00% unchanged**. A move either way means a verdict changed,
-   which this session did not intend; treat it as a defect, not a win.
-4. `deferred-census.ts` (`EXPECT=666`) — expect the reason strings in §19d's table.
+**Two small ones that cost real time.** Project names contain spaces, so a whitespace-delimited
+parse of an aligned summary read *"Puppy"* and silently dropped two projects — use TSV. And
+`cn015-editor-drive/components/App/nodes.json` **lists three of its four nodes twice, same id**;
+counting list entries reports 7 where the exporter reports 4, and that one project was the entire
+4,444-vs-4,441 gap. Dedupe by id.
+
+## 🔴 §20f — what is unrun and waiting, in run order
+
+Run **§19e from the previous handoff first** (it is s30's list), then these:
+
+1. `npm run typecheck` in `packages/nodegx-export` — new `src/analyze/reach.ts`, a new **required**
+   field on `ProjectPlan`, one import in `plan.ts`, one block in `emitApp.ts`.
+2. `../../node_modules/.bin/jest` from the package dir — **487 + 16 new = 503 expected**.
+   ⚠️ **Eight existing tests assert `app.notes` by exact list equality.** All eight are on the
+   `cheer` fixture, hand-checked under the product's own rules to have 0 unreachable components and
+   no live dynamic template, so no new note appears in them. That is **reasoned from a raw-file
+   walk, not observed** — if one goes red, this is why, and the fixture is what to check first.
+3. `coverage-audit.ts` — patched this session to print a `REACH` line per project. **Expect the
+   headline 85.00% byte-identical**, and the REACH lines to sum to **3,303/3,537 = 93.38%**. A
+   moved headline means reachability leaked into a disposition, which it must not.
+4. `deferred-census.ts` (`EXPECT=666`) — expect **666 unchanged**; no gate changed.
 5. `build-corpus.ts` — expect **40/40**. Read the last line, never `echo $?`.
-6. ⚠️ **`walls.py` patterns are now stale** — they were written against the old sentences. It
-   refuses to run unless totals reconcile, so this surfaces as `UNCLASSIFIED` residual (§17c).
-   Update the patterns before quoting a wall census.
 
 **A lone suite-level red with 0 failing tests is a flake until re-run.**
 
-## Instruments (session 30 scratchpad `5cd94f92-…`)
+## Instruments (session 31 scratchpad `4fdc2703-…`)
 
-- **`wirefeed.py`** (new) — the one that produced §19c. Reads the **raw** component files and
-  follows every wire into a `STRUCTURE_PORTS` sink to its source type.
-  `wirefeed.py <projectDir>… > out.tsv` (summary on stderr). Outputs: `wirefeed-s30.tsv`,
-  `wirefeed-s30.summary`. **Its `STRUCTURE_PORTS` copy mirrors plan.ts as of s29 — update it
-  alongside the source, or it measures the wrong ports.**
-- `census-final-s29.tsv` — copied in; the artefact view. Group by project/component/reason with
-  `awk -F'\t'`.
-- s29's `deferred-census.ts`, `rootsource.ts`, `detached.ts`, `mutate.py`, `walls.py`,
-  `coverage-audit.ts` + `projects.txt`, `rank2.ts`, `build-corpus.ts` (committed at `scripts/`),
-  and s28's `tb-survey.ts` / `dumpall.ts` / `showfile.ts` / `ifaces.ts` — all copied in.
+- **`reach.py`** (new) — the one that produced §20. Component reachability from the raw files;
+  `--tsv` for a machine-readable summary (**use it — project names have spaces**), `--list` for the
+  unreachable components, the opaque dynamic templates and the **dangling-edge residual**. Its
+  legacy names come from `component.json`'s `path`, and its node counts are deduped by id; both
+  corrections are load-bearing and commented in place.
+- **`rowhosts.py`** (new) — for every foreach-mode `Model2`, what feeds the repeater that hosts it.
+  This is the one that showed 72/72 behind a script-written source, 0 with static items.
+- **`dumpcomp.py`** (new) — one component's raw node tree + every connection. How
+  `Filters/Multi Choice/Item` was read in six wires.
+- `reach-s31.tsv` / `reach-s31.txt` / `unreachable-s31.tsv` — this session's outputs, joinable
+  against `census-final-s29.tsv` on `(project, component)`.
+- s29/s30's `deferred-census.ts`, `coverage-audit.ts` (**patched**), `wirefeed.py`, `walls.py`
+  (**patterns still stale since s30**), `rank2.ts`, `build-corpus.ts`, `mutate.py`, `dumpall.ts`,
+  `showfile.ts`, `ifaces.ts` — all copied in.
 
 ⚠️ Still true: **`ts-node` needs an absolute path**, `--compiler-options '{"module":"commonjs"}'`,
 run **from `packages/nodegx-export`**. Instruments take projects as argv; **zsh:
 `"${(@f)$(cat projects.txt)}"`** — the paths contain spaces. `build-corpus.ts` needs **both**
-`--app <harnessDir>` **and** the project list, and **exits with the failure count** — read the
-last line. The coverage audit prints no corpus total; sum it with
-`awk '/ ok, .* deferred$/{…}'` (the `↳ deferred:` lines double-count if you don't anchor).
+`--app <harnessDir>` **and** the project list, and **exits with the failure count**.
 
 🔴 **Never `git checkout <path>` to undo a source mutation.** `mutate.py` patches one line by
-number, restores from a pristine copy and **prints both md5s** to prove it.
+number, restores from a pristine copy and **prints both md5s**.
 
 **Standing practice:** work on `cline-dev`; commit by **exact file pathspecs** (never a directory,
-never stage) — peers were editing `packages/noodl-editor`, `packages/noodl-mcp`,
-`packages/noodl-core-ui` and `packages/nodegx-backend` throughout s30. ts-morph and Prettier stay
-uninstalled; the package is not in root `test:packages`.
+never stage) — peers were editing `packages/noodl-editor` and the phase-70/71/72 task files
+throughout s31. ts-morph and Prettier stay uninstalled; the package is not in root `test:packages`.

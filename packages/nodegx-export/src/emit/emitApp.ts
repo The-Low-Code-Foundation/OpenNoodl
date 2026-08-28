@@ -33,6 +33,16 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     );
   }
 
+  // Reachability is reported, never acted on: an unreachable component is still emitted, because
+  // the author may be mid-build and the export is not the place to decide their project has dead
+  // code. What it changes is how the rest of this list reads — a deferral in a component no route
+  // reaches is not a gap in the export's reach (reach.ts, RECORD-VERBS §20).
+  for (const legacy of project.reachability.unreachable) {
+    notes.push(
+      `${legacy.replace(/^\//, '')}: no route reaches this component, so nothing in the running app renders it — its notes below describe code the app never runs`
+    );
+  }
+
   for (const plan of project.plans) {
     if (plan.skipReason) {
       if (plan.rootId === null && !plan.file) notes.push(`${plan.path}: ${plan.skipReason}`);
