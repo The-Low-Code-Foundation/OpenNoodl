@@ -93,6 +93,29 @@ const RECORD_VERBS: Record<string, 'create' | 'update' | 'delete'> = {
 };
 
 /**
+ * The two relation verbs (RECORD-VERBS-TARGET §17) — the same `dbmodelcrudbase` assembly with
+ * `addRelationProperty` mixed in, which is what gives them a `relationProperty` dropdown and a
+ * `targetId` input, and what makes `validateInputs` the whole of their pre-flight.
+ */
+const RELATION_VERBS: Record<string, 'add' | 'remove'> = {
+  AddDbModelRelation: 'add',
+  RemoveDbModelRelation: 'remove'
+};
+
+/**
+ * The node types whose `Id` output names a record the app has actually *loaded*.
+ *
+ * NDA-012 (Data): `AddDbModelRelation.targetCollection` reads the target's class off
+ * `Model.get(targetModelId)`, and `Model.get` **mints a record on read** — so an id that came
+ * from a text input or a URL parameter resolves to a record nothing ever loaded, whose class is
+ * `undefined`. The runtime refuses that case rather than sending a class-less pointer, because
+ * the failing write is what burns the relation column into the class schema as
+ * `Relation<undefined>` for the life of the class. Statically, these two are the only outputs
+ * that can satisfy it.
+ */
+const LOADED_RECORD_SOURCES = new Set(['DbModel2', 'DbCollection2']);
+
+/**
  * The user family's three *actions* (USER-FAMILY-TARGET §1) — the record verbs' shape again,
  * with `UserService` where `cloudStore` was: one trigger, value inputs that accumulate without
  * triggering, an `error` output that is never cleared, and `done` after the service answers.
@@ -803,8 +826,14 @@ function planComponent(
   );
   const rendered = new Set<string>();
   if (roots.length === 0) {
+    // The record-neighbour sweep reaches here too (§17). This path returns before the sweep at
+    // the bottom of the function ever runs, so without this line a relation verb in a logic-only
+    // component would still fall to `logic node (…)` — a hole the sweep's own mutation check
+    // found, and exactly the shape the gate it names exists to close.
     for (const node of component.nodes) {
-      dispositions[node.id] = dispositionForLogic(node);
+      const named = recordNeighbourDefer(node, component, nodeById, pageFileByPath.has(component.path), null);
+      dispositions[node.id] =
+        named !== undefined ? { kind: 'deferred', to: 'EXP-003', reason: named } : dispositionForLogic(node);
     }
     plan.skipReason = 'no visual root — logic-only components defer to EXP-003';
     return plan;
@@ -5019,6 +5048,28 @@ function planComponent(
     };
   }
 
+  /**
+   * The record-neighbour sweep runs **here**, immediately before the catch-all, and not beside
+   * the popup and record-verb sweeps above — deliberately.
+   *
+   * Those two fire right after the attachment pass because they report a *compiled* verdict
+   * that pass produced. These three types are value sources, and pass 4c (a logic node's value
+   * output into a rendered sink) runs later than the attachment pass — so claiming them early
+   * would pre-empt a pass that may yet translate them. Sitting here, the sweep can only ever
+   * replace `logic node (…)` with a named reason, which is the whole of its job.
+   */
+  for (const node of component.nodes) {
+    if (dispositions[node.id] !== undefined) continue;
+    const reason = recordNeighbourDefer(node, component, nodeById, pageFileByPath.has(component.path), (fromNode, fromProperty) => {
+      const ctx = newCtx();
+      if (resolveExpr(fromNode, fromProperty, ctx) !== null) return null;
+      return ctx.defer ?? `its Id is fed by ${fromNode?.type ?? 'nothing'}, which has no statically known source`;
+    });
+    if (reason === undefined) continue;
+    dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+    notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+  }
+
   // Whatever analysis has not classified yet is logic: EXP-003's, or unknown-type debris.
   for (const node of component.nodes) {
     if (dispositions[node.id] === undefined) {
@@ -5255,6 +5306,95 @@ function visualDeferReason(node: NodeIR, role: RenderRole, wiredIn: Set<string>,
     return 'a labelled dropdown is not translated in this slice';
   }
   return null;
+}
+
+/**
+ * The record-neighbour verdicts (RECORD-VERBS-TARGET §17) — the named reason a node in the
+ * record family's graph defers with, instead of the catch-all `logic node (…)`.
+ *
+ * Four types sit in that graph without being fired from a handler chain the popup or record-verb
+ * sweeps walk: the two relation verbs, the `Record` node, and — because it is the corpus's only
+ * feeder for a `Record`'s Id — `PageInputs`.
+ *
+ * 🔴 The relation gates are ordered as the runtime's `validateInputs` orders them, which is the
+ * order the author meets them. The first one the corpus reaches is the second: its only Add
+ * Record Relation names **no relation property**, so `validateInputs` answers *"No relation
+ * property specified"*, `setError` fires and the backend is never called — the node fails on
+ * every pulse, for the life of the graph. Translating it into a working `addRelation` call would
+ * be a hole shaped exactly like the defect, which is gate 1's rule (§5.1) reaching a second node
+ * type rather than a new rule of its own.
+ *
+ * Module-level, and taking `resolveIdFeeder` as a parameter, for one reason: a component with no
+ * visual root dispositions every node and **returns before** the sweep runs, so a relation verb
+ * there used to fall to the catch-all anyway — a hole the sweep's own mutation check found. That
+ * path has no expression vocabulary to hand, and passing `null` says so honestly: in a component
+ * that translates nothing, a wired Id has no statically known source by construction.
+ */
+function recordNeighbourDefer(
+  node: NodeIR,
+  component: ComponentIR,
+  nodeById: Map<string, NodeIR>,
+  isRoutedPage: boolean,
+  resolveIdFeeder: ((fromNode: NodeIR | undefined, fromProperty: string) => string | null) | null
+): string | undefined {
+  const wiredIn = (name: string) => component.connections.some((c) => c.toId === node.id && c.toProperty === name);
+  const authoredOrWired = (name: string) => node.parameters.some((p) => p.name === name) || wiredIn(name);
+
+  if (RELATION_VERBS[node.type] !== undefined) {
+    if (!authoredOrWired('collectionName')) {
+      return 'no class is named, so the runtime answers Failure with "No class specified" and never calls the backend';
+    }
+    if (!authoredOrWired('relationProperty')) {
+      return 'no relation property is named, so the runtime answers Failure with "No relation property specified" and never calls the backend';
+    }
+    const targetWire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'targetId');
+    if (targetWire === undefined) {
+      return 'no Target Record Id is wired, so the runtime answers Failure with "No target record Id ... specified" and never calls the backend';
+    }
+    if (!authoredOrWired('modelId')) {
+      return 'it names no record to put the relation on, so the runtime answers Failure with "No record Id specified" and never calls the backend';
+    }
+    const targetSource = nodeById.get(targetWire.fromId);
+    if (targetSource === undefined || !LOADED_RECORD_SOURCES.has(targetSource.type)) {
+      return `its Target Record Id comes from ${targetSource?.type ?? 'nothing'} rather than a Record or Query Records output, so the target's class is unknown and the runtime refuses the write`;
+    }
+    return 'a relation write has no shape in the api stub — RECORD-VERBS-TARGET §4c designs it, and the corpus holds no well-formed instance to build it against';
+  }
+
+  if (node.type === 'DbModel2') {
+    const collectionName = literalParam(node, 'collectionName');
+    if (typeof collectionName !== 'string' || collectionName === '') {
+      return 'no class is named, so the node has no collection to read a record from';
+    }
+    if (literalParam(node, 'idSource') === 'foreach' || authoredOrWired('repeaterComponent')) {
+      return "its Id Source is the enclosing repeater's row — row identity is not statically knowable in this slice";
+    }
+    const idWires = component.connections.filter((c) => c.toId === node.id && c.toProperty === 'modelId');
+    if (idWires.length > 1) return 'two wires feed its Id — last-writer-wins is not statically ordered';
+    if (idWires.length === 0) {
+      const literal = literalParam(node, 'modelId');
+      if (typeof literal !== 'string' || literal === '') {
+        return 'it names no record, so the runtime binds to nothing and never reads one';
+      }
+    } else {
+      const source = nodeById.get(idWires[0].fromId);
+      const unresolved = resolveIdFeeder
+        ? resolveIdFeeder(source, idWires[0].fromProperty)
+        : `its Id is fed by ${source?.type ?? 'nothing'}, which has no statically known source`;
+      if (unresolved !== null) return unresolved;
+    }
+    return 'a single-record read by Id has no shape in the api stub — a collection query is the only read this slice emits';
+  }
+
+  if (node.type === 'PageInputs') {
+    const declared = literalParam(node, 'pathParams');
+    if (typeof declared === 'string' && declared !== '' && !isRoutedPage) {
+      return `it reads the path parameters "${declared}", but no Router routes this component, so there is no URL to read them from`;
+    }
+    return 'a page path parameter is not translated in this slice';
+  }
+
+  return undefined;
 }
 
 function dispositionForLogic(node: NodeIR): Disposition {

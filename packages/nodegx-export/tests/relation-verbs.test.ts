@@ -1,0 +1,374 @@
+/**
+ * The relation verbs and their neighbours (EXP-002-RECORD-VERBS-TARGET-OUTPUT §17):
+ * `AddDbModelRelation`, `RemoveDbModelRelation`, the `Record` node (`DbModel2`) and `PageInputs`.
+ *
+ * ⚠️ **Nothing here translates, and that is the result.** The corpus's only Add Record Relation
+ * names no relation property, so the runtime's `validateInputs` answers *"No relation property
+ * specified"*, `setError` fires and the backend is never called — the node fails on every pulse.
+ * Its `Record` neighbour reads an Id from a `PageInputs` on a component no Router routes. So the
+ * slice this file covers is a set of **named deferrals**, replacing three `logic node (…)`
+ * catch-alls with the verdict the runtime itself reaches.
+ *
+ * Every gate is built here rather than found, because the corpus stops at the second one — the
+ * "build the caller" discipline. That is also what proves the well-formed cases fall through to
+ * the designed-not-built reason instead of to something wrong.
+ */
+import * as fs from 'fs';
+import * as path from 'path';
+
+import { Catalog, CatalogIndex } from '../src/catalog';
+import { planProject } from '../src/analyze/plan';
+import { parseProject } from '../src/parse/parseProject';
+import { ComponentIR, ExportIR, NodeIR, ParamValue } from '../src/ir/types';
+
+const FIXTURE = path.join(__dirname, 'fixtures', 'puppy-test-3');
+const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
+
+const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const baseIr = parseProject(FIXTURE, catalog);
+
+/** A routed page (the Router lists it) and a component nothing routes — PageInputs needs both. */
+const ADMIN = 'Pages/Admin';
+const UNROUTED = 'Components/Custom text';
+
+const cloneIr = (): ExportIR => structuredClone(baseIr);
+const componentOf = (source: ExportIR, componentPath: string): ComponentIR =>
+  source.components.find((c) => c.path === componentPath)!;
+const lit = (value: string | number | boolean): ParamValue => ({ kind: 'literal', value });
+
+const addNode = (
+  source: ExportIR,
+  componentPath: string,
+  id: string,
+  type: string,
+  parameters: Record<string, ParamValue> = {}
+): NodeIR => {
+  const node: NodeIR = {
+    id,
+    type,
+    catalogRef: type,
+    parameters: Object.entries(parameters)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
+    declaredPorts: [],
+    portKnowledge: 'partial'
+  };
+  componentOf(source, componentPath).nodes.push(node);
+  return node;
+};
+
+const setParam = (node: NodeIR, name: string, value: ParamValue) => {
+  const existing = node.parameters.find((p) => p.name === name);
+  if (existing) existing.value = value;
+  else {
+    node.parameters.push({ name, value });
+    node.parameters.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  }
+};
+const dropParam = (node: NodeIR, name: string) => {
+  node.parameters = node.parameters.filter((p) => p.name !== name);
+};
+
+const wire = (
+  source: ExportIR,
+  componentPath: string,
+  fromId: string,
+  fromProperty: string,
+  toId: string,
+  toProperty: string,
+  kind: 'value' | 'signal' = 'value'
+) => {
+  componentOf(source, componentPath).connections.push({
+    key: `${fromId}:${fromProperty}->${toId}:${toProperty}`,
+    fromId,
+    fromProperty,
+    toId,
+    toProperty,
+    kind
+  });
+};
+const unwire = (source: ExportIR, componentPath: string, key: string) => {
+  const component = componentOf(source, componentPath);
+  component.connections = component.connections.filter((c) => c.key !== key);
+};
+
+/** The deferral reason the planner recorded for one node, or undefined when it did not defer. */
+const reasonFor = (source: ExportIR, componentPath: string, nodeId: string): string | undefined => {
+  const project = planProject(source, new CatalogIndex(catalog));
+  const plan = project.plans.find((p) => p.path === componentPath)!;
+  const disposition = plan.dispositions[nodeId] as { kind: string; reason?: string };
+  return disposition?.kind === 'deferred' ? disposition.reason : undefined;
+};
+
+/**
+ * The corpus's own graph, rebuilt on the fixture: a Create whose `Id` and `done` drive an Add
+ * Record Relation, whose Target Record Id comes from a `Record` node — `Puppy test`'s Puppy
+ * Detail page, node for node. `relationProperty` is left unauthored **exactly as the corpus
+ * leaves it**; the tests that need it well-formed set it themselves.
+ */
+const withRelationGraph = (): ExportIR => {
+  const source = cloneIr();
+  addNode(source, ADMIN, 'puppyModel', 'DbModel2', {
+    collectionName: lit('Puppy'),
+    idSource: lit('explicit'),
+    modelId: lit('seed-id')
+  });
+  addNode(source, ADMIN, 'linkInquiry', 'AddDbModelRelation', { collectionName: lit('Inquiry') });
+  wire(source, ADMIN, 'createRecord', 'id', 'linkInquiry', 'modelId');
+  wire(source, ADMIN, 'createRecord', 'done', 'linkInquiry', 'store', 'signal');
+  wire(source, ADMIN, 'puppyModel', 'id', 'linkInquiry', 'targetId');
+  return source;
+};
+
+/** The same graph with every gate satisfied — the shape the corpus does not have. */
+const wellFormedRelation = (): ExportIR => {
+  const source = withRelationGraph();
+  const link = componentOf(source, ADMIN).nodes.find((n) => n.id === 'linkInquiry')!;
+  setParam(link, 'relationProperty', lit('puppy'));
+  return source;
+};
+
+describe('§17 — Add Record Relation: the gates, in the order validateInputs reaches them', () => {
+  it('the corpus shape — no relation property — defers with the runtime\'s own verdict', () => {
+    expect(reasonFor(withRelationGraph(), ADMIN, 'linkInquiry')).toBe(
+      'no relation property is named, so the runtime answers Failure with "No relation property specified" and never calls the backend'
+    );
+  });
+
+  it('no class named is refused first, before the relation property is even looked at', () => {
+    const source = withRelationGraph();
+    dropParam(componentOf(source, ADMIN).nodes.find((n) => n.id === 'linkInquiry')!, 'collectionName');
+    expect(reasonFor(source, ADMIN, 'linkInquiry')).toBe(
+      'no class is named, so the runtime answers Failure with "No class specified" and never calls the backend'
+    );
+  });
+
+  it('an unwired Target Record Id is named, and only after the relation property is set', () => {
+    const source = wellFormedRelation();
+    unwire(source, ADMIN, 'puppyModel:id->linkInquiry:targetId');
+    expect(reasonFor(source, ADMIN, 'linkInquiry')).toBe(
+      'no Target Record Id is wired, so the runtime answers Failure with "No target record Id ... specified" and never calls the backend'
+    );
+  });
+
+  it('a node with no record of its own to put the relation on is named', () => {
+    const source = wellFormedRelation();
+    unwire(source, ADMIN, 'createRecord:id->linkInquiry:modelId');
+    expect(reasonFor(source, ADMIN, 'linkInquiry')).toBe(
+      'it names no record to put the relation on, so the runtime answers Failure with "No record Id specified" and never calls the backend'
+    );
+  });
+
+  /**
+   * NDA-012's check, statically. `Model.get` mints a record on read, so an id from a text input
+   * resolves to a record whose class is `undefined` — and the *failing* write is what burns the
+   * relation column into the class schema as `Relation<undefined>` for the life of the class.
+   * The runtime refuses it; so does this.
+   */
+  it('a Target Record Id from something that never loaded a record is refused by class, not by id', () => {
+    const source = wellFormedRelation();
+    unwire(source, ADMIN, 'puppyModel:id->linkInquiry:targetId');
+    wire(source, ADMIN, 'idInput', 'onTextChanged', 'linkInquiry', 'targetId');
+    expect(reasonFor(source, ADMIN, 'linkInquiry')).toBe(
+      "its Target Record Id comes from net.noodl.controls.textinput rather than a Record or Query Records output, so the target's class is unknown and the runtime refuses the write"
+    );
+  });
+
+  it('a well-formed relation reaches the designed-not-built reason, and no other', () => {
+    expect(reasonFor(wellFormedRelation(), ADMIN, 'linkInquiry')).toBe(
+      'a relation write has no shape in the api stub — RECORD-VERBS-TARGET §4c designs it, and the corpus holds no well-formed instance to build it against'
+    );
+  });
+
+  /** Zero corpus instances, so this is target-output-only — and it must not be a hole. */
+  it('Remove Record Relation is gated identically, though the corpus has none', () => {
+    const source = withRelationGraph();
+    componentOf(source, ADMIN).nodes.find((n) => n.id === 'linkInquiry')!.type = 'RemoveDbModelRelation';
+    expect(reasonFor(source, ADMIN, 'linkInquiry')).toBe(
+      'no relation property is named, so the runtime answers Failure with "No relation property specified" and never calls the backend'
+    );
+  });
+});
+
+describe('§17 — the Record node', () => {
+  it('a Record whose Id is fed by an untranslated node names that feeder — the corpus case', () => {
+    const source = cloneIr();
+    addNode(source, ADMIN, 'pageInputs', 'PageInputs', { pathParams: lit('id') });
+    addNode(source, ADMIN, 'puppyModel', 'DbModel2', {
+      collectionName: lit('Puppy'),
+      idSource: lit('explicit')
+    });
+    wire(source, ADMIN, 'pageInputs', 'pm-id', 'puppyModel', 'modelId');
+    expect(reasonFor(source, ADMIN, 'puppyModel')).toBe('its Id is fed by PageInputs, which has no statically known source');
+  });
+
+  it('a Record bound to the enclosing repeater row hits the row-identity wall by name', () => {
+    const source = withRelationGraph();
+    setParam(componentOf(source, ADMIN).nodes.find((n) => n.id === 'puppyModel')!, 'idSource', lit('foreach'));
+    expect(reasonFor(source, ADMIN, 'puppyModel')).toBe(
+      "its Id Source is the enclosing repeater's row — row identity is not statically knowable in this slice"
+    );
+  });
+
+  it('a Record with no class named is refused before its Id is looked at', () => {
+    const source = withRelationGraph();
+    dropParam(componentOf(source, ADMIN).nodes.find((n) => n.id === 'puppyModel')!, 'collectionName');
+    expect(reasonFor(source, ADMIN, 'puppyModel')).toBe('no class is named, so the node has no collection to read a record from');
+  });
+
+  it('a Record naming no record at all is named, the way the runtime binds to nothing', () => {
+    const source = withRelationGraph();
+    dropParam(componentOf(source, ADMIN).nodes.find((n) => n.id === 'puppyModel')!, 'modelId');
+    expect(reasonFor(source, ADMIN, 'puppyModel')).toBe('it names no record, so the runtime binds to nothing and never reads one');
+  });
+
+  it('two wires into one Id is the last-writer-wins rule again', () => {
+    const source = withRelationGraph();
+    wire(source, ADMIN, 'idInput', 'onTextChanged', 'puppyModel', 'modelId');
+    wire(source, ADMIN, 'nameInput-2', 'onTextChanged', 'puppyModel', 'modelId');
+    expect(reasonFor(source, ADMIN, 'puppyModel')).toBe('two wires feed its Id — last-writer-wins is not statically ordered');
+  });
+
+  it('a well-formed Record reaches the designed-not-built reason', () => {
+    expect(reasonFor(withRelationGraph(), ADMIN, 'puppyModel')).toBe(
+      'a single-record read by Id has no shape in the api stub — a collection query is the only read this slice emits'
+    );
+  });
+});
+
+describe('§17 — PageInputs: a path parameter with no route to carry it', () => {
+  it('an unrouted component reading path parameters says so, and names them', () => {
+    const source = cloneIr();
+    addNode(source, UNROUTED, 'pageInputs', 'PageInputs', { pathParams: lit('id') });
+    expect(reasonFor(source, UNROUTED, 'pageInputs')).toBe(
+      'it reads the path parameters "id", but no Router routes this component, so there is no URL to read them from'
+    );
+  });
+
+  /**
+   * The control the reason above needs: on a component the Router *does* route, the same node
+   * defers for the ordinary reason. Without this row, "no Router routes this component" would
+   * read as true of every PageInputs, which is the claim it is not making.
+   */
+  it('a routed page reading path parameters defers for the ordinary slice reason instead', () => {
+    const source = cloneIr();
+    addNode(source, ADMIN, 'pageInputs', 'PageInputs', { pathParams: lit('id') });
+    expect(reasonFor(source, ADMIN, 'pageInputs')).toBe('a page path parameter is not translated in this slice');
+  });
+
+  it('a PageInputs declaring nothing is the ordinary reason on either side of the route', () => {
+    const source = cloneIr();
+    addNode(source, UNROUTED, 'pageInputs', 'PageInputs');
+    expect(reasonFor(source, UNROUTED, 'pageInputs')).toBe('a page path parameter is not translated in this slice');
+  });
+});
+
+describe('§17 — the sweep replaces the catch-all and nothing else', () => {
+  /**
+   * The load-bearing control, and it failed usefully when it was first written the lazy way —
+   * as "adding the relation graph moves nothing". It moves exactly one thing, and that one thing
+   * is the corpus's third deferral: wiring `Id` into the relation verb is **gate 11**, so the
+   * Create beside it stops collapsing into its button and defers by name. Update and Delete,
+   * which the relation graph does not touch, must not move at all.
+   *
+   * Asserting the whole row rather than "nothing changed" is what keeps this honest: the sweep
+   * sits immediately before the `logic node (…)` catch-all so it cannot pre-empt an earlier
+   * pass, and these three verbs are dispositioned much earlier.
+   */
+  it('the relation graph moves the Create to gate 11 and leaves Update and Delete untouched', () => {
+    const planOf = (source: ExportIR) => {
+      const project = planProject(source, new CatalogIndex(catalog));
+      return project.plans.find((p) => p.path === ADMIN)!;
+    };
+    const before = planOf(cloneIr());
+    const after = planOf(withRelationGraph());
+
+    expect(JSON.stringify(before.dispositions['createRecord'])).toBe('{"kind":"collapsed","into":"addBtn"}');
+    expect(reasonFor(withRelationGraph(), ADMIN, 'createRecord')).toBe(
+      'its Id output is consumed — the record it names exists only inside the invoking chain, which the relation verbs would need'
+    );
+
+    for (const id of ['updateRecord', 'deleteRecord']) {
+      expect(JSON.stringify(after.dispositions[id])).toBe(JSON.stringify(before.dispositions[id]));
+    }
+  });
+
+  /**
+   * `Counter` was the first pick here and it does **not** fall to the catch-all — it has a reason
+   * of its own. A control that never reaches the thing it controls for proves nothing, so this
+   * uses a type the audit shows genuinely landing on `logic node (…)`.
+   */
+  it('a node the sweep does not know still falls to the catch-all', () => {
+    const source = cloneIr();
+    addNode(source, ADMIN, 'someLogic', 'net.noodl.WebSocket');
+    expect(reasonFor(source, ADMIN, 'someLogic')).toBe('logic node (net.noodl.WebSocket)');
+  });
+});
+
+/**
+ * 🔴 The hole the mutation check found, and the reason this describe block exists.
+ *
+ * A component with no visual root dispositions every node and **returns early**, long before the
+ * sweep at the bottom of `planComponent` runs. A relation verb sitting in such a component
+ * therefore fell straight to `logic node (…)` — the sweep looked complete and was not. Nothing in
+ * the corpus exhibits it (its only relation graph lives on a page with a Group root), so no
+ * coverage number would ever have moved to say so.
+ */
+describe('§17 — a component with no visual root gets the named reasons too', () => {
+  const LOGIC_ONLY = 'Components/LogicOnly';
+
+  /** A component holding nothing that renders — the early-return path, built rather than found. */
+  const withLogicOnlyComponent = (): ExportIR => {
+    const source = cloneIr();
+    source.components.push({
+      id: 'logic-only-id',
+      path: LOGIC_ONLY,
+      role: 'component',
+      nodes: [],
+      connections: [],
+      intent: componentOf(source, UNROUTED).intent
+    });
+    return source;
+  };
+
+  it('the component really does take the early return — the control this needs', () => {
+    const source = withLogicOnlyComponent();
+    addNode(source, LOGIC_ONLY, 'someLogic', 'net.noodl.WebSocket');
+    const project = planProject(source, new CatalogIndex(catalog));
+    const plan = project.plans.find((p) => p.path === LOGIC_ONLY)!;
+    expect(plan.skipReason).toBe('no visual root — logic-only components defer to EXP-003');
+    expect(reasonFor(source, LOGIC_ONLY, 'someLogic')).toBe('logic node (net.noodl.WebSocket)');
+  });
+
+  it('a relation verb there is named, not swept into the catch-all', () => {
+    const source = withLogicOnlyComponent();
+    addNode(source, LOGIC_ONLY, 'linkInquiry', 'AddDbModelRelation', { collectionName: lit('Inquiry') });
+    expect(reasonFor(source, LOGIC_ONLY, 'linkInquiry')).toBe(
+      'no relation property is named, so the runtime answers Failure with "No relation property specified" and never calls the backend'
+    );
+  });
+
+  it('an unrouted PageInputs there is named', () => {
+    const source = withLogicOnlyComponent();
+    addNode(source, LOGIC_ONLY, 'pageInputs', 'PageInputs', { pathParams: lit('id') });
+    expect(reasonFor(source, LOGIC_ONLY, 'pageInputs')).toBe(
+      'it reads the path parameters "id", but no Router routes this component, so there is no URL to read them from'
+    );
+  });
+
+  /**
+   * There is no expression vocabulary on this path, and saying so is the honest answer rather
+   * than a fudge: in a component that translates nothing, a wired Id has no statically known
+   * source by construction.
+   */
+  it("a Record's wired Id names its feeder, with no expression vocabulary to consult", () => {
+    const source = withLogicOnlyComponent();
+    addNode(source, LOGIC_ONLY, 'pageInputs', 'PageInputs', { pathParams: lit('id') });
+    addNode(source, LOGIC_ONLY, 'puppyModel', 'DbModel2', {
+      collectionName: lit('Puppy'),
+      idSource: lit('explicit')
+    });
+    wire(source, LOGIC_ONLY, 'pageInputs', 'pm-id', 'puppyModel', 'modelId');
+    expect(reasonFor(source, LOGIC_ONLY, 'puppyModel')).toBe('its Id is fed by PageInputs, which has no statically known source');
+  });
+});

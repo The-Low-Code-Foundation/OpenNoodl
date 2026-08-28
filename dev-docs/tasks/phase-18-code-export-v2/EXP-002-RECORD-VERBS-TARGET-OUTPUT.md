@@ -1074,6 +1074,10 @@ became readable after fixing it.
 
 ### §16a — What is left
 
+⚠️ **Superseded by §17d.** Item (1) below was measured in session 28 and buys **no coverage** —
+and with it the standing claim that everything remaining does. §17b is the map that replaced this
+list; read it before picking anything here.
+
 Unchanged from §15g except that (1) is closed. Everything remaining still buys coverage, and
 `build-corpus.ts` is still a floor rather than a needle.
 
@@ -1088,3 +1092,118 @@ Unchanged from §15g except that (1) is closed. Everything remaining still buys 
 The nine `has_reviews` Conditions are **already translated** (they collapse into the `isfalse →
 Text.visible` binding), so the Condition node is now fully covered in the corpus — no shape of it
 defers anywhere. `probe27.ts` is the instrument that says so.
+
+## §17 The relation verbs (session 28 — §16a(1); **the slice that buys no coverage, and why that is the result**)
+
+§16a put *"relation verbs + `DbModel2` (3 nodes, 1 project)"* at the top of the list under the
+standing claim that **everything left buys coverage**. That claim is now false, and this section
+is the measurement that retired it.
+
+**Coverage 3,775/4,441 (85.00%) → 3,775/4,441 (85.00%).** `build-corpus.ts` holds at **40/40**,
+the ledger is unchanged (175 types: 101 deferred / 58 translated / 1 stubbed / 15 backend-only —
+no node type changed category, because none became translated). **468 tests (22 new).** What
+landed is three `logic node (…)` catch-alls replaced by the verdict the *runtime* reaches, and
+one hole closed.
+
+### 17a — 🔴 The corpus's only Add Record Relation can never have worked
+
+`Puppy test`'s `linkPuppy` authors exactly one parameter: `collectionName: "Inquiry"`. It names
+**no `relationProperty`**. `dbmodelnode-addrelation.ts`'s `validateInputs` reaches that check
+second, answers `'No relation property specified'`, hands the verdict to `setError` — and
+`scheduleAddRelation` returns before `cloudstore.addRelation` is ever called. There is no default:
+`_addRelationProperty` registers the input, `recordRelationPorts` declares the dropdown with no
+`default`, and `_internal.relationProperty` is assigned only in `setRelationProperty`.
+
+So the node **fails on every pulse, for the life of the graph**. Translating it into a working
+`addRelation` call would have been a hole shaped exactly like the defect — which is gate 1's rule
+(§5.1) reaching a second node type rather than a new rule of its own. §4c's target output stands
+as written; what it lacks is not a design but a well-formed instance to build against.
+
+The two nodes beside it fall out of that, and neither is a defect either:
+
+- **`NewDbModelProperties createInquiry`** wires `Id` into the relation verb, which is **gate 11**.
+  It was already deferring for that reason before this session.
+- **`DbModel2 puppyModel`** reads its Id from a `PageInputs` on `Pages/Puppy Detail` — a component
+  with **no `Page` node that the Router does not list**. There is no route, so there is no URL,
+  so there is no path parameter to read. Inventing one would be fabrication.
+
+`RemoveDbModelRelation` still has **zero corpus instances**. It is gated identically here anyway,
+because a gate that exists only where it is exercised is the hole this phase keeps paying for.
+
+### 17b — The wall census: what the remaining 15% is actually made of
+
+`rank2.ts` answers *"which type defers most"*. That is not the question that decides whether
+anything is left to build, so `walls.py` was written to ask the other one — **which wall would a
+slice have to break** — over all 666 deferred nodes, with the total reconciled against the audit's
+own count and the residual printed in full:
+
+```
+  197   29.6%  script tiers (EXP-003 Tier B + the component-record tier)
+  136   20.4%  row identity (the s10 wall)
+  117   17.6%  outside the render — logic nodes and the router shell
+   82   12.3%  collateral — its feed or its sink already deferred
+   69   10.4%  wire-fed rendered structure
+   36    5.4%  trigger outside the handler vocabulary
+    9    1.4%  unknown type / editor debris
+    8    1.2%  no shape in the api stub / emit vocabulary
+    7    1.1%  translated behind a typed api stub (not a wall at all)
+    5    0.8%  named runtime refusal — the node always fails as authored
+```
+
+**The top three hold 450 of 666 — 67.6% — and none of them is a slice.** The corpus is close to
+the ceiling reachable by node-at-a-time work: the next real movement costs a wall, not a node.
+
+The second row is this session's other measurement. **All 72 `Model2` nodes are
+`idSource: "foreach"`** — nine distinct instances cloned across eight projects, every one bound to
+the enclosing repeater's row. The largest non-Tier-B row in the ranking is one wall, not a
+backlog.
+
+### 17c — 🔴 Traps this session paid for
+
+**A ranking row is not a slice, and a slice is not coverage.** Session 27 filed *"a rank row counts
+what deferred, never what is there"* and the answer was a population. This session met the next
+one along: `probe28` confirmed the population exactly (1 `AddDbModelRelation`, 1 `DbModel2`,
+0 `RemoveDbModelRelation`), and the slice **still** bought nothing — because the population was
+never the constraint. The count, the wall and the yield are three different questions, and a
+handoff that names only the first is guessing at the other two.
+
+**A mutant that kills nothing is a claim about the mutant.** Two of ten this session:
+
+- Removing the sweep's `if (dispositions[node.id] !== undefined) continue;` guard killed nothing.
+  Chasing why found the real hole: a component with **no visual root** dispositions every node and
+  **returns early**, long before the sweep runs — so a relation verb there fell to `logic node (…)`
+  anyway. The sweep looked complete and was not, and no coverage number could ever have said so,
+  because nothing in the corpus exhibits it. Closed, with four rows that redden when it re-opens.
+  The guard itself remains unreachable today and is kept deliberately: the moment a later slice
+  teaches pass 4c about `DbModel2`, dropping it would overwrite `collapsed` with `deferred`.
+- Removing the `DbModel2` row-identity gate killed nothing — because the anchor text
+  `if (literalParam(node, 'idSource') === 'foreach' || authoredOrWired('repeaterComponent')) {`
+  occurs **twice**, and the mutation hit `compileRecordOp` at line 2713 instead. Re-aimed by line
+  number, each site kills its own row and they are *different* rows. **Mutate by line, or by an
+  anchor you have counted.**
+
+**Two control rows failed on first write, and both were the control's fault.** *"Adding the
+relation graph moves nothing"* — it moves exactly one thing, the Create, to gate 11, which is the
+corpus's own third deferral. And the catch-all control used `Counter`, which has a reason of its
+own and never reaches the catch-all at all; `net.noodl.WebSocket` does. **A control that never
+reaches what it controls for proves nothing.**
+
+**An instrument's residual is where its errors live.** `walls.py` put 51 of 666 nodes in
+`UNCLASSIFIED` on its first run — not because the corpus was strange, but because `rank2`
+truncates every reason at ~95 characters and the patterns had been written against full
+sentences, matching on tails that are not there. Printing the residual in full, and refusing to
+run at all unless the totals reconcile against the audit, is what made that visible in one pass.
+
+### 17d — What is left
+
+1. **EXP-003 Tier B** — ~350 nodes, one third-party kit copied into eight projects, behind four
+   things that do not exist. `tb-survey.ts` dumps every body of it; read that before committing.
+   It is the largest wall and the only one whose size is mostly one artefact.
+2. **Row identity (the s10 wall)** — 136 nodes, and now measured rather than assumed. Every
+   `Model2`, every `SetModelProperties` beside them, the repeater output relays, and the
+   `For Each.items` feeds. One wall, one design question: what a row's identity *is* in the emit.
+3. **The two `ProductCard` projects' missing interface** (§11d(2)/(3)) — ruled in §13b, built in
+   §14: the export refuses and names it. Still the disposition, not a defect.
+
+⚠️ **Do not open the next session by looking for a node type to translate.** §17b is the map now:
+pick a wall, or accept that 85.00% is where node-at-a-time work ends.
