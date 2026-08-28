@@ -549,6 +549,10 @@ export class LessonLayer {
      */
     const startAgain = this._startAgainTarget();
 
+    // SYL-001 slice B — every step's displayed popup, so the hand-holding preference can be
+    // applied across the lesson rather than one step at a time. See below the map.
+    const popupRoots: HTMLDivElement[] = [];
+
     const steps = this.model.lessons.map((instructionsHTML, stepIndex) => {
       const stepElement = document.createElement('div');
       stepElement.innerHTML = instructionsHTML;
@@ -674,15 +678,15 @@ export class LessonLayer {
         }
 
         /*
-         * SYL-001 slice B — the learner's hand-holding preference, applied to the step they are
-         * about to see, and re-read here rather than cached because they can change it by
-         * collapsing any disclosure at any point in the lesson.
+         * SYL-001 slice B — collected, not applied here. The preference is applied to the whole
+         * lesson once the steps exist, below: every step is parsed in this one pass, so a learner
+         * collapsing the hand-holding on step 3 has to reach step 4's already-built popup too.
          *
-         * 🔴 Applied to `root` — the element that is actually displayed — and not to the parsed
-         * `stepElement` above, because the popup's content is copied through `innerHTML` on the
-         * way here and a listener bound before that copy would be bound to a discarded node.
+         * 🔴 `root` — the element actually displayed — and not the parsed `stepElement` above:
+         * the popup's content is copied through `innerHTML` on the way here, so a listener bound
+         * before that copy would be bound to a node that is then discarded.
          */
-        applyDetailPreference(root, EditorSettings.instance);
+        popupRoots.push(root);
 
         step.popupContent = root;
       }
@@ -691,6 +695,16 @@ export class LessonLayer {
     });
 
     this.steps = steps.filter((step) => step.itemContent || step.popupContent); //remove any steps with incorrect HTML
+
+    /*
+     * SYL-001 slice B — the learner's hand-holding preference, applied to every step of this
+     * lesson at once and re-applied to all of them whenever any one disclosure is toggled.
+     *
+     * 🔴 Per step was not enough, and only a drive said so: the whole lesson is parsed in the one
+     * pass above, so a preference applied per step at parse time leaves a learner who collapses on
+     * step 3 still meeting step 4 expanded, until they reopen the lesson.
+     */
+    applyDetailPreference(popupRoots, EditorSettings.instance);
 
     /**
      * FIX-025 — publish what this lesson is grading, so the delete path can ask before a

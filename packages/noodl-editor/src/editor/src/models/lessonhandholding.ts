@@ -83,27 +83,41 @@ export function applyDetailDefaultOpen(root: ParentNode, open: boolean): number 
 }
 
 /**
- * Apply the learner's preference to a rendered step, and let that step change it.
+ * Apply the learner's preference across every rendered step of a lesson, and let any one of them
+ * change it for all the others.
  *
- * One call does both halves on purpose: the value written back is only meaningful relative to the
- * value that was applied, so splitting them across two call sites is how they would drift.
+ * 🔴 **This takes the WHOLE lesson, not one step, and that is what the drive changed.** The first
+ * version applied the preference per step at parse time, which is correct on a spec — each step is
+ * rendered from the store and comes up right — and wrong in the app: a lesson's steps are all
+ * parsed once, up front, so a learner who collapsed the hand-holding on step 3 still met step 4
+ * expanded, and only saw their answer honoured after reopening the lesson. Driven, observed, fixed.
  *
- * 🔴 **Only a state that DIFFERS from the applied default is persisted.** Two reasons, and the
- * second is not obvious: it is the right semantics (the learner deviating from what we chose is
- * the signal), and `toggle` fires **asynchronously**, so a listener bound in the same tick as the
- * attribute write can receive an event describing our own write. Persisting that would mean the
- * editor confirming its own guess back to itself as though a person had said it.
+ * 🔴 **The handler reads the store at event time rather than closing over the applied value.**
+ * With a captured value, re-applying to the other steps below would leave every one of their
+ * handlers comparing against a stale default. Reading the store means the comparison is always
+ * against what the learner currently wants, which is also the honest question: *does this
+ * disclosure disagree with the preference?*
+ *
+ * Only a disagreement is persisted. That is the right semantics — the learner deviating from what
+ * we chose is the signal — and it is also what stops `toggle`, which fires **asynchronously**, from
+ * feeding our own writes back as though a person had made them.
  */
-export function applyDetailPreference(root: ParentNode, store: DetailPreferenceStore): number {
-  const open = readDetailDefaultOpen(store);
-  const count = applyDetailDefaultOpen(root, open);
+export function applyDetailPreference(roots: ParentNode[], store: DetailPreferenceStore): number {
+  const applyAll = (open: boolean) => roots.reduce((n, r) => n + applyDetailDefaultOpen(r, open), 0);
 
-  for (const el of Array.from(root.querySelectorAll('details.lesson-detail'))) {
-    el.addEventListener('toggle', () => {
-      const isOpen = (el as HTMLDetailsElement).open;
-      if (isOpen === open) return;
-      store.set(LESSON_DETAIL_OPEN_KEY, isOpen);
-    });
+  const count = applyAll(readDetailDefaultOpen(store));
+
+  for (const root of roots) {
+    for (const el of Array.from(root.querySelectorAll('details.lesson-detail'))) {
+      el.addEventListener('toggle', () => {
+        const isOpen = (el as HTMLDetailsElement).open;
+        if (isOpen === readDetailDefaultOpen(store)) return;
+        store.set(LESSON_DETAIL_OPEN_KEY, isOpen);
+        // Every other step of this lesson was parsed before this click. Without this they keep the
+        // state they were built with until the lesson is reopened.
+        applyAll(isOpen);
+      });
+    }
   }
 
   return count;

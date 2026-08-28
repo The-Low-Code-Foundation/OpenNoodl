@@ -222,13 +222,54 @@ from a local directory with no origin contains both halves and neither learner's
 | `typecheck:mcp` | exit 0 |
 | `lessons:check` | exit 0, `log-a-thing` clean |
 
-### 🔴 The one thing NOT verified
+### 🔴 The drive — and the defect it found that eleven specs did not
 
-**No drive.** Every claim above is a spec. The single line that connects them to a running editor —
-`applyDetailPreference(root, EditorSettings.instance)` in `loadSteps` — is graded by reading, and
-this repo's own recorded rule is that a surface can pass its specs and be dead in the app.
+**Driven 2026-08-28** in the running editor, against the installed `log-a-thing` bundle with two
+`detail` fixtures added to it (backed up, restored, md5-matched afterwards). Real clicks through
+CDP, not `el.click()`.
 
-⚠️ **It was blocked, not skipped**: a peer session held the editor and the CDP port for a P77 drive
-for the whole of this session, and two editors cannot coexist here. ⬜ **Open a lesson with a
-`detail` step, collapse one disclosure, advance a step, and confirm the next one comes up
-collapsed.** That is the whole drive.
+| step | reading |
+|---|---|
+| lesson opens | **1 disclosure, `open=true`**, rendering the fixture text — slice A's default, live |
+| click the summary | `open=false` |
+| `editorSettings.json` on disk | **`lessons.detailOpenByDefault: false`** — a real click persisted it |
+| reload editor, reopen lesson | **`open=false`** — the preference survives a full renderer reload and a fresh project open |
+
+🔴 **And then the thing the specs could not see.** A lesson's steps are **all parsed in one pass**,
+before the learner has seen any of them. The first build applied the preference *per step at parse
+time*, so:
+
+> A learner who collapsed the hand-holding on step 3 still met step 4 **expanded**, and only saw
+> their answer honoured after reopening the lesson.
+
+Every one of the eleven specs passed on that version, and they were not weak specs — the round trip
+was there, and it was green. ⚠️ **It re-rendered between the collapse and the check, which is
+exactly what the app does not do.** A spec that rebuilds the world between the cause and the effect
+cannot see a staleness bug. That is the transferable shape, not the fix.
+
+**The fix**: `applyDetailPreference` now takes the **whole lesson** — every step's popup root — and
+re-applies across all of them whenever any one disclosure is toggled. `loadSteps` collects the roots
+and calls it once. The handler now **reads the store at event time** rather than closing over the
+value applied at parse, because the re-apply would otherwise leave every other step's handler
+comparing against a stale default.
+
+**Two new specs, and both fail on the pre-drive semantics** — verified by mutation, not asserted:
+
+| | reading |
+|---|---|
+| `test:ci`, fixed | **2889 specs, 4 failures @ seed 86276** — the AIX-006 floor, by name. 2887 → 2889 = +2. |
+| 🔴 mutant: re-apply removed | **6 failures @ seed 01422** — the four floor failures **plus both new specs**. |
+| `test:main` | **375 suites / 6254 tests / 0 failures, exit 0** — ⚠️ which also settles the earlier run's lone `BLD-004` red as a load flake. |
+| `typecheck:editor`, `:editor-tests`, `:mcp`, `lessons:check` | exit 0 |
+
+⚠️ **The second new spec failing is the informative one.** Without the re-apply, the other steps
+still say `open` while the store says collapsed — so their echoed `toggle` events *disagree* with
+the preference and each writes back. The re-apply and the read-at-event-time guard are a **pair**;
+removing either breaks the other.
+
+⬜ **What the drive still could not observe directly:** the mid-lesson case in the app. A lesson
+will not let you select a step you have not reached, and an unshown step's popup is detached from
+the document, so there is no way to look at step 4 while standing on step 3 without completing the
+task. The defect was found by reasoning from the drive's *load-time* evidence about when `loadSteps`
+runs, and is now graded by the two specs above. **The half the drive proved end-to-end is the
+load-time path; the mid-lesson half is spec-and-mutant.**

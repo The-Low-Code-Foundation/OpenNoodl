@@ -138,18 +138,18 @@ describe('SYL-001 slice B — applying it to a rendered step', () => {
 });
 
 describe('SYL-001 slice B — the loop between the learner and the setting', () => {
-  it('applies what the store says', () => {
+  it('applies what the store says, and counts every step it touched', () => {
     const store = fakeStore({ [LESSON_DETAIL_OPEN_KEY]: false });
     const el = render(stepWithDetail);
 
-    expect(applyDetailPreference(el, store)).toBe(1);
+    expect(applyDetailPreference([el], store)).toBe(1);
     expect(disclosureIn(el).open).toBe(false);
   });
 
   it('records the learner collapsing one', () => {
     const store = fakeStore();
     const el = render(stepWithDetail);
-    applyDetailPreference(el, store);
+    applyDetailPreference([el], store);
 
     disclosureIn(el).open = false;
     disclosureIn(el).dispatchEvent(new Event('toggle'));
@@ -162,7 +162,7 @@ describe('SYL-001 slice B — the loop between the learner and the setting', () 
   it('records them opening one again — the answer is changeable, not a one-way door', () => {
     const store = fakeStore({ [LESSON_DETAIL_OPEN_KEY]: false });
     const el = render(stepWithDetail);
-    applyDetailPreference(el, store);
+    applyDetailPreference([el], store);
 
     disclosureIn(el).open = true;
     disclosureIn(el).dispatchEvent(new Event('toggle'));
@@ -181,38 +181,87 @@ describe('SYL-001 slice B — the loop between the learner and the setting', () 
   it('does NOT record a toggle that merely agrees with what was applied', () => {
     const store = fakeStore();
     const el = render(stepWithDetail);
-    applyDetailPreference(el, store); // applied: open
+    applyDetailPreference([el], store); // applied: open
 
     disclosureIn(el).dispatchEvent(new Event('toggle')); // still open — our own write, echoed
     expect(store.writes.length).toBe(0);
   });
 
   /**
-   * 🔴 THE ROUND TRIP — the one that grades the feature rather than either half of it. A learner
-   * collapses the hand-holding on one step; the next step they are shown is drawn from the same
-   * store, and arrives collapsed.
+   * 🔴 THE ROUND TRIP ACROSS LESSON LOADS. A learner collapses the hand-holding; the next time a
+   * lesson is parsed, it is drawn from the same store and arrives collapsed.
    */
-  it('a collapse on one step is how the next step is drawn', () => {
+  it('a collapse survives into the next lesson that is loaded', () => {
     const store = fakeStore();
 
     const first = render(stepWithDetail);
-    applyDetailPreference(first, store);
+    applyDetailPreference([first], store);
     expect(disclosureIn(first).open).toBe(true);
 
     disclosureIn(first).open = false;
     disclosureIn(first).dispatchEvent(new Event('toggle'));
 
     const next = render(stepWithDetail);
-    applyDetailPreference(next, store);
+    applyDetailPreference([next], store);
     expect(disclosureIn(next).open).toBe(false);
 
-    // ...and re-opening it on that step puts the next one back.
+    // ...and re-opening it puts the next load back.
     disclosureIn(next).open = true;
     disclosureIn(next).dispatchEvent(new Event('toggle'));
 
     const third = render(stepWithDetail);
-    applyDetailPreference(third, store);
+    applyDetailPreference([third], store);
     expect(disclosureIn(third).open).toBe(true);
+  });
+
+  /**
+   * 🔴 THE SPEC THE FIRST BUILD DID NOT HAVE, AND THE DRIVE DID.
+   *
+   * A lesson's steps are all parsed in one pass, before the learner has seen any of them. So the
+   * step they collapse and the step they meet next are **both already built**, and a preference
+   * applied per step at parse time honours the answer only after the lesson is reopened. Every
+   * spec above passes on that version; this one does not.
+   *
+   * ⚠️ Note the shape — the earlier round trip re-rendered between the collapse and the check,
+   * which is exactly what the app does NOT do. A spec that rebuilds the world between the cause
+   * and the effect cannot see a staleness bug.
+   */
+  it('a collapse on one step reaches the steps ALREADY BUILT beside it', () => {
+    const store = fakeStore();
+    const stepOne = render(stepWithDetail);
+    const stepTwo = render(stepWithDetail);
+    const stepThree = render(stepWithDetail);
+
+    // One lesson, parsed up front — the way `loadSteps` does it.
+    expect(applyDetailPreference([stepOne, stepTwo, stepThree], store)).toBe(3);
+    expect([stepOne, stepTwo, stepThree].map((s) => disclosureIn(s).open)).toEqual([true, true, true]);
+
+    // The learner collapses the one they are looking at. Nothing re-renders.
+    disclosureIn(stepOne).open = false;
+    disclosureIn(stepOne).dispatchEvent(new Event('toggle'));
+
+    expect(disclosureIn(stepTwo).open).toBe(false);
+    expect(disclosureIn(stepThree).open).toBe(false);
+    expect(store.writes.length).toBe(1);
+  });
+
+  /**
+   * The re-apply above sets the attribute on every other step, and each of those fires its own
+   * `toggle`. If the handler compared against a value captured when the lesson was parsed, those
+   * echoes would disagree with it and write again — once per step, every time, forever.
+   */
+  it('re-applying across the lesson does not make the other steps write back', () => {
+    const store = fakeStore();
+    const roots = [render(stepWithDetail), render(stepWithDetail), render(stepWithDetail)];
+    applyDetailPreference(roots, store);
+
+    disclosureIn(roots[0]).open = false;
+    disclosureIn(roots[0]).dispatchEvent(new Event('toggle'));
+    // Every step's disclosure now echoes the write it just received.
+    roots.forEach((r) => disclosureIn(r).dispatchEvent(new Event('toggle')));
+
+    expect(store.writes.length).toBe(1);
+    expect(store.values[LESSON_DETAIL_OPEN_KEY]).toBe(false);
   });
 
   /**
@@ -223,7 +272,7 @@ describe('SYL-001 slice B — the loop between the learner and the setting', () 
   it('the real toggle event a click produces reaches the store', async () => {
     const store = fakeStore();
     const el = render(stepWithDetail);
-    applyDetailPreference(el, store);
+    applyDetailPreference([el], store);
 
     const fired = new Promise<void>((resolve) => disclosureIn(el).addEventListener('toggle', () => resolve()));
     disclosureIn(el).querySelector('summary').click();

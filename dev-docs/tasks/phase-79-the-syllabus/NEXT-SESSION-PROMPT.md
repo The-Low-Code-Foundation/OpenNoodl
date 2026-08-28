@@ -59,11 +59,10 @@ lesson in the curriculum, and splitting one `body` later is a re-cut of Richard'
 
 | gate | reading |
 |---|---|
-| `test:ci` | **2887 specs, 4 failures @ seed 11307** — all four **AIX-006 style vocabulary**, the recorded floor, **by name**. ⚠️ The floor is 4; the suite size has moved **2863 → 2875 → 2887** across the two slices. |
-| slice A's 12 specs | **2863 → 2875 = +12** |
-| slice B's 12 specs | **2875 → 2887 = +12**, all twelve named in the run's `[spec-start]` lines |
-| 🔴 the slice-B mutant | guard removed → **5 failures @ seed 47904**, the fifth exactly the negative control. The specs can fail. |
-| `test:main` | 375 suites / 6254 tests. ⚠️ **1 failure in session 2 was a load flake** — `BLD-004 reasoningChannel`, a timing spec, green 8/8 on its own. |
+| `test:ci` | **2889 specs, 4 failures @ seed 86276** — all four **AIX-006 style vocabulary**, the recorded floor, **by name**. ⚠️ The floor is 4; the suite size has moved **2863 → 2875 → 2887 → 2889**. |
+| slice A / slice B / the drive's fix | **+12 / +12 / +2**, each named in the run's `[spec-start]` lines |
+| 🔴 two mutants, both killed what they aimed at | echo guard removed → 5 failures @ seed 47904, the fifth the negative control. Re-apply removed (the pre-drive behaviour) → 6 @ seed 01422, the floor **plus both new specs**. |
+| `test:main` | **375 suites / 6254 tests / 0 failures, exit 0.** ⚠️ An earlier run in session 2 had 1 red — `BLD-004 reasoningChannel`, a timing spec under load from a peer's editor stack. Green alone and green here. |
 | `typecheck:editor`, `typecheck:editor-tests`, `typecheck:mcp` | exit 0 |
 | `lessons:check` | exit 0, `log-a-thing` clean |
 
@@ -87,10 +86,13 @@ it does **not** use jest matchers. `toHaveLength` and `toContainEqual` do not ex
 4. **[SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md)**, the moment two lessons exist — not
    before, and not after lesson 12.
 
-⬜ **One loose end, five minutes, needs a free editor.** SYL-001 slice B has **no drive** — a peer
-session held the editor and the CDP port all of session 2, and two editors cannot coexist here.
-Open a lesson with a `detail` step, collapse a disclosure, advance a step, confirm the next comes
-up collapsed. Do it at the start of the next session that has the editor to itself.
+✅ **Slice B was driven at the end of session 2, and the drive found a defect eleven green specs
+had not.** The preference was being applied *per step at parse time*, and a lesson parses every
+step in one pass — so a learner who collapsed on step 3 still met step 4 expanded until they
+reopened the lesson. Fixed, and graded by two new specs that both fail on the old behaviour.
+🔴 **The shape worth carrying: the round-trip spec re-rendered between the cause and the effect,
+which is exactly what the app does not do.** A spec that rebuilds the world in the middle cannot
+see a staleness bug.
 
 ## 5. Traps carried out of this session
 
