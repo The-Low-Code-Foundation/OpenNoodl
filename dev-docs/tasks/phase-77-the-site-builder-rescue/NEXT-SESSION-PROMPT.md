@@ -2,94 +2,109 @@
 
 ## ✅ No hold. Richard cleared the CPU freeze 2026-08-28 (s4): *"Freeze is off, go nuts."*
 
-The s3/s4 owed sweep is **done and green** — do not re-run it as if it were owed. What follows
-is the live state.
-
 ## Where the phase stands
 
 | task | state |
 |---|---|
 | SBR-001 | ✅ closed s2, driven |
-| SBR-002 | ✅ **closed s4** — AC4 driven, three states + controls; the drive found and fixed a real defect |
-| SBR-003 | 🟡 built, swept, driven — AC1–4 live; **one probe owed, carried into SBR-004** |
-| SBR-004…014 | ⬜ open |
+| SBR-002 | ✅ closed s4, driven |
+| SBR-003 | ✅ **closed s5** — its carried `var(--token)` dimension probe is answered (below) |
+| SBR-004 | 🟡 **built, swept, driven — but AC1 and AC2 are NOT verified**; see "start here" |
+| SBR-005…014 | ⬜ open |
 
-**s4 gate readings (post-fix tree, for comparison — but see "re-run these first" below):**
-`typecheck:editor` 0 · `typecheck:mcp` 0 · `test:ci` **2863 / 4 failures, all `AIX-006 style
-vocabulary` by name** · `test:main` 6253/6254 → 6254/6254 after the sb-007 pin update · mcp
-sb004/005/006/007 91/91 · backend 35/35 + 20/20.
+**s5 gate readings** (tree `78a04e69`, everything committed):
+`typecheck:editor` 0 · `typecheck:mcp` 0 · mcp sb006+sb007 **71/71** ·
+`test:main` **375 suites / 6254 tests** · `test:ci` **2875 specs / 4 failures, all
+`AIX-006 style vocabulary` by name** (seed 79133).
 
-## Re-run these first (cheap, and honestly owed)
+⚠️ The floor moved from **2863 to 2875** — a peer's TPL-001 (members-area template) landed 12
+specs mid-session. Separate failures **by name**, never by count.
 
-`test:ci` and the full `test:main` ran **before** the watchdog fix regenerated the artefact a
-second time. Re-verified after the fix: `sb006PublicSite` 33/33, `sb007Template` 22/22,
-`tests-unit/sb-007` + `sbr-002` + `sbr-003` 36/36. So the exposure is small, but a full
-`test:ci` + `test:main` on the current tree is the honest first move (~3 min, run `test:ci`
-alone).
+## 🔴 Start here: claim a site and re-drive AC1 and AC2
 
-## The two things genuinely left from s4
+**This is the one thing s5 could not do, and it is two of SBR-004's four ACs.** Both s5 drives
+were of an **unclaimed** site, where the nav renders **zero links**. So:
 
-1. **The `var(--token)` dimension-port probe** (SBR-003 §2, AC5's last row): a `maxWidth` fed
-   `var(--site-measure)` actually constrains a rendered box in the viewer, paired with an
-   unknown-token control that does **not**. Deliberately carried into **SBR-004**, which is the
-   first task that puts a measure on a real box — probing it earlier would need a throwaway node.
-2. **SBR-003's person-sentences** ("looks like Studio", "every surface changes") complete when
-   SBR-004 (public site) and SBR-006 (admin) author from `var(--token)`, and SBR-009 ships the
-   preset row. The contract itself is fixed, documented and gated.
+- **AC2 has never been observed in a browser.** The current-page distinction is asserted in
+  specs only. The mechanism is `/Pages/Site`'s `resolveSlug` writing `Noodl.Variables
+  .siteCurrentSlug`, and each `/Site/NavLink` reading it through a `Variable2` node **plus** a
+  direct read in its state function. The direct read exists for the ordering the spec cannot
+  see — a link created *after* the page resolved its slug gets no `changed` signal. **A running
+  nav is the only thing that can tell you whether both halves work.**
+- **AC1's person sentence has only been seen on a "This site has not been set up yet." page.**
 
-## Next task: SBR-004 — the public site wears the theme
+To claim: provision `SITE_SETUP_TOKEN` through the backend card's overflow "···" → **Secrets**
+panel (writing `~/.noodl/backends/<id>/secrets.json` by hand is blocked), then run the setup
+flow. Use **`SBR-004 Mounted Drive`** — it is the only drive project carrying the current graph.
+`SBR-004 Theme Drive` has the pre-`mounted` graph; do not reuse it.
 
-Everything visual depends on the now-settled contract in
-`models/template/templates/siteTheme.ts`:
+⚠️ **One observation s5 recorded and did NOT diagnose:** on the unclaimed page at 360px the
+`nav` measured **151px** tall and `header` **150px**, against ~33px and ~36px of apparent
+content. `flex-grow: 0` on the shell's children changed neither, so it is not the parent
+distributing space; every `Group` computes `flex: 100 1 auto` (Noodl's default). **Measure it on
+a claimed page before treating it as a defect** — a page with a title and sections may absorb it
+entirely. It is what makes the unclaimed screenshot look sparse.
 
-- 12 `Theme.tokens` fields → `--primary`, `--primary-foreground`, `--background`, `--surface`,
-  `--foreground`, `--muted-foreground`, `--border`, `--accent`, `--radius-md`, `--font-serif`,
-  `--font-sans`, `--site-measure`.
-- Author **only** `var(--token)`: measure = `--site-measure`, radius = `--radius-md`, spacing =
-  `--space-*` steps, faces = `--font-serif`/`--font-sans`. 🔴 No `var(--x, fallback)` — one
-  default writer (`designTokens`), one overlay writer (`applyTheme`).
-- Presets (`SITE_THEME_PRESETS`) are data and Studio IS the floor, so "pick Studio" ≡ "delete
-  the Theme row" by construction.
+## What s5 settled, so nobody re-derives it
 
-## Traps s4 measured (all cost real time — read before driving)
+- ✅ **A `var(--token)` on a dimension port constrains a real box.** `max-width:
+  var(--site-measure)` → computed `704px`, rendered **704px**; the unknown-token control
+  → computed `none`, rendered **940px**. Same element, same viewport, one variable.
+  🔴 The control is also SBR-012's arm 3 in miniature: **a typo'd token renders as nothing**, and
+  no raw-colour check can see it.
+- ✅ **AC4's overflow half.** `scrollLeft` reaches 0; a planted 2000px control reaches 1640, so
+  the absence has a known-firing signal. ⚠️ `body.scrollLeft` reads 0 in *both* arms — `html` is
+  the scroller, and a body-only reading fails in the same shape as a pass.
+- 🔴 **`visible` holds its space; `mounted` does not.** `visible: false` is `visibility: hidden`
+  — the port's own text says "keeping the space it occupies in the layout". At 360px the hidden
+  contact wrapper was **365px** of empty page. Six public-site surfaces are now `mounted`, and a
+  spec refuses `visible` anywhere on the public site (parameters AND wires). **Use `mounted` for
+  anything shown conditionally, everywhere in this phase.**
+- 🔴 **Nothing consumed `--background`/`--foreground` before SBR-004.**
+  `TokenResolver.generateCss` stamps `:root {…}` and `body { font-family }` and nothing else
+  (`TokenResolver.ts:137`). A token nothing reads is a theme nobody sees — **every new surface
+  must name its own colours.**
+- 🔴 **A `For Each` cannot carry a constant** (`foreach.tsx:586-597`) — only `id` and the model's
+  own fields. The app-wide-variable route is the answer; SBR-006/007 will hit this again.
+- 🔴 **`aria-current` is unauthorable — no ARIA anywhere in the platform.** No visual node
+  declares an aria or attribute port; the only ARIA in `noodl-viewer-react` is a hard-coded
+  `aria-hidden` on `IconGlyph`'s svg. This is the runtime-accessibility hole that blocks four
+  adjacent markets. **Worth its own task; it is not SBR-004's to fix.**
+- ⚠️ **A wrapped row around a Repeater WITH a gutter is refused** (`uncollapsible-multi-column`
+  arm B, `responsiveArrangement.ts:238-256`) — the `columnGap` is the discriminator. Put the
+  spacing on the item.
+- ⚠️ **`Text` has no padding ports; `Group` has no text `color` port.** Margin on text, colours
+  on leaves.
+- ✅ **The 2-suite `test:main` failure s4 left owed was never a flake.** Four
+  `tests-unit/sb-01{7,8}` specs declared `const siteBuilder` with no top-level import/export, so
+  TypeScript treated them as global **scripts** and ts-jest typechecks all of `tests-unit` in one
+  program; whichever pair shared a worker failed TS2451 and the whole **suite failed to run** —
+  2 failed suites, **0 failed tests**, 6244 instead of 6254. `export {}` scopes them. **A suite
+  that fails to RUN reads like a flake and is not one — reconcile the test COUNT, not just the
+  failure list.**
 
-- 🔴 **A signal into a VALUE port coalesces.** true-then-false arrives as **one** queue entry
-  per input name, so the receiving script runs **once, with `false`**. Any guard of the form
-  `Inputs.x === true` on a signal-fed value port **can never fire**. This shipped for a session
-  behind green specs — the unit spec asserted the abstain-on-false design, so the spec and the
-  defect agreed. Only the drive could see it.
-- 🔴 **The editor preview is 988×313 until you pick a device size** (topbar `ZoomSelect` →
-  "Mobile, big"). Probing reachability in the default pane is measuring the pane, not the page.
-- 🔴 **`elementFromPoint` returning `null` means "below the fold", not "hidden"** — and an
-  ancestor hit counts as reachable unless you require `hit === el || el.contains(hit)`. The
-  honest hidden signal in this template is `getComputedStyle(el).visibility`.
-- 🔴 **The wizard's template card**: click the `[class*=TemplateCard--]` **root** (a BUTTON) and
-  verify `--selected` landed. Clicking the title span reports success and selects nothing — the
-  Review step then says "Hello World" and would have created the wrong project.
-- ⚠️ **`claimSite` fails closed on a missing `SITE_SETUP_TOKEN`.** Provision it through the
-  backend's own **Secrets panel** (overflow "···" on the backend card → Secrets) — writing
-  `~/.noodl/backends/<id>/secrets.json` by hand is blocked, and the panel is the real flow.
-- ⚠️ The admin "New page" create form did not carry typed values into the record in the drive
-  (rows landed with `title: null`). **Not investigated** — it is SBR-007's screen and may be the
-  same `prop-` deploy defect SBR-008 owns. Worth a look before SBR-007.
-- ⚠️ `publishPage` requires `{pageId, publish}` — `publish` missing is a 30s function timeout,
-  not a validation error.
+## Wizard-driving recipe (s5 used it twice; it works)
 
-## Drive artefacts on this machine
-
-`SBR AC4 Drive` (backend `backend_mtd2k32gtl3ee`:8591, claimed, owner `owner@sbr-ac4.test` /
-`sbr-ac4-password-1`, setup token `sbr-ac4-drive-token`, one published `home` page, empty Theme
-row) and `SBR AC4 Drive 2` (fresh, carries the fixed watchdog). Both bindings restored; both
-have a `nodegx.project.json.sbr-backup` beside them, safe to delete. Older: `SBR Setup Drive`,
-`SBR Drive Site`, `SBR Hello Control`, `SBR No Backend` (stale graphs — do not reuse for state
-drives).
+1. Stamp and click **"New project"** — it needs **two** clicks the first time.
+2. Stamp the `Start from a Template` **BUTTON** (`EntryModeStep-module__ModeCard-hit`).
+3. Type the name into the modal's one `input`, then **Next**.
+4. 🔴 Click the `button[class*=TemplateCard--]` **root** and **verify `--selected` landed** —
+   clicking the title span reports success and selects nothing, and Review then says
+   "Hello World".
+5. Check Review names **Site Builder**, then **Create Project**.
+6. Preview appears as a **separate CDP target** (`--target=viewer`), titled by the page.
+7. 🔴 **The preview is 988×313 until you pick a device size** — topbar `ZoomSelect` (the *first*
+   `EditorTopbar-module__ZoomSelect`) → "Mobile, common (360 x 800)".
+8. ⚠️ `cdp eval` shares one context across calls — `const x` twice is a `SyntaxError`. Use IIFEs.
+9. ⚠️ An HMR abort reloads the renderer back to the **launcher**, losing your stamps. Re-stamp.
 
 ## Standing context
 
 - Richard, 2026-08-28: **no short paths** — full six screens of
   https://claude.ai/code/artifact/f1986b40-e827-4770-abb8-1dc8f17e1810 ; assessment:
   https://claude.ai/code/artifact/f4b2077a-7a78-4c33-8bf7-8b7f343f0b0b .
-- 🔴 Never scope by time. Every task's ACs include a person sentence — verify as written.
-- Shared checkout: pathspec commits only (untracked ⇒ add+commit one chain); announce editor
-  launches AND teardowns to peers; `test:ci` alone; end the session by updating this file,
-  TASKS.md's s-log, and memory.
+- 🔴 Never scope by time. Every task's ACs include a person sentence — verify as written, and if
+  the platform cannot express what an AC asks for, **say so and record the gap** rather than
+  quietly substituting.
+- Shared checkout: **pathspec commits only** (peers were mid-edit on lessons and the members-area
+  template all session); announce editor launches **and** teardowns; `test:ci` alone.

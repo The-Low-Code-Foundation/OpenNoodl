@@ -122,3 +122,88 @@ channel, because colour alone is not a distinction every reader can see.
    SBR-012 widens it to the generated artefact, the other two component sets, and the
    "every consumed token resolves" arm (a `var(--tpyo)` renders as *nothing*, which no
    raw-colour check can see).
+
+---
+
+## 6. Driven (s5) — what a browser answered
+
+Two fresh projects created through the real wizard (`SBR-004 Theme Drive`,
+`SBR-004 Mounted Drive`), measured in the editor preview over CDP. Both sites are
+**unclaimed** — that matters, and §7 says what it costs.
+
+### ✅ SBR-003's carried probe: a `var(--token)` on a dimension port constrains a real box
+
+The probe SBR-003 §2 deferred to "the first task that puts a measure on a real box".
+
+| arm | inline style | computed | rendered width | viewport |
+|---|---|---|---|---|
+| **known token** | `max-width: var(--site-measure)` | `704px` | **704px** | 988px |
+| **unknown token (control)** | `max-width: var(--site-measure-typo)` | `none` | **940px** | 988px |
+
+Same element, same viewport, only the token name varied — so the pair proves what
+it varied. `44rem → 704px` is the Studio value resolving through the project's
+`designTokens` floor. **AC5's last row is answered, positively, with a
+discriminating control.**
+
+⚠️ And the control is also SBR-012's arm 3 in miniature: a typo'd token computes
+to `none` and renders as *nothing at all*. No raw-colour check can see that,
+which is exactly why SBR-012 owes the "every consumed token resolves" arm.
+
+### ✅ The theme is actually worn
+
+`--site-measure: 44rem`, `--background: #fbfaf8`, `--radius-md: 6px` — the last
+one is the project's Studio override, not the shipped `8px` default, so what is
+live is this project's `designTokens` block and not the platform floor. The
+`frame` node's computed `background-color` is `rgb(251, 250, 248)`. Before
+SBR-004 no element consumed either token.
+
+### ✅ AC4's measured half: no horizontal overflow at a phone width
+
+Preview set to **Mobile, common (360 × 800)** — narrower than AC4's ~375px, so a
+pass here implies a pass there.
+
+| probe | `document.documentElement.scrollLeft` after `= 9999` |
+|---|---|
+| the page as built | **0** |
+| **control:** a 2000px element planted in `body` | **1640** |
+| after removing the control | **0** |
+
+The absence is asserted beside a known-firing signal, so the `0` means "nothing
+overflows" rather than "the probe cannot fire". ⚠️ `body.scrollLeft` read `0` in
+*both* arms — the `html` element is the scroller here, and a reading taken only
+from `body` would have been uninformative in exactly the same shape as a pass.
+
+### ✅ The shape is there, and the 365px hole is gone
+
+`NAV`, `HEADER`, `H1`, `SECTION`, `FOOTER` all present as real elements. After the
+`mounted` fix, the shell's children are NAV / HEADER / the card / FOOTER and
+nothing else — the hidden wrapper is not in the DOM. See the commit for the
+measurement that found it.
+
+## 7. 🔴 Still owed after s5 — and it is AC1 and AC2 themselves
+
+**Both drives were of an *unclaimed* site.** Claiming needs a `SITE_SETUP_TOKEN`
+provisioned through the backend's Secrets panel and the setup flow run, which s5
+did not reach. So:
+
+- **AC1's person sentence is NOT verified.** What was verified is the ground, the
+  measure, the rhythm, the footer and the semantic structure — on a page whose
+  only content is "This site has not been set up yet." A visitor's actual first
+  impression of a *published* page has not been seen by anyone.
+- **AC2 is NOT verified in a browser.** The nav renders zero links on an unclaimed
+  site, so "the current link resolves a different colour and weight than its
+  siblings" has been asserted in specs and never observed. The `Variable2` →
+  state-function path in particular has an **ordering** question that only a
+  running nav can answer: whether a link created *after* the page resolved its
+  slug gets the value from the direct read (the spec cannot see this).
+- ⚠️ **An unexplained observation, recorded rather than guessed at.** On the
+  unclaimed page at 360px the `nav` measured **151px** tall and the `header`
+  **150px**, against ~33px and ~36px of apparent content. Setting `flex-grow: 0`
+  on the shell's children changed neither, so it is not the parent distributing
+  space. Every `Group` computes `flex: 100 1 auto` (Noodl's default). Not
+  diagnosed; it is what makes the unclaimed page look sparse in the screenshot.
+  **Measure it on a claimed page before treating it as a defect** — a page with a
+  title and sections may absorb it entirely.
+
+**The next session should claim a site and re-drive AC1 and AC2.** That is one
+session's work and it is the half of this task a spec cannot reach.

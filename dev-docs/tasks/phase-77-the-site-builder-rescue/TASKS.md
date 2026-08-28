@@ -70,6 +70,48 @@ per-task status and the session log.
   through the product's own Secrets panel (writing the backend's `secrets.json` by hand is
   blocked, and the panel is the flow a person uses anyway).
 
+- **s5 (2026-08-28)** — **SBR-004 built and driven; one AC pair still owed.** The public
+  site has a shape: nav bar with a rule, a reading measure on `--site-measure`, spacing from the
+  scale, a footer, and the empty-screen panels as centred `--surface` cards. Every colour,
+  radius, gap, face and size in the five SB-006 components is a `var(--token)`; four dimensions
+  are named in `RAW_DIMENSION_EXEMPTIONS` with a reason each. 🔴 **The finding that mattered:
+  `TokenResolver.generateCss` stamps `:root {…}` and `body { font-family }` and NOTHING else
+  (`TokenResolver.ts:137`), so `--background`/`--foreground` were declared on every deploy and
+  read by no element — a Theme record could pick Night and the page stayed black-on-white. The
+  new `frame` node is what makes any of this visible.** AC2 is derived, not authored: a
+  `For Each` sets only the model's own fields (`foreach.tsx:586-597`), so the current slug — one
+  value, constant across links — travels as an app-wide variable (`Noodl.Variables` is a proxied
+  `Model`, so a write notifies), read twice over so neither creation order is missed; the
+  distinction is colour AND weight, with a mutant holding the second channel.
+  🔴 **AC2's parenthetical asks for `aria-current` and the platform cannot author it** — no
+  visual node declares an aria or attribute port, and the only ARIA in the viewer is a hard-coded
+  `aria-hidden` on `IconGlyph`'s svg. A platform gap, bigger than this task, recorded not fixed.
+  🔴 **The drive's own find: `visible: false` is `visibility: hidden` and HOLDS ITS SPACE** (the
+  port says so). At 360px the hidden contact wrapper was **365px** of empty page, and a
+  `richText` section reserved a 320px image band it never draws, once per row. Six surfaces moved
+  to `mounted`; re-driven on a second fresh project, the element is gone from the DOM. A spec now
+  refuses `visible` anywhere on the public site (parameters AND wires) and its first run caught
+  one I had missed by hand. ✅ **SBR-003's carried probe answered**: `max-width:
+  var(--site-measure)` computes `704px` and renders 704px, against an unknown-token control that
+  computes `none` and renders 940px — same element, same viewport, one variable. ✅ **AC4's
+  measured half**: `scrollLeft` reaches 0, beside a planted-2000px control that reaches 1640, so
+  the absence has a known-firing signal. ✅ **Also fixed the 2-suite `test:main` failure s4 left
+  owed — never a flake**: four `tests-unit/sb-01{7,8}` specs declare `const siteBuilder` with no
+  top-level import/export, so TS treats them as global SCRIPTS and ts-jest typechecks all of
+  `tests-unit` in one program; whichever pair shared a worker failed TS2451 and the SUITE failed
+  to RUN (2 failed suites, **0 failed tests**, 6244 not 6254). `export {}` scopes them.
+  🔴 **OWED, and it is AC1 and AC2 themselves: both drives were of an UNCLAIMED site.** The nav
+  renders zero links there, so AC2 has never been observed in a browser, and AC1's person
+  sentence has only been seen on a "not set up yet" page. Claiming needs `SITE_SETUP_TOKEN`
+  through the Secrets panel. ⚠️ Unexplained and undiagnosed: on the unclaimed page the `nav`
+  measured 151px and `header` 150px against ~33/~36px of content; `flex-grow: 0` on the children
+  changed neither — measure on a CLAIMED page before calling it a defect. Counts moved with the
+  graph: node ids 195 → 203, browser Function nodes 17 → 18, sb006 specs 34 → 49.
+  Gates: `typecheck:editor` 0, `typecheck:mcp` 0, mcp sb006+sb007 71/71, `test:main` 375/6254,
+  `test:ci` **2875 specs / 4 failures, all `AIX-006 style vocabulary` by name** (seed 79133, tree
+  78a04e69 — a peer's TPL-001 added 12 specs mid-session; one F44 red on an earlier run did not
+  reproduce). Drive artefacts: projects "SBR-004 Theme Drive" (old graph) and "SBR-004 Mounted
+  Drive" (carries the fix) in NodeGX test projects, backends `backend_mtd5sw9h8dz5g` and one more.
 - **s4 (2026-08-28)** — **SBR-003 built end-to-end under the CPU hold; NOTHING EXECUTED**
   (code + specs saved for the sweep, per Richard's freeze). The contract is single-sourced in
   `models/template/templates/siteTheme.ts`: `THEME_TOKEN_FIELDS` (12 fields — the final list,
