@@ -160,3 +160,97 @@ artefact at `templates/members-area/`.
   and diffing is what found it**; two runs are now byte-identical.
 - ✅ **`startPage` is the first page written**, so `Pages/Landing` is authored first — a
   stranger meets the association, not a password box.
+
+## 10. Where it stands (s2, 2026-08-28)
+
+**The template is built: nineteen components, four endpoints, a hand-authored policy, and a
+gate.** Nothing has been driven and nothing is published.
+
+| | |
+|---|---|
+| artefact | `templates/members-area/` — 19 components, 10 pages, `startPage: /Pages/Landing` |
+| policy | `templates/members-area.security.json`, hand-authored, copied in by the generator |
+| graphs | `tpl001Components.ts` (browser), `tpl001Cloud.ts` (endpoints), `tpl001Vocabulary.ts` (the words both use) |
+| gate | `tpl001Template.test.ts` — 41 specs, byte-identity plus the checks the door does not do |
+| gates run | `typecheck:mcp` clean · noodl-mcp **834/834** · `test:ci` **2875 specs, 4 failures**, all four the known AIX-006 set by name |
+
+### What it does now
+
+- **Landing** reads the `Association` row — the one record a stranger may read — and shows a
+  "not set up yet" card when there is none.
+- **Setup** creates the first moderator against a backend secret (`ASSOCIATION_SETUP_TOKEN`),
+  because a fresh backend has neither role and therefore nobody who can approve anybody.
+- **Join** files a request; **Requests** is the moderators' queue, with Approve and Decline as two
+  instances of one endpoint.
+- **Members** is the hub: announcements, a pending notice, a moderator's toolbar. **Meetings** is
+  the upcoming diary, filtered by an ISO day. Both notices and both lists have detail pages.
+- **Post** is the moderator's desk: an announcement form and a meeting form.
+
+### 🔴 What is deliberately NOT built, and it is scope from §3
+
+- **The member directory.** §3's *"see the member list"* is **not buildable with the nodes that
+  exist**: `getuserroles` reads one user's roles and nothing enumerates a role's members, and
+  `_User` is a system class no browser query can reach. It needs a `Member` projection row
+  written on approval — which is a second copy of a fact `_Role` already holds, so it wants a
+  decision rather than a quiet implementation. **Ask Richard.**
+- **The Account page.** §3 lists name plus the TPL-002 opt-in. The opt-in is TPL-002's, and a page
+  that shows a person their own name and nothing else is not worth a route yet.
+- **Seeded sample content.** AC6 says a template ships graphs, not rows, and every list ships a
+  designed empty state instead. Still open and additive.
+
+### The trade-off taken on privacy, which is Richard's to overturn
+
+`requestAccess` answers an address that **already has an account** exactly as it answers a new
+one, and files nothing in that case. Telling a stranger "you are already registered" tells them
+who belongs to this congregation. The cost is that a returning person who has forgotten gets a
+cheerful "your request has been passed to the moderators" and nothing happens; the join page
+carries a standing line pointing them at sign-in. **If Richard would rather be plain, it is one
+edge and one message.**
+
+## 11. Findings (s2, 2026-08-28)
+
+- 🔴 **The door does not check a connection to a component-instance port. At all.** Measured by
+  sabotage: renaming `standing.isMember` to `standing.isMemberXX` in `Pages/Members` produced a
+  run **identical** to the clean one — 46 `dynamic-port-skipped` infos and nothing else, no
+  error, no warning, not even an info about the wire. It matters more here than almost anywhere
+  else, because **every gate in this template is an instance port**: `isMember` reveals the
+  content, `isModerator` reveals the moderator's tools, and `Member` / `Moderator` are the only
+  triggers the queries have. A typo in any of them fails **shut and silently** — the same shape
+  as SB-018 (1), a wire naming a port no runtime has, dead for five sessions. §3 of the spec is
+  now that check.
+- 🔴 **"The authoring run was clean" was a claim about the `isError` flag and nothing else.** The
+  builder now collects every diagnostic the door raises and the generator prints them by code.
+  Today: 46, all `info dynamic-port-skipped`, all about **parameters** — so the silence about
+  connections is a real absence rather than an unread payload. It also makes the instrument
+  known-firing: something is being counted.
+- 🔴 **The door de-duplicates node ids across the whole project, not per component.** A second
+  component reusing `emptyState` is written as `emptyState-2`. Two assertions were written against
+  authored ids and failed on the third page; they now find nodes by **what they are** (the text
+  they carry, the script they run), which is what they were about anyway.
+- 🔴 **A hand-authored file cannot live in the generated directory.** The generator clears
+  `templates/members-area/` wholesale before copying the door's output in, so a policy written
+  there would be deleted by the next regeneration — silently, and leaving the artefact looking
+  complete. The source is `templates/members-area.security.json`, **beside** the directory, copied
+  in as the last step. ✅ That also *removes* the exclusion the handoff expected: a regeneration
+  reproduces the whole artefact including the policy, so the drift gate compares everything.
+- 🔴 **The drift gate did not compare bytes until it was made to.** Written first, it compared
+  component-key lists and the policy file and was named "reproduces every committed byte". The
+  pinning lived in `scripts/` where a spec could not reach it, so the gate could only re-check
+  *some* of the artefact — the exact failure `toTemplateContent`'s own comment warns about.
+  `prepareArtefact` moved into `tpl001Template.ts` and the spec now runs **the same code the
+  generator runs**, not a twin of it.
+- ✅ **All three headline gates were shown to fail on a deliberate defect before being trusted** —
+  the instance-port check on `isMemberXX`, the `authenticated` sweep on one changed rule, the
+  byte gate on one hand-edited artefact file — then restored, regenerated and re-run green.
+- ✅ **`validateSecurityConfig` is imported from `nodegx-backend` and run over the shipped
+  policy**, with a control that shows it rejects a bad one. An invalid policy is a backend that
+  refuses to start on the association's machine, after they installed the template.
+- 🔴 **`role:member` alone would lock the moderator out of what they just posted.** Roles are
+  flat: a moderator is not implicitly a member, so every members-only read rule is the two-atom
+  array `["role:member", "role:admin"]`, and the standing component reports `isMember` true for a
+  moderator. One-atom rules are the obvious version and they are wrong.
+- 🔴 **`defaults` is `nobody` on all five operations**, not `authenticated`. The shipped default
+  is `authenticated`, which for this template is every pending member reading everything, and it
+  is what a collection read falls back to when nobody wrote a rule. `nobody` means a class
+  somebody adds later is refused **loudly** rather than opened silently.
+
