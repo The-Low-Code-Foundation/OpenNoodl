@@ -84,12 +84,19 @@
   color: var(--theme-color-warning);
 }
 
+/* Phase 75's border sweep. `border-default` was 1.08:1 on the `bg-3` fill.
+   `border-control` is 3.08 / 3.05 there and 3.57 / 3.37 on the `bg-2` toolbar.
+   ⚠️ This declaration is SHARED, and only `.FormatButton` actually wears it —
+   `.SaveButton` below overrides `border-color` to `primary`, so it was never part
+   of this defect. The sweep's inventory has that backwards: it lists `.SaveButton`
+   and does not list `.FormatButton`. ✅ `:hover` already used `primary` (3.54 /
+   3.40 on `bg-4`), which is where the remedy for the trapped hovers came from. */
 .FormatButton,
 .SaveButton {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   background-color: var(--theme-color-bg-3);
   color: var(--theme-color-fg-default);
   border-radius: 4px;
@@ -122,11 +129,20 @@
   }
 }
 
+/* 🔴 Phase 75's border sweep, and the one site in this family where the sweep's
+   OWN remedy does not work. This button's fill is `bg-4`, and POL-016 scopes
+   `border-control`'s guarantee to "bg-1, bg-2 and bg-3" — on `bg-4` it is 2.64:1
+   dark / 2.77:1 light, UNDER 1.4.11's 3:1. Swapping the token in here would have
+   looked like the rest of the sweep and shipped a control that still fails.
+   `fg-default-shy` is 5.85 / 4.61 on the fill and 7.91 / 5.61 on the `bg-2`
+   toolbar, and — as with the hovers above — the rule already contained its own
+   answer: `:hover` below has used exactly this token all along. Only the RESTING
+   state was left behind. */
 .CloseButton {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-fg-default-shy);
   background-color: var(--theme-color-bg-4);
   color: var(--theme-color-fg-default);
   border-radius: 4px;
