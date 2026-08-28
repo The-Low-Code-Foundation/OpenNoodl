@@ -1,6 +1,6 @@
 # EXP-011 — Close the picker gap, ranked by what apps need
 
-**Status:** 🟡 In progress — **Tier 1.1 (the client-side data vocabulary) is built, driven and gated**, session 36
+**Status:** 🟡 In progress — **Tier 1.2 (`HTTP Request`) is built, driven and gated**, session 37
 **Depends on:** nothing — but sequenced after EXP-009 and EXP-010, which are worth more per hour
 **Replaces:** every "what to build next" list in this phase from sessions 20–31
 
@@ -12,13 +12,13 @@
 node scripts/export-ledger/picker-coverage.js
 ```
 
-> **PICKER COVERAGE: 59 of 127 placeable nodes export (46.5%)** — 2026-08-28, session 36
-> (51 / 40.2% when this task was written; **Variables** left the table in session 35, and four of
-> the eight Data nodes of Tier 1.1 left it in session 36)
+> **PICKER COVERAGE: 60 of 127 placeable nodes export (47.2%)** — 2026-08-28, session 37
+> (51 / 40.2% when this task was written; **Variables** left the table in session 35, four of the
+> eight Data nodes of Tier 1.1 left it in session 36, and `HTTP Request` left it in session 37)
 
 | category | nodes a user can place and cannot export |
 |---|---|
-| **Data** | 23 |
+| **Data** | 22 |
 | **Utilities** | 16 |
 | **Cloud Services** | 9 |
 | **Navigation** | 5 |
@@ -56,7 +56,8 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
    `Clear Array` are **built, driven and gated in session 36 — §7**. The other four defer, each
    with a reason about a *mechanism* rather than about effort, and three of them are blocked by
    something other than themselves — §7.3.
-2. **`HTTP Request`.** Any app that talks to anything that is not its own backend.
+2. ✅ **`HTTP Request`.** Any app that talks to anything that is not its own backend. **Built,
+   driven and gated in session 37 — §8.**
 3. **The date family (Utilities, 6).** `Now`, `Date To String`, `Date Add`, `Date Compare`,
    `Date Difference`, `Date Parts`. Anything with a timestamp needs at least two of these.
 4. ✅ **`String` / `Number` / `Boolean` / `Color` (Variables, 4).** The plain value nodes. Cheap, and
@@ -95,14 +96,15 @@ nobody will ever do. Most of the current 101 exemptions say the latter, verbatim
 ## §4 Acceptance criteria
 
 1. ✅ **The picker number moves and holds.** Every slice raises `pickerCoverageFloor` in the same
-   commit — `export-ledger:picker` fails if it does not. *(51 → 55, session 35.)*
+   commit — `export-ledger:picker` fails if it does not. *(51 → 55 → 59 → 60, sessions 35–37.)*
 2. 🟡 **Tier 1 complete ⇒ 51 → ~72 of 127 (≈57%).** Tiers 1+2 ⇒ ≈87 (≈68%). Everything except the
-   "not a target" list ⇒ ≈108 (≈85%). *(1.1 and 1.4 done — 59 of 127; 1.2 `HTTP Request` and 1.3
-   the date family remain. ⚠️ Tier 1.1 yields 4 of its 8 nodes, not 8: the projection above
-   counted node types, and four of these defer on mechanisms named in §7.3.)*
+   "not a target" list ⇒ ≈108 (≈85%). *(1.1, 1.2 and 1.4 done — 60 of 127; only 1.3, the date
+   family, remains. ⚠️ Tier 1.1 yields 4 of its 8 nodes, not 8: the projection above counted node
+   types, and four of these defer on mechanisms named in §7.3. So Tier 1 will finish nearer 66
+   than 72, and the six date nodes are the whole of the difference left to find out about.)*
 3. ✅ **Each slice has a picker-exercising project** that exports, builds and runs (§2).
    *(Tier 1.4's is `tests/fixtures/variable-dial` — §6.4; Tier 1.1's is
-   `tests/fixtures/reading-shelf` — §7.4.)*
+   `tests/fixtures/reading-shelf` — §7.4; Tier 1.2's is `tests/fixtures/quote-desk` — §8.6.)*
 4. ✅ **The exemption sentences get rewritten** so that "deferred" means one of *deliberately out of
    scope* (with the reason) or *scheduled* (with the tier), never "pre-gate backlog".
    *(All 97, session 35, and `export-ledger:check` now enforces the shape — §6.5.)*
@@ -344,3 +346,193 @@ for a `Number` would assert a cast the runtime does not perform.
 The general lesson is the one §6.2 was already circling: **Tier 1.4 taught `resolveExpr` about
 those nodes and stopped there.** A new readable node has at least two consumers in this package,
 and the second one is silent when it is missed.
+
+---
+
+## §8 Tier 1.2 as built — `HTTP Request` (session 37, 2026-08-28)
+
+**59 → 60 of 127 (46.5% → 47.2%).** `pickerCoverageFloor` raised in the same commit.
+
+One node, and the largest one this phase has translated: `httpnode.ts` is 1,288 lines and nearly
+every port on it is dynamic. What made it tractable is that **almost all of that is configuration
+rather than data** — the method, the body type, the auth preset and the four string lists are
+`allowEditOnly`, so what the request *is* was decided in the editor and cannot change at runtime.
+The translation reads a configuration; it does not solve one.
+
+### §8.1 What the node turned out to be
+
+| the author's graph | what is emitted |
+|---|---|
+| the node's own configuration | **one exported function in `src/api/http.ts`** — `fetchQuote(params)` — with the authored values folded in as literals and the wired ones as parameters |
+| `Fetch` from a handler chain | `const answer = await fetchQuote({…})`, inside the handler's own `try` |
+| `done` chain | the statements of the `ok` arm |
+| `failure` chain | the statements of the *other two* arms — see below |
+| `Response` / `Status Code` / `Response Headers` / an Output Field | a read of the answer: the chain's local inside the chain, a `useState` row anywhere else |
+| `Error` | its own row, written by every failure and never cleared, exactly as `_internal.error` behaves |
+
+🔴 **The module throws only where no answer arrived, and returns `ok: false` where one did.**
+That split is the whole design, and it is not stylistic. `processResponse` runs *before* `doFetch`
+reports `failure`, so a 404 publishes its body and status on the node's outputs while `Failure`
+fires; and a request that never reached the server leaves `Response` and `Status Code` holding
+what they held, because a value output cannot be cleared. A single throwing shape — the record
+verbs' — reproduces one of those or the other, never both. The emitted handler therefore writes
+the answer row *before* testing `ok`, and does not write it at all in the `catch`.
+
+The failure chain is emitted **twice**, once per arm, and the two copies are identical by
+construction because both bind `message` first: `answer.error` in one, the exception's message in
+the other. A join would need a `finally` that could tell which arm it was in, which is a variable
+the arms already are.
+
+Four details are the runtime being specific rather than the export being clever, and each is a
+test:
+
+- **An absent path parameter leaves `{topic}` in the URL, literally.** `buildUrl` replaces only
+  what it has a value for, because a URL segment has no way to be empty.
+- **`undefined` and `null` are the same omission everywhere except a JSON body**, which has a
+  native `null`. That is the one site `httpnode.ts` tests `!== undefined` alone, and it says why
+  in its own comment.
+- **A half-filled credential sends nothing at all** — `authConfigurators` answers `{}` for a
+  Bearer with no token — so every credential is emitted as a guard, never as a header.
+- **The auth headers are applied after the visual ones** (so a credential wins a collision) and
+  the `Content-Type` default runs last, on a truthy body and an unset header. An empty
+  urlencoded body is `''`, and gets no Content-Type.
+
+`jsonPathSteps` compiles the Response Mapping to the accessor `extractByPath` would have walked —
+`$.items[0].name` → `?.items?.[0]?.name` — **including its limitations**: a path that does not
+start with `$` reads undefined on every answer, `$items` reads a key spelled `tems`, and
+`$.a[0][1]` is a key literally spelled `a[0][1]`. Correcting any of those would break an author
+who has already worked around one.
+
+### §8.2 Where the read is decides what it says
+
+A read of the node's outputs is **the chain's local inside the chain, and the state row anywhere
+else**, and that is a correctness rule rather than a preference: `setQuoteOut(answer)` does not
+change `quoteOut` inside the closure that called it, so a state read in the `done` chain would
+deliver the *previous* request's body. It is CONTROLLED-STATE §3.2's chain-local snapshot rule
+reaching a construct that cannot recompute itself — a `jsfun-run` re-runs its pure body, and a
+request cannot.
+
+The failure chain reads `Error` and nothing else. Its arm also runs where **nothing arrived**, and
+what the interpreter holds on `Response` there is the previous request's answer, which no
+expression in this vocabulary can name. That deferral is the one that would be easiest to fake.
+
+### §8.3 The four things that were nearly wrong
+
+🔴 **A state row named `error`, read as the exception.** A state read prints as the bare name in a
+handler as much as in render, and every emitted asynchronous action binds `catch (error)`. Before
+this slice there was nothing to *read* inside a catch, so the collision could not fire; the
+failure chain is the first construct to put the graph's own statements there. A row minted from a
+node labelled "Error" — `allocStateVar` lower-cases the label — would have been read as the
+`Error` object where the graph says to read the latch: the right shape carrying the wrong value,
+with nothing anywhere to say so. `stateNameTaken` reserves the name now.
+
+⚠️ It was first "found" in the wrong place. The emitted Quote Desk page has
+`const error = useValue(postError)` beside a `catch (error)`, and the fix went into the render
+locals — where it was **inert**, because a handler reads a variable through `.get()` on the
+imported store and never through the render local. The hazard was real and one construct over.
+*A collision you can see is not necessarily the collision that can fire.*
+
+🔴 **A chain whose reads earned nothing.** `collectExprUse` walks handler actions to decide which
+state rows, imports and hooks the component keeps — and it **had no case for the asynchronous
+actions at all**, so nothing inside a `done` or `failure` chain was counted. The emitted page read
+`error2` and imported nothing for `latchNote`, and the row it read was declared nowhere: a
+`ReferenceError` on the first failure. The omission is older than this slice — the record verbs'
+`done` chain has the same hole in the same words — and both are walked now.
+
+🔴 **The answer row was allocated after the action was compiled.** A render binding on `Response`
+resolves two passes after the `Fetch` attaches, so reading `httpAnswerVars` at compile time
+answered "nothing reads this" for *every render read there is*: the setter was omitted, the row
+stayed `undefined` forever, and the page rendered a blank that no note explained. `materialize` is
+filled in a verdict sweep at the end of `planComponent` instead. This is §6.2's lesson from the
+other side — that one moved *later* to stop emitting a row nothing read, and this one moved later
+to stop dropping a row something does.
+
+🔴 **`compileSink` has no `default`.** It is a chain of `if`s ending in the Set Variable case, so
+an HTTP node that reached it deferred with *"variable name is not a literal"* — a reason about a
+node type it is not. Adding the trigger port without adding the dispatch produced exactly the
+silent-recruitment failure this file's `api-call` comment warns about, in the shape the warning
+does not cover: not a switch that stops compiling, a fall-through that answers plausibly.
+
+### §8.4 What defers, and why
+
+- **A wired `Cancel`** — *scheduled.* Abandoning a request in flight needs the `AbortController`
+  to outlive the handler that made it, which is a ref and a lifetime; the emitted controller is
+  the timeout and nothing else. It takes `Canceled` and `Unchanged` with it, since both are sent
+  from `cancelFetch` and nowhere else.
+- **A wired configuration input** (`url`, `method`, `timeout`, the four string lists, a mapping
+  path) — *deliberately out of scope*, in one sentence covering all of them: those inputs decide
+  what the request **is**, and they are read at fetch time by the interpreter while the module is
+  built from the configuration the editor settled.
+- **A consumed `Completed`** — *scheduled.* It fires once however the request ended, and this
+  slice emits the two arms rather than their join.
+- **A value read in the failure chain** — §8.2's reason: that arm also runs where nothing arrived.
+
+Two wires are **dropped with a note rather than deferred**, both because they cannot fire in the
+interpreter either (§7.1's Clear-Array-`Failure` rule, second and third instances): a wire from
+`canceled` or `unchanged` while `Cancel` is unwired, and a wire from **`success`** — which brings
+us to the defect below.
+
+### §8.5 A defect this found in the editor, not the export
+
+🔴 **The HTTP Request node draws a `Success` output that can never fire.** `updatePorts` still
+publishes the pre-ERG-001 port list — `success`, `failure`, `canceled`, `error` — while the node
+itself declares `done`, `completed`, `unchanged`, `failure` through `outcomeOutputs`. The editor's
+port set is *type ports concat dynamic ports* (`NodeGraphNode.getPorts`), so an author sees
+**both `Done` and `Success`** in the Events group, and a wire from `Success` runs nothing: the
+runtime sends `done`.
+
+The export reports it rather than reproducing it silently, because a dead wire is exactly what an
+author cannot see. **The fix belongs in `httpnode.ts`** and is one line of `updatePorts` — it is in
+the next-session prompt as work.
+
+### §8.6 The project (§2's requirement), and the drive
+
+`tests/fixtures/quote-desk` — **Quote Desk**, authored through the MCP server, one routed page. It
+holds two requests (a GET with a path parameter, a literal query parameter, a literal header and
+three Output Fields; a POST with a JSON body and a mapped id), a failure chain into a Variable, a
+status line off `Error`, and a wire from `canceled` that must never fire.
+
+It exports, builds under `tsc -b && vite build`, and runs. Driven in headless Chrome over CDP
+against a local server on 5210 that **echoes what it received**:
+
+```
+boot                : quote ""                    echo ""                                      status ""
+got hope            : "A quote about hope."       "topic=hope format=short client=quote-desk"   ""
+saved a note        : (unchanged)                 savedId "note-2"        ← the POST body reached the server
+asked for nothing   : quote ""  author ""         "topic=nothing …"       status "HTTP 404: Not Found"
+posted an empty note: savedId ""                                          postStatus "HTTP 400: Bad Request"
+recovered on courage: "A quote about courage."                            status STILL "HTTP 404: Not Found"
+never shown         : ""  (every row)
+console errors      : the two expected HTTP statuses, and a favicon
+```
+
+Three of those rows are readings that **exclude** rather than fit:
+
+🔴 **The echo line is the negative control for the request itself.** A quote appearing is
+consistent with the query parameter and the header never leaving the app; the server reports what
+it actually received, so the line fails if either was dropped.
+
+🔴 **The 404 row empties the quote while the status fills.** That is the one observation that
+distinguishes "the answer is written for any answer" from "the answer is written on success" — the
+§8.1 split, seen from outside.
+
+🔴 **The recovery row shows the status line unchanged.** `_internal.error` is never cleared by a
+later success, and a later success is the only thing that could have cleared it.
+
+**The mutant.** The project was sabotaged — one Output Field pointed at `$.quote.nope`, the header
+value emptied — rebuilt and re-driven: the quote line went empty while the author line did not,
+and the echo read `client=` instead of `client=quote-desk`. Two readings changed, and only those
+two. Before that, every row above was equally consistent with a drive that cannot fail.
+
+### §8.7 A gap this slice found and did not close
+
+**A Variable written from an HTTP output renders nothing.** `typeOfSource` types the write as
+`unknown` — correctly; `response` is whatever the server sent — and Pass 4 drops every read of a
+variable that has no `string`-typed writer. So *fetch → Set Variable → show it*, which is the
+first thing anyone would build, exports a blank element with a note.
+
+This is not about HTTP: it blocks a Function output and an event payload in the same words, and
+the fix is the same one — let a variable be `unknown`-typed and coerce at its render sinks, the
+way `childText` now coerces an HTTP read. It is a slice of its own, named in the next-session
+prompt. Within one page the direct binding works and is what Quote Desk does; only `Error`, which
+`typeOfSource` now types (§7.5's case, extended), crosses into a Variable.

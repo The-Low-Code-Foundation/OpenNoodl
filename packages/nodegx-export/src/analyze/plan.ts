@@ -101,6 +101,62 @@ const RECORD_VERBS: Record<string, 'create' | 'update' | 'delete'> = {
   DeleteDbModelProperties: 'delete'
 };
 
+/** `HTTP Request` (EXP-011 Tier 1.2) — the one node that talks to something the project does not own. */
+const HTTP_TYPE = 'net.noodl.HTTP';
+
+/**
+ * The parameters `updatePorts` re-reads when it rebuilds the node, plus the two whose *value* is
+ * read once when a request starts. Every one of them decides what the request **is** rather than
+ * what it carries, and the emitted module is built from the configuration the editor settled — so
+ * a wire on any of them defers, with that one sentence covering all of them.
+ *
+ * All but `url` and `timeout` are `allowEditOnly` in the editor and cannot be wired at all; they
+ * are listed anyway, because a port set is data and a project can hold a wire the editor of the
+ * day would not draw.
+ */
+const HTTP_CONFIG_PORTS = [
+  'url',
+  'method',
+  'timeout',
+  'headers',
+  'queryParams',
+  'bodyType',
+  'bodyFields',
+  'authType',
+  'responseMapping'
+];
+
+/** The standard value outputs, minus `error` — which is a state row of its own, never in the answer. */
+const HTTP_VALUE_OUTPUTS = ['response', 'statusCode', 'responseHeaders'];
+
+/**
+ * `extractByPath`'s path grammar, compiled to accessor steps (`$.items[0].name` → `['items', 0,
+ * 'name']`). Null for a path the runtime can never resolve.
+ *
+ * Written against that function rather than against JSONPath, and the difference is the point:
+ * only a path that does not begin with `$` is refused, while `path.substring(2)` is applied to
+ * every path that does — so `$items` reads a key spelled "tems", which is reproduced rather than
+ * corrected. It splits on `.` with no escaping, and its index rule is one `[n]` at the end of a
+ * bare word and nothing else, so `$.a[0][1]` is a key literally spelled "a[0][1]" and reads
+ * undefined. Reproducing the limitations is what makes the emitted app answer what the
+ * interpreter answered — and an author who has already worked around one of them keeps the
+ * workaround working.
+ */
+function jsonPathSteps(path: string): Array<string | number> | null {
+  if (!path.startsWith('$')) return null;
+  const steps: Array<string | number> = [];
+  for (const part of path.substring(2).split('.')) {
+    if (part.length === 0) continue; // `.filter(Boolean)`, verbatim
+    const indexed = part.match(/^(\w+)\[(\d+)\]$/);
+    if (indexed) {
+      steps.push(indexed[1], parseInt(indexed[2]));
+      continue;
+    }
+    steps.push(part);
+  }
+  return steps;
+}
+
 /**
  * The two relation verbs (RECORD-VERBS-TARGET §17) — the same `dbmodelcrudbase` assembly with
  * `addRelationProperty` mixed in, which is what gives them a `relationProperty` dropdown and a
@@ -271,7 +327,25 @@ export type ValueExpr =
       sort: Array<{ field: string; direction: 'ascending' | 'descending' }>;
       skip?: number;
       limit?: number;
-    };
+    }
+  /**
+   * An `HTTP Request` output (EXP-011 Tier 1.2) — the answer the last request produced.
+   *
+   * Two forms, and which one a read takes is decided by **where the read is**, not by the port:
+   *
+   * - Inside the node's own outcome chain, `viaState` is absent and the read is the chain's
+   *   local (`quoteAnswer.response`, `quoteMessage`). It has to be: the setter has been called
+   *   but React state does not change inside the closure that called it, so a state read here
+   *   would deliver the *previous* request's answer — the chain-local snapshot rule
+   *   (CONTROLLED-STATE-TARGET §3.2) reaching a construct that cannot recompute itself.
+   * - Anywhere else — render, another handler — `viaState` names the state row the call writes,
+   *   maybe-undefined until the first request, which is the runtime's own pre-first-fetch state.
+   *
+   * `output` is a runtime port name: `response`, `statusCode`, `responseHeaders`, `error`, or
+   * an author's Response Mapping as `out-<name>` (`registerOutputIfNeeded` prefixes every one of
+   * them, so a mapping an author calls "response" is `out-response` and cannot collide).
+   */
+  | { kind: 'http-out'; nodeId: string; output: string; viaState?: string };
 
 export type HandlerAction =
   | { kind: 'navigate'; to: string }
@@ -361,6 +435,49 @@ export type HandlerAction =
       guardId: boolean;
       errorState: string;
       then: HandlerAction[];
+    }
+  /**
+   * An `HTTP Request`'s `Fetch` (EXP-011 Tier 1.2) — the vocabulary's second asynchronous action,
+   * and the first whose *failure* is a chain rather than only a value.
+   *
+   * The emitted shape is the runtime's own three outcomes, not two:
+   *
+   * ```
+   * try {
+   *   const answer = await fetchQuote({ … });   // throws only where no answer arrived
+   *   setQuoteOut(answer);                      //   response/statusCode/headers/fields — set for ANY answer
+   *   if (answer.ok) { …then }
+   *   else { const message = answer.error; setQuoteError(message); …failThen }
+   * } catch (error) {
+   *   const message = error instanceof Error ? error.message : String(error);
+   *   setQuoteError(message); …failThen
+   * }
+   * ```
+   *
+   * 🔴 **A non-2xx still writes the value outputs, and a network error still does not.**
+   * `processResponse` runs before `doFetch` reports `failure`, so a 404's body and status are on
+   * the node's outputs while `Failure` fires; a request that never reached the server leaves
+   * `Response` and `Status Code` holding exactly what they held. Splitting the answer from the
+   * throw is what reproduces both — the record verbs' single try/catch could not, because for
+   * them a refused write has nothing to publish.
+   *
+   * `failThen` is therefore emitted **twice**, once per arm, and the two arms are identical by
+   * construction because both bind `message` first. A join would need a `finally` that can tell
+   * which arm it is in, which is a variable the arms already are.
+   */
+  | {
+      kind: 'http-call';
+      nodeId: string;
+      /** `src/api/http.ts`'s exported function for this node. */
+      fnName: string;
+      /** Wired inputs, in the emitted parameter order — `{ tag: tagText }` at the call. */
+      args: Array<{ param: string; expr: ValueExpr }>;
+      /** The state row the answer is written to, when anything outside the chain reads a value. */
+      materialize?: string;
+      /** The `Error` output's row — written on every failure, never cleared (the runtime's own). */
+      errorState: string;
+      then: HandlerAction[];
+      failThen: HandlerAction[];
     };
 
 /**
@@ -433,7 +550,7 @@ export interface StateVarPlan {
   /** Boot value; null is the `undefined` boot (`useState<T | undefined>()`). */
   boot: string | number | boolean | null;
   originNodeId: string;
-  origin: 'switch' | 'counter' | 'control' | 'lifted' | 'jsfun' | 'record-error' | 'variable';
+  origin: 'switch' | 'counter' | 'control' | 'lifted' | 'jsfun' | 'record-error' | 'variable' | 'http' | 'http-error';
   /** The provenance comment above the row. */
   comment: string;
 }
@@ -542,6 +659,74 @@ export interface SessionCallPlan {
   verb: 'login' | 'logout' | 'signup' | 'read';
   /** `logIn` / `logOut` / `signUp` / `useSession`. */
   fnName: string;
+}
+
+/**
+ * One value an `HTTP Request` sends (EXP-011 Tier 1.2): a path segment, a query parameter, a
+ * header, a body field or a credential.
+ *
+ * `from` is the whole difference between configuration and data. An authored parameter is folded
+ * into the emitted module as a literal — it is what the interpreter would have read out of
+ * `inputValues` on every fetch, and nothing can change it. A wired one becomes a function
+ * parameter the call site fills. An input that is *neither* never appears: the runtime reads
+ * `undefined` for it, and `undefined` omits the header, the query parameter and the body field
+ * alike, so emitting the guard would be emitting a branch that cannot be taken.
+ */
+export interface HttpValuePlan {
+  /** The wire name — the header, query parameter, path placeholder or field, verbatim. */
+  name: string;
+  from:
+    | { kind: 'literal'; value: string | number | boolean }
+    | { kind: 'param'; param: string; tsType: string };
+}
+
+/**
+ * One translated `HTTP Request` (EXP-011 Tier 1.2) — everything `src/api/http.ts` needs to
+ * rebuild the request the node would have sent.
+ *
+ * The node's configuration is `allowEditOnly` almost throughout (method, body type, the four
+ * string lists, the auth preset), which is why this is a plan and not a solver: what the request
+ * *is* was decided in the editor and cannot change at runtime. What can change is the values, and
+ * those are {@link HttpValuePlan}s.
+ */
+export interface HttpCallPlan {
+  nodeId: string;
+  /** `fetchQuote` — from the node's authored label, deduped across the project's HTTP nodes. */
+  fnName: string;
+  /** `QuoteAnswer` — the exported result type the component's state row is typed by. */
+  typeName: string;
+  /**
+   * The `const answer = await …` local, and the `const message = …` both failure arms bind.
+   *
+   * They live here rather than on the action because the *expression* side needs them too — a
+   * chain-local read is emitted from a `http-out` that knows only its node — and two places
+   * deriving the same name independently is the divergence FINDINGS B-iv is about.
+   */
+  answerLocal: string;
+  messageLocal: string;
+  /** The authored URL, `{placeholders}` included. */
+  url: string;
+  method: string;
+  /** Milliseconds; `timeout || 30000`, the runtime's own defaulting, already applied. */
+  timeout: number;
+  pathParams: HttpValuePlan[];
+  queryParams: HttpValuePlan[];
+  headers: HttpValuePlan[];
+  /** Null for GET/HEAD/OPTIONS, which send none — `buildBody` returns undefined for them. */
+  body: { type: 'json' | 'form' | 'urlencoded'; fields: HttpValuePlan[] } | { type: 'raw'; raw: HttpValuePlan } | null;
+  auth:
+    | { kind: 'bearer'; token: HttpValuePlan }
+    | { kind: 'basic'; username: HttpValuePlan; password: HttpValuePlan }
+    | { kind: 'apiKey'; name: HttpValuePlan; value: HttpValuePlan; location: 'header' | 'query' }
+    | null;
+  /**
+   * The Response Mapping, compiled (`$.data.items[0].name` → `?.data?.items?.[0]?.name`).
+   *
+   * `steps` is empty for the default path `$`, which is the whole body — and `null` for a path
+   * `extractByPath` can never resolve (one that does not start with `$`), where the runtime
+   * publishes `undefined` on every answer and so does the emitted module.
+   */
+  fields: Array<{ name: string; steps: Array<string | number> | null }>;
 }
 
 export interface RepeaterPlan {
@@ -708,6 +893,11 @@ export interface ComponentPlan {
   mutations: MutationPlan[];
   /** The user-family nodes that translated — what `src/api/session.ts` must export. */
   sessionCalls: SessionCallPlan[];
+  /**
+   * HTTP Requests translated in this component (EXP-011 Tier 1.2), compile order — what
+   * `src/api/http.ts` must export. Earned by attachment, exactly as the record verbs are.
+   */
+  httpCalls: HttpCallPlan[];
   repeaters: Record<string, RepeaterPlan>;
   /** Static Data nodes hoisted to module constants (STATIC-DATA-TARGET §3), resolution order. */
   staticData: StaticDataPlan[];
@@ -795,6 +985,7 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
 
   const usedPageNames = new Set(pages.map((p) => p.fileBase));
   const usedComponentNames = new Set<string>();
+  const usedHttpNames = new Set<string>();
 
   // EXP-010: one index for the whole project, built before any component is planned — a kit node
   // type is a project-level fact and re-deriving it per component would report a duplicate once
@@ -811,7 +1002,8 @@ export function planProject(ir: ExportIR, catalog: CatalogIndex): ProjectPlan {
       pageFileByPath,
       usedPageNames,
       usedComponentNames,
-      kits
+      kits,
+      usedHttpNames
     )
   );
 
@@ -892,7 +1084,14 @@ function planComponent(
   pageFileByPath: Map<string, { fileBase: string; symbol: string }>,
   usedPageNames: Set<string>,
   usedComponentNames: Set<string>,
-  kits: KitIndex
+  kits: KitIndex,
+  /**
+   * EXP-011 Tier 1.2. Every translated HTTP Request exports one function and one result type
+   * from the single `src/api/http.ts`, so the names are deduplicated across the *project* and
+   * not per component — two pages each holding a node labelled "Get Quote" would otherwise emit
+   * two different `fetchGetQuote`s into one module.
+   */
+  usedHttpNames: Set<string>
 ): ComponentPlan {
   const nodeById = new Map(component.nodes.map((n) => [n.id, n]));
   const dispositions: Record<string, Disposition> = {};
@@ -921,6 +1120,7 @@ function planComponent(
     queries: [],
     mutations: [],
     sessionCalls: [],
+    httpCalls: [],
     repeaters: {},
     staticData: [],
     jsFunctions: {},
@@ -1933,7 +2133,19 @@ function planComponent(
     plan.outputProps.some((o) => o.prop === name) ||
     outputInterface.valueProps.some((v) => v.prop === name) ||
     name === plan.file?.symbol ||
-    ['Inputs', 'Outputs', 'event', 'navigate', 'payload', 'styles', 'joinClasses'].includes(name);
+    /**
+     * `error` joined this list with EXP-011 Tier 1.2, and it is the only one here that is not
+     * simply an identifier the file already prints.
+     *
+     * 🔴 **A state read is the bare name in a handler as well as in render**, and every emitted
+     * asynchronous action binds `catch (error)`. Before the failure chain there was nothing to
+     * *read* inside a catch, so the collision could not fire; now a failure arm carries the
+     * graph's own statements, and a state row minted from a node labelled "Error" would be read
+     * as the exception there — the right shape carrying the wrong value, with nothing anywhere
+     * to say so. The hook locals are safe by a different route: a handler reads a variable
+     * through `.get()` on the imported store, never through the render local.
+     */
+    ['Inputs', 'Outputs', 'event', 'navigate', 'payload', 'styles', 'joinClasses', 'error'].includes(name);
 
   const allocStateVar = (
     label: string | undefined,
@@ -2019,6 +2231,98 @@ function planComponent(
     }
     return stateVar;
   };
+
+  // ---- HTTP Request (EXP-011 Tier 1.2): names, state rows and the chain scope ---------------
+
+  /**
+   * Which of an HTTP node's outcome chains is being compiled, while it is being compiled.
+   *
+   * A read of the node's own outputs resolves differently inside a chain than outside it, and
+   * the difference is not a preference: `setQuoteOut(answer)` does not change `quoteOut` inside
+   * the closure that called it, so a state read in the done chain would deliver the *previous*
+   * request's answer. The chain reads the local instead. Which chain matters too — the failure
+   * arm runs where no answer arrived.
+   */
+  const httpChainScope = new Map<string, 'done' | 'failure'>();
+  const httpNames = new Map<string, { fnName: string; typeName: string; answerLocal: string; messageLocal: string }>();
+  /**
+   * The four names one HTTP node contributes, minted together so the module, the component and
+   * the chain locals cannot disagree. `fnName`/`typeName` are project-unique (one `api/http.ts`);
+   * the two locals are deduplicated inside the component, because that is where they are read.
+   */
+  const httpNamesOf = (node: NodeIR) => {
+    let names = httpNames.get(node.id);
+    if (names === undefined) {
+      const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+      const base = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'Request';
+      let stem = base;
+      let counter = 2;
+      while (usedHttpNames.has(stem)) stem = `${base}${counter++}`;
+      usedHttpNames.add(stem);
+      const localBase = stem.charAt(0).toLowerCase() + stem.slice(1);
+      const local = (suffix: string) => {
+        let name = `${localBase}${suffix}`;
+        let n = 2;
+        while (stateNameTaken(name)) name = `${localBase}${suffix}${n++}`;
+        usedStateVarNames.add(name);
+        return name;
+      };
+      names = {
+        fnName: `fetch${stem}`,
+        typeName: `${stem}Answer`,
+        answerLocal: local('Answer'),
+        messageLocal: local('Message')
+      };
+      httpNames.set(node.id, names);
+    }
+    return names;
+  };
+
+  /** The `Error` output as a state row — written on every failure, never cleared, as `_internal.error`. */
+  const httpErrorVars = new Map<string, StateVarPlan>();
+  const httpErrorStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = httpErrorVars.get(node.id);
+    if (stateVar === undefined) {
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Error`,
+        'requestError',
+        'string | undefined',
+        null,
+        node.id,
+        'http-error',
+        `The Error output of ${node.authoredLabel ? `"${node.authoredLabel}"` : 'the HTTP Request'} — one sentence about the last failure, and never cleared by a later success (httpnode.ts).`
+      );
+      httpErrorVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+
+  /**
+   * The answer as a state row, allocated on the first read that needs it — a read in render, or
+   * in a handler that is not this node's own chain. Undefined until the first request, which is
+   * what the interpreter's outputs read before one has been made.
+   */
+  const httpAnswerVars = new Map<string, StateVarPlan>();
+  const httpAnswerStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = httpAnswerVars.get(node.id);
+    if (stateVar === undefined) {
+      const names = httpNamesOf(node);
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Out`,
+        'requestOut',
+        `${names.typeName} | undefined`,
+        null,
+        node.id,
+        'http',
+        `The last answer from ${names.fnName} — undefined until the first request, as the runtime's outputs read before one has been made.`
+      );
+      httpAnswerVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+
+  /** HTTP nodes whose `Fetch` actually attached to a handler — the record verbs' rule (§4). */
+  const attachedHttpNodes = new Set<string>();
 
   // ---- Static Data: the authored blob as a build-time constant (STATIC-DATA-TARGET) --------
   //
@@ -2807,6 +3111,49 @@ function planComponent(
       }
       return { kind: 'state-get', name: verbErrorStateOf(fromNode).name, maybeUndefined: true };
     }
+    /**
+     * An `HTTP Request`'s outputs (EXP-011 Tier 1.2).
+     *
+     * Where the read is decides what it says. Inside the node's own `done` chain the answer is
+     * the chain's local — React state does not change inside the closure that set it, so a
+     * state read there would deliver the previous request's body. Inside the `failure` chain
+     * only `Error` reads, because the arm that runs when nothing arrived has no answer at all,
+     * and the interpreter's `Response` there is whatever a *previous* request left behind.
+     * Everywhere else both go through the state rows the call writes.
+     */
+    if (fromNode.type === HTTP_TYPE) {
+      const scope = httpChainScope.get(fromNode.id);
+      if (!HTTP_VALUE_OUTPUTS.includes(fromProperty) && fromProperty !== 'error' && !fromProperty.startsWith('out-')) {
+        ctx.defer =
+          fromProperty === 'done' || fromProperty === 'failure' || fromProperty === 'success'
+            ? `its ${fromProperty} output is consumed as a value — a pulse carries nothing to read`
+            : `its ${fromProperty} output is consumed — it belongs to the Cancel path, which is not translated in this slice`;
+        return null;
+      }
+      if (scope === 'failure' && fromProperty !== 'error') {
+        ctx.defer = `its ${fromProperty} is read from the Failure chain — that arm also runs where no answer arrived, and the value the interpreter holds there is the previous request's`;
+        return null;
+      }
+      // A read outside the chains needs the row the call writes, and a row is only written by a
+      // Fetch that attached. A node whose Fetch this slice could not translate still runs in the
+      // interpreter, so binding to a row nothing writes would render a blank where the app shows
+      // a value (the record verbs' rule, RECORD-VERBS-TARGET §4a).
+      if (scope === undefined && !attachedHttpNodes.has(fromNode.id)) {
+        const compiled = compiledOf(fromNode, 'fetch');
+        ctx.defer = 'defer' in compiled ? compiled.defer : 'its Fetch is never fired by a translatable trigger';
+        return null;
+      }
+      if (fromProperty === 'error') {
+        // In the done chain this is a *previous* failure's message — the runtime never clears
+        // `_internal.error` — so it reads the row there, and only the failure arm reads the local.
+        return scope === 'failure'
+          ? { kind: 'http-out', nodeId: fromNode.id, output: 'error' }
+          : { kind: 'http-out', nodeId: fromNode.id, output: 'error', viaState: httpErrorStateOf(fromNode).name };
+      }
+      return scope === 'done'
+        ? { kind: 'http-out', nodeId: fromNode.id, output: fromProperty }
+        : { kind: 'http-out', nodeId: fromNode.id, output: fromProperty, viaState: httpAnswerStateOf(fromNode).name };
+    }
     // The `User` node's session reads (USER-FAMILY-TARGET §4c). Not an action: the runtime's
     // outputs are getters over `UserService`, re-read on four session events, so the faithful
     // translation is a read of the session and not a stored value.
@@ -2919,6 +3266,14 @@ function planComponent(
       // undefined until the first invocation (CONTROLLED-STATE §4f).
       case 'jsfun-out':
         return expr.viaState !== undefined || expr.fold === undefined;
+      /**
+       * Always, and each of the three roads there is the runtime's own (EXP-011 Tier 1.2): a
+       * state read is undefined until the first request; `statusCode` and `response` are
+       * `_internal` fields with no initial value; `extractByPath` answers undefined for any
+       * path the body does not carry; and `error` is unwritten until something fails.
+       */
+      case 'http-out':
+        return true;
       case 'state-get':
         return expr.maybeUndefined === true;
       // A list is never undefined: a named array is a module-scope `collection([])` that exists
@@ -3148,6 +3503,14 @@ function planComponent(
         return 'undefined';
       case 'jsfun-out':
         return expr.fold ?? 'unknown';
+      /**
+       * `error` is the one HTTP output with a static type — it is assembled from an `Error`'s
+       * message and a status line. Everything else is whatever the server sent: `response` is
+       * `*` on the port and `unknown` here, `statusCode` is a number the runtime declares but
+       * only publishes after an answer, and a mapping reads wherever its path points.
+       */
+      case 'http-out':
+        return expr.output === 'error' ? 'string' : expr.output === 'statusCode' ? 'number' : 'unknown';
       case 'state-get':
         return plan.stateVars.find((v) => v.name === expr.name)?.tsType.replace(' | undefined', '') ?? 'unknown';
       case 'control-event':
@@ -3183,6 +3546,8 @@ function planComponent(
     NewModel: 'new',
     // EXP-011 Tier 1.1. The port is `clear`; its display name is "Do".
     CollectionClear: 'clear',
+    // EXP-011 Tier 1.2. `cancel` is the node's second action port and defers the node (§8).
+    [HTTP_TYPE]: 'fetch',
     Condition: 'eval',
     NewDbModelProperties: 'store',
     SetDbModelProperties: 'store',
@@ -3777,6 +4142,273 @@ function planComponent(
   };
 
   /**
+   * An `HTTP Request`'s `Fetch` (EXP-011 Tier 1.2).
+   *
+   * The node's shape is decided by its own configuration — `updatePorts` re-publishes the whole
+   * port set whenever the URL, the method, the body type, the auth preset or one of the four
+   * string lists changes — and every one of those parameters is `allowEditOnly`. So this reads a
+   * configuration rather than solving one: what the request *is* was settled in the editor, and
+   * what varies at runtime is the values, which become the emitted module's parameters.
+   *
+   * The gates below each name a mechanism the emitted vocabulary has no shape for, never an
+   * effort. The one worth reading twice is `Cancel`: abandoning a request in flight needs the
+   * `AbortController` to outlive the handler that made it, which is a ref and a lifetime, and it
+   * takes `Canceled` and `Unchanged` with it — those two ports fire from `cancelFetch` and
+   * nowhere else, so with no `Cancel` wired they are dead wires rather than deferrals (§7.1's
+   * Clear-Array-Failure rule, second instance).
+   */
+  const compileHttpFetch = (node: NodeIR): CompiledSink => {
+    // Configuration, in the runtime's own words: the parameters `updatePorts` re-reads when it
+    // rebuilds the node. A wire on any of them is read at *fetch* time by the interpreter, and
+    // this slice folds the configuration into a module at build time — the one sentence that
+    // covers a wired URL, a wired timeout and a wired Output Fields list alike.
+    const configWire = component.connections.find(
+      (c) =>
+        c.toId === node.id &&
+        (HTTP_CONFIG_PORTS.includes(c.toProperty) ||
+          c.toProperty.startsWith('body-type-') ||
+          c.toProperty.startsWith('mapping-path-') ||
+          c.toProperty === 'auth-authApiKeyLocation')
+    );
+    if (configWire !== undefined) {
+      return {
+        defer: `its ${configWire.toProperty} is wired — that input configures what the request is, and the request module is built from the configuration the editor settled`
+      };
+    }
+    if (wiredPorts.has(`${node.id}:cancel`)) {
+      return {
+        defer:
+          'its Cancel is wired — abandoning a request in flight needs the AbortController to outlive the handler that made it, which is a ref this slice has no shape for'
+      };
+    }
+
+    const consumes: string[] = [];
+    const notesHere: string[] = [];
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (wire.fromProperty === 'completed') {
+        return {
+          defer:
+            'its Completed output is consumed — that pulse fires once however the request ended, and this slice emits the two arms rather than their join'
+        };
+      }
+      // `canceled` and `unchanged` are sent from `cancelFetch` and from nowhere else, and Cancel
+      // is unwired by the gate above — so these wires cannot fire in the interpreter either.
+      // Dropping a dead wire with its reason beats deferring a whole translation over a no-op.
+      if (wire.fromProperty === 'canceled' || wire.fromProperty === 'unchanged') {
+        notesHere.push(
+          `wire ${wire.key} dropped: ${wire.fromProperty} is only ever sent by Cancel, which is not wired — it cannot fire in the interpreter either`
+        );
+        consumes.push(wire.key);
+        continue;
+      }
+      // The editor draws a `Success` port beside `Done` because `updatePorts` still publishes the
+      // pre-ERG-001 name; the node itself fires `done`. A wire from it is dead in the running app.
+      if (wire.fromProperty === 'success') {
+        notesHere.push(
+          `wire ${wire.key} dropped: the node's success output is a stale port name the editor still draws — the runtime fires "done", and nothing is listening on "success" there either`
+        );
+        consumes.push(wire.key);
+        continue;
+      }
+    }
+
+    const url = literalParam(node, 'url');
+    if (typeof url !== 'string') {
+      return { defer: 'it has no URL, so every Fetch answers Failure with "URL is required" and never sends a request' };
+    }
+    const method = String(literalParam(node, 'method') ?? 'GET');
+    // `setTimeout`'s own defaulting: `(value as number) || 30000`, so 0 and a blank both mean
+    // the default rather than "no timeout".
+    const timeoutParam = literalParam(node, 'timeout');
+    const timeout = typeof timeoutParam === 'number' && timeoutParam !== 0 ? timeoutParam : 30000;
+
+    const ctx = newCtx();
+    const args: Array<{ param: string; expr: ValueExpr }> = [];
+    const takenParams = new Set<string>();
+    /**
+     * One dynamic input, resolved to what the emitted module can say about it.
+     *
+     * Wired wins over authored, because the interpreter's `_storeInputValue` is what a wire
+     * calls and a parameter is only the value the editor stored. Neither means the runtime
+     * reads `undefined` — and `undefined` omits the header, the query parameter and the body
+     * field alike, so the input is left out of the plan entirely.
+     */
+    const valueOf = (port: string, name: string, paramBase: string): HttpValuePlan | null | { defer: string } => {
+      const wires = component.connections.filter((c) => c.toId === node.id && c.toProperty === port);
+      if (wires.length > 1) {
+        return { defer: `two wires feed ${port} — last-writer-wins is not statically ordered` };
+      }
+      if (wires.length === 1) {
+        const expr = resolveExpr(nodeById.get(wires[0].fromId), wires[0].fromProperty, ctx);
+        if (expr === null) return { defer: ctx.defer ?? `${port} has no statically known source` };
+        if (isBooleanExpr(expr)) {
+          return { defer: `${port} is fed a logic truth value — only truthiness sinks take one in this slice` };
+        }
+        let param = paramBase;
+        let counter = 2;
+        while (takenParams.has(param)) param = `${paramBase}${counter++}`;
+        takenParams.add(param);
+        args.push({ param, expr });
+        consumes.push(wires[0].key);
+        const t = exprTsType(expr);
+        return { name, from: { kind: 'param', param, tsType: t === 'undefined' ? 'unknown' : t } };
+      }
+      const literal = literalParam(node, port);
+      if (literal === undefined) return null;
+      return { name, from: { kind: 'literal', value: literal } };
+    };
+
+    /** The `stringlist` parameters — a comma-separated list, trimmed, blanks dropped. */
+    const stringList = (param: string): string[] =>
+      String(literalParam(node, param) ?? '')
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+
+    const collect = (
+      names: string[],
+      portPrefix: string,
+      paramPrefix: string,
+      into: HttpValuePlan[]
+    ): { defer: string } | null => {
+      for (const name of names) {
+        const value = valueOf(`${portPrefix}${name}`, name, `${paramPrefix}${pascalCase(name.replace(/[^A-Za-z0-9]+/g, ' '))}`);
+        if (value !== null && 'defer' in value) return value;
+        if (value !== null) into.push(value);
+      }
+      return null;
+    };
+
+    // Path parameters are the placeholders in the authored URL, deduplicated the way
+    // `updatePorts` deduplicates them — one input per distinct name, however often it appears.
+    const placeholders = [...new Set((url.match(/\{([A-Za-z0-9_]+)\}/g) ?? []).map((p) => p.replace(/[{}]/g, '')))];
+    const pathParams: HttpValuePlan[] = [];
+    const queryParams: HttpValuePlan[] = [];
+    const headers: HttpValuePlan[] = [];
+    for (const [names, prefix, paramPrefix, into] of [
+      [placeholders, 'path-', 'path', pathParams],
+      [stringList('headers'), 'header-', 'header', headers],
+      [stringList('queryParams'), 'query-', 'query', queryParams]
+    ] as Array<[string[], string, string, HttpValuePlan[]]>) {
+      const failed = collect(names, prefix, paramPrefix, into);
+      if (failed !== null) return failed;
+    }
+
+    // GET, HEAD and OPTIONS send no body — `buildBody` returns undefined before it reads a
+    // single field — so a body configured on one of them is configuration the runtime ignores.
+    let body: HttpCallPlan['body'] = null;
+    if (['POST', 'PUT', 'PATCH'].includes(method)) {
+      const bodyType = String(literalParam(node, 'bodyType') ?? 'json');
+      if (bodyType === 'raw') {
+        const raw = valueOf('body-raw', 'raw', 'bodyRaw');
+        if (raw !== null && 'defer' in raw) return raw;
+        // `body-raw` unset sends `undefined`, which is the same request as no body at all.
+        if (raw !== null) body = { type: 'raw', raw };
+      } else if (bodyType === 'json' || bodyType === 'form' || bodyType === 'urlencoded') {
+        const fields: HttpValuePlan[] = [];
+        const failed = collect(stringList('bodyFields'), 'body-', 'body', fields);
+        if (failed !== null) return failed;
+        body = { type: bodyType, fields };
+      } else {
+        return { defer: `its Body Type is "${bodyType}", which is not one of the four the runtime encodes` };
+      }
+    }
+
+    // The auth presets, each with the runtime's own all-or-nothing rule: a half-filled
+    // credential contributes nothing at all (`authConfigurators`), which is why every one of
+    // these is emitted as a guard rather than as an unconditional header.
+    let auth: HttpCallPlan['auth'] = null;
+    const authType = String(literalParam(node, 'authType') ?? 'none');
+    if (authType === 'bearer') {
+      const token = valueOf('auth-authToken', 'authToken', 'authToken');
+      if (token !== null && 'defer' in token) return token;
+      if (token !== null) auth = { kind: 'bearer', token };
+    } else if (authType === 'basic') {
+      const username = valueOf('auth-authUsername', 'authUsername', 'authUsername');
+      if (username !== null && 'defer' in username) return username;
+      const password = valueOf('auth-authPassword', 'authPassword', 'authPassword');
+      if (password !== null && 'defer' in password) return password;
+      if (username !== null && password !== null) auth = { kind: 'basic', username, password };
+    } else if (authType === 'apiKey') {
+      const name = valueOf('auth-authApiKeyName', 'authApiKeyName', 'authKeyName');
+      if (name !== null && 'defer' in name) return name;
+      const value = valueOf('auth-authApiKeyValue', 'authApiKeyValue', 'authKeyValue');
+      if (value !== null && 'defer' in value) return value;
+      if (name !== null && value !== null) {
+        auth = {
+          kind: 'apiKey',
+          name,
+          value,
+          location: literalParam(node, 'auth-authApiKeyLocation') === 'query' ? 'query' : 'header'
+        };
+      }
+    } else if (authType !== 'none') {
+      return { defer: `its Authentication preset is "${authType}", which the runtime has no configurator for` };
+    }
+
+    const fields = stringList('responseMapping').map((name) => ({
+      name,
+      steps: jsonPathSteps(String(literalParam(node, `mapping-path-${name}`) ?? '$'))
+    }));
+    for (const field of fields) {
+      if (field.steps !== null) continue;
+      notesHere.push(
+        `HTTP node ${node.id} output "${field.name}" reads a path that does not start with "$" — extractByPath answers undefined for it on every response, and so does the exported module`
+      );
+    }
+
+    // The two chains. Their reads of this node's own outputs resolve against the locals rather
+    // than the state rows, which is what `httpChainScope` is for — see {@link ValueExpr}'s
+    // `http-out`. The failure chain may read `Error` and nothing else: the arm that runs when a
+    // request never reached the server has no answer to read, and the interpreter's own
+    // `Response` there is whatever the *previous* request left, which is not expressible.
+    httpChainScope.set(node.id, 'done');
+    const chain = doneChainOf(node);
+    httpChainScope.set(node.id, 'failure');
+    const failChain = doneChainOf(node, 'failure');
+    httpChainScope.delete(node.id);
+    if ('defer' in chain) return chain;
+    if ('defer' in failChain) return failChain;
+
+    const names = httpNamesOf(node);
+    // A value read anywhere but the outcome chains needs the answer as a state row. Allocated
+    // on first need by `httpAnswerVars`, so this only fires when a read really resolved.
+    const materialize = httpAnswerVars.get(node.id)?.name;
+    plan.httpCalls.push({
+      nodeId: node.id,
+      fnName: names.fnName,
+      typeName: names.typeName,
+      answerLocal: names.answerLocal,
+      messageLocal: names.messageLocal,
+      url,
+      method,
+      timeout,
+      pathParams,
+      queryParams,
+      headers,
+      body,
+      auth,
+      fields
+    });
+    notes.push(...notesHere);
+    return {
+      action: {
+        kind: 'http-call',
+        nodeId: node.id,
+        fnName: names.fnName,
+        args,
+        ...(materialize !== undefined ? { materialize } : {}),
+        errorState: httpErrorStateOf(node).name,
+        then: chain.then,
+        failThen: failChain.then
+      },
+      consumes: [...consumes, ...chain.consumes, ...failChain.consumes, ...ctx.consumes],
+      collapses: [...ctx.logicNodeIds, ...chain.collapses, ...failChain.collapses],
+      subscribes: [...ctx.subscriberIds, ...chain.subscribes, ...failChain.subscribes]
+    };
+  };
+
+  /**
    * `Clear Array` (EXP-011 Tier 1.1) — the array vocabulary's one unblocked mutator.
    *
    * The other two do not reach here and the reasons are recorded rather than inferred:
@@ -3945,6 +4577,7 @@ function planComponent(
       };
     }
     if (node.type === 'CollectionClear') return compileCollectionClear(node);
+    if (node.type === HTTP_TYPE) return compileHttpFetch(node);
     if (node.type === 'Condition') return compileCondition(node);
     // Set Variable
     const variableName = variableNameOf(node);
@@ -4128,6 +4761,15 @@ function planComponent(
         if (def.mode === 'invoked' && !(invokedScope?.has(expr.nodeId) ?? false)) return false;
         return def.inputs.every((i) => i.expr === undefined || exprValidIn(i.expr, context, invokedScope));
       }
+      /**
+       * Valid everywhere, in both forms, and not by indulgence: the state form is an ordinary
+       * state read, and the local form is *only ever minted inside the action that declares the
+       * local* (`httpChainScope` is set for exactly the length of that compile). The two cannot
+       * be separated at this remove — a chain is carried inside its own action, so an escaped
+       * local would first have to escape the action it lives in.
+       */
+      case 'http-out':
+        return true;
     }
   };
 
@@ -4176,6 +4818,15 @@ function planComponent(
             actionsValidIn(action.then, context, inner)
           );
         }
+        // The request's arguments are read where the handler is; both outcome chains run there
+        // too. The chain-local reads of the node's own answer are valid by construction — they
+        // name a local this very action declares (exprValidIn's `http-out` case).
+        case 'http-call':
+          return (
+            action.args.every((arg) => exprValidIn(arg.expr, context, invokedScope)) &&
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.failThen, context, invokedScope)
+          );
         case 'navigate':
         case 'output-signal':
           return true;
@@ -4788,6 +5439,22 @@ function planComponent(
         if (!Array.isArray(then)) return then;
         return { ...action, args, then };
       }
+      // Same rule for a request (EXP-011 Tier 1.2): the values it sends are read where the
+      // handler is, before the await, so a `Set Variable` earlier in the chain must reach them —
+      // and both outcome chains carry the map onward, because they run in that same closure.
+      case 'http-call': {
+        const args: Array<{ param: string; expr: ValueExpr }> = [];
+        for (const arg of action.args) {
+          const e = snapExpr(arg.expr, snap);
+          if ('defer' in e) return e;
+          args.push({ param: arg.param, expr: e });
+        }
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        const failThen = snapActionList(action.failThen, snap);
+        if (!Array.isArray(failThen)) return failThen;
+        return { ...action, args, then, failThen };
+      }
       case 'jsfun-run': {
         if ((plan.jsFunctions[action.nodeId]?.inputs ?? []).some((i) => i.expr !== undefined && exprTouchesSnap(i.expr, snap))) {
           return { defer: 'a Function argument reads state written earlier in this chain — not translated in this slice' };
@@ -5197,6 +5864,10 @@ function planComponent(
         } else if (action.kind === 'api-call') {
           attachedMutations.add(action.nodeId);
           scanActions(action.then);
+        } else if (action.kind === 'http-call') {
+          attachedHttpNodes.add(action.nodeId);
+          scanActions(action.then);
+          scanActions(action.failThen);
         } else if (action.kind === 'branch') {
           scanActions(action.whenTrue);
           scanActions(action.whenFalse);
@@ -5247,6 +5918,18 @@ function planComponent(
       compiled !== undefined && 'defer' in compiled
         ? compiled.defer
         : 'its Do is never fired by a translatable trigger';
+    dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
+    notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+  }
+
+  // The HTTP sweep, the record-verb sweep's twin (EXP-011 Tier 1.2): a request the attachment
+  // pass did not collapse defers with its *compiled* reason, so the audit reads as a map of the
+  // next slices rather than as "logic node (net.noodl.HTTP)".
+  for (const node of component.nodes) {
+    if (dispositions[node.id] !== undefined || node.type !== HTTP_TYPE) continue;
+    const compiled = compiledSinks.get(`${node.id}:fetch`);
+    const reason =
+      compiled !== undefined && 'defer' in compiled ? compiled.defer : 'its Fetch is never fired by a translatable trigger';
     dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
     notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
   }
@@ -5505,7 +6188,31 @@ function planComponent(
     const isValueVariableRead =
       VALUE_VARIABLES[fromNode.type] !== undefined &&
       (connection.fromProperty === 'savedValue' || connection.fromProperty === 'length');
-    if (!isLatchRead && !isControlRead && !isStaticCountRead && !isRecordErrorRead && !isSessionRead && !isValueVariableRead) {
+    /**
+     * An `HTTP Request`'s outputs into a rendered sink (EXP-011 Tier 1.2) — the status line, the
+     * body, a mapped field. It rides this pass for the reason the Error read beside it does: a
+     * read of ambient state into a bindable sink, where `resolveExpr` decides what the read *is*
+     * and this only decides where it lands.
+     *
+     * ⚠️ Written from the warning above rather than after repeating it: this predicate and
+     * `resolveExpr`'s HTTP case enumerate the same port set, and a narrower one here would let a
+     * read resolve and then fall through to the catch-all note — a blank element where the
+     * interpreted app shows the answer, with nothing to say why.
+     */
+    const isHttpRead =
+      fromNode.type === HTTP_TYPE &&
+      (HTTP_VALUE_OUTPUTS.includes(connection.fromProperty) ||
+        connection.fromProperty === 'error' ||
+        connection.fromProperty.startsWith('out-'));
+    if (
+      !isLatchRead &&
+      !isControlRead &&
+      !isStaticCountRead &&
+      !isRecordErrorRead &&
+      !isSessionRead &&
+      !isValueVariableRead &&
+      !isHttpRead
+    ) {
       continue;
     }
     const toNode = nodeById.get(connection.toId);
@@ -5989,6 +6696,14 @@ function planComponent(
             }
             walkActions(action.then);
             break;
+          // A session read is at its most ordinary inside a request — the signed-in user's id in
+          // a path parameter, their token in a header. Missing it here would leave the page
+          // importing a `useSession` the module was never asked to export.
+          case 'http-call':
+            for (const arg of action.args) walkExpr(arg.expr);
+            walkActions(action.then);
+            walkActions(action.failThen);
+            break;
           case 'branch':
             walkExpr(action.cond);
             walkActions(action.whenTrue);
@@ -6210,6 +6925,63 @@ function planComponent(
     if (reason === undefined) continue;
     dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };
     notes.push(`node ${node.id} (${node.type}) deferred: ${reason}`);
+  }
+
+  /**
+   * The HTTP verdict sweep (EXP-011 Tier 1.2) — last, and it has to be.
+   *
+   * 🔴 **A request's answer row is allocated by the read that needs it, and the reads run after
+   * the action was compiled.** A render binding on `Response` resolves in the binding passes,
+   * two passes after the `Fetch` attached, so reading `httpAnswerVars` at compile time answered
+   * "nothing reads this" for every render read there is — the setter was omitted, the row stayed
+   * `undefined` forever, and the page rendered a blank that no note explained. This is §6.2's
+   * lesson from the other side: that one had to move *later* to stop emitting a row nothing
+   * read, and this one has to move later to stop dropping a row something does.
+   *
+   * Earning is unchanged: a Fetch that never attached leaves no module export and no rows.
+   */
+  {
+    plan.httpCalls = plan.httpCalls.filter((c) => attachedHttpNodes.has(c.nodeId));
+    for (const vars of [httpErrorVars, httpAnswerVars]) {
+      for (const [nodeId, stateVar] of vars) {
+        if (attachedHttpNodes.has(nodeId)) continue;
+        const index = plan.stateVars.indexOf(stateVar);
+        if (index >= 0) plan.stateVars.splice(index, 1);
+      }
+    }
+    const fillMaterialize = (actions: HandlerAction[]): void => {
+      for (const action of actions) {
+        switch (action.kind) {
+          case 'http-call': {
+            const answer = httpAnswerVars.get(action.nodeId);
+            if (answer !== undefined && plan.stateVars.includes(answer)) action.materialize = answer.name;
+            fillMaterialize(action.then);
+            fillMaterialize(action.failThen);
+            break;
+          }
+          case 'branch':
+            fillMaterialize(action.whenTrue);
+            fillMaterialize(action.whenFalse);
+            break;
+          case 'collection-clear':
+            fillMaterialize(action.then);
+            fillMaterialize(action.unchangedThen);
+            break;
+          case 'popup-show':
+          case 'popup-close':
+          case 'jsfun-run':
+          case 'api-call':
+            fillMaterialize(action.then);
+            break;
+          default:
+            break;
+        }
+      }
+    };
+    for (const byPort of Object.values(plan.handlers)) for (const actions of Object.values(byPort)) fillMaterialize(actions);
+    for (const actions of Object.values(plan.changeHandlers)) fillMaterialize(actions);
+    for (const receiver of plan.receivers) fillMaterialize(receiver.actions);
+    for (const effect of plan.branchEffects) fillMaterialize([effect.action]);
   }
 
   // Whatever analysis has not classified yet is logic: EXP-003's, or unknown-type debris.

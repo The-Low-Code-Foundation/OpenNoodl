@@ -266,6 +266,9 @@ export function emitComponent(
     }
     if (expr.kind === 'logical') expr.operands.forEach(collectExprUse);
     if (expr.kind === 'not' || expr.kind === 'truthy') collectExprUse(expr.operand);
+    // EXP-011 Tier 1.2. A read through the state row earns that row; the chain-local form names
+    // a local the enclosing action declares and earns nothing.
+    if (expr.kind === 'http-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'jsfun-out') {
       if (expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
       referencedJsIds.add(expr.nodeId);
@@ -314,6 +317,28 @@ export function emitComponent(
     if (action.kind === 'popup-show' || action.kind === 'popup-close') {
       action.then.forEach(collectActionUse);
     }
+    /**
+     * The asynchronous actions' arguments and chains (EXP-011 Tier 1.2).
+     *
+     * 🔴 **The chains were not walked here at all**, and a state read inside one was therefore
+     * never counted as a reference: the row was filtered out of `referencedStateVars` and the
+     * emitted handler read an identifier the component never declared. The failure chain is what
+     * made it visible — it was the first chain to carry a read that nothing else in the
+     * component also read — but the omission is older than this slice and covers the record
+     * verbs' `done` chain in the same words, so both are walked here.
+     */
+    if (action.kind === 'api-call') {
+      for (const arg of action.args) {
+        if (arg.kind === 'expr') collectExprUse(arg.expr);
+        else arg.props.forEach((p) => collectExprUse(p.expr));
+      }
+      action.then.forEach(collectActionUse);
+    }
+    if (action.kind === 'http-call') {
+      action.args.forEach((a) => collectExprUse(a.expr));
+      action.then.forEach(collectActionUse);
+      action.failThen.forEach(collectActionUse);
+    }
     if (action.kind === 'jsfun-run') {
       referencedJsIds.add(action.nodeId);
       jsArgExprs(action.nodeId).forEach(collectExprUse);
@@ -338,9 +363,11 @@ export function emitComponent(
     actions.flatMap((a) =>
       a.kind === 'branch'
         ? [a, ...deepActions(a.whenTrue), ...deepActions(a.whenFalse)]
-        : a.kind === 'popup-show' || a.kind === 'popup-close' || a.kind === 'jsfun-run' || a.kind === 'api-call'
-          ? [a, ...deepActions(a.then)]
-          : [a]
+        : a.kind === 'http-call'
+          ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
+          : a.kind === 'popup-show' || a.kind === 'popup-close' || a.kind === 'jsfun-run' || a.kind === 'api-call'
+            ? [a, ...deepActions(a.then)]
+            : [a]
     );
   for (const receiver of plan.receivers) usedChannelNames.add(receiver.channelName);
 
@@ -386,6 +413,9 @@ export function emitComponent(
     // `session.authenticated` in four bindings with no `const session` above them, and only
     // building the emitted app caught it (USER-FAMILY-TARGET §9).
     if (expr.kind === 'session-get') usesSession = true;
+    // The second walker, per the warning above: a render binding on an HTTP output reads the
+    // state row the request writes, and the row has to survive the `referencedStateNames` filter.
+    if (expr.kind === 'http-out' && expr.viaState !== undefined) referencedStateNames.add(expr.viaState);
     if (expr.kind === 'jsfun-out') {
       if (expr.viaState !== undefined) {
         // A materialized read (§4f) goes through the state var, not a render local.
@@ -447,6 +477,13 @@ export function emitComponent(
   // nothing reads it in the whole corpus (USER-FAMILY-TARGET §4b).
   for (const action of deepActions(allActions)) {
     if (action.kind === 'api-call') referencedStateNames.add(action.errorState);
+    // EXP-011 Tier 1.2: both rows are written by the call itself. The Error row is the record
+    // verbs' case exactly; the answer row is written only where something reads it, so it is
+    // already earned — naming it here keeps the writer and the row inseparable either way.
+    if (action.kind === 'http-call') {
+      referencedStateNames.add(action.errorState);
+      if (action.materialize !== undefined) referencedStateNames.add(action.materialize);
+    }
   }
   for (const lifted of Object.values(plan.instanceLifted)) {
     for (const entry of lifted) {
@@ -629,6 +666,10 @@ export function emitComponent(
         // An unwritten output reads undefined, like the runtime getter; a materialized read is
         // undefined until the first invocation (CONTROLLED-STATE §4f).
         return expr.viaState !== undefined || expr.fold === undefined;
+      // Always — before the first request, after a path that matched nothing, and for an Error
+      // nothing has written. Must agree with plan.ts maybeUndefinedExpr (EXP-011 Tier 1.2).
+      case 'http-out':
+        return true;
       case 'state-get':
         return expr.maybeUndefined === true;
       // A list is always an array — the module-scope `collection([])` exists from module load,
@@ -738,6 +779,17 @@ export function emitComponent(
       });
     return entries.length > 0 ? `{ ${entries.join(', ')} }` : '{}';
   };
+  /**
+   * The locals an HTTP Request's outcome chains bind (EXP-011 Tier 1.2), read off the plan so
+   * the expression side and the action side cannot disagree about a name.
+   */
+  const httpNamesOf = (nodeId: string) => {
+    const call = plan.httpCalls.find((c) => c.nodeId === nodeId);
+    // Unreachable: a `http-out` in the local form is minted inside the chain of a call that
+    // attached, and `plan.httpCalls` is filtered to exactly those. Total rather than `!`, so a
+    // future path that breaks the invariant emits something a reader can find.
+    return call ?? { answerLocal: 'answer', messageLocal: 'message', fnName: 'fetch', typeName: 'Answer' };
+  };
   const exprCode = (expr: ValueExpr, mode: 'handler' | 'render'): string => {
     switch (expr.kind) {
       case 'prop':
@@ -748,6 +800,24 @@ export function emitComponent(
       // chain-order correctness inside handlers is the plan-side snapshot rule's job.
       case 'state-get':
         return expr.name;
+      /**
+       * An HTTP Request's output (EXP-011 Tier 1.2), in whichever of its two forms the planner
+       * chose — `viaState` is the state row, its absence is the chain's own local. Both are
+       * optional-chained: the row is undefined until the first request, and a mapping reads
+       * wherever its path points, which may be nothing.
+       */
+      case 'http-out': {
+        const names = httpNamesOf(expr.nodeId);
+        if (expr.output === 'error') return expr.viaState ?? names.messageLocal;
+        const base = expr.viaState !== undefined ? `${expr.viaState}?.` : `${names.answerLocal}.`;
+        // A mapping output is `out-<name>` on the port and a key of `fields` in the answer; the
+        // three standard outputs are the answer's own properties.
+        if (!expr.output.startsWith('out-')) return `${base}${expr.output}`;
+        const field = expr.output.slice('out-'.length);
+        return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(field)
+          ? `${base}fields.${field}`
+          : `${base}fields[${JSON.stringify(field)}]`;
+      }
       // One `const session = useSession()` per component, read the same way in both modes — the
       // hook is a render local and a handler closes over it (USER-FAMILY §4c).
       case 'session-get':
@@ -925,6 +995,11 @@ export function emitComponent(
         case 'not':
         case 'truthy':
           walk(e.operand);
+          break;
+        // An effect can only ever see the state form: the chain-local one is minted inside the
+        // action that declares the local, and an effect is not that action (EXP-011 Tier 1.2).
+        case 'http-out':
+          if (e.viaState !== undefined) add(e.viaState);
           break;
         case 'jsfun-out': {
           if (e.viaState !== undefined) {
@@ -1109,6 +1184,55 @@ export function emitComponent(
           `${pad(indent)}}`
         ].join('\n');
       }
+      /**
+       * The second asynchronous action (EXP-011 Tier 1.2), and the first with three outcomes.
+       *
+       * The module throws only where **no answer arrived** — no URL, a network error, a timeout
+       * — so the catch is the arm where `Response` and `Status Code` keep what they held, which
+       * is the interpreter's own behaviour and is reproduced here by not writing the row. A
+       * non-2xx *did* answer: `processResponse` runs before `doFetch` reports `failure`, so the
+       * row is written and then the failure arm runs.
+       *
+       * Both failure arms bind `message` first, which is what makes the duplicated failure chain
+       * two copies of one thing rather than two things.
+       */
+      case 'http-call': {
+        const names = httpNamesOf(action.nodeId);
+        const inner = pad(indent + 2);
+        const deeper = pad(indent + 4);
+        const argList = action.args.map((a) => {
+          const code = exprCode(a.expr, 'handler');
+          return code === a.param ? code : `${a.param}: ${code}`;
+        });
+        const failArm = (at: string): string[] => [
+          `${at}${stateSetterOf(action.errorState)}(${names.messageLocal});`,
+          ...expandActions(action.failThen).map((a) => `${at}${actionCode(a, indent + 4)};`)
+        ];
+        return [
+          'try {',
+          `${inner}const ${names.answerLocal} = await ${action.fnName}(${argList.length > 0 ? `{ ${argList.join(', ')} }` : ''});`,
+          ...(action.materialize !== undefined
+            ? [`${inner}${stateSetterOf(action.materialize)}(${names.answerLocal});`]
+            : []),
+          // The failure arm is never empty — it writes the Error row, which the runtime writes
+          // whether or not anything reads it — so a request with no done chain inverts the test
+          // rather than printing an empty block.
+          ...(action.then.length > 0
+            ? [
+                `${inner}if (${names.answerLocal}.ok) {`,
+                ...expandActions(action.then).map((a) => `${deeper}${actionCode(a, indent + 4)};`),
+                `${inner}} else {`
+              ]
+            : [`${inner}if (!${names.answerLocal}.ok) {`]),
+          `${deeper}const ${names.messageLocal} = ${names.answerLocal}.error;`,
+          ...failArm(deeper),
+          `${inner}}`,
+          `${pad(indent)}} catch (error) {`,
+          `${inner}const ${names.messageLocal} = error instanceof Error ? error.message : String(error);`,
+          ...failArm(inner),
+          `${pad(indent)}}`
+        ].join('\n');
+      }
       case 'branch': {
         const armCode = (armActions: HandlerAction[]): string => {
           const list = expandActions(armActions);
@@ -1134,7 +1258,7 @@ export function emitComponent(
     const statements = expanded.map(actionCode);
     // A record verb's call is awaited, so the handler it lands in is `async` — and its try/catch
     // is a statement, which takes the same block form a branch does (RECORD-VERBS-TARGET §4a).
-    const isAsync = expanded.some((a) => a.kind === 'api-call');
+    const isAsync = expanded.some((a) => a.kind === 'api-call' || a.kind === 'http-call');
     const head = isAsync ? `async ${param}` : param;
     // A Clear Array that owes either outcome chain prints as an `if`, which is a statement for
     // exactly the reason a branch is — an arrow with `=> if (…)` as its expression body does not
@@ -1148,7 +1272,7 @@ export function emitComponent(
       // takes no terminator. Every other action keeps the semicolon the existing goldens pin.
       const body = expanded
         .map((a) =>
-          a.kind === 'api-call'
+          a.kind === 'api-call' || a.kind === 'http-call'
             ? `${pad(indent + 2)}${actionCode(a, indent + 2)}`
             : `${pad(indent + 2)}${actionCode(a)};`
         )
@@ -1213,6 +1337,24 @@ export function emitComponent(
     const specifier = `${relRoot}/api/session`;
     const fnNames = [...new Set(plan.sessionCalls.map((c) => c.fnName))].sort();
     internalImports.set(specifier, `import { ${fnNames.join(', ')} } from '${specifier}';`);
+  }
+  // EXP-011 Tier 1.2. One module for every HTTP Request in the project — there is nothing to key
+  // it on, the way the session module has nothing. The result type is imported only where a state
+  // row is typed by it, which is what keeps a fire-and-forget request's import to one name.
+  if (plan.httpCalls.length > 0) {
+    const specifier = `${relRoot}/api/http`;
+    const fnNames = [...new Set(plan.httpCalls.map((c) => c.fnName))].sort();
+    const typeNames = [
+      ...new Set(
+        plan.httpCalls
+          .filter((c) => referencedStateVars.some((v) => v.originNodeId === c.nodeId && v.origin === 'http'))
+          .map((c) => c.typeName)
+      )
+    ].sort();
+    internalImports.set(
+      specifier,
+      `import { ${[...fnNames, ...typeNames.map((t) => `type ${t}`)].join(', ')} } from '${specifier}';`
+    );
   }
   if (usedVariableNames.size > 0) {
     const specifier = `${relRoot}/stores/variables`;
@@ -1449,6 +1591,18 @@ export function emitComponent(
       ) {
         const code = bindingExpr(bound);
         if (code !== null) return `{${code} ?? ''}`;
+      }
+      /**
+       * An HTTP output in a text sink (EXP-011 Tier 1.2) is coerced, not merely defaulted.
+       *
+       * The others above are string-typed and only ever need the `?? ''`. This one is whatever
+       * the server sent — a number, an object, nothing at all — and the runtime's Text node puts
+       * it through the same `String()` on its way to the DOM. Without the coercion React is
+       * handed an object and throws where the interpreted app prints `[object Object]`.
+       */
+      if (bound.kind === 'computed' && bound.expr.kind === 'http-out') {
+        const code = bindingExpr(bound);
+        if (code !== null) return `{String(${code} ?? '')}`;
       }
       const expr = bindingExpr(bound);
       if (expr !== null) return `{${expr}}`;
@@ -2470,6 +2624,8 @@ export function emitComponent(
         return a.then.flatMap(actionExprsOf);
       case 'jsfun-run':
         return [...jsArgExprs(a.nodeId), ...a.then.flatMap(actionExprsOf)];
+      case 'http-call':
+        return [...a.args.map((arg) => arg.expr), ...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
       case 'api-call':
         return [
           ...a.args.flatMap((arg) => (arg.kind === 'expr' ? [arg.expr] : arg.props.map((p) => p.expr))),

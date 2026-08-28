@@ -6,7 +6,7 @@
  */
 
 import { Catalog, CatalogIndex } from '../catalog';
-import { planProject, ProjectPlan, QueryPlan, SessionCallPlan } from '../analyze/plan';
+import { HttpCallPlan, HttpValuePlan, planProject, ProjectPlan, QueryPlan, SessionCallPlan } from '../analyze/plan';
 import { CloudServicesIR, ExportIR } from '../ir/types';
 import { emitComponent } from './component';
 import { EmittedCopy, emitKits } from './kits';
@@ -304,6 +304,12 @@ function apiModules(ir: ExportIR, project: ProjectPlan): { files: Array<[string,
   const session = sessionModule(ir, project, backend);
   if (session !== null) stubs.push(session);
 
+  // EXP-011 Tier 1.2. Not a stub and not keyed on the backend: an HTTP Request talks to whatever
+  // address the author typed, so this module is real code whether or not the project declares a
+  // NodeGX backend of its own.
+  const http = httpModule(project);
+  if (http !== null) stubs.push(http);
+
   if (backend !== undefined && hasApi) {
     stubs.push(['src/api/client.ts', clientModule(backend)]);
     stubs.push(['.env.example', envExample(backend)]);
@@ -311,6 +317,307 @@ function apiModules(ir: ExportIR, project: ProjectPlan): { files: Array<[string,
   }
   return { files: stubs, notes };
 }
+
+/**
+ * `src/api/http.ts` — one function per translated `HTTP Request` (EXP-011 Tier 1.2).
+ *
+ * The module is a transcription of `httpnode.ts`'s four builders, and every guard in it is one
+ * the interpreter makes:
+ *
+ * - **A path placeholder with no value stays in the URL, literally.** `buildUrl` only replaces
+ *   what it has a value for, and a URL segment has no way to be empty.
+ * - **`undefined` and `null` are the same omission** for a path segment, a query parameter, a
+ *   header and a form/urlencoded field, and **different** for a JSON body, which has a native
+ *   `null` — the one site the runtime tests `!== undefined` alone, and it says why in its own
+ *   comment.
+ * - **A half-filled credential sends nothing at all** — `authConfigurators` returns `{}` for a
+ *   Bearer with no token and for a Basic missing either half.
+ * - **The auth headers are applied after the visual ones**, so on a collision the credential
+ *   wins, and the Content-Type default runs last and only where nothing has set one.
+ *
+ * 🔴 **The function throws only where no answer arrived** — no URL, a network error, a timeout —
+ * and returns `ok: false` for an answer that was not 2xx. That split is not stylistic: the node
+ * publishes `Response` and `Status Code` for a 404 (`processResponse` runs before the failure is
+ * reported) and leaves them holding the *previous* request's values when nothing came back at
+ * all. A single throwing shape could reproduce one of those or the other, never both.
+ */
+function httpModule(project: ProjectPlan): [string, string] | null {
+  const calls: Array<{ componentPath: string; call: HttpCallPlan }> = [];
+  for (const plan of project.plans) {
+    for (const call of plan.httpCalls) calls.push({ componentPath: plan.path, call });
+  }
+  if (calls.length === 0) return null;
+
+  const parts = calls.map(({ componentPath, call }) => httpFunction(componentPath, call));
+  return [
+    'src/api/http.ts',
+    GENERATED_MODULE_TS +
+      '//\n// Requests the graph makes to addresses outside this app. Each function is one\n' +
+      "// HTTP Request node's configuration, with the values it was wired for as parameters.\n\n" +
+      parts.join('\n')
+  ];
+}
+
+/** A JS string literal for an emitted constant. */
+const lit = (value: string | number | boolean): string => JSON.stringify(value);
+
+/**
+ * One value the request sends, as the expression that reads it — a folded literal, or the
+ * parameter the call site fills.
+ */
+const httpValueCode = (value: HttpValuePlan): string =>
+  value.from.kind === 'literal' ? lit(value.from.value) : `params.${value.from.param}`;
+
+/** Every parameter this request takes, as the emitted argument's inline type. */
+function httpParamsType(call: HttpCallPlan): string | null {
+  const all: HttpValuePlan[] = [
+    ...call.pathParams,
+    ...call.queryParams,
+    ...call.headers,
+    ...(call.body === null ? [] : 'fields' in call.body ? call.body.fields : [call.body.raw]),
+    ...(call.auth === null
+      ? []
+      : call.auth.kind === 'bearer'
+        ? [call.auth.token]
+        : call.auth.kind === 'basic'
+          ? [call.auth.username, call.auth.password]
+          : [call.auth.name, call.auth.value])
+  ];
+  const rows = all
+    .filter((v) => v.from.kind === 'param')
+    // Optional, every one of them. A wire can carry `undefined` — every emitted component prop
+    // is optional, and the runtime's own guards are written for exactly that arrival — so a
+    // required parameter would make the emitted app fail to compile at the call site rather
+    // than omit the header the way the interpreter does.
+    .map((v) => `${(v.from as { param: string; tsType: string }).param}?: ${(v.from as { tsType: string }).tsType}`);
+  return rows.length > 0 ? `{ ${rows.join('; ')} }` : null;
+}
+
+function httpFunction(componentPath: string, call: HttpCallPlan): string {
+  const out: string[] = [];
+  const paramsType = httpParamsType(call);
+  // `any`, deliberately, and it is the port's own type: `response` is declared `*` on the node
+  // and a mapping reads wherever its path points. `unknown` would be the tidier word and it
+  // would make every emitted sink fail to compile — a body bound to an `<img src>` or read by
+  // the author's own code — for a shape neither the interpreter nor the export ever knew.
+  const fieldRows = call.fields.map((f) => `${tsKey(f.name)}: any`);
+
+  out.push(
+    '/**',
+    ` * ${call.method} ${call.url}`,
+    ` *`,
+    ` * From the HTTP Request node ${call.nodeId} in ${componentPath}.`,
+    ' */',
+    `export interface ${call.typeName} {`,
+    '  /** True when the server answered 2xx — the node\'s Done outcome; false is its Failure. */',
+    '  ok: boolean;',
+    '  /** The body, parsed as JSON when the server said so and as text otherwise. */',
+    '  response: any;',
+    '  statusCode: number;',
+    '  /** Every header the server returned, keyed by lower-cased name. */',
+    '  responseHeaders: Record<string, string>;',
+    `  /** The node's Output Fields, read out of the body at their configured paths. */`,
+    `  fields: ${fieldRows.length > 0 ? `{ ${fieldRows.join('; ')} }` : 'Record<string, never>'};`,
+    '  /** One sentence about the failure, present only when `ok` is false. */',
+    '  error?: string;',
+    '}',
+    '',
+    `export async function ${call.fnName}(${paramsType === null ? '' : `params: ${paramsType}`}): Promise<${call.typeName}> {`
+  );
+
+  // ---- the URL: the authored address, its placeholders, then the query string ----------------
+  const buildsUrl = call.pathParams.length > 0 || call.queryParams.length > 0 || call.auth?.kind === 'apiKey';
+  out.push(`  ${buildsUrl ? 'let' : 'const'} url = ${lit(call.url)};`);
+  for (const param of call.pathParams) {
+    const code = httpValueCode(param);
+    // `split`/`join` rather than `replace`: `buildUrl` iterates every match of the placeholder
+    // and replaces the first remaining one each time, so all occurrences are replaced.
+    const replace = `url = url.split(${lit(`{${param.name}}`)}).join(encodeURIComponent(String(${code})));`;
+    out.push(
+      param.from.kind === 'literal'
+        ? `  ${replace}`
+        : `  // An absent value leaves {${param.name}} in the URL literally, as the interpreter does.\n  if (${code} !== undefined && ${code} !== null) ${replace}`
+    );
+  }
+  if (call.queryParams.length > 0 || call.auth?.kind === 'apiKey') {
+    out.push('  const query: Record<string, unknown> = {};');
+    for (const param of call.queryParams) {
+      const code = httpValueCode(param);
+      const assign = `query[${lit(param.name)}] = ${code};`;
+      out.push(
+        param.from.kind === 'literal'
+          ? param.from.value === ''
+            ? `  // ${param.name} is authored empty, which the interpreter omits.`
+            : `  ${assign}`
+          : `  if (${code} !== undefined && ${code} !== null && ${code} !== '') ${assign}`
+      );
+    }
+    if (call.auth?.kind === 'apiKey' && call.auth.location === 'query') {
+      const name = httpValueCode(call.auth.name);
+      const value = httpValueCode(call.auth.value);
+      out.push(`  if (${name} && ${value}) query[String(${name})] = ${value};`);
+    }
+    out.push(
+      '  const queryString = Object.entries(query)',
+      '    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)',
+      "    .join('&');",
+      "  if (queryString) url += (url.includes('?') ? '&' : '?') + queryString;"
+    );
+  }
+  // Only reachable with an authored-empty URL: nothing below can empty a URL that had text in it.
+  if (call.url === '') {
+    out.push("  if (!url) throw new Error('URL is required, so no request could be sent');");
+  }
+
+  // ---- headers, then the credential, which wins on a collision --------------------------------
+  out.push('  const headers: Record<string, string> = {};');
+  for (const header of call.headers) {
+    const code = httpValueCode(header);
+    const assign = `headers[${lit(header.name)}] = String(${code});`;
+    out.push(header.from.kind === 'literal' ? `  ${assign}` : `  if (${code} !== undefined && ${code} !== null) ${assign}`);
+  }
+  if (call.auth?.kind === 'bearer') {
+    const token = httpValueCode(call.auth.token);
+    out.push(`  if (${token}) headers['Authorization'] = \`Bearer \${${token}}\`;`);
+  } else if (call.auth?.kind === 'basic') {
+    const user = httpValueCode(call.auth.username);
+    const pass = httpValueCode(call.auth.password);
+    out.push(`  if (${user} && ${pass}) headers['Authorization'] = 'Basic ' + btoa(String(${user}) + ':' + String(${pass}));`);
+  } else if (call.auth?.kind === 'apiKey' && call.auth.location === 'header') {
+    const name = httpValueCode(call.auth.name);
+    const value = httpValueCode(call.auth.value);
+    out.push(`  if (${name} && ${value}) headers[String(${name})] = String(${value});`);
+  }
+
+  // ---- the body, then the Content-Type the encoding implies ----------------------------------
+  out.push(...httpBodyLines(call));
+  // `doFetch` defaults the header only for a body that exists and only where nothing has set
+  // one — truthiness on both, so an empty urlencoded body (`''`) gets no Content-Type, and a
+  // header the author configured is never overwritten. Raw sends none at all, by design.
+  if (call.body !== null && (call.body.type === 'json' || call.body.type === 'urlencoded')) {
+    const value = call.body.type === 'json' ? 'application/json' : 'application/x-www-form-urlencoded';
+    out.push(`  if (payload && !headers['Content-Type']) headers['Content-Type'] = '${value}';`);
+  }
+
+  // ---- the request itself ---------------------------------------------------------------------
+  out.push(
+    '  // The abort controller is the timeout, and nothing else — a Cancel input would need one',
+    '  // that outlives this function, which is why a wired Cancel defers (EXP-011 §8).',
+    '  const controller = new AbortController();',
+    '  let timedOut = false;',
+    `  const timer = setTimeout(() => {`,
+    '    timedOut = true;',
+    '    controller.abort();',
+    `  }, ${call.timeout});`,
+    '  let response: Response;',
+    '  try {',
+    `    response = await fetch(url, {`,
+    `      method: ${lit(call.method)},`,
+    '      headers,',
+    '      body: payload,',
+    '      signal: controller.signal',
+    '    });',
+    '  } catch (error) {',
+    '    throw new Error(',
+    `      timedOut ? \`Request timed out after ${call.timeout} ms\` : error instanceof Error && error.message ? error.message : 'Network error'`,
+    '    );',
+    '  } finally {',
+    '    clearTimeout(timer);',
+    '  }',
+    "  const contentType = response.headers.get('content-type') ?? '';",
+    "  const parsed: unknown = contentType.includes('application/json') ? await response.json() : await response.text();",
+    '  const responseHeaders: Record<string, string> = {};',
+    '  response.headers.forEach((value, key) => {',
+    '    responseHeaders[key] = value;',
+    '  });'
+  );
+  if (call.fields.length > 0) {
+    out.push(
+      '  // `extractByPath` walks a body of unknown shape and answers undefined for anything it',
+      '  // does not find, which is what optional chaining over `any` says here.',
+      '  const source = parsed as any;'
+    );
+  }
+  const fieldEntries = call.fields.map((f) => `${tsKey(f.name)}: ${f.steps === null ? 'undefined' : jsonPathCode('source', f.steps)}`);
+  out.push(
+    `  const fields = ${fieldEntries.length > 0 ? `{ ${fieldEntries.join(', ')} }` : '{}'};`,
+    '  if (!response.ok) {',
+    '    return {',
+    '      ok: false,',
+    '      // The node puts exactly this sentence on its Error output for a non-2xx answer.',
+    '      error: `HTTP ${response.status}: ${response.statusText}`,',
+    '      response: parsed,',
+    '      statusCode: response.status,',
+    '      responseHeaders,',
+    '      fields',
+    '    };',
+    '  }',
+    '  return { ok: true, response: parsed, statusCode: response.status, responseHeaders, fields };',
+    '}',
+    ''
+  );
+  return out.join('\n');
+}
+
+/** The four body encodings (`buildBody`), including the one place `null` survives. */
+function httpBodyLines(call: HttpCallPlan): string[] {
+  const body = call.body;
+  if (body === null) {
+    return [
+      `  // ${call.method} sends no body — \`buildBody\` returns before it reads a field.`,
+      '  const payload: BodyInit | undefined = undefined;'
+    ];
+  }
+  if (body.type === 'raw') {
+    return [`  const payload = ${httpValueCode(body.raw)} as BodyInit;`];
+  }
+  const lines: string[] = [];
+  if (body.type === 'json') {
+    lines.push('  const json: Record<string, unknown> = {};');
+    for (const field of body.fields) {
+      const code = httpValueCode(field);
+      const assign = `json[${lit(field.name)}] = ${code};`;
+      lines.push(
+        field.from.kind === 'literal'
+          ? `  ${assign}`
+          : // The one site where null is kept: JSON has a native null, so "clear it" and "omit
+            // it" are different outcomes here and identical everywhere else (httpnode.ts).
+            `  if (${code} !== undefined) ${assign}`
+      );
+    }
+    lines.push('  const payload = Object.keys(json).length > 0 ? JSON.stringify(json) : undefined;');
+    return lines;
+  }
+  if (body.type === 'form') {
+    lines.push('  const form = new FormData();');
+    for (const field of body.fields) {
+      const code = httpValueCode(field);
+      const assign = `form.append(${lit(field.name)}, ${code} as string);`;
+      lines.push(field.from.kind === 'literal' ? `  ${assign}` : `  if (${code} !== undefined && ${code} !== null) ${assign}`);
+    }
+    lines.push('  const payload: BodyInit = form;');
+    return lines;
+  }
+  lines.push('  const search = new URLSearchParams();');
+  for (const field of body.fields) {
+    const code = httpValueCode(field);
+    const assign = `search.append(${lit(field.name)}, String(${code}));`;
+    lines.push(field.from.kind === 'literal' ? `  ${assign}` : `  if (${code} !== undefined && ${code} !== null) ${assign}`);
+  }
+  lines.push('  const payload = search.toString();');
+  return lines;
+}
+
+/** `['items', 0, 'name']` → `source?.items?.[0]?.name` — `extractByPath`'s walk, statically. */
+function jsonPathCode(base: string, steps: Array<string | number>): string {
+  return steps.reduce<string>((code, step) => {
+    if (typeof step === 'number') return `${code}?.[${step}]`;
+    return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(step) ? `${code}?.${step}` : `${code}?.[${JSON.stringify(step)}]`;
+  }, base);
+}
+
+/** An authored name printed as an object key — quoted unless it is already an identifier. */
+const tsKey = (name: string): string => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name));
 
 /**
  * `src/api/session.ts` — the user family's one module (USER-FAMILY-TARGET §4d).

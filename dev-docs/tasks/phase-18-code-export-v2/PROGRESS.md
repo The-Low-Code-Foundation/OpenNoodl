@@ -33,7 +33,7 @@ README §*What went wrong* has the mechanism.
 | [EXP-008](./EXP-008-EXPORT-COVERAGE-LEDGER.md) | Coverage ledger & contributor gate | ✅ **Built**, + picker ratchet 2026-08-28. ⚠️ 96 of 101 `deferred` entries share one auto-generated exemption sentence — EXP-011 §4 rewrites them |
 | [EXP-009](./EXP-009-BACKEND-CONNECTION.md) | **Exported app talks to its deployed backend** | 🔴 **Not started — do this first** |
 | [EXP-010](./EXP-010-CUSTOM-NODES-AND-MODULES.md) | **Custom nodes, modules and prefabs export** | 🔴 **Not started.** `parseProject` never opens `noodl_modules` |
-| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🔴 Not started |
+| [EXP-011](./EXP-011-PICKER-COVERAGE.md) | **Close the picker gap, ranked by what apps need** | 🟡 **Tier 1.1, 1.2 and 1.4 built, driven and gated** — 60/127 (47.2%). Only Tier 1.3, the date family, is left of Tier 1 |
 
 ## What actually works today
 
@@ -166,3 +166,56 @@ Variable written by a `String` node had no statically-typed writer and **every r
 **42/42** typecheck · audit **85.45%** on session 35's own 40-project denominator (from 85.27%;
 ⚠️ that session's "41/41" label and its `4441` denominator described different sets) · picker
 ratchet **55 → 59 of 127 (46.5%)**.
+
+**Session 37 (2026-08-28) — EXP-011 Tier 1.2 built, driven and gated: `HTTP Request`.** The
+largest node this phase has translated — 1,288 lines, nearly every port dynamic — and it was
+tractable because almost all of that is **configuration rather than data**: the method, the body
+type, the auth preset and the four string lists are `allowEditOnly`, so the translation reads a
+configuration instead of solving one. Each node becomes one function in `src/api/http.ts`, with
+authored values folded in and wired ones as parameters.
+
+🔴 **The module throws only where no answer arrived, and returns `ok: false` where one did**, and
+that split is the design. `processResponse` runs *before* `doFetch` reports `failure`, so a 404
+publishes its body and status while `Failure` fires; a request that never reached the server
+leaves `Response` and `Status Code` holding what they held. The record verbs' single throwing
+shape reproduces one of those or the other, never both. The failure chain is emitted **twice**,
+once per arm, and the copies are identical because both bind `message` first.
+
+🔴 **Where a read is decides what it says.** Inside the node's own chain it is the chain's local;
+anywhere else it is the state row. `setQuoteOut(answer)` does not change `quoteOut` inside the
+closure that called it, so a state read in the `done` chain would deliver the *previous* request's
+body — the chain-local snapshot rule reaching a construct that, unlike a pure Function, cannot
+recompute itself.
+
+🔴 **Four things were nearly wrong, and three of them are older than this slice.** A state row
+minted from a node labelled "Error" would have been **read as the exception** inside
+`catch (error)` — reachable only now that a failure arm carries the graph's own statements
+(⚠️ and first "found" in the render locals, where the fix was **inert**: a handler reads a variable
+through `.get()`, never through the render local). `collectExprUse` had **no case for the
+asynchronous actions at all**, so nothing inside a `done` or `failure` chain earned its state row
+or its import — the emitted page read an identifier it never declared, and the record verbs have
+the same hole. The answer row is allocated by the *read*, which resolves two passes after the
+action compiles, so `materialize` had to move to a verdict sweep — [§6.2](./EXP-011-PICKER-COVERAGE.md)'s
+lesson from the other side. And `compileSink` has **no `default`**: an HTTP node reaching it
+deferred as *"variable name is not a literal"*, a plausible answer about a different node type.
+
+**Quote Desk** — authored through the MCP server — exports, builds under `tsc -b && vite build`,
+and runs against a local server that **echoes what it received**: the quote and author arrive
+through two compiled JSONPath accessors, the echo line proves the literal query parameter and
+header actually left the app, a 404 fills the status line *and empties the quote* (the answer is
+written for any answer), a 400 on the POST runs the failure chain into a Variable, and a later
+success leaves the status line unchanged, because the runtime never clears `Error`. The `canceled`
+wire — a port only `Cancel` can fire, and `Cancel` is unwired — stays empty throughout. Proved by
+a **mutant**: one Output Field pointed at a field no body has and the header emptied, after which
+exactly two readings changed.
+
+🔴 **A defect found in the editor, not the export**: `updatePorts` still publishes the
+pre-ERG-001 `success` port, so the HTTP Request node draws **both `Done` and a `Success` that can
+never fire** — the runtime sends `done`. The export drops such a wire with that reason rather than
+reproducing the silence; the one-line fix belongs in `httpnode.ts`.
+
+⚠️ **A gap this slice found and did not close**: a Variable written from an HTTP output types as
+`unknown`, and Pass 4 drops every read of a variable with no `string`-typed writer — so
+*fetch → Set Variable → show it* exports a blank element. Not about HTTP; it blocks a Function
+output in the same words. Gates: **658/658** · module-inject 31/31 · `tsc --noEmit` clean ·
+picker ratchet **59 → 60 of 127 (47.2%)**.

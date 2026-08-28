@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Quote Desk",
+  "id": "16027dfc-dc19-4a27-9287-da553ec3d4c8",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-08-28T20:52:14.271Z",
+  "modified": "2026-08-28T20:52:14.271Z",
+  "settings": {
+    "htmlTitle": "Quote Desk",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "038596d4-177a-4a79-9666-b5030f38369b"
+}

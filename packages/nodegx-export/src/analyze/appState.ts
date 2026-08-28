@@ -575,6 +575,20 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
      * emitter asserting a cast the runtime does not perform.
      */
     if (node.type === 'String' && ref.fromProperty === 'savedValue') return 'string';
+    /**
+     * An `HTTP Request`'s `Error` output (EXP-011 Tier 1.2).
+     *
+     * 🔴 **The second consumer, written because Tier 1.4 left exactly this gap and only building
+     * an app found it (EXP-011 §7.5).** A Variable written from a node's output types as
+     * `unknown` unless this function knows the node, and a Variable typed `unknown` drops every
+     * read of it — so "show the error message in a Text" would have exported a blank element
+     * with a note, on a graph as ordinary as they come.
+     *
+     * Only `error`. `response` is whatever the server sent and `statusCode` is a number, and
+     * this function's whole vocabulary is string-or-unknown — claiming `string` for either would
+     * be the exporter asserting a cast the runtime does not perform.
+     */
+    if (node.type === 'net.noodl.HTTP' && ref.fromProperty === 'error') return 'string';
     return 'unknown';
   };
 
