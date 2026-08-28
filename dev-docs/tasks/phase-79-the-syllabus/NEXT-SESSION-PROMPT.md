@@ -1,6 +1,6 @@
 # Phase 79 — next session
 
-**Written 2026-08-28, end of session 2.** Read [README](README.md) and
+**Written 2026-08-28, end of session 3.** Read [README](README.md) and
 [RICHARD-RULINGS-2026-08-28.md](RICHARD-RULINGS-2026-08-28.md) first; this file is the working
 state, not the phase.
 
@@ -8,142 +8,110 @@ state, not the phase.
 
 ## 1. Where this actually stands
 
-**T0 is closed.** The phase opened believing the syllabus had to be scraped off production. It is a
-checked-in file:
+**Lesson 1 is built.** Session 3 got the brief out of Richard and built against it the same day.
 
-> `src/lib/curriculum.json` in **`~/vscode_projects/nodegx-community`** — a *separate checkout*.
+> `project-examples/lessons/your-creature-on-screen` — committed, F1–F4 all pass, `lessons:check`
+> green over both bundles, and **driven in the editor with a control pair**.
+> Full write-up: [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md).
 
-🔴 **It is not fifteen tutorials.** A **12-lesson spine that builds one app (a virtual creature)**,
-plus *Data & backends* (2) and *Custom nodes* (1). ~9¼ hours. Every spine lesson `needs` the one
-before it and they **share one project**.
+**SYL-001 is finished** (slice A + B, driven). **SYL-002 is still blocked** — it needs *two* spine
+lessons and there is one. **[SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md) is new and open**: the
+avatar picker Richard asked for.
 
-**Richard ruled all three open questions** (R1/R2/R3 in the rulings file). **SYL-001 is finished —
-slice A and slice B, both built, gated and committed.** **SYL-002 is written and deliberately
-blocked.**
+🔴 **The syllabus is still 15 lessons of which 14 are titles.** One built lesson is a shape to
+copy, not progress against the spine.
 
-🔴 **Nothing on this phase's list is engineerable any more.** Every remaining item waits on
-Richard's words. Session 2 closed the last one that did not.
+## 2. 🔴 The two things waiting on Richard
 
-## 2. 🔴 The one thing everything else waits on
+**(a) The step prose for lesson 1.** Six bodies and four `detail` blocks are drafted and shipping
+in the bundle. They are *mine*, and the workshop's own split says the words that ship are his.
+This is an edit pass over working text, not a blank page. Also his: the `description`, the badge
+(`First Light`), and whether the creature gets eyes.
 
-**Richard's brief for lesson 1, `your-creature-on-screen`.** No amount of engineering substitutes
-for it — the phase's own standing fact is that the prose is his. The form is in
-[TUTORIAL-WORKSHOP.md](../phase-75-0.2.1-the-feedback/TUTORIAL-WORKSHOP.md):
+**(b) The `description` for `it-breaks-on-a-phone`** — R2's new spine lesson at position 2. Its
+mechanics are fully pre-cleared (§4a) and it is a two-line data edit the moment the wording lands.
 
-```
-WHO IT'S FOR:
-WHAT THEY'LL HAVE BUILT BY THE END:
-THE 3-6 THINGS THEY MUST UNDERSTAND:
-WHERE YOU'VE SEEN PEOPLE GET STUCK:
-ANYTHING IT SHOULD DELIBERATELY NOT COVER:
-```
+## 3. 🔴 What his stuck-list said about the curriculum
 
-⚠️ **Do not start building lesson 1's app before this arrives.** R1 committed the series to the
-creature, but not to any particular first screen.
+Asked where beginners get stuck, Richard named five things. Mapped against the spine, **only one is
+lesson 1's**. The other four are the finding:
 
-## 3. What is ready and needs no more thought
-
-### `detail` is live, and so is the preference behind it — author into it from lesson 1
-
-`body` says what to do; `detail` says where the button is, as a disclosure open by default — and
-since slice B, **the learner collapsing one is remembered**, so every later step comes up the way
-they last left it. That is Richard's R3 ruling ("*don't need to explain to an intermediate user how
-to access the node picker*") as far as it can go without the platform's `experience` answer being
-able to reach the editor. 🔴 **Nothing about the authored prose changes when that day comes** — the
-answer only seeds the same key.
-Documented in [LESSON-FORMAT.md §4a](../phase-17-noodl-learn/LESSON-FORMAT.md) and in `noodl-mcp`'s
-authoring brief. 🔴 **This is why the field was built first**: lesson 1 is the most beginner-facing
-lesson in the curriculum, and splitting one `body` later is a re-cut of Richard's words.
-
-### The measurements — do not re-derive them
-
-| gate | reading |
+| what he named | where the spine teaches it |
 |---|---|
-| `test:ci` | **2889 specs, 4 failures @ seed 86276** — all four **AIX-006 style vocabulary**, the recorded floor, **by name**. ⚠️ The floor is 4; the suite size has moved **2863 → 2875 → 2887 → 2889**. |
-| slice A / slice B / the drive's fix | **+12 / +12 / +2**, each named in the run's `[spec-start]` lines |
-| 🔴 two mutants, both killed what they aimed at | echo guard removed → 5 failures @ seed 47904, the fifth the negative control. Re-apply removed (the pre-drive behaviour) → 6 @ seed 01422, the floor **plus both new specs**. |
-| `test:main` | **375 suites / 6254 tests / 0 failures, exit 0.** ⚠️ An earlier run in session 2 had 1 red — `BLD-004 reasoningChannel`, a timing spec under load from a peer's editor stack. Green alone and green here. |
-| `typecheck:editor`, `typecheck:editor-tests`, `typecheck:mcp` | exit 0 |
-| `lessons:check` | exit 0, `log-a-thing` clean |
+| 1. Component system, values/signals across canvases | **lesson 10 of 12** — `build-your-own-node` |
+| 2. How signals work | lesson 2 — `poke-it` |
+| 3. Groups, placement, dimensions | lesson 1 + the new `it-breaks-on-a-phone` |
+| 4. Page router and navigating | lesson 9 — `more-than-one-room` |
+| 5. States, Variable | lesson 3 (`Counter`) and lesson 5 (`States`) |
 
-⚠️ **`test-results.json` records failures ONLY.** Grepping it for a new spec's name returns 0
-whether the spec passed or never ran. The `[spec-start]` lines in the run log and the total-count
-delta are the evidence that a spec executed; that file is not.
-
-⚠️ **`typecheck:editor` does NOT cover `packages/noodl-editor/tests/`.** `typecheck:editor-tests`
-is the gate that grades a spec there, and `tests/` is the **Electron/jasmine** suite (`test:ci`) —
-it does **not** use jest matchers. `toHaveLength` and `toContainEqual` do not exist there; use
-`.length).toBe(n)`.
+- 🔴 **The thing he named first is taught tenth.** He described it with more difficulty than
+  anything else on the list ("the psychological abstraction"). The spine *earns* the position —
+  you cannot motivate encapsulation before there is something worth encapsulating — but a learner
+  hits that wall in real work long before lesson 10. **Richard's call, not an engineering one.**
+- 🔴 **`Variable` appears in no lesson at all.** It exists (`displayNodeName: 'Variable'`,
+  `noodl-runtime/src/nodes/std-library/data/variablenode2.ts:45`) and he named it in his top five.
+  The syllabus never shows it.
 
 ## 4. The order to take it
 
-1. **Lesson 1**, when the brief lands. Build the app, draft steps into `body` + `detail`, hand the
-   prose back to Richard.
-2. **R2's curriculum edit** — the responsive lesson, `it-breaks-on-a-phone`, at spine position 2.
-   ⬜ **Richard has not written its `description` yet**; a draft is in the rulings file. ⚠️ It is
-   **two edits**: the new entry, and `poke-it`'s `needs` moving onto it. Spine 12 → 13.
-   ✅ **Session 3 checked the mechanics — the edit is de-risked, and it is still exactly two edits.**
-   🔴 **But the draft description cannot land as a placeholder**: see §5.
-3. **Lesson 2.**
-4. **[SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md)**, the moment two lessons exist — not
-   before, and not after lesson 12.
+1. **Richard's edit pass on lesson 1's prose.** Nothing blocks on it — the bundle ships and gates
+   today — but it should not reach a learner in my words.
+2. **R2's curriculum edit**, when its `description` lands. Two edits: the new entry, and `poke-it`'s
+   `needs` moving onto it. Spine 12 → 13.
+3. **Lesson 2** (`it-breaks-on-a-phone` or `poke-it`, depending on 2). ⚠️ `poke-it` uses **Button**,
+   whose type name is **`net.noodl.controls.button`** — the display name `Button` is the
+   *deprecated* node and a condition using it passes while matching nothing.
+4. **[SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md)**, the moment two lessons exist.
+5. **[SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md)** whenever — it is independent, and lesson 1 is
+   deliberately built so it upgrades rather than depends.
 
-✅ **Slice B was driven at the end of session 2, and the drive found a defect eleven green specs
-had not.** The preference was being applied *per step at parse time*, and a lesson parses every
-step in one pass — so a learner who collapsed on step 3 still met step 4 expanded until they
-reopened the lesson. Fixed, and graded by two new specs that both fail on the old behaviour.
-🔴 **The shape worth carrying: the round-trip spec re-rendered between the cause and the effect,
-which is exactly what the app does not do.** A spec that rebuilds the world in the middle cannot
-see a staleness bug.
+## 4a. Session 3 — checked, so nobody re-derives it
 
-## 4a. Session 3 — what was checked, so nobody re-derives it
+- ✅ **R2's insert is mechanically pre-cleared and is still exactly two edits.** Nothing hardcodes
+  the spine order (the only spine slug outside `curriculum.json` is a doc comment in
+  `api/v1/me/path/project/route.ts:14`). No spec breaks on 12 → 13: `uni022-syllabus.test.ts` uses
+  `toBeGreaterThanOrEqual(12)` and derives its totals from the file. The draft entry's key set
+  matches every unconditional spine lesson. Both node names are real — ⚠️ `Columns` is keyed
+  **`displayName`**, not `displayNodeName`, so the narrower grep reads as "no such node". And
+  `omitLesson` repairs the chain **by `needs`, never array position**, which is also the live code
+  confirming SYL-002 AC4 was specified right.
+- ✅ **Lesson 1's measurements** are in [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md).
+  Do not re-run them to "confirm"; re-run them if you change the bundle.
 
-Nothing was built. Session 3 verified the handoff and pre-cleared R2's mechanics; the phase still
-waits on the same brief.
+## 5. 🔴 A product defect the drive found — this is work
 
-- ✅ **The handoff is true.** Slice A, slice B and the drive's fix are committed (`00877b87`,
-  `0a374c20`, `8012e63d` = HEAD); `lessonhandholding.ts` and `lessondetail.test.ts` exist; nothing
-  lesson-related is uncommitted.
-- ✅ **Nothing hardcodes the spine order.** Across the community repo's `src/`, the only mention of
-  a spine slug outside `curriculum.json` is a **doc comment** in
-  `api/v1/me/path/project/route.ts:14`. `pathing.ts` names no lesson, by design (UNI-022 AC4).
-- ✅ **No spec breaks on an insert.** `uni022-syllabus.test.ts` asserts
-  `toBeGreaterThanOrEqual(12)` (lines 132/133/218), and its total-count specs (480/481) derive from
-  the file itself. Spine 12 → 13 and curriculum 15 → 16 move nothing red.
-- ✅ **The draft entry is structurally complete.** Its key set is exactly the key set every
-  *unconditional* spine lesson carries. Only **one** spine lesson has a `requires` block at all
-  (`the-same-ideas-in-code`, on `logic: code`), and `satisfies()` treats an absent `requires` as
-  satisfied by everyone — so the responsive lesson reaching every learner is the default, and needs
-  no field to say so.
-- ✅ **Both node names are real.** `Group`, and `Columns` — `displayName: 'Columns'` in
-  `packages/noodl-viewer-react/src/nodes/visual/columns.ts:49`. ⚠️ It is keyed `displayName`, not
-  `displayNodeName`; the narrower grep returns nothing and reads as "no such node".
-- ✅ **The insert composes with branching.** `omitLesson` repairs the chain by handing an omitted
-  lesson's own `needs` down to whatever depended on it — **by `needs`, not by array position**.
-  🔴 That is also the live code confirming **SYL-002 AC4** was specified correctly.
+**Pressing "Check my work" on an incomplete step removes the instructions.** The popup, body and
+`detail` disclosure together, is taken out of the DOM (`details: 0`, `[data-template=popup]: 0`);
+the only way back is knowing to click the step in the timeline. And the check produces **no new
+visible feedback** — the "Looking for…" line was already on screen. So pressing the button loses
+your instructions and tells you nothing.
 
-## 5. Traps carried out of this session
+It is the **runner's** behaviour, not lesson 1's, so `log-a-thing` has it too. ⬜ Unfixed.
 
-- 🔴 **`in-writing` hides nothing. `/university` serves the `description` of every lesson,
-  whatever its state** — `page.tsx:71` renders `lesson.description` unconditionally, and the state
-  only tints a badge (`'in-writing': 'warn'`, line 45). So a **placeholder description written by
-  anyone but Richard is live prose on a public page the moment it lands**, sitting beside fifteen
-  descriptions that are his. This is why R2 waits on his words and not just on tidiness, and it is
-  the reason a "land the shape now, fix the wording later" move is not available here.
-- 🔴 **A field is not shipped until something reads it.** This format contains a live example:
-  `suggestedNodes` → `data-suggested-nodes` → `LessonModel.getCurrentSuggestedNodes`, **no callers**,
-  and the MCP brief has to warn models off it. SYL-001 ships a native `<details>` for exactly this
-  reason — no runner, no preference, works the day it lands.
-- 🔴 **The verifier and the sink are a PAIR.** `safeLessonUrl` drops an unsafe scheme; the verifier
-  *tells the author*. A field added to one half has half the protection, and the half that goes
-  missing is the one nobody notices — a link that silently stopped working.
-- 🔴 **`log-a-thing` does not fit the spine.** It is clean and shipped, but it is a log app teaching
-  the Visual-Function/async rule; the spine's data lesson is a snack cupboard. It is a standalone
-  **article**, not spine lesson 8. Do not retrofit it.
-- ⚠️ **The Markdown link grammar truncates a URL at the first `)`.** `javascript:alert(1)` reads as
-  `javascript:alert(1`. A scheme fixture with parens grades the link parser, not the refusal.
-- ⚠️ **`experience` is answered on the platform, rendered by the editor, and nothing crosses that
-  gap.** Do not close it by shipping the answer inside a bundle — D17 requires a lesson stay
-  installable from a local directory with no origin.
-- ⚠️ **`timeout` does not exist on macOS.** `timeout 900 npm run …` exits **127**, which reads
-  exactly like a failing suite.
+## 6. Traps carried out of this session
+
+- 🔴 **`create_lesson` refuses on an *unchecked* class, not only a failed one.** The first call
+  returned `F4: not-checked` and wrote nothing — that server could not find the render harness.
+  Running it from the server bound to a **source checkout** answered F4 and it wrote.
+  ✅ **Do not reach for `allow_unrendered`**: it converts "unanswered" into "unanswerable", and F4
+  is the class most likely to reach a learner.
+- 🔴 **`in-writing` gates nothing.** `/university` (`page.tsx:71`) renders `lesson.description` for
+  every lesson whatever its state; the state only tints a badge. **A placeholder written by anyone
+  but Richard is live prose on a public page the day it lands.** This is why R2 waits on wording
+  and not merely on tidiness.
+- 🔴 **Prose uses display names; conditions use type names.** `Button`, `Variable`, `Text Input`,
+  `Checkbox`, `Radio Button` and `Cloud Function` are all real type names **of the deprecated
+  node**, so the condition passes while the node the learner drags out is `net.noodl.controls.button`
+  or `Variable2`. Lesson 1 dodged this entirely — `Group`, `Text` and `Circle` are identical in both
+  vocabularies — **lesson 2 will not.**
+- ⚠️ **`${PIPESTATUS[0]}` is empty in zsh.** `npm run lessons:check | tail` reports no exit code at
+  all. Redirect to a file and read `$?`.
+- ⚠️ **The lesson installer cannot be CDP-driven** — it goes through a native file dialog. Install
+  by copying into `~/Library/Application Support/NodeGX/Learning/<id>/` and adding an entry to
+  `learning_folder.json`, then `cdp reload` (which lands on the launcher, where Learning lives).
+  That path is already specced by `tut-004/the-real-bundle-installs.test.ts`.
+- ⚠️ **The header comment on `tut-004/the-real-bundle-installs.test.ts` says `log-a-thing` "is the
+  only" bundle.** No longer true. Left alone — another task's file — but it will mislead.
+- 🔴 **A field is not shipped until something reads it.** Still live in this format:
+  `suggestedNodes` → `data-suggested-nodes` → `getCurrentSuggestedNodes`, no callers. Lesson 1 uses
+  `detail` (which renders) and not `suggestedNodes` (which does not).
