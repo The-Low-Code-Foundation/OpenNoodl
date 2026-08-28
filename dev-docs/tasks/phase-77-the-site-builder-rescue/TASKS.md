@@ -12,7 +12,7 @@ per-task status and the session log.
 | SBR-003 | 🟡 s4: built, swept, driven | AC1–4 verified live (floor stamps, overlay beats it, delete falls back); AC5 spec half green. **Owed: the `var(--token)` dimension-port probe — carried into SBR-004.** Person-sentences complete with SBR-004/006/009 |
 | SBR-004 | 🟢 s8b: AC1/2/4 driven PASS; root-URL fix DRIVEN with a control pair | **AC1 ✅** nav 219→**68px, three links on one row at y=24**; header **98**, footer **74** (were 218/219) — the lever is `sizeMode` on seven Groups + the nav link, collected as `STACKED_IN_A_COLUMN`. 🔴 `flex-grow` is NOT the lever. **AC2 ✅** `--primary`/600 on the current link, muted/400 on siblings, on a fresh `/home` load **and** after in-app nav to `/about`, nothing poked. 🔴 **The AC2 cause was NOT in the template**: the NDA-017 migration writes `runOnChange-*: false` on load for every node whose control signal is wired — **37 nodes in a fresh project, zero `true`s**; an explicit `true` survives, absent does not (§9.2). **AC4 ✅** re-confirmed at 360px with control; a 51-char title is clipped, not scrolled. ⚠️ **`maxWidth` is inert on `Text`** — authored, driven (`computed: none`), removed (§9.3). 🔴 **Next and bigger than either AC: the root URL `/` renders NO page** — `The slug to show` is the one migrated node whose `run` (`didMount`) genuinely races its `in-homeSlug` (§9.2). 🔴 49 specs were green while both ACs failed; three new checks + mutants close it (§9.5). AC3 remains SBR-012's. **s8b**: 🔴 **the root URL is DRIVEN** — but the first reading was a PASS and 12 reloads all passed, because the race wins on a warm local backend; forcing it to lose (`Fetch.requestPaused` delaying only `*8594*` by 1500ms) gave a real control pair, same project, only the two parameters varied. 🔴 **§9.2's characterisation was WRONG**: it is not the empty-slug path — with a slow fetch `/`, `/home` and `/about` ALL render no page, because the guard gates every slug. ✅ §10.2's probe answered: the nav click **remounts** (`window` marker survived, element stamps died), so `in-slug: true` is defensive, not a second fix. **s8**: the root URL's cause is fixed (`runOnChange-in-slug`/`-in-homeSlug: true` on `The slug to show`) and gated artefact-wide in `sb007Template.test.ts`, but 🔴 **the drive is OWED** — Richard hand-drove the only editor stack all session. §10.3's census replaced §9.2's armchair clearance of the other 32 silenced nodes: 27 nodes / 48 parameters, and the property that separates a harmless silencing from a blank page is whether the input's producer is ordered before the control signal — `PageInputs` is the template's only such producer (`router.tsx:586`) |
 | SBR-005 | ⬜ open | |
-| SBR-006 | ⬜ open | |
+| SBR-006 | 🟢 s9: built + driven; **AC1 ✅, AC5 ✅ (control pair)**, AC2 🟡, AC3/AC4 ❌ | Two new components (`/Admin/Shell`, `/Admin/NewPageDialog`), three rebuilt. **AC5 is a control pair**: same shell placed twice, `Pages` reads `--primary`/600 on `/admin/pages` and `--foreground`/400 on `/admin/theme` while `Theme & settings` does the opposite — nothing poked. **AC1** the rail items STACK (y=65/96/127) and heading+`New page` share one row. 🔴 **The finding: the admin set had never been walked by the layout gate** — `findGrowingNodes` over the shipped artefact reported **11 growing nodes** in admin against 2 on the public site; `/Admin/PageRow` alone had four, so rows divided the page instead of stacking. 🔴 **And the gate nearly shipped with a hole**: a walk that stops at a component instance never reaches the bodies behind `Component Children` — it graded **41 nodes not 61** and `/Admin/PageRow` VANISHED, which read as an improvement. The report got QUIETER. 🔴 **AC2 half-blocked by SBR-008**: the dialog changes where title/slug come from and does not change the outcome — one `Page` table now holds a dialog-written row (`title None, slug None`) beside a cloud-written one (`Copy of Untitled`, `page-copy-np3ui4`), the cleanest SBR-008 evidence yet. 🔴 **AC3 blocked by a defect with no owner**: `publishPage` and `duplicatePage` BOTH time out at 30s with no response while `claimSite` succeeds in 29ms on the same backend — and they disagree, duplicate did its work, publish did nothing. ❌ **AC4 defect found**: View site landed on the literal `/%7Bslug%7D`; `pm-slug: ''` authored and gated but **NOT driven**. 🔴 §5.8: a refused query and an empty collection are the SAME SCREEN — no rows, no sentence, no explanation |
 | SBR-007 | ⬜ open | deployed-save half blocked on SBR-008 |
 | SBR-008 | ⬜ open | ruling taken: §11.4 option 1 (derive in runtime) |
 | SBR-009 | ⬜ open | |
@@ -46,6 +46,31 @@ per-task status and the session log.
   announce editor launches AND teardowns; `test:ci` alone.
 
 ## Session log
+
+- **s9 (2026-08-28)** — **SBR-006 built and driven.** `/Admin/Shell` (sidebar, brand,
+  Pages · Theme & settings · Messages, View site, screen body via `Component Children`) and
+  `/Admin/NewPageDialog` (Show Popup / Close Popup); `/Admin/PageRow` becomes a table row with a
+  derived status pill and the three write actions behind one overflow menu; `/Pages/ThemeEditor`
+  places the same shell with `active: 'theme'`.
+  ✅ **The popup mechanism was measured before anything was authored** (§4 says not to invent one):
+  the viewer installs the popup layer unconditionally (`viewer.jsx:174`), and close results are
+  flagged dirty BEFORE the close action fires (`showpopup.ts:204-210`) — the ordering that keeps
+  this from being a second SB-017 §11.1.
+  🔴 **The finding that outlives the task: the admin screens had never been walked by
+  `sb006PublicSite.test.ts`'s growing-node rule.** Eleven growing nodes to the public site's two.
+  🔴 **The new gate's own hole**: no `Component Children` hop ⇒ 41 graded instead of 61 and the
+  worst offender disappeared from the report. The green arm now asserts node NAMES, because a count
+  is the thing the hole moved the wrong way.
+  🔴 **`sb005AdminPanel.test.ts` was grading a population the panel never ships into** — the admin
+  set authored into an empty project; the first outward reference refused the component and took all
+  twenty other assertions with it. It now writes the public site first, as the generator does.
+  Two door refusals kept: a bare `width: 240` means **240%**, and `Text` has no padding or
+  border-radius ports at all.
+  Gates: template regenerated (21 components, 5 pages) · `typecheck:editor` 0 · `typecheck:mcp` 0 ·
+  mcp sb00* **148/148** · editor sb-007/015/017/018 + sbr-001/002/003 + fb-005 **377/377** ·
+  backend sb0* **141/141** · `test:main` **6253/6254** (the single red, `BLD-004`, is a
+  timing-sensitive stall test unrelated to this work and green in isolation).
+  ⚠️ **`test:ci` still NOT run** — owed since s8.
 
 - **s8 (2026-08-28)** — **the root URL's cause is fixed and gated; the drive is owed.**
   `resolveSlug` now carries `runOnChange-in-slug`/`-in-homeSlug: true` in `sb006Components.ts`,
