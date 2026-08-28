@@ -31,13 +31,18 @@
   min-width: 0;
 }
 
+/* Phase 75's border sweep (`BORDER-CONTROL-SWEEP.md`). These edges were
+   `--theme-color-border-default`, a DIVIDER tone measuring 1.07:1 on the rail
+   behind them — so the control had no perceivable boundary. POL-016's
+   `--theme-color-border-control` is the tone for a thing a reader must identify
+   as operable (1.4.11), and it clears 3:1 on every step this family sits on. */
 .PickerChip {
   display: flex;
   align-items: center;
   gap: 4px;
   max-width: 160px;
   padding: 3px 6px;
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-sm);
   background-color: var(--theme-color-bg-3);
   color: var(--theme-color-fg-default);
@@ -45,9 +50,20 @@
   cursor: pointer;
 }
 
+/* 🔴 **The hover fill goes DOWN the ramp here (bg-3 -> bg-4)**, which is the
+   opposite of the node picker's, and it is why that family's remedy — drop
+   `border-color` and let the lighter fill carry the same edge — does NOT
+   transfer. `border-control` measures 2.64:1 dark / 2.77:1 light on `bg-4`,
+   i.e. under 3:1, so leaving the resting border in place while the fill moves
+   would fail 1.4.11 *while the pointer is on the control*. And the fill step
+   cannot carry it alone: bg-4 on bg-2 is 1.35 / 1.22.
+
+   `primary` is 3.54 / 3.40 on that fill and 4.80 / 4.14 on the rail behind it,
+   and it is what the template shelf's hovers already use. What was here,
+   `border-strong`, is one of NAT-003's three DIVIDER tones: 1.10 / 1.14. */
 .PickerChip:hover {
   background-color: var(--theme-color-bg-4);
-  border-color: var(--theme-color-border-strong);
+  border-color: var(--theme-color-primary);
 }
 
 .PickerLabel {
@@ -130,10 +146,14 @@
   background-color: var(--theme-color-border-subtle);
 }
 
+/* Transparent-filled, so both sides of this edge are the rail's `bg-2` at rest
+   and its hover fill is `bg-3` — `border-control` clears 3:1 on both (3.57 /
+   3.37 and 3.08 / 3.05), which is why these three need no hover rule of their
+   own. See `.PickerChip:hover` for the case where that is not true. */
 .Action {
   flex: none;
   padding: 3px 8px;
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-sm);
   background-color: transparent;
   color: var(--theme-color-fg-default);
@@ -162,7 +182,7 @@
   align-items: center;
   gap: 6px;
   padding: 3px 8px;
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-sm);
   background-color: transparent;
   color: var(--theme-color-fg-default);
@@ -174,11 +194,17 @@
   background-color: var(--theme-color-bg-3);
 }
 
+/* 🔴 **The site the sweep's inventory cannot see, and it missed on both counts.**
+   That query selects blocks holding `border-default` AND `cursor: pointer`; this
+   is a text `<input>`, so it sets no cursor, and its edge named `border-strong`
+   rather than `border-default`. Both are NAT-003 divider tones, and this one was
+   1.74:1 on its own fill / 1.49:1 on the rail. Found by reading the file, exactly
+   as `.TemplateFilter-search` and `NodePickerSearchBar .Field` were. */
 .NameField {
   flex: 1;
   min-width: 0;
   padding: 3px 6px;
-  border: 1px solid var(--theme-color-border-strong);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-sm);
   background-color: var(--theme-color-bg-1);
   color: var(--theme-color-fg-default);

@@ -28,10 +28,15 @@
   gap: 6px;
 }
 
+/* Phase 75's border sweep (`BORDER-CONTROL-SWEEP.md`). These edges were
+   `--theme-color-border-default`, a DIVIDER tone measuring 1.07:1 on the rail
+   behind them — so the control had no perceivable boundary. POL-016's
+   `--theme-color-border-control` is the tone for a thing a reader must identify
+   as operable (1.4.11), and it clears 3:1 on every step this family sits on. */
 .Clear {
   flex: none;
   padding: 2px 6px;
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-sm);
   background-color: transparent;
   color: var(--theme-color-fg-default);
