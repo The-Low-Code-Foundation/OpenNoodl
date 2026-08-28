@@ -125,7 +125,14 @@ describe('SB-007 — install writes a project that opens', () => {
     // template's graphs assume) and this assertion is what reported it. An
     // `toContain` here would have let a new file land in every project made from
     // every template with nothing to notice. Keep it exhaustive.
-    expect([...written.keys()]).toEqual(['/projects/a/project.json', '/projects/a/nodegx.security.json']);
+    // (It reported again when SBR-003 added the third write: `docs/THEME.md`,
+    // the token contract the door's `get_project_doc` lists — path-validated by
+    // `assertTemplateDocPath`, graded in `tests-unit/sbr-003/`.)
+    expect([...written.keys()]).toEqual([
+      '/projects/a/project.json',
+      '/projects/a/nodegx.security.json',
+      '/projects/a/docs/THEME.md'
+    ]);
     expect(project.components).toHaveLength(19);
   });
 

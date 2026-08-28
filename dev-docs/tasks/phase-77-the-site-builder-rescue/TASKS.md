@@ -8,8 +8,8 @@ per-task status and the session log.
 | id | status | note |
 |---|---|---|
 | SBR-001 | ✅ closed s2 | driven end-to-end; ACs 1–5,7 verified live, AC6 by spec + shelf listing |
-| SBR-002 | 🟡 s3: built, half-driven | editor half CLOSED (AC1–3 driven); template half built + spec-graded; **owed: AC4 drive + this lane's `test:ci`** — deferred under Richard's CPU hold (s3) |
-| SBR-003 | 🟡 s4: built, unrun | contract implemented end-to-end + specs written under the CPU hold; **owed: template regeneration, typechecks, suites** (see task §5); person-ACs verify after SBR-004/006/009 |
+| SBR-002 | ✅ closed s4 | AC4 driven — all three states, each with its negative control; the drive **found and fixed a real defect** (the watchdog could never bark — see s4 log) |
+| SBR-003 | 🟡 s4: built, swept, driven | AC1–4 verified live (floor stamps, overlay beats it, delete falls back); AC5 spec half green. **Owed: the `var(--token)` dimension-port probe — carried into SBR-004.** Person-sentences complete with SBR-004/006/009 |
 | SBR-004 | ⬜ open | |
 | SBR-005 | ⬜ open | |
 | SBR-006 | ⬜ open | |
@@ -46,6 +46,29 @@ per-task status and the session log.
   announce editor launches AND teardowns; `test:ci` alone.
 
 ## Session log
+
+- **s4b (2026-08-28, hold cleared mid-session)** — **the owed sweep ran clean and both drives
+  landed.** Gates: template regenerated · `typecheck:editor` 0 · `typecheck:mcp` 0 · **`test:ci`
+  2863/4, all four `AIX-006 style vocabulary` by name** (floor exactly) · `test:main` 6253/6254
+  — the single red was SBR-003's own third install write hitting sb-007's *exhaustive*
+  written-files pin, updated deliberately · mcp sb004/005/006/007 91/91 · backend 35/35 + 20/20.
+  🔴 **SBR-002 AC4's drive found a real defect the specs could not**: the no-backend deadline
+  **never spoke**. A signal into a VALUE port writes true-then-false, and the input queue holds
+  **one entry per input name**, so the two writes coalesce and the decider runs ONCE with
+  `false` — its `Inputs.watchdog === true` guard was a watchdog that could never bark. Guard is
+  now `!== undefined` (the deadline is the port's only writer, so "defined at all" IS "the
+  deadline passed"); the spec's abstain row and its mutant were inverted to match, artefact
+  regenerated, sb006 33/33. Re-driven on a wizard-fresh project: **no backend → the sentence,
+  visible and hit-tested; unclaimed → "not set up"; claimed + bogus slug → "not found", with the
+  answered home page as the negative control (panel `visibility: hidden`)**. SBR-003: floor
+  reaches `:root` live (`--primary #1e4d8c`, `--site-measure 44rem`), the real deployed
+  `claimSite` seeds exactly the twelve contract keys, a Night write overlays them (companions
+  land as live `color-mix`, not frozen), and deleting the row falls every token back to Studio.
+  Method notes: the editor preview is 988×313 until you pick a device size — probe reachability
+  at a **real** viewport, and `elementFromPoint` returning `null` means below the fold, not
+  hidden; the honest hidden signal here is `visibility`. `SITE_SETUP_TOKEN` was provisioned
+  through the product's own Secrets panel (writing the backend's `secrets.json` by hand is
+  blocked, and the panel is the flow a person uses anyway).
 
 - **s4 (2026-08-28)** — **SBR-003 built end-to-end under the CPU hold; NOTHING EXECUTED**
   (code + specs saved for the sweep, per Richard's freeze). The contract is single-sourced in

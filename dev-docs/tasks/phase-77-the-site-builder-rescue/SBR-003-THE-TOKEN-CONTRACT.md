@@ -71,9 +71,9 @@ platform, not by new machinery.
 5. The probe specs of §2 exist and are green — each one paired with a control that proves the
    instrument can fail (an unknown token does NOT constrain the box).
 
-## 5. Status (s4, 2026-08-28 — built under the CPU hold, NOTHING EXECUTED)
+## 5. Status (s4, 2026-08-28 — BUILT, SWEPT AND DRIVEN; hold cleared mid-session)
 
-**Built, specs written, all UNRUN** (Richard's freeze — code + tests saved for the sweep):
+**Built, specs written; hold cleared mid-session and everything ran (see §6).**
 
 - **The contract module**: `models/template/templates/siteTheme.ts` — `THEME_TOKEN_FIELDS`
   (the final field list, 12 fields: `colorPrimary`, `colorOnPrimary`, `colorBackground`,
@@ -104,14 +104,42 @@ platform, not by new machinery.
   `#3b82f6` (bare-project control keeps it, lacks `--site-measure`), and a post-regeneration
   gate: the shipped artefact's applier reads every contract field.
 
-**Owed (in the sweep, in this order):** `npm run template:site-builder` (the artefact still
-carries the 4-key scripts — `sb007Template.test.ts` byte gate and the sbr-003 artefact spec
-are RED until then, by design) → `typecheck:editor` (expect 0) + `typecheck:mcp` →
-`test:ci` → mcp vitest (sb004/005/006/007) → backend suites when their build/pg is fair game.
+## 6. The sweep and the drive (s4, after Richard cleared the hold)
 
-**§2 probes that are drives, still owed after the sweep:** the `var(--token)` dimension-port
-rendered probe (+ unknown-token control), and applyTheme-beats-`:root` (flip primary, read a
-button in a second eval).
+**Gates, in order, all green:** `template:site-builder` regenerated (19 components, 5 pages) ·
+`typecheck:editor` **0** · `typecheck:mcp` **0** · `test:ci` **2863 specs / 4 failures, all four
+`AIX-006 style vocabulary` by name** (floor exactly; fresh `test-results.json`) · `test:main`
+**6253/6254** — the one red was this task's own doing (sb-007's *exhaustive* written-files pin
+saw the new third write `docs/THEME.md`; pin updated deliberately, suite 12/12) · mcp
+sb004/005/006/007 **91/91** · backend `sb004-publication-invariant` **35/35** and
+`sb008-public-site-drive` **20/20** (built first).
+
+**AC1 (floor, live):** wizard-created project's `nodegx.project.json` carries
+`metadata.designTokens` (19 tokens, `--primary #1e4d8c`, `--radius-md 6px`,
+`--site-measure 44rem`) beside `initialOpenComponent`, and `docs/THEME.md` lands on disk. The
+running preview's `:root` carries the Studio values and `--site-measure`.
+
+**AC2/AC4 (overlay and fallback, live):** wrote Night's `#d9a441 / #14161a / #eceae5` into the
+real `Theme` row through the claimed site, reloaded, read back in a SECOND eval —
+`documentElement` inline style carried `--primary`, `--primary-hover`
+(`color-mix(in srgb, #d9a441 82%, black)` — resolved live by the browser, not frozen), `--ring`,
+`--accent-foreground`, `--background`, `--foreground`. Deleted the row, reloaded: inline style
+`null`, every token back at the Studio floor. **The deployed `claimSite` seeded exactly the
+twelve contract keys** — the contract survives the door, the generator and a real backend.
+
+**AC3:** `docs/THEME.md` ships and reads as the contract.
+
+**AC5:** the spec probes are green. ⚠️ **Still owed: the `var(--token)` dimension-port rendered
+probe** (a `--site-measure` maxWidth constrains a real box; unknown-token control does not).
+Nothing consumes the measure token until SBR-004, so this probe belongs with it.
+
+**Still true:** AC1/AC2's *person* sentences ("looks like Studio", "every surface changes") are
+only half-verified — the tokens demonstrably reach `:root` and the overlay demonstrably beats
+them, but no component reads them yet. SBR-004/006 make that visible; the contract is now fixed,
+documented and gated for them.
+
+**Owed after s4:** only the `var(--token)` dimension-port rendered probe (§2, first bullet) —
+carried into SBR-004, which is the task that first uses the measure token.
 
 **AC status:** AC3 done (doc ships, generated). AC5 half done (spec-able probes written;
 drive probes owed). AC1/AC2/AC4 are person-sentence drives that CANNOT pass yet on visuals:

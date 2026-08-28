@@ -812,7 +812,13 @@ export const SITE_NODES = [
         // this node re-runs on every input. `=== true` because the Delay's
         // signal lands on a value port as true-then-false; the false pass
         // falls through to the abstain and the latched outputs stand.
-        'if (Inputs.watchdog === true && Inputs.claimed === undefined && Inputs.missing === undefined) {\n' +
+        // 🔴 `!== undefined`, NOT `=== true` — measured in the s4 drive: a signal
+        // into a value port writes true-then-false, and the input queue holds ONE
+        // entry per input name, so the two writes coalesce and the script runs
+        // ONCE, with `false`. The only writer of this port is the deadline, so
+        // "defined at all" IS "the deadline passed"; an `=== true` guard is a
+        // watchdog that can never bark.
+        'if (Inputs.watchdog !== undefined && Inputs.claimed === undefined && Inputs.missing === undefined) {\n' +
         '  Outputs.text = ' + JSON.stringify(NO_BACKEND_TEXT) + ';\n' +
         '  Outputs.visible = true;\n' +
         '  return;\n' +
@@ -1082,8 +1088,9 @@ export const SITE_WIRES = [
   { fromId: 'diagnoseNotFound', fromProperty: 'out-visible', toId: 'notFound', toProperty: 'visible' },
   { fromId: 'diagnoseNotFound', fromProperty: 'out-text', toId: 'notFound', toProperty: 'text' },
   // SBR-002: the deadline. Mount starts the clock; its finish arms the
-  // watchdog arm — a value port, so the signal writes true-then-false and the
-  // decider's `=== true` guard is load-bearing.
+  // watchdog arm — a value port, so the signal's true-then-false COALESCES to a
+  // single `false` delivery (one queue entry per input name, s4 drive), which
+  // is why the decider guards on `!== undefined`, never `=== true`.
   { fromId: 'page', fromProperty: 'didMount', toId: 'noBackendDeadline', toProperty: 'start' },
   { fromId: 'noBackendDeadline', fromProperty: 'timerFinished', toId: 'diagnoseNotFound', toProperty: 'in-watchdog' },
   // ✅ The metatag half that DOES work from the port (`Page.tsx:162-168`).

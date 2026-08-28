@@ -1,102 +1,88 @@
 # Phase 77 — next session
 
-## 🔴 STANDING HOLD — read before doing ANYTHING heavy
+## ✅ No hold. Richard cleared the CPU freeze 2026-08-28 (s4): *"Freeze is off, go nuts."*
 
-**Richard, 2026-08-28 (mid-s3): "avoid doing any CPU / RAM intensive testing until I
-explicitly say to start again … Save the tests, we'll run them later and sweep up all the
-work done at once."**
+The s3/s4 owed sweep is **done and green** — do not re-run it as if it were owed. What follows
+is the live state.
 
-This line stays in this file until Richard explicitly clears it. Until then: no `test:ci`,
-no full jest/vitest suites, no webpack builds, no editor stack (`dev:debug`/`dev`), no
-backend fleets, and no `npm run template:site-builder` (it boots the door's validation
-tree). Doc edits, code edits, small greps and single-file reads are fine. When he clears
-it, run the **owed sweep** below first.
+## Where the phase stands
 
-## The owed sweep (run when — and only when — the hold is lifted; IN THIS ORDER)
+| task | state |
+|---|---|
+| SBR-001 | ✅ closed s2, driven |
+| SBR-002 | ✅ **closed s4** — AC4 driven, three states + controls; the drive found and fixed a real defect |
+| SBR-003 | 🟡 built, swept, driven — AC1–4 live; **one probe owed, carried into SBR-004** |
+| SBR-004…014 | ⬜ open |
 
-1. **`npm run template:site-builder`** — s4 (SBR-003) edited all three component sets
-   (`applyTheme`, `buildTokens`, `readTheme`, `seedTheme`, two theme-editor wires) and the
-   artefact was NOT regenerated under the hold. Until this runs, `sb007Template.test.ts`
-   (byte gate) and `tests-unit/sbr-003/token-contract.test.ts`'s LAST spec ("shipped applier
-   reads every contract field") are RED BY DESIGN. Expected after: id count stays 195 (no
-   nodes added), sb017 helper total stays 101 (parameters aren't connections; no cloud
-   nodes/wires changed).
-2. **`typecheck:editor`** — expect **0 errors** (baseline gone since s3). New editor files:
-   `siteTheme.ts`, `ProjectTemplate.ts`, `EmbeddedTemplateProvider.ts`,
-   `site-builder.template.ts`, `tests-unit/sbr-003/`. Then **`typecheck:mcp`** (sb00x now
-   import `siteTheme` cross-package — same pattern as `ProjectImporter`, but unproven).
-3. **`test:ci` floor** — expect 2863+ specs (sbr-003 adds ~14) / 4 failures, all
-   `AIX-006 style vocabulary` **by name**. Covers both s3's owed run (SBR-002) and s4's
-   (SBR-003). P75's 11:47 run predates both and discharges neither.
-4. **`test:main`** — s3 saw `2 failed, 371 passed` beside webpack builds (the
-   two-suites-at-once flake pattern; only `"'siteBuilder' was also declared here."` survived
-   a truncated log; suspects `require` `site-builder.content.json`:
-   `sb-017/cloud-ports-agree-with-the-runtime.test.ts`, `sb-018/*`). Re-run clean; a repeat
-   is real.
-5. **mcp vitest** (`sb004Authoring`, `sb005AdminPanel`, `sb006PublicSite`, `sb007Template`)
-   — s3's 33/33 on sb006 predates s4's applier/buildTokens extension; the acceptance-5
-   key-agreement spec and its mutant derive both sides from the scripts and should extend
-   themselves; the THEME_KEYS loop now iterates 12 entries.
-6. **Backend suites** (`sb004-publication-invariant`, `sb008-public-site-drive`) — BUILD
-   FIRST or real-HTTP skips; pins updated to the 12-key shape.
-7. **SBR-002 AC4 drive** — unchanged from s3's writeup, still owed (three states, three
-   on-screen answers, `elementFromPoint`-reachability, fresh wizard project; see s3's
-   NEXT-SESSION-PROMPT section preserved in `TASKS.md` s3 log and SBR-002's task file).
-8. **SBR-003 drive probes (§2)** — after the sweep, with an editor: (a) a dimension port fed
-   `var(--site-measure)` actually constrains a rendered box, paired with an unknown-token
-   control that does NOT; (b) `applyTheme` beats the `:root` floor live (write a Theme row
-   flipping `colorPrimary`, observe a button/`--primary` read change in a SECOND cdp eval —
-   a token flip is invisible in the same eval).
+**s4 gate readings (post-fix tree, for comparison — but see "re-run these first" below):**
+`typecheck:editor` 0 · `typecheck:mcp` 0 · `test:ci` **2863 / 4 failures, all `AIX-006 style
+vocabulary` by name** · `test:main` 6253/6254 → 6254/6254 after the sb-007 pin update · mcp
+sb004/005/006/007 91/91 · backend 35/35 + 20/20.
 
-## Where SBR-003 stands (s4) — read `SBR-003-THE-TOKEN-CONTRACT.md` §5 for the full map
+## Re-run these first (cheap, and honestly owed)
 
-**Built + spec'd, NOTHING EXECUTED.** The contract is single-sourced in
-`packages/noodl-editor/src/editor/src/models/template/templates/siteTheme.ts`:
+`test:ci` and the full `test:main` ran **before** the watchdog fix regenerated the artefact a
+second time. Re-verified after the fix: `sb006PublicSite` 33/33, `sb007Template` 22/22,
+`tests-unit/sb-007` + `sbr-002` + `sbr-003` 36/36. So the exposure is small, but a full
+`test:ci` + `test:main` on the current tree is the honest first move (~3 min, run `test:ci`
+alone).
 
-- `THEME_TOKEN_FIELDS` — the final 12-field `Theme.tokens` list (AC deliverable):
-  `colorPrimary → --primary`, `colorOnPrimary → --primary-foreground`,
-  `colorBackground → --background`, `colorSurface → --surface`, `colorText → --foreground`,
-  `colorTextSoft → --muted-foreground`, `colorBorder → --border`,
-  `colorAccentSoft → --accent`, `radius → --radius-md`, `fontDisplay → --font-serif`,
-  `fontUi → --font-sans`, `measure → --site-measure` (the ONE minted custom token).
-- `SITE_THEME_PRESETS` — Studio/Press/Night, hexes verbatim from the screens artifact.
-  Studio IS the floor: `buildSiteDesignTokens()` derives the template's `designTokens`
-  block from it (+ 7 static companions), so "pick Studio" ≡ "delete the Theme row".
-- Install writes `metadata.designTokens` + generated `docs/THEME.md`
-  (`buildThemeDoc()`, front-matter `inject: pull`) — new `ProjectTemplate.designTokens`
-  and `.docs` fields, docs validated by `assertTemplateDocPath` (throws on escapes).
-- Overlay: sb006 `applyTheme` writes the same names on `documentElement.style`; companions
-  are DERIVED (`color-mix`), never record fields; `fontUi` also mirrored inline.
+## The two things genuinely left from s4
 
-**Person-ACs (AC1/2/4) cannot pass on visuals yet**: nothing consumes tokens until SBR-004
-(public site) / SBR-006 (admin) author with `var(--token)`, and the preset row is SBR-009.
-That is the artifact's own diagnosis ("nothing reads the tokens") — the contract is now
-fixed, documented, and gated so those tasks build against it.
+1. **The `var(--token)` dimension-port probe** (SBR-003 §2, AC5's last row): a `maxWidth` fed
+   `var(--site-measure)` actually constrains a rendered box in the viewer, paired with an
+   unknown-token control that does **not**. Deliberately carried into **SBR-004**, which is the
+   first task that puts a measure on a real box — probing it earlier would need a throwaway node.
+2. **SBR-003's person-sentences** ("looks like Studio", "every surface changes") complete when
+   SBR-004 (public site) and SBR-006 (admin) author from `var(--token)`, and SBR-009 ships the
+   preset row. The contract itself is fixed, documented and gated.
 
-## Traps s4 confirmed or found
+## Next task: SBR-004 — the public site wears the theme
 
-- 🔴 **`TokenResolver.generateCss` resolves a pure `var(--x)` token VALUE inline at stamp
-  time** — a floor token defined as `var(--primary)` freezes to the hex and stops tracking
-  overlays. Floor companions are static hexes on purpose; runtime derivations use
-  `color-mix(...)`, which the resolver passes through verbatim and the browser keeps live.
-- ✅ POL-006's floor (`body { font-family: var(--font-sans) }` in every stamped surface)
-  means overriding the TOKEN is the effective font channel; `applyTheme`'s inline mirror
-  only matters on unstamped surfaces.
-- ⚠️ nodegx-backend tests only `require` JSON from the editor tree — the 12-key pin there is
-  a deliberate literal; the seed↔contract binding lives in `sb004Authoring.test.ts` (which
-  imports `siteTheme` like `sb007Template.ts` imports `ProjectImporter`).
-- Standing s3 traps still live: sb017 helper total (101) moves only for cloud-component
-  edits; `dev:debug` launcher exited unexpectedly 2× in s3 (read `.logs/dev.log` BEFORE
-  deleting anything).
+Everything visual depends on the now-settled contract in
+`models/template/templates/siteTheme.ts`:
 
-## After the sweep
+- 12 `Theme.tokens` fields → `--primary`, `--primary-foreground`, `--background`, `--surface`,
+  `--foreground`, `--muted-foreground`, `--border`, `--accent`, `--radius-md`, `--font-serif`,
+  `--font-sans`, `--site-measure`.
+- Author **only** `var(--token)`: measure = `--site-measure`, radius = `--radius-md`, spacing =
+  `--space-*` steps, faces = `--font-serif`/`--font-sans`. 🔴 No `var(--x, fallback)` — one
+  default writer (`designTokens`), one overlay writer (`applyTheme`).
+- Presets (`SITE_THEME_PRESETS`) are data and Studio IS the floor, so "pick Studio" ≡ "delete
+  the Theme row" by construction.
 
-SBR-002 closes on its AC4 drive. SBR-003's remaining §2 drive probes close its AC5; its
-person-ACs verify with SBR-004/006/009. Then per build order: **SBR-004 (the public site
-wears the theme)** — author `/Pages/Site` + `/Site/*` entirely from `var(--token)` against
-the now-fixed contract (measure = `--site-measure`, radius = `--radius-md`, spacing =
-`--space-*` steps); **SBR-008 (derive `prop-` ports in runtime)** stays independent and
-unblocked.
+## Traps s4 measured (all cost real time — read before driving)
+
+- 🔴 **A signal into a VALUE port coalesces.** true-then-false arrives as **one** queue entry
+  per input name, so the receiving script runs **once, with `false`**. Any guard of the form
+  `Inputs.x === true` on a signal-fed value port **can never fire**. This shipped for a session
+  behind green specs — the unit spec asserted the abstain-on-false design, so the spec and the
+  defect agreed. Only the drive could see it.
+- 🔴 **The editor preview is 988×313 until you pick a device size** (topbar `ZoomSelect` →
+  "Mobile, big"). Probing reachability in the default pane is measuring the pane, not the page.
+- 🔴 **`elementFromPoint` returning `null` means "below the fold", not "hidden"** — and an
+  ancestor hit counts as reachable unless you require `hit === el || el.contains(hit)`. The
+  honest hidden signal in this template is `getComputedStyle(el).visibility`.
+- 🔴 **The wizard's template card**: click the `[class*=TemplateCard--]` **root** (a BUTTON) and
+  verify `--selected` landed. Clicking the title span reports success and selects nothing — the
+  Review step then says "Hello World" and would have created the wrong project.
+- ⚠️ **`claimSite` fails closed on a missing `SITE_SETUP_TOKEN`.** Provision it through the
+  backend's own **Secrets panel** (overflow "···" on the backend card → Secrets) — writing
+  `~/.noodl/backends/<id>/secrets.json` by hand is blocked, and the panel is the real flow.
+- ⚠️ The admin "New page" create form did not carry typed values into the record in the drive
+  (rows landed with `title: null`). **Not investigated** — it is SBR-007's screen and may be the
+  same `prop-` deploy defect SBR-008 owns. Worth a look before SBR-007.
+- ⚠️ `publishPage` requires `{pageId, publish}` — `publish` missing is a 30s function timeout,
+  not a validation error.
+
+## Drive artefacts on this machine
+
+`SBR AC4 Drive` (backend `backend_mtd2k32gtl3ee`:8591, claimed, owner `owner@sbr-ac4.test` /
+`sbr-ac4-password-1`, setup token `sbr-ac4-drive-token`, one published `home` page, empty Theme
+row) and `SBR AC4 Drive 2` (fresh, carries the fixed watchdog). Both bindings restored; both
+have a `nodegx.project.json.sbr-backup` beside them, safe to delete. Older: `SBR Setup Drive`,
+`SBR Drive Site`, `SBR Hello Control`, `SBR No Backend` (stale graphs — do not reuse for state
+drives).
 
 ## Standing context
 
@@ -105,10 +91,5 @@ unblocked.
   https://claude.ai/code/artifact/f4b2077a-7a78-4c33-8bf7-8b7f343f0b0b .
 - 🔴 Never scope by time. Every task's ACs include a person sentence — verify as written.
 - Shared checkout: pathspec commits only (untracked ⇒ add+commit one chain); announce editor
-  launches and teardowns to peers; `test:ci` alone; end the session by updating this file,
-  TASKS.md s-log, and memory.
-- Drive artefacts on this machine: "SBR Setup Drive" (backend `backend_mtcvrppkyv22t`:8590,
-  hint verified), "SBR Drive Site" (s2, backend `backend_mtctpzoolycw4`:8589), "SBR Hello
-  Control" (no hint, no backend), scratch "SBR No Backend" (pre-deadline graph — stale for
-  AC4), all in `~/vscode_projects/NodeGX test projects/`. A peer's stopped backend on 8588
-  ("sb015 site backend") is already claimed — not a clean fixture, deletable.
+  launches AND teardowns to peers; `test:ci` alone; end the session by updating this file,
+  TASKS.md's s-log, and memory.

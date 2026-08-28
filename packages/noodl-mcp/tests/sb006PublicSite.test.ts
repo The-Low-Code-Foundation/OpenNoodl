@@ -855,9 +855,16 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     expect(run({ watchdog: true, settingsError: 'refused' }).text).toBe(NOT_AVAILABLE_TEXT);
     expect(run({ watchdog: true, error: 'refused' }).text).toBe(NOT_AVAILABLE_TEXT);
 
-    // 🔴 The signal lands on a VALUE port, so it writes true then false; the
-    // false pass must abstain (outputs latched from the true pass), not erase.
-    expect(run({ watchdog: false })).toEqual({});
+    // 🔴 The signal lands on a VALUE port, so it writes true-then-false — and
+    // the s4 DRIVE measured that the input queue holds ONE entry per input
+    // name, so the script runs ONCE, with `false`. "Defined at all" is the
+    // deadline having passed; `false` must therefore SPEAK, not abstain (the
+    // abstain design was the silent watchdog AC4 caught live).
+    const deadFalse = run({ watchdog: false });
+    expect(deadFalse.visible).toBe(true);
+    expect(deadFalse.text).toBe(NO_BACKEND_TEXT);
+    // The abstain case is `undefined` — the deadline has NOT passed.
+    expect(run({})).toEqual({});
 
     // The fourth sentence is genuinely a fourth sentence.
     expect(new Set([NO_BACKEND_TEXT, NOT_FOUND_TEXT, NOT_SET_UP_TEXT, NOT_AVAILABLE_TEXT]).size).toBe(4);
@@ -893,8 +900,8 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
     const notFound = w.graph.nodes.find((n) => n.parameters?.text === NOT_FOUND_TEXT)!;
     const decider = w.graph.nodes.find((n) => n.id === w.wires.find((c) => c.toId === notFound.id && c.toProperty === 'text')!.fromId)!;
     const mutantScript = scriptOf(decider).replace(
-      "Inputs.watchdog === true && Inputs.claimed === undefined && Inputs.missing === undefined",
-      'Inputs.watchdog === true'
+      "Inputs.watchdog !== undefined && Inputs.claimed === undefined && Inputs.missing === undefined",
+      'Inputs.watchdog !== undefined'
     );
     expect(mutantScript).not.toBe(scriptOf(decider));
     const out: Record<string, unknown> = {};

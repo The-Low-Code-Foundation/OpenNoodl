@@ -835,7 +835,7 @@
             "x": 470,
             "y": 1120,
             "parameters": {
-              "functionScript": "const pageRefused = Inputs.error !== undefined && Inputs.error !== null && Inputs.error !== \"\";\nconst settingsRefused = Inputs.settingsError !== undefined && Inputs.settingsError !== null && Inputs.settingsError !== \"\";\nif (settingsRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.claimed === false) {\n  Outputs.text = \"This site has not been set up yet.\";\n  Outputs.visible = true;\n  return;\n}\nif (pageRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.watchdog === true && Inputs.claimed === undefined && Inputs.missing === undefined) {\n  Outputs.text = \"No backend connected. This project needs a backend before it can store pages — add one from Backend Services.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.missing === undefined) return;\nif (!Inputs.missing) {\n  Outputs.visible = false;\n  return;\n}\nOutputs.text = \"That page could not be found.\";\nOutputs.visible = true;"
+              "functionScript": "const pageRefused = Inputs.error !== undefined && Inputs.error !== null && Inputs.error !== \"\";\nconst settingsRefused = Inputs.settingsError !== undefined && Inputs.settingsError !== null && Inputs.settingsError !== \"\";\nif (settingsRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.claimed === false) {\n  Outputs.text = \"This site has not been set up yet.\";\n  Outputs.visible = true;\n  return;\n}\nif (pageRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.watchdog !== undefined && Inputs.claimed === undefined && Inputs.missing === undefined) {\n  Outputs.text = \"No backend connected. This project needs a backend before it can store pages — add one from Backend Services.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.missing === undefined) return;\nif (!Inputs.missing) {\n  Outputs.visible = false;\n  return;\n}\nOutputs.text = \"That page could not be found.\";\nOutputs.visible = true;"
             },
             "ports": [],
             "dynamicports": []
@@ -1020,7 +1020,7 @@
             "x": 470,
             "y": 1720,
             "parameters": {
-              "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) root.style.setProperty('--primary', t.colorPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.fontFamily) root.style.fontFamily = t.fontFamily;"
+              "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) {\n  root.style.setProperty('--primary', t.colorPrimary);\n  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n  root.style.setProperty('--ring', t.colorPrimary);\n  root.style.setProperty('--accent-foreground', t.colorPrimary);\n}\nif (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorSurface) {\n  root.style.setProperty('--surface', t.colorSurface);\n  root.style.setProperty('--surface-raised', t.colorSurface);\n}\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\nif (t.colorBorder) {\n  root.style.setProperty('--border', t.colorBorder);\n  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n}\nif (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\nif (t.radius) root.style.setProperty('--radius-md', t.radius);\nif (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\nif (t.fontUi) {\n  root.style.setProperty('--font-sans', t.fontUi);\n  root.style.fontFamily = t.fontUi;\n}\nif (t.measure) root.style.setProperty('--site-measure', t.measure);"
             },
             "ports": [],
             "dynamicports": []
@@ -2636,7 +2636,7 @@
             "x": 410,
             "y": 880,
             "parameters": {
-              "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nOutputs.primary = t.colorPrimary || '';\nOutputs.background = t.colorBackground || '';\nOutputs.text = t.colorText || '';\nOutputs.font = t.fontFamily || '';"
+              "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nOutputs.primary = t.colorPrimary || '';\nOutputs.onPrimary = t.colorOnPrimary || '';\nOutputs.background = t.colorBackground || '';\nOutputs.surface = t.colorSurface || '';\nOutputs.text = t.colorText || '';\nOutputs.textSoft = t.colorTextSoft || '';\nOutputs.border = t.colorBorder || '';\nOutputs.accentSoft = t.colorAccentSoft || '';\nOutputs.radius = t.radius || '';\nOutputs.fontDisplay = t.fontDisplay || '';\nOutputs.fontUi = t.fontUi || '';\nOutputs.measure = t.measure || '';"
             },
             "ports": [],
             "dynamicports": []
@@ -2645,11 +2645,11 @@
             "id": "buildTokens",
             "type": "JavaScriptFunction",
             "children": [],
-            "label": "The four tokens, as one object",
+            "label": "The theme tokens, as one object",
             "x": 410,
             "y": 1000,
             "parameters": {
-              "functionScript": "Outputs.tokens = {\n  colorPrimary: Inputs.primary || '',\n  colorBackground: Inputs.background || '',\n  colorText: Inputs.text || '',\n  fontFamily: Inputs.font || ''\n};\nOutputs.built();"
+              "functionScript": "Outputs.tokens = {\n  colorPrimary: Inputs.primary || '',\n  colorOnPrimary: Inputs.onPrimary || '',\n  colorBackground: Inputs.background || '',\n  colorSurface: Inputs.surface || '',\n  colorText: Inputs.text || '',\n  colorTextSoft: Inputs.textSoft || '',\n  colorBorder: Inputs.border || '',\n  colorAccentSoft: Inputs.accentSoft || '',\n  radius: Inputs.radius || '',\n  fontDisplay: Inputs.fontDisplay || '',\n  fontUi: Inputs.fontUi || '',\n  measure: Inputs.measure || ''\n};\nOutputs.built();"
             },
             "ports": [
               {
@@ -2762,7 +2762,7 @@
           },
           {
             "fromId": "readTheme",
-            "fromProperty": "out-font",
+            "fromProperty": "out-fontDisplay",
             "toId": "fontField",
             "toProperty": "startValue"
           },
@@ -2812,7 +2812,7 @@
             "fromId": "fontField",
             "fromProperty": "onTextChanged",
             "toId": "buildTokens",
-            "toProperty": "in-font"
+            "toProperty": "in-fontDisplay"
           },
           {
             "fromId": "themeButton",
@@ -4796,9 +4796,17 @@
               "collectionName": "Theme",
               "prop-tokens": {
                 "colorPrimary": "",
+                "colorOnPrimary": "",
                 "colorBackground": "",
+                "colorSurface": "",
                 "colorText": "",
-                "fontFamily": ""
+                "colorTextSoft": "",
+                "colorBorder": "",
+                "colorAccentSoft": "",
+                "radius": "",
+                "fontDisplay": "",
+                "fontUi": "",
+                "measure": ""
               },
               "accessControl": [
                 {
