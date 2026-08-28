@@ -133,3 +133,30 @@ in `ProjectTemplate.ts`, a file P77 is editing.
   hidden signal is `visibility`; preview is 988×313 until a device size is picked.
 - 🔴 **Shared checkout:** commit by pathspec (untracked ⇒ add+commit one chain), never
   stage-then-commit. `test:ci` alone. Announce editor launches **and** teardowns — P77 is driving.
+
+## 9. Findings (s1, 2026-08-28)
+
+The vertical slice is built, generated and committed: `App` + `Pages/Landing` +
+`Pages/SignIn` + `Pages/Members`, authored through the door, `npm run template:members`,
+artefact at `templates/members-area/`.
+
+- ✅ **The pending state is mechanical, not a convention.** `roles/SystemRoles.ts` is the only
+  way into `_Role` from a graph (`_noodl_system_roles`, cloud-function-only), and
+  `users/SystemUsers.ts` guarantees a user it creates resolves to `roles: []` — *"a node that
+  can create a user" is provably not "a node that can create an admin"*. So: visitor = no
+  session, **pending = signed in with `roles: []`**, member = `role:member`, moderator =
+  `role:admin`. 🔴 **Therefore no rule may say `authenticated`** — it is true for the pending
+  user, and it is also what a deployed backend falls back to. The failure mode is the default.
+- 🔴 **The Log Out node's signal input is named `login`.** Not a typo and not fixable —
+  `logout.ts:67`: *"the port name is persisted in every project that uses this node."* Displayed
+  as "Do". Found because the door refused `logout` and named the alternative.
+- 🔴 **The door treats WARNINGS as refusals.** `unresolved-navigation` is `severity: warning`
+  and still returns `isError`. That is why the deferred pass must run after **every** page
+  exists — and it means a clean run is genuine evidence, not silence.
+- 🔴 **A prepared directory cannot drop the volatile fields, so it must pin them — and the id
+  lives in THREE files.** `component.json:id`, plus a `componentId` in both `nodes.json` and
+  `connections.json`; the registry keeps per-component `created`/`modified` beside
+  `lastUpdated`. The first normaliser pinned one of them and looked right. **Regenerating twice
+  and diffing is what found it**; two runs are now byte-identical.
+- ✅ **`startPage` is the first page written**, so `Pages/Landing` is authored first — a
+  stranger meets the association, not a password box.
