@@ -1877,6 +1877,14 @@ export function emitComponent(
   const untypedVariableOf = (source: BindingSource): string | null =>
     source.kind === 'store' && source.untyped === true ? source.variableName : null;
 
+  /**
+   * The `store.key` when this source is a Global Store key this analysis could not type as
+   * `string`/`number` (EXP-011 §10.5) — the Variable rule above, one construct over. Same
+   * `unknown` at the sink, so the same table answers it.
+   */
+  const untypedStoreKeyOf = (source: BindingSource): string | null =>
+    source.kind === 'store-key' && source.untyped === true ? `${source.storeName}.${source.key}` : null;
+
   /** The parameter name when this source is a bare `Page Inputs` read (EXP-011 Tier 2.5). */
   const pageParamOf = (source: BindingSource): string | null =>
     source.kind === 'computed' && source.expr.kind === 'page-param' ? source.expr.name : null;
@@ -1934,7 +1942,10 @@ export function emitComponent(
           return null;
       }
     }
-    if (untypedVariableOf(source) === null) return base;
+    // §10.5. A `boolean`/`unknown` store key is the same `unknown` at the sink as an untyped
+    // Variable, and it lands in the same JSX positions — so it takes the same table rather than
+    // a second one that could drift from it.
+    if (untypedVariableOf(source) === null && untypedStoreKeyOf(source) === null) return base;
     switch (sink) {
       // The runtime's Text node puts whatever the variable holds through `String()` on its way
       // to the DOM, and a string attribute reaches the DOM the same way (§8.2's coercion).
@@ -1967,6 +1978,13 @@ export function emitComponent(
       const param = pageParamOf(source);
       if (param !== null) {
         return `reads page parameter "${param}", which the url delivers as text or not at all, into a sink this slice will not invent a cast for`;
+      }
+      // EXP-011 §10.5, the fourth of these — and distinguishable from the variable line above
+      // because the fix is different: a store key is typed by what *writes* it, so the reader
+      // is told which store and key to look at, not which variable.
+      const storeKey = untypedStoreKeyOf(source);
+      if (storeKey !== null) {
+        return `reads store key "${storeKey}", which has no statically-typed writer, into a sink this slice cannot coerce it to`;
       }
     }
     return 'has no statically known source';

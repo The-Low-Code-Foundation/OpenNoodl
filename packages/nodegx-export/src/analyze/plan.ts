@@ -356,7 +356,18 @@ export type BindingSource =
    * sinks coerce it, exactly as the runtime's own sinks coerce whatever the variable holds.
    */
   | { kind: 'store'; variableName: string; untyped?: true }
-  | { kind: 'store-key'; storeName: string; key: string }
+  /**
+   * A single-key Global Store read. `untyped` is the Variable rule above, one construct over
+   * (EXP-011 §10.5): a key whose value this analysis could not type as `string`/`number` — a
+   * `boolean`, or an `unknown` written from an HTTP body or a Function output — binds and is
+   * coerced at the sink, rather than dropping the read the way it did before.
+   *
+   * 🔴 The gate is widened **here only**. `resolveExpr` still refuses the same key, because an
+   * expression position is arithmetic, a date argument or a url segment, and none of those has
+   * a sink that can state what it holds. §10.5 named that as the reason not to lift the gate
+   * wholesale, and it is still the reason.
+   */
+  | { kind: 'store-key'; storeName: string; key: string; untyped?: true }
   | { kind: 'computed'; expr: ValueExpr }
   | { kind: 'unresolved'; fromId: string; fromProperty: string };
 
@@ -1932,8 +1943,25 @@ function planComponent(
   };
   const newCtx = (): ResolveCtx => ({ consumes: [], logicNodeIds: [], subscriberIds: [], visited: new Set() });
 
-  /** The pass-4b eligibility rules for a single-key Subscribe read, shared with resolveExpr. */
-  const storeKeyReadOf = (node: NodeIR): { storeName: string; key: string } | { defer: string } => {
+  /**
+   * The eligibility rules for a single-key Subscribe read, shared with `resolveExpr` — and the
+   * one rule that is *not* shared is the point of the parameter (EXP-011 §10.5).
+   *
+   * `'expr'` is the original, strict form: the key must be typed `string` or `number`, because
+   * an expression position is arithmetic, a date argument or a url segment, and letting
+   * `unknown` into one would be this exporter inventing a cast. `'binding'` is a render sink,
+   * where §10's ruling applies instead — the sink knows what it holds and coerces there, so a
+   * `boolean` or an `unknown` key **binds** and is marked, rather than dropping the read.
+   *
+   * 🔴 **A key the store plan does not carry defers in both modes, and that is a different
+   * refusal from an untypeable one.** The emitted selector reads `s.<key>` against the store's
+   * generated interface, so a key with no entry is a TS2339 in the exported app — not a value
+   * needing a coercion. Only a key that exists and cannot be typed takes the `untyped` path.
+   */
+  const storeKeyReadOf = (
+    node: NodeIR,
+    mode: 'expr' | 'binding' = 'expr'
+  ): { storeName: string; key: string; untyped?: true } | { defer: string } => {
     const store = storePlanOf(node);
     if (store === undefined) return { defer: 'store name is not a literal' };
     if (store.deferred !== undefined) return { defer: store.deferred };
@@ -1942,11 +1970,17 @@ function planComponent(
     if (keys.length !== 1) {
       return { defer: `${keys.length === 0 ? 'a whole-store' : 'a multi-key'} subscription is not translated in this slice` };
     }
-    const keyType = store.keys.find((k) => k.key === keys[0])?.tsType;
-    if (keyType !== 'string' && keyType !== 'number') {
+    const entry = store.keys.find((k) => k.key === keys[0]);
+    if (entry === undefined) {
+      return { defer: `key "${keys[0]}" is not a key of store "${store.name}"` };
+    }
+    if (entry.tsType === 'string' || entry.tsType === 'number') {
+      return { storeName: store.name, key: keys[0] };
+    }
+    if (mode === 'expr') {
       return { defer: `key "${keys[0]}" of store "${store.name}" has no statically-typed value` };
     }
-    return { storeName: store.name, key: keys[0] };
+    return { storeName: store.name, key: keys[0], untyped: true };
   };
 
   /**
@@ -7013,7 +7047,9 @@ function planComponent(
     const toNode = nodeById.get(connection.toId);
     if (!toNode || !rendered.has(toNode.id)) continue; // leave for the catch-all
     consumed.add(connection.key);
-    const read = storeKeyReadOf(fromNode);
+    // EXP-011 §10.5 — the render sink is the one position that can answer the type question,
+    // so this call takes the widened mode and `resolveExpr`'s does not.
+    const read = storeKeyReadOf(fromNode, 'binding');
     if ('defer' in read) {
       notes.push(`wire ${connection.key} dropped: ${read.defer}`);
       continue;
@@ -7023,7 +7059,9 @@ function planComponent(
       continue;
     }
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
-    plan.bindings[toNode.id][connection.toProperty] = { kind: 'store-key', storeName: read.storeName, key: read.key };
+    plan.bindings[toNode.id][connection.toProperty] = read.untyped
+      ? { kind: 'store-key', storeName: read.storeName, key: read.key, untyped: true }
+      : { kind: 'store-key', storeName: read.storeName, key: read.key };
     boundSubscribers.add(fromNode.id);
   }
 

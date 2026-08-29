@@ -800,6 +800,9 @@ the repo — `greetingCard` has carried `Name="Ada"` all along, and it only need
 
 ### §10.5 What this leaves
 
+✅ **Closed in session 42 — see §13.** The paragraph below is left as written because it is the
+reasoning §13 acted on, and the reason it names is the reason the widening is per call site.
+
 🔴 **The store-key gate is the same shape and is still shut.** `storeKeyReadOf` refuses a key
 whose type is not `string`/`number` — so a Global Store key written from an HTTP body drops its
 read exactly as a variable used to, with the note *"key … has no statically-typed value"*. It was
@@ -1124,4 +1127,90 @@ being wrong the moment DEF-016 is fixed.
   path) and the scaffold emits a `BrowserRouter` unconditionally.
 - **`External Link`'s `Error` output** is the cheapest increment left on this node: both messages
   are static, so it is a state row and nothing else. `Completed` needs a join beneath the arms.
-- **The store-key gate (§10.5)** is still untouched and still the same shape.
+- **The store-key gate (§10.5)** — ✅ **closed in session 42, §13.**
+
+⚠️ **DEF-016 landed** (`0c011b6b`), and with it the export's own follow-up: the emitted new-tab
+test now reads `navigator.userActivation`, not `window.open`'s return value. §12.6's closing
+sentence — *"it stops being wrong the moment DEF-016 is fixed"* — is therefore history rather than
+a pending item, and **`External Link`'s `Error` output above is once again the cheapest increment
+on the node**, unblocked and unchanged in shape: both messages are still static.
+
+
+## §13 The store-key gate, closed — the same defect one construct over (session 42, 2026-08-29)
+
+**68 of 127 (53.5%), unchanged, and that is correct**: this is a gate, not a picker node. §10.5
+named it as *"a slice of its own and smaller than this one was"*, and it was.
+
+### §13.1 The defect, and the half of it nobody had noticed
+
+`storeKeyReadOf` refused any Global Store key not typed `string`/`number`, so a key written from
+an HTTP body dropped **every read of it** with the note *"has no statically-typed value"* — §10's
+blank element, reached through a different node.
+
+🔴 **The gate also refused every `boolean` key, and that half was never about untypability at
+all.** `StoreKeyTsType` is `'string' | 'number' | 'boolean' | 'unknown'`, and a key whose
+`initialState` value is `true` is *perfectly* typed — it simply had no row in the render table. So
+the one-line type test was doing two different jobs and getting the second one wrong.
+
+### §13.2 What changed — the widening is per call site, which is the whole design
+
+§10.5 named the reason not to lift the gate: `storeKeyReadOf` is **shared with `resolveExpr`**, and
+an expression position is arithmetic, a date argument or a url segment — none of which has a sink
+that can state what it holds. So the gate takes a mode rather than moving:
+
+| call site | mode | why |
+|---|---|---|
+| pass 4b, the render binding | `'binding'` | §10's ruling — the sink knows what it holds and coerces there |
+| `resolveExpr` | `'expr'` | unchanged; `unknown` in an expression position would be an invented cast |
+
+A bound-but-untypeable key is marked `untyped: true` on the `store-key` `BindingSource` and takes
+**§10's existing table**, not a second one beside it — same `unknown`, same JSX positions, and a
+second table is a second thing to drift.
+
+🔴 **A key the store plan does not carry defers in *both* modes, and it is a different refusal.**
+The emitted selector reads `s.<key>` against the store's generated interface, so binding a key with
+no entry is a **TS2339 in the exported app** — not a value needing a coercion. Collapsing the two
+would have turned a compile error into a silent wrong render.
+
+### §13.3 What proves it
+
+- **13 tests** in `tests/untyped-store-key.test.ts`, every coercion paired with a CONTROL asserting
+  a `string`-typed key in the same sink reads bare.
+- **Four mutants, each killing distinct predicted rows**: the old gate restored (**6**), the sink
+  stops coercing (**5**), `resolveExpr` widened too (**1** — the row that exists to catch exactly
+  that), an absent key bound rather than deferred (**1**).
+- **`npm run build` on the emitted app** — `tsc -b && vite build`, exit 0, with all four sinks
+  exercised in one app.
+- 🔴 **The necessity control, which is the row that matters.** A build that passes proves the
+  coercion is *valid*, never that it is *needed*. Emitting the bound value **bare** and rebuilding
+  fails with **TS2322 ×2** — `Type 'unknown' is not assignable to type 'ReactNode'` and the same
+  for the placeholder attribute. The coercion is load-bearing, measured rather than assumed.
+
+### §13.4 🔴 Four things that were nearly wrong, and what caught each
+
+1. **A mutant that does not compile kills nothing and reads like a clean run.** Mutant 2's first
+   form was `source.kind === 'store-key' && false ? … : null`, which ts-jest rejected — and jest
+   reported **`Tests: 0 total`**, not a failure. Read as "no rows died" it would have said the
+   suite was blind; read as a kill it would have been a lie. **A mutant arm owes a row count, and
+   `0 total` is "it never ran".**
+2. **The gate-still-shut row passed for the wrong reason first.** It wired the untyped key into the
+   fixture's `themeFormat`, whose `theme` port **already carries a wire** — so it measured the
+   duplicate, not the gate. A fresh `String Format` reproduced the real control pair: a `string`
+   key inlines as `` `Quote of the day: ${note}` ``, the untyped one defers by name.
+3. **`initialState` parses as a `json` ParamValue, not a `literal` one.** The boolean arm built its
+   store with `literal({…})`, which is **silently ignored** — the store emitted
+   `store<MoodState>('mood', {})` with every key optional. It fails looking exactly like a passing
+   arm would if you only checked the wire was not dropped. Probing the real IR was what settled it.
+4. 🔴 **The build is not a complete instrument for the boolean row, and saying so is the finding.**
+   Bare `{loud}` where `loud: boolean` compiles fine — `boolean` is a valid `ReactNode`. But React
+   renders a bare boolean as **nothing**, where the runtime's Text node renders `String(value)` →
+   `"true"`. So that coercion fixes a real divergence **`tsc` cannot see**, and the necessity
+   control above covers the `unknown` sinks only.
+
+### §13.5 What this leaves
+
+- **`typeOfSource` is still dead weight for render sinks** and still live for the format-collapse
+  decision — §10.5's second paragraph, untouched and still true.
+- **The `'expr'` mode is now the only caller of the strict rule.** If a future slice wants an
+  untyped key in an expression position, it needs what §10 needed: a place that can say what it
+  holds. There isn't one yet, and the deferral names itself.
