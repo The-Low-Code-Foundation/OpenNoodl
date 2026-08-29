@@ -172,11 +172,13 @@ before any of it was acted on, and every measurement in it held.
   a colour moves from `#000` to `var(--foreground)`. In the default theme that is `#0f172a`, a
   near-black and a small change; **in a dark theme it is a large one, and the correct one** —
   which is the argument for the fix rather than against it.
-  ⚠️ **Not applied yet, deliberately**: `TokenResolver.ts` is under `noodl-editor/src`, which a
-  peer's running `dev:debug` watches, and a hot rebuild under someone's live drive is not a thing
-  to do behind their back. Apply after teardown.
+  ✅ **DONE `c43b6bb1`**, after the peer's teardown — `TokenResolver.ts` is under
+  `noodl-editor/src`, which a running `dev:debug` watches, so applying it during their drive would
+  have hot-rebuilt under them. Gated beside the font floor, because it is the same one line and
+  because D18's fix *inherits from* this block. `test:ci` at the floor (2889/4, seed 03794).
 
-  ⚠️ **D19 (a control's own `<label>` renders `#000`) is NOT done** — the colour comes from the
+  ✅ **D19 done — see above.** Recorded as NOT done at first, and the row's framing
+  (a label defect) was narrower than the cause. Original note kept: — the colour comes from the
   label style group (`TextInput.tsx:235`, and the same in Checkbox/RadioButton), not from the
   stylesheet, so it is a different fix from D18's and was left rather than guessed at.
 - ✅ **C1 (D26) — DONE `2c6a8876`.** Two compositions, `raised` and `ruled`, both **lifted verbatim
