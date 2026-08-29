@@ -48,6 +48,7 @@ import {
   COLLECTION_ANNOUNCEMENT,
   COLLECTION_ASSOCIATION,
   COLLECTION_MEETING,
+  COLLECTION_MEMBER,
   COLLECTION_REQUEST,
   NO_ANNOUNCEMENTS_TEXT,
   NO_MEETINGS_TEXT,
@@ -85,6 +86,28 @@ interface StoredComponent {
   path: string;
   nodes: StoredNode[];
   connections: StoredConnection[];
+}
+
+/**
+ * The node a notice's gate has to land on — the sentence's own node, or the box
+ * that was put around it.
+ *
+ * 🔴 **Why this is not just `find the Text`.** Every notice in this template is
+ * now a surface `Group` wrapping one `Text`, and the gate belongs on the
+ * **wrapper**: that is the node which must leave the tree. Gating the inner
+ * `Text` instead would unmount the words and leave a padded, bordered, empty
+ * card sitting on the page — which is D16 again, in a nicer typeface.
+ *
+ * ⚠️ **The wrapper only counts when it wraps exactly this one sentence.** A box
+ * with other children is a section, and accepting a gate on it would let a spec
+ * pass because some large ancestor was gated rather than the notice itself —
+ * an assertion that fits the right answer and the wrong one equally.
+ */
+function noticeHost(page: StoredComponent, text: string): StoredNode | undefined {
+  const words = page.nodes.find((n) => n.type === 'Text' && n.parameters?.text === text);
+  if (!words) return undefined;
+  const box = page.nodes.find((n) => n.type === 'Group' && (n.children ?? []).includes(words.id));
+  return box && (box.children ?? []).length === 1 ? box : words;
 }
 
 /** Every file in a directory tree, relative to it. */
@@ -220,8 +243,8 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     // 🔴 Without this, "every byte agrees" is satisfiable by two empty file
     // lists — the same green, and the opposite fix.
     const committed = filesUnder(ARTEFACT);
-    // 19 components × 3 files, plus the registry, the project file and the policy.
-    expect(committed.length).toBe(19 * 3 + 3);
+    // 21 components × 3 files, plus the registry, the project file and the policy.
+    expect(committed.length).toBe(21 * 3 + 3);
     expect(committed).toContain('nodegx.project.json');
     expect(committed).toContain('nodegx.security.json');
     expect(committed).toContain(path.join('components', '_registry.json'));
@@ -232,13 +255,13 @@ describe('TPL-001 — the committed template is what the door writes today', () 
     );
   });
 
-  it('control: the generation really ran — nineteen components, App first', async () => {
+  it('control: the generation really ran — twenty-one components, App first', async () => {
     // 🔴 Without this, the comparison above is satisfiable by two empty sets, and
     // a build that silently authored nothing would read as agreement.
     const built = await buildMembersTemplateProject();
-    expect(built.order).toHaveLength(19);
+    expect(built.order).toHaveLength(21);
     expect(built.order[0]).toBe(APP_COMPONENT);
-    expect(shipped).toHaveLength(19);
+    expect(shipped).toHaveLength(21);
   });
 });
 
@@ -269,7 +292,7 @@ describe('TPL-001 — the app has an entry point, and it is the landing page', (
 
   it('lists every page component in the routes, and only pages', () => {
     const pageComponents = shipped.map((c) => c.path).filter((n) => n.startsWith('/Pages/'));
-    expect(pageComponents.length).toBe(10);
+    expect(pageComponents.length).toBe(11);
     expect([...(pages().routes ?? [])].sort()).toEqual([...pageComponents].sort());
     // Control: the routes list is not simply everything — the four cloud
     // components a browser cannot show are not in it.
@@ -292,7 +315,7 @@ describe('TPL-001 — the app has an entry point, and it is the landing page', (
 
   it('control: there are navigates and repeaters to grade, so the empty results above mean something', () => {
     expect(allNodes().filter(({ node }) => node.type === 'RouterNavigate').length).toBeGreaterThan(0);
-    expect(allNodes().filter(({ node }) => node.type === 'For Each').length).toBe(3);
+    expect(allNodes().filter(({ node }) => node.type === 'For Each').length).toBe(4);
     expect(allNodes().filter(({ node }) => node.type.startsWith('/')).length).toBeGreaterThan(0);
   });
 
@@ -566,11 +589,11 @@ describe('TPL-001 — the members-only queries have no trigger but the standing 
     const membersOnly = allNodes().filter(
       ({ node }) =>
         node.type === 'DbCollection2' &&
-        [COLLECTION_ANNOUNCEMENT, COLLECTION_MEETING, COLLECTION_REQUEST].includes(
+        [COLLECTION_ANNOUNCEMENT, COLLECTION_MEETING, COLLECTION_REQUEST, COLLECTION_MEMBER].includes(
           String(node.parameters?.collectionName)
         )
     );
-    expect(membersOnly.length).toBe(3);
+    expect(membersOnly.length).toBe(4);
     for (const { component, node } of membersOnly) {
       expect(`${component.path}:${node.id}:${node.parameters?.['runOnChange-collectionName']}`).toBe(
         `${component.path}:${node.id}:false`
@@ -600,7 +623,8 @@ describe('TPL-001 — the members-only queries have no trigger but the standing 
       for (const node of component.nodes) {
         if (node.type !== 'DbCollection2') continue;
         const collection = String(node.parameters?.collectionName);
-        if (![COLLECTION_ANNOUNCEMENT, COLLECTION_MEETING, COLLECTION_REQUEST].includes(collection)) continue;
+        const membersOnly = [COLLECTION_ANNOUNCEMENT, COLLECTION_MEETING, COLLECTION_REQUEST, COLLECTION_MEMBER];
+        if (!membersOnly.includes(collection)) continue;
         rows.push({ where: `${component.path} › ${node.id}`, triggers: triggersOf(component, node.id) });
         for (const wire of component.connections.filter((w) => w.toId === node.id && w.toProperty === 'storageFetch')) {
           const fromStanding = instanceIds.has(wire.fromId);
@@ -617,7 +641,7 @@ describe('TPL-001 — the members-only queries have no trigger but the standing 
     // Every one of the three has at least one trigger — a query with none is a
     // list that is empty for ever, which is the failure in the other direction.
     expect(rows.filter((r) => r.triggers.length === 0)).toEqual([]);
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(4);
   });
 
   it('the meetings query is filtered, and its filter value is what runs it', () => {
@@ -663,7 +687,7 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     expect(wired.length).toBeGreaterThan(10);
   });
 
-  it('🔴 no signal is wired straight into a `visible` port', () => {
+  it('🔴 no signal is wired straight into a `mounted` port', () => {
     // A signal into a value port arrives once as `false` (one entry per input
     // name in the drain queue, so a true/false pair coalesces), so a reveal
     // wired that way never happens. Every one here goes through a `Condition`
@@ -672,13 +696,53 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     const offenders: string[] = [];
     for (const component of shipped) {
       for (const wire of component.connections) {
-        if (wire.toProperty !== 'visible') continue;
+        if (wire.toProperty !== 'mounted') continue;
         if (signalSources.has(wire.fromProperty)) {
-          offenders.push(`${component.path} › ${wire.fromId}.${wire.fromProperty} → ${wire.toId}.visible`);
+          offenders.push(`${component.path} › ${wire.fromId}.${wire.fromProperty} → ${wire.toId}.mounted`);
         }
       }
     }
     expect(offenders).toEqual([]);
+  });
+
+  /**
+   * 🔴 **D7/D16 — every gate is `mounted`, and none is `visible`.**
+   *
+   * `visible` renders as `visibility: hidden`, which **keeps the box**. Two
+   * consequences, both of which shipped: the Post page drew a heading, ~500px of
+   * nothing and a back button, and every gated subtree sat in the document of
+   * the very person it was gated against — a member's browser held the
+   * moderator's announcement form, unpainted.
+   *
+   * ⚠️ This is the ratchet, not the fix. The fix is in `tpl001Components.ts`;
+   * without a spec that FAILS on `visible` the next author reaches for the port
+   * whose name means what they want, and nothing says otherwise. Stated as a
+   * census of offenders rather than a count, so a failure names the wire.
+   */
+  it('🔴 D7/D16 — nothing is gated with `visible`, which keeps its box', () => {
+    const offenders: string[] = [];
+    for (const component of shipped) {
+      for (const wire of component.connections) {
+        if (wire.toProperty === 'visible') {
+          offenders.push(`${component.path} › wire ${wire.fromId}.${wire.fromProperty} → ${wire.toId}.visible`);
+        }
+      }
+      for (const node of component.nodes) {
+        if (node.parameters && 'visible' in node.parameters) {
+          offenders.push(`${component.path} › param ${node.id}.visible`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+    // …beside the signal known to fire, so an empty census is a measurement and
+    // not a spec that walked an empty population.
+    const gates = shipped.flatMap((c) => c.connections.filter((w) => w.toProperty === 'mounted'));
+    // 28 rather than 27 since s7: `Pages/SignIn`'s refusal had NO gate at all.
+    // As bare text an empty string renders nothing, so "always mounted" and
+    // "hidden until it has something to say" were indistinguishable — the
+    // missing gate only became visible when the notice was given a box, which
+    // would otherwise have shipped as a permanently empty card under the form.
+    expect(gates.length).toBe(28);
   });
 
   it('AC6 — every list ships an empty state, hidden until a query has answered', () => {
@@ -692,13 +756,13 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
       // de-duplicates node ids across the whole project — a second component
       // reusing `emptyState` gets `emptyState-2` — so an id from the component
       // sets is not a name the artefact answers to.
-      const empty = page.nodes.find((n) => n.type === 'Text' && n.parameters?.text === text);
-      expect(`${pageName}:${empty?.parameters?.visible}`).toBe(`${pageName}:false`);
+      const empty = noticeHost(page, text);
+      expect(`${pageName}:${empty?.parameters?.mounted}`).toBe(`${pageName}:false`);
       // 🔴 …and it is revealed by a node that runs on `fetched`, never by
       // `isEmpty` — which is `true` before the first query has run, so binding it
       // straight through would tell a member with a full noticeboard that
       // nothing had been posted.
-      const reveal = page.connections.find((w) => w.toId === empty?.id && w.toProperty === 'visible');
+      const reveal = page.connections.find((w) => w.toId === empty?.id && w.toProperty === 'mounted');
       expect(reveal).toBeDefined();
       const gate = page.nodes.find((n) => n.id === reveal?.fromId) as StoredNode;
       expect(String(gate.parameters?.functionScript)).toContain('Outputs.empty');
@@ -710,9 +774,10 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
   it('AC3 — the pending member has a sentence of their own on the pages they can reach', () => {
     for (const pageName of ['/Pages/Members', '/Pages/Meetings']) {
       const page = byLegacyName.get(pageName) as StoredComponent;
-      const notice = page.nodes.find((n) => n.type === 'Text' && n.parameters?.text === PENDING_TEXT);
+      const words = page.nodes.find((n) => n.type === 'Text' && n.parameters?.text === PENDING_TEXT);
+      const notice = noticeHost(page, PENDING_TEXT);
       expect(`${pageName}:${notice !== undefined}`).toBe(`${pageName}:true`);
-      expect(String(notice?.parameters?.text)).toContain('moderators');
+      expect(String(words?.parameters?.text)).toContain('moderators');
       expect(page.connections.some((w) => w.toId === notice?.id && w.fromProperty === 'isPending')).toBe(true);
     }
   });
@@ -720,7 +785,7 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
   it('AC4 — the moderator’s screens gate their UI, and the write is refused server-side too', () => {
     for (const pageName of ['/Pages/Post', '/Pages/Requests']) {
       const page = byLegacyName.get(pageName) as StoredComponent;
-      const gated = page.connections.filter((w) => w.fromProperty === 'isModerator' && w.toProperty === 'visible');
+      const gated = page.connections.filter((w) => w.fromProperty === 'isModerator' && w.toProperty === 'mounted');
       expect(gated.length).toBeGreaterThan(0);
     }
     // The half that counts: UI-only enforcement fails AC4, so the writes the
@@ -738,7 +803,9 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
       .filter(({ node }) => !Array.isArray(node.parameters?.accessControl))
       .map(({ component, node }) => `${component.path} › ${node.id}`);
     expect(naked).toEqual([]);
-    expect(allNodes().filter(({ node }) => node.type === 'NewDbModelProperties').length).toBe(4);
+    // 6, not 4: `decideMembership` and `claimAssociation` each gained the
+    // `Member` projection write when the directory was built.
+    expect(allNodes().filter(({ node }) => node.type === 'NewDbModelProperties').length).toBe(6);
   });
 });
 
@@ -799,5 +866,114 @@ describe('TPL-001 — the endpoints', () => {
       .map((w) => w.fromProperty)
       .sort();
     expect(edges).toEqual(['done', 'failure', 'roles', 'unchanged']);
+  });
+});
+
+/**
+ * Phase 78 s7 — the look, ratcheted where the `>0` gate cannot reach.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * `templateAppearance.test.ts` asks whether this template opened the design
+ * system at all: does it set *a* colour, *a* type size, *a* constrained width.
+ * It was green on an artefact in which **31 of 45 `Text` nodes set no size and
+ * no colour**, every notice was an unboxed grey line, and the only cards in the
+ * app were the four repeater rows. That is not a fault in that gate — a `> 0`
+ * question is the right one to ask of a template that might have ignored the
+ * system entirely. It is the wrong one to ask of a template that has opened it
+ * and then stopped half way, and this file's population is small enough to ask
+ * the total question instead.
+ *
+ * 🔴 **§3 is the one worth reading.** §1 and §2 pin work that was done; §3 pins a
+ * decision that is easy to undo by accident and expensive to notice, because
+ * undoing it makes every spec here *greener*, not redder: wrapping a list in a
+ * card raises the colour count, raises the structure count, and makes the page
+ * disappear.
+ */
+describe('TPL-001 — the design system is finished, not merely opened', () => {
+  /** Every visual node in the shipped artefact, with the component it is in. */
+  const everyNode = shipped.flatMap((c) => c.nodes.map((n) => ({ component: c.path, node: n })));
+
+  /**
+   * §1 — no `Text` ships without a type ramp.
+   *
+   * A `Text` that sets neither a size nor a colour renders at the browser's
+   * default in the runtime's default ink, which is what "black and white,
+   * everything left aligned in one column" was made of. Stated as a census so a
+   * failure names the node rather than a number.
+   */
+  it('§1 every Text sets a type ramp', () => {
+    const bare = everyNode
+      .filter(({ node }) => node.type === 'Text')
+      .filter(({ node }) => {
+        const p = node.parameters ?? {};
+        return !('fontSize' in p) && !('color' in p);
+      })
+      .map(({ component, node }) => `${component} › ${node.id} "${String(node.parameters?.text ?? '')}"`);
+    expect(bare).toEqual([]);
+  });
+
+  /**
+   * §2 — a notice box is a box.
+   *
+   * Every notice in this template is a `Group` wrapping exactly one `Text`. The
+   * point of the wrapper is the surface; a wrapper that lost its fill would be
+   * padding around a sentence, which is worse than the grey line it replaced —
+   * it takes the space of a designed thing and looks like a mistake.
+   */
+  it('§2 every notice box carries a fill and an edge', () => {
+    const boxes = everyNode.filter(({ component, node }) => {
+      if (node.type !== 'Group' || (node.children ?? []).length !== 1) return false;
+      const only = shipped.find((c) => c.path === component)?.nodes.find((n) => n.id === (node.children ?? [])[0]);
+      return only?.type === 'Text';
+    });
+    // Pinned exactly, not as a floor: an all-passing census over nothing is not
+    // a measurement, and a notice quietly lost is the failure this catches.
+    // 3 Members (pending, unknown, empty) + 2 Meetings + 2 Requests + 2
+    // Directory + 2 Join + 2 Setup + 1 Announcement + 1 Meeting + 1 Post + 1
+    // SignIn = 17. `Pages/Landing`'s setup card is NOT one of these: it wraps a
+    // sentence AND a button, which makes it a panel rather than a notice.
+    expect(boxes.length).toBe(17);
+    const unpainted = boxes
+      .filter(({ node }) => {
+        const p = node.parameters ?? {};
+        return !('backgroundColor' in p) || !('borderRadius' in p);
+      })
+      .map(({ component, node }) => `${component} › ${node.id}`);
+    expect(unpainted).toEqual([]);
+  });
+
+  /**
+   * §3 — 🔴 **a section that holds cards does not itself carry one.**
+   *
+   * `card` fills with `--surface` and the row cards fill with `--surface`, so a
+   * list wrapped in a card puts the rows' fill on their own container: the row
+   * edges measure **1.26:1** against it and the list stops reading as separate
+   * cards. There is no contrast rule that forbids this — a decorative divider
+   * carries no minimum — so nothing else in this repo would ever say so.
+   *
+   * ⚠️ **And the mistake makes the other gates happier.** Adding that fill would
+   * raise `templateAppearance`'s colour count, add a structural parameter and
+   * satisfy §2 above. Every instrument pointed at this template would go greener
+   * while the screen got worse, which is exactly why it needs a row of its own.
+   */
+  it('§3 no container of a repeater carries its own fill', () => {
+    const offenders: string[] = [];
+    for (const component of shipped) {
+      const byId = new Map(component.nodes.map((n) => [n.id, n]));
+      for (const node of component.nodes) {
+        const holdsRows = (node.children ?? []).some((id) => byId.get(id)?.type === 'For Each');
+        if (holdsRows && node.parameters && 'backgroundColor' in node.parameters) {
+          offenders.push(`${component.path} › ${node.id} fills behind its own rows`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+    // Beside a known-firing signal: the repeater containers exist and were
+    // walked, so `[]` is a reading and not an empty population.
+    const holders = shipped.flatMap((c) => {
+      const byId = new Map(c.nodes.map((n) => [n.id, n]));
+      return c.nodes.filter((n) => (n.children ?? []).some((id) => byId.get(id)?.type === 'For Each'));
+    });
+    expect(holders.length).toBe(4);
   });
 });

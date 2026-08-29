@@ -13,7 +13,7 @@
       "fromId": "standing-4",
       "fromProperty": "isModerator",
       "toId": "queue",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "standing-4",
@@ -25,7 +25,7 @@
       "fromId": "notModerator-2",
       "fromProperty": "out-no",
       "toId": "notAllowed-2",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "standing-4",
@@ -61,7 +61,7 @@
       "fromId": "emptyGate-3",
       "fromProperty": "out-empty",
       "toId": "emptyState-3",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "list-3",

@@ -29,28 +29,26 @@
         "backButton-4"
       ],
       "parameters": {
-        "sizeMode": "explicit",
         "width": {
           "value": 100,
           "unit": "%"
         },
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "explicit",
         "height": {
           "value": 100,
           "unit": "%"
         },
-        "paddingTop": {
-          "value": 48,
-          "unit": "px"
-        },
-        "paddingLeft": {
-          "value": 24,
-          "unit": "px"
-        },
-        "paddingRight": {
-          "value": 24,
-          "unit": "px"
-        },
-        "flexDirection": "column"
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
       },
       "x": 100,
       "y": 160
@@ -62,22 +60,57 @@
       "parent": "ground-9",
       "parameters": {
         "text": "Post something",
-        "fontWeight": "var(--font-bold)"
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
       },
       "x": 160,
       "y": 280
     },
     {
       "id": "notAllowed",
-      "type": "Text",
+      "type": "Group",
       "label": "Not a moderator",
       "parent": "ground-9",
+      "children": [
+        "notAllowedText"
+      ],
       "parameters": {
-        "text": "Only a moderator can post here.",
-        "visible": false
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
       },
       "x": 160,
       "y": 400
+    },
+    {
+      "id": "notAllowedText",
+      "type": "Text",
+      "label": "Not a moderator — the words",
+      "parent": "notAllowed",
+      "parameters": {
+        "text": "Only a moderator can post here.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 220,
+      "y": 520
     },
     {
       "id": "tools",
@@ -89,11 +122,16 @@
         "meetingForm"
       ],
       "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
         "flexDirection": "column",
-        "visible": false
+        "rowGap": "var(--space-6)",
+        "mounted": false
       },
       "x": 160,
-      "y": 520
+      "y": 640
     },
     {
       "id": "announcementForm",
@@ -108,11 +146,25 @@
         "aDone"
       ],
       "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
         "flexDirection": "column",
-        "paddingBottom": 24
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
       },
       "x": 220,
-      "y": 640
+      "y": 760
     },
     {
       "id": "aHeading",
@@ -121,10 +173,13 @@
       "parent": "announcementForm",
       "parameters": {
         "text": "Post an announcement",
-        "fontWeight": "var(--font-semibold)"
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)"
       },
       "x": 280,
-      "y": 760
+      "y": 880
     },
     {
       "id": "aTitle",
@@ -132,11 +187,27 @@
       "label": "Announcement title",
       "parent": "announcementForm",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Title"
       },
       "x": 280,
-      "y": 880
+      "y": 1000
     },
     {
       "id": "aBody",
@@ -144,12 +215,28 @@
       "label": "Announcement body",
       "parent": "announcementForm",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "What you want to say",
         "type": "textArea"
       },
       "x": 280,
-      "y": 1000
+      "y": 1120
     },
     {
       "id": "aButton",
@@ -157,10 +244,21 @@
       "label": "Post",
       "parent": "announcementForm",
       "parameters": {
-        "label": "Post it"
+        "label": "Post it",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
       "x": 280,
-      "y": 1120
+      "y": 1240
     },
     {
       "id": "aDone",
@@ -169,10 +267,12 @@
       "parent": "announcementForm",
       "parameters": {
         "text": "Posted. Members can see it now.",
-        "visible": false
+        "mounted": false,
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)"
       },
       "x": 280,
-      "y": 1240
+      "y": 1360
     },
     {
       "id": "meetingForm",
@@ -189,10 +289,25 @@
         "mDone"
       ],
       "parameters": {
-        "flexDirection": "column"
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
       },
       "x": 220,
-      "y": 1360
+      "y": 1480
     },
     {
       "id": "mHeading",
@@ -201,10 +316,13 @@
       "parent": "meetingForm",
       "parameters": {
         "text": "Add a meeting",
-        "fontWeight": "var(--font-semibold)"
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)"
       },
       "x": 280,
-      "y": 1480
+      "y": 1600
     },
     {
       "id": "mTitle",
@@ -212,11 +330,27 @@
       "label": "Meeting title",
       "parent": "meetingForm",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Title"
       },
       "x": 280,
-      "y": 1600
+      "y": 1720
     },
     {
       "id": "mWhen",
@@ -224,11 +358,27 @@
       "label": "Meeting date",
       "parent": "meetingForm",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Date (YYYY-MM-DD)"
       },
       "x": 280,
-      "y": 1720
+      "y": 1840
     },
     {
       "id": "mPlace",
@@ -236,11 +386,27 @@
       "label": "Meeting place",
       "parent": "meetingForm",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Where"
       },
       "x": 280,
-      "y": 1840
+      "y": 1960
     },
     {
       "id": "mDetails",
@@ -248,12 +414,28 @@
       "label": "Meeting details",
       "parent": "meetingForm",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Details",
         "type": "textArea"
       },
       "x": 280,
-      "y": 1960
+      "y": 2080
     },
     {
       "id": "mButton",
@@ -261,10 +443,21 @@
       "label": "Add",
       "parent": "meetingForm",
       "parameters": {
-        "label": "Add it to the diary"
+        "label": "Add it to the diary",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
       "x": 280,
-      "y": 2080
+      "y": 2200
     },
     {
       "id": "mDone",
@@ -273,10 +466,12 @@
       "parent": "meetingForm",
       "parameters": {
         "text": "Added. Members can see it now.",
-        "visible": false
+        "mounted": false,
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)"
       },
       "x": 280,
-      "y": 2200
+      "y": 2320
     },
     {
       "id": "backButton-4",
@@ -284,17 +479,30 @@
       "label": "Back",
       "parent": "ground-9",
       "parameters": {
-        "label": "Back to the members area"
+        "label": "Back to the members area",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--muted-foreground)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
       "x": 160,
-      "y": 2320
+      "y": 2440
     },
     {
       "id": "standing-3",
       "type": "/Members/Standing",
       "label": "Who is this?",
       "x": 530,
-      "y": 520
+      "y": 640
     },
     {
       "id": "notModerator",
@@ -321,7 +529,7 @@
         }
       ],
       "x": 530,
-      "y": 1120
+      "y": 1240
     },
     {
       "id": "createAnnouncement",
@@ -349,7 +557,7 @@
         "acl-member-write": false
       },
       "x": 530,
-      "y": 880
+      "y": 1000
     },
     {
       "id": "createMeeting",
@@ -377,27 +585,29 @@
         "acl-member-write": false
       },
       "x": 530,
-      "y": 1600
+      "y": 1720
     },
     {
       "id": "aDoneGate",
       "type": "Condition",
       "label": "Show the confirmation",
       "parameters": {
-        "condition": true
+        "condition": true,
+        "runOnChange-condition": false
       },
       "x": 530,
-      "y": 1240
+      "y": 1360
     },
     {
       "id": "mDoneGate",
       "type": "Condition",
       "label": "Show the confirmation",
       "parameters": {
-        "condition": true
+        "condition": true,
+        "runOnChange-condition": false
       },
       "x": 530,
-      "y": 2200
+      "y": 2320
     },
     {
       "id": "toMembers-3",
@@ -408,7 +618,7 @@
         "target": "/Pages/Members"
       },
       "x": 530,
-      "y": 2320
+      "y": 2440
     },
     {
       "id": "toLanding-3",
@@ -419,7 +629,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 2440
+      "y": 2560
     }
   ],
   "visualRoots": [

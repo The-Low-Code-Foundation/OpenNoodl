@@ -52,11 +52,14 @@ import {
   ASSOCIATION_RULES,
   CLAIM_REFUSED_TEXT,
   COLLECTION_ASSOCIATION,
+  COLLECTION_MEMBER,
   COLLECTION_REQUEST,
   FN_CLAIM,
   FN_DECIDE,
   FN_MY_STANDING,
   FN_REQUEST_ACCESS,
+  MEMBER_STANDING_MEMBER,
+  MEMBER_STANDING_MODERATOR,
   MODERATOR_ONLY_RULES,
   NO_LOAD_TIME_FETCH,
   REQUEST_REFUSED_TEXT,
@@ -233,6 +236,56 @@ export const CLAIM_NODES = [
       ...ASSOCIATION_RULES
     }
   },
+  {
+    id: 'founding',
+    type: 'JavaScriptFunction',
+    label: 'The founding moderator’s own directory row',
+    ports: [{ name: 'out-file', plug: 'output', type: 'signal' }],
+    parameters: {
+      // 🔴 **Both boxes off, or this node writes the row TWICE.** `Run` is
+      // ADDITIVE (`run-on-value-change.ts` §1): wiring it adds a trigger and
+      // unticks nothing, so a readiness-guarded node fires once when its last
+      // input arrives *and again* on the explicit run. Measured: two identical
+      // directory rows per setup. `gate` above carries the same three lines for
+      // the same reason.
+      //
+      // ⚠️ **Why `stamp` in `requestAccess` does not need them and this does.**
+      // `stamp`'s inputs are still `undefined` when its inputs first change, so
+      // its guard returns and the extra run writes nothing. Here `create.userId`
+      // and `gate.out-email` are BOTH settled before `grant` ever fires, so the
+      // input-change run passes the guard. The shape is identical; only the
+      // arrival order differs, which is exactly what makes this class silent.
+      'runOnChange-in-userId': false,
+      'runOnChange-in-email': false,
+      // 🔴 **Why setup writes a directory row at all.** `Member` is a projection
+      // of `_Role`, written by whatever put somebody in a role — and setup is
+      // one of the two nodes in this template that does. Without this, the first
+      // moderator holds `role:admin`, is a member of the association in every
+      // sense, and is **absent from the member list** — on a fresh install, the
+      // list they are the only person who can open.
+      //
+      // Rule 2: two producers (`create` supplies the id, `gate` the address), so
+      // it opens with the readiness guard and everything downstream leaves here.
+      functionScript:
+        'if (Inputs.userId === undefined || Inputs.email === undefined) return;\n' +
+        "const email = Inputs.email === null ? '' : String(Inputs.email);\n" +
+        'Outputs.userId = Inputs.userId;\n' +
+        'Outputs.email = email;\n' +
+        '// ⚠️ Setup asks for the ASSOCIATION\'s name, never the moderator\'s, so\n' +
+        '// there is no name to write — the address is what the person typed and\n' +
+        '// it is what the list can honestly show them as.\n' +
+        'Outputs.name = email;\n' +
+        'Outputs.joinedAt = new Date().toISOString();\n' +
+        "Outputs.standing = '" + MEMBER_STANDING_MODERATOR + "';\n" +
+        'Outputs.file();'
+    }
+  },
+  {
+    id: 'founder',
+    type: 'NewDbModelProperties',
+    label: 'File the founding moderator in the directory',
+    parameters: { collectionName: COLLECTION_MEMBER, ...MODERATOR_ONLY_RULES }
+  },
   { id: 'res', type: 'noodl.cloud.response', label: 'Set up', parameters: { params: 'claimed' } },
   {
     id: 'deny',
@@ -280,6 +333,28 @@ export const CLAIM_WIRES = [
   { fromId: 'gate', fromProperty: 'out-blurb', toId: 'mark', toProperty: 'prop-blurb' },
   { fromId: 'grant', fromProperty: 'done', toId: 'mark', toProperty: 'store' },
   { fromId: 'grant', fromProperty: 'unchanged', toId: 'mark', toProperty: 'store' },
+
+  { fromId: 'create', fromProperty: 'userId', toId: 'founding', toProperty: 'in-userId' },
+  { fromId: 'gate', fromProperty: 'out-email', toId: 'founding', toProperty: 'in-email' },
+  // Same pair `mark` is fired from, and for the same reason: the role has to
+  // exist before anything claims in writing that it does.
+  { fromId: 'grant', fromProperty: 'done', toId: 'founding', toProperty: 'run' },
+  { fromId: 'grant', fromProperty: 'unchanged', toId: 'founding', toProperty: 'run' },
+
+  { fromId: 'founding', fromProperty: 'out-userId', toId: 'founder', toProperty: 'prop-userId' },
+  { fromId: 'founding', fromProperty: 'out-name', toId: 'founder', toProperty: 'prop-name' },
+  { fromId: 'founding', fromProperty: 'out-email', toId: 'founder', toProperty: 'prop-email' },
+  { fromId: 'founding', fromProperty: 'out-joinedAt', toId: 'founder', toProperty: 'prop-joinedAt' },
+  { fromId: 'founding', fromProperty: 'out-standing', toId: 'founder', toProperty: 'prop-standing' },
+  { fromId: 'founding', fromProperty: 'out-file', toId: 'founder', toProperty: 'store' },
+  // 🔴 `founder` reaches NEITHER response, and that is the whole decision about
+  // it. Setup's answer is already argued down to one rule — the association is
+  // set up the moment the role is granted, which is why even `mark.failure`
+  // answers `res` — and a *directory* row is the least load-bearing write in the
+  // graph. Wiring its failure to `deny` would tell a moderator who holds
+  // `role:admin` that their members' area could not be set up, with no second
+  // setup possible. The cost is TPL-001 §14's row: the founder can be missing
+  // from a list they can still read.
 
   { fromId: 'gate', fromProperty: 'out-claimed', toId: 'res', toProperty: 'pm-claimed' },
   { fromId: 'mark', fromProperty: 'done', toId: 'res', toProperty: 'send' },
@@ -663,6 +738,17 @@ export const DECIDE_NODES = [
       { name: 'out-decline', plug: 'output', type: 'signal' }
     ],
     parameters: {
+      // 🔴 **All four off — see `founding` in `claimAssociation` for the full
+      // account.** Every input here is settled by the time `request.done` fires,
+      // so with the boxes on this node runs twice: once when the last property
+      // arrives and once on the run signal. That granted the role twice
+      // (harmless, `unchanged`) and, once this graph gained a directory write,
+      // filed the person twice. **The defect pre-dated the projection; the
+      // projection is only what made it visible.**
+      'runOnChange-in-userId': false,
+      'runOnChange-in-name': false,
+      'runOnChange-in-email': false,
+      'runOnChange-in-approve': false,
       functionScript:
         '// Two producers — the row supplies the user id, the request supplies the\n' +
         '// decision — so this opens with the readiness guard rule 2 prescribes.\n' +
@@ -670,6 +756,18 @@ export const DECIDE_NODES = [
         "const userId = Inputs.userId === null ? '' : String(Inputs.userId);\n" +
         'Outputs.userId = userId;\n' +
         'Outputs.approved = Inputs.approve === true;\n' +
+        '// The directory row, from the request row that is about to be deleted.\n' +
+        '// 🔴 It has to be carried HERE: `remove` takes the queue entry away, so\n' +
+        "// after this endpoint runs there is nowhere left holding the person's\n" +
+        '// name and address. Everything the projection needs leaves this node.\n' +
+        "const email = Inputs.email === undefined || Inputs.email === null ? '' : String(Inputs.email);\n" +
+        "const named = Inputs.name === undefined || Inputs.name === null ? '' : String(Inputs.name).trim();\n" +
+        'Outputs.email = email;\n' +
+        '// Same fallback `requestAccess` uses when a person left the name box\n' +
+        '// empty: a directory row with no name at all is a blank line.\n' +
+        'Outputs.name = named.length > 0 ? named : email;\n' +
+        'Outputs.joinedAt = new Date().toISOString();\n' +
+        "Outputs.standing = '" + MEMBER_STANDING_MEMBER + "';\n" +
         '// A row whose userId is missing cannot be approved into anything. It is\n' +
         '// still a queue entry a moderator asked to be rid of, so it declines.\n' +
         'if (Inputs.approve === true && userId.length > 0) {\n' +
@@ -693,13 +791,29 @@ export const DECIDE_NODES = [
     }
   },
   {
+    id: 'member',
+    type: 'NewDbModelProperties',
+    label: 'Write the directory row — the projection of the role just granted',
+    parameters: {
+      collectionName: COLLECTION_MEMBER,
+      // 🔴 Moderator-only, like the request row it is made from: it carries a
+      // person's name and address, and §3 puts the member list under the
+      // moderator's tools rather than every member's.
+      ...MODERATOR_ONLY_RULES
+    }
+  },
+  {
     id: 'remove',
     type: 'DeleteDbModelProperties',
     label: 'Take the request off the queue',
     // 🔴 The queue is the queue: an approved request leaves it, and the
-    // membership lives in `_Role` and nowhere else. A `decided` column here
-    // would be a second copy of a fact the roles already hold, and the copy is
-    // what goes stale the first time a moderator changes a role by hand.
+    // membership itself lives in `_Role` and nowhere else. There is deliberately
+    // no `decided` column — a request that has been decided is not on the queue.
+    //
+    // ⚠️ `Member` IS a second copy of what `_Role` holds, and this comment used
+    // to be the argument against writing one. Richard ruled on 2026-08-28 that
+    // the member list is worth the copy (§3 asks for it and nothing enumerates a
+    // role); `COLLECTION_MEMBER` states exactly which drift that buys.
     parameters: { collectionName: COLLECTION_REQUEST, idSource: 'explicit' }
   },
   { id: 'res', type: 'noodl.cloud.response', label: 'Decided', parameters: { params: 'approved' } },
@@ -720,16 +834,40 @@ export const DECIDE_WIRES = [
   { fromId: 'prep', fromProperty: 'out-ready', toId: 'request', toProperty: 'fetch' },
 
   { fromId: 'request', fromProperty: 'prop-userId', toId: 'route', toProperty: 'in-userId' },
+  // 🔴 Read off the request row BEFORE `remove` deletes it — see `route`.
+  { fromId: 'request', fromProperty: 'prop-name', toId: 'route', toProperty: 'in-name' },
+  { fromId: 'request', fromProperty: 'prop-email', toId: 'route', toProperty: 'in-email' },
   { fromId: 'prep', fromProperty: 'out-approve', toId: 'route', toProperty: 'in-approve' },
   { fromId: 'request', fromProperty: 'done', toId: 'route', toProperty: 'run' },
 
   { fromId: 'route', fromProperty: 'out-userId', toId: 'grant', toProperty: 'userId' },
   { fromId: 'route', fromProperty: 'out-grant', toId: 'grant', toProperty: 'add' },
 
+  { fromId: 'route', fromProperty: 'out-userId', toId: 'member', toProperty: 'prop-userId' },
+  { fromId: 'route', fromProperty: 'out-name', toId: 'member', toProperty: 'prop-name' },
+  { fromId: 'route', fromProperty: 'out-email', toId: 'member', toProperty: 'prop-email' },
+  { fromId: 'route', fromProperty: 'out-joinedAt', toId: 'member', toProperty: 'prop-joinedAt' },
+  { fromId: 'route', fromProperty: 'out-standing', toId: 'member', toProperty: 'prop-standing' },
+  // 🔴 `grant.done` and NOT `route.out-grant`: the projection may only be
+  // written once the role it projects actually exists. Fired from the decision
+  // instead, a grant that failed would leave a directory row for somebody the
+  // members' area still refuses.
+  { fromId: 'grant', fromProperty: 'done', toId: 'member', toProperty: 'store' },
+
   { fromId: 'prep', fromProperty: 'out-requestId', toId: 'remove', toProperty: 'modelId' },
-  { fromId: 'grant', fromProperty: 'done', toId: 'remove', toProperty: 'store' },
+  // The queue entry goes once the directory row is written…
+  { fromId: 'member', fromProperty: 'done', toId: 'remove', toProperty: 'store' },
+  // 🔴 …and ALSO if that write failed, which is the deliberate half. The role is
+  // granted by this point: the person IS a member. Holding the queue entry to
+  // retry a *projection* would make the directory able to block the membership
+  // decision it is only a copy of — and the retry would grant a role that is
+  // already there. The cost is a member missing from the list, recorded in
+  // TPL-001 §14 rather than hidden here.
+  { fromId: 'member', fromProperty: 'failure', toId: 'remove', toProperty: 'store' },
   // ⚠️ Already in the role is the post-condition already holding — a moderator
-  // clicking Approve twice must not leave the row on the queue for ever.
+  // clicking Approve twice must not leave the row on the queue for ever. It
+  // writes no directory row: they are already in the list from the first time,
+  // and a second one would be a duplicate person.
   { fromId: 'grant', fromProperty: 'unchanged', toId: 'remove', toProperty: 'store' },
   { fromId: 'route', fromProperty: 'out-decline', toId: 'remove', toProperty: 'store' },
 

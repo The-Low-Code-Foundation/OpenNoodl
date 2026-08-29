@@ -33,10 +33,14 @@
  *
  * 🔴 **4. Every absence is read beside a known-firing signal.** `readVisit` is
  * imported from `site-drive.ts` rather than re-written, and it reads
- * `document.documentElement.outerHTML` as well as `innerText` — this template
- * hides its members' area behind `visible: false`, which is `display: none`, and
- * `innerText` skips it. An absence checked on `innerText` alone would pass on a
- * page that was carrying the announcements and merely not painting them.
+ * `document.documentElement.outerHTML` as well as `innerText`. `innerText`
+ * reports only what was painted, so an absence checked on it alone would pass on
+ * a page that was carrying the announcements and merely not painting them.
+ *
+ * ⚠️ Since D7/D16 this template **unmounts** rather than hides — every gate is
+ * `mounted`, so gated content is not in the document at all. The `outerHTML`
+ * discipline is kept because it is what makes that claim checkable, and it is
+ * the reading that would catch a regression to `visible`.
  */
 import * as fs from 'fs';
 import * as os from 'os';
@@ -115,11 +119,17 @@ export function makeMembersDataDir(
  * What one control on the page looks like from outside it.
  *
  * 🔴 **`text` and `label` are two different readings and the difference is the
- * whole point.** This template hides its moderator toolbar behind
- * `visible: false`, which is `display: none` — and `innerText` **skips**
- * display-none subtrees while `textContent` does not. So a spec asserting "the
- * member was not offered Post something" against `innerText` alone passes for a
- * reason it never established: the button is on the page and merely unpainted.
+ * whole point.** `innerText` reports only painted text while `textContent`
+ * reports everything in the markup. So a spec asserting "the member was not
+ * offered Post something" against `innerText` alone passes for a reason it never
+ * established: the button could be on the page and merely unpainted — which is
+ * exactly what this template did before D7/D16, when its moderator toolbar was
+ * gated with `visible: false`.
+ *
+ * ⚠️ The gates are `mounted` now, so for gated content the two readings agree.
+ * They are still taken separately: `label` is what proves the stronger claim —
+ * not merely unpainted, but **absent** — and it is the half that goes red first
+ * if a gate is ever put back on `visible`.
  *
  * - `text` — `innerText`. What a reader sees. Empty for a hidden control.
  * - `label` — `textContent`. What is in the document, painted or not.
@@ -174,8 +184,75 @@ export async function controls(page: RenderedPage, selector: string): Promise<Co
  */
 export const offered = (cs: Control[]): string[] => cs.filter((c) => c.painted && c.text).map((c) => c.text);
 
-/** What is in their document at all, including everything `display: none`. */
+/**
+ * What is in their document at all — `textContent`, so hidden and unpainted
+ * content counts. An element that is **unmounted** is not in the document and so
+ * not here either, which is what makes this the reading D7/D16 is graded on.
+ */
 export const present = (cs: Control[]): string[] => cs.map((c) => c.label).filter(Boolean);
+
+/**
+ * Is this sentence **in** the document, and is it **painted**?
+ *
+ * 🔴 **The two are different and AC6 is about the second.** Every empty state in
+ * this template is revealed by a gate. While those gates were `visible` the
+ * words were in the markup from the first paint — `document.body.textContent`
+ * contained "Nothing has been posted yet" on a page showing a full noticeboard,
+ * so an assertion on presence would have passed on every arm and measured
+ * nothing. The gates are `mounted` now and the two readings agree for gated
+ * content, but the distinction is what the helper exists to keep visible.
+ *
+ * 🔴 **`painted` is NOT "has a layout box", and the first version of this helper
+ * was.** The `visible` port hides with **`visibility: hidden`**
+ * (`node-shared-port-definitions.ts:226`), not `display: none` — and a
+ * `visibility: hidden` element **keeps its box**. So a rect-only reading called
+ * every empty state painted on every arm, and the control arm below reported
+ * three defects that do not exist. TPL-001 §8 already carried the rule this
+ * broke: *the honest hidden signal is `visibility`*.
+ *
+ * 🔴 **That box is also the defect D7/D16 fixed** — it is why the Post page drew
+ * a heading, ~500px of nothing and a back button. Keeping this note accurate
+ * matters even though the template no longer uses the port: it is the reason
+ * `mounted` was chosen over the port whose name sounds right.
+ *
+ * ⚠️ It is also deliberately NOT `elementFromPoint`: an empty state below the
+ * fold is being shown to a person who scrolls, and §13 records two false
+ * findings that came from confusing "outside the viewport" with "not displayed".
+ */
+export interface Sentence {
+  present: boolean;
+  painted: boolean;
+}
+
+const SENTENCE = (text: string) => `(function () {
+  var needle = ${JSON.stringify(text)};
+  var all = Array.prototype.slice.call(document.querySelectorAll('*'));
+  var carrying = all.filter(function (el) {
+    if ((el.textContent || '').indexOf(needle) === -1) return false;
+    // The innermost carriers only: an ancestor contains the sentence too, and
+    // an ancestor with a box would report a hidden child as painted.
+    return !Array.prototype.some.call(el.children, function (k) {
+      return (k.textContent || '').indexOf(needle) !== -1;
+    });
+  });
+  return JSON.stringify({
+    present: carrying.length > 0,
+    painted: carrying.some(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) return false;
+      // visibility is inherited, so the element's own computed value already
+      // answers for every ancestor that hid it; display:none is covered by the
+      // zero rect above. (No backticks in here: this is inside a template
+      // literal, and one would close it.)
+      var cs = window.getComputedStyle(el);
+      return cs.visibility !== 'hidden' && cs.display !== 'none';
+    })
+  });
+})()`;
+
+export async function sentence(page: RenderedPage, text: string): Promise<Sentence> {
+  return JSON.parse(String(await page.evaluate(SENTENCE(text)))) as Sentence;
+}
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

@@ -14,9 +14,23 @@
         "detailButton"
       ],
       "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
         "flexDirection": "column",
-        "paddingTop": 8,
-        "paddingBottom": 8
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "marginBottom": "var(--space-4)"
       },
       "x": 40,
       "y": 40
@@ -28,7 +42,10 @@
       "parent": "row-2",
       "parameters": {
         "text": "",
-        "fontWeight": "var(--font-semibold)"
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)"
       },
       "x": 100,
       "y": 160
@@ -39,7 +56,9 @@
       "label": "When",
       "parent": "row-2",
       "parameters": {
-        "text": ""
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
       },
       "x": 100,
       "y": 280
@@ -50,7 +69,9 @@
       "label": "Where",
       "parent": "row-2",
       "parameters": {
-        "text": ""
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
       },
       "x": 100,
       "y": 400
@@ -61,7 +82,20 @@
       "label": "Details",
       "parent": "row-2",
       "parameters": {
-        "label": "Details"
+        "label": "Details",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--muted-foreground)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
       "x": 100,
       "y": 520

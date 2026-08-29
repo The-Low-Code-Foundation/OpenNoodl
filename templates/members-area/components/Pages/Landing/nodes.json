@@ -29,29 +29,26 @@
         "setupCard"
       ],
       "parameters": {
-        "sizeMode": "explicit",
         "width": {
           "value": 100,
           "unit": "%"
         },
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "explicit",
         "height": {
           "value": 100,
           "unit": "%"
         },
-        "paddingTop": {
-          "value": 48,
-          "unit": "px"
-        },
-        "paddingLeft": {
-          "value": 24,
-          "unit": "px"
-        },
-        "paddingRight": {
-          "value": 24,
-          "unit": "px"
-        },
-        "flexDirection": "column",
-        "alignX": "center"
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
       },
       "x": 100,
       "y": 160
@@ -63,7 +60,11 @@
       "parent": "ground",
       "parameters": {
         "text": "",
-        "fontWeight": "var(--font-bold)"
+        "fontSize": "var(--text-5xl)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--foreground)"
       },
       "x": 160,
       "y": 280
@@ -74,7 +75,14 @@
       "label": "What we do",
       "parent": "ground",
       "parameters": {
-        "text": ""
+        "text": "",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
       },
       "x": 160,
       "y": 400
@@ -90,7 +98,8 @@
       ],
       "parameters": {
         "flexDirection": "row",
-        "alignItems": "center"
+        "alignItems": "center",
+        "columnGap": "var(--space-3)"
       },
       "x": 160,
       "y": 520
@@ -101,7 +110,18 @@
       "label": "Members sign in",
       "parent": "actions",
       "parameters": {
-        "label": "Members sign in"
+        "label": "Members sign in",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
       "x": 220,
       "y": 640
@@ -112,7 +132,20 @@
       "label": "Ask to join",
       "parent": "actions",
       "parameters": {
-        "label": "Ask to join"
+        "label": "Ask to join",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--muted-foreground)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
       "x": 220,
       "y": 760
@@ -127,8 +160,24 @@
         "setupButton"
       ],
       "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
         "flexDirection": "column",
-        "visible": false
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "rowGap": "var(--space-4)",
+        "alignItems": "flex-start",
+        "mounted": false
       },
       "x": 160,
       "y": 880
@@ -139,7 +188,9 @@
       "label": "Setup notice",
       "parent": "setupCard",
       "parameters": {
-        "text": "This members’ area has not been set up yet."
+        "text": "This members’ area has not been set up yet.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)"
       },
       "x": 220,
       "y": 1000
@@ -150,7 +201,18 @@
       "label": "Set it up",
       "parent": "setupCard",
       "parameters": {
-        "label": "Set it up"
+        "label": "Set it up",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
       "x": 220,
       "y": 1120

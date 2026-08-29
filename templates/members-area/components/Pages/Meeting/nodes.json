@@ -31,28 +31,26 @@
         "backButton-3"
       ],
       "parameters": {
-        "sizeMode": "explicit",
         "width": {
           "value": 100,
           "unit": "%"
         },
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "explicit",
         "height": {
           "value": 100,
           "unit": "%"
         },
-        "paddingTop": {
-          "value": 48,
-          "unit": "px"
-        },
-        "paddingLeft": {
-          "value": 24,
-          "unit": "px"
-        },
-        "paddingRight": {
-          "value": 24,
-          "unit": "px"
-        },
-        "flexDirection": "column"
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
       },
       "x": 100,
       "y": 160
@@ -64,7 +62,11 @@
       "parent": "ground-6",
       "parameters": {
         "text": "",
-        "fontWeight": "var(--font-bold)"
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
       },
       "x": 160,
       "y": 280
@@ -75,7 +77,9 @@
       "label": "When",
       "parent": "ground-6",
       "parameters": {
-        "text": ""
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
       },
       "x": 160,
       "y": 400
@@ -86,7 +90,9 @@
       "label": "Where",
       "parent": "ground-6",
       "parameters": {
-        "text": ""
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
       },
       "x": 160,
       "y": 520
@@ -97,22 +103,55 @@
       "label": "Details",
       "parent": "ground-6",
       "parameters": {
-        "text": ""
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
       },
       "x": 160,
       "y": 640
     },
     {
       "id": "refusal-2",
-      "type": "Text",
+      "type": "Group",
       "label": "Not available",
       "parent": "ground-6",
+      "children": [
+        "refusalText-2"
+      ],
       "parameters": {
-        "text": "This meeting is not available to you.",
-        "visible": false
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
       },
       "x": 160,
       "y": 760
+    },
+    {
+      "id": "refusalText-2",
+      "type": "Text",
+      "label": "Not available — the words",
+      "parent": "refusal-2",
+      "parameters": {
+        "text": "This meeting is not available to you.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 220,
+      "y": 880
     },
     {
       "id": "backButton-3",
@@ -120,10 +159,23 @@
       "label": "Back",
       "parent": "ground-6",
       "parameters": {
-        "label": "Back to the diary"
+        "label": "Back to the diary",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--muted-foreground)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
       "x": 160,
-      "y": 880
+      "y": 1000
     },
     {
       "id": "pageInputs-2",
@@ -132,8 +184,8 @@
       "parameters": {
         "pathParams": "meetingId"
       },
-      "x": 410,
-      "y": 1000
+      "x": 470,
+      "y": 1120
     },
     {
       "id": "hold-2",
@@ -149,7 +201,7 @@
           "type": "signal"
         }
       ],
-      "x": 410,
+      "x": 470,
       "y": 40
     },
     {
@@ -160,7 +212,7 @@
         "collectionName": "Meeting",
         "idSource": "explicit"
       },
-      "x": 410,
+      "x": 470,
       "y": 280
     },
     {
@@ -170,7 +222,7 @@
       "parameters": {
         "functionScript": "if (Inputs.when === undefined) return;\nconst raw = Inputs.when || '';\nconst at = new Date(raw);\nOutputs.label = isNaN(at.getTime()) ? raw : at.toLocaleDateString();"
       },
-      "x": 410,
+      "x": 470,
       "y": 400
     },
     {
@@ -178,9 +230,10 @@
       "type": "Condition",
       "label": "Show the refusal",
       "parameters": {
-        "condition": true
+        "condition": true,
+        "runOnChange-condition": false
       },
-      "x": 410,
+      "x": 470,
       "y": 760
     },
     {
@@ -191,8 +244,8 @@
         "router": "Main",
         "target": "/Pages/Meetings"
       },
-      "x": 410,
-      "y": 880
+      "x": 470,
+      "y": 1000
     }
   ],
   "visualRoots": [

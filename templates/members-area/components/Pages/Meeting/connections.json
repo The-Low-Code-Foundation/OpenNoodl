@@ -67,7 +67,7 @@
       "fromId": "refusalGate-2",
       "fromProperty": "result",
       "toId": "refusal-2",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "backButton-3",

@@ -31,13 +31,13 @@
       "fromId": "read",
       "fromProperty": "out-needsSetup",
       "toId": "setupCard",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "read",
       "fromProperty": "out-hasAssociation",
       "toId": "actions",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "signInButton",

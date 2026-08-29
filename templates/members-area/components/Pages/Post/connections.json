@@ -13,7 +13,7 @@
       "fromId": "standing-3",
       "fromProperty": "isModerator",
       "toId": "tools",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "standing-3",
@@ -25,7 +25,7 @@
       "fromId": "notModerator",
       "fromProperty": "out-no",
       "toId": "notAllowed",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "standing-3",
@@ -73,7 +73,7 @@
       "fromId": "aDoneGate",
       "fromProperty": "result",
       "toId": "aDone",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "mTitle",
@@ -115,7 +115,7 @@
       "fromId": "mDoneGate",
       "fromProperty": "result",
       "toId": "mDone",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "backButton-4",

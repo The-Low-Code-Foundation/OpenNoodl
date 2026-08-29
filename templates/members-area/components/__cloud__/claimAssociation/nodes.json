@@ -125,6 +125,45 @@
       "y": 760
     },
     {
+      "id": "founding",
+      "type": "JavaScriptFunction",
+      "label": "The founding moderator’s own directory row",
+      "parameters": {
+        "runOnChange-in-userId": false,
+        "runOnChange-in-email": false,
+        "functionScript": "if (Inputs.userId === undefined || Inputs.email === undefined) return;\nconst email = Inputs.email === null ? '' : String(Inputs.email);\nOutputs.userId = Inputs.userId;\nOutputs.email = email;\n// ⚠️ Setup asks for the ASSOCIATION's name, never the moderator's, so\n// there is no name to write — the address is what the person typed and\n// it is what the list can honestly show them as.\nOutputs.name = email;\nOutputs.joinedAt = new Date().toISOString();\nOutputs.standing = 'moderator';\nOutputs.file();"
+      },
+      "ports": [
+        {
+          "name": "out-file",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 880
+    },
+    {
+      "id": "founder",
+      "type": "NewDbModelProperties",
+      "label": "File the founding moderator in the directory",
+      "parameters": {
+        "collectionName": "Member",
+        "accessControl": [
+          {
+            "id": "admin",
+            "label": "Moderators"
+          }
+        ],
+        "acl-admin-target": "role",
+        "acl-admin-role": "admin",
+        "acl-admin-read": true,
+        "acl-admin-write": true
+      },
+      "x": 40,
+      "y": 1000
+    },
+    {
       "id": "res",
       "type": "noodl.cloud.response",
       "label": "Set up",
@@ -132,7 +171,7 @@
         "params": "claimed"
       },
       "x": 40,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "deny",
@@ -143,7 +182,7 @@
         "errorMessage": "This members’ area cannot be set up with those details."
       },
       "x": 40,
-      "y": 1000
+      "y": 1240
     }
   ]
 }

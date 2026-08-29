@@ -354,3 +354,270 @@ worth saying plainly, because it is evidence about this template and not about t
   for several minutes — `location.pathname` was `/` after navigating to `/members` — before
   `standing.Visitor → toLanding.navigate` explained it. It is the designed behaviour and it is
   better than the alternative; recorded so the next reader does not re-derive it.
+
+## 14. The directory, and the first time a person opened it (s4, 2026-08-28)
+
+**Richard ruled on all three open questions**, and the first two are now built.
+
+| question | ruling |
+|---|---|
+| the member directory (§10) | **build the `Member` projection**, drift cost accepted |
+| the privacy trade (§10) | **keep the non-answer** — `requestAccess` still answers an existing account exactly as a new one |
+| publishing (T5) | **not yet** — *"I need to drive it myself before we talk about publishing"* |
+
+### What was built
+
+| | |
+|---|---|
+| collection | `Member` — `userId`, `name`, `email`, `joinedAt`, `standing`; moderator-only in the policy and in every row's ACL |
+| written by | `decideMembership` on `grant.done`, and `claimAssociation` on the founding moderator |
+| read by | `Pages/Directory` — moderator-gated, sorted by name, empty state, back button |
+| the row | `Members/MemberRow` — the fourth repeater row |
+| the way in | `Who belongs`, a third button on the moderator's toolbar |
+| artefact | **21 components, 11 pages** (was 19 and 10) |
+
+**Two decisions taken while building, both cheap to reverse:**
+
+- 🔴 **Setup writes the founding moderator's own row.** Richard's ruling named
+  `decideMembership`; setup is the *other* node in this template that puts somebody in a role, and
+  without a row there the first moderator holds `role:admin`, is a member of the association in
+  every sense, and is **absent from the only list they can open** — on a fresh install, where they
+  are the only person in it. ⚠️ Setup asks for the *association's* name and never the moderator's,
+  so the row's `name` is their email.
+- 🔴 **The page says what it is.** `DIRECTORY_PROJECTION_NOTE` is painted above the list:
+  *"Everybody admitted through this app. Somebody given access directly on the backend will not
+  appear here."* The ruling was taken with the drift cost stated; a projection that omits people
+  silently is worse than no list, and the person who needs that sentence is the moderator reading
+  it, not the next developer.
+
+⚠️ **Where the projection can be wrong, stated once**: `Member` is a copy of what `_Role` holds.
+Every row is written by the endpoint that adds the role, in the same request, and nothing else
+writes one — so it drifts only when a role changes **outside this app**. One failure edge is
+deliberate: if the `Member` write fails after the role was granted, the queue entry is still
+removed and the decision still succeeds (`member.failure → remove.store`). The person **is** a
+member; making a projection able to block the membership decision it is a copy of would be the
+worse bug. The cost is a member missing from the list, and it is silent.
+
+### 🔴 The new query was invisible to the specs that make AC2 structural
+
+Both AC2 specs filter on a **literal list** of members-only collections, so the directory's
+`DbCollection2` — a members-only query by every argument in this file — was graded by neither
+until `COLLECTION_MEMBER` was added to both lists and the counts moved 3 → 4.
+
+✅ **Shown to discriminate before being trusted**, the rule §11 set:
+
+| sabotage | what reddened |
+|---|---|
+| drop `NO_LOAD_TIME_FETCH` from the directory query | *every members-only query carries NO_LOAD_TIME_FETCH* |
+| fetch on `page.didMount` instead of `standing.Moderator` | *each one's only trigger comes from the standing gate* |
+
+⚠️ **The general shape**: a spec that names its population by literal list does not grow when the
+product does. It stays green, and the green is about the four things somebody typed in a previous
+session. **Anything added to this template must be added to those lists by hand** — and the count
+assertions beside them are what force the question.
+
+### 🔴 The template had no HOME node, and every headless gate passed over it
+
+The one thing nothing in this phase had done: **open the artefact as a project and press
+preview.** It rendered `ERROR — No HOME component selected`. Nothing in the app was reachable.
+
+Full account in **[D9](DEFECTS-THE-TEMPLATES-FOUND.md)**, including why 45 drive specs and a
+41-spec byte gate all agreed on a project the editor could not open — the drive navigates to URLs
+and never asks the project what its home is, and byte-identity cannot see a defect present since
+the first run. Fixed in `prepareArtefact` → `pinRootNode`.
+
+✅ **The lesson for every template after this one**: the door a person uses is *open it and press
+preview*, and it was outside every sweep here. A headless gate over a generated artefact grades
+the artefact against the generator, never against the app.
+
+### Gates (s4)
+
+| | |
+|---|---|
+| template gate | `tpl001Template.test.ts` **41/41** |
+| the drive | `tpl001-members-drive.test.ts` + `tpl001-refused-query.test.ts` **45/45**, against the regenerated artefact |
+| noodl-mcp | **840/840**, 65 suites |
+| `typecheck:mcp` | clean |
+
+⚠️ **`test:ci` not run.** No editor source was touched — the changes are the generator, the graphs,
+the gate and the policy. ⚠️ The drive was run **before** the editor stack came up; it reads the
+viewer bundle and stamps it at both ends, and a live dev stack rewrites that file (D8).
+
+### 🔴 What the directory still does not have: a reading
+
+**It is built, gated and never executed.** The drive's own log shows `Who belongs` painted on the
+moderator's toolbar and absent from the member's — that is the AC4 machinery working, not the
+directory working. Nothing has opened `/directory`, and §12's whole argument is that a component
+that has never run is not evidence about anything.
+
+**Next, and it is small** — the harness already mints a moderator, an approved member and a
+pending person:
+
+1. The moderator opens `/directory` and sees **two** rows: themselves (`Moderator`) and the person
+   they approved (`Member`) — which is also the one reading that proves setup's founding row and
+   `decideMembership`'s projection row are both written.
+2. A member reaches `/directory` by URL and is told *only a moderator can see the member list*,
+   with no row anywhere in `outerHTML` — beside a **403** from the server on `Member.find`, since
+   UI-only enforcement is what AC4 forbids.
+3. The empty state, which belongs with **AC6** — the criterion that still has no reading.
+
+## 11. The look (s5, 2026-08-28)
+
+Richard drove it and said it did not look like a website. It was measured (137 visual nodes, **0**
+colour parameters, **0** type-ramp parameters, **0** constrained widths, no token block), gated,
+and then fixed — in that order, so the fix was not marking its own homework.
+
+| | |
+|---|---|
+| the gate | `templateAppearance.test.ts` — **22 specs over every installable template**, written first |
+| the design system | `tpl001Theme.ts` — the shipped `enterprise` preset plus 20 measured overrides |
+| how it is applied | `find_tools({group:'theme'})` → `set_style_preset` → `set_project_tokens`, through the same door as the graphs |
+| the parameter sets | `composition(id)` — looked up from `buildStyleVocabulary()`, never typed |
+| the sweep | 11 page grounds · 18 texts · 25 buttons · 4 rows as cards · 17 fields |
+
+🔴 **The open question from s4 is answered and the answer was the expensive one.** A preset alone
+changes nothing a person can see: the shipped defaults are already the floor of `:root`, so
+`var(--primary)` resolved before any of this and nothing referenced it. §2 of the ratchet went green
+on the token block; §3 and §4 needed the sweep.
+
+🔴 **The setup page greeted a person with a refusal before they typed** — seven `Condition` nodes
+carrying a constant `condition: true` fired at load, because re-testing on value change is
+*additional* to `eval`, and overrode every `visible: false` they governed. Invisible to 41
+byte-identity specs, 45 drive specs and two typechecks; the artefact on disk was correct all along.
+**Found by rendering it and looking, with `HEAD` rendered as a control arm.** Fixed by
+`runOnChange-condition: false` — set explicitly, not left to the load-time migration, because a
+template must be correct as written. See D14.
+
+✅ **The setup form now names the blank box**, in the browser, before the call. The endpoint's single
+message is untouched: *wrong token* and *already set up* are the only two refusals that leak
+anything, and they stay indistinguishable.
+
+### 🔴 Left, and why it was left
+
+**`visible` → `mounted` on the five gated pages.** `visible` hides with `visibility: hidden` and
+keeps the box, so `Pages/Post` renders as a heading, ~500px of nothing, and a back button.
+`mounted` fixes that *and* D7. Not done blind: an unmounted subtree does not exist, so a `For Each`
+inside one is not there to receive rows published while it is away — and the instrument that would
+catch it is the backend drive suite, which could not run beside a peer's `dev:debug`.
+
+---
+
+## 12. The gates (s6, 2026-08-28) — 🟢 `mounted`, driven, and a defect in the instrument
+
+**Every gate is `mounted`.** 27 wires and 25 parameters, changed at the source
+(`tpl001Components.ts`) and regenerated — the artefact diff is exactly those 52 lines. D7 and D16
+are closed.
+
+| same page, same harness | `visible` | `mounted` |
+|---|---|---|
+| `Pages/Post` to a non-moderator | heading, **~500px of nothing**, back button | heading, back button |
+| texts in that person's document | **15** — the whole moderator form | **2** |
+
+### ✅ It was driven, and the suite is green for the first time
+
+**47 passed, 0 failed.** The baseline before the change was **44 passed, 2 failed** of 46 — taken
+first, on purpose, because a suite whose floor you have not read cannot tell you what your change
+did.
+
+🔴 **Those two reds were not a regression. They were D14's fix arriving.** The specs read
+`clickButton('Post it')` and then `look('moderator.posted', '/post')` — and `look` **navigates**. So
+they asserted *"a freshly booted `/post` says **Posted**"*, which is true only of a page whose gate
+fires on load. That is the defect, written as an expectation: while D14 lived the specs passed, and
+the moment it was fixed they went red. Repaired with `readHere`, which reads in place, plus the arm
+that was missing — `does NOT say so before anything is posted`. See D14 §s6.
+
+### How the change is held
+
+- The D7 spec is **inverted, not deleted** — a deleted spec cannot notice the regression back — and
+  carries **two controls**: the same reading holds the refusal (the document rendered), and the
+  moderator's reading through the same helper holds the form (the instrument can see one).
+- A ratchet in `tpl001Template.test.ts` fails on **any** `visible` wire or parameter in the shipped
+  artefact, asserting the 27 `mounted` gates beside it so an empty census is a measurement.
+
+### ⚠️ The race, read and then measured
+
+An unmounted node is **not destroyed** — it stays in the graph and its inputs keep arriving, so a
+`For Each` inside a gated group still receives rows published while it is away (`foreach.tsx` either
+applies them immediately or queues them and replays on `didMount`). And every query here is a
+**parentless logic node triggered *by* the same standing signal that mounts the group**, so the
+group is always mounted first. §2, §6 and §8 pass.
+
+🔴 **The honest limit**: the drive never exercises "rows arrive while unmounted", because in this
+template that ordering cannot occur. The reasoning above is what covers it, and it is a property of
+*this* template rather than of `mounted`.
+
+---
+
+## 13. The surfaces (s7, 2026-08-29) — 🟢 the design system is finished, not merely opened
+
+§11 gave this template a palette, a type ramp and a measure. It did not finish the job, and the
+size of what was left is the finding: **31 of the 45 `Text` nodes in the shipped artefact set
+neither a size nor a colour**, every notice and empty state was an unboxed grey line, and the only
+cards in the app were the four repeater rows.
+
+🔴 **`templateAppearance.test.ts` was green over all of it, and correctly so.** It asks whether this
+template opened the design system — *a* colour, *a* type size, *a* constrained width, all `> 0`.
+That is the right question to ask of a template that might have ignored the system entirely, and
+the wrong one to ask of a template that opened it and stopped half way.
+
+### What changed
+
+| | before | after |
+|---|---|---|
+| `Text` with no size and no colour | **31 of 45** | **0** |
+| notices / empty states / refusals | bare text on the page ground | **17 surfaced boxes** |
+| forms (`SignIn`, `Setup`, `Join`, both on `Post`) | fields loose on the ground | **5 panels** |
+| gap between two announcement cards | **0px — borders touching** | `--space-4` |
+| `Pages/SignIn` refusal | **no gate at all** | gated on `login.failure` |
+
+⚠️ **The row gap was a real defect, not a polish item.** `For Each` renders its rows as siblings
+inside itself, so a `rowGap` on the section above never reaches between them — the row has to carry
+its own `marginBottom`. Without it every announcement card's border sat flush against the next.
+
+### 🔴 The gate that did not exist, found by drawing a box round it
+
+`Pages/SignIn`'s refusal was an ungated `Text` whose `text` was wired to `Log In`'s `error`. An
+empty string renders nothing, so **"always mounted" and "hidden until it has something to say" were
+the same picture** — and every spec was green. Giving the notice a surface is what made the
+difference observable: without a gate it would have shipped as a padded, bordered, permanently empty
+card under the form. `Pages/Setup` gated its refusal and this one never did, and the asymmetry was
+invisible while both were unstyled.
+
+✅ Driven: §1b of the drive signs in with a wrong password, asserts no session is minted, and reads
+the page **in place** (`readHere`, for D14's reason — the gate fires on the click). The arms grade
+*that a refusal appeared*, not its wording, because the wording is the runtime's.
+
+### How the change is held
+
+Three new rows in `tpl001Template.test.ts`, each proved with a control pair:
+
+| ratchet | mutant run against it | result |
+|---|---|---|
+| §1 every `Text` sets a type ramp | — | census, names the node |
+| §2 every notice box carries a fill and an edge (**exactly 17**) | gate moved onto the inner `Text` | 🔴 reddened AC6 |
+| §3 **no container of a `For Each` carries its own fill** | fill added to the four sections | 🔴 reddened §3 alone |
+
+🔴 **§3 is the one worth keeping.** Adding that fill made `templateAppearance` **greener** — more
+colour parameters, another structural parameter, §2 still satisfied — while the screen got worse.
+Every other instrument pointed at this template would have approved of it.
+
+### ✅ Appearance was graded by looking, and that is where the defects came from
+
+Rendered from disk (`scripts/devtools/render-report.js`) and read with `getComputedStyle`. Three
+product defects fell out that no gate here can see, all now in the register: **D18** (form controls
+ignore `--font-sans` — `input` renders Arial, `textarea` renders monospace), **D19** (a control's
+label is pure `#000`), **D20** (the vocabulary has no composition for a field, a notice or an empty
+state — the mechanism behind D10).
+
+### 🔴 Left, and why
+
+- **The landing hero.** Everything around it moved, so it is now the least designed screen in the
+  template — and it is the one a stranger sees.
+- **No reading of the row cards with the new gap.** Every list renders its empty state on a fresh
+  install (AC6, correct), so the change to `ROW_CARD` is gated and typechecked but **has not been
+  looked at with rows in it**. That reading is owed and belongs with the seed-content work.
+
+### Gates (s7)
+
+`tpl001Template.test.ts` + `templateAppearance.test.ts` **67/67** · drive **51/51** · `typecheck`
+and `typecheck:mcp` clean. ⚠️ `test:ci` not run — no editor source touched.

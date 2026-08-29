@@ -8,6 +8,11 @@ So this file is a **standing output of phase 78**, not a one-off. Building a rea
 real doors is the only thing that exercises them the way a customer will, and what it turns up
 belongs here the moment it is measured.
 
+⚠️ **Phase 77 keeps its own sibling register** —
+[DEFECTS-THE-SITE-BUILDER-FOUND.md](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md).
+Its D1 (nothing warns that a `Failure` reaches nobody) is the same family as **D1 below**: the
+door accepts a graph whose defect it has everything it needs to see.
+
 ## House rules for this file
 
 - 🔴 **A row is a measurement, not an impression.** Say what was done and what happened. A defect
@@ -15,6 +20,63 @@ belongs here the moment it is measured.
 - ⚠️ **Disproved candidates stay, marked.** "I thought this was broken and it is not" is worth as
   much as a real row — it stops the next person re-deriving it. See D6.
 - Each row names **where it bites a person**, not just where the code is wrong.
+- 🔴 **Every row carries an owner, or the word NONE.** Added 2026-08-29 after the three-register
+  sweep created [phase 80](../phase-80-the-defects-the-templates-found/TASKS.md). A row with no
+  owner is not a record, it is a thing that will be found again — which is exactly what happened to
+  twenty rows across three phases. **A new row is not finished until this table has a line for it.**
+
+## The register
+
+⚠️ **The `status` column is AS RECORDED by the session that filed each row, not a re-measurement at
+HEAD.** Only the rows dated 08-29 were measured today. A sweep that re-measures the rest is owed and
+is not this table — writing "still real" over twenty rows I did not re-run would be the exact
+failure this file's first house rule exists to prevent.
+
+| row | status (as recorded) | owner | side | who it bites |
+|---|---|---|---|---|
+| D1 | 🔴 open | **DEF-002** | product | every agent-authored app |
+| D2 | 🟠 open | **DEF-005** 🔒 ruling | product | every membership app |
+| D3 | 🔴 open | **DEF-005** 🔒 ruling | product | every membership app |
+| D4 | ✅ answered — not a defect | — | — | — |
+| D5 | ⚠️ open | **DEF-008** | product | an author reading port names |
+| D6 | ✅ disproved | — | — | — |
+| D7 | ✅ fixed s6 | — | template | (was: everyone gated against) |
+| D8 | ✅ disproved | — | — | — |
+| D9 | 🔴 residual open | **DEF-007** | product | the next template |
+| D10 | 🔴 open | **phase 78** (template-generator work) | template | every generated app |
+| D11 | 🔴 open | **DEF-001** | product | every end user |
+| D12 | 🔴 open | **DEF-006** | product | every agent styling on-system |
+| D13 | 🔴 open | **DEF-001** | product | every end user |
+| D14 | ✅ fixed s6 | — | product behaviour, worked around in template | (was: every gated reveal) |
+| D15 | ⚠️ open | **DEF-006** | product | every agent styling on-system |
+| D16 | ✅ fixed s6 | — | template | (was: every gated screen) |
+| D17 | ✅ answered s5 | — | — | — |
+| **D18** | 🔴 open (08-29) | **NONE** — ruled *not* DEF-001, see below | product | every person filling in any form |
+| **D19** | ⚠️ open (08-29) | **NONE** — either way, see below | product | every person filling in any form |
+| **D20** | 🔴 open (08-29) | **NONE** — **DEF-006 agreed, not yet filed** | product | every agent styling on-system |
+
+🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
+day of the process being put in place.** That is the argument for the column, not an argument
+against the timing.
+
+⚠️ **Discussed with phase 80's owner 2026-08-29 and recorded in
+[THE SWEEP](../phase-77-the-site-builder-rescue/THE-SWEEP-2026-08-29.md#still-open-after-both-fixes)
+— but no `DEF` task names any of the three yet, so all three stay `NONE` here.** Where it landed:
+
+- **D20 → DEF-006, agreed by both sessions** — the agent opens the vocabulary looking for a field or
+  a notice and finds nothing, the same mechanism as D12 and D15. 🔴 **Agreed is not filed:** grep
+  DEF-006 for `D20` and it is absent. Until that line exists this row is still unowned in the only
+  place that schedules work.
+- **D18 → NOT DEF-001.** Accepted by phase 80's owner: it is a **fidelity** defect, not an
+  accessibility one — monospace is perfectly legible, it is simply not the app's typeface, and
+  filing it under an a11y-scoped task would widen that task silently. Needs a home about *the design
+  system not reaching the rendered control*. **Re-measure before filing.**
+- **D19 → genuinely either way** — it is an a11y contrast question *and* a reachability question.
+
+⚠️ **Naming.** `D17` was briefly a second `D10` in this file and was renumbered; every historical
+`D10` reference means the generators bypassing the design system. Settled 2026-08-29 (`56c9b372`):
+**this register mints the `D` ids, phase 80 mints the `DEF` ids** — on a collision, the file that
+issues the identifier is the one to match.
 
 ---
 
@@ -182,7 +244,7 @@ the caller, not the door: an absence you have not looked for is not an absence t
 
 ---
 
-## D7 — ⚠️ A `visible: false` group ships its whole subtree to everyone
+## D7 — ✅ FIXED 2026-08-28 (s6): a `visible: false` group shipped its whole subtree to everyone
 
 **Severity: low as a defect, high as a habit.** Measured on TPL-001's drive: an approved member
 loading `/post` receives the moderator's announcement form, meeting form and both submit buttons
@@ -199,6 +261,31 @@ gated on a standing signal, so hiding is never what keeps data out.
 **Where it bites a person.** The first builder who puts a members-only announcement inside a
 `visible: false` group instead of gating its query. `mounted` removes the subtree; `visible` does
 not, and nothing in the editor says which one this decision needs.
+
+### ✅ The fix, and how it is held
+
+Every gate in the template is now `mounted` — **27 wires and 25 parameters**, changed at the source
+(`tpl001Components.ts`) and regenerated, so the artefact diff is exactly those 52 lines and nothing
+else. The drive spec that **recorded** this defect is inverted rather than deleted, because a
+deleted spec cannot notice the regression back:
+
+> `✅ D7/D16 — the form is not in the member’s document at all, not merely unpainted`
+
+🔴 **It carries two controls**, because a bare absence proves nothing: the same reading holds the
+refusal sentence (so the document rendered), and the *moderator's* reading through the same helper
+DOES hold the form (so the instrument can see one when it is there).
+
+A second ratchet in `tpl001Template.test.ts` fails on **any** `visible` wire or parameter anywhere
+in the shipped artefact, and asserts the 27 `mounted` gates beside it — an empty offender census
+that is a measurement rather than a walk over an empty population.
+
+⚠️ **The race that made this worth thinking twice about does not exist here, and the reason is
+worth keeping.** An unmounted node is **not destroyed** — it stays in the graph and its inputs keep
+arriving, so a `For Each` inside a gated group still receives rows published while it is away
+(`foreach.tsx` either applies them immediately or queues them and replays on `didMount`). Beyond
+that, every query in this template is a **parentless logic node triggered *by* the same standing
+signal that mounts the group**, so the group is always mounted first. Read, then measured: the
+drive suite's list-rendering arms (§2, §6, §8) all pass.
 
 ---
 
@@ -223,3 +310,411 @@ infer staleness from an mtime against a commit date — in either direction.
 ⚠️ **What was worth doing anyway**: the drive now stamps the bundle at both ends of the run and
 reddens if it moved. On a shared checkout a peer's dev stack rewrites that file, and a bundle
 swapped mid-drive would surface as a flake in whichever spec happened to be running.
+
+---
+
+## D9 — 🔴 A generated project can ship with no HOME node, and every headless gate passes over it
+
+**Severity: high.** It is the first thing a person does after picking a template, and it fails.
+
+Measured 2026-08-28 (s4) by doing the one thing nothing had done: **opening the artefact as a
+project in the editor and pressing preview.** The viewer rendered
+
+```
+ERROR
+No  HOME component selected
+Click Make home as shown below.
+```
+
+— not the landing page, not a white void, not a routing error. Nothing in the app was reachable.
+
+**The cause.** `ProjectModel.fromJSON` resolves the app's home from `rootNodeId`
+(`projectmodel.ts:235`). The skeleton `tpl001Template.ts` wrote had no such field, so `rootNode`
+stayed `undefined` and the viewer had no root to render. Everything else about the project was
+correct — 21 components, 11 pages registered, the router present, the start page right.
+
+🔴 **The control that makes this a defect rather than a guess.** The only other template in the
+repository, `site-builder.content.json`, carries `rootComponent: '/App'`. Same mechanism, two
+arms, and the arm that omits it is the arm that errors. One template had it because it was
+hand-shaped; the other was generated by a script that never wrote the field.
+
+⚠️ **And the two spellings are not interchangeable.** `rootComponent` is the **legacy** field — a
+component *name* — which `import-engine/legacy/assess.ts:356` reports as something it rewrites on
+load, and which `project-v2.schema.json` (`additionalProperties: false`) does not permit. A v2
+project file carrying it is not a project file that validates. The v2 spelling is `rootNodeId`, a
+node id. `fromJSON` accepts the legacy one only as a fallback while upgrading.
+
+**Fixed** in `prepareArtefact` → `pinRootNode`, which reads the root back out of `App/nodes.json`
+rather than typing `app_root`: the door de-duplicates node ids project-wide, so that id is stable
+only because `App` is written first and nothing claims it earlier.
+
+### 🔴 Why 45 headless specs and a 41-spec byte gate all passed over it
+
+This is the part worth carrying to every future template.
+
+- **The drive serves pages directly.** `withRenderedPage` navigates to a URL and reads what comes
+  back. It never asks the project what its home is, so the field being absent is invisible to it —
+  all 45 specs, including every one that renders a page in a real browser, pass on a project the
+  editor cannot open.
+- **The byte gate compares the artefact to a fresh run of the same generator.** A field neither
+  side writes is a field both sides agree about. Byte-identity is a *drift* check, and it cannot
+  see a defect that was present from the first run.
+
+✅ **The gap is the same shape as the one P67 named**: a checker run over fixtures it authored
+agrees with itself. What found this was running the artefact through **the door a person uses**,
+which for a project template is *open it in the editor and press preview* — and that door was
+outside every sweep in this phase. **Where it bites a person: they pick the template, press
+preview, and the app does not exist.**
+
+### The curated path carries no repair, and the embedded one says why it would need one
+
+Read after the fix, and it settles which arm this defect lives on:
+
+- 🔴 **`PlatformTemplateProvider` does no home resolution at all** — neither `rootComponent` nor
+  `rootNodeId` appears in it. A curated template is a prepared directory, and what the directory
+  carries is what the person gets. So before this fix, a curated install of TPL-001 gave a project
+  with no home, exactly as the launcher-opened copy did.
+- ✅ **`EmbeddedTemplateProvider` resolves the name into a concrete `rootNodeId` at install, and
+  its own comment states the trap** (`:119-125`): `fromJSON`'s `rootComponent` hint calls
+  `setRootComponent()`, which *"silently no-ops unless the NodeLibrary already has the root node's
+  type loaded"* — and at project-creation time the editor is **on the launcher with an empty
+  NodeLibrary**, so the hint is lost and *"the project is saved with no home component"*.
+
+⚠️ **That is the same failure this row opens with, already known and already written down for the
+other arm.** The embedded provider repairs it per-install; the curated path has no such step, so
+the repair has to be *in the artefact*. Writing a concrete `rootNodeId` is what that comment
+prescribes: resolved by id lookup, independent of the NodeLibrary.
+
+⚠️ **What is measured and what is inferred.** The error, the cause and the fix were **driven** —
+opened from the launcher, previewed, `rootNodeId` absent, added, app renders. That the *wizard*
+install has the same hole is read **from the code above**, not driven: a curated template cannot
+be installed through the picker until it is published, which is T5. **Grade it there**, and do not
+let this row stand in for that reading.
+
+---
+
+## D10 — 🔴 The template generators bypass the design system the product ships
+
+**Severity: high.** It is what a person judges the whole product by, before they test anything.
+
+Richard, 2026-08-28, after driving TPL-001 by hand: *"it doesn't even look like a website… I'm at
+a loss about how both templates we've tried to create so far have been fucking shit on the front
+end."*
+
+**Measured, not impressionistic**, over `templates/members-area/`:
+
+| | |
+|---|---|
+| visual nodes | 137 |
+| **colour or background parameters set** | **0** |
+| design tokens used | **2** — `--font-bold`, `--font-semibold` |
+| style parameters set | 125, and every one is layout plumbing: `flexDirection`, `padding`, `width/height`, `sizeMode` |
+| the project's `settings` | `{htmlTitle, navigationPathType}` |
+
+No font sizes, no max-width, no radius, no borders, no gaps, no shadows, no text-align, no
+variants. 🔴 **And `site-builder.content.json`'s settings block is byte-identical in shape** — the
+same two keys, no styles. Two templates, one failure: it is the process, not the template.
+
+### What exists and is not being used
+
+- **Five style presets** — `Enterprise`, `Modern`, `Playful`, `Minimal`, `Soft`
+  (`StylePresets/presets/`).
+- **Semantic tokens** by category, **legal variants/sizes per element type**, **named
+  compositions** — all reported by `get_style_vocabulary`, whose own tool description tells an
+  author to call it before setting any colour or spacing.
+- **`set_project_tokens` and `set_style_preset`**, write tools that already ship.
+- 🔴 **The project wizard already offers the presets to a person creating a project**
+  (`ProjectsPage.tsx:109,1614`).
+
+So a human who creates a project is offered a look. **A generated template is not**, because both
+generators author behaviour graphs through the door and call none of the above.
+
+### ✅ DISPROVED, in the same session: "a template cannot carry a look"
+
+The obvious hypothesis — that this is a *product* gap and templates are structurally unable to
+record a design — **is wrong, and it was worth ten minutes to check rather than file.**
+`upsertTokens` persists to `nodegx.project.json → metadata.designTokens`
+(`ProjectStore.ts:153-175`), `metadata` is a permitted property of `project-v2.schema.json`, and
+the artefact ships that file.
+
+🔴 **So the whole fix lives in the generator** — no product change, no editor source, no collision
+with P77. Filing this as a platform limitation would have pointed the next session at the wrong
+codebase.
+
+⚠️ **Still open**: whether recording a preset alone visibly changes the rendered app, or whether
+nodes must also reference `var(--token)` and carry variants for it to show. That decides whether
+the fix is one call or a sweep over 137 nodes. **The instrument is a screenshot** — no spec in this
+repository can see it.
+
+### Where it bites a person
+
+They open the shelf, pick the one template on it, press preview, and get black text left-aligned in
+a full-width column. **Every gate in this phase passes on that**: 41 byte-gate specs, 66 drive
+specs, 840 MCP specs. Not one of them can see it, because not one acceptance criterion mentions
+appearance — which is P76's closing ruling (*correct and usable were never the same criterion*)
+recurring for the third time.
+
+✅ **Richard's standing ruling, 2026-08-28**: appearance is an acceptance criterion on every
+template in this phase, graded **before** the behaviour work. The ratchet that enforces it — *no
+preset recorded · zero colour tokens · no `maxWidth` anywhere · every page a single full-bleed
+column* — is the first task of the next session, deliberately **before** any layout work, so the
+pass is not marking its own homework.
+
+---
+
+## D17 — ✅ ANSWERED, s5: applying a preset alone changes **nothing a person can see**
+
+⚠️ **Recorded as a second `D10` until 2026-08-29, and renumbered here.** There were two different
+defects under that number and a reader could close one meaning the other. Nothing else moved: the
+references to "D10" in this file (including the first line of this entry) all mean the *other* one
+— the generators bypassing the design system — which is what this entry answers a question about.
+
+D10 left one question open — *"whether recording a preset alone visibly changes the rendered app,
+or whether nodes must also reference `var(--token)`"*. It is answered, and the answer is the
+expensive one.
+
+**It is a sweep, not one call.** Two measurements, neither of which needed a screenshot:
+
+- `buildEffectiveTokens` merges the shipped defaults **as the floor** and
+  `generateProjectTokenCss` stamps the whole set into `:root` — `StyleTokenCoverage.test.ts:116`
+  already asserts `generateProjectTokenCss(null)` contains `--primary:`. So `var(--primary)`
+  **already resolved** in the members' area before this session. There was simply nothing
+  referencing it.
+- Confirmed on the artefact: with the token block written and not one node changed, the appearance
+  ratchet's §2 went green and §3 and §4 stayed red. The render harness reported *"182 shipped
+  defaults + 34 project override(s)"* and the page looked identical.
+
+⚠️ **And picking Modern would have been worse than doing nothing.** `ModernPreset.ts` says *"Modern
+IS the defaults"* and ships `tokens: {}`; `styleTools.ts`'s `entries.length === 0` branch then
+**clears** the block. A preset that writes nothing is indistinguishable from a preset never applied.
+
+---
+
+## D11 — 🔴 Three of the five shipped style presets fail WCAG AA on their own primary button
+
+**Severity: high — the default is one of them.**
+
+`--primary-foreground` on `--primary`, computed from the preset files
+(`StylePresets/presets/*.ts`), against the 4.5:1 floor for normal text:
+
+| preset | ratio | |
+|---|---|---|
+| `modern` | **3.68** | 🔴 **the wizard's default** |
+| `playful` | **4.23** | 🔴 |
+| `soft` | **4.47** | 🔴 — misses by 0.03 |
+| `minimal` | 17.72 | ✅ |
+| `enterprise` | 17.85 | ✅ |
+
+🔴 **Where it bites a person.** Every project created through the wizard inherits Modern, so the
+filled button — the one control on every page a person is meant to press — is sub-AA out of the box.
+It is not a template defect and no template can fix it: a template that picks a passing preset only
+moves itself out of the way.
+
+✅ **What TPL-001 did about it**: based itself on `enterprise` and overrode the hue, with every pair
+measured in `tpl001Theme.ts`. That is a workaround for one template, not a fix.
+
+---
+
+## D12 — 🔴 The `primaryButton` composition ships a parameter the runtime never reads, and the door warns on every instance
+
+Measured: applying `composition('primaryButton')` verbatim to the template's buttons produced **12
+`warning inactive-conditional-parameter` diagnostics** on the first generation run —
+
+> *`net.noodl.controls.button`'s "borderWidth" only applies when borderStyle is solid or dashed or
+> dotted, so this parameter is never read.*
+
+The composition sets `borderStyle: 'none'` **and** `borderWidth: 0`. Both are its own.
+
+🔴 **Where it bites a person.** `get_style_vocabulary` presents compositions as *"ready-made
+parameter sets… each naming the recipe that shows it assembled"*. An agent that follows the design
+system exactly as instructed is rewarded with a warning per button, and its only options are to
+ignore a real diagnostic or to diverge from the system. Both are bad lessons.
+
+✅ Repaired at the point of use in `tpl001Components.ts` (`withoutInertBorderWidth`), stated as a
+rule rather than a special case so it lapses by itself when the composition is fixed.
+
+---
+
+## D13 — 🔴 The `textinput` `default` variant's border is 1.33:1 — the fix `outlineButton` documents was never carried across
+
+The vocabulary reports `net.noodl.controls.textinput` `variantStyles.default` as
+`{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }`. `--border` measures
+**1.33:1** against the background, under the **3:1** WCAG 1.4.11 requires of a control boundary.
+
+⚠️ **The product already knows.** `outlineButton`'s own description says it in as many words —
+*"A control border needs 3:1 and no `--border*` token reaches it (best 1.48:1), so this uses
+`--muted-foreground` (4.76:1)"* — and `--border-control` exists in every preset for exactly this.
+The knowledge is one composition away from the element that needs it and never made the trip.
+
+🔴 **Where it bites a person.** Every form in every project built on the system variant has invisible
+field edges, which is the single most common accessibility complaint about a form. Seventeen fields
+in this template alone.
+
+✅ TPL-001's `FIELD` uses `--border-control` (**5.49:1** on this palette).
+
+---
+
+## D14 — 🔴 A `Condition` with a constant parameter fires on load, so every reveal it gates was visible from the first frame
+
+**Severity: high. It shipped, and it is what a person met first.**
+
+Seven `Condition` nodes in TPL-001 carry `condition: true` and are triggered by `eval`. The node
+declares `runOnValueChange: { controlSignal: 'eval', inputs: ['condition'] }`, and wiring `eval`
+**adds** a trigger rather than replacing one — the port's own description says so: *"This is
+additional to Condition re-testing on change; untick it under Run On Value Change to stop that."*
+So the constant parameter arriving at load counted as a change, every gate tested true before
+anything had happened, and every `visible: false` it governed was overridden.
+
+⚠️ **What a person saw.** The setup page greeted them with *"This members' area cannot be set up
+with those details"* **before they typed a character** — on the exact screen Richard could not get
+past.
+
+🔴 **How it survived.** The artefact on disk is correct: `visible: false` is on the node, and
+`refusalGate` is wired only to `eval`. 41 byte-identity specs, 45 drive specs and two typechecks
+were green. **Only the running app disagreed, and only a picture could tell.** Found by rendering
+the artefact headless and looking at it; confirmed pre-existing by rendering `HEAD`'s artefact as a
+control arm, which shows the same sentence.
+
+### 🔴 s6 — the drive spec that should have caught it was **passing because of it**
+
+Fixing D14 turned two §7 specs red, and they were the specs whose whole job was to check the
+confirmation appears after a post. They were not a regression. They read:
+
+```ts
+await clickButton(page, 'Post it');
+await look('moderator.posted', '/post');   // ← navigates: a FRESH page load
+expect(visits['moderator.posted'].text).toContain('Posted. Members can see it now.');
+```
+
+`look` navigates. So the assertion was *"a freshly booted `/post` shows **Posted**"* — which is
+true only of a page whose gate fires on load. **That is the defect, stated as an expectation.**
+While D14 lived the spec passed; the moment it was fixed the spec failed, and a session reading the
+red without reading the spec would have reverted the fix.
+
+✅ **Repaired by reading in place.** `readHere` (`helpers/site-drive.ts`) reads the current document
+without navigating, so the assertion grades the *click* rather than the *boot*. And the arm that was
+missing is now written down:
+
+> `it('does NOT say so before anything is posted — the D14 arm')`
+
+🔴 **The pair is the point.** "The confirmation is on the page" and "the confirmation is not on the
+page until you post" are the two halves, and D14 is exactly the state in which the first is true and
+the second is false. One alone measures nothing.
+
+✅ Fixed by `runOnChange-condition: false` on all seven (`CONDITION_GATE`). ⚠️ Set explicitly rather
+than left to the load-time migration that writes the same flag: a migration runs where projects are
+loaded, and the render path that caught this reads from disk without it. **A template must be
+correct as written.**
+
+🔴 Third appearance of this family in this template — `Run` is additive for JavaScript guard nodes
+(fixed s4), for the two `decideMembership` guards (fixed s4), and now for `Condition`.
+
+---
+
+## D15 — ⚠️ `find_tools` free-text searches tool NAMES, so the word on the group reveals nothing
+
+`find_tools`'s `query` filters with `name.toLowerCase().includes(needle)` over tool names only. The
+group whose title is **"Design tokens"** and whose purpose is *"change the design system"* holds
+`set_project_tokens` and `set_style_preset` — so `query: "theme"`, `"design"`, `"colour"`, `"style
+guide"` and `"palette"` all reveal **nothing**, while `group: "theme"` reveals both.
+
+🔴 **Where it bites.** This is a contributing cause of D10 itself. The style write tools are
+deferred; an agent that has been told to style on-system searches for the words it is thinking in
+and is told there is nothing there. Matching group titles and purposes as well as tool names is a
+small change with a direct line to "the generators bypass the design system".
+
+---
+
+## D16 — ✅ FIXED 2026-08-28 (s6): `visible: false` kept the element's box, so every gated screen had a hole in it
+
+Known and recorded (D7, and the runtime is explicit: `node-shared-port-definitions.ts:215` —
+*"Hides the element while keeping the space it occupies in the layout"*, implemented as
+`visibility: hidden`). What is new is the **measurement of what it looks like**: the rendered
+`Pages/Post` is a heading, roughly 500px of nothing, and a back button, because the moderator's two
+forms are hidden rather than unmounted.
+
+`mounted` is a standard input on every visual node (*"a false value keeps the node out of the
+tree"*) and would remove both the hole and the shipped-to-everyone subtree of D7.
+
+~~⚠️ **NOT changed this session, deliberately.**~~ Done in s6, with the drives — see D7 for the
+mechanism, the ratchets and why the `For Each` race does not arise.
+
+### The measurement, same page, same harness
+
+| | `visible` (before) | `mounted` (after) |
+|---|---|---|
+| what `Pages/Post` renders to a non-moderator | heading, **~500px of nothing**, back button | heading, back button |
+| texts in the document | **15** | **2** |
+
+🔴 **The text count is the D7 half and the picture is the D16 half, from one reading.** Fifteen
+texts is the entire moderator form — two labelled inputs, a textarea, five more fields and both
+submit buttons — sitting in the document of somebody who is not a moderator. Two is the heading and
+the back button, which is all that page has to say to them.
+
+---
+
+## D18 — 🔴 Form controls ignore the project's `--font-sans`: an `input` renders Arial and a `textarea` renders **monospace**
+
+Measured 2026-08-29 (s7) on `Pages/Setup` of the shipped artefact, rendered from disk through
+`scripts/devtools/render-report.js` and read with `getComputedStyle`:
+
+| element | `font-family` |
+|---|---|
+| the page's `label` | `"Source Sans Pro", "Segoe UI", …` — **the project's `--font-sans`** ✅ |
+| `net.noodl.controls.textinput` → `<input>` | **`Arial`** |
+| the same node with `type: 'textArea'` → `<textarea>` | **`monospace`** |
+
+🔴 **The label proves the token is reaching the page.** It is the controls that never receive it —
+these are the browser's UA defaults for form elements, which is what you get when nothing sets
+`font-family` on them at all. So the same node type renders in two different typefaces depending on
+one parameter, and neither is the app's.
+
+🔴 **Where it bites a person.** Every form in every NodeGX app is in a typeface the app does not
+use, and any multi-line field looks like a code editor sitting in the middle of a sign-up form. It
+is on the setup screen of this template — the first screen the person who installs it ever fills
+in. **Found by looking at a screenshot**; five drive specs, a 42-spec byte gate and the appearance
+ratchet are all green over it, and none of them can see a font.
+
+⚠️ **Not repairable from the template.** `FIELD` in `tpl001Components.ts` already sets nine style
+parameters and there is no `fontFamily` among the ones the door accepts for this node, so a template
+author cannot fix their own form. Product-side, and it is one line of CSS.
+
+---
+
+## D19 — ⚠️ A control's own label is pure `#000`, not `--foreground`, and no composition can reach it
+
+Same reading as D18. The `useLabel` label renders `rgb(0, 0, 0)` while the input's text beside it
+renders `rgb(20, 32, 26)` — `--foreground`, correctly tokenised. Pure black is not in this
+template's palette and is not in any preset's.
+
+⚠️ Smaller than D18 and the same family: the parts of a control the design system does not reach.
+The label gets the font token and not the colour token, which is the kind of half-wiring that only
+shows up when somebody renders it and reads the pixels.
+
+---
+
+## D20 — 🔴 The vocabulary ships 18 compositions and not one for a form field, a notice, or an empty state
+
+`get_style_vocabulary` reports `card`, `cardBody`, `band`, `shell`, `primaryButton`,
+`outlineButton`, the type ramp, two grid helpers — and nothing for the three things an app is mostly
+made of:
+
+| what an app needs constantly | composition | what this template had to do |
+|---|---|---|
+| a field a person types into | **none** | hand-author `FIELD`, 9 parameters, 17 instances |
+| a notice / refusal / confirmation | **none** | hand-author `NOTICE`, and a `notice()` node-pair helper |
+| an empty state | **none** | the same `NOTICE` |
+
+🔴 **This is the mechanism behind D10, not a separate taste question.** A generator told to style
+on-system opens the vocabulary, finds nothing for the element in front of it, and writes bare text —
+which is exactly the artefact Richard drove and called *"so basic, black and white"*. The 31 unstyled
+`Text` nodes s7 fixed were not laziness; for the notices and empty states there was **nothing to
+reach for**.
+
+⚠️ It also means every template that ships will hand-author its own, and they will differ. Two
+templates now have two unrelated ideas of what a form field looks like.
+
+⚠️ **And a composition alone would not be enough for a notice**, which is worth recording because it
+is the non-obvious half: a notice is a `Group` wrapping a `Text`, because `Group` carries the
+surfaces and `Text` carries the type ramp. A composition names parameters for **one** node, so the
+vocabulary would need a two-node *pattern*, which is a shape it currently has no way to express.

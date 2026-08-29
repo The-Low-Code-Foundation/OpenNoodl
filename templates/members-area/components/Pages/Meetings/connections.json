@@ -13,13 +13,13 @@
       "fromId": "standing-2",
       "fromProperty": "isMember",
       "toId": "memberArea-2",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "standing-2",
       "fromProperty": "isPending",
       "toId": "pendingNotice-2",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "standing-2",
@@ -61,7 +61,7 @@
       "fromId": "emptyGate-2",
       "fromProperty": "out-empty",
       "toId": "emptyState-2",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "backButton-2",

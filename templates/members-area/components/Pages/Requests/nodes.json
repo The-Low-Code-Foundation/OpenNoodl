@@ -29,28 +29,26 @@
         "backButton-5"
       ],
       "parameters": {
-        "sizeMode": "explicit",
         "width": {
           "value": 100,
           "unit": "%"
         },
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "explicit",
         "height": {
           "value": 100,
           "unit": "%"
         },
-        "paddingTop": {
-          "value": 48,
-          "unit": "px"
-        },
-        "paddingLeft": {
-          "value": 24,
-          "unit": "px"
-        },
-        "paddingRight": {
-          "value": 24,
-          "unit": "px"
-        },
-        "flexDirection": "column"
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
       },
       "x": 100,
       "y": 160
@@ -62,22 +60,57 @@
       "parent": "ground-10",
       "parameters": {
         "text": "Requests to join",
-        "fontWeight": "var(--font-bold)"
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
       },
       "x": 160,
       "y": 280
     },
     {
       "id": "notAllowed-2",
-      "type": "Text",
+      "type": "Group",
       "label": "Not a moderator",
       "parent": "ground-10",
+      "children": [
+        "notAllowedText-2"
+      ],
       "parameters": {
-        "text": "Only a moderator can see who is waiting to join.",
-        "visible": false
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
       },
       "x": 160,
       "y": 400
+    },
+    {
+      "id": "notAllowedText-2",
+      "type": "Text",
+      "label": "Not a moderator — the words",
+      "parent": "notAllowed-2",
+      "parameters": {
+        "text": "Only a moderator can see who is waiting to join.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 220,
+      "y": 520
     },
     {
       "id": "queue",
@@ -89,11 +122,16 @@
         "emptyState-3"
       ],
       "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
         "flexDirection": "column",
-        "visible": false
+        "rowGap": "var(--space-4)",
+        "mounted": false
       },
       "x": 160,
-      "y": 520
+      "y": 640
     },
     {
       "id": "list-3",
@@ -105,19 +143,50 @@
         "template": "/Members/RequestRow"
       },
       "x": 220,
-      "y": 640
+      "y": 760
     },
     {
       "id": "emptyState-3",
-      "type": "Text",
+      "type": "Group",
       "label": "Nobody waiting",
       "parent": "queue",
+      "children": [
+        "emptyStateText-3"
+      ],
       "parameters": {
-        "text": "Nobody is waiting to join.",
-        "visible": false
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
       },
       "x": 220,
-      "y": 760
+      "y": 880
+    },
+    {
+      "id": "emptyStateText-3",
+      "type": "Text",
+      "label": "Nobody waiting — the words",
+      "parent": "emptyState-3",
+      "parameters": {
+        "text": "Nobody is waiting to join.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 280,
+      "y": 1000
     },
     {
       "id": "backButton-5",
@@ -125,17 +194,30 @@
       "label": "Back",
       "parent": "ground-10",
       "parameters": {
-        "label": "Back to the members area"
+        "label": "Back to the members area",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--muted-foreground)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
       "x": 160,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "standing-4",
       "type": "/Members/Standing",
       "label": "Who is this?",
-      "x": 470,
-      "y": 520
+      "x": 530,
+      "y": 640
     },
     {
       "id": "notModerator-2",
@@ -144,7 +226,7 @@
       "parameters": {
         "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
       },
-      "x": 470,
+      "x": 530,
       "y": 400
     },
     {
@@ -162,8 +244,8 @@
           }
         ]
       },
-      "x": 470,
-      "y": 640
+      "x": 530,
+      "y": 760
     },
     {
       "id": "emptyGate-3",
@@ -172,8 +254,8 @@
       "parameters": {
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
-      "x": 470,
-      "y": 760
+      "x": 530,
+      "y": 880
     },
     {
       "id": "toMembers-4",
@@ -183,8 +265,8 @@
         "router": "Main",
         "target": "/Pages/Members"
       },
-      "x": 470,
-      "y": 880
+      "x": 530,
+      "y": 1120
     },
     {
       "id": "toLanding-4",
@@ -194,8 +276,8 @@
         "router": "Main",
         "target": "/Pages/Landing"
       },
-      "x": 470,
-      "y": 1000
+      "x": 530,
+      "y": 1240
     }
   ],
   "visualRoots": [

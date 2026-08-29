@@ -48,10 +48,15 @@
  * indistinguishable from the DOM. Every refusal below is asserted in the same
  * run, against the same instrument, as a read that returns the row.
  *
- * 🔴 **Leaks are read off `outerHTML`, never `innerText`.** This template hides
- * its members' area behind `visible: false`, which renders as `display: none`,
- * and `innerText` skips it. An absence checked on the visible text alone would
- * pass on a page that had fetched every announcement and merely not painted it.
+ * 🔴 **Leaks are read off `outerHTML`, never `innerText`.** `innerText` reports
+ * what a reader sees, so an absence checked on it alone would pass on a page
+ * that had fetched every announcement and merely not painted it. `outerHTML`
+ * cannot be fooled that way.
+ *
+ * ⚠️ **This template no longer hides anything — it unmounts it.** Every gate is
+ * `mounted`, so a gated subtree is not in the document at all (§5, §8). The
+ * `outerHTML` discipline stays anyway: it is what makes that claim checkable,
+ * and it is the reading that would catch the regression back to `visible`.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -73,7 +78,7 @@ import {
   signIn,
   signOut
 } from './helpers/members-drive';
-import { bindProjectToBackend, readVisit, Visit, withRenderedPage } from './helpers/site-drive';
+import { bindProjectToBackend, readHere, readVisit, Visit, withRenderedPage } from './helpers/site-drive';
 
 jest.setTimeout(900000);
 
@@ -175,7 +180,9 @@ describe("TPL-001 — the members' area, driven", () => {
     http[label] = {
       status: res.status,
       rows: res.json?.results?.length ?? -1,
-      titles: (res.json?.results ?? []).map((r) => String(r.title ?? '')),
+      // `title` for an announcement or a meeting, `name` for a directory row —
+      // one helper, because the log line is "what did this person get to see".
+      titles: (res.json?.results ?? []).map((r) => String(r.title ?? r.name ?? '')),
       body: res.text.slice(0, 300)
     };
   };
@@ -268,10 +275,39 @@ describe("TPL-001 — the members' area, driven", () => {
         inDocument[label] = present(cs);
       };
 
+      /**
+       * The same reading, taken **without navigating** — see `readHere`.
+       *
+       * 🔴 A confirmation is state the click produced on the page in front of
+       * the person. `look` reloads the URL, which throws that state away and
+       * grades the boot instead of the click.
+       */
+      const lookHere = async (label: string, until?: string) => {
+        visits[label] = await readHere(page, { until });
+        const cs = await controls(page, 'button');
+        buttons[label] = offered(cs);
+        inDocument[label] = present(cs);
+      };
+
       // §1 + §2 — a stranger.
       await look('anon.landing', '/');
       await look('anon.members', '/members');
       await look('anon.meetings', '/meetings');
+
+      // §1b — the refusal a wrong password earns.
+      //
+      // 🔴 `lookHere`, not `look`, and for D14's reason: the gate fires on the
+      // click, so navigating back to /sign-in would boot a fresh page and grade
+      // the boot. The fresh reading is taken FIRST, as the arm that makes the
+      // second one a statement — "the page says nothing yet" and "the page says
+      // nothing ever" are the same reading taken once.
+      await page.navigate('/sign-in');
+      await lookHere('signin.fresh');
+      // `signIn` is navigate-fill-click-settle, and it RETURNS the session the
+      // browser ended up holding — which for a wrong password is `null`.
+      sessions.wrongPassword = await signIn(page, MODERATOR.email, 'not the password');
+      await lookHere('signin.refused');
+      await signOut(page);
 
       // §4 — a pending member. Signed in, decided by nobody.
       sessions.pending = await signIn(page, PENDING.email, PENDING.password);
@@ -297,14 +333,19 @@ describe("TPL-001 — the members' area, driven", () => {
       await fill(page, 'Title', TYPED.title, 0);
       await fill(page, 'What you want to say', TYPED.body);
       await clickButton(page, 'Post it');
-      await look('moderator.posted', '/post');
+      await lookHere('moderator.posted', 'Posted. Members can see it now.');
 
       await fill(page, 'Title', TYPED.meeting, 1);
       await fill(page, 'Date', TYPED.when);
       await fill(page, 'Where', TYPED.place);
       await fill(page, 'Details', TYPED.details);
       await clickButton(page, 'Add it to the diary');
-      await look('moderator.added', '/post');
+      await lookHere('moderator.added', 'Added. Members can see it now.');
+
+      // §8 — the directory, AFTER approving Mo, so a passing reading is two
+      // people and not one: the founding moderator's own row from setup, and
+      // the projection row `decideMembership` wrote on the grant.
+      await look('moderator.directory', '/directory');
       await signOut(page);
 
       // …and Mo signs in and reads.
@@ -312,6 +353,8 @@ describe("TPL-001 — the members' area, driven", () => {
       await look('member.members', '/members');
       await look('member.meetings', '/meetings');
       await look('member.post', '/post');
+      // §8's negative arm — a member is a member, and still not a moderator.
+      await look('member.directory', '/directory');
     });
 
     // ── The HTTP arms that need Mo to be a member ─────────────────────────────
@@ -338,6 +381,12 @@ describe("TPL-001 — the members' area, driven", () => {
       titles: [],
       body: memberDecides.text.slice(0, 300)
     };
+
+    // §8 — the directory read, both arms. The moderator's is the known-firing
+    // signal that makes the member's 403 a refusal rather than an empty table.
+    await read('moderator.directory', tokens.moderator, 'Member');
+    await read('member.directory', tokens.member, 'Member');
+    await read('anon.directory', null, 'Member');
 
     const anonAsks = await client.post('/functions/decideMembership', { requestId: 'anything', approve: true });
     http['anon.decide'] = { status: anonAsks.status, rows: -1, titles: [], body: anonAsks.text.slice(0, 300) };
@@ -410,6 +459,40 @@ describe("TPL-001 — the members' area, driven", () => {
 
   // ── §2 — the known-firing read, which every absence below is measured against ─
 
+  /**
+   * 🔴 **The gate this section grades did not exist until phase 78 s7, and its
+   * absence was invisible.**
+   *
+   * `Pages/SignIn`'s refusal was an ungated `Text` whose `text` was wired to
+   * `Log In`'s `error`. An empty string renders nothing, so "always mounted" and
+   * "hidden until there is something to say" looked identical on screen — and
+   * every spec in this file was green over it. Giving the notice a box is what
+   * made the difference observable: without a gate it would have shipped as a
+   * padded, bordered, permanently empty card sitting under the sign-in form.
+   *
+   * ⚠️ The refusal's wording is the runtime's, not this template's, so these
+   * arms grade **that a refusal appeared and no session was minted** rather than
+   * a sentence — pinning a string here would be pinning somebody else's copy.
+   */
+  describe('§1b the door refuses a wrong password, and says so', () => {
+    it('mints no session', () => {
+      expect(sessions.wrongPassword).toBeNull();
+    });
+
+    it('says nothing before an attempt is made — the arm that makes the next one a statement', () => {
+      expect(visits['signin.fresh'].text).toContain('Members sign in');
+      expect(visits['signin.fresh'].errors).toEqual([]);
+    });
+
+    it('and says something once the attempt is refused', () => {
+      expect(visits['signin.refused'].text.length).toBeGreaterThan(visits['signin.fresh'].text.length);
+    });
+
+    it('🔴 and the form is still there to try again, not replaced by the refusal', () => {
+      expect(buttons['signin.refused']).toEqual(expect.arrayContaining(['Sign in']));
+    });
+  });
+
   describe('§2 AC2 — a member sees the announcements (the signal that must fire)', () => {
     it('the moderator reads the announcement over HTTP', () => {
       expect(`${http.moderator.status}/${http.moderator.rows}`).toBe('200/1');
@@ -443,7 +526,8 @@ describe("TPL-001 — the members' area, driven", () => {
     });
 
     it('🔴 leaves no announcement anywhere in the document, hidden or shown', () => {
-      // Read off outerHTML: `visible: false` is display:none and innerText skips it.
+      // Read off outerHTML, which holds unpainted content too — so this is an
+      // absence in the whole document, not merely in what was painted.
       expect(visits['anon.members'].html).not.toContain(ANNOUNCEMENT.title);
       expect(visits['anon.members'].html).not.toContain(ANNOUNCEMENT.body);
       expect(visits['anon.meetings'].html).not.toContain(MEETING.title);
@@ -521,26 +605,37 @@ describe("TPL-001 — the members' area, driven", () => {
     });
 
     /**
-     * 🔴 **F3 — the moderator's form ships in every member's document, hidden.**
+     * ✅ **D7/D16 closed — the form is not in a member's document at all.**
      *
-     * `tools` is gated with `visible: false`, which is `display: none`, so the
-     * announcement form, the meeting form and both submit buttons are in the
-     * markup a member's browser holds. Measured, not inferred: `Post it` is
-     * absent from `offered` and present in `present`, in the same reading.
+     * This spec used to record the opposite, and the sentence it recorded was:
+     * *"the moderator's form ships in every member's document, hidden."* `tools`
+     * was gated with `visible: false`, which renders as `visibility: hidden` and
+     * **keeps the box**, so the announcement form, the meeting form and both
+     * submit buttons sat in the markup a member's browser held. It was never a
+     * data leak — the forms are empty and §5's server arm refuses the write
+     * whatever a person does to the DOM — but it made one sentence false in the
+     * obvious reading: *"the member's UI does not offer it"* was true only of
+     * what was **painted**.
      *
-     * It is **not** a data leak — the forms are empty, and §5's server arm shows
-     * the write is refused whatever a person does to the DOM. It is recorded
-     * because it makes one sentence false in the obvious reading: "the member's
-     * UI does not offer it" is true only of what is *painted*. The rule this
-     * template does get right is the one that matters — every members-only
-     * **fetch** is gated on a standing signal rather than on visibility, so
-     * hiding is never what keeps the data out (§3, §4).
+     * Every gate in this template is now `mounted`, so the subtree is not in the
+     * tree. The assertion is inverted rather than deleted, because a deleted
+     * spec cannot notice the regression back.
+     *
+     * 🔴 **Two controls, because a bare absence proves nothing.** A `present`
+     * reading that saw no form because the page never rendered, or because the
+     * helper reads the wrong thing, would pass this on its own. So: the same
+     * reading holds the refusal sentence (the page rendered), and the
+     * moderator's reading of the same URL through the same helper DOES hold the
+     * form (the helper can see one when it is there).
      */
-    it('🔴 records that the form is nevertheless in the member’s document, unpainted', () => {
-      expect(inDocument['member.post']).toContain('Post it');
-      expect(inDocument['member.post']).toContain('Add it to the diary');
-      // …and the pair that makes that a statement about painting, not presence.
-      expect(buttons['member.post']).not.toContain('Post it');
+    it('✅ D7/D16 — the form is not in the member’s document at all, not merely unpainted', () => {
+      expect(inDocument['member.post']).not.toContain('Post it');
+      expect(inDocument['member.post']).not.toContain('Add it to the diary');
+      // Control 1 — the document rendered: it carries the refusal.
+      expect(visits['member.post'].text).toContain('Only a moderator can post here.');
+      // Control 2 — the instrument can see a form when there is one to see.
+      expect(inDocument['moderator.post']).toContain('Post it');
+      expect(inDocument['moderator.post']).toContain('Add it to the diary');
     });
 
     it('🔴 the server refuses the write regardless of what the UI offered', () => {
@@ -576,6 +671,26 @@ describe("TPL-001 — the members' area, driven", () => {
         expect.arrayContaining(['Post it', 'Add it to the diary'])
       );
       expect(visits['moderator.post'].text).not.toContain('Only a moderator can post here.');
+    });
+
+    /**
+     * 🔴 **The control pair D14 was found by, kept as a spec.**
+     *
+     * Both halves are needed and neither alone says anything. The confirmations
+     * are `Condition` gates on a constant `true`, and *"wiring `eval` does not
+     * stop the node testing on value change"* — so before D14 was fixed they
+     * evaluated on the first frame and the Post page greeted a moderator with
+     * **"Posted. Members can see it now."** before they had typed anything.
+     *
+     * ⚠️ And the spec that was supposed to catch that was passing: it clicked
+     * "Post it" and then **navigated back to `/post`**, so it read a freshly
+     * booted page. Showing the confirmation on boot is precisely the defect, so
+     * the spec passed *because of* the bug — and went red when it was fixed.
+     * `lookHere` reads in place, which is what grades the click.
+     */
+    it('does NOT say so before anything is posted — the D14 arm', () => {
+      expect(visits['moderator.post'].text).not.toContain('Posted. Members can see it now.');
+      expect(visits['moderator.post'].text).not.toContain('Added. Members can see it now.');
     });
 
     it('says so after the announcement is posted', () => {
@@ -647,6 +762,63 @@ describe("TPL-001 — the members' area, driven", () => {
       // not, and the only difference between the two readings is that click.
       expect(`${http.member.status}/${http.member.rows}`).toBe('200/2');
       expect(http.pending.status).not.toBe(200);
+    });
+  });
+
+  // ── §8 — the member directory ──────────────────────────────────────────────
+
+  /**
+   * TPL-001 §3's *"see the member list"*, built on Richard's ruling of
+   * 2026-08-28 and driven here for the first time.
+   *
+   * 🔴 **The load-bearing reading is the COUNT.** Two rows means two different
+   * writers both worked: `claimAssociation` wrote the founding moderator's own
+   * row at setup, and `decideMembership` wrote Mo's on the grant. One row would
+   * pass a "the directory draws people" assertion and hide whichever of the two
+   * never fired — and the setup one is the row a fresh install depends on, since
+   * the moderator is the only person on it.
+   */
+  describe('§8 the directory lists who this app admitted, to moderators only', () => {
+    it('the moderator is shown both people, by name', () => {
+      const seen = visits['moderator.directory'].text;
+      expect(seen).toContain(MODERATOR.email);
+      expect(seen).toContain(JOINER.name);
+    });
+
+    it('🔴 and the server agrees there are exactly two — the two writers both fired', () => {
+      expect(`${http['moderator.directory'].status}/${http['moderator.directory'].rows}`).toBe('200/2');
+      expect([...http['moderator.directory'].titles].sort()).toEqual([JOINER.name, MODERATOR.email].sort());
+    });
+
+    it('says what each of them is, in English rather than in role names', () => {
+      // The column holds `member` / `moderator`; the row renders `STANDING_LABELS`.
+      // P75's lesson on a surface a person reads: never draw the machine word.
+      const seen = visits['moderator.directory'].text;
+      expect(seen).toContain('Moderator');
+      expect(seen).toContain('Member');
+      expect(seen).not.toContain('role:admin');
+    });
+
+    it('🔴 and says what the list is NOT, because a projection that omits people silently is worse', () => {
+      expect(visits['moderator.directory'].text).toContain('Somebody given access directly on the backend');
+    });
+
+    it('a member reaching it by URL is refused by name, not shown an empty list', () => {
+      expect(visits['member.directory'].text).toContain('Only a moderator can see the member list');
+    });
+
+    it('🔴 with no member’s name anywhere in their document, painted or hidden', () => {
+      // `outerHTML`, not `innerText`: `innerText` reports only what was painted,
+      // so it would pass on a document that carried the name and hid it (§13).
+      expect(visits['member.directory'].html).not.toContain(MODERATOR.email);
+    });
+
+    it('🔴 and the server refuses the read outright, beside a moderator’s that succeeds', () => {
+      // The pair is the point. A refused query and an empty table are the same
+      // `[]` to a browser and the opposite fix, so the moderator's 200/2 above
+      // is what makes this 403 a refusal.
+      expect(http['member.directory'].status).toBe(403);
+      expect(http['anon.directory'].status).toBe(403);
     });
   });
 });

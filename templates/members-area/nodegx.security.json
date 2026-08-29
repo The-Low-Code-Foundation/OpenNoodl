@@ -47,6 +47,15 @@
         "update": "nobody",
         "delete": "nobody"
       }
+    },
+    "Member": {
+      "permissions": {
+        "find": "role:admin",
+        "get": "role:admin",
+        "create": "nobody",
+        "update": "nobody",
+        "delete": "nobody"
+      }
     }
   },
   "functions": {

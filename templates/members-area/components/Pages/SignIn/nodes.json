@@ -24,37 +24,32 @@
       "parent": "page-2",
       "children": [
         "heading-2",
-        "email",
-        "password",
-        "submit",
+        "form",
         "error",
         "joinHint",
         "joinButton-2"
       ],
       "parameters": {
-        "sizeMode": "explicit",
         "width": {
           "value": 100,
           "unit": "%"
         },
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "explicit",
         "height": {
           "value": 100,
           "unit": "%"
         },
-        "paddingTop": {
-          "value": 48,
-          "unit": "px"
-        },
-        "paddingLeft": {
-          "value": 24,
-          "unit": "px"
-        },
-        "paddingRight": {
-          "value": 24,
-          "unit": "px"
-        },
-        "flexDirection": "column",
-        "alignX": "center"
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
       },
       "x": 100,
       "y": 160
@@ -66,58 +61,168 @@
       "parent": "ground-2",
       "parameters": {
         "text": "Members sign in",
-        "fontWeight": "var(--font-bold)"
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
       },
       "x": 160,
       "y": 280
     },
     {
-      "id": "email",
-      "type": "net.noodl.controls.textinput",
-      "label": "Email",
+      "id": "form",
+      "type": "Group",
+      "label": "The sign-in form",
       "parent": "ground-2",
+      "children": [
+        "email",
+        "password",
+        "submit"
+      ],
       "parameters": {
-        "useLabel": true,
-        "label": "Email",
-        "type": "email"
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
       },
       "x": 160,
       "y": 400
     },
     {
+      "id": "email",
+      "type": "net.noodl.controls.textinput",
+      "label": "Email",
+      "parent": "form",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Email",
+        "type": "email"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
       "id": "password",
       "type": "net.noodl.controls.textinput",
       "label": "Password",
-      "parent": "ground-2",
+      "parent": "form",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Password",
         "type": "password"
       },
-      "x": 160,
-      "y": 520
+      "x": 220,
+      "y": 640
     },
     {
       "id": "submit",
       "type": "net.noodl.controls.button",
       "label": "Sign in",
-      "parent": "ground-2",
+      "parent": "form",
       "parameters": {
-        "label": "Sign in"
+        "label": "Sign in",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
-      "x": 160,
-      "y": 640
+      "x": 220,
+      "y": 760
     },
     {
       "id": "error",
-      "type": "Text",
+      "type": "Group",
       "label": "Sign-in error",
       "parent": "ground-2",
+      "children": [
+        "errorText"
+      ],
       "parameters": {
-        "text": ""
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
       },
       "x": 160,
-      "y": 760
+      "y": 880
+    },
+    {
+      "id": "errorText",
+      "type": "Text",
+      "label": "Sign-in error — the words",
+      "parent": "error",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 220,
+      "y": 1000
     },
     {
       "id": "joinHint",
@@ -125,10 +230,12 @@
       "label": "Not a member yet",
       "parent": "ground-2",
       "parameters": {
-        "text": "Not a member yet?"
+        "text": "Not a member yet?",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
       },
       "x": 160,
-      "y": 880
+      "y": 1120
     },
     {
       "id": "joinButton-2",
@@ -136,28 +243,52 @@
       "label": "Ask to join",
       "parent": "ground-2",
       "parameters": {
-        "label": "Ask to join"
+        "label": "Ask to join",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--muted-foreground)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
       "x": 160,
-      "y": 1000
+      "y": 1240
     },
     {
       "id": "login",
       "type": "net.noodl.user.LogIn",
       "label": "Log in",
-      "x": 410,
-      "y": 760
+      "x": 470,
+      "y": 1000
     },
     {
-      "id": "toMembers-5",
+      "id": "errorGate",
+      "type": "Condition",
+      "label": "Show the sign-in refusal",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 470,
+      "y": 880
+    },
+    {
+      "id": "toMembers-6",
       "type": "RouterNavigate",
       "label": "Go to members area",
       "parameters": {
         "router": "Main",
         "target": "/Pages/Members"
       },
-      "x": 410,
-      "y": 1120
+      "x": 470,
+      "y": 1360
     },
     {
       "id": "toJoin-2",
@@ -167,8 +298,8 @@
         "router": "Main",
         "target": "/Pages/Join"
       },
-      "x": 410,
-      "y": 1000
+      "x": 470,
+      "y": 1240
     }
   ],
   "visualRoots": [

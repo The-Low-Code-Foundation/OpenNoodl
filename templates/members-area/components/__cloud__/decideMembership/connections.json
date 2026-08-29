@@ -40,6 +40,18 @@
       "toProperty": "in-userId"
     },
     {
+      "fromId": "request",
+      "fromProperty": "prop-name",
+      "toId": "route",
+      "toProperty": "in-name"
+    },
+    {
+      "fromId": "request",
+      "fromProperty": "prop-email",
+      "toId": "route",
+      "toProperty": "in-email"
+    },
+    {
       "fromId": "prep-2",
       "fromProperty": "out-approve",
       "toId": "route",
@@ -64,14 +76,56 @@
       "toProperty": "add"
     },
     {
+      "fromId": "route",
+      "fromProperty": "out-userId",
+      "toId": "member",
+      "toProperty": "prop-userId"
+    },
+    {
+      "fromId": "route",
+      "fromProperty": "out-name",
+      "toId": "member",
+      "toProperty": "prop-name"
+    },
+    {
+      "fromId": "route",
+      "fromProperty": "out-email",
+      "toId": "member",
+      "toProperty": "prop-email"
+    },
+    {
+      "fromId": "route",
+      "fromProperty": "out-joinedAt",
+      "toId": "member",
+      "toProperty": "prop-joinedAt"
+    },
+    {
+      "fromId": "route",
+      "fromProperty": "out-standing",
+      "toId": "member",
+      "toProperty": "prop-standing"
+    },
+    {
+      "fromId": "grant-2",
+      "fromProperty": "done",
+      "toId": "member",
+      "toProperty": "store"
+    },
+    {
       "fromId": "prep-2",
       "fromProperty": "out-requestId",
       "toId": "remove",
       "toProperty": "modelId"
     },
     {
-      "fromId": "grant-2",
+      "fromId": "member",
       "fromProperty": "done",
+      "toId": "remove",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "member",
+      "fromProperty": "failure",
       "toId": "remove",
       "toProperty": "store"
     },

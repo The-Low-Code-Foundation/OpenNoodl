@@ -75,13 +75,52 @@ export const COLLECTION_MEETING = 'Meeting';
 /** A person asking to join. Written only by a cloud function; read only by moderators. */
 export const COLLECTION_REQUEST = 'MemberRequest';
 
+/**
+ * Who belongs. Written only by a cloud function, read only by moderators.
+ *
+ * 🔴 **This is a PROJECTION, and the fact it projects lives in `_Role`.**
+ * Richard's ruling, 2026-08-28, taken with the cost stated: nothing enumerates a
+ * role's members — `getuserroles` reads one user's roles and `_User` is a system
+ * class no browser query can reach — so *"see the member list"* (§3) is not
+ * buildable without writing the membership down a second time.
+ *
+ * ⚠️ **So it can drift, and the direction is knowable.** Every row is written by
+ * the same endpoint that adds the role, in the same request; nothing else writes
+ * one. What is NOT covered is a role changed by hand — through the backend's own
+ * admin surface, or a `_Role` edit — which leaves a member in `_Role` and no row
+ * here, or a row here for somebody no longer in `_Role`. The directory is
+ * therefore *who this app admitted*, which is the honest thing for it to say,
+ * and {@link DIRECTORY_PROJECTION_NOTE} says it on the screen rather than only
+ * here.
+ */
+export const COLLECTION_MEMBER = 'Member';
+
 /** Every collection this template ships, for the spec that holds the policy to them. */
 export const TPL001_COLLECTIONS = [
   COLLECTION_ASSOCIATION,
   COLLECTION_ANNOUNCEMENT,
   COLLECTION_MEETING,
-  COLLECTION_REQUEST
+  COLLECTION_REQUEST,
+  COLLECTION_MEMBER
 ];
+
+/**
+ * The two standings a directory row can carry, and they are not the role names.
+ *
+ * ⚠️ `ROLE_MODERATOR` is the string `admin`, which is a machine word: P75 found
+ * the cost of drawing one at a person when a template card rendered the slug
+ * `starter`. The row stores the standing and the row component renders
+ * {@link STANDING_LABELS} — so what is written is stable and what is read is
+ * English.
+ */
+export const MEMBER_STANDING_MEMBER = STANDING_MEMBER;
+export const MEMBER_STANDING_MODERATOR = STANDING_MODERATOR;
+
+/** What a directory row draws for each standing. Never the role name. */
+export const STANDING_LABELS: Record<string, string> = {
+  [MEMBER_STANDING_MODERATOR]: 'Moderator',
+  [MEMBER_STANDING_MEMBER]: 'Member'
+};
 
 // ── The endpoints ────────────────────────────────────────────────────────────
 
@@ -237,3 +276,28 @@ export const NO_ANNOUNCEMENTS_TEXT =
   'Nothing has been posted yet. When a moderator posts an announcement it will appear here.';
 export const NO_MEETINGS_TEXT = 'No meetings are in the diary yet.';
 export const NO_REQUESTS_TEXT = 'Nobody is waiting to join.';
+
+/**
+ * The directory's empty state.
+ *
+ * ⚠️ It is reachable on a fresh install only for a moment: `claimAssociation`
+ * writes the founding moderator's own row, so the first person to open this
+ * screen normally sees themselves. It stays because the screen must not be
+ * blank if that write ever failed — the association is still set up in that
+ * case (`mark.failure` answers `res`, deliberately), so a moderator can reach a
+ * directory with nothing in it.
+ */
+export const NO_MEMBERS_TEXT = 'Nobody has been admitted yet. People appear here once a moderator approves them.';
+
+/**
+ * 🔴 **The screen says what it is, because a projection that lies silently is
+ * worse than one nobody built.**
+ *
+ * The directory lists everybody this app admitted. A person given `role:member`
+ * by hand — outside `decideMembership` — is a member and is not on this list.
+ * That sentence is on the page rather than only in {@link COLLECTION_MEMBER}'s
+ * comment, because the person who needs it is the moderator reading the list,
+ * not the next developer.
+ */
+export const DIRECTORY_PROJECTION_NOTE =
+  'Everybody admitted through this app. Somebody given access directly on the backend will not appear here.';

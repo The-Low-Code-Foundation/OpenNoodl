@@ -24,40 +24,33 @@
       "parent": "page-7",
       "children": [
         "heading-5",
-        "nameField",
-        "emailField",
-        "passwordField",
-        "messageField",
-        "sendButton",
+        "form-2",
         "sent",
         "refusal-3",
         "hint",
         "signInButton-2"
       ],
       "parameters": {
-        "sizeMode": "explicit",
         "width": {
           "value": 100,
           "unit": "%"
         },
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "explicit",
         "height": {
           "value": 100,
           "unit": "%"
         },
-        "paddingTop": {
-          "value": 48,
-          "unit": "px"
-        },
-        "paddingLeft": {
-          "value": 24,
-          "unit": "px"
-        },
-        "paddingRight": {
-          "value": 24,
-          "unit": "px"
-        },
-        "flexDirection": "column",
-        "alignX": "center"
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
       },
       "x": 100,
       "y": 160
@@ -69,96 +62,270 @@
       "parent": "ground-7",
       "parameters": {
         "text": "Ask to join",
-        "fontWeight": "var(--font-bold)"
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
       },
       "x": 160,
       "y": 280
     },
     {
-      "id": "nameField",
-      "type": "net.noodl.controls.textinput",
-      "label": "Your name",
+      "id": "form-2",
+      "type": "Group",
+      "label": "The request",
       "parent": "ground-7",
+      "children": [
+        "nameField",
+        "emailField",
+        "passwordField",
+        "messageField",
+        "sendButton"
+      ],
       "parameters": {
-        "useLabel": true,
-        "label": "Your name"
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
       },
       "x": 160,
       "y": 400
     },
     {
+      "id": "nameField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Your name",
+      "parent": "form-2",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Your name"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
       "id": "emailField",
       "type": "net.noodl.controls.textinput",
       "label": "Email",
-      "parent": "ground-7",
+      "parent": "form-2",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Email",
         "type": "email"
       },
-      "x": 160,
-      "y": 520
+      "x": 220,
+      "y": 640
     },
     {
       "id": "passwordField",
       "type": "net.noodl.controls.textinput",
       "label": "Choose a password",
-      "parent": "ground-7",
+      "parent": "form-2",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Choose a password",
         "type": "password"
       },
-      "x": 160,
-      "y": 640
+      "x": 220,
+      "y": 760
     },
     {
       "id": "messageField",
       "type": "net.noodl.controls.textinput",
       "label": "Why you would like to join",
-      "parent": "ground-7",
+      "parent": "form-2",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Why you’d like to join",
         "type": "textArea"
       },
-      "x": 160,
-      "y": 760
+      "x": 220,
+      "y": 880
     },
     {
       "id": "sendButton",
       "type": "net.noodl.controls.button",
       "label": "Send",
-      "parent": "ground-7",
+      "parent": "form-2",
       "parameters": {
-        "label": "Send my request"
+        "label": "Send my request",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
-      "x": 160,
-      "y": 880
-    },
-    {
-      "id": "sent",
-      "type": "Text",
-      "label": "Request received",
-      "parent": "ground-7",
-      "parameters": {
-        "text": "Thank you. Your request has been passed to the moderators.",
-        "visible": false
-      },
-      "x": 160,
+      "x": 220,
       "y": 1000
     },
     {
-      "id": "refusal-3",
-      "type": "Text",
-      "label": "The one refusal",
+      "id": "sent",
+      "type": "Group",
+      "label": "Request received",
       "parent": "ground-7",
+      "children": [
+        "sentText"
+      ],
       "parameters": {
-        "text": "That request could not be sent. Please check the form and try again.",
-        "visible": false
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
       },
       "x": 160,
       "y": 1120
+    },
+    {
+      "id": "sentText",
+      "type": "Text",
+      "label": "Request received — the words",
+      "parent": "sent",
+      "parameters": {
+        "text": "Thank you. Your request has been passed to the moderators.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)"
+      },
+      "x": 220,
+      "y": 1240
+    },
+    {
+      "id": "refusal-3",
+      "type": "Group",
+      "label": "The one refusal",
+      "parent": "ground-7",
+      "children": [
+        "refusalText-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 1360
+    },
+    {
+      "id": "refusalText-3",
+      "type": "Text",
+      "label": "The one refusal — the words",
+      "parent": "refusal-3",
+      "parameters": {
+        "text": "That request could not be sent. Please check the form and try again.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 220,
+      "y": 1480
     },
     {
       "id": "hint",
@@ -166,10 +333,12 @@
       "label": "Already a member",
       "parent": "ground-7",
       "parameters": {
-        "text": "Already have an account? Sign in instead."
+        "text": "Already have an account? Sign in instead.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
       },
       "x": 160,
-      "y": 1240
+      "y": 1600
     },
     {
       "id": "signInButton-2",
@@ -177,10 +346,21 @@
       "label": "Sign in",
       "parent": "ground-7",
       "parameters": {
-        "label": "Sign in"
+        "label": "Sign in",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
       "x": 160,
-      "y": 1360
+      "y": 1720
     },
     {
       "id": "send",
@@ -189,28 +369,30 @@
       "parameters": {
         "function": "requestAccess"
       },
-      "x": 410,
-      "y": 400
+      "x": 470,
+      "y": 520
     },
     {
       "id": "sentGate",
       "type": "Condition",
       "label": "Show the confirmation",
       "parameters": {
-        "condition": true
+        "condition": true,
+        "runOnChange-condition": false
       },
-      "x": 410,
-      "y": 1000
+      "x": 470,
+      "y": 1120
     },
     {
       "id": "refusalGate-3",
       "type": "Condition",
       "label": "Show the refusal",
       "parameters": {
-        "condition": true
+        "condition": true,
+        "runOnChange-condition": false
       },
-      "x": 410,
-      "y": 1120
+      "x": 470,
+      "y": 1360
     },
     {
       "id": "toSignIn",
@@ -220,8 +402,8 @@
         "router": "Main",
         "target": "/Pages/SignIn"
       },
-      "x": 410,
-      "y": 1360
+      "x": 470,
+      "y": 1720
     }
   ],
   "visualRoots": [

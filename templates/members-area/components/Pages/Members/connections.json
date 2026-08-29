@@ -13,25 +13,25 @@
       "fromId": "standing",
       "fromProperty": "isMember",
       "toId": "memberArea",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "standing",
       "fromProperty": "isModerator",
       "toId": "moderatorTools",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "standing",
       "fromProperty": "isPending",
       "toId": "pendingNotice",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "standing",
       "fromProperty": "isUnknown",
       "toId": "unknownNotice",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "standing",
@@ -67,7 +67,7 @@
       "fromId": "emptyGate",
       "fromProperty": "out-empty",
       "toId": "emptyState",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "meetingsButton",
@@ -85,6 +85,12 @@
       "fromId": "requestsButton",
       "fromProperty": "onClick",
       "toId": "toRequests",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "directoryButton",
+      "fromProperty": "onClick",
+      "toId": "toDirectory",
       "toProperty": "navigate"
     },
     {

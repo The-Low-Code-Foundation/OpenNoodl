@@ -52,6 +52,7 @@ import { createServer } from '../src/server';
 import { readAsLegacyProject } from './sb007Template';
 import { TPL001_CLOUD_COMPONENTS } from './tpl001Cloud';
 import { APP_NODES, APP_WIRES, TPL001_COMPONENTS, createPass } from './tpl001Components';
+import { TPL001_PRESET, TPL001_TOKENS } from './tpl001Theme';
 
 /** The template's id and the directory name it is prepared into. */
 export const TEMPLATE_ID = 'members-area';
@@ -225,6 +226,35 @@ export async function buildMembersTemplateProject(options: BuildOptions = {}): P
     if (payload.registeredPages) registrations[key] = payload.registeredPages;
   };
 
+  // ── The look, first, and through the same door as everything else ──────────
+  //
+  // 🔴 This is the whole of phase 78's appearance fix at the project level, and
+  // it is two calls that already existed. `set_style_preset` and
+  // `set_project_tokens` are shipped write tools; the wizard offers the same
+  // presets to a person creating a project (`ProjectsPage.tsx:109,1614`). A
+  // human got a look and a generated template did not, purely because the
+  // generator never called them.
+  //
+  // ⚠️ Order matters and it is the reason these are two calls rather than one:
+  // the preset writes the base overrides, and `upsertTokens` MERGES by name, so
+  // the template's own tokens have to land second or Enterprise's navy would win.
+  //
+  // ⚠️ Preset first also means Modern could never be used here: its override map
+  // is empty by construction (`ModernPreset.ts`: "Modern IS the defaults"), so
+  // `set_style_preset('modern')` CLEARS the block rather than writing one — see
+  // `styleTools.ts`'s `entries.length === 0` branch. A preset that writes
+  // nothing looks identical to a preset that was never applied.
+  // 🔴 **And the style tools are DEFERRED, which is part of why generators miss
+  // them.** `applyPolicy({ deferTools })` hides the `theme` group behind
+  // `find_tools`, so `set_style_preset` answers *"Tool set_style_preset
+  // disabled"* on a server that has registered it. Revealed here by GROUP rather
+  // than by free text on purpose: `find_tools`'s `query` matches tool NAMES
+  // (`name.toLowerCase().includes(needle)`), so "theme", "design" and "colour"
+  // all reveal nothing while naming a group called Design tokens.
+  await call('find_tools', { group: 'theme' }, 'theme:reveal');
+  await call('set_style_preset', { preset_id: TPL001_PRESET }, 'theme:preset');
+  await call('set_project_tokens', { tokens: [...TPL001_TOKENS] }, 'theme:tokens');
+
   if (!options.omitApp) await create(APP_COMPONENT, APP_NODES, APP_WIRES);
 
   for (const c of TPL001_CLOUD_COMPONENTS) {
@@ -386,4 +416,45 @@ export function prepareArtefact(built: AuthoredTemplate, output: string, policyS
     throw new Error(`refusing to write: the hand-authored policy ${policySource} is missing`);
   }
   fs.copyFileSync(policySource, path.join(output, POLICY_FILE));
+
+  pinRootNode(output);
+}
+
+/**
+ * 🔴 **Record which node is the app's HOME, or the editor previews an error.**
+ *
+ * Found by opening the artefact as a project and pressing preview: the viewer
+ * rendered *"ERROR — No HOME component selected"* instead of the landing page.
+ * `ProjectModel.fromJSON` resolves the home from `rootNodeId`, and the skeleton
+ * this generator writes has no such field, so `rootNode` stayed undefined and
+ * every screen behind it was unreachable — on the first thing a person does
+ * after picking the template.
+ *
+ * ⚠️ **The control that made it a defect rather than a guess**: the only other
+ * template in the repository, `site-builder.content.json`, carries
+ * `rootComponent: '/App'`. Same mechanism, one arm sets it and one did not, and
+ * the arm that did not is the one that errors.
+ *
+ * 🔴 **`rootNodeId`, NOT `rootComponent`.** `rootComponent` is the LEGACY
+ * spelling — `import-engine/legacy/assess.ts` reports it as a field it rewrites
+ * on load — and `project-v2.schema.json` sets `additionalProperties: false`, so
+ * a v2 project file carrying it is not a project file that validates.
+ * `fromJSON` accepts it only as a fallback for templates it is upgrading.
+ *
+ * ⚠️ **Derived from the artefact, never typed.** The door de-duplicates node ids
+ * project-wide, so `app_root` is `app_root` only because `App` is written first
+ * and nothing claims it earlier. Reading the root back out of the file that was
+ * actually written is what keeps this true if that ever changes.
+ */
+function pinRootNode(output: string): void {
+  const appNodes = path.join(output, 'components', APP_COMPONENT, 'nodes.json');
+  const nodes = (JSON.parse(fs.readFileSync(appNodes, 'utf-8')) as { nodes?: Array<{ id: string; parent?: string }> })
+    .nodes;
+  const root = (nodes ?? []).find((n) => !n.parent);
+  if (!root) throw new Error(`refusing to write: ${APP_COMPONENT} has no root node to be the app's home`);
+
+  const projectFile = path.join(output, 'nodegx.project.json');
+  const project = JSON.parse(fs.readFileSync(projectFile, 'utf-8')) as Record<string, unknown>;
+  project.rootNodeId = root.id;
+  fs.writeFileSync(projectFile, JSON.stringify(project, null, 2));
 }

@@ -43,7 +43,7 @@
       "fromId": "sentGate",
       "fromProperty": "result",
       "toId": "sent",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "send",
@@ -55,7 +55,7 @@
       "fromId": "refusalGate-3",
       "fromProperty": "result",
       "toId": "refusal-3",
-      "toProperty": "visible"
+      "toProperty": "mounted"
     },
     {
       "fromId": "signInButton-2",

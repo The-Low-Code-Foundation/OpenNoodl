@@ -281,3 +281,37 @@ export async function readVisit(page: RenderedPage, url: string): Promise<Visit>
   const parsed = JSON.parse(raw) as Omit<Visit, 'url' | 'errors'>;
   return { url, ...parsed, errors: page.consoleErrors.slice(before) };
 }
+
+/**
+ * Read the page **where it already is**, without navigating.
+ *
+ * 🔴 **Why this exists.** `readVisit` navigates, and a confirmation that a click
+ * produced is state on the *current* page — reloading the URL destroys it. A
+ * spec that clicked "Post it" and then called `readVisit('/post')` was asserting
+ * that a freshly-loaded page shows "Posted", which is true only of a page whose
+ * gate fires on load. That is exactly the D14 defect, so the spec passed *because
+ * of* the bug and went red the moment it was fixed. Reading in place is the
+ * difference between grading the click and grading the boot.
+ *
+ * ⚠️ `until` is a **bounded** wait for an asynchronous write to land, not a
+ * retry until the wanted answer appears: if the string never shows up the reader
+ * returns the real document and the caller's assertion fails against it, naming
+ * what was actually on the page. Without it the only alternative is a fixed
+ * sleep, which is the same wait with a worse failure mode.
+ */
+export async function readHere(
+  page: RenderedPage,
+  opts: { until?: string; timeoutMs?: number } = {}
+): Promise<Visit> {
+  const before = page.consoleErrors.length;
+  const deadline = Date.now() + (opts.timeoutMs ?? 15000);
+  let raw = String(await page.evaluate(READ_PAGE));
+  while (opts.until !== undefined && Date.now() < deadline) {
+    if ((JSON.parse(raw) as { text: string }).text.includes(opts.until)) break;
+    await new Promise((r) => setTimeout(r, 250));
+    raw = String(await page.evaluate(READ_PAGE));
+  }
+  const parsed = JSON.parse(raw) as Omit<Visit, 'url' | 'errors'>;
+  const url = String(await page.evaluate('window.location.pathname'));
+  return { url, ...parsed, errors: page.consoleErrors.slice(before) };
+}

@@ -51,7 +51,11 @@
       "type": "JavaScriptFunction",
       "label": "Grant, or simply remove",
       "parameters": {
-        "functionScript": "// Two producers — the row supplies the user id, the request supplies the\n// decision — so this opens with the readiness guard rule 2 prescribes.\nif (Inputs.userId === undefined || Inputs.approve === undefined) return;\nconst userId = Inputs.userId === null ? '' : String(Inputs.userId);\nOutputs.userId = userId;\nOutputs.approved = Inputs.approve === true;\n// A row whose userId is missing cannot be approved into anything. It is\n// still a queue entry a moderator asked to be rid of, so it declines.\nif (Inputs.approve === true && userId.length > 0) {\n  Outputs.grant();\n  return;\n}\nOutputs.decline();"
+        "runOnChange-in-userId": false,
+        "runOnChange-in-name": false,
+        "runOnChange-in-email": false,
+        "runOnChange-in-approve": false,
+        "functionScript": "// Two producers — the row supplies the user id, the request supplies the\n// decision — so this opens with the readiness guard rule 2 prescribes.\nif (Inputs.userId === undefined || Inputs.approve === undefined) return;\nconst userId = Inputs.userId === null ? '' : String(Inputs.userId);\nOutputs.userId = userId;\nOutputs.approved = Inputs.approve === true;\n// The directory row, from the request row that is about to be deleted.\n// 🔴 It has to be carried HERE: `remove` takes the queue entry away, so\n// after this endpoint runs there is nowhere left holding the person's\n// name and address. Everything the projection needs leaves this node.\nconst email = Inputs.email === undefined || Inputs.email === null ? '' : String(Inputs.email);\nconst named = Inputs.name === undefined || Inputs.name === null ? '' : String(Inputs.name).trim();\nOutputs.email = email;\n// Same fallback `requestAccess` uses when a person left the name box\n// empty: a directory row with no name at all is a blank line.\nOutputs.name = named.length > 0 ? named : email;\nOutputs.joinedAt = new Date().toISOString();\nOutputs.standing = 'member';\n// A row whose userId is missing cannot be approved into anything. It is\n// still a queue entry a moderator asked to be rid of, so it declines.\nif (Inputs.approve === true && userId.length > 0) {\n  Outputs.grant();\n  return;\n}\nOutputs.decline();"
       },
       "ports": [
         {
@@ -80,6 +84,26 @@
       "y": 520
     },
     {
+      "id": "member",
+      "type": "NewDbModelProperties",
+      "label": "Write the directory row — the projection of the role just granted",
+      "parameters": {
+        "collectionName": "Member",
+        "accessControl": [
+          {
+            "id": "admin",
+            "label": "Moderators"
+          }
+        ],
+        "acl-admin-target": "role",
+        "acl-admin-role": "admin",
+        "acl-admin-read": true,
+        "acl-admin-write": true
+      },
+      "x": 40,
+      "y": 640
+    },
+    {
       "id": "remove",
       "type": "DeleteDbModelProperties",
       "label": "Take the request off the queue",
@@ -88,7 +112,7 @@
         "idSource": "explicit"
       },
       "x": 40,
-      "y": 640
+      "y": 760
     },
     {
       "id": "res-4",
@@ -98,7 +122,7 @@
         "params": "approved"
       },
       "x": 40,
-      "y": 760
+      "y": 880
     },
     {
       "id": "deny-3",
@@ -109,7 +133,7 @@
         "errorMessage": "That request could not be decided."
       },
       "x": 40,
-      "y": 880
+      "y": 1000
     }
   ]
 }

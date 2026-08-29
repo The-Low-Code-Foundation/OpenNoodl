@@ -24,13 +24,25 @@
     {
       "fromId": "login",
       "fromProperty": "error",
-      "toId": "error",
+      "toId": "errorText",
       "toProperty": "text"
     },
     {
       "fromId": "login",
+      "fromProperty": "failure",
+      "toId": "errorGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "errorGate",
+      "fromProperty": "result",
+      "toId": "error",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "login",
       "fromProperty": "done",
-      "toId": "toMembers-5",
+      "toId": "toMembers-6",
       "toProperty": "navigate"
     },
     {

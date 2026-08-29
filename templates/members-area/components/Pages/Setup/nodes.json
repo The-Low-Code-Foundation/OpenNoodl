@@ -25,38 +25,31 @@
       "children": [
         "heading-6",
         "blurb-2",
-        "nameField-2",
-        "aboutField",
-        "emailField-2",
-        "passwordField-2",
-        "tokenField",
-        "claimButton",
-        "refusal-4"
+        "form-3",
+        "refusal-4",
+        "missing"
       ],
       "parameters": {
-        "sizeMode": "explicit",
         "width": {
           "value": 100,
           "unit": "%"
         },
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "explicit",
         "height": {
           "value": 100,
           "unit": "%"
         },
-        "paddingTop": {
-          "value": 48,
-          "unit": "px"
-        },
-        "paddingLeft": {
-          "value": 24,
-          "unit": "px"
-        },
-        "paddingRight": {
-          "value": 24,
-          "unit": "px"
-        },
-        "flexDirection": "column",
-        "alignX": "center"
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
       },
       "x": 100,
       "y": 160
@@ -68,7 +61,11 @@
       "parent": "ground-8",
       "parameters": {
         "text": "Set up this members’ area",
-        "fontWeight": "var(--font-bold)"
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
       },
       "x": 160,
       "y": 280
@@ -79,97 +76,303 @@
       "label": "What this does",
       "parent": "ground-8",
       "parameters": {
-        "text": "Name your association and create the first moderator account. The setup token comes from your backend configuration."
+        "text": "Name your association and create the first moderator account. The setup token comes from your backend configuration.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
       },
       "x": 160,
       "y": 400
     },
     {
-      "id": "nameField-2",
-      "type": "net.noodl.controls.textinput",
-      "label": "Association name",
+      "id": "form-3",
+      "type": "Group",
+      "label": "The setup form",
       "parent": "ground-8",
+      "children": [
+        "nameField-2",
+        "aboutField",
+        "emailField-2",
+        "passwordField-2",
+        "tokenField",
+        "claimButton"
+      ],
       "parameters": {
-        "useLabel": true,
-        "label": "Association name"
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
       },
       "x": 160,
       "y": 520
     },
     {
+      "id": "nameField-2",
+      "type": "net.noodl.controls.textinput",
+      "label": "Association name",
+      "parent": "form-3",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Association name"
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
       "id": "aboutField",
       "type": "net.noodl.controls.textinput",
       "label": "About the association",
-      "parent": "ground-8",
+      "parent": "form-3",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "About the association",
         "type": "textArea"
       },
-      "x": 160,
-      "y": 640
+      "x": 220,
+      "y": 760
     },
     {
       "id": "emailField-2",
       "type": "net.noodl.controls.textinput",
       "label": "Moderator email",
-      "parent": "ground-8",
+      "parent": "form-3",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Your email",
         "type": "email"
       },
-      "x": 160,
-      "y": 760
+      "x": 220,
+      "y": 880
     },
     {
       "id": "passwordField-2",
       "type": "net.noodl.controls.textinput",
       "label": "Moderator password",
-      "parent": "ground-8",
+      "parent": "form-3",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Choose a password",
         "type": "password"
       },
-      "x": 160,
-      "y": 880
+      "x": 220,
+      "y": 1000
     },
     {
       "id": "tokenField",
       "type": "net.noodl.controls.textinput",
       "label": "Setup token",
-      "parent": "ground-8",
+      "parent": "form-3",
       "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
         "useLabel": true,
         "label": "Setup token",
         "type": "password"
       },
-      "x": 160,
-      "y": 1000
+      "x": 220,
+      "y": 1120
     },
     {
       "id": "claimButton",
       "type": "net.noodl.controls.button",
       "label": "Set up",
-      "parent": "ground-8",
+      "parent": "form-3",
       "parameters": {
-        "label": "Set up this members’ area"
+        "label": "Set up this members’ area",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
       },
-      "x": 160,
-      "y": 1120
+      "x": 220,
+      "y": 1240
     },
     {
       "id": "refusal-4",
-      "type": "Text",
+      "type": "Group",
       "label": "The one refusal",
       "parent": "ground-8",
+      "children": [
+        "refusalText-4"
+      ],
       "parameters": {
-        "text": "This members’ area cannot be set up with those details.",
-        "visible": false
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
       },
       "x": 160,
-      "y": 1240
+      "y": 1360
+    },
+    {
+      "id": "refusalText-4",
+      "type": "Text",
+      "label": "The one refusal — the words",
+      "parent": "refusal-4",
+      "parameters": {
+        "text": "This members’ area cannot be set up with those details.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 220,
+      "y": 1480
+    },
+    {
+      "id": "missing",
+      "type": "Group",
+      "label": "Which box is empty",
+      "parent": "ground-8",
+      "children": [
+        "missingText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 1600
+    },
+    {
+      "id": "missingText",
+      "type": "Text",
+      "label": "Which box is empty — the words",
+      "parent": "missing",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 220,
+      "y": 1720
     },
     {
       "id": "claim",
@@ -178,18 +381,67 @@
       "parameters": {
         "function": "claimAssociation"
       },
-      "x": 410,
-      "y": 520
+      "x": 470,
+      "y": 640
+    },
+    {
+      "id": "check",
+      "type": "JavaScriptFunction",
+      "label": "Is anything still blank?",
+      "parameters": {
+        "runOnChange-in-associationName": false,
+        "runOnChange-in-email": false,
+        "runOnChange-in-password": false,
+        "runOnChange-in-setupToken": false,
+        "functionScript": "const blank = [];\nif (!(Inputs.associationName || '').trim()) blank.push('the association’s name');\nif (!(Inputs.email || '').trim()) blank.push('your email');\nif (!(Inputs.password || '').trim()) blank.push('a password');\nif (!(Inputs.setupToken || '').trim()) blank.push('the setup token');\nif (blank.length === 0) {\n  Outputs.problem = '';\n  Outputs.ready();\n  return;\n}\n// Rule 2: the sentence and the signal that reveals it leave from the\n// same node, so nothing downstream can act on a value still in flight.\nOutputs.problem = blank.length === 1\n  ? 'Please fill in ' + blank[0] + '.'\n  : 'Please fill in ' + blank.slice(0, -1).join(', ') + ' and ' + blank[blank.length - 1] + '.';\nOutputs.blocked();"
+      },
+      "ports": [
+        {
+          "name": "out-ready",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-blocked",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 470,
+      "y": 1840
     },
     {
       "id": "refusalGate-4",
       "type": "Condition",
       "label": "Show the refusal",
       "parameters": {
-        "condition": true
+        "condition": true,
+        "runOnChange-condition": false
       },
-      "x": 410,
-      "y": 1240
+      "x": 470,
+      "y": 1360
+    },
+    {
+      "id": "missingGate",
+      "type": "Condition",
+      "label": "Show what is blank",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 470,
+      "y": 1600
+    },
+    {
+      "id": "missingClear",
+      "type": "Condition",
+      "label": "Hide it once the form is complete",
+      "parameters": {
+        "condition": false,
+        "runOnChange-condition": false
+      },
+      "x": 470,
+      "y": 1720
     },
     {
       "id": "toSignIn-2",
@@ -199,8 +451,8 @@
         "router": "Main",
         "target": "/Pages/SignIn"
       },
-      "x": 410,
-      "y": 1360
+      "x": 470,
+      "y": 1960
     }
   ],
   "visualRoots": [

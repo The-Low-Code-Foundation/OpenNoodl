@@ -43,7 +43,8 @@
             "/Pages/Join",
             "/Pages/Setup",
             "/Pages/Post",
-            "/Pages/Requests"
+            "/Pages/Requests",
+            "/Pages/Directory"
           ]
         }
       },
