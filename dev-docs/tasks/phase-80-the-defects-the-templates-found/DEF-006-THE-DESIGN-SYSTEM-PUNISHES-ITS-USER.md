@@ -1,8 +1,34 @@
 # DEF-006 — The design system punishes the agent that uses it
 
-**Rank 6.** Sources: phase 78 **D12** and **D15**. Both **NONE**-owned.
+**Rank 6.** Sources: phase 78 **D12**, **D15** and **D20**. All **NONE**-owned.
 
 Cheap, and it removes a standing reason the next template arrives unstyled.
+
+⚠️ **D20 was agreed into this task by both sessions on 2026-08-29 and then sat in a chat message
+for a day without reaching the file.** It is recorded here because that is the exact failure the
+whole phase-80 process exists to stop: an agreement is not an owner.
+
+## 0. (c) The vocabulary has no composition for a field, a notice or an empty state — P78 D20
+
+Measured 2026-08-29 over `StyleCompositions.ts`: **18 compositions ship**, and searching their ids
+for `field`, `input`, `label`, `notice`, `alert` and `empty` returns **nothing** for all six.
+
+```
+band · bandSurface · shell · sectionHead · card · cardBody · primaryButton · outlineButton
+cardImage · gridAutoFit · columnsTwoUp · displayHeadline · sectionHeading · cardTitle
+eyebrow · lead · body · meta
+```
+
+Everything the system names is **page furniture**. Every app also has forms, validation messages
+and empty lists, and for those an author has no recipe to follow — so they invent parameters, which
+is the divergence (a) and (b) punish them for on the parts that *are* covered.
+
+🔴 **This is the mechanism behind P78 D10** (the generators bypass the design system): a generator
+cannot apply a composition that does not exist. D10 is the symptom seen from the generator; this is
+the cause seen from the vocabulary. ⚠️ **Fixing this may make D10 fixable without fixing D10** —
+re-measure D10 after, do not close it on this.
+
+**Where it bites:** every agent authoring any app with a form, which is nearly all of them.
 
 ## 1. (a) `primaryButton` ships a parameter the runtime never reads
 
