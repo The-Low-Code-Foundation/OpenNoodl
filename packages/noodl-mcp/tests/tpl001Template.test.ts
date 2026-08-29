@@ -1010,7 +1010,16 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     // is the one place in the template where a single node's `mounted` is
     // driven from TWO conditions — the shape `Pages/Setup`'s `missingClear`
     // established.
-    expect(gates.length).toBe(46); // TPL-002: Account ×4, Unsubscribe ×2
+    //
+    // 49 since s15: `Pages/Account`'s three clearing conditions. A `Condition`
+    // only ever pushes its `result` true, so nothing put a confirmation away
+    // again and a person who ticked the box and then unticked it was shown BOTH
+    // sentences at once — found by driving the page rather than by reading it.
+    // Each of `savedOn`, `savedOff` and `failed` is now driven from a gate and a
+    // clear, which makes the confirm step above no longer the only place with
+    // that shape — it is the shape this template uses whenever one node answers
+    // a question that has more than one answer.
+    expect(gates.length).toBe(49); // TPL-002: Account ×7, Unsubscribe ×2
   });
 
   it('AC6 — every list ships an empty state, hidden until a query has answered', () => {

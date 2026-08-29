@@ -92,6 +92,66 @@
       "fromProperty": "result",
       "toId": "failed-2",
       "toProperty": "mounted"
+    },
+    {
+      "fromId": "which",
+      "fromProperty": "out-on",
+      "toId": "offClear",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "offClear",
+      "fromProperty": "result",
+      "toId": "savedOff",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "which",
+      "fromProperty": "out-off",
+      "toId": "onClear",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "onClear",
+      "fromProperty": "result",
+      "toId": "savedOn",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "write",
+      "fromProperty": "done",
+      "toId": "failClear",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "failClear",
+      "fromProperty": "result",
+      "toId": "failed-2",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "write",
+      "fromProperty": "failure",
+      "toId": "onClear",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "write",
+      "fromProperty": "failure",
+      "toId": "offClear",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "read-4",
+      "fromProperty": "failure",
+      "toId": "onClear",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "read-4",
+      "fromProperty": "failure",
+      "toId": "offClear",
+      "toProperty": "eval"
     }
   ]
 }

@@ -127,7 +127,64 @@ Gates: **noodl-mcp 958/958** · **`tpl001Template.test.ts` 71/71** · the three 
 **108/108** · `typecheck:mcp` and the backend `tsc` clean · generation exit 0, **94 diagnostics, all
 `info`**. ⚠️ `test:ci` not run — no editor source touched.
 
-## 🔴 What is NOT graded, and it is one thing
+## ✅ s15 — the two pages driven, the band looked at, and what looking found
+
+**AC4's first half and AC1/AC2's box are now graded in a browser**
+(`tpl002-account-drive.test.ts`, **22/22**), and both owed appearance readings are taken.
+
+| what | reading |
+|---|---|
+| the box as it ships | present, painted, **unticked**, and drawing no tick — on the screen |
+| ticking it | a real trusted click ⇒ `checked` **and** a visible tick, `Saved… when something is posted`, and `myNotifySetting` answers `true` as a **second** reading |
+| the send | two opted-in members mailed; Ann, differing in one field, handed nothing **in the same send** |
+| the link | taken **out of the message body**, opened with `currentSession()` asserted **null**, page paints `UNSUBSCRIBED_TEXT`, and makes **zero** `myStanding` calls — it carries no band |
+| what the link did | Mo `false`, **Sam still `true`**, Ann unmoved; and the **next send skipped Mo and still reached Sam** |
+| the account page after | box unticked on a fresh load — two surfaces, one flag |
+| back on, and off again | both directions from the screen, with the right sentence each time |
+
+🔴 **Sam exists because Ann is not a control for the unsubscribe.** Ann is `false` before and after,
+which a token that did nothing at all would satisfy exactly. Sam's `true` had to **survive**.
+
+🔴 **The link is graded by its consequence, not its confirmation.** A page that paints "Done" and
+writes nothing passes the sentence row and fails the second send — and the second send is the AC.
+
+### The band, looked at
+
+`tpl002-account.look.ts` writes the pictures. At 1280 the moderator's six items are **five across
+with "Your account" alone on a second row**, left-aligned under Announcements, nothing clipped, gaps
+even. At 390 it is a tidy 2×3. The arithmetic in `BAND_NAV`'s note was right and the result is fine
+— **no change made**. ⚠️ A member's band has **three** items, not six: three are `moderatorOnly` and
+ship `mounted: false`, so a look taken only as a member would have measured the wrong screen.
+
+### 🔴 Two defects the drive found, both fixed, both inside this task's own ACs
+
+- **[D36](DEFECTS-THE-TEMPLATES-FOUND.md)** — a `Condition` only ever turns a gate **on**. Tick then
+  untick without reloading and the page showed **both** confirmations at once. Every earlier reading
+  was of a *first* change, which leaves exactly one notice up and looks perfect. Fixed with
+  `onClear` / `offClear` / `failClear`.
+- **[D37](DEFECTS-THE-TEMPLATES-FOUND.md)** — `useLabel` defaults **false**, so a label drawn as a
+  sibling `Text` emits no `<label for>` and **the words beside the box did nothing when tapped**. On
+  a phone the entire opt-in was a 24×24 square — exactly WCAG 2.2 SC 2.5.8's floor and no more. The
+  label is now the checkbox's own.
+
+✅ **Control pair, and it was taken in the right order:** the drive was written and run **before**
+either fix. §10 and §11 were red and the other twenty rows green; after the fixes, 22/22. The spec
+follows the product.
+
+### ⚠️ One finding left open, because it needs a ruling
+
+**[D39](DEFECTS-THE-TEMPLATES-FOUND.md)** — the unsubscribe page does not name the association and
+offers no way back. Not an oversight: the page is built to make **no** round trip, and naming the
+association costs one public query. Richard's call.
+
+Gates after: **noodl-mcp 958/958** · `tpl001Template.test.ts` **71/71** (one pinned `mounted` count
+46 → 49, with the reason written beside it) · the four tpl001/tpl002 backend suites **130/130** ·
+`typecheck:mcp` and the backend `tsc` clean · generation exit 0, **94 diagnostics, all `info`**.
+⚠️ `test:ci` not run — no editor source touched.
+
+---
+
+## What was NOT graded, s14 — now closed by s15 above
 
 **AC4's first half in a browser, and AC1/AC2's box.** `Pages/Account` and `Pages/Unsubscribe` are
 authored, registered, routed and gated, and every endpoint behind them is driven — but **nobody has

@@ -122,7 +122,7 @@
       "label": "The setting",
       "parent": "ground-12",
       "children": [
-        "boxRow",
+        "box",
         "note"
       ],
       "parameters": {
@@ -148,31 +148,10 @@
       "y": 760
     },
     {
-      "id": "boxRow",
-      "type": "Group",
-      "label": "Box and label",
-      "parent": "panel",
-      "children": [
-        "box",
-        "boxLabel"
-      ],
-      "parameters": {
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "sizeMode": "contentHeight",
-        "flexDirection": "row",
-        "columnGap": "var(--space-3)"
-      },
-      "x": 220,
-      "y": 880
-    },
-    {
       "id": "box",
       "type": "net.noodl.controls.checkbox",
       "label": "Email me",
-      "parent": "boxRow",
+      "parent": "panel",
       "parameters": {
         "checked": false,
         "width": {
@@ -182,23 +161,18 @@
         "height": {
           "value": 24,
           "unit": "px"
-        }
+        },
+        "useLabel": true,
+        "label": "Email me when a moderator posts an announcement",
+        "labelSpacing": {
+          "value": 12,
+          "unit": "px"
+        },
+        "labelfontSize": "var(--text-base)",
+        "labelcolor": "var(--foreground)"
       },
-      "x": 280,
-      "y": 1000
-    },
-    {
-      "id": "boxLabel",
-      "type": "Text",
-      "label": "What the box does",
-      "parent": "boxRow",
-      "parameters": {
-        "text": "Email me when a moderator posts an announcement",
-        "fontSize": "var(--text-base)",
-        "color": "var(--foreground)"
-      },
-      "x": 280,
-      "y": 1120
+      "x": 220,
+      "y": 880
     },
     {
       "id": "note",
@@ -211,7 +185,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 220,
-      "y": 1240
+      "y": 1000
     },
     {
       "id": "savedOn",
@@ -241,7 +215,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1360
+      "y": 1120
     },
     {
       "id": "savedOnText",
@@ -254,7 +228,7 @@
         "color": "var(--accent-foreground)"
       },
       "x": 220,
-      "y": 1480
+      "y": 1240
     },
     {
       "id": "savedOff",
@@ -284,7 +258,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1600
+      "y": 1360
     },
     {
       "id": "savedOffText",
@@ -297,7 +271,7 @@
         "color": "var(--accent-foreground)"
       },
       "x": 220,
-      "y": 1720
+      "y": 1480
     },
     {
       "id": "failed-2",
@@ -327,7 +301,7 @@
         "mounted": false
       },
       "x": 160,
-      "y": 1840
+      "y": 1600
     },
     {
       "id": "failedText",
@@ -340,7 +314,7 @@
         "color": "var(--destructive)"
       },
       "x": 220,
-      "y": 1960
+      "y": 1720
     },
     {
       "id": "read-4",
@@ -349,8 +323,8 @@
       "parameters": {
         "function": "myNotifySetting"
       },
-      "x": 530,
-      "y": 1000
+      "x": 470,
+      "y": 880
     },
     {
       "id": "write",
@@ -359,8 +333,8 @@
       "parameters": {
         "function": "setNotifySetting"
       },
-      "x": 530,
-      "y": 1120
+      "x": 470,
+      "y": 1000
     },
     {
       "id": "which",
@@ -382,8 +356,8 @@
           "type": "signal"
         }
       ],
-      "x": 530,
-      "y": 1960
+      "x": 470,
+      "y": 1840
     },
     {
       "id": "onGate",
@@ -393,8 +367,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 530,
-      "y": 1360
+      "x": 470,
+      "y": 1120
     },
     {
       "id": "offGate",
@@ -404,8 +378,8 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 530,
-      "y": 1600
+      "x": 470,
+      "y": 1360
     },
     {
       "id": "failGate",
@@ -415,8 +389,41 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 530,
-      "y": 1840
+      "x": 470,
+      "y": 1600
+    },
+    {
+      "id": "onClear",
+      "type": "Condition",
+      "label": "Put \"on\" away",
+      "parameters": {
+        "condition": false,
+        "runOnChange-condition": false
+      },
+      "x": 470,
+      "y": 1240
+    },
+    {
+      "id": "offClear",
+      "type": "Condition",
+      "label": "Put \"off\" away",
+      "parameters": {
+        "condition": false,
+        "runOnChange-condition": false
+      },
+      "x": 470,
+      "y": 1480
+    },
+    {
+      "id": "failClear",
+      "type": "Condition",
+      "label": "Put the refusal away",
+      "parameters": {
+        "condition": false,
+        "runOnChange-condition": false
+      },
+      "x": 470,
+      "y": 1720
     },
     {
       "id": "toLanding-6",
@@ -426,7 +433,7 @@
         "router": "Main",
         "target": "/Pages/Landing"
       },
-      "x": 530,
+      "x": 470,
       "y": 160
     }
   ],

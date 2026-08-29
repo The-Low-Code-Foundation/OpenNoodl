@@ -3834,40 +3834,48 @@ const ACCOUNT: Tpl001Component = {
       // no setting to change, and `mounted` leaves the subtree out of the
       // document entirely rather than hiding it — the s8 finding, unchanged.
       parameters: { ...PANEL, mounted: false },
-      children: ['boxRow', 'note']
-    },
-    {
-      id: 'boxRow',
-      type: 'Group',
-      label: 'Box and label',
-      parent: 'panel',
-      // 🔴 D32: two children of a row both grow unless something stops them, and
-      // then `justifyContent` distributes nothing. Exactly one child grows here
-      // — the label — and the box is pinned.
-      parameters: laidOut('row', { width: { value: 100, unit: '%' }, sizeMode: 'contentHeight' }, 'var(--space-3)'),
-      children: ['box', 'boxLabel']
+      children: ['box', 'note']
     },
     {
       id: 'box',
       type: 'net.noodl.controls.checkbox',
       label: 'Email me',
-      parent: 'boxRow',
-      // 🔴 `checked: false` is the shipped default and it is the legal one.
-      // TPL-002 §4: consent in the UK and EU is opt-in, and a template that
-      // shipped opt-out would teach every association that installed it to break
-      // the law on its first day.
-      // ⚠️ No `sizeMode`: the door refused it — `net.noodl.controls.checkbox`
-      // declares `width`/`height` and no size mode at all, and an unread
-      // parameter is exactly what `unknown-parameter` is for. The explicit pair
-      // is still what stops this child growing (D32).
-      parameters: { checked: false, width: { value: 24, unit: 'px' }, height: { value: 24, unit: 'px' } }
-    },
-    {
-      id: 'boxLabel',
-      type: 'Text',
-      label: 'What the box does',
-      parent: 'boxRow',
-      parameters: { text: NOTIFY_OPT_IN_LABEL, ...T_BODY }
+      parent: 'panel',
+      /**
+       * 🔴 **The words are the checkbox's OWN label, not a `Text` node beside
+       * it, and a drive is what settled that.** `useLabel` defaults **false**
+       * (`node-shared-port-definitions.ts:1440`), and with it off `Checkbox.tsx`
+       * emits no `<label for>` at all — so a sentence drawn as a sibling `Text`
+       * is not a click target, and the only way to opt in is to hit the box
+       * itself. That box is 24×24: exactly WCAG 2.2 SC 2.5.8's floor and no more,
+       * on a page whose whole product is one decision, read on a phone. Turning
+       * the port on makes the sentence part of the control, which is both the
+       * accessible behaviour and the one every person already expects.
+       *
+       * 🔴 `checked: false` is the shipped default and it is the legal one.
+       * TPL-002 §4: consent in the UK and EU is opt-in, and a template that
+       * shipped opt-out would teach every association that installed it to break
+       * the law on its first day.
+       *
+       * ⚠️ No `sizeMode`: the door refused it — `net.noodl.controls.checkbox`
+       * declares `width`/`height` and no size mode at all, and an unread
+       * parameter is exactly what `unknown-parameter` is for.
+       *
+       * ⚠️ `labelSpacing` is a literal `px` pair where the rest of this template
+       * spends tokens, for `minWidth`'s reason: the port is declared
+       * `number` with `units: ['px']`, and a `var()` in it is not read. 12px is
+       * `--space-3`, which is what the row it replaces used.
+       */
+      parameters: {
+        checked: false,
+        width: { value: 24, unit: 'px' },
+        height: { value: 24, unit: 'px' },
+        useLabel: true,
+        label: NOTIFY_OPT_IN_LABEL,
+        labelSpacing: { value: 12, unit: 'px' },
+        labelfontSize: T_BODY.fontSize,
+        labelcolor: T_BODY.color
+      }
     },
     {
       id: 'note',
@@ -3908,6 +3916,24 @@ const ACCOUNT: Tpl001Component = {
     { id: 'onGate', type: 'Condition', label: 'Show "on"', parameters: { ...CONDITION_GATE } },
     { id: 'offGate', type: 'Condition', label: 'Show "off"', parameters: { ...CONDITION_GATE } },
     { id: 'failGate', type: 'Condition', label: 'Show the refusal', parameters: { ...CONDITION_GATE } },
+    /**
+     * 🔴 **Nothing ever put a confirmation away again, and a drive found it.**
+     * A `Condition` only ever pushes its `result` true, so a person who ticked
+     * the box and then unticked it was shown BOTH sentences at once — *"We will
+     * email you when something is posted"* directly above *"We will not email
+     * you about new announcements"* — with no way to tell which one had won.
+     * Each of the three notices on this page is a different answer to one
+     * question, so showing one has to mean hiding the other two.
+     *
+     * ⚠️ The shape is `Pages/Setup`'s `missingClear` and `Pages/Post`'s
+     * `confirmClear`: a constant `false` fired by the path that should undo it,
+     * on the same `mounted` input as the gate that set it. Two connections into
+     * one input is what the runtime already does there — the later signal wins —
+     * and it is why this needs no new node type.
+     */
+    { id: 'onClear', type: 'Condition', label: 'Put "on" away', parameters: { condition: false, 'runOnChange-condition': false } },
+    { id: 'offClear', type: 'Condition', label: 'Put "off" away', parameters: { condition: false, 'runOnChange-condition': false } },
+    { id: 'failClear', type: 'Condition', label: 'Put the refusal away', parameters: { condition: false, 'runOnChange-condition': false } },
     {
       id: 'toLanding',
       type: 'RouterNavigate',
@@ -3943,7 +3969,28 @@ const ACCOUNT: Tpl001Component = {
     // `false` because nothing loaded it, which is not the person's setting — so
     // the screen must not be silent about it.
     { fromId: 'read', fromProperty: 'failure', toId: 'failGate', toProperty: 'eval' },
-    { fromId: 'failGate', fromProperty: 'result', toId: 'failed', toProperty: 'mounted' }
+    { fromId: 'failGate', fromProperty: 'result', toId: 'failed', toProperty: 'mounted' },
+
+    // ── One answer on the screen at a time ────────────────────────────────
+    //
+    // Each path puts the other two away. `out-on` and `out-off` are the two
+    // outcomes of one save, and a failure means neither of them happened.
+    { fromId: 'which', fromProperty: 'out-on', toId: 'offClear', toProperty: 'eval' },
+    { fromId: 'offClear', fromProperty: 'result', toId: 'savedOff', toProperty: 'mounted' },
+    { fromId: 'which', fromProperty: 'out-off', toId: 'onClear', toProperty: 'eval' },
+    { fromId: 'onClear', fromProperty: 'result', toId: 'savedOn', toProperty: 'mounted' },
+
+    // A save that worked takes the refusal down — otherwise a person who failed
+    // once and succeeded on the retry keeps being told it did not save.
+    { fromId: 'write', fromProperty: 'done', toId: 'failClear', toProperty: 'eval' },
+    { fromId: 'failClear', fromProperty: 'result', toId: 'failed', toProperty: 'mounted' },
+
+    // And a refusal takes both confirmations down: "saved" beside "could not be
+    // saved" is the same contradiction the other way round.
+    { fromId: 'write', fromProperty: 'failure', toId: 'onClear', toProperty: 'eval' },
+    { fromId: 'write', fromProperty: 'failure', toId: 'offClear', toProperty: 'eval' },
+    { fromId: 'read', fromProperty: 'failure', toId: 'onClear', toProperty: 'eval' },
+    { fromId: 'read', fromProperty: 'failure', toId: 'offClear', toProperty: 'eval' }
   ]
 };
 

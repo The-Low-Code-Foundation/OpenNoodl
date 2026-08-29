@@ -1426,3 +1426,153 @@ process-lifetime is the intended semantics — say so on the port documentation 
 ✅ **Held on the template side by never reading it back:** `plan` writes `Component.tpl002` **whole**
 on every run, so a stale scope is overwritten rather than inherited. That is one template's
 discipline, not a product fix.
+
+---
+
+## D36 — 🔴 A `Condition` can only ever turn a gate ON, so a screen accumulates contradictory answers
+
+**Found s15, by driving `Pages/Account` rather than by reading it.** Owner: **NONE** (held on the
+template side; see below).
+
+### What it is
+
+`Condition` pushes its `result` when it evaluates, and every gate in this template is a `Condition`
+feeding a `mounted` port. There is no shape that means *"and put the other one away"* — so a node
+whose answer has more than one form needs **one Condition per answer plus one clear per answer**, and
+nothing in the product says so.
+
+`Pages/Account` has three notices for one question: saved-on, saved-off, could-not-save. Each had a
+gate. A member who ticked the box and then unticked it, in one page life, was shown:
+
+> Saved. We will email you when something is posted.
+> Saved. We will not email you about new announcements.
+
+both at once, one directly under the other, with nothing to say which had won.
+
+### Why the specs could not see it
+
+Every reading taken before s15 was of a **first** change: the endpoint suites set the flag over HTTP,
+and the drive ticked the box once. A single transition leaves exactly one notice up and looks
+perfect. The defect needs two transitions **without a reload**, because a fresh load re-mounts from
+the parameters and clears everything — which is also why `§9 the fresh load shows no stale
+confirmation` passes and says nothing about this.
+
+⚠️ **The generic form is worth stating**: any spec that grades a confirmation by asserting the right
+sentence is present will pass while the wrong one is present too. The row that catches it is
+`not.toContain` on the sentence that should have gone.
+
+### Where it bites a person
+
+Anywhere a screen answers a question that has more than one answer and the person can change their
+mind without navigating: a setting, a filter, a form that can succeed after it has failed. The two
+sentences contradict each other, and the one the person acted on last is not distinguishable from the
+one that is stale.
+
+✅ **Held on the template side:** `Pages/Account` now carries `onClear`, `offClear` and `failClear` —
+constant-`false` Conditions on the same `mounted` inputs, fired by the paths that should undo each
+notice. That is the `missingClear` shape `Pages/Setup` established, applied properly. It is one
+template's discipline, not a product fix: nothing stops the next author wiring one gate and shipping.
+
+⚠️ **Suggested shape, not a design.** A `mounted` port that took a signal meaning "off", or a
+`Condition` that pushed `false` when its condition is false rather than not pushing at all, would
+make the correct graph the short one. At present the correct graph is twice the size of the wrong
+one, which is the wrong way round.
+
+---
+
+## D37 — 🔴 A control's label is only a click target if it comes from the control's own `label` port, and that port defaults OFF
+
+**Found s15, by measuring the rendered DOM rather than reading the graph.** Owner: **NONE**.
+
+### What it is
+
+`net.noodl.controls.checkbox` — and every control built with `addLabelInputs` — emits its
+`<label for="…">` only when `useLabel` is true, and `useLabel` **defaults to `false`**
+(`node-shared-port-definitions.ts:1440`). `Checkbox.tsx` returns the bare box in that case.
+
+So the obvious way to build a labelled checkbox — a `Text` node beside it in a row — produces a
+control whose words **do nothing when tapped**. The graph looks right, the screen looks right, and
+the only hit area is the box itself.
+
+### The reading
+
+`templates/members-area`'s account page was authored exactly that way. Measured:
+
+| | before | after |
+|---|---|---|
+| `<label for>` in the document | absent | present |
+| the sentence is a click target | **no** | yes |
+| hit area | the 24×24 box only | box + label |
+
+24×24 is exactly WCAG 2.2 SC 2.5.8's minimum and no more. The page's entire product is one decision,
+and on a phone the whole of it was a 24px square.
+
+### Where it bites a person
+
+Every consent box, every "remember me", every filter checkbox an agent or a person builds the obvious
+way. It fails silently — nothing is refused, nothing is logged, and the defect is invisible in the
+editor, in the graph, and in any spec that asserts the text is on the page.
+
+⚠️ **Suggested shape, not a design.** Either default `useLabel` on for controls whose label is the
+thing a person reads, or raise a diagnostic when a `Text` sibling of a control carries text and the
+control's own `label` port is unset. The second is what the door is for.
+
+✅ **Held on the template side:** the account page's box now sets `useLabel`, `label`,
+`labelSpacing` and the two `label*` text-style ports, and `tpl002-account-drive.test.ts` §11 grades
+`labelIsTarget` on the rendered DOM.
+
+---
+
+## D38 — ⚠️ The render harness inlines the whole project into every page, so an `outerHTML` reading cannot be trusted about a project string
+
+**Found s15.** Owner: **NONE**. Harness, not product — but it silently disarmed a shipped gate.
+
+### What it is
+
+`scripts/devtools/render-from-disk.js:452` writes `window.projectData = ${JSON.stringify(projectData)}`
+into a `<script>` in the body of every page it serves. A script element's `textContent` is its
+source, so **every sentence, label and node name the project is authored out of is in
+`document.documentElement.outerHTML` on every page**, whether or not anything rendered.
+
+### What it disarmed
+
+`helpers/members-drive.ts`'s `sentence()` walked `document.querySelectorAll('*')` for its `present`
+reading. `present` was therefore **true for every project string, always** — and
+`tpl001-empty-states.test.ts` carried a row asserting exactly that, under the heading *"…while still
+being IN the document, which is why `painted` is the reading"*. It would have gone green on a page
+that rendered nothing at all.
+
+Corrected: `sentence()` now excludes `SCRIPT`, `STYLE` and `NOSCRIPT`. With the instrument honest the
+row's claim turns out to be **false** — these gates are `mounted` (D7/D16), so a seeded arm's empty
+state is not in the document at all — and the row now says so. Nothing shipped wrong: `painted` was
+always the load-bearing half, and it was correct throughout.
+
+### The rule this leaves
+
+🔴 **An absence check on a PROJECT string read off `html` cannot pass; a PRESENCE check on one cannot
+fail.** The second is the expensive direction — it goes green on a blank page. Every `html` assertion
+in the drives today is `not.toContain` on **row data** (an announcement's title, a member's address),
+which reaches the document only by being fetched, so all of them remain sound. The one place a
+project sentence needed an absence reading is `tpl002-account-drive.test.ts` §1, and it takes it off
+`text`, with the reason written where the reading is.
+
+---
+
+## D39 — ⚠️ The unsubscribe page does not say whose list it is, and offers no way back
+
+**Found s15, by looking at it.** Owner: **NONE**. Needs a ruling, not a fix.
+
+`Pages/Unsubscribe` is opened from an email by somebody with no session, and its eyebrow is the
+literal `Members' area` — every other page's band carries the association's name. So a person who
+belongs to two associations running this template cannot tell which one they have just left. It also
+offers no link anywhere, while its own sentence says *"you can turn them back on from your account at
+any time"*.
+
+🔴 **It is not an oversight, which is why it is a ruling and not a fix.** The page's stated design is
+one sentence and no auth round trip — *"a band here would be an auth round trip on a page whose
+entire point is not needing one"*. The association name **is** publicly readable (`Pages/Landing`
+fetches it with no session), so it could be shown — but that is a second request on a page built to
+make none, and the cost lands on somebody on a phone in a mail client.
+
+**The question for Richard:** does the unsubscribe page name the association and offer a way back
+into the site, at the price of one public query, or does it stay a single sentence?

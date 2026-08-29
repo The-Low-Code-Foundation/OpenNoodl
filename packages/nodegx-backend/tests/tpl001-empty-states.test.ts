@@ -212,11 +212,29 @@ describe('TPL-001 AC6 — what a fresh install shows before anybody has posted a
       expect(`${where}:${states[`seeded.${where}`].painted}`).toBe(`${where}:false`);
     });
 
-    it('🔴 …while still being IN the document, which is why `painted` is the reading', () => {
-      // If this were false the arms would differ by the node existing at all,
-      // and `painted` would be measuring the same thing `present` does.
+    /**
+     * 🔴 **This row used to claim the opposite, and it passed for a reason that
+     * had nothing to do with the page.** It read *"…while still being IN the
+     * document, which is why `painted` is the reading"*, on the argument that if
+     * the arms differed by the node existing at all then `painted` would be
+     * measuring the same thing `present` does. Both halves were wrong.
+     *
+     * `sentence`'s `present` walked `querySelectorAll('*')`, and
+     * `render-from-disk.js:452` inlines the whole project as `window.projectData`
+     * in a `<script>` — whose `textContent` is its source. So `present` was true
+     * for every sentence in the template on every page, and this row would have
+     * gone green on a page that rendered nothing. It measured the harness.
+     *
+     * With scripts excluded it reports what is actually true, and what D7/D16
+     * decided: these gates are **`mounted`**, so a seeded arm's empty state is
+     * not in the document at all. `painted` and `present` therefore DO agree
+     * here — and `painted` stays the reading taken above anyway, because it is
+     * the half that still says something if a gate is ever put back on
+     * `visible`, where the node would be present and merely hidden.
+     */
+    it('🔴 …and it is gone from the document entirely, not merely hidden', () => {
       for (const { where } of EMPTY_STATES) {
-        expect(`${where}:${states[`seeded.${where}`].present}`).toBe(`${where}:true`);
+        expect(`${where}:${states[`seeded.${where}`].present}`).toBe(`${where}:false`);
       }
     });
 

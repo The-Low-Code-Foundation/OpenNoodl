@@ -233,13 +233,29 @@ export const present = (cs: Control[]): string[] => cs.map((c) => c.label).filte
  * findings that came from confusing "outside the viewport" with "not displayed".
  */
 export interface Sentence {
+  /**
+   * In the rendered tree — painted or not. **Scripts and styles excluded**; see
+   * the note in `SENTENCE`, without which this was true of every sentence in
+   * the template on every page.
+   */
   present: boolean;
   painted: boolean;
 }
 
 const SENTENCE = (text: string) => `(function () {
   var needle = ${JSON.stringify(text)};
-  var all = Array.prototype.slice.call(document.querySelectorAll('*'));
+  /**
+   * 🔴 NOT \`document.querySelectorAll('*')\`. \`render-from-disk.js:452\` inlines the
+   * whole project as \`window.projectData\` in a \`<script>\` in the body, and a
+   * script element's \`textContent\` is its source — so every sentence the
+   * template is authored out of matched, on every page, and \`present\` was true
+   * for a page that had rendered none of them. Scripts and styles are not
+   * content and never were; excluding them is what makes \`present\` mean what
+   * this interface says it means.
+   */
+  var all = Array.prototype.slice.call(document.querySelectorAll('body *')).filter(function (el) {
+    return el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE' && el.tagName !== 'NOSCRIPT';
+  });
   var carrying = all.filter(function (el) {
     if ((el.textContent || '').indexOf(needle) === -1) return false;
     // The innermost carriers only: an ancestor contains the sentence too, and
@@ -472,4 +488,85 @@ export async function signOut(page: RenderedPage): Promise<void> {
     doomed.forEach(function (k) { localStorage.removeItem(k); });
     return doomed.length;
   })()`);
+}
+
+// ── The tick box ─────────────────────────────────────────────────────────────
+
+/**
+ * What the one box on `Pages/Account` looks like from outside it.
+ *
+ * 🔴 **`checked` and `marked` are two different readings, and TPL-002's opt-in
+ * ruling is about the second.** `input.checked` is the control's state;
+ * `marked` is whether a person can SEE a tick. They come apart: the real
+ * `<input>` is `opacity: 0` (`assets/style.css`), so every mark this control
+ * draws comes from `Checkbox.tsx`'s `_renderDefaultCheck` — which returns null
+ * unless `useIcon` is on. A box whose state is `true` and whose mark is absent
+ * is FB-020 exactly, and two users reported that as *"the box cannot be
+ * checked"*. Asserting only `checked` would pass on it.
+ *
+ * 🔴 **`labelIsTarget` is the reading that says a phone can use this.** The
+ * checkbox's own `label` port emits `<label htmlFor>`, which makes the words a
+ * click target; a label drawn as a separate `Text` node does not, and then the
+ * only way to opt in is to hit the box itself. `useLabel` **defaults false**
+ * (`node-shared-port-definitions.ts:1440`), so this is what the difference is
+ * measured on rather than assumed from the graph.
+ */
+export interface Box {
+  present: boolean;
+  /** It has a box and is not `visibility: hidden` — see `sentence`. */
+  painted: boolean;
+  /** `input.checked` — the control's state. */
+  checked: boolean;
+  /** A tick a person can see: the default check, an icon, or an image. */
+  marked: boolean;
+  /** Its own hit area, in CSS px. WCAG 2.2 SC 2.5.8 asks for 24×24. */
+  width: number;
+  height: number;
+  /** Is the sentence beside it a click target — i.e. did it come from `label`? */
+  labelIsTarget: boolean;
+  x: number;
+  y: number;
+}
+
+const BOX = `(function () {
+  var el = document.querySelector('input[type=checkbox]');
+  if (!el) return JSON.stringify({ present: false, painted: false, checked: false, marked: false,
+    width: 0, height: 0, labelIsTarget: false, x: 0, y: 0 });
+  var r = el.getBoundingClientRect();
+  var cs = window.getComputedStyle(el);
+  // The wrapper is what draws the mark — the input itself is transparent.
+  var wrap = el.parentElement;
+  var marked = !!(wrap && (wrap.querySelector('[data-ndl-default-check]') || wrap.querySelector('img') ||
+    wrap.querySelector('svg')));
+  return JSON.stringify({
+    present: true,
+    painted: r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none',
+    checked: !!el.checked,
+    marked: marked,
+    width: Math.round(r.width), height: Math.round(r.height),
+    // A <label for> pointing at this input, or an ancestor <label> wrapping it.
+    labelIsTarget: !!(el.id && document.querySelector('label[for="' + el.id + '"]')) || !!el.closest('label'),
+    x: r.left + r.width / 2, y: r.top + r.height / 2
+  });
+})()`;
+
+export async function readBox(page: RenderedPage): Promise<Box> {
+  return JSON.parse(String(await page.evaluate(BOX))) as Box;
+}
+
+/**
+ * Tick or untick the box with a real trusted click at its centre.
+ *
+ * 🔴 `Input.dispatchMouseEvent`, not `el.click()`: the box's `onChange` is a
+ * native change event, and the runtime's `checkedChanged` hangs off it. A
+ * synthetic `click()` would fire it too, but it would also make this the only
+ * control in the drive not exercised the way a person exercises it — and
+ * FB-020's bug lived precisely in the user-click path while the setter path
+ * stayed correct.
+ */
+export async function clickBox(page: RenderedPage): Promise<void> {
+  const box = await readBox(page);
+  if (!box.present) throw new Error('no checkbox on this page');
+  if (!box.painted) throw new Error(`the checkbox is not painted: ${JSON.stringify(box)}`);
+  await clickAt(page, box.x, box.y);
 }

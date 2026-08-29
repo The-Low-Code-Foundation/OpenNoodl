@@ -222,8 +222,8 @@
     "Pages/Account": {
       "path": "Pages/Account",
       "type": "page",
-      "nodeCount": 24,
-      "connectionCount": 15,
+      "nodeCount": 25,
+      "connectionCount": 25,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -238,7 +238,7 @@
   },
   "stats": {
     "totalComponents": 29,
-    "totalNodes": 430,
-    "totalConnections": 465
+    "totalNodes": 431,
+    "totalConnections": 475
   }
 }
