@@ -48,10 +48,12 @@ Do not add Page from the node picker or use it outside a Router page component �
 | `sitemapIncluded` | Boolean | `true` | Lists this page in the generated sitemap |
 | `sitemapPriority` | Number | `0.5` | This page's importance relative to the rest of the site, from 0 to 1, in the sitemap |
 | `styleCss` | String | `/* background-color: red; */` | Raw CSS declarations applied to this element, overriding the styling ports above |
+| `title` | String | — | The page's title, used as the document title while this page is showing; defaults to the component name |
 | `twitter:card` | String | — | Shape of the preview on X/Twitter, e.g. summary or summary_large_image |
 | `twitter:description` | String | — | Summary shown when this page is shared on X/Twitter |
 | `twitter:image` | String | — | Image shown in the X/Twitter preview; it must be an absolute URL |
 | `twitter:title` | String | — | Title shown when this page is shared on X/Twitter; falls back to the Open Graph title |
+| `urlPath` | String | — | The URL pattern that routes to this page, e.g. "product/{productId}" — placeholders become path parameters a Page Inputs node reads |
 
 ### Signals
 
@@ -90,7 +92,7 @@ Some ports are discovered at runtime from user code, parameters or connected com
 
 ## Ports at runtime
 
-Runtime-determined inputs (runtime-discovered): `title` and `urlPath` are registered per instance by the editor connection, with defaults derived from the component name. The static catalog lists only the meta-tag, sitemap and padding inputs.
+Runtime-determined inputs (runtime-discovered): an editor connection re-sends `title` and `urlPath` per instance so the property panel can offer defaults derived from the component name. Both are ordinary declared inputs and are settable as parameters with no editor attached: the exporter reads them off the node into the router index, so a headlessly authored page carries its own title and URL. Nothing else on this node is runtime-determined.
 
 ## Examples
 

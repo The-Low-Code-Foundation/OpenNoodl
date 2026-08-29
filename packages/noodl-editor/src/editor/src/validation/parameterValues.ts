@@ -825,16 +825,25 @@ export function checkParameterValues(
           // which is **false** here — the type is known, and for a kit node
           // CN-003 worked to make it known. Saying it would teach a kit author
           // that their node is unrecognised at the exact moment it is not.
-          if (!isPageDeclarationGap(node.type, name)) dynamicSkips.push(name);
+          dynamicSkips.push(name);
           continue;
         }
         const suggestion = catalog.suggestPort(node.type, 'input', name);
+        // DEF-003 (b) — a box property on a node that has no box gets the exit as well as the
+        // diagnosis. `noBoxExit` returns undefined for every other unknown parameter, so the
+        // generic sentence is unchanged for them.
+        const boxExit = noBoxExit(catalog, node.type, name);
         diagnostics.push({
           code: DiagnosticCode.UnknownParameter,
           severity: 'warning',
-          message: `${node.type} has no input port "${name}", so this parameter is never read.`,
+          message:
+            `${node.type} has no input port "${name}", so this parameter is never read.` +
+            (boxExit ? ` ${boxExit}` : ''),
           location: locate(component, node, name),
-          ...(suggestion ? { suggestion } : {})
+          // A near-miss suggestion and the wrapper sentence would contradict each other —
+          // `borderRadius` on `Text` has no near-miss anyway, but a future port could mint one,
+          // and "did you mean X" beside "this node has no box" is two different repairs.
+          ...(suggestion && !boxExit ? { suggestion } : {})
         });
         continue;
       }
@@ -1037,33 +1046,102 @@ export function checkParameterValues(
 }
 
 /**
- * ✅ **D16 — the two fields on `Page` that are a declaration gap, not a finding.**
+ * ✅ **D16's carve-out is GONE, 2026-08-29 — DEF-003 (c) did what D16 said to do.**
  *
- * `Page` is `runtime-discovered`, and it declares **neither `title` nor
- * `urlPath`** as a static port: they are registered per instance by the router.
- * So the two most commonly set parameters on the most commonly written node in
- * the product reach the carve-out, and **96 of the 947 measured skips are
- * `Page`** — every page in every project carries at least one.
+ * D16 suppressed the `dynamic-port-skipped` notice for exactly `title` and `urlPath` on `Page`,
+ * because `Page` declared neither as a static port — they existed only inside a `setup()` that
+ * returns immediately without a local editor connection — so the notice fired on **96 of the 947
+ * measured skips** and on every correct page anybody had ever written. Its own closing line named
+ * the real fix and the condition for removing itself: *"the honest fix is to declare the ports on
+ * `Page`, at which point this function has no population and should be deleted rather than left."*
  *
- * The notice is a true statement about the checker, but here it describes one
- * shipped type's missing declaration rather than anything about the graph, and
- * it fires on work that is completely correct.
+ * Both are now declared inputs on the node (`noodl-viewer-react/src/nodes/navigation/page.ts`), so
+ * `catalog.getPort` resolves them and the carve-out's population is empty. Deleted, per that
+ * instruction: a suppression that can never fire is indistinguishable from a rule nobody
+ * understands, and the next reader would have to re-derive why it is there.
  *
- * 🔴 **Narrow to these two names on purpose, and this is the binding half of the
- * ruling.** Richard's recorded worry is the effect on LLM page authoring, and
- * suppressing the *node type* wholesale is exactly what would cause it: a model
- * that invents `pageTitle` or `path` on a `Page` would get silence where it
- * needs the notice. Everything except these two names still reports.
- *
- * ⚠️ **The honest fix is to declare the ports on `Page`**, at which point this
- * function has no population and should be deleted rather than left. It is here
- * because that is a runtime change to a shipped type and this is a validation
- * ruling.
+ * 🔴 The binding half of Richard's ruling — that a `Page` carrying an *invented* parameter
+ * (`pageTitle`, `path`) must still be reported — is now true by construction rather than by
+ * narrowness, and `stagingDiagnostics.test.ts` still grades it.
  */
-const PAGE_UNDECLARED_PORTS = new Set(['title', 'urlPath']);
 
-function isPageDeclarationGap(nodeType: string, parameterName: string): boolean {
-  return nodeType === 'Page' && PAGE_UNDECLARED_PORTS.has(parameterName);
+/**
+ * DEF-003 (b) — the `Group` wrapper, said out loud at the moment it is needed.
+ *
+ * `Text` takes margins (`addMarginInputs`) and nothing else from the box model: no padding, no
+ * background, no border, no radius. Driven at HEAD — `paddingLeft: 24` on a `Text` renders with a
+ * computed `padding-left` of `0px`, while the same value on a wrapping `Group` renders `24px`. So
+ * a padded label needs a `Group` around it, every time, for every author.
+ *
+ * The door already refused the parameter (`unknown-parameter`, which blocks authored output), but
+ * it said only *"Text has no input port "paddingLeft""*. That is true and it is a dead end: an
+ * agent told a port does not exist looks for a differently-named one, and there isn't one. Phase 76
+ * F16 and phase 77 D7 are both authors who went round that loop.
+ *
+ * 🔴 **Deliberately keyed on the node having NO box property at all, not on the node being `Text`.**
+ * A type that has padding but not `clip` is a different sentence — the box exists and this one
+ * property is missing — and telling its author to wrap it in a `Group` would be wrong. The probe is
+ * three ports that any boxed visual in this library declares together.
+ */
+const BOX_PARAMETERS = new Set([
+  'paddingLeft',
+  'paddingRight',
+  'paddingTop',
+  'paddingBottom',
+  'backgroundColor',
+  'borderRadius',
+  'borderTopLeftRadius',
+  'borderTopRightRadius',
+  'borderBottomLeftRadius',
+  'borderBottomRightRadius',
+  'borderWidth',
+  'borderStyle',
+  'borderColor',
+  'borderTopWidth',
+  'borderTopStyle',
+  'borderTopColor',
+  'borderLeftWidth',
+  'borderLeftStyle',
+  'borderLeftColor',
+  'borderRightWidth',
+  'borderRightStyle',
+  'borderRightColor',
+  'borderBottomWidth',
+  'borderBottomStyle',
+  'borderBottomColor',
+  'boxShadowEnabled',
+  'boxShadowColor',
+  'boxShadowOffsetX',
+  'boxShadowOffsetY',
+  'boxShadowBlurRadius',
+  'boxShadowSpreadRadius',
+  'boxShadowInset',
+  'clip'
+]);
+
+/**
+ * "Does this node paint a surface of its own?", asked under every name this library gives it.
+ *
+ * 🔴 `fillColor`/`strokeColor` are here because the first version of this probe — padding, fill,
+ * border, box names only — fired on **`Circle`**, which paints perfectly well through
+ * `fillColor`, `fillEnabled`, `strokeColor` and `strokeWidth`. Telling that author *"Circle has no
+ * box of its own to paint, wrap it in a Group"* is false and sends them past the port they wanted.
+ * A rule keyed on the parameter's name alone cannot see the difference; the arms in
+ * `tests-unit/def-003` carry `Circle` as a control for exactly this.
+ *
+ * What is left after the exclusion is the population the sentence is true of: `Text`, `Columns`,
+ * `For Each`, `Drag` and `Component Children` — nodes that draw content or nothing, never a
+ * surface.
+ */
+const BOX_PROBE = ['paddingLeft', 'backgroundColor', 'borderRadius', 'fillColor', 'strokeColor'] as const;
+
+export function noBoxExit(catalog: CatalogIndex, nodeType: string, parameterName: string): string | undefined {
+  if (!BOX_PARAMETERS.has(parameterName)) return undefined;
+  if (BOX_PROBE.some((probe) => catalog.getPort(nodeType, 'input', probe))) return undefined;
+  return (
+    `${nodeType} has no box of its own to paint — it takes margins, but padding, background, ` +
+    `border and radius all belong to a container. Wrap it in a Group and set "${parameterName}" there.`
+  );
 }
 
 function locate(component: string, node: ParameterizedNode, port: string) {

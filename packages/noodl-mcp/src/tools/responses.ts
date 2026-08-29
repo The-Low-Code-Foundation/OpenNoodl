@@ -235,6 +235,11 @@ export interface NodeTypePortsView {
   runtimeBehavior?: string;
   /** Names that matched no port. Reported rather than dropped. */
   notFound?: string[];
+  /**
+   * DEF-003 (b) — why, for the misses where "no such port" is a dead end rather than a typo.
+   * Keyed by the name in `notFound`; absent when nothing has a reason to give.
+   */
+  notFoundNotes?: Record<string, string>;
 }
 
 export interface GetNodeTypeResponse {

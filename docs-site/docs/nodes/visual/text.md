@@ -3,11 +3,11 @@ title: "Text"
 ---
 Renders a piece of text with typography controlled by a text style or explicit font parameters.
 
-Text displays the string on its `text` input. Typography comes either from a project-wide `textStyle` (preferred, keeps the app consistent) or from explicit `fontFamily`/`fontSize`/`color` parameters that override it. Like all visual nodes it sits in the children hierarchy, has size/margin/alignment parameters, and reports basic interaction signals (`onClick`, hover) and geometry.
+Text displays the string on its `text` input. Typography comes either from a project-wide `textStyle` (preferred, keeps the app consistent) or from explicit `fontFamily`/`fontSize`/`color` parameters that override it. Like all visual nodes it sits in the children hierarchy, has size/margin/alignment parameters, and reports basic interaction signals (`onClick`, hover) and geometry. Text has no box of its own: it takes margins, but padding, background colour, border and corner radius are not ports on it — a padded, filled or rounded label is a Text inside a Group carrying those, which is what the design system's own components do.
 
 ## When to use it
 
-Any static or data-bound text: headings, labels, list-item fields, error messages. Not for user-editable text (use net.noodl.controls.textinput) and not for button captions (the Button control has its own label).
+Any static or data-bound text: headings, labels, list-item fields, error messages. Not for user-editable text (use net.noodl.controls.textinput) and not for button captions (the Button control has its own label). For anything with an inset, a fill or a rounded edge, wrap the Text in a Group and set padding, backgroundColor and borderRadius on the Group.
 
 ## At a glance
 

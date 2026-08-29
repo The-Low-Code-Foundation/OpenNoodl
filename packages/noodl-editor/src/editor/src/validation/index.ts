@@ -143,6 +143,10 @@ export type {
 } from './authoringVocabulary';
 export {
   checkParameterValues,
+  // DEF-003 (b) — the `Group` wrapper sentence, shared rather than twinned: the write gate and
+  // `get_node_type`'s `notFound` are the two places an author meets a box property on a boxless
+  // node, and they must not answer it differently.
+  noBoxExit,
   portTypeShape,
   wireFormatFor,
   wireFormatHint,

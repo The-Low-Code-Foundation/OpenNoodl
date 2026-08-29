@@ -80,6 +80,50 @@ const PageNode = {
   // (findDOMNode is gone in React 19).
   noodlNodeAsProp: true,
   inputs: {
+    /**
+     * DEF-003 (c) — declared here, not only pushed from `setup()`.
+     *
+     * `title` and `urlPath` have always *worked* without an editor: the exporter reads them
+     * straight off the node's parameters (`utils/exporter/router.ts`, `_getPageInfo`) into the
+     * router index, and the Router hands `title` to `Noodl.SEO.setTitle` when the page mounts.
+     * Driven headlessly: a page authored through the MCP door with `title: "The Honest Title"`
+     * and no editor ever attached renders with that `document.title`.
+     *
+     * 🔴 What was missing was the *declaration*. Because the only statement that these ports
+     * exist lived inside `setup()` — which returns immediately unless an editor connection is
+     * running locally — the generated node catalog never saw them, and `get_node_type("Page")`
+     * answered `notFound: ["title", "urlPath"]` for the two most commonly set ports on a page.
+     * An agent reading that reaches for `Noodl.SEO.setTitle` in a JavaScript node, which is how
+     * the site-builder template ended up carrying that workaround.
+     *
+     * ⚠️ The dynamic ports in `setup()` stay, and they still win where they are sent: a dynamic
+     * port **replaces** a static one of the same name and plug (FB-026, `portOverrides.ts`), so
+     * an editor-connected panel keeps the component-name-derived defaults it has always shown.
+     * These declarations are what everything *without* an editor sees — the catalog, the write
+     * gate, the docs, a deployed viewer.
+     */
+    title: {
+      index: 1,
+      displayName: 'Title',
+      description:
+        "The page's title, used as the document title while this page is showing; defaults to the component name",
+      group: 'General',
+      type: 'string',
+      set: function (this: PageNodeInstance, value: string) {
+        this._internal.title = value;
+      }
+    },
+    urlPath: {
+      index: 2,
+      displayName: 'Url Path',
+      description:
+        'The URL pattern that routes to this page, e.g. "product/{productId}" — placeholders become path parameters a Page Inputs node reads',
+      group: 'General',
+      type: 'string',
+      set: function (this: PageNodeInstance, value: string) {
+        this._internal.urlPath = value;
+      }
+    },
     // SSR readiness handshake. When this signal is connected, `initialize`
     // emits SSR_PageLoading and the SSR server holds the render until the
     // graph triggers the signal (→ SSR_PageReady) — e.g. after a data fetch
@@ -189,26 +233,12 @@ const PageNode = {
     },
     setUrlPath: function (this: PageNodeInstance, value: string) {
       this._internal.urlPath = value;
-    },
-    registerInputIfNeeded: function (this: PageNodeInstance, name: string) {
-      if (this.hasInput(name)) {
-        return;
-      }
-
-      /*   if (name === 'router') return this.registerInput(name, {
-                set: this.setRouter.bind(this)
-            })*/
-
-      if (name === 'title')
-        return this.registerInput(name, {
-          set: this.setTitle.bind(this)
-        });
-
-      if (name === 'urlPath')
-        return this.registerInput(name, {
-          set: this.setUrlPath.bind(this)
-        });
     }
+    // DEF-003 (c) — the `registerInputIfNeeded` override that used to mint `title` and `urlPath`
+    // lazily is gone: both are declared inputs above, so `hasInput` is true before it could run
+    // and the override's every branch was already unreachable. Keeping it would have left two
+    // statements of where these ports come from, which is how the catalog came to disagree with
+    // the runtime in the first place.
   },
   setup(context: NodeContextLike, graphModel: GraphModelLike) {
     if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {

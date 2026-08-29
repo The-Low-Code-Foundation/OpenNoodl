@@ -17,6 +17,8 @@
 export {
   SemanticValidator,
   CatalogIndex,
+  // DEF-003 (b) — see the editor-side note: one sentence, two doors.
+  noBoxExit,
   loadDefaultCatalog,
   formatDiagnosticLine,
   sortDiagnostics,

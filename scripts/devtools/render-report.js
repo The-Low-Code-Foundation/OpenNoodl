@@ -437,6 +437,25 @@ function visualTypeNames(catalogPath = ENRICHED_CATALOG_JSON) {
  */
 const CONTENT_BEARING_PORTS = /^(text|label|placeholder|title|caption|heading|src|source|icon)$/i;
 
+/**
+ * 🔴 Types whose content-shaped port draws nothing, so the derivation above must not count them.
+ *
+ * `Page` is the whole population and it arrived with DEF-003 (c), which declared `title` and
+ * `urlPath` as real ports on the node — they had existed only as editor-pushed dynamic ports, so
+ * the catalog had never seen them. `title` is in the regex above, and a `Page` is the *root* of a
+ * page: the moment it counted as content-bearing, "this page draws containers and nothing else"
+ * became underivable, because the empty container was itself the evidence of content. The AWP-003
+ * fixture — DeepSeek V4 Pro's real turn-60 artefact, a page whose visual root is a bare `Page` —
+ * went from `page-has-no-content` to `undetermined`, which is a blank page the tool can no longer
+ * explain.
+ *
+ * ⚠️ A `Page`'s `title` is the **document** title. It reaches `Noodl.SEO.setTitle` and never the
+ * screen, which is exactly why the regex's name test cannot decide this one. Any future type in
+ * the same position — a content-shaped port whose value is metadata — belongs here and not in a
+ * narrowed regex: `title` on a kit node that really does render it should still count.
+ */
+const CONTAINER_DESPITE_A_CONTENT_PORT = new Set(['Page']);
+
 const contentTypesCache = new Map();
 
 function contentBearingTypeNames(catalogPath = ENRICHED_CATALOG_JSON) {
@@ -446,7 +465,12 @@ function contentBearingTypeNames(catalogPath = ENRICHED_CATALOG_JSON) {
     const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
     names = new Set(
       (catalog.nodes || [])
-        .filter((n) => n.isVisual === true && (n.inputs || []).some((p) => CONTENT_BEARING_PORTS.test(p.name)))
+        .filter(
+          (n) =>
+            n.isVisual === true &&
+            !CONTAINER_DESPITE_A_CONTENT_PORT.has(n.typeName) &&
+            (n.inputs || []).some((p) => CONTENT_BEARING_PORTS.test(p.name))
+        )
         .map((n) => n.typeName)
     );
     if (names.size === 0) names = null;

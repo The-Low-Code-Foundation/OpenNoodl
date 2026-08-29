@@ -32,7 +32,7 @@ Documentation links, third-party checkout, mailto/tel URLs. For anything inside 
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `do` | Signal | — | Opens Link, or fires Failure if there is no Link or the browser blocked the new tab |
+| `do` | Signal | — | Opens Link, or fires Failure if there is no Link or the link was opened outside a user action |
 
 ## Outputs
 
@@ -41,7 +41,7 @@ Documentation links, third-party checkout, mailto/tel URLs. For anything inside 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `completed` | Signal | — | Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error |
-| `done` | Signal | — | Fires once the link has been handed to the browser. With Open In New Tab off the page is replaced, so nothing downstream of this may still exist |
+| `done` | Signal | — | Fires once the link has been handed to the browser. It does not promise a tab appeared — nothing readable in the page does, once Open In New Tab is on. With it off the page is replaced, so nothing downstream of this may still exist |
 | `unchanged` | Signal | — | Fires when there is no browser to open a link in — a server-side render, where there is nothing to do and nothing to fail at |
 
 ### Failure outputs
@@ -49,7 +49,7 @@ Documentation links, third-party checkout, mailto/tel URLs. For anything inside 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `error` | String | — | Why the link could not be opened, set just before Failure fires |
-| `failure` | Signal | — | Fires when no Link was set, or the browser blocked the new tab |
+| `failure` | Signal | — | Fires when no Link was set, or when the link was opened outside a user action — the case a browser refuses a new tab for. A tab blocked for any other reason still reports Done |
 
 ## Watch out for
 

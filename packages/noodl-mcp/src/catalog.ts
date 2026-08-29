@@ -8,7 +8,7 @@
  * plus the validated example library (list_examples / get_example).
  */
 
-import { CatalogIndex } from './editor-deps';
+import { CatalogIndex, noBoxExit } from './editor-deps';
 import type { CatalogNode, CatalogPort, NodeCatalog } from './editor-deps';
 
 // CN-003 — the shared mapping, called by this server *and* by the editor over
@@ -661,6 +661,7 @@ export function getNodeTypePorts(
   inputs: PortDetail[];
   outputs: PortDetail[];
   notFound?: string[];
+  notFoundNotes?: Record<string, string>;
 }) | NodeTypeLookupMiss {
   const full = getNodeTypeDetail(typeName);
   if ('error' in full) return full;
@@ -669,6 +670,20 @@ export function getNodeTypePorts(
   const outputs = full.outputs.filter((p) => wanted.has(p.name));
   const found = new Set([...inputs, ...outputs].map((p) => p.name));
   const notFound = [...wanted].filter((n) => !found.has(n));
+  /**
+   * DEF-003 (b) — a reason, for the misses that have one.
+   *
+   * `notFound: ["paddingLeft"]` is a true answer and a dead end: an author told a port does not
+   * exist looks for a differently-named one, and on a `Text` there isn't one — padding, fill,
+   * border and radius all live on a wrapping `Group`. Phase 76 F16 and phase 77 D7 are both
+   * authors who went round that loop. The sentence is `noBoxExit`'s, the same one the write gate
+   * uses, so the two doors cannot come to disagree about it.
+   */
+  const notFoundNotes: Record<string, string> = {};
+  for (const name of notFound) {
+    const note = noBoxExit(catalogIndex(), typeName, name);
+    if (note) notFoundNotes[name] = note;
+  }
   return {
     typeName: full.typeName,
     displayName: full.displayName,
@@ -677,7 +692,8 @@ export function getNodeTypePorts(
     // Carried whenever it exists here, not only for misses: a port this call
     // could not find may be one `runtimeBehavior` is the only record of.
     ...(full.runtimeBehavior ? { runtimeBehavior: full.runtimeBehavior } : {}),
-    ...(notFound.length > 0 ? { notFound } : {})
+    ...(notFound.length > 0 ? { notFound } : {}),
+    ...(Object.keys(notFoundNotes).length > 0 ? { notFoundNotes } : {})
   };
 }
 

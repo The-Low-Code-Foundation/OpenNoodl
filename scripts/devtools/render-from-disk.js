@@ -281,7 +281,24 @@ function buildProjectData() {
       if (n.type === 'Router') routers.push({ name: (n.parameters || {}).name, pages: (n.parameters || {}).pages });
       if (n.type === 'Page') {
         const p = n.parameters || {};
-        pages.push({ component: c.name, path: p.urlPath, title: p.title });
+        /**
+         * DEF-003 (c). `title` falls back to the component's own last path segment, because the
+         * exporter does (`editor/src/utils/exporter/router.ts`, `_getPageInfo`) and this file's
+         * whole job is to reproduce the export contract.
+         *
+         * 🔴 Without it, a page that sets no `title` reached the Router with `title: undefined`,
+         * the Router handed that to `Noodl.SEO.setTitle`, and the browser's title became the
+         * literal string `"undefined"` — a title the product itself can never produce. Anything
+         * measuring `document.title` through this harness (`render_report`, the site drives) was
+         * therefore reading a defect belonging to the harness. It cost this session an hour of
+         * chasing a phantom before the exporter was read.
+         */
+        const titleParts = String(c.name).split('/');
+        pages.push({
+          component: c.name,
+          path: p.urlPath,
+          title: p.title === undefined ? titleParts[titleParts.length - 1] : p.title
+        });
       }
       (n.children || []).forEach((k) => stack.push(k));
     }

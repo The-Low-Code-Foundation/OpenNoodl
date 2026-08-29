@@ -1,8 +1,8 @@
 {
   "typeName": "Text",
   "summary": "Renders a piece of text with typography controlled by a text style or explicit font parameters.",
-  "description": "Text displays the string on its `text` input. Typography comes either from a project-wide `textStyle` (preferred, keeps the app consistent) or from explicit `fontFamily`/`fontSize`/`color` parameters that override it. Like all visual nodes it sits in the children hierarchy, has size/margin/alignment parameters, and reports basic interaction signals (`onClick`, hover) and geometry.",
-  "whenToUse": "Any static or data-bound text: headings, labels, list-item fields, error messages. Not for user-editable text (use net.noodl.controls.textinput) and not for button captions (the Button control has its own label).",
+  "description": "Text displays the string on its `text` input. Typography comes either from a project-wide `textStyle` (preferred, keeps the app consistent) or from explicit `fontFamily`/`fontSize`/`color` parameters that override it. Like all visual nodes it sits in the children hierarchy, has size/margin/alignment parameters, and reports basic interaction signals (`onClick`, hover) and geometry. Text has no box of its own: it takes margins, but padding, background colour, border and corner radius are not ports on it — a padded, filled or rounded label is a Text inside a Group carrying those, which is what the design system's own components do.",
+  "whenToUse": "Any static or data-bound text: headings, labels, list-item fields, error messages. Not for user-editable text (use net.noodl.controls.textinput) and not for button captions (the Button control has its own label). For anything with an inset, a fill or a rounded edge, wrap the Text in a Group and set padding, backgroundColor and borderRadius on the Group.",
   "ports": {
     "text": "The string to render; bind data here (e.g. a Component Inputs property or a String variable).",
     "textStyle": "Named project text style supplying font, size and color; explicit font parameters on this node override individual fields of it.",

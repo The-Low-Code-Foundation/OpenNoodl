@@ -21332,6 +21332,18 @@
           "index": 100011
         },
         {
+          "name": "title",
+          "displayName": "Title",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The page's title, used as the document title while this page is showing; defaults to the component name",
+          "index": 1
+        },
+        {
           "name": "twitter:card",
           "displayName": "Card",
           "editorName": "Twitter Card",
@@ -21382,6 +21394,18 @@
           "isSignal": false,
           "description": "Title shown when this page is shared on X/Twitter; falls back to the Open Graph title",
           "index": 80010
+        },
+        {
+          "name": "urlPath",
+          "displayName": "Url Path",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The URL pattern that routes to this page, e.g. \"product/{productId}\" — placeholders become path parameters a Page Inputs node reads",
+          "index": 2
         }
       ],
       "outputs": [
@@ -21529,7 +21553,7 @@
           "title": "String value; the page title, shown as the document title when the page is active. Defaults to the component name.",
           "urlPath": "String value; the URL pattern that routes to this page, e.g. \"product/{productId}\" — placeholders become path parameters readable via PageInputs. Defaults to the title, lowercased and hyphenated."
         },
-        "runtimeBehavior": "Runtime-determined inputs (runtime-discovered): `title` and `urlPath` are registered per instance by the editor connection, with defaults derived from the component name. The static catalog lists only the meta-tag, sitemap and padding inputs.",
+        "runtimeBehavior": "Runtime-determined inputs (runtime-discovered): an editor connection re-sends `title` and `urlPath` per instance so the property panel can offer defaults derived from the component name. Both are ordinary declared inputs and are settable as parameters with no editor attached: the exporter reads them off the node into the router index, so a headlessly authored page carries its own title and URL. Nothing else on this node is runtime-determined.",
         "examples": [
           "ui-page-shell-bands",
           "ui-card-grid-repeater"
@@ -30530,8 +30554,8 @@
       "enrichment": {
         "typeName": "Text",
         "summary": "Renders a piece of text with typography controlled by a text style or explicit font parameters.",
-        "description": "Text displays the string on its `text` input. Typography comes either from a project-wide `textStyle` (preferred, keeps the app consistent) or from explicit `fontFamily`/`fontSize`/`color` parameters that override it. Like all visual nodes it sits in the children hierarchy, has size/margin/alignment parameters, and reports basic interaction signals (`onClick`, hover) and geometry.",
-        "whenToUse": "Any static or data-bound text: headings, labels, list-item fields, error messages. Not for user-editable text (use net.noodl.controls.textinput) and not for button captions (the Button control has its own label).",
+        "description": "Text displays the string on its `text` input. Typography comes either from a project-wide `textStyle` (preferred, keeps the app consistent) or from explicit `fontFamily`/`fontSize`/`color` parameters that override it. Like all visual nodes it sits in the children hierarchy, has size/margin/alignment parameters, and reports basic interaction signals (`onClick`, hover) and geometry. Text has no box of its own: it takes margins, but padding, background colour, border and corner radius are not ports on it — a padded, filled or rounded label is a Text inside a Group carrying those, which is what the design system's own components do.",
+        "whenToUse": "Any static or data-bound text: headings, labels, list-item fields, error messages. Not for user-editable text (use net.noodl.controls.textinput) and not for button captions (the Button control has its own label). For anything with an inset, a fill or a rounded edge, wrap the Text in a Group and set padding, backgroundColor and borderRadius on the Group.",
         "ports": {
           "text": "The string to render; bind data here (e.g. a Component Inputs property or a String variable).",
           "textStyle": "Named project text style supplying font, size and color; explicit font parameters on this node override individual fields of it.",
@@ -55324,7 +55348,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Opens Link, or fires Failure if there is no Link or the browser blocked the new tab"
+          "description": "Opens Link, or fires Failure if there is no Link or the link was opened outside a user action"
         },
         {
           "name": "link",
@@ -55371,7 +55395,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the link has been handed to the browser. With Open In New Tab off the page is replaced, so nothing downstream of this may still exist"
+          "description": "Fires once the link has been handed to the browser. It does not promise a tab appeared — nothing readable in the page does, once Open In New Tab is on. With it off the page is replaced, so nothing downstream of this may still exist"
         },
         {
           "name": "error",
@@ -55393,7 +55417,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when no Link was set, or the browser blocked the new tab"
+          "description": "Fires when no Link was set, or when the link was opened outside a user action — the case a browser refuses a new tab for. A tab blocked for any other reason still reports Done"
         },
         {
           "name": "unchanged",

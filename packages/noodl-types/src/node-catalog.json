@@ -19742,6 +19742,18 @@
           "index": 100011
         },
         {
+          "name": "title",
+          "displayName": "Title",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The page's title, used as the document title while this page is showing; defaults to the component name",
+          "index": 1
+        },
+        {
           "name": "twitter:card",
           "displayName": "Card",
           "editorName": "Twitter Card",
@@ -19792,6 +19804,18 @@
           "isSignal": false,
           "description": "Title shown when this page is shared on X/Twitter; falls back to the Open Graph title",
           "index": 80010
+        },
+        {
+          "name": "urlPath",
+          "displayName": "Url Path",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The URL pattern that routes to this page, e.g. \"product/{productId}\" — placeholders become path parameters a Page Inputs node reads",
+          "index": 2
         }
       ],
       "outputs": [
@@ -51387,7 +51411,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Opens Link, or fires Failure if there is no Link or the browser blocked the new tab"
+          "description": "Opens Link, or fires Failure if there is no Link or the link was opened outside a user action"
         },
         {
           "name": "link",
@@ -51434,7 +51458,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the link has been handed to the browser. With Open In New Tab off the page is replaced, so nothing downstream of this may still exist"
+          "description": "Fires once the link has been handed to the browser. It does not promise a tab appeared — nothing readable in the page does, once Open In New Tab is on. With it off the page is replaced, so nothing downstream of this may still exist"
         },
         {
           "name": "error",
@@ -51456,7 +51480,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when no Link was set, or the browser blocked the new tab"
+          "description": "Fires when no Link was set, or when the link was opened outside a user action — the case a browser refuses a new tab for. A tab blocked for any other reason still reports Done"
         },
         {
           "name": "unchanged",

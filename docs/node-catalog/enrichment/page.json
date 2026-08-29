@@ -10,7 +10,7 @@
     "title": "String value; the page title, shown as the document title when the page is active. Defaults to the component name.",
     "urlPath": "String value; the URL pattern that routes to this page, e.g. \"product/{productId}\" — placeholders become path parameters readable via PageInputs. Defaults to the title, lowercased and hyphenated."
   },
-  "runtimeBehavior": "Runtime-determined inputs (runtime-discovered): `title` and `urlPath` are registered per instance by the editor connection, with defaults derived from the component name. The static catalog lists only the meta-tag, sitemap and padding inputs.",
+  "runtimeBehavior": "Runtime-determined inputs (runtime-discovered): an editor connection re-sends `title` and `urlPath` per instance so the property panel can offer defaults derived from the component name. Both are ordinary declared inputs and are settable as parameters with no editor attached: the exporter reads them off the node into the router index, so a headlessly authored page carries its own title and URL. Nothing else on this node is runtime-determined.",
   "relatedNodes": [
     "Router",
     "RouterNavigate",
