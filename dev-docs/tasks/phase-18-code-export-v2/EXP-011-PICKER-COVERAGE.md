@@ -69,8 +69,9 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
 
 5. **Navigation (5).** ✅ **`Page Inputs` built, driven and gated in session 40 — §11**, along
    with the route patterns and the Navigate url builder, which were both recorded `translated`
-   and both emitted urls react-router could not match. The remaining four — `Navigate To Path`,
-   `External Link`, the component stack pair — are named in §11.8.
+   and both emitted urls react-router could not match. ✅ **`External Link` in session 41 — §12**,
+   whose drive found a defect in the node itself (DEF-016). The remaining three —
+   `Navigate To Path` and the component stack pair — are named in §12.7.
 6. **Cloud Services (9).** Mostly **unblocked by EXP-009**, and several may fall out of it for
    free — `Cloud Function`, `Record`, `Set User Properties`, `Sign In With`. Re-measure after
    EXP-009 lands rather than planning against today's list.
@@ -100,7 +101,8 @@ nobody will ever do. Most of the current 101 exemptions say the latter, verbatim
 ## §4 Acceptance criteria
 
 1. ✅ **The picker number moves and holds.** Every slice raises `pickerCoverageFloor` in the same
-   commit — `export-ledger:picker` fails if it does not. *(51 → 55 → 59 → 60 → 66, sessions 35–38.)*
+   commit — `export-ledger:picker` fails if it does not.
+   *(51 → 55 → 59 → 60 → 66 → 67 → 68, sessions 35–41.)*
 2. ✅ **Tier 1 complete ⇒ 66 of 127 (52.0%).** Tiers 1+2 ⇒ ≈87 (≈68%). Everything except the
    "not a target" list ⇒ ≈108 (≈85%).
    *(The original projection said ~72. Session 37 revised it to "nearer 66 than 72", because
@@ -981,3 +983,145 @@ present*), which did move; D4 alone would pass on an app that rendered nothing a
   (`_setPageParams` has two callers). This slice translated the Router's half only; a component
   stack does not route in the export at all, so the gate in §11.3 refuses those reads for the
   right reason today, by accident of the same rule.
+
+---
+
+## §12 Tier 2.5 continued — `External Link`, and the node that has been lying to its authors all along (session 41, 2026-08-29)
+
+**68 of 127 (53.5%).** The cheapest node left anywhere in the ledger, and it took an afternoon
+exactly as §11.8 predicted — but not for the reasons §11.8 gave, and the drive found a product
+defect that has nothing to do with the export.
+
+### §12.1 What the node turned out to be
+
+`window.open(link, target, params)`, plus the two guards the interpreter runs around it:
+
+```tsx
+const typedLinkHref = typedId.get();
+if (typedLinkHref !== undefined && typedLinkHref !== null && typedLinkHref !== '' &&
+    window.open(typedLinkHref, '_blank', 'noopener,noreferrer')) {
+  navigate(`/note/${encodeURIComponent('opened')}`);
+} else {
+  navigate(`/note/${encodeURIComponent('blocked')}`);
+}
+```
+
+🔴 **`&&` is the runtime's own short circuit, and it is load-bearing.** With no link the
+interpreter reports failure and returns *before* `window.open` — and `window.open('')` opens a
+**blank tab**. A guard that ran the call anyway would open a window the app never opens. This is
+why the guard survives even when nothing is wired to `Failure`, and sabotage arm A is the row that
+proves it (§12.5).
+
+A literal url is provably non-empty, so it emits neither guard nor local and the commonest shape in
+any project stays one expression:
+
+```tsx
+<button onClick={() => window.open('https://example.com/handbook', '_blank', 'noopener,noreferrer')}>
+```
+
+### §12.2 `Open In New Tab` unset is `true`, and that is what makes the port answerable
+
+The runtime reads this one input **two different ways in two adjacent lines** — `params` is
+truthiness (`openInNewTab ? … : ''`), `target` is strict equality (`=== true || === undefined`).
+They agree for `true`, for `false`, and for the unset port; they disagree for every *other* truthy
+value.
+
+Unset is `true` rather than `undefined` because the port declares `default: true` and
+`registerInput` writes a declared default straight into `_inputValues` (`node.ts:138`) — so
+`getInputValue` never sees the `undefined` its own target expression tests for. That collapses the
+three cases the editor can express into two, and **a wired `Open In New Tab` defers**, naming the
+two readings. The one deferral in this slice that is about the runtime rather than about the
+export.
+
+### §12.3 The port the node's own source does not show
+
+`EXTERNAL_LINK_OUTPUTS` was first written by reading the node's literal `outputs:` object: `done`,
+`unchanged`, `failure`, `error`. Four ports.
+
+The editor draws **five**. The definition spreads `...outcomeOutputs({ done, unchanged, failure })`,
+and that helper adds a `Completed` port to every node that uses it (`outcome.ts:164`). So the first
+version of the refusal sentence told an author that a port they were looking at *did not exist* —
+`its completed output is consumed, and this node publishes only Done, Unchanged, Failure and Error`.
+
+🔴 **A definition that spreads a helper is not a port list, and reading it as one produces a
+confident falsehood.** Caught by asking the catalog through the MCP server's `get_node_type` while
+setting up the authoring project — not by reading the runtime file a second time, which would have
+returned the same four ports however carefully it was read. The artefact is the catalog; the source
+file is one input to it.
+
+`Completed` now defers on its own sentence: it fires after every outcome, and this slice emits the
+outcome arms rather than a join beneath them — `HTTP Request` deferred its own on the same ground.
+
+### §12.4 What defers, and why each is about a mechanism
+
+| refusal | the mechanism |
+|---|---|
+| a wired `Open In New Tab` | the two readings above disagree for any truthy non-`true` value, and only a wire can deliver one |
+| a consumed `Error` | the message needs a state row of its own — `HTTP Request`'s `errorState`, one node over. Both messages here are static, so this is a small slice rather than a hard one |
+| a consumed `Completed` | fires after every outcome; this slice emits arms, not a join |
+| no `Link`, or an empty one | every emitted form of it is dead code — **and one of them does not compile**: `const href = ''` gives TS the literal type `""`, and `href !== ''` on it is **TS2367, types have no overlap** |
+| a non-string `Link` | `window.open` is typed `string \| URL`, so a number is a TS2345 in the emitted app whatever the guard looks like — §11's `encodeURIComponent` trap, one slice later |
+
+⚠️ The `unchanged` wire is **dropped with a note, not deferred**. It fires only when there is no
+`window` — a server-side render — and the scaffold mounts with `createRoot` and has no server pass.
+Dead in the export for the same reason it is dead in the app running in a browser, which is
+`Clear Array`'s rule: a wire already dead in the interpreter must not cost a translation.
+
+### §12.5 What proves it
+
+**22 tests** in `tests/external-link.test.ts`, every positive assertion paired with a control, and
+**four mutants killed**: target always `_blank` (2 reds), guard removed (2), done chain
+unconditional (1), the `unchanged` chain treated as the failure chain (3).
+
+**The project, built and driven.** `note-desk` — session 40's detail-page project — with three
+`External Link` nodes added to `Pages/Home` **through the MCP server**, not by hand-editing JSON.
+`npm run build` exits 0; **9 of 9 drive rows matched**, no console errors.
+
+Sabotage, one rule per arm, expectations written before the run:
+
+| arm | change | rows that moved |
+|---|---|---|
+| A | the empty-link guard removed | **D3 only** — an empty link opened a blank tab (6 → 7) |
+| B | `_blank` forced regardless of the port | **E2 only** — `_self` became `_blank`; E1 and the guard unchanged |
+
+🔴 **Arm A is why the pair matters, and it is not the pair anyone would have predicted.** D2 ("the
+Failure arm ran") did **not** move under arm A — with the guard gone, `window.open('')` still
+returns `null`, so the failure arm still ran and the app still landed on `/note/blocked`. The row
+that caught the missing guard was the **tab count**, and nothing else would have. An emitter that
+dropped the guard passes every assertion about where the app navigates.
+
+### §12.6 🔴 The drive found a product defect, and it is not in the export
+
+**`External Link` reports `Failure` on every new tab it successfully opens.** The node sets
+`noopener` in its window features (`:51`) and then reads `window.open`'s return value as its
+blocked-tab test (`:70`). **`window.open` returns `null` whenever `noopener` is set, by
+specification** — so the test can never pass, `Done` is unreachable for a new tab, and `Error` reads
+"The browser blocked opening a new tab" beside an open tab. `Open In New Tab` defaults to `true`, so
+this is the ordinary configuration.
+
+Proven by a control pair varying the features string and nothing else — both arms under a **real
+user gesture**, because a scripted `element.click()` is not a user activation and `window.open` is
+refused outside one, which would have made both arms return `null` for a reason that has nothing to
+do with `noopener`:
+
+| arm | features | returned | tabs |
+|---|---|---|---|
+| A — the node's default | `"noopener,noreferrer"` | **NULL** | 3 → **4** |
+| B — without it | `""` | **a Window** | 4 → **5** |
+
+Filed as **[DEF-016](../phase-80-the-defects-the-templates-found/DEF-016-EXTERNAL-LINK-ALWAYS-REPORTS-FAILURE.md)**,
+owner `NONE`. Phase 30's node audit graded row B2 ✅ naming both failure codes — it graded that they
+**exist**, never that either can **fire**. A port census asks a different question from a drive.
+
+**No export change is owed.** The emitted app reproduces this exactly, which is §11.3's standing
+rule working as intended: the export must never work *better* than the app it came from. It stops
+being wrong the moment DEF-016 is fixed.
+
+### §12.7 What this leaves
+
+- **Three Navigation nodes**: `Navigate To Path` and the component-stack pair. ⚠️ `Navigate To
+  Path`'s first question is unchanged — it consults the project's `navigationPathType` (hash vs
+  path) and the scaffold emits a `BrowserRouter` unconditionally.
+- **`External Link`'s `Error` output** is the cheapest increment left on this node: both messages
+  are static, so it is a state row and nothing else. `Completed` needs a join beneath the arms.
+- **The store-key gate (§10.5)** is still untouched and still the same shape.

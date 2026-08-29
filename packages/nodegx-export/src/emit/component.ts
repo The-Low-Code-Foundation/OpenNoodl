@@ -386,6 +386,13 @@ export function emitComponent(
       if (action.materialize !== undefined) referencedStateNames.add(action.materialize);
       action.then.forEach(collectActionUse);
     }
+    // EXP-011 Tier 2.5. The link is an expression and both outcome chains are chains; this node
+    // writes no row of its own, so there is nothing else here to reference.
+    if (action.kind === 'external-link') {
+      collectExprUse(action.link);
+      action.then.forEach(collectActionUse);
+      action.failThen.forEach(collectActionUse);
+    }
     if (action.kind === 'jsfun-run') {
       referencedJsIds.add(action.nodeId);
       jsArgExprs(action.nodeId).forEach(collectExprUse);
@@ -410,7 +417,7 @@ export function emitComponent(
     actions.flatMap((a) =>
       a.kind === 'branch'
         ? [a, ...deepActions(a.whenTrue), ...deepActions(a.whenFalse)]
-        : a.kind === 'http-call'
+        : a.kind === 'http-call' || a.kind === 'external-link'
           ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
           : a.kind === 'popup-show' ||
               a.kind === 'popup-close' ||
@@ -1253,6 +1260,14 @@ export function emitComponent(
           );
         case 'http-call':
           return a.args.some((arg) => reads(arg.expr)) || a.then.some(inAction) || a.failThen.some(inAction);
+        // EXP-011 Tier 2.5. ⚠️ The `default: false` below would answer "reads nothing" for a
+        // link built out of the very value being asked about.
+        case 'external-link':
+          return (
+            reads(a.link) ||
+            a.then.some(inAction) ||
+            a.failThen.some(inAction)
+          );
         case 'popup-show':
         case 'popup-close':
         case 'jsfun-run':
@@ -1264,6 +1279,14 @@ export function emitComponent(
     };
     return actions.some(inAction);
   }
+  /**
+   * Whether an `External Link` prints statements rather than one expression (EXP-011 Tier 2.5).
+   * A guarded link binds a `const`; an outcome chain branches. Neither is legal in an arrow's
+   * expression body, and a literal-url button with no chains is neither.
+   */
+  const externalLinkIsStatement = (a: Extract<HandlerAction, { kind: 'external-link' }>): boolean =>
+    a.guardLink || a.then.length > 0 || a.failThen.length > 0;
+
   const actionCode = (action: HandlerAction, indent = 0): string => {
     switch (action.kind) {
       /**
@@ -1472,6 +1495,85 @@ export function emitComponent(
         ].join('\n');
       }
       /**
+       * `External Link` (EXP-011 Tier 2.5) — `window.open`, with the interpreter's own two
+       * guards and no more.
+       *
+       * The emitted form is the runtime's control flow flattened into one condition, which it is
+       * entitled to be because the two failures are indistinguishable once `Error` is out of the
+       * slice: "no link" and "the browser blocked the tab" both run the Failure chain and nothing
+       * else. So `opened` never needs a name — the call *is* the test.
+       *
+       * ```
+       * const talkHref = speakerUrl;
+       * if (talkHref !== undefined && talkHref !== null && talkHref !== '' &&
+       *     window.open(talkHref, '_blank', 'noopener,noreferrer')) { …then }
+       * else { …failThen }
+       * ```
+       *
+       * 🔴 **`&&` is the short circuit the runtime has.** With no link the interpreter reports
+       * failure and returns *before* `window.open`, and `window.open('')` opens a blank tab — so
+       * a guard that ran the call anyway would open a window the app never opens. That is why
+       * the guard survives even when nothing is wired to Failure.
+       *
+       * ⚠️ **With Open In New Tab off there is no blocked case.** `_self` legitimately returns
+       * null in some browsers, so the runtime tests the return value *only* for `_blank`. The
+       * call is a statement of its own there and success is the guard alone.
+       */
+      case 'external-link': {
+        const at = pad(indent);
+        const inner = pad(indent + 2);
+        const ref = action.guardLink ? action.local : exprCode(action.link, 'handler');
+        const target = action.newTab ? '_blank' : '_self';
+        const params = action.newTab ? 'noopener,noreferrer' : '';
+        const openCall = `window.open(${ref}, '${target}', '${params}')`;
+        const guard = action.guardLink
+          ? `${action.local} !== undefined && ${action.local} !== null && ${action.local} !== ''`
+          : undefined;
+
+        /**
+         * The condition under which the `done` chain runs. For a new tab the call is *part of*
+         * it — `&&` is the runtime's own short circuit, and `window.open('')` opens a blank tab,
+         * so the guard has to come first. For `_self` the call cannot report a failure, so it
+         * becomes a statement inside the arm instead.
+         */
+        const opened = action.newTab ? [guard, openCall].filter(Boolean).join(' && ') : (guard ?? '');
+        const body = (actions: HandlerAction[]): string[] =>
+          expandActions(actions).map((a) => `${inner}${actionCode(a, indent + 2)};`);
+        const block = (head: string, ...rest: string[]): string => [head, ...rest, `${at}}`].join('\n');
+
+        // Each entry's FIRST line carries no base indent — the join below adds it, and the
+        // caller pads the first. Continuation lines carry the absolute column (http-call's rule).
+        const statements: string[] = [];
+        if (action.guardLink) statements.push(`const ${action.local} = ${exprCode(action.link, 'handler')};`);
+
+        const selfCall = action.newTab ? [] : [`${inner}${openCall};`];
+        if (opened === '') {
+          // `_self` with a literal link: nothing can fail and nothing needs testing.
+          statements.push(`${openCall};`, ...body(action.then).map((l) => l.slice(inner.length)));
+        } else if (action.then.length === 0 && action.failThen.length === 0) {
+          statements.push(action.newTab ? `${opened};` : `if (${opened}) ${openCall};`);
+        } else if (action.failThen.length === 0) {
+          statements.push(block(`if (${opened}) {`, ...selfCall, ...body(action.then)));
+        } else if (action.then.length === 0 && action.newTab) {
+          statements.push(block(`if (!(${opened})) {`, ...body(action.failThen)));
+        } else {
+          statements.push(
+            [
+              `if (${opened}) {`,
+              ...selfCall,
+              ...body(action.then),
+              `${at}} else {`,
+              ...body(action.failThen),
+              `${at}}`
+            ].join('\n')
+          );
+        }
+        // A single expression keeps the semicolon the handler adds; anything else prints its own.
+        return statements.length === 1 && !externalLinkIsStatement(action)
+          ? statements[0].replace(/;$/, '')
+          : statements.join(`\n${at}`);
+      }
+      /**
        * `Now`'s Read (EXP-011 Tier 1.3) — read the clock once, then run the chain.
        *
        * 🔴 **The instant is bound to a local, and the binding is the correctness.** Two bare
@@ -1545,13 +1647,21 @@ export function emitComponent(
        * *whole* handler reaches the expression body, and that is the shape a real project has.
        * Found by building the exported app, not by the tests.
        */
-      a.kind === 'date-now-read';
+      a.kind === 'date-now-read' ||
+      /**
+       * EXP-011 Tier 2.5, and the fifth instance of the same hazard. An `External Link` is a
+       * statement whenever it binds its link to a `const` or branches on the outcome; a bare
+       * `window.open(…)` with no guard and no chains is an expression and keeps its semicolon.
+       * Asking precisely is what keeps the commonest shape — a button that opens a literal url —
+       * emitting as `onClick={() => window.open(…)}` rather than a block.
+       */
+      (a.kind === 'external-link' && externalLinkIsStatement(a));
     if (isAsync || expanded.some(isStatement)) {
       // A try/catch is a statement, not an expression: it prints at the handler's own column and
       // takes no terminator. Every other action keeps the semicolon the existing goldens pin.
       const body = expanded
         .map((a) =>
-          a.kind === 'api-call' || a.kind === 'http-call'
+          a.kind === 'api-call' || a.kind === 'http-call' || (a.kind === 'external-link' && externalLinkIsStatement(a))
             ? `${pad(indent + 2)}${actionCode(a, indent + 2)}`
             : // A `Now` Read prints several statements and needs the column too, or its second
               // and third lines start at column 0 (EXP-011 Tier 1.3). Valid either way — this is
@@ -3086,6 +3196,11 @@ export function emitComponent(
       // are, and a reader of this function wants them (the `usesPayload` test below is one).
       case 'date-now-read':
         return a.then.flatMap(actionExprsOf);
+      // EXP-011 Tier 2.5. The link, the wired Open In New Tab, and both chains — `usesPayload`
+      // walks this list, so a link built from a received event's payload is found here or the
+      // emitted callback takes no argument and its body reads one.
+      case 'external-link':
+        return [a.link, ...a.then.flatMap(actionExprsOf), ...a.failThen.flatMap(actionExprsOf)];
       /**
        * 🔴 **A navigation's page parameters are expressions, and this sweep is what finds
        * them.** `usesPayload` walks this list to decide whether the emitted `useSignal`

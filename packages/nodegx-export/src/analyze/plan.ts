@@ -133,6 +133,24 @@ const HTTP_VALUE_OUTPUTS = ['response', 'statusCode', 'responseHeaders'];
 /** `Now` (EXP-011 Tier 1.3) — the one date node that is not a pure function of its inputs. */
 const NOW_TYPE = 'net.noodl.Now';
 
+/** `External Link` (EXP-011 Tier 2.5) — the one Navigation node that leaves the app entirely. */
+const EXTERNAL_LINK_TYPE = 'net.noodl.externallink';
+
+/**
+ * The outputs `External Link` publishes.
+ *
+ * 🔴 **`completed` is in this list because the node's own source does not show it.** The
+ * definition spreads `...outcomeOutputs({ done, unchanged, failure })`, and that helper adds a
+ * `Completed` port to *every* node that uses it (`outcome.ts:164`) — so reading the literal
+ * `outputs:` object gives four ports where the editor draws five. The first version of this list
+ * was built that way, and its refusal sentence told an author that a port they were looking at
+ * did not exist. The catalog is the artefact; the source file is a component of it.
+ *
+ * `unchanged` is here so the wire off it is *recognised* and dropped with a reason rather than
+ * falling into the catch-all defer — the export has no server render for it to fire in.
+ */
+const EXTERNAL_LINK_OUTPUTS = ['done', 'failure', 'unchanged', 'completed', 'error'];
+
 /**
  * `Page Inputs` (EXP-011 Tier 2.5) — the node that reads this page's url parameters.
  *
@@ -549,6 +567,58 @@ export type HandlerAction =
       to: string;
       pathParams: Array<{ name: string; expr: ValueExpr }>;
       query: Array<{ name: string; expr: ValueExpr }>;
+    }
+  /**
+   * `External Link` (EXP-011 Tier 2.5) — `window.open`, plus the two outcome chains the
+   * runtime's own fork owes (`externallink.ts`).
+   *
+   * The emitted shape is the interpreter's, guard for guard:
+   *
+   * ```
+   * const link = donateUrl;                       // bound once — the guard and the open must
+   * if (link === undefined || link === null || link === '') { …failThen }   //   read one value
+   * else if (!window.open(link, '_blank', 'noopener,noreferrer')) { …failThen }
+   * else { …then }
+   * ```
+   *
+   * 🔴 **`Open In New Tab` unset is `true`, not `undefined`.** The port declares `default: true`
+   * and `registerInput` writes a declared default straight into `_inputValues` (`node.ts:138`),
+   * so `getInputValue` never sees the `undefined` its own target expression tests for — which is
+   * what makes {@link newTab} a plain boolean here rather than a third state.
+   *
+   * That question is worth asking because the runtime reads this one input **two different ways
+   * in two adjacent lines**: `params` is truthiness (`openInNewTab ? … : ''`) and `target` is
+   * strict equality (`=== true || === undefined`). They agree for `true`, for `false` and for
+   * the unset port — every value the *editor* can put there — and disagree for every other
+   * truthy value, which only a wire can deliver. So a wired `Open In New Tab` defers, and the
+   * three cases that remain are the three an author can actually author.
+   *
+   * ⚠️ **There is no `unchanged` arm and its absence is a decision.** The runtime reports
+   * `unchanged` when `typeof window === 'undefined'` — a server-side render. The scaffold
+   * mounts with `createRoot` (`scaffold.ts:249`) and has no server pass at all, so that chain
+   * is unreachable in the exported app exactly as it is in the app running in a browser. The
+   * wire is dropped with a note rather than deferring the node, on `Clear Array`'s rule: a wire
+   * already dead in the interpreter must not cost a translation.
+   */
+  | {
+      kind: 'external-link';
+      link: ValueExpr;
+      /** `Open In New Tab` — resolved here, because only an unwired port reaches this action. */
+      newTab: boolean;
+      /**
+       * The chain-local the link binds to, emitted only where the empty-link guard needs it —
+       * the guard and the `window.open` must read one value, not two evaluations of one
+       * expression (a link read from a Variable can change between them).
+       */
+      local: string;
+      /**
+       * False only where the link is provably non-empty — a non-empty literal. The runtime
+       * refuses before touching the browser on `undefined`, `null` and `''`, and `window.open('')`
+       * opens a blank tab, so this guard is observable even with no Failure chain wired.
+       */
+      guardLink: boolean;
+      then: HandlerAction[];
+      failThen: HandlerAction[];
     }
   | { kind: 'emit'; channelName: string; payload: Array<{ key: string; expr: ValueExpr }> }
   | { kind: 'store-set'; variableName: string; expr: ValueExpr }
@@ -2596,6 +2666,27 @@ function planComponent(
 
   /** The chain-local one `Now` binds its instant to, minted once so every reader agrees. */
   const nowLocals = new Map<string, string>();
+  /**
+   * `External Link`'s chain-local for the link (EXP-011 Tier 2.5), on `Now`'s naming rule —
+   * the authored label, or `externalLink` where there is none.
+   */
+  const externalLinkLocals = new Map<string, string>();
+  const externalLinkLocalOf = (node: NodeIR): string => {
+    let local = externalLinkLocals.get(node.id);
+    if (local === undefined) {
+      const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+      const stem = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'ExternalLink';
+      const base = `${stem.charAt(0).toLowerCase()}${stem.slice(1)}Href`;
+      let name = base;
+      let counter = 2;
+      while (stateNameTaken(name)) name = `${base}${counter++}`;
+      usedStateVarNames.add(name);
+      externalLinkLocals.set(node.id, name);
+      local = name;
+    }
+    return local;
+  };
+
   const nowLocalOf = (node: NodeIR): string => {
     let local = nowLocals.get(node.id);
     if (local === undefined) {
@@ -4106,6 +4197,8 @@ function planComponent(
     // EXP-011 Tier 1.3. `Now` is the date family's only action; the other five are pure and have
     // no trigger port at all — they recompute, which is not something a chain can fire.
     [NOW_TYPE]: 'read',
+    // EXP-011 Tier 2.5. `External Link`'s only action port.
+    [EXTERNAL_LINK_TYPE]: 'do',
     Condition: 'eval',
     NewDbModelProperties: 'store',
     SetDbModelProperties: 'store',
@@ -5130,6 +5223,146 @@ function planComponent(
     };
   };
 
+  /**
+   * `External Link` (EXP-011 Tier 2.5) — the cheapest node in the Navigation group, and the
+   * only one in it that does not route.
+   *
+   * Three refusals, each about a mechanism rather than about effort:
+   *
+   * - **`Error` consumed defers the node.** The output is a string the node writes just before
+   *   `Failure`, so reading it outside the chain needs a state row of its own — `HTTP Request`'s
+   *   `errorState`, one node over. The two messages are static here (there are exactly two
+   *   failures and neither is a service's words), so this is a small slice of its own rather
+   *   than a hard one, and taking it *inside* this one would have been the only part of this
+   *   node that was not already a transcription.
+   * - **A wired `Link` that resolves to a logic truth value defers**, on the standing rule that
+   *   only truthiness sinks take one.
+   * - **Any other output consumed defers**, named.
+   */
+  const compileExternalLink = (node: NodeIR): CompiledSink => {
+    const ctx = newCtx();
+    const consumes: string[] = [];
+
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (!EXTERNAL_LINK_OUTPUTS.includes(wire.fromProperty)) {
+        return { defer: `its ${wire.fromProperty} output is consumed, and this node publishes only Done, Completed, Unchanged, Failure and Error` };
+      }
+      if (wire.fromProperty === 'error') {
+        return { defer: 'its Error output is consumed — the message needs a state row of its own, which this slice does not allocate' };
+      }
+      /**
+       * `Completed` fires after every outcome, so translating it means the chain in all three
+       * arms or a join after them — and this slice emits the arms. `HTTP Request` deferred its
+       * own `Completed` on the same sentence one tier earlier.
+       */
+      if (wire.fromProperty === 'completed') {
+        return { defer: 'its Completed output is consumed — it fires after every outcome, and this slice emits the outcome arms rather than a join beneath them' };
+      }
+      /**
+       * The `unchanged` wire is dropped rather than deferring the node: it fires only where
+       * there is no `window`, and the scaffold has no server render. Dead in the export for the
+       * same reason it is dead in the app running in a browser — `Clear Array`'s Failure rule.
+       */
+      if (wire.fromProperty === 'unchanged') {
+        notes.push(
+          `wire ${wire.key} dropped: External Link's Unchanged fires only during a server-side render, and the exported app mounts with createRoot and never renders on a server — the wire is dead in the interpreter's browser too`
+        );
+        consumes.push(wire.key);
+      }
+    }
+
+    /**
+     * `Link` — a wire beats the authored parameter, the precedence §10.3 settled: the runtime's
+     * port holds whichever arrived last, and a wire that delivers is always after the value the
+     * project file was loaded with.
+     */
+    let link: ValueExpr | undefined;
+    const authored = literalParam(node, 'link');
+    if (typeof authored === 'string') link = { kind: 'literal', value: authored };
+    const linkWire = component.connections.find((c) => c.toId === node.id && c.toProperty === 'link');
+    if (linkWire) {
+      const expr = resolveExpr(nodeById.get(linkWire.fromId), linkWire.fromProperty, ctx);
+      if (expr === null) return { defer: ctx.defer ?? 'its Link has no statically known source' };
+      if (isBooleanExpr(expr)) {
+        return { defer: 'its Link is fed a logic truth value — only truthiness sinks take one in this slice' };
+      }
+      link = expr;
+      consumes.push(linkWire.key);
+    }
+    /**
+     * A `Link` that is statically absent or empty defers. The node does have a defined behaviour
+     * here — "No link to open", `Failure`, and the browser never touched — but every emitted
+     * shape for it is dead code, and one of them does not compile: `const href = ''` gives TS the
+     * literal type `""`, and `href !== ''` on it is **TS2367, types have no overlap**. A half-set
+     * node is the authoring state this describes, and naming it beats emitting a guard whose only
+     * job is to always fail.
+     */
+    if (link === undefined || (link.kind === 'literal' && link.value === '')) {
+      return { defer: 'no Link is set — the node refuses before touching the browser, and every emitted form of that is dead code' };
+    }
+    /**
+     * 🔴 **A non-string `Link` defers, and the guard is not why.** `window.open` is typed
+     * `string | URL`, so a number reaching it is a TS2345 in the emitted app whatever the guard
+     * looks like — the same class as §11's `encodeURIComponent`, and again invisible to every
+     * test that does not build what it emitted.
+     */
+    const linkType = exprTsType(link);
+    if (linkType !== 'string' && linkType !== 'string | undefined' && linkType !== 'unknown') {
+      return { defer: `its Link is typed ${linkType} — window.open takes a string, and a non-string one would not compile` };
+    }
+    /**
+     * The guard binds a local and compares it three ways, so it is emitted only for an expression
+     * — a literal reaching here is a non-empty string and provably passes. That is also what
+     * keeps TS2367 away: the comparison never meets a narrow literal type.
+     */
+    const guardLink = link.kind !== 'literal';
+
+    /**
+     * `Open In New Tab`. Unset reads `true` — the port's declared default, materialised into
+     * `_inputValues` by `registerInput` — so the unwired port and an authored `true` are one
+     * case, and `false` is the only other an author can express.
+     */
+    if (wiredPorts.has(`${node.id}:openInNewTab`)) {
+      return {
+        defer:
+          'its Open In New Tab is wired — the runtime reads that port two ways in two adjacent lines (truthiness for the window features, strict equality for the target) and they disagree for any truthy value that is not `true`, which only a wire can deliver'
+      };
+    }
+    const newTab = literalParam(node, 'openInNewTab') !== false;
+
+    const done = doneChainOf(node, 'done');
+    if ('defer' in done) return { defer: done.defer };
+    const fail = doneChainOf(node, 'failure');
+    if ('defer' in fail) return { defer: fail.defer };
+
+    /**
+     * ⚠️ With a literal link **and** Open In New Tab off, the node has no failure left to have:
+     * the empty-link guard is provably passed and `_self` is the one target whose null return
+     * the runtime does not read as blocked. The chain is dead in the interpreter too, so it is
+     * dropped with a note on `Clear Array`'s rule rather than emitted where it can never run.
+     */
+    if (!guardLink && !newTab && fail.then.length > 0) {
+      notes.push(
+        `node ${node.id}: External Link's Failure chain dropped — a literal Link cannot be empty and Open In New Tab is off, so neither of the node's two failures can fire (externallink.ts)`
+      );
+    }
+
+    return {
+      action: {
+        kind: 'external-link',
+        link,
+        newTab,
+        local: externalLinkLocalOf(node),
+        guardLink,
+        then: done.then,
+        failThen: !guardLink && !newTab ? [] : fail.then
+      },
+      consumes: [...consumes, ...done.consumes, ...fail.consumes, ...ctx.consumes],
+      collapses: [...ctx.logicNodeIds, ...done.collapses, ...fail.collapses],
+      subscribes: [...ctx.subscriberIds, ...done.subscribes, ...fail.subscribes]
+    };
+  };
+
   const compileSink = (node: NodeIR, port: string): CompiledSink => {
     if (RECORD_VERBS[node.type] !== undefined && port === 'store') return compileRecordOp(node);
     if (USER_VERBS[node.type] !== undefined && port === USER_VERBS[node.type].trigger) return compileUserOp(node);
@@ -5138,6 +5371,7 @@ function planComponent(
     if ((plan.roleOf[node.id] === 'checkbox' || plan.roleOf[node.id] === 'input') && (CONTROL_ACTION_PORTS[plan.roleOf[node.id]] ?? []).includes(port)) {
       return compileControlAction(node, port);
     }
+    if (node.type === EXTERNAL_LINK_TYPE) return compileExternalLink(node);
     if (node.type === 'NavigationShowPopup') return compileShowPopup(node);
     if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
     if (node.type === 'RouterNavigate') {
@@ -5516,6 +5750,21 @@ function planComponent(
          */
         case 'date-now-read':
           return actionsValidIn(action.then, context, invokedScope);
+        /**
+         * EXP-011 Tier 2.5. The link and (where wired) Open In New Tab are read in the handler,
+         * and both outcome chains run in that same closure.
+         *
+         * ⚠️ Hand-written for the reason the `date-now-read` case above gives: this callback has
+         * no return annotation, so a missing case comes back `unknown` and `every` swallows it.
+         * `tsc` reported exactly two of the fourteen sites this kind belongs to; this was not
+         * one of them.
+         */
+        case 'external-link':
+          return (
+            exprValidIn(action.link, context, invokedScope) &&
+            actionsValidIn(action.then, context, invokedScope) &&
+            actionsValidIn(action.failThen, context, invokedScope)
+          );
         /**
          * 🔴 **A navigation's page parameters are expressions, and this used to say `true`.**
          *
@@ -6193,6 +6442,20 @@ function planComponent(
         return { ...action, then };
       }
       /**
+       * EXP-011 Tier 2.5. Same rule as a request: the link is read where the handler is, before
+       * the browser is touched, so a `Set Variable` earlier in the chain must reach it — and both
+       * outcome chains carry the map onward, because they run in that same closure.
+       */
+      case 'external-link': {
+        const link = snapExpr(action.link, snap);
+        if ('defer' in link) return link;
+        const then = snapActionList(action.then, snap);
+        if (!Array.isArray(then)) return then;
+        const failThen = snapActionList(action.failThen, snap);
+        if (!Array.isArray(failThen)) return failThen;
+        return { ...action, link, then, failThen };
+      }
+      /**
        * `Now`'s Read (EXP-011 Tier 1.3). It reads no expression of its own, so there is nothing
        * here to substitute — only the chain to carry the map onward, which runs in this same
        * closure. The row it writes is deliberately **not** entered in the snapshot: every read
@@ -6611,6 +6874,11 @@ function planComponent(
         } else if (action.kind === 'date-now-read') {
           attachedNowNodes.add(action.nodeId);
           scanActions(action.then);
+        } else if (action.kind === 'external-link') {
+          // EXP-011 Tier 2.5. No node registry of its own to attach to — this exists so the
+          // chains are walked, which is what earns the popups, mutations and channels inside them.
+          scanActions(action.then);
+          scanActions(action.failThen);
         } else if (action.kind === 'branch') {
           scanActions(action.whenTrue);
           scanActions(action.whenFalse);
@@ -7603,6 +7871,17 @@ function planComponent(
             walkActions(action.then);
             walkActions(action.failThen);
             break;
+          /**
+           * EXP-011 Tier 2.5. ⚠️ The `default: break` below is why this case is written out: a
+           * link built from the signed-in user's id is an ordinary thing to author, and missing
+           * it here would leave the page importing a `useSession` the module was never asked to
+           * export — the same failure the request case above names.
+           */
+          case 'external-link':
+            walkExpr(action.link);
+            walkActions(action.then);
+            walkActions(action.failThen);
+            break;
           case 'branch':
             walkExpr(action.cond);
             walkActions(action.whenTrue);
@@ -7871,6 +8150,15 @@ function planComponent(
             fillMaterialize(action.then);
             break;
           }
+          /**
+           * EXP-011 Tier 2.5. `External Link` materialises nothing of its own — it has no answer
+           * to publish — but a request or a `Now` nested in either of its chains does, and this
+           * switch's `default` would skip both.
+           */
+          case 'external-link':
+            fillMaterialize(action.then);
+            fillMaterialize(action.failThen);
+            break;
           case 'branch':
             fillMaterialize(action.whenTrue);
             fillMaterialize(action.whenFalse);
