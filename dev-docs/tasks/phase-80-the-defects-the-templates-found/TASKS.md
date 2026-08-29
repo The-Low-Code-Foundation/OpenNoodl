@@ -10,7 +10,7 @@ derivation and [README.md](README.md) for why the phase exists.
 |---|---|---|---|---|
 | DEF-001 | ✅ done | [The defaults fail accessibility on the two controls every app has](DEF-001-THE-DEFAULTS-FAIL-ACCESSIBILITY.md) | P78 D11, D13 | every **end user** |
 | DEF-002 | ✅ done | [The door does not check connections](DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md) | P77 D1, D10 · P78 D1 | every **agent-authored app** |
-| DEF-003 | ⬜ open | [Three authoring acts with no honest surface](DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md) | P77 D8 = P76 F15 · P77 D7 · P76 F16 | every **author** |
+| DEF-003 | ✅ done | [Three authoring acts with no honest surface](DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md) | P77 D8 = P76 F15 · P77 D7 · P76 F16 | every **author** |
 | DEF-004 | ⬜ open | [When it goes wrong you cannot see where](DEF-004-WHEN-IT-GOES-WRONG-YOU-CANNOT-SEE-WHERE.md) | P77 D2, D3 | anyone **debugging** |
 | DEF-005 | 🔒 ruling | [Membership is a category the graph cannot express](DEF-005-MEMBERSHIP-IS-UNEXPRESSIBLE.md) | P78 D2, D3 | every **membership app** |
 | DEF-006 | ⬜ open | [The design system punishes the agent that uses it](DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md) | P78 D12, D15 | every **agent** styling on-system |
@@ -44,6 +44,20 @@ cardinality where they meet** — a check in a second pipeline is a duplicate fi
 🔴 **Three of the four say the same thing about their own fix: it needs a corpus sweep** to decide
 whether the new check *blocks* authored output or merely warns. That sweep is shared work and
 should be done **once**, not three times.
+
+## Reds that belong to someone else, named so they stop reading as regressions
+
+- 🔴 **`noodl-mcp/tests/templateAppearance.test.ts` — `site-builder has the pinned page count`,
+  expected 5, received 6.** Created by `e5922d21` (**TPL-001, phase 78**) with the pin at 5 over a
+  template that already ships six pages. **Owner: TPL-001 / phase 78.** Whether the sixth page is
+  intended (bump the pin) or not is theirs; the pin exists so that growing a page reddens here first.
+- ✅ **`catalog:check` — a PR CI gate (`pr.yml:198`) — was RED at HEAD** because `0c011b6b`
+  (DEF-016) changed three `External Link` port descriptions without regenerating the catalog.
+  **Fixed as a side effect of DEF-003's regeneration.** Recorded because it is last session's own
+  lesson arriving twice: *a closed task's outstanding debts need an owner, not just its carried rows.*
+- ⚠️ **`packages/noodl-mcp/dist/noodl-mcp.cjs` is stale**, so a *running* MCP server still answers
+  `notFound` for `Page.title` until the next build. Source, suites and committed catalog are correct.
+  **Owner: whoever cuts the next 0.2.1 build.**
 
 ## Rulings needed (Richard)
 
