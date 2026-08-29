@@ -28,6 +28,40 @@ exactly:
 And phase 77 D5 measured its bite: 37 nodes rewritten on load in a fresh project, zero `true`s — and
 the site's root URL rendering no page at all.
 
+### 1.1 🔴 P77 **D11** — and it is NOT the seam. The migration is wrong on its own terms.
+
+**Added 2026-08-29** from phase 77's SBR-016 drive (their s14), and it **changes §1's last
+sentence.** §1 exonerates the migration — *"None of that is the defect"* — on the reading that it
+faithfully preserves a **pre-§2** author's intent and only the non-loading paths disagree. D11 is a
+case that reading does not cover:
+
+> The migration reversed two queries in `/Pages/Admin` and `/Pages/PageEditor` of a template
+> **authored entirely after §2**, on an ordinary editor load. The author deliberately wanted a
+> load-time fetch; `storageFetch` was wired; the migration wrote `runOnChange-collectionName: false`
+> and `runOnChange-qp-pageId: false` and the fetch stopped happening.
+
+**Read at HEAD, and the peer's account holds with one correction:**
+
+- `RUN_ON_CHANGE_FAMILIES` has **17** families, not fifteen.
+- 🔴 **There is no project-version guard anywhere in the pass.** The only conditions are *"this node
+  is in a family"*, *"its control signal is wired"* and *"the key is absent"*
+  (`runOnValueChangeMigration.ts:406-421`). Nothing distinguishes a graph carrying pre-§2 history
+  from one minted this morning, and nothing could — **absence is the only evidence it has**, and a
+  modern author who simply never set the parameter is indistinguishable from a legacy author who
+  relied on the old default.
+- The `hasOwnProperty` check is, in the module's own words, *"the whole of idempotency"*. So **an
+  authored `true` is the only defence**, and it is written down in no document the author reads.
+
+⚠️ **Why this matters for the fix in §3.2.** Writing explicit values during template generation was
+listed as *"the cheaper, narrower option"* for the **disk-vs-load** problem. D11 shows it is not
+merely cheaper — for a modern template it is the **only** thing that works, because the migration
+will keep reversing an unstated intent on every load however well the disk-readers are fixed. The
+two halves of §3.2 are not alternatives.
+
+🔴 **Owner: DEF-007 (this task), phase 80.** Phase 77 filed D11 as `NONE`-owned. It is not unowned —
+it is this row's mechanism, in this row's file, and an unowned copy of an owned row is exactly how
+F15 became D8. Phase 77's register should point here rather than carry it.
+
 ## 2. (b) The curated template path does no home resolution
 
 Phase 78 **D9** — a generated project shipped with no HOME node and every headless gate passed over

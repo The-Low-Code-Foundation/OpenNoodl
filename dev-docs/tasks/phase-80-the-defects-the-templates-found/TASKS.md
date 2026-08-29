@@ -47,10 +47,12 @@ should be done **once**, not three times.
 
 ## Reds that belong to someone else, named so they stop reading as regressions
 
-- 🔴 **`noodl-mcp/tests/templateAppearance.test.ts` — `site-builder has the pinned page count`,
-  expected 5, received 6.** Created by `e5922d21` (**TPL-001, phase 78**) with the pin at 5 over a
-  template that already ships six pages. **Owner: TPL-001 / phase 78.** Whether the sixth page is
-  intended (bump the pin) or not is theirs; the pin exists so that growing a page reddens here first.
+- ✅ **`noodl-mcp/tests/templateAppearance.test.ts` — `site-builder has the pinned page count`,
+  expected 5, received 6 — CLOSED 2026-08-29 by phase 77.** I attributed it to TPL-001 because the
+  pin lives in their file; **phase 77 took it instead and was right to**: SBR-017 is what made the
+  site-builder six pages, so the pin's disagreement was their consequence. Pin bumped to 6, the new
+  page answers §4's bare-page floor, noodl-mcp is **938/938**. ⚠️ **Worth keeping as a shape: the
+  owner of a red is whoever moved the measured thing, not whoever owns the file the number sits in.**
 - ✅ **`catalog:check` — a PR CI gate (`pr.yml:198`) — was RED at HEAD** because `0c011b6b`
   (DEF-016) changed three `External Link` port descriptions without regenerating the catalog.
   **Fixed as a side effect of DEF-003's regeneration.** Recorded because it is last session's own

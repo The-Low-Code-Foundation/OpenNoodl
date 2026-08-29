@@ -35,7 +35,14 @@ recorded from a reading is a hypothesis; ranking it as a defect makes it look li
 ## What to do next
 
 **DEF-004** — *When it goes wrong you cannot see where* (P77 D2, D3; bites anyone debugging). Not
-read yet this session. Open beside it: **DEF-017 C1** (`--surface-raised` declared and read by
+read yet this session.
+
+🔴 **DEF-007 grew a §1.1 late on 2026-08-29 and it changes that task's premise** — phase 77's
+SBR-016 drive found the `runOnValueChange` migration reversing two queries in a template authored
+entirely **after** §2, on an ordinary editor load. DEF-007 §1 currently exonerates the migration
+(*"None of that is the defect"*); that is no longer the whole story, and §3.2's two options turn out
+not to be alternatives. Read §1.1 before DEF-007, and note it is now the **owner** of what phase 77
+filed as D11 with owner `NONE`. Open beside it: **DEF-017 C1** (`--surface-raised` declared and read by
 nothing; phase 78's B3 is capped until it lands), **DEF-006**, **DEF-007**, **DEF-008**, **DEF-009**,
 **DEF-014**, **DEF-015**, and the four carried from phase 76 by reference.
 
@@ -44,10 +51,11 @@ reading rather than a measurement, and drive that one first.** It is two hours t
 
 ## 🔴 Reds that are NOT yours
 
-- **`noodl-mcp/tests/templateAppearance.test.ts` — `site-builder has the pinned page count`,
-  expected 5, received 6.** Created by `e5922d21` (**TPL-001, phase 78**) with the pin at 5 over a
-  template that already ships six pages. Nothing in phase 80 can move a count of `Page` nodes.
-  **Owner: TPL-001 / phase 78.**
+- ✅ **`templateAppearance.test.ts` site-builder page count — CLOSED by phase 77 the same day.**
+  I called it TPL-001's because the pin lives in their file; phase 77 took it because **SBR-017 is
+  what made the template six pages**. noodl-mcp is **938/938** now. ⚠️ The shape is worth keeping:
+  **the owner of a red is whoever moved the measured thing, not whoever owns the file the number
+  is written in.**
 - **`nodegx-export` is jest, not vitest.** `npx vitest run` there gives *36 suites failed, no tests,
   `describe is not defined`* — a wrong-runner result that reads exactly like a broken package. Use
   `npm test`. It is **797/797**, up from 788 with the peer's uncommitted EXP-011 work in the tree.
