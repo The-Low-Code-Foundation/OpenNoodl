@@ -63678,7 +63678,7 @@
             },
             {
               "fromId": "row_object",
-              "fromProperty": "done",
+              "fromProperty": "prop-done",
               "toId": "done_checkbox",
               "toProperty": "checked"
             },
@@ -63686,7 +63686,7 @@
               "fromId": "done_checkbox",
               "fromProperty": "checked",
               "toId": "save_done",
-              "toProperty": "done"
+              "toProperty": "prop-done"
             },
             {
               "fromId": "done_checkbox",
@@ -64639,6 +64639,14 @@
               "parameters": {
                 "params": "taskCount"
               }
+            },
+            {
+              "id": "fn_fail_response",
+              "type": "noodl.cloud.response",
+              "label": "Failure response",
+              "parameters": {
+                "status": "failure"
+              }
             }
           ],
           "connections": [
@@ -64658,6 +64666,18 @@
               "fromId": "count_tasks",
               "fromProperty": "fetched",
               "toId": "fn_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "count_tasks",
+              "fromProperty": "error",
+              "toId": "fn_fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "count_tasks",
+              "fromProperty": "failure",
+              "toId": "fn_fail_response",
               "toProperty": "send"
             }
           ]
