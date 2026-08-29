@@ -281,9 +281,34 @@ about *the deploy* for three sessions because no reading distinguished the filte
 function of the project; or carry the health verdict in the artefact so a build says which wires it
 dropped and why. ⚠️ The first is the smaller change and the one that makes the second honest.
 
-⚠️ **Stated as a mechanism, not a confirmed cause of the two readings.** The timing account
-explains both and is grounded in the code above; *which* timing obtained in s14 and s15 was not
-observed, and the drive that would settle it is named in SBR-008 §5.5.
+🟢 **s17 (2026-08-29): CONFIRMED — the flip was watched happening, twice, with no edit.** The
+earlier caution below is superseded; it is kept because it was the right caution at the time.
+
+A probe armed before the project opened sampled the editor once a second (SBR-008 §6.1). At
+**14:17:01.6** the `/Pages/Admin` `prop-` wires read `healthy: true` and `exportComponent` returned
+**13 connections**; at **14:17:03.9** the same wires read `healthy: false` with `con-no-target-port`
+and the same call returned **11**. Project-wide, the census moved **32 healthy → 13 healthy** — the
+**19** wires this phase has been chasing. `targetPortExists` was `false` in *both* rows, so no port
+set changed; only the debounced pass landing did. Then through the product: one
+`ViewerConnection.sendRefresh()` took the **running** preview from **221 connections to 202**, with
+no edit before or after.
+
+🔴 **And a second session-dependent input, on the same path.** `SchemaHandler`
+(`utils/schemahandler.ts:72`) fetches the backend schema on **`window-focused`** and writes it to
+`dbCollections` project metadata; `resolveSchemaPortContext` (`schema-ports.ts:501`) reads that key
+and `recordFieldPorts` mints one port per column. So **which ports exist — and therefore which wires
+survive a build — also depends on whether the editor window happened to get focus with the backend
+up.** Measured in the same session: the census went **19 unhealthy → 4 unhealthy** on its own,
+between 14:18:32 and 14:22:57, with no edit. ⚠️ *Which* of the two triggers fired was not observed.
+
+**So the count is not a property of the project.** In one session, with nothing edited, it read
+**32/0**, then **13/19**, then **28/4**. Any spec pinning it must pin the schema state beside it —
+see SBR-008 §6.5, where this makes that task's AC2 unsafe as written.
+
+⚠️ *(Superseded, kept for the record.)* Stated as a mechanism, not a confirmed cause of the two
+readings. The timing account explains both and is grounded in the code above; *which* timing
+obtained in s14 and s15 was not observed, and the drive that would settle it is named in
+SBR-008 §5.5.
 
 ---
 

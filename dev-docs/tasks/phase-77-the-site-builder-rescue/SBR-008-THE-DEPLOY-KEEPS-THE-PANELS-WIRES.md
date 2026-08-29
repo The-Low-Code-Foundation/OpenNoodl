@@ -167,3 +167,139 @@ inferred from a throw, so §5.1–§5.6 are unaffected and the artefact-level de
 the shipped template. It sharpens the contradiction rather than resolving it: `/Pages/Admin`'s
 `create` announces no `prop-title`, and the 016 fixture still wrote one. **The timing account in
 §5.4 remains the candidate, and remains unconfirmed.**
+
+---
+
+## 6. 🟢 s17 (2026-08-29) — the mechanism was driven, and the fixture the drive was asked for no longer exists
+
+§5.5 asked for a drive: *"on `SBR-016 Arrive Drive`, create a second page late in a settled
+session"*, on the stated grounds that this varies **one** thing. **It does not, any more.** The
+confound and the mechanism were both measured, live, in one editor session.
+
+### 6.1 🔴 The flip, watched happening — D13 is a cause, not a candidate
+
+A probe was armed **before** the project was opened and sampled the editor once a second: the
+`/Pages/Admin` `prop-` wires' target ports, their `getConnectionHealth` verdict, their
+`WarningsModel` entries, and what `exportComponent` would return **if a build were taken at that
+instant**. 90 samples. No edit was made at any point.
+
+| sample | wall clock | `targetPortExists` | `healthy` | warning | `exportComponent(/Pages/Admin)` | project census |
+|---|---|---|---|---|---|---|
+| 6 | 14:17:01.6 | **false** | **true** | — | **13 connections** | **32 prop wires, 32 healthy, 0 unhealthy** |
+| 7 | 14:17:02.7 | false | true | — | 13 connections | 32 healthy |
+| 8 | 14:17:03.9 | **false** | **false** | `con-no-target-port` | **11 connections** | **32 prop wires, 13 healthy, 19 unhealthy** |
+| 9–90 | →14:18:32 | false | false | `con-no-target-port` | 11 connections | 13 healthy |
+
+🔴 **Two builds of the same project, 2.3 s apart, differ by 19 connections.** The ports are absent
+in *both* rows — `targetPortExists: false` at 14:17:01.6 and at 14:17:03.9 — so nothing about the
+port set changed. What changed is that the debounced pass landed and wrote the warning
+`getConnectionHealth` reads. **That is the whole of D13, observed rather than inferred**, and the
+lost count is exactly the **19** this task's header names.
+
+✅ **The instrument reports both values.** The 32/32 reading at sample 6 and the 13/32 reading at
+sample 8 come from the same code path in the same session, so neither is the probe's floor — the
+"before" row is the negative control the "after" row needed.
+
+### 6.2 The same thing again, through the product, into the running app
+
+`ViewerConnection.instance.sendRefresh()` — the editor's own preview refresh — was called at
+14:21:53 with no edit before or after it. Read on the **viewer's** own graph model:
+
+| | connections in the running app | `prop-` wires |
+|---|---|---|
+| build the preview had been running since load | **221** | **19** |
+| after one refresh | **202** | **0** |
+
+The preview had been running, the whole time, on a build containing 19 wires the editor already
+called broken. One refresh and they were gone from the live app. **§5.3 is confirmed from the other
+side: this is not a deploy property.**
+
+### 6.3 🔴 The third state, which nothing had recorded: the defect heals itself
+
+Between 14:18:32 (last sample, `dbCollections: undefined`) and 14:22:57 the project's metadata
+gained a `dbCollections` key, and with it:
+
+```
+Page:[published,showInNav,navOrder,title,slug]   SiteSettings:[siteName,homeSlug]
+Theme:[tokens]                                   Section:[order,pageId]
+```
+
+and the `/Pages/Admin` wires read **`targetPortExists: true`, `healthy: true`** — the census moving
+**19 unhealthy → 4 unhealthy**, again with no edit to the project.
+
+`SchemaHandler` (`utils/schemahandler.ts:72`) fetches the built-in backend's schema on
+**`window-focused`** and `Model.cloudServicesChanged`, and `_store()` writes it to
+`ProjectModel.setMetaData('dbCollections')`. `resolveSchemaPortContext`
+(`schema-ports.ts:501`) reads exactly that key, and `recordFieldPorts` mints one `prop-<field>` per
+column of the selected class. **So a column that exists produces a port, a port makes the wire
+healthy, and a healthy wire survives the build.**
+
+🔴 **Which means the fixture §5.5 named is not the fixture s15 drove.** s15's own write created
+`Page.title` and `Page.slug` (§5.2), and those two columns are what now heals these two wires. A
+second page created on it today arrives **named for a reason that has nothing to do with timing** —
+so the proposed drive is over-determined and cannot discriminate. It was run anyway, twice, and
+both rows came back named:
+
+| | act | row |
+|---|---|---|
+| **arm A** 14:20:36 | create, on the build the preview had loaded with (wires present) | `Arm A Early Build` / `arm-a-early` — **named** |
+| **arm B** 14:22:26 | create, after the refresh above (wires absent at 14:22:00) | `Arm B Settled Build` / `arm-b-settled` — **named** |
+
+⚠️ **Arm B is not evidence about timing and is not reported as such.** The ports had returned
+between the census read and the click. **A control pair proves what you varied, and a third
+variable moved underneath this one** — recorded because the pair looks decisive and is not.
+
+### 6.4 🟢 The person sentence, failing, with its control on the same screen
+
+The pair the fixture *can* still answer needs no second session and no second project. After the
+heal, **four** `prop-` wires remain unhealthy, and they are exactly the fields whose column does
+not exist yet:
+
+| component | wire | class | column exists? |
+|---|---|---|---|
+| `/Pages/PageEditor` | `onTextChanged → prop-seoDescription` | `Page` | **no** |
+| `/Pages/PageEditor` | `prop-seoDescription → startValue` | `Page` | **no** |
+| `/Pages/PageEditor` | `value → prop-kind` | `Section` | **no** |
+| `/Admin/SectionRow` | `out-data → prop-data` | `Section` | **no** |
+
+So `Edit page` carries `Title` (column exists) and `Search description` (column does not) **in one
+form, saved by one button, out of one build**. Both were changed and saved at 14:24:59:
+
+| field | wire in the build | result in the record |
+|---|---|---|
+| `Title` → `About us EDITED` | ✅ present | ✅ **saved** — `updatedAt` `2026-08-29T12:24:59.929Z` |
+| `Search description` → `SEO-CANARY-17` | ❌ filtered out | 🔴 **discarded** — no `seoDescription` column, nothing in `_Schema.Page`, and the screen said nothing |
+
+The save reported success. The row updated. The field was never written and there is no column to
+write it to. **That is AC1's person sentence failing, driven, with a control that differs from it in
+exactly one property**, and it is the first time the symptom has been reproduced beside a field that
+works.
+
+### 6.5 What this changes for the acceptance criteria
+
+- **AC1 — still unmet**, and now reproducible on demand without a fresh mint: use a field whose
+  column does not exist. §6.4 is the standing repro.
+- 🔴 **AC2 is unsafe as written.** It pins the census at *"0 (from 19)"*. In this one session, with
+  no edit to the project, that number read **19** at load and **4** four minutes later. **It is not
+  a property of the template** — it is a function of how much of the schema has been written and
+  whether the editor has focused since. A spec pinning `19` would have gone red on a correct
+  project. Pin the number **beside a stated schema state**, or pin it on a project with no backend
+  bound at all.
+- **AC5 — §5.6's correction stands and sharpens.** A control pair must hold *two* things constant,
+  not one: the health pass (§6.1) **and** the introspected schema (§6.3). Varying "preview vs
+  deploy" varies neither.
+- **The §2 fix is confirmed as the right one.** Deriving `prop-<field>` from the node's own wires
+  removes the dependence on a column that does not exist yet — which is precisely the circularity
+  `cloudDynamicPorts.ts`'s docblock already documents for the cloud side (*"a fresh site can never
+  have the schema its own `prop-` ports would need"*). §6.3 is that same circularity on the browser
+  side, where nothing yet fixes it.
+
+### 6.6 ⚠️ A control that read zero for its own reasons, caught by a sibling line
+
+The first viewer census reported **0** `prop-` wires while the line above it, in the same probe,
+listed `closeResult-title -> prop-title` among the connections. The viewer's connection shape is
+`{sourceId, sourcePort, targetId, targetPort}`; the editor's is
+`{fromId, fromProperty, toId, toProperty}`. The census filtered on the editor's names against the
+viewer's objects and matched nothing. **A zero from the wrong field name is indistinguishable from a
+zero that means "the wires were dropped"** — and this one would have read as confirmation. It was
+caught only because two lines of one probe disagreed. The corrected census is the **19** in §6.2.

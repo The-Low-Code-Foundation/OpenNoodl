@@ -201,8 +201,24 @@ about a screen that *reads* as something, and on that path it reads as broken.
   drops these wires reads a debounced store nothing forces to settle — so a named row and a
   nameless one are both what the mechanism produces (**SBR-008 §5**, **D13**). §5.6's two-row
   table stands as evidence; what it is evidence *of* has changed.
-  ✅ **The drive that unblocks AC1 is named**: a second page created late in a settled session on
-  `SBR-016 Arrive Drive` — one variable, and it is also AC1's missing second row.
+  ✅ **s17: AC1 IS MET — driven with three rows.** On `SBR-016 Arrive Drive`, two further pages
+  were created through the dialog (`Arm A Early Build`/`arm-a-early` at 12:20:36Z,
+  `Arm B Settled Build`/`arm-b-settled` at 12:22:26Z, both confirmed in the backend's `Page` table).
+  The list renders **three rows with their names, slugs and status** — `About us / about / Draft`,
+  `Arm A Early Build / arm-a-early / Draft`, `Arm B Settled Build / arm-b-settled / Draft` — under
+  the sentence **`Three pages, no published`**. That is the whole person sentence: more than one
+  page, each with its name, slug and status. **The blocker was the rows arriving nameless; they no
+  longer do on this fixture**, because its `Page` class has now been written to and the columns mint
+  the ports (SBR-008 §6.3).
+  ✅ **Screenshot and DOM both taken**, as AC1 asks: `notes/sbr006-ac1-three-pages.png` shows the
+  sidebar (`Site admin` / `Pages` / `Theme & settings` / `Messages` / `View site` / `Sign out`),
+  the three rows each with a `Draft` **pill**, and the one primary action `New page`.
+  ⚠️ **Correction to the standing drive note**: `npm run cdp -- screenshot --target=viewer` did
+  **not** hang — it returned a real 988×313 PNG in ~10 s. The prompt has carried "it hangs" since
+  s14; on this stack it works.
+  ⚠️ **AC2 does not come with it.** AC2 is about the deployed panel, and the reason these rows are
+  named is a property of *this fixture's grown schema*, not a fix — on a fresh site the same act
+  still produces a nameless row. **AC1 is met on its own terms; AC2 stays blocked on SBR-008.**
 - 🟡 **AC3 is unblocked and half-driven.** SBR-015's drive answered §5.7 (see
   `SBR-015 §2.3a`): publish now answers in 19 ms rather than hanging 30 s.
   Through the UI, a **successful** publish closes the menu at 211 ms and flips

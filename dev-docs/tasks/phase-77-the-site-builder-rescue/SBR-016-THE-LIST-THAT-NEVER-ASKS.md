@@ -296,6 +296,24 @@ oracle became `/(No|One|Two|Three) pages?[,.]/`, which only the admin list can p
   the export filter that drops these wires reads a debounced warnings store nothing forces to
   settle — so both readings are what one mechanism produces and neither discriminates. **This
   bullet unblocks nothing.** See **SBR-008 §5** and **D13**.
+  🟢 **s17 settled it, and not the way either session guessed.** The flip was watched happening in
+  the editor — same project, no edit, 2.3 s apart, `exportComponent` 13 connections → 11 and the
+  project census 32 healthy → 13 (**SBR-008 §6.1**). So D13 is a confirmed cause. But s17 also found
+  a **third** state neither session had: once the backend schema is introspected, the columns
+  s15's own write created mint the ports and the wires go healthy again (**§6.3**). 🔴 **That means
+  this fixture is no longer the one s15 drove** — its `Page` class has grown `title` and `slug`, so
+  a page created on it now arrives named for a reason that is not about timing. Two more were
+  created on it in s17 and both came back named; neither is evidence about the defect.
+
+### 8.5a ⚠️ s17: this fixture has been written to three more times
+
+Recorded because the standing rule is *do not overwrite drive fixtures*, and this one has moved:
+`Page` now holds **three rows** — `About us` (its `title` edited to `About us EDITED`),
+`Arm A Early Build`/`arm-a-early`, `Arm B Settled Build`/`arm-b-settled` — and its `_Schema.Page`
+carries `published, showInNav, navOrder, title, slug`. It is still a usable fixture, but **it can no
+longer answer a question about a site nobody has written to.** For that, `SBR-017 Sign In Drive`
+(`Page`: `published, showInNav, navOrder`, one row, no `title`/`slug` column) is the untouched arm
+— and s17 deliberately did not spend it.
 
 ### 8.6 ⚠️ What was NOT observed
 
