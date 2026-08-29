@@ -46,7 +46,7 @@ Six rows came back different from how they were written. In this file:
 |---|---|
 | **D2** | cause **corrected for the third time** — the cloud path *does* call the recorder, from the `Log` node handler only |
 | **D4** | 🔄 **reclassified as TEMPLATE work** — `failure` and `error` both exist; the site builder never wired them |
-| **D6** | ❌ **cause REFUTED** — `maxWidth` *is* a declared port the door knows. Symptom unexplained |
+| **D6** | ❌ **symptom DOES NOT REPRODUCE** (driven, P80 DEF-008 s13) — `maxWidth` applies on `Text` in every authored form incl. §9.3's exact shape; the one measured route to `none` is a parameter on a component **instance**, which the door blocks |
 | **D8** | = **phase 76's F15**. The same defect, found twice, unowned in both |
 | **D5** | real **and deliberate** (Richard's 2026-08-06 decision); the residual is the disk/load seam |
 | **D1, D3, D7, D10** | confirmed real at HEAD, unchanged |
@@ -170,7 +170,7 @@ the session that measured them; not re-measured in s10.
 | id | defect | measured | owner |
 |---|---|---|---|
 | D5 | 🔴 The NDA-017 migration writes `runOnChange-*: false` on load for **every** node whose control signal is wired — 37 nodes in a fresh project, zero `true`s. An explicit `true` survives; absent does not. Caused the site's root URL to render no page at all. | SBR-004 §9.2, s8 | ✅ **re-measured 2026-08-29: real AND DELIBERATE** (Richard's decision, 2026-08-06 — the module states it at length). The residual is the disk/load seam → **[DEF-007](../phase-80-the-defects-the-templates-found/DEF-007-DISK-AND-LOAD-DISAGREE.md)** |
-| D6 | ❌ **CAUSE REFUTED 2026-08-29** — `maxWidth` **is** a declared port on `Text` and the door knows it (`get_node_type` returns it; `useDimensionConstraints` defaults `true` and no node opts out). The file last moved **2026-08-08**, three weeks *before* this was measured, so the row is **wrong, not stale**. Symptom unexplained. | SBR-004 §9.3, s5/s8 | **[DEF-008](../phase-80-the-defects-the-templates-found/DEF-008-THE-MEASUREMENT-OWED.md)** — a measurement owed, not a fix |
+| D6 | ❌ **SYMPTOM DOES NOT REPRODUCE — DRIVEN 2026-08-29 (P80 DEF-008 s13), rendered in a browser through the from-disk harness.** `maxWidth` on `Text` reaches the DOM in **every authored form**: bare `240` → computed `240%` (the D8/DEF-003(a) coercion, and `unitless-dimension` fires on it — driven); `{value:240,unit:'px'}` → `240px`, offsetWidth 240; **this row's exact shape** (`sizeMode:'contentSize'` + `{value:100,unit:'%'}`) → computed `100%`; and inside a component instantiated by a **For Each** (the nav link's real placement) → `240px`. Controls: a Text with no `maxWidth` reads `none`; a Group beside it reads `240px`. **The one measured route to `none`**: the parameter authored on a component **instance** (no matching Component Input) — dropped silently at runtime, but the door blocks it (`interfaceless-instance` fired naming `maxWidth`, driven). ⚠️ What the re-drive cannot see: which element §9.3's probe read, and its render path — the platform did not move between the two measurements, so the disagreement is in the fixture or the probe, not the code. | SBR-004 §9.3, s5/s8 · re-driven P80 DEF-008 s13 | ✅ **CLOSED into [DEF-008](../phase-80-the-defects-the-templates-found/DEF-008-THE-MEASUREMENT-OWED.md)** — it works; the bare-form half is DEF-003(a)'s, already warned |
 | D7 | ⚠️ `Text` declares **no padding ports and no `borderRadius`** — margins only. A padded nav item needs a wrapping `Group`. | SBR-006, s9 | ✅ **confirmed at HEAD** (`paddingLeft`, `borderRadius` → `notFound`; `text.ts` calls `addMarginInputs` only) → **[DEF-003](../phase-80-the-defects-the-templates-found/DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md)** |
 | D8 | ⚠️ A bare number in a dimension port means **percent** (`width: 240` → `240%`). The door refuses it; the object form is the fix. Easy to write, hard to see. | SBR-006, s9 | ✅ **confirmed at HEAD** (`react-component-node.ts:1925`). 🔴 **= phase 76's F15** — the same defect found twice, unowned in both → **[DEF-003](../phase-80-the-defects-the-templates-found/DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md)** |
 | D9 | 🔴 The deploy drops **wire-only** `prop-*` — a parameter survives, a wire does not. | SB-017 §11.1 / SBR-006 §5.6 | **SBR-008** ✅ |
@@ -831,3 +831,82 @@ defect, not a blocked task, which is why it is filed at `NONE` rather than escal
 🔴 **Do not re-derive the threshold from the fixture.** `1237` is this title's number. The general
 statement is *the heading's right edge is `sidebar + title-text-width`, at every viewport* — which
 is the same trap D18's `897` fell into, recorded here so the next reader does not repeat it.
+
+---
+
+## D21 — 🟢 FIXED s25, **DRIVEN s25** · A deployed site whose backend is another origin could not sign anybody in, and blamed their password
+
+**Found:** s25, driving [SBR-007](SBR-007-THE-PAGE-EDITOR.md) AC1's deployed half ·
+**Owner: `NONE` when found — fixed in the same session** · 🔴 **Product** (`nodegx-backend`), not
+template · **Bites:** every deployed NodeGX app whose backend is not the page's own origin, which is
+the normal deployed shape. Not the site builder only — the seam is the runtime's, shared by every
+project that has users.
+
+### The reading
+
+The deploy folder served at `http://127.0.0.1:<port>`, its backend at `http://localhost:8601` — a
+different origin by the browser's rule, and the only difference between the two arms below. Correct
+owner credentials.
+
+| | |
+|---|---|
+| the page says | *"That email and password did not match."* |
+| the console says | `net.noodl.user.LogIn (/Pages/SignIn): The action could not be performed [user/log-in-failed]` |
+| the backend says | **nothing — the request never arrived** |
+| Chrome says | `corsError: "HeaderDisallowedByPreflightResponse"`, `failedParameter: "x-parse-installation-id"` |
+
+Timeline, one click: `POST /login` queued at t+6 ms, preflight `OPTIONS /login` answered **204** at
+t+7 ms, and at t+8 ms the POST died `net::ERR_FAILED` — after a preflight that succeeded.
+
+### The mechanism, both halves named
+
+`ParseAuthAdapter._makeRequest` (`noodl-runtime/src/api/backends/ParseAuthAdapter.ts:371`) sets
+`X-Parse-Installation-Id` on every **auth** call. `ALLOW_HEADERS`
+(`nodegx-backend/src/ops/headers.ts`) listed the other three headers that seam sends and not that
+one. The browser therefore refuses the request it has just been told the method and origin are fine
+for.
+
+🔴 **The scope follows from which seam sends it.** `ParseWireAdapter._makeRequest` — the data path —
+does **not** set the header, and its own docblock (`ParseAuthAdapter.ts:318`) says so as one of the
+three deliberate differences between them. So a cross-origin deployed app had **working data and no
+authentication at all**: the admin page list rendered fine over the same origin pair that could not
+log in, which is exactly what the first probe of this session saw and nearly mis-filed as an ACL
+question.
+
+⚠️ **Why every previous arm was green.** A same-origin request is never preflighted. The editor's
+preview serves the app and proxies the backend on one origin; `render-from-disk.js` proxies it at
+`/__backend` for the same reason. Every AC1 reading before this one — s22's included — was taken
+where this defect cannot appear.
+
+### The fix, and the control that makes its test mean something
+
+One header added to `ALLOW_HEADERS`. The spec is
+`packages/nodegx-backend/tests/sbr007-auth-preflight.test.ts`, and it has two cases because the
+first one alone is satisfiable by a regression: *"every header I asked for came back allowed"* is
+also what a list that had become `*`, or one echoing the request, would produce. So a header nothing
+sends is requested **in the same call** and must come back refused.
+
+✅ **Mutant-checked.** With the header removed from `ALLOW_HEADERS` again, **both** cases fail;
+restored, both pass. A spec that cannot fail is not a gate.
+
+✅ **Driven, on the artefact, after rebuilding `dist/`.** The backend runs from a bundle, so the
+source fix was invisible until `npm run build` — the same trap as a viewer bundle. Re-running the
+identical cross-origin drive afterwards completes the whole AC1 loop, zero console errors:
+[`notes/d21-cross-origin-signin-1440.png`](notes/d21-cross-origin-signin-1440.png) ·
+[`notes/d21-cross-origin-signin-fixed-1440.png`](notes/d21-cross-origin-signin-fixed-1440.png).
+
+### 🔴 What this session got wrong first, kept because it nearly shipped
+
+The first network capture recorded `POST /login → 200` **and** the node reporting failure, and was
+written down as *"the backend authenticated and the panel lied about it."* That 200 was **my own
+control `fetch`**, fired from the same page a moment later and matched by the same URL filter. The
+runtime's request had failed all along.
+
+Two readings, one filter, opposite owners. What caught it was re-running with `loadingFailed`
+captured and timestamps on every event, at which point the runtime's POST had no response at all.
+**A capture filtered by URL attributes nothing to a producer** — and a probe that adds its own
+traffic to the surface it is measuring must exclude itself before it reads.
+
+The credentials theory that followed was wrong too, and wrong in the more dangerous way: a
+`credentials: 'include'` pair *reproduced* `ERR_FAILED` exactly, which fits and excludes nothing.
+`corsErrorStatus` was there to be read the whole time and named a different cause.

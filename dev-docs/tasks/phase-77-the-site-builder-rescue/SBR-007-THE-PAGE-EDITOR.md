@@ -522,3 +522,110 @@ which is not this task's build.
 | **D20** | 🔴 new, `NONE` — the title the fix cannot reach (§22) |
 
 🔴 **AC3 is still not met, and the phase must not close as if it were.** D15 is unowned.
+
+---
+
+# 🟢 s25 (2026-08-29) — AC1's deployed half is MET and DRIVEN, and the deploy nobody had served was hiding a defect that had nothing to do with this screen
+
+## 25. What was driven, and on what
+
+**The artefact is a real deploy folder** — `deployToFolder`'s own output, written by the editor's
+export pipeline running headlessly (§26), not a reconstruction. `render-from-disk.js` was the right
+instrument for D18 and is the wrong one for this question: nothing it serves has been through
+`Exporter.exportToJSON`, and the whole point of AC1's deployed half is what the *export* produces.
+
+The loop, on the deployed panel, in one run:
+
+| # | act | reading |
+|---|---|---|
+| 1 | public `/drive-007`, **signed out** | `h1.ndl-visual-text`, **36 px / 700**, y=152 — `Deployed Retitle 001` |
+| 2 | stored row, over REST | `title: "Deployed Retitle 001"` |
+| 3 | sign in as `owner@sbr007.test` | lands `/admin/pages`, nav shows **`Sign out`** |
+| 4 | open the page editor | header `Editing · Deployed Retitle 001` |
+| 5 | retitle + `Save page` | header becomes `Editing · Cross Origin Retitle 002` |
+| 6 | stored row, over REST | `title: "Cross Origin Retitle 002"` |
+| 7 | public `/drive-007`, **a browser that never signed in** | **36 px / 700** — `Cross Origin Retitle 002` |
+
+Zero console errors. §12.1's oracle throughout — the **36 px heading**, never `body.innerText`,
+because the site's nav lists the page by title and would pass before anything was driven. Step 7 is
+a separate Chrome with a fresh profile: not a logged-out view, a session that never had one.
+
+✅ **Step 5 is §12.2's reading again, on the deploy caller.** The header is fed from the record, so
+it changing is the stored row changing — the input's echo cannot produce it. Step 6 is the
+independent oracle beside it.
+
+## 26. The instrument: the editor's deploy path, without the editor
+
+`scripts/devtools/deploy-from-disk.entry.ts` (bundled by `build-deploy-from-disk.mjs`, mirroring
+`noodl-preview/build.mjs`) composes exactly what `compilation.deployToFolderWithContext` composes —
+`ProjectModel`, a populated `NodeLibrary`, `utils/exporter`, `build/deployer` — in Node.
+`scripts/devtools/drive-deployed.js` serves the resulting folder and drives it over CDP.
+
+### 🔴 The health filter is inert headlessly, and a green from it means nothing
+
+`exportComponent` drops every connection `getConnectionHealth` calls unhealthy, and that predicate
+reads **no ports**: it asks `WarningsModel` whether a warning is *currently recorded* and answers
+`healthy: true` when none is — including when none has ever been evaluated (SBR-008 §5.4). A fresh
+Node process has evaluated nothing, so the export keeps every wire unconditionally.
+
+**`graph.evaluateHealth()` does not fix that on its own.** It has four early returns and takes them
+silently; on all 22 components it took `isModuleRegistered(project)` — the editor registers the open
+project as a node-library module and nothing headless does. Counting calls read *"22 components
+evaluated"* while the number of components actually evaluated was **0**.
+
+The census that caught it, and that the tool now prints on every run:
+
+| arm | on graph | in deploy | cloud-excluded | **dropped by filter** | sabotaged wire |
+|---|---|---|---|---|---|
+| before `registerModule` | 360 | 242 | 118 | **0** | 🔴 **deployed** |
+| control, after | 359 | 241 | 118 | **0** | — |
+| sabotage, after | 360 | 241 | 118 | **1** | ✅ **dropped** |
+
+🔴 **The sabotage arm is the only thing separating "the deploy kept every wire" from "the filter
+never ran".** Its first version wired the bad port onto a `/#__cloud__/` component — which
+`deployToFolder` excludes wholesale — so it was absent from the bundle either way and reported a
+confident `false`. A control that reads zero for its own reasons is worth less than none.
+
+✅ **With the filter live, every one of the 241 non-cloud connections reaches the deployed bundle**,
+and the 359→241 gap is exactly the 118 cloud-component connections the deploy excludes by design.
+That is SBR-008's claim, on the deploy caller, with a known-firing control beside it.
+
+## 27. 🔴 [D21](DEFECTS-THE-SITE-BUILDER-FOUND.md) — the first arm could not sign in at all
+
+Served cross-origin from its backend — the normal deployed shape — the panel answered a correct
+password with *"That email and password did not match."* The backend never received the request:
+`X-Parse-Installation-Id`, which the runtime's auth seam sets on every auth call, was missing from
+the backend's CORS allow-list, so Chrome refused the POST after allowing the preflight.
+
+Fixed in `nodegx-backend/src/ops/headers.ts`, specced with a control, mutant-checked, and the
+identical drive re-run afterwards to completion. **The full write-up, including the two wrong
+readings it took to get there, is D21's row.**
+
+⚠️ **AC1's deployed half was taken in both configurations.** Same-origin (proxied) passed before the
+fix; cross-origin passed only after it. The table in §25 is the cross-origin run.
+
+## 28. What this instrument cannot see
+
+- **It is not the editor's Deploy popup.** `DeployToFolderTab` collects a directory and an
+  environment and calls the same `deployToFolder`; what is unmeasured here is that UI, not the
+  export.
+- **`environment` was supplied by hand** for the same-origin arm (`--endpoint`), which is what the
+  Deploy popup's environment picker does. `appId`/`type` are carried from the project's own metadata
+  because `json.ts:121` replaces the whole `cloudservices` block — omit them and the deployed app
+  authenticates against nothing.
+- **One project, one backend.** Every number here is the site-builder fixture's.
+
+## 29. Where the ACs stand after s25
+
+| | verdict |
+|---|---|
+| **AC1** | 🟢 **MET AND DRIVEN, both halves** — preview s22 (§12.1), **deployed s25 (§25)** |
+| **AC2** | ⬜ not built — sibling renumbering needs a cloud function and a decision (§8) |
+| **AC3** | 🟡 thumbnail shipped, source-measured only · 🔴 drop gesture blocked on **D15**, `NONE` · ⬜ gallery model is SBR-005's |
+| **AC4** | 🟢 MET and DRIVEN (§12.2) |
+| **AC5** | 🟢 MET and DRIVEN (§12.3) — the dirty marker was seen again on the deployed panel at s25 |
+| **D18** | 🟢 FIXED s23, DRIVEN s24 (§20–§21) |
+| **D20** | 🔴 open, `NONE` — the title the fix cannot reach (§22) |
+| **D21** | 🟢 **NEW, FIXED and DRIVEN s25** (§27) — product, `nodegx-backend` |
+
+🔴 **AC3 is still not met, and the phase must not close as if it were.** D15 is unowned.

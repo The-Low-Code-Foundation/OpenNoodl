@@ -24,9 +24,22 @@ import type { CorsConfig } from './model';
 
 /** Methods and headers the API surface accepts. */
 const ALLOW_METHODS = 'GET, POST, PUT, DELETE, OPTIONS';
+/**
+ * 🔴 Every header the runtime's own clients set must be in this list, or the
+ * browser refuses the request before it is sent and the app reports the
+ * operation as having FAILED — not as having been blocked.
+ *
+ * `X-Parse-Installation-Id` (SBR-007 D21) is the one that was missing.
+ * `ParseAuthAdapter._makeRequest` sets it on every AUTH call and nothing else
+ * does, so a cross-origin deployed app had working data and no sign-in at all:
+ * Chrome answered the preflight with `HeaderDisallowedByPreflightResponse`, the
+ * `Log In` node saw a failed request, and the panel told the person their
+ * password was wrong. Same-origin hosts never preflight, which is why every
+ * preview arm was green.
+ */
 const ALLOW_HEADERS =
   'Content-Type, Authorization, X-Request-Id, X-Parse-Application-Id, X-Parse-Session-Token, ' +
-  'X-Parse-Master-Key, X-Parse-REST-API-Key, X-NodeGX-Api-Key, Last-Event-ID';
+  'X-Parse-Installation-Id, X-Parse-Master-Key, X-Parse-REST-API-Key, X-NodeGX-Api-Key, Last-Event-ID';
 
 /**
  * Which `Access-Control-Allow-Origin` to send, or null for none.
