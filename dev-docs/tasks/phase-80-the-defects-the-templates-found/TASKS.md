@@ -137,6 +137,29 @@ should be done **once**, not three times.
   🧭 **Plausibly Richard's**, on the same grounds DEF-001's `--primary` ruling was: it changes what
   every re-themed app looks like.
 
+- 🔴 **A workflow step pointing at a cloud *helper* is told to deploy it, and deploying can never
+  help.** Owner: **`NONE`**. Found by DEF-015 s11 while grepping for other readers of the predicate
+  DEF-015 fixed — the same half-rule, at a second surface.
+
+  `functionRefResolution.projectFunctionNames()` (`models/workflow/functionRefResolution.ts:122`)
+  calls `getCloudFunctionNames`, which is still the **prefix-only** list — correctly, because that
+  function's question is "is this component in the project". But `resolveFunctionRef` then compares
+  it against the backend's Request-node-derived list, so a step whose `ref` names a helper resolves
+  to `resolved-in-project` with the summary *"in this project · not deployed yet"* and the message
+  *"Deploy it, or run it and the step will fail with a missing function."*
+
+  🔴 **The alarm is right and the remedy is impossible.** Measured: `StepExecutor.invokeCloudFunction`
+  (`nodegx-backend/src/workflow/StepExecutor.ts:208`) refuses through `runner.hasFunction`, which is
+  `findRequestNodeForFunction` — so the step really does fail, with **404 `Step target function
+  "<name>" not found on this backend`**. No number of deploys will change that: the component has no
+  Request node, so it will never appear in `GET /admin/workflows`. The author is sent to a button
+  that cannot fix it.
+
+  ⚠️ **Not folded into DEF-015.** DEF-015's fix is "what may the card warn about"; this is "what
+  should a broken step *say*", it has its own five-state model and 15 specs
+  (`tests/workflow/functionrefresolution.test.ts`), and the honest answer is a **sixth** state — in
+  the project, but not callable — rather than a rewording. Phase 27 authored it and is closed.
+
 ## Rulings needed (Richard)
 
 - 🧭 **Does this phase exist, or do these fold into 0.2.1's bug-fix phase?** The tasks are written to

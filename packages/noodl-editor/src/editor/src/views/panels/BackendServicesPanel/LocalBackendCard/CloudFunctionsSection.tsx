@@ -95,18 +95,32 @@ export function CloudFunctionsSection({ backendId, isRunning, onDeploy }: CloudF
     }
   }, [onDeploy]);
 
-  const projectFunctions = deployState.functionNames;
+  const cloudComponents = deployState.cloudComponents;
   const backendFunctions = (status?.functions || []).map((f) => f.name);
   const error = deployState.lastError[backendId];
 
+  /**
+   * DEF-015 — **only endpoints are diffed against the backend.**
+   *
+   * This list used to be every `/#__cloud__/` component, and the backend's list
+   * is only the ones holding a Request node, so every helper in the project sat
+   * under a warning triangle saying it was "in the project, not on this backend"
+   * — permanently, on a healthy system, immediately after a successful deploy.
+   * The site-builder template ships three: two `RunTasks` task templates and one
+   * component instance. A signal that is always on is not a signal.
+   */
+  const endpoints = cloudComponents.filter((c) => c.role === 'endpoint').map((c) => c.name);
+  const workers = cloudComponents.filter((c) => c.role === 'worker');
+  const unreachable = cloudComponents.filter((c) => c.role === 'unreachable');
+
   // A project with no cloud functions gets no section at all: the point of the
   // browser-only experience being unchanged.
-  if (projectFunctions.length === 0 && backendFunctions.length === 0) {
+  if (cloudComponents.length === 0 && backendFunctions.length === 0) {
     return null;
   }
 
-  const missing = projectFunctions.filter((name) => !backendFunctions.includes(name));
-  const stale = backendFunctions.filter((name) => !projectFunctions.includes(name));
+  const missing = endpoints.filter((name) => !backendFunctions.includes(name));
+  const stale = backendFunctions.filter((name) => !endpoints.includes(name));
 
   return (
     <div className={css.CloudFunctions} data-test={`cloud-functions-${backendId}`}>
@@ -157,10 +171,41 @@ export function CloudFunctionsSection({ backendId, isRunning, onDeploy }: CloudF
               </Text>
             </li>
           ))}
+          {/*
+            Counted rather than silenced. A worker has no endpoint to be absent
+            from, so it can never be "missing" — but one that has genuinely been
+            deleted from the project is worth noticing, and a number that drops
+            is how you notice.
+          */}
+          {workers.length > 0 && (
+            <li data-test={`cloud-workers-${backendId}`}>
+              <Icon icon={IconName.Play} size={IconSize.Tiny} UNSAFE_style={{ color: 'var(--theme-color-fg-muted)' }} />
+              <Text textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
+                {workers.length} {workers.length === 1 ? 'worker' : 'workers'}, run in-process by these functions
+              </Text>
+            </li>
+          )}
+          {/*
+            The total classification's third bucket. Nothing can start these —
+            no route, and no endpoint reaches them — so this is the one case in
+            the section where a warning is the honest answer.
+          */}
+          {unreachable.map((c) => (
+            <li key={c.componentName} data-test={`cloud-component-unreachable-${c.name}`}>
+              <Icon
+                icon={IconName.WarningTriangle}
+                size={IconSize.Tiny}
+                UNSAFE_style={{ color: 'var(--theme-color-notice)' }}
+              />
+              <Text textType={TextType.Shy} style={{ fontSize: '11px', marginLeft: '6px' }}>
+                {c.name} — in the project, but nothing calls it and it has no endpoint
+              </Text>
+            </li>
+          ))}
         </ul>
       ) : (
         <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
-          {projectFunctions.length} in the project. Start the backend to deploy them.
+          {endpoints.length} in the project. Start the backend to deploy them.
         </Text>
       )}
 

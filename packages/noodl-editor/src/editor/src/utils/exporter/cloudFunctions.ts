@@ -46,6 +46,171 @@ export function getCloudFunctionNames(project: ProjectModel): string[] {
 }
 
 /**
+ * DEF-015 — the node type that makes a cloud component an HTTP endpoint.
+ *
+ * 🔴 **Spelled here because the editor had no copy of this rule at all, and that
+ * absence was the defect.** `nodegx-backend` has decided since SB-003 that a
+ * `/#__cloud__/` component *without* a Request node is a helper and serves no
+ * route (`workflow/functionDeclarations.ts`, whose own header warns that "two
+ * readers of one predicate is how a gate starts disagreeing with the thing it
+ * gates"). The editor's `getCloudFunctionNames` applied only the *prefix* half,
+ * so the Backend Services card compared a prefix-derived "expected" set against
+ * the backend's Request-node-derived "serving" set and reported every helper in
+ * every project as missing, forever. `def015-cloud-component-roles.test.ts`
+ * asserts the two agree over the real shipped template rather than trusting it.
+ */
+export const CLOUD_REQUEST_NODE_TYPE = 'noodl.cloud.request';
+
+/**
+ * What a `/#__cloud__/` component is *for*, which is what decides whether the
+ * backend not serving it is news.
+ *
+ * - `endpoint` — its graph holds a Request node. The backend serves it by name,
+ *   so its absence from `GET /admin/workflows` is a real, reportable failure.
+ * - `worker` — no Request node, but some endpoint reaches it: as a placed
+ *   component instance, or by name through a parameter (a `RunTasks`
+ *   `taskTemplate`, a Function node's `function`). It runs in-process, has no
+ *   route, and must never be reported missing.
+ * - `unreachable` — neither. Nothing can start it, over HTTP or otherwise. This
+ *   is the bucket that keeps the classification **total**: a reference
+ *   mechanism this does not know about surfaces a worker here, visibly, instead
+ *   of being absorbed into one of the other two.
+ */
+export type CloudComponentRole = 'endpoint' | 'worker' | 'unreachable';
+
+export interface CloudComponentClassification {
+  /** The name an HTTP caller uses — the component name minus the prefix. */
+  name: string;
+  /** The full component name, `/#__cloud__/<name>`. */
+  componentName: string;
+  role: CloudComponentRole;
+}
+
+/**
+ * Every node in a component's **own** graph — its roots and their children, and
+ * deliberately not the graphs of components it places.
+ *
+ * That boundary is not a detail: it is the one the backend draws. `findRequestNode`
+ * walks the exported component's `nodes`/`children` tree, and an instance's inner
+ * nodes are not inlined into it, so a helper holding a Request node must not make
+ * its *caller* an endpoint. `getNodesWithTypeRecursive` would cross that line.
+ *
+ * 🔴 `forEachNode` stops on a truthy return, so the callback returns nothing.
+ */
+function ownNodes(component: ComponentModel): TSFixme[] {
+  const nodes: TSFixme[] = [];
+  component.forEachNode((node) => {
+    nodes.push(node);
+  });
+  return nodes;
+}
+
+/**
+ * Does this component declare an HTTP endpoint?
+ *
+ * Reads `node.typename` — the raw string the artefact carries — rather than
+ * `node.type.name`, which resolves through the `NodeLibrary` singleton. The card
+ * asks this question at times when the cloud library may not be the one loaded,
+ * and a predicate that answers differently depending on a singleton is the kind
+ * that passes its spec and fails in the app.
+ */
+export function declaresCloudEndpoint(component: ComponentModel): boolean {
+  return ownNodes(component).some((node) => node.typename === CLOUD_REQUEST_NODE_TYPE);
+}
+
+/**
+ * The cloud components each cloud component names — by placing one as an
+ * instance, or by naming one in a parameter value.
+ *
+ * ⚠️ **No list of node types and no list of parameter names.** DEF-015 §5: an
+ * exclusion list cannot fail, and neither can an inclusion list that is allowed
+ * to be the whole rule. A value counts as a reference when it *is* a cloud
+ * component's name — prefixed or bare, since `CloudFunctionAdapter` stores the
+ * bare form in its `function` parameter — so a new way of naming a helper is
+ * picked up without this function learning about it. A mechanism that stores a
+ * reference some other way makes its target `unreachable`, which is visible.
+ *
+ * Self-references are not counted: "nothing else names this" is the question.
+ */
+function referencesByComponent(components: ComponentModel[]): Map<string, Set<string>> {
+  const byFullName = new Map<string, string>();
+  for (const component of components) {
+    byFullName.set(component.name, component.name);
+    byFullName.set(component.name.substring(CLOUD_COMPONENT_PREFIX.length), component.name);
+  }
+
+  const edges = new Map<string, Set<string>>();
+  for (const component of components) {
+    const targets = new Set<string>();
+    const note = (value: unknown) => {
+      if (typeof value !== 'string' || value.length === 0) return;
+      const target = byFullName.get(value);
+      if (target && target !== component.name) targets.add(target);
+    };
+
+    for (const node of ownNodes(component)) {
+      note(node.typename);
+      Object.values(node.parameters || {}).forEach(note);
+    }
+    edges.set(component.name, targets);
+  }
+  return edges;
+}
+
+/**
+ * Every cloud component in the project, with the role that decides what the
+ * Backend Services card should say about it.
+ *
+ * Reachability is transitive: a worker a worker calls is still a worker. The
+ * walk starts only from endpoints, so two helpers that name each other and
+ * nothing else are `unreachable` — which is true of them, and is exactly what a
+ * count of "nothing names it" would get wrong.
+ */
+export function classifyCloudComponents(project: ProjectModel): CloudComponentClassification[] {
+  const components = getCloudFunctionComponents(project);
+  const endpoints = components.filter(declaresCloudEndpoint);
+  const edges = referencesByComponent(components);
+
+  const reachable = new Set<string>();
+  const queue = endpoints.map((c) => c.name);
+  while (queue.length > 0) {
+    const current = queue.shift() as string;
+    for (const target of edges.get(current) || []) {
+      if (reachable.has(target)) continue;
+      reachable.add(target);
+      queue.push(target);
+    }
+  }
+
+  const isEndpoint = new Set(endpoints.map((c) => c.name));
+  return components
+    .map((component) => ({
+      name: component.name.substring(CLOUD_COMPONENT_PREFIX.length),
+      componentName: component.name,
+      role: (isEndpoint.has(component.name)
+        ? 'endpoint'
+        : reachable.has(component.name)
+          ? 'worker'
+          : 'unreachable') as CloudComponentRole
+    }))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+/**
+ * The names the backend will serve as routes — the set the card may compare
+ * against `GET /admin/workflows` and warn about.
+ *
+ * Not `getCloudFunctionNames`: that one answers "what ships in the bundle",
+ * which is every cloud component including the helpers, and is still the right
+ * answer for the export and its failure message.
+ */
+export function getCloudEndpointNames(project: ProjectModel): string[] {
+  return classifyCloudComponents(project)
+    .filter((c) => c.role === 'endpoint')
+    .map((c) => c.name);
+}
+
+/**
  * Build the bundle to push to a backend, or `null` when the project has no
  * cloud functions.
  *

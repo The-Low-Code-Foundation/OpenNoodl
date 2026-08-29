@@ -34,6 +34,8 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import {
+  CloudComponentClassification,
+  classifyCloudComponents,
   cloudBundleName,
   exportCloudFunctionsWithKits,
   getCloudFunctionNames,
@@ -47,6 +49,13 @@ export const CLOUD_FUNCTIONS_DEPLOY_STATE_CHANGED = 'CloudFunctionDeployer.state
 export interface CloudDeployState {
   /** Function names in the project right now, whether or not they are pushed. */
   functionNames: string[];
+  /**
+   * DEF-015 — the same components, each with the role that decides whether the
+   * backend not serving it is news. `functionNames` is what the bundle carries;
+   * this is what the backend can be *asked* about, and the card must diff on
+   * the endpoints alone or it warns about every helper in every project.
+   */
+  cloudComponents: CloudComponentClassification[];
   /** `Date.now()` of the last successful push, per backend id. */
   lastPushedAt: Record<string, number>;
   /** Last push error, per backend id. Cleared by a success. */
@@ -98,6 +107,7 @@ class CloudFunctionDeployerImpl {
   public getState(): CloudDeployState {
     return {
       functionNames: ProjectModel.instance ? getCloudFunctionNames(ProjectModel.instance) : [],
+      cloudComponents: ProjectModel.instance ? classifyCloudComponents(ProjectModel.instance) : [],
       lastPushedAt: { ...this.lastPushedAt },
       lastError: { ...this.lastError },
       isPushing: this.isPushing
