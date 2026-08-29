@@ -234,6 +234,38 @@ cheap to make later — and because nobody has yet read the two pairs against ea
   projects deploy the same component names to one backend — namespace per bundle, refuse the second,
   or last-writer-wins — is a design question with a person attached to it.
 
+- 🔴 **A cloud function in a FOLDER is declared, listed, ticked on the card — and unreachable over
+  HTTP.** Owner: **`NONE`**. Found by DEF-015 s11 while measuring an arm for phase 77's SBR-006 AC1.
+  Measured on a live backend, `curl` only.
+
+  **The same graph, deployed twice, one variable changed:**
+
+  | deployed as | `GET /admin/workflows` | `POST /functions/<name>` |
+  |---|---|---|
+  | `publishPage` | listed | reaches the runner — `500 Unauthenticated requests not accepted.` |
+  | `nested/publishPage` | **listed** | **`404 Not found: POST /functions/nested/publishPage`** |
+
+  The route is `/functions/:name` and `:name` does not match a nested path, so the request never
+  reaches `WorkflowRunner.run` — the 404 is the router's generic miss, **not** the runner's
+  `Function '<name>' not found`. Two different 404s that read alike; only the body separates them.
+
+  ⚠️ **Folders are a first-class affordance, not a corner.** The editor creates cloud components in
+  them (`/.placeholder` exists precisely to make an empty cloud folder visible), the shipped
+  site-builder template puts three of its seven in `site/`, and `getCloudFunctionNames` deliberately
+  preserves nesting. 🔴 **`cloudFunctions.test.ts:85` is green and pins it**: its comment reads
+  *"POST /functions/<name> — the prefix is stripped, nesting is not"* and it asserts `orders/save`.
+  The gate encodes the broken address as the expected value.
+
+  🔴 **DEF-015's card cannot see this and will show a green ✓.** The card diffs the project's
+  endpoints against `GET /admin/workflows`, and a nested endpoint appears in **both** — so it
+  matches, and gets a tick. That is a limit of what "the backend is serving it" can mean: the
+  backend declares it and will not route to it. Fixing the route makes the tick true; until then the
+  card is honest about the wrong question.
+
+  **Two candidate fixes:** make the route accept the rest of the path (`/functions/*`), or refuse
+  nested names at deploy so the author is told at push time. The first is what the name convention
+  already promises.
+
 ## Rulings needed (Richard)
 
 - 🧭 **Does this phase exist, or do these fold into 0.2.1's bug-fix phase?** The tasks are written to

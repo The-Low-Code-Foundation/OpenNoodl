@@ -266,3 +266,24 @@ exactly the kind that a later edit reverts silently.
 
 🔴 **A `git checkout --` on `CloudFunctionsSection.tsx` is not how to undo anything here** — that
 file carries the fix.
+
+## 10. 🔴 A limit of this fix, found after it landed
+
+**The card's ✓ means "the backend declares this name", and that is not the same as "a caller can
+reach it".** Measured on a live backend after the fix was committed: a cloud function in a folder is
+declared by `GET /admin/workflows` and is **404 over HTTP**, because the route is `/functions/:name`
+and `:name` does not match a nested path. The same graph deployed as `publishPage` reaches the
+runner; deployed as `nested/publishPage` it does not.
+
+Such a function appears in the project's endpoint set **and** in the backend's serving set, so this
+card matches them and shows a green tick for something nobody can call. Registered as its own row in
+`TASKS.md` (owner `NONE`) with the control pair and the two-different-404s trap.
+
+⚠️ **This is not an argument for widening what the card warns about.** The card's job is to compare
+what the project has against what the backend says it serves, and it now does that correctly. "Is
+the declared name actually routable" is a different question with a different owner, and answering
+it here would put the card back in the business of second-guessing the backend — which is the shape
+of the defect this task just removed.
+
+✅ **It does sharpen §7's wording.** `endpoint` means *this component declares an HTTP entry point*.
+It has never meant *this entry point is reachable*, and the classifier cannot know the second thing.
