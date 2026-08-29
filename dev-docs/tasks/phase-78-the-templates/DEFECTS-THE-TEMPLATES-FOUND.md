@@ -55,22 +55,22 @@ failure this file's first house rule exists to prevent.
 | **D19** | ⚠️ open (08-29) | **DEF-017** — filed as Track C **C2** (was `NONE`, s17) | product | every person filling in any form |
 | **D20** | 🔴 open (08-29) | **DEF-006** — **filed** as §0(c) (was `NONE`, s17) | product | every agent styling on-system |
 | **D21** | ✅ disproved (08-29) | — | — | (would have been: every agent placing a component) |
-| **D22** | 🔴 open (08-29) | **NONE** | template | every install — the directory's first row |
-| **D23** | ⚠️ open (08-29) | **NONE** | template | anyone reading two pages titled the same |
-| **D24** | ⚠️ open (08-29) | **NONE** | template | a moderator approving somebody |
+| **D22** | 🔴 open (08-29) | **phase 78 T6** — template, before publication | template | every install — the directory's first row |
+| **D23** | ⚠️ open (08-29) | **phase 78 T6** — template, before publication | template | anyone reading two pages titled the same |
+| **D24** | ⚠️ open (08-29) | **phase 78 T6** — template, before publication | template | a moderator approving somebody |
 | **D25** | ✅ fixed in Track A — **re-measured 08-29 (s10)** | — | template | (was: every person reading a date or filling the meeting form) |
 | **D26** | ✅ **fixed by P80 C1 (`2c6a8876`, 08-29)** — `raised` and `ruled` compositions added; B3 unblocked | P80 | product | (was: every template we ship) |
 | **D27** | ✅ fixed s8 (08-29) | — | template | (was: anyone whose setup, join or approval threw) |
-| **D28** | 🔴 open (08-29) | **NONE** | product | every agent who lays controls out in the one node that reflows |
+| **D28** | 🔴 open (08-29) | **DEF-018** (registered 08-29) | product | every agent who lays controls out in the one node that reflows |
 | **D29** | ✅ **FIXED s13 (08-29)** — measured at the browser, both halves | — | template | (was: every member — a second auth round trip on every page) |
-| **D30** | 🔴 open (08-29) | **NONE** | product | every app with a column of numbers — money, times, scores |
+| **D30** | 🔴 open (08-29) | **DEF-019** (registered 08-29) | product | every app with a column of numbers — money, times, scores |
 | **D31** | ✅ fixed s11 (08-29) | — | template | (was: every moderator who posted something wrong) |
-| **D32** | 🔴 open (08-29, s12) | **NONE** | product | every agent laying two things out along a row |
-| **D33** | 🔴 open (08-29, s14) | **NONE** | product | every member who was told they would be emailed |
-| **D34** | 🔴 open (08-29, s14) | **NONE** | product | everyone an app ever emails a link to |
-| **D35** | 🔴 open (08-29, s14) | **NONE** | product | every graph that accumulates anything server-side |
-| **D36** | 🔴 open — worked around in template (08-29, s15) | **NONE** | product | every screen whose answer has more than one form |
-| **D37** | 🔴 open — worked around in template (08-29, s15) | **NONE** | product | every person tapping the words beside a checkbox |
+| **D32** | 🔴 open (08-29, s12) | **DEF-020** (registered 08-29) | product | every agent laying two things out along a row |
+| **D33** | 🔴 open (08-29, s14) | **DEF-021** (registered 08-29) | product | every member who was told they would be emailed |
+| **D34** | 🔴 open (08-29, s14) | **DEF-022** (registered 08-29) | product | everyone an app ever emails a link to |
+| **D35** | 🔴 open (08-29, s14) | **DEF-023** (registered 08-29) | product | every graph that accumulates anything server-side |
+| **D36** | 🔴 open — worked around in template (08-29, s15) | **DEF-024** (registered 08-29) | product | every screen whose answer has more than one form |
+| **D37** | 🔴 open — worked around in template (08-29, s15) | **DEF-025** (registered 08-29) | product | every person tapping the words beside a checkbox |
 | **D38** | ✅ fixed s15 — harness, not product | — | harness | (was: every drive asserting on a project string) |
 | **D39** | ✅ **RULED 08-29 by Richard — no change, and now pinned** | — | template | — (ruled: it stays one sentence) |
 
@@ -98,10 +98,34 @@ the test this file itself set** — not by reading phase 80's status column. Whe
   classes never receive the app's font"* and carries D18's fidelity-not-a11y ruling verbatim. The
   *"re-measure before filing"* note above was discharged by whoever wrote C2, not by this session.
 
-🔴 **The other eleven are unowned, and nothing anywhere is scheduled to take them.** After the four
-flips above, the rows whose owner cell still reads `NONE` are **D22, D23, D24, D28, D30, D32, D33,
-D34, D35, D36, D37** — eleven. Measured 2026-08-29 (s17): each of the eleven is named in **zero**
-files outside this register. Phases 77 and 80 do not mention one of them.
+✅ **The other eleven are now owned too — and the register has NO `NONE` rows left.** They had been
+unowned in the strongest sense: measured 2026-08-29 (s17), each of the eleven was named in **zero**
+files outside this register, and phases 77 and 80 mentioned not one of them.
+
+🔴 **Richard's instruction, 2026-08-29:** *"We need to add the defects to phase 80 please."* Done —
+but the eleven **did not all go there**, and the split is the part worth recording:
+
+- **Eight are product-surface → phase 80, as `DEF-018`–`DEF-025`**, carried **by reference** in that
+  phase's [TASKS.md](../phase-80-the-defects-the-templates-found/TASKS.md#carried-forward-from-phase-78-by-reference).
+  D28→018, D30→019, D32→020, D33→021, D34→022, D35→023, D36→024, D37→025. The measurements stay
+  here; that table points at this file rather than restating it.
+- **Three are template-side → phase 78 `T6`**, work owed **before publication**: D22, D23, D24.
+  Phase 80's own README scopes it to *"the product surface… never on a template being fixed
+  downstream of it"*, so filing three template edits there would have put them behind a product
+  phase's dependencies and out of reach of the thing they affect — the template about to ship.
+
+🔴 **`phase 78 T6` is itself an owner in a closing phase — the very thing this session flagged, and
+it is acceptable only because of WHEN T6 runs.** T6 is scoped *before publication*, so it completes
+while the phase is still open. ⚠️ **If phase 78 ever closes with T6 undone, these three rows become
+unowned again and must be carried, not dropped silently** — a phase closes by naming both lists, and
+these three belong on one of them. The guard is written here because the owner cell cannot hold it.
+
+⚠️ **Eight-and-three was found by reading the rows, not the table — and the table was right.** The
+`side` column already said `template` for D22–D24. A first pass this session read their sections as
+`product` and was wrong: the `awk` used had no Severity line to stop on in those three rows, so it
+ran forward into a **later** section's and reported that. ✅ **A scan that searches "from here until
+a pattern" silently attributes the next match to a row that simply lacks the field** — and it fails
+toward *looking complete*. The rows' own words settle it: D22 says *"template-side and cheap"*.
 
 🔴 **And the belief that someone had them was built out of a sentence about the past.** s16's
 next-session prompt said *"**Phase 80 owns the register sweep**, not this phase"*, and that sentence

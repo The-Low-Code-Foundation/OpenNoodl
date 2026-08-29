@@ -45,6 +45,43 @@ cardinality where they meet** — a check in a second pipeline is a duplicate fi
 whether the new check *blocks* authored output or merely warns. That sweep is shared work and
 should be done **once**, not three times.
 
+## Carried forward from phase 78, by reference
+
+🔴 **Registered 2026-08-29 at Richard's instruction** — *"We need to add the defects to phase 80"* —
+after phase 78 s17 measured that these rows were named in **zero** files outside their own register.
+They had been parked on a sweep that never existed: s16's prompt said *"phase 80 owns the register
+sweep"*, and what phase 80 actually recorded was that it had been **created from** one. A completed
+act, read as a standing commitment.
+
+⚠️ **Same rule as the phase 76 carry above: NOT re-authored here.** Phase 78's register holds the
+measurements, the sabotages and the repro steps. **Read
+[DEFECTS-THE-TEMPLATES-FOUND.md](../phase-78-the-templates/DEFECTS-THE-TEMPLATES-FOUND.md), not this
+table.** One `DEF` per row, ids checked free repo-wide before use — `DEF-010` was assigned twice in
+this register once already, and that is how one row gets worked twice and another dropped.
+
+| id | status | source row | what it is | bites |
+|---|---|---|---|---|
+| DEF-018 | ⬜ open | **P78 D28** | A button inside a `Columns` overlaps the next one — both button compositions pin `sizeMode: 'contentSize'` | every **agent who lays controls out** in the one node that reflows |
+| DEF-019 | ⬜ open | **P78 D30** | The type ramp cannot reach `font-variant-numeric`, so no app built here can align a column of numbers | every **app with a column of numbers** — money, times, scores |
+| DEF-020 | ⬜ open | **P78 D32** | Two children of a row both grow and nothing says so: `justifyContent` silently does nothing | every **agent laying two things out along a row** |
+| DEF-021 | ⬜ open | **P78 D33** | A fan-out send delivers **one** email and reports **N** successes | every **member who was told they would be emailed** |
+| DEF-022 | ⬜ open | **P78 D34** | A cloud function cannot find out what the app's own public address is | **everyone an app ever emails a link to** |
+| DEF-023 | ⬜ open | **P78 D35** | `Component` scope in a cloud function is **not** per-request, and nothing says so | every **graph that accumulates anything server-side** |
+| DEF-024 | ⬜ open | **P78 D36** | A `Condition` can only ever turn a gate **ON**, so a screen accumulates contradictory answers | every **screen whose answer has more than one form** |
+| DEF-025 | ⬜ open | **P78 D37** | A control's label is a click target only via the control's own `label` port — which **defaults OFF** | every **person tapping the words beside a checkbox** |
+
+🔴 **Three of phase 78's eleven unowned rows are NOT here, deliberately: D22, D23 and D24 are
+template-side.** This phase is graded on the product surface and never on a template being fixed
+downstream of it (README §*"Every task here is graded on the product surface"*), so filing them here
+would put three template edits behind a product phase's dependencies. **They stay with phase 78 as
+work before publication** — see that phase's `T6`. Named here so the split is a decision on record
+and not a gap: **eleven rows, eight carried, three placed elsewhere.**
+
+⚠️ **Candidate groupings, left unmerged on purpose.** DEF-018 and DEF-020 are both *the layout system
+doing nothing and saying nothing*; DEF-022 and DEF-023 are both *a cloud function's model of its own
+world*. They are filed one-per-row because a wrong merge is expensive to unpick and a right one is
+cheap to make later — and because nobody has yet read the two pairs against each other at the source.
+
 ## Reds that belong to someone else, named so they stop reading as regressions
 
 - ✅ **`noodl-mcp/tests/templateAppearance.test.ts` — `site-builder has the pinned page count`,
@@ -348,6 +385,15 @@ before any of it was acted on, and every measurement in it held.
   with the default fallback deleted. `find_tools` now finds a group by id/title/keywords — its own
   description had been promising that already — at **8,255 → 8,254** resident tokens.
   Commits: see the phase-80 next-session prompt.
+
+- **2026-08-29 (from phase 78 s17)** — **DEF-018–DEF-025 registered**, carried by reference from
+  phase 78's register at Richard's instruction. They had been parked on *"phase 80 owns the register
+  sweep"* — a sentence that existed only in phase 78's own prompt, built out of this phase's
+  *"created from the three-register sweep"* below. 🔴 **A phase created BY a sweep does not thereby
+  own the next one**; each of the eleven was named in **zero** files outside phase 78. Three of the
+  eleven (D22–D24) are template-side and stayed with phase 78 as its `T6`, because this phase is
+  scoped to the product surface. Ids checked free repo-wide before use. **Nothing measured here** —
+  phase 78 holds the readings.
 
 - **2026-08-29** — Phase created from the three-register sweep. 54 findings across phases 76, 77 and
   78 — **including phase 76's 28, which had no register at all** ([now it has one](../phase-76-the-site-builder/DEFECTS-PHASE-76-FOUND.md)). 17 still real, product-side and unowned; 3 already owned. Nothing built yet.

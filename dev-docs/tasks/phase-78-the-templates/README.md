@@ -49,6 +49,29 @@ here is blocked on knowing what we are building.
 - ⬜ **T4** — the remaining site-builder templates, once P77's site-builder work lands. **Do not
   start these while P77 is live** — a peer is mid-SBR-003 on that template.
 - ⬜ **T5** — publish as `curated`, and drive the install from a clean launcher.
+- ⬜ **T6 — three template fixes owed before publication.** Added 2026-08-29 (s17), when the eleven
+  unowned register rows were split: eight are product-surface and went to phase 80 as
+  **DEF-018–DEF-025**; these three are **template-side**, so phase 80's own scope rule excludes them
+  (*"graded on the product surface… never on a template being fixed downstream of it"*). They are
+  small, they are in the template Richard is about to publish, and one of them is on the first
+  screen a new moderator opens.
+  - 🔴 **[D22] The directory shows the founding moderator's email address as their name, twice.**
+    `claimAssociation` never asks a person's name, so it writes the address into `Member.name`.
+    **Every install.** The setup form should ask.
+  - ⚠️ **[D23] Two different pages are both headed "Members"** — `/members` (the noticeboard) and
+    `/directory` (who belongs). The better heading is **already written**: the directory's own
+    button says *"Who belongs"*.
+  - ⚠️ **[D24] Approve and Decline are touching.** The request row's button pair sets no gap;
+    `Pages/Landing`'s pair sets `columnGap: var(--space-3)` and reads correctly. **A pair with no
+    gap reads as one object**, and here the two objects are *approve* and *decline*.
+
+  🔴 **If this phase closes with T6 undone, these three must be CARRIED, not dropped silently.**
+  An owner naming a closing phase is `NONE` in disguise; T6 escapes that only by running *before*
+  publication, which is the whole point of its placement.
+
+  ⚠️ **This is not "new template behaviour work"** — s4's ruling parked the *next* template behind
+  publication, not defects in the built one. Richard's standing rule is that appearance is graded
+  before behaviour, by looking.
 
 ## Delivery: curated, not embedded (settled 2026-08-28)
 

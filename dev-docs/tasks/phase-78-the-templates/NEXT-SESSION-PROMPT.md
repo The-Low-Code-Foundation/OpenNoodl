@@ -2,8 +2,8 @@
 
 ## Where it stands
 
-**Everything buildable in phase 78 is still built. What is left is Richard's — plus eleven rows that
-turned out to belong to nobody at all.**
+**Everything buildable is built except `T6`, three template fixes owed before publication. The
+register has no unowned rows left.**
 
 s16 said the phase was finished bar Richard. s17 took that at its word, then re-read the two claims
 holding it up. **Both were wrong, in the direction that loses work**: one closed row was owned by a
@@ -12,7 +12,7 @@ phase that is closing, and eleven open rows were parked on a sweep that nobody h
 | | after s16 | after s17 |
 |---|---|---|
 | register rows with a table line | D1–D39 | D1–D39 (unchanged) |
-| rows whose owner is `NONE` | *stated* 10, *enumerated* 11 | **11, derived by command** |
+| rows whose owner is `NONE` | *stated* 10, *enumerated* 11 | **0** — 8 to phase 80, 3 to `T6` |
 | rows owned by a phase name | 1 (D10 → "phase 78") | **0** |
 | rows owned by an unfiled task | 3 (D18, D19, D20) | **0** |
 | D10 | 🔴 open | ✅ **FIXED — re-measured** |
@@ -34,9 +34,11 @@ markdown in `dev-docs/`.** The last readings stand as recorded: noodl-mcp 959/95
   register itself wrote down* — D20's cell literally said *"grep DEF-006 for `D20` and it is
   absent"*. It is no longer absent. Three greps; they had sat unowned for a day after the work had
   a home.
-- 🔴 **Eleven rows are unowned and NOTHING is scheduled to take them.** D22, D23, D24, D28, D30,
-  D32–D37. Measured: each is named in **zero** files outside this register — phases 77 and 80
-  mention not one of them.
+- ✅ **All eleven previously-unowned rows now have an owner**, on Richard's instruction (*"We need
+  to add the defects to phase 80 please"*). They had been named in **zero** files outside the
+  register. **Eight are product-surface → phase 80 as `DEF-018`–`DEF-025`**, carried by reference.
+  **Three are template-side → `T6` here**, because phase 80 is scoped to the product surface and
+  three template edits would have gone behind a product phase's dependencies.
 
 ## 🔴 The finding, in one paragraph
 
@@ -54,11 +56,11 @@ closing; it is `NONE` wearing something that parses like a task id.
 1. ⬜ **T5 / publishing. Richard drives it first.** Unchanged since s4. AC1 of TPL-001 is
    ungradeable until the template is on the shelf. **Still the only thing between phase 78 and
    done.**
-2. 🔴 **The eleven unowned rows need a decision, and it is a small one.** They are not phase 80's
-   and never were. Either phase 78 closes naming them as **dropped, with a reason** (the house rule
-   for closing a phase), or one of them is given a home. **Do not re-park them on another phase's
-   name** — that is what this session was created by. ⚠️ Filing into phase 80's directory means
-   writing in a live phase's files; a peer held it through s11.
+2. 🔴 **`T6` — three template fixes, and they are the only buildable work left in this phase.**
+   D22 (the directory shows the founder's **email address as their name**, on every install, on the
+   first screen a new moderator opens), D23 (two pages both headed "Members"), D24 (Approve and
+   Decline touching). All three are in the template Richard is about to publish. **Do them before
+   T5, not after.** Details in [README](README.md) §T6; measurements in the register.
 3. ⬜ **T3, the category question.** Needs Richard. Its constant lives in `ProjectTemplate.ts` —
    ✅ **checked 08-29: clean in the tree, and P77's last commit there (`2cb89446`, SBR-003) has
    landed.** Confirm P77 is done with it before starting, not just that Richard has ruled.
@@ -66,11 +68,26 @@ closing; it is `NONE` wearing something that parses like a task id.
 🔴 **Do not start new template behaviour work to fill the gap.** s4's ruling stands: the next
 template is blocked on the first one being published and looked at by the person who will publish it.
 
+## ⚠️ Two things about the phase-80 hand-off
+
+- **Nothing was re-authored there.** `DEF-018`–`DEF-025` are a carry table pointing back at this
+  register, the same pattern phase 80 already uses for phase 76 — *a second copy of a task drifts
+  from the first*. A session picking one up must read the row here.
+- **DEF-018/DEF-020 and DEF-022/DEF-023 look like two pairs sharing a cause** (the layout system
+  failing silently; a cloud function's model of its own world). Left **unmerged on purpose**:
+  nobody has read either pair against each other at the source, and a wrong merge costs more to
+  unpick than a right one costs to make later.
+
 ## 🔴 Traps this session paid for
 
 - 🔴 **A phase name in an owner cell is `NONE` in disguise, and it survives every check the word
   `NONE` would fail.** Both errors this session were this shape. A sweep grepping for unowned rows
   finds "phase 78" and moves on.
+- 🔴 **A scan of the form "from this heading until pattern P" attributes the NEXT row's P to any row
+  that simply lacks it.** Reading the eleven rows' `Side:` lines this way reported D22–D24 as
+  `product` — they have no such line at all, and the scan ran on into a later section. It had been
+  about to send three template fixes into a product-only phase. ✅ **The table was right and the
+  clever reading was wrong**; and the failure direction is *looking complete*.
 - 🔴 **A relayed conclusion decays into an assignment.** "Phase 80 was created by a register sweep"
   → "phase 80 owns the register sweep" → eleven rows parked. Nothing reddens, because the owner is
   asserted in one file and would have to be honoured in another.
