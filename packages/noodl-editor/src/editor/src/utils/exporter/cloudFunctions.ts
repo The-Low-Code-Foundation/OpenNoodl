@@ -11,6 +11,7 @@
  */
 
 import { ComponentModel } from '@noodl-models/componentmodel';
+import { scriptPortsForNode } from '@noodl-models/nodelibrary/cloudDynamicPorts';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { readCloudModuleSources } from '../../../../shared/utils/projectmodules';
@@ -70,12 +71,62 @@ export function getCloudFunctionNames(project: ProjectModel): string[] {
  * 2026-07-27 and the shape `CloudRunner.load` consumes (it applies its own
  * cloud-only `componentFilter` on the way in, `noodl-viewer-cloud/src/index.ts:31`).
  */
+/**
+ * D14 — the backstop that makes a cloud bundle a function of the project.
+ *
+ * `exportPorts` (`util.ts:16`) exports a Function node's ports from the *editor
+ * session*: `node.getPorts()` returns what `CloudScriptPortsAdapter` derived,
+ * and the adapter runs on project load and on edits. A deploy taken before that
+ * sweep has landed — or in an editor whose node library had not resolved
+ * `JavaScriptFunction`, which makes `node.type.exportDynamicPorts` falsy and
+ * drops every dynamic port — ships `ports: []`.
+ *
+ * 🔴 That bundle is dead, and dead silently. A deployed node's `outputPorts`
+ * come only from `nodeData.ports` (`nodemodel.ts:255`) — there is no editor to
+ * send them — and `_isSignalType` (`simplejavascript.ts:635`) reads exactly that
+ * map. No port, no callable, so `Outputs.ready()` in a script that has always
+ * been correct throws `Outputs.ready is not a function` at the first node of the
+ * function. Measured on 2026-08-29: `SBR-017 Sign In Drive` deployed at 15:48
+ * with `ports: []` on all 11 Function nodes and every connection intact, and
+ * `publishPage` and `duplicatePage` answered HTTP 400 in under 60 ms.
+ *
+ * ⚠️ **This does not replace the adapter, and is not the export-time derivation
+ * Richard's SB-017 ruling rejected.** That ruling was about where the canvas
+ * gets its ports — deriving them only at export left a freshly installed project
+ * showing 84 red warnings, so the adapter still owns the editor. This is the
+ * second half of the same answer: the adapter decides what the author sees, and
+ * this decides that what ships can run. It only ever *adds* a port the script
+ * itself declares, so in a session where the adapter has run it changes nothing.
+ */
+function withScriptPorts(node: TSFixme): TSFixme {
+  if (node.type === 'JavaScriptFunction') {
+    const ports = node.ports ?? [];
+    const have = new Set(ports.map((p: TSFixme) => p.plug + '\u0000' + p.name));
+
+    for (const port of scriptPortsForNode(node)) {
+      const key = port.plug + '\u0000' + port.name;
+      if (have.has(key)) continue;
+      have.add(key);
+      ports.push({ ...port, index: ports.length });
+    }
+
+    node.ports = ports;
+  }
+
+  (node.children ?? []).forEach(withScriptPorts);
+  return node;
+}
+
 export function exportCloudFunctionsToJSON(project: ProjectModel): Record<string, unknown> | null {
   const components = getCloudFunctionComponents(project);
   if (components.length === 0) return null;
 
   return {
-    components: components.map((component) => exportComponent(component)),
+    components: components.map((component) => {
+      const exported = exportComponent(component);
+      exported.nodes.forEach(withScriptPorts);
+      return exported;
+    }),
     // No `componentIndex`: `useBundles: false` is the only sensible mode here
     // and `GraphModel.importEditorData` treats a missing index as empty.
     settings: exportSettings(project),

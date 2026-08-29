@@ -425,4 +425,237 @@ describe('SB-017: the editor deploy path ships every connection the template hol
     // there, and this equality is what tells the two apart.
     expect(missing.sort()).toEqual([...REMOVED_SINCE_THE_BUNDLE].sort());
   });
+  /**
+   * The signal calls the template's cloud scripts make, read from the artefact
+   * on disk — `component -> node id -> ['ready', 'built', …]`.
+   *
+   * 🔴 Deliberately a *looser* pattern than the product's. `cloudDynamicPorts.ts`
+   * mints a signal only for `Outputs.x()` with empty parens and no underscore in
+   * the name; this matches any call. The two agreeing is a claim worth making —
+   * if an author writes `Outputs.done(1)` the runtime still throws, and a spec
+   * that copied the product's regex would call that correct.
+   */
+  function signalCallsOnDisk(): Record<string, Record<string, string[]>> {
+    const out: Record<string, Record<string, string[]>> = {};
+    for (const component of (siteBuilderContent as TSFixme).components) {
+      if (!component.name.startsWith('/#__cloud__/')) continue;
+      const perNode: Record<string, string[]> = {};
+      for (const node of flatten(component.graph.roots)) {
+        if (node.type !== 'JavaScriptFunction') continue;
+        const script = String((node.parameters ?? {}).functionScript ?? '');
+        const names = [...script.matchAll(/Outputs\.([A-Za-z0-9_]+)\s*\(/g)].map((m) => m[1]);
+        if (names.length) perNode[node.id] = [...new Set(names)];
+      }
+      if (Object.keys(perNode).length) out[component.name] = perNode;
+    }
+    return out;
+  }
+
+  it('ships a signal port for every signal a cloud script fires — D14', () => {
+    // 🔴 The assertion whose absence let a dead bundle deploy. Every case above
+    // this one measures **connections**; nothing measured the `ports` array, and
+    // on 2026-08-29 a deploy wrote `ports: []` on all 11 Function nodes of
+    // `SBR-017 Sign In Drive` while every connection survived. The result was
+    // `publishPage` and `duplicatePage` answering HTTP 400 in under 60 ms with
+    // `The script threw: Outputs.ready is not a function`.
+    //
+    // The mechanism is one line of the runtime: `_isSignalType` (`simplejavascript.ts:635`)
+    // reads `model.outputPorts[name].type === 'signal'`, and a deployed node's
+    // `outputPorts` come only from `nodeData.ports` (`nodemodel.ts:255`) — there
+    // is no editor to send them. No port, no callable, and `Outputs.ready` is
+    // `undefined`. So this is not a tidiness assertion about the bundle's shape:
+    // it is the difference between a cloud function that runs and one that dies
+    // at its first node.
+    const expectedByComponent = signalCallsOnDisk();
+
+    // The denominator, as a literal. A regex that stopped matching, or a
+    // template that stopped calling signals, would otherwise pass this case
+    // vacuously — the population has to be read before the measurement.
+    const pairs = Object.values(expectedByComponent).flatMap((nodes) => Object.values(nodes).flat());
+    expect(pairs.length).toBe(13);
+    expect(Object.values(expectedByComponent).flatMap((nodes) => Object.keys(nodes)).length).toBe(11);
+
+    const exported = exportCloudFunctionsToJSON(project) as TSFixme;
+
+    const missing: string[] = [];
+    for (const [componentName, nodes] of Object.entries(expectedByComponent)) {
+      const component = exported.components.find((c: TSFixme) => c.name === componentName);
+      const byId: Record<string, TSFixme> = {};
+      flatten(component.nodes).forEach((n: TSFixme) => (byId[n.id] = n));
+
+      for (const [nodeId, signals] of Object.entries(nodes)) {
+        const ports = byId[nodeId].ports ?? [];
+        for (const signal of signals) {
+          // `type === 'signal'` exactly, because that string is what the runtime
+          // predicate compares against. A port that shipped as `'*'` would read
+          // as present here and still be uncallable there.
+          const shipped = ports.some(
+            (p: TSFixme) => p.name === 'out-' + signal && p.plug === 'output' && p.type === 'signal'
+          );
+          if (!shipped) missing.push(`${componentName} ${nodeId} out-${signal}`);
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
+  it('does not mint a signal port for a name no script calls', () => {
+    // The instrument's negative control. The case above is satisfied by an
+    // exporter that emits every conceivable `out-*` port, and by one that emits
+    // whatever the node happens to be carrying — neither of which is the claim.
+    // This reads **false** for a name in the same shape and the same place, so a
+    // green above is about the scripts and not about the check.
+    const exported = exportCloudFunctionsToJSON(project) as TSFixme;
+
+    const spurious: string[] = [];
+    for (const component of exported.components) {
+      for (const node of flatten(component.nodes)) {
+        for (const port of node.ports ?? []) {
+          if (port.name === 'out-notCalledByAnyScript') spurious.push(`${component.name} ${node.id}`);
+        }
+      }
+    }
+
+    expect(spurious).toEqual([]);
+
+    // …and the same walk over the same bundle does find the real ones, so the
+    // empty list above is an absence and not a walk that reached nothing.
+    const real = exported.components.flatMap((c: TSFixme) =>
+      flatten(c.nodes).flatMap((n: TSFixme) =>
+        (n.ports ?? []).filter((p: TSFixme) => p.type === 'signal').map(() => 1)
+      )
+    );
+    expect(real.length).toBe(13);
+  });
+
+});
+
+/**
+ * D14 — the bundle that shipped with no ports at all.
+ *
+ * On 2026-08-29 a deploy of `SBR-017 Sign In Drive` wrote `ports: []` on all 11
+ * cloud Function nodes while every connection survived, and `publishPage` and
+ * `duplicatePage` answered HTTP 400 in under 60 ms with
+ * `The script threw: Outputs.ready is not a function`. The chain from that empty
+ * array to that throw is `withScriptPorts`'s docblock; this suite is the other
+ * end — the export.
+ *
+ * 🔴 **The 13 signal ports are not derived. They are persisted**, on the node,
+ * in `site-builder.content.json`, and the drive project carried them on disk at
+ * the moment of the deploy that lost them (checked: `nodes.json` for both the
+ * failing and the working project holds `out-ready:output:signal`). So no sweep
+ * and no adapter had to run for them to ship — which is why the first attempt at
+ * this suite, which withheld `CLOUD_DYNAMIC_PORT_ADAPTERS`, passed with the fix
+ * sabotaged and reproduced nothing.
+ *
+ * The one gate in `exportPorts` (`util.ts:16`) that can drop a *persisted* port
+ * is `node.type.exportDynamicPorts` — falsy on an `UnknownNodeType`, which is
+ * what every node has until the node library resolves. That is the condition
+ * below, and it produces the same `ports: []` production shipped.
+ *
+ * ⚠️ **What made the live editor's library unresolved at 15:48 was not observed**
+ * and is not claimed here. This suite is about the consequence: whatever the
+ * session did, a deployed cloud function has to be able to fire its own signals.
+ */
+describe('D14: a cloud bundle carries its signal ports even when no node type resolves', () => {
+  let project: ProjectModel;
+  let previousLibrary: unknown;
+
+  beforeEach(() => {
+    previousLibrary = (window as TSFixme).NodeLibraryData;
+    WarningsModel.instance.clearAllWarnings();
+
+    // 🔴 The condition, and the only line that differs from the suite above:
+    // no library, so `NodeLibrary` resolves every node to an `UnknownNodeType`.
+    (window as TSFixme).NodeLibraryData = {};
+    NodeLibrary.instance.loadLibrary();
+
+    project = ProjectModel.fromJSON(JSON.parse(JSON.stringify(siteBuilderContent)));
+    ProjectModel.instance = project;
+    NodeLibrary.instance.registerModule(project);
+  });
+
+  afterEach(() => {
+    NodeLibrary.instance.unregisterModule(project);
+    WarningsModel.instance.clearAllWarnings();
+    ProjectModel.instance = undefined;
+
+    (window as TSFixme).NodeLibraryData = previousLibrary;
+    if (previousLibrary) NodeLibrary.instance.loadLibrary();
+  });
+
+  /** The cloud Function nodes, as the editor's models. */
+  function cloudFunctionNodes(): TSFixme[] {
+    const nodes: TSFixme[] = [];
+    getCloudFunctionComponents(project).forEach((component) =>
+      component.forEachNode((node: TSFixme) => {
+        if (node.type.name === 'JavaScriptFunction') nodes.push(node);
+        // 🔴 `forEachNode` stops on a truthy return, so this returns nothing.
+      })
+    );
+    return nodes;
+  }
+
+  /** Every `out-*` signal port in a bundle, as `component node port`. */
+  function signalPorts(exported: TSFixme): string[] {
+    const out: string[] = [];
+    for (const component of exported.components) {
+      for (const node of flatten(component.nodes)) {
+        for (const port of node.ports ?? []) {
+          if (port.plug === 'output' && port.type === 'signal') out.push(`${component.name} ${node.id} ${port.name}`);
+        }
+      }
+    }
+    return out.sort();
+  }
+
+  it('the types really are unresolved, and the ports really are on the nodes', () => {
+    // Read the condition before the measurement, and read both halves: an
+    // absence of ports in the export means nothing if the ports were never on
+    // the nodes, and a green below means nothing if the library resolved after
+    // all. This is the pair that makes the next case a reproduction rather than
+    // a description.
+    const nodes = cloudFunctionNodes();
+    expect(nodes.length).toBe(11);
+    expect(nodes.every((node) => NodeLibrary.instance.typeIsMissing(node.type))).toBe(true);
+
+    // The persisted ports the export is about to be asked for.
+    const persisted = nodes.flatMap((node: TSFixme) =>
+      (node.ports || []).filter((p: TSFixme) => p.type === 'signal')
+    );
+    expect(persisted.length).toBe(13);
+  });
+
+  it('still ships all 13 signal ports', () => {
+    // The same 13 the healthy suite counts, and the equality is the claim: what
+    // a deploy contains is a property of the project, not of when in the session
+    // it was taken. 🔴 Red before `withScriptPorts` — the export dropped every
+    // one of them, which is the bundle that shipped.
+    expect(signalPorts(exportCloudFunctionsToJSON(project) as TSFixme).length).toBe(13);
+  });
+
+  it('adds only what the script declares — it does not invent a port', () => {
+    // The known-firing control on the backstop. It reads the node's own
+    // `functionScript`, so the set it produces is the set the artefact on disk
+    // asks for — asserted as a list, not a count, so a backstop that added 13
+    // wrong ports is red.
+    const exported = exportCloudFunctionsToJSON(project) as TSFixme;
+
+    expect(signalPorts(exported).filter((p) => p.endsWith('out-notCalledByAnyScript'))).toEqual([]);
+
+    const wanted = new Set<string>();
+    for (const component of (siteBuilderContent as TSFixme).components) {
+      if (!component.name.startsWith('/#__cloud__/')) continue;
+      for (const node of flatten(component.graph.roots)) {
+        if (node.type !== 'JavaScriptFunction') continue;
+        const script = String((node.parameters ?? {}).functionScript ?? '');
+        for (const match of script.matchAll(/Outputs\.([A-Za-z0-9_]+)\s*\(/g)) {
+          wanted.add(`${component.name} ${node.id} out-${match[1]}`);
+        }
+      }
+    }
+
+    expect(signalPorts(exported)).toEqual([...wanted].sort());
+  });
 });

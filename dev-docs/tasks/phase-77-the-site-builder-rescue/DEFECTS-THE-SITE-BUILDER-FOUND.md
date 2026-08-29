@@ -335,9 +335,15 @@ stale**, and a re-measure scoped to "has the platform moved?" would have confirm
 
 ---
 
-## D14 — 🔴 `Outputs.<signal>()` throws in a cloud Function node, and both row actions die at their first node
+## D14 — 🟢 FIXED s20 · `Outputs.<signal>()` throws in a cloud Function node, and both row actions die at their first node
 
 **Found: SBR-006 §5.12, s19 (2026-08-29). Owner: `NONE`.**
+
+> 🟢 **s20 (2026-08-29): FIXED and gated — read the CLOSED section at the end of this file first.**
+> The cause was neither of the two candidates below. The deploy wrote `ports: []`; the project on
+> disk had the ports all along; and the `claimSite` "control" ran against a bundle replaced three
+> and a half hours later. The two paragraphs headed *"Two variables, neither eliminated"* and the
+> experiment under them are **superseded** and kept only as the record of what was believed.
 
 Through the admin overflow menu on `SBR-017 Sign In Drive`:
 
@@ -414,3 +420,76 @@ the door says nothing" is exactly DEF-002's shape and would be a fourth rule the
 — whether this should throw at all, and what changed between 09:26Z and 14:05Z — fits no open task
 read today. Phase 80 outlives phase 77, so DEF-002 is a live home for the door half if its owner
 wants it.
+
+---
+
+## 🟢 D14 — CLOSED s20 (2026-08-29). The bundle shipped with no ports, and neither of the two candidates above was the cause.
+
+**Fix: `withScriptPorts` in `utils/exporter/cloudFunctions.ts`.** Gate:
+`sb017-deploy-connection-parity.test.ts`, a suite that is **red without it** (2894 specs,
+6 failures) and green with it (4 failures, all four `AIX-006` by name — the documented floor).
+
+### What it actually was, read off the two artefacts
+
+The deployed bundle carries `ports: []` on **all 11** cloud Function nodes. The bundle from the
+backend where `publishPage` succeeded carries **50** ports across the same 11 nodes. Nothing else
+in either bundle differs in this respect — every other node type exports zero ports in **both**,
+because only three node types in the codebase set `exportDynamicPorts`.
+
+| | `backend_mte82r1qhnr87` (failed) | `backend_mte62ofkj8whc` (succeeded) |
+|---|---|---|
+| bundle written | **15:48** | 11:19 |
+| `JavaScriptFunction` nodes | 11 | 11 |
+| ports on them | **0** | **50** |
+| `publishPage` | `error` 400, 59 ms | `success` |
+
+From that empty array the throw is four lines of source, no inference:
+
+1. a deployed node's `outputPorts` come **only** from `nodeData.ports` — `NodeModel.createFromExportData`
+   (`nodemodel.ts:255`); there is no editor to send them;
+2. `_isSignalType` (`simplejavascript.ts:635`) reads `model.outputPorts[name].type === 'signal'`;
+3. the loop that writes the callable stub (`:400`) is gated on it, so nothing is written;
+4. `Outputs.ready` is `undefined`, and `Outputs.ready()` throws exactly what `execution_steps` recorded.
+
+### 🔴 Two things this register asserted about D14 were wrong
+
+- **"Two variables — the cloud runtime, or the project."** Neither. **The project on disk carries
+  the ports**, in both projects, identically: `components/__cloud__/publishPage/nodes.json` holds
+  `out-ready:output:signal` on the gate node in the failing project too, and the template
+  (`site-builder.content.json`) persists all 13 signal ports statically on the nodes. The deploy
+  read a project that had them and wrote a bundle that did not. The runtime never entered it; the
+  experiment named above ("mint a project and never open it, build a backend from before
+  `d229bf4b`") would have varied two things that were both innocent.
+- **"`claimSite` — control, same backend."** Same backend, **different artefact**. `claimSite`
+  succeeded at **12:27:59**; the bundle it ran against was replaced at **15:48**, three and a half
+  hours later, by the one with no ports. It was never a control on the failing build, and
+  `claimSite`'s own gate node calls `Outputs.ok()` — against the 15:48 bundle it would throw too.
+
+⚠️ **What made the live editor drop them was not observed and is not claimed.** The single gate in
+`exportPorts` (`util.ts:16`) that can drop a *persisted* port is `node.type.exportDynamicPorts`,
+falsy on an `UnknownNodeType` — the state every node is in until the node library resolves. That
+reproduces `ports: []` exactly and is what the spec drives. Whether the live editor was in it at
+15:48 — a full reload after the `noodl-runtime` edit in `a14fb8e7` (15:25) is the obvious
+candidate, and the standing notes record one happening mid-session — is unmeasured.
+
+### This is D13's family, with a worse casualty
+
+**[D13](#d13)** says what a build contains depends on when it was taken, and names dropped *wires*.
+This is the same property costing a node its *ports*, which is not a degraded function but a dead
+one — and it is silent in the editor, silent in the deploy, and only nameable at the backend because
+DEF-004(a) writes execution steps. D13 stays open and `NONE`: the fix below is scoped to cloud
+functions and does not touch the filter or the session-dependence D13 is about.
+
+### 🔴 What the fix does NOT cover — `NONE`, and worth a row of its own
+
+`exportPorts` is shared. **The browser deploy path (`build/deployer.ts`) has the same exposure**: a
+browser Function node exported while its type is unresolved ships with no ports, and
+`Outputs.done()` in a deployed app throws the same way. `withScriptPorts` is applied in
+`exportCloudFunctionsToJSON` only — deliberately, because that is the scope of SB-017's ruling and
+the half with a measured failure. The browser half is untested and unowned.
+
+⚠️ **And the derivation is narrower than the calls it protects.** `scriptPortsFromSource` types a
+signal from `Outputs.x()` with **empty parens and no underscore in the name**
+(`cloudDynamicPorts.ts:203`). `Outputs.done(1)` and `Outputs.my_sig()` mint no signal port and
+still throw at runtime. No script in the template does either — the spec's population is asserted
+at 13 with the looser pattern, so one appearing turns the suite red rather than passing quietly.
