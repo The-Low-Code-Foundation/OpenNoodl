@@ -984,10 +984,11 @@ present*), which did move; D4 alone would pass on an app that rendered nothing a
   unconditionally. That is a pre-existing decision this slice did not touch, and it is that node's
   first question rather than an afterthought.
 - **The store-key gate (§10.5) is untouched and still the same shape**, one node over.
-- **`Page Stack`** and the component-stack family also feed `Page Inputs` at runtime
-  (`_setPageParams` has two callers). This slice translated the Router's half only; a component
-  stack does not route in the export at all, so the gate in §11.3 refuses those reads for the
-  right reason today, by accident of the same rule.
+- ~~**`Page Stack`** and the component-stack family also feed `Page Inputs` at runtime
+  (`_setPageParams` has two callers).~~ 🔴 **False, and this is where it entered the phase —
+  struck in session 45, see §16.1.** Both callers are the Router; a component stack sets the
+  pushed component's **Component Inputs** instead and never touches `Page Inputs`. This slice
+  translated the Router's half, which was the only half there was.
 
 ---
 
@@ -1561,8 +1562,114 @@ failure arriving on the query side: the sabotaged app rendered a note whose tone
 - **`Open In New Tab`** — the window.open arm, which wants DEF-016's activation read and a
   blocked-tab `Error` row. That is the increment this slice leaves rather than the corner it cuts.
 - **The component stack pair** (`PageStackNavigate`, `PageStackNavigateBack`) — the last two
-  Navigation nodes, and neither is a url builder. ⚠️ §11.8 still stands: a component stack feeds
+  Navigation nodes, and neither is a url builder. ⚠️ ~~§11.8 still stands: a component stack feeds
   `Page Inputs` at runtime (`_setPageParams` has two callers) and the export does not route one at
-  all, so these two owe a **routing story**, which is a larger question than anything in Tier 2.5
-  so far.
+  all, so these two owe a **routing story**~~ — 🔴 **struck in session 45: both halves of that
+  sentence were false, and it came from a grep landing on a comment. See §16.1.** The pair is
+  re-tiered to Tier 3 behind the `Page Stack` it drives.
 - **`External Link`'s `Completed` and a chain-local for its `Error`** — unchanged from §14.6.
+
+---
+
+## §16 The component stack pair, and the sentence a grep wrote into the ledger (session 45, 2026-08-29)
+
+**69 of 127 (54.3%) — unchanged, and deliberately.** This slice translated nothing. It answered
+the pair's first question, and the answer was that the question had been the wrong one for five
+sessions.
+
+### §16.1 🔴 The inherited sentence was false twice over, and a comment is where it came from
+
+§11.8 wrote it, §15.6 relayed it, both ledger rows carried it verbatim, and two session prompts
+repeated it as the pair's defining constraint:
+
+> *A component stack also feeds `Page Inputs` at runtime (`_setPageParams` has two callers) and
+> the export does not route one at all, so these two owe a routing story.*
+
+Both halves are wrong.
+
+**`_setPageParams` does have two callers, and both are the Router.** They are `router.tsx:604`
+(inside `_updatePageInputs`, the normal page build) and `router.tsx:926` (an inline loop in
+`_buildPage`). That file defines exactly one node — `RouterNode`, lines 124–957, with a single
+`createNodeFromReactComponent(` call in it — so there is no other `this` either call could have
+belonged to. "Two callers" was read as "the Router and something else"; it was always the Router
+twice.
+
+**A Component Stack never touches `Page Inputs` at all.** It pushes a component and sets that
+component's own **Component Inputs** directly — `navigation-stack.tsx:550`, `:862` and `:976`,
+three paths (initial render, `replaceAsync`, `navigateAsync`), all `content.setInputValue(...)`.
+The pusher's `pm-` ports are derived from `component.inputPorts` (`navigate.ts:335`), which is the
+same interface any placed component instance has. The stack's only cross-node reach into pushed
+content is `getNodesWithType('PageStackNavigateBack')`, to hand back the pop callback.
+
+🔴 **The one occurrence of the string `_setPageParams` in `navigation-stack.tsx` is a comment**
+(line 983) explaining that `_setBackCallback` is reached across the node-type boundary *the same
+way the Router reaches `_setPageParams` on PageInputs*. A grep for the method hits that line. That
+is almost certainly the whole provenance of the claim: the search was run, the file appeared in
+the results, and the conclusion was drawn without opening it. **A text search cannot tell a
+mention from a call, and the sentence it produced then survived five sessions because every later
+reader inherited it as a finding rather than re-running the search.**
+
+### §16.2 What a Component Stack actually is, and why it is not a route
+
+Having read it, the routing question is answerable — and it is not close:
+
+| | Component Stack | the export's `BrowserRouter` |
+|---|---|---|
+| what is mounted | a stack of component instances; **both stay mounted through the pop transition** (`back()` re-inserts `top.from` before animating) | one element per matched `<Route>` |
+| parameters | the target's **Component Inputs**, set imperatively | url params read by `useParams`/`useSearchParams` |
+| the return path | `backCallback(action, results)` — the pusher grows a `backResult-*` **output port per value** and a `backAction-*` **signal per way of closing** | none; navigation is one-way |
+| identity | **named** (`stack: 'Main'`), several may exist at once, and they **nest** — `getNavigationAbsoluteURL` walks the visual parent chain and concatenates | a singleton |
+| the url | written **only if `useRoutes` is set**, via `history.pushState` | the url *is* the state |
+
+The back channel is the sharpest of these. A push is a **call**, and the pop is its **return**,
+carrying named values and a named outcome back to the node that made it. A url has no way to
+express a return value, which is why this pair could not become a url builder however carefully it
+was written — and it is a different objection from "the export does not route a stack", which is
+what the inherited sentence predicted the obstacle would be.
+
+### §16.3 🔴 The real reason they defer is a tier, not a mechanism
+
+`Page Stack` — the container both nodes drive — is **deferred**, and scheduled to **§3 Tier 3
+item 10, the component-tree family**. The pair sat in Tier 2.5. So two nodes whose entire function
+is to drive a container were scheduled a **full tier ahead of the container**, and no amount of
+design work on them could have produced a translation: a pusher with no stack has nothing to push
+onto, and `PageStack` appears nowhere in `packages/nodegx-export/src`.
+
+Both rows are therefore **re-tiered to Tier 3**, to sit with the thing they drive, and their
+exemption now states the mechanism above rather than the sentence that was never true.
+
+🔴 **This closes Tier 2.5's node list.** The pair were the only two ledger rows citing it. What
+remains under §15.6 — `Open In New Tab`, `External Link`'s `Completed`, a chain-local for its
+`Error` — are increments on rows already marked `translated`, not deferrals, so the tier's
+*coverage* question is settled even though those increments are still worth doing.
+
+### §16.4 What proves it
+
+`tests/component-stack-pair.test.ts`, 10 assertions, and its design is the finding restated:
+
+- 🔴 **The instrument is proved before it is trusted.** Two synthetic snippets differing by
+  exactly one `//` are fed to the counter, which must return 1 and 0, while a text search matches
+  **both**. Without that pair, a counter that returned 0 for everything would make every
+  assertion in the file pass while measuring nothing.
+- 🔴 **The text match on the real file is asserted as a known-firing control.** `navigation-stack.tsx`
+  *must* still match `_setPageParams` textually — if it ever stops, the AST assertion beside it is
+  excluding nothing and the file says so rather than going quietly green.
+- The load-bearing readings are counted over **call expressions**, where a comment cannot appear:
+  0 in the stack, 2 in the Router.
+- The comment-ness is pinned directly too: every line in `navigation-stack.tsx` containing the
+  string starts with `//`.
+- The ledger row is pinned — **if `Page Stack` is ever translated, the test fails**, which is
+  precisely the moment the pair should be reconsidered rather than a moment to discover later.
+
+### §16.5 What this leaves
+
+- **The pair is answered, and is Tier 3 work behind `Page Stack`.** It should not be planned again
+  before its container.
+- **`Open In New Tab`** (§15.6) is now the top of Tier 2.5's remainder, unchanged.
+- 🔴 **The provenance lesson is the transferable one.** §15.1 killed a relayed sentence by reading
+  the runtime; this section killed a second one, from the same family, that had been relayed
+  *further* — into two ledger rows the gate treats as reviewed. The ledger's exemption text is
+  **prose nothing verifies**: `check.js` enforces that a deferral names its *kind* and *tier*,
+  never that its stated reason is true. Two rows asserted a runtime behaviour that did not exist,
+  and passed every gate for five sessions. **When an exemption makes a factual claim about the
+  runtime, it needs a test, exactly like a translation does** — which is what §16.4 now is.
