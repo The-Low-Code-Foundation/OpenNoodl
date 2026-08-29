@@ -198,3 +198,42 @@ Not the template file: the bundle a peer's editor had actually deployed this ses
 helpers** — `site/ContactRecipient`, `site/CopySectionToPage`, `site/SetSectionAccess`. Exactly the
 three in §2's screenshot, on a project created independently of this task, so the population is the
 product's and not the template artefact's.
+
+## 9. Acceptance criteria status
+
+| AC | state | evidence |
+|---|---|---|
+| 1 — no warning after a correct deploy | 🟡 **not driven** | Blocked: see §9.1. Asserted computationally in `expects exactly what the backend would serve` — the editor's expected set and the backend's served set are equal over the real template, so the diff the card renders is empty. That is the arithmetic behind AC1, not AC1. |
+| 2 — negative control: an endpoint really missing | 🟡 **not driven** | Same blocker. |
+| 3 — spec with both populations + an unrecognised third | ✅ | `reports a component it has no rule for rather than absorbing it`, plus the orphan-pair and transitive-chain arms. |
+| 4 — the `site/` prefix mutant reddens | ✅ | §8.1. 6 specs redden. |
+
+### 9.1 🔴 Why AC1 and AC2 are not driven, and what it would take
+
+The editor is a **single-instance** resource on this checkout: one remote-debug port, one
+`Application Support/NodeGX` user-data dir, and launching a second stack reaps the first. A peer
+session held it for this entire session driving phase 77's SBR-007 (`start-electron-dev.js` pid
+`17789`, owning `:9222`, up 17 minutes at the time of writing, still running at the end). Taking it
+would have destroyed their drive.
+
+⚠️ **Do not read AC3/AC4 as covering AC1.** The specs grade `classifyCloudComponents`. What they
+cannot see is the one link the drive exists to check: that `CloudFunctionsSection` reads
+`cloudComponents` and not `functionNames`. That link is three lines of list arithmetic and it is
+exactly the kind that a later edit reverts silently.
+
+**The drive, ready to run:**
+
+1. Copy a site-builder project (never open the original — opening writes three files into it).
+2. Start its backend, click `Deploy functions`, read the card. **AC1: no warning triangle, and one
+   line reading `3 workers, run in-process by these functions`.**
+3. **AC2**, without touching the project: edit the deployed bundle at
+   `~/.noodl/backends/<id>/workflows/<name>.workflow.json`, delete one *endpoint* component
+   (`claimSite` is the least entangled), `POST /admin/workflows/reload`, and refresh the card.
+   Expect a warning naming `claimSite` and nothing else. This is a real backend-side deletion with
+   the project unchanged, which is what AC2 asks for — a rule that merely stopped warning fails it.
+4. ⚠️ **The card re-reads on every deploy-state change**, so an autosave-driven push after step 3
+   would re-deploy the deleted function and heal the control before it is read. Read the card
+   *before* touching the graph.
+
+🔴 **A `git checkout --` on `CloudFunctionsSection.tsx` is not how to undo anything here** — that
+file carries the fix.
