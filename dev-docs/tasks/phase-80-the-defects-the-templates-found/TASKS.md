@@ -58,12 +58,13 @@ should be done **once**, not three times.
   `30eb92b2`. See DEF-001's §7.
 - ✅ **DEF-002 — CLOSED 2026-08-29.** All three rules and AC6. `1bc1cb8a` (1a), `95be7b4c` (3),
   `820fde86` (AC6 + the calibration script), `c8e0f262` (1b/1c), `b91d696a` (2).
-  🔴 **One decision is deferred with its cost measured, not dropped:** promoting
-  `failure-reaches-nothing` into `AUTHORED_BLOCKING_WARNINGS` fails **8** specs, and every one is a
-  **shipped template** whose cloud functions really do leave failure edges unanswered. It belongs to
-  whoever repairs the **site-builder** templates — the members-area half is nearly clear after
-  `98bfdea0`. The cost is recorded in `authoredCandidate.ts` beside the set itself, so it cannot be
-  lost.
+  🔴 **One decision is deferred, and its recorded reason was corrected at `d3461020`.** Promoting
+  `failure-reaches-nothing` into `AUTHORED_BLOCKING_WARNINGS` looked blocked by the **shipped
+  templates**; it was not. It was blocked by **two false positives in the rule** (a `completed` that
+  already answers, and a parallel branch that already answers), both now exits with arms and
+  controls. Corpus **249 → 182 → 33**, templates **clean**. What is left is **two deliberately-
+  malformed test probes** — wire their `failure` or exempt them, then add the code to the set. Small
+  and named, recorded in `authoredCandidate.ts` beside the set.
 - 🧭 **P76 F8, still open since s4** — `contactRecipient` cannot live in a world-readable
   `SiteSettings` row. Carried in phase 76 with no register; recorded here so it stops being invisible.
   It blocks the claim that a contact form reaches anyone.

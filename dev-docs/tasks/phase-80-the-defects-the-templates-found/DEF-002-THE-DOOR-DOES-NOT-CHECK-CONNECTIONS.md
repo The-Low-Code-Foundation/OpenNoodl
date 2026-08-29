@@ -198,13 +198,32 @@ that one principled exemption: **182 firings, 12 projects, all "no wire"**. The 
 (`JavaScriptFunction`, 100) is real — a throwing Function raises `failure`
 (`simplejavascript.ts:508`), so inside a cloud function that is a hang.
 
-⚠️ **Deliberately NOT in `AUTHORED_BLOCKING_WARNINGS` yet**, on the `ResponsiveArrangement`
-precedent and not on doubt about the rule. The promotion was **tried**: it fails **8** specs across 3
-suites (10 before `98bfdea0` cleared two), and **every one is a shipped template being regenerated
-through the door** — the templates really do leave failure edges unanswered, which is the defect
-phase 77 D1 reported. Repairing them is template work in another phase's files, and **a door that
-rejects graphs the product itself ships is a door that gets switched off.** The remaining blocker is
-the **site-builder** templates; the number is falling on its own.
+⚠️ **Not in `AUTHORED_BLOCKING_WARNINGS` yet, and one step from it.**
+
+🔴 **The reason first recorded here was wrong, and a peer's counter-measurement is what forced the
+re-reading.** It said the promotion was blocked because the shipped templates *"really do leave
+failure edges unanswered"*. **They do not.** What blocked it were **two false positives in the
+rule**, both on `submitContactForm` — the one graph written to honour this task's own trap:
+
+| firing | why it was wrong |
+|---|---|
+| `mail.failure` unwired | `mail.completed → res.send` already answers. **`completed` fires after every invocation *whatever the outcome*** (`outcome.ts`), so it answers the failure path too — and the trap *"a bounced mail must still answer the visitor"* names this graph by name. |
+| `compose.failure` unwired | a **parallel branch** (`recipient → save → stored → mail → res`) still answers, so a throw in `compose` costs the work, not the reply. |
+
+Both are now exits, each with an arm and a control. The second asks **"is a response reachable
+*without* this node"** — the *inverse* of the 14th-hole mutant, which asked "does this node reach a
+response". The pre-SBR-015 `publishPage` still fires, because its one worker is the only route.
+
+**Corpus: 249 → 182 → 33.** The shipped templates are **clean**. What remains blocking the promotion
+is **two deliberately-malformed test probes** (`probe/RunTasksCrossRuntime`, `probe/RunTasksMissing`)
+that exercise a different check and fail this one on the way past — the `PageWithoutPageNode`
+situation exactly. **Wire those two probes' `failure` or exempt them, then add the code to the set.**
+
+⚠️ **The peer's diagnosis was wrong too, in the opposite direction**, and the shape is worth keeping:
+they proposed excluding components with **no `Response` node**, which the rule has done since it was
+written, and their metric counted **only failure wires that exist**, so it was structurally blind to
+the two *unwired* ports that were actually firing. **Two measurements, both real, neither one
+answering the question — and the answer was in neither.**
 
 ### ✅ All parts closed
 

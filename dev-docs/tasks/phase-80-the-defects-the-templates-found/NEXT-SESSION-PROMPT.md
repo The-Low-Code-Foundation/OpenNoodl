@@ -16,20 +16,32 @@ floor) · `test:main` **6311/6311** · MCP **897/897** · `typecheck:editor` and
 
 ---
 
-## 🔴 The one decision this session deferred, with its price already paid
+## 🔴 The one thing left on DEF-002, and it is small and named
 
-**`failure-reaches-nothing` is a rule but not yet a blocking one.** It reports on both doors today.
-Promoting it into `AUTHORED_BLOCKING_WARNINGS` fails **8 specs across 3 suites**, and **every one is
-a shipped template being regenerated through the door** — `publishPage`, `duplicatePage` and
-`submitContactForm` really do leave failure edges unanswered, which is the defect P77 D1 reported.
+**`failure-reaches-nothing` is a rule but not yet a blocking one.** To promote it, add
+`DiagnosticCode.FailureReachesNothing` to `AUTHORED_BLOCKING_WARNINGS` in `authoredCandidate.ts`.
 
-- It was **10** before `98bfdea0` (TPL-001 Track A) cleared two. **The remaining blocker is the
-  site-builder templates**, so this belongs to whoever next repairs `sb005Components.ts` and its
-  siblings — not to a validation session.
-- ⚠️ **Do not promote it to close a checkbox.** A door that rejects graphs the product itself ships
-  is a door that gets switched off. The cost is recorded in `authoredCandidate.ts` beside the set,
-  so it cannot be lost; re-run the three template suites with the code added to the set to get
-  today's number.
+What stops that today is **two deliberately-malformed test probes** —
+`/#__cloud__/probe/RunTasksCrossRuntime` and `/#__cloud__/probe/RunTasksMissing` — which exist to
+exercise a *different* check and fail this one on the way past (4 specs). **Wire their `failure`, or
+exempt them, and the promotion is free.** The shipped templates are clean.
+
+🔴 **This entry said something else earlier today and it was wrong.** It said the promotion was
+blocked because the templates *"really do leave failure edges unanswered"*. They do not. It was
+blocked by **two false positives in the rule**, found only because a peer pushed back with a
+counter-measurement:
+
+- `mail.failure` unwired, because **`mail.completed → res.send` already answers** — `completed`
+  fires after every invocation *whatever the outcome*, so it answers the failure path.
+- `compose.failure` unwired, because a **parallel branch still answers**, so a throw there costs the
+  work, not the reply.
+
+Both are now exits with arms and controls. Corpus **249 → 182 → 33** (`d3461020`).
+
+⚠️ **And the peer's diagnosis was wrong too**, in the opposite direction: they proposed excluding
+components with no `Response` node — which the rule has always done — and their metric counted only
+failure wires that **exist**, so it could not see the two *unwired* ports doing the firing. **Two
+real measurements, neither answering the question. Re-measure the thing itself.**
 
 ## Where to go next
 
@@ -69,4 +81,10 @@ read them — check `TASKS.md` before ranking.
 - ⚠️ Peers committed into this checkout throughout (HEAD moved `820fde86` → `98bfdea0` under the
   gates). **Pathspec commits only, and `git add` untracked files or they are skipped silently.**
 - ⚠️ A peer addressed this session as though it were another one ("AC1 is yours — take it", about
-  SBR-015/P77). **It was not, and nothing was taken.** Confirm ownership before acting on a handoff.
+  SBR-015/P77). **It was not, and nothing was taken.** Cause, from the peer: they replied to a
+  `ListAgents` **name** for a message that arrived on a **socket** — two identifier spaces.
+  **Reply to the socket a message arrived on.**
+- 🔴 **A peer's pushback was right that I was wrong, and wrong about why — and both halves mattered.**
+  Their metric ("failure wires whose target is not a Response") could not see an **unwired** port,
+  which is the case the rule is about. **When a counter-measurement disagrees, check what it is
+  blind to before accepting *or* dismissing it.**
