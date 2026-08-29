@@ -50,9 +50,20 @@ export {
   connectedInputs,
   declaredUrlPaths,
   dedupeDiagnostics,
+  // DEF-002 §1(b)/§1(c) — the adapter-minted port index, beside the interface
+  // index and built from the same views.
+  derivedPortIndices,
   diagnosticKey,
   isBlockingForAuthoredOutput
 } from './authoredCandidate';
+// DEF-002 §1(b)/§1(c) — a wire to an `in-…`/`out-…`/`pm-…` port no adapter mints.
+export { checkDerivedPortTargets, derivedPortIndex } from './derivedPortTargets';
+export type {
+  CheckDerivedPortTargetsOptions,
+  DerivedPortIndex,
+  DerivedPortNodeLike,
+  DerivedPorts
+} from './derivedPortTargets';
 export type {
   AuthoredNode,
   AuthoredPreconditionOptions,

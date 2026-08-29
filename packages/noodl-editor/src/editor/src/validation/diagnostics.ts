@@ -609,49 +609,6 @@ export enum DiagnosticCode {
    */
   UnlabelledNode = 'unlabelled-node',
   /**
-   * FIX-007: a connection names a Function node's port by the label the panel
-   * shows instead of the name the port has. `Inputs.amount` creates a port
-   * *named* `in-amount` and *displayed* as `amount`; a wire to `amount`
-   * connects to nothing and the canvas reports "Target port doesn't exist".
-   *
-   * Its own code because it is invisible to every check around it, and
-   * deliberately so: `NonexistentPort` skips `runtime-discovered` types (it
-   * cannot see ports the runtime mints, and reporting them would flood real
-   * projects), while the structural schema and MCP's zod see four well-formed
-   * strings. This check does not guess where that one declines to — it mines
-   * the node's own `functionScript` with the runtime's own regexes and speaks
-   * only when the bare name is a port that very script creates and is not also
-   * one of the node's declared ports (`done` beside `Outputs.done()`).
-   *
-   * Error severity: a wire to a port that provably does not exist, on a node
-   * that provably has the prefixed one, is not something anyone means to write.
-   */
-  /**
-   * DEF-002 — a connection naming a port that does not exist on a **component
-   * instance**.
-   *
-   * The sibling of {@link InstanceUnknownParameter}, and the half that was
-   * missing. That one checks the ports a *parameter* names; this one the ports
-   * a *wire* names, and until now nothing did: `nonexistentPort` skips
-   * component refs outright (`isComponentRef`), which is correct for it —
-   * a component's ports are not in the catalog — and left the question
-   * unasked rather than answered.
-   *
-   * 🔴 **Measured by sabotage, phase 78 D1.** Renaming `standing.isMember` to
-   * `standing.isMemberXX` in the members-area template produced a run
-   * *identical* to the clean one: 46 `dynamic-port-skipped` infos and nothing
-   * else. The door's silence about connections read as "checked and fine".
-   *
-   * It fails **shut**: an instance output that resolves to nothing never fires,
-   * so the gate it controls never opens and the screen stays empty. Every
-   * access gate in the members' area is an instance port.
-   *
-   * Error severity. The target component's interface is derived from files the
-   * door has already read — this is not a guess about a runtime-created port,
-   * it is a lookup in an index built from the same declaration the runtime
-   * reads.
-   */
-  /**
    * DEF-002 §3 — a **signal** output wired into a **value** input.
    *
    * The runtime writes `true` then `false` on the target input. The input queue
@@ -677,8 +634,75 @@ export enum DiagnosticCode {
    * takes the same skip every other rule here takes.
    */
   SignalIntoValuePort = 'signal-into-value-port',
+  /**
+   * DEF-002 — a connection naming a port that does not exist on a **component
+   * instance**.
+   *
+   * The sibling of {@link InstanceUnknownParameter}, and the half that was
+   * missing. That one checks the ports a *parameter* names; this one the ports
+   * a *wire* names, and until now nothing did: `nonexistentPort` skips
+   * component refs outright (`isComponentRef`), which is correct for it —
+   * a component's ports are not in the catalog — and left the question
+   * unasked rather than answered.
+   *
+   * 🔴 **Measured by sabotage, phase 78 D1.** Renaming `standing.isMember` to
+   * `standing.isMemberXX` in the members-area template produced a run
+   * *identical* to the clean one: 46 `dynamic-port-skipped` infos and nothing
+   * else. The door's silence about connections read as "checked and fine".
+   *
+   * It fails **shut**: an instance output that resolves to nothing never fires,
+   * so the gate it controls never opens and the screen stays empty. Every
+   * access gate in the members' area is an instance port.
+   *
+   * Error severity. The target component's interface is derived from files the
+   * door has already read — this is not a guess about a runtime-created port,
+   * it is a lookup in an index built from the same declaration the runtime
+   * reads.
+   */
   ConnectionUnknownInstancePort = 'connection-unknown-instance-port',
+  /**
+   * FIX-007: a connection names a Function node's port by the label the panel
+   * shows instead of the name the port has. `Inputs.amount` creates a port
+   * *named* `in-amount` and *displayed* as `amount`; a wire to `amount`
+   * connects to nothing and the canvas reports "Target port doesn't exist".
+   *
+   * Its own code because it is invisible to every check around it, and
+   * deliberately so: `NonexistentPort` skips `runtime-discovered` types (it
+   * cannot see ports the runtime mints, and reporting them would flood real
+   * projects), while the structural schema and MCP's zod see four well-formed
+   * strings. This check does not guess where that one declines to — it mines
+   * the node's own `functionScript` with the runtime's own regexes and speaks
+   * only when the bare name is a port that very script creates and is not also
+   * one of the node's declared ports (`done` beside `Outputs.done()`).
+   *
+   * Error severity: a wire to a port that provably does not exist, on a node
+   * that provably has the prefixed one, is not something anyone means to write.
+   */
   UnprefixedFunctionPort = 'unprefixed-function-port',
+  /**
+   * DEF-002 §1(b)/§1(c) — a connection naming an `in-…`, `out-…` or `pm-…` port
+   * that **no adapter would mint**.
+   *
+   * The other two of phase 78 D1's three sabotages, and the siblings of
+   * {@link ConnectionUnknownInstancePort}. That one resolves an instance's ports
+   * from a component *interface*; these two are not an interface at all — they
+   * are minted by an editor adapter out of parameters on nodes inside the
+   * *target* component: `CloudFunctionAdapter` reads the `params` of a
+   * `noodl.cloud.request`/`response`, `RouterNavigateAdapter` the `pathParams`
+   * and `queryParams` of a `PageInputs`.
+   *
+   * 🔴 **Read from the adapters, and the task file's description was wrong.**
+   * DEF-002 §1(c) sourced the `pm-` names from *"`PageInputs.pathParams` and the
+   * `{braces}` in `Page.urlPath`"*. At HEAD the adapter reads `pathParams` **and
+   * `queryParams`**, and `urlPath` not at all — so that sentence would have
+   * built a check that refused every legitimate query-parameter wire and
+   * accepted names that mint no port.
+   *
+   * Error severity, and it fires only on a **prefixed** name whose target
+   * resolves and whose declaration exists: `success`, `failure` and `error` are
+   * static catalog ports and are never this code's business.
+   */
+  ConnectionUnknownDerivedPort = 'connection-unknown-derived-port',
   /**
    * FIX-006 §3: a `Javascript2` (Script) node whose body declares nothing the
    * runtime can call again. Its code runs **once**, at parse time, and never

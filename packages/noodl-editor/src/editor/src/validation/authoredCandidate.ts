@@ -52,6 +52,7 @@
 import { checkBackendRequirements, type ProjectBackendFacts } from './backendRequirement';
 import type { CatalogIndex } from './CatalogIndex';
 import { checkConnectionTargets } from './connectionTargets';
+import { checkDerivedPortTargets, derivedPortIndex, type DerivedPortIndex } from './derivedPortTargets';
 import {
   checkComponentPortDirection,
   checkInstanceInterfaces,
@@ -397,6 +398,15 @@ export interface AuthoredPreconditionOptions {
    * this layer that needs the wire itself rather than the fact of one.
    */
   wires?: readonly FunctionWireLike[];
+  /**
+   * DEF-002 §1(b)/§1(c) — every component's adapter-minted `in-…`/`out-…`/`pm-…`
+   * port names, from {@link derivedPortIndices}.
+   *
+   * **Omitted means "do not check"**, the convention every option above follows.
+   * Build it from the same views `interfaces` and `urlPaths` come from, so a
+   * component a plan is about to create resolves for all three at once.
+   */
+  derived?: DerivedPortIndex;
 }
 
 /**
@@ -443,7 +453,7 @@ export interface AuthoredPreconditionOptions {
  * consequence of this one.
  */
 export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOptions): Diagnostic[] {
-  const { component, nodes, components, urlPaths, catalog, backend, interfaces, connections, wires } = options;
+  const { component, nodes, components, urlPaths, catalog, backend, interfaces, connections, wires, derived } = options;
   return [
     ...checkParameterValues(nodes, catalog, { component }),
     ...(backend ? checkBackendRequirements(nodes, { ...backend, component }) : []),
@@ -458,6 +468,11 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     // to the clean one. Guarded on `interfaces` for the same reason as its
     // neighbour — omitted means "do not check".
     ...(interfaces ? checkConnectionTargets(nodes, { component, interfaces, wires }) : []),
+    // DEF-002 §1(b)/§1(c) — the other two of the three sabotages, and the two
+    // whose ports are not an interface at all: an editor adapter mints them from
+    // parameters inside the TARGET component. Guarded on `derived` for the same
+    // reason as its neighbours — omitted means "do not check".
+    ...(derived ? checkDerivedPortTargets(nodes, { component, derived, wires }) : []),
     ...checkComponentPortDirection(nodes, { component }),
     ...checkRepeaterTemplate(nodes, { component, components, connectedInputs: connections }),
     // DSG-004 §2.1 — doctrine §7's only mechanical claim, which had no gate.
@@ -485,6 +500,10 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
  * a navigation target. Three copies of an index that agree are still three
  * copies; this is the one.
  */
+export function derivedPortIndices(components: readonly ComponentNodesView[]): DerivedPortIndex {
+  return derivedPortIndex(components);
+}
+
 export function componentInterfaces(components: readonly ComponentNodesView[]): ComponentInterfaceIndex {
   return componentInterfaceIndex(components as readonly ComponentInterfaceView[]);
 }

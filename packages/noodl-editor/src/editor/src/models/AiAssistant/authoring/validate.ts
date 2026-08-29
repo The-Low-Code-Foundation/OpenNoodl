@@ -21,6 +21,7 @@ import {
   buildComponentRefs,
   catalogGeneration,
   componentInterfaces,
+  derivedPortIndices,
   connectedInputs,
   declaredUrlPaths as collectUrlPaths,
   dedupeDiagnostics,
@@ -257,6 +258,12 @@ function preconditionDiagnostics(
     // adding in this very submission counts. `GraphNode.ports` carries the plug
     // this needs; `instancePorts` alone cannot tell an input from a backwards one.
     interfaces: componentInterfaces(views),
+    // DEF-002 §1(b)/§1(c) — the same views once more, read for the ports an
+    // editor adapter mints inside the target rather than for a declared
+    // interface. Supplied here as well as on the MCP door because the two gates
+    // diverging on what they check is the defect AAQ-005 closed and
+    // `gateParity.test.ts` exists to keep closed.
+    derived: derivedPortIndices(views),
     // LAS-012 — a `template` fed by a wire is a working list, and only the
     // candidate's own connections can say so.
     connections: connectedInputs(files.connections.connections),

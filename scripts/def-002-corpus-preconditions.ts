@@ -55,6 +55,7 @@ import {
   connectedInputs,
   declaredUrlPaths,
   dedupeDiagnostics,
+  derivedPortIndices,
   diagnosticKey,
   AUTHORED_BLOCKING_WARNINGS
 } from '../packages/noodl-editor/src/editor/src/validation';
@@ -241,6 +242,7 @@ function main(): void {
 
     const views: ComponentNodesView[] = components.map((c) => ({ name: c.name, nodes: c.nodes as ComponentNodesView['nodes'] }));
     const interfaces = componentInterfaces(views);
+    const derived = derivedPortIndices(views);
     const urlPaths = declaredUrlPaths(views);
     const names = views.map((v) => v.name);
 
@@ -254,6 +256,7 @@ function main(): void {
           components: names,
           urlPaths,
           interfaces,
+          derived,
           connections: connectedInputs(component.connections),
           wires: component.connections as never,
           catalog

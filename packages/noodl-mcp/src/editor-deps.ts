@@ -46,6 +46,9 @@ export {
   connectedInputs,
   declaredUrlPaths,
   dedupeDiagnostics,
+  // DEF-002 §1(b)/§1(c) — the adapter-minted `in-…`/`out-…`/`pm-…` names, from
+  // the same views the interface index is built from.
+  derivedPortIndices,
   diagnosticKey,
   isBlockingForAuthoredOutput,
   looksLikePageComponent
@@ -55,6 +58,7 @@ export type {
   AuthoredPortLike,
   AuthoredPreconditionOptions,
   ComponentNodesView,
+  DerivedPortIndex,
   ProjectBackendFacts,
   StoredConnectionLike,
   StoredNodeLike
