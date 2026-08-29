@@ -306,42 +306,78 @@ well, and says in the file that it is **necessary and not sufficient**.
    before or after the fix.** It will not, because the template has no `Log` nodes. The fix's own
    Response — `This page could not be published.` — is the readout, not the log.
 
-## 4a. 🔴 AC2's population, measured — and it is already blocking someone else
+## 4a. 🔴 AC2's population — and a counter-measurement of mine that was blind
 
-**2026-08-29, s12.** DEF-002 §2 landed a rule (`b91d696a`): in a cloud function, a `failure`
-edge that reaches no `noodl.cloud.response` is reported by `validate_project` /
-`validate_component`. Its author tried promoting it to `AUTHORED_BLOCKING_WARNINGS`, hit **8
-failing specs** across `sb007Template` / `sb004Authoring` / `tpl001Template`, and read them as
-*"publishPage, duplicatePage and submitContactForm really do leave failure edges unanswered"*.
+**2026-08-29, s12. This section originally claimed something false. It is rewritten, not
+deleted, because the way it was wrong is the reusable part.**
 
-**They do not.** Counting, over the shipped artefact, `failure` wires whose target is not a
-`noodl.cloud.response`:
+DEF-002 §2 landed a rule (`b91d696a`): in a cloud function, a `failure` edge that reaches no
+`noodl.cloud.response` is reported. Promoting it to `AUTHORED_BLOCKING_WARNINGS` failed 8 specs,
+and its author read those as the shipped endpoints leaving failure edges unanswered.
 
-| component | responses | `failure` wires | **not → response** |
+**I said the blocker was the rule's population** — that it counted the three Run Tasks workers,
+which have no Response by design — and offered this table, over the shipped artefact, counting
+`failure` wires whose target is not a `noodl.cloud.response`:
+
+| component | responses | `failure` wires | not → response |
 |---|---|---|---|
-| `publishPage` | 2 | 5 | **0** |
-| `duplicatePage` | 2 | 8 | **0** |
-| `submitContactForm` | 1 | 2 | **0** |
-| `claimSite` | 2 | 6 | **0** |
-| `site/SetSectionAccess` | 0 | 1 | **1** |
-| `site/CopySectionToPage` | 0 | 1 | **1** |
-| `site/ContactRecipient` | 0 | 1 | **1** |
+| `publishPage` / `duplicatePage` / `submitContactForm` / `claimSite` | 2 / 2 / 1 / 2 | 5 / 8 / 2 / 6 | **0** each |
+| the three `site/*` workers | 0 | 1 each | **1** each |
 
-The component set agrees with the artefact (`sb004Components.ts:419–431`, `:737–…`): endpoints
-go `failure → deny.send`; the three workers go `failure → outputs.Failure`. Both populations,
-same answer.
+🔴 **Both halves of that were wrong, and the second is the one worth keeping.**
 
-🔴 **So the templates are not the blocker — the rule's population is.** The endpoints were
-repaired at `48ad4dfc`. The only three offenders have **no Response node at all**, by design:
-they answer through the Run Tasks contract's failure output, which is what
-`failure → Component Outputs.Failure` *is*. Three workers × three regeneration paths ≈ the 8.
+1. **The exclusion I proposed already existed.** `failureReachesNothing.ts:109` —
+   `if (responses.size === 0) continue;` — with a spec. The workers never fired. I recommended a
+   fix that was already in the file I had not read.
+2. 🔴 **My metric was structurally blind to the case that was actually firing.** The rule grades
+   an **unwired `failure` port** (`:167` walks nodes that *have* a `failure` port, then asks
+   whether it reaches a Response). **An unwired port is not a wire**, so it can never appear in a
+   count of wires. I measured *misrouted edges* and concluded about *unanswered failure paths* —
+   a different property — and the `0`s in that table could not have come out any other way.
 
-**Promoting the rule as written would demand a "fix" to three components that are correct.** AC2
-above already names those three and says the rule *"must say which one it is grading rather than
-quietly widening to both"* — this is that warning arriving as a real cost, in someone else's
-lane, before the gate was even written here. ⚠️ Whoever writes AC2's gate and whoever promotes
-DEF-002 §2 are writing **the same predicate**; write it once.
+**Verified on `submitContactForm` at `e0772246`**, the exact tree I made the claim against:
 
+| node | outgoing wires | `failure` |
+|---|---|---|
+| `compose` | `out-subject`, `out-text` | **unwired** |
+| `mail` | `completed → res-3.send` | **unwired** |
+| `save-3`, `stored` | … `failure → res-3.send` | wired |
+
+My count saw the two wired ones, reported `2`, and reported `0` misrouted. The two firings were
+`compose` and `mail`, invisible to it.
+
+**What was actually blocking it** — found by its author reading the rejections rather than either
+summary: those two are **false positives**, and both are legitimate unwired-`Failure` shapes on
+the one graph written to honour this task's own trap (*"a bounced mail must still answer the
+visitor"*):
+
+- `mail.failure` is unwired because `mail.completed → res.send` already answers — and
+  **`completed` fires after every invocation whatever the outcome**, so it answers the failure
+  path too. (§2.2b, from the other direction: the port that cannot mean success *can* mean
+  answered.)
+- `compose.failure` is unwired because a parallel branch (`recipient → save → stored → mail →
+  res`) still answers around it. A throw there costs the work, not the reply.
+
+Both are now exits with arms and controls (`d3461020`). The second asks *"is a response reachable
+**without** this node"* — the inverse of the 14th-hole mutant, so pre-SBR-015 `publishPage` still
+fires, because its one worker is the only route. Corpus **249 → 182 → 33**.
+
+**Residue: 4 specs**, from two deliberately malformed probes (`probe/RunTasksCrossRuntime`,
+`probe/RunTasksMissing`) that exercise a different check. Wire their `failure` or exempt them by
+name and the promotion is free.
+
+### 4b. The lesson, because it cost two sessions between us
+
+✅ *"The endpoints are already repaired"* was **true**. I reached it with an instrument that could
+not have told me otherwise. 🔴 **A right answer from a blind instrument is not a measurement**, and
+it is more dangerous than a wrong one, because it gets believed and repeated.
+
+🔴 **Before offering a counter-measurement, state what your metric CANNOT see.** Mine counted
+edges; the defect was an absent edge. The question that would have caught it in one line: *what
+would this number look like if the defect were present?* — `0`, exactly as observed.
+
+⚠️ **And read the rule before diagnosing the rule.** I inferred its population from its symptom
+and recommended a guard that was on line 109.
 ## 5. Traps
 
 - 🔴 **`claimSite` is the control and must stay one.** It is the only cloud function in the
