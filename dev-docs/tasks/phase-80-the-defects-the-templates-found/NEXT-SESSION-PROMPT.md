@@ -28,10 +28,25 @@ mechanism the rule does not know about surfaces instead of being absorbed.
 
 ## What to do next
 
-⚠️ **First: finish DEF-015 by driving AC1 and AC2.** It is ~20 minutes and the recipe is written out
-step by step in **DEF-015 §9.1**, including the backend-side deletion that makes AC2 a real negative
-control and the autosave trap that would heal it before you read it. It needs the editor, which a
-peer held for all of s11.
+⚠️ **First: finish DEF-015 by driving AC1 and AC2.** The recipe is in **DEF-015 §9.1**. The drive
+*ran* in s11 and got two of the four readings (§9.0 — the card's stopped branch already shows `4`
+where it used to show `7`, and a live `GET /admin/workflows` returns exactly the four endpoints).
+
+🔴 **It was stopped by a product defect, not by the fix and not by contention** — deploying a *copy*
+of a site-builder project to a backend that already has one **kills the backend process** with an
+uncaught `Duplicate component name`. Registered in `TASKS.md`, owner `NONE`, with a curl-only
+reproduction. **Clear it first**, one of:
+
+- move the colliding `~/.noodl/backends/<id>/workflows/*.workflow.json` aside — one reversible file
+  move; **s11 could not: writing under `~/.noodl` is outside this session's Bash permissions, and
+  that is the single thing standing between DEF-015 and closed**; or
+- attach the project to a backend whose `workflows/` directory is empty.
+
+⚠️ `Start ephemeral (no persistence)` does **not** avoid it — it drops data persistence, not the
+workflows directory.
+
+✅ The drive project is already registered in the launcher as **`DEF-015 Card Drive`** (a copy of
+`SBR-007 Page Editor Drive`), so opening it is one click.
 
 Then: **DEF-007's §3.2** is still the largest open piece and still sequenced behind phase 77.
 Also open: **DEF-008**, **DEF-009**, and the four carried from phase 76 by reference
@@ -75,6 +90,19 @@ mechanism was wrong for a third of its own population.**
   `~/.noodl/backends/<id>/workflows/*.workflow.json` is exactly what `declaredFunctionsIn` parses, so
   the backend's own rule can be run over it offline. That gave the 7/4/3 split on a project a peer
   had created independently — the product's population, not the template artefact's.
+
+- 🔴 **A backend that dies tells the editor nothing.** `ServiceSupervisor` does not forward the
+  service's stdout/stderr into `.logs/dev.log`, so a crashed backend appears only as
+  `exited (code=1, signal=null)` plus a renderer-side `TypeError: fetch failed`. The cause is
+  recoverable in about two minutes by **running `packages/nodegx-backend/dist/cli.js serve` yourself**
+  against a *copy* of the data dir on a spare port — it prints the stack trace to stdout. The admin
+  token for `curl` is `secrets.json` → `adminToken`, sent as `authorization: Bearer <token>`.
+- ⚠️ **The launcher only lists projects it has opened before.** A freshly copied directory does not
+  appear. `~/Library/Application Support/NodeGX/recently_opened_project.json` → `recentProjects` takes
+  a `{retainedProjectDirectory, latestAccessed, id, name}` entry; add one and reload the window.
+- ⚠️ **The Add Backend modal renders every control twice** and the first copy is not hit-testable —
+  the measuring-ghost problem. Filter by `document.elementFromPoint`, stamp the reachable one, click
+  the stamp. Selecting a preset does not advance the dialog; the action is `add-managed-backend`.
 
 ## Traps carried
 

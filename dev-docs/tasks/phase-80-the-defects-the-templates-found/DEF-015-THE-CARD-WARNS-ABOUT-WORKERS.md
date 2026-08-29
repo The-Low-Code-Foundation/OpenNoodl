@@ -208,13 +208,42 @@ product's and not the template artefact's.
 | 3 — spec with both populations + an unrecognised third | ✅ | `reports a component it has no rule for rather than absorbing it`, plus the orphan-pair and transitive-chain arms. |
 | 4 — the `site/` prefix mutant reddens | ✅ | §8.1. 6 specs redden. |
 
+### 9.0 🔴 What the drive DID establish before it was blocked
+
+The editor was launched, a copy of a site-builder project opened, and the Backend Services panel
+read. Two things came out of it:
+
+1. ✅ **The card's stopped branch shows the fix, live.** It reads **"4 in the project. Start the
+   backend to deploy them."** That line is `endpoints.length`; before this change it was
+   `projectFunctions.length` and read **7**. This is the changed code rendering in the real app.
+2. ✅ **The backend's own answer, from a real running service.** `GET /admin/workflows` on a backend
+   holding the site-builder bundle returns exactly four: `publishPage`, `duplicatePage`,
+   `submitContactForm`, `claimSite`. That is the array the card diffs against, so post-fix both sides
+   of the subtraction are the same four names and `missing` is empty by construction.
+
+⚠️ **What is still not observed is the running branch** — four ✓ rows, the `3 workers, run
+in-process by these functions` line, and *zero* warning triangles in one frame — and AC2's control.
+
 ### 9.1 🔴 Why AC1 and AC2 are not driven, and what it would take
 
-The editor is a **single-instance** resource on this checkout: one remote-debug port, one
-`Application Support/NodeGX` user-data dir, and launching a second stack reaps the first. A peer
-session held it for this entire session driving phase 77's SBR-007 (`start-electron-dev.js` pid
-`17789`, owning `:9222`, up 17 minutes at the time of writing, still running at the end). Taking it
-would have destroyed their drive.
+**Not contention in the end — a product defect.** Two peer sessions held the editor for most of
+this session, but both released it and the drive ran. It then hit this:
+
+🔴 **Deploying this project killed the backend process, every time.** The project is a *copy*, so its
+bundle name (`<projectName>-<hash of project directory>`) differs from the one already deployed on
+that backend, and the two declare the same seven component names. The second bundle throws
+`Duplicate component name /#__cloud__/site/SetSectionAccess` inside `CloudRunner.load`, uncaught, and
+Node exits 1. **Registered as its own row in `TASKS.md`, owner `NONE`**, with the stack trace and a
+`curl`-only reproduction that involves no editor code at all.
+
+✅ **So it is not this fix.** The reproduction runs against the committed `nodegx-backend/dist/cli.js`
+with `curl`, no editor in the picture; and the crash names a helper component, which is the same
+population this task is about only by coincidence.
+
+**Clearing it needs one of:** moving the colliding `*.workflow.json` out of the backend's workflows
+directory (one reversible file move, but it is under `~/.noodl` and this session's permissions do not
+allow writing there), or attaching the project to a backend with no deployed bundle. `Start ephemeral
+(no persistence)` does **not** work — it drops data persistence, not the workflows directory.
 
 ⚠️ **Do not read AC3/AC4 as covering AC1.** The specs grade `classifyCloudComponents`. What they
 cannot see is the one link the drive exists to check: that `CloudFunctionsSection` reads

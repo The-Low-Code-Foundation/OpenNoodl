@@ -160,6 +160,43 @@ should be done **once**, not three times.
   (`tests/workflow/functionrefresolution.test.ts`), and the honest answer is a **sixth** state — in
   the project, but not callable — rather than a rewording. Phase 27 authored it and is closed.
 
+- 🔴 **A second project deploying to a shared local backend KILLS THE BACKEND PROCESS.** Owner:
+  **`NONE`**. Found by DEF-015 s11 when it blocked that task's AC1 drive. **Reproduced outside the
+  editor entirely**, with `curl` against a backend running the committed `nodegx-backend/dist/cli.js`
+  — so no editor code is implicated.
+
+  Two `PUT /admin/workflows/<name>` calls carrying bundles that declare the same component names.
+  The first answers `200`. The second answers **nothing**: the process is gone.
+
+  ```
+  Error: Duplicate component name /#__cloud__/site/SetSectionAccess
+      at NodeContext.registerComponentModel (dist/cli.js:6782)
+      at GraphModel2.importComponentFromEditorData (dist/cli.js:9170)
+      at async CloudRunner.load (dist/cli.js:47778)
+      at async WorkflowRunner.loadWorkflow (dist/cli.js:63467)
+  ```
+
+  🔴 **It is an uncaught throw on an async path, so it takes the process down rather than failing the
+  request.** `loadWorkflow` is `await`ed from the PUT handler; the rejection escapes, and Node exits
+  non-zero. The editor sees only `TypeError: fetch failed` / `SocketError: other side closed`, and
+  `ServiceSupervisor` logs `exited (code=1)` with no reason — the backend's own stderr is not
+  forwarded, so the cause is invisible from the editor.
+
+  ⚠️ **The population is not exotic — the product advertises it.** The backend card says *"Also used
+  by: SBR-007 Page Editor Drive"* and *"1 attached · 23 others"*, so one local backend serving
+  several projects is a supported arrangement. Any two of them sharing a template — every
+  site-builder project shares all seven cloud components — collide on the first deploy of the second.
+  A bundle name is `<projectName>-<hash of project directory>`, so a **copy** of a project is always a
+  new bundle, never a replacement.
+
+  ⚠️ `Start ephemeral (no persistence)` does **not** avoid it: it drops data persistence, not the
+  workflows directory, so the already-deployed bundle is still loaded and still collides.
+
+  **Two candidate fixes, and they are not the same size.** Catching the rejection so the PUT answers
+  400 and the backend survives is small and clearly right. Deciding what *should* happen when two
+  projects deploy the same component names to one backend — namespace per bundle, refuse the second,
+  or last-writer-wins — is a design question with a person attached to it.
+
 ## Rulings needed (Richard)
 
 - 🧭 **Does this phase exist, or do these fold into 0.2.1's bug-fix phase?** The tasks are written to
