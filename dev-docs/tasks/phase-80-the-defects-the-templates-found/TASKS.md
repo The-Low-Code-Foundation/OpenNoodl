@@ -41,7 +41,7 @@ derivation and [README.md](README.md) for why the phase exists.
 - **P77 D4** (a refused query and an empty collection are the same screen) — 🔄 **reclassified as
   template work.** `DbCollection2` carries both `failure` (signal) and `error` (string) at HEAD, and
   phase 78's D4 drove it: a 403 fires `failure`. The site builder never wired them. → SBR-006/SBR-010.
-- **P78 D10a** (the generators bypass the design system) — template-generator work with a named home
+- **P78 D10** (the generators bypass the design system) — template-generator work with a named home
   in phase 78. Disproved as a platform limitation: `metadata.designTokens` persists and the artefact
   ships it.
 - **P77 D9** (deploy drops wire-only `prop-*`) — already owned by **SBR-008**.

@@ -39,7 +39,7 @@ whose purpose is *"change the design system"* holds `set_project_tokens` and `se
 `query: "theme"`, `"design"`, `"colour"`, `"style guide"`, `"palette"` all reveal **nothing**, while
 `group: "theme"` reveals both.
 
-🔴 **This is a contributing cause of phase 78's D10a** — *"the template generators bypass the design
+🔴 **This is a contributing cause of phase 78's D10** — *"the template generators bypass the design
 system"*. The style write tools are deferred behind disclosure; an agent told to style on-system
 searches for the words it is thinking in and is told there is nothing there.
 
