@@ -14,7 +14,7 @@ derivation and [README.md](README.md) for why the phase exists.
 | DEF-004 | ✅ done | [When it goes wrong you cannot see where](DEF-004-WHEN-IT-GOES-WRONG-YOU-CANNOT-SEE-WHERE.md) | P77 D2, D3 | anyone **debugging** |
 | DEF-005 | 🔒 ruling | [Membership is a category the graph cannot express](DEF-005-MEMBERSHIP-IS-UNEXPRESSIBLE.md) | P78 D2, D3 | every **membership app** |
 | DEF-006 | ✅ done | [The design system punishes the agent that uses it](DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md) | P78 D12, D15, **D20** | every **agent** styling on-system |
-| DEF-007 | ⬜ open | [A project means one thing on disk and another once loaded](DEF-007-DISK-AND-LOAD-DISAGREE.md) | P78 D9 residual · P77 D5 | the **next template** |
+| DEF-007 | 🟡 partial | [A project means one thing on disk and another once loaded](DEF-007-DISK-AND-LOAD-DISAGREE.md) — **§6 seam named, §6.1 AC3 measured (56), §3.3 struck** | P78 D9 residual · P77 D5 · **P77 D11** | the **next template** |
 | DEF-008 | ⬜ open | [The measurement owed](DEF-008-THE-MEASUREMENT-OWED.md) | P77 D6 · P78 D5 | nobody yet — a re-drive |
 | DEF-009 | ⬜ open | [A public write door ships with no limit](DEF-009-A-PUBLIC-WRITE-DOOR-WITH-NO-LIMIT.md) | **P76 F3** | a **site owner** whose form fills their database |
 | DEF-017 | ✅ **done — C1, C2 (D18+D19), C3** | [Track C, handed over by phase 78](../phase-78-the-templates/TRACK-C-HANDOFF.md) | **P78 D18, D19, D26** | every app: controls in the wrong face; one content surface for nine kinds of thing |
@@ -121,6 +121,12 @@ should be done **once**, not three times.
   It blocks the claim that a contact form reaches anyone.
 - 🧭 **DEF-009: should a public cloud function's `rateLimit` default to something rather than
   `null`?** A default too low breaks a legitimate burst; `null` is what shipped.
+- 🧭 **DEF-007: where is a template with NO home caught — refuse at publish, or resolve-and-warn at
+  install?** Raised by §2.1 on 2026-08-29. Nothing on the curated path checks it today, at either
+  end, while `noodl-preview` already resolves-and-warns. ⚠️ **The check cannot simply be "has a
+  `rootNodeId`"** — 63 of 340 manifests on this machine lack one and most are **modules and
+  prefabs, which have no home by design**. Refusing is honest about a template nobody can open;
+  warning matches what preview already does.
 
 ## Not in this phase, and why
 
