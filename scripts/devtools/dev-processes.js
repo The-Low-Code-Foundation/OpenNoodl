@@ -266,7 +266,31 @@ function withDescendants(roots, table) {
  * Nothing about the old guard protected it. Spawn one under a wrapper and it
  * would have been swept too.
  */
-const NEVER_SWEEP = /noodl-mcp\.cjs|test\.js --ci|run-electron-tests\.js|webpack\.test-ci|run test:(ci|main)\b/;
+/**
+ * 🔴 **The package suites were never covered, and the fix that covered `test:ci` read as if
+ * they were.** Measured 2026-08-29, every suite command actually in use against the previous
+ * pattern:
+ *
+ * | command | |
+ * |---|---|
+ * | `npm run test:ci` / `test:main` | protected |
+ * | `npx jest tests/sb0` | **swept** |
+ * | `npm --prefix packages/noodl-mcp test -- …` (runs as `npm exec jest`) | **swept** |
+ * | `npx jest tests-unit/sb-007` | **swept** |
+ *
+ * So every package gate in a phase's session — mcp, backend, viewer-react, editor units — was
+ * killable by any peer launching the editor, and a swept suite does not look swept: `EXIT=137`,
+ * no summary line, files silently unrun, and the tail all ticks. One session waited out a
+ * `bin/jest` run by hand rather than sweep it; that courtesy was the only protection there was.
+ *
+ * ⚠️ `jest-worker` children are covered already, by `withDescendants` — the shield is a tree.
+ *
+ * ⚠️ **Vitest is deliberately NOT here.** This repo has no vitest runner (no config, no
+ * package script), so a vitest pattern could never fire and would be a rule that cannot fail.
+ * Add it with the runner, if a package ever gains one.
+ */
+const NEVER_SWEEP =
+  /noodl-mcp\.cjs|test\.js --ci|run-electron-tests\.js|webpack\.test-ci|run test:(ci|main)\b|[/\\]\.bin[/\\]jest\b|npm exec jest\b/;
 
 /**
  * Every protected process, plus the whole tree each one needs to survive in.
@@ -319,10 +343,15 @@ function sweepableGroups(groups, table, shielded) {
   return groups.filter((pgid) => !protectedGroups.has(pgid));
 }
 
+/** Whether a sweep must spare this command — see {@link NEVER_SWEEP}. */
+function isProtectedCommand(command) {
+  return NEVER_SWEEP.test(command);
+}
+
 function protectedProcesses(table, offLimits) {
   const matched = [];
   for (const proc of table.values()) {
-    if (NEVER_SWEEP.test(proc.command)) matched.push(proc.pid);
+    if (isProtectedCommand(proc.command)) matched.push(proc.pid);
   }
   if (matched.length === 0) return new Set();
 
@@ -578,5 +607,10 @@ module.exports = {
   // cannot demonstrate on a quiet checkout, so it needs a way to be exercised
   // directly rather than shipped on the strength of a reading.
   sweepableGroups,
+  // Exported for testing for the same reason as `sweepableGroups`: a dry run on a quiet
+  // checkout cannot demonstrate that a suite would have been spared, because there is no
+  // suite. This is the predicate, not the pattern — callers should ask the question, not
+  // re-implement it.
+  isProtectedCommand,
   writePidFile
 };
