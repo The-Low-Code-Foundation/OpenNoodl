@@ -32,9 +32,19 @@ backend:
 arrived intact — `{"publish":true,"pageId":"0826ed8b…"}` — so this is neither the transport nor
 SBR-006's wiring.
 
-🔴 **`execution_steps` is empty for all three.** The table exists and nothing writes to it for
-cloud functions, so the log can say *that* a function hung and never *where*. That is the second
-half of why this took a whole drive to characterise, and it is worth its own line in §5.
+🔴 **`execution_steps` is empty for all three**, so the log can say *that* a function hung and
+never *where*. That is the second half of why this took a whole drive to characterise.
+
+⚠️ **CORRECTED 2026-08-29 — the cause written here first was wrong, twice, and this is the third
+reading.** It is **not** that "nothing writes to it for cloud functions". The recorder is complete
+and the cloud path **does** call it: `WorkflowRunner.ts:261` mints a step per **author log line**
+(`nodeType: 'net.noodl.Log'`). The site-builder ships **zero `Log` nodes**, which is the entire
+explanation of *3 executions, 0 steps*. `execution_steps` records **what the author logged, never
+what the graph ran** — a much smaller gap than this row first claimed.
+
+🔴 **The method error is the reusable part**: the first cause was concluded from a *caller list*
+(`grep` for `.startNode(` returned two files) without opening either caller to see what it was.
+A caller list answers *"is it called?"* and never *"called for what?"*
 
 ### 2.1 The audit that settles it
 
@@ -154,6 +164,11 @@ gate in AC2 should be read with that in mind.
    log table that exists and is always empty is worse than no table: SBR-006 reached for it
    first, exactly as intended, and it could not separate "never called" from "called and
    failed".
+   ⚠️ **Smaller than it reads, since §2's correction**: the recorder works and is wired to the
+   `Log` node. This AC is about *graph* nodes being recorded, not about building a recorder.
+   🔴 **For anyone driving this task: do not expect `executions.sqlite` to name the failing node,
+   before or after the fix.** It will not, because the template has no `Log` nodes. The fix's own
+   Response — `This page could not be published.` — is the readout, not the log.
 
 ## 5. Traps
 
