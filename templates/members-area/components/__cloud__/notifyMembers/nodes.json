@@ -30,6 +30,34 @@
           "name": "out-ok",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-announcementId",
+          "displayName": "announcementId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-siteUrl",
+          "displayName": "siteUrl",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-announcementId",
+          "displayName": "announcementId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-origin",
+          "displayName": "origin",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,
@@ -89,6 +117,55 @@
           "name": "out-nobody",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-rows",
+          "displayName": "rows",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-title",
+          "displayName": "title",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-body",
+          "displayName": "body",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-origin",
+          "displayName": "origin",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-sent",
+          "displayName": "sent",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-failed",
+          "displayName": "failed",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-error",
+          "displayName": "error",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,
@@ -113,6 +190,62 @@
           "name": "out-finished",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-outcome",
+          "displayName": "outcome",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-error",
+          "displayName": "error",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-sent",
+          "displayName": "sent",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-failed",
+          "displayName": "failed",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-error",
+          "displayName": "error",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-to",
+          "displayName": "to",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-subject",
+          "displayName": "subject",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-text",
+          "displayName": "text",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,
@@ -138,6 +271,20 @@
           "name": "out-go",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "out-outcome",
+          "displayName": "outcome",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-error",
+          "displayName": "error",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,
@@ -156,6 +303,27 @@
           "name": "out-go",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-error",
+          "displayName": "error",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-outcome",
+          "displayName": "outcome",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-error",
+          "displayName": "error",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,

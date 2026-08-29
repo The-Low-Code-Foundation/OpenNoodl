@@ -127,7 +127,30 @@
         "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.standing === undefined) return;\nconst LABELS = {\"moderator\":\"Moderator\",\"member\":\"Member\"};\nconst standing = Inputs.standing === null ? '' : String(Inputs.standing);\n// ⚠️ An unknown standing falls back to the stored word rather than to\n// an empty line: a row that says `trustee` is legible, and a row that\n// says nothing at all is the bug that hides the new standing nobody\n// added a label for.\nconst label = LABELS[standing] || standing;\n// The column is a full ISO timestamp; the day is what a person wants —\n// and D25: this was the one site rendering it as `2026-08-29`.\nconst day = humanDay(Inputs.joinedAt);\nOutputs.description = day.length > 0 ? label + ' · since ' + day : label;"
       },
       "x": 410,
-      "y": 520
+      "y": 520,
+      "ports": [
+        {
+          "name": "in-standing",
+          "displayName": "standing",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-joinedAt",
+          "displayName": "joinedAt",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-description",
+          "displayName": "description",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
     }
   ],
   "visualRoots": [

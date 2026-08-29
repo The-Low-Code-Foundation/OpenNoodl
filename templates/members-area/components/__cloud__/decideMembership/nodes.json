@@ -30,6 +30,34 @@
           "name": "out-ready",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-requestId",
+          "displayName": "requestId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-approve",
+          "displayName": "approve",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-requestId",
+          "displayName": "requestId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-approve",
+          "displayName": "approve",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,
@@ -67,6 +95,90 @@
           "name": "out-decline",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-userId",
+          "displayName": "userId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-approve",
+          "displayName": "approve",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-email",
+          "displayName": "email",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-name",
+          "displayName": "name",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-userId",
+          "displayName": "userId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-approved",
+          "displayName": "approved",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-email",
+          "displayName": "email",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-name",
+          "displayName": "name",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-joinedAt",
+          "displayName": "joinedAt",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-standing",
+          "displayName": "standing",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-notifyByEmail",
+          "displayName": "notifyByEmail",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-unsubscribeToken",
+          "displayName": "unsubscribeToken",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,

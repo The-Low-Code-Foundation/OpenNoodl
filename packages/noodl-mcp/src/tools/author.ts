@@ -25,6 +25,7 @@ import { ToolError } from '../errors';
 import type { ComponentFiles, UpdateOperation } from '../graph';
 import { applyOperations, reconcileHierarchy } from '../graph';
 import { pathToLegacyName, toPathForm, validateComponentPath } from '../paths';
+import { withAuthoredScriptPorts } from '../scriptPorts';
 import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
 import type { NodeIdRemap } from '../project/nodeIds';
 import { deconflictNodeIds, remapNote } from '../project/nodeIds';
@@ -219,7 +220,10 @@ export function assembleCreateFiles(args: {
     $schema: 'https://opennoodl.dev/schemas/nodes-v2.json',
     componentId,
     version: 1,
-    nodes: laidOut,
+    // DEF-011 — persist the ports each Function node's script declares, so the
+    // graph on disk can run where no editor derives them (deployed backend,
+    // headless render). Author-sent ports win by (plug, name).
+    nodes: withAuthoredScriptPorts(laidOut),
     ...(resolved.visualRoots ? { visualRoots: resolved.visualRoots } : {})
   };
   const connections: ConnectionsV2File = {
@@ -247,10 +251,12 @@ export function assembleSetFiles(
   // it is a hand arrangement carried through, locked against even the
   // collision nudge, so `update_component` on a hand-arranged component
   // repositions nothing unless the caller changed a coordinate itself.
-  candidate.nodes.nodes = layoutAuthoredNodes(set.nodes, isVisualType, {
-    connections: set.connections ?? baseline.connections.connections ?? [],
-    lockedIds: positionsUnchangedFrom(set.nodes, baseline.nodes.nodes ?? [])
-  });
+  candidate.nodes.nodes = withAuthoredScriptPorts(
+    layoutAuthoredNodes(set.nodes, isVisualType, {
+      connections: set.connections ?? baseline.connections.connections ?? [],
+      lockedIds: positionsUnchangedFrom(set.nodes, baseline.nodes.nodes ?? [])
+    })
+  );
   // AWP-001 — always recompute unless the caller said otherwise. Leaving the
   // baseline's list in place was the second half of F43: `set` replaces the whole
   // graph, so the inherited ids can name nodes that no longer exist. Re-deriving

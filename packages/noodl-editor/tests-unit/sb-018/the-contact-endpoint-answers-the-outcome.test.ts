@@ -125,10 +125,21 @@ describe('SB-018 (5): `received` reports the write, not a pulse rearming', () =>
   it('the flag is raised after the row is written, and it is a value', () => {
     const stored = contactForm().nodes.find((node) => node.label === ANSWER)!;
 
-    // A plain value output, parsed from the script — `out-ready` is the only
-    // declared port, because a signal is the one thing the parser cannot infer.
+    // A plain value output, parsed from the script. Until DEF-011 (2026-08-29)
+    // `out-ready` was the only port ON DISK — the hand-declared signal, the one
+    // port whose absence breaks a deployed backend — and this line pinned that
+    // workaround state literally. The door now persists the script-derived
+    // surface too, so the pin is restated as what it always meant: the signal
+    // is declared exactly once, and `received` is a VALUE port — `type` not
+    // `signal` — which is this spec's whole thesis about the flag.
     expect(String(stored.parameters.functionScript)).toContain('Outputs.received = true;');
-    expect(stored.ports).toEqual([{ name: 'out-ready', plug: 'output', type: 'signal' }]);
+    const ports = stored.ports ?? [];
+    expect(ports.filter((p) => p.name === 'out-ready')).toEqual([
+      { name: 'out-ready', plug: 'output', type: 'signal' }
+    ]);
+    const received = ports.filter((p) => p.name === 'out-received');
+    expect(received).toHaveLength(1);
+    expect(received[0].type).not.toBe('signal');
 
     // 🔴 It runs off the WRITE, not off the request. This is the assertion that
     // separates the fix from SB-018 (5)'s own suggestion: a flag published on

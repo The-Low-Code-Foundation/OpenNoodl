@@ -527,7 +527,23 @@
         "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
       },
       "x": 530,
-      "y": 760
+      "y": 760,
+      "ports": [
+        {
+          "name": "in-isModerator",
+          "displayName": "isModerator",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-no",
+          "displayName": "no",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
     },
     {
       "id": "stampAnnouncement",
@@ -541,6 +557,13 @@
           "name": "out-go",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "out-postedAt",
+          "displayName": "postedAt",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 530,
@@ -648,6 +671,27 @@
           "name": "out-go",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-id",
+          "displayName": "id",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-announcementId",
+          "displayName": "announcementId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-siteUrl",
+          "displayName": "siteUrl",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 530,
@@ -674,7 +718,37 @@
         "functionScript": "// TPL-002 §3, and the four cases are separately actionable: post it\n// again, tell somebody another way, go and configure SMTP, or nothing.\nif (Inputs.sent === undefined) return;\nconst sent = Number(Inputs.sent) || 0;\nconst failed = Number(Inputs.failed) || 0;\nconst error = Inputs.error === undefined || Inputs.error === null ? '' : String(Inputs.error);\nif (sent === 0 && failed === 0) {\n  Outputs.line = \"Posted. Nobody has asked to be emailed yet, so no emails were sent.\";\n  return;\n}\nif (sent === 0) {\n  // 🔴 The mailer’s own words, verbatim. With SMTP unconfigured this\n  // is `notConfiguredReason()`, which names the Backend Services\n  // panel — the one thing the person reading it has to go and open.\n  Outputs.line = \"Posted — but the emails could not be sent. \" + (error || \"No emails could be sent.\");\n  return;\n}\nlet line = \"Posted. \" + \"Emailed to \" + sent +\n  (sent === 1 ? \" member who asked to be told.\" : \" members who asked to be told.\");\nif (failed > 0) {\n  line += \" \" + failed + \" could not be sent. \" + error;\n}\nOutputs.line = line;"
       },
       "x": 530,
-      "y": 1840
+      "y": 1840,
+      "ports": [
+        {
+          "name": "in-sent",
+          "displayName": "sent",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-failed",
+          "displayName": "failed",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-error",
+          "displayName": "error",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-line",
+          "displayName": "line",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
     },
     {
       "id": "reportRefused",
@@ -684,7 +758,16 @@
         "functionScript": "Outputs.line = \"Posted — but the emails could not be sent. \" + \"No emails could be sent.\";"
       },
       "x": 530,
-      "y": 1960
+      "y": 1960,
+      "ports": [
+        {
+          "name": "out-line",
+          "displayName": "line",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
     }
   ],
   "visualRoots": [

@@ -28,6 +28,34 @@
           "name": "out-ok",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-wanted",
+          "displayName": "wanted",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-userId",
+          "displayName": "userId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-userId",
+          "displayName": "userId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-wanted",
+          "displayName": "wanted",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,
@@ -74,6 +102,34 @@
           "name": "out-norow",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-rows",
+          "displayName": "rows",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-wanted",
+          "displayName": "wanted",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-notify",
+          "displayName": "notify",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-rowId",
+          "displayName": "rowId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,

@@ -354,6 +354,13 @@
           "name": "out-off",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-notify",
+          "displayName": "notify",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
         }
       ],
       "x": 470,

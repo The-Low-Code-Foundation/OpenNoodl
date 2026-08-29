@@ -477,7 +477,23 @@
         "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
       },
       "x": 530,
-      "y": 1480
+      "y": 1480,
+      "ports": [
+        {
+          "name": "in-count",
+          "displayName": "count",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-empty",
+          "displayName": "empty",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
     },
     {
       "id": "toLanding",

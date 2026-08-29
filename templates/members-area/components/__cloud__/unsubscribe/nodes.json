@@ -33,6 +33,20 @@
           "name": "out-blank",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-token",
+          "displayName": "token",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-token",
+          "displayName": "token",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,
@@ -78,6 +92,27 @@
           "name": "out-nomatch",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-rows",
+          "displayName": "rows",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-rowId",
+          "displayName": "rowId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-off",
+          "displayName": "off",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,

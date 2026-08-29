@@ -183,6 +183,15 @@ export interface BuildOptions {
 export async function buildMembersTemplateProject(options: BuildOptions = {}): Promise<AuthoredTemplate> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tpl001-template-'));
   writeSkeleton(dir);
+  // DEF-009 — seed the hand-authored policy BEFORE authoring, not only into the
+  // artefact afterwards: the door now reads `nodegx.security.json` to judge a
+  // public write door's rate limit, and validating the template's components in
+  // a project that lacks the policy reports `public-write-door-unlimited` on
+  // three functions the policy really does limit. An installed project has the
+  // file beside the components, so the build should too — the diagnostics this
+  // build records are otherwise about a project that never ships.
+  const policySource = path.join(__dirname, '..', '..', '..', 'templates', `${TEMPLATE_ID}.security.json`);
+  if (fs.existsSync(policySource)) fs.copyFileSync(policySource, path.join(dir, POLICY_FILE));
 
   const { server } = createServer({ projectDir: dir, allowWrites: true });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

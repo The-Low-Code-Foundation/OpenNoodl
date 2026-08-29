@@ -49,6 +49,48 @@
           "name": "out-visitor",
           "plug": "output",
           "type": "signal"
+        },
+        {
+          "name": "in-standing",
+          "displayName": "standing",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-standing",
+          "displayName": "standing",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isMember",
+          "displayName": "isMember",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isModerator",
+          "displayName": "isModerator",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isPending",
+          "displayName": "isPending",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isUnknown",
+          "displayName": "isUnknown",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
         }
       ],
       "x": 40,
@@ -62,7 +104,23 @@
         "functionScript": "Outputs.standing = 'unknown';\nOutputs.isUnknown = true;"
       },
       "x": 40,
-      "y": 400
+      "y": 400,
+      "ports": [
+        {
+          "name": "out-standing",
+          "displayName": "standing",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isUnknown",
+          "displayName": "isUnknown",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
     },
     {
       "id": "outputs",

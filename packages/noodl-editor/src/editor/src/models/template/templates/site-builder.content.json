@@ -136,7 +136,43 @@
               "runOnChange-in-current": true,
               "functionScript": "if (Inputs.slug === undefined) return;\nlet current = Inputs.current;\nif (current === undefined && Noodl && Noodl.Variables) {\n  current = Noodl.Variables[\"siteCurrentSlug\"];\n}\nconst isCurrent = current !== undefined && current !== null && current !== '' && String(current) === String(Inputs.slug);\nOutputs.color = isCurrent ? 'var(--primary)' : 'var(--muted-foreground)';\nOutputs.weight = isCurrent ? 'var(--font-semibold)' : 'var(--font-normal)';\nOutputs.current = isCurrent;"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-slug",
+                "displayName": "slug",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-current",
+                "displayName": "current",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-color",
+                "displayName": "color",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-weight",
+                "displayName": "weight",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-current",
+                "displayName": "current",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -315,7 +351,71 @@
             "parameters": {
               "functionScript": "const kind = Inputs.kind || 'richText';\nconst d = Inputs.data || {};\nconst body = d.body || '';\nconst image = (d.image && d.image.url) || '';\nOutputs.showImage = image !== '' && (kind === 'hero' || kind === 'gallery');\nOutputs.showBody = body !== '' && kind !== 'gallery';\nOutputs.body = body;\nOutputs.image = image;\nOutputs.weight = (kind === 'hero' || kind === 'cta') ? 'var(--font-bold)' : 'var(--font-normal)';\nOutputs.size = kind === 'hero' ? 'var(--text-3xl)' : 'var(--text-base)';\nOutputs.family = kind === 'hero' ? 'var(--font-serif)' : 'var(--font-sans)';"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-kind",
+                "displayName": "kind",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-data",
+                "displayName": "data",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-showImage",
+                "displayName": "showImage",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-showBody",
+                "displayName": "showBody",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-body",
+                "displayName": "body",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-image",
+                "displayName": "image",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-weight",
+                "displayName": "weight",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-size",
+                "displayName": "size",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-family",
+                "displayName": "family",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           }
         ],
@@ -549,6 +649,62 @@
                 "name": "out-go",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-name",
+                "displayName": "name",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-email",
+                "displayName": "email",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-message",
+                "displayName": "message",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-pageSlug",
+                "displayName": "pageSlug",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-name",
+                "displayName": "name",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-email",
+                "displayName": "email",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-message",
+                "displayName": "message",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-pageSlug",
+                "displayName": "pageSlug",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -1062,7 +1218,57 @@
             "parameters": {
               "functionScript": "const pageRefused = Inputs.error !== undefined && Inputs.error !== null && Inputs.error !== \"\";\nconst settingsRefused = Inputs.settingsError !== undefined && Inputs.settingsError !== null && Inputs.settingsError !== \"\";\nif (settingsRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.claimed === false) {\n  Outputs.text = \"This site has not been set up yet.\";\n  Outputs.visible = true;\n  return;\n}\nif (pageRefused) {\n  Outputs.text = \"This site’s pages are not available right now.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.watchdog !== undefined && Inputs.claimed === undefined && Inputs.missing === undefined) {\n  Outputs.text = \"No backend connected. This project needs a backend before it can store pages — add one from Backend Services.\";\n  Outputs.visible = true;\n  return;\n}\nif (Inputs.missing === undefined) return;\nif (!Inputs.missing) {\n  Outputs.visible = false;\n  return;\n}\nOutputs.text = \"That page could not be found.\";\nOutputs.visible = true;"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-error",
+                "displayName": "error",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-settingsError",
+                "displayName": "settingsError",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-claimed",
+                "displayName": "claimed",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-watchdog",
+                "displayName": "watchdog",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-missing",
+                "displayName": "missing",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-text",
+                "displayName": "text",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-visible",
+                "displayName": "visible",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -1114,7 +1320,36 @@
             "parameters": {
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.claimed = rows.length > 0;\nOutputs.homeSlug = first.homeSlug || 'home';"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-siteName",
+                "displayName": "siteName",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-claimed",
+                "displayName": "claimed",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-homeSlug",
+                "displayName": "homeSlug",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -1134,6 +1369,27 @@
                 "name": "out-ready",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-homeSlug",
+                "displayName": "homeSlug",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-slug",
+                "displayName": "slug",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-slug",
+                "displayName": "slug",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -1178,6 +1434,48 @@
                 "name": "out-found",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-missing",
+                "displayName": "missing",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-title",
+                "displayName": "title",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-seoDescription",
+                "displayName": "seoDescription",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-slug",
+                "displayName": "slug",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-pageId",
+                "displayName": "pageId",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -1223,7 +1521,22 @@
             "parameters": {
               "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nOutputs.hasContact = rows.some(function (r) {\n  const d = r.data || r;\n  return d.kind === 'contact';\n});"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-hasContact",
+                "displayName": "hasContact",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -1249,7 +1562,15 @@
             "parameters": {
               "functionScript": "if (typeof document === 'undefined') return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nconst root = document.documentElement;\nif (t.colorPrimary) {\n  root.style.setProperty('--primary', t.colorPrimary);\n  root.style.setProperty('--primary-hover', 'color-mix(in srgb, ' + t.colorPrimary + ' 82%, black)');\n  root.style.setProperty('--ring', t.colorPrimary);\n  root.style.setProperty('--accent-foreground', t.colorPrimary);\n}\nif (t.colorOnPrimary) root.style.setProperty('--primary-foreground', t.colorOnPrimary);\nif (t.colorBackground) root.style.setProperty('--background', t.colorBackground);\nif (t.colorSurface) {\n  root.style.setProperty('--surface', t.colorSurface);\n  root.style.setProperty('--surface-raised', t.colorSurface);\n}\nif (t.colorText) root.style.setProperty('--foreground', t.colorText);\nif (t.colorTextSoft) root.style.setProperty('--muted-foreground', t.colorTextSoft);\nif (t.colorBorder) {\n  root.style.setProperty('--border', t.colorBorder);\n  root.style.setProperty('--border-subtle', 'color-mix(in srgb, ' + t.colorBorder + ' 45%, var(--background))');\n  root.style.setProperty('--border-strong', 'color-mix(in srgb, ' + t.colorBorder + ' 65%, var(--foreground))');\n}\nif (t.colorAccentSoft) root.style.setProperty('--accent', t.colorAccentSoft);\nif (t.radius) root.style.setProperty('--radius-md', t.radius);\nif (t.fontDisplay) root.style.setProperty('--font-serif', t.fontDisplay);\nif (t.fontUi) {\n  root.style.setProperty('--font-sans', t.fontUi);\n  root.style.fontFamily = t.fontUi;\n}\nif (t.measure) root.style.setProperty('--site-measure', t.measure);"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -1262,7 +1583,15 @@
             "parameters": {
               "functionScript": "if (!Inputs.title) return;\nif (!Noodl || !Noodl.SEO) return;\nNoodl.SEO.setTitle(Inputs.title);"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-title",
+                "displayName": "title",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              }
+            ],
             "dynamicports": []
           }
         ],
@@ -1699,7 +2028,57 @@
               "runOnChange-in-active": true,
               "functionScript": "const active = Inputs.active || '';\nconst colour = (k) => (active === k ? 'var(--primary)' : 'var(--foreground)');\nconst weight = (k) => (active === k ? 'var(--font-semibold)' : 'var(--font-normal)');\nOutputs.pagesColor = colour(\"pages\");\nOutputs.pagesWeight = weight(\"pages\");\nOutputs.themeColor = colour(\"theme\");\nOutputs.themeWeight = weight(\"theme\");\nOutputs.messagesColor = colour(\"messages\");\nOutputs.messagesWeight = weight(\"messages\");"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-active",
+                "displayName": "active",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-pagesColor",
+                "displayName": "pagesColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-pagesWeight",
+                "displayName": "pagesWeight",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-themeColor",
+                "displayName": "themeColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-themeWeight",
+                "displayName": "themeWeight",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-messagesColor",
+                "displayName": "messagesColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-messagesWeight",
+                "displayName": "messagesWeight",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -2051,7 +2430,29 @@
             "parameters": {
               "functionScript": "const d = Inputs.data || {};\nOutputs.body = d.body || '';\nOutputs.image = (d.image && d.image.url) || '';"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-data",
+                "displayName": "data",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-body",
+                "displayName": "body",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-image",
+                "displayName": "image",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -2093,6 +2494,34 @@
                 "name": "out-built",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-data",
+                "displayName": "data",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-body",
+                "displayName": "body",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-image",
+                "displayName": "image",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-data",
+                "displayName": "data",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -2716,6 +3145,20 @@
                 "name": "out-ready",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-pageId",
+                "displayName": "pageId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-pageId",
+                "displayName": "pageId",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -2823,7 +3266,22 @@
               "runOnChange-in-title": true,
               "functionScript": "if (Inputs.title === undefined) return;\nconst title = String(Inputs.title === null ? '' : Inputs.title).trim();\nOutputs.headline = title === '' ? 'Editing · Untitled page' : 'Editing · ' + title;"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-title",
+                "displayName": "title",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-headline",
+                "displayName": "headline",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -2837,7 +3295,36 @@
               "runOnChange-in-published": true,
               "functionScript": "const published = Inputs.published === true;\nOutputs.label = published ? 'Published' : 'Draft';\nOutputs.pillBackground = published ? 'var(--primary)' : 'var(--accent)';\nOutputs.pillColor = published ? 'var(--primary-foreground)' : 'var(--muted-foreground)';"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-published",
+                "displayName": "published",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-label",
+                "displayName": "label",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-pillBackground",
+                "displayName": "pillBackground",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-pillColor",
+                "displayName": "pillColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -2860,7 +3347,85 @@
               "runOnChange-in-loadedShowInNav": true,
               "functionScript": "if (Inputs.loadedTitle === undefined) return;\nconst same = (a, b) => String(a === undefined || a === null ? '' : a).trim() === String(b === undefined || b === null ? '' : b).trim();\nOutputs.dirty =\n  !same(Inputs.title, Inputs.loadedTitle) ||\n  !same(Inputs.slug, Inputs.loadedSlug) ||\n  !same(Inputs.seo, Inputs.loadedSeo) ||\n  !same(Inputs.navOrder, Inputs.loadedNavOrder) ||\n  (Inputs.showInNav === true) !== (Inputs.loadedShowInNav === true);"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-loadedTitle",
+                "displayName": "loadedTitle",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-title",
+                "displayName": "title",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-slug",
+                "displayName": "slug",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-loadedSlug",
+                "displayName": "loadedSlug",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-seo",
+                "displayName": "seo",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-loadedSeo",
+                "displayName": "loadedSeo",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-navOrder",
+                "displayName": "navOrder",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-loadedNavOrder",
+                "displayName": "loadedNavOrder",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-showInNav",
+                "displayName": "showInNav",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-loadedShowInNav",
+                "displayName": "loadedShowInNav",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-dirty",
+                "displayName": "dirty",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -3459,7 +4024,36 @@
               "runOnChange-in-published": true,
               "functionScript": "const published = Inputs.published === true;\nOutputs.label = published ? 'Published' : 'Draft';\nOutputs.pillBackground = published ? 'var(--primary)' : 'var(--accent)';\nOutputs.pillColor = published ? 'var(--primary-foreground)' : 'var(--muted-foreground)';"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-published",
+                "displayName": "published",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-label",
+                "displayName": "label",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-pillBackground",
+                "displayName": "pillBackground",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-pillColor",
+                "displayName": "pillColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -3988,7 +4582,29 @@
             "parameters": {
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nOutputs.siteName = first.siteName || '';\nOutputs.homeSlug = first.homeSlug || 'home';"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-siteName",
+                "displayName": "siteName",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-homeSlug",
+                "displayName": "homeSlug",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -4001,7 +4617,99 @@
             "parameters": {
               "functionScript": "const rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst t = first.tokens || {};\nOutputs.primary = t.colorPrimary || '';\nOutputs.onPrimary = t.colorOnPrimary || '';\nOutputs.background = t.colorBackground || '';\nOutputs.surface = t.colorSurface || '';\nOutputs.text = t.colorText || '';\nOutputs.textSoft = t.colorTextSoft || '';\nOutputs.border = t.colorBorder || '';\nOutputs.accentSoft = t.colorAccentSoft || '';\nOutputs.radius = t.radius || '';\nOutputs.fontDisplay = t.fontDisplay || '';\nOutputs.fontUi = t.fontUi || '';\nOutputs.measure = t.measure || '';"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-primary",
+                "displayName": "primary",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-onPrimary",
+                "displayName": "onPrimary",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-background",
+                "displayName": "background",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-surface",
+                "displayName": "surface",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-text",
+                "displayName": "text",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-textSoft",
+                "displayName": "textSoft",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-border",
+                "displayName": "border",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-accentSoft",
+                "displayName": "accentSoft",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-radius",
+                "displayName": "radius",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-fontDisplay",
+                "displayName": "fontDisplay",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-fontUi",
+                "displayName": "fontUi",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-measure",
+                "displayName": "measure",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -4019,6 +4727,97 @@
                 "name": "out-built",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-primary",
+                "displayName": "primary",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-onPrimary",
+                "displayName": "onPrimary",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-background",
+                "displayName": "background",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-surface",
+                "displayName": "surface",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-text",
+                "displayName": "text",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-textSoft",
+                "displayName": "textSoft",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-border",
+                "displayName": "border",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-accentSoft",
+                "displayName": "accentSoft",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-radius",
+                "displayName": "radius",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-fontDisplay",
+                "displayName": "fontDisplay",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-fontUi",
+                "displayName": "fontUi",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-measure",
+                "displayName": "measure",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-tokens",
+                "displayName": "tokens",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -4568,7 +5367,22 @@
               "runOnChange-in-rows": true,
               "functionScript": "const rows = Array.isArray(Inputs.rows) ? Inputs.rows : [];\nconst published = rows.filter((r) => r && r.published === true).length;\nconst WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];\nconst word = (n) => (n < WORDS.length ? WORDS[n] : String(n));\nconst pages = rows.length === 1 ? 'page' : 'pages';\nif (rows.length === 0) {\n  Outputs.sentence = \"No pages yet. Use New page to make your first one.\";\n} else {\n  Outputs.sentence = word(rows.length) + ' ' + pages + ', ' + word(published).toLowerCase() + ' published';\n}"
             },
-            "ports": [],
+            "ports": [
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-sentence",
+                "displayName": "sentence",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
             "dynamicports": []
           },
           {
@@ -5171,6 +5985,20 @@
                 "name": "out-go",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-token",
+                "displayName": "token",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-token",
+                "displayName": "token",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -5509,6 +6337,20 @@
                 "name": "out-built",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-newPageId",
+                "displayName": "newPageId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-pageId",
+                "displayName": "pageId",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -5684,6 +6526,27 @@
                 "name": "out-failed",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-fallback",
+                "displayName": "fallback",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-recipient",
+                "displayName": "recipient",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -5811,6 +6674,34 @@
                 "name": "out-ready",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-pageId",
+                "displayName": "pageId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-isPublic",
+                "displayName": "isPublic",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-pageId",
+                "displayName": "pageId",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-isPublic",
+                "displayName": "isPublic",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -5855,6 +6746,27 @@
                 "name": "out-built",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-sections",
+                "displayName": "sections",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-isPublic",
+                "displayName": "isPublic",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-tasks",
+                "displayName": "tasks",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -6103,6 +7015,20 @@
                 "name": "out-ready",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-pageId",
+                "displayName": "pageId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-pageId",
+                "displayName": "pageId",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -6136,6 +7062,34 @@
                 "name": "out-built",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-title",
+                "displayName": "title",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-slug",
+                "displayName": "slug",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-title",
+                "displayName": "title",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-slug",
+                "displayName": "slug",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -6180,6 +7134,34 @@
                 "name": "out-ready",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-sourcePageId",
+                "displayName": "sourcePageId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-newPageId",
+                "displayName": "newPageId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-sourcePageId",
+                "displayName": "sourcePageId",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-newPageId",
+                "displayName": "newPageId",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -6224,6 +7206,27 @@
                 "name": "out-built",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-sections",
+                "displayName": "sections",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-newPageId",
+                "displayName": "newPageId",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-tasks",
+                "displayName": "tasks",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -6536,6 +7539,48 @@
                 "name": "out-built",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-name",
+                "displayName": "name",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-email",
+                "displayName": "email",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-pageSlug",
+                "displayName": "pageSlug",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-message",
+                "displayName": "message",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-subject",
+                "displayName": "subject",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-text",
+                "displayName": "text",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -6568,6 +7613,13 @@
                 "name": "out-ready",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "out-received",
+                "displayName": "received",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
@@ -6789,6 +7841,41 @@
                 "name": "out-denied",
                 "plug": "output",
                 "type": "signal"
+              },
+              {
+                "name": "in-rows",
+                "displayName": "rows",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-expected",
+                "displayName": "expected",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-supplied",
+                "displayName": "supplied",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-unclaimed",
+                "displayName": "unclaimed",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-claimed",
+                "displayName": "claimed",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
               }
             ],
             "dynamicports": []
