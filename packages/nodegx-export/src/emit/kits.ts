@@ -294,7 +294,7 @@ function objectLiteral(map: Map<string, string>): string {
  * A units-typed port is `number | string` because the runtime turns `24` into `"24px"` before the
  * component sees it, and the graph may equally set `var(--space-4)`.
  */
-function tsTypeOf(port: KitPortIR): string {
+export function tsTypeOf(port: KitPortIR): string {
   if (port.defaultUnit !== undefined) return 'number | string';
   switch (port.type) {
     case 'string':

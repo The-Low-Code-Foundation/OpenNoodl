@@ -247,7 +247,12 @@ describe('a variable read is a useValue hook (STEP5-TARGET §3)', () => {
     expect(result.files['src/components/GreetingBadge.tsx']).not.toContain('useValue');
   });
 
-  test('a variable with an untypable writer defers its render binding', () => {
+  /**
+   * 🔴 **This test used to assert the opposite (EXP-011 §10).** An untypable writer made the
+   * variable `value<unknown>` and *dropped every read of it*, so the export showed a blank
+   * element with a note. The type question belongs at the sink, where the runtime asks it too.
+   */
+  test('a variable with an untypable writer still renders — coerced at the sink', () => {
     const mutated = cloneIr();
     const home = mutated.components.find((c) => c.path === 'Pages/Home')!;
     const write = home.connections.find((c) => c.toId === 'visitorVar' && c.toProperty === 'value')!;
@@ -255,9 +260,21 @@ describe('a variable read is a useValue hook (STEP5-TARGET §3)', () => {
     write.fromProperty = 'pointerUp';
     write.kind = 'signal';
     const result = emitApp(mutated, catalog);
-    expect(result.notes.join('\n')).toContain('variable "visitorName" has no statically-typed writer');
-    expect(result.files['src/components/GreetingBadge.tsx']).not.toContain('useValue');
+    expect(result.notes.join('\n')).not.toContain('has no statically-typed writer');
     expect(result.files['src/stores/variables.ts']).toContain('export const visitorName = value<unknown>(undefined);');
+    const badge = result.files['src/components/GreetingBadge.tsx'];
+    expect(badge).toContain('useValue');
+    // The runtime's Text node puts whatever the variable holds through `String()`; so does this.
+    expect(badge).toContain("String(name ?? '')");
+  });
+
+  /**
+   * The control the case above needs: the coercion is earned by the *untyped* variable, not
+   * printed around every variable read. Without this, `String(x ?? '')` everywhere would pass.
+   */
+  test('a typed variable reads bare — no coercion is printed around it', () => {
+    expect(app.files['src/components/GreetingBadge.tsx']).toContain('{name}');
+    expect(app.files['src/components/GreetingBadge.tsx']).not.toContain('String(name');
   });
 });
 

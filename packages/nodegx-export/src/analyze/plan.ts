@@ -324,7 +324,12 @@ const SESSION_READS: Record<string, { field: 'id' | 'username' | 'email'; maybeU
 
 export type BindingSource =
   | { kind: 'prop'; name: string }
-  | { kind: 'store'; variableName: string }
+  /**
+   * A Variable read. `untyped` marks one whose writers this analysis could not type — the
+   * emitted `value<unknown>` (EXP-011 §10). It is not a defect and not a deferral: the render
+   * sinks coerce it, exactly as the runtime's own sinks coerce whatever the variable holds.
+   */
+  | { kind: 'store'; variableName: string; untyped?: true }
   | { kind: 'store-key'; storeName: string; key: string }
   | { kind: 'computed'; expr: ValueExpr }
   | { kind: 'unresolved'; fromId: string; fromProperty: string };
@@ -6505,16 +6510,25 @@ function planComponent(
       notes.push(`wire ${connection.key} dropped: variable name is not a literal`);
       continue;
     }
-    if (registry.variables.get(variableName)!.tsType !== 'string') {
-      notes.push(`wire ${connection.key} dropped: variable "${variableName}" has no statically-typed writer`);
-      continue;
-    }
     if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
       notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
       continue;
     }
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
-    plan.bindings[toNode.id][connection.toProperty] = { kind: 'store', variableName };
+    /**
+     * 🔴 **An untyped variable is bound, not dropped (EXP-011 §10).**
+     *
+     * This pass used to require a `string`-typed writer and drop every read of a variable
+     * without one. That made "fetch something, save it, show it" — and the same shape written
+     * from a Function output or an event payload — export a blank element with a note, and it
+     * made every new readable node a fifth place to remember (`typeOfSource`), which four
+     * sessions in a row forgot. The sink is where the type question actually belongs: the
+     * runtime coerces there too, and `emitComponent` now says so per sink.
+     */
+    const untyped = registry.variables.get(variableName)!.tsType !== 'string';
+    plan.bindings[toNode.id][connection.toProperty] = untyped
+      ? { kind: 'store', variableName, untyped: true }
+      : { kind: 'store', variableName };
   }
 
   // Pass 4b: single-key Subscribe reads into rendered sinks become store-key bindings

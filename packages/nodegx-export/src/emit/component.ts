@@ -28,7 +28,7 @@ import {
   ValueExpr
 } from '../analyze/plan';
 import { ExportIR, NodeIR } from '../ir/types';
-import { KitBinding } from './kits';
+import { KitBinding, tsTypeOf as kitPortTsType } from './kits';
 import { assignClassNames, ClassCandidate, partitionMergeGroup, pascalCase, propIdentifier, propIdentifiers } from './naming';
 import { tsLiteral } from './state';
 import { computeNodeStyle, computeRoleCss, CONTENT_ATTR_ORDER, CONTENT_PARAMS, Decl, iconSourceOf, RoleCss, StyleRole } from './style';
@@ -576,6 +576,14 @@ export function emitComponent(
     }
     return idents.get(portName) ?? null;
   };
+  /**
+   * The TypeScript type `targetLegacy` declares for one of its input ports — the sink an
+   * untyped value has to survive (§10). `undefined` when the target declares no such port,
+   * which the caller's own `targetPropName` reports separately.
+   */
+  const targetPropTsType = (targetLegacy: string, portName: string): string | undefined =>
+    project.byLegacyPath.get(targetLegacy)?.props.find((p) => p.name === portName)?.tsType;
+
   /** The note a refused attribute files, spelled once so all three call sites agree. */
   const undeclaredAttrNote = (targetLegacy: string, portName: string, where: string): string =>
     `${plan.path}: ${where} sets "${portName}" on ${targetLegacy}, which does not declare it as a component input — dropped, reported`;
@@ -1586,12 +1594,98 @@ export function emitComponent(
   };
 
   // ---- JSX -------------------------------------------------------------------------------
-  const bindingExpr = (source: BindingSource): string | null => {
+  /**
+   * What the JSX position a binding lands in can actually hold (EXP-011 §10).
+   *
+   * Only an *untyped* source reads this — everything else already emits code with a type the
+   * position accepts. `truthy` is the position whose caller spells its own `!`/`!!`, so the
+   * value arrives raw and the caller coerces; `boolean` is the position that must receive a
+   * boolean expression, so the coercion is here.
+   */
+  type Sink = 'text' | 'string' | 'boolean' | 'truthy' | 'number' | 'opaque';
+
+  /** The DOM attribute's own type, for the `attr:` roles CONTENT_PARAMS mints. */
+  const ATTR_SINK: Record<string, Sink> = {
+    src: 'string',
+    srcSet: 'string',
+    alt: 'string',
+    poster: 'string',
+    type: 'string',
+    value: 'string',
+    placeholder: 'string',
+    defaultValue: 'string',
+    defaultChecked: 'boolean',
+    min: 'number',
+    max: 'number',
+    step: 'number',
+    maxLength: 'number',
+    controls: 'boolean',
+    autoPlay: 'boolean',
+    muted: 'boolean',
+    loop: 'boolean'
+  };
+
+  /** The sink a declared TypeScript prop type stands for — anything else is `opaque`. */
+  const sinkOfTsType = (tsType: string | undefined): Sink => {
+    const bare = (tsType ?? '').replace(/\s*\|\s*undefined/g, '').trim();
+    if (bare === 'string') return 'string';
+    if (bare === 'boolean') return 'boolean';
+    if (bare === 'number') return 'number';
+    // `any` and `unknown` take the value as it is; so does a union this vocabulary cannot fold.
+    return bare === 'any' || bare === 'unknown' ? 'text' : 'opaque';
+  };
+
+  /** The variable name when this source is a Variable with no statically-typed writer. */
+  const untypedVariableOf = (source: BindingSource): string | null =>
+    source.kind === 'store' && source.untyped === true ? source.variableName : null;
+
+  const rawBindingExpr = (source: BindingSource): string | null => {
     if (source.kind === 'prop') return propName(source.name);
     if (source.kind === 'store') return hookLocals.get(source.variableName) ?? null;
     if (source.kind === 'store-key') return storeKeyLocals.get(storeKeyId(source.storeName, source.key)) ?? null;
     if (source.kind === 'computed') return exprCode(source.expr, 'render');
     return null;
+  };
+
+  /**
+   * The code a binding puts in one JSX position — coerced there when the source is untyped.
+   *
+   * 🔴 **The sink argument is required so a new position cannot forget the question.** An
+   * untyped Variable is a `value<unknown>`, and the four sessions that each added a node type
+   * to `typeOfSource` were each paying for the absence of this: the type belongs where the
+   * value lands, not in a table of writers that has to know every readable node in the
+   * product. A position that cannot state what it holds refuses the value and says so, which
+   * is the one thing the old drop did right.
+   */
+  const bindingExpr = (source: BindingSource, sink: Sink): string | null => {
+    const base = rawBindingExpr(source);
+    if (base === null || untypedVariableOf(source) === null) return base;
+    switch (sink) {
+      // The runtime's Text node puts whatever the variable holds through `String()` on its way
+      // to the DOM, and a string attribute reaches the DOM the same way (§8.2's coercion).
+      case 'text':
+      case 'string':
+        return `String(${base} ?? '')`;
+      // `enabled` and its kin coerce `!!value` in the runtime; `truthy` callers spell that.
+      case 'boolean':
+        return SIMPLE_REF.test(base) ? `!!${base}` : `!!(${base})`;
+      case 'truthy':
+        return base;
+      // A number sink would need a cast the runtime does not perform — `maxLength` receives
+      // whatever the port was given, and asserting `Number()` here would invent a rounding
+      // rule. `opaque` is a declared prop type this vocabulary cannot fold into any of these.
+      case 'number':
+      case 'opaque':
+        return null;
+    }
+  };
+
+  /** Why a binding produced no code, so a refused untyped source does not read as a missing one. */
+  const noSourceReason = (source: BindingSource, sink: Sink): string => {
+    const name = untypedVariableOf(source);
+    return name !== null && (sink === 'number' || sink === 'opaque')
+      ? `reads variable "${name}", which has no statically-typed writer, into a sink this slice cannot coerce it to`
+      : 'has no statically known source';
   };
 
   /** The state param a stateful control replaces with its controlled attribute (§4c). */
@@ -1638,9 +1732,13 @@ export function emitComponent(
       // A boot-value read renders as the attribute's absence — undefined delivered and nothing
       // delivered are the same rendered control (COMPONENT-OBJECT-TARGET §3; noted at plan).
       if (source.kind === 'computed' && source.expr.kind === 'undefined') continue;
-      const expr = bindingExpr(source);
+      const sink = ATTR_SINK[attr] ?? 'opaque';
+      const expr = bindingExpr(source, sink);
       if (expr !== null) attrs.set(attr, `${attr}={${expr}}`);
-      else notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
+      else
+        notes.push(
+          `${plan.path}: wire into ${node.id}.${toProperty} ${noSourceReason(source, sink)} — dropped, reported`
+        );
     }
     return CONTENT_ATTR_ORDER.filter((attr) => attrs.has(attr)).map((attr) => attrs.get(attr)!);
   };
@@ -1662,7 +1760,7 @@ export function emitComponent(
       }
       if (expr.kind === 'logical') return `!(${exprCode(expr, 'render')})`;
     }
-    const base = bindingExpr(source);
+    const base = bindingExpr(source, 'truthy');
     if (base === null) return null;
     return SIMPLE_REF.test(base) ? `!${base}` : `!(${base})`;
   };
@@ -1723,13 +1821,13 @@ export function emitComponent(
     return false;
   };
   const truthinessCode = (source: BindingSource): string | null => {
-    const base = bindingExpr(source);
+    const base = bindingExpr(source, 'truthy');
     if (base === null) return null;
     if (boolTypedSource(source)) return base;
     return SIMPLE_REF.test(base) ? `!!${base}` : `!!(${base})`;
   };
   const negatedVisibleCode = (source: BindingSource): string | null => {
-    const base = bindingExpr(source);
+    const base = bindingExpr(source, 'truthy');
     if (base === null) return null;
     return SIMPLE_REF.test(base) ? `!${base}` : `!(${base})`;
   };
@@ -1784,7 +1882,7 @@ export function emitComponent(
         (bound.expr.kind === 'jsfun-out' || bound.expr.kind === 'state-get' || bound.expr.kind === 'session-get') &&
         maybeUndefined(bound.expr)
       ) {
-        const code = bindingExpr(bound);
+        const code = bindingExpr(bound, 'text');
         if (code !== null) return `{${code} ?? ''}`;
       }
       /**
@@ -1796,12 +1894,12 @@ export function emitComponent(
        * handed an object and throws where the interpreted app prints `[object Object]`.
        */
       if (bound.kind === 'computed' && bound.expr.kind === 'http-out') {
-        const code = bindingExpr(bound);
+        const code = bindingExpr(bound, 'text');
         if (code !== null) return `{String(${code} ?? '')}`;
       }
-      const expr = bindingExpr(bound);
+      const expr = bindingExpr(bound, 'text');
       if (expr !== null) return `{${expr}}`;
-      notes.push(`${plan.path}: wire into ${node.id}.${paramName} has no statically known source — dropped, reported`);
+      notes.push(`${plan.path}: wire into ${node.id}.${paramName} ${noSourceReason(bound, 'text')} — dropped, reported`);
     }
     const literal = node.parameters.find((p) => p.name === paramName)?.value;
     if (literal?.kind === 'literal') return jsxText(String(literal.value));
@@ -2304,6 +2402,9 @@ export function emitComponent(
         );
         continue;
       }
+      // A wired port takes the wire, never both: the running app overwrites the authored value
+      // the moment the wire delivers, and JSX cannot spell the same prop twice (TS17001).
+      if (plan.bindings[node.id]?.[param.name] !== undefined) continue;
       attrs.push(jsxAttr(prop, param.value.value));
     }
 
@@ -2315,9 +2416,11 @@ export function emitComponent(
         );
         continue;
       }
-      const expr = bindingExpr(source);
+      const port = binding.def.inputs.find((i) => i.name === toProperty);
+      const sink = sinkOfTsType(port ? kitPortTsType(port) : undefined);
+      const expr = bindingExpr(source, sink);
       if (expr === null) {
-        notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
+        notes.push(`${plan.path}: wire into ${node.id}.${toProperty} ${noSourceReason(source, sink)} — dropped, reported`);
         continue;
       }
       attrs.push(`${prop}={${expr}}`);
@@ -2363,6 +2466,10 @@ export function emitComponent(
         notes.push(undeclaredAttrNote(node.type, param.name, `instance ${node.id}`));
         continue;
       }
+      // A wired port takes the wire, never both (see the kit side above): the authored value
+      // is what the instance starts with and the wire replaces it, and two `Name=` attributes
+      // on one element is not TypeScript.
+      if (plan.bindings[node.id]?.[param.name] !== undefined) continue;
       attrs.push(jsxAttr(attr, param.value.value));
     }
     for (const [toProperty, source] of Object.entries(plan.bindings[node.id] ?? {})) {
@@ -2374,9 +2481,10 @@ export function emitComponent(
         );
         continue;
       }
-      const expr = bindingExpr(source);
+      const sink = sinkOfTsType(targetPropTsType(node.type, toProperty));
+      const expr = bindingExpr(source, sink);
       if (expr === null) {
-        notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
+        notes.push(`${plan.path}: wire into ${node.id}.${toProperty} ${noSourceReason(source, sink)} — dropped, reported`);
         continue;
       }
       const attr = targetPropName(node.type, toProperty);

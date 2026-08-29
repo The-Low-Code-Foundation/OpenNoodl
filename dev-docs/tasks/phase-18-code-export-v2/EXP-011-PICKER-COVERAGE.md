@@ -528,7 +528,7 @@ value emptied — rebuilt and re-driven: the quote line went empty while the aut
 and the echo read `client=` instead of `client=quote-desk`. Two readings changed, and only those
 two. Before that, every row above was equally consistent with a drive that cannot fail.
 
-### §8.7 A gap this slice found and did not close
+### §8.7 A gap this slice found and did not close  ✅ **closed in session 39 — §10**
 
 **A Variable written from an HTTP output renders nothing.** `typeOfSource` types the write as
 `unknown` — correctly; `response` is whatever the server sent — and Pass 4 drops every read of a
@@ -728,3 +728,81 @@ join-of-two-arms deferral `HTTP Request`'s `Completed` takes (§8.4). The signal
 nodes are the family's one real gap, and closing them is an `effect()` slice rather than a date
 slice: they are all "this value was recomputed", which is a render, and the construct that turns a
 recomputed value into a fired chain does not exist in this vocabulary yet.
+
+---
+
+## §10 The untyped Variable, closed — the sink is where the type question belongs (session 39, 2026-08-29)
+
+**Not a picker slice.** It adds no node and the number holds at 66/127. What it removes is a
+*recurring failure mode*: §7.5, §8.7 and §9.4 are three write-ups of the same defect, and
+`typeOfSource` had acquired four one-line patches, one per session, each added after an app was
+built and a placeholder appeared where a value should have been.
+
+### §10.1 The defect, in one graph
+
+`HTTP Request` → `Set Variable "lastQuote"` → a `Variable` read → a `Text`. Four nodes, the first
+thing anyone builds. `typeOfSource` types the write as `unknown` — correctly, because `response`
+is whatever the server sent — and Pass 4 required a `string`-typed writer, so it dropped **every
+read** of the variable. The export was a blank element and a note.
+
+The same drop hit a Variable written from a Function output or an event payload, in the same
+words, for the same reason.
+
+### §10.2 What changed
+
+Pass 4 no longer gates on the writer. It binds the read and marks the binding `untyped`, and
+`emitComponent` asks the question where it can actually be answered — at the sink:
+
+| sink | emitted | why |
+|---|---|---|
+| a `Text`/`Label` child | `{String(x ?? '')}` | the runtime's Text node puts the value through `String()` on its way to the DOM |
+| a string attribute (`placeholder`, `src`, `alt`, …) | `attr={String(x ?? '')}` | it reaches the DOM the same way |
+| `enabled` | `disabled={!x}` | the runtime coerces `!!value` at the port; the caller spells the negation |
+| `visible` / `mounted` | `!x &&` / `!!x &&` | already boolean over an `unknown`, and needed no coercion at all |
+| a component input typed `string` | `Prop={String(x ?? '')}` | the target's own plan declares the type |
+| a number attribute or a prop this vocabulary cannot fold | **refused, with a named reason** | `Number(whatever the server sent)` would be the exporter inventing a rounding rule |
+
+🔴 **`bindingExpr` now takes a required sink argument.** That is the load-bearing part. The four
+patches to `typeOfSource` were each paying for a design that asked the type question in a table
+of *writers*, which has to know every readable node in the product and errors nowhere when it
+does not. A sink can always say what it holds, and a sink that cannot must say so — so a new JSX
+position cannot inherit the old silence.
+
+### §10.3 The defect this found on the way past, which was never about untyped values
+
+`<GreetingCard Name="Ada" Name={quote} />`. An instance carrying **both** an authored parameter
+and a wire into the same port printed both, and duplicate JSX attributes are **TS17001** — the
+exported app did not compile. It bit a `string`-typed variable exactly as hard; the old type gate
+was simply hiding it at this sink. The wire now replaces the authored value, on component
+instances and on kit nodes, which is what the running app does when the wire delivers.
+
+⚠️ It was reachable from the shipped corpus. The fixture that exposed it is the one already in
+the repo — `greetingCard` has carried `Name="Ada"` all along, and it only needed a wire.
+
+### §10.4 What proves it
+
+- **The decision table** — `tests/untyped-variable.test.ts`, 17 cases, every coercion **paired
+  with a control** asserting a *typed* variable in the same sink reads bare. A suite that only
+  checked for `String(x ?? '')` would pass on an emitter that printed it around everything.
+- **The refusal is graded on its reason**, not on the absence of an attribute, and on being
+  distinguishable from "has no statically known source" — the two have opposite fixes.
+- **`npm run build` on the emitted app** (`tsc -b && vite build`): the step that decides whether
+  a coercion is real, and the only one that could have caught §10.3.
+- **The drive**, in Chrome against a live endpoint. Four rows written down before the app ran,
+  four matched: the heading empty → the fetched text, the placeholder empty → the fetched text,
+  the `mounted` badge absent → present, its text `Loaded`.
+- **The sabotage**: the old gate restored, rebuilt, re-driven. It moved exactly the three rows
+  predicted and no others, so the drive can fail.
+
+### §10.5 What this leaves
+
+🔴 **The store-key gate is the same shape and is still shut.** `storeKeyReadOf` refuses a key
+whose type is not `string`/`number` — so a Global Store key written from an HTTP body drops its
+read exactly as a variable used to, with the note *"key … has no statically-typed value"*. It was
+**not** widened here for a named reason: that gate is **shared with `resolveExpr`**, so lifting it
+lets `unknown` into arbitrary expression positions (arithmetic, date arguments) that this slice
+has not measured. It is a slice of its own and it is smaller than this one was.
+
+`typeOfSource` itself is now dead weight for render sinks and still live for the *format-collapse*
+decision. It was left alone deliberately: deleting it is a separate change with its own goldens,
+and the reason to touch it — sessions adding a line per node — is gone either way.
