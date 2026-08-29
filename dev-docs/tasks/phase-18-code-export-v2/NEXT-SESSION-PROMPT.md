@@ -25,14 +25,22 @@ npm run export-ledger:check       # also enforces the SHAPE of a deferral (EXP-0
 🔴 Custom node types are **deliberately** outside the picker number — `$customNodesComment` in
 `packages/nodegx-export/coverage-ledger.json` says why. Do not "fix" it by adding them.
 
-## ⚠️ Before you run anything: one red in the export suite is not yours
+## ✅ That DEF-001 red is fixed — the floor is now clean, and it moved
 
-`tests/stores-events.test.ts › a project with no overrides gets the shipped defaults` fails on
-`--primary: #3b82f6`. That is **P77/DEF-001**, a peer's uncommitted AA-contrast fix to
-`packages/noodl-editor/.../StyleTokensModel/DefaultTokens.ts`, reaching this package because
+🔴 **The export floor is no longer `772/773`. It is a full pass — do not quote the old number.**
+
+`tests/stores-events.test.ts › a project with no overrides gets the shipped defaults` pinned
+`--primary: #3b82f6` and went red when DEF-001's AA-contrast ruling landed (`30eb92b2`), reaching
+this package because
 [parseProject.ts:16](../../../packages/nodegx-export/src/parse/parseProject.ts#L16) imports
-`DEFAULT_TOKENS` straight from the editor. Whoever lands DEF-001 owns updating that expectation.
-**772/773 is the clean floor until then.**
+`DEFAULT_TOKENS` straight from the editor. The expectation now tracks the ruled `#2563eb`
+(`881f7632`, phase 80 s3).
+
+⚠️ **This note's own instruction is what nearly lost it.** *"Whoever lands DEF-001 owns updating
+that expectation"* was the correct diagnosis, but DEF-001 **closed without doing it** — and a
+closed task cannot own anything. The red then read as expected, which is the state a
+carried-forward floor is worst at: a red everyone has agreed to ignore is indistinguishable from
+a regression.
 
 ## Do this next
 
@@ -124,7 +132,7 @@ ts-morph and Prettier stay uninstalled; `packages/nodegx-export` is not in root 
 ```
 cd packages/nodegx-export
 ../../node_modules/.bin/tsc --noEmit          # exit 0
-../../node_modules/.bin/jest                  # 772/773 — see the DEF-001 note above
+../../node_modules/.bin/jest                  # 788/788 — clean; the old 772/773 note is spent
 cd ../nodegx-module-inject && ../../node_modules/.bin/jest --config jest.config.js   # 31/31
 npm run export-ledger:picker                  # from the repo root — holds at 68/127
 ```

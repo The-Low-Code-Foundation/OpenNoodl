@@ -158,6 +158,73 @@ the moment this row is fixed — no export change is owed.
 
 ## 8. Owner
 
-**`NONE` — unowned, and open.** Phase 18 found it and cannot take it: this is a runtime node,
-and phase 18 is the code export. It is recorded here so it is not rediscovered at full price by
-whoever next drives the Navigation group.
+✅ **CLOSED 2026-08-29 at `0c011b6b`.** Taken by phase 80 (s3). Phase 18 found it and could not
+take it — a runtime node is not the code export — and it was recorded here rather than
+rediscovered at full price by whoever next drove the Navigation group. That worked: it was built
+from this file without re-measuring anything in §3 or §5.
+
+## 9. What was built, and the three things the file did not predict
+
+Every acceptance criterion is met. §5.2's shape was taken as written; the changes below are the
+ones building it forced, and each is in the code with its reason.
+
+### 9.1 AC-by-AC
+
+| AC | where |
+|---|---|
+| 1 — default new tab fires `Done` | `erg-001-…-outcomes.test.ts`, *"a new tab that opens reports Done… though window.open returned null"* |
+| 2 — `Error` unset on that path | same test: `_internal.lastError` undefined **and** `graph.errors` empty |
+| 3 — descriptions say what happens | `externallink.ts` — `Do`, `done` and `failure` all reworded |
+| 4 — outcome test, not a port census | the whole `External Link` block; **every arm's `window.open` returns null** |
+| 5 — `_self` and empty link unchanged | two tests, one each |
+| 6 — absent API reports `Done` | *"a host with no userActivation API reports Done rather than guessing Failure"* |
+| 7 — the export's copy | `emit/component.ts` + 3 tests in `external-link.test.ts` |
+
+### 9.2 🔴 `isActive` is the diagnostic, and must not become a precondition
+
+The first cut of §5.2 read the activation, and where it was false **skipped `window.open`
+entirely** — which looks like the same thing and is not. Chrome allows a popup without a gesture
+when the user has allow-listed the site, so gating the call would **take a working link away in
+order to improve a message.**
+
+The node now calls `window.open` unconditionally and uses `isActive` only to decide what is
+*reported*. A test pins it: the no-activation arm asserts the failure **and** asserts the open was
+still attempted. Reverting to the gated form reddens exactly that test.
+
+### 9.3 ⚠️ The defect had a second home, and the suite named it
+
+`tests/mute-node-completion.test.ts` — NDA-004's file — carried its own copy of the same wrong
+premise: *"a popup blocker returns null from `window.open`"*, with a stub returning `{}` for the
+success case. It was found by the full-package run, not by grepping this node's name.
+**The reading moved; NDA-004's case did not** — a browser refusing a tab is still real, so that
+test kept its subject and changed how the refusal is modelled.
+
+### 9.4 ✅ Safari, answered — §5.2's open question
+
+`navigator.userActivation` is supported in **Safari 16.4+**, Chrome 72+, Edge 79+ and Firefox
+120+; it became Baseline in **November 2023** when Firefox completed the set. So the guard's
+degradation path is real but narrow. It is still load-bearing and still tested (AC6): `!== false`
+rather than `=== true` is what makes an absent API report `Done`, and `=== true` would be this
+same defect wearing a different cause on every older browser.
+
+### 9.5 The known-broken arms
+
+Two sabotages, run before the fix was believed:
+
+| sabotage | reddens |
+|---|---|
+| the return-value test restored (`const opened = window.open(…); blocked = _blank && !opened`) | **2** — AC1's arm and AC6's; every control stays green |
+| the open gated on activation (§9.2) | **1** — the no-activation arm's "was it still attempted" |
+
+🔴 The failure arm passes under the *first* sabotage, and that is correct rather than a weakness:
+it is a **control**, not a discriminator. Both readings report `Failure` when a tab is genuinely
+refused, so a test that could not also fail the old code is exactly what should hold that case.
+
+## 10. What it cost elsewhere
+
+⚠️ **One red in `nodegx-export` was pre-existing and is now fixed** (`881f7632`), because it sat
+in the suite this row had to run. DEF-001's `--primary` ruling reached the emitted `tokens.css`
+without touching `nodegx-export` — the scaffold reads `DEFAULT_TOKENS` from the editor — so a spec
+pinning the old `#3b82f6` went red where the editor gates could not see it. Phase 18 had already
+written down that *"whoever lands DEF-001 owns updating that expectation"*; **DEF-001 closed
+without doing it, and a closed task cannot own anything.** The export suite is 788/788.
