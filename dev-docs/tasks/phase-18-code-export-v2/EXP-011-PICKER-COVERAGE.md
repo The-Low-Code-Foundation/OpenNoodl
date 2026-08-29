@@ -1468,10 +1468,12 @@ exactly like the two route defects §11.1 found.
 
 Four refusals, each about a mechanism:
 
-- **`Open In New Tab`** — that arm is `window.open`, whose success test is the transient user
-  activation rather than the return value (DEF-016, §14.1), plus a blocked-tab `Error` row. That
-  is `External Link`'s slice, not a flag on this one. ⚠️ **This port's default is `false` here and
-  `true` there** — the two nodes look like a pair and their unset state lands on opposite sides.
+- **`Open In New Tab`** — ~~that arm is `window.open`, whose success test is the transient user
+  activation rather than the return value (DEF-016, §14.1)~~ 🔴 **false, and struck in session 46
+  — see §17.1.** The activation test is `External Link`'s and exists only because that node sets
+  `noopener`; this one sets no features string, so its own return-value test works. The
+  blocked-tab `Error` row was right. ⚠️ **This port's default is `false` here and `true` there** —
+  the two nodes look like a pair and their unset state lands on opposite sides.
 - **A wired or absent `Path`** — the braced segments of the path text are what mint the ports, so
   a path unknown here is a node whose shape is unknown here.
 - **`Error`** — refused because **nothing can write it**, not because it is hard. It is set on
@@ -1559,8 +1561,11 @@ failure arriving on the query side: the sabotaged app rendered a note whose tone
 
 ### §15.6 What this leaves
 
-- **`Open In New Tab`** — the window.open arm, which wants DEF-016's activation read and a
-  blocked-tab `Error` row. That is the increment this slice leaves rather than the corner it cuts.
+- **`Open In New Tab`** — the window.open arm. ⚠️ ~~which wants DEF-016's activation read~~ —
+  🔴 **struck in session 46: it wants the *return value*, which is what the runtime reads.** The
+  activation read belongs to `External Link` and only because that node passes `noopener`; this
+  one passes no features string. See §17.1. The blocked-tab `Error` row was right. **Built in
+  session 46, §17.**
 - **The component stack pair** (`PageStackNavigate`, `PageStackNavigateBack`) — the last two
   Navigation nodes, and neither is a url builder. ⚠️ ~~§11.8 still stands: a component stack feeds
   `Page Inputs` at runtime (`_setPageParams` has two callers) and the export does not route one at
@@ -1673,3 +1678,241 @@ remains under §15.6 — `Open In New Tab`, `External Link`'s `Completed`, a cha
   never that its stated reason is true. Two rows asserted a runtime behaviour that did not exist,
   and passed every gate for five sessions. **When an exemption makes a factual claim about the
   runtime, it needs a test, exactly like a translation does** — which is what §16.4 now is.
+
+---
+
+## §17 Tier 2.5 continued — `Open In New Tab`, and the second inherited sentence in two sessions (session 46, 2026-08-29)
+
+**69 of 127 (54.3%)** — unchanged, because this is an increment on a node the ledger already
+counts. §15.6 left it as "the top of the list", and the plan it left was wrong: the sentence
+three ledger rows and two session prompts gave as the reason to defer asserted a runtime
+behaviour this node does not have. §16 found the same failure one session earlier, in a
+different node, from a different cause. This is its second instance, and this time the false
+sentence was the *plan for the work* rather than an explanation of old work.
+
+### §17.1 🔴 The inherited sentence was false, and the control is the node it was copied from
+
+§15.4 deferred this arm saying its success "is read from the transient user activation rather
+than from the return value (DEF-016, §14.1)". Every clause of that is true — of `External Link`.
+
+The mechanism DEF-016 is about is `noopener`. `externallink.ts` builds a features string
+(`openInNewTab ? 'noopener,noreferrer' : ''`) and passes it to `window.open`, and **`window.open`
+returns null whenever `noopener` is set, by specification, on success as much as on failure** —
+the runtime's own comment says so at `externallink.ts:69`. That is why that node cannot read its
+return value and reads `navigator.userActivation` instead.
+
+`navigate-to-path.ts:205` is `window.open(compiledUrl, '_blank')`. **No features string.** So its
+own `if (!opened)` is a working blocked test, and the return value is what the export must read.
+
+🔴 **Measured, not argued, because a reading that fits is not one that excludes.** Three arms in
+Chrome 151, each under a real `Input.dispatchMouseEvent` gesture except where noted:
+
+| arm | call | gesture | returned | tabs |
+|---|---|---|---|---|
+| **A** | `window.open(u, '_blank', 'noopener,noreferrer')` | real | **null** | 2 → **3** |
+| **B** | `window.open(u, '_blank')` — this node's exact call | real | **a Window** | 1 → **2** |
+| **C** | `window.open(u, '_blank')` | **none** | **null** | 1 → 1 |
+
+Each arm has a job, and dropping any one of them loses the conclusion:
+
+- **A is the known-firing control.** It reproduces DEF-016's mechanism *in this host*, so "that
+  does not apply here" is a measurement rather than an assumption. Without it, B is consistent
+  with "this browser never returns null" and the inherited sentence survives.
+- **B is the subject** — the node's literal call, and it opened a tab while returning a Window.
+- **C is the negative control, and it is the one that decides the slice.** B alone shows only
+  that the return value is non-null on success. `!opened` is a *blocked* test: it has to go null
+  when the open is refused. Without C the measurement covers false positives and says nothing
+  about false negatives, which is the half that matters.
+
+Predictions for all three were written down before the run and all three matched.
+
+⚠️ **Copying the activation read across would have been worse than merely unfaithful.** The
+activation is `false` after every successful open, because the call consumes it — that is §14.1,
+measured one node over — so it is a proxy the runtime here has no need of. `externallink.ts`'s
+own comment calls it "a strict improvement, not a total one" and names what it cannot see. This
+node has the actual outcome available and reads it.
+
+### §17.2 The arm is one call; what changed is everything beneath it
+
+The call itself is a line. Three things underneath it are not, and all three follow from one
+fact: **in tab this node cannot fail, and in a new tab it can.**
+
+| | `Open In New Tab` off | on |
+|---|---|---|
+| the call | `navigate(url)` — react-router | `window.open(url, '_blank')` |
+| `Failure` | dead; dropped with a note | **live** |
+| `Error` | nothing can write it; the read defers | **earned by the read** |
+| `Completed` | follows `Done`, flat | **a join beneath both arms** |
+
+🔴 **`Completed` is the one that would have gone wrong silently.** §15.4 earned translating it
+with a specific argument: it is refused on `External Link` because it fires after every outcome
+and there are three there, while here "the gates leave exactly one outcome reachable, so
+`Completed` is one arm to follow, not three to join beneath". Opening this arm makes two
+reachable and **retires that argument**. The port still translates, but as a join printed after
+the branch — emitted inside the `Done` arm it would run only on success, and no test written
+before this slice looked at where it printed.
+
+`Error` is simpler here than one node over: `External Link` needs a ternary because both of its
+failures can be live at once, whereas the Path gate admits a literal non-empty path, so the
+missing-path write is unreachable and **the blocked tab is the only failure there is**. One
+static string, no re-test.
+
+⚠️ **One wrong turn worth keeping.** The `error` wire was first *consumed* in the compile loop,
+on the rule that nothing should be left silently unconsumed. That satisfied the rule and removed
+the wire from Pass 4f, so the binding was never made: the sink rendered an empty element **with
+no note anywhere** — a silent blank that reads exactly like a message that happened to be
+undefined. A value read is the render sweep's to make, which is what `External Link` does and
+what the shape of the sweep already said.
+
+### §17.3 🔴 Three walkers did not know this action carries chains, and one of them was already wrong
+
+§11.6 and §15.5 warn that a new `HandlerAction` **kind** must be carried by hand to six places
+and that `tsc` finds only two. This slice adds a **new chain to an existing kind**, which is the
+same hazard with less to see: nothing at all changes shape, so nothing at all complains.
+
+Walking every consumer of `navigate-path` rather than the ones this slice touched found three
+that were already blind — and one of them was a live defect, present since §15 shipped:
+
+| walker | what it decides | state before this slice |
+|---|---|---|
+| `collectActionUse` (`component.ts`) | which rows, variables and imports are *referenced* | 🔴 **no case at all — a live defect** |
+| `fillMaterialize` (`plan.ts`) | wires a written row to its writer; no `default`, so a missing kind is not descended into either | no case at all |
+| `actionExprsOf` (`component.ts`) | `usesPayload` — whether a receiver's callback takes `(payload)` | chains not walked, unlike every sibling |
+
+🔴 **`collectActionUse` had no case for this action, so a Variable read *only* by a path
+parameter was never counted as a reference — and the emitted component called `.get()` on an
+identifier it never declared.** Measured with a control pair varying exactly one thing, whether
+anything *else* in the component also reads the variable:
+
+| arm | one thing varied | import | `useValue` hook | the handler's call |
+|---|---|---|---|---|
+| subject | nothing else reads it | **absent** | **absent** | `probeVar.get()` |
+| control | a Text bound to the same variable | present | present | `probeVar.get()` |
+
+The defect is the omission, not something about variables — which is what the control buys, and
+without it the subject reads equally well as "a variable used this way needs no declaration".
+
+⚠️ **Every fixture that reached this code happened to render the value somewhere too**, which is
+why 845 tests and four drives never saw it. `expectParses` cannot: an undeclared identifier is
+valid syntax. This is the same sentence `collectActionUse`'s own Tier 1.2 comment has carried
+since the async chains were added — *"the chains were not walked here at all"* — arriving on a
+third action.
+
+⚠️ **`actionExprsOf` is fixed on consistency, not on a measurement, and that is stated in the
+code.** A firing case needs a payload read inside this action's chain *inside an Event Receiver*,
+and the receiver deferred before one could be built (the payload port needs a registered channel
+that an `Event Sender` declares). The hole is real in shape — every sibling walks its chains
+because nothing else flattens for `usesPayload` — and this session could not make it fire. It is
+recorded that way rather than counted as a defect closed.
+
+### §17.4 What defers, and the one that changed its reason rather than its answer
+
+| refusal | the mechanism |
+|---|---|
+| **a wired `Open In New Tab`** | 🔴 **scope, not mechanism** — a wire makes both of the node's actions reachable in one handler, so the emitted code needs `pushState` and `window.open` under a runtime branch with two different outcome sets beneath them. ⚠️ Unlike `External Link`'s identically-named port, the runtime reads this one **once**, as `!!value` — so the value is perfectly answerable and the deferral is about the slice, not the node |
+| a wired or absent `Path` | unchanged — the braced segments are what mint the ports |
+| an in-tab `Error` read | unchanged in answer, sharper in reason: the Path gate excludes the missing-path write and there is no tab to block |
+| a `p-`/`q-` logic truth value | unchanged, on the standing rule |
+
+⚠️ **The wired-port refusal is the one to watch.** It replaced a sentence that was false, and the
+replacement makes a factual claim of its own — that the runtime reads the port once. That claim
+is pinned by a test naming both runtime files (§16.5's rule), alongside two more pinning the
+call shape and the return-value test, each with `externallink.ts` as the control that must
+disagree.
+
+### §17.5 What proves it
+
+**57 tests** in `tests/navigate-to-path.test.ts` (was 37), **862 across the package** (was 845),
+and **twelve mutants killed, every arm with a row count**:
+
+| mutant | rows killed |
+|---|---|
+| the activation read copied across — the inherited sentence, as code | **1** |
+| `noopener` added, as `External Link` does | **4** |
+| `Completed` emitted inside the `Done` arm instead of beneath the branch | **1** |
+| the `Failure` chain still dropped when the new-tab arm is on | **1** |
+| `newTab` read with `External Link`'s default (`!== false`) | **23** |
+| `collectActionUse`'s case deleted — the measured defect restored | **2** |
+| the `Error` wire consumed at compile — the silent-blank turn | **1** |
+| Pass 4f's admission clause dropped | **1** |
+| `fillMaterialize`'s case deleted | **1** |
+| the blocked message replaced by the missing-path one | **2** |
+| `deepActions` blind to the `Failure` chain | **1** |
+| `navigatePathIsStatement` blind to the new-tab arm | **1** |
+
+🔴 **Two mutants killed nothing on the first pass, and both failures were in the measurement.**
+
+**One — `deepActions` blind to the new chain moved no row**, which is §15.5's own `deepActions`
+mutant repeating: the sweeps that walk it mostly ask questions the *outer* action already
+answers, and `usesNavigate` is true because this node is itself a navigation whichever chains
+are descended into. A **state row** tells the difference — an `HTTP Request` in the `Failure`
+chain owns an `errorState` the emitted `catch` names, and without the walk the declaration
+filter drops the row and the handler references an identifier that was never declared. That is
+now the row.
+
+**Two — `navigatePathIsStatement` blind to the new-tab arm moved no row, and the reason was a
+fixture habit.** Every case in the file fires the node from the Cheer fixture's Add button,
+which *already has an action* — two actions take the `{ a; b; }` block form and parse whatever
+this predicate answers. Only a node that is the **whole** handler reaches an arrow's expression
+body, where `() => const goOpened = …` does not parse. ⚠️ **§15's `date-now-read` note says the
+same sentence about the same fixture**, so this is the second time the same habit hid the same
+class of bug from a test — the seventh instance of this file's oldest hazard.
+
+🔴 **A third failure was in the harness rather than in a mutant.** The first mutation run hit the
+120-second tool timeout and was killed mid-mutation, leaving `plan.ts` on M5 in the working tree.
+`tsc` was still green — the mutant compiles, that is the point of it — so nothing announced the
+state. Re-running in the background then reported *completed* for the `nohup` wrapper while the
+Python was still working, and the empty log read exactly like a finished run with no output.
+**Both readings were checked against `diff` before anything else was believed**, and the tree was
+restored from a snapshot taken before the first mutation.
+
+**The project, built and driven.** `note-desk` again, with the new-tab node added **through the
+MCP server** (§2's rule) — a button, a `Done` chain, a `Completed` chain and an `Error` read.
+`npm run build` exits 0. The emitted handler is the whole slice in seven lines, and the
+`External Link` nodes a few lines above it carry `'noopener,noreferrer'` and the activation read
+— the control stated as code, in one file:
+
+```tsx
+const tabGoOpened = window.open('/note/5', '_blank');
+if (tabGoOpened) {
+  tabTrail.set(tabTrailSeed.get());
+} else {
+  setTabGoError('The browser blocked opening a new tab');
+}
+tabCompleted.set(tabTrailSeed.get());          // ← after the branch, not inside the arm
+```
+
+**3 of 3 drive rows matched what was written down before the app ran**, no console errors:
+
+| row | measured |
+|---|---|
+| D1 on load | error text **empty** |
+| D2 clicked under a real gesture | error text **stays empty**, tabs 2 → **3** |
+| D3 clicked with no gesture | **"The browser blocked opening a new tab"**, tabs unchanged |
+
+🔴 **D2 and D3 are the pair, and they have to disagree.** Either alone exercises one arm of the
+emitted `if` and reads as a pass while the other arm is never run. ⚠️ D2 runs **first** because
+the row is never cleared (§14.5's ordering rule) — after a failure the text is occupied and a
+later success proves nothing.
+
+Sabotage, one rule varied, predicted before running:
+
+| arm | change | rows that moved |
+|---|---|---|
+| A | `'noopener,noreferrer'` added — what copying `External Link` across would have done | **D2 only** — "The browser blocked opening a new tab" **beside a tab that opened** (2 → 3) |
+
+🔴 **Arm A is the whole session in one row.** The inherited sentence did not merely describe this
+node wrongly; the code it prescribed reintroduces DEF-016 here — a `Failure` chain and an error
+message on every tab the app successfully opens. D3 did not move, because it was already blocked
+and already showing that text, which is why the arm needed D2 to be a row at all.
+
+### §17.6 What this leaves
+
+- **A wired `Open In New Tab`** — the branch with both actions under it, now deferred on a reason
+  that is about this slice rather than about the node. It is the natural next increment and it is
+  no longer blocked on a question about the runtime.
+- **A chain-local for `Error`** — unchanged from §14.6, and now owed by two nodes rather than one:
+  a read from inside either node's own outcome chains still defers on §8.2.
+- **`actionExprsOf`'s `usesPayload` walk (§17.3)** — closed in shape, unproven in fact. A firing
+  case needs an `Event Sender` declaring a channel payload; whoever builds one should check it.
+- **The component stack pair** — Tier 3, behind `Page Stack`, exactly as §16 left them.

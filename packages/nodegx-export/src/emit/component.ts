@@ -393,6 +393,31 @@ export function emitComponent(
       action.then.forEach(collectActionUse);
       action.failThen.forEach(collectActionUse);
     }
+    /**
+     * 🔴 **`Navigate To Path` was absent from this function entirely, and the emitted app named
+     * an identifier it never declared** (EXP-011 §17.3). Neither its url expressions nor its
+     * chains were walked, so a Variable read *only* by a path parameter was never counted as a
+     * reference: the row was filtered out of `referencedStateVars` while the handler went on
+     * calling `probeVar.get()`.
+     *
+     * Measured with a control pair varying one thing — whether anything **else** in the
+     * component also reads the variable. Subject: no import, no `useValue`, and
+     * `navigate(`/note/${'$'}{probeVar.get() ?? ''}`)` in the handler. Control, identical plus a
+     * Text bound to the same variable: `import { probeVar }` and the hook both present. The
+     * defect is the omission here and not something about variables.
+     *
+     * ⚠️ This is the same sentence the block above it has carried since Tier 1.2 — "the chains
+     * were not walked here at all" — arriving on a *third* action. `parse` cannot catch it and
+     * neither can `tsc` on this package: only building the emitted app can, and every fixture
+     * that reached it happened to render the value somewhere too.
+     */
+    if (action.kind === 'navigate-path') {
+      action.pathParams.forEach((p) => collectExprUse(p.expr));
+      action.query.forEach((q) => collectExprUse(q.expr));
+      action.then.forEach(collectActionUse);
+      action.failThen.forEach(collectActionUse);
+      action.completedThen.forEach(collectActionUse);
+    }
     if (action.kind === 'jsfun-run') {
       referencedJsIds.add(action.nodeId);
       jsArgExprs(action.nodeId).forEach(collectExprUse);
@@ -423,7 +448,7 @@ export function emitComponent(
             // without this line `usesNavigate` below cannot see a second navigation nested in
             // the first one's Done, and the `useNavigate()` hook it needs goes undeclared.
             a.kind === 'navigate-path'
-            ? [a, ...deepActions(a.then), ...deepActions(a.completedThen)]
+            ? [a, ...deepActions(a.then), ...deepActions(a.failThen), ...deepActions(a.completedThen)]
           : a.kind === 'popup-show' ||
               a.kind === 'popup-close' ||
               a.kind === 'jsfun-run' ||
@@ -561,6 +586,10 @@ export function emitComponent(
     // is already earned — but naming it here keeps the writer and the row inseparable, which is
     // what stops a future filter dropping the binding the setter call names.
     if (action.kind === 'external-link' && action.errorState !== undefined) {
+      referencedStateNames.add(action.errorState);
+    }
+    // EXP-011 §17 — the same row one node over, on the same rule.
+    if (action.kind === 'navigate-path' && action.errorState !== undefined) {
       referencedStateNames.add(action.errorState);
     }
   }
@@ -1288,6 +1317,7 @@ export function emitComponent(
             a.pathParams.some((p) => reads(p.expr)) ||
             a.query.some((p) => reads(p.expr)) ||
             a.then.some(inAction) ||
+            a.failThen.some(inAction) ||
             a.completedThen.some(inAction)
           );
         case 'popup-show':
@@ -1321,7 +1351,13 @@ export function emitComponent(
    * `onClick={() => navigate('/pricing')}`.
    */
   const navigatePathIsStatement = (a: Extract<HandlerAction, { kind: 'navigate-path' }>): boolean =>
-    a.query.some((q) => q.omittable) || a.then.length > 0 || a.completedThen.length > 0;
+    a.query.some((q) => q.omittable) ||
+    a.then.length > 0 ||
+    a.completedThen.length > 0 ||
+    // EXP-011 §17. The new-tab arm binds a `const` and branches whenever anything reads the
+    // outcome — a Failure chain, or an Error row whose write needs the arm to sit in.
+    a.failThen.length > 0 ||
+    (a.newTab && a.errorState !== undefined);
 
   const actionCode = (action: HandlerAction, indent = 0): string => {
     switch (action.kind) {
@@ -1377,10 +1413,16 @@ export function emitComponent(
         const omittable = action.query.filter((q) => q.omittable);
 
         /**
-         * With every value present the query is a static suffix, exactly as the runtime's
-         * `query.length >= 1 ? '?' + query.join('&') : ''` resolves for it.
+         * The url, built once and then handed to whichever call this node is. `pre` is the
+         * omittable form's collector, which has to run before the url expression reads it.
          */
+        const pre: string[] = [];
+        let urlCode: string;
         if (omittable.length === 0) {
+          /**
+           * With every value present the query is a static suffix, exactly as the runtime's
+           * `query.length >= 1 ? '?' + query.join('&') : ''` resolves for it.
+           */
           const suffix =
             action.query.length === 0
               ? ''
@@ -1392,39 +1434,111 @@ export function emitComponent(
                   )
                   .join('&');
           const url = `${filled}${suffix}`;
-          const call = isTemplate ? `navigate(\`${url}\`)` : `navigate('${url}')`;
-          const chain = [...expandActions(action.then), ...expandActions(action.completedThen)];
-          if (chain.length === 0) return call;
-          return [`${call};`, ...chain.map((a) => `${actionCode(a, indent)};`)].join(`\n${at}`);
+          urlCode = isTemplate ? `\`${url}\`` : `'${url}'`;
+        } else {
+          /**
+           * ⚠️ **An unset query parameter is omitted from the url, never sent as `name=`** — the
+           * runtime's `if (internal.query[q] !== undefined)`. A `URLSearchParams` here would send
+           * the key with an empty value *and* percent-encode to a different table, so it would be
+           * wrong twice.
+           *
+           * 🔴 **The pairs go through one `for` rather than one `if` each, so every expression is
+           * read exactly once.** Two reads of `formatShout({ name })` — the guard and the push —
+           * would invoke it twice, which is the mistake `External Link`'s link local exists to
+           * avoid one node over. Values that cannot be undefined ride the same loop and pass its
+           * test unconditionally, which is also the shape of the runtime's own loop.
+           */
+          const local = action.queryLocal;
+          // The key sits in expression position, never inside the url string, so it is quoted
+          // independently of `isTemplate`.
+          const pairs = action.query
+            .map((q) => `['${String(q.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', ${exprCode(q.expr, 'handler')}]`)
+            .join(', ');
+          pre.push(
+            `const ${local}: string[] = [];`,
+            `for (const [key, value] of [${pairs}] as Array<[string, unknown]>) {`,
+            `  if (value !== undefined) ${local}.push(\`\${key}=\${value}\`);`,
+            '}'
+          );
+          urlCode = `\`${filled}\${${local}.length > 0 ? \`?\${${local}.join('&')}\` : ''}\``;
+        }
+
+        const inner = pad(indent + 2);
+        const chainBody = (list: HandlerAction[]): string[] =>
+          expandActions(list).map((a) => `${inner}${actionCode(a, indent + 2)};`);
+        const doneChain = expandActions(action.then);
+        const completedChain = expandActions(action.completedThen);
+        const tail = completedChain.map((a) => `${actionCode(a, indent)};`);
+
+        /**
+         * The same-tab arm: `history.pushState` in the runtime, `navigate` here, and it cannot
+         * fail — so `Completed` follows `Done` as one flat sequence and there is no arm at all.
+         */
+        if (!action.newTab) {
+          const call = `navigate(${urlCode})`;
+          if (pre.length === 0 && doneChain.length === 0 && completedChain.length === 0) return call;
+          return [...pre, `${call};`, ...doneChain.map((a) => `${actionCode(a, indent)};`), ...tail].join(`\n${at}`);
         }
 
         /**
-         * ⚠️ **An unset query parameter is omitted from the url, never sent as `name=`** — the
-         * runtime's `if (internal.query[q] !== undefined)`. A `URLSearchParams` here would send
-         * the key with an empty value *and* percent-encode to a different table, so it would be
-         * wrong twice.
+         * 🔴 **The new-tab arm, and the return value is the test** (EXP-011 §17).
          *
-         * 🔴 **The pairs go through one `for` rather than one `if` each, so every expression is
-         * read exactly once.** Two reads of `formatShout({ name })` — the guard and the push —
-         * would invoke it twice, which is the mistake `External Link`'s link local exists to
-         * avoid one node over. Values that cannot be undefined ride the same loop and pass its
-         * test unconditionally, which is also the shape of the runtime's own loop.
+         * `window.open(url, '_blank')` with **no features string**, which is
+         * `navigate-to-path.ts:205` exactly. `External Link` reads `navigator.userActivation`
+         * instead and only because it passes `noopener` — which makes `window.open` return null
+         * on success as much as on failure (DEF-016). Emitting that read here would have been
+         * the fifth rule in this family copied from a neighbour it does not belong to, and it
+         * would have been strictly *worse* information: measured in Chrome 151, this bare call
+         * returns a Window under a gesture and null without one, while the activation getter
+         * reads `false` after **every** successful open because the call consumes it (§14.1).
+         *
+         * ⚠️ The url is a plain string in both arms. `window.open` resolves a relative url
+         * against the document, which is what the runtime hands it, so the two arms address the
+         * same place by construction.
          */
-        const local = action.queryLocal;
-        // The key sits in expression position, never inside the url string, so it is quoted
-        // independently of `isTemplate`.
-        const pairs = action.query
-          .map((q) => `['${String(q.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', ${exprCode(q.expr, 'handler')}]`)
-          .join(', ');
-        const lines = [
-          `const ${local}: string[] = [];`,
-          `for (const [key, value] of [${pairs}] as Array<[string, unknown]>) {`,
-          `  if (value !== undefined) ${local}.push(\`\${key}=\${value}\`);`,
-          '}',
-          `navigate(\`${filled}\${${local}.length > 0 ? \`?\${${local}.join('&')}\` : ''}\`);`
-        ];
-        const chain = [...expandActions(action.then), ...expandActions(action.completedThen)];
-        return [...lines, ...chain.map((a) => `${actionCode(a, indent)};`)].join(`\n${at}`);
+        const openCall = `window.open(${urlCode}, '_blank')`;
+        /**
+         * Only **one** message can ever be written here, where `External Link` needs a ternary:
+         * the Path gate admits a literal non-empty path, so the missing-path write is
+         * unreachable and the blocked tab is the only failure left. `_internal.lastError`'s
+         * short string — not the longer sentence `reportOutcomes` sends to the outcome channel.
+         */
+        const errorWrite =
+          action.errorState === undefined
+            ? []
+            : [`${inner}${stateSetterOf(action.errorState)}('The browser blocked opening a new tab');`];
+        const failBody = [...errorWrite, ...chainBody(action.failThen)];
+
+        /**
+         * Nothing reads the outcome — no chain on either arm and no row to write — so the result
+         * is not bound at all and the call stands alone, which is what the graph asked for.
+         * `Completed` still runs: it fires after every outcome, and with nothing to branch on
+         * there is only one place to put it.
+         */
+        if (doneChain.length === 0 && failBody.length === 0) {
+          if (pre.length === 0 && completedChain.length === 0) return openCall;
+          return [...pre, `${openCall};`, ...tail].join(`\n${at}`);
+        }
+
+        /**
+         * 🔴 **`Completed` prints after the branch, never inside an arm.** It fires after every
+         * outcome (`node.ts:958-995`), so a copy in the `Done` arm alone would run only on
+         * success — §15.4 earned this port on "the gates leave exactly one outcome reachable",
+         * and this arm is exactly the change that retires that argument.
+         */
+        const branch =
+          doneChain.length > 0 && failBody.length > 0
+            ? [
+                `if (${action.openedLocal}) {`,
+                ...chainBody(action.then),
+                `${at}} else {`,
+                ...failBody,
+                `${at}}`
+              ]
+            : doneChain.length > 0
+              ? [`if (${action.openedLocal}) {`, ...chainBody(action.then), `${at}}`]
+              : [`if (!${action.openedLocal}) {`, ...failBody, `${at}}`];
+        return [...pre, `const ${action.openedLocal} = ${openCall};`, branch.join('\n'), ...tail].join(`\n${at}`);
       }
       case 'navigate': {
         /**
@@ -3467,8 +3581,23 @@ export function emitComponent(
        */
       case 'navigate':
         return [...a.pathParams.map((p) => p.expr), ...a.query.map((p) => p.expr)];
+      /**
+       * ⚠️ **The chains are walked here on consistency with every sibling above, and not on a
+       * measurement** (EXP-011 §17.3). `external-link`, `api-call`, `branch` and the rest all
+       * flatMap their chains because `usesPayload` reads this list and nothing else flattens for
+       * it; `navigate-path` did not. A firing case needs a payload read inside a Navigate To
+       * Path's chain *inside an Event Receiver*, and the receiver deferred before one could be
+       * built — so this closes a hole that is real in shape and that this session could not make
+       * fire. Recorded that way rather than claimed as a fix.
+       */
       case 'navigate-path':
-        return [...a.pathParams.map((p) => p.expr), ...a.query.map((p) => p.expr)];
+        return [
+          ...a.pathParams.map((p) => p.expr),
+          ...a.query.map((p) => p.expr),
+          ...a.then.flatMap(actionExprsOf),
+          ...a.failThen.flatMap(actionExprsOf),
+          ...a.completedThen.flatMap(actionExprsOf)
+        ];
       case 'output-signal':
         return [];
     }

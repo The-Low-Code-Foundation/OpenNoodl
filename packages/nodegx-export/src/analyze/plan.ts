@@ -614,19 +614,46 @@ export type HandlerAction =
    * react-router the first is **relative to the current route** and the second is absolute.
    *
    * `then` is the `Done` chain and `completedThen` the `Completed` one, in that order, because
-   * `reportOutcome` sends the outcome and then `Completed` (`node.ts:958-995`). There is no
-   * failure arm: {@link compileNavigateToPath} only admits a literal in-tab path, and neither of
-   * the node's two failures can fire for one.
+   * `reportOutcome` sends the outcome and then `Completed` (`node.ts:958-995`).
+   *
+   * 🔴 **`newTab` decides which of two different actions this is** (EXP-011 §17, session 46).
+   * Off, the node is `history.pushState` and cannot fail, so `failThen` is empty and
+   * `completedThen` follows the one outcome there is. On, it is `window.open` — which *can* be
+   * refused — so `Failure` becomes live, `Error` becomes writable, and `Completed` stops being
+   * a continuation of `Done` and becomes a **join beneath both arms**. §15.4 earned `Completed`
+   * on "the gates leave exactly one outcome reachable", and opening this arm is exactly the
+   * change that retires that argument rather than inheriting it.
    */
   | {
       kind: 'navigate-path';
+      /** Needed by every registry keyed on the node — the Error row, and the attachment sweep. */
+      nodeId: string;
       to: string;
       pathParams: Array<{ name: string; expr: ValueExpr }>;
       /** `omittable` values print inside the `if` the runtime's `!== undefined` test describes. */
       query: Array<{ name: string; expr: ValueExpr; omittable: boolean }>;
       /** The `const` the omittable form collects into; unused when every value is present. */
       queryLocal: string;
+      /**
+       * `Open In New Tab`, as an authored literal. ⚠️ **`default: false` here and `default: true`
+       * on `External Link`** — the two nodes look like a pair and their unset state lands on
+       * opposite sides.
+       */
+      newTab: boolean;
+      /**
+       * The `const` the `window.open` result binds to. Emitted only where something branches on
+       * it: a new tab with no chains and no Error row is the bare call the graph asked for.
+       */
+      openedLocal: string;
+      /**
+       * The `Error` output as a state row, allocated **by the read** (§14.2's rule, fifth
+       * instance). Only ever set for `newTab`: in-tab, neither of the node's two failures can
+       * fire, so there is no read to earn it.
+       */
+      errorState?: string;
       then: HandlerAction[];
+      /** The `Failure` chain — reachable only for `newTab`, where the browser can refuse. */
+      failThen: HandlerAction[];
       completedThen: HandlerAction[];
     }
   /**
@@ -959,6 +986,7 @@ export interface StateVarPlan {
     | 'http'
     | 'http-error'
     | 'external-link-error'
+    | 'navigate-path-error'
     | 'now';
   /** The provenance comment above the row. */
   comment: string;
@@ -2825,6 +2853,66 @@ function planComponent(
   };
 
   /**
+   * `Navigate To Path`'s `window.open` result (EXP-011 §17), on the query collector's naming
+   * rule and minted beside it so the two cannot collide.
+   *
+   * 🔴 **The return value is the test, and on this node that is correct.** `External Link` reads
+   * `navigator.userActivation` instead, and only because it passes `noopener` — which makes
+   * `window.open` return null on success as much as on failure (`externallink.ts:69`). This node
+   * passes no features string, so `if (!opened)` is the runtime's own working blocked test and
+   * copying the activation read across would have been the fifth rule in this family that does
+   * not transfer.
+   */
+  const navigatePathOpenedLocals = new Map<string, string>();
+  const navigatePathOpenedLocalOf = (node: NodeIR): string => {
+    let local = navigatePathOpenedLocals.get(node.id);
+    if (local === undefined) {
+      const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+      const stem = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'Navigate';
+      const base = `${stem.charAt(0).toLowerCase()}${stem.slice(1)}Opened`;
+      let name = base;
+      let counter = 2;
+      while (stateNameTaken(name)) name = `${base}${counter++}`;
+      usedStateVarNames.add(name);
+      navigatePathOpenedLocals.set(node.id, name);
+      local = name;
+    }
+    return local;
+  };
+
+  /**
+   * `Navigate To Path`'s `Error` output as a state row (EXP-011 §17) — `External Link`'s row one
+   * node over, and simpler: with a literal Path admitted and the new-tab arm the only failing
+   * one, exactly **one** message can ever be written, so there is no ternary to pick between two.
+   */
+  const navigatePathErrorVars = new Map<string, StateVarPlan>();
+  const navigatePathErrorStateOf = (node: NodeIR): StateVarPlan => {
+    let stateVar = navigatePathErrorVars.get(node.id);
+    if (stateVar === undefined) {
+      stateVar = allocStateVar(
+        node.authoredLabel === undefined ? undefined : `${node.authoredLabel} Error`,
+        'navigateError',
+        'string | undefined',
+        null,
+        node.id,
+        'navigate-path-error',
+        `The Error output of ${node.authoredLabel ? `"${node.authoredLabel}"` : 'the Navigate To Path'} — why the navigation did not happen, set just before Failure fires and never cleared (navigate-to-path.ts).`
+      );
+      navigatePathErrorVars.set(node.id, stateVar);
+    }
+    return stateVar;
+  };
+
+  /** Navigate To Path nodes whose `Navigate` attached to a handler — the record verbs' rule. */
+  const attachedNavigatePaths = new Set<string>();
+
+  /**
+   * Node ids whose outcome chains are being compiled, while they are being compiled — the same
+   * §8.2 refusal `externalLinkChainScope` exists for, one node over.
+   */
+  const navigatePathChainScope = new Set<string>();
+
+  /**
    * `External Link`'s `Error` output as a state row (EXP-011 §14) — `HTTP Request`'s
    * `errorState`, one node over, with the hard part absent: both messages are static.
    *
@@ -3898,6 +3986,29 @@ function planComponent(
         return null;
       }
       return { kind: 'state-get', name: externalLinkErrorStateOf(fromNode).name, maybeUndefined: true };
+    }
+    /**
+     * `Navigate To Path`'s `Error` output (EXP-011 §17) — the same shape one node over, with the
+     * same two refusals and one extra.
+     *
+     * ⚠️ **The extra one is `Open In New Tab`, and it is the whole reason this read exists.** In
+     * tab the node's only two writes are both unreachable — the Path gate excludes the missing
+     * path, and there is no tab to block — so the row would be a string nothing ever writes.
+     * That is not a hard case; it is an *empty* one, and the sink is owed the sentence rather
+     * than a blank. {@link compileNavigateToPath} makes that refusal on the wire.
+     */
+    if (fromNode.type === NAVIGATE_TO_PATH_TYPE && fromProperty === 'error') {
+      if (navigatePathChainScope.has(fromNode.id)) {
+        ctx.defer =
+          'its Error is read from one of its own outcome chains — the write and the read would be in one closure, so the read would deliver the previous failure\u2019s message';
+        return null;
+      }
+      if (!attachedNavigatePaths.has(fromNode.id)) {
+        const compiled = compiledOf(fromNode, 'navigate');
+        ctx.defer = 'defer' in compiled ? compiled.defer : 'its Navigate is never fired by a translatable trigger';
+        return null;
+      }
+      return { kind: 'state-get', name: navigatePathErrorStateOf(fromNode).name, maybeUndefined: true };
     }
     /**
      * An `HTTP Request`'s outputs (EXP-011 Tier 1.2).
@@ -5625,14 +5736,38 @@ function planComponent(
 
     /**
      * ⚠️ `default: false` here, where `External Link`'s is `default: true` — so an unwired,
-     * unset port is the *translated* case on this node and the deferred one on that node. The
-     * two look like a pair and their defaults are opposite.
+     * unset port is the *same-tab* case on this node and the new-tab case on that node. The two
+     * look like a pair and their defaults are opposite.
+     *
+     * 🔴 **§15.4 deferred this arm saying its success "is read from the transient user
+     * activation rather than from the return value", and that sentence was inherited from
+     * `External Link` and false here — the second exemption in two sessions to assert a runtime
+     * behaviour that did not exist (§16.1 was the first).** The activation read exists on that
+     * node because it passes `noopener`, and `window.open` returns null whenever `noopener` is
+     * set, by specification, on success as much as on failure (`externallink.ts:69`, DEF-016).
+     * **This node passes no features string at all** (`navigate-to-path.ts:205`), so its own
+     * `if (!opened)` is a working blocked test and the return value is what the export must read.
+     *
+     * Measured in Chrome 151 rather than argued, three arms under `Input.dispatchMouseEvent`:
+     * `('noopener,noreferrer')` returned **null while a tab opened** — DEF-016's mechanism,
+     * reproduced, so "it does not apply here" is a measurement and not an assumption; the bare
+     * two-argument call returned **a Window**; and the same bare call with **no** gesture
+     * returned **null** with no tab. The last two are the pair that decides it — a test that
+     * only ever answered "opened" would be no test — and `tests/navigate-to-path.test.ts` pins
+     * the runtime file's side so the two cannot drift apart silently.
      */
+    const newTab = literalParam(node, 'openInNewTab') === true;
     if (wiredPorts.has(`${node.id}:openInNewTab`)) {
-      return { defer: 'its Open In New Tab is wired — the new-tab arm is window.open, whose success is read from the transient user activation rather than from the return value, and this slice emits the same-tab navigation' };
-    }
-    if (literalParam(node, 'openInNewTab') === true) {
-      return { defer: 'its Open In New Tab is on — that arm is window.open, whose success is read from the transient user activation rather than from the return value, and this slice emits the same-tab navigation' };
+      /**
+       * Deferred by **scope, not by mechanism**, and the distinction is worth the sentence: the
+       * runtime reads this port exactly once, as `!!value` (`navigate-to-path.ts:89`), so a
+       * wired value is perfectly answerable — unlike `External Link`'s identically-named port,
+       * which is read two ways in two adjacent lines and genuinely cannot be. What a wire costs
+       * here is that both actions become reachable in one handler, so the emitted code needs
+       * `pushState` and `window.open` under a runtime branch with two different outcome sets
+       * beneath them. That is a slice, not a flag.
+       */
+      return { defer: 'scheduled — its Open In New Tab is wired, so both of the node’s two actions are reachable in one handler: a same-tab pushState that cannot fail and a window.open that can, each with its own outcome set. The port itself is answerable — the runtime reads it once, as `!!value` — so this is deferred by scope rather than by mechanism' };
     }
 
     if (wiredPorts.has(`${node.id}:path`)) {
@@ -5655,14 +5790,27 @@ function planComponent(
         return { defer: `its ${wire.fromProperty} output is consumed, and this node publishes only Done, Completed, Unchanged, Failure and Error` };
       }
       /**
-       * 🔴 **Refused because nothing can write it, not because it is hard.** `Error` is set on
-       * exactly two paths — no Path, and a blocked new tab — and both are excluded by the gates
-       * above. A translated read would be a binding to a string that is `undefined` for the life
-       * of the app, which is the shape §14 was careful to allocate *by the read*: here the read
-       * cannot be earned at all.
+       * 🔴 **Refused in-tab because nothing can write it, not because it is hard.** `Error` is
+       * set on exactly two paths — no Path, and a blocked new tab. The Path gate above excludes
+       * the first, and with `Open In New Tab` off the second cannot happen either, so a
+       * translated read would bind a string that is `undefined` for the life of the app.
+       *
+       * With the new-tab arm on, the blocked path is live and the read is earned — §14.2's
+       * "allocated by the read" rule, fifth instance. The row itself is minted by `resolveExpr`
+       * when the read resolves, which runs passes after this; here the wire is only consumed.
        */
       if (wire.fromProperty === 'error') {
-        return { defer: 'its Error output is read, and for the only shape this slice admits — a literal Path, in this tab — neither of the node’s two failures can fire, so the row would be a string nothing ever writes' };
+        if (!newTab) {
+          return { defer: 'its Error output is read, and with Open In New Tab off neither of the node’s two failures can fire — the Path gate excludes the missing-path write and there is no tab to block — so the row would be a string nothing ever writes' };
+        }
+        /**
+         * 🔴 **Left unconsumed on purpose**, which is `External Link`'s shape and was worth one
+         * wrong turn to find: consuming it here satisfies "nothing is silently unconsumed" and
+         * *removes the wire from Pass 4f*, so the binding is never made and the sink renders an
+         * empty element with **no note anywhere** — a silent blank that reads exactly like a
+         * message that happened to be undefined. A value read is the render sweep's to make.
+         */
+        continue;
       }
       /**
        * Dropped rather than deferring, on `Clear Array`'s rule: `Unchanged` fires only where
@@ -5679,8 +5827,13 @@ function planComponent(
        * ⚠️ Same rule, and it is the gates above that earn it: with a literal non-empty Path and
        * Open In New Tab off, `navigate()` has no `return` before `reportOutcomes(…, 'done')`.
        * The Failure chain is dead code in the interpreter too.
+       *
+       * 🔴 **With the new-tab arm on it is not dead, and this `if` is the whole difference.**
+       * `window.open` can be refused, so the chain is compiled below rather than dropped here —
+       * a `notes.push` that kept firing after the arm opened would silently delete a chain the
+       * app runs.
        */
-      if (wire.fromProperty === 'failure') {
+      if (wire.fromProperty === 'failure' && !newTab) {
         notes.push(
           `wire ${wire.key} dropped: Navigate To Path's Failure chain is dead — a literal Path cannot be missing and Open In New Tab is off, so neither of the node's two failures can fire (navigate-to-path.ts)`
         );
@@ -5759,30 +5912,54 @@ function planComponent(
 
     /**
      * `Done` then `Completed`, which is the order `reportOutcome` fires them in — the outcome's
-     * own port first, then the universal one (`node.ts:958-995`). Translating `Completed` at all
-     * is earned by the gates: it is refused one node over because it fires after *every* outcome
-     * and there are three of them there, and here there is exactly one outcome it can follow.
+     * own port first, then the universal one (`node.ts:958-995`).
+     *
+     * 🔴 **Why `Completed` translates is different in the two arms, and §15.4's reason only
+     * covers one of them.** It is refused on `External Link` because it fires after *every*
+     * outcome and there are three there. In-tab, the gates leave exactly one outcome reachable,
+     * so `Completed` is one arm to follow — that was §15.4's argument. With the new-tab arm on
+     * there are **two**, and the argument is retired rather than inherited: `Completed` still
+     * translates, but as a **join printed beneath both arms** instead of a continuation of
+     * `Done`. Emitting it flat here would have run it only on success, which is the shape of
+     * §15's own `deepActions` mutant — a change that moves no test because nothing looked.
+     *
+     * Both chains compile inside the scope, so an `Error` read from within either is refused
+     * rather than bound to a row the closure cannot see updated (§8.2, `External Link`'s rule).
      */
+    navigatePathChainScope.add(node.id);
     const done = doneChainOf(node, 'done');
+    /**
+     * ⚠️ Compiled **only** for the new-tab arm, because in-tab the Failure wire was already
+     * consumed by the drop above — asking for the chain here as well would consume one wire key
+     * twice, which is the double-count `EMPTY` deferrals are made of.
+     */
+    const fail = newTab ? ('defer' in done ? done : doneChainOf(node, 'failure')) : { then: [], consumes: [], collapses: [], subscribes: [] };
+    const completed = 'defer' in fail ? fail : doneChainOf(node, 'completed');
+    navigatePathChainScope.delete(node.id);
     if ('defer' in done) return { defer: done.defer };
-    const completed = doneChainOf(node, 'completed');
+    if ('defer' in fail) return { defer: fail.defer };
     if ('defer' in completed) return { defer: completed.defer };
 
     return {
       action: {
         kind: 'navigate-path',
+        nodeId: node.id,
         // Exactly the runtime's own normalisation: `_getLocationPath` strips one leading slash,
         // so one is put back. `//x` stays `//x`, which matches nothing on either side.
         to: authoredPath.startsWith('/') ? authoredPath : `/${authoredPath}`,
         pathParams,
         query,
         queryLocal: navigatePathLocalOf(node),
+        newTab,
+        openedLocal: navigatePathOpenedLocalOf(node),
         then: done.then,
+        // In-tab the chain is dropped above with a note; nothing can reach it.
+        failThen: fail.then,
         completedThen: completed.then
       },
-      consumes: [...consumes, ...done.consumes, ...completed.consumes, ...ctx.consumes],
-      collapses: [...ctx.logicNodeIds, ...done.collapses, ...completed.collapses],
-      subscribes: [...ctx.subscriberIds, ...done.subscribes, ...completed.subscribes]
+      consumes: [...consumes, ...done.consumes, ...fail.consumes, ...completed.consumes, ...ctx.consumes],
+      collapses: [...ctx.logicNodeIds, ...done.collapses, ...fail.collapses, ...completed.collapses],
+      subscribes: [...ctx.subscriberIds, ...done.subscribes, ...fail.subscribes, ...completed.subscribes]
     };
   };
 
@@ -6215,7 +6392,7 @@ function planComponent(
         case 'navigate-path':
           return (
             [...action.pathParams, ...action.query].every((p) => exprValidIn(p.expr, context, invokedScope)) &&
-            actionsValidIn([...action.then, ...action.completedThen], context, invokedScope)
+            actionsValidIn([...action.then, ...action.failThen, ...action.completedThen], context, invokedScope)
           );
         case 'output-signal':
           return true;
@@ -7317,9 +7494,12 @@ function planComponent(
           scanActions(action.then);
           scanActions(action.failThen);
         } else if (action.kind === 'navigate-path') {
-          // EXP-011 §15. Both chains, or a popup opened from a Navigate To Path's Done is a
-          // popup nothing here knows is attached.
+          // EXP-011 §15. Every chain, or a popup opened from a Navigate To Path's Done is a
+          // popup nothing here knows is attached. §17 added the Failure chain and a registry of
+          // its own, because an `Error` read has to know whether anything ever writes the row.
+          attachedNavigatePaths.add(action.nodeId);
           scanActions(action.then);
+          scanActions(action.failThen);
           scanActions(action.completedThen);
         } else if (action.kind === 'branch') {
           scanActions(action.whenTrue);
@@ -7703,6 +7883,17 @@ function planComponent(
      * note named the wrong thing and named it confidently.
      */
     const isExternalLinkErrorRead = fromNode.type === EXTERNAL_LINK_TYPE && connection.fromProperty === 'error';
+    /**
+     * `Navigate To Path`'s `Error` into a rendered sink (EXP-011 §17), and **the fourth instance
+     * of the gap the paragraph above names.** §14 wrote that warning one node over and this slice
+     * still spent a test on it: `resolveExpr` was taught the read, the row allocated, the arm
+     * emitted — and the wire fell through to Pass 6's catch-all all the same, because this
+     * predicate is opt-in and says nothing when it is not opted into.
+     *
+     * ⚠️ Adding a readable output to a node in this file is **never** one edit. The two that are
+     * silent are this one and Pass 4c's whitelist below.
+     */
+    const isNavigatePathErrorRead = fromNode.type === NAVIGATE_TO_PATH_TYPE && connection.fromProperty === 'error';
     if (
       !isLatchRead &&
       !isControlRead &&
@@ -7713,7 +7904,8 @@ function planComponent(
       !isHttpRead &&
       !isDateRead &&
       !isNowRead &&
-      !isExternalLinkErrorRead
+      !isExternalLinkErrorRead &&
+      !isNavigatePathErrorRead
     ) {
       continue;
     }
@@ -8597,6 +8789,12 @@ function planComponent(
       const index = plan.stateVars.indexOf(stateVar);
       if (index >= 0) plan.stateVars.splice(index, 1);
     }
+    /** `Navigate To Path`'s Error row on the same rule (EXP-011 §17). */
+    for (const [nodeId, stateVar] of navigatePathErrorVars) {
+      if (attachedNavigatePaths.has(nodeId)) continue;
+      const index = plan.stateVars.indexOf(stateVar);
+      if (index >= 0) plan.stateVars.splice(index, 1);
+    }
     const fillMaterialize = (actions: HandlerAction[]): void => {
       for (const action of actions) {
         switch (action.kind) {
@@ -8650,6 +8848,25 @@ function planComponent(
             }
             fillMaterialize(action.then);
             fillMaterialize(action.failThen);
+            break;
+          }
+          /**
+           * 🔴 **`Navigate To Path` was absent from this switch entirely, and that was a hole
+           * older than §17** (EXP-011 §17.3). This walker has no `default`, so a kind missing
+           * from it is not merely un-wired — its chains are never descended into at all, and an
+           * `HTTP Request` nested in a Navigate To Path's Done chain therefore never had its
+           * answer row wired to its writer. The row is the same `default:`-less switch §15.5's
+           * `deepActions` mutant is about, two walkers over.
+           *
+           * §17's Error row is wired here for the reason the cases above give: the read that
+           * allocates it is a render binding, which resolves passes after this action compiled.
+           */
+          case 'navigate-path': {
+            const row = navigatePathErrorVars.get(action.nodeId);
+            if (row !== undefined && plan.stateVars.includes(row)) action.errorState = row.name;
+            fillMaterialize(action.then);
+            fillMaterialize(action.failThen);
+            fillMaterialize(action.completedThen);
             break;
           }
           case 'branch':
