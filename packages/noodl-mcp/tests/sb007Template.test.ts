@@ -35,7 +35,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { ROUTER } from './sb005Components';
+import { ROUTER, SIGNED_OUT_TEXT, SIGNIN_REFUSAL_TEXT } from './sb005Components';
 import { SITE_URL_PATH } from './sb006Components';
 import { APP_COMPONENT, buildSiteTemplateProject, toTemplateContent } from './sb007Template';
 import {
@@ -166,7 +166,8 @@ describe('SB-007 — the committed template is a regeneration, not a copy', () =
     // and a build that silently authored nothing would read as agreement.
     const built = await buildSiteTemplateProject();
     // 19 → 21: SBR-006 adds `/Admin/Shell` and `/Admin/NewPageDialog`.
-    expect(built.project.components).toHaveLength(21);
+    // 21 → 22: SBR-017 adds `/Pages/SignIn`.
+    expect(built.project.components).toHaveLength(22);
     expect(built.order[0]).toBe(APP_COMPONENT);
   });
 });
@@ -196,15 +197,16 @@ describe('SB-007 — the App component is the difference between a router and no
     const built = await buildSiteTemplateProject({ omitApp: true });
 
     // The pages were written. This is not a run that fell over.
-    expect(built.order.filter((key) => key.startsWith('Pages/'))).toHaveLength(5);
+    expect(built.order.filter((key) => key.startsWith('Pages/'))).toHaveLength(6);
     // 18 → 20, same two components, minus the App this arm deliberately omits.
-    expect(built.project.components).toHaveLength(20);
+    // 20 → 21 with SBR-017's sign-in page.
+    expect(built.project.components).toHaveLength(21);
 
     // And not one of them landed in a router, with no diagnostic anywhere.
     expect(built.registrations).toEqual({});
   });
 
-  it('control: with the App, the same eighteen components register five pages', async () => {
+  it('control: with the App, the same components register six pages', async () => {
     // 🔴 The arm that turns the absence above into a measurement. Without it,
     // `registrations === {}` is consistent with a builder that never populates
     // that map at all — which is the same reading, and the opposite fix.
@@ -213,6 +215,7 @@ describe('SB-007 — the App component is the difference between a router and no
       'Pages/Admin',
       'Pages/PageEditor',
       'Pages/Setup',
+      'Pages/SignIn',
       'Pages/Site',
       'Pages/ThemeEditor'
     ]);
@@ -852,5 +855,181 @@ describe('SBR-015 — a cloud function has no silent exit', () => {
       .flatMap((c) => c.graph.connections.filter((w) => w.fromProperty === 'completed').map(() => c.name))
       .sort();
     expect(kept).toEqual(['/#__cloud__/site/ContactRecipient', '/#__cloud__/submitContactForm']);
+  });
+});
+
+// ── 8. SBR-017: there is a way back in ───────────────────────────────────────
+
+/**
+ * SBR-017 AC4. The finding this gate exists to make impossible to reintroduce:
+ * the shipped template held **one** authentication node across twenty-one
+ * components — `SignUp`, on `/Pages/Setup` — and no `Log In` anywhere. An owner
+ * who claimed their site and later lost the session had no screen that would
+ * take their password.
+ *
+ * 🔴 **"Contains a `LogIn`" is not the criterion, and grading it would be the
+ * hole shaped like the defect.** A `net.noodl.user.LogIn` sitting in a component
+ * no router names is a node in a file, not a way back in — and it is exactly
+ * what a well-meaning later edit produces (author the page, forget that a page
+ * is only reachable when a Router lists it). So the gate walks the router's own
+ * `routes`, closes over what those pages **place**, and asks whether the LogIn
+ * is inside that set. The mutant below removes the one route and the gate reds,
+ * which is what says the walk is load-bearing rather than decoration.
+ */
+describe('SBR-017 — the owner can get back in', () => {
+  /**
+   * The components a person can actually arrive at: every page the Router lists,
+   * plus everything those pages place, transitively.
+   *
+   * A component instance is a node whose `type` IS another component's legacy
+   * name (the MCP guidance's own rule), and a `For Each` names its row component
+   * in `template` — both are placements, and both are how `/Admin/Shell` and
+   * `/Admin/PageRow` get on screen at all.
+   *
+   * ⚠️ Navigation targets are deliberately NOT followed. A `RouterNavigate`
+   * pointing at a page proves the page can be *asked for*, not that the Router
+   * will answer — and a page reachable only that way is the defect one step
+   * along. Every page must earn its place in `routes`.
+   */
+  function reachableComponents(content: Content): Set<string> {
+    const byName = new Map(content.components.map((c) => [c.name, c]));
+    const app = content.components.find((c) => c.name === APP_LEGACY);
+    const router = app && nodesOf(app).find((n) => n.type === 'Router');
+    const pages = (router?.parameters?.pages as Pages) ?? {};
+
+    const seen = new Set<string>();
+    const queue = [...(pages.routes ?? []), ...(pages.startPage ? [pages.startPage] : []), APP_LEGACY];
+    while (queue.length) {
+      const name = queue.shift() as string;
+      if (seen.has(name)) continue;
+      const component = byName.get(name);
+      if (!component) continue;
+      seen.add(name);
+      for (const node of nodesOf(component)) {
+        if (byName.has(node.type)) queue.push(node.type);
+        const template = node.parameters?.template;
+        if (typeof template === 'string' && byName.has(template)) queue.push(template);
+      }
+    }
+    return seen;
+  }
+
+  const AUTH_TYPES = ['net.noodl.user.LogIn', 'net.noodl.user.LogOut', 'net.noodl.user.SignUp'] as const;
+
+  it('CONTROL: the census the rest of this block reads — three auth nodes, and where they are', () => {
+    // 🔴 Read first, so the assertions below are about a population that exists.
+    // Before SBR-017 this census was ONE row (`SignUp`), and every check under it
+    // would have been vacuously satisfiable by looking somewhere else.
+    const census = allNodes()
+      .filter((n) => (AUTH_TYPES as readonly string[]).includes(n.node.type))
+      .map((n) => `${n.node.type} in ${n.component}`)
+      .sort();
+    expect(census).toEqual([
+      'net.noodl.user.LogIn in /Pages/SignIn',
+      'net.noodl.user.LogOut in /Admin/Shell',
+      'net.noodl.user.SignUp in /Pages/Setup'
+    ]);
+  });
+
+  it('AC4: the LogIn is inside a component the Router can actually reach', () => {
+    const reachable = reachableComponents(shipped);
+    const holders = allNodes()
+      .filter((n) => n.node.type === 'net.noodl.user.LogIn')
+      .map((n) => n.component);
+    expect(holders).toEqual(['/Pages/SignIn']);
+    for (const holder of holders) expect(`${holder}:${reachable.has(holder)}`).toBe(`${holder}:true`);
+  });
+
+  it('MUTANT: drop the sign-in page from the router and the same gate reds', () => {
+    // The half that turns "contains a LogIn" into "there is a way back in".
+    // Without this, a page authored into no router would pass the check above by
+    // simply existing on disk.
+    const mutant = JSON.parse(JSON.stringify(shipped)) as Content;
+    const app = mutant.components.find((c) => c.name === APP_LEGACY) as Component;
+    const router = nodesOf(app).find((n) => n.type === 'Router') as Node;
+    const pages = router.parameters?.pages as Pages;
+    pages.routes = (pages.routes ?? []).filter((r) => r !== '/Pages/SignIn');
+
+    expect(reachableComponents(mutant).has('/Pages/SignIn')).toBe(false);
+    // …and the control that the mutation was surgical: everything else still is.
+    expect(reachableComponents(mutant).has('/Pages/Admin')).toBe(true);
+  });
+
+  /**
+   * 🔴 SBR-017 §3's ordering trap, as a gate rather than a comment: *"Do not add
+   * sign-out without adding sign-in first."* A rail that can end a session on a
+   * template that cannot start one is the original defect made one click easier
+   * to reach, and it is a plausible future edit — sign-out is the easy half.
+   */
+  it("a LogOut may only ship where a reachable LogIn ships too", () => {
+    const reachable = reachableComponents(shipped);
+    const has = (type: string) =>
+      allNodes().some((n) => n.node.type === type && reachable.has(n.component));
+    expect(`logOut:${has('net.noodl.user.LogOut')}`).toBe(`logOut:${has('net.noodl.user.LogIn')}`);
+    // Asserted positively as well, so the rule cannot be satisfied by there being
+    // neither — which is the state SBR-017 found.
+    expect(has('net.noodl.user.LogIn')).toBe(true);
+  });
+
+  /**
+   * AC2, as far as the artefact can carry it: **the refused path and the accepted
+   * path are not the same screen.** The drive is what grades the person sentence;
+   * this is what stops the wiring silently collapsing back into one.
+   */
+  it('AC2 (structure): success navigates, refusal reveals, and neither is `completed`', () => {
+    const signIn = componentNamed('/Pages/SignIn') as Component;
+    expect(signIn).toBeDefined();
+    const nodes = nodesOf(signIn);
+    const login = nodes.find((n) => n.type === 'net.noodl.user.LogIn') as Node;
+    const from = (property: string) =>
+      signIn.graph.connections.filter((w) => w.fromId === login.id && w.fromProperty === property);
+
+    // The accepted path leaves the screen.
+    const done = from('done').map((w) => nodes.find((n) => n.id === w.toId)?.type).sort();
+    expect(done).toEqual(['RouterNavigate', 'States']);
+
+    // The refused path changes something on it, and reaches the refusal's
+    // `mounted` — the port that makes an absent refusal take no space.
+    const refusedInto = from('failure').map((w) => `${nodes.find((n) => n.id === w.toId)?.type}.${w.toProperty}`);
+    expect(refusedInto).toEqual(['States.to-Refused']);
+    const states = nodes.find((n) => n.type === 'States') as Node;
+    // Named by its WORDS rather than by a label, so this cannot go green against
+    // some other Text that happens to be wired to the same node.
+    const refusal = nodes.find((n) => n.parameters?.text === SIGNIN_REFUSAL_TEXT) as Node;
+    expect(refusal).toBeDefined();
+    const revealed = signIn.graph.connections
+      .filter((w) => w.fromId === states.id)
+      .map((w) => `${w.toId === refusal.id ? 'the refusal' : w.toId}.${w.toProperty}`);
+    expect(revealed).toEqual(['the refusal.mounted']);
+
+    // 🔴 And `completed` is wired nowhere on this node. It fires on EVERY
+    // outcome, so a `completed` here would raise the refusal on the successful
+    // sign-in too — the two paths would be one screen again, and the drive would
+    // still pass its first arm.
+    expect(from('completed')).toEqual([]);
+  });
+
+  it('AC3 (words): a signed-out visitor to an admin screen is told so, in the shell every screen places', () => {
+    // 🔴 The words, not the absence of rows. SBR-016's finding is that a refused
+    // query, an empty collection and a collection that never asked all render the
+    // same blank panel; "signed out" used to be a FOURTH state rendering
+    // identically, and asserting "no rows" would grade none of them apart.
+    const shell = componentNamed('/Admin/Shell') as Component;
+    const notice = nodesOf(shell).find((n) => n.parameters?.text === SIGNED_OUT_TEXT);
+    expect(notice?.type).toBe('Text');
+    // It starts absent and something raises it — a standing sentence would say
+    // "you are not signed in" to a signed-in admin.
+    expect(notice?.parameters?.mounted).toBe(false);
+    const raised = shell.graph.connections.filter((w) => w.toId === notice?.id && w.toProperty === 'mounted');
+    expect(raised).toHaveLength(1);
+
+    // …and what raises it is the INVERSE of `authenticated`, not `authenticated`
+    // itself. That one wire is the difference between the notice appearing for
+    // the person who needs it and appearing for everybody else.
+    const inverter = nodesOf(shell).find((n) => n.id === raised[0].fromId) as Node;
+    expect(inverter.type).toBe('Inverter');
+    const source = shell.graph.connections.find((w) => w.toId === inverter.id && w.toProperty === 'value');
+    const user = nodesOf(shell).find((n) => n.id === source?.fromId) as Node;
+    expect(`${user.type}.${source?.fromProperty}`).toBe('net.noodl.user.User.authenticated');
   });
 });

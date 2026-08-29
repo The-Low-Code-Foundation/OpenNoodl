@@ -425,7 +425,10 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       for (const n of byType(written[c.key], 'RouterNavigate')) refs.push(String(n.parameters?.target));
     }
     // 7 → 9: `/Admin/Shell` adds Pages, Theme & settings and View site.
-    expect(refs.length).toBe(9);
+    // 9 → 13: SBR-017's way back in — the shell's sign-out landing, the sign-in
+    // screen's two (into the panel, back to the claim screen) and the claim
+    // screen's link forward to it.
+    expect(refs.length).toBe(13);
     for (const r of refs) expect(`${r}:${known.has(r)}`).toBe(`${r}:true`);
   });
 
@@ -649,7 +652,8 @@ describe('SB-005: the admin panel, through the MCP door', () => {
       repeaters: 2,
       // PageRow 1, SectionRow 2, Setup 1, PageEditor 1, ThemeEditor 3.
       code: 10,
-      pages: 4
+      // 4 → 5: SBR-017's `/Pages/SignIn`.
+      pages: 5
     });
   });
 
@@ -951,7 +955,9 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     expect(byType(admin, 'RouterNavigate').map((n) => n.parameters?.target)).not.toContain('/Pages/ThemeEditor');
     const shell = written['Admin/Shell'];
     const targets = byType(shell, 'RouterNavigate').map((n) => n.parameters?.target);
-    expect(targets.sort()).toEqual(['/Pages/Admin', '/Pages/Site', '/Pages/ThemeEditor']);
+    // `/Pages/SignIn` is SBR-017's: the rail can end a session, so it must have
+    // somewhere to put the person it just signed out.
+    expect(targets.sort()).toEqual(['/Pages/Admin', '/Pages/SignIn', '/Pages/Site', '/Pages/ThemeEditor']);
   });
 
   it('MUTANT: rendering the cloud function error reddens', () => {

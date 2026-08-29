@@ -765,8 +765,12 @@ describe('SB-006: the public site, beside the panel it shares a router with', ()
    */
   it('every page of the template answers on its own URL, with nothing tying (acceptance 2)', () => {
     const pages = allPages();
-    // The census first: five pages, and the site's is the catch-all.
-    expect(pages.length).toBe(5);
+    // The census first: six pages, and the site's is the catch-all.
+    // 🔴 5 → 6 is SBR-017's `/Pages/SignIn` at `admin/signin`, and it is exactly
+    // the kind of page this check exists for: a NEW page is the only way the
+    // catch-all can start tying with something, and `assertUnambiguousRouting`
+    // below is what says it does not.
+    expect(pages.length).toBe(6);
     expect(pages.filter((p) => p.pattern === SITE_URL_PATH).map((p) => p.component)).toEqual(['/Pages/Site']);
     expect(pages.filter((p) => p.component !== '/Pages/Site').every((p) => p.pattern.split('/').length >= 2)).toBe(true);
 

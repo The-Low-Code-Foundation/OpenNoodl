@@ -27,6 +27,7 @@
                       "/Pages/PageEditor",
                       "/Pages/ThemeEditor",
                       "/Pages/Admin",
+                      "/Pages/SignIn",
                       "/Pages/Setup"
                     ]
                   }
@@ -1567,6 +1568,25 @@
                     },
                     "ports": [],
                     "dynamicports": []
+                  },
+                  {
+                    "id": "signOut",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Sign out",
+                    "x": 160,
+                    "y": 880,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "mounted": false,
+                      "text": "Sign out",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--muted-foreground)",
+                      "marginTop": "var(--space-2)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
                   }
                 ],
                 "label": "Sidebar",
@@ -1597,12 +1617,31 @@
                 "type": "Group",
                 "children": [
                   {
+                    "id": "signedOutNotice",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Signed out notice",
+                    "x": 160,
+                    "y": 1120,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "mounted": false,
+                      "text": "You are not signed in. Sign in to manage this site.",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-base)",
+                      "color": "var(--destructive)",
+                      "marginBottom": "var(--space-4)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
                     "id": "slot",
                     "type": "Component Children",
                     "children": [],
                     "label": "The screen that placed this shell",
                     "x": 160,
-                    "y": 1000,
+                    "y": 1240,
                     "parameters": {},
                     "ports": [],
                     "dynamicports": []
@@ -1610,7 +1649,7 @@
                 ],
                 "label": "Admin content",
                 "x": 100,
-                "y": 880,
+                "y": 1000,
                 "parameters": {
                   "flexDirection": "column",
                   "paddingTop": "var(--space-8)",
@@ -1638,7 +1677,7 @@
             "children": [],
             "label": "Which item is current",
             "x": 410,
-            "y": 880,
+            "y": 1360,
             "parameters": {},
             "ports": [
               {
@@ -1687,6 +1726,53 @@
             "parameters": {
               "router": "Main",
               "target": "/Pages/ThemeEditor"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "user",
+            "type": "net.noodl.user.User",
+            "children": [],
+            "label": "Who is signed in",
+            "x": 410,
+            "y": 880,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "signedOut",
+            "type": "Inverter",
+            "children": [],
+            "label": "Nobody is signed in",
+            "x": 410,
+            "y": 1120,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "logOut",
+            "type": "net.noodl.user.LogOut",
+            "children": [],
+            "label": "End the session",
+            "x": 410,
+            "y": 1000,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goSignIn-2",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "To the sign-in screen",
+            "x": 410,
+            "y": 1240,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/SignIn"
             },
             "ports": [],
             "dynamicports": []
@@ -1766,6 +1852,42 @@
             "fromId": "viewSite",
             "fromProperty": "onClick",
             "toId": "goSite",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "user",
+            "fromProperty": "authenticated",
+            "toId": "signOut",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "user",
+            "fromProperty": "authenticated",
+            "toId": "signedOut",
+            "toProperty": "value"
+          },
+          {
+            "fromId": "signedOut",
+            "fromProperty": "result",
+            "toId": "signedOutNotice",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "signOut",
+            "fromProperty": "onClick",
+            "toId": "logOut",
+            "toProperty": "login"
+          },
+          {
+            "fromId": "logOut",
+            "fromProperty": "done",
+            "toId": "goSignIn-2",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "signedOutNotice",
+            "fromProperty": "onClick",
+            "toId": "goSignIn-2",
             "toProperty": "navigate"
           }
         ],
@@ -4133,7 +4255,7 @@
       }
     },
     {
-      "name": "/Pages/Setup",
+      "name": "/Pages/SignIn",
       "graph": {
         "roots": [
           {
@@ -4152,8 +4274,12 @@
                     "x": 160,
                     "y": 280,
                     "parameters": {
-                      "text": "Claim this site",
-                      "fontWeight": "var(--font-bold)"
+                      "sizeMode": "contentHeight",
+                      "text": "Sign in",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-2xl)",
+                      "fontWeight": "var(--font-bold)",
+                      "color": "var(--foreground)"
                     },
                     "ports": [],
                     "dynamicports": []
@@ -4166,7 +4292,11 @@
                     "x": 160,
                     "y": 400,
                     "parameters": {
-                      "text": "Create the owner account and enter the setup token from your backend configuration."
+                      "sizeMode": "contentHeight",
+                      "text": "Sign in with the owner account you created when you set this site up.",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-base)",
+                      "color": "var(--muted-foreground)"
                     },
                     "ports": [],
                     "dynamicports": []
@@ -4188,6 +4318,263 @@
                   },
                   {
                     "id": "passwordField",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Password",
+                    "x": 160,
+                    "y": 640,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Password",
+                      "type": "password"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "signInButton",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Sign in",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "label": "Sign in"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "refusal",
+                    "type": "Text",
+                    "children": [],
+                    "label": "The refusal",
+                    "x": 160,
+                    "y": 880,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "mounted": false,
+                      "text": "That email and password did not match.",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--destructive)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "toSetup",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Not set up yet",
+                    "x": 160,
+                    "y": 1000,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "Not set up yet? Claim this site.",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--primary)",
+                      "marginTop": "var(--space-4)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Form",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column",
+                  "paddingTop": "var(--space-8)",
+                  "paddingBottom": "var(--space-8)",
+                  "paddingLeft": "var(--space-8)",
+                  "paddingRight": "var(--space-8)",
+                  "rowGap": "var(--space-3)"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Sign in",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "title": "Sign in",
+              "urlPath": "admin/signin"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "login",
+            "type": "net.noodl.user.LogIn",
+            "children": [],
+            "label": "Sign in",
+            "x": 410,
+            "y": 520,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "attemptState",
+            "type": "States",
+            "children": [],
+            "label": "Did the last attempt refuse?",
+            "x": 410,
+            "y": 880,
+            "parameters": {
+              "states": "Quiet,Refused",
+              "values": "refused",
+              "type-refused": "boolean",
+              "value-Quiet-refused": false,
+              "value-Refused-refused": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goAdmin",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "Into the panel",
+            "x": 410,
+            "y": 1120,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Admin"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goSetup",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "To the claim screen",
+            "x": 410,
+            "y": 1000,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/Setup"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "emailField-2",
+            "fromProperty": "onTextChanged",
+            "toId": "login",
+            "toProperty": "username"
+          },
+          {
+            "fromId": "passwordField",
+            "fromProperty": "onTextChanged",
+            "toId": "login",
+            "toProperty": "password"
+          },
+          {
+            "fromId": "signInButton",
+            "fromProperty": "onClick",
+            "toId": "login",
+            "toProperty": "login"
+          },
+          {
+            "fromId": "login",
+            "fromProperty": "failure",
+            "toId": "attemptState",
+            "toProperty": "to-Refused"
+          },
+          {
+            "fromId": "login",
+            "fromProperty": "done",
+            "toId": "attemptState",
+            "toProperty": "to-Quiet"
+          },
+          {
+            "fromId": "attemptState",
+            "fromProperty": "refused",
+            "toId": "refusal",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "login",
+            "fromProperty": "done",
+            "toId": "goAdmin",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "toSetup",
+            "fromProperty": "onClick",
+            "toId": "goSetup",
+            "toProperty": "navigate"
+          }
+        ],
+        "visualRoots": [
+          "page-5"
+        ]
+      }
+    },
+    {
+      "name": "/Pages/Setup",
+      "graph": {
+        "roots": [
+          {
+            "id": "page-6",
+            "type": "Page",
+            "children": [
+              {
+                "id": "shell-6",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "heading-6",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Heading",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "text": "Claim this site",
+                      "fontWeight": "var(--font-bold)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "blurb-2",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Blurb",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "text": "Create the owner account and enter the setup token from your backend configuration."
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "emailField-3",
+                    "type": "net.noodl.controls.textinput",
+                    "children": [],
+                    "label": "Email",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Email",
+                      "type": "email"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "passwordField-2",
                     "type": "net.noodl.controls.textinput",
                     "children": [],
                     "label": "Password",
@@ -4256,6 +4643,24 @@
                     },
                     "ports": [],
                     "dynamicports": []
+                  },
+                  {
+                    "id": "toSignIn",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Already set up",
+                    "x": 160,
+                    "y": 1240,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "text": "Already set up? Sign in.",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--primary)",
+                      "marginTop": "var(--space-4)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
                   }
                 ],
                 "label": "Form",
@@ -4317,7 +4722,7 @@
             "children": [],
             "label": "claimSite",
             "x": 410,
-            "y": 1240,
+            "y": 1360,
             "parameters": {
               "function": "claimSite"
             },
@@ -4351,15 +4756,29 @@
             "dynamicports": []
           },
           {
-            "id": "goAdmin",
+            "id": "goAdmin-2",
             "type": "RouterNavigate",
             "children": [],
             "label": "Into the panel",
             "x": 410,
-            "y": 1360,
+            "y": 1480,
             "parameters": {
               "router": "Main",
               "target": "/Pages/Admin"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "goSignIn",
+            "type": "RouterNavigate",
+            "children": [],
+            "label": "To the sign-in screen",
+            "x": 410,
+            "y": 1240,
+            "parameters": {
+              "router": "Main",
+              "target": "/Pages/SignIn"
             },
             "ports": [],
             "dynamicports": []
@@ -4367,19 +4786,19 @@
         ],
         "connections": [
           {
-            "fromId": "emailField-2",
+            "fromId": "emailField-3",
             "fromProperty": "onTextChanged",
             "toId": "signup",
             "toProperty": "email"
           },
           {
-            "fromId": "emailField-2",
+            "fromId": "emailField-3",
             "fromProperty": "onTextChanged",
             "toId": "signup",
             "toProperty": "username"
           },
           {
-            "fromId": "passwordField",
+            "fromId": "passwordField-2",
             "fromProperty": "onTextChanged",
             "toId": "signup",
             "toProperty": "password"
@@ -4417,7 +4836,7 @@
           {
             "fromId": "claim",
             "fromProperty": "done",
-            "toId": "goAdmin",
+            "toId": "goAdmin-2",
             "toProperty": "navigate"
           },
           {
@@ -4443,10 +4862,16 @@
             "fromProperty": "result",
             "toId": "signupRefusal",
             "toProperty": "visible"
+          },
+          {
+            "fromId": "toSignIn",
+            "fromProperty": "onClick",
+            "toId": "goSignIn",
+            "toProperty": "navigate"
           }
         ],
         "visualRoots": [
-          "page-5"
+          "page-6"
         ]
       }
     },
@@ -4990,7 +5415,7 @@
             "dynamicports": []
           },
           {
-            "id": "page-6",
+            "id": "page-7",
             "type": "SetDbModelProperties",
             "children": [],
             "label": "Write the page: mirror + access rules",
@@ -5106,25 +5531,25 @@
           {
             "fromId": "tasks",
             "fromProperty": "done",
-            "toId": "page-6",
+            "toId": "page-7",
             "toProperty": "store"
           },
           {
             "fromId": "prep",
             "fromProperty": "out-pageId",
-            "toId": "page-6",
+            "toId": "page-7",
             "toProperty": "modelId"
           },
           {
             "fromId": "prep",
             "fromProperty": "out-isPublic",
-            "toId": "page-6",
+            "toId": "page-7",
             "toProperty": "prop-published"
           },
           {
             "fromId": "prep",
             "fromProperty": "out-isPublic",
-            "toId": "page-6",
+            "toId": "page-7",
             "toProperty": "acl-world-read"
           },
           {
@@ -5140,7 +5565,7 @@
             "toProperty": "pm-published"
           },
           {
-            "fromId": "page-6",
+            "fromId": "page-7",
             "fromProperty": "done",
             "toId": "res",
             "toProperty": "send"
@@ -5176,7 +5601,7 @@
             "toProperty": "send"
           },
           {
-            "fromId": "page-6",
+            "fromId": "page-7",
             "fromProperty": "failure",
             "toId": "deny",
             "toProperty": "send"

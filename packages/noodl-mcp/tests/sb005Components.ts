@@ -854,7 +854,7 @@ export const SETUP_NODES = [
     label: 'Form',
     parent: 'page',
     parameters: { flexDirection: 'column', paddingTop: 24, paddingLeft: 24, paddingRight: 24 },
-    children: ['heading', 'blurb', 'emailField', 'passwordField', 'tokenField', 'claimButton', 'claimRefusal', 'signupRefusal']
+    children: ['heading', 'blurb', 'emailField', 'passwordField', 'tokenField', 'claimButton', 'claimRefusal', 'signupRefusal', 'toSignIn']
   },
   {
     id: 'heading',
@@ -949,6 +949,43 @@ export const SETUP_NODES = [
     type: 'RouterNavigate',
     label: 'Into the panel',
     parameters: { router: ROUTER, target: '/Pages/Admin' }
+  },
+  {
+    id: 'toSignIn',
+    type: 'Text',
+    label: 'Already set up',
+    parent: 'shell',
+    // 🔴 SBR-017 §5's second trap, answered with a link rather than a guard, and
+    // the reasoning is the whole scope call.
+    //
+    // The trap: a second signup against an already-claimed site **succeeds** —
+    // 201, a real `_User` row, a session token — and `claimSite` then correctly
+    // refuses it. So `/admin/setup` mints roleless accounts for anyone who finds
+    // it. The obvious fix is to make Setup refuse *before* signing anyone up,
+    // and it cannot be built: refusing early means asking "is this site claimed
+    // yet?", which is exactly the oracle SB-004 F7 removed on purpose. There is
+    // no endpoint that answers it and there must not be one.
+    //
+    // What is left is the half that actually helps the person: the owner who
+    // lands here because it is the only screen that mentions their account now
+    // has somewhere else to go, so the commonest way that second account gets
+    // created stops happening. The account factory itself is a **backend**
+    // setting (signup is open on this backend by default) and is recorded as
+    // such rather than papered over here.
+    parameters: {
+      ...STACKED,
+      text: 'Already set up? Sign in.',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--primary)',
+      marginTop: 'var(--space-4)'
+    }
+  },
+  {
+    id: 'goSignIn',
+    type: 'RouterNavigate',
+    label: 'To the sign-in screen',
+    parameters: { router: ROUTER, target: '/Pages/SignIn' }
   }
 ];
 
@@ -975,7 +1012,11 @@ export const SETUP_WIRES = [
   { fromId: 'claim', fromProperty: 'failure', toId: 'claimGate', toProperty: 'eval' },
   { fromId: 'claimGate', fromProperty: 'result', toId: 'claimRefusal', toProperty: 'visible' },
   { fromId: 'signup', fromProperty: 'failure', toId: 'signupGate', toProperty: 'eval' },
-  { fromId: 'signupGate', fromProperty: 'result', toId: 'signupRefusal', toProperty: 'visible' }
+  { fromId: 'signupGate', fromProperty: 'result', toId: 'signupRefusal', toProperty: 'visible' },
+
+  // The way out for an owner who is already set up. Nothing on the claim path
+  // moves — SBR-017 §5's first trap: `claimSite` is SBR-015's control.
+  { fromId: 'toSignIn', fromProperty: 'onClick', toId: 'goSignIn', toProperty: 'navigate' }
 ];
 
 // ── 4. Pages/Admin — the page list ───────────────────────────────────────────
@@ -1695,6 +1736,14 @@ export const THEME_EDITOR_WIRES = [
  * by `navStyle` below and reaches the colour AND the weight of one item, so the
  * two placements are observably different renders of one component.
  */
+/**
+ * The one thing an admin screen says to somebody who is not signed in. A
+ * constant because SBR-017 AC3 asserts **the words**, not the absence of rows —
+ * the whole finding is that four different states were rendering as one blank
+ * panel.
+ */
+export const SIGNED_OUT_TEXT = 'You are not signed in. Sign in to manage this site.';
+
 export const ADMIN_SHELL_NODES = [
   {
     id: 'frame',
@@ -1731,7 +1780,7 @@ export const ADMIN_SHELL_NODES = [
       borderRightWidth: 'var(--border-1)',
       borderRightColor: 'var(--border)'
     },
-    children: ['brand', 'navPages', 'navTheme', 'navMessages', 'viewSite']
+    children: ['brand', 'navPages', 'navTheme', 'navMessages', 'viewSite', 'signOut']
   },
   {
     id: 'brand',
@@ -1780,7 +1829,39 @@ export const ADMIN_SHELL_NODES = [
       paddingLeft: 'var(--space-8)',
       paddingRight: 'var(--space-8)'
     },
-    children: ['slot']
+    children: ['signedOutNotice', 'slot']
+  },
+  {
+    id: 'signedOutNotice',
+    type: 'Text',
+    label: 'Signed out notice',
+    parent: 'main',
+    // 🔴 SBR-017 §3's "a decision, not a default", decided here rather than on
+    // each screen: **the shell says it, and a click on it goes to the sign-in
+    // page.** Every admin screen places this component, so one sentence covers
+    // all three and cannot disagree with itself between two of them — the same
+    // argument that made the sidebar a component in the first place.
+    //
+    // A redirect was the alternative and was not taken: `/Pages/SignIn` does NOT
+    // place this shell, so a redirect would fire from a component that is not
+    // mounted on the screen it lands on, and a wrong `authenticated` reading
+    // would take a signed-in admin away from work in progress. A sentence is
+    // recoverable; a redirect loop is not.
+    //
+    // 🔴 The words are the AC, not the absence of rows. SBR-016's finding is
+    // that a refused query, an empty collection and a collection that never
+    // asked render the same empty screen; "signed out" is a **fourth** state
+    // that used to render identically to all three, and this is the line that
+    // separates it.
+    parameters: {
+      ...STACKED,
+      mounted: false,
+      text: SIGNED_OUT_TEXT,
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-base)',
+      color: 'var(--destructive)',
+      marginBottom: 'var(--space-4)'
+    }
   },
   {
     id: 'slot',
@@ -1833,6 +1914,54 @@ export const ADMIN_SHELL_NODES = [
     parameters: { router: ROUTER, target: '/Pages/ThemeEditor' }
   },
   {
+    id: 'signOut',
+    type: 'Text',
+    label: 'Sign out',
+    parent: 'sidebar',
+    // ⚠️ SBR-017 §3's order, honoured: sign-out is added **with** sign-in and
+    // never before it. A rail that can end a session on a template that cannot
+    // start one is the defect this task exists to close, made one click easier
+    // to reach.
+    //
+    // 🔴 `mounted: false` and the wire raises it — the opposite default from the
+    // notice above, and deliberately: an admin who is signed out must not be
+    // offered a way to sign out again, and the flash on the way in is a rail
+    // item appearing rather than a wrong one being shown.
+    parameters: {
+      ...STACKED,
+      mounted: false,
+      text: 'Sign out',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--muted-foreground)',
+      marginTop: 'var(--space-2)'
+    }
+  },
+  {
+    id: 'user',
+    type: 'net.noodl.user.User',
+    label: 'Who is signed in',
+    // `authenticated` is a getter over "is there a user model", flagged dirty
+    // from `initialize` and again on every `loggedIn`/`loggedOut` — so it
+    // publishes without anything wiring `Fetch`, and it publishes again when
+    // `logOut` below lands. That is what makes one node serve both the rail item
+    // and the notice.
+  },
+  {
+    id: 'signedOut',
+    type: 'Inverter',
+    label: 'Nobody is signed in'
+  },
+  { id: 'logOut', type: 'net.noodl.user.LogOut', label: 'End the session' },
+  {
+    id: 'goSignIn',
+    type: 'RouterNavigate',
+    label: 'To the sign-in screen',
+    // `deferred`, like `goPages` and `goTheme`: this component is written FIRST,
+    // and `/Pages/SignIn` does not exist until the SB-005 create pass reaches it.
+    parameters: { router: ROUTER, target: '/Pages/SignIn' }
+  },
+  {
     id: 'goSite',
     type: 'RouterNavigate',
     label: 'To the public site',
@@ -1875,7 +2004,19 @@ export const ADMIN_SHELL_WIRES = [
 
   { fromId: 'navPages', fromProperty: 'onClick', toId: 'goPages', toProperty: 'navigate' },
   { fromId: 'navTheme', fromProperty: 'onClick', toId: 'goTheme', toProperty: 'navigate' },
-  { fromId: 'viewSite', fromProperty: 'onClick', toId: 'goSite', toProperty: 'navigate' }
+  { fromId: 'viewSite', fromProperty: 'onClick', toId: 'goSite', toProperty: 'navigate' },
+
+  // SBR-017. One reading of "is anybody signed in", two opposite consequences.
+  { fromId: 'user', fromProperty: 'authenticated', toId: 'signOut', toProperty: 'mounted' },
+  { fromId: 'user', fromProperty: 'authenticated', toId: 'signedOut', toProperty: 'value' },
+  { fromId: 'signedOut', fromProperty: 'result', toId: 'signedOutNotice', toProperty: 'mounted' },
+
+  // ⚠️ The Log Out node's trigger input is called `login`, not `logout` —
+  // `logout.ts:69` declares it under that name with the display name `Do`. It is
+  // read off the node, not guessed from the family.
+  { fromId: 'signOut', fromProperty: 'onClick', toId: 'logOut', toProperty: 'login' },
+  { fromId: 'logOut', fromProperty: 'done', toId: 'goSignIn', toProperty: 'navigate' },
+  { fromId: 'signedOutNotice', fromProperty: 'onClick', toId: 'goSignIn', toProperty: 'navigate' }
 
   // 🔴 `navMessages` has NO navigate wire, and the gap is recorded rather than
   // papered over: `/Pages/Messages` is SBR-010's component and does not exist
@@ -2020,6 +2161,198 @@ export const NEW_PAGE_DIALOG_WIRES = [
   { fromId: 'cancelButton', fromProperty: 'onClick', toId: 'close', toProperty: 'closeAction-cancel' }
 ];
 
+// ── 9. Pages/SignIn — the way back in ───────────────────────────────────────
+
+/**
+ * SBR-017. The template had one auth node in twenty-one components — `SignUp`,
+ * on `/Pages/Setup` — and no `Log In` anywhere. An owner who claimed their site
+ * and later lost the session had no screen that would take their password, and
+ * the one screen that mentions their account cannot help them: `/admin/setup`
+ * signs a *second* account up and then correctly refuses to claim an already
+ * claimed site, leaving a roleless `_User` row and a locked door. Measured on
+ * the drive backend — `POST /users` **201** with a session token, then
+ * `POST /functions/claimSite` with that token **400 `This site cannot be
+ * claimed.`**
+ *
+ * ⚠️ **Why three drives missed it.** `SignUp` logs the new user in, so claiming
+ * a site and being signed into it were one act; every drive that ran in a single
+ * browser session was signed in from its first click and never asked how it got
+ * there.
+ *
+ * 🔴 **The refusal is a constant, and for a *different* reason than
+ * {@link CLAIM_REFUSAL_TEXT}'s.** There, F7 made the backend's answer uniform so
+ * `claimSite` cannot be asked whether a site is claimed. Here the backend
+ * already answers uniformly — Parse returns `Invalid username/password.`
+ * whichever half was wrong — so rendering `login.error` would leak nothing. It
+ * is still a constant because a sign-in form is the one place where a message
+ * that varies invites the reader to *interpret* the variation, and this screen
+ * has nothing to say beyond "not these two". If a future backend starts
+ * distinguishing the two halves, this parameter does not have to be revisited.
+ */
+export const SIGNIN_REFUSAL_TEXT = 'That email and password did not match.';
+
+export const SIGN_IN_NODES = [
+  {
+    id: 'page',
+    type: 'Page',
+    label: 'Sign in',
+    parameters: { title: 'Sign in', urlPath: `${ADMIN_PATH_PREFIX}/signin` },
+    children: ['shell']
+  },
+  {
+    id: 'shell',
+    type: 'Group',
+    label: 'Form',
+    parent: 'page',
+    // 🔴 `STACKED`, unlike `/Pages/Setup`'s twin of this group, which is in
+    // `ADMIN_LAYOUT_OWED` precisely because it grows. A new component is not
+    // owed anything: authoring the opt-out here is what keeps that list a
+    // record of debt rather than a place new debt gets filed.
+    parameters: {
+      ...STACKED,
+      flexDirection: 'column',
+      paddingTop: 'var(--space-8)',
+      paddingBottom: 'var(--space-8)',
+      paddingLeft: 'var(--space-8)',
+      paddingRight: 'var(--space-8)',
+      rowGap: 'var(--space-3)'
+    },
+    children: ['heading', 'blurb', 'emailField', 'passwordField', 'signInButton', 'refusal', 'toSetup']
+  },
+  {
+    id: 'heading',
+    type: 'Text',
+    label: 'Heading',
+    parent: 'shell',
+    parameters: {
+      ...STACKED,
+      text: 'Sign in',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-2xl)',
+      // The `monotone-typography` check, answered the same way `/Pages/Setup`
+      // answers it: a screen where nothing states a weight measures as unstyled.
+      fontWeight: 'var(--font-bold)',
+      color: 'var(--foreground)'
+    }
+  },
+  {
+    id: 'blurb',
+    type: 'Text',
+    label: 'Blurb',
+    parent: 'shell',
+    parameters: {
+      ...STACKED,
+      text: 'Sign in with the owner account you created when you set this site up.',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-base)',
+      color: 'var(--muted-foreground)'
+    }
+  },
+  {
+    id: 'emailField',
+    type: 'net.noodl.controls.textinput',
+    label: 'Email',
+    parent: 'shell',
+    parameters: { useLabel: true, label: 'Email', type: 'email' }
+  },
+  {
+    id: 'passwordField',
+    type: 'net.noodl.controls.textinput',
+    label: 'Password',
+    parent: 'shell',
+    parameters: { useLabel: true, label: 'Password', type: 'password' }
+  },
+  {
+    id: 'signInButton',
+    type: 'net.noodl.controls.button',
+    label: 'Sign in',
+    parent: 'shell',
+    parameters: { label: 'Sign in' }
+  },
+  {
+    id: 'refusal',
+    type: 'Text',
+    label: 'The refusal',
+    parent: 'shell',
+    parameters: {
+      ...STACKED,
+      // 🔴 `mounted`, not `visible` — a refusal that has not happened must take
+      // no space. `visible: false` keeps the box and the form jumps when the
+      // message arrives (P78 D16, in this same template).
+      mounted: false,
+      text: SIGNIN_REFUSAL_TEXT,
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--destructive)'
+    }
+  },
+  {
+    id: 'toSetup',
+    type: 'Text',
+    label: 'Not set up yet',
+    parent: 'shell',
+    parameters: {
+      ...STACKED,
+      text: 'Not set up yet? Claim this site.',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--primary)',
+      marginTop: 'var(--space-4)'
+    }
+  },
+  { id: 'login', type: 'net.noodl.user.LogIn', label: 'Sign in' },
+  {
+    id: 'attemptState',
+    type: 'States',
+    label: 'Did the last attempt refuse?',
+    // `States` rather than a bare `Condition`, for the reason `/Admin/PageRow`'s
+    // `callState` is one: it **resets**. A second attempt that succeeds returns
+    // the form to `Quiet`, so a refusal cannot outlive the attempt it was about.
+    // ⚠️ On this screen the success arm also navigates away, so the reset is
+    // belt-and-braces — but a `Condition` here would leave the refusal standing
+    // if navigation were ever made conditional, and that is a silent failure.
+    parameters: {
+      states: 'Quiet,Refused',
+      values: 'refused',
+      'type-refused': 'boolean',
+      'value-Quiet-refused': false,
+      'value-Refused-refused': true
+    }
+  },
+  {
+    id: 'goAdmin',
+    type: 'RouterNavigate',
+    label: 'Into the panel',
+    parameters: { router: ROUTER, target: '/Pages/Admin' }
+  },
+  {
+    id: 'goSetup',
+    type: 'RouterNavigate',
+    label: 'To the claim screen',
+    parameters: { router: ROUTER, target: '/Pages/Setup' }
+  }
+];
+
+export const SIGN_IN_WIRES = [
+  // The address is both, exactly as `/Pages/Setup` signs up: `signup` is given
+  // the address as its `username` as well as its `email`, and that is the whole
+  // reason "sign in with your email" is true here.
+  { fromId: 'emailField', fromProperty: 'onTextChanged', toId: 'login', toProperty: 'username' },
+  { fromId: 'passwordField', fromProperty: 'onTextChanged', toId: 'login', toProperty: 'password' },
+  { fromId: 'signInButton', fromProperty: 'onClick', toId: 'login', toProperty: 'login' },
+
+  // 🔴 `failure`, never `completed`. `completed` fires on every outcome, so it
+  // would raise the refusal on the successful sign-in too — the mistake
+  // `completed-is-the-outcome-port-that-cannot-mean-success` names, and the one
+  // that would make AC2's two paths the same screen.
+  { fromId: 'login', fromProperty: 'failure', toId: 'attemptState', toProperty: 'to-Refused' },
+  { fromId: 'login', fromProperty: 'done', toId: 'attemptState', toProperty: 'to-Quiet' },
+  { fromId: 'attemptState', fromProperty: 'refused', toId: 'refusal', toProperty: 'mounted' },
+
+  { fromId: 'login', fromProperty: 'done', toId: 'goAdmin', toProperty: 'navigate' },
+  { fromId: 'toSetup', fromProperty: 'onClick', toId: 'goSetup', toProperty: 'navigate' }
+];
+
 // ── The set, in an order the door will accept ────────────────────────────────
 
 /** One component: what to send, and where it lands. */
@@ -2082,7 +2415,7 @@ export const SB005_COMPONENTS: Sb005Component[] = [
     connections: ADMIN_SHELL_WIRES,
     // `goSite` is NOT deferred: `/Pages/Site` belongs to the SB-006 set, which
     // `buildSiteTemplateProject` writes before this one.
-    deferred: ['goPages', 'goTheme']
+    deferred: ['goPages', 'goTheme', 'goSignIn']
   },
   {
     path: 'Admin/SectionRow',
@@ -2136,6 +2469,18 @@ export const SB005_COMPONENTS: Sb005Component[] = [
     isPage: true,
     nodes: ADMIN_NODES,
     connections: ADMIN_WIRES
+  },
+  {
+    // Before `/Pages/Setup`, so that Setup's "already set up? sign in" link
+    // resolves on the create pass. The reverse edge — this screen's link back to
+    // the claim screen — is the one that cannot, and it is `deferred`.
+    path: 'Pages/SignIn',
+    key: 'Pages/SignIn',
+    legacyName: '/Pages/SignIn',
+    isPage: true,
+    nodes: SIGN_IN_NODES,
+    connections: SIGN_IN_WIRES,
+    deferred: ['goSetup']
   },
   {
     path: 'Pages/Setup',
