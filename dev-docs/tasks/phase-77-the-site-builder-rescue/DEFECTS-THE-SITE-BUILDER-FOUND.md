@@ -622,7 +622,7 @@ stacked at y=65/96/127. Screenshot: `notes/sbr007-page-editor-driven.png`. This 
 
 ---
 
-## D18 — 🟢 FIXED s23 (built, **undriven**) · The page editor's header row did not fit, and below 897 px `Save page` could not be reached at all
+## D18 — 🟢 FIXED s23, **DRIVEN s24** · The page editor's header row did not fit, and `Save page` could not be reached — at 1440 px, once the page title was an ordinary length
 
 **Found:** s22, driving SBR-007 AC1 · **Owner: `SBR-007`** (open — AC2 ⬜, AC3 blocked — and the row
 is this task's own build, §7) · **Template**, not product · **Bites:** any client on a narrow
@@ -660,6 +660,13 @@ So the shell reflows and its other two screens reflow; this header row does not.
 ⚠️ **Stated at its real size, not inflated.** At 988 px the label is readable and the button still
 clicks — which is exactly why SBR-007 AC1 was driveable this session. The defect is everything
 below 1001 px, and it is total below 897.
+
+🔴 **s24 correction — that last sentence, and this row's own heading, were understatements.** `1001`
+and `897` are properties of **the fixture's 22-character title**, not of the defect. The row's width
+is `sidebar + title + pill + two buttons`, and the title is the only term a user controls. Re-driven
+with a 56-character title (965 px at 30 px): `Save page` hit-tests **`none` at 1440, 1200, 1024 and
+800**, and is reachable only at 1920. On an ordinary laptop screen, with an ordinary page title, the
+button did not exist. See [SBR-007 §21](SBR-007-THE-PAGE-EDITOR.md).
 
 ~~**Likely shape of the fix, not yet measured:** SBR-004 §9.1 found the same family...~~ — two
 things in that sentence were wrong, and both are corrected below.
@@ -711,19 +718,32 @@ would contradict readings already taken. The graded property is instead **a wire
 display font size** — a width the template cannot know because it is a user's page title. That
 population is exactly 1, and it is this row.
 
-### 🔴 What is NOT established
+### 🟢 DRIVEN s24 — on a rendered screen, without the editor
 
-**Nobody has seen this on a screen.** The claim above is a source-level mechanism plus an artefact
-assertion. It is *not* a drive, and it must not be relayed as one:
+A peer held 9222 and `:8574` again, so the drive went through
+`scripts/devtools/render-from-disk.js` + `withRenderedPage` — the **same
+`noodl-editor/src/external/viewer/noodl.viewer.js` bundle** the editor's viewer runs, in headless
+Chrome on a free port. Two arms, both copies of the fixture, differing by exactly the three lines of
+`10b26d57`'s artefact diff (the fixed arm's parameter block was read out of
+`site-builder.content.json` at HEAD, not typed).
 
-- the fixture project `SBR-007 Page Editor Drive` was created from the **old** template and still
-  holds the unwrapped row — the fix does not reach it retroactively;
-- a peer held the only editor (a live viewer on `:8574`) for the whole session, and two editors
-  cannot coexist on 9222.
+- ✅ **The control arm reproduced §14 in full** — 104/104 `SELF` at 1440 and 1024, **91/104** at 988,
+  **`none`** at 800 and 600, right edge pinned at **1001**, `scrollWidth === innerWidth` throughout.
+  Seven readings, seven agreements, through a different host.
+- ✅ **The fixed arm**: computed `flex-wrap: wrap` and `row-gap: 12px`, row height 35 → 73 below
+  1024, and `Save page` **`SELF`, 104/104, at every width from 1440 down to 600** — and at every
+  width down to 800 with the long title too.
+- ✅ Screenshot pairs: [`notes/d18-before-800.png`](notes/d18-before-800.png) ·
+  [`notes/d18-after-800.png`](notes/d18-after-800.png) ·
+  [`notes/d18-longtitle-before-1440.png`](notes/d18-longtitle-before-1440.png) ·
+  [`notes/d18-longtitle-after-1440.png`](notes/d18-longtitle-after-1440.png).
 
-**The drive that would close this** is §14's own probe re-run: `elementFromPoint` on `Save page` at
-1440 / 988 / 800 / 600, expecting a hit test of `SELF` at every width and the row's height to grow
-by one line below ~1001px.
+⚠️ **What the drive does not cover**: it is not the editor's preview pane, and it renders the fixed
+arm rather than a project freshly installed from the HEAD template. Why that second seam is closed
+by a measurement rather than assumed — the fixture's own header row was byte-identical to the
+pre-fix artefact — is in [SBR-007 §20](SBR-007-THE-PAGE-EDITOR.md).
+
+🔴 **The residual the fix cannot reach is [D20](#d20).**
 
 ## D19 — 🟢 FIXED s23 · Three commits landed on a red `test:main`, because the phase watches a different runner
 
@@ -770,3 +790,44 @@ replaced).
 **`test:main` still is not in anybody's routine.** This session fixed the three reds; it did **not**
 make the suite watched, and the next drift will be just as silent. `NONE` — it needs a decision
 about where `test:main` runs, which is bigger than one task.
+
+---
+
+## D20 — 🔴 The page title is unreadable below its own width, and there is no gesture that reaches it
+
+**Found:** s24, driving [D18](#d18) · **Owner: `NONE`** — it needs a design decision, not a build ·
+**Template**, not product · **Bites:** any client whose page title is longer than their window.
+
+The `Editing · <title>` heading in `/Pages/PageEditor`'s header row **never shrinks and never
+wraps**. Measured with the same probe, in the same runs as D18's drive, in **both** arms:
+
+| page title | title box | measured at 1920 / 1440 / 1200 / 1024 / 800 / 600 |
+|---|---|---|
+| `Retitled By The Drive` (22 ch) | 272..681, **409 px** | 409 px at **every** width |
+| `Quarterly Board Meeting Minutes and Strategic Review 2026` (56 ch) | 272..1237, **965 px** | 965 px at **every** width |
+
+`document.scrollWidth === innerWidth` at every width, so the overflow is **clipped, not
+scrollable**. With the 56-character title the heading is cut off at every viewport at or below
+**1237 px** — including in the fixed arm, on a 1024 or 1200 px screen.
+
+✅ **This is the same mechanism as D18** (`layout.ts:82` — every node starts `flexShrink: 0`, and a
+`contentSize` child opts back in on neither axis) **and D18's fix cannot address it.** `flexWrap`
+moves whole children onto a new line; it does nothing to a single child that is itself too wide.
+That is why this is a separate row rather than a reopening: wrapping the row was the right fix for
+the actions, and it is not a fix that exists for the text.
+
+⚠️ **Honest about severity.** Nothing is unreachable — the actions all work, the title is editable
+in the `Title` field below, and the heading is a label rather than a control. It is a legibility
+defect, not a blocked task, which is why it is filed at `NONE` rather than escalated.
+
+**What it needs is a decision, one of:**
+
+- let the title shrink and ellipsize (`flexShrink: 1` plus a text-overflow treatment) — but the
+  runtime opts a node into shrinking only via a percentage size along the parent's direction, so
+  this may be a **product** change in `layout.ts`, not a template one;
+- let the heading wrap to a second line (it is a `Text`, so this is a template-side parameter);
+- or accept it and say so.
+
+🔴 **Do not re-derive the threshold from the fixture.** `1237` is this title's number. The general
+statement is *the heading's right edge is `sidebar + title-text-width`, at every viewport* — which
+is the same trap D18's `897` fell into, recorded here so the next reader does not repeat it.

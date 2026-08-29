@@ -384,3 +384,141 @@ They live in **`test:main`**, and the phase's standing gate note quotes **`test:
 runner was being read as a green for the other, and three feature commits landed on the red one.
 Repaired with attribution rather than bumped (236 → 257 SBR-017, → 259 SBR-016, → 274 SBR-007 s21);
 `tests-unit` is now **363 suites / 6105 tests / exit 0**.
+
+---
+
+# 🟢 s24 (2026-08-29) — D18 is driven, without the editor, and the fix is bigger than its own row claimed
+
+## 20. The drive — one probe, two arms, and a control that had to reproduce §14 first
+
+**D18 is met on a rendered screen.** No editor was involved: a peer held 9222 and `:8574` for this
+session as well, so the drive was taken against `scripts/devtools/render-from-disk.js` — the same
+`packages/noodl-editor/src/external/viewer/noodl.viewer.js` bundle the editor's viewer runs —
+driven over CDP by `withRenderedPage` on a free port.
+
+### The two arms differ by exactly the committed diff, and nothing else
+
+Both arms are copies of the fixture `SBR-007 Page Editor Drive`. The fixed arm's `Editor header`
+`parameters` block was replaced with the one read out of `site-builder.content.json` **at HEAD**, so
+the difference was not typed by hand. `diff -r` over the two project trees returns exactly:
+
+```
+-        "columnGap": "var(--space-3)"
++        "flexWrap": "wrap",
++        "columnGap": "var(--space-3)",
++        "rowGap": "var(--space-3)"
+```
+
+✅ **The seam this leaves — install — is closed by a measurement already in hand.** The fixture was
+minted through `EmbeddedTemplateProvider.install` at 21:15 from the *pre-fix* template, and its
+header row on disk read `{sizeMode, flexDirection, alignItems, columnGap}` — **byte-identical to the
+pre-fix artefact**. Install carries this node's parameters through verbatim, so an install from the
+HEAD template yields the block above. Population 1, like the gate.
+
+### 🔴 The control arm reproduces §14 exactly — that is what licenses the second arm
+
+Same probe string, same run, `owner@sbr007.test` signed in, height held at 900 so only width varies:
+
+| viewport | §14 recorded | control arm measured | agrees |
+|---|---|---|---|
+| 1440 | 104 / 104, `SELF` | 104 / 104, `SELF` | ✅ |
+| 1024 | 104 / 104, `SELF` | 104 / 104, `SELF` | ✅ |
+| 988 | **91 / 104**, `SELF` | **91 / 104**, `SELF` | ✅ |
+| 800 | 0 / 104, **`none`** | 0 / 104, **`none`** | ✅ |
+| 600 | 0 / 104, **`none`** | 0 / 104, **`none`** | ✅ |
+| right edge | pinned **1001** at every width | pinned **1001** at every width | ✅ |
+| `scrollWidth === innerWidth` | true at every width | true at every width | ✅ |
+
+Seven readings, seven agreements, taken through a different host from the one that produced them.
+🔴 **This is the step §16 was paid for.** The first attempt at this probe measured
+`saveButton.parentElement` rather than the button, reported a 1136px "button" that hit-tested `SELF`
+at 600px, and would have read as *"the defect is not reproducible."* It was caught by the control
+disagreeing with §14, not by inspection — the ancestor dump that followed showed the button is the
+leaf itself, `BUTTON.ndl-controls-button`, 104px wide, right edge 1001.
+
+### The fixed arm
+
+| viewport | row `flexWrap` | row h | `Save page` | visible | hit |
+|---|---|---|---|---|---|
+| 1440 | `wrap` | 35 (one line) | 897..1001 | 104/104 | ✅ `SELF` |
+| 1040 | `wrap` | 35 (one line) | 897..1001 | 104/104 | ✅ `SELF` |
+| 1024 | `wrap` | **73 (two lines)** | 272..376 | 104/104 | ✅ `SELF` |
+| 988 | `wrap` | 73 | 272..376 | 104/104 | ✅ `SELF` |
+| 897 | `wrap` | 73 | 373..477 | 104/104 | ✅ `SELF` |
+| 800 | `wrap` | 73 | 475..580 | 104/104 | ✅ `SELF` |
+| 600 | `wrap` | 73 | 475..580 | 104/104 | ✅ `SELF` |
+
+Computed `flex-wrap: wrap` and `row-gap: 12px` — `var(--space-3)` resolved — so the parameters
+reached the DOM. **`Save page` is reachable at every width tested.** Screenshot pair at 800:
+[`notes/d18-before-800.png`](notes/d18-before-800.png) ·
+[`notes/d18-after-800.png`](notes/d18-after-800.png).
+
+⚠️ **§18 predicted the wrap at "~1001px"; it is measured between 1040 and 1024** — and that is
+correct rather than early. The row wraps when its content overflows **the row**, which happens at
+1024; the pre-fix arm went on overflowing the row silently from the same width and only left the
+**viewport** at 1000. The prediction was reading the second threshold as if it were the first.
+
+✅ **A consequence neither row anticipated**: the details card below reflows too (right edge 1408 →
+768 at 800px). The unwrapped row was 1001px wide and its parent column was sized to it, so the whole
+content column overflowed. Visible in the screenshot pair.
+
+## 21. 🔴 D18 was worse than its own row said — the threshold is the title, not 897px
+
+§17 named the graded property *"a wire-fed `Text` at a display font size — a width the template
+cannot know, because it is a user's page title."* That is exactly right, and it means **`897` is a
+property of the fixture's short title, not of the defect.**
+
+Re-run against a throwaway copy of the backend whose page title is 56 characters
+(`Quarterly Board Meeting Minutes and Strategic Review 2026`, 965px at 30px):
+
+| viewport | control (pre-fix) `Save page` | fixed arm |
+|---|---|---|
+| 1920 | 104/104 ✅ `SELF` | 104/104 ✅ `SELF` |
+| **1440** | **0/104 🔴 `none`** | 104/104 ✅ `SELF` |
+| **1200** | **0/104 🔴 `none`** | 104/104 ✅ `SELF` |
+| **1024** | **0/104 🔴 `none`** | 104/104 ✅ `SELF` |
+| **800** | **0/104 🔴 `none`** | 104/104 ✅ `SELF` |
+
+🔴 **On an ordinary 1440 laptop screen, with an ordinary page title, `Save page` did not exist.**
+The fix holds at every width. Pair at 1440:
+[`notes/d18-longtitle-before-1440.png`](notes/d18-longtitle-before-1440.png) ·
+[`notes/d18-longtitle-after-1440.png`](notes/d18-longtitle-after-1440.png).
+
+**The rule this pays for: a threshold measured on a fixture is a fact about the fixture.** D18's row
+carried `897` in its own heading, and the number was true of one 22-character title. The defect was
+never bounded by a viewport width — it was bounded by a string a user types.
+
+## 22. 🔴 [D20](DEFECTS-THE-SITE-BUILDER-FOUND.md) — the title itself still cannot be read, and D18's fix cannot reach it
+
+The same probe, same runs: the title `Text` measures **409px** (short title) and **965px** (long
+title) — **identical at every viewport in both arms**. It never shrinks and never wraps, and
+`scrollWidth === innerWidth` throughout, so whatever leaves the viewport is unreachable. With the
+56-character title the heading is clipped at **every width at or below 1237px**, fixed arm included.
+
+Wrapping the row moves the *actions*; it cannot move the text inside a single non-shrinking child.
+Filed as **D20**, `NONE` — it needs a decision (let the title shrink and ellipsize, or let it wrap),
+which is not this task's build.
+
+## 23. What the instrument cannot see
+
+- **It is not the editor's preview pane.** Same viewer bundle, same project data, different host —
+  no editor chrome, no preview iframe sizing, no `ViewerConnection`. The control arm reproducing all
+  seven of §14's readings is the argument that this does not matter *for this question*; it is not
+  an argument about anything else.
+- **It renders `arm-fixed`, not a project freshly installed from the HEAD template.** See §20 for why
+  that seam is closed by measurement rather than assumed.
+- **`test:ci` was not run this session either** — a peer held the editor throughout, again.
+
+## 24. Where the ACs stand after s24
+
+| | verdict |
+|---|---|
+| **AC1** | 🟢 preview half MET and DRIVEN (s22) · ⬜ **deployed half still owed** — unblocked since SBR-008 closed at s18, not attempted at s22, s23 or s24 |
+| **AC2** | ⬜ not built — sibling renumbering needs a cloud function and a decision (§8) |
+| **AC3** | 🟡 thumbnail shipped, source-measured only · 🔴 drop gesture blocked on **D15**, `NONE` · ⬜ gallery model is SBR-005's |
+| **AC4** | 🟢 MET and DRIVEN (§12.2) |
+| **AC5** | 🟢 MET and DRIVEN (§12.3) |
+| **D18** | 🟢 **FIXED s23, DRIVEN s24** (§20–§21) — and its recorded severity was raised, not confirmed |
+| **D20** | 🔴 new, `NONE` — the title the fix cannot reach (§22) |
+
+🔴 **AC3 is still not met, and the phase must not close as if it were.** D15 is unowned.
