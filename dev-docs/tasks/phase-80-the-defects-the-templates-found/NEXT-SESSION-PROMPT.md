@@ -1,112 +1,100 @@
 # Phase 80 — next session
 
-## State: DEF-001, 002, 003, 004, 006, 016 closed. **DEF-006 is fully closed, (c) included.**
+## State: DEF-001, 002, 003, 004, 006, 016, **017** closed. **DEF-007 is 🟡 partial.**
 
-**s8 (2026-08-29)** took DEF-006 (c). If you are picking up DEF-006 for any reason, read its
-**§7**, not §6.4 — §6.4 is the sourcing survey and **one of its judgements is superseded**, with a
-banner saying so at its head.
+**s9 (2026-08-29)** took DEF-007 and drove its one flagged reading. Nothing in product source
+changed — **this session is documentation only**, so every gate stands where s8 left it and none
+was re-run. If you are picking up DEF-007, read **§2.1**, **§6** and **§6.1**; §3's item 3 is
+struck through and §2's bullet list is superseded by §2.1.
 
 | commit | what |
 |---|---|
-| `3a112837` | **DEF-006 (c)** — six compositions, the token the survey recommended that fails AA, and the gate that would have passed it |
-
-Gates at close: `typecheck:editor`, `typecheck:editor-tests`, `catalog:check`,
-`catalog:merge:check`, `catalog:groups:check`, `docs:nodes:check` **clean** ·
-`styleVocabularyPorts` **13/13** · `design-token-contrast` **13/13** · `noodl-mcp` **956 passed**
-· `catalog:examples` **60/62 — red, unchanged, still somebody's** · ✅ **`test:ci` 2889 specs,
-4 failures, all four `AIX-006 style vocabulary` by name — the floor**, seed 74947.
+| `7655c7ea` | **DEF-007** — §2.1 the empty population, §6 the seam from disk, §6.1 AC3 measured at 56 |
+| `fc4ebe45` | §2.1 widened to 340 manifests, and the modules qualification that changes the fix |
+| `0ab7dc8d` | register: DEF-007 → 🟡 partial, and the ruling §2.1 raised |
 
 ---
 
 ## 🔴 The finding, in one paragraph
 
-**The task's one judgement was a reading, driving it inverted the decision, and the gate that
-exists to catch exactly that would have passed it.** §6.4 said to source the `fieldError`
-composition from `--destructive` rather than the raw `--red-700`, since presets move the semantic
-token and not the palette one — true — *"so the contrast floor survives the move"*. Measured as
-14px text on the `--surface` a form card actually sits on, `--destructive` is **4.38:1 under
-Playful and 4.49:1 under Soft**, both under AA's 4.50, where `--red-700` never drops below 6.03.
-It is a **fill** colour, sized for white text on top of it. The survey had measured against
-**white**, and against the **default palette only** — which its own next line explicitly warned
-against. Worse: `design-token-contrast.test.ts` grades text with no declared background as sitting
-on `--background`, where the proposed token clears in **all six** palettes — so the gate would have
-reported nothing. It now grades both implicit grounds.
+**The task asked for a fix whose population is empty, and the real gap was sitting next to it
+unnamed.** §3.3 said to give `PlatformTemplateProvider` the `rootNodeId` resolution
+`EmbeddedTemplateProvider` has. The mechanism reading was true — it does no resolution — but the
+*consequence* does not follow: the editor's writer emits `rootNodeId` and **never** `rootComponent`,
+so the name-shaped input that resolver exists for cannot reach the curated path, whose input is a
+real project's files uploaded verbatim. Across **340** manifests on this machine, exactly **2**
+carry `rootComponent` and both carry an id beside it — **the set carrying a name with no id is
+empty**. What *is* missing is any check that a template has a home **at all**: no publish gate, no
+install rescue, while `noodl-preview` already has the guess-and-warn the editor path lacks.
 
 ## What to do next
 
-**DEF-017 C1**, or **DEF-007** — read its **§1.1**, which changes that task's premise and makes it
-the owner of P77's D11.
+**DEF-007's §3.2** — the migration half, which is now the whole of the task. §1.1 already forced
+its decision (a modern template must carry explicit `runOnChange-*` values, because the migration
+will keep reversing an unstated intent on every load). §6.1 prices it: **56 decisions, not a flag.**
+🔴 **Do not start by editing `site-builder.content.json` or its generator** — that artefact is
+phase 77's active file, moved by SBR-017 today. Sequence after their work lands, or pick a
+different artefact.
 
 Also open: **DEF-008**, **DEF-009**, **DEF-014**, **DEF-015**, and the four carried from phase 76
 by reference (**DEF-010/011/012/013** — three say their fix needs a corpus sweep, and that sweep is
 shared work to be done **once**). **DEF-005** is 🔒 on a Richard ruling.
 
-🔴 **New and unowned, registered in `TASKS.md` under *Findings this phase raised that nobody owns*:
-there is no semantic token for error TEXT.** `--destructive` is the only semantic red and it is a
-fill. That is why `fieldError` ships a raw palette token to stay legible, and why a re-themed app
-keeps a brick-red error line while everything else moves. Fixing it means a value in
-`DefaultTokens.ts` **and all five presets**, each against the contrast floor — 🧭 **plausibly
-Richard's**, on the same grounds his `--primary` ruling was.
-
-🔴 **The standing instruction still pays — five sessions running.** *Find the claim in your task
+🔴 **The standing instruction still pays — six sessions running.** *Find the claim in your task
 that is a reading rather than a measurement, and drive that one first.* s4 deleted two of three
 rows, s5 found a defect the file did not contain, s6 found the defect had been fixed the day
 before, s7 found the rule was wrong about two of eleven cases, s8 found the recommended fix ships
-an accessibility defect.
+an accessibility defect, **s9 found a scope item with no population behind it**.
 
 ## 🔴 What this session paid for, that the next one should not re-buy
 
-- 🔴 **A stale measurement does not announce itself by being wrong.** `ui-form-field`'s
-  description said `--destructive` measures **3.60:1 and fails AA**. That was *exact* — for
-  `#ef4444`, the value it held when the sentence was written on **2026-08-11**. DEF-001 moved
-  `--destructive` to `#dc2626` at **09:39 that same morning**, making it 4.62:1 and passing. The
-  sentence's **conclusion outlived its evidence**: still right, for a reason it no longer states.
-  ✅ **When you cite a number about a token, `git log -S'<value>'` the token first** — ten seconds,
-  and it is the difference between quoting a measurement and quoting a fossil.
-- 🔴 **Two grounds, not one.** A colour with no declared background does not sit on one thing.
-  `--background` is the top of a page; `--surface` is inside every card, panel and form — which is
-  where form text lives. Grading only the lighter one is optimistic **exactly where a real app is
-  darker**, and the gap (4.70 vs 4.38 under Playful) is the whole defect. ✅ Widened, **free**:
-  55 → 86 pairs, nothing reddened. ⚠️ Still not every ground — `--surface-raised` and runtime fills
-  are outside it, and the test says so.
-- ✅ **A widened gate needs an arm that only the widening can pass.** Arm (e) plants a regression
-  invisible on `--background`, and asserts it is caught **only** on `--surface` and **only** in
-  `playful` and `soft`. 🔴 Narrowing `groundsOf` back reddens **arm (e) and nothing else** — the
-  other twelve stay green, which is precisely the hole that existed. Without that arm the widening
-  would have been silently revertible.
-- ✅ **Sabotage told me the catalog agreed with the recipe's prose.** Reverting `textField` to the
-  shipped `sizeMode: 'contentSize'` reddens the AC2 gate with the catalog's own condition —
-  `width is off under "sizeMode = explicit OR sizeMode = contentHeight"`. The recipe's measured
-  196px-at-every-viewport trap, confirmed **from the port declaration** rather than from the
-  sentence describing it.
+- 🔴 **"Does no X" is a fact about a mechanism; "therefore X is broken" needs the input shape.**
+  Both providers were graded against the same checklist and only one of them *takes the input the
+  checklist is about*. `EmbeddedTemplateProvider` resolves a name because its input is a
+  hand-authored TS object (`hello-world.template.ts:40`, `rootComponent: 'App'`);
+  `PlatformTemplateProvider` receives a saved project's bytes. ✅ **Before porting a fix between two
+  implementations of an interface, read what each one is handed** — the asymmetry was deliberate
+  and the file never said so.
+- ✅ **The absence was measured, not assumed, because the counter demonstrably fired.** It found
+  the 2 projects carrying `rootComponent`; that is the known-firing signal beside the zero. A count
+  of "0 with a name and no id" from a detector that had found nothing at all would have been worth
+  nothing.
+- 🔴 **Widening a denominator can strengthen one claim and correct another in the same pass.**
+  97 → 340 left the `rootComponent` claim intact but exposed that **63 have no home and most are
+  modules and prefabs, which have no home by design.** That single fact changes the fix: a
+  publish-time check keyed on `rootNodeId` would refuse every module. ✅ **The narrow denominator
+  was the right one for "how many broken projects" and the wide one for "does this shape exist" —
+  they are different questions and one number cannot serve both.**
+- ✅ **The whole seam is one call.** `applyPatches(content)` immediately before
+  `ProjectModel.fromJSON(content)`, and `fromJSON` does not apply patches itself. Two paths apply
+  it (editor open `projectmodel.editor.ts:24`, VC snapshot `snapshotProject.ts:112`); headless
+  render, code export, MCP authoring and template generation do not. ⚠️ **Three `fromJSON` call
+  sites inherit rather than decide** (`compilation.ts:83`, `exportProjectComponents.ts:88` operate
+  on an already-loaded project; `projectmodel.ts:218` `fromLocalStorage` has no pass at all) —
+  counting them as "does not apply" would have made the seam look wider than it is.
+- ✅ **`planRunOnValueChangeMigration` imports nothing**, so the disk-vs-load pair can be measured
+  over any artefact with `ts-node --transpile-only` and no editor. That is how §6.1 got a number in
+  minutes. Anchor it to an **md5**, not a path — the artefact moves.
 
 ## Traps carried
 
-- ✅ **`test:ci` ran after the peer announced teardown, and it is the floor**: 2889 specs, 4
-  failures, all four `AIX-006 style vocabulary` **by name**, seed **74947**. `test-results.json`
-  was deleted first and the readout is 19s old, so a stale file could not have passed as this run.
-  ⚠️ **The runner printed `HEAD b25bc914` — a P18 peer's docs commit made 18 seconds earlier.**
-  `gitHead` is the checkout at read time, never authorship; `3a112837` was verified an ancestor
-  separately.
-  🔴 **The peer offered their own floor reading (seed 07472) and it was not adopted.** Theirs was
-  taken at 16:28, after this commit landed at 16:08, so it genuinely did compile this change — and
-  it still is not evidence about it. A relayed measurement is about the run that produced it; the
-  point of running it again was the **independent seed**, which is what separates a floor from a
-  repeat. ✅ **When a peer hands you a green reading of your own work, run it yourself anyway** —
-  it cost 90 seconds.
-- ⚠️ **`typecheck:mcp` is red on ONE error, and it is a peer's**: `TOKEN_PRELUDE` in
-  `packages/noodl-mcp/tests/tpl001Cloud.ts`, uncommitted, mtime mid-session, mid-refactor.
-  `noodl-mcp`'s own suite also carries **2 failures in `tpl001Template.test.ts`** from that peer's
-  uncommitted `templates/members-area.security.json`. **Neither is phase 80's.** Re-measure before
-  attributing either to anything here.
-- 🔴 **`catalog:examples` is still a PR gate (`pr.yml:210`) and still RED at HEAD**, 60/62,
-  measured before and after this session: unchanged. `comp-repeater-set-item-object` and
-  `fn-aggregate-stats-function`, owner **`NONE`**, ~20 minutes, both diagnostics carry their own
-  `suggestion`. **It fails every PR until somebody takes it.**
-- ✅ **The peer collision §6.4 warned about was real and was handled by talking.** The peer
-  confirmed from `.logs/dev.log` that saving `StyleCompositions.ts` closed their open project
-  mid-drive — *"[HMR] Cannot apply update... is not accepted"*. They asked for batched saves, not
-  for me to stop. ✅ **Batching the remaining writes (including the `catalog:merge` regeneration of
-  `node-catalog-enriched.json`) and sending one "done" message** cost nothing and bought them a
-  stable window. ⚠️ Worth knowing: **`catalog:merge` writes into `packages/noodl-types/`, which is
-  also HMR-live** — editing a recipe under `docs/` is not the docs-only change it looks like.
+- ⚠️ **Doc-only session: no gate was run and none needed to be.** s8's readings stand and are the
+  ones to quote — `test:ci` **2889 specs / 4 failures**, all four `AIX-006 style vocabulary` by
+  name, seed 74947. 🔴 **Do not quote that as evidence about anything committed today**; it
+  predates these commits and measures nothing in them. Re-run before any source change lands.
+- 🔴 **`catalog:examples` is still a PR gate (`pr.yml:210`) and still RED**, 60/62,
+  `comp-repeater-set-item-object` and `fn-aggregate-stats-function`, owner **`NONE`**, ~20 minutes,
+  both diagnostics carry their own `suggestion`. **It fails every PR until somebody takes it.**
+  Unchanged and unmeasured this session — no source moved.
+- ⚠️ **`typecheck:mcp` red on one peer error** (`TOKEN_PRELUDE` in `noodl-mcp/tests/tpl001Cloud.ts`)
+  and **2 failures in `tpl001Template.test.ts`** from a peer's uncommitted
+  `templates/members-area.security.json`. **Neither is phase 80's.** As recorded by s8; not
+  re-measured.
+- ⚠️ **`site-builder.content.json` is phase 77's, and it moved today** (mtime 12:44, commit
+  `cdd842fc`). §6.1's 56 is anchored to md5 `56e03abf8bb583cec6b038f5e12ed11e`. The **port names**
+  in D11 have already drifted since it was filed — the phenomenon persists, the specific ports do
+  not. Re-run the planner before quoting the breakdown.
+- ✅ **The checkout was idle**: no editor, no suite. The Electron processes matching
+  `electron/dist` were all **MCP servers** — attribute by PPID, not by name. The modified
+  `noodl-core-ui` SCSS and phase-75 docs in `git status` are a **peer's border sweep**, untouched
+  here.
