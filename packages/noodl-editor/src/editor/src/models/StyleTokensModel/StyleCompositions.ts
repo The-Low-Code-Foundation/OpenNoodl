@@ -260,6 +260,40 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     recipe: 'ui-card-grid-repeater'
   },
 
+  {
+    // 🔴 P78 D20 / phase-80 DEF-006 §0(c). Until this composition the vocabulary
+    // named **page furniture only** — band, shell, card, a type ramp — and an
+    // agent building the empty half of any list had no recipe to follow, so it
+    // invented one. That invention is the divergence (a) and (b) punish it for
+    // on the parts that ARE covered.
+    //
+    // ⚠️ **`dashed`, and `--border-strong` rather than `--border`.** Both lifted,
+    // neither chosen: a dashed edge is what distinguishes "nothing here yet"
+    // from a card that failed to load, and the heavier border is what keeps the
+    // dash visible at 1px. A solid `--border` here reads as an empty card.
+    id: 'emptyState',
+    nodeType: 'Group',
+    group: 'surface',
+    description:
+      'The empty half of a list: a dashed, centred panel saying there is nothing here yet. Dashed on purpose — a solid edge reads as a card that failed to load.',
+    parameters: {
+      width: GROUP,
+      flexDirection: 'column',
+      alignItems: 'center',
+      rowGap: 'var(--space-4)',
+      backgroundColor: 'var(--surface)',
+      borderRadius: 'var(--radius-xl)',
+      borderStyle: 'dashed',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border-strong)',
+      paddingTop: 'var(--space-16)',
+      paddingBottom: 'var(--space-16)',
+      paddingLeft: 'var(--space-6)',
+      paddingRight: 'var(--space-6)'
+    },
+    recipe: 'ui-empty-state'
+  },
+
   // ─── Controls (doctrine §6, and §4's two contrast rules) ───────────────────
   {
     id: 'primaryButton',
@@ -330,6 +364,47 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     recipe: 'ui-split-hero'
   },
 
+  {
+    // 🔴 P78 D20 / phase-80 DEF-006 §0(c). **No composition had ever named a
+    // control that takes typing** — the biggest single hole in the vocabulary,
+    // in a system whose users are building forms.
+    //
+    // 🔴 **`sizeMode: 'contentHeight'` is the whole composition.** The node ships
+    // `sizeMode: 'contentSize'`, and in that mode the `width` port is INERT:
+    // measured inside a 592px card, a field left at the default renders **196px
+    // wide at 1280px AND at 390px**, never once responding to its container.
+    // Same field at `contentHeight` measures 526px on desktop and 276px on
+    // phone. `explicit` frees the width too but takes the height port with it,
+    // so a field that should grow with its own padding and font wants
+    // `contentHeight`. An agent copying width:100% without the sizeMode gets a
+    // field that silently ignores it.
+    //
+    // ⚠️ `--border-control`, not `--border`: the control-boundary token exists
+    // because `--border` does not clear WCAG 1.4.11's 3:1 (DEF-001).
+    id: 'textField',
+    nodeType: 'net.noodl.controls.textinput',
+    group: 'control',
+    description:
+      'A text field that fills its column. sizeMode contentHeight is required — at the shipped contentSize the width port is inert and the field renders 196px at every viewport.',
+    parameters: {
+      sizeMode: 'contentHeight',
+      width: GROUP,
+      type: 'text',
+      backgroundColor: 'var(--background)',
+      color: 'var(--foreground)',
+      fontSize: 'var(--text-base)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border-control)',
+      borderRadius: 'var(--radius-md)',
+      paddingTop: 'var(--space-3)',
+      paddingBottom: 'var(--space-3)',
+      paddingLeft: 'var(--space-3)',
+      paddingRight: 'var(--space-3)'
+    },
+    recipe: 'ui-form-field'
+  },
+
   // ─── Media (doctrine §5, and the sizeMode gate of §8) ─────────────────────
   {
     id: 'cardImage',
@@ -375,6 +450,30 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       smallLayout: '1'
     },
     recipe: 'ui-split-hero'
+  },
+
+  {
+    // 🔴 P78 D20 / phase-80 DEF-006 §0(c). The unit every form is made of, and
+    // the reason the three type entries below it exist as a set.
+    //
+    // ⚠️ **The error line under this wants `mounted`, not `visible`.** `visible`
+    // sets visibility:hidden and KEEPS the space — measured, a clean field is
+    // 71px with `mounted` and 87px with `visible`, so every valid control in a
+    // form carries 16px of dead row under it. That is wiring rather than a
+    // parameter, which is why it is a comment here and a demonstration in the
+    // recipe.
+    id: 'field',
+    nodeType: 'Group',
+    group: 'arrangement',
+    description:
+      'One labelled form field: label, control, error and hint in a column. Pair with fieldLabel, textField, fieldError and fieldHint.',
+    parameters: {
+      width: GROUP,
+      sizeMode: 'contentHeight',
+      flexDirection: 'column',
+      rowGap: 'var(--space-2)'
+    },
+    recipe: 'ui-form-field'
   },
 
   // ─── The type ramp (doctrine §3) ──────────────────────────────────────────
@@ -468,6 +567,72 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       color: 'var(--foreground)'
     },
     recipe: 'ui-page-shell-bands'
+  },
+  {
+    // 🔴 P78 D20 / phase-80 DEF-006 §0(c).
+    id: 'fieldLabel',
+    nodeType: 'Text',
+    group: 'type',
+    description: 'The label above a form control. Pairs with field, textField, fieldError and fieldHint.',
+    parameters: {
+      fontSize: 'var(--text-sm)',
+      fontWeight: 'var(--font-medium)',
+      color: 'var(--foreground)'
+    },
+    recipe: 'ui-form-field'
+  },
+  {
+    // 🔴 P78 D20 / phase-80 DEF-006 §0(c), and **the one judgement in it.**
+    //
+    // 🔴 **`--red-700` is deliberate, and `--destructive` is the wrong token
+    // here — measured, not reasoned.** The obvious objection is that a raw
+    // palette token is one no preset moves, so a re-themed app keeps a brick-red
+    // error line: true, and it is still the right trade. As 14px text this is
+    // graded by WCAG 1.4.3's 4.5:1 against the `--surface` a form card sits on,
+    // and across the six shipped palettes:
+    //
+    //   --red-700     6.03 – 6.20:1   passes in all six
+    //   --destructive 4.38 – 6.18:1   FAILS in two — Playful 4.38, Soft 4.49
+    //
+    // `--destructive` is a FILL colour, sized for white text on top of it, and
+    // Playful/Soft move it to rose `#e11d48`. Swapping to it would ship an error
+    // message two of the five presets render illegibly.
+    //
+    // ⚠️ **The recipe's own note said 3.60:1 and that number is stale** — it was
+    // measured on 2026-08-11 when `--destructive` was `#ef4444`; DEF-001 moved it
+    // to `#dc2626` on 2026-08-29, which is 4.62:1 and passes. The conclusion
+    // survived the change that invalidated its evidence. The numbers above are
+    // at HEAD.
+    //
+    // 🔴 **What is actually missing is a semantic token for error TEXT** — one a
+    // preset moves and that clears 4.5:1 as type. There is none; `--destructive`
+    // is the only semantic red and it is a fill. Registered as its own row
+    // rather than invented here, because adding a token means adding it to all
+    // five presets and that is a design decision.
+    id: 'fieldError',
+    nodeType: 'Text',
+    group: 'type',
+    description:
+      'The validation message under a form control. Uses --red-700, not --destructive: --destructive is a fill colour and fails 4.5:1 as text on --surface in two of the shipped presets.',
+    parameters: {
+      fontSize: 'var(--text-sm)',
+      color: 'var(--red-700)',
+      lineHeight: 'var(--leading-snug)'
+    },
+    recipe: 'ui-form-field'
+  },
+  {
+    // 🔴 P78 D20 / phase-80 DEF-006 §0(c).
+    id: 'fieldHint',
+    nodeType: 'Text',
+    group: 'type',
+    description: 'The quiet helper line under a form control — format, limits, why you are being asked.',
+    parameters: {
+      fontSize: 'var(--text-xs)',
+      color: 'var(--muted-foreground)',
+      lineHeight: 'var(--leading-snug)'
+    },
+    recipe: 'ui-form-field'
   },
   {
     id: 'meta',

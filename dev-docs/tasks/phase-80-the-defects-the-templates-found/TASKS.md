@@ -13,7 +13,7 @@ derivation and [README.md](README.md) for why the phase exists.
 | DEF-003 | ✅ done | [Three authoring acts with no honest surface](DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md) | P77 D8 = P76 F15 · P77 D7 · P76 F16 | every **author** |
 | DEF-004 | ✅ done | [When it goes wrong you cannot see where](DEF-004-WHEN-IT-GOES-WRONG-YOU-CANNOT-SEE-WHERE.md) | P77 D2, D3 | anyone **debugging** |
 | DEF-005 | 🔒 ruling | [Membership is a category the graph cannot express](DEF-005-MEMBERSHIP-IS-UNEXPRESSIBLE.md) | P78 D2, D3 | every **membership app** |
-| DEF-006 | 🟡 **scope done, (c) open** | [The design system punishes the agent that uses it](DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md) | P78 D12, D15, **D20** | every **agent** styling on-system |
+| DEF-006 | ✅ done | [The design system punishes the agent that uses it](DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md) | P78 D12, D15, **D20** | every **agent** styling on-system |
 | DEF-007 | ⬜ open | [A project means one thing on disk and another once loaded](DEF-007-DISK-AND-LOAD-DISAGREE.md) | P78 D9 residual · P77 D5 | the **next template** |
 | DEF-008 | ⬜ open | [The measurement owed](DEF-008-THE-MEASUREMENT-OWED.md) | P77 D6 · P78 D5 | nobody yet — a re-drive |
 | DEF-009 | ⬜ open | [A public write door ships with no limit](DEF-009-A-PUBLIC-WRITE-DOOR-WITH-NO-LIMIT.md) | **P76 F3** | a **site owner** whose form fills their database |
@@ -72,6 +72,29 @@ should be done **once**, not three times.
 - ⚠️ **`packages/noodl-mcp/dist/noodl-mcp.cjs` is stale**, so a *running* MCP server still answers
   `notFound` for `Page.title` until the next build. Source, suites and committed catalog are correct.
   **Owner: whoever cuts the next 0.2.1 build.**
+
+## Findings this phase raised that nobody owns
+
+- 🔴 **There is no semantic token for error TEXT, and that is why a composition has to reach for a
+  raw palette token to stay legible.** Owner: **`NONE`**. Found by DEF-006 s8 while sourcing
+  `fieldError` (see that file's **§7.4**).
+
+  `--destructive` is the only semantic red in the set and it is a **fill** colour — sized for white
+  text on top of it. Measured as 14px text on the `--surface` a form card sits on, it is **4.38:1
+  under Playful and 4.49:1 under Soft**, both under AA's 4.50. So `fieldError` ships `--red-700`,
+  which holds 6.03:1 or better in all six palettes but which **no preset re-themes** — a re-themed
+  app keeps a brick-red error line while everything else moves.
+
+  **Neither option is right, and that is the finding.** What is missing is a token like
+  `--destructive-text` that presets move *and* that clears 4.5:1 as type. 🔴 **It is not a
+  one-line addition**: it means a value in `DefaultTokens.ts` **and in all five presets**, each
+  chosen against the contrast floor — a design decision with a budget attached, which is why s8
+  registered it instead of inventing it. ⚠️ **The gate now catches the mistake if somebody tries
+  the easy version** — `design-token-contrast.test.ts` arm (e) grades text on `--surface` as well
+  as `--background`, which is what would have caught `--destructive` here.
+
+  🧭 **Plausibly Richard's**, on the same grounds DEF-001's `--primary` ruling was: it changes what
+  every re-themed app looks like.
 
 ## Rulings needed (Richard)
 
@@ -190,6 +213,20 @@ before any of it was acted on, and every measurement in it held.
 - **P76 F10 / F12 / F13** — already owned by **SB-010** / **SB-011**.
 
 ## Session log
+
+- **2026-08-29 (s8)** — **DEF-006 (c) closed, and the survey's one judgement was wrong.** The six
+  compositions landed verbatim — the vocabulary is **26** and now names a form field, a control that
+  takes typing, an error line and an empty state. 🔴 **§6.4 said to source `fieldError` from
+  `--destructive`; measured, that fails AA as text in two of the five presets** (Playful 4.38, Soft
+  4.49 on `--surface`) where `--red-700` never drops below 6.03. The survey measured against
+  **white** rather than the ground a form card sits on, and against the **default palette only** —
+  which its own next line warned against. 🔴 **The contrast gate would have passed it**: it graded
+  undeclared backgrounds as `--background`, where the same token clears in all six. Gate widened to
+  both implicit grounds (**55 → 86 pairs**, nothing reddened) and pinned by arm (e), which a
+  narrowing mutant reddens **alone**. The recipe's own note was right and its **number was stale** —
+  3.60:1 was exact for `#ef4444`, the value `--destructive` held before DEF-001 moved it that
+  morning. Missing `--destructive-text` registered above with owner `NONE`.
+  Commits: see the phase-80 next-session prompt.
 
 - **2026-08-29 (s7)** — **DEF-006's scope closed; (c) left, with a sourcing survey rather than a
   sentence.** The audit AC2 asked for found **1** inert parameter in 20 compositions — and widening

@@ -6,12 +6,12 @@ Cheap, and it removes a standing reason the next template arrives unstyled.
 
 ---
 
-## ✅ STATUS 2026-08-29 (s7) — §3's SCOPE IS DONE. §0's (c) IS NOT.
+## ✅ STATUS 2026-08-29 (s8) — DONE. §3's scope closed at s7, §0's (c) at s8.
 
 **Both scope items landed, all five acceptance criteria are met, and one thing this
 file did not ask for turned out to be the larger half of the defect.** Read §6 before
 believing any present-tense sentence below it: §0's *"18 compositions ship"* is now
-**20**, and §2's *"confirmed at HEAD"* has been acted on.
+**26**, and §2's *"confirmed at HEAD"* has been acted on.
 
 | what | where |
 |---|---|
@@ -21,11 +21,15 @@ believing any present-tense sentence below it: §0's *"18 compositions ship"* is
 | `catalog:examples` now grades this family, so it cannot come back | `scripts/validate-examples.ts` |
 | (b) `find_tools` finds a group by what it is *for* | `disclosure.ts` + a `keywords` field that costs **zero** resident tokens |
 | AC5 — the template's workaround has lapsed, asserted | `tpl001Template.test.ts` §4b |
+| **(c) six compositions: field, fieldLabel, textField, fieldError, fieldHint, emptyState** | `StyleCompositions.ts` — see **§7** |
+| the contrast gate graded one ground where a form sits on another | `design-token-contrast.test.ts`, arm (e) — **§7.3** |
 
-🔴 **§0 (c) — the missing compositions — is NOT done**, and §6.4 is the sourcing
-survey it needs so the next session does not re-derive it. It is not covered by any
-of the five acceptance criteria and is not in §3's scope; it was agreed into the file
-separately, and it is the part with a real judgement in it.
+✅ **§0 (c) — the missing compositions — CLOSED at s8. Read §7, not §6.4.** The six
+compositions landed and the vocabulary is now 26. 🔴 **§6.4's one judgement was wrong
+and §7.1 has the measurement**: it proposed sourcing `fieldError` from `--destructive`,
+which fails AA as text in two of the five presets. `--red-700` was kept. §6.4 is left
+in place as the survey it was, but every sentence in it about *which token* is
+superseded.
 
 ⚠️ **D20 was agreed into this task by both sessions on 2026-08-29 and then sat in a chat message
 for a day without reaching the file.** It is recorded here because that is the exact failure the
@@ -220,6 +224,12 @@ reveals nothing.
 
 ## 6.4 🔴 §0 (c) — the sourcing survey, so it is a work-list and not a re-derivation
 
+> ⚠️ **SUPERSEDED IN ONE PLACE — read §7.1 before acting on the table below.** The six sources
+> are correct and were used verbatim. **The `field_error` judgement is not:** moving it to
+> `--destructive` fails AA as text in two of the five presets, measured. `--red-700` was kept.
+> The contrast reassurance in this section is against `--background` and against the default
+> palette only, which is the thing its own next line warns against.
+
 (c) is a **sourcing** task, not a design one: `StyleCompositions.ts`'s doctrine is that
 a composition which cannot be grounded in a gated recipe is **left out rather than
 invented**. The survey says it can now be grounded — which is the thing §0 did not
@@ -284,3 +294,117 @@ every agent that calls `get_example`.
 rollout left a red gate, and the fix is a graph edit to two recipes that wants its own
 row. Registered in `TASKS.md` with an owner slot rather than left as a sentence in a
 task file.
+
+---
+
+# 7. ✅ (c) — CLOSED 2026-08-29 (s8), and §6.4's one judgement was wrong
+
+**All six compositions landed, sourced verbatim.** The vocabulary is **26** compositions, and it
+now names a field, a label, a control that takes typing, an error line, a hint and an empty state.
+
+| composition | group | source node | notes |
+|---|---|---|---|
+| `field` | arrangement | `ui-form-field` › `field` | the column every form is made of |
+| `fieldLabel` | type | `ui-form-field` › `field_label` | — |
+| `textField` | control | `ui-form-field` › `field_input` | **the biggest hole** — no composition had ever named a control that takes typing |
+| `fieldError` | type | `ui-form-field` › `field_error` | 🔴 **kept `--red-700`** — see below |
+| `fieldHint` | type | `ui-form-field` › `field_hint` | — |
+| `emptyState` | surface | `ui-empty-state` › `root` | dashed, `--border-strong` |
+
+## 7.1 🔴 §6.4 said to move `field_error` to `--destructive`. Measured, that ships a defect.
+
+§6.4's judgement was that `--red-700` is a raw palette token no preset re-themes, that
+`--destructive` is the semantic token for the job, and that *"DEF-001's own note pins red-600 at
+4.83:1 against white, so the contrast floor survives the move."*
+
+**The first two are true. The third is the reading, and driving it inverted the decision.** As
+14px text on the `--surface` a form card sits on, across the six shipped palettes:
+
+```
+--red-700      6.03 – 6.20:1     passes in all six
+--destructive  4.38 – 6.18:1     FAILS in two — Playful 4.38, Soft 4.49  (AA floor 4.50)
+```
+
+`--destructive` is a **fill** colour, sized for white text on top of it, and Playful and Soft move
+it to rose `#e11d48`. Taking §6.4's advice would have shipped an error message two of the five
+presets render below AA — in the composition an agent is told to copy, into every form.
+
+**Two things went wrong in that one sentence, and both are named traps:**
+
+1. 🔴 **It measured against `--background` (white), not the ground the thing sits on.** 4.83:1 is
+   `--destructive` on white. On `--surface` the same token is 4.62:1. The gap is small in the
+   defaults and decisive in Playful.
+2. 🔴 **It measured the default only — and its own next line said not to.** §6.4 ends *"⚠️ Verify
+   against every preset, not just the default — that is DEF-001's whole lesson."* The survey wrote
+   the warning and then did not take it. Both failing readings are preset-only.
+
+## 7.2 ⚠️ The recipe was right, and its stated reason had gone stale — the conclusion outlived its evidence
+
+`ui-form-field`'s own description already said *"The error line is --red-700, not --destructive"*,
+and §6.4 read that as the defect to fix. It was not. But its **number** was stale: it said
+`--destructive` measures **3.60:1** and fails AA, which is exact — for `#ef4444`, the value
+`--destructive` held when that sentence was written on **2026-08-11**. DEF-001 moved it to
+`#dc2626` on **2026-08-29 09:39** (`30eb92b2`), which is 4.62:1 and passes.
+
+So at HEAD the recipe's *conclusion* was right and its *evidence* was false, and the thing that
+still carries the conclusion — the two presets — is not what the sentence cites. Rewritten to be
+true at HEAD, with the presets as the reason and the stale number named rather than deleted, so
+the next reader does not "correct" it back.
+
+🔴 **The shape worth keeping: a stale measurement does not announce itself by being wrong.** This
+one had been right, was cited approvingly, and the conclusion it supported never stopped being
+correct. Only the reason changed. **Re-measure a cited number when the thing it measures has
+moved — `git log -S` on the value is the ten-second check.**
+
+## 7.3 🔴 The gate would have passed the proposal — a hole shaped exactly like the defect
+
+`design-token-contrast.test.ts` grades text with no declared background against **`--background`
+only**. Measured on the real proposal:
+
+```
+--destructive as text, no declared ground:
+  on --background   4.66 – 6.47:1   passes in ALL SIX palettes
+  on --surface      4.38 – 6.18:1   fails in two
+```
+
+**The gate that exists to catch exactly this would have reported nothing.** Fixed: `groundsOf`
+replaces `backgroundOf` and returns both implicit grounds, so a colour must clear its floor on
+either surface it can land on. **Free at HEAD** — the population went **55 → 86 pairs (330 → 516
+readings)** and nothing reddened.
+
+Pinned by a new arm **(e)**, which plants the regression that is *invisible* on `--background` and
+asserts it is caught, is caught **only** on `--surface`, and **only** in `playful` and `soft`.
+🔴 **Narrowing `groundsOf` back to one ground reddens arm (e) and nothing else** — verified by
+mutant; the other twelve tests stay green, which is the hole it now guards.
+
+⚠️ Stated because an unstated limit reads as coverage: this is still not *every* ground. A
+composition nested on `--surface-raised`, or on a fill an author sets at runtime, is outside it.
+`--surface` is the darkest ground **the vocabulary itself ships**, not the darkest that can exist.
+
+## 7.4 🔴 What is actually missing, and it is not this task's to invent
+
+There is **no semantic token for error TEXT** — one a preset moves *and* that clears 4.5:1 as type.
+`--destructive` is the only semantic red and it is a fill. That is why `fieldError` has to reach
+for a raw palette token to stay legible, and why a re-themed app keeps a brick-red error line.
+
+Adding one means adding it to `DefaultTokens.ts` **and all five presets**, and choosing five values
+that clear AA as text — a design decision with a contrast budget attached. **Registered in
+`TASKS.md` as its own row rather than invented here**, per this file's own doctrine that a
+composition which cannot be grounded is left out rather than made up.
+
+## 7.5 Gates at close (s8)
+
+`typecheck:editor`, `typecheck:editor-tests`, `catalog:check`, `catalog:merge:check`,
+`catalog:groups:check`, `docs:nodes:check` — **clean** · `styleVocabularyPorts` **13/13** ·
+`design-token-contrast` **13/13** · `noodl-mcp` **956 passed** (2 failures in
+`tpl001Template.test.ts`, from a peer's uncommitted `templates/members-area.security.json`) ·
+`catalog:examples` **60/62 — unchanged, the same two `NONE`-owned recipes** ·
+⚠️ `typecheck:mcp` red on **one** error in a peer's uncommitted `tests/tpl001Cloud.ts`
+(`TOKEN_PRELUDE`, mid-refactor) · ⚠️ **`test:ci` NOT RUN** — a peer held the editor stack on
+CDP 9222 for the whole session and asked for it; deferred rather than skipped.
+
+**Mutants: 3 applied, 3 killed.** An unknown token on `fieldError` reddens the token check *by
+name*; reverting `textField` to the shipped `sizeMode: 'contentSize'` reddens the AC2 inert gate
+with the catalog's own condition (`width` is off under `sizeMode = explicit OR contentHeight`) —
+which is the recipe's measured 196px trap, confirmed from the catalog rather than the prose;
+narrowing `groundsOf` reddens arm (e) alone.

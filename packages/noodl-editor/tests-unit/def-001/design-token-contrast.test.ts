@@ -126,11 +126,32 @@ type Pair = {
   why: string;
 };
 
-/** `transparent` means "whatever is behind me", and at the top of a page that is `--background`. */
-function backgroundOf(style: Record<string, string>): string {
+/**
+ * What a colour sits on. A declared `backgroundColor` answers it outright.
+ *
+ * 🔴 **When nothing is declared, there is more than one honest answer, and grading only the
+ * lightest one is a hole shaped like the defect.** `transparent` means "whatever is behind me",
+ * and that is `--background` at the top of a page but `--surface` inside every card, panel and
+ * form — which is where form text actually lives. Grading only `--background` is optimistic
+ * exactly where a real app is darker.
+ *
+ * Measured, on the case that produced this change: DEF-006 §6.4 proposed sourcing the `fieldError`
+ * composition from `--destructive`. On `--background` that reads 4.66–6.47:1 and passes in all six
+ * palettes; on `--surface` it reads 4.38:1 under Playful and 4.49:1 under Soft and **fails**. The
+ * single-ground version of this function would have passed the proposal and shipped an error
+ * message two presets render below AA.
+ *
+ * Both grounds are graded, so a colour has to clear its floor on either surface it may land on.
+ * ⚠️ This is still not "every ground": a composition nested on `--surface-raised`, or on a fill an
+ * author sets at runtime, is outside it — `--surface` is the darkest ground the vocabulary itself
+ * ships, not the darkest one that can exist.
+ */
+const IMPLICIT_GROUND_TOKENS = [PAGE_BACKGROUND_TOKEN, '--surface'];
+
+function groundsOf(style: Record<string, string>): string[] {
   const declared = style.backgroundColor;
-  if (!declared || declared === 'transparent') return `var(${PAGE_BACKGROUND_TOKEN})`;
-  return declared;
+  if (!declared || declared === 'transparent') return IMPLICIT_GROUND_TOKENS.map((t) => `var(${t})`);
+  return [declared];
 }
 
 function hasBorder(style: Record<string, string>): boolean {
@@ -143,30 +164,32 @@ function hasBorder(style: Record<string, string>): boolean {
 
 function pairsFromStyle(source: string, nodeType: string, style: Record<string, string>): Pair[] {
   const out: Pair[] = [];
-  const bg = backgroundOf(style);
+  const grounds = groundsOf(style);
 
-  if (style.color) {
-    out.push({
-      source,
-      nodeType,
-      kind: 'text',
-      fg: style.color,
-      bg,
-      min: 4.5,
-      why: 'WCAG 1.4.3 — body text against its own background'
-    });
-  }
+  for (const bg of grounds) {
+    if (style.color) {
+      out.push({
+        source,
+        nodeType,
+        kind: 'text',
+        fg: style.color,
+        bg,
+        min: 4.5,
+        why: 'WCAG 1.4.3 — body text against its own background'
+      });
+    }
 
-  if (hasBorder(style) && CONTROL_NODE_TYPES.has(nodeType)) {
-    out.push({
-      source,
-      nodeType,
-      kind: 'controlBorder',
-      fg: style.borderColor,
-      bg,
-      min: 3,
-      why: 'WCAG 1.4.11 — the boundary of an operable control'
-    });
+    if (hasBorder(style) && CONTROL_NODE_TYPES.has(nodeType)) {
+      out.push({
+        source,
+        nodeType,
+        kind: 'controlBorder',
+        fg: style.borderColor,
+        bg,
+        min: 3,
+        why: 'WCAG 1.4.11 — the boundary of an operable control'
+      });
+    }
   }
 
   return out;
@@ -415,6 +438,43 @@ describe('DEF-001 — the tokens a built app renders clear their WCAG floor', ()
 
       const bad = failures(grade(derivePairs({ configs: ElementConfigRegistry.getAll(), compositions })));
       expect(bad.map((r) => r.source)).toContain('composition:outlineButton');
+    });
+
+    it('(e) only on --surface — the ground a form field actually sits on', () => {
+      // 🔴 This arm exists because the single-ground version of `groundsOf` passed the real
+      // proposal that produced it. DEF-006 §6.4 proposed sourcing `fieldError` from
+      // `--destructive`; on `--background` that clears 4.5:1 in all six palettes, and on the
+      // `--surface` of the form card it is 4.38:1 under Playful and 4.49:1 under Soft.
+      //
+      // So the planted regression here is one that is INVISIBLE on the page background and only
+      // appears on the surface — which is precisely the class of defect a `--background`-only
+      // walk cannot see. Without this arm, narrowing `groundsOf` back to one ground leaves every
+      // other test in this file green.
+      const compositions = JSON.parse(JSON.stringify(STYLE_COMPOSITIONS)) as typeof STYLE_COMPOSITIONS;
+      const fieldError = compositions.find((c) => c.id === 'fieldError');
+      expect(fieldError).toBeDefined();
+      (fieldError!.parameters as Record<string, unknown>).color = 'var(--destructive)';
+
+      const readings = grade(derivePairs({ configs: ElementConfigRegistry.getAll(), compositions }));
+      const bad = failures(readings).filter((r) => r.source === 'composition:fieldError');
+
+      // It fails, and only against --surface, and only in the two presets that move --destructive
+      // to a rose light enough to matter.
+      expect(bad.length).toBeGreaterThan(0);
+      expect(bad.every((r) => r.bg === 'var(--surface)')).toBe(true);
+      expect([...new Set(bad.map((r) => r.palette))].sort()).toEqual(['playful', 'soft']);
+
+      // 🔴 The control, and the half that makes this arm about the GROUND rather than about
+      // --destructive being a bad colour: the same planted value against --background is clean in
+      // every palette. A walk that graded only the page background would have reported nothing.
+      const onBackground = failures(readings).filter(
+        (r) => r.source === 'composition:fieldError' && r.bg === `var(${PAGE_BACKGROUND_TOKEN})`
+      );
+      expect(onBackground).toEqual([]);
+
+      // And the unmutated composition — what actually ships — is clean on both grounds.
+      const shipped = failures(grade(derivePairs({ configs: ElementConfigRegistry.getAll(), compositions: STYLE_COMPOSITIONS })));
+      expect(shipped.filter((r) => r.source === 'composition:fieldError')).toEqual([]);
     });
   });
 
