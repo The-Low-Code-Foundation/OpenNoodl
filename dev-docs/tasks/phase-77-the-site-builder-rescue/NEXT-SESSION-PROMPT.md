@@ -2,98 +2,61 @@
 
 ## ✅ No hold. Freeze cleared 2026-08-28 (s4): *"Freeze is off, go nuts."*
 
-## State: **the drive is done.** SBR-015's question is answered, and it found four more things
+## State: **SBR-015 is done.** AC1, AC2 and AC3 are met; AC4 is 🟡 by design
 
-**s12 (2026-08-29)** minted a project from the regenerated template, gave it a
-wizard-attached backend, provisioned `SITE_SETUP_TOKEN` through the Secrets panel, claimed the
-site, created two pages through the dialog and published one. The drive owed by s10 and s11 is
-**paid**.
+**s13 (2026-08-29)** paid the drive that `379f4dec` owed. The thirty-second silence that started
+this task now ends as a sentence on screen in **29 ms**.
+
+🔴 **The previous handover was stale in two places and cost this session twenty minutes** — it
+named "wire PageRow's failure" as the first job when `379f4dec` had already wired it, and called
+AC2's gate unwritten when it existed with a mutant. **Re-read the task file before believing a
+handover's job list**; a handover is written before the next commit lands.
 
 Read in this order:
 
-1. **[SBR-015 §2.3a/b/c](SBR-015-A-FAILURE-WITH-NOWHERE-TO-GO.md)** — the answer, the control
-   pair, and what AC1 still owes.
-2. **[SBR-016](SBR-016-THE-LIST-THAT-NEVER-ASKS.md)** and
-   **[SBR-017](SBR-017-THERE-IS-NO-WAY-BACK-IN.md)** — new, both found by that drive.
-3. **[phase 80's DEF-014 and DEF-015](../phase-80-the-defects-the-templates-found/TASKS.md)** —
-   the two product-side rows the drive turned up.
-4. **[THE-SWEEP-2026-08-29.md](THE-SWEEP-2026-08-29.md)** — s11's 54 rows, still the register.
+1. **[SBR-015 §2.3d](SBR-015-A-FAILURE-WITH-NOWHERE-TO-GO.md)** — the drive, both arms, and the
+   measurement error it corrected.
+2. **[SBR-017](SBR-017-THERE-IS-NO-WAY-BACK-IN.md)** and
+   **[SBR-016](SBR-016-THE-LIST-THAT-NEVER-ASKS.md)** — the two biggest open holes, below.
+3. **[THE-SWEEP-2026-08-29.md](THE-SWEEP-2026-08-29.md)** — s11's 54 rows, still the register.
 
 ---
 
-## 🟢 SBR-015 AC3 — ANSWERED. The node is `sections-3`, and the cause is one missing column
+## 🟢 SBR-015 AC1 — MET. Both arms, same button, one variable
 
-**The thirty-second hang is gone.** The zero-section publish now answers **`HTTP 400 This page
-could not be published.` in 12–19 ms** (was `error`, 30,004 ms, `timedOut: true`). That body is
-`deny`'s own `errorMessage`, so SBR-015's wiring is what made the backend able to speak.
+**Why a fresh project was necessary, and this is the reusable half.** A project is a **copy** of
+the template taken at mint time. `SBR-015 Zero Section Drive` was minted *before* `379f4dec`, so
+its PageRow still carries `done` and no `failure` — re-driving the old fixture would have
+re-measured the old defect and read as a regression. Verified before driving: the new project's
+`components/Admin/PageRow/connections.json` holds all **9** new edges.
 
-**Which node — measured, not inferred.** The same query `sections-3` runs, issued directly with
-the admin's session token:
+The variable is whether `Section` has a `pageId` column. It was created by writing a Section row
+against a *different* page, so the page under test had **zero** sections in both arms.
 
-```
-GET /classes/Section?where={"pageId":"…"}  →  500  no such column: "pageId"
-```
+| `Section.pageId` | backend | what the admin sees, from the click |
+|---|---|---|
+| **absent** | `error`, **11 ms** | **29 ms** — `This page could not be published.` under the title, menu closed |
+| **present** | `success`, **12 ms** | **31 ms** menu closed *and refusal cleared*; **48 ms** pill `Published` |
+| absent again | `error`, **11 ms** | **29 ms** — refusal returns |
 
-The auto-created `Section` class holds only `objectId/createdAt/updatedAt/ACL` and zero rows. A
-filter on a column nothing has ever written is a **500, not an empty result set**.
+`done → to-Quiet` genuinely resets a prior refusal — observed, not just asserted. The text renders
+`rgb(220,38,38)` = `--destructive`, 210×33 px, `mounted` so it takes no space when absent.
 
-**The control pair, one variable** — `Section.pageId` present or absent. The column was created
-by writing a Section row against a *different* page, so the page under test carried zero
-sections in both arms:
+🔴 **The measurement error, because it will happen again.** The first refusal reading was
+**5,827 ms** and was nearly reported. The clock started when the button was *stamped* — in one
+`npm run cdp` process — and the click arrived from a *second* process, so the interval measured
+**CLI startup plus app latency**. Anchoring `t0` inside the page, in a capture-phase `click`
+listener, gave **29 ms**. ✅ **If the clock and the cause are in different processes, the number
+is about the harness.** The question that caught it: *what would this read if the app were
+instant?* — still ~5,800 ms.
 
-| `Section.pageId` | publish, same page, same body |
-|---|---|
-| absent | **400** — 12 ms |
-| present | **200** `{published:true}` — 24 ms |
-
-So three of s11's readings are **confirmed, not merely unrefuted**: the guards pass, `Run Tasks`
-on an empty list fires `done` (not `unchanged`), and **a zero-section page is legitimately
-publishable**.
-
-🔴 **The consequence nobody had stated: a brand-new site can never publish its first page.** That
-is **[DEF-014](../phase-80-the-defects-the-templates-found/DEF-014-A-QUERY-AGAINST-A-COLUMN-LESS-CLASS.md)**,
-and it is a backend defect — **do not fix it in the template**. That would make the site builder
-work and leave every other app broken, and would remove the only place it is currently visible.
+⚠️ **`CloudFunction2` does not go through `window.fetch`** — a fetch hook records nothing and that
+reads exactly like SBR-016's "never asked". What carried this was the DOM plus the backend's
+`workflow_executions`.
 
 ---
 
-## 🔴 FIRST JOB — SBR-015 AC1. The fix landed on the cloud half only
-
-Same button, two arms, both driven through the UI:
-
-| backend answered | what the admin sees |
-|---|---|
-| **400 in 19 ms** | **nothing, for 47 s observed.** Menu stays open, pill stays `Draft`, no message. A `MutationObserver` over `document.body` recorded **zero** text changes |
-| **200 in 24 ms** | menu closes at **211 ms**; at **228 ms** the pill reads `Published` and the count sentence updates |
-
-`/Admin/PageRow`'s `publish`, `unpublish` and `duplicate` `CloudFunction2` nodes wire **`done`
-only** — no `failure` on any of the three. The success arm is the control that proves it is the
-wiring, not the drive.
-
-This is a small change in **`packages/noodl-mcp/tests/sb005Components.ts`** (PageRow lives there, not in `sb004Components.ts` — that file holds the cloud endpoints) plus somewhere to put the message, and it closes
-SBR-015 AC1 and unblocks SBR-006 AC3's first half. **Do it first.**
-
-**Three things already established, so do not re-derive them** (SBR-015 §2.3b has them in full):
-
-1. The hole is **exactly three nodes** — PageRow's `publishPage(true)`, `publishPage(false)` and
-   `duplicatePage`. Every other `CloudFunction2` in every other browser component already wires
-   `failure` or `error`. Contained, not systemic.
-2. The precedent is `claimSite` again, same file: `/Pages/Setup` does
-   `claim.failure → claimGate.eval → claimRefusal.visible`. PageRow wants that plus
-   `failure → menuState.to-Closed` for the "stops being busy" half. ⚠️ **`visible` holds its
-   space, `mounted` does not** — P78 D16 was exactly that bug.
-3. 🔴 **AC2's gate as designed could not have caught this.** Its population is *components
-   holding a `noodl.cloud.request`* — cloud endpoints only — so a browser component that
-   **calls** one is invisible to it. Widen it to grade `CloudFunction2` callers, or this comes
-   back. **A checker's population is part of the checker**, third time this phase.
-
-⚠️ **Ownership**: SBR-015's author (session `98671`) has offered to take AC1 and is holding off
-`sb005Components.ts` pending a word. **Say who has it before either of you edits** — a collision
-there costs a template regeneration and three count pins.
-
----
-
-## 🔴 SECOND JOB — SBR-017, because it is the biggest hole in the story
+## 🔴 FIRST JOB — SBR-017, the biggest hole left in the story
 
 **The template has one auth node in twenty-one components: `SignUp`, on `/Pages/Setup`. There is
 no `LogIn` anywhere.** An owner who claims their site and later loses their session cannot get
@@ -107,23 +70,18 @@ Measured on the drive backend, against an already-claimed site:
 | `POST /functions/claimSite`, correct token | **400** `This site cannot be claimed.` |
 
 A right refusal and a locked door. `net.noodl.user.LogIn` exists in the runtime; the template
-never places it. ⚠️ Signup logs the new user in, which is exactly why the s9 and s12 drives both
+never places it. ⚠️ Signup logs the new user in, which is why the s9, s12 and s13 drives all
 missed it — claiming and being signed in were one act.
 
----
-
-## 🔴 THIRD JOB — SBR-016, and it adds a *third* state to §5.8
+## 🔴 SECOND JOB — SBR-016, and it adds a *third* state to §5.8
 
 Arriving at `/admin/pages` renders the shell, the heading and `New page` and **nothing else**,
-while `GET /classes/Page` on the same session returns both rows.
+while `GET /classes/Page` on the same session returns the rows.
 
-🔴 **It is not a refused query. There is no query.** Measured in the viewer after load, with the
-control beside it: **0 requests to `:8597`**, **5 to `:8574`**. `pages-2` fetches only on
-`create.done` or a row's `Changed`, so **any drive that creates a page first cannot see this** —
-which is what happened in s9.
-
-SBR-006 §5.8 said a refused query and an empty collection are the same screen. A collection that
-never asked is a third, pixel-identical to both, and its fix is a third fix.
+🔴 **It is not a refused query. There is no query.** `pages-2` fetches only on `create.done` or a
+row's `Changed`, so **any drive that creates a page first cannot see this** — s9, s12 and s13 all
+created a page first. A refused query, an empty collection and a collection that never asked are
+three states, pixel-identical, with three different fixes.
 
 ---
 
@@ -131,72 +89,44 @@ never asked is a third, pixel-identical to both, and its fix is a third fix.
 
 | | verdict | evidence |
 |---|---|---|
-| **SBR-015 AC1** | ❌ | nothing on screen for 47 s; success arm 211 ms — §2.3b |
-| **SBR-015 AC2** | ⬜ | the artefact gate, unwritten |
+| **SBR-015 AC1** | ✅ | §2.3d — 29 ms refusal, 31/48 ms success control |
+| **SBR-015 AC2** | ✅ | `sb007Template.test.ts:576-830`, 9 specs, derived population + graded exemptions + naming mutant |
 | **SBR-015 AC3** | ✅ | §2.3a, control pair |
-| **SBR-015 AC4** | 🟡 | s11's correction stands — `executions.sqlite` will not name a node, and did not |
-| **SBR-006 AC1** | 🟡 | driven with **two** rows this time, but they still carry no title or slug (SBR-008) |
+| **SBR-015 AC4** | 🟡 | `execution_steps` 0 rows across all four executions — the task says why, and it is right |
+| **SBR-006 AC1** | 🟡 | driven; rows still carry no title or slug (SBR-008) |
 | **SBR-006 AC2** | 🟡 | blocked on SBR-008 |
-| **SBR-006 AC3** | 🟡 | success half driven (211/228 ms); refusal half is SBR-015 AC1 |
-| **SBR-006 AC4** | ✅ | **driven** — `View site` lands on `location.pathname === "/"`, not `/%7Bslug%7D` |
+| **SBR-006 AC3** | ✅ | both halves now driven — success s12, refusal s13 |
+| **SBR-006 AC4** | ✅ | `View site` lands on `/` |
 | **SBR-006 AC5** | ✅ | s9's control pair |
 
----
+## Reproduced independently on a brand-new backend, so all three are stronger
 
-## Two more things the drive saw, recorded so they are not rediscovered
-
-- **[DEF-015](../phase-80-the-defects-the-templates-found/DEF-015-THE-CARD-WARNS-ABOUT-WORKERS.md)**
-  — after a successful `Deploy functions` (the card's own timestamp reads *"pushed just now"*),
-  the backend card still warns that `site/ContactRecipient`, `site/CopySectionToPage` and
-  `site/SetSectionAccess` are *"in the project, not on this backend"*. They are Run Tasks
-  workers with no `noodl.cloud.request` node and can never be endpoints. The proof they work is
-  beside the warning: `publishPage` returns 200 having done `SetSectionAccess`'s job.
-- **SBR-008, again, now with a consequence on the public site.** The created `Page` rows have
-  **no `title`/`slug` columns at all**. After a *successful* publish the public site says *"This
-  site's pages are not available right now."* — and the row is genuinely readable anonymously
-  (verified: anonymous `GET /classes/Page?where={"published":true}` → 200, one row). It has no
-  slug for the router to match. Nothing new; a sharper repro.
-
----
-
-## Traps this drive paid for
-
-- 🔴 **Empty-because-refused, empty-because-empty and empty-because-never-asked are the same
-  pixels.** The instrument that separates them is `performance.getEntriesByType('resource')` in
-  the viewer — and a zero reading proves nothing without a known-firing control beside it (the 5
-  requests to `:8574`).
-- 🔴 **`executions.sqlite` records duration and status but never a node.** It said `HTTP 400` in
-  19 ms, which was enough to kill the hang hypothesis and not enough to name anything. What
-  named `sections-3` was **issuing the query by hand and reading the body**.
-- 🔴 **A drive that edits before it looks cannot see a missing initial fetch.** Arrive, then
-  look, then edit.
-- ⚠️ **The preview canvas is 456×313 css px with a panel open**, and `elementFromPoint` returns
-  `null` outside the viewport — which reads as *"something is covering the button"* rather than
-  *"the button is off-screen"*. Close the panel (756 wide) or check `innerWidth` first.
-- ⚠️ **Toggling an editor panel reloads the viewer** and drops any `window.*` recorder.
-  Re-install after any editor-side interaction.
-- ⚠️ The Secrets panel is **not** on the backend card's button row — it is in the card's `…`
-  overflow menu, and every item in that menu renders twice (the `BaseDialog` ghost). Stamp the
-  copy `elementFromPoint` actually returns.
+- **DEF-014** — `GET /classes/Section?where={"pageId":…}` → **500 `no such column: "pageId"`**, on
+  a backend where the table did not exist at all. A brand-new site cannot publish its first page.
+- **DEF-015** — the card warned three workers were *"in the project, not on this backend"* while
+  reading **"pushed just now"**, on a project minted minutes earlier.
+- **SBR-008** — the `Page` row has `objectId/createdAt/updatedAt/ACL/published/showInNav/navOrder`
+  and **no `title`, no `slug`**.
 
 ## Standing context
 
-- Drive artefacts: **`SBR-015 Zero Section Drive`** (project in
-  `~/vscode_projects/NodeGX test projects/`, backend `backend_mte3mrsp5qtbd`, port 8597, token
-  `drive-token-sbr015`, owner `owner@sbr015.test` / `drive-pass-015`). It holds both arms of the
-  control pair and the `Section` class in its post-query state — **do not overwrite it** until
-  DEF-014 is fixed and re-driven. 🔴 **`SBR-006 Admin Drive`** (`backend_mtdg3sdziq5nw`) is
-  DEF-004's before-arm; likewise do not overwrite.
-- A peer offers two disposable fixtures: backend `backend_mtbxrca3axpbc` (port 8588) and project
-  `~/Documents/sb015-editor-drive`. ⚠️ That backend is **already claimed** and has misled one
-  session; a fresh wizard-made backend is cleaner and takes two minutes.
+- 🔴 **Drive fixtures — do not overwrite.** **`SBR-015 AC1 Drive`** (backend `backend_mte62ofkj8whc`,
+  port 8598, token `drive-token-ac1`, owner `owner@ac1.test` / `drive-pass-ac1`) is the *post-fix*
+  fixture and the only one whose PageRow carries the failure wiring. ⚠️ It is left in the
+  **refusal arm**: `Section.pageId` is renamed to `pageId_hidden` — rename it back for the success
+  arm. **`SBR-015 Zero Section Drive`** (`backend_mte3mrsp5qtbd`) is *pre-fix* and cannot test AC1.
+  **`SBR-006 Admin Drive`** (`backend_mtdg3sdziq5nw`) is DEF-004's before-arm.
 - 🔴 Never scope by time. Every task's ACs include a person sentence — verify as written; if the
   platform cannot express what an AC asks for, **say so and record the gap**.
-- ⚠️ **`test:ci` was not run in s12** — no editor, runtime or MCP source was touched;
-  documentation only. s10's floor stands (**2889 specs, 4 failures, all `AIX-006 style
-  vocabulary` by name**; readout `packages/noodl-editor/tests/test-results.json`).
-- Shared checkout: **pathspec commits only** (untracked ⇒ `add`+`commit` in one chain); announce
-  editor launches **and** teardowns; `test:ci` alone, never beside a live stack.
+- ⚠️ **`test:ci` was not run in s13** — no editor, runtime or MCP source was touched. The
+  noodl-mcp jest suite was run for `-t "SBR-015"` (9 passed). s10's floor stands (**2889 specs,
+  4 failures, all `AIX-006 style vocabulary` by name**).
+- Shared checkout: **pathspec commits only, never `git add`** (s13 staged by mistake and unstaged
+  immediately); announce editor launches **and** teardowns; `test:ci` alone, never beside a live
+  stack.
+- Drive mechanics that cost time: the backend card's **Secrets panel is in the `…` overflow**, and
+  every item in that menu **renders twice** — pick the copy `elementFromPoint` returns. The
+  preview canvas is **456×313** with a panel open and **756** wide with it collapsed.
 - Richard, 2026-08-28: **no short paths** — full six screens of
   https://claude.ai/code/artifact/f1986b40-e827-4770-abb8-1dc8f17e1810 ; assessment:
   https://claude.ai/code/artifact/f4b2077a-7a78-4c33-8bf7-8b7f343f0b0b .

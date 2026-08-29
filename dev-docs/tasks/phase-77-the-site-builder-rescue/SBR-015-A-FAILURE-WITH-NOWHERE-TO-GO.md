@@ -1,5 +1,11 @@
 # SBR-015 — A failure with nowhere to go
 
+> 🟢 **AC1, AC2 and AC3 are met (2026-08-29, s13).** The drive is in **§2.3d** — 30,004 ms of
+> silence became a named refusal on screen in **29 ms**, with a success control arm at 31/48 ms
+> through the same button. **AC4 stays 🟡 by design**: `execution_steps` is 0 rows and the task
+> already says why. 🔴 **Read §2.3d before re-driving anything here** — a project is a *copy* of
+> the template at mint time, so the older drive fixtures cannot test this fix.
+
 **Found by SBR-006's drive (§5.7), which could not own it.** Two row actions on the admin
 page list — Publish and Duplicate — both answered nothing at all and 504'd after thirty
 seconds. The drive recorded them as *"one symptom over at least two causes"* and handed the
@@ -257,6 +263,84 @@ well, and says in the file that it is **necessary and not sufficient**.
   SBR-006 §5.8's refused query — there is no query. **Owner: NONE** — phase 80 row.
 
 
+### 2.3d 🟢 AC1 IS MET — driven 2026-08-29 (s13), both arms, one instrument
+
+**A person is told, in 29 ms, and the menu stops being busy.** The wiring of `379f4dec` was
+never driven; this is that drive.
+
+**Why a fresh project was necessary, and it is the reusable part.** A project is a *copy* of the
+template taken at mint time. `SBR-015 Zero Section Drive` was minted before `379f4dec`, so its
+`/Admin/PageRow` carries `done` and no `failure` — **re-driving the old fixture would have
+re-measured the old defect and read as a regression.** Verified before driving: the newly minted
+project's `components/Admin/PageRow/connections.json` holds all **9** of the new edges (3×
+`failure → callState.to-Refused`, 3× `error → rowRefusal.text`, 3× `failure → menuState.to-Closed`).
+
+**The fixture.** `SBR-015 AC1 Drive` (`~/vscode_projects/NodeGX test projects/`), wizard-attached
+backend `backend_mte62ofkj8whc` on **port 8598**, `SITE_SETUP_TOKEN=drive-token-ac1` provisioned
+through the Secrets panel (verified in `secrets.json`), claimed as `owner@ac1.test`, one page
+created through the dialog, **zero sections**. At mint the `Section` table **did not exist at all**
+— a stronger starting state than s12's column-less class, and the filter fails identically.
+
+#### The two arms, same button, same page, one variable
+
+The variable is whether `Section` has a `pageId` column. It was created by writing a Section row
+against a *different* page id, so the page under test carried **zero** sections in both arms
+(`GET /classes/Section?where={"pageId":"8ad6f2f1-…"}` → `200 {"results":[]}`).
+
+| `Section.pageId` | backend | what the admin sees, from the click |
+|---|---|---|
+| **absent** | `error`, **11 ms** | **29 ms** — `This page could not be published.` under the title, menu closed |
+| **present** | `success`, **12 ms** | **31 ms** — menu closed *and refusal cleared*; **48 ms** — pill `Published`, count sentence updates |
+| absent again | `error`, **11 ms** | **29 ms** — refusal returns, menu closed |
+
+Three publishes in that order, from `workflow_executions`: `error 11ms · success 12ms · error 11ms`.
+The middle row is the control that proves the instrument can read a success, and the third proves
+the refusal is repeatable after one.
+
+🔴 **`done → to-Quiet` does reset a prior refusal** — the 31 ms event carries `refusal:false` on a
+row that had been showing one since the previous arm. That was asserted from the graph in §2.3b
+and is now observed.
+
+**What renders.** `rgb(220, 38, 38)` — `#dc2626`, `--destructive`, exactly as §2.3b said — at
+14 px, **210 × 33 css px**, `mounted` so it takes space only when present, inside the viewport.
+
+#### 🔴 The measurement error this drive made, and corrected
+
+The first refusal arm was recorded as **5,827 ms**. That number is **wrong and was nearly
+reported**. The clock was started when the button was *stamped*, from one `npm run cdp` process,
+and the click arrived from a *second* process — so the interval measured **CLI process startup
+plus app latency**, and the app's share of it was invisible. The fix was to anchor `t0` inside the
+page, in a capture-phase `click` listener, so the interval begins at the event the person causes.
+Re-measured: **29 ms**.
+
+⚠️ **The trap generalises to any cross-process drive**: if the clock and the cause live in
+different processes, the number is about the harness. The question that caught it — *what would
+this number be if the app were instant?* — still ~5,800 ms.
+
+#### What this closes and what it does not
+
+- **AC1 ✅.** Both halves of the person sentence: told, and the menu stops being busy.
+- **SBR-006 AC3 ✅** — its refusal half was blocked on exactly this.
+- **AC4 🟡 unchanged, and re-confirmed**: `execution_steps` is **0 rows** across all four
+  executions. The prediction in AC4 held — the readout was the Response's own sentence, not the log.
+- ⚠️ **`net` was empty in the fetch recorder**: `CloudFunction2` does not go through `window.fetch`.
+  The DOM and the backend's own execution table are what carried this; a fetch hook alone would
+  have read as "no request was made", which is SBR-016's signature and would have been wrong here.
+
+#### Independently reproduced on a brand-new backend, so both are stronger
+
+- **DEF-014** — `GET /classes/Section?where={"pageId":…}` → **500 `no such column: "pageId"`**, on a
+  backend where the table did not exist. A brand-new site cannot publish its first page.
+- **DEF-015** — the card warned `site/ContactRecipient`, `site/CopySectionToPage`,
+  `site/SetSectionAccess` were *"in the project, not on this backend"* while reading
+  **"pushed just now"**, on a project minted minutes earlier.
+- **SBR-008** — the created `Page` row has columns `objectId/createdAt/updatedAt/ACL/published/showInNav/navOrder` and **no `title`, no `slug`**.
+
+⚠️ **Fixture state, deliberately left**: `Section.pageId` is renamed to **`pageId_hidden`**, so the
+backend sits in the *refusal* arm. Rename it back to `pageId` to get the success arm. Do not
+overwrite this project until DEF-014 is fixed.
+
+
 ## 3. Scope
 
 - `sb004Components.ts` — `ENDPOINT_NODES`/`ENDPOINT_WIRES` (publishPage) and the duplicatePage
@@ -274,7 +358,16 @@ well, and says in the file that it is **necessary and not sufficient**.
 
 ## 4. Acceptance criteria
 
-1. ⬜ **A person sees the failure.** With the site-builder deployed, a Publish that cannot
+1. ✅ **A person sees the failure.** — **DRIVEN 2026-08-29 (s13), see §2.3d.** On a project minted
+   *after* `379f4dec`, a Publish that cannot succeed puts `This page could not be published.`
+   under the title at **29 ms** and closes the menu; the success arm through the same button is
+   **31 ms / 48 ms** and also *clears* the refusal. Backend: `error 11ms · success 12ms ·
+   error 11ms`. 🔴 The first latency reading (5,827 ms) was the CLI, not the app — anchor the
+   clock inside the page.
+
+   *Original text, kept because its warning is what made the drive necessary:*
+
+   ⬜ **A person sees the failure.** With the site-builder deployed, a Publish that cannot
    succeed answers in well under thirty seconds with a failure status, and the row's menu stops
    being busy. Driven, not asserted from the graph.
    🔴 **Driven 2026-08-29 and it does NOT pass — see §2.3b.** The backend half is done: 30,004 ms
@@ -283,7 +376,17 @@ well, and says in the file that it is **necessary and not sufficient**.
    admin still sees nothing at all, for 47 s observed. The success arm through the same button
    closes the menu at 211 ms, which is the control proving the wiring and not the drive is what
    is missing.
-2. **A gate over the artefact**: every failure-capable node in every `#__cloud__` component
+2. ✅ **A gate over the artefact** — `sb007Template.test.ts:576-830`, **9 specs green at HEAD**
+   (verified s13). All three halves are present, checked rather than assumed: the population is
+   **derived** (`components holding a noodl.cloud.request`) and asserted non-empty *and* split
+   from the three workers; exemptions carry a reason that is graded for **staleness** (`stillNeeded`)
+   **and** for length (`< 40 chars` reds); and the mutant cuts one `failure` wire and asserts the
+   grader **names the node**, with the unmutated original clean beside it. §2.3b's widening to
+   browser `CloudFunction2` callers is in at `:793-826`, labelled necessary-not-sufficient.
+
+   *Original text:*
+
+   **A gate over the artefact**: every failure-capable node in every `#__cloud__` component
    either wires `failure` to a Response `send` or is exempted **by name with a reason**, in the
    shape SBR-004 §9.5 uses. 🔴 An exclusion list cannot fail — grade the reason column, and add
    a mutant that reds when an exemption is removed from a node that still needs one.
