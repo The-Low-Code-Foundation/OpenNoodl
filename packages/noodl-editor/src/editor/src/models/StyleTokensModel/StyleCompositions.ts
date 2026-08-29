@@ -379,7 +379,15 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     id: 'body',
     nodeType: 'Text',
     group: 'type',
-    description: 'Ordinary running text. Never set fontFamily — the project body already carries var(--font-sans).',
+    // 🔴 P78 D18 / phase-80 Track C2. This sentence used to end "Never set
+    // fontFamily — the project body already carries var(--font-sans)", which is
+    // true for Text and was false for every form control: `<button>`, `<input>`
+    // and `<textarea>` do not inherit `font-family` from `body` in any browser.
+    // It is what an agent reads *before deciding not to set a font*, so the CSS
+    // repair alone would have been rewritten by the next generator that read it.
+    // Scoped to Text now, which is the only node this composition applies to.
+    description:
+      'Ordinary running text. No need to set fontFamily on a Text node — the project body already carries var(--font-sans).',
     parameters: {
       fontSize: 'var(--text-base)',
       color: 'var(--foreground)'

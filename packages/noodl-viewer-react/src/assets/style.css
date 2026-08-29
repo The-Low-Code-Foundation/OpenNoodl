@@ -17,6 +17,16 @@
 
 /** Button **/
 .ndl-controls-button {
+  /* 🔴 P78 D18 / phase-80 Track C2. Form controls do NOT inherit `font-family`
+     from `body` in any browser — the UA stylesheet sets its own — so every
+     button in every app rendered in the browser's default face (Arial) while
+     the `Text` beside it correctly used the project's `--font-sans`. Measured
+     on the members-area template with `getComputedStyle` across eleven pages.
+
+     ⚠️ `font-family` only, deliberately. Size and weight were not measured, and
+     adding `font-size: inherit` here would change the metrics of every existing
+     button rather than fix a reported defect. */
+  font-family: inherit;
   outline: none;
   border: none;
   color: white;
@@ -260,6 +270,11 @@
 
 /** Text Input **/
 .ndl-controls-textinput {
+  /* Same defect as `.ndl-controls-button` above, and this class dresses both the
+     `<input>` and — with `type: 'textArea'` — the `<textarea>`, which rendered
+     in `monospace` rather than Arial because that is the UA default for that
+     element specifically. */
+  font-family: inherit;
   outline: none;
   border-style: none;
   background-color: transparent;
