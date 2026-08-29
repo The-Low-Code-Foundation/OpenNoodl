@@ -1,106 +1,107 @@
 # Phase 80 — next session
 
-## State: DEF-001, DEF-002, DEF-003, DEF-004, DEF-016 closed. **DEF-006's scope closed; its (c) is not.**
+## State: DEF-001, 002, 003, 004, 006, 016 closed. **DEF-006 is fully closed, (c) included.**
 
-**s7 (2026-08-29)** took DEF-006. Read `DEF-006-…md` **§6 first** — the sections above it are
-written in the present tense and two of their present-tense claims have been acted on.
+**s8 (2026-08-29)** took DEF-006 (c). If you are picking up DEF-006 for any reason, read its
+**§7**, not §6.4 — §6.4 is the sourcing survey and **one of its judgements is superseded**, with a
+banner saying so at its head.
 
 | commit | what |
 |---|---|
-| `<this session>` | **DEF-006 (a)+(b)** — the inert parameter, the rule that was wrong about two more, the corpus, the gate, and `find_tools` finding a group by what it is for |
+| `3a112837` | **DEF-006 (c)** — six compositions, the token the survey recommended that fails AA, and the gate that would have passed it |
 
-Gates at close: `test:ci` **2889 specs, 4 failures, all four `AIX-006 style vocabulary` by name**
-(the floor, fresh seed 75151) · `noodl-mcp` **956/956** · `typecheck:editor`,
-`typecheck:editor-tests`, `typecheck:mcp`, `catalog:check`, `catalog:merge:check`,
-`catalog:groups:check`, `docs:nodes:check` clean · `catalog:examples` **60/62 — red, and it was
-red before this session too**; see below, it is somebody's.
+Gates at close: `typecheck:editor`, `typecheck:editor-tests`, `catalog:check`,
+`catalog:merge:check`, `catalog:groups:check`, `docs:nodes:check` **clean** ·
+`styleVocabularyPorts` **13/13** · `design-token-contrast` **13/13** · `noodl-mcp` **956 passed**
+· `catalog:examples` **60/62 — red, unchanged, still somebody's** · ⚠️ **`test:ci` NOT RUN** —
+see below.
 
 ---
 
 ## 🔴 The finding, in one paragraph
 
-**The audit the task asked for found one defect; running the same instrument over the corpus the
-defect was copied from found eleven, and two of those were the instrument.** DEF-006 (a) is one
-composition setting a `borderWidth` under its own `borderStyle: 'none'`. But a composition's
-parameters are *copied verbatim from a shipped recipe*, so the same value was in `ui-split-hero`,
-and three more recipes had the identical shape, and five controls carried a `label` with `useLabel`
-defaulting to `false` — `logic-consent-gate` demonstrated a consent form whose four checkboxes
-render **no words at all**. The last two would not go away, and they were right not to:
-`iconSourceType` **defaults to `icon`**, so `ui-slide-over`'s close button renders its icon
-perfectly and the validator was calling it dead. `conditionIsUnsatisfied` answered from the
-**authored** parameter bag; the canonical evaluator asks `getParameter`, whose tail is
-`return port ? port.default : undefined`. And `portConditions.test.ts` — the gate written to hold
-those two evaluators to one contract — modelled the canonical one as a bare bag lookup, deleting
-the only behaviour they differed on.
+**The task's one judgement was a reading, driving it inverted the decision, and the gate that
+exists to catch exactly that would have passed it.** §6.4 said to source the `fieldError`
+composition from `--destructive` rather than the raw `--red-700`, since presets move the semantic
+token and not the palette one — true — *"so the contrast floor survives the move"*. Measured as
+14px text on the `--surface` a form card actually sits on, `--destructive` is **4.38:1 under
+Playful and 4.49:1 under Soft**, both under AA's 4.50, where `--red-700` never drops below 6.03.
+It is a **fill** colour, sized for white text on top of it. The survey had measured against
+**white**, and against the **default palette only** — which its own next line explicitly warned
+against. Worse: `design-token-contrast.test.ts` grades text with no declared background as sitting
+on `--background`, where the proposed token clears in **all six** palettes — so the gate would have
+reported nothing. It now grades both implicit grounds.
 
 ## What to do next
 
-**DEF-006 (c)** is the natural continuation and **§6.4 is already the work-list**: six compositions,
-each with a named source node in `ui-form-field` or `ui-empty-state`, and exactly one judgement in
-it (`field_error` reads the raw `--red-700`; the semantic `--destructive` is what a preset can
-actually move). ⚠️ It needs a window when nobody is regenerating `templates/members-area`.
-
-Otherwise: **DEF-017 C1**, or **DEF-007** — read its **§1.1**, which changes that task's premise
-and makes it the owner of P77's D11.
+**DEF-017 C1**, or **DEF-007** — read its **§1.1**, which changes that task's premise and makes it
+the owner of P77's D11.
 
 Also open: **DEF-008**, **DEF-009**, **DEF-014**, **DEF-015**, and the four carried from phase 76
 by reference (**DEF-010/011/012/013** — three say their fix needs a corpus sweep, and that sweep is
-shared work to be done **once**).
+shared work to be done **once**). **DEF-005** is 🔒 on a Richard ruling.
 
-🔴 **The standing instruction still pays.** *Find the claim in your task that is a reading rather
-than a measurement, and drive that one first.* Four sessions running: s4 deleted two of three rows,
-s5 found a defect the file did not contain, s6 found the defect had been fixed the day before, s7
-found the rule was wrong about two of the eleven cases it reported.
+🔴 **New and unowned, registered in `TASKS.md` under *Findings this phase raised that nobody owns*:
+there is no semantic token for error TEXT.** `--destructive` is the only semantic red and it is a
+fill. That is why `fieldError` ships a raw palette token to stay legible, and why a re-themed app
+keeps a brick-red error line while everything else moves. Fixing it means a value in
+`DefaultTokens.ts` **and all five presets**, each against the contrast floor — 🧭 **plausibly
+Richard's**, on the same grounds his `--primary` ruling was.
+
+🔴 **The standing instruction still pays — five sessions running.** *Find the claim in your task
+that is a reading rather than a measurement, and drive that one first.* s4 deleted two of three
+rows, s5 found a defect the file did not contain, s6 found the defect had been fixed the day
+before, s7 found the rule was wrong about two of eleven cases, s8 found the recommended fix ships
+an accessibility defect.
 
 ## 🔴 What this session paid for, that the next one should not re-buy
 
-- **A "0" from an instrument that resolved nothing.** The first audit run printed `total inert: 0`
-  and, above it, twenty `NO TYPE` lines — the catalog is keyed `typeName`, not `name`. The right
-  answer at that moment was 1; a blind instrument would have reported 0 and been believed. ✅ **Print
-  the denominator beside the count**, always: the spec that landed has a companion asserting there
-  are more than 20 conditional parameters for it to be about at all.
-- 🔴 **A gate cannot find what its own model deletes.** `portConditions.test.ts` stood in for
-  `NodeGraphNode.getParameter` with `(name) => parameters[name]`. That stand-in was the divergence.
-  This is the **second** file in the repo to write that sentence about itself — `validate-examples.ts`
-  has it verbatim about `plug`. ✅ When a test fakes the thing it is comparing against, **list what
-  the fake drops** and ask whether the difference is the point of the test.
-- ✅ **Measure a semantics change on the real corpus, and sabotage it to prove the zero.** 3 findings
-  removed / 0 added across compositions + 62 examples + 40 projects (1,601 nodes). Letting defaults
-  *win* instead moved the same measurement to **70 added** — which is what makes the 0 a reading
-  rather than a broken loop.
-- ⚠️ **`catalog:merge:check` went stale and my first candidate was a peer.** `node-definition.d.ts`
-  was modified by somebody else and fitted perfectly. The actual input was
-  `docs/node-catalog/examples/` — **mine**. `merge.js` reads `EXAMPLES_DIR`; grep the script before
-  attributing its staleness. *Elimination over an unchecked candidate list*, caught this time by
-  reading the script rather than the tree.
-- ✅ **A tripwire fired and the right response was to re-decide, not to widen quietly.**
-  `kitTools.test.ts` carried a control asserting a subject-query reveals nothing, written *"to fail
-  the day somebody widens the purpose line"*. The widening went into a `keywords` field that no
-  description renders — **8,255 tokens before, 8,255 after** — so the cost the trade was deferred
-  over is zero, and the test now asserts the opposite with the number in its comment.
+- 🔴 **A stale measurement does not announce itself by being wrong.** `ui-form-field`'s
+  description said `--destructive` measures **3.60:1 and fails AA**. That was *exact* — for
+  `#ef4444`, the value it held when the sentence was written on **2026-08-11**. DEF-001 moved
+  `--destructive` to `#dc2626` at **09:39 that same morning**, making it 4.62:1 and passing. The
+  sentence's **conclusion outlived its evidence**: still right, for a reason it no longer states.
+  ✅ **When you cite a number about a token, `git log -S'<value>'` the token first** — ten seconds,
+  and it is the difference between quoting a measurement and quoting a fossil.
+- 🔴 **Two grounds, not one.** A colour with no declared background does not sit on one thing.
+  `--background` is the top of a page; `--surface` is inside every card, panel and form — which is
+  where form text lives. Grading only the lighter one is optimistic **exactly where a real app is
+  darker**, and the gap (4.70 vs 4.38 under Playful) is the whole defect. ✅ Widened, **free**:
+  55 → 86 pairs, nothing reddened. ⚠️ Still not every ground — `--surface-raised` and runtime fills
+  are outside it, and the test says so.
+- ✅ **A widened gate needs an arm that only the widening can pass.** Arm (e) plants a regression
+  invisible on `--background`, and asserts it is caught **only** on `--surface` and **only** in
+  `playful` and `soft`. 🔴 Narrowing `groundsOf` back reddens **arm (e) and nothing else** — the
+  other twelve stay green, which is precisely the hole that existed. Without that arm the widening
+  would have been silently revertible.
+- ✅ **Sabotage told me the catalog agreed with the recipe's prose.** Reverting `textField` to the
+  shipped `sizeMode: 'contentSize'` reddens the AC2 gate with the catalog's own condition —
+  `width is off under "sizeMode = explicit OR sizeMode = contentHeight"`. The recipe's measured
+  196px-at-every-viewport trap, confirmed **from the port declaration** rather than from the
+  sentence describing it.
 
 ## Traps carried
 
-- ✅ **The sibling sweep worked, in the direction that is benign — and only because it was named.**
-  `tpl001Components.ts` and `tpl001Template.test.ts` carried DEF-006's AC5 work
-  (`compositionsStillNeedingInertBorderWidthRemoval`, §4b and its control) *and* a peer's in-flight
-  TPL-001/D29 change. They were deliberately left out of `e337325c` rather than committed by
-  pathspec, because a pathspec commit takes a sibling's unstaged edits. The peer's own commit
-  `0430a3a8` then swept the DEF-006 hunks in — **and said so in its message**. Nothing lost.
-  ⚠️ The habit that made it safe was leaving them and *recording* it; had it not been recorded, a
-  `git checkout --` on either file would have destroyed both halves and neither of us would have
-  known which half was missing.
-- ⚠️ **`test:ci`'s 2889/4 was measured with a peer's uncommitted `packages/noodl-runtime/` and
-  `tests-unit/sb-017/` edits in the tree**, because `test:ci` webpacks the working tree. The floor
-  held and all four failures are the named AIX-006 four, so the reading is sound — but the `gitHead`
-  in the readout names the last commit, not what was compiled.
-- 🔴 **`catalog:examples` is a PR gate (`pr.yml:210`) and it is RED at HEAD**, 60/62, unchanged
-  before and after this session. Two recipes from `c0d6c86f` (2026-07-23) now fire rules that were
-  promoted later — `failure-reaches-nothing` by **DEF-002**, on 2026-08-29. Registered in `TASKS.md`
-  with owner `NONE`. It fails every PR until somebody takes it, and the fix is ~20 minutes.
-- ⚠️ **The rule is now correct about defaults but still bag-only about `null`.** An authored `null`
-  shadows the default (matching `getParameter`), but `evalClause`'s `NOT SET` treats `null` as unset
-  where the canonical evaluator does not. No condition in the shipped catalog is reached by it;
-  recorded so it is a known limit rather than a surprise.
-- ⚠️ Carried and still true: a stale `packages/noodl-mcp/dist/noodl-mcp.cjs` makes a *running* MCP
-  server answer from old code — measure by running the tool's functions from `src`.
+- ⚠️ **`test:ci` WAS NOT RUN, and that is a gap in this commit's evidence, not a clean reading.**
+  A peer (P77 s19) held the editor dev stack on CDP 9222 for the entire session and asked for no
+  `test:ci` and no second editor; their stack was still live at close. The unit suites that cover
+  everything changed here were run directly and are green, but **the floor was not re-measured**.
+  ✅ **Next session: run `test:ci` early and expect the floor of 4, all named `AIX-006 style
+  vocabulary`.** If it is not 4, suspect this commit first — `StyleCompositions.ts` feeds the
+  vocabulary those four specs are about.
+- ⚠️ **`typecheck:mcp` is red on ONE error, and it is a peer's**: `TOKEN_PRELUDE` in
+  `packages/noodl-mcp/tests/tpl001Cloud.ts`, uncommitted, mtime mid-session, mid-refactor.
+  `noodl-mcp`'s own suite also carries **2 failures in `tpl001Template.test.ts`** from that peer's
+  uncommitted `templates/members-area.security.json`. **Neither is phase 80's.** Re-measure before
+  attributing either to anything here.
+- 🔴 **`catalog:examples` is still a PR gate (`pr.yml:210`) and still RED at HEAD**, 60/62,
+  measured before and after this session: unchanged. `comp-repeater-set-item-object` and
+  `fn-aggregate-stats-function`, owner **`NONE`**, ~20 minutes, both diagnostics carry their own
+  `suggestion`. **It fails every PR until somebody takes it.**
+- ✅ **The peer collision §6.4 warned about was real and was handled by talking.** The peer
+  confirmed from `.logs/dev.log` that saving `StyleCompositions.ts` closed their open project
+  mid-drive — *"[HMR] Cannot apply update... is not accepted"*. They asked for batched saves, not
+  for me to stop. ✅ **Batching the remaining writes (including the `catalog:merge` regeneration of
+  `node-catalog-enriched.json`) and sending one "done" message** cost nothing and bought them a
+  stable window. ⚠️ Worth knowing: **`catalog:merge` writes into `packages/noodl-types/`, which is
+  also HMR-live** — editing a recipe under `docs/` is not the docs-only change it looks like.
