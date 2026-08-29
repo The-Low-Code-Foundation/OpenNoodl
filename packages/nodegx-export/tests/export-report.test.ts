@@ -257,22 +257,40 @@ describe('it never claims the generated code was checked', () => {
 
   test('it does not present the in-code markers as the complete list', () => {
     /*
-     * 🔴 **Measured, not assumed.** EXP-004's in-code-marker half is not built: on `puppy-test-3`
-     * the generated code carries no `TODO(export)` at all, while the report lists nine refusals.
-     * A reader told "every marker names the node it stands in for" would grep, find nothing, and
-     * read that as an all-clear — from the one file whose job is to prevent exactly that.
+     * 🔴 **Still the pair it always was — the sides have swapped, and the claim has not.**
      *
-     * The row is written as the *pair* it is: the markers are absent AND the report says so.
+     * This row was written when EXP-004's marker half did not exist: it asserted `puppy-test-3`
+     * emitted **no** `TODO(export)` at all while its report listed nine refusals, *and* that the
+     * report said as much. The markers now exist, so the first half is inverted — they are
+     * present, and the grep the report recommends finds them.
+     *
+     * What has **not** changed is the sentence being guarded. A marker needs an element to sit on,
+     * and a refusal between two logic nodes has none, so the report is still the complete list and
+     * the markers are still a subset of it. Asserting only the wording would pass on the day
+     * someone widened that sentence to "every"; asserting only the markers would pass on the day
+     * the paragraph went stale. Both halves, for the same reason as before.
      */
     const app = exportOf('puppy-test-3');
     const marked = Object.entries(app.files).filter(
       ([name, content]) => name.startsWith('src/') && content.includes('TODO(export)')
     );
-    expect(marked).toEqual([]);
-    expect(app.report.components.flatMap((c) => c.notes).length).toBeGreaterThan(0);
+    expect(marked.length).toBeGreaterThan(0);
+
+    /*
+     * The subset is **proper**, which is the fact the paragraph turns on. `puppy-test-3` refuses
+     * wires between logic nodes that no element can carry a marker for, so there are strictly more
+     * reported refusals than marked nodes — if these ever came level, "the complete list" would
+     * have stopped meaning anything and the sentence below would need re-reading.
+     */
+    const notes = app.report.components.flatMap((c) => c.notes);
+    const markedNodes = new Set(
+      marked.flatMap(([, content]) => [...content.matchAll(/TODO\(export\): node (\S+) renders/g)].map((m) => m[1]))
+    );
+    expect(markedNodes.size).toBeGreaterThan(0);
+    expect(notes.length).toBeGreaterThan(markedNodes.size);
 
     const report = app.files[REPORT_PATH];
-    expect(report).toContain('**Not everything above can leave one.**');
+    expect(report).toContain('**Not quite everything above can leave one.**');
     expect(report).toContain('**This report is the complete list**');
   });
 

@@ -361,6 +361,19 @@ const SESSION_READS: Record<string, { field: 'id' | 'username' | 'email'; maybeU
     email: { field: 'email', maybeUndefined: true }
   };
 
+/** One refused wire, as EXP-004's marker needs to talk about it. */
+export interface DroppedWire {
+  key: string;
+  fromId: string;
+  fromProperty: string;
+  toId: string;
+  toProperty: string;
+  /** The author's own label on the wire — irrecoverable once the wire is gone, so it travels. */
+  label?: string;
+  /** The exporter's own reason, in the words the note carries. */
+  reason: string;
+}
+
 export type BindingSource =
   | { kind: 'prop'; name: string }
   /**
@@ -1347,6 +1360,20 @@ export interface ComponentPlan {
    * ended by a kit that loads — it is ended by the case where the kit does **not**.
    */
   droppedChildren: Record<string, Array<{ nodeId: string; type: string; reason: string }>>;
+  /**
+   * Every wire this plan refused, with the endpoints kept as *values* (EXP-004's in-code markers).
+   *
+   * 🔴 **The emitter cannot re-derive this, and must not try.** "A wire whose sink has no binding"
+   * looks like the same population and is not: a signal folded into a handler chain, a control's
+   * state merged into its `onChange`, a `mounted` wire riding the render wrapper and a wire into a
+   * collapsed group all leave no binding behind while having translated perfectly. Guessing from
+   * absence would put `TODO(export)` markers on working code — a worse failure than the missing
+   * marker this closes, in the one file whose job is not misleading its reader.
+   *
+   * So each refusal records itself here, beside the note it files, and `wireNote` is what keeps
+   * the two from drifting: it writes the row and returns the sentence.
+   */
+  droppedWires: DroppedWire[];
   /** nodeId → toProperty → source, for value wires landing on rendered nodes. */
   bindings: Record<string, Record<string, BindingSource>>;
   /** nodeId → source signal port → actions, for signal wires resolved to handler statements. */
@@ -1574,6 +1601,28 @@ function planComponent(
   const nodeById = new Map(component.nodes.map((n) => [n.id, n]));
   const dispositions: Record<string, Disposition> = {};
   const notes: string[] = [];
+  const droppedWires: DroppedWire[] = [];
+
+  /**
+   * File a refused wire and return the sentence that reports it.
+   *
+   * 🔴 **One call, two channels, and that is the point.** The note is prose and the row is data;
+   * writing them at one site is what stops a reworded refusal from silently emptying the markers
+   * (§19.2's rule, one construct over). The sentence is assembled here exactly as every call site
+   * assembled it before, so the wording assertions across the suite are untouched.
+   */
+  const wireNote = (connection: ConnectionIR, reason: string): string => {
+    droppedWires.push({
+      key: connection.key,
+      fromId: connection.fromId,
+      fromProperty: connection.fromProperty,
+      toId: connection.toId,
+      toProperty: connection.toProperty,
+      ...(connection.label !== undefined ? { label: connection.label } : {}),
+      reason
+    });
+    return `wire ${connection.key} dropped: ${reason}`;
+  };
 
   const plan: ComponentPlan = {
     path: component.path,
@@ -1589,6 +1638,7 @@ function planComponent(
     customNodes: {},
     customLifted: {},
     droppedChildren: {},
+    droppedWires,
     bindings: {},
     handlers: {},
     changeHandlers: {},
@@ -4657,7 +4707,7 @@ function planComponent(
       if (target?.type === 'Component Outputs') {
         const sink = outputSinkOf(wire.toProperty, node);
         if ('drop' in sink) {
-          notes.push(`wire ${wire.key} dropped: ${sink.drop}`);
+          notes.push(wireNote(wire, `${sink.drop}`));
           consumes.push(wire.key);
           continue;
         }
@@ -5222,7 +5272,7 @@ function planComponent(
       // Dropping a dead wire with its reason beats deferring a whole translation over a no-op.
       if (wire.fromProperty === 'canceled' || wire.fromProperty === 'unchanged') {
         notesHere.push(
-          `wire ${wire.key} dropped: ${wire.fromProperty} is only ever sent by Cancel, which is not wired — it cannot fire in the interpreter either`
+          wireNote(wire, `${wire.fromProperty} is only ever sent by Cancel, which is not wired — it cannot fire in the interpreter either`)
         );
         consumes.push(wire.key);
         continue;
@@ -5243,7 +5293,7 @@ function planComponent(
        */
       if (wire.fromProperty === 'success') {
         notesHere.push(
-          `wire ${wire.key} dropped: "success" is a port this node stopped drawing — it was the pre-ERG-001 name for "done" and was never fired under either name, so the wire ran nothing in the editor either`
+          wireNote(wire, `"success" is a port this node stopped drawing — it was the pre-ERG-001 name for "done" and was never fired under either name, so the wire ran nothing in the editor either`)
         );
         consumes.push(wire.key);
         continue;
@@ -5487,7 +5537,7 @@ function planComponent(
        */
       if (wire.fromProperty === 'failure') {
         notes.push(
-          `wire ${wire.key} dropped: Clear Array's Failure fires only when no array is bound, and a literal Array Id always resolves — the wire is dead in the interpreter too`
+          wireNote(wire, `Clear Array's Failure fires only when no array is bound, and a literal Array Id always resolves — the wire is dead in the interpreter too`)
         );
         consumes.push(wire.key);
       }
@@ -5647,7 +5697,7 @@ function planComponent(
        */
       if (wire.fromProperty === 'unchanged') {
         notes.push(
-          `wire ${wire.key} dropped: External Link's Unchanged fires only during a server-side render, and the exported app mounts with createRoot and never renders on a server — the wire is dead in the interpreter's browser too`
+          wireNote(wire, `External Link's Unchanged fires only during a server-side render, and the exported app mounts with createRoot and never renders on a server — the wire is dead in the interpreter's browser too`)
         );
         consumes.push(wire.key);
       }
@@ -5909,7 +5959,7 @@ function planComponent(
        */
       if (wire.fromProperty === 'unchanged') {
         notes.push(
-          `wire ${wire.key} dropped: Navigate To Path's Unchanged fires only during a server-side render, and the exported app mounts with createRoot and never renders on a server — the wire is dead in the interpreter's browser too`
+          wireNote(wire, `Navigate To Path's Unchanged fires only during a server-side render, and the exported app mounts with createRoot and never renders on a server — the wire is dead in the interpreter's browser too`)
         );
         consumes.push(wire.key);
       }
@@ -5925,7 +5975,7 @@ function planComponent(
        */
       if (wire.fromProperty === 'failure' && !canNewTab) {
         notes.push(
-          `wire ${wire.key} dropped: Navigate To Path's Failure chain is dead — a literal Path cannot be missing and Open In New Tab is off, so neither of the node's two failures can fire (navigate-to-path.ts)`
+          wireNote(wire, `Navigate To Path's Failure chain is dead — a literal Path cannot be missing and Open In New Tab is off, so neither of the node's two failures can fire (navigate-to-path.ts)`)
         );
         consumes.push(wire.key);
       }
@@ -6648,7 +6698,7 @@ function planComponent(
       for (const w of wires) {
         consumed.add(w.key);
         notes.push(
-          `wire ${w.key} dropped: Value is unticked under Run On Value Change — arrivals wait for a Set pulse, which is not translated in this slice`
+          wireNote(w, `Value is unticked under Run On Value Change — arrivals wait for a Set pulse, which is not translated in this slice`)
         );
       }
       continue;
@@ -6669,20 +6719,20 @@ function planComponent(
     const expr = from === undefined ? null : resolveExpr(from, wire.fromProperty, ctx);
     if (expr === null) {
       notes.push(
-        `wire ${wire.key} dropped: ${
+        wireNote(wire, `${
           ctx.defer ?? `fed by ${from?.type ?? 'a missing node'} with no statically known source in the emit vocabulary`
-        } — the control keeps local state without the graph feed`
+        } — the control keeps local state without the graph feed`)
       );
       continue;
     }
     if (isBooleanExpr(expr) && spec.coerce !== 'checkbox') {
       notes.push(
-        `wire ${wire.key} dropped: a logic truth value lands only in a truthiness sink — a ${plan.roleOf[node.id]} state input is value-shaped`
+        wireNote(wire, `a logic truth value lands only in a truthiness sink — a ${plan.roleOf[node.id]} state input is value-shaped`)
       );
       continue;
     }
     if (!exprValidIn(expr, { kind: 'render' })) {
-      notes.push(`wire ${wire.key} dropped: the expression reads values that only exist inside a handler`);
+      notes.push(wireNote(wire, `the expression reads values that only exist inside a handler`));
       continue;
     }
     // A statically-undefined feed (a boot-value read) never applies — the input abstains or
@@ -6813,7 +6863,7 @@ function planComponent(
     if (!toNode || !rendered.has(toNode.id)) {
       consumed.add(c.key);
       notes.push(
-        `wire ${c.key} dropped: instance output "${c.fromProperty}" feeds an unrendered sink — lifted values land only in rendered sinks in this slice`
+        wireNote(c, `instance output "${c.fromProperty}" feeds an unrendered sink — lifted values land only in rendered sinks in this slice`)
       );
       continue;
     }
@@ -6827,13 +6877,13 @@ function planComponent(
     if (!bindable) {
       consumed.add(c.key);
       notes.push(
-        `wire ${c.key} dropped: instance output "${c.fromProperty}" feeds ${toNode.type}.${c.toProperty}, which has no static binding in this slice`
+        wireNote(c, `instance output "${c.fromProperty}" feeds ${toNode.type}.${c.toProperty}, which has no static binding in this slice`)
       );
       continue;
     }
     if (c.toProperty === 'mounted' && toNode.id === plan.rootId) {
       consumed.add(c.key);
-      notes.push(`wire ${c.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+      notes.push(wireNote(c, `a mounted wire into the component root is a router concern — not translated in this slice`));
       continue;
     }
     consumed.add(c.key);
@@ -6868,7 +6918,7 @@ function planComponent(
     if (output === undefined) {
       consumed.add(c.key);
       notes.push(
-        `wire ${c.key} dropped: ${fromNode.type} declares no output "${c.fromProperty}" — the kit's definition has no such port, so the running app delivers nothing either`
+        wireNote(c, `${fromNode.type} declares no output "${c.fromProperty}" — the kit's definition has no such port, so the running app delivers nothing either`)
       );
       continue;
     }
@@ -6877,19 +6927,19 @@ function planComponent(
     if (!toNode || !rendered.has(toNode.id)) {
       consumed.add(c.key);
       notes.push(
-        `wire ${c.key} dropped: custom node output "${c.fromProperty}" feeds an unrendered sink — lifted values land only in rendered sinks in this slice`
+        wireNote(c, `custom node output "${c.fromProperty}" feeds an unrendered sink — lifted values land only in rendered sinks in this slice`)
       );
       continue;
     }
     const bindable = customSinkIsBindable(toNode, c.toProperty, plan.roleOf[toNode.id], kits);
     if (bindable !== true) {
       consumed.add(c.key);
-      notes.push(`wire ${c.key} dropped: custom node output "${c.fromProperty}" ${bindable}`);
+      notes.push(wireNote(c, `custom node output "${c.fromProperty}" ${bindable}`));
       continue;
     }
     if (c.toProperty === 'mounted' && toNode.id === plan.rootId) {
       consumed.add(c.key);
-      notes.push(`wire ${c.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+      notes.push(wireNote(c, `a mounted wire into the component root is a router concern — not translated in this slice`));
       continue;
     }
 
@@ -7292,7 +7342,7 @@ function planComponent(
         jsDeadWireKeys.add(c.key);
         const port = c.toId === node.id ? c.toProperty : c.fromProperty;
         notes.push(
-          `wire ${c.key} dropped: the block program declares no port "${port}" — the runtime never delivers this connection`
+          wireNote(c, `the block program declares no port "${port}" — the runtime never delivers this connection`)
         );
       }
       continue;
@@ -7311,8 +7361,8 @@ function planComponent(
           jsDeadWireKeys.add(c.key);
           notes.push(
             kind === 'function'
-              ? `wire ${c.key} dropped: a Function input registers as "in-<name>" — the runtime never delivers a connection to "${c.toProperty}"`
-              : `wire ${c.key} dropped: the expression does not reference an identifier "${c.toProperty}" — the delivery is unobservable`
+              ? wireNote(c, `a Function input registers as "in-<name>" — the runtime never delivers a connection to "${c.toProperty}"`)
+              : wireNote(c, `the expression does not reference an identifier "${c.toProperty}" — the delivery is unobservable`)
           );
         }
       }
@@ -7327,7 +7377,7 @@ function planComponent(
           consumed.add(c.key);
           jsDeadWireKeys.add(c.key);
           notes.push(
-            `wire ${c.key} dropped: ${node.type} registers no output named "${c.fromProperty}" — the runtime never delivers this connection`
+            wireNote(c, `${node.type} registers no output named "${c.fromProperty}" — the runtime never delivers this connection`)
           );
         }
       }
@@ -7369,7 +7419,7 @@ function planComponent(
     if (outputsSink) {
       const sink = outputSinkOf(connection.toProperty, fromNode);
       if ('drop' in sink) {
-        notes.push(`wire ${connection.key} dropped: ${sink.drop}`);
+        notes.push(wireNote(connection, `${sink.drop}`));
         continue;
       }
       compiled = sink;
@@ -7382,7 +7432,7 @@ function planComponent(
       } else {
         dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: compiled.defer };
       }
-      notes.push(`wire ${connection.key} dropped: ${compiled.defer}`);
+      notes.push(wireNote(connection, `${compiled.defer}`));
       continue;
     }
     // A rendered input's `textChanged` pulse is its onChange: the action joins the same handler
@@ -7401,7 +7451,7 @@ function planComponent(
         } else {
           dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason };
         }
-        notes.push(`wire ${connection.key} dropped: ${reason}`);
+        notes.push(wireNote(connection, `${reason}`));
         continue;
       }
       const snapped = snapAction(compiled.action, chainSnapshotFor(`change:${fromNode.id}`, fromNode.id));
@@ -7411,7 +7461,7 @@ function planComponent(
         } else {
           dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: snapped.defer };
         }
-        notes.push(`wire ${connection.key} dropped: ${snapped.defer}`);
+        notes.push(wireNote(connection, `${snapped.defer}`));
         continue;
       }
       const list = (plan.changeHandlers[fromNode.id] = plan.changeHandlers[fromNode.id] ?? []);
@@ -7442,7 +7492,7 @@ function planComponent(
         } else {
           dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason };
         }
-        notes.push(`wire ${connection.key} dropped: ${reason}`);
+        notes.push(wireNote(connection, `${reason}`));
         continue;
       }
       // A stateful control's own Changed chain sees the user-path value the runtime wrote
@@ -7458,7 +7508,7 @@ function planComponent(
         } else {
           dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: snapped.defer };
         }
-        notes.push(`wire ${connection.key} dropped: ${snapped.defer}`);
+        notes.push(wireNote(connection, `${snapped.defer}`));
         continue;
       }
       plan.handlers[fromNode.id] = plan.handlers[fromNode.id] ?? {};
@@ -7475,7 +7525,7 @@ function planComponent(
       const eligible = receiverEligible(fromNode);
       if ('defer' in eligible) {
         dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: eligible.defer };
-        notes.push(`wire ${connection.key} dropped: ${eligible.defer}`);
+        notes.push(wireNote(connection, `${eligible.defer}`));
         continue;
       }
       if (!actionsValidIn([compiled.action], { kind: 'receiver', receiverId: fromNode.id })) {
@@ -7485,7 +7535,7 @@ function planComponent(
         } else {
           dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason };
         }
-        notes.push(`wire ${connection.key} dropped: ${reason}`);
+        notes.push(wireNote(connection, `${reason}`));
         continue;
       }
       const snappedRecv = snapAction(compiled.action, chainSnapshotFor(`recv:${fromNode.id}`));
@@ -7495,7 +7545,7 @@ function planComponent(
         } else {
           dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: snappedRecv.defer };
         }
-        notes.push(`wire ${connection.key} dropped: ${snappedRecv.defer}`);
+        notes.push(wireNote(connection, `${snappedRecv.defer}`));
         continue;
       }
       receiverActions.set(fromNode.id, [...(receiverActions.get(fromNode.id) ?? []), snappedRecv]);
@@ -7511,7 +7561,7 @@ function planComponent(
     } else {
       dispositions[toNode.id] = { kind: 'deferred', to: 'EXP-003', reason: untranslatable };
     }
-    notes.push(`wire ${connection.key} dropped: the trigger is not a rendered element event or a receiver`);
+    notes.push(wireNote(connection, `the trigger is not a rendered element event or a receiver`));
   }
 
   // Component Outputs nodes rule once, after every wire has spoken: the interface declaration
@@ -7684,7 +7734,7 @@ function planComponent(
       list.push({ kind: 'store-set', variableName, expr: { kind: 'input-text', inputId: fromNode.id } });
     } else {
       notes.push(
-        `wire ${connection.key} dropped: a variable write is only translated from a rendered text input in step 5`
+        wireNote(connection, `a variable write is only translated from a rendered text input in step 5`)
       );
     }
   }
@@ -7699,11 +7749,11 @@ function planComponent(
     consumed.add(connection.key);
     const variableName = variableNameOf(fromNode);
     if (variableName === undefined) {
-      notes.push(`wire ${connection.key} dropped: variable name is not a literal`);
+      notes.push(wireNote(connection, `variable name is not a literal`));
       continue;
     }
     if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
-      notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+      notes.push(wireNote(connection, `a mounted wire into the component root is a router concern — not translated in this slice`));
       continue;
     }
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
@@ -7736,11 +7786,11 @@ function planComponent(
     // so this call takes the widened mode and `resolveExpr`'s does not.
     const read = storeKeyReadOf(fromNode, 'binding');
     if ('defer' in read) {
-      notes.push(`wire ${connection.key} dropped: ${read.defer}`);
+      notes.push(wireNote(connection, `${read.defer}`));
       continue;
     }
     if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
-      notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+      notes.push(wireNote(connection, `a mounted wire into the component root is a router concern — not translated in this slice`));
       continue;
     }
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
@@ -7772,11 +7822,11 @@ function planComponent(
     const ctx = newCtx();
     const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
     if (expr === null) {
-      notes.push(`wire ${connection.key} dropped: ${ctx.defer ?? 'the logic output has no statically known source'}`);
+      notes.push(wireNote(connection, `${ctx.defer ?? 'the logic output has no statically known source'}`));
       continue;
     }
     if (!exprValidIn(expr, { kind: 'render' })) {
-      notes.push(`wire ${connection.key} dropped: the expression reads values that only exist inside a handler`);
+      notes.push(wireNote(connection, `the expression reads values that only exist inside a handler`));
       continue;
     }
     const role = plan.roleOf[toNode.id];
@@ -7789,12 +7839,12 @@ function planComponent(
       enabledSink || connection.toProperty === 'visible' || connection.toProperty === 'mounted';
     if (isBooleanExpr(expr) && !truthinessSink) {
       notes.push(
-        `wire ${connection.key} dropped: a logic truth value lands only in a truthiness sink (a control's enabled, visible, mounted) in this slice`
+        wireNote(connection, `a logic truth value lands only in a truthiness sink (a control's enabled, visible, mounted) in this slice`)
       );
       continue;
     }
     if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
-      notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+      notes.push(wireNote(connection, `a mounted wire into the component root is a router concern — not translated in this slice`));
       continue;
     }
     plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
@@ -8022,13 +8072,13 @@ function planComponent(
     if (isRecordErrorRead && plan.bindings[toNode.id]?.[connection.toProperty] !== undefined) {
       consumed.add(connection.key);
       notes.push(
-        `wire ${connection.key} dropped: ${toNode.id}.${connection.toProperty} already shows another node's Error — the runtime shows whichever wrote last, which is not statically ordered`
+        wireNote(connection, `${toNode.id}.${connection.toProperty} already shows another node's Error — the runtime shows whichever wrote last, which is not statically ordered`)
       );
       continue;
     }
     if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
       consumed.add(connection.key);
-      notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+      notes.push(wireNote(connection, `a mounted wire into the component root is a router concern — not translated in this slice`));
       continue;
     }
     const ctx = newCtx();
@@ -8094,7 +8144,7 @@ function planComponent(
     const ctx = newCtx();
     const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
     if (expr === null) {
-      notes.push(`wire ${connection.key} dropped: ${ctx.defer ?? 'the Object node does not read the repeater row'}`);
+      notes.push(wireNote(connection, `${ctx.defer ?? 'the Object node does not read the repeater row'}`));
       consumed.add(connection.key);
       continue;
     }
@@ -8135,7 +8185,7 @@ function planComponent(
     const ctx = newCtx();
     const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
     if (expr === null) {
-      notes.push(`wire ${connection.key} dropped: ${ctx.defer ?? 'the Page Inputs node reads no url parameter'}`);
+      notes.push(wireNote(connection, `${ctx.defer ?? 'the Page Inputs node reads no url parameter'}`));
       consumed.add(connection.key);
       continue;
     }
@@ -8174,16 +8224,16 @@ function planComponent(
       const ctx = newCtx();
       const expr = resolveExpr(fromNode, connection.fromProperty, ctx);
       if (expr === null) {
-        notes.push(`wire ${connection.key} dropped: ${ctx.defer ?? 'items are fed by no statically known source'}`);
+        notes.push(wireNote(connection, `${ctx.defer ?? 'items are fed by no statically known source'}`));
         continue;
       }
       const tsType = exprTsType(expr);
       if (!tsType.endsWith('[]')) {
-        notes.push(`wire ${connection.key} dropped: items are fed by a source not statically typed as a list (${tsType})`);
+        notes.push(wireNote(connection, `items are fed by a source not statically typed as a list (${tsType})`));
         continue;
       }
       if (!exprValidIn(expr, { kind: 'render' })) {
-        notes.push(`wire ${connection.key} dropped: the expression reads values that only exist inside a handler`);
+        notes.push(wireNote(connection, `the expression reads values that only exist inside a handler`));
         continue;
       }
       plan.repeaters[toNode.id].itemsExpr = expr;
@@ -8200,12 +8250,12 @@ function planComponent(
     if (fromNode?.type === 'Component Inputs' && toNode && rendered.has(toNode.id)) {
       if (connection.toProperty === 'mounted' && toNode.id === plan.rootId) {
         consumed.add(connection.key);
-        notes.push(`wire ${connection.key} dropped: a mounted wire into the component root is a router concern — not translated in this slice`);
+        notes.push(wireNote(connection, `a mounted wire into the component root is a router concern — not translated in this slice`));
         continue;
       }
       if (!declaresProp(connection.fromProperty)) {
         consumed.add(connection.key);
-        notes.push(`wire ${connection.key} dropped: ${undeclaredPropReason(connection.fromProperty)}`);
+        notes.push(wireNote(connection, `${undeclaredPropReason(connection.fromProperty)}`));
         continue;
       }
       plan.bindings[toNode.id] = plan.bindings[toNode.id] ?? {};
@@ -8235,7 +8285,7 @@ function planComponent(
       const sd = plan.staticData.find((s) => s.nodeId === fromNode.id);
       if (sd === undefined) {
         // The node deferred at its own gate, which already filed the reason (§4).
-        notes.push(`wire ${connection.key} dropped: the Static Data node it reads deferred`);
+        notes.push(wireNote(connection, `the Static Data node it reads deferred`));
         continue;
       }
       consumed.add(connection.key);
@@ -8252,12 +8302,12 @@ function planComponent(
       consumed.add(connection.key);
       const collectionName = collectionNameOf(fromNode, wiredPorts);
       if (collectionName === undefined) {
-        notes.push(`wire ${connection.key} dropped: array id is not a literal`);
+        notes.push(wireNote(connection, `array id is not a literal`));
         continue;
       }
       const eligible = collectionReadEligible(fromNode);
       if (eligible !== true) {
-        notes.push(`wire ${connection.key} dropped: ${eligible}`);
+        notes.push(wireNote(connection, `${eligible}`));
         continue;
       }
       plan.repeaters[toNode.id].itemsCollectionName = collectionName;
@@ -8313,7 +8363,7 @@ function planComponent(
       if (consumed.has(write.key)) continue;
       consumed.add(write.key);
       notes.push(
-        `wire ${write.key} dropped: it mirrors into property "${write.toProperty.slice('value-'.length)}", which nothing reads — the record is not observable in the emitted app`
+        wireNote(write, `it mirrors into property "${write.toProperty.slice('value-'.length)}", which nothing reads — the record is not observable in the emitted app`)
       );
     }
   }
@@ -8342,12 +8392,12 @@ function planComponent(
           // Outcome tokens exist only on the Run path (§1) — with Run unwired the runtime
           // never pulses done, so the wire is dropped as the runtime drops it.
           consumed.add(c.key);
-          notes.push(`wire ${c.key} dropped: done is invocation-only and Run is not wired — the runtime never pulses it`);
+          notes.push(wireNote(c, `done is invocation-only and Run is not wired — the runtime never pulses it`));
           continue;
         }
         if (kind === 'function' && c.fromProperty === 'unchanged') {
           consumed.add(c.key);
-          notes.push(`wire ${c.key} dropped: unchanged is invocation-only and Run is not wired — the runtime never pulses it`);
+          notes.push(wireNote(c, `unchanged is invocation-only and Run is not wired — the runtime never pulses it`));
           continue;
         }
         const perEvaluation = c.fromProperty === 'isTrueEv' || c.fromProperty === 'isFalseEv';
@@ -8682,7 +8732,7 @@ function planComponent(
     const kitEndpoint = undeclaredKitPortOf(connection, nodeById, kits);
     notes.push(
       kitEndpoint !== null
-        ? `wire ${connection.key} dropped: ${kitEndpoint}`
+        ? wireNote(connection, `${kitEndpoint}`)
         : `wire ${connection.key} has no deterministic translation in step 5 (deferred to EXP-003)`
     );
   }

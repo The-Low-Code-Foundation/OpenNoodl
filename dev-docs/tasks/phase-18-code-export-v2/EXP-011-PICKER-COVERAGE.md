@@ -2303,3 +2303,151 @@ the tests only until a control shows otherwise.
 - 🔴 **Whether "a correction must be grepped for by its claim" becomes a rule** — §18.6 left this
   unowned and §19.1 is the first session to *apply* it prospectively, where it found three
   statements a behaviour-only fix would have left standing. Still unowned as a rule.
+
+## §20 The markers §19.5 measured, and the layer they were nearly built at (session 49, 2026-08-29)
+
+**69 of 127 (54.3%)** — unchanged, and nothing on the picker moved. This session built EXP-004's
+in-code-marker half: the thing §19.5 measured, named as a *stated* gap, and left.
+
+### §20.1 🔴 The first implementation was complete, correct, and fired on almost nothing
+
+The marker channel went in where the refusals visibly are — `component.ts`, sixteen `notes.push`
+sites that drop a wire from an element which still renders. Every site got a structured `defer`
+beside its note, the flush points went into `renderChildBlocks` and above the `return`, `tsc` was
+clean and **911/911 stayed green**.
+
+🔴 **Green was the warning.** If markers were landing, the row asserting `puppy-test-3` emits
+**no** `TODO(export)` had to redden — it is written to detect exactly that — and it did not. A
+direct probe over the corpus said why: **the sixteen sites fire on nothing the corpus contains.**
+
+The refusals an author actually meets are recorded a layer earlier. `plan.ts` refuses the wire
+*before* emit sees it, so no binding is ever created, so `contentAttrs` is never called with one
+and never files a note. The emit-layer population is real and rare; the plan-layer population is
+the report.
+
+⚠️ **The instrumented layer was chosen from where the note-pushing code was, not from where the
+corpus's refusals were.** Grepping `notes.push` in the emitter answers "where does the emitter
+report a drop", and the question was "where does *this project's* drop get decided" — a checker's
+population is part of the checker, and this one was a 3,900-line file when the answer lived in a
+9,635-line one.
+
+### §20.2 The chokepoint that made the plan layer affordable
+
+61 sites in `plan.ts` file a dropped wire, and all 61 write the same sentence shape:
+`` `wire ${c.key} dropped: <reason>` ``. That is a **pure expression** — so `wireNote(c, …)`
+substitutes for the template wherever it appears, including inside a ternary, and returns the
+identical string:
+
+```ts
+const wireNote = (connection: ConnectionIR, reason: string): string => {
+  droppedWires.push({ key: connection.key, fromId: …, toId: …, label: connection.label, reason });
+  return `wire ${connection.key} dropped: ${reason}`;
+};
+```
+
+**58 of the 61 converted mechanically**; the three left over are a different sentence (`wire X:` —
+a boot-value read, which is not a defect and must not be marked) or live in `planProject`.
+
+🔴 **The control was already written.** Three dozen suites assert on note wording, so a rewrite
+that changed one sentence by one byte could not stay green. It went red exactly once — the
+converter rewrote `wireNote`'s **own return statement** into a call to itself, and 229 tests
+failed on `Maximum call stack size exceeded`. A mechanical edit over a file that contains its own
+output shape will match its own definition; the suite caught it in one run.
+
+### §20.3 🔴 Both ends of a dropped wire can be the one that renders
+
+A wire *into* a rendered node leaves that node showing a stale value — the sink is where a reader
+looks, and `listText` is the case: `<p className={styles.listText} />`, empty, because
+`formatList` registers no output named `text`.
+
+A wire *out of* one is the more visible failure and has no marker at the sink at all, because the
+sink is a logic node that emits nothing. `deleteBtn:onClick` feeds a Record verb naming no class:
+**the button renders, looks live, and does nothing when clicked.** A pass that marked only sinks
+would miss it.
+
+So: the sink when it renders, else the source when it renders. A wire between two logic nodes has
+no element to mark — **which is why the report stays the complete list, and why the honesty
+paragraph could not simply be deleted.**
+
+### §20.4 Where a marker may not go, which is most of the design
+
+- **Not inside `renderCore`.** It also returns the body of `{cond && ( … )}` and the whole of
+  `return ( … )`, and both hold exactly one JSX expression. A comment prepended there is a second
+  one and does not parse. The marker is placed by `renderChildBlocks`, the only caller that puts a
+  node among siblings — and *after* the child renders, because the child's deferrals are pushed
+  during its own render.
+- **The root is marked with `//` lines above the `return`**, for the same reason.
+- 🔴 **A port name is author content and a marker is a block comment.** A comment terminator inside
+  one ends it early and the remainder becomes code. `commentSafe` breaks the sequence; no fixture
+  produces one and the corpus never will, which is exactly why it is a row rather than a comment.
+
+### §20.5 🔴 The guard against the failure this task is about
+
+A marker is recorded against a node id and flushed where that node's element is placed. A node
+whose element some *other* path emits would record a marker nothing ever wrote out — the report
+would list the refusal, the recommended grep would find nothing, and the suite would stay green.
+**That is §19.5's shape, one layer down.**
+
+So the invariant is asserted directly over every fixture: a refusal on a node that renders reaches
+the emitted code. It is paired with a row proving the population is not empty, because a sweep over
+nothing passes on an emitter that writes no markers at all.
+
+### §20.6 What proves it
+
+**927 tests** across the package (was 911) in **40 suites** (was 39) — `tests/in-code-markers.test.ts`
+is 16 of them. `tsc --noEmit` clean, `nodegx-module-inject` 31/31, both ledger gates green
+(`69/127`; 175 types).
+
+**Six mutants, three killed, and the two survivors are one fact rather than two holes:**
+
+| mutant | rows |
+|---|---|
+| `commentSafe` is the identity | 1 |
+| only the sink end of a wire is marked | 3 |
+| losses on one node are not grouped | 1 |
+| the explicit root call is removed | **0** |
+| the leftover sweep is removed | **0** |
+| **both root paths removed together** | **1** |
+
+⚠️ **The two zeros are redundancy, not absence of a test.** They are two entry points to one
+mechanism: drop the explicit root call and the root stops being flushed, so the leftover sweep
+collects it instead. Removing **both** reddens the row. The explicit call is kept for what it says
+and for putting the root's losses first.
+
+⚠️ **The leftover sweep's distinctive population is empty today, and that is recorded rather than
+claimed shut.** Every node now carrying a marker is either the root or somewhere in the render
+tree. It stays load-bearing for a shape the corpus does not hold — a roled node no parent places,
+or a future path like `popupJsx`, which builds its element without going through
+`renderChildBlocks` — and the `it.each` invariant is what would redden if one appeared.
+
+### §20.7 The two documents that had to move with the code
+
+🔴 **The report's own paragraph was true and is now false in its second clause.** It said a wire
+dropped from an element that still renders "leaves that element in place, looking right and doing
+nothing" — which was the measurement, and is now the thing that got fixed. Rewritten to the
+narrow claim that survives: a marker needs an element to sit on, a logic-to-logic refusal has
+none, **the report is still the complete list**. Saying "every" here would be §19.5's error one
+iteration later.
+
+**The row that pinned it is still the pair it was, with the sides swapped** — markers present,
+wording present, and now a third assertion that the subset is **proper** (more reported refusals
+than marked nodes). If those ever came level, "the complete list" would have stopped meaning
+anything.
+
+⚠️ **One existing row was narrowed, not deleted.** `untyped-store-key` asserted the emitted file
+does not contain `nosuchkey`; the marker now prints the refused port by name, which is what it is
+for. Comments are stripped and the claim is made against the **code**, so what it always meant —
+no invented `s.nosuchkey` read reaches the app — is checked exactly as hard.
+
+### §20.8 What this leaves
+
+- 🔴 **EXP-004's editor half is still untouched, and it is still the larger half** — the pre-flight
+  estimate and the in-editor post-export report with drill-down are both editor surfaces.
+- ⚠️ **A marker line is not wrapped**, so a long reason prints as one long comment line in the
+  exported app. Cosmetic, measured, not fixed.
+- ⚠️ **Popup slot refusals cannot be marked**: the popup target is emitted inline by `popupJsx`
+  and has no node id in the render tree to key on. They stay report-only, which the honesty
+  paragraph covers.
+- **A chain-local for `Error`**, **`exprValidIn`/`actionExprsOf` on `Navigate To Path`**, **the
+  cycle refusal §18.3 measured**, and **the HTTP `error` port group drift** — all unchanged and
+  still unowned.

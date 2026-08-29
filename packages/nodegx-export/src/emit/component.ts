@@ -127,6 +127,14 @@ export function emitComponent(
   const styledIds = preOrder(plan).filter((id) => isStyledRole(plan.roleOf[id]));
   const styleOf = new Map<string, Decl[]>();
   const roleCssOf = new Map<string, RoleCss>();
+  /**
+   * Authored parameters with no style or content mapping, held until the marker channel exists.
+   *
+   * This runs above `defer`'s declaration, and `defer` is a `const` — calling it from here is a
+   * temporal dead zone throw, not a forward reference. Collected as data and seeded once the
+   * helpers are in scope.
+   */
+  const unmappedParams: Array<{ id: string; name: string }> = [];
   for (const id of styledIds) {
     const node = nodeById.get(id)!;
     const role = plan.roleOf[id] as StyleRole;
@@ -134,6 +142,7 @@ export function emitComponent(
     for (const name of style.unhandled) {
       if (name === 'visible' || name === 'mounted') continue; // §4b: handled by the render wrap / class toggle
       notes.push(`${plan.path}: parameter ${name} on ${id} has no style/content mapping — dropped, reported`);
+      unmappedParams.push({ id, name });
     }
     for (const note of style.notes) notes.push(`${plan.path}: node ${id}: ${note}`);
     const roleCss = computeRoleCss(node, role, catalog);
@@ -148,6 +157,8 @@ export function emitComponent(
       for (const name of groupStyle.unhandled) {
         if (name === 'visible' || name === 'mounted') continue;
         notes.push(`${plan.path}: parameter ${name} on ${plan.collapsedGroupId} has no style/content mapping — dropped, reported`);
+        // The collapsed Group's parameter is the *page div's* loss — `id` is the element that renders.
+        unmappedParams.push({ id, name });
       }
       const groupProps = new Set(groupStyle.decls.map((d) => d.prop));
       decls = [...groupStyle.decls, ...decls.filter((d) => !groupProps.has(d.prop))];
@@ -670,6 +681,134 @@ export function emitComponent(
   /** The note a refused attribute files, spelled once so all three call sites agree. */
   const undeclaredAttrNote = (targetLegacy: string, portName: string, where: string): string =>
     `${plan.path}: ${where} sets "${portName}" on ${targetLegacy}, which does not declare it as a component input — dropped, reported`;
+
+  /**
+   * EXP-004's in-code markers — the half §19.5 measured and did not build.
+   *
+   * ## The defect this closes
+   *
+   * A refusal that could not emit an element already leaves a `TODO(export)` where the element
+   * would have been (`droppedChildMarkers`, EXP-010 AC3). A refusal that drops **a wire from an
+   * element which still renders** left nothing at all: the element sits in the file with the right
+   * tag, the right class and one attribute missing — correct-looking, and inert. On `puppy-test-3`
+   * the emitted code carried **no** marker at all while the report listed nine refusals, so a
+   * reader who ran the report's own `grep -rn "TODO(export)" src` found nothing and could read
+   * that as an all-clear.
+   *
+   * ## 🔴 Filled beside `notes`, never parsed back out of it
+   *
+   * This is §19.2's rule one construct over. Every site below already holds the node, the port and
+   * its reason as *values*; the note is one rendering of them and the marker is another. Deriving
+   * the marker by reading the note back would mis-place it the first time anyone reworded a
+   * refusal — and rewording refusals is the ordinary business of this package. `notes` is
+   * untouched here, and the suites that assert on its wording still hold.
+   *
+   * ## What does not get one
+   *
+   * Only losses on a node that **still renders**. A statically-invisible node and an authored
+   * `Mounted false` are authored state rather than gaps (and the second already emits its own
+   * comment); a kit's `allowChildren: false` is the exported app agreeing with the running one.
+   * Marking those would tell an author to fix something that is not broken.
+   */
+  interface NodeDeferral {
+    /** What in the graph did not survive: `the wire into "text"`, `the "Click" signal`. */
+    subject: string;
+    /** The exporter's own reason, in the words it files for the report. */
+    reason: string;
+    /** The graph node that fed the wire, when the binding still names one. */
+    origin: string | null;
+  }
+  const deferralsByNode = new Map<string, NodeDeferral[]>();
+
+  /**
+   * 🔴 A port name, a node id and a component path are **author content**, and a marker is a
+   * block comment. A comment-closing sequence inside one ends the comment early and the
+   * remainder becomes code —
+   * a file that fails to parse, or worse, one that parses as something else. Nothing upstream
+   * constrains these strings, so the sequence is neutralised here rather than trusted.
+   */
+  const commentSafe = (text: string): string => text.split('*/').join('* /');
+
+  /**
+   * The graph end of a dropped wire. Only `unresolved` carries one: every other `BindingSource`
+   * *did* resolve, and was dropped for what it resolved to rather than for where it came from —
+   * so naming an origin there would answer a question the reader did not ask.
+   */
+  const originOf = (source: BindingSource | undefined): string | null => {
+    if (source === undefined || source.kind !== 'unresolved') return null;
+    const from = nodeById.get(source.fromId);
+    return `${from ? `${from.type} ` : ''}node ${source.fromId}, port "${source.fromProperty}"`;
+  };
+
+  /** Record a loss on a node that still renders, beside the note the caller files itself. */
+  const defer = (nodeId: string, subject: string, reason: string, source?: BindingSource): void => {
+    const entry: NodeDeferral = { subject, reason, origin: originOf(source) };
+    const list = deferralsByNode.get(nodeId);
+    if (list) list.push(entry);
+    else deferralsByNode.set(nodeId, [entry]);
+  };
+
+  /**
+   * The marker's prose, without the comment syntax that carries it — written once because it is
+   * emitted in two syntaxes, and two copies of a sentence drift.
+   *
+   * Marks the node as flushed: whatever is left at the end of the component did not reach a
+   * marker through the tree, and `leftoverMarkerText` is what stops that being a silent loss.
+   */
+  const flushed = new Set<string>();
+  const markerText = (nodeId: string): string[] => {
+    const deferrals = deferralsByNode.get(nodeId);
+    if (deferrals === undefined) return [];
+    flushed.add(nodeId);
+    // "asked of it" rather than "wired to it": an authored parameter with no mapping is one of
+    // these and is not a wire, and a header that named only wires would misdescribe it.
+    const out = [`TODO(export): node ${commentSafe(nodeId)} renders, and part of what the graph`, 'asked of it did not survive:'];
+    for (const d of deferrals) {
+      out.push(`  - ${commentSafe(d.subject)} ${commentSafe(d.reason)}.`);
+      if (d.origin !== null) out.push(`    In the graph it is fed by ${commentSafe(d.origin)}.`);
+    }
+    return out;
+  };
+
+  /**
+   * The plan's own refusals, attached to the element a reader can actually find.
+   *
+   * 🔴 **Which end of a dropped wire renders is the whole question**, and both ends can be the
+   * answer. A wire *into* a rendered node leaves that node showing a stale value — the sink is
+   * where the reader looks. A wire *out of* a rendered node — `deleteBtn:onClick` into a Record
+   * verb that refused — leaves a button that looks live and does nothing when clicked, which is
+   * the most visible failure of the two and has no marker at the sink, because the sink is a
+   * logic node that emits nothing.
+   *
+   * So: the sink when it renders, else the source when it renders. A wire between two logic nodes
+   * has no element to mark at all — that population is why the report stays the complete list and
+   * says so.
+   */
+  for (const wire of plan.droppedWires) {
+    const rendered = plan.roleOf[wire.toId] !== undefined ? wire.toId : plan.roleOf[wire.fromId] !== undefined ? wire.fromId : null;
+    if (rendered === null) continue;
+    const label = wire.label !== undefined ? ` (labelled "${wire.label}")` : '';
+    const subject =
+      rendered === wire.toId
+        ? `the wire into "${wire.toProperty}"${label}, from ${nodeById.get(wire.fromId)?.type ?? 'node'} ${wire.fromId}.${wire.fromProperty},`
+        : `the wire out of "${wire.fromProperty}"${label}, into ${nodeById.get(wire.toId)?.type ?? 'node'} ${wire.toId}.${wire.toProperty},`;
+    defer(rendered, subject, `was dropped: ${wire.reason}`);
+  }
+
+  for (const { id, name } of unmappedParams) {
+    defer(id, `the authored "${name}" parameter`, 'has no style or content mapping in this slice');
+  }
+
+  /** The marker as a JSX children-position comment, immediately above the element it is about. */
+  const markerLines = (nodeId: string, indent: number): string[] => {
+    const text = markerText(nodeId);
+    if (text.length === 0) return [];
+    return [
+      `${pad(indent)}{/* ${text[0]}`,
+      ...text.slice(1).map((line) => `${pad(indent)}    ${line}`),
+      `${pad(indent)}    See the export report. */}`
+    ];
+  };
   plan.props.forEach((p) => reserved.add(propName(p.name)));
   plan.outputProps.forEach((o) => reserved.add(o.prop));
   plan.liftedOutputProps.forEach((l) => reserved.add(l.prop));
@@ -2422,7 +2561,10 @@ export function emitComponent(
         const code = negatedBindingExpr(source);
         if (code === 'omit') continue; // folded to always-enabled
         if (code !== null) attrs.set('disabled', code === 'disabled' ? code : `disabled={${code}}`);
-        else notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
+        else {
+          notes.push(`${plan.path}: wire into ${node.id}.${toProperty} has no statically known source — dropped, reported`);
+          defer(node.id, `the wire into "${toProperty}"`, 'has no statically known source', source);
+        }
         continue;
       }
       if (!role?.startsWith('attr:')) continue;
@@ -2433,10 +2575,12 @@ export function emitComponent(
       const sink = ATTR_SINK[attr] ?? 'opaque';
       const expr = bindingExpr(source, sink);
       if (expr !== null) attrs.set(attr, `${attr}={${expr}}`);
-      else
+      else {
         notes.push(
           `${plan.path}: wire into ${node.id}.${toProperty} ${noSourceReason(source, sink)} — dropped, reported`
         );
+        defer(node.id, `the wire into "${toProperty}"`, noSourceReason(source, sink), source);
+      }
     }
     return CONTENT_ATTR_ORDER.filter((attr) => attrs.has(attr)).map((attr) => attrs.get(attr)!);
   };
@@ -2472,6 +2616,7 @@ export function emitComponent(
       const eventAttr = roleEvents[port] ?? EVENT_ATTRS[port];
       if (!eventAttr) {
         notes.push(`${plan.path}: signal ${node.id}.${port} has no DOM event equivalent — dropped, reported`);
+        defer(node.id, `the "${port}" signal`, 'has no DOM event equivalent');
         continue;
       }
       attrs.push(`${eventAttr}={${handlerArrow(actions, '()', attrIndent)}}`);
@@ -2555,6 +2700,7 @@ export function emitComponent(
     const negated = negatedVisibleCode(bound!);
     if (negated === null) {
       notes.push(`${plan.path}: wire into ${id}.visible has no statically known source — dropped, reported`);
+      defer(id, 'the wire into "visible"', 'has no statically known source', bound);
       return className ? `className={styles.${className}}` : null;
     }
     usesJoinClasses = true;
@@ -2598,6 +2744,7 @@ export function emitComponent(
       const expr = bindingExpr(bound, 'text');
       if (expr !== null) return `{${expr}}`;
       notes.push(`${plan.path}: wire into ${node.id}.${paramName} ${noSourceReason(bound, 'text')} — dropped, reported`);
+      defer(node.id, `the wire into "${paramName}"`, noSourceReason(bound, 'text'), bound);
     }
     const literal = node.parameters.find((p) => p.name === paramName)?.value;
     if (literal?.kind === 'literal') return jsxText(String(literal.value));
@@ -2644,6 +2791,7 @@ export function emitComponent(
           return [`${pad(indent)}{${cond} && (`, ...inner, `${pad(indent)})}`];
         }
         notes.push(`${plan.path}: wire into ${id}.mounted has no statically known source — dropped, reported`);
+        defer(id, 'the wire into "mounted"', 'has no statically known source', mountedBound);
       }
     } else {
       const mountedLit = node.parameters.find((p) => p.name === 'mounted')?.value;
@@ -2672,9 +2820,23 @@ export function emitComponent(
       `${pad(indent)}    See the export report. */}`
     ]);
 
-  /** A container's rendered children, followed by a marker for each child that did not render. */
+  /**
+   * A container's rendered children — each preceded by its marker when the graph wired something
+   * to it that did not survive — followed by a marker for each child that did not render at all.
+   *
+   * 🔴 **Rendered first, marked second, and the order is load-bearing.** A child's deferrals are
+   * pushed *during* its own render, so the marker cannot be written until that has run.
+   *
+   * 🔴 **The marker is placed here rather than inside `renderCore`, because only here is the
+   * element a sibling.** `renderCore` also returns the body of `{cond && ( … )}` and the whole of
+   * `return ( … )`, and both of those positions hold exactly one JSX expression — a comment
+   * prepended there is a second one, which does not parse.
+   */
   const renderChildBlocks = (parentId: string, childIds: string[], indent: number, radioCtx?: RadioCtx): string[][] => [
-    ...childIds.map((childId) => render(childId, indent, radioCtx)),
+    ...childIds.map((childId) => {
+      const lines = render(childId, indent, radioCtx);
+      return [...markerLines(childId, indent), ...lines];
+    }),
     ...droppedChildMarkers(parentId, indent)
   ];
 
@@ -2817,6 +2979,7 @@ export function emitComponent(
         const attr = templateIdents.get(input) ?? null;
         if (attr === null) {
           notes.push(undeclaredAttrNote(templateLegacy, input, `For Each ${node.id}`));
+          defer(node.id, `the repeated "${input}" input`, `is not declared as a component input on ${templateLegacy}`);
           continue;
         }
         out.push(`${attr}={${memberExpr(itemRef, field)}}`);
@@ -3046,6 +3209,7 @@ export function emitComponent(
       const prop = propByPort.get(port);
       if (prop === undefined) {
         notes.push(`${plan.path}: instance ${node.id} signal "${port}" has no callback prop on ${node.type} — dropped, reported`);
+        defer(node.id, `the "${port}" signal`, `has no callback prop on ${node.type}`);
         continue;
       }
       attrs.push(`${prop}={${handlerArrow(actions, '()', attrIndent)}}`);
@@ -3112,6 +3276,7 @@ export function emitComponent(
         notes.push(
           `${plan.path}: wire into ${node.id}.${toProperty} names no input port on ${node.type} — dropped, reported`
         );
+        defer(node.id, `the wire into "${toProperty}"`, `names no input port on ${node.type}`, source);
         continue;
       }
       const port = binding.def.inputs.find((i) => i.name === toProperty);
@@ -3119,6 +3284,7 @@ export function emitComponent(
       const expr = bindingExpr(source, sink);
       if (expr === null) {
         notes.push(`${plan.path}: wire into ${node.id}.${toProperty} ${noSourceReason(source, sink)} — dropped, reported`);
+        defer(node.id, `the wire into "${toProperty}"`, noSourceReason(source, sink), source);
         continue;
       }
       attrs.push(`${prop}={${expr}}`);
@@ -3129,6 +3295,7 @@ export function emitComponent(
       const prop = binding.signalPropOf.get(port);
       if (prop === undefined) {
         notes.push(`${plan.path}: custom node ${node.id} signal "${port}" has no callback prop on ${node.type} — dropped, reported`);
+        defer(node.id, `the "${port}" signal`, `has no callback prop on ${node.type}`);
         continue;
       }
       attrs.push(`${prop}={${handlerArrow(actions, '()', indent + 2)}}`);
@@ -3139,6 +3306,7 @@ export function emitComponent(
       const prop = binding.valuePropOf.get(lifted.port);
       if (prop === undefined) {
         notes.push(`${plan.path}: custom node ${node.id} value output "${lifted.port}" has no callback prop on ${node.type} — dropped, reported`);
+        defer(node.id, `the "${lifted.port}" value output`, `has no callback prop on ${node.type}`);
         continue;
       }
       attrs.push(`${prop}={${lifted.setterName}}`);
@@ -3162,6 +3330,7 @@ export function emitComponent(
       const attr = targetPropName(node.type, param.name);
       if (attr === null) {
         notes.push(undeclaredAttrNote(node.type, param.name, `instance ${node.id}`));
+        defer(node.id, `the "${param.name}" parameter`, `is not declared as a component input on ${node.type}`);
         continue;
       }
       // A wired port takes the wire, never both (see the kit side above): the authored value
@@ -3177,17 +3346,20 @@ export function emitComponent(
         notes.push(
           `${plan.path}: wire into instance ${node.id}.visible dropped — an instance has no element class to toggle in this slice`
         );
+        defer(node.id, 'the wire into "visible"', 'has no element class to toggle on a component instance in this slice', source);
         continue;
       }
       const sink = sinkOfTsType(targetPropTsType(node.type, toProperty));
       const expr = bindingExpr(source, sink);
       if (expr === null) {
         notes.push(`${plan.path}: wire into ${node.id}.${toProperty} ${noSourceReason(source, sink)} — dropped, reported`);
+        defer(node.id, `the wire into "${toProperty}"`, noSourceReason(source, sink), source);
         continue;
       }
       const attr = targetPropName(node.type, toProperty);
       if (attr === null) {
         notes.push(undeclaredAttrNote(node.type, toProperty, `the wire into ${node.id}.${toProperty}`));
+        defer(node.id, `the wire into "${toProperty}"`, `is not declared as a component input on ${node.type}`, source);
         continue;
       }
       attrs.push(`${attr}={${expr}}`);
@@ -3370,6 +3542,25 @@ export function emitComponent(
   };
 
   const jsxLines = render(plan.rootId, 4);
+  /**
+   * The markers that cannot be siblings, as line comments above the `return`.
+   *
+   * Two populations reach this, and they are one line apart for a reason:
+   *
+   * - **The root.** It is the single expression `return ( … )` holds, so its marker cannot be
+   *   placed beside it the way every other node's can.
+   * - 🔴 **Anything else still unflushed** — a node whose element some *other* path emitted, so
+   *   `renderChildBlocks` never saw it. Popup slots go through `popupJsx` today, and a future
+   *   render path would arrive here the same way. Without this, a marker recorded for such a node
+   *   would be **silently dropped**, which is precisely the failure this task exists to close:
+   *   the report would list the refusal and the grep it recommends would still find nothing.
+   */
+  const preReturnMarkers: string[] = [...markerText(plan.rootId)];
+  for (const nodeId of deferralsByNode.keys()) {
+    if (flushed.has(nodeId)) continue;
+    preReturnMarkers.push(...markerText(nodeId));
+  }
+  const preReturnComment = preReturnMarkers.length > 0 ? [...preReturnMarkers, 'See the export report.'].map((line) => `  // ${line}`) : [];
   if (plan.popups.length > 0 && plan.roleOf[plan.rootId!] !== 'group' && plan.roleOf[plan.rootId!] !== 'page') {
     notes.push(`${plan.path}: popup slots need a container root to render under — dropped, reported`);
   }
@@ -3701,7 +3892,7 @@ export function emitComponent(
     for (const action of expandActions(receiver.actions)) body.push(`    ${actionCode(action)};`);
     body.push('  });', '');
   }
-  body.push('  return (', ...jsxLines, '  );', '}');
+  body.push(...preReturnComment, '  return (', ...jsxLines, '  );', '}');
 
   const tsx = GENERATED_TS + importLines.join('\n') + '\n\n' + body.join('\n') + '\n';
 

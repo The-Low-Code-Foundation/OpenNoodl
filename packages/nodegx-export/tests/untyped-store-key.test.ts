@@ -342,7 +342,20 @@ describe('EXP-011 §10.5 — an untyped store key is coerced at its sink, not dr
       connect(mood, read.id, 'value', 'noteEcho', 'text');
       const app = emitApp(ir, catalog);
       expect(app.notes.join('\n')).toContain('is not a key of store "mood"');
-      expect(moodFile(app)).not.toContain('nosuchkey');
+      /*
+       * 🔴 **The generated *code* must not read the key — the marker naming it is not a breach.**
+       * This asserted the raw file, and EXP-004's in-code markers now print the refused port by
+       * name in a comment beside the element, which is what they are for. Narrowed rather than
+       * deleted: comments are stripped and the claim is made against the code, so the thing it
+       * always meant — no invented `s.nosuchkey` read reaches the emitted app — is still checked
+       * exactly as hard. Asserting the raw file would now fail on the marker doing its job.
+       */
+      const code = moodFile(app)
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/[^\n]*/g, '');
+      expect(code).not.toContain('nosuchkey');
+      // ...and the marker is the reason the raw file may mention it at all.
+      expect(moodFile(app)).toContain('TODO(export)');
     });
   });
 });

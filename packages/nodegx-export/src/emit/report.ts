@@ -275,32 +275,36 @@ export function renderReport(data: ExportReportData): string {
   out.push('');
   out.push('### Finding the marked places in the code');
   out.push('');
-  out.push('Some of what is listed above also leaves a marker where it would have been:');
+  out.push('Most of what is listed above also leaves a marker in the code, where it would have been:');
   out.push('');
   out.push('```');
   out.push('grep -rn "TODO(export)" src');
   out.push('```');
   out.push('');
   /*
-   * 🔴 **This paragraph is the report not overstating itself, and it was nearly wrong.**
+   * 🔴 **This paragraph is the report not overstating itself, and it has been wrong once already.**
    *
-   * The first draft said "every marker names the node it stands in for, so a line here and a
+   * An earlier draft said "every marker names the node it stands in for, so a line here and a
    * marker there are the two ends of the same fact" — which reads as *every line has a marker*.
-   * It does not. A marker is placed where an element could not be emitted at all; a wire deferred
-   * on an element that still renders leaves the element there, correct-looking and inert, with
-   * nothing in the file to find. On `puppy-test-3` the emitted code contains **no** `TODO(export)`
-   * at all while this report lists nine refusals.
+   * It did not: markers went only where an element could not be emitted at all, so a wire dropped
+   * from an element that still rendered left the element there, correct-looking and inert, with
+   * nothing in the file to find. `puppy-test-3` emitted **no** `TODO(export)` at all while this
+   * report listed nine refusals, and a reader who greps, finds nothing and concludes the app is
+   * complete has been misled by the one file whose entire job is not misleading them.
    *
-   * A reader who greps, finds nothing, and concludes the app is complete has been misled by the
-   * one file whose entire job is not misleading them. So the list is named as the authority and
-   * the markers as the convenience — which is also the honest description of what EXP-004's
-   * in-code-marker half will change when it is built.
+   * EXP-004's marker pass closed that: a dropped wire now marks the element at whichever end of it
+   * renders. 🔴 **The claim still has to be the narrow one**, because a population remains that
+   * cannot be marked — a refusal between two logic nodes has no element to sit on, and neither has
+   * a component that emitted no file. The report stays the authority and the markers stay the
+   * convenience; what changed is that the convenience now covers most of the list instead of none
+   * of it. Saying "every" here would be the same error one iteration later.
    */
   out.push(
-    '⚠️ **Not everything above can leave one.** A marker goes where an element could not be ' +
-      'generated; a wire that was dropped from an element which still renders leaves that element ' +
-      'in place, looking right and doing nothing. **This report is the complete list** — the ' +
-      'markers are a shortcut to the places where one could be put.'
+    '⚠️ **Not quite everything above can leave one.** A marker needs an element to sit on: it goes ' +
+      'where one could not be generated at all, and on the element that still renders when a wire ' +
+      'into or out of it was dropped. A refusal between two logic nodes has no element to mark, and ' +
+      'neither has a component that emitted no file. **This report is the complete list** — the ' +
+      'markers are the part of it you can find from inside the code.'
   );
   out.push('');
   out.push('### This export is one-way');
