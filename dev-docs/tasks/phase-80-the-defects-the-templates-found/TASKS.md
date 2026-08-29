@@ -15,7 +15,7 @@ derivation and [README.md](README.md) for why the phase exists.
 | DEF-005 | 🔒 ruling | [Membership is a category the graph cannot express](DEF-005-MEMBERSHIP-IS-UNEXPRESSIBLE.md) | P78 D2, D3 | every **membership app** |
 | DEF-006 | ✅ done | [The design system punishes the agent that uses it](DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md) | P78 D12, D15, **D20** | every **agent** styling on-system |
 | DEF-007 | 🟡 partial | [A project means one thing on disk and another once loaded](DEF-007-DISK-AND-LOAD-DISAGREE.md) — **§6 seam named, §6.1 AC3 measured (56), §3.3 struck** | P78 D9 residual · P77 D5 · **P77 D11** | the **next template** |
-| DEF-008 | ⬜ open | [The measurement owed](DEF-008-THE-MEASUREMENT-OWED.md) | P77 D6 · P78 D5 | nobody yet — a re-drive |
+| DEF-008 | ✅ done | [The measurement owed](DEF-008-THE-MEASUREMENT-OWED.md) — **driven s13: D6 does not reproduce; `maxWidth` applies on `Text` in every authored form; the one route to `none` (instance-authored) is blocked at the door. DEF-001's rendered-button inch closed at 5.17:1 in the same render** | P77 D6 · P78 D5 | nobody yet — a re-drive |
 | DEF-009 | ⬜ open | [A public write door ships with no limit](DEF-009-A-PUBLIC-WRITE-DOOR-WITH-NO-LIMIT.md) | **P76 F3** | a **site owner** whose form fills their database |
 | DEF-017 | ✅ **done — C1, C2 (D18+D19), C3** | [Track C, handed over by phase 78](../phase-78-the-templates/TRACK-C-HANDOFF.md) | **P78 D18, D19, D26** | every app: controls in the wrong face; one content surface for nine kinds of thing |
 | DEF-014 | ✅ done | [A filter on a column nothing has written is a 500](DEF-014-A-QUERY-AGAINST-A-COLUMN-LESS-CLASS.md) — **all four ACs; AC1 driven through the template's own `publishPage`** | **P77 SBR-015 s12 drive** | every **site owner on day one** — the site-builder cannot publish its first page |
@@ -95,8 +95,16 @@ cheap to make later — and because nobody has yet read the two pairs against ea
   (DEF-016) changed three `External Link` port descriptions without regenerating the catalog.
   **Fixed as a side effect of DEF-003's regeneration.** Recorded because it is last session's own
   lesson arriving twice: *a closed task's outstanding debts need an owner, not just its carried rows.*
-- 🔴 **`catalog:examples` — a PR CI gate (`pr.yml:210`) — is RED at HEAD, 60/62, and has been since
-  2026-08-29.** Measured by DEF-006 s7 before it changed anything, and again after: unchanged either
+- ✅ **`catalog:examples` — FIXED 2026-08-29 s13, 62/62.** Both recipes repaired at the graph, per
+  their own diagnostics' suggestions. `comp-repeater-set-item-object`: the wires used a bare `done`
+  where `Model2`/`SetModelProperties` property ports are **`prop-done`** (`modelnode2.ts` —
+  `prop-<field>` is the value, `changed-<field>` the signal; the bare name resolved to a signal,
+  which is exactly the `signal-into-value-port` defect the recipe was teaching).
+  `fn-aggregate-stats-function`: gained a second `noodl.cloud.response` with `status: 'failure'`,
+  `error → errorMessage` and `failure → send`, so the recipe now demonstrates the failure route
+  DEF-002's rule exists to require. `catalog:merge` re-run (an example edit is not docs-only —
+  `packages/noodl-types/src/node-catalog-enriched.json` moved), `catalog:check` green,
+  `noodl-mcp` **961/961**. The original text is below for the record: Measured by DEF-006 s7 before it changed anything, and again after: unchanged either
   way. Two shipped recipes carry a warning each, and `catalog:examples` is warnings-as-errors:
   `comp-repeater-set-item-object` fires `signal-into-value-port` on a checkbox's `checked`, and
   `fn-aggregate-stats-function` fires `failure-reaches-nothing` on a cloud aggregate. **Both example
@@ -426,6 +434,25 @@ before any of it was acted on, and every measurement in it held.
 - **P76 F10 / F12 / F13** — already owned by **SB-010** / **SB-011**.
 
 ## Session log
+
+- **2026-08-29 (s13)** — **DEF-008 closed: the measurement was taken and D6 does not reproduce.**
+  Rendered headlessly (`withRenderedPage` over a `demo-app` copy, no editor), `maxWidth` on `Text`
+  reached the DOM in **all four** authored arms — bare `240` (as `240%`, DEF-003(a)'s coercion),
+  object px (`240px`, offsetWidth 240), **D6's exact shape** (`contentSize` + `{100,'%'}` →
+  `100%`), and inside a For Each-instantiated component (D6's real placement) — beside a `none`
+  control and a known-firing Group. 🔴 **The one measured mechanism producing D6's exact reading**:
+  `maxWidth` authored on a component **instance** renders `none`, indistinguishable from the
+  instance without it — and the door **blocks** it (`interfaceless-instance` fired naming the
+  parameter; driven, not read). `unitless-dimension` also driven on the bare form. Both §1
+  candidates refuted as explanations of `none`. Outcome written into phase 77's register (D6 →
+  closed into DEF-008). **DEF-001 AC1's owed inch closed in the same render**: a Button carrying
+  ButtonConfig's stamps painted `#2563eb`/white at **5.17:1** with `--primary` verified at `:root`.
+  §2 (LogOut's `login` input) carried as written — no work proposed.
+  **Also this session: `catalog:examples` taken off the unowned list — 60/62 → 62/62** (see the red
+  gate's entry above): two shipped recipes repaired at the graph, `catalog:merge` + `catalog:check`
+  re-run, `noodl-mcp` 961/961. The only repo edits are the two example JSONs and the regenerated
+  enriched catalog; no editor/runtime source moved, so `test:ci` is not owed — the floor stands at
+  s11's 2905/4.
 
 - **2026-08-29 (s12)** — **DEF-015 closed: AC1 and AC2 driven in the running app.** The blocker s11
   hit was cleared **without touching the defect that caused it** — instead of moving a peer's

@@ -197,3 +197,10 @@ a **source-text pass is not a paint-time measurement**, and this repo has the sc
 
 A drive that drops a Button in a default project and samples the rendered pixels would close AC1's
 sentence outright. **It is owed.** Folded into DEF-008's re-drive rather than left as a footnote.
+
+✅ **PAID — 2026-08-29, DEF-008 s13.** A `net.noodl.controls.button` carrying exactly what
+`ButtonConfig` stamps (`backgroundColor: var(--primary)`, `color: var(--primary-foreground)`) was
+rendered through the from-disk harness with the shipped default tokens: it painted
+`rgb(37,99,235)` (#2563eb — the moved value) under white text at **5.17:1**, with `--primary` read
+off `:root` in the same frame. Scope stated: this is the *paint-time* half; the registry's stamping
+half stays graded by its own specs. See DEF-008 §4.
