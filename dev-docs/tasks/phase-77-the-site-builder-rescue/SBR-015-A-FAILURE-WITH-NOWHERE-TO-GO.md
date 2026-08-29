@@ -194,7 +194,36 @@ correct, well-worded refusal and the browser throws it away.
 
 AC1's person sentence — *"an admin who clicks Publish on a page that cannot be published is told
 so, and the menu stops being busy"* — is still false. The half of it that changed is that the
-answer now **exists**; nothing renders it. ⬜ **AC1 open.** ⚠️ The fix is in **`sb005Components.ts`** — PageRow and Setup live there; `sb004Components.ts` holds the cloud endpoints this task already changed.
+answer now **exists**; nothing renders it. ⚠️ The fix is in **`sb005Components.ts`** — PageRow
+and Setup live there; `sb004Components.ts` holds the cloud endpoints this task already changed.
+
+#### 🟡 WIRED 2026-08-29 (`379f4dec`) — the graph is done, the **drive is not**
+
+`failure → callState.to-Refused` on all three calls, `done → to-Quiet` so a later success
+**resets** it, `callState.refused → rowRefusal.mounted`, and `error → rowRefusal.text` so the
+admin reads the server's own sentence rather than a generic one — duplicate's *"a partial copy
+may exist"* is true and not interchangeable. `failure → menuState.to-Closed` is the second half
+of the person sentence; only `done` closed it before.
+
+⚠️ **`mounted`, never `visible`** — an absent refusal must take no space, and P78 D16 was that
+exact bug in this template. `--destructive` (#dc2626), which is **4.83 on `--background` and
+4.62 on `--surface`**, both over AA 4.5 as text. (First attempt used `var(--danger)`, which is
+not a token this system has — it would have shipped an unresolvable reference straight into
+SBR-012's gate.)
+
+🔴 **AC1 is still ⬜ until it is driven.** What is asserted is that the failure signal *leaves
+the node*; what AC1 claims is that **a person is told**. Those are not the same statement and
+no spec here can close the gap — the whole reason this AC exists is that the last graph which
+looked correct rendered nothing for 47 seconds. Repro: publish a page with zero sections in a
+site whose `Section` class has no `pageId` column, expect the refusal text under the title and
+the menu closed.
+
+🔴 **Why this task's own gate could not see it, which is the reusable half.** The gate derives
+its population as *a component holding a `noodl.cloud.request`* — cloud endpoints. That is a
+better rule than a hand list, and it **still** could not see the same defect one layer up in
+the component that *calls* one. Deriving a population removes the "I forgot one" failure and
+leaves "I framed it too narrowly". The gate now grades browser `CloudFunction2` callers as
+well, and says in the file that it is **necessary and not sufficient**.
 
 **Three things established after the drive, by the task's author, so nobody re-derives them:**
 
