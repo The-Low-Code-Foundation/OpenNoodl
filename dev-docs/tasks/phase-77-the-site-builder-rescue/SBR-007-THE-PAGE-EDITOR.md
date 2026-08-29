@@ -305,7 +305,7 @@ left-anchored at 384 and fine at every width. It is this screen's header row alo
 | **AC3** | 🟡 thumbnail shipped (source-measured, **not driven** — needs an OS file dialog) · 🔴 drop gesture blocked on **D15** · ⬜ gallery model is SBR-005's |
 | **AC4** | 🟢 **MET and DRIVEN** — `PUT` then `GET`, and the header proves the record won (§12.2) |
 | **AC5** | 🟢 **MET and DRIVEN** — three states including the undo (§12.3) |
-| **new** | 🔴 **D18** — the header row does not fit below 1001 px (§14) |
+| **new** | 🟢 **D18** — fixed s23 in the template (§17), 🔴 **not yet driven** (§18) |
 
 ## 16. 🔴 The session's own error, kept because it nearly became a finding
 
@@ -322,3 +322,65 @@ computed `font-size` — which found the `<h1>` present the whole time.
 **The rule this pays for: a control pair proves what you varied, and the instrument is a variable.**
 The arrival route was the variable I *intended* to test; the selector list was the one I actually
 changed. Any negative reading taken with a different probe than its control is not a reading.
+
+
+# 🟢 s23 (2026-08-29) — D18 is fixed in the template, and a gate nobody was watching is green again
+
+## 17. D18 — the lever, and why the row above it was wrong twice
+
+**Built, 🔴 not driven.** [D18](DEFECTS-THE-SITE-BUILDER-FOUND.md) recorded the fix as *"a design
+call"* and pointed at SBR-004 §9.1 for the precedent. Both halves needed correcting before anything
+could be built:
+
+- **the citation**: the `sizeMode` precedent is SBR-004 **§8.2 and §10**, not §9.1 (which is AC2 on a
+  real page load and says nothing about layout);
+- **the family**: SBR-004's was a **height** problem fixed by making Groups stop claiming height.
+  D18 is a **width** problem, and its children are *already* `contentSize` — which is the cause, not
+  the cure.
+
+### The mechanism, read off the runtime
+
+`layout.ts:82` sets **`flexShrink = 0` on every node**, and only the percentage-along-the-parent's-
+direction branches below it set `flexShrink = 1`. Every child of the header row is `IN_A_ROW`
+(`contentSize`), which assigns a percentage on neither axis. So **no child can shrink**, and under
+the default `nowrap` the row overflows and is clipped — which accounts for all three of §14's
+readings at once (right edge fixed at 1001, `#root` tracking the viewport, `scrollWidth ===
+innerWidth`). 🔴 It is also why `flex-grow` was never the lever in either task: growing a child that
+cannot shrink does nothing about overflow.
+
+### What changed
+
+`flexWrap: 'wrap'` and `rowGap: 'var(--space-3)'` on `headerRow` in `sb005Components.ts`
+(`group.ts:478` gates `rowGap` on exactly that condition, so they are authored together). The
+artefact diff is **three lines in one `parameters` block** — the wide-screen design is unchanged, and
+the actions move to a second line only where they would otherwise have been clipped away.
+✅ Not a novel lever here: `/Site/Nav` already ships `flexWrap: 'wrap'`.
+
+### The gate, stated at its real reach
+
+`sb007Template.test.ts` gains a grader and a mutant. ⚠️ It pins **this row**, not the family: eleven
+row-direction Groups ship and five are `nowrap` with every graded child non-shrinking, but §14
+**measured two of those five reflowing correctly**, so the obvious rule would contradict readings
+already taken. The graded property is a **wire-fed `Text` at a display font size** — a width the
+template cannot know, because it is a user's page title. Population: exactly 1.
+
+## 18. 🔴 What is owed on D18 — nobody has seen it
+
+The fixture `SBR-007 Page Editor Drive` was minted from the **old** template and still holds the
+unwrapped row, so the fix does not reach it retroactively. A peer held the only editor (a live viewer
+on `:8574`) all session and two editors cannot share 9222.
+
+**The drive that closes it**: §14's own probe re-run on a project minted from the new template —
+`elementFromPoint` on `Save page` at 1440 / 988 / 800 / 600, expecting `SELF` at every width and the
+row's height to grow by one line below ~1001px.
+
+## 19. 🔴 [D19](DEFECTS-THE-SITE-BUILDER-FOUND.md) — the editor suite was red at HEAD and had been for three commits
+
+Running `tests-unit` before committing found `sb-007/site-template.test.ts` failing on three
+hard-coded counts (21/14/236 against an actual 22/15/274). ✅ **Measured read-only at HEAD and in the
+working tree — identical**, so D18's fix could not have caused them.
+
+They live in **`test:main`**, and the phase's standing gate note quotes **`test:ci`**. A green for one
+runner was being read as a green for the other, and three feature commits landed on the red one.
+Repaired with attribution rather than bumped (236 → 257 SBR-017, → 259 SBR-016, → 274 SBR-007 s21);
+`tests-unit` is now **363 suites / 6105 tests / exit 0**.

@@ -1411,11 +1411,29 @@ export const PAGE_EDITOR_NODES = [
     type: 'Group',
     label: 'Editor header',
     parent: 'body',
+    // 🔴 **D18 — `flexWrap` is the lever, and `layout.ts:82` is the reason.**
+    // Every node starts `flexShrink: 0`; only a percentage size ALONG the
+    // parent's direction opts back in to shrinking. All five children below are
+    // `IN_A_ROW` (`contentSize`), which assigns a percentage on NEITHER axis —
+    // so they cannot shrink, and under the default `nowrap` they overflowed and
+    // were CLIPPED, not scrolled: the row's right edge measured 1001px at every
+    // viewport while `#root` tracked 1440/988/600, and `scrollWidth ===
+    // innerWidth` throughout, so no gesture reached `Save page` below 897px.
+    //
+    // 🔴 `flex-grow` is NOT the lever here either, confirming SBR-004 §8.2:
+    // growing a child that already cannot shrink does nothing about overflow.
+    // Wrapping moves the actions onto a second line instead, so the row stays
+    // one line wherever it fits and stays REACHABLE where it does not.
+    //
+    // `rowGap` means nothing until wrap is on — `group.ts:478` gates the port on
+    // exactly that condition — so the two are authored together, never apart.
     parameters: {
       ...STACKED,
       flexDirection: 'row',
       alignItems: 'center',
-      columnGap: 'var(--space-3)'
+      flexWrap: 'wrap',
+      columnGap: 'var(--space-3)',
+      rowGap: 'var(--space-3)'
     },
     children: ['heading', 'pill', 'dirtyMark', 'previewButton', 'saveButton']
   },

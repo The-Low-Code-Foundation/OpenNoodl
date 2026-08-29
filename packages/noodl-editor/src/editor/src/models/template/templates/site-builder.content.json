@@ -2395,7 +2395,9 @@
                           "sizeMode": "contentHeight",
                           "flexDirection": "row",
                           "alignItems": "center",
-                          "columnGap": "var(--space-3)"
+                          "flexWrap": "wrap",
+                          "columnGap": "var(--space-3)",
+                          "rowGap": "var(--space-3)"
                         },
                         "ports": [],
                         "dynamicports": []

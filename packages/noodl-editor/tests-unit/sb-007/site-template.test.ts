@@ -134,7 +134,12 @@ describe('SB-007 — install writes a project that opens', () => {
       '/projects/a/docs/THEME.md'
     ]);
     // 19 → 21: SBR-006's `/Admin/Shell` and `/Admin/NewPageDialog`.
-    expect(project.components).toHaveLength(21);
+    // 🔴 21 → 22: SBR-017's `/Pages/SignIn` (`7913e6b6`) — the template shipped a
+    // SignUp and no LogIn. This literal, and the two below, sat WRONG for three
+    // commits: `test:main` is the unwatched runner (the phase's standing gate note
+    // quotes `test:ci`, a different one), so nothing reported the drift. Recorded
+    // as D19.
+    expect(project.components).toHaveLength(22);
   });
 
   it('🔴 resolves a concrete rootNodeId, so the project has a home component', async () => {
@@ -177,7 +182,13 @@ describe('SB-007 — install writes a project that opens', () => {
     // 234 → 236: SBR-015 AC1's browser half — `/Admin/PageRow` gains the Text
     // that says why a call refused and the `States` that resets it, because the
     // server's refusal was arriving and being discarded.
-    expect(a.size).toBe(236);
+    // 236 → 257: SBR-017's `/Pages/SignIn` and its LogIn graph (`7913e6b6`).
+    // 257 → 259: SBR-016's list-refresh pair (`cdd842fc`) — the query a migration
+    // had written out of the graph.
+    // 259 → 274: SBR-007 s21's rebuilt page editor (`7a156972`), net of the nodes
+    // that rebuild replaced: +16 on `/Pages/PageEditor` (the header row this task
+    // later fixed for D18), +2 on `/Pages/Admin`, +2 on `/Admin/PageRow`.
+    expect(a.size).toBe(274);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 
@@ -249,7 +260,8 @@ describe('SB-007 — the id rewrite reaches everything that carries an id', () =
       (c) => ((c.graph as unknown as { visualRoots?: string[] })?.visualRoots ?? []).length > 0
     );
     // 12 → 14: both new components carry visual trees.
-    expect(withVisualRoots).toHaveLength(14);
+    // 14 → 15: SBR-017's `/Pages/SignIn`, which is a page and so carries one too.
+    expect(withVisualRoots).toHaveLength(15);
     expect((project.components ?? []).flatMap((c) => c.graph?.connections ?? []).length).toBeGreaterThan(200);
   });
 });

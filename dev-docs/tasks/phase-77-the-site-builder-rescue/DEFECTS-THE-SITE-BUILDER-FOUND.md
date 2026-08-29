@@ -622,7 +622,7 @@ stacked at y=65/96/127. Screenshot: `notes/sbr007-page-editor-driven.png`. This 
 
 ---
 
-## D18 — 🔴 The page editor's header row does not fit, and below 897 px `Save page` cannot be reached at all
+## D18 — 🟢 FIXED s23 (built, **undriven**) · The page editor's header row did not fit, and below 897 px `Save page` could not be reached at all
 
 **Found:** s22, driving SBR-007 AC1 · **Owner: `SBR-007`** (open — AC2 ⬜, AC3 blocked — and the row
 is this task's own build, §7) · **Template**, not product · **Bites:** any client on a narrow
@@ -661,7 +661,112 @@ So the shell reflows and its other two screens reflow; this header row does not.
 clicks — which is exactly why SBR-007 AC1 was driveable this session. The defect is everything
 below 1001 px, and it is total below 897.
 
-**Likely shape of the fix, not yet measured:** SBR-004 §9.1 found the same family on the public site
-and the lever there was `sizeMode` on the Groups (`STACKED_IN_A_COLUMN`), with 🔴 `flex-grow`
-explicitly *not* the lever. Whether the right answer here is that, a wrap, or moving `Save page` out
-of the row is a design call and is why this is a row rather than a patch.
+~~**Likely shape of the fix, not yet measured:** SBR-004 §9.1 found the same family...~~ — two
+things in that sentence were wrong, and both are corrected below.
+
+## 🟢 D18 — FIXED s23 (2026-08-29), in the template. 🔴 **BUILT, NOT DRIVEN.**
+
+### 🔴 Two corrections to the row above, before the fix
+
+1. **The citation was wrong.** The `sizeMode` precedent is **SBR-004 §8.2 and §10**, not §9.1 —
+   §9.1 is AC2 passing on a real page load and says nothing about layout. (`grep -n 'sizeMode'`
+   over that file: lines 425, 443–445.)
+2. **It was not the same family.** SBR-004's was a **height** problem — a nav 219px tall with its
+   links on three lines — and `contentHeight`/`contentSize` fixed it by making groups stop claiming
+   height. D18 is a **width** problem in the opposite direction: the children are *already*
+   `contentSize`, and that is precisely what breaks it.
+
+### The mechanism, read off the source rather than guessed
+
+`layout.ts:82` sets **`style.flexShrink = 0` for every node**, and only the percentage-along-the-
+parent's-direction paths beneath it opt back in (`flexShrink = 1`). Every child of this row is
+`IN_A_ROW` (`contentSize`), which assigns a percentage on **neither** axis. So:
+
+> no child of the header row can shrink, and with the default `flexWrap: nowrap` the row overflows
+> its container and is **clipped**.
+
+That accounts for all three readings at once — the right edge fixed at 1001px, `#root` tracking the
+viewport, and `scrollWidth === innerWidth`. 🔴 **It also explains why `flex-grow` was never the
+lever, in SBR-004 and here: growing a child that cannot shrink does nothing about overflow.**
+
+### The fix
+
+`flexWrap: 'wrap'` (plus `rowGap`, which `group.ts:478` gates on exactly that condition) on
+`/Pages/PageEditor`'s `headerRow`, in `sb005Components.ts`. The row stays a single line wherever it
+fits — the wide-screen design is byte-for-byte unchanged — and the actions move onto a second line
+where it does not, instead of being clipped away.
+
+✅ **Not a novel lever in this template**: `/Site/Nav` already ships `flexWrap: 'wrap'`. The artefact
+now holds exactly two such nodes.
+
+### The gate, and what it honestly does not do
+
+`sb007Template.test.ts` gains `D18 — a row sized by a string nobody has typed yet stays reachable`:
+a grader plus a mutant that drops `flexWrap` and reddens it.
+
+⚠️ **It pins this row's shape; it is not a detector for "rows that clip."** Eleven row-direction
+Groups ship, and five are `nowrap` with every graded child non-shrinking — but §14's drive
+**measured two of those five reflowing correctly**, so a rule reading *row + cannot shrink ⇒ broken*
+would contradict readings already taken. The graded property is instead **a wire-fed `Text` at a
+display font size** — a width the template cannot know because it is a user's page title. That
+population is exactly 1, and it is this row.
+
+### 🔴 What is NOT established
+
+**Nobody has seen this on a screen.** The claim above is a source-level mechanism plus an artefact
+assertion. It is *not* a drive, and it must not be relayed as one:
+
+- the fixture project `SBR-007 Page Editor Drive` was created from the **old** template and still
+  holds the unwrapped row — the fix does not reach it retroactively;
+- a peer held the only editor (a live viewer on `:8574`) for the whole session, and two editors
+  cannot coexist on 9222.
+
+**The drive that would close this** is §14's own probe re-run: `elementFromPoint` on `Save page` at
+1440 / 988 / 800 / 600, expecting a hit test of `SELF` at every width and the row's height to grow
+by one line below ~1001px.
+
+## D19 — 🟢 FIXED s23 · Three commits landed on a red `test:main`, because the phase watches a different runner
+
+**Found:** s23, running the editor suite before committing D18's fix · **Owner: `SBR-007`** (found
+and fixed in the same session) · **Product gate**, not template · **Bites:** every phase-77 task,
+silently.
+
+`packages/noodl-editor/tests-unit/sb-007/site-template.test.ts` was failing **at HEAD**, three
+assertions, and had been since `7913e6b6`:
+
+| assertion | expected | actual at HEAD | first wrong at |
+|---|---|---|---|
+| components in the installed project | 21 | **22** | `7913e6b6` (SBR-017's `/Pages/SignIn`) |
+| components carrying `visualRoots` | 14 | **15** | `7913e6b6`, same component |
+| distinct node ids after the id rewrite | 236 | **274** | `7913e6b6` → `cdd842fc` → `7a156972` |
+
+✅ **Measured read-only, not reasoned**: the three counts were computed from `git show HEAD:<artefact>`
+and from the working tree, and they are **identical** (22 / 15 / 274). D18's fix adds no node and no
+component, so it could not have moved any of them — the reds pre-date this session entirely.
+
+### 🔴 Why nobody saw it
+
+The phase's standing gate note reads *"`test:ci` = 2894 specs, 4 failures, all four `AIX-006 style
+vocabulary` by name"*. That is true, and it is **about a different runner**. These three live in
+`test:main` — plain Node jest — which nothing in the phase's routine runs. Three feature commits
+(SBR-017, SBR-016, SBR-007 s21) landed on top of a red suite without a single report.
+
+⚠️ **So "the gate is unchanged since s21" was never a statement about this suite.** A green quoted
+for one runner says nothing about the other, and this register should stop reading as if it did.
+
+### The repair, and why it is not a bump
+
+The literals were restored **with their attribution**, in the ledger style the file already uses
+(*"The literal is the point: a rewrite that renamed ids instead of regenerating them would keep the
+disjointness assertion green on a set that had SHRUNK"*). Bumping 236 to 274 with no reason would
+have thrown away exactly the property the comment exists to protect. Each step is now named:
+236 → 257 (SBR-017), → 259 (SBR-016), → 274 (SBR-007 s21, +16/+2/+2 net of what the rebuild
+replaced).
+
+✅ After the repair: `tests-unit` is **363 suites / 6105 tests / exit 0**.
+
+### 🔴 What is owed, and by whom
+
+**`test:main` still is not in anybody's routine.** This session fixed the three reds; it did **not**
+make the suite watched, and the next drift will be just as silent. `NONE` — it needs a decision
+about where `test:main` runs, which is bigger than one task.

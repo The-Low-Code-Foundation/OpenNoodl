@@ -1569,3 +1569,100 @@ describe('SBR-017 — the owner can get back in', () => {
     expect(`${user.type}.${source?.fromProperty}`).toBe('net.noodl.user.User.authenticated');
   });
 });
+
+// ── D18 — the header row a client on a narrow window could not reach ─────────
+
+/**
+ * 🔴 **D18**: `/Pages/PageEditor`'s header row — `Editing · <title>`, the status
+ * pill, the unsaved mark, `Preview` and `Save page` — was clipped below 1001px
+ * and `Save page` was **unreachable** below 897px, with no gesture that got to
+ * it (`document.scrollWidth === innerWidth` at every width, SBR-007 §14).
+ *
+ * The mechanism is `layout.ts:82`: every node starts `flexShrink: 0`, and only a
+ * percentage size ALONG the parent's direction opts back in to shrinking. Every
+ * child of this row is `IN_A_ROW` (`contentSize`), which assigns a percentage on
+ * NEITHER axis — so no child can shrink, and under the default `nowrap` the row
+ * overflows its container and is clipped. 🔴 This is also why `flex-grow` was
+ * never the lever (SBR-004 §8.2): growing a child that cannot shrink changes
+ * nothing about overflow.
+ *
+ * ⚠️ **What the population is, and why it is not "every row".** Eleven
+ * row-direction Groups ship in this artefact, and five are `nowrap` with every
+ * graded child non-shrinking — but SBR-007 §14 MEASURED two of those five
+ * reflowing correctly on the driven screen (`/Admin/PageRow`'s buttons track the
+ * viewport 1336 → 884 → 496; `/Pages/Admin`'s header is fine at every width). A
+ * rule reading "row + cannot shrink ⇒ broken" would contradict readings already
+ * taken. What actually separates this row is that it carries a **wire-fed** Text
+ * at a **display** font size: its width is a user's page title, unknown when the
+ * template is authored. That is the property graded below, so a future row built
+ * the same way is caught — and a row whose contents are all author-fixed is not
+ * flagged on a guess.
+ */
+const NON_SHRINKING = ['contentSize', 'contentHeight'];
+const DISPLAY_SIZES = ['var(--text-2xl)', 'var(--text-3xl)', 'var(--text-4xl)', 'var(--text-5xl)'];
+
+/**
+ * Rows whose width depends on a string nobody has typed yet. Grades the reason,
+ * not just the emptiness — a pass that graded no rows at all would satisfy
+ * `unreachable == []` exactly as well as one that cleared every row, and those
+ * are not the same claim.
+ */
+function gradeUnboundedRows(project: Content): { graded: string[]; unreachable: string[] } {
+  const graded: string[] = [];
+  const unreachable: string[] = [];
+
+  for (const component of project.components) {
+    for (const node of nodesOf(component)) {
+      const p = node.parameters ?? {};
+      if (p.flexDirection !== 'row') continue;
+
+      const children = node.children ?? [];
+      const modes = children
+        .map((c) => (c.parameters ?? {}).sizeMode)
+        .filter((m): m is string => typeof m === 'string');
+      if (modes.length === 0) continue;
+
+      // A child whose text arrives over a wire has no width the template can know.
+      const unbounded = children.filter((c) => {
+        const cp = c.parameters ?? {};
+        return c.type === 'Text' && DISPLAY_SIZES.includes(cp.fontSize as string) && cp.text === '';
+      });
+      if (unbounded.length === 0) continue;
+
+      const label = `${component.name} #${node.id}`;
+      const canShrink = !modes.every((m) => NON_SHRINKING.includes(m));
+      const wraps = p.flexWrap === 'wrap' || p.flexWrap === 'wrap-reverse';
+      const scrolls = p.scrollEnabled === true;
+
+      if (canShrink) graded.push(`${label} — a child can shrink, so the row reflows`);
+      else if (wraps) graded.push(`${label} — flexShrink:0 throughout, and the row wraps (D18's lever)`);
+      else if (scrolls) graded.push(`${label} — flexShrink:0 throughout, but the row scrolls`);
+      else unreachable.push(`${label} — flexShrink:0 throughout, and it neither wraps nor scrolls`);
+    }
+  }
+  return { graded: graded.sort(), unreachable: unreachable.sort() };
+}
+
+describe('D18 — a row sized by a string nobody has typed yet stays reachable', () => {
+  it('the page editor header wraps rather than clipping its actions away', () => {
+    const { graded, unreachable } = gradeUnboundedRows(shipped);
+
+    expect(graded).toEqual(['/Pages/PageEditor #headerRow — flexShrink:0 throughout, and the row wraps (D18\'s lever)']);
+    expect(unreachable).toEqual([]);
+  });
+
+  it('MUTANT: the row as it actually shipped reddens the grader', () => {
+    // D18 exactly — `flexWrap` dropped, everything else untouched. Calls the same
+    // grader the green arm calls, so a grader that stopped looking would fail here.
+    const mutant = JSON.parse(JSON.stringify(shipped)) as Content;
+    const row = mutant.components
+      .flatMap((c) => nodesOf(c))
+      .find((n) => n.id === 'headerRow');
+    if (!row) throw new Error('the artefact no longer holds #headerRow — D18 cannot be graded');
+    delete (row.parameters as Record<string, unknown>).flexWrap;
+
+    const { graded, unreachable } = gradeUnboundedRows(mutant);
+    expect(unreachable).toEqual(['/Pages/PageEditor #headerRow — flexShrink:0 throughout, and it neither wraps nor scrolls']);
+    expect(graded).toEqual([]);
+  });
+});
