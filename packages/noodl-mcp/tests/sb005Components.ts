@@ -1035,6 +1035,29 @@ export const SETUP_WIRES = [
  * `role:admin` and the row-level predicate lets that principal read both; the
  * rows are told apart by `published`, the mirror SB-004 §3 keeps for this reader.
  */
+/**
+ * What the page list says when the query came back with nothing.
+ *
+ * 🔴 **SBR-016 AC2.** Exported so the gate and the drive can both name it. The
+ * old sentence for zero rows was "No pages, no published", which is a row count
+ * rather than an answer — and before the fix above it was never rendered at all,
+ * because the query never ran. Those two look identical on screen and they are
+ * not the same claim: one says *we asked and there is nothing*, the other says
+ * nothing whatsoever.
+ */
+export const EMPTY_PAGE_LIST_TEXT = 'No pages yet. Use New page to make your first one.';
+
+/**
+ * What the page list says when the query was refused.
+ *
+ * SBR-016 §2.2's third state. A signed-in principal who is not in `role:admin`
+ * gets a refusal from the row-level predicate, and until this existed the screen
+ * it produced was pixel-identical to an empty site. `--destructive` and
+ * `mounted: false`, the same shape as `/Pages/SignIn`'s refusal, for the same
+ * reason: a message about something that has not happened must take no space.
+ */
+export const PAGE_LIST_ERROR_TEXT = 'The page list could not be loaded. You may not have permission to manage this site.';
+
 export const ADMIN_NODES = [
   {
     id: 'page',
@@ -1063,7 +1086,7 @@ export const ADMIN_NODES = [
     label: 'Pages body',
     parent: 'shell',
     parameters: { ...STACKED, flexDirection: 'column', rowGap: 'var(--space-4)' },
-    children: ['headerRow', 'countLine', 'list']
+    children: ['headerRow', 'countLine', 'listError', 'list']
   },
   {
     id: 'headerRow',
@@ -1116,6 +1139,23 @@ export const ADMIN_NODES = [
     }
   },
   {
+    id: 'listError',
+    type: 'Text',
+    label: 'The page list was refused',
+    parent: 'body',
+    // SBR-016 §2.2's third state, given words. `mounted: false` and not
+    // `visible: false`, so an error that has not happened takes no space —
+    // the rule `/Pages/SignIn`'s refusal is built on.
+    parameters: {
+      ...STACKED,
+      mounted: false,
+      text: PAGE_LIST_ERROR_TEXT,
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--destructive)'
+    }
+  },
+  {
     id: 'list',
     type: 'For Each',
     label: 'One row per page',
@@ -1128,7 +1168,25 @@ export const ADMIN_NODES = [
     id: 'pages',
     type: 'DbCollection2',
     label: 'Every page, draft and published',
-    parameters: { collectionName: 'Page' }
+    parameters: {
+      // 🔴 **SBR-016. The explicit `true` is the whole fix, and it is not
+      // decoration.** This node wants the load-time fetch — the comment above
+      // says so, and it deliberately omits {@link NO_LOAD_TIME_FETCH} to get it.
+      // It did not get it. `storageFetch` is wired (twice, below), so the NDA-017
+      // migration writes `runOnChange-collectionName: false` into this bag on
+      // **every project load**, and `setCollectionName`
+      // (`dbcollectionnode2.ts:564`) then schedules nothing. The panel's only
+      // remaining triggers were a create and a row edit, so an admin who merely
+      // *arrived* saw an empty list — measured on two backends, with the same
+      // session reading the row over HTTP in 2 ms while the screen showed
+      // nothing (SBR-016 §2, SBR-017 §6.4).
+      //
+      // The migration never touches a key that is already present, whatever its
+      // value, so an authored `true` is how a graph written *after* NDA-017 §2
+      // says "I meant the new default". Same idiom as `count` below.
+      'runOnChange-collectionName': true,
+      collectionName: 'Page'
+    }
   },
   {
     id: 'count',
@@ -1147,7 +1205,15 @@ export const ADMIN_NODES = [
         "const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];",
         'const word = (n) => (n < WORDS.length ? WORDS[n] : String(n));',
         "const pages = rows.length === 1 ? 'page' : 'pages';",
-        "Outputs.sentence = word(rows.length) + ' ' + pages + ', ' + word(published).toLowerCase() + ' published';"
+        // 🔴 SBR-016 AC2. Zero is a different sentence, not the count sentence
+        // with a zero in it. This line only ever runs because the query now runs
+        // — `fetched` fires on a successful query whatever the row count
+        // (`dbcollectionnode2.ts:895`), so an empty site says so out loud.
+        'if (rows.length === 0) {',
+        `  Outputs.sentence = ${JSON.stringify(EMPTY_PAGE_LIST_TEXT)};`,
+        '} else {',
+        "  Outputs.sentence = word(rows.length) + ' ' + pages + ', ' + word(published).toLowerCase() + ' published';",
+        '}'
       ].join('\n')
     }
   },
@@ -1173,6 +1239,22 @@ export const ADMIN_NODES = [
     type: 'NavigationShowPopup',
     label: 'Ask for a title and a slug',
     parameters: { target: '/Admin/NewPageDialog' }
+  },
+  {
+    id: 'queryState',
+    type: 'States',
+    label: 'Did the last query refuse?',
+    // `States`, not a `Condition`, for the reason `/Pages/SignIn`'s
+    // `attemptState` is one: it **resets**. A refusal that is later succeeded by
+    // a good fetch must not outlive it — otherwise the message stands beside a
+    // populated list, which is a worse screen than the one this replaces.
+    parameters: {
+      states: 'Quiet,Refused',
+      values: 'refused',
+      'type-refused': 'boolean',
+      'value-Quiet-refused': false,
+      'value-Refused-refused': true
+    }
   }
 ];
 
@@ -1204,7 +1286,14 @@ export const ADMIN_WIRES = [
   // `itemOutputSignal-<name>` (`foreach.tsx:1030-1037`), derived from the template
   // component's own output ports, so the port the author wanted exists — under a
   // name they did not use. Measured through the real module, not read off it.
-  { fromId: 'list', fromProperty: 'itemOutputSignal-Changed', toId: 'pages', toProperty: 'storageFetch' }
+  { fromId: 'list', fromProperty: 'itemOutputSignal-Changed', toId: 'pages', toProperty: 'storageFetch' },
+
+  // 🔴 SBR-016 §2.2. `failure`, never `error`-as-a-trigger and never `fetched`
+  // for both arms: the two outcomes drive the two states, so the refusal cannot
+  // be raised by a successful query and cannot survive one either.
+  { fromId: 'pages', fromProperty: 'failure', toId: 'queryState', toProperty: 'to-Refused' },
+  { fromId: 'pages', fromProperty: 'fetched', toId: 'queryState', toProperty: 'to-Quiet' },
+  { fromId: 'queryState', fromProperty: 'refused', toId: 'listError', toProperty: 'mounted' }
 
   // 🔴 The "Theme and settings" button is GONE from this screen, and that is the
   // point of SBR-006: it was reachable only from a button at the bottom of the
@@ -1392,6 +1481,20 @@ export const PAGE_EDITOR_NODES = [
       // 🔴 The half of rule 3 that transfers: no load-time fetch, so the query
       // cannot run before its filter exists and return every Section on the site.
       ...NO_LOAD_TIME_FETCH,
+      // 🔴 **SBR-016's second instance, and the one that had to be checked
+      // rather than assumed.** With the two boxes above off, *the filter value
+      // arriving* is this query's only unprompted trigger — the wire comment
+      // below says exactly that. But `storageFetch` is wired from the two write
+      // completions, so the NDA-017 migration also silences the discovered
+      // `qp-` ports (`RUN_ON_CHANGE_FAMILIES.DbCollection2.discoveredPrefixes`),
+      // and `runOnChange-qp-pageId: false` removes the one trigger the author
+      // left. Editing a page then showed no sections until you added one.
+      //
+      // ⚠️ The repair here CANNOT be the one `/Pages/Admin` uses. Turning
+      // `runOnChange-collectionName` back on would fetch every Section on the
+      // site before `pageId` exists — F12, the defect `NO_LOAD_TIME_FETCH` is
+      // for. The trigger has to be the filter value, and this is how it survives.
+      'runOnChange-qp-pageId': true,
       collectionName: 'Section',
       visualFilter: SECTIONS_OF_PAGE_FILTER
     }

@@ -2540,6 +2540,7 @@
             "parameters": {
               "runOnChange-collectionName": false,
               "runOnChange-querySettings": false,
+              "runOnChange-qp-pageId": true,
               "collectionName": "Section",
               "visualFilter": {
                 "combinator": "and",
@@ -4074,12 +4075,30 @@
                         "dynamicports": []
                       },
                       {
+                        "id": "listError",
+                        "type": "Text",
+                        "children": [],
+                        "label": "The page list was refused",
+                        "x": 220,
+                        "y": 880,
+                        "parameters": {
+                          "sizeMode": "contentHeight",
+                          "mounted": false,
+                          "text": "The page list could not be loaded. You may not have permission to manage this site.",
+                          "fontFamily": "var(--font-sans)",
+                          "fontSize": "var(--text-sm)",
+                          "color": "var(--destructive)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
                         "id": "list",
                         "type": "For Each",
                         "children": [],
                         "label": "One row per page",
                         "x": 220,
-                        "y": 880,
+                        "y": 1000,
                         "parameters": {
                           "templateType": "explicit",
                           "template": "/Admin/PageRow"
@@ -4126,8 +4145,9 @@
             "children": [],
             "label": "Every page, draft and published",
             "x": 530,
-            "y": 880,
+            "y": 1000,
             "parameters": {
+              "runOnChange-collectionName": true,
               "collectionName": "Page"
             },
             "ports": [],
@@ -4142,7 +4162,7 @@
             "y": 760,
             "parameters": {
               "runOnChange-in-rows": true,
-              "functionScript": "const rows = Array.isArray(Inputs.rows) ? Inputs.rows : [];\nconst published = rows.filter((r) => r && r.published === true).length;\nconst WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];\nconst word = (n) => (n < WORDS.length ? WORDS[n] : String(n));\nconst pages = rows.length === 1 ? 'page' : 'pages';\nOutputs.sentence = word(rows.length) + ' ' + pages + ', ' + word(published).toLowerCase() + ' published';"
+              "functionScript": "const rows = Array.isArray(Inputs.rows) ? Inputs.rows : [];\nconst published = rows.filter((r) => r && r.published === true).length;\nconst WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];\nconst word = (n) => (n < WORDS.length ? WORDS[n] : String(n));\nconst pages = rows.length === 1 ? 'page' : 'pages';\nif (rows.length === 0) {\n  Outputs.sentence = \"No pages yet. Use New page to make your first one.\";\n} else {\n  Outputs.sentence = word(rows.length) + ' ' + pages + ', ' + word(published).toLowerCase() + ' published';\n}"
             },
             "ports": [],
             "dynamicports": []
@@ -4153,7 +4173,7 @@
             "children": [],
             "label": "Create a draft page",
             "x": 530,
-            "y": 1000,
+            "y": 1120,
             "parameters": {
               "collectionName": "Page",
               "accessControl": [
@@ -4182,6 +4202,23 @@
             "y": 640,
             "parameters": {
               "target": "/Admin/NewPageDialog"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "queryState",
+            "type": "States",
+            "children": [],
+            "label": "Did the last query refuse?",
+            "x": 530,
+            "y": 880,
+            "parameters": {
+              "states": "Quiet,Refused",
+              "values": "refused",
+              "type-refused": "boolean",
+              "value-Quiet-refused": false,
+              "value-Refused-refused": true
             },
             "ports": [],
             "dynamicports": []
@@ -4247,6 +4284,24 @@
             "fromProperty": "itemOutputSignal-Changed",
             "toId": "pages-2",
             "toProperty": "storageFetch"
+          },
+          {
+            "fromId": "pages-2",
+            "fromProperty": "failure",
+            "toId": "queryState",
+            "toProperty": "to-Refused"
+          },
+          {
+            "fromId": "pages-2",
+            "fromProperty": "fetched",
+            "toId": "queryState",
+            "toProperty": "to-Quiet"
+          },
+          {
+            "fromId": "queryState",
+            "fromProperty": "refused",
+            "toId": "listError",
+            "toProperty": "mounted"
           }
         ],
         "visualRoots": [

@@ -35,11 +35,18 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { ROUTER, SIGNED_OUT_TEXT, SIGNIN_REFUSAL_TEXT } from './sb005Components';
+import {
+  EMPTY_PAGE_LIST_TEXT,
+  PAGE_LIST_ERROR_TEXT,
+  ROUTER,
+  SIGNED_OUT_TEXT,
+  SIGNIN_REFUSAL_TEXT
+} from './sb005Components';
 import { SITE_URL_PATH } from './sb006Components';
 import { APP_COMPONENT, buildSiteTemplateProject, toTemplateContent } from './sb007Template';
 import {
   planRunOnValueChangeMigration,
+  RUN_ON_CHANGE_FAMILIES,
   type MigrationProjectLike
 } from '../../noodl-editor/src/editor/src/models/ProjectPatches/runOnValueChangeMigration';
 
@@ -572,6 +579,535 @@ describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node
     expect(graded).toContain(
       `/Pages/Site JavaScriptFunction#${resolver.id}.in-slug <= PageInputs — set before addChild, router.tsx:586`
     );
+  });
+});
+
+// ── 4. SBR-016: a query in a page nobody has edited yet ──────────────────────
+
+/**
+ * 🔴 **SBR-016. The defect: `/admin/pages` rendered the shell, the heading and
+ * `New page`, and no rows — while the session the panel itself held read the row
+ * over HTTP in 2 ms.** Not refused, not empty: the collection never asked.
+ *
+ * ## Why the gate SB-005 already had could not see it
+ *
+ * `assertUnfilteredQuery` (`sb005AdminPanel.test.ts`) asserts precisely the right
+ * thing about the page list — that the author did **not** write
+ * `runOnChange-collectionName: false` — and it was green throughout. It reads the
+ * parameters the door wrote. The runtime does not read those parameters: it reads
+ * them after `applyPatches` has run the NDA-017 migration over them, and the
+ * migration writes that exact `false` into any node in the fifteen families whose
+ * control signal is wired. The page list's `storageFetch` is wired — from a
+ * create and from a row edit, both *consequences of an edit* — so every load
+ * silenced the one trigger that fires without one.
+ *
+ * **The gate and the runtime were reading two different graphs, and only one of
+ * them was the one that runs.** Every check in this file that reads
+ * `node.parameters` directly has the same blind spot; this one closes it for the
+ * query family by grading the artefact **after** the migration has had it.
+ *
+ * ## What is graded
+ *
+ * Every `DbCollection2` in the artefact — no population split, no exemptions.
+ * A query is asked one question: *after the migration, is there any way for you
+ * to run that does not require a person to have already edited something?* The
+ * answer must be yes, and the **reason** is asserted by name, because a pass with
+ * no reason is what an exclusion list produces.
+ *
+ * Triggers come in two shapes and both are graded:
+ *
+ * - a wire into `storageFetch` — the shape the acceptance criterion names;
+ * - a **value input whose checkbox survived the migration**, which is the shape
+ *   the whole template is actually built on. `/Pages/Admin` fetches because
+ *   `collectionName` lands at load; `/Pages/PageEditor` fetches because
+ *   `qp-pageId` arrives. Neither is a wire into `storageFetch`, and a gate that
+ *   only looked for wires would have demanded a mount fetch on the filtered
+ *   query — which is F12, the defect `NO_LOAD_TIME_FETCH` exists to prevent.
+ *
+ * ## The producers are classified, never listed
+ *
+ * A source is edit-free, edit-driven, or **transparent** — a node that merely
+ * passes its own trigger along, graded by recursing into whatever makes *it* run.
+ * The control signal it recurses through is read from `RUN_ON_CHANGE_FAMILIES`
+ * rather than restated, so a family whose control signal is renamed cannot leave
+ * this walk quietly reading the wrong port. Anything the classifier does not
+ * recognise is an **offender**, named with its type and port: an unknown producer
+ * reds the gate rather than being skipped, which is the difference between a rule
+ * and a list of the cases somebody happened to think of.
+ */
+describe('SBR-016 — every query can run before anybody has edited anything', () => {
+  interface GNode {
+    id: string;
+    type: string;
+    parameters?: Record<string, unknown>;
+  }
+  interface GWire {
+    fromId: string;
+    fromProperty: string;
+    toId: string;
+    toProperty: string;
+  }
+  interface GComponent {
+    name: string;
+    graph: { roots: GNode[]; connections: GWire[] };
+  }
+  interface GProject {
+    components: GComponent[];
+  }
+
+  /**
+   * The artefact flattened, exactly as the migration reads it — and **deep-copied**.
+   *
+   * ⚠️ A shallow `{ children, ...node }` spread shares the `parameters` object with
+   * `shipped`, so a mutant's `delete` reached the module-level artefact and every
+   * later test in this block inherited it. Measured, not imagined: the page-editor
+   * mutant reported the page list as an offender too, because the mutant before it
+   * had already removed the page list's checkbox from the shared object.
+   */
+  const flatProject = (): GProject =>
+    JSON.parse(
+      JSON.stringify({
+        components: shipped.components.map((c) => ({
+          name: c.name,
+          graph: {
+            roots: nodesOf(c).map(({ children, ...node }) => node),
+            connections: c.graph.connections ?? []
+          }
+        }))
+      })
+    ) as GProject;
+
+  /**
+   * The artefact **as the runtime gets it** — the migration's writes applied.
+   *
+   * This single call is the whole difference between this gate and the one that
+   * was green while the panel was blank.
+   */
+  function migrated(project: GProject): GProject {
+    const out: GProject = JSON.parse(JSON.stringify(project));
+    const plan = planRunOnValueChangeMigration(out as MigrationProjectLike);
+    const index = new Map<string, GNode>();
+    for (const c of out.components) for (const n of c.graph.roots) index.set(`${c.name}::${n.id}`, n);
+    for (const write of plan.writes) {
+      const node = index.get(`${write.component}::${write.nodeId}`);
+      if (!node) continue;
+      (node.parameters ??= {})[write.parameter] = false;
+    }
+    return out;
+  }
+
+  /**
+   * Which stored parameter names carry a value for which checkbox.
+   *
+   * `dbcollectionnode2.ts`: `setCollectionName` (`:561`) asks about
+   * `collectionName`; `setVisualFilter` (`:1047`) and `setVisualSorting`
+   * (`:1052`) both ask about `querySettings`. A parameter here means the value is
+   * in the file, so it lands at load with no wire and no person involved.
+   */
+  const PARAMETER_CHECKBOX: Record<string, string> = {
+    collectionName: 'collectionName',
+    visualFilter: 'querySettings',
+    visualSort: 'querySettings'
+  };
+
+  /**
+   * The population, derived twice and cross-checked.
+   *
+   * 🔴 **A cloud component is invoked, not arrived at**, and the difference is not
+   * cosmetic: inside `duplicatePage` a `Create Record`'s `done` is a step in
+   * answering a request, while on `/Pages/Admin` the identical port means *a
+   * person has already made a page*. One rule cannot read both, and running the
+   * browser rule over the cloud half produced three rows that were about the
+   * classifier rather than the template. The cloud half has its own gate — every
+   * terminal path reaches a Response, below.
+   *
+   * 🔴 **The split is the name prefix, and the attempt to derive it twice is what
+   * proved that.** The first draft of this gate called a component cloud if it held
+   * a `noodl.cloud.request` or a `Component Outputs` — and the control below caught
+   * it immediately: `/Admin/PageRow` and `/Admin/SectionRow` have `Component
+   * Outputs` too, because that is how a repeater row signals `Changed`. Worse, two
+   * of the three worker components hold **no** `noodl.cloud.*` node at all
+   * (`SetSectionAccess`, `CopySectionToPage`), so there is no graph property that
+   * separates them from a browser component. `/#__cloud__/` is not a naming habit
+   * here; it is what the door reads to decide where a component is deployed.
+   *
+   * ⚠️ So the control below is **one-directional, and says so**: a cloud-only node
+   * may never appear outside the prefix. It does not prove the prefixed set is
+   * exactly the cloud set — nothing in the artefact can — and the mis-classification
+   * it caught was invisible to the rule itself, because neither row component holds
+   * a query. A control that only ran over the graded rows would have stayed green.
+   */
+  const CLOUD_PREFIX = '/#__cloud__/';
+  const isCloud = (c: GComponent) => c.name.startsWith(CLOUD_PREFIX);
+
+  /**
+   * Signal and value ports that fire because the app *arrived*, not because
+   * somebody did something. Each carries the reason it is one.
+   */
+  const ARRIVAL: Array<{ type: string; port: RegExp; why: string }> = [
+    { type: 'Page', port: /^didMount$/, why: 'the page mounted' },
+    { type: 'PageInputs', port: /^pm-/, why: 'the router set it before addChild (router.tsx:586)' },
+    { type: 'noodl.cloud.request', port: /./, why: 'the request is the arrival' }
+  ];
+
+  /**
+   * Ports that exist only because a person acted, or because a write they caused
+   * finished. A query whose only triggers are these is the defect.
+   */
+  const EDIT: Array<{ type: RegExp; port: RegExp; why: string }> = [
+    { type: /^net\.noodl\.controls\./, port: /./, why: 'a control the person operated' },
+    { type: /^(New|Set|Delete)DbModelProperties$/, port: /./, why: 'a write the person caused' },
+    { type: /^For Each$/, port: /^itemOutputSignal-/, why: 'a row signalled a change' },
+    { type: /^NavigationShowPopup$/, port: /^close/, why: 'the person closed the dialog' }
+  ];
+
+  /**
+   * Families that pass a trigger along rather than originating one. Graded by
+   * recursing into what makes them run — their control signal where they have
+   * one, and their own value inputs where they do not.
+   */
+  const TRANSPARENT = new Set([
+    'JavaScriptFunction',
+    'Expression',
+    'Condition',
+    'States',
+    'DbCollection2',
+    'DbModel2',
+    'CloudFunction2',
+    'Component Inputs'
+  ]);
+
+  interface Verdict {
+    free: boolean;
+    why: string;
+  }
+
+  /** Grade one query, and every producer behind it. */
+  function gradeQueries(project: GProject): { offenders: string[]; graded: string[] } {
+    const offenders: string[] = [];
+    const graded: string[] = [];
+
+    for (const component of project.components.filter((c) => !isCloud(c))) {
+      const nodes = new Map(component.graph.roots.map((n) => [n.id, n]));
+      const wires = component.graph.connections;
+      const incoming = (id: string, port?: string) =>
+        wires.filter((w) => w.toId === id && (port === undefined || w.toProperty === port));
+
+      /** Guard against a cycle: a node already being graded cannot vouch for itself. */
+      const inFlight = new Set<string>();
+
+      /** Does this node produce anything without a person having acted? */
+      function nodeIsFree(node: GNode): Verdict {
+        if (inFlight.has(node.id)) return { free: false, why: 'a cycle' };
+        inFlight.add(node.id);
+        try {
+          const family = RUN_ON_CHANGE_FAMILIES[node.type];
+          const control = family?.controlSignal;
+          const controlWires = control ? incoming(node.id, control) : [];
+
+          // Its control signal is wired: that signal is the only thing that runs it.
+          if (controlWires.length > 0) {
+            for (const w of controlWires) {
+              const v = sourceIsFree(w);
+              if (v.free) return { free: true, why: `${node.type} run by ${v.why}` };
+            }
+            return { free: false, why: `${node.type} run only by an edit` };
+          }
+
+          // It is not signal-driven, so a value landing runs it. A stored
+          // parameter lands at load; a wired value inherits its producer.
+          const stored = Object.keys(node.parameters ?? {}).filter((k) => !k.startsWith('runOnChange-'));
+          if (stored.length > 0 && incoming(node.id).length === 0) {
+            return { free: true, why: `${node.type} has only stored parameters` };
+          }
+          for (const w of incoming(node.id)) {
+            const v = sourceIsFree(w);
+            if (v.free) return { free: true, why: `${node.type} fed by ${v.why}` };
+          }
+          if (stored.length > 0) return { free: true, why: `${node.type} has stored parameters` };
+          return { free: false, why: `${node.type} fed only by an edit` };
+        } finally {
+          inFlight.delete(node.id);
+        }
+      }
+
+      /** Grade one wire by what is on the far end of it. */
+      function sourceIsFree(wire: GWire): Verdict {
+        const from = nodes.get(wire.fromId);
+        if (!from) return { free: false, why: `a wire from a node that is gone (${wire.fromId})` };
+
+        for (const rule of ARRIVAL) {
+          if (from.type === rule.type && rule.port.test(wire.fromProperty)) {
+            return { free: true, why: `${from.type}.${wire.fromProperty} — ${rule.why}` };
+          }
+        }
+        for (const rule of EDIT) {
+          if (rule.type.test(from.type) && rule.port.test(wire.fromProperty)) {
+            return { free: false, why: `${from.type}.${wire.fromProperty} — ${rule.why}` };
+          }
+        }
+        if (TRANSPARENT.has(from.type)) {
+          const v = nodeIsFree(from);
+          return { free: v.free, why: `${from.type}.${wire.fromProperty} <= ${v.why}` };
+        }
+        // 🔴 Not recognised. This is an offender rather than a skip.
+        return { free: false, why: `UNCLASSIFIED ${from.type}.${wire.fromProperty}` };
+      }
+
+      for (const query of component.graph.roots.filter((n) => n.type === 'DbCollection2')) {
+        const where = `${component.name} ${query.id}`;
+        const parameters = query.parameters ?? {};
+        const ticked = (input: string) => parameters[`runOnChange-${input}`] !== false;
+
+        let verdict: Verdict | undefined;
+        /** Every trigger considered and why it did not count — an offender must be actionable. */
+        const tried: string[] = [];
+
+        // Shape 1 — a wire into `storageFetch` from something that is not an edit.
+        for (const w of incoming(query.id, 'storageFetch')) {
+          const v = sourceIsFree(w);
+          if (v.free) {
+            verdict = { free: true, why: `storageFetch <= ${v.why}` };
+            break;
+          }
+          tried.push(`storageFetch <= ${v.why}`);
+        }
+
+        // Shape 2 — a value input whose checkbox survived the migration, holding a
+        // value that arrives without a person: a stored parameter, or an
+        // edit-free producer.
+        if (!verdict) {
+          for (const [parameter, checkbox] of Object.entries(PARAMETER_CHECKBOX)) {
+            if (!(parameter in parameters)) continue;
+            if (incoming(query.id, parameter).length > 0) continue;
+            if (!ticked(checkbox)) {
+              tried.push(`${parameter} is stored but the migration silenced runOnChange-${checkbox}`);
+              continue;
+            }
+            verdict = { free: true, why: `${parameter} is stored and runOnChange-${checkbox} survived the migration` };
+            break;
+          }
+        }
+        if (!verdict) {
+          for (const w of incoming(query.id)) {
+            if (w.toProperty === 'storageFetch') continue;
+            if (!ticked(w.toProperty)) {
+              tried.push(`${w.toProperty} arrives but the migration silenced runOnChange-${w.toProperty}`);
+              continue;
+            }
+            const v = sourceIsFree(w);
+            if (v.free) {
+              verdict = { free: true, why: `${w.toProperty} <= ${v.why}` };
+              break;
+            }
+            tried.push(`${w.toProperty} <= ${v.why}`);
+          }
+        }
+
+        if (verdict?.free) graded.push(`${where} — ${verdict.why}`);
+        else offenders.push(`${where} — no trigger that predates an edit: ${tried.join('; ') || 'nothing wired and nothing stored'}`);
+      }
+    }
+    return { offenders: offenders.sort(), graded: graded.sort() };
+  }
+
+  it('CONTROL: no cloud-only node lives outside the cloud prefix', () => {
+    // The one direction that IS provable from the graph. A browser component that
+    // grew a `noodl.cloud.*` node would mean the prefix had stopped deciding where
+    // things run, and this rule would be grading the wrong half.
+    const strays = flatProject()
+      .components.filter((c) => !isCloud(c))
+      .flatMap((c) => c.graph.roots.filter((n) => n.type.startsWith('noodl.cloud.')).map((n) => `${c.name} ${n.type}`));
+    expect(strays).toEqual([]);
+
+    // …beside the signal that makes that emptiness mean something: those nodes do
+    // exist in this artefact, on the other side of the split.
+    const inCloud = flatProject()
+      .components.filter(isCloud)
+      .flatMap((c) => c.graph.roots.filter((n) => n.type.startsWith('noodl.cloud.')));
+    expect(inCloud.length).toBeGreaterThan(0);
+  });
+
+  it('CONTROL: the graded half is not empty, and holds the two screens this task is about', () => {
+    // A rule over nothing passes. This is what makes every green below mean
+    // "checked" rather than "not present".
+    const withQueries = flatProject()
+      .components.filter((c) => !isCloud(c))
+      .filter((c) => c.graph.roots.some((n) => n.type === 'DbCollection2'))
+      .map((c) => c.name);
+    expect(withQueries.sort()).toEqual(['/Pages/Admin', '/Pages/PageEditor', '/Pages/Site', '/Pages/ThemeEditor', '/Site/Nav']);
+  });
+
+  it('CONTROL: the mapping above covers every parameter a query in this artefact carries', () => {
+    // 🔴 An unmapped parameter would be silently ignored by shape 2, and the rule
+    // would then be about the parameters somebody remembered. This is what makes
+    // `PARAMETER_CHECKBOX` a mapping rather than an exclusion list.
+    const seen = new Set<string>();
+    for (const c of shipped.components) {
+      for (const n of nodesOf(c)) {
+        if (n.type !== 'DbCollection2') continue;
+        for (const key of Object.keys(n.parameters ?? {})) {
+          if (!key.startsWith('runOnChange-')) seen.add(key);
+        }
+      }
+    }
+    expect([...seen].sort()).toEqual(Object.keys(PARAMETER_CHECKBOX).sort());
+  });
+
+  it('CONTROL: the migration really does rewrite this artefact before it is graded', () => {
+    // Every green below is a claim about the MIGRATED graph. If the migration
+    // wrote nothing, this gate would be the old one wearing a new name.
+    const before = flatProject();
+    const plan = planRunOnValueChangeMigration(before as MigrationProjectLike);
+    expect(plan.writes.filter((w) => w.nodeType === 'DbCollection2').length).toBeGreaterThan(0);
+  });
+
+  it('every query has a trigger that predates any edit, and the reason is named', () => {
+    const { offenders, graded } = gradeQueries(migrated(flatProject()));
+
+    // 🔴 The reasons, in full. `offenders: []` is satisfied just as well by a walk
+    // that graded nothing, and the two are not the same claim — so the census is
+    // the reason column itself.
+    expect(graded).toEqual([
+      // 🔴 The two SBR-016 fixed. Neither is a wire into `storageFetch`, and that
+      // is the finding the acceptance criterion's wording did not anticipate:
+      // this template's queries run because a VALUE lands, and the migration is
+      // what takes those values away.
+      '/Pages/Admin pages-2 — collectionName is stored and runOnChange-collectionName survived the migration',
+      '/Pages/PageEditor sections-2 — qp-pageId <= JavaScriptFunction.out-pageId <= JavaScriptFunction run by Page.didMount — the page mounted',
+      // The seven that were already right, and why — three hops deep on the last
+      // one, which is the chain a list of forgiven node names would never have said.
+      '/Pages/Site pageQuery — qp-slug <= JavaScriptFunction.out-slug <= JavaScriptFunction run by Page.didMount — the page mounted',
+      '/Pages/Site sections — qp-pageId <= JavaScriptFunction.out-pageId <= JavaScriptFunction run by DbCollection2.fetched <= DbCollection2 fed by JavaScriptFunction.out-slug <= JavaScriptFunction run by Page.didMount — the page mounted',
+      '/Pages/Site settings — collectionName is stored and runOnChange-collectionName survived the migration',
+      '/Pages/Site theme — collectionName is stored and runOnChange-collectionName survived the migration',
+      '/Pages/ThemeEditor settings-2 — collectionName is stored and runOnChange-collectionName survived the migration',
+      '/Pages/ThemeEditor theme-2 — collectionName is stored and runOnChange-collectionName survived the migration',
+      '/Site/Nav pages — collectionName is stored and runOnChange-collectionName survived the migration'
+    ]);
+    expect(offenders).toEqual([]);
+  });
+
+  it('MUTANT: the defect exactly as it shipped — the page list without its explicit checkbox', () => {
+    // 🔴 Not "delete the trigger": the trigger was never deleted. The author wrote
+    // the graph that wants a load-time fetch and left the checkbox to its default,
+    // and the migration did the rest. Removing the one explicit `true` is the
+    // whole of the regression, and it is what every project minted before this
+    // session actually holds.
+    const project = flatProject();
+    const admin = project.components.find((c) => c.name === '/Pages/Admin')!;
+    const pages = admin.graph.roots.find((n) => n.type === 'DbCollection2')!;
+    expect(pages.parameters?.['runOnChange-collectionName']).toBe(true);
+    delete (pages.parameters as Record<string, unknown>)['runOnChange-collectionName'];
+
+    const { offenders } = gradeQueries(migrated(project));
+    // 🔴 The offender says what it tried. A red with nothing to act on is what
+    // sent three sessions looking at the network tab instead of the parameter bag.
+    expect(offenders).toEqual([
+      '/Pages/Admin pages-2 — no trigger that predates an edit: storageFetch <= NewDbModelProperties.done — a write the person caused; ' +
+        'storageFetch <= For Each.itemOutputSignal-Changed — a row signalled a change; ' +
+        'collectionName is stored but the migration silenced runOnChange-collectionName'
+    ]);
+  });
+
+  it('MUTANT: the same defect on the page editor, which had it too', () => {
+    const project = flatProject();
+    const editor = project.components.find((c) => c.name === '/Pages/PageEditor')!;
+    const sections = editor.graph.roots.find((n) => n.type === 'DbCollection2')!;
+    expect(sections.parameters?.['runOnChange-qp-pageId']).toBe(true);
+    delete (sections.parameters as Record<string, unknown>)['runOnChange-qp-pageId'];
+
+    const { offenders } = gradeQueries(migrated(project));
+    expect(offenders).toEqual([
+      '/Pages/PageEditor sections-2 — no trigger that predates an edit: storageFetch <= NewDbModelProperties.done — a write the person caused; ' +
+        'storageFetch <= For Each.itemOutputSignal-Changed — a row signalled a change; ' +
+        'collectionName is stored but the migration silenced runOnChange-collectionName; ' +
+        'visualFilter is stored but the migration silenced runOnChange-querySettings; ' +
+        'qp-pageId arrives but the migration silenced runOnChange-qp-pageId'
+    ]);
+  });
+
+  /**
+   * AC2's structural half — the words.
+   *
+   * 🔴 The point of the criterion is that an empty list and a populated one must
+   * not be told apart only by row count. The old sentence for zero rows was `No
+   * pages, no published`, which is the count sentence with a zero in it; and it
+   * was never rendered anyway, because the query never ran. **Three states, three
+   * sentences**, and each is asserted by the constant's own name so a reworded
+   * message cannot pass by being *a* string.
+   */
+  it('AC2 (words): the empty list says so, and the refused list says something else', () => {
+    const admin = componentNamed('/Pages/Admin') as Component;
+    const nodes = nodesOf(admin);
+
+    // 1. Empty — inside the script that derives the count sentence, on its own branch.
+    const counter = nodes.find(
+      (n) => n.type === 'JavaScriptFunction' && String(n.parameters?.functionScript).includes('Outputs.sentence')
+    ) as Node;
+    const script = String(counter.parameters?.functionScript);
+    expect(script).toContain('rows.length === 0');
+    expect(script).toContain(JSON.stringify(EMPTY_PAGE_LIST_TEXT));
+    // …and the other branch still exists, so "says so when empty" was not bought
+    // by saying the same thing always.
+    expect(script).toContain("word(published).toLowerCase() + ' published'");
+
+    // 2. Refused — a different sentence, absent until a query actually fails.
+    const error = nodes.find((n) => n.parameters?.text === PAGE_LIST_ERROR_TEXT) as Node;
+    expect(error?.type).toBe('Text');
+    expect(error.parameters?.mounted).toBe(false);
+    expect(error.parameters?.color).toBe('var(--destructive)');
+
+    // 3. It is raised by `failure` and lowered by `fetched` — two ports of the one
+    // query, so the refusal cannot outlive the query it was about.
+    const raised = admin.graph.connections.filter((w) => w.toId === error.id && w.toProperty === 'mounted');
+    expect(raised).toHaveLength(1);
+    const state = nodes.find((n) => n.id === raised[0].fromId) as Node;
+    expect(state.type).toBe('States');
+    const into = admin.graph.connections
+      .filter((w) => w.toId === state.id)
+      .map((w) => `${(nodes.find((n) => n.id === w.fromId) as Node).type}.${w.fromProperty} -> ${w.toProperty}`)
+      .sort();
+    expect(into).toEqual(['DbCollection2.failure -> to-Refused', 'DbCollection2.fetched -> to-Quiet']);
+  });
+
+  it('MUTANT: a refusal raised by `fetched` would stand beside a working list', () => {
+    // The mistake this shape exists to prevent, and the one `completed` made on
+    // the sign-in page: a port that fires on every outcome cannot mean failure.
+    const admin = componentNamed('/Pages/Admin') as Component;
+    const error = nodesOf(admin).find((n) => n.parameters?.text === PAGE_LIST_ERROR_TEXT) as Node;
+    const raised = admin.graph.connections.find((w) => w.toId === error.id && w.toProperty === 'mounted')!;
+    const into = admin.graph.connections.filter((w) => w.toId === raised.fromId);
+    // Both arms present, and they are different ports. If a future edit drove both
+    // states from one port this equality is what reds.
+    expect(new Set(into.map((w) => w.fromProperty)).size).toBe(2);
+  });
+
+  it('MUTANT: an unrecognised producer reds rather than being skipped', () => {
+    // The property that makes this a rule and not a list. A query triggered by a
+    // node type the classifier has never heard of must fail loudly.
+    const project = flatProject();
+    const nav = project.components.find((c) => c.name === '/Site/Nav')!;
+    const pages = nav.graph.roots.find((n) => n.type === 'DbCollection2')!;
+    delete (pages.parameters as Record<string, unknown>).collectionName;
+    nav.graph.roots.push({ id: 'inventedProducer', type: 'A Node Nobody Classified' });
+    nav.graph.connections.push({
+      fromId: 'inventedProducer',
+      fromProperty: 'somethingHappened',
+      toId: pages.id,
+      toProperty: 'storageFetch'
+    });
+
+    const { offenders } = gradeQueries(migrated(project));
+    expect(offenders).toEqual([
+      '/Site/Nav pages — no trigger that predates an edit: ' +
+        'storageFetch <= UNCLASSIFIED A Node Nobody Classified.somethingHappened; ' +
+        // Wiring `storageFetch` brought this node into the migration's population,
+        // which is what silenced its two stored parameters as well — the same
+        // mechanism as the real defect, arriving here as a side effect.
+        'visualFilter is stored but the migration silenced runOnChange-querySettings; ' +
+        'visualSort is stored but the migration silenced runOnChange-querySettings'
+    ]);
   });
 });
 

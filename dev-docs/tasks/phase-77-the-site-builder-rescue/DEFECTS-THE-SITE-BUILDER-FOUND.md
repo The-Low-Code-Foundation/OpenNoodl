@@ -148,6 +148,18 @@ a refused query never fires it. No "no pages yet", no "you are not signed in".
 **Where it bites:** two states with opposite fixes are pixel-identical, and the screen reads as
 broken in both. The product gives an author no ready way to tell them apart.
 
+### D4 update, 2026-08-29 (s15) — the template half is paid, the product half is not
+
+SBR-016 shipped three sentences where there was one screen: `You are not signed in…`,
+`No pages yet…`, and `The page list could not be loaded…`, the last raised by `pages.failure` and
+lowered by `pages.fetched`. **This template no longer has the defect.**
+
+🔴 **The product row is untouched and should not be read as smaller.** What closed it here was an
+author knowing that `DbCollection2` has a `failure` signal and wiring it. Nothing warns an author
+who does not — the same absence as D1 — and the default screen for a refused query is still an empty
+one. ⚠️ **And the refusal path has never been observed on a live refusal**: this template's
+`Page.find` is `public`, so no principal it has can be refused (SBR-016 §8.6).
+
 ---
 
 ## Collected from earlier phase-77 sessions
@@ -163,6 +175,54 @@ the session that measured them; not re-measured in s10.
 | D8 | ⚠️ A bare number in a dimension port means **percent** (`width: 240` → `240%`). The door refuses it; the object form is the fix. Easy to write, hard to see. | SBR-006, s9 | ✅ **confirmed at HEAD** (`react-component-node.ts:1925`). 🔴 **= phase 76's F15** — the same defect found twice, unowned in both → **[DEF-003](../phase-80-the-defects-the-templates-found/DEF-003-THREE-AUTHORING-ACTS-WITH-NO-SURFACE.md)** |
 | D9 | 🔴 The deploy drops **wire-only** `prop-*` — a parameter survives, a wire does not. | SB-017 §11.1 / SBR-006 §5.6 | **SBR-008** ✅ |
 | D10 | ⚠️ A signal into a **value** port writes true-then-false, and the input queue holds one entry per input name, so the two coalesce and the consumer runs **once, with `false`**. | SBR-002, s4b | ✅ real — re-confirmed independently by **phase 78's D4 instrument bug** and **D14** (s6). Runtime half → **[DEF-002](../phase-80-the-defects-the-templates-found/DEF-002-THE-DOOR-DOES-NOT-CHECK-CONNECTIONS.md)** rule 3 |
+
+## Added 2026-08-29 (s15, SBR-016's fix)
+
+## D11 — 🔴 The NDA-017 migration reverses a graph authored *after* NDA-017, and the only defence is undocumented
+
+**Severity: high. Product.** Owner: **`NONE`** — closest neighbour is
+[DEF-007](../phase-80-the-defects-the-templates-found/DEF-007-DISK-AND-LOAD-DISAGREE.md), which is
+about the disk/load *seam*; this is about the migration's *population* and is a different claim.
+
+**Sharper than D5, which recorded the migration as "real AND DELIBERATE" and stopped there.** It is
+deliberate, and it is still a defect for every project created from today onwards, because the
+migration has no way to tell a pre-§2 graph from a post-§2 one — the module says so itself:
+*"nothing is stamped into the project (the format has nowhere to put a marker — an open question §2
+recorded and did not close)"*.
+
+**Measured**, on the shipped site-builder artefact through the real module: **56 writes over 35
+signal-driven nodes**, on a template authored entirely after §2. Two of them were live defects —
+`/Pages/Admin`'s page list and `/Pages/PageEditor`'s section list, both fixed in SBR-016 — and the
+other 54 are silent because their control signals happen to be consequences.
+
+**Where it bites:** an author writes a graph against the documented current contract, ships it, and
+the editor rewrites it into the *old* contract on every load. The only defence is to write
+`runOnChange-<input>: true` explicitly on every governed input you rely on — which is not in any
+document, is not offered by the property panel as a thing you would think to do, and is invisible in
+the graph. **Two sessions' worth of drives measured the symptom at the network layer without
+reaching the parameter bag.**
+
+**What would close it:** a marker in the project format saying which contract it was authored
+against, so the migration can skip projects that never needed it. Failing that, a diagnostic when
+the migration writes into a project whose `nodegxVersion` postdates §2.
+
+## D12 — ⚠️ Every arrival at the page list and the page editor issues the query twice
+
+**Severity: low. Template.** Owner: **`NONE`**.
+
+**Measured 2026-08-29** on `SBR-016 Arrive Drive`, with a spy on `XMLHttpRequest.open` / `fetch`:
+arriving at `/admin/pages` with one row produces **two** `POST /classes/Page`; arriving at the page
+editor produces **two** `POST /classes/Section`. With **zero** rows it is one — which is what names
+the cause: `list.itemOutputSignal-Changed` → `storageFetch` fires when the repeater first renders a
+row, so the fetch that produced the row triggers a second identical fetch.
+
+**Where it bites:** one wasted round trip per arrival on both admin screens, and a second render.
+Harmless at one row, linear in nothing, but it is a query the user pays for on every navigation.
+⚠️ **The wire is not removable as-is** — it is the only refresh after a publish/unpublish/duplicate
+inside a row (SB-018 (1)). The fix is a trigger that fires on a row's *change* rather than on its
+first render.
+
+---
 
 ✅ **D5–D8 and D10 were re-measured at HEAD on 2026-08-29** — see
 [THE-SWEEP-2026-08-29.md](THE-SWEEP-2026-08-29.md) §2. Two came back different: **D6's cause is

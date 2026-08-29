@@ -1,9 +1,10 @@
 # SBR-017 — There is no way back in
 
-> 🟢 **BUILT AND DRIVEN, 2026-08-29 (s14).** AC1's first half, AC2, AC3 and AC4 are met — §6 has
-> the drive. **AC1's second half is not, and the cause is SBR-016, not this task**: the owner signs
-> back in and reaches `/admin/pages`, and the list is empty while the *same session* reads the row
-> over HTTP in 2 ms. That control is in §6.4.
+> 🟢 **BUILT AND DRIVEN, 2026-08-29 (s14). ALL FOUR ACs MET as of s15.** AC2, AC3 and AC4 were met
+> in s14 — §6 has that drive. **AC1's second half was blocked by SBR-016, not by this task**: the
+> owner signed back in, reached `/admin/pages`, and the list was empty while the *same session* read
+> the row over HTTP in 2 ms (§6.4). SBR-016 was fixed in s15 and the whole sequence re-driven; AC1
+> is now met in full.
 
 **Found by SBR-015's drive (s12, 2026-08-29).** The site-builder template contains exactly
 one authentication node in twenty-one components: `SignUp`, on `/Pages/Setup`. There is no
@@ -172,6 +173,12 @@ the path to `/` on load. `window.Noodl.Navigation.navigateToPath(...)` is what w
    session — sign out **53 ms**, sign back in **82 ms**, `/admin/pages` reached. **The rows are
    not visible**, and the control in §6.4 shows the row is readable by that very session in 2 ms:
    the panel never asks. Nothing in this task can make it.
+   ✅ **UNBLOCKED AND FULLY MET, 2026-08-29 (s15).** SBR-016 is fixed, and the same sequence was
+   driven again on a fresh fixture (`SBR-016 Arrive Drive`): sign out **31 ms** → `/admin/signin`;
+   wrong password **113 ms**, path unchanged; right password **85 ms** → `/admin/pages` **with the
+   row on screen**, and a request spy showing `POST /login` then `POST /classes/Page` since the
+   click. The cause was never in this task: the NDA-017 migration was silencing the page list's
+   load-time fetch. See [SBR-016 §7](SBR-016-THE-LIST-THAT-NEVER-ASKS.md).
 2. **A negative control**: a wrong password shows a refusal sentence and does not navigate.
    The refused and the accepted paths must not be the same screen.
    ✅ **Met** — §6.2 step 5. `That email and password did not match.` at **114 ms**, `--destructive`,

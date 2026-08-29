@@ -242,7 +242,11 @@ const TEMPLATES: CensusTemplate[] = [
  */
 const EXPECTED_PAGE_COUNT: Record<string, number> = {
   'hello-world': 1,
-  'site-builder': 5,
+  // 5 → 6: SBR-017's `/Pages/SignIn`. The pin did exactly what it is for — it
+  // reddened when the template grew a page, and the page then had to answer §4
+  // below. It answers it by NOT being bare: the sign-in screen carries the
+  // template's own tokens, so the floor set does not grow with it.
+  'site-builder': 6,
   'members-area': 11
 };
 
