@@ -102,10 +102,21 @@ all at HEAD:
   name is a **`fromJSON` fallback only** (`:238-243`), guarded by `&& !_this.rootNode`, and its own
   comment says what it is for: *"Handle rootComponent from templates (name of component instead of
   node ID)"*. A project that has been through the editor once carries the id.
-- **0 of 97.** Every project directory on this machine with a manifest: **91** carry `rootNodeId`,
-  **2** carry both, **6 carry neither**, and **none carries `rootComponent` alone**. The population
-  §3.3's resolver would rescue is empty, and the two that carry a name (`SBR No Backend`,
-  `alpha007-hostile-fixture`) carry an id beside it, which `fromJSON` prefers anyway.
+- **0 of 340.** Widened from the 97 project directories under `NodeGX test projects` to every
+  manifest under `vscode_projects` and `Documents` — **340** files: **277** carry `rootNodeId`,
+  **63** do not, and **exactly 2 carry `rootComponent` at all**. Both of those two (`SBR No
+  Backend`, `alpha007-hostile-fixture`) carry an id beside the name, which `fromJSON` prefers
+  anyway. **The set carrying a name and no id is empty at both denominators.** ✅ The counter is
+  not silently inert — it *found* the 2, so the absence is measured rather than assumed.
+
+  ⚠️ **The 63 without a home are not 63 broken apps, and the wide denominator is the wrong one for
+  that half.** Most are **modules and prefabs** (`opennoodl-modules/modules/*`, the
+  `library/*.zip/project.json` bundles) — a module is a bag of components with no home *by design*,
+  so an absent `rootNodeId` there is correct. The honest figure for **projects a person opens** is
+  the narrow one: **6 of 97**, all scratch drives (`ac4-drive`, `cn012-drive`, `fb015-drive`,
+  `fb017-drive`, `fb018-drive`, `test`). 🔴 **Which is itself a finding for the fix below:** a home
+  check that refuses at publish must not refuse a module, and "has no `rootNodeId`" does not
+  distinguish the two.
 - **The two providers take different input shapes, deliberately.** `EmbeddedTemplateProvider`
   resolves because its input is a hand-authored TypeScript object naming a component —
   `hello-world.template.ts:40`, `rootComponent: 'App'`. `PlatformTemplateProvider`'s input is **a
@@ -126,10 +137,9 @@ that a template has a home at all.**
   the population exactly: *"projects written by the editor always carry one. Projects authored from
   outside (an agent writing v2 files, the MCP server) frequently do not."* That is an independent
   author reaching the same measurement as the 97-project count above.
-- **6 of 97** carry no home (`ac4-drive`, `cn012-drive`, `fb015-drive`, `fb017-drive`,
-  `fb018-drive`, `test`). They are 0–2 component scratch projects rather than publishable
-  templates, so this is a **live hole, not a live incident** — but it is the hole AC1's sentence
-  falls through, and the resolver in §3.3 would not have closed it.
+- **6 of 97** projects carry no home. They are 0–2 component scratch projects rather than
+  publishable templates, so this is a **live hole, not a live incident** — but it is the hole AC1's
+  sentence falls through, and the resolver in §3.3 would not have closed it.
 
 🧭 **A decision, not a fix to be guessed at**: refuse at publish (*"this project has no home"*),
 or resolve-and-warn at install the way `loadPreview` already does. Refusing is honest about a
