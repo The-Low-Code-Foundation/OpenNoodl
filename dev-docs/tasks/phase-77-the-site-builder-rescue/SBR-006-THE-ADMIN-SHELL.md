@@ -421,3 +421,31 @@ the open question, and `simplejavascript.ts` itself has not moved since 08-12.
 
 **AC3 stays ❌ for unpublish and duplicate, and it is not this task's to fix.**
 Filed as **D14**.
+
+---
+
+## 5.13 🟡 s22 (2026-08-29) — AC3's blocker is gone: two of its three actions are driven green
+
+Recorded here by the SBR-007 drive because it moves *this* task's acceptance criterion, and D14 —
+which §5.12 filed — is the reason it moved.
+
+On a project minted after s20's fix (`SBR-007 Page Editor Drive`, `backend_mterfnli74qwv`, port
+8601), through the same overflow menu §5.12 used:
+
+| action | UI | backend record |
+|---|---|---|
+| **Publish** | `One page, one published`; the row reads `Published` | ✅ `success`, **25 ms** |
+| **Duplicate** | `Two pages, one published`; `Copy of Original Title` / `drive-007-copy-ogsb33` | ✅ `success`, **23 ms** |
+| `claimSite` | — | ✅ `success`, 55 ms — control, same backend |
+| **Unpublish** | ⬜ **not driven** | — |
+
+`execution_steps` for the publish records five steps, **all `success`**, and step 0 — the
+`JavaScriptFunction` gate that §5.12 caught throwing `Outputs.ready is not a function` — returns
+`{"outcome":"done"}` in 2 ms.
+
+⚠️ **AC3 is not marked ✅ here**, because its wording names three actions and only two were clicked.
+`Unpublish` sits in the same menu, is the same shape of cloud function, and is one click from
+closing this. It was not driven because the editor had to go back to a peer.
+
+Full account: [SBR-007 §13](SBR-007-THE-PAGE-EDITOR.md) and the driven note on
+[D14](DEFECTS-THE-SITE-BUILDER-FOUND.md).

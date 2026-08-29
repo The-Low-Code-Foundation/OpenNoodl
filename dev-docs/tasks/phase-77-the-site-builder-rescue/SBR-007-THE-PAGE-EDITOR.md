@@ -157,3 +157,168 @@ closure of placed components, and `/Admin/Shell` carries `backgroundColor` — s
 page reads "styled" with **every one of its own structure parameters stripped**. So the evidence
 this screen is designed is the count in its **own** tree: **0 → 9** structure parameters. §4 is not
 that evidence and is not cited as it.
+
+---
+
+# 🟢 s22 (2026-08-29) — the drive: AC1, AC4 and AC5 are met on a person's screen; one new defect the drive found
+
+**Fixture: `SBR-007 Page Editor Drive`**, minted through the launcher's own template flow from the
+artefact at `7a156972`, backend **`backend_mterfnli74qwv`** on port **8601**, functions secret
+`SITE_SETUP_TOKEN=drive-token-007`, owner `owner@sbr007.test` / `drive-pass-007`. A fresh mint for
+the standing reason: a project is a copy of the template *at mint time*, and s21's screen only
+exists in projects minted after it.
+
+Verified on disk before driving anything: `components/Pages/PageEditor/nodes.json` contains
+`/Admin/Shell`, so the fixture carries s21's build rather than the pre-s21 screen.
+
+## 12. The sequence, and what each act answered
+
+| # | act | reading |
+|---|---|---|
+| 1 | claim through `/admin/setup` | lands on `/admin/pages`, `No pages yet. Use New page to make your first one.` |
+| 2 | create `Original Title` / `drive-007` | row renders **titled and slugged** — SBR-008's fix, on a fresh mint |
+| 3 | **Publish** from the overflow menu | 🟢 **`One page, one published`**, row reads `Published` — **D14 driven** |
+| 4 | **Duplicate** | 🟢 `Two pages, one published`, `Copy of Original Title` / `drive-007-copy-ogsb33` — **D14 driven** |
+| 5 | public `/drive-007` | `<h1>` **`Original Title`** at y=153, 36px/700 — **AC1's control** |
+| 6 | open the page editor | the rail is **present**, `Pages` lit; header `Editing · Original Title`, `Published` pill, `Preview`, `Save page`; **no unsaved marker** |
+| 7 | type one character | **`Unsaved changes` appears** |
+| 8 | type it back out | **`Unsaved changes` disappears** ← the reading a `States` counter cannot produce |
+| 9 | retitle to `Retitled By The Drive`, **Save** | `PUT /classes/Page/<id>` then `GET /classes/Page/<id>`; header flips to `Editing · Retitled By The Drive`, marker clears |
+| 10 | public `/drive-007` | `<h1>` **`Retitled By The Drive`**, same element, same position — **AC1** |
+| 11 | **Preview** button from the editor | lands on `/drive-007`, the **real slug**, and the page renders |
+| 12 | **sign out**, then public `/drive-007` | a real visitor sees `Retitled By The Drive` — and the draft copy is **gone** from the nav |
+
+### 12.1 AC1 — met in preview, and the strongest arm is the signed-out one
+
+Steps 5 and 10 are a control pair on one page in one session with **one variable**: the title. Same
+`<h1 class="ndl-visual-text">`, same y=153, same 36px/700 — `Original Title` before the save,
+`Retitled By The Drive` after it.
+
+⚠️ **SBR-016 §8.4's trap was live here**: the site's own nav lists the page by title, so
+`body.innerText.includes(...)` would have passed at the public URL *before anything was driven*. The
+oracle is the **36px heading element**, which only the page body produces.
+
+✅ **Step 12 is the better reading and it is the one the person sentence asks for**: signed out, with
+no session at all, a visitor at `/drive-007` gets the new title. Steps 5–10 were taken as the owner.
+
+🔴 **AC1's deployed half is still owed** and is now *unblocked* rather than blocked: its blocker was
+SBR-008, which closed at s18. It was not attempted this session because the peer holding `test:ci`
+needed the editor back. Nothing else stands in its way.
+
+### 12.2 AC4 — no longer "by construction"; the round trip was watched
+
+The save is **two requests, in order**: `PUT /classes/Page/<id>` then `GET /classes/Page/<id>`.
+That is `save.done → record.fetch`, and the consequence is observable rather than inferred: while
+the input read `Retitled By The Drive` and the record still read `Original Title`, the header —
+which is fed from the **record** — still said `Editing · Original Title`. It changed only after the
+`GET`. **The screen shows the stored row, not the input's echo.**
+
+### 12.3 AC5 — three states, and the third one is the point
+
+| state | `Unsaved changes` |
+|---|---|
+| on load, record just fetched | **absent** |
+| after typing one character | **present** |
+| after typing that character back out | **absent** |
+| after `Save page` | **absent** |
+
+The third row is what §7 promised and what the rejected `States(Clean,Dirty)` build could not have
+produced: a signal counter that has seen two `textChanged`s cannot know the form is back where it
+started. The first row is the guard against `startValue.set → setText → textChanged` marking a
+merely-*loading* form dirty; it was re-read on three separate cold arrivals and was absent each time.
+
+### 12.4 D17 — the rail, measured rather than eyeballed
+
+On `/admin/page/<id>`, with the shell placed `active: 'pages'`:
+
+| rail item | x | y | colour | weight |
+|---|---|---|---|---|
+| `Pages` | 16 | 65 | **`rgb(30,77,140)`** = `--primary` | **600** |
+| `Theme & settings` | 16 | 96 | `rgb(27,26,23)` | 400 |
+| `Messages` | 16 | 127 | `rgb(27,26,23)` | 400 |
+
+Stacked, and `active: 'pages'` is **lit, not dark** — the same shape as SBR-006 AC5's control pair.
+Screenshot: `notes/sbr007-page-editor-driven.png`.
+
+### 12.5 The draft in the public nav was ACL, not a leak — and only the signed-out arm could say so
+
+Signed in as the owner, the public nav listed **both** pages, including the unpublished
+`Copy of Original Title`. The nav query is `where {"showInNav": {"$eq": true}}` with **no
+`published` filter**, so the query alone cannot explain the difference. Signed out, the draft is
+**absent**: the published row's ACL grants `"*": {"read": true}` and the draft's does not.
+
+⚠️ Recorded because the query is the wrong place to look for the guarantee. The nav is protected by
+row ACLs; a future change that widens a draft's ACL puts it in the public nav with no query to stop
+it.
+
+## 13. 🔴 D14 is driven — five steps, all `success`, at the node that used to throw
+
+`publishPage` **success, 25 ms**, and `duplicatePage` **success, 23 ms**, on `backend_mterfnli74qwv`
+with `claimSite` (55 ms) as the same-backend control. `execution_steps` for the publish:
+
+```
+0  JavaScriptFunction    success  2ms   {"outcome":"done"}   ← the node that threw `Outputs.ready is not a function`
+1  JavaScriptFunction    success  6ms   {"outcome":"done"}
+2  RunTasks              success  1ms   {"outcome":"done"}
+3  SetDbModelProperties  success  8ms   {"outcome":"done"}
+4  noodl.cloud.response  success  1ms   {"outcome":"done"}
+```
+
+Step 0 is the gate that held the request until its parameters arrived — the **first** node of the
+function, and the exact one that threw in SBR-006 §5.12. It now returns `done`. s20's fix is real
+in the app and not only in a spec pair.
+
+⚠️ **Scope**: this is the *editor preview* deploy path. The `ports: []` exposure on the **browser**
+deploy path (`build/deployer.ts`), recorded at the end of D14, is untouched and still unowned.
+
+## 14. 🔴 What the drive found that nobody had listed — [D18](DEFECTS-THE-SITE-BUILDER-FOUND.md)
+
+**The header row this task built does not fit, and below 897px the `Save page` button cannot be
+reached at all.** Measured on the driven screen with `elementFromPoint`, sweeping the viewport:
+
+| viewport | `Save page` visible | hit test | horizontal scroll available |
+|---|---|---|---|
+| 1440 | 104 / 104 px | ✅ SELF | 0 |
+| 1024 | 104 / 104 | ✅ SELF | 0 |
+| **988** (this phase's driving width) | **91 / 104** — clipped | ✅ SELF | **0** |
+| **800** | **0** | 🔴 **none** | **0** |
+| **600** | **0** (and `Preview` too) | 🔴 **none** | **0** |
+
+The row's right edge is pinned at **1001 px at every viewport**, while `#root` tracks the viewport
+exactly (1440 / 988 / 600) — that control is what makes the fixed 1001 mean something rather than
+being a resize the runtime had not processed. `document.scrollWidth === innerWidth` at every width,
+so **there is no horizontal scroll that reaches the button**.
+
+⚠️ **Honest about severity**: at 988 the label is still readable and the button still clicks, which
+is why AC1 was driveable. The failure is below 1001 px, and it is total below 897.
+
+✅ **Two controls place the blame on this row and not on the shell**: `/admin/pages` row buttons
+(`Edit`, `More`) *do* track the viewport — 1336 → 884 → 496 — and `/admin/theme`'s `Save theme` is
+left-anchored at 384 and fine at every width. It is this screen's header row alone.
+
+## 15. Where the ACs stand after the drive
+
+| | verdict |
+|---|---|
+| **AC1** | 🟢 **preview half MET and DRIVEN**, signed-out · ⬜ **deployed half owed** — now unblocked (SBR-008 closed s18), not attempted |
+| **AC2** | ⬜ not built — sibling renumbering needs a cloud function and a decision (§8) |
+| **AC3** | 🟡 thumbnail shipped (source-measured, **not driven** — needs an OS file dialog) · 🔴 drop gesture blocked on **D15** · ⬜ gallery model is SBR-005's |
+| **AC4** | 🟢 **MET and DRIVEN** — `PUT` then `GET`, and the header proves the record won (§12.2) |
+| **AC5** | 🟢 **MET and DRIVEN** — three states including the undo (§12.3) |
+| **new** | 🔴 **D18** — the header row does not fit below 1001 px (§14) |
+
+## 16. 🔴 The session's own error, kept because it nearly became a finding
+
+Between the control reading and every later one, **the instrument changed and nothing else was held
+constant.** The control dumped `document.querySelectorAll('div,span,h1,h2,h3,a')`; the later dumps
+were written as `('div,span')` and `('div,span,a')`. The page's title is an `<h1>`, so it vanished
+from four consecutive readings and the note being drafted was *"the heading disappears after the
+Preview click"* — a plausible defect with a plausible mechanism (`RouterNavigate` with a `pm-slug`
+parameter versus a slug in the URL path, which is exactly SBR-004 §10.3's family).
+
+It was caught by a probe that names **no selectors at all** — `querySelectorAll('*')` filtered on
+computed `font-size` — which found the `<h1>` present the whole time.
+
+**The rule this pays for: a control pair proves what you varied, and the instrument is a variable.**
+The arrival route was the variable I *intended* to test; the selector list was the one I actually
+changed. Any negative reading taken with a different probe than its control is not a reading.

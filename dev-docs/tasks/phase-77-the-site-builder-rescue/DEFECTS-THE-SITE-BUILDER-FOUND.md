@@ -425,6 +425,24 @@ wants it.
 
 ## 🟢 D14 — CLOSED s20 (2026-08-29). The bundle shipped with no ports, and neither of the two candidates above was the cause.
 
+> 🟢 **s22 (2026-08-29): DRIVEN through the app, which s20 never did.** On a project minted after
+> the fix (`SBR-007 Page Editor Drive`, `backend_mterfnli74qwv`, port 8601), **Publish** and
+> **Duplicate** were both clicked from the row's overflow menu:
+>
+> | action | UI | backend record |
+> |---|---|---|
+> | Publish | `One page, one published`, row reads `Published` | ✅ `success`, **25 ms** |
+> | Duplicate | `Two pages, one published`, `Copy of Original Title` / `drive-007-copy-ogsb33` | ✅ `success`, **23 ms** |
+> | `claimSite` | — | ✅ `success`, 55 ms — control, same backend |
+>
+> `execution_steps` for the publish records **five steps, all `success`**, and step **0** — the
+> `JavaScriptFunction` gate that is the *first* node of the function and the one that threw
+> `Outputs.ready is not a function` — returns `{"outcome":"done"}` in 2 ms. The fix is real in the
+> app, not only in the red-then-green spec pair. See SBR-007 §13.
+>
+> ⚠️ **Scope**: the editor-preview deploy path only. The same `ports: []` exposure on the **browser**
+> deploy path (`build/deployer.ts`), recorded at the end of this row, is untouched and unowned.
+
 **Fix: `withScriptPorts` in `utils/exporter/cloudFunctions.ts`.** Gate:
 `sb017-deploy-connection-parity.test.ts`, a suite that is **red without it** (2894 specs,
 6 failures) and green with it (4 failures, all four `AIX-006` by name — the documented floor).
@@ -596,3 +614,54 @@ placement is unique" — which was accidentally equivalent to the real invariant
 exactly two placements and is the *wrong rule* at three. The page editor sharing `pages` with the
 page list is correct (editing a page is still the Pages section). The invariant that survives is
 "more than one rendering exists", i.e. the interface is load-bearing.
+
+🟢 **s22 (2026-08-29): DRIVEN.** On `/admin/page/<id>` in `SBR-007 Page Editor Drive`, the rail is
+present *while editing* and `active: 'pages'` is **lit, not dark** — `Pages` at `rgb(30,77,140)`
+(`--primary`) weight **600** against `Theme & settings` and `Messages` at `rgb(27,26,23)`/400, items
+stacked at y=65/96/127. Screenshot: `notes/sbr007-page-editor-driven.png`. This row is closed.
+
+---
+
+## D18 — 🔴 The page editor's header row does not fit, and below 897 px `Save page` cannot be reached at all
+
+**Found:** s22, driving SBR-007 AC1 · **Owner: `SBR-007`** (open — AC2 ⬜, AC3 blocked — and the row
+is this task's own build, §7) · **Template**, not product · **Bites:** any client on a narrow
+window, on the screen they spend their time in.
+
+The header row s21 added — `Editing · <title>`, the pill, `Preview`, `Save page` — is laid out at a
+fixed content width and neither wraps, shrinks, nor scrolls. Measured on the driven screen with
+`elementFromPoint`, sweeping the viewport:
+
+| viewport | `Save page` visible / box | hit test at its visible centre | horizontal scroll available |
+|---|---|---|---|
+| 1440 | 104 / 104 px | ✅ SELF | 0 |
+| 1024 | 104 / 104 | ✅ SELF | 0 |
+| **988** — the width this phase drives at | **91 / 104**, clipped | ✅ SELF | **0** |
+| **800** | **0 / 104** | 🔴 **none** | **0** |
+| **600** | **0** — and `Preview` is gone too | 🔴 **none** | **0** |
+
+The row's right edge sits at **1001 px at every viewport**, so the threshold is 1001 for "clipped"
+and 897 for "gone".
+
+✅ **The control that makes the fixed 1001 mean something**: `#root` tracks the viewport exactly —
+1440 / 988 / 600 — in the same probe, in the same call. A layout that had simply not processed the
+resize would have moved neither. And `document.scrollWidth === innerWidth` at every width, so the
+overflow is **clipped, not scrollable**: there is no gesture that reaches the button.
+
+✅ **Two more controls put the blame on this row rather than on `/Admin/Shell`**, which it now sits
+inside:
+
+- `/admin/pages` — the row buttons `Edit` and `More` **do** track the viewport: right edge
+  **1336 → 884 → 496** at 1440 / 988 / 600.
+- `/admin/theme` — `Save theme` is left-anchored at 384 and fully visible at every width.
+
+So the shell reflows and its other two screens reflow; this header row does not.
+
+⚠️ **Stated at its real size, not inflated.** At 988 px the label is readable and the button still
+clicks — which is exactly why SBR-007 AC1 was driveable this session. The defect is everything
+below 1001 px, and it is total below 897.
+
+**Likely shape of the fix, not yet measured:** SBR-004 §9.1 found the same family on the public site
+and the lever there was `sizeMode` on the Groups (`STACKED_IN_A_COLUMN`), with 🔴 `flex-grow`
+explicitly *not* the lever. Whether the right answer here is that, a wrap, or moving `Save page` out
+of the row is a design call and is why this is a row rather than a patch.
