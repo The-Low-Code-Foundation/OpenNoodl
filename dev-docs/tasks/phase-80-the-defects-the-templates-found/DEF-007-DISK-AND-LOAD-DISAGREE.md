@@ -90,6 +90,51 @@ it. **Fixed** for the generated artefact (`prepareArtefact` → `pinRootNode`). 
 through the picker until it is published. **Grade it there** and do not let D9's driven half stand in
 for this reading.
 
+### 2.1 🔴 Driven 2026-08-29 — §3.3's fix has an EMPTY POPULATION, and the real gap is next to it
+
+**The bullet above is a true reading of the source. Its consequence does not follow.**
+`PlatformTemplateProvider` does no home resolution — confirmed, it writes bundle bytes verbatim.
+But it needs none, because **the shape §3.3 would resolve never reaches it.** Measured three ways,
+all at HEAD:
+
+- **The editor's writer never emits `rootComponent`.** `projectmodel.ts:1435` writes
+  `rootNodeId: this.rootNode ? this.rootNode.id : undefined` and no name field at all. The legacy
+  name is a **`fromJSON` fallback only** (`:238-243`), guarded by `&& !_this.rootNode`, and its own
+  comment says what it is for: *"Handle rootComponent from templates (name of component instead of
+  node ID)"*. A project that has been through the editor once carries the id.
+- **0 of 97.** Every project directory on this machine with a manifest: **91** carry `rootNodeId`,
+  **2** carry both, **6 carry neither**, and **none carries `rootComponent` alone**. The population
+  §3.3's resolver would rescue is empty, and the two that carry a name (`SBR No Backend`,
+  `alpha007-hostile-fixture`) carry an id beside it, which `fromJSON` prefers anyway.
+- **The two providers take different input shapes, deliberately.** `EmbeddedTemplateProvider`
+  resolves because its input is a hand-authored TypeScript object naming a component —
+  `hello-world.template.ts:40`, `rootComponent: 'App'`. `PlatformTemplateProvider`'s input is **a
+  real project's files**: `shareAsTemplate` walks the project directory and uploads its manifests
+  verbatim (`MANIFESTS`, `:325`). The home was resolved to a concrete id the moment the editor
+  saved it — there is nothing left to resolve.
+
+🔴 **The gap that IS real, and which no row in this task names: nothing on the curated path checks
+that a template has a home at all.**
+
+- **No publish gate.** `shareAsTemplate.ts` and `shareTemplateForm.ts` contain **zero** references
+  to `rootNodeId` or `rootComponent` — the single `home` hit is a filesystem path in a comment.
+  A project with no home uploads cleanly; `hasProjectManifest` only asks whether a manifest exists.
+- **No install-side rescue.** `createFromTemplate.ts` does not mention either field.
+- ✅ **And the rescue exists elsewhere, which is what makes the absence legible.**
+  `noodl-preview/src/loader.ts:131-156` has `resolveRootNode` — it guesses a root using the
+  editor's own `allowAsExportRoot` predicate and **tells the user it guessed**. Its docstring names
+  the population exactly: *"projects written by the editor always carry one. Projects authored from
+  outside (an agent writing v2 files, the MCP server) frequently do not."* That is an independent
+  author reaching the same measurement as the 97-project count above.
+- **6 of 97** carry no home (`ac4-drive`, `cn012-drive`, `fb015-drive`, `fb017-drive`,
+  `fb018-drive`, `test`). They are 0–2 component scratch projects rather than publishable
+  templates, so this is a **live hole, not a live incident** — but it is the hole AC1's sentence
+  falls through, and the resolver in §3.3 would not have closed it.
+
+🧭 **A decision, not a fix to be guessed at**: refuse at publish (*"this project has no home"*),
+or resolve-and-warn at install the way `loadPreview` already does. Refusing is honest about a
+template nobody can open; warning matches the behaviour a person already gets from preview.
+
 ## 3. Scope
 
 1. **Name the seam.** A single documented answer to *"what does a project on disk mean?"* — and which
@@ -97,8 +142,12 @@ for this reading.
 2. **(a)** Either apply the load-time migrations on the disk-reading paths too, **or** make template
    generation write the explicit values so an artefact is correct as written. ⚠️ The second is what
    phase 78 D14 chose for its own template and it is the cheaper, narrower option.
-3. **(b)** Give `PlatformTemplateProvider` the same `rootNodeId` resolution
-   `EmbeddedTemplateProvider` already has — by **id lookup**, independent of the NodeLibrary.
+3. ~~**(b)** Give `PlatformTemplateProvider` the same `rootNodeId` resolution
+   `EmbeddedTemplateProvider` already has — by **id lookup**, independent of the NodeLibrary.~~
+   🔴 **Struck 2026-08-29 — see §2.1.** The curated path receives a real project's files, which
+   already carry a concrete `rootNodeId`; the name-shaped input this would resolve is
+   `EmbeddedTemplateProvider`'s alone. **Replaced by:** decide where a *missing* home is caught —
+   refuse at publish, or resolve-and-warn at install as `noodl-preview` already does. 🧭
 
 ## 4. Acceptance criteria
 
@@ -108,6 +157,9 @@ for this reading.
 3. (a) A generated artefact rendered **from disk** and the same project **loaded in the editor**
    agree about every `runOnChange-*` — asserted as a **pair**, because either one alone is the state
    this task exists to distinguish.
+   📊 **Measured 2026-08-29: they disagree in 56 places across 13 components** on the shipped
+   site-builder artefact — see §6.1. The pair is currently **red**, and that is the starting
+   number this criterion has to drive to zero.
 4. The seam's documentation names each path and which side it is on.
 
 ## 5. Traps
@@ -124,3 +176,66 @@ for this reading.
 - ⚠️ **`rootComponent` and `rootNodeId` are not interchangeable.** `rootComponent` is the **legacy**
   field (a component *name*), which `project-v2.schema.json` (`additionalProperties: false`) does not
   permit. The v2 spelling is `rootNodeId`, a node id.
+
+## 6. The seam, measured — 2026-08-29
+
+§3.1 asks for *"a single documented answer to what a project on disk means"*. Here is the derived
+half. **The whole seam is one call**: `applyPatches(content)` immediately before
+`ProjectModel.fromJSON(content)`. `fromJSON` does **not** apply patches — it calls
+`ProjectModel.upgrade` and nothing else — so every path that reaches `fromJSON` without going
+through `applyPatches` first sees the file as written.
+
+Grepped for `applyPatches` importers across `packages/*/src`, excluding the prebuilt
+`src/external/*` bundles:
+
+| path | entry point | migrations |
+|---|---|---|
+| Opening a project in the editor | `projectmodel.editor.ts:24` | ✅ **applies** |
+| Version-control snapshot | `snapshotProject.ts:112` | ✅ **applies** |
+| Headless preview / SSR render | `noodl-preview/src/loader.ts:187` | ❌ **does not** |
+| Code export | `packages/nodegx-export` | ❌ **does not** |
+| MCP authoring and validation | `packages/noodl-mcp` | ❌ **does not** |
+| Template generation (the artefact) | written as JSON, never loaded | ❌ **does not** |
+
+⚠️ **Two call sites inherit rather than decide.** `compilation.ts:83` and
+`exportProjectComponents.ts:88` both call `fromJSON` on a project that is *already loaded*
+(`this.project.toJSON()`, and a synthesised shell) — they are downstream of the editor's
+`applyPatches`, not a second opinion about it. `projectmodel.ts:218` (`fromLocalStorage`) is a
+third, and is the one place a project is rebuilt from a string with no patch pass at all.
+
+### 6.1 🔴 AC3's pair, measured — the shipped template disagrees with itself in 56 places
+
+`planRunOnValueChangeMigration` is pure and imports nothing, so it can be run over an artefact on
+disk without an editor. Run against the shipped site-builder content
+(`site-builder.content.json`, md5 `56e03abf8bb583cec6b038f5e12ed11e`, committed at `cdd842fc`,
+**not** a working-tree edit):
+
+**56 writes across 13 components.** Which is to say: the artefact as written and the same artefact
+as the editor loads it differ in 56 stored parameters, and phase 78 D14's rule — *"a template must
+be correct as written"* — is failing by that margin today.
+
+    /#__cloud__/duplicatePage        9      /Pages/ThemeEditor          6
+    /Site/ContactForm                6      /#__cloud__/site/ContactRecipient 6
+    /Pages/PageEditor                5      /Pages/Site                 4
+    /#__cloud__/publishPage          4      /#__cloud__/submitContactForm 4
+    /Admin/SectionRow                3      /Pages/Admin                3
+    /Pages/Setup                     3      /#__cloud__/claimSite       2
+    /#__cloud__/site/CopySectionToPage 1
+
+🔴 **`/Pages/Admin` and `/Pages/PageEditor` are in the list, which is P77 D11 still live** — both
+are `DbCollection2` fetches being silenced on load. ⚠️ **The port names have moved since D11 was
+filed** (D11 named `runOnChange-collectionName` and `runOnChange-qp-pageId`; today's plan writes
+`runOnChange-records`, `runOnChange-querySettings` and `runOnChange-search` on those two
+components), because phase 77's SBR-017 has been editing this artefact. **The phenomenon persists;
+the specific ports are a moving target.** Re-run before quoting the breakdown — the total is
+anchored to the md5 above and nothing else.
+
+⚠️ **This number is NOT yet a defect count.** It measures *disagreement*, which is what AC3 asks
+for. Whether each of the 56 is a reversal of the author's intent needs D11's question asked per
+node — *did the author want this to run on load?* — and §1.1 is the reason that question no longer
+has a free answer. **What it does establish is that the disk/load gap is not hypothetical and not
+small**, and that closing it by writing explicit values (the §3.2 half) is 56 decisions, not a flag.
+
+🔴 **Do not fix this by editing `site-builder.content.json` or its generator right now.** That
+artefact is **phase 77's active file** — mtime 12:44 today, moved by SBR-017 this session. The fix
+belongs with whoever owns the generator, sequenced after their work lands.
