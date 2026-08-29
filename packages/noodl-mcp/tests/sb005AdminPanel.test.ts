@@ -890,9 +890,23 @@ describe('SB-005: the admin panel, through the MCP door', () => {
     expect(inMenu.sort()).toEqual(['Duplicate', 'Publish', 'Unpublish']);
 
     // ...and each one closes the menu on its way out, so the row is readable again.
-    const state = byType(row, 'States')[0];
+    //
+    // 🔴 By LABEL, not `byType(row, 'States')[0]`. It was positional, and SBR-015
+    // AC1 added a second `States` to this row (`callState`, which resets the
+    // refusal message) — declared earlier in the node list, so it silently became
+    // index 0 and this assertion read 0 closers off the wrong node. A positional
+    // selector in a gate does not fail when the gate is wrong; it fails later,
+    // looking exactly like the feature it grades has broken.
+    const state = byLabel(row, 'States', 'Menu open or closed');
     const closers = row.wires.filter((w) => w.toId === state.id && w.toProperty === 'to-Closed');
-    expect(closers).toHaveLength(3);
+
+    // 🔴 Six, not three: SBR-015 AC1. Each action closes the menu on `done` AND
+    // on `failure` — before it, only `done` did, so a refusal left the menu open
+    // for as long as it was watched (47 s, measured). "The menu stops being busy"
+    // is half of AC1's person sentence and this is the wire that makes it true.
+    expect(closers).toHaveLength(6);
+    const byOutcome = closers.map((w) => w.fromProperty).sort();
+    expect(byOutcome).toEqual(['done', 'done', 'done', 'failure', 'failure', 'failure']);
   });
 
   it('AC1: the status is a pill whose colour is derived, not authored per row', () => {

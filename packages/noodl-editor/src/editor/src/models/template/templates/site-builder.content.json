@@ -2680,6 +2680,24 @@
                     },
                     "ports": [],
                     "dynamicports": []
+                  },
+                  {
+                    "id": "rowRefusal",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Why that did not work",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "mounted": false,
+                      "text": "That did not work.",
+                      "fontFamily": "var(--font-sans)",
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--destructive)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
                   }
                 ],
                 "label": "Name and slug",
@@ -2701,7 +2719,7 @@
                     "children": [],
                     "label": "Draft or published",
                     "x": 160,
-                    "y": 640,
+                    "y": 760,
                     "parameters": {
                       "sizeMode": "contentSize",
                       "text": "Draft",
@@ -2716,7 +2734,7 @@
                 ],
                 "label": "Status pill",
                 "x": 100,
-                "y": 520,
+                "y": 640,
                 "parameters": {
                   "sizeMode": "contentSize",
                   "flexDirection": "row",
@@ -2738,7 +2756,7 @@
                 "children": [],
                 "label": "Edit",
                 "x": 100,
-                "y": 760,
+                "y": 880,
                 "parameters": {
                   "label": "Edit"
                 },
@@ -2751,7 +2769,7 @@
                 "children": [],
                 "label": "More actions",
                 "x": 100,
-                "y": 880,
+                "y": 1000,
                 "parameters": {
                   "label": "More"
                 },
@@ -2768,7 +2786,7 @@
                     "children": [],
                     "label": "Publish",
                     "x": 160,
-                    "y": 1120,
+                    "y": 1240,
                     "parameters": {
                       "label": "Publish"
                     },
@@ -2781,7 +2799,7 @@
                     "children": [],
                     "label": "Unpublish",
                     "x": 160,
-                    "y": 1240,
+                    "y": 1360,
                     "parameters": {
                       "label": "Unpublish"
                     },
@@ -2794,7 +2812,7 @@
                     "children": [],
                     "label": "Duplicate",
                     "x": 160,
-                    "y": 1360,
+                    "y": 1480,
                     "parameters": {
                       "label": "Duplicate"
                     },
@@ -2804,7 +2822,7 @@
                 ],
                 "label": "Row actions menu",
                 "x": 100,
-                "y": 1000,
+                "y": 1120,
                 "parameters": {
                   "sizeMode": "contentSize",
                   "mounted": false,
@@ -2838,12 +2856,29 @@
             "dynamicports": []
           },
           {
+            "id": "callState",
+            "type": "States",
+            "children": [],
+            "label": "Did the last call refuse?",
+            "x": 410,
+            "y": 520,
+            "parameters": {
+              "states": "Quiet,Refused",
+              "values": "refused",
+              "type-refused": "boolean",
+              "value-Quiet-refused": false,
+              "value-Refused-refused": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
             "id": "menuState",
             "type": "States",
             "children": [],
             "label": "Menu open or closed",
             "x": 410,
-            "y": 1000,
+            "y": 1240,
             "parameters": {
               "states": "Closed,Open",
               "values": "menuOpen",
@@ -2892,7 +2927,7 @@
             "children": [],
             "label": "Draft or published, as a word and a colour",
             "x": 410,
-            "y": 640,
+            "y": 1000,
             "parameters": {
               "runOnChange-in-published": true,
               "functionScript": "const published = Inputs.published === true;\nOutputs.label = published ? 'Published' : 'Draft';\nOutputs.pillBackground = published ? 'var(--primary)' : 'var(--accent)';\nOutputs.pillColor = published ? 'var(--primary-foreground)' : 'var(--muted-foreground)';"
@@ -2906,7 +2941,7 @@
             "children": [],
             "label": "publishPage(publish: true)",
             "x": 410,
-            "y": 1120,
+            "y": 640,
             "parameters": {
               "function": "publishPage",
               "in-publish": true
@@ -2920,7 +2955,7 @@
             "children": [],
             "label": "publishPage(publish: false)",
             "x": 410,
-            "y": 1240,
+            "y": 760,
             "parameters": {
               "function": "publishPage",
               "in-publish": false
@@ -2934,7 +2969,7 @@
             "children": [],
             "label": "duplicatePage",
             "x": 410,
-            "y": 1360,
+            "y": 880,
             "parameters": {
               "function": "duplicatePage"
             },
@@ -2947,7 +2982,7 @@
             "children": [],
             "label": "Open the page editor",
             "x": 410,
-            "y": 760,
+            "y": 1120,
             "parameters": {
               "router": "Main",
               "target": "/Pages/PageEditor"
@@ -2961,7 +2996,7 @@
             "children": [],
             "label": "Tell the list something changed",
             "x": 410,
-            "y": 1480,
+            "y": 1360,
             "parameters": {},
             "ports": [
               {
@@ -3103,6 +3138,84 @@
           {
             "fromId": "duplicate",
             "fromProperty": "done",
+            "toId": "menuState",
+            "toProperty": "to-Closed"
+          },
+          {
+            "fromId": "publish",
+            "fromProperty": "failure",
+            "toId": "callState",
+            "toProperty": "to-Refused"
+          },
+          {
+            "fromId": "unpublish",
+            "fromProperty": "failure",
+            "toId": "callState",
+            "toProperty": "to-Refused"
+          },
+          {
+            "fromId": "duplicate",
+            "fromProperty": "failure",
+            "toId": "callState",
+            "toProperty": "to-Refused"
+          },
+          {
+            "fromId": "publish",
+            "fromProperty": "done",
+            "toId": "callState",
+            "toProperty": "to-Quiet"
+          },
+          {
+            "fromId": "unpublish",
+            "fromProperty": "done",
+            "toId": "callState",
+            "toProperty": "to-Quiet"
+          },
+          {
+            "fromId": "duplicate",
+            "fromProperty": "done",
+            "toId": "callState",
+            "toProperty": "to-Quiet"
+          },
+          {
+            "fromId": "callState",
+            "fromProperty": "refused",
+            "toId": "rowRefusal",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "publish",
+            "fromProperty": "error",
+            "toId": "rowRefusal",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "unpublish",
+            "fromProperty": "error",
+            "toId": "rowRefusal",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "duplicate",
+            "fromProperty": "error",
+            "toId": "rowRefusal",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "publish",
+            "fromProperty": "failure",
+            "toId": "menuState",
+            "toProperty": "to-Closed"
+          },
+          {
+            "fromId": "unpublish",
+            "fromProperty": "failure",
+            "toId": "menuState",
+            "toProperty": "to-Closed"
+          },
+          {
+            "fromId": "duplicate",
+            "fromProperty": "failure",
             "toId": "menuState",
             "toProperty": "to-Closed"
           }

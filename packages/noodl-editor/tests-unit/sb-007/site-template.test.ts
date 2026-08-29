@@ -174,7 +174,10 @@ describe('SB-007 — install writes a project that opens', () => {
     // 203 → 232: the shell, the dialog, and the rebuilt page row / page list.
     // 232 → 234: SBR-015's two `status: 'failure'` Response nodes, one each on
     // `publishPage` and `duplicatePage` — the graphs had no failure exit at all.
-    expect(a.size).toBe(234);
+    // 234 → 236: SBR-015 AC1's browser half — `/Admin/PageRow` gains the Text
+    // that says why a call refused and the `States` that resets it, because the
+    // server's refusal was arriving and being discarded.
+    expect(a.size).toBe(236);
     expect([...a].filter((id) => b.has(id))).toEqual([]);
   });
 

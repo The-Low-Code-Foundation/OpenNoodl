@@ -783,6 +783,65 @@ describe('SBR-015 — a cloud function has no silent exit', () => {
     expect(claims).toEqual([]);
   });
 
+  /**
+   * 🔴 SBR-015 AC1 — the population this file's other rules structurally cannot see.
+   *
+   * The rules above derive their population as *a component holding a
+   * `noodl.cloud.request`*: cloud endpoints. That is a better rule than a hand
+   * list and it **still** could not see the same defect one layer up, in the
+   * browser components that CALL those endpoints. `/Admin/PageRow`'s three
+   * `CloudFunction2` nodes wired `done` only, so after the endpoints were fixed
+   * the backend answered `400` in 19 ms with a correct refusal and the browser
+   * threw it away — measured with a `MutationObserver`: zero text changes in 47 s.
+   *
+   * Deriving a population removes the "I forgot one" failure and leaves the
+   * "I framed it too narrowly" one. The consumer of a fixed producer is the
+   * first place to look next.
+   */
+  it('🔴 every browser call to a cloud function handles its Failure', () => {
+    const offenders = shipped.components
+      .filter((c) => !c.name.startsWith('/#__cloud__/'))
+      .flatMap((c) => {
+        const calls = nodesOf(c).filter((n) => n.type === 'CloudFunction2');
+        return calls
+          .filter(
+            (n) =>
+              !c.graph.connections.some(
+                (w) => w.fromId === n.id && (w.fromProperty === 'failure' || w.fromProperty === 'error')
+              )
+          )
+          .map((n) => `${c.name} ${(n as { label?: string }).label ?? n.id}`);
+      })
+      .sort();
+    expect(offenders).toEqual([]);
+  });
+
+  it('control: there are browser cloud calls to grade, and the rule can red', () => {
+    // ⚠️ Necessary, not sufficient: this asserts the failure signal LEAVES the
+    // node, not that a person ever sees it. The browser has no Response node to
+    // aim at, so there is no structural equivalent of the endpoint rule — the
+    // person-facing half is AC1's drive, not a spec.
+    const calls = shipped.components
+      .filter((c) => !c.name.startsWith('/#__cloud__/'))
+      .flatMap((c) => nodesOf(c).filter((n) => n.type === 'CloudFunction2'));
+    expect(calls.length).toBeGreaterThan(0);
+
+    const pageRow = shipped.components.find((c) => c.name === '/Admin/PageRow') as Component;
+    const mutant = JSON.parse(JSON.stringify(pageRow)) as Component;
+    mutant.graph.connections = mutant.graph.connections.filter(
+      (w) => w.fromProperty !== 'failure' && w.fromProperty !== 'error'
+    );
+    const unhandled = nodesOf(mutant)
+      .filter((n) => n.type === 'CloudFunction2')
+      .filter(
+        (n) =>
+          !mutant.graph.connections.some(
+            (w) => w.fromId === n.id && (w.fromProperty === 'failure' || w.fromProperty === 'error')
+          )
+      );
+    expect(unhandled.length).toBe(3);
+  });
+
   it('control: the two deliberate `completed` wires survive — this rule did not ban the port', () => {
     // If the rule above had been "no `completed` anywhere" it would have gone
     // green by deleting two correct wires. Both are documented in

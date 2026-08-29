@@ -348,6 +348,48 @@ export const PAGE_ROW_NODES = [
     }
   },
   {
+    // 🔴 SBR-015 AC1. The backend was taught to refuse in words; this is the
+    // thing that says them. Before it, the row's three cloud calls wired `done`
+    // only, so a 400 arriving in 19 ms produced — measured with a
+    // `MutationObserver` over `document.body` for 47 s — **zero** text changes:
+    // menu open, pill still `Draft`, nothing anywhere. The fix that made the
+    // server speak did not change the person's experience at all.
+    id: 'rowRefusal',
+    type: 'Text',
+    label: 'Why that did not work',
+    parent: 'titleCell',
+    parameters: {
+      ...STACKED,
+      // 🔴 `mounted`, never `visible`. A refusal that is absent must take no
+      // space in the row — `visible: false` keeps the box (P78 D16 was exactly
+      // that bug, in this template).
+      mounted: false,
+      // A standing value, for the reason `rowTitle` carries one: `Text`
+      // declares `default: 'Text'`, so a node whose only `text` is a wire
+      // renders the literal word **Text** until that wire publishes. Here it is
+      // also the fallback if `error` ever arrives empty.
+      text: 'That did not work.',
+      fontFamily: 'var(--font-sans)',
+      fontSize: 'var(--text-sm)',
+      color: 'var(--destructive)'
+    }
+  },
+  {
+    id: 'callState',
+    type: 'States',
+    label: 'Did the last call refuse?',
+    // Same shape as `menuState` above, and for the same reason a `States` beats
+    // a bare boolean here: it **resets**. A later call that succeeds returns the
+    // row to `Quiet`, so a refusal cannot outlive the thing it was about.
+    parameters: {
+      states: 'Quiet,Refused',
+      values: 'refused',
+      'type-refused': 'boolean',
+      'value-Quiet-refused': false,
+      'value-Refused-refused': true
+    }
+  },
+  {
     id: 'pill',
     type: 'Group',
     label: 'Status pill',
@@ -571,7 +613,47 @@ export const PAGE_ROW_WIRES = [
   // readable again the moment the list redraws.
   { fromId: 'publish', fromProperty: 'done', toId: 'menuState', toProperty: 'to-Closed' },
   { fromId: 'unpublish', fromProperty: 'done', toId: 'menuState', toProperty: 'to-Closed' },
-  { fromId: 'duplicate', fromProperty: 'done', toId: 'menuState', toProperty: 'to-Closed' }
+  { fromId: 'duplicate', fromProperty: 'done', toId: 'menuState', toProperty: 'to-Closed' },
+
+  // 🔴 SBR-015 AC1 — the browser half of the defect SBR-015 fixed on the server.
+  //
+  // The three calls above wired `done` and nothing else, so every refusal was
+  // discarded: the menu stayed open for as long as it was watched and no text
+  // on the page changed. SBR-015's own gate could not see this, because it
+  // derives its population as "a component holding a `noodl.cloud.request`" —
+  // cloud endpoints — and this is a component that CALLS one. A checker's
+  // population is part of the checker; the consumer of a fixed producer is the
+  // first place to look next.
+  //
+  // ⚠️ `failure`, not `completed`: `completed` fires on every outcome, so it
+  // would raise the refusal on success too.
+  { fromId: 'publish', fromProperty: 'failure', toId: 'callState', toProperty: 'to-Refused' },
+  { fromId: 'unpublish', fromProperty: 'failure', toId: 'callState', toProperty: 'to-Refused' },
+  { fromId: 'duplicate', fromProperty: 'failure', toId: 'callState', toProperty: 'to-Refused' },
+
+  // …and a later success clears it, so a refusal cannot outlive its subject.
+  { fromId: 'publish', fromProperty: 'done', toId: 'callState', toProperty: 'to-Quiet' },
+  { fromId: 'unpublish', fromProperty: 'done', toId: 'callState', toProperty: 'to-Quiet' },
+  { fromId: 'duplicate', fromProperty: 'done', toId: 'callState', toProperty: 'to-Quiet' },
+
+  { fromId: 'callState', fromProperty: 'refused', toId: 'rowRefusal', toProperty: 'mounted' },
+
+  // 🔴 The server's own sentence, not a generic one. SBR-015 wrote these
+  // deliberately and they are not interchangeable: duplicate answers *"This page
+  // could not be duplicated. A partial copy may exist."* — because the copy is
+  // written before the step that fails, so a message claiming nothing was made
+  // would be a lie the admin can disprove by reloading. `error` carries it
+  // (`cloudfunction2.ts:157`, *"Why the last call failed"*), and `rowRefusal`'s
+  // own `text` parameter is the fallback if it ever arrives empty.
+  { fromId: 'publish', fromProperty: 'error', toId: 'rowRefusal', toProperty: 'text' },
+  { fromId: 'unpublish', fromProperty: 'error', toId: 'rowRefusal', toProperty: 'text' },
+  { fromId: 'duplicate', fromProperty: 'error', toId: 'rowRefusal', toProperty: 'text' },
+
+  // The second half of AC1's sentence — "and the menu stops being busy". It
+  // stayed open on every refusal because only `done` closed it.
+  { fromId: 'publish', fromProperty: 'failure', toId: 'menuState', toProperty: 'to-Closed' },
+  { fromId: 'unpublish', fromProperty: 'failure', toId: 'menuState', toProperty: 'to-Closed' },
+  { fromId: 'duplicate', fromProperty: 'failure', toId: 'menuState', toProperty: 'to-Closed' }
 ];
 
 // ── 2. Admin/SectionRow — one section, with the image upload ─────────────────
