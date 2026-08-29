@@ -95,3 +95,63 @@ parameters. Today the door's silence about connections reads as "checked and fin
   not the port's presence.
 - 🔴 **Interim template-scoped cover already exists and must not close this task.** `sb007Template.test.ts`
   and `tpl001Template.test.ts` §3 check two templates. **The door still ships the hole.**
+
+---
+
+## 5. 🟡 PARTIAL — 2026-08-29
+
+### ✅ Rule 1(a) landed — the component instance
+
+`validation/connectionTargets.ts` + 12 specs. The first of D1's three sabotages is refused **by
+name**, with the clean graph as its control on every case.
+
+🔴 **The inversion is the one way to get this wrong, and it is now graded.**
+`componentmodel.getPorts()` collects a `haveComponentPorts` node's `getPorts('input')` and
+republishes each with **`plug: 'output'`** — and vice versa. So a port authored `plug: "output"` is
+an instance **input**, and `plug: "input"` is an instance **output**. A checker holding that
+backwards refuses every correct graph and accepts every broken one, **and would still pass a suite
+that only tested one direction.** Both directions have a refusal case and an acceptance case.
+
+`ComponentInterface` gained `outputs` beside `inputs`. ⚠️ **Both node types in
+`COMPONENT_PORT_TYPES` feed both directions** — `componentmodel` filters on `haveComponentPorts` and
+never on which of the two node types carries it, so "Component Inputs" and "Component Outputs" are a
+convention of the canvas, not a rule of the derivation.
+
+**Calibration:** the members-area template builds through `create_component`, so all 19 components
+and every instance port in the template *that found this defect* pass the new error. MCP 892/892,
+`test:main` 6278/6278, `test:ci` at the floor (2889/4, all `AIX-006` by name).
+
+### 🔴 AC6 is NOT met, and the reason is bigger than this task recorded
+
+AC6 asks that **`validate_component` and `validate_project` both carry the rules**. They carry
+**none of the precondition layer at all** — and that is not a fact about DEF-002's rules, it is a
+fact about all thirteen.
+
+| door | what it runs |
+|---|---|
+| `create_component` / `update_component` / `apply_plan` → **`validateCandidate`** | `SemanticValidator` **+ `preconditionDiagnostics`** (13 checks) |
+| **`validate_component`** / **`validate_project`** → **`validateOnDisk`** | `SemanticValidator`, and stops |
+
+🔴 **An agent calling `validate_project` to check its work gets a strictly weaker answer than the
+door that let the work in.** `checkNavigation`, `checkInstanceInterfaces`, `checkParameterValues`,
+`checkFunctionNodePorts`, `checkRepeaterTemplate` and the rest are all invisible to it. A clean
+`validate_project` therefore does **not** mean what a reader takes it to mean, and adding rules to
+the precondition layer will never change that.
+
+⚠️ **Not fixed here on purpose.** Several of those checks were deliberately calibrated *against
+graphs an agent just wrote* (their own headers say so, at length), and `validate_project` also runs
+over hand-authored projects. Putting them on that door is a false-positive-tolerance decision with
+its own corpus evidence — the same call `authoredCandidate.ts` already records having made twice.
+**It needs one calibration pass over the corpus, and that pass answers it for all thirteen at
+once.**
+
+### ⬜ Still open in this task
+
+| part | state |
+|---|---|
+| 1(a) component instance | ✅ done |
+| 1(b) `CloudFunction2` `in-*`/`out-*` → the endpoint's request/response params | ⬜ needs a new index off the same views |
+| 1(c) `RouterNavigate` `pm-*` → the page's `PageInputs.pathParams` + `{braces}` in `urlPath` | ⬜ same |
+| 2 `failure-reaches-nothing` | ⬜ — and 🔴 **DEF-002 read `noodl-mcp/src/validate.ts` and concluded "there is no rule". True, but the rules do not live there**: they are `noodl-editor/src/editor/src/validation/rules/`. Checked at HEAD: `unwiredOutcome` fires on a different shape entirely (unchanged declared, `done`+`failure` wired, neither `unchanged` nor `completed`), so the gap is real — but it was concluded from the wrong file, which is the third time a row in this family has been |
+| 3 `signal-into-value-port` | ⬜ — real: `typeIncompatibleConnection` explicitly treats *"a signal is involved"* as **compatible**, and `signalDrivenStaleInput` is `defaultEnabled: false` and about asynchrony |
+| AC6 both pipelines | 🔴 blocked on the calibration pass above |
