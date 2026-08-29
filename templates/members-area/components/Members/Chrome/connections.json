@@ -86,6 +86,12 @@
       "fromProperty": "isModerator",
       "toId": "navDirectory",
       "toProperty": "mounted"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isModerator",
+      "toId": "outputs-3",
+      "toProperty": "isModerator"
     }
   ]
 }

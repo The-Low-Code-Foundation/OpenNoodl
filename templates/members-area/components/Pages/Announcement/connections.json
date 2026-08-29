@@ -62,6 +62,78 @@
       "fromProperty": "result",
       "toId": "refusal",
       "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome-2",
+      "fromProperty": "isModerator",
+      "toId": "removal",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "removeButton",
+      "fromProperty": "onClick",
+      "toId": "confirmGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "confirmGate",
+      "fromProperty": "result",
+      "toId": "confirm",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "confirmNo",
+      "fromProperty": "onClick",
+      "toId": "confirmClear",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "confirmClear",
+      "fromProperty": "result",
+      "toId": "confirm",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "hold",
+      "fromProperty": "out-announcementId",
+      "toId": "confirmed",
+      "toProperty": "in-announcementId"
+    },
+    {
+      "fromId": "confirmYes",
+      "fromProperty": "onClick",
+      "toId": "confirmed",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "confirmed",
+      "fromProperty": "out-announcementId",
+      "toId": "del",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "confirmed",
+      "fromProperty": "out-go",
+      "toId": "del",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "del",
+      "fromProperty": "done",
+      "toId": "toList",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "del",
+      "fromProperty": "failure",
+      "toId": "removeFailedGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "removeFailedGate",
+      "fromProperty": "result",
+      "toId": "removeFailed",
+      "toProperty": "mounted"
     }
   ]
 }

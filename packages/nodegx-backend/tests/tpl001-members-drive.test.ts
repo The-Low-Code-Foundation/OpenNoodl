@@ -112,6 +112,22 @@ const TYPED = {
   details: 'Papers circulated beforehand.'
 };
 
+/**
+ * 🔴 **The removal drives its OWN row, and that is not tidiness.**
+ *
+ * §9 deletes an announcement. Deleting `TYPED.title` instead would move the
+ * population every other reading in this file is taken against — §2's
+ * known-firing read, the HTTP arms, the member's noticeboard — so a green run
+ * would be proving the harness had agreed with itself. This row is posted,
+ * removed, and gone again inside the moderator's own session, and nothing
+ * before or after it moves.
+ */
+const REMOVABLE = { title: 'Posted by mistake', body: 'This one should not have gone up.' };
+
+/** What the confirm step says. `tpl001Vocabulary.CONFIRM_REMOVE_TEXT`, on the screen. */
+const CONFIRM_TEXT = 'This cannot be undone. Members will no longer see it.';
+const REMOVE_ANNOUNCEMENT = 'Remove this announcement';
+
 /** The ACL a moderator's own write carries — `tpl001Vocabulary.MEMBERS_READ_RULES` on the wire. */
 const MEMBERS_READ_ACL = {
   'role:admin': { read: true, write: true },
@@ -160,6 +176,9 @@ describe("TPL-001 — the members' area, driven", () => {
   let enforced = false;
   let signupStatus = -1;
   let approvedInBrowser = false;
+  /** The ids §9 needs, read over HTTP because the URL is `/announcements/{id}`. */
+  let removableId = '';
+  let typedId = '';
   /**
    * 🔴 The viewer bundle is a shared, gitignored build artefact and a peer's dev
    * stack rewrites it. Stamped at both ends of the run: a bundle swapped
@@ -185,6 +204,20 @@ describe("TPL-001 — the members' area, driven", () => {
       titles: (res.json?.results ?? []).map((r) => String(r.title ?? r.name ?? '')),
       body: res.text.slice(0, 300)
     };
+  };
+
+  /**
+   * The objectId of the announcement titled `title`, as the moderator.
+   *
+   * ⚠️ Over HTTP rather than scraped from a row's link, deliberately: the id in
+   * the URL is the thing under test on the detail page, and reading it from the
+   * page that builds that URL would make the navigation grade itself.
+   */
+  const idOfAnnouncement = async (title: string): Promise<string> => {
+    const res = await client.get<Rows>('/classes/Announcement', as(tokens.moderator));
+    const row = (res.json?.results ?? []).find((r) => String(r.title) === title);
+    if (!row) throw new Error(`no announcement titled "${title}"`);
+    return String(row.objectId);
   };
 
   beforeAll(async () => {
@@ -345,6 +378,42 @@ describe("TPL-001 — the members' area, driven", () => {
       await clickButton(page, 'Add it to the diary');
       await lookHere('moderator.added', 'Added. Members can see it now.');
 
+      // ── §9 — the moderator takes something down again ──────────────────
+      //
+      // 🔴 On its own row, posted here and gone before §8 reads anything. See
+      // `REMOVABLE`. It is driven in FOUR steps because three different claims
+      // hang off them: that the control is offered at all, that the confirm is
+      // a real gate in BOTH directions, and that the delete actually happened.
+      await look('moderator.postRemovable', '/post');
+      await fill(page, 'Title', REMOVABLE.title, 0);
+      await fill(page, 'What you want to say', REMOVABLE.body);
+      await clickButton(page, 'Post it');
+      await lookHere('moderator.postedRemovable', 'Posted. Members can see it now.');
+
+      removableId = await idOfAnnouncement(REMOVABLE.title);
+      // The detail page: the removal is offered, and the question is not asked
+      // until it is. Both readings come off the same visit.
+      await look('moderator.announcement', `/announcements/${removableId}`);
+
+      // 🔴 "Keep it" first. A confirm step that only works in the destructive
+      // direction is not a confirm step — and the arm that would have caught
+      // `confirmClear` being wired to the wrong condition is this one, not the
+      // one that removes the row.
+      await clickButton(page, REMOVE_ANNOUNCEMENT);
+      await lookHere('moderator.confirmAsked', CONFIRM_TEXT);
+      await clickButton(page, 'Keep it');
+      await lookHere('moderator.confirmKept');
+      await read('afterKeep', tokens.moderator);
+
+      // …and now actually remove it.
+      await clickButton(page, REMOVE_ANNOUNCEMENT);
+      await lookHere('moderator.confirmAgain', CONFIRM_TEXT);
+      await clickButton(page, 'Yes, remove it');
+      // `del.done` navigates to the noticeboard, so the settled reading is the
+      // list — which is also where the row's absence is legible to a person.
+      await lookHere('moderator.removed', 'Announcements');
+      await read('afterRemoval', tokens.moderator);
+
       // §8 — the directory, AFTER approving Mo, so a passing reading is two
       // people and not one: the founding moderator's own row from setup, and
       // the projection row `decideMembership` wrote on the grant.
@@ -358,6 +427,11 @@ describe("TPL-001 — the members' area, driven", () => {
       await look('member.post', '/post');
       // §8's negative arm — a member is a member, and still not a moderator.
       await look('member.directory', '/directory');
+      // §9's negative arm, on the row that still exists: a member reading an
+      // announcement in full is the known-firing signal that makes the absence
+      // of the removal a refusal rather than a page that failed to render.
+      typedId = await idOfAnnouncement(TYPED.title);
+      await look('member.announcement', `/announcements/${typedId}`);
     });
 
     // ── The HTTP arms that need Mo to be a member ─────────────────────────────
@@ -754,6 +828,105 @@ describe("TPL-001 — the members' area, driven", () => {
       expect(added?.when).toBe(TYPED.when);
       expect(added?.place).toBe(TYPED.place);
       expect(added?.details).toBe(TYPED.details);
+    });
+  });
+
+  // ── §9 — the removal ───────────────────────────────────────────────────────
+
+  /**
+   * 🔴 **The gap this closes was in the app, not in the policy.**
+   * `nodegx.security.json` has granted `role:admin` `delete` on `Announcement`
+   * and `Meeting` since it was written; no browser graph ever placed a `Delete
+   * Record`, so a moderator who posted the harvest supper on the wrong Saturday
+   * had to open the backend. Richard ruled on 2026-08-29 to close it and to
+   * seed no sample content, the two being the same decision: examples you
+   * cannot delete are worse than an empty noticeboard.
+   *
+   * ⚠️ **Everything here needs execution and nothing else can supply it.** The
+   * reveal is `chrome.isModerator` — a component-instance port, published by
+   * the band so the two detail pages need no standing check of their own.
+   * `tpl001Template.test.ts` proves the port is declared and the wire names it;
+   * only this proves the value arrives.
+   *
+   * 🔴 **`outerHTML` is the WRONG instrument for most of this block, and the
+   * first draft used it on all four specs.** The file's standing rule is to
+   * read absences off `html` because `innerText` would pass on content fetched
+   * and merely unpainted. That rule is about **records**. A deployed page
+   * carries the entire project graph in `window.projectData` inside a
+   * `<script>`, so every *static* string in the app — every button label, every
+   * notice — is in every visitor's document, including a stranger's. Three
+   * specs here failed on exactly that, and each would have read as a leak.
+   *
+   * ⚠️ So the instrument is chosen per claim, and the rule is what the string
+   * IS rather than which reading sounds stricter:
+   *
+   * | claim about | honest reading | why |
+   * |---|---|---|
+   * | a **record** (`REMOVABLE.title`) | `html` | in the document only if it was fetched |
+   * | a **control** the graph declares | `inDocument` | `<button>` elements only — a `<script>` is not one |
+   * | a **sentence** the graph declares | `text` | `body.innerText`; a `<script>` renders nothing |
+   *
+   * s8 learned the first half of this — §3 swapped `html` for `text` when a
+   * tile's static word broke a proxy. This is the same finding, stated as a
+   * rule rather than repaired at the one site that showed it.
+   */
+  describe('§9 a moderator can take an announcement down, and a member cannot', () => {
+    it('the moderator is offered the removal on the detail page, and is not asked yet', () => {
+      // The known-firing half: the page rendered the record it was opened for.
+      expect(visits['moderator.announcement'].text).toContain(REMOVABLE.title);
+      expect(visits['moderator.announcement'].text).toContain(REMOVABLE.body);
+      expect(buttons['moderator.announcement']).toContain(REMOVE_ANNOUNCEMENT);
+
+      // 🔴 …and the question is NOT on the page until it is asked — absent from
+      // the document, not merely unpainted. `inDocument` is `textContent` over
+      // the `<button>` elements, so an unpainted control would still count.
+      expect(visits['moderator.announcement'].text).not.toContain(CONFIRM_TEXT);
+      expect(inDocument['moderator.announcement']).not.toContain('Yes, remove it');
+      expect(inDocument['moderator.announcement']).not.toContain('Keep it');
+    });
+
+    it('asking puts the question up, and "Keep it" takes it down again without deleting', () => {
+      expect(visits['moderator.confirmAsked'].text).toContain(CONFIRM_TEXT);
+      expect(buttons['moderator.confirmAsked']).toEqual(
+        expect.arrayContaining(['Yes, remove it', 'Keep it'])
+      );
+
+      // 🔴 The arm that grades the confirm as a GATE rather than as a label.
+      expect(visits['moderator.confirmKept'].text).not.toContain(CONFIRM_TEXT);
+      expect(inDocument['moderator.confirmKept']).not.toContain('Yes, remove it');
+      // …and the way back in is still offered, so "Keep it" put the question
+      // away rather than the whole block.
+      expect(buttons['moderator.confirmKept']).toContain(REMOVE_ANNOUNCEMENT);
+      // And the row is still there — "Keep it" kept it.
+      expect(http['afterKeep'].titles).toContain(REMOVABLE.title);
+    });
+
+    it('confirming removes the row and puts the moderator back on the noticeboard', () => {
+      expect(visits['moderator.removed'].text).toContain('Announcements');
+      // Gone from the page a person reads…
+      expect(visits['moderator.removed'].html).not.toContain(REMOVABLE.title);
+      // …and gone from the backend, which is the claim that matters. Read as
+      // the moderator, whose read of the same collection returns the other
+      // announcement — so an empty answer cannot be mistaken for a refusal.
+      expect(http['afterRemoval'].status).toBe(200);
+      expect(http['afterRemoval'].titles).not.toContain(REMOVABLE.title);
+      expect(http['afterRemoval'].titles).toContain(TYPED.title);
+    });
+
+    it('🔴 a member reading the same kind of page is offered no way to remove it', () => {
+      // The known-firing signal, in the same run on the same instrument: the
+      // member's page rendered the announcement in full.
+      expect(visits['member.announcement'].text).toContain(TYPED.title);
+      expect(visits['member.announcement'].text).toContain(TYPED.body);
+
+      // …and the removal is absent from their DOCUMENT, not merely unpainted.
+      // `inDocument` is `textContent` over the buttons, so a control hidden by
+      // a regression back to `visible` would still be counted here.
+      expect(inDocument['member.announcement']).not.toContain(REMOVE_ANNOUNCEMENT);
+      expect(visits['member.announcement'].text).not.toContain(CONFIRM_TEXT);
+      // Beside a control that IS in their document, so the line above is a
+      // measurement rather than an empty census.
+      expect(inDocument['member.announcement']).toContain('Sign out');
     });
   });
 

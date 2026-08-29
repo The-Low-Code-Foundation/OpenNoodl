@@ -401,6 +401,20 @@
       "y": 1360
     },
     {
+      "id": "outputs-3",
+      "type": "Component Outputs",
+      "label": "Who the band knows this person to be",
+      "ports": [
+        {
+          "name": "isModerator",
+          "plug": "input",
+          "type": "boolean"
+        }
+      ],
+      "x": 530,
+      "y": 1840
+    },
+    {
       "id": "logout",
       "type": "net.noodl.user.LogOut",
       "label": "Log out",
@@ -416,7 +430,7 @@
         "target": "/Pages/Landing"
       },
       "x": 530,
-      "y": 1840
+      "y": 1960
     }
   ],
   "visualRoots": [

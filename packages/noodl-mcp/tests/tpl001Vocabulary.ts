@@ -301,3 +301,51 @@ export const NO_MEMBERS_TEXT = 'Nobody has been admitted yet. People appear here
  */
 export const DIRECTORY_PROJECTION_NOTE =
   'Everybody admitted through this app. Somebody given access directly on the backend will not appear here.';
+
+// ── Taking something down again ──────────────────────────────────────────────
+
+/**
+ * 🔴 **The policy always allowed this and the app never offered it.**
+ *
+ * `nodegx.security.json` grants `role:admin` `delete` on both `Announcement`
+ * and `Meeting` — it has since the policy was written, because a moderator who
+ * may post is obviously the person who may take a post down. But no graph in
+ * the template ever placed a `Delete Record`, so the only way to remove a
+ * notice with the wrong date on it was to open the backend's own admin surface.
+ * For the person in §1 — a church secretary — that is the same as "impossible",
+ * and it is the failure mode of every app in this template's market: the thing
+ * you published by mistake stays published.
+ *
+ * ⚠️ **Found while costing the sample content, and it is what settled it.**
+ * Seeding examples into a live association's noticeboard is only defensible if
+ * the moderator can take them out again; Richard ruled (2026-08-29) to close
+ * this gap and seed nothing, so the empty state stays the first impression.
+ *
+ * ⚠️ **Removal is on the DETAIL page, never on the row.** A row lives in a
+ * `For Each` where a mis-tap is one pixel from the tap that opens it, and the
+ * row does not show enough to be sure which notice you are deleting. The detail
+ * page shows the whole thing, and it already holds the id.
+ */
+export const REMOVE_ANNOUNCEMENT_LABEL = 'Remove this announcement';
+export const REMOVE_MEETING_LABEL = 'Remove this meeting';
+
+/**
+ * The confirm step, which exists because the action cannot be undone.
+ *
+ * ⚠️ **Two buttons and neither is filled.** `PRIMARY_LABELS` emphasises the one
+ * thing a screen is for, and a destructive confirmation is not it — a filled
+ * "Yes, remove it" would make the dangerous half the one the eye lands on.
+ */
+export const CONFIRM_REMOVE_TEXT = 'This cannot be undone. Members will no longer see it.';
+export const CONFIRM_REMOVE_YES = 'Yes, remove it';
+export const CONFIRM_REMOVE_NO = 'Keep it';
+
+/**
+ * The one refusal, and it says what to do next.
+ *
+ * ⚠️ Unlike the setup and join refusals this one leaks nothing by being plain:
+ * the person reading it is a moderator who already holds `role:admin`, and the
+ * only ways it fires are a network failure or a record somebody else removed
+ * first.
+ */
+export const REMOVE_FAILED_TEXT = 'That could not be removed just now. Please try again in a moment.';

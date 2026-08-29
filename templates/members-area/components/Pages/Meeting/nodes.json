@@ -36,7 +36,8 @@
         "when-3",
         "place",
         "details",
-        "refusal-2"
+        "refusal-2",
+        "removal-2"
       ],
       "parameters": {
         "width": {
@@ -205,8 +206,8 @@
       "parameters": {
         "pathParams": "meetingId"
       },
-      "x": 470,
-      "y": 1240
+      "x": 590,
+      "y": 2320
     },
     {
       "id": "hold-2",
@@ -222,7 +223,7 @@
           "type": "signal"
         }
       ],
-      "x": 470,
+      "x": 590,
       "y": 40
     },
     {
@@ -233,7 +234,7 @@
         "collectionName": "Meeting",
         "idSource": "explicit"
       },
-      "x": 470,
+      "x": 590,
       "y": 640
     },
     {
@@ -243,7 +244,7 @@
       "parameters": {
         "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.when === undefined) return;\nvar day = humanDay(Inputs.when);\nOutputs.label = day === '' ? String(Inputs.when || '') : day;"
       },
-      "x": 470,
+      "x": 590,
       "y": 760
     },
     {
@@ -254,8 +255,283 @@
         "condition": true,
         "runOnChange-condition": false
       },
-      "x": 470,
+      "x": 590,
       "y": 1120
+    },
+    {
+      "id": "removal-2",
+      "type": "Group",
+      "label": "Taking it down again",
+      "parent": "ground-6",
+      "children": [
+        "removeButton-2",
+        "confirm-2",
+        "removeFailed-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-6)",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 1360
+    },
+    {
+      "id": "removeButton-2",
+      "type": "net.noodl.controls.button",
+      "label": "Remove this meeting",
+      "parent": "removal-2",
+      "parameters": {
+        "label": "Remove this meeting",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 220,
+      "y": 1480
+    },
+    {
+      "id": "confirm-2",
+      "type": "Group",
+      "label": "Are you sure",
+      "parent": "removal-2",
+      "children": [
+        "confirmText-2",
+        "confirmRow-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 220,
+      "y": 1600
+    },
+    {
+      "id": "confirmText-2",
+      "type": "Text",
+      "label": "Are you sure — the words",
+      "parent": "confirm-2",
+      "parameters": {
+        "text": "This cannot be undone. Members will no longer see it.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 280,
+      "y": 1720
+    },
+    {
+      "id": "confirmRow-2",
+      "type": "Group",
+      "label": "The two answers",
+      "parent": "confirm-2",
+      "children": [
+        "confirmYes-2",
+        "confirmNo-2"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)"
+      },
+      "x": 280,
+      "y": 1840
+    },
+    {
+      "id": "confirmYes-2",
+      "type": "net.noodl.controls.button",
+      "label": "Yes, remove it",
+      "parent": "confirmRow-2",
+      "parameters": {
+        "label": "Yes, remove it",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 340,
+      "y": 1960
+    },
+    {
+      "id": "confirmNo-2",
+      "type": "net.noodl.controls.button",
+      "label": "Keep it",
+      "parent": "confirmRow-2",
+      "parameters": {
+        "label": "Keep it",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 340,
+      "y": 2080
+    },
+    {
+      "id": "removeFailed-2",
+      "type": "Group",
+      "label": "It did not go",
+      "parent": "removal-2",
+      "children": [
+        "removeFailedText-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 220,
+      "y": 2200
+    },
+    {
+      "id": "removeFailedText-2",
+      "type": "Text",
+      "label": "It did not go — the words",
+      "parent": "removeFailed-2",
+      "parameters": {
+        "text": "That could not be removed just now. Please try again in a moment.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 280,
+      "y": 2320
+    },
+    {
+      "id": "confirmed-2",
+      "type": "JavaScriptFunction",
+      "label": "The id, and the go-ahead, from one node",
+      "parameters": {
+        "runOnChange-in-meetingId": false,
+        "functionScript": "if (Inputs.meetingId === undefined || Inputs.meetingId === '') return;\nOutputs.meetingId = Inputs.meetingId;\nOutputs.go();"
+      },
+      "ports": [
+        {
+          "name": "out-go",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 590,
+      "y": 1960
+    },
+    {
+      "id": "del-2",
+      "type": "DeleteDbModelProperties",
+      "label": "Remove it",
+      "parameters": {
+        "collectionName": "Meeting",
+        "idSource": "explicit"
+      },
+      "x": 590,
+      "y": 2440
+    },
+    {
+      "id": "confirmGate-2",
+      "type": "Condition",
+      "label": "Ask before doing it",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 590,
+      "y": 1600
+    },
+    {
+      "id": "confirmClear-2",
+      "type": "Condition",
+      "label": "Put the question away",
+      "parameters": {
+        "condition": false,
+        "runOnChange-condition": false
+      },
+      "x": 590,
+      "y": 1720
+    },
+    {
+      "id": "removeFailedGate-2",
+      "type": "Condition",
+      "label": "Say it did not go",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 590,
+      "y": 2200
+    },
+    {
+      "id": "toList-2",
+      "type": "RouterNavigate",
+      "label": "Back to the list it came from",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Meetings"
+      },
+      "x": 590,
+      "y": 2560
     }
   ],
   "visualRoots": [

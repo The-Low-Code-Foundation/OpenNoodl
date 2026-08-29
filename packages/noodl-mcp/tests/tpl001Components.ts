@@ -64,6 +64,12 @@ import {
   ALREADY_A_MEMBER_HINT,
   ANNOUNCEMENT_SORT,
   CLAIM_REFUSED_TEXT,
+  CONFIRM_REMOVE_NO,
+  CONFIRM_REMOVE_TEXT,
+  CONFIRM_REMOVE_YES,
+  REMOVE_ANNOUNCEMENT_LABEL,
+  REMOVE_FAILED_TEXT,
+  REMOVE_MEETING_LABEL,
   COLLECTION_ANNOUNCEMENT,
   COLLECTION_ASSOCIATION,
   COLLECTION_MEETING,
@@ -704,6 +710,189 @@ function afterSection(params: Record<string, unknown>): Record<string, unknown> 
     borderTopColor: 'var(--border)',
     paddingTop: 'var(--space-6)'
   };
+}
+
+/**
+ * A moderator's way to take a notice back down, as the block both detail pages
+ * carry.
+ *
+ * 🔴 **The policy allowed this from the day it was written and no graph ever
+ * offered it.** `nodegx.security.json` grants `role:admin` `delete` on both
+ * `Announcement` and `Meeting`; the app placed a `Delete Record` exactly once,
+ * server-side in `decideMembership`, and never in the browser. So a moderator
+ * who posted the harvest supper on the wrong Saturday could correct it only by
+ * opening the backend's own admin surface — which for §1's church secretary is
+ * the same word as "no". See {@link REMOVE_ANNOUNCEMENT_LABEL}.
+ *
+ * ⚠️ **A function over the PLACE, like `inColumn` and `afterSection`.** Two
+ * pages need it today and they are the two that reach a record by id; a third
+ * would need every one of these eleven nodes correct, and the half that is easy
+ * to get wrong is invisible — a missing `runOnChange` box, a gate that is a
+ * signal rather than a `Condition`.
+ *
+ * ## The four things this shape is careful about
+ *
+ * 1. **`isModerator` comes from the BAND, not from a new call.** These two
+ *    pages have no `Members/Standing` — the record read is their gate (see
+ *    `ANNOUNCEMENT`) — so the band publishes the answer it already fetched.
+ *    `Members/Chrome`'s `outputs` node says why that is not D29.
+ * 2. **The confirm step is not decoration.** A delete cannot be undone, and the
+ *    button sits under a notice a moderator reached by tapping a row. `Yes,
+ *    remove it` and `Keep it` are both outline controls: `PRIMARY_LABELS` is
+ *    for the one thing a screen is *for*, and emphasising the destructive half
+ *    would put the filled button on the answer nobody should give by reflex.
+ * 3. **Rule 2 — the id and the signal that acts on it leave the same node.**
+ *    The id has been settled since the page mounted and the click is many
+ *    passes later, so nothing would in fact race; `confirmed` is written that
+ *    way regardless, because the shape that is safe by accident is the one the
+ *    next edit breaks silently.
+ * 4. **Rule 4 on every reveal.** Three `Condition` nodes, because a signal
+ *    wired to `mounted` coalesces to a single `false` and reveals nothing.
+ */
+function removalBlock(opts: {
+  parent: string;
+  holdId: string;
+  param: string;
+  collectionName: string;
+  label: string;
+  listTarget: string;
+}): { nodes: unknown[]; connections: unknown[] } {
+  const nodes: unknown[] = [
+    {
+      id: 'removal',
+      type: 'Group',
+      label: 'Taking it down again',
+      parent: opts.parent,
+      // The moderator's zone under the member's, told apart by a rule rather
+      // than by the ground's own gap — the same reading `Pages/Members` needed.
+      parameters: { ...afterSection({ ...SECTION }), mounted: false },
+      children: ['removeButton', 'confirm', 'removeFailed']
+    },
+    {
+      id: 'removeButton',
+      type: 'net.noodl.controls.button',
+      label: opts.label,
+      parent: 'removal',
+      parameters: btn(opts.label)
+    },
+    /**
+     * 🔴 **A `PANEL`, not a `notice()`, and the gate is what settled it.**
+     *
+     * §2 of the ratchet defines a notice box as a `Group` wrapping *exactly
+     * one* `Text`, and says of `Pages/Landing`'s setup card that wrapping a
+     * sentence AND a button "makes it a panel rather than a notice". This holds
+     * a sentence and two buttons. Built with `notice()` it wore a notice's
+     * styling while escaping the notice census on a technicality — passing the
+     * spec for a reason nobody had stated. It is a panel, so it is one.
+     *
+     * ⚠️ The words keep `T_REFUSED`: `--destructive` on `--surface` is 5.96:1,
+     * and the panel fills with `--surface`. `T_CONFIRM` is the neighbouring
+     * case — a confirmation inside a panel that is *already* on screen — and
+     * this one IS the panel.
+     */
+    {
+      id: 'confirm',
+      type: 'Group',
+      label: 'Are you sure',
+      parent: 'removal',
+      parameters: { ...PANEL, mounted: false },
+      children: ['confirmText', 'confirmRow']
+    },
+    {
+      id: 'confirmText',
+      type: 'Text',
+      label: 'Are you sure \u2014 the words',
+      parent: 'confirm',
+      parameters: { text: CONFIRM_REMOVE_TEXT, ...T_REFUSED }
+    },
+    {
+      id: 'confirmRow',
+      type: 'Group',
+      label: 'The two answers',
+      parent: 'confirm',
+      // 🔴 `laidOut`, or the `rowGap` this inherits is a gap the runtime never
+      // reads: `group.ts:473-482` makes each gap conditional on the direction.
+      parameters: laidOut('row', { sizeMode: 'contentSize' }, 'var(--space-3)'),
+      children: ['confirmYes', 'confirmNo']
+    },
+    {
+      id: 'confirmYes',
+      type: 'net.noodl.controls.button',
+      label: CONFIRM_REMOVE_YES,
+      parent: 'confirmRow',
+      parameters: btn(CONFIRM_REMOVE_YES)
+    },
+    {
+      id: 'confirmNo',
+      type: 'net.noodl.controls.button',
+      label: CONFIRM_REMOVE_NO,
+      parent: 'confirmRow',
+      parameters: btn(CONFIRM_REMOVE_NO)
+    },
+    ...notice('removeFailed', 'It did not go', 'removal', REMOVE_FAILED_TEXT, { tone: 'refused' }),
+    {
+      id: 'confirmed',
+      type: 'JavaScriptFunction',
+      label: 'The id, and the go-ahead, from one node',
+      ports: [{ name: 'out-go', plug: 'output', type: 'signal' }],
+      parameters: {
+        // 🔴 `Run` is ADDITIVE (`run-on-value-change.ts` §1): left on, this node
+        // would also fire when the id arrives at page mount — which is to say
+        // it would delete the record the moment a moderator opened it.
+        [`runOnChange-in-${opts.param}`]: false,
+        functionScript:
+          `if (Inputs.${opts.param} === undefined || Inputs.${opts.param} === '') return;\n` +
+          `Outputs.${opts.param} = Inputs.${opts.param};\n` +
+          'Outputs.go();'
+      }
+    },
+    {
+      id: 'del',
+      type: 'DeleteDbModelProperties',
+      label: 'Remove it',
+      parameters: { collectionName: opts.collectionName, idSource: 'explicit' }
+    },
+    { id: 'confirmGate', type: 'Condition', label: 'Ask before doing it', parameters: { ...CONDITION_GATE } },
+    {
+      id: 'confirmClear',
+      type: 'Condition',
+      label: 'Put the question away',
+      // The `missingClear` shape from `Pages/Setup`: a constant `false` with its
+      // own box off, so it hides only when asked.
+      parameters: { condition: false, 'runOnChange-condition': false }
+    },
+    { id: 'removeFailedGate', type: 'Condition', label: 'Say it did not go', parameters: { ...CONDITION_GATE } },
+    {
+      id: 'toList',
+      type: 'RouterNavigate',
+      label: 'Back to the list it came from',
+      parameters: { router: ROUTER, target: opts.listTarget }
+    }
+  ];
+
+  const connections: unknown[] = [
+    // The band already asked. See `Members/Chrome`'s `outputs`.
+    { fromId: 'chrome', fromProperty: 'isModerator', toId: 'removal', toProperty: 'mounted' },
+
+    { fromId: 'removeButton', fromProperty: 'onClick', toId: 'confirmGate', toProperty: 'eval' },
+    { fromId: 'confirmGate', fromProperty: 'result', toId: 'confirm', toProperty: 'mounted' },
+    { fromId: 'confirmNo', fromProperty: 'onClick', toId: 'confirmClear', toProperty: 'eval' },
+    { fromId: 'confirmClear', fromProperty: 'result', toId: 'confirm', toProperty: 'mounted' },
+
+    { fromId: opts.holdId, fromProperty: `out-${opts.param}`, toId: 'confirmed', toProperty: `in-${opts.param}` },
+    { fromId: 'confirmYes', fromProperty: 'onClick', toId: 'confirmed', toProperty: 'run' },
+    { fromId: 'confirmed', fromProperty: `out-${opts.param}`, toId: 'del', toProperty: 'modelId' },
+    { fromId: 'confirmed', fromProperty: 'out-go', toId: 'del', toProperty: 'store' },
+
+    // Gone means gone: the page it was on cannot render it any more, so the
+    // moderator is put back on the list rather than left looking at a refusal
+    // for a record they just removed on purpose.
+    { fromId: 'del', fromProperty: 'done', toId: 'toList', toProperty: 'navigate' },
+    { fromId: 'del', fromProperty: 'failure', toId: 'removeFailedGate', toProperty: 'eval' },
+    { fromId: 'removeFailedGate', fromProperty: 'result', toId: 'removeFailed', toProperty: 'mounted' }
+  ];
+
+  return { nodes, connections };
 }
 
 export const APP_NODES = [
@@ -1796,6 +1985,17 @@ const MEMBERS: Tpl001Component = {
  * What the page owes the person is a sentence rather than a blank screen, which
  * is what the refusal notice is.
  */
+const ANNOUNCEMENT_REMOVAL = removalBlock({
+  parent: 'ground',
+  holdId: 'hold',
+  param: ANNOUNCEMENT_PARAM,
+  collectionName: COLLECTION_ANNOUNCEMENT,
+  label: REMOVE_ANNOUNCEMENT_LABEL,
+  // `Pages/Members` IS the announcements list. Authored before this page, so no
+  // deferred pass is needed for the navigator.
+  listTarget: '/Pages/Members'
+});
+
 const ANNOUNCEMENT: Tpl001Component = {
   path: 'Pages/Announcement',
   nodes: [
@@ -1820,7 +2020,7 @@ const ANNOUNCEMENT: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['titleHead', 'date', 'body', 'refusal']
+      children: ['titleHead', 'date', 'body', 'refusal', 'removal']
     },
     ...pageHead('title', 'Title', 'ground', 'Announcement', ''),
     { id: 'date', type: 'Text', label: 'Posted', parent: 'ground', parameters: { text: '', ...T_META } },
@@ -1868,6 +2068,7 @@ const ANNOUNCEMENT: Tpl001Component = {
       // arrives once as `false` and reveals nothing, ever.
       parameters: { ...CONDITION_GATE }
     },
+    ...ANNOUNCEMENT_REMOVAL.nodes
   ],
   connections: [
     { fromId: 'pageInputs', fromProperty: `pm-${ANNOUNCEMENT_PARAM}`, toId: 'hold', toProperty: `in-${ANNOUNCEMENT_PARAM}` },
@@ -1882,6 +2083,7 @@ const ANNOUNCEMENT: Tpl001Component = {
 
     { fromId: 'record', fromProperty: 'failure', toId: 'refusalGate', toProperty: 'eval' },
     { fromId: 'refusalGate', fromProperty: 'result', toId: 'refusal', toProperty: 'mounted' },
+    ...ANNOUNCEMENT_REMOVAL.connections
   ]
 };
 
@@ -1993,6 +2195,15 @@ const MEETINGS: Tpl001Component = {
 
 // ── 8. Pages/Meeting — one meeting, in full ──────────────────────────────────
 
+const MEETING_REMOVAL = removalBlock({
+  parent: 'ground',
+  holdId: 'hold',
+  param: MEETING_PARAM,
+  collectionName: COLLECTION_MEETING,
+  label: REMOVE_MEETING_LABEL,
+  listTarget: '/Pages/Meetings'
+});
+
 const MEETING: Tpl001Component = {
   path: 'Pages/Meeting',
   nodes: [
@@ -2015,7 +2226,7 @@ const MEETING: Tpl001Component = {
       label: 'Page ground',
       parent: 'page',
       parameters: PAGE_GROUND,
-      children: ['titleHead', 'when', 'place', 'details', 'refusal']
+      children: ['titleHead', 'when', 'place', 'details', 'refusal', 'removal']
     },
     ...pageHead('title', 'Title', 'ground', 'Meeting', ''),
     { id: 'when', type: 'Text', label: 'When', parent: 'ground', parameters: { text: '', ...T_META } },
@@ -2056,6 +2267,7 @@ const MEETING: Tpl001Component = {
       }
     },
     { id: 'refusalGate', type: 'Condition', label: 'Show the refusal', parameters: { ...CONDITION_GATE } },
+    ...MEETING_REMOVAL.nodes
   ],
   connections: [
     { fromId: 'pageInputs', fromProperty: `pm-${MEETING_PARAM}`, toId: 'hold', toProperty: `in-${MEETING_PARAM}` },
@@ -2071,6 +2283,7 @@ const MEETING: Tpl001Component = {
 
     { fromId: 'record', fromProperty: 'failure', toId: 'refusalGate', toProperty: 'eval' },
     { fromId: 'refusalGate', fromProperty: 'result', toId: 'refusal', toProperty: 'mounted' },
+    ...MEETING_REMOVAL.connections
   ]
 };
 
@@ -3122,6 +3335,29 @@ export const CHROME_NODES = [
   // those wires, and the instrument that grades them is the backend drive suite.
   // Recorded as D28 rather than done unmeasured.
   { id: 'standing', type: STANDING_COMPONENT, label: 'Who is this?' },
+  /**
+   * 🔴 **The band re-publishes the answer it already has, and that is why the
+   * removal costs no second call.**
+   *
+   * `Pages/Announcement` and `Pages/Meeting` have no `Members/Standing` of
+   * their own — deliberately, because the record read is their gate — so the
+   * moderator-only "Remove this" needed a source for `isModerator`. The two
+   * candidates were a third `myStanding` per detail page, or this: the
+   * instance above is already asking on every page that carries the band, and
+   * publishing its answer adds a wire and no request.
+   *
+   * ⚠️ **This is a STRICT SUBSET of D29's fix and stops deliberately short of
+   * it.** D29 is the five pages that own a `Members/Standing` dropping it and
+   * consuming this instead — which touches every wire AC2/AC3/AC4 rest on, and
+   * belongs beside a drive. Adding the port changes nothing for those five:
+   * they neither read it nor lose theirs.
+   */
+  {
+    id: 'outputs',
+    type: 'Component Outputs',
+    label: 'Who the band knows this person to be',
+    ports: [{ name: 'isModerator', type: 'boolean', plug: 'input' }]
+  },
   { id: 'logout', type: 'net.noodl.user.LogOut', label: 'Log out' },
   {
     id: 'toLanding',
@@ -3157,7 +3393,11 @@ export const CHROME_WIRES = [
     fromProperty: 'isModerator',
     toId: item.id,
     toProperty: 'mounted'
-  }))
+  })),
+  // The same value the three moderator-only nav items are gated on, handed up
+  // to whichever page placed the band. See `outputs` for why it is here and not
+  // a third call on the two pages that want it.
+  { fromId: 'standing', fromProperty: 'isModerator', toId: 'outputs', toProperty: 'isModerator' }
 ];
 
 // ── The set, in an order the door will accept ────────────────────────────────

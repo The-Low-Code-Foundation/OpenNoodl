@@ -896,3 +896,103 @@ against a real enforcing backend and browser · generation reproducible, **57 + 
 
 ⚠️ `test:ci` **not run** — no editor source touched, which is what has kept this phase from
 colliding all week.
+
+---
+
+## 18. The way back down (s11, 2026-08-29) — 🟢 Track B closed, and a register row that had gone stale
+
+**Track B's last item was "seed sample content". It is closed by not doing it**, on Richard's
+ruling, and the reason is the thing the costing found.
+
+| | before s11 | after |
+|---|---|---|
+| ways to remove an announcement or a meeting from inside the app | **0** | **2 pages, confirmed** |
+| `Delete Record` nodes in the browser half | **0** | 2 |
+| second `myStanding` calls added to pay for the moderator gate | — | **0** — the band publishes it |
+| `tpl001Template` | 55/55 | **64/64** |
+| the three tpl001 drives | 71/71 | **75/75** (a new §9) |
+| D1 — *"the door checks none of this"* | 🔴 open, high | ✅ **closed, all three classes** |
+
+### 🔴 The question that was asked was not the question that mattered
+
+AC6 already says the template ships graphs and not rows, and that the designed empty state is the
+first impression. So seeding was always *additive* — and costing it turned up the fact that decides
+it: **nothing in the app could delete an announcement or a meeting**, while
+`nodegx.security.json` has granted `role:admin` `delete` on both since it was written. Anything
+seeded would land in a real association's live noticeboard and be removable only through the
+backend.
+
+Richard's ruling, given both together: **close the delete, seed nothing.** Filed as
+[D31](DEFECTS-THE-TEMPLATES-FOUND.md), with the seed item dropped on the merits rather than left
+open — the register's rule is that a dropped row says *why*.
+
+⚠️ **The first census of this was the wrong instrument and nearly shipped as the finding.** Counting
+node types said "no delete anywhere", which is false — `decideMembership` has one. The true claim is
+narrower: none in the **browser** half, on a collection **a person can see**.
+
+### What it is
+
+`removalBlock()` — a function over the PLACE, like `inColumn` and `afterSection` — on the two pages
+that reach a record by id. A rule and the moderator's zone below the record; "Remove this
+announcement"; a panel asking once, in `--destructive` words, with **two unfilled buttons**; then
+back to the list it came from.
+
+🔴 **The reveal costs no second round trip, and the alternative was measured rather than assumed.**
+`Pages/Announcement` and `Pages/Meeting` deliberately own no `Members/Standing` — the record read is
+their gate (§6). The band, which they both carry, already asks `myStanding` for its own three
+moderator doors, so it now publishes `isModerator` as a component output and they consume it.
+⚠️ **A strict subset of D29 that stops short of it on purpose**: D29 is the five pages that own a
+standing check dropping it, which touches every wire AC2/AC3/AC4 rest on.
+
+### 🔴 Two specs that could not fail, found the same way as s9's and s10's
+
+- **The `confirm` was a `notice()` holding two buttons.** §2 of the ratchet defines a notice box as
+  a `Group` wrapping *exactly one* `Text`, and its own comment says of `Pages/Landing`'s setup card
+  that holding a sentence AND a button "makes it a panel rather than a notice". So the confirm wore
+  a notice's styling while escaping the notice census **on a technicality** — the census moved by
+  +2 when four notices had apparently been added, and chasing that two-vs-four is what surfaced it.
+  It is a `PANEL` now, and escapes for the stated reason.
+- **Five sabotages, each reddening its own spec and nothing else**: the `runOnChange` box left
+  ticked (which would delete a record the moment a moderator opened it), the delete pointed at the
+  wrong collection, the moderator gate removed, the confirm's "yes" filled, and the band's port
+  renamed.
+
+### 🔴 The sabotage that was supposed to prove a spec proved a register row was stale
+
+Renaming the band's published port was meant to check that the artefact spec caught it. **The door
+refused the generation outright** — `ERROR [connection-unknown-instance-port]`, with a suggestion.
+That is [D1](DEFECTS-THE-TEMPLATES-FOUND.md), "the door does not check a connection to a
+component-instance port. At all", measured by this task in s2 and **fixed by Richard four hours
+earlier** in `d419f295`. Re-running all three of D1's original sabotages: all three now refuse.
+
+⚠️ **The process lesson, which is worth more than the row.** Nothing re-measures a register row
+when somebody else fixes the thing it is about — the fixer has no reason to read a template phase's
+register, and this file's own house rule is that statuses are *as recorded*. A 🔴 row that is
+actually green costs whatever the next session spends routing around a hole that is closed. This
+one was found by accident.
+
+### 🔴 And the drive's first draft read three absences off the wrong instrument
+
+Three §9 specs asserted a control's absence off `outerHTML` — the discipline this file uses for
+leaks everywhere else. A deployed page carries the **entire project graph** in `window.projectData`,
+so every static button label sits in every visitor's document including a stranger's. All three
+failed and each would have read as a leak. The rule now stated in the file: `html` is honest about a
+**record**, `inDocument` about a **control**, `text` about a **sentence**.
+
+### ✅ Graded by looking, then by driving
+
+Rendered at **1280×1100** and **390×900** as a signed-in moderator against a real backend: the
+hairline separates the record from the moderator's zone, the confirm panel holds its sentence and
+both answers, and at 390 the two answers sit side by side without overlapping (D28's rule is not
+engaged — `confirmRow` is a plain row `Group`, not a `Columns`). Then driven: **§9**, four specs —
+the moderator is offered it and is not asked yet; asking puts the question up and **"Keep it" takes
+it down again without deleting**; confirming removes the row from the backend and returns to the
+noticeboard; and a **member reading the same page is offered no way to remove it**, read beside the
+announcement they *can* read, in the same run on the same instrument.
+
+### Gates (s11)
+
+`typecheck:mcp` clean · `tpl001Template` **64/64** (9 new, 5 sabotages) · `templateAppearance`
+**22/22** · the three tpl001 drives **75/75** against a real enforcing backend and browser ·
+generation reproducible, **63 + 6** diagnostics. ⚠️ `test:ci` **not run** — no editor source
+touched, which is what has kept this phase from colliding all week.

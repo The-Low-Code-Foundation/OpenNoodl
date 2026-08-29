@@ -94,8 +94,8 @@
     "Members/Chrome": {
       "path": "Members/Chrome",
       "type": "visual",
-      "nodeCount": 23,
-      "connectionCount": 14,
+      "nodeCount": 24,
+      "connectionCount": 15,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -126,8 +126,8 @@
     "Pages/Announcement": {
       "path": "Pages/Announcement",
       "type": "page",
-      "nodeCount": 15,
-      "connectionCount": 10,
+      "nodeCount": 30,
+      "connectionCount": 22,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -142,8 +142,8 @@
     "Pages/Meeting": {
       "path": "Pages/Meeting",
       "type": "page",
-      "nodeCount": 16,
-      "connectionCount": 11,
+      "nodeCount": 31,
+      "connectionCount": 23,
       "modified": "2026-08-28T00:00:00.000Z",
       "created": "2026-08-28T00:00:00.000Z"
     },
@@ -190,7 +190,7 @@
   },
   "stats": {
     "totalComponents": 23,
-    "totalNodes": 327,
-    "totalConnections": 308
+    "totalNodes": 358,
+    "totalConnections": 333
   }
 }

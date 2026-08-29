@@ -528,7 +528,21 @@ describe('TPL-001 — the band is the navigation, and it goes somewhere', () => 
  * template's whole boundary: `Members/Standing`'s eight outputs are what reveal
  * content, reveal the moderator's tools, and trigger every query.
  */
-describe('TPL-001 — component-instance ports resolve (the door checks none of this)', () => {
+/**
+ * 🔴 **The door checks all of this now, and this block re-measured that rather
+ * than inheriting it.** These specs were written as D1's interim cover, when the
+ * door accepted a wire to a port that did not exist and said nothing. Richard
+ * closed the last of it in `d419f295` (2026-08-29); re-sabotaged here on
+ * 2026-08-29 (s11), all three of D1's classes are now blocking errors with
+ * suggestions — an instance output, a `CloudFunction2` `in-*`, a
+ * `RouterNavigate` `pm-*`.
+ *
+ * ⚠️ **It stays, and not out of sentiment.** The door grades what it is asked to
+ * write; this grades what is *on disk*, so it still covers a component edited by
+ * any other route — and a check whose subject moved is retired on a higher bar
+ * than the one that added it.
+ */
+describe('TPL-001 — component-instance ports resolve, on disk', () => {
   /** The ports a component publishes to an instance of it, by plug direction. */
   function declaredPorts(legacyName: string): { inputs: Set<string>; outputs: Set<string> } {
     const component = byLegacyName.get(legacyName);
@@ -934,7 +948,16 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
     // they are still `mounted` for the same reason as the rest — `visible`
     // would leave three button-shaped holes in the header of every page a plain
     // member opens.
-    expect(gates.length).toBe(32);
+    //
+    // 40 since s11: the removal block on the two detail pages, four wires each.
+    // `chrome.isModerator → removal.mounted` is the moderator's whole entry to
+    // it; `confirmGate` and `confirmClear` are the two directions of the
+    // confirm step; `removeFailedGate` is the refusal. All four are `mounted`
+    // rather than `visible` for the reason above, and the confirm step's pair
+    // is the one place in the template where a single node's `mounted` is
+    // driven from TWO conditions — the shape `Pages/Setup`'s `missingClear`
+    // established.
+    expect(gates.length).toBe(40);
   });
 
   it('AC6 — every list ships an empty state, hidden until a query has answered', () => {
@@ -1002,6 +1025,160 @@ describe('TPL-001 — the states a person can be in all have a screen', () => {
 });
 
 // ── 7. The cloud half's own invariants ───────────────────────────────────────
+
+// ── 7. Taking something down again ──────────────────────────────────────────
+
+/**
+ * 🔴 **The policy granted this from the day it was written and no graph offered
+ * it.** `role:admin` has held `delete` on `Announcement` and `Meeting`
+ * throughout; the app placed a `Delete Record` exactly once, server-side in
+ * `decideMembership`, and never in the browser. So the moderator who posted the
+ * harvest supper on the wrong Saturday could fix it only through the backend's
+ * own admin surface.
+ *
+ * ⚠️ **Every expectation below is a literal read off the artefact**, per s9's
+ * rule: `removalBlock()` is the table these pages are generated from, so a spec
+ * comparing them to it would move both sides together and stay green. No id is
+ * derived by arithmetic on a name — D6 remaps (`del` → `del-2`), and s10 paid
+ * for assuming otherwise; every one is found by walking the tree or the wires.
+ */
+describe('TPL-001 — a moderator can take something down again', () => {
+  const DETAIL: Array<{ page: string; collection: string; back: string }> = [
+    { page: '/Pages/Announcement', collection: 'Announcement', back: '/Pages/Members' },
+    { page: '/Pages/Meeting', collection: 'Meeting', back: '/Pages/Meetings' }
+  ];
+
+  /** The `Delete Record` on a page, and the page, both read off disk. */
+  function removalOf(pageName: string): { page: StoredComponent; del: StoredNode } {
+    const page = byLegacyName.get(pageName);
+    if (!page) throw new Error(`no page ${pageName}`);
+    const dels = page.nodes.filter((n) => n.type === 'DeleteDbModelProperties');
+    expect(dels).toHaveLength(1);
+    return { page, del: dels[0] };
+  }
+
+  it('control: exactly two browser pages delete, and they are the two detail pages', () => {
+    // 🔴 The control that stops every spec below reading as a pass over nothing,
+    // and it is an ABSOLUTE row rather than `> 0`: a third `Delete Record`
+    // appearing in the browser half is a thing to look at, not to wave through.
+    const deleters = allNodes()
+      .filter(({ node }) => node.type === 'DeleteDbModelProperties')
+      .map(({ component }) => component.path)
+      .sort();
+    expect(deleters).toEqual(['/#__cloud__/decideMembership', '/Pages/Announcement', '/Pages/Meeting']);
+  });
+
+  it.each(DETAIL)('$page removes from the collection it reads, and goes back to $back', ({ page, collection, back }) => {
+    const { page: comp, del } = removalOf(page);
+    expect(del.parameters?.collectionName).toBe(collection);
+    // `explicit`, because the id comes from the URL and not from a repeater.
+    expect(del.parameters?.idSource).toBe('explicit');
+
+    // The page reads and deletes the SAME collection. A removal pointed at the
+    // other one would refuse at run time and pass every static check here.
+    const read = comp.nodes.filter((n) => n.type === 'DbModel2');
+    expect(read).toHaveLength(1);
+    expect(read[0].parameters?.collectionName).toBe(collection);
+
+    const done = comp.connections.filter((w) => w.fromId === del.id && w.fromProperty === 'done');
+    expect(done).toHaveLength(1);
+    const nav = comp.nodes.find((n) => n.id === done[0].toId);
+    expect(nav?.type).toBe('RouterNavigate');
+    expect(nav?.parameters?.target).toBe(back);
+  });
+
+  it.each(DETAIL)('$page reveals the removal only to a moderator, and asks nobody twice', ({ page }) => {
+    const { page: comp } = removalOf(page);
+
+    // The block the remove button lives in is gated, and the gate's source is
+    // the BAND — not a standing check of the page's own.
+    const gates = comp.connections.filter((w) => w.toProperty === 'mounted' && w.fromProperty === 'isModerator');
+    expect(gates).toHaveLength(1);
+    const band = comp.nodes.find((n) => n.id === gates[0].fromId);
+    expect(band?.type).toBe(CHROME_COMPONENT);
+
+    // 🔴 And the page does NOT place a `Members/Standing` of its own. That is
+    // the whole reason the band publishes the port: a second instance here
+    // would be a third `myStanding` per page load, which is D29's cost paid
+    // twice over rather than the wire this replaced it with.
+    expect(comp.nodes.filter((n) => n.type === STANDING_COMPONENT)).toEqual([]);
+  });
+
+  it.each(DETAIL)('$page cannot delete without being asked, and never at page mount', ({ page }) => {
+    const { page: comp, del } = removalOf(page);
+
+    // Nothing reaches `store` but the one node that carries the id.
+    const fired = comp.connections.filter((w) => w.toId === del.id && w.toProperty === 'store');
+    expect(fired).toHaveLength(1);
+    const holder = comp.nodes.find((n) => n.id === fired[0].fromId);
+    expect(holder?.type).toBe('JavaScriptFunction');
+
+    // 🔴 **The box that would have deleted a record on sight.** `Run` is
+    // ADDITIVE: left ticked, this node also fires when the id arrives — which
+    // is at page mount, so opening an announcement would remove it. There is no
+    // screen on which that failure is visible before it has happened.
+    const runOnChange = Object.entries(holder?.parameters ?? {}).filter(([k]) => k.startsWith('runOnChange-in-'));
+    expect(runOnChange).toHaveLength(1);
+    expect(runOnChange[0][1]).toBe(false);
+
+    // And its one trigger is a button the moderator has to reach through the
+    // confirm — which is mounted `false` until the remove button is pressed.
+    const triggers = comp.connections.filter((w) => w.toId === holder?.id && w.toProperty === 'run');
+    expect(triggers).toHaveLength(1);
+    const yes = comp.nodes.find((n) => n.id === triggers[0].fromId);
+    expect(yes?.type).toBe('net.noodl.controls.button');
+    expect(yes?.parameters?.label).toBe('Yes, remove it');
+    // Walk UP from the button: its row, then the panel holding the row. The
+    // panel is the node that must be absent until asked for.
+    const row = comp.nodes.find((n) => (n.children ?? []).includes(yes!.id));
+    const panel = comp.nodes.find((n) => (n.children ?? []).includes(row!.id));
+    expect(panel?.parameters?.mounted).toBe(false);
+  });
+
+  it('the confirm is answerable BOTH ways, and "keep it" is not the filled button', () => {
+    for (const { page } of DETAIL) {
+      const comp = byLegacyName.get(page)!;
+      const labels = comp.nodes
+        .filter((n) => n.type === 'net.noodl.controls.button')
+        .map((n) => String(n.parameters?.label ?? ''))
+        .sort();
+      // Three controls and no more: the way in, and the two ways out of the
+      // question. Written as literals — the words are what a moderator reads.
+      expect(labels).toEqual([
+        'Keep it',
+        page === '/Pages/Announcement' ? 'Remove this announcement' : 'Remove this meeting',
+        'Yes, remove it'
+      ].sort());
+      // 🔴 Neither answer is emphasised. A filled "Yes, remove it" would put the
+      // eye on the irreversible half of a question about an irreversible act.
+      const filled = comp.nodes.filter(
+        (n) => n.type === 'net.noodl.controls.button' && n.parameters?.backgroundColor === 'var(--primary)'
+      );
+      expect(filled).toEqual([]);
+    }
+  });
+
+  it('🔴 the policy already allowed every delete the app now performs', () => {
+    // The finding this work came from, kept as a rule: a graph that deletes from
+    // a collection the policy refuses is green everywhere and refused at run
+    // time — the exact shape the whole file exists to catch.
+    const deleted = new Set(
+      allNodes()
+        .filter(({ node }) => node.type === 'DeleteDbModelProperties')
+        .map(({ node }) => String(node.parameters?.collectionName))
+    );
+    expect([...deleted].sort()).toEqual(['Announcement', 'Meeting', 'MemberRequest'].sort());
+    for (const collection of deleted) {
+      const rule = policy.collections[collection]?.permissions?.delete;
+      // `MemberRequest` is deleted by a CLOUD function, which runs as system and
+      // bypasses the policy — so `nobody` is correct there and `role:admin` is
+      // correct for the two the browser touches. Graded per row rather than as
+      // one sentence, because the two answers are opposite and both are right.
+      const fromBrowser = collection !== 'MemberRequest';
+      expect({ collection, rule }).toEqual({ collection, rule: fromBrowser ? `role:${ROLE_MODERATOR}` : 'nobody' });
+    }
+  });
+});
 
 describe('TPL-001 — the endpoints', () => {
   it('the two role-granting nodes create their role, because a fresh backend has neither', () => {
@@ -1124,7 +1301,14 @@ describe('TPL-001 — the design system is finished, not merely opened', () => {
     // Directory + 2 Join + 2 Setup + 1 Announcement + 1 Meeting + 1 Post + 1
     // SignIn = 17. `Pages/Landing`'s setup card is NOT one of these: it wraps a
     // sentence AND a button, which makes it a panel rather than a notice.
-    expect(boxes.length).toBe(17);
+    //
+    // 19 since s11: the two detail pages' "that could not be removed". Their
+    // sibling — the "are you sure" — is deliberately NOT one, by exactly the
+    // `Pages/Landing` rule above: it holds the sentence and the two buttons
+    // that answer it. It was written with `notice()` first, which gave it a
+    // notice's styling while a second child kept it out of this census — a spec
+    // passing for a reason nobody had stated. It is a `PANEL` now.
+    expect(boxes.length).toBe(19);
     const unpainted = boxes
       .filter(({ node }) => {
         const p = node.parameters ?? {};

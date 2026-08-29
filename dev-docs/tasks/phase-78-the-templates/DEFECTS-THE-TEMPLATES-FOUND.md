@@ -34,7 +34,7 @@ failure this file's first house rule exists to prevent.
 
 | row | status (as recorded) | owner | side | who it bites |
 |---|---|---|---|---|
-| D1 | 🔴 open | **DEF-002** | product | every agent-authored app |
+| D1 | ✅ **FIXED — re-measured by sabotage 08-29 (s11), all three classes** | DEF-002 | product | (was: every agent-authored app) |
 | D2 | 🟠 open | **DEF-005** 🔒 ruling | product | every membership app |
 | D3 | 🔴 open | **DEF-005** 🔒 ruling | product | every membership app |
 | D4 | ✅ answered — not a defect | — | — | — |
@@ -59,11 +59,12 @@ failure this file's first house rule exists to prevent.
 | **D23** | ⚠️ open (08-29) | **NONE** | template | anyone reading two pages titled the same |
 | **D24** | ⚠️ open (08-29) | **NONE** | template | a moderator approving somebody |
 | **D25** | ✅ fixed in Track A — **re-measured 08-29 (s10)** | — | template | (was: every person reading a date or filling the meeting form) |
-| **D26** | 🔴 open (08-29) | **NONE** — handed to P80 as C1 | product | every template we ship, not just this one |
+| **D26** | ✅ **fixed by P80 C1 (`2c6a8876`, 08-29)** — `raised` and `ruled` compositions added; B3 unblocked | P80 | product | (was: every template we ship) |
 | **D27** | ✅ fixed s8 (08-29) | — | template | (was: anyone whose setup, join or approval threw) |
 | **D28** | 🔴 open (08-29) | **NONE** | product | every agent who lays controls out in the one node that reflows |
 | **D29** | ⚠️ open (08-29) | **phase 78** (Track B remainder) | template | every member — a second auth round trip on every page |
 | **D30** | 🔴 open (08-29) | **NONE** | product | every app with a column of numbers — money, times, scores |
+| **D31** | ✅ fixed s11 (08-29) | — | template | (was: every moderator who posted something wrong) |
 
 🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
 day of the process being put in place.** That is the argument for the column, not an argument
@@ -90,9 +91,34 @@ issues the identifier is the one to match.
 
 ---
 
-## D1 — 🔴 The MCP door accepts wires to ports that do not exist. Three classes, all silent.
+## D1 — ✅ FIXED. (Was: the MCP door accepts wires to ports that do not exist.)
 
-**Severity: high.** This is the class SB-018 (1) lived in for five sessions.
+**Severity: was high.** This is the class SB-018 (1) lived in for five sessions.
+
+> 🔴 **Closed 2026-08-29 (s11), by re-running the original sabotages rather than by reading the
+> commit.** All three classes below are now **blocking errors** with a named suggestion. Richard
+> landed the first in `d419f295` (`fix(def-002/1a)`, 09:49) and the other two are covered by
+> `connection-unknown-derived-port`. Measured by regenerating the members' area with each sabotage
+> in turn:
+>
+> | class | sabotage | what the door does now |
+> |---|---|---|
+> | component instance | `Chrome.isModerator` → `isModeratorXX` | `ERROR [connection-unknown-instance-port]`, refuses, *"did you mean `isModeratorXX`?"* |
+> | `CloudFunction2` | `send.in-name` → `in-nameXX` | `ERROR [connection-unknown-derived-port]`, refuses, lists all four real ports |
+> | `RouterNavigate` | `goDetail.pm-announcementId` → `pm-noSuchParam` | `ERROR [connection-unknown-derived-port]`, refuses, names `pm-announcementId` |
+>
+> ⚠️ **This was found by accident, and that is the finding about the process.** s11 sabotaged its
+> own new wire expecting the silence this row describes, and got a refusal. The row had been stale
+> for four hours. Nothing in this file's workflow re-measures a row when the thing it is about is
+> fixed by somebody else — the fixer has no reason to read a template phase's register, and the
+> register's own house rule says its statuses are *as recorded*, never re-measured. A fixed row
+> that still reads 🔴 costs whatever the next session spends working around a hole that is closed.
+>
+> ✅ **The interim cover stays.** `tpl001Template.test.ts`'s instance-port block grades what is **on
+> disk**, so it still covers a component edited by any route that is not the door — and a check is
+> retired on a higher bar than the one that added it.
+
+**What it was**, kept because the shape is what SB-018 lived in:
 
 Measured by sabotage during TPL-001 authoring. In each case the run came back `isError: false`
 with **exactly the same 46 `info dynamic-port-skipped` diagnostics as the clean run** — no error,
@@ -1075,3 +1101,62 @@ Month names differ in width, so tabular figures would align nothing here even if
 reachable. **B4 therefore shipped without them deliberately**, on the merits rather than because the
 port was missing, and the two reasons are independent: the item was worth dropping *and* it could
 not have been done. The gap is filed because the next template will have a table in it.
+
+---
+
+## D31 — ✅ FIXED s11. (Was: the policy let a moderator delete, and the app never offered it.)
+
+**Severity: was medium-high. Owner: — (closed in the template). Side: template.**
+
+`nodegx.security.json` has granted `role:admin` **`delete`** on `Announcement` and `Meeting` since
+the policy was first written — obviously, because the person who may post is the person who may
+take a post down. **No browser graph in the template ever placed a `Delete Record.`** The node type
+was used exactly once, server-side, in `decideMembership`, to take a decided request off the queue.
+
+So a moderator who posted the harvest supper on the wrong Saturday, or published a notice meant for
+the committee, could correct it only through the backend's own admin surface. For §1's person — a
+church secretary — that is the same word as "no". It is also the failure mode of every hand-rolled
+version of this app: **the thing you published by mistake stays published.**
+
+### 🔴 How it was found, which is the part worth keeping
+
+**Costing the sample content.** Track B's last item was "seed sample content", and the question that
+settles it turns out not to be a design question at all: anything seeded lands in a *real*
+association's live noticeboard, so seeding is only defensible if the moderator can take it out
+again. Checking whether they could is what found this.
+
+⚠️ **The census that found it was nearly the wrong instrument.** A first pass counted node *types*
+across the template and reported "no delete anywhere" — which was false: `decideMembership` has one.
+The true statement is narrower and is the one that matters: no delete **in the browser half**, on a
+collection **a person can see**. A finding stated one notch too broadly would have been disproved by
+the first person who grepped, and the real gap with it.
+
+### The ruling
+
+Richard, 2026-08-29, given the gap and the seeding question together: **close the delete, seed
+nothing.** AC6's designed empty state stays the first impression, which it already was, and the
+seed item is dropped on the merits rather than left open — examples a person cannot remove are
+worse than an empty noticeboard.
+
+### What shipped
+
+| | |
+|---|---|
+| where | `Pages/Announcement` and `Pages/Meeting` — the detail pages, never the rows |
+| why not the row | a row lives in a `For Each` where a mis-tap is one pixel from the tap that opens it, and it does not show enough to be sure what you are deleting |
+| the reveal | `chrome.isModerator` — **the band publishes the standing it already fetched**, so the two pages that deliberately own no `Members/Standing` need no third `myStanding` |
+| the confirm | a `PANEL` with `--destructive` words and two **unfilled** buttons; `PRIMARY_LABELS` emphasises what a screen is *for*, and that is never the irreversible half |
+| after it goes | `del.done` → back to the list it came from |
+| graded | `tpl001Template.test.ts` ×9, sabotaged five ways · the drive's **§9**, four specs, real backend and browser · **looked at** at 1280 and 390 |
+
+⚠️ **It is a strict subset of [D29](#d29) and stops there deliberately.** D29 is the five pages that
+own a `Members/Standing` dropping it for the band's answer — which touches every wire AC2/AC3/AC4
+rest on. Adding the output port changes nothing for those five: they neither read it nor lose theirs.
+
+🔴 **And the drive's first draft measured this with the wrong instrument.** Three §9 specs asserted
+the absence of a control off `outerHTML`, the discipline this file uses everywhere for leaks. A
+deployed page carries the **whole project graph** in `window.projectData`, so every static button
+label is in every visitor's document, including a stranger's — all three failed, and each would have
+read as a leak. `html` is honest about **records**; a **control** is read off the `<button>`
+elements and a **sentence** off `body.innerText`. s8 learned half of this on one spec; it is a rule
+now.
