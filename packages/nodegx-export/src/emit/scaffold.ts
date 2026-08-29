@@ -54,6 +54,21 @@ export function bracedParams(urlPath: string): string[] {
   return (urlPath.match(/{([^}]+)}/g) ?? []).map((part) => part.slice(1, -1));
 }
 
+/**
+ * The runtime's `_trimUrlPart` (`router.tsx:39`) — one leading and one trailing slash.
+ *
+ * 🔴 **Without it an authored leading slash emitted a route nothing could reach.** A Page whose
+ * `urlPath` is `/note/{id}` became `<Route path="//note/:id">`, because this line prefixed a
+ * slash unconditionally — while the Router trims the page pattern before matching, so the same
+ * project routes perfectly well in the app it was exported from. Every fixture happens to author
+ * the path unslashed, which is why 797 tests and four drives never saw it.
+ */
+function trimUrlPart(url: string): string {
+  if (url[0] === '/') url = url.substring(1);
+  if (url[url.length - 1] === '/') url = url.substring(0, url.length - 1);
+  return url;
+}
+
 /** "/product/{id}" → "/product/:id". */
 function routePatternOf(urlPath: string): string {
   return urlPath.replace(/{([^}]+)}/g, (_match, name: string) => `:${name}`);
@@ -97,7 +112,7 @@ export function routedPages(ir: ExportIR): ScaffoldPage[] {
     const component = byLegacyPath.get(legacyPath);
     if (!component) continue;
     const fileBase = dedupe(pascalCase(lastSegment(component.path)), usedNames);
-    const urlPath = `/${pageUrlPath(component)}`;
+    const urlPath = `/${trimUrlPart(pageUrlPath(component))}`;
     pages.push({
       componentPath: component.path,
       fileBase,

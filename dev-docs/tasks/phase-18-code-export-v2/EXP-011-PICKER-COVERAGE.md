@@ -65,13 +65,15 @@ Ranked by *"can you build a normal app without it"*, not by corpus frequency.
 4. ✅ **`String` / `Number` / `Boolean` / `Color` (Variables, 4).** The plain value nodes. Cheap, and
    embarrassing to be missing. **Built, driven and gated in session 35 — §6.**
 
-### Tier 2 — common, not universal  🟡 **2.5 mostly complete, session 40**
+### Tier 2 — common, not universal  🟡 **2.5 down to the component stack pair, session 44**
 
 5. **Navigation (5).** ✅ **`Page Inputs` built, driven and gated in session 40 — §11**, along
    with the route patterns and the Navigate url builder, which were both recorded `translated`
    and both emitted urls react-router could not match. ✅ **`External Link` in session 41 — §12**,
-   whose drive found a defect in the node itself (DEF-016). The remaining three —
-   `Navigate To Path` and the component stack pair — are named in §12.7.
+   whose drive found a defect in the node itself (DEF-016), and its `Error` output in session 43
+   — §14. ✅ **`Navigate To Path` in session 44 — §15**, which also fixed a second unroutable
+   route in the scaffold. The remaining two are the **component stack pair**, and §15.6 says why
+   they are a routing question rather than another url builder.
 6. **Cloud Services (9).** Mostly **unblocked by EXP-009**, and several may fall out of it for
    free — `Cloud Function`, `Record`, `Set User Properties`, `Sign In With`. Re-measure after
    EXP-009 lands rather than planning against today's list.
@@ -1382,3 +1384,185 @@ never have caught anything arm B's D3 did not.
 - **A chain-local for `Error`**, which would turn §14.4's refusal into a translation.
 - **Three Navigation nodes** — `Navigate To Path` and the component-stack pair, exactly as §12.7
   left them.
+
+---
+
+## §15 Tier 2.5 continued — `Navigate To Path`, and the four rules that did not transfer (session 44, 2026-08-29)
+
+**69 of 127 (54.3%).** The node the last three sessions kept describing as "the one with the
+`navigationPathType` question". The question dissolved in twenty minutes of reading, and what was
+actually there was a node whose url builder disagrees with `RouterNavigate`'s in four places —
+plus a route the ledger cannot see, broken in the scaffold since Tier 2.5 began.
+
+### §15.1 🔴 The setting was never the question, and reading both modes is what showed it
+
+Three ledger rows, two session prompts and §11.8 all said the same sentence: *`Navigate To Path`
+consults `navigationPathType` (hash vs path) while the scaffold emits a `BrowserRouter`
+unconditionally — that is its first question, not an afterthought.* It was worth asking. It was
+also answerable, and the answer is that the setting cannot reach the export.
+
+`navigationPathType` chooses **where the same path string is written**, not what it names:
+
+| | hash (the default, and what unset means) | path |
+|---|---|---|
+| `_getLocationPath` (`router.tsx:674-698`) | strips `#`, then one `/` | strips one `/` (and BaseUrl) |
+| `_getSearchParams` (`router.tsx:708`) | `location.search` | `location.search` |
+
+Both branches return **the same bare path**, and the query is read from `location.search` in
+**both** — which is why every url builder in the runtime puts the query *before* the `#`
+(`'' + '?tone=quiet' + '#/note/5'`). So the route named and the query carried are identical in the
+two modes; only the address bar differs. The exported app has already committed to writing that
+path as a real path, consistently, since before this tier: a `BrowserRouter` over `<Route path=…>`,
+which is also what `RouterNavigate` has always assumed.
+
+🔴 **The control is what makes this a measurement rather than a preference.** If the two modes
+named different routes, `_getLocationPath` would differ by more than the sigil strip. If the query
+lived in the hash in hash mode, line 708 would read `location.hash`. Neither does. §15.6 pins both
+readings against the runtime files so the claim fails the day it stops being true, rather than
+quietly becoming folklore in a fourth ledger row.
+
+### §15.2 🔴 Four rules from `RouterNavigate` do not transfer, and copying them would have been wrong every time
+
+The prompt said §11.2's reasoning transfers because the node has the same two-namespace `p-`/`q-`
+shape. The *port shape* transfers. The url builder does not — these are two different functions:
+
+| | `getRelativeURL` (`RouterNavigate`) | `navigate()` (this node) |
+|---|---|---|
+| an unset placeholder | left as the literal `{id}`, **and** `?id=undefined` appended beside it | substituted with `''` |
+| encoding | `encodeURIComponent` on both halves | none — `String(v)`, and `q + '=' + v` |
+| the query set | whatever is **left over** after substitution | the **authored** `Query` list |
+| an unset query value | n/a | **omitted from the url entirely** |
+
+The unset placeholder is the sharpest. §11.6 *deferred* it one node over, and the reason it gave
+was specific: the Router's three readings of that case do not agree, so there is no faithful url
+to emit. This node's own loop is `v !== undefined ? String(v) : ''` — coherent, and exactly the
+"visibly nothing" answer §11.6 had to reach for by argument. So it **translates**, and a slice
+that had inherited the rule would have deferred a case the runtime is perfectly clear about.
+
+**Encoding is the one that would have been invisible.** Emitting `encodeURIComponent` here reads
+as obviously correct — it is what the neighbouring case does, it is what makes urls robust, and
+nothing in the test suite would have complained. It would also have made the exported app disagree
+with the app it came from on every value carrying a url-special character, in the direction §11.3
+names: the export would route where the interpreter does not. The emitted `Home.tsx` now carries
+both nodes a few lines apart, one encoding and one not, which is the control stated as code.
+
+### §15.3 The divergence that was real, and it is a leading slash
+
+`_trimUrlPart` (`router.tsx:39`) strips one leading slash from the page pattern and
+`_getLocationPath` strips one from the location, so **`note/42` and `/note/42` are one route in
+the runtime**. In react-router the first is *relative to the current route* and the second is
+absolute. So the emitted path is normalised to exactly one leading slash — the runtime's own
+normalisation, one strip and one put back, which leaves `//x` as `//x` because that matches
+nothing on either side either.
+
+🔴 **The same slash was already broken on the route side, and it is the second finding of this
+tier the ledger cannot see.** `routedPages` built `` `/${pageUrlPath(component)}` `` — a Page
+whose `urlPath` was authored `/note/{id}` became `<Route path="//note/:id">`, which react-router
+matches against nothing, while the Router trims the pattern before matching and routes it happily.
+Every fixture in this repo happens to author the path unslashed, which is why 835 tests and four
+drives never saw it. Fixed in `scaffold.ts` with the runtime's own function; it moves no number,
+exactly like the two route defects §11.1 found.
+
+### §15.4 What defers, and the `Completed` that stopped needing to
+
+Four refusals, each about a mechanism:
+
+- **`Open In New Tab`** — that arm is `window.open`, whose success test is the transient user
+  activation rather than the return value (DEF-016, §14.1), plus a blocked-tab `Error` row. That
+  is `External Link`'s slice, not a flag on this one. ⚠️ **This port's default is `false` here and
+  `true` there** — the two nodes look like a pair and their unset state lands on opposite sides.
+- **A wired or absent `Path`** — the braced segments of the path text are what mint the ports, so
+  a path unknown here is a node whose shape is unknown here.
+- **`Error`** — refused because **nothing can write it**, not because it is hard. It is set on
+  exactly two paths, no-Path and blocked-tab, and both are excluded by the gates above; a
+  translated read would bind a string that is `undefined` for the life of the app. §14 was careful
+  to allocate that row *by the read*; here the read cannot be earned at all.
+- **A `p-`/`q-` value that is a logic truth value**, on the standing rule.
+
+**`Completed` translates here, and that is earned rather than chosen.** It is refused one node
+over because it fires after *every* outcome and there are three of them there. Here the gates
+leave exactly one outcome reachable — `Unchanged` needs no `window` and the scaffold never renders
+on a server, and neither failure can fire for a literal in-tab path — so `Completed` is one arm to
+follow, not three to join beneath. `reportOutcome` sends the outcome port and then `Completed`
+(`node.ts:958-995`), and the emitted chains print in that order. The `Unchanged` and `Failure`
+wires are **dropped with notes** on `Clear Array`'s rule rather than deferring the node.
+
+### §15.5 What proves it
+
+**38 tests**, and **twelve mutants killed, every arm with a row count**:
+
+| mutant | rows killed |
+|---|---|
+| `encodeURIComponent` added, as the Router does | **2** |
+| the leading-slash normalisation dropped | **18** |
+| an unset placeholder deferred (§11.6's rule copied across) | **1** |
+| an unset query value sent as `name=` | **2** |
+| the omission loop replaced by the static suffix | **1** |
+| the `?? ''` fallback dropped | **2** |
+| the scaffold's `_trimUrlPart` dropped | **2** |
+| `usesNavigate` blind to the new kind | **2** |
+| the `Completed` chain dropped | **1** |
+| `Failure` deferred rather than dropped as dead | **1** |
+| the omittable value read twice | **2** |
+| `deepActions` stopping at this kind | **1** |
+
+🔴 **Two of those were not kills until the tests were fixed, and both failures were in the
+measurement rather than in the code.**
+
+**One — a metric that could not see the defect it was written for.** The row asserting each
+omittable expression is read exactly once counted *lines* containing `tone.get()`. The mutant
+emitted the guard and the push on **one line**, each naming the source — the exact double read the
+row exists to forbid — and the count was still 1. It passed, and it was blind. Counting
+occurrences kills it.
+
+**Two — a mutant that killed nothing, which was the finding.** Stopping `deepActions` at this kind
+moved no row at all, because both navigation kinds set the same `usesNavigate` flag and the outer
+action is in the list whether or not anything descends into it: a navigation nested in a
+navigation could never observe the walk. A **state row** can — an `HTTP Request` in the Done chain
+owns an `errorState` binding, and without the walk the emitted `catch` names a row the declaration
+filter has already dropped. That is now the row, and it kills the mutant.
+
+**The project, built and driven.** `note-desk` again, six `Navigate To Path` buttons added through
+the MCP server (§2's rule) plus one on the Note page. `npm run build` exits 0; **9 of 9 drive rows
+matched what was written down before the app was built**, no console errors.
+
+| row | measured |
+|---|---|
+| D2 `Go to 99` | `/note/99`, id `99`, no badge |
+| D4 `Go quietly to 5` | `/note/5?tone=quiet`, badge **present** |
+| D5 `Go with no id` | url stays `/` — the empty segment matches nothing and the `*` route redirects |
+| D6 typed tone **empty** | `/note/8?sort=new` — **no `tone=` at all** |
+| D7 typed tone `hush` | `/note/8?tone=hush&sort=new`, badge present |
+| D8 `Chain` | `/note/third` — Done ran, then Completed, last write wins |
+| D9 `Jump to 55` from `/note/99` | `/note/55` |
+
+Sabotage, one rule per arm, predicted before running:
+
+| arm | change | rows that moved |
+|---|---|---|
+| A | the leading-slash normalisation dropped | **D9 only** — `/note/55` became `/`, because a relative `note/55` from `/note/99` resolves to `/note/99/note/55` and matches nothing |
+| B | the omission loop replaced by the static suffix | **D6 only** — `/note/8?tone=undefined&sort=new`, and the page rendered the word **"undefined"** as the tone |
+
+🔴 **D9 had to be rebuilt before it was worth anything, and the first version looked fine.** It
+originally went home before clicking, which made it a copy of D3 — and from `/` a relative and an
+absolute `note/55` resolve *identically*, so every row in the table was blind to the rule arm A
+varies. The tell was writing arm A's prediction down and finding it said "nothing moves". A row
+that cannot fail is not a row; the fix was a button on the **Note** page, so the click happens
+from a non-root route.
+
+⚠️ **Arm B's written prediction said `tone=` and the truth was `tone=undefined`.** The direction
+was right — D6 moves, the badge appears — and the string was wrong, because `${undefined}` in a
+template stringifies rather than emptying. Worth keeping because it is §11.6's "looks like data"
+failure arriving on the query side: the sabotaged app rendered a note whose tone is the word
+"undefined", which reads as content rather than as a bug.
+
+### §15.6 What this leaves
+
+- **`Open In New Tab`** — the window.open arm, which wants DEF-016's activation read and a
+  blocked-tab `Error` row. That is the increment this slice leaves rather than the corner it cuts.
+- **The component stack pair** (`PageStackNavigate`, `PageStackNavigateBack`) — the last two
+  Navigation nodes, and neither is a url builder. ⚠️ §11.8 still stands: a component stack feeds
+  `Page Inputs` at runtime (`_setPageParams` has two callers) and the export does not route one at
+  all, so these two owe a **routing story**, which is a larger question than anything in Tier 2.5
+  so far.
+- **`External Link`'s `Completed` and a chain-local for its `Error`** — unchanged from §14.6.

@@ -151,6 +151,19 @@ const EXTERNAL_LINK_TYPE = 'net.noodl.externallink';
  */
 const EXTERNAL_LINK_OUTPUTS = ['done', 'failure', 'unchanged', 'completed', 'error'];
 
+/** `Navigate To Path` (EXP-011 Tier 2.5) — the Navigation node that routes without naming a page. */
+const NAVIGATE_TO_PATH_TYPE = 'PageStackNavigateToPath';
+const NAVIGATE_TO_PATH_OUTPUTS = ['done', 'failure', 'unchanged', 'completed', 'error'];
+/**
+ * The node's **own** placeholder regex, and deliberately not the Router's.
+ *
+ * 🔴 `navigate-to-path.ts` matches `/\{[A-Za-z0-9_]*\}/g`; `router.tsx:614` matches
+ * `/{([^}]+)}/g`. The alphabets disagree, so `/x/{a-b}` is a parameter to the Router and three
+ * literal characters to this node — `scaffold.ts` records the same disagreement from the Page
+ * side. Each node is transcribed against the function it actually runs.
+ */
+const NAVIGATE_TO_PATH_PLACEHOLDER = /\{[A-Za-z0-9_]*\}/g;
+
 /**
  * `Page Inputs` (EXP-011 Tier 2.5) — the node that reads this page's url parameters.
  *
@@ -578,6 +591,43 @@ export type HandlerAction =
       to: string;
       pathParams: Array<{ name: string; expr: ValueExpr }>;
       query: Array<{ name: string; expr: ValueExpr }>;
+    }
+  /**
+   * `Navigate To Path` (EXP-011 §15, session 44) — a navigation to an **authored path string**
+   * rather than to a page component, and four things about it differ from {@link HandlerAction}'s
+   * `navigate` even though the two nodes look like a pair:
+   *
+   * | | `getRelativeURL` (RouterNavigate) | `navigate()` (this node) |
+   * |---|---|---|
+   * | an unset placeholder | left as the literal `{id}`, **and** `?id=undefined` appended | substituted with `''` |
+   * | encoding | `encodeURIComponent` on every value | none — `String(v)` and `q + '=' + v` |
+   * | the query set | whatever is **left over** after substitution | the authored `Query` list |
+   * | an unset query value | n/a | **omitted from the url** |
+   *
+   * 🔴 **So §11.6's rules do not carry across, and copying them would have been wrong in all
+   * four places.** The unset placeholder is the sharpest: it is deferred one node over precisely
+   * because the Router's three readings of it disagree, and it is *translated* here because this
+   * node's own function is coherent about it.
+   *
+   * {@link to} is normalised to exactly one leading slash. The runtime compares trimmed paths
+   * (`_trimUrlPart`, `router.tsx:39`) so `note/42` and `/note/42` are one route there; in
+   * react-router the first is **relative to the current route** and the second is absolute.
+   *
+   * `then` is the `Done` chain and `completedThen` the `Completed` one, in that order, because
+   * `reportOutcome` sends the outcome and then `Completed` (`node.ts:958-995`). There is no
+   * failure arm: {@link compileNavigateToPath} only admits a literal in-tab path, and neither of
+   * the node's two failures can fire for one.
+   */
+  | {
+      kind: 'navigate-path';
+      to: string;
+      pathParams: Array<{ name: string; expr: ValueExpr }>;
+      /** `omittable` values print inside the `if` the runtime's `!== undefined` test describes. */
+      query: Array<{ name: string; expr: ValueExpr; omittable: boolean }>;
+      /** The `const` the omittable form collects into; unused when every value is present. */
+      queryLocal: string;
+      then: HandlerAction[];
+      completedThen: HandlerAction[];
     }
   /**
    * `External Link` (EXP-011 Tier 2.5) — `window.open`, plus the two outcome chains the
@@ -2752,6 +2802,29 @@ function planComponent(
   };
 
   /**
+   * `Navigate To Path`'s chain-local for the query collector (EXP-011 §15), on the same naming
+   * rule as {@link externalLinkLocalOf} — the authored label, or `navigate` where there is none.
+   * Minted for every admitted node so the name is stable whether or not the omittable form is
+   * the one printed.
+   */
+  const navigatePathLocals = new Map<string, string>();
+  const navigatePathLocalOf = (node: NodeIR): string => {
+    let local = navigatePathLocals.get(node.id);
+    if (local === undefined) {
+      const label = (node.authoredLabel ?? '').replace(/[^A-Za-z0-9]+/g, ' ').trim();
+      const stem = label.length > 0 ? pascalCase(label).replace(/[^A-Za-z0-9_$]/g, '') : 'Navigate';
+      const base = `${stem.charAt(0).toLowerCase()}${stem.slice(1)}Query`;
+      let name = base;
+      let counter = 2;
+      while (stateNameTaken(name)) name = `${base}${counter++}`;
+      usedStateVarNames.add(name);
+      navigatePathLocals.set(node.id, name);
+      local = name;
+    }
+    return local;
+  };
+
+  /**
    * `External Link`'s `Error` output as a state row (EXP-011 §14) — `HTTP Request`'s
    * `errorState`, one node over, with the hard part absent: both messages are static.
    *
@@ -4352,6 +4425,8 @@ function planComponent(
     [NOW_TYPE]: 'read',
     // EXP-011 Tier 2.5. `External Link`'s only action port.
     [EXTERNAL_LINK_TYPE]: 'do',
+    // EXP-011 §15. `Navigate To Path`'s only action port.
+    [NAVIGATE_TO_PATH_TYPE]: 'navigate',
     Condition: 'eval',
     NewDbModelProperties: 'store',
     SetDbModelProperties: 'store',
@@ -5519,6 +5594,198 @@ function planComponent(
     };
   };
 
+  /**
+   * `Navigate To Path` (EXP-011 §15, session 44) — the Navigation node that routes without
+   * naming a page, transcribed from `navigate-to-path.ts` rather than from the Router.
+   *
+   * 🔴 **The project's `navigationPathType` is deliberately not consulted, and that is a
+   * measurement rather than a shortcut.** The setting chooses only *where the same path string
+   * is written*: `_getLocationPath` strips `#` and one `/` in hash mode and one `/` in path
+   * mode, returning the same bare path either way (`router.tsx:674-698`), and
+   * `_getSearchParams` reads `location.search` in **both** modes (`router.tsx:708`) — which is
+   * exactly why every builder in the runtime puts the query *before* the `#`. So the route
+   * named and the query carried are identical in the two modes, and the exported app has
+   * already committed to writing them as a real path (a `BrowserRouter` over `<Route path=…>`,
+   * which is also what `RouterNavigate` has always assumed).
+   *
+   * Four refusals, each about a mechanism:
+   *
+   * - **`Open In New Tab` defers** — that arm is `window.open`, whose success test is the
+   *   transient user activation and not the return value (DEF-016, §14.1), plus a blocked-tab
+   *   `Error` row. That is `External Link`'s slice, not a flag on this one.
+   * - **A wired or absent `Path` defers** — every placeholder, the port list the editor draws
+   *   and the whole url are derived from its text, so a path that is not known here is a node
+   *   whose shape is not known here.
+   * - **`Error` defers** — see below; for the only shape this admits, nothing can write it.
+   * - **A `p-`/`q-` value that is a logic truth value defers**, on the standing rule.
+   */
+  const compileNavigateToPath = (node: NodeIR): CompiledSink => {
+    const ctx = newCtx();
+    const consumes: string[] = [];
+
+    /**
+     * ⚠️ `default: false` here, where `External Link`'s is `default: true` — so an unwired,
+     * unset port is the *translated* case on this node and the deferred one on that node. The
+     * two look like a pair and their defaults are opposite.
+     */
+    if (wiredPorts.has(`${node.id}:openInNewTab`)) {
+      return { defer: 'its Open In New Tab is wired — the new-tab arm is window.open, whose success is read from the transient user activation rather than from the return value, and this slice emits the same-tab navigation' };
+    }
+    if (literalParam(node, 'openInNewTab') === true) {
+      return { defer: 'its Open In New Tab is on — that arm is window.open, whose success is read from the transient user activation rather than from the return value, and this slice emits the same-tab navigation' };
+    }
+
+    if (wiredPorts.has(`${node.id}:path`)) {
+      return { defer: 'its Path is wired — the braced segments of the path text are what mint this node’s parameter ports, so a path that is not known here has no known ports either' };
+    }
+    const authoredPath = literalParam(node, 'path');
+    if (typeof authoredPath !== 'string' || authoredPath === '') {
+      return { defer: 'no Path is set — the node reports "No path to navigate to" and never touches the browser, and every emitted form of that is dead code' };
+    }
+    if (wiredPorts.has(`${node.id}:queryNames`)) {
+      return { defer: 'its Query list is wired — the list is an edit-only stringlist and is what mints the query ports' };
+    }
+
+    /**
+     * The `Done` and `Completed` wires are the two that translate. The other three are handled
+     * here so that nothing is left silently unconsumed.
+     */
+    for (const wire of component.connections.filter((c) => c.fromId === node.id)) {
+      if (!NAVIGATE_TO_PATH_OUTPUTS.includes(wire.fromProperty)) {
+        return { defer: `its ${wire.fromProperty} output is consumed, and this node publishes only Done, Completed, Unchanged, Failure and Error` };
+      }
+      /**
+       * 🔴 **Refused because nothing can write it, not because it is hard.** `Error` is set on
+       * exactly two paths — no Path, and a blocked new tab — and both are excluded by the gates
+       * above. A translated read would be a binding to a string that is `undefined` for the life
+       * of the app, which is the shape §14 was careful to allocate *by the read*: here the read
+       * cannot be earned at all.
+       */
+      if (wire.fromProperty === 'error') {
+        return { defer: 'its Error output is read, and for the only shape this slice admits — a literal Path, in this tab — neither of the node’s two failures can fire, so the row would be a string nothing ever writes' };
+      }
+      /**
+       * Dropped rather than deferring, on `Clear Array`'s rule: `Unchanged` fires only where
+       * there is no `window`, and the scaffold mounts with `createRoot` and never renders on a
+       * server. Dead in the interpreter's browser too.
+       */
+      if (wire.fromProperty === 'unchanged') {
+        notes.push(
+          `wire ${wire.key} dropped: Navigate To Path's Unchanged fires only during a server-side render, and the exported app mounts with createRoot and never renders on a server — the wire is dead in the interpreter's browser too`
+        );
+        consumes.push(wire.key);
+      }
+      /**
+       * ⚠️ Same rule, and it is the gates above that earn it: with a literal non-empty Path and
+       * Open In New Tab off, `navigate()` has no `return` before `reportOutcomes(…, 'done')`.
+       * The Failure chain is dead code in the interpreter too.
+       */
+      if (wire.fromProperty === 'failure') {
+        notes.push(
+          `wire ${wire.key} dropped: Navigate To Path's Failure chain is dead — a literal Path cannot be missing and Open In New Tab is off, so neither of the node's two failures can fire (navigate-to-path.ts)`
+        );
+        consumes.push(wire.key);
+      }
+    }
+
+    /**
+     * A `p-`/`q-` value: the authored parameter, then the wire, because the runtime's port holds
+     * whichever arrived last and a wire that delivers is always after the value the project file
+     * was loaded with (§10.3's precedence).
+     */
+    const valueOf = (port: string): ValueExpr | undefined | { defer: string } => {
+      let expr: ValueExpr | undefined;
+      const authored = node.parameters.find((param) => param.name === port);
+      if (authored?.value.kind === 'literal') expr = { kind: 'literal', value: authored.value.value };
+      const wire = component.connections.find((c) => c.toId === node.id && c.toProperty === port);
+      if (wire) {
+        const resolved = resolveExpr(nodeById.get(wire.fromId), wire.fromProperty, ctx);
+        if (resolved === null) return { defer: ctx.defer ?? `its ${port} port has no statically known source` };
+        if (isBooleanExpr(resolved)) {
+          return { defer: `its ${port} port is fed a logic truth value — only truthiness sinks take one in this slice` };
+        }
+        expr = resolved;
+        consumes.push(wire.key);
+      }
+      return expr;
+    };
+
+    /**
+     * One entry per **occurrence**, not per name: the runtime calls `String.replace` once per
+     * match and a repeated `{id}` is replaced twice, so `/x/{id}/{id}` owes two entries and the
+     * emitter's sequential `replace` then fills both.
+     */
+    const pathParams: Array<{ name: string; expr: ValueExpr }> = [];
+    const resolvedParams = new Map<string, ValueExpr>();
+    for (const match of authoredPath.match(NAVIGATE_TO_PATH_PLACEHOLDER) ?? []) {
+      const name = match.slice(1, -1);
+      if (name === '') {
+        return { defer: 'its Path contains an empty placeholder `{}` — the editor mints a port named `p-` for it, which is not a name an author can act on' };
+      }
+      let expr = resolvedParams.get(name);
+      if (expr === undefined) {
+        const resolved = valueOf(`p-${name}`);
+        if (resolved !== undefined && 'defer' in resolved) return { defer: resolved.defer };
+        /**
+         * 🔴 **An unset placeholder substitutes the empty string, and is not deferred.** One
+         * node over it *is* deferred, because `getRelativeURL` leaves the literal `{id}` in the
+         * path and appends `?id=undefined` beside it — three readings that do not agree (§11.6).
+         * This node's own loop is coherent: `v !== undefined ? String(v) : ''`. The rule that
+         * looks transferable is not, and the difference is in the two functions.
+         */
+        expr = resolved ?? { kind: 'literal', value: '' };
+        resolvedParams.set(name, expr);
+      }
+      pathParams.push({ name, expr });
+    }
+
+    /**
+     * The query list is **authored**, not left over — the opposite of `RouterNavigate`, where
+     * every `pm-` value the path did not consume becomes a query parameter. Split exactly as the
+     * runtime splits it, with no trimming: `queryNames` of `"a, b"` mints a port named `q- b`
+     * on both sides, and trimming here would look for a port the editor never drew.
+     */
+    const authoredQueryNames = literalParam(node, 'queryNames');
+    const query: Array<{ name: string; expr: ValueExpr; omittable: boolean }> = [];
+    if (typeof authoredQueryNames === 'string' && authoredQueryNames !== '') {
+      for (const name of authoredQueryNames.split(',')) {
+        const resolved = valueOf(`q-${name}`);
+        if (resolved !== undefined && 'defer' in resolved) return { defer: resolved.defer };
+        // A name with nothing on its port is absent from the url entirely, never `name=`.
+        if (resolved === undefined) continue;
+        query.push({ name, expr: resolved, omittable: maybeUndefinedExpr(resolved) });
+      }
+    }
+
+    /**
+     * `Done` then `Completed`, which is the order `reportOutcome` fires them in — the outcome's
+     * own port first, then the universal one (`node.ts:958-995`). Translating `Completed` at all
+     * is earned by the gates: it is refused one node over because it fires after *every* outcome
+     * and there are three of them there, and here there is exactly one outcome it can follow.
+     */
+    const done = doneChainOf(node, 'done');
+    if ('defer' in done) return { defer: done.defer };
+    const completed = doneChainOf(node, 'completed');
+    if ('defer' in completed) return { defer: completed.defer };
+
+    return {
+      action: {
+        kind: 'navigate-path',
+        // Exactly the runtime's own normalisation: `_getLocationPath` strips one leading slash,
+        // so one is put back. `//x` stays `//x`, which matches nothing on either side.
+        to: authoredPath.startsWith('/') ? authoredPath : `/${authoredPath}`,
+        pathParams,
+        query,
+        queryLocal: navigatePathLocalOf(node),
+        then: done.then,
+        completedThen: completed.then
+      },
+      consumes: [...consumes, ...done.consumes, ...completed.consumes, ...ctx.consumes],
+      collapses: [...ctx.logicNodeIds, ...done.collapses, ...completed.collapses],
+      subscribes: [...ctx.subscriberIds, ...done.subscribes, ...completed.subscribes]
+    };
+  };
+
   const compileSink = (node: NodeIR, port: string): CompiledSink => {
     if (RECORD_VERBS[node.type] !== undefined && port === 'store') return compileRecordOp(node);
     if (USER_VERBS[node.type] !== undefined && port === USER_VERBS[node.type].trigger) return compileUserOp(node);
@@ -5528,6 +5795,7 @@ function planComponent(
       return compileControlAction(node, port);
     }
     if (node.type === EXTERNAL_LINK_TYPE) return compileExternalLink(node);
+    if (node.type === NAVIGATE_TO_PATH_TYPE) return compileNavigateToPath(node);
     if (node.type === 'NavigationShowPopup') return compileShowPopup(node);
     if (node.type === 'NavigationClosePopup') return compileClosePopup(node, port);
     if (node.type === 'RouterNavigate') {
@@ -5938,6 +6206,17 @@ function planComponent(
          */
         case 'navigate':
           return [...action.pathParams, ...action.query].every((p) => exprValidIn(p.expr, context, invokedScope));
+        /**
+         * EXP-011 §15 — the same shape, and written the same way for the same reason: the
+         * comment above is about a `return true` that was correct until the action grew
+         * expressions, and a new action kind starts life owing this answer rather than inheriting
+         * one. Its chains are validated where every other chain-bearing action's are.
+         */
+        case 'navigate-path':
+          return (
+            [...action.pathParams, ...action.query].every((p) => exprValidIn(p.expr, context, invokedScope)) &&
+            actionsValidIn([...action.then, ...action.completedThen], context, invokedScope)
+          );
         case 'output-signal':
           return true;
       }
@@ -7037,6 +7316,11 @@ function planComponent(
           attachedExternalLinks.add(action.nodeId);
           scanActions(action.then);
           scanActions(action.failThen);
+        } else if (action.kind === 'navigate-path') {
+          // EXP-011 §15. Both chains, or a popup opened from a Navigate To Path's Done is a
+          // popup nothing here knows is attached.
+          scanActions(action.then);
+          scanActions(action.completedThen);
         } else if (action.kind === 'branch') {
           scanActions(action.whenTrue);
           scanActions(action.whenFalse);

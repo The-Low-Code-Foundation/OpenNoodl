@@ -419,6 +419,11 @@ export function emitComponent(
         ? [a, ...deepActions(a.whenTrue), ...deepActions(a.whenFalse)]
         : a.kind === 'http-call' || a.kind === 'external-link'
           ? [a, ...deepActions(a.then), ...deepActions(a.failThen)]
+          : // EXP-011 §15. `Navigate To Path` carries two chains and neither is `failThen`;
+            // without this line `usesNavigate` below cannot see a second navigation nested in
+            // the first one's Done, and the `useNavigate()` hook it needs goes undeclared.
+            a.kind === 'navigate-path'
+            ? [a, ...deepActions(a.then), ...deepActions(a.completedThen)]
           : a.kind === 'popup-show' ||
               a.kind === 'popup-close' ||
               a.kind === 'jsfun-run' ||
@@ -567,7 +572,9 @@ export function emitComponent(
   }
   const referencedStateVars = plan.stateVars.filter((v) => referencedStateNames.has(v.name));
 
-  const usesNavigate = deepActions(allActions).some((a) => a.kind === 'navigate');
+  // EXP-011 §15. Both kinds call `navigate(...)`, so both earn the hook. A `some` over one
+  // kind is the shape that silently emits a call to an undeclared identifier.
+  const usesNavigate = deepActions(allActions).some((a) => a.kind === 'navigate' || a.kind === 'navigate-path');
 
   // The hook's local name is the variable's last camelCase word (`visitorName` → `name`),
   // deduplicated against everything else in scope, falling back to `<export>Value`.
@@ -1274,6 +1281,15 @@ export function emitComponent(
             a.then.some(inAction) ||
             a.failThen.some(inAction)
           );
+        // EXP-011 §15, and the same hazard the note above names: `default: false` would answer
+        // "reads nothing" for a url built out of the very value being asked about.
+        case 'navigate-path':
+          return (
+            a.pathParams.some((p) => reads(p.expr)) ||
+            a.query.some((p) => reads(p.expr)) ||
+            a.then.some(inAction) ||
+            a.completedThen.some(inAction)
+          );
         case 'popup-show':
         case 'popup-close':
         case 'jsfun-run':
@@ -1298,6 +1314,15 @@ export function emitComponent(
     // and for a `_self` link with no guard there is no failure to have, so no arm and no braces.
     (a.errorState !== undefined && a.newTab);
 
+  /**
+   * Whether a `Navigate To Path` prints statements rather than one expression (EXP-011 §15).
+   * An omittable query binds a `const` and pushes into it; a chain prints beside the call. The
+   * commonest shape — a button that goes to a fixed path — is neither, and stays
+   * `onClick={() => navigate('/pricing')}`.
+   */
+  const navigatePathIsStatement = (a: Extract<HandlerAction, { kind: 'navigate-path' }>): boolean =>
+    a.query.some((q) => q.omittable) || a.then.length > 0 || a.completedThen.length > 0;
+
   const actionCode = (action: HandlerAction, indent = 0): string => {
     switch (action.kind) {
       /**
@@ -1310,6 +1335,97 @@ export function emitComponent(
        * then decodes back to a space, so the two would agree on the value and disagree on the
        * url the address bar shows.
        */
+      /**
+       * `Navigate To Path` (EXP-011 §15) — `navigate-to-path.ts`'s own url builder, line for
+       * line, and **not** the `navigate` case below with different inputs.
+       *
+       * 🔴 **No `encodeURIComponent`, and that is the faithful answer rather than a missing
+       * one.** The Router encodes both halves (`router.tsx:620, 630`) and this node encodes
+       * neither — `formattedPath.replace('{id}', String(v))` and `q + '=' + v`. Encoding here
+       * would make the exported app disagree with the app it came from on every value carrying
+       * a url-special character, in the direction §11.3 calls being *better* than the app: the
+       * export would route where the interpreter does not. `tests/navigate-to-path.test.ts`
+       * pins the runtime file's side of this so the two cannot drift apart silently.
+       *
+       * `?? ''` on a maybe-undefined path value is likewise the runtime's own
+       * `v !== undefined ? String(v) : ''`, not this exporter's invention.
+       */
+      case 'navigate-path': {
+        const at = pad(indent);
+        /** Escaped for the quoting this url will actually use, decided before substitution. */
+        const isTemplate =
+          action.pathParams.some((p) => p.expr.kind !== 'literal') ||
+          action.query.some((q) => q.expr.kind !== 'literal');
+        const lit = (value: unknown): string =>
+          isTemplate
+            ? String(value).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${')
+            : String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const pathValue = (expr: ValueExpr): string => {
+          const code = exprCode(expr, 'handler');
+          // The runtime's own `v !== undefined ? String(v) : ''`, and not this exporter's choice.
+          return maybeUndefined(expr) ? `${code} ?? ''` : code;
+        };
+        const filled = action.pathParams.reduce(
+          (path, param) =>
+            path.replace(
+              `{${param.name}}`,
+              param.expr.kind === 'literal' ? lit(param.expr.value) : `\${${pathValue(param.expr)}}`
+            ),
+          isTemplate ? lit(action.to) : action.to.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+        );
+
+        const omittable = action.query.filter((q) => q.omittable);
+
+        /**
+         * With every value present the query is a static suffix, exactly as the runtime's
+         * `query.length >= 1 ? '?' + query.join('&') : ''` resolves for it.
+         */
+        if (omittable.length === 0) {
+          const suffix =
+            action.query.length === 0
+              ? ''
+              : '?' +
+                action.query
+                  .map(
+                    (q) =>
+                      `${lit(q.name)}=${q.expr.kind === 'literal' ? lit(q.expr.value) : `\${${exprCode(q.expr, 'handler')}}`}`
+                  )
+                  .join('&');
+          const url = `${filled}${suffix}`;
+          const call = isTemplate ? `navigate(\`${url}\`)` : `navigate('${url}')`;
+          const chain = [...expandActions(action.then), ...expandActions(action.completedThen)];
+          if (chain.length === 0) return call;
+          return [`${call};`, ...chain.map((a) => `${actionCode(a, indent)};`)].join(`\n${at}`);
+        }
+
+        /**
+         * ⚠️ **An unset query parameter is omitted from the url, never sent as `name=`** — the
+         * runtime's `if (internal.query[q] !== undefined)`. A `URLSearchParams` here would send
+         * the key with an empty value *and* percent-encode to a different table, so it would be
+         * wrong twice.
+         *
+         * 🔴 **The pairs go through one `for` rather than one `if` each, so every expression is
+         * read exactly once.** Two reads of `formatShout({ name })` — the guard and the push —
+         * would invoke it twice, which is the mistake `External Link`'s link local exists to
+         * avoid one node over. Values that cannot be undefined ride the same loop and pass its
+         * test unconditionally, which is also the shape of the runtime's own loop.
+         */
+        const local = action.queryLocal;
+        // The key sits in expression position, never inside the url string, so it is quoted
+        // independently of `isTemplate`.
+        const pairs = action.query
+          .map((q) => `['${String(q.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', ${exprCode(q.expr, 'handler')}]`)
+          .join(', ');
+        const lines = [
+          `const ${local}: string[] = [];`,
+          `for (const [key, value] of [${pairs}] as Array<[string, unknown]>) {`,
+          `  if (value !== undefined) ${local}.push(\`\${key}=\${value}\`);`,
+          '}',
+          `navigate(\`${filled}\${${local}.length > 0 ? \`?\${${local}.join('&')}\` : ''}\`);`
+        ];
+        const chain = [...expandActions(action.then), ...expandActions(action.completedThen)];
+        return [...lines, ...chain.map((a) => `${actionCode(a, indent)};`)].join(`\n${at}`);
+      }
       case 'navigate': {
         /**
          * 🔴 `encodeURIComponent` is typed `string | number | boolean` — **not** `undefined` —
@@ -1768,13 +1884,22 @@ export function emitComponent(
        * Asking precisely is what keeps the commonest shape — a button that opens a literal url —
        * emitting as `onClick={() => window.open(…)}` rather than a block.
        */
-      (a.kind === 'external-link' && externalLinkIsStatement(a));
+      (a.kind === 'external-link' && externalLinkIsStatement(a)) ||
+      /**
+       * EXP-011 §15, and the sixth instance of this file's oldest hazard. A `const` for the
+       * query collector, or a chain printed beside the call, is a statement; a bare
+       * `navigate('/pricing')` is an expression and keeps its semicolon.
+       */
+      (a.kind === 'navigate-path' && navigatePathIsStatement(a));
     if (isAsync || expanded.some(isStatement)) {
       // A try/catch is a statement, not an expression: it prints at the handler's own column and
       // takes no terminator. Every other action keeps the semicolon the existing goldens pin.
       const body = expanded
         .map((a) =>
-          a.kind === 'api-call' || a.kind === 'http-call' || (a.kind === 'external-link' && externalLinkIsStatement(a))
+          a.kind === 'api-call' ||
+          a.kind === 'http-call' ||
+          (a.kind === 'external-link' && externalLinkIsStatement(a)) ||
+          (a.kind === 'navigate-path' && navigatePathIsStatement(a))
             ? `${pad(indent + 2)}${actionCode(a, indent + 2)}`
             : // A `Now` Read prints several statements and needs the column too, or its second
               // and third lines start at column 0 (EXP-011 Tier 1.3). Valid either way — this is
@@ -3341,6 +3466,8 @@ export function emitComponent(
        * rather than a wrong value.
        */
       case 'navigate':
+        return [...a.pathParams.map((p) => p.expr), ...a.query.map((p) => p.expr)];
+      case 'navigate-path':
         return [...a.pathParams.map((p) => p.expr), ...a.query.map((p) => p.expr)];
       case 'output-signal':
         return [];
