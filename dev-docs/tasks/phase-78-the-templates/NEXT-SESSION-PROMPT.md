@@ -52,23 +52,29 @@ do not spend the session re-deriving it. A count above 61 is yours.
 2. ⬜ **D18 / D19 / D20** — see below. D18 got worse and clearer this session.
 3. ⬜ **Then** T5 / publishing. AC1 is ungradeable until it is on the shelf.
 
-## 🔴 D18 is bigger than it was filed as, and it is still unowned
+## 🔴 D18 is every control **except `select`**, and the fix is already in the file once
 
-**It is not "forms" — it is every control, including buttons.** Measured on `Pages/Landing` with
-`getComputedStyle`: the eyebrow, headline and blurb get `Source Sans Pro`; **both buttons render
-`Arial`**. So the defect is on every page of every template, not only pages with a form, and it is
-visible in screenshots already in this repo — nobody had looked at the *buttons*.
+Two measurements from opposite ends, both taken 2026-08-29. Rendering: on `Pages/Landing` the
+eyebrow, headline and blurb get `Source Sans Pro` while **both buttons render `Arial`** — so it is
+every page, not only pages with a form. Source:
+`packages/noodl-viewer-react/src/assets/style.css` has **exactly one `font-family` declaration in the
+whole file** — `font-family: inherit`, line 107, inside `.ndl-controls-select`. Ten
+`.ndl-controls-*` classes ship; one inherits.
 
-⚠️ **The vocabulary actively tells an agent not to fix it.** The `body` composition's description
-reads *"Never set `fontFamily` — the project body already carries `var(--font-sans)`"*. True for
-`Text`, false for `<button>`, `<input>` and `<textarea>`, which do not inherit it. Whatever task
-takes D18 must change that description in the same breath.
+- ✅ **The correct rule already exists for one of the ten**, which makes this an omission rather than
+  a decision and the fix small.
+- ⚠️ **`select` is the control that would have looked right** — anyone spot-checking "does the font
+  reach the controls" with a dropdown would have seen it work and stopped.
+- 🔴 **`StyleCompositions.ts:382` is part of the fix.** The `body` composition says *"Never set
+  `fontFamily`"*, which is what an agent reads before deciding not to. Fixing the CSS and leaving
+  that line regenerates the defect.
 
-🔴 **Ownership, unchanged and now overdue.** D18/D19/D20 are recorded in
-[THE SWEEP](../phase-77-the-site-builder-rescue/THE-SWEEP-2026-08-29.md) but **no `DEF` task names
-any of them**. D20 → DEF-006 was *agreed by both sessions* and still is not filed — grep DEF-006 for
-`D20` and it is absent. D18 is ruled **not DEF-001** (a fidelity defect, not an a11y one, and the
-button reading strengthens that: nothing here is illegible).
+✅ **D20 is filed** — DEF-006 §0(c), `f9367dc7`. ⚠️ Its relationship to D10 is stated there: D20 is
+the *mechanism* behind D10, so fixing it may make D10 fixable without fixing it, and **D10 must be
+re-measured rather than closed on it**.
+
+🔴 **D18 and D19 are still in no `DEF` task.** D18 is ruled **not DEF-001** — a fidelity defect, not
+an a11y one; nothing here is illegible. D19 is genuinely either way.
 
 ## Traps
 

@@ -706,6 +706,38 @@ illegible — it is the product failing to apply its own design token to the ele
 actually touches. Whatever task takes it should be about **fidelity**, and the `body` composition's
 description has to change in the same breath or the next agent re-derives the same wrong conclusion.
 
+### 🔴 Narrowed at source, 2026-08-29: it is every control **except `select`**
+
+Found by phase 80's owner and **re-measured here rather than relayed**, because the whole point of
+this file is that a row is a measurement. `packages/noodl-viewer-react/src/assets/style.css` contains
+**exactly one `font-family` declaration in the whole file**:
+
+```
+98:  .ndl-controls-select {
+…
+107:   font-family: inherit;
+```
+
+Ten `.ndl-controls-*` classes ship — `button`, `textinput`, `checkbox`, `radio`, `radiobutton`,
+`range`, `fieldset`, `abs-center`, `pointer`, `select`. **One** of them inherits the page's font.
+The rendering measurements above (Arial on `input` and `button`, monospace on `textarea`) and this
+are the same fact from opposite ends.
+
+Two things follow, and both change how the fix should be scoped:
+
+- ✅ **The correct rule already exists in the file, for one of the ten.** That marks the other nine
+  as an omission rather than a decision, and it means the fix is the line that is already there,
+  repeated — not a design question anybody needs to settle first.
+- ⚠️ **`select` is exactly the control that would have looked right.** Anyone who spot-checked
+  "does the app's font reach the controls" using a dropdown would have seen it work and stopped.
+  That is a plausible account of how this survived to a shipped template, and it is a reason to
+  distrust single-control checks of any design token.
+
+🔴 **`StyleCompositions.ts:382` is part of the fix, not a footnote.** The `body` composition's
+description — *"Never set `fontFamily` — the project body already carries `var(--font-sans)`"* — is
+what an agent reads **before deciding not to set a font**. Repairing the CSS and leaving that line
+regenerates the defect the next time a generator styles a control.
+
 ---
 
 ## D19 — ⚠️ A control's own label is pure `#000`, not `--foreground`, and no composition can reach it
