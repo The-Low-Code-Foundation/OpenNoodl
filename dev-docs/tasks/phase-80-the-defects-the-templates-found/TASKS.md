@@ -130,6 +130,29 @@ before any of it was acted on, and every measurement in it held.
   inherit too. `StyleCompositions.ts`'s `body` description was corrected in the same commit —
   it told an author controls inherit the page font, which is what a generator reads *before
   deciding not to set one*, so the CSS repair alone would have been rewritten.
+  🔴 **D19's cause is located, 2026-08-29, and it is wider than the row says.** The label is not
+  hardcoded `#000` — **nothing sets a colour on it, and there is no colour floor to inherit.**
+  `TokenResolver.generateCss` (POL-006) appends exactly one applied rule after the `:root` block:
+
+      body { font-family: var(--font-sans); }
+
+  **font-family only.** There is no `color: var(--foreground)` anywhere in the viewer, the two
+  static HTML templates, or the token CSS — grepped, zero hits. So *any* element that does not set
+  its own colour renders the browser's black, and the label is simply the one somebody looked at.
+  `--foreground` is a token nothing reads at the floor — **the same defect class as
+  `--surface-raised` in D26**, which C1 has just fixed.
+
+  ✅ **The fix is one line in the place designed for it**, and POL-006's own reasoning transfers
+  verbatim: *"a floor, not an override — `body` is the weakest place to say it, so any node that
+  sets its own still wins."*
+  ⚠️ **State the blast radius before doing it**: every element in every project that does not set
+  a colour moves from `#000` to `var(--foreground)`. In the default theme that is `#0f172a`, a
+  near-black and a small change; **in a dark theme it is a large one, and the correct one** —
+  which is the argument for the fix rather than against it.
+  ⚠️ **Not applied yet, deliberately**: `TokenResolver.ts` is under `noodl-editor/src`, which a
+  peer's running `dev:debug` watches, and a hot rebuild under someone's live drive is not a thing
+  to do behind their back. Apply after teardown.
+
   ⚠️ **D19 (a control's own `<label>` renders `#000`) is NOT done** — the colour comes from the
   label style group (`TextInput.tsx:235`, and the same in Checkbox/RadioButton), not from the
   stylesheet, so it is a different fix from D18's and was left rather than guessed at.
