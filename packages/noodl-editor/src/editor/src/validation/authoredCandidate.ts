@@ -280,29 +280,33 @@ export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   DiagnosticCode.WrongRuntimeNode
   // DEF-002 §2 — `FailureReachesNothing` belongs here on the charter ("output
   // that is broken": the caller is not told the wrong thing, it is told nothing
-  // and waits out a 30s timeout) and is deliberately **not** here yet, on the
-  // `ResponsiveArrangement` precedent rather than on doubt about the rule.
+  // and waits out a 30s timeout) and is **one step short** of being here.
   //
-  // 🔴 The promotion was tried and measured, and what it rejects is the product,
-  // not a fixture. With it in this set, **8 specs across 3 suites fail** — and
-  // every one is a *shipped template being regenerated through the door*:
-  // `sb007Template`, `sb004Authoring`, `tpl001Template`. It was **10** an hour
-  // earlier; `98bfdea0` (TPL-001 Track A, *"ten requests that could hang for
-  // 30s"*) cleared two, so the remaining blocker is the **site-builder**
-  // templates and this number is falling on its own. They fail because
-  // `publishPage`, `duplicatePage` and `submitContactForm` really do leave
-  // failure edges unanswered, which is the defect phase 77 D1 reported and the
-  // reason this rule exists. Corpus-wide the same promotion is 182 firings
-  // across 12 projects.
+  // 🔴 The reason recorded here an hour ago was WRONG, and a peer's counter-
+  // measurement is what forced the re-reading. It said the promotion was blocked
+  // because the shipped templates "really do leave failure edges unanswered".
+  // They do not. What blocked it was **two false positives in the rule**, both on
+  // `submitContactForm`, the one graph written to honour this task's own trap:
   //
-  // ⚠️ So this is not `PageWithoutPageNode`, where the fixtures were teaching a
-  // shape the runtime refuses and correcting them WAS the fix. Here the graphs
-  // are the product's own templates, and repairing them is template work in
-  // another phase's files. Promoting first would block the door on graphs the
-  // product itself ships — a gate nobody can get past is a gate that gets
-  // switched off. **The rule reports everywhere today; the promotion follows the
-  // template repair**, and the number above is what it costs.
-]);
+  //   - `mail.failure` was unwired because `mail.completed -> res.send` already
+  //     answers — `completed` "fires after every invocation, whatever the
+  //     outcome", so it answers the failure path too;
+  //   - `compose.failure` was unwired because a **parallel branch**
+  //     (`recipient -> save -> stored -> mail -> res`) still answers, so a throw
+  //     in `compose` costs the work and not the reply.
+  //
+  // Both are now exits in the rule, each with an arm and a control. The corpus
+  // went 249 -> 182 -> **33**, and the shipped templates are **clean**.
+  //
+  // ⚠️ What is left is **two deliberately-malformed test probes** —
+  // `/#__cloud__/probe/RunTasksCrossRuntime` and `/#__cloud__/probe/RunTasksMissing`
+  // — which exist to exercise a different check and fail this one on the way
+  // past. That is the `PageWithoutPageNode` situation exactly: a gate a suite
+  // fails is a gate the suite may be asserting the wrong thing about. Whoever
+  // promotes this should wire those two probes' `failure`, or exempt them, and
+  // then add the code below. It is a small, named job — not the template repair
+  // this comment used to send people on.
+  ]);
 
 /** Whether a diagnostic rejects an authored submission. */
 export function isBlockingForAuthoredOutput(diagnostic: Diagnostic): boolean {

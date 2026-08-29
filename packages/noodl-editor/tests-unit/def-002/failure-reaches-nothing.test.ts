@@ -150,6 +150,88 @@ describe('DEF-002 §2 — what the rule actually asks', () => {
     expect(run(component)).toEqual([]);
   });
 
+  /**
+   * 🔴 `completed` fires whatever the outcome, so one that reaches a response
+   * HAS answered the failure path. The site-builder's `submitContactForm` wires
+   * `mail.completed -> res.send` for exactly this — *"so a bounced or
+   * unconfigured mail service still answers the visitor"* — and DEF-002's own
+   * trap names that case as a legitimate unwired `Failure`. Without this arm the
+   * rule demanded a repair to the one graph written to honour it.
+   */
+  it('accepts a node whose completed reaches a response, though its failure is unwired', () => {
+    const component = {
+      name: '/#__cloud__/submitContactForm',
+      nodes: [
+        node('req', 'noodl.cloud.request'),
+        node('mail', 'noodl.cloud.sendemail', 'Tell the site owner'),
+        node('res', 'noodl.cloud.response', 'Answer the visitor')
+      ],
+      connections: [wire('req', 'receive', 'mail', 'send'), wire('mail', 'completed', 'res')]
+    } as unknown as NormComponent;
+    expect(run(component)).toEqual([]);
+  });
+
+  it('control: the same node with completed reaching nothing IS reported', () => {
+    const component = {
+      name: '/#__cloud__/submitContactForm',
+      nodes: [
+        node('req', 'noodl.cloud.request'),
+        node('mail', 'noodl.cloud.sendemail', 'Tell the site owner'),
+        node('note', 'JavaScriptFunction', 'Log it'),
+        node('res', 'noodl.cloud.response', 'Answer the visitor')
+      ],
+      // No route to `res` around `mail`, so the graph really does hang if the
+      // mail path is the one that fails — which is what makes this a control
+      // for the `completed` exit rather than for the dominator one below.
+      connections: [wire('req', 'receive', 'mail', 'send'), wire('mail', 'completed', 'note')]
+    } as unknown as NormComponent;
+    expect(run(component).map((d) => d.location.nodeId)).toContain('mail');
+  });
+
+  /**
+   * 🔴 The narrowing that the site-builder's `submitContactForm` forced, and its
+   * control. `compose` has an unwired `failure`; the visitor is still answered
+   * through a branch that does not pass through it, so the request does not
+   * hang and the rule must not ask for a wire. Remove that branch and the same
+   * node is reported.
+   */
+  it('accepts a node a parallel branch already answers around', () => {
+    const component = {
+      name: '/#__cloud__/submitContactForm',
+      nodes: [
+        node('req', 'noodl.cloud.request'),
+        node('compose', 'JavaScriptFunction', 'The message body'),
+        node('save', 'SetDbModelProperties', 'Store the enquiry'),
+        node('res', 'noodl.cloud.response', 'Answer the visitor')
+      ],
+      connections: [
+        wire('req', 'receive', 'compose', 'run'),
+        wire('req', 'receive', 'save', 'store'),
+        wire('save', 'done', 'res')
+      ]
+    } as unknown as NormComponent;
+    expect(run(component).map((d) => d.location.nodeId)).not.toContain('compose');
+  });
+
+  it('control: with the parallel branch gone, the same node IS reported', () => {
+    const component = {
+      name: '/#__cloud__/submitContactForm',
+      nodes: [
+        node('req', 'noodl.cloud.request'),
+        node('compose', 'JavaScriptFunction', 'The message body'),
+        node('save', 'SetDbModelProperties', 'Store the enquiry'),
+        node('res', 'noodl.cloud.response', 'Answer the visitor')
+      ],
+      // The only route to `res` now runs through `compose`.
+      connections: [
+        wire('req', 'receive', 'compose', 'run'),
+        wire('compose', 'done', 'save', 'store'),
+        wire('save', 'done', 'res')
+      ]
+    } as unknown as NormComponent;
+    expect(run(component).map((d) => d.location.nodeId)).toContain('compose');
+  });
+
   it('says nothing outside a cloud function, where there is no request to hang', () => {
     const component = {
       name: '/Pages/Home',

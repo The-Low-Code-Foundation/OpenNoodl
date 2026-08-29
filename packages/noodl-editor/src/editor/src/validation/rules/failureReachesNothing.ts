@@ -73,6 +73,23 @@ export const CLOUD_RESPONSE_TYPE = 'noodl.cloud.response';
  */
 const FAILURE_PORT = 'failure';
 
+/**
+ * 🔴 The port that answers a failure without being one.
+ *
+ * `outcome.ts`: *"Fires after every invocation, **whatever the outcome** — wire
+ * this to carry on regardless."* So a node whose `completed` reaches a response
+ * **has** answered its failure path, and asking its `failure` to reach one too
+ * is asking for a second answer to a request that can only be answered once.
+ *
+ * ⚠️ Learned the hard way, from the graph the task file itself cites: the
+ * site-builder's `submitContactForm` wires `mail.completed → res.send` with the
+ * comment *"so a bounced or unconfigured mail service still answers the
+ * visitor"*, and DEF-002's own trap names that case — *"a bounced mail must
+ * still answer the visitor"* — as a **legitimate** unwired `Failure`. Without
+ * this, the rule demanded a repair to the one graph written to honour it.
+ */
+const COMPLETED_PORT = 'completed';
+
 export const failureReachesNothing: Rule = {
   code: DiagnosticCode.FailureReachesNothing,
   description: 'In a cloud function, every Failure edge reaches a Response.',
@@ -114,6 +131,25 @@ export const failureReachesNothing: Rule = {
         return false;
       };
 
+      const requests = component.nodes.filter((n) => n.type === CLOUD_REQUEST_TYPE).map((n) => n.id);
+
+      /** Whether some response is reachable from a request without passing through `skip`. */
+      const answeredWithout = (skip: string): boolean => {
+        const seen = new Set<string>([skip]);
+        const queue = requests.filter((id) => id !== skip);
+        for (const id of queue) seen.add(id);
+        while (queue.length > 0) {
+          const id = queue.shift() as string;
+          if (responses.has(id)) return true;
+          for (const edge of outgoing.get(id) ?? []) {
+            if (seen.has(edge.to)) continue;
+            seen.add(edge.to);
+            queue.push(edge.to);
+          }
+        }
+        return false;
+      };
+
       for (const node of component.nodes) {
         // 🔴 A response node IS the send, so its own `failure` cannot be
         // answered by reaching a response — that would be an infinite regress.
@@ -130,7 +166,28 @@ export const failureReachesNothing: Rule = {
         // every rule here skips what it cannot see.
         if (!ctx.catalog.getPort(node.type, 'output', FAILURE_PORT)) continue;
 
-        const failureEdges = (outgoing.get(node.id) ?? []).filter((e) => e.port === FAILURE_PORT);
+        // 🔴 The request hangs only if this node stands on EVERY route to a
+        // response. Where another branch of the graph still answers, a failure
+        // here costs the work, not the reply — and demanding a wire would be
+        // asking the author to answer a request that is already answered.
+        //
+        // ⚠️ This is NOT the 14th hole in disguise. That mutant asked *"does
+        // this node reach a response"*, which is true of every node on a happy
+        // path. This asks the opposite: *"is a response reachable WITHOUT it"* —
+        // and on the pre-SBR-015 `publishPage` the answer is no (the one worker
+        // is the only route), so that arm still fires.
+        //
+        // Measured on the graph that forced it: `submitContactForm`'s `compose`
+        // has an unwired `failure`, and the visitor is still answered through
+        // `recipient → save → stored → mail → res`, which does not pass through
+        // it. The rule was asking for a repair to a correct graph.
+        if (answeredWithout(node.id)) continue;
+        const edges = outgoing.get(node.id) ?? [];
+        // `completed` fires whatever the outcome, so one that reaches a response
+        // answers the failure path. Checked first because it is the cheaper and
+        // the more definite of the two exits.
+        if (edges.some((e) => e.port === COMPLETED_PORT && reachesResponse(e.to))) continue;
+        const failureEdges = edges.filter((e) => e.port === FAILURE_PORT);
         if (failureEdges.some((e) => reachesResponse(e.to))) continue;
 
         const label = node.label ? `"${node.label}"` : node.type;
