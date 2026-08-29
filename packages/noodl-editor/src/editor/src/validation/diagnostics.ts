@@ -721,6 +721,35 @@ export enum DiagnosticCode {
    */
   FailureReachesNothing = 'failure-reaches-nothing',
   /**
+   * DEF-004 §4c — in a cloud function, a `completed` edge that commits a result
+   * nothing checked.
+   *
+   * `completed` *"fires after every invocation, whatever the outcome"*, so wired
+   * into a record write's `store` or a response's `send` it writes a fact, or
+   * answers a caller, on a run that may have failed. Measured in a shipped
+   * template: `publishPage` marked a page `published` after a `Run Tasks` that
+   * set no section's access rules.
+   *
+   * 🔴 **The predicate is not the one the task asked for.** DEF-004's AC4 named
+   * the target — a record write *or a `response.send`* — and over the shipped
+   * corpus that refuses `submitContactForm`, the one graph written to honour the
+   * task's own trap. What separates the two is whether a **Failure route reaches
+   * the same commit**: where one does, the author enumerated the bad outcomes and
+   * `completed` is the "carry on regardless" leg it is for; where none does, it
+   * is the only exit, used as if it meant success.
+   *
+   * Not a duplicate of `FailureReachesNothing`, measured on the real graphs: that
+   * rule fires on the `JavaScriptFunction`s in the same components and never on
+   * the node carrying the `completed` wire, because a value wire answers the
+   * caller without passing through it. It asks *is the caller answered at all*;
+   * this defect answers fine, with a lie.
+   *
+   * Warning severity with an `AUTHORED_BLOCKING_WARNINGS` entry, matching its
+   * sibling: advisory over hand-authored projects, blocking for a graph an agent
+   * just wrote.
+   */
+  CompletedCommitsUnchecked = 'completed-commits-unchecked',
+  /**
    * FIX-006 §3: a `Javascript2` (Script) node whose body declares nothing the
    * runtime can call again. Its code runs **once**, at parse time, and never
    * again — while still minting ports from `Inputs.`/`Outputs.` mentions, which

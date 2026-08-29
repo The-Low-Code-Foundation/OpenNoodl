@@ -100,6 +100,21 @@ write or a Response's `send` it therefore reports success **after a failure**. I
 site-builder it was wired into both — `publishPage` marked a page `published` after a run that set
 no section's access rules.
 
+> 🔴 **CORRECTED 2026-08-29 (s6). The paragraph above is written in the present tense about a state
+> that ended the day before, and that tense is what gave AC4 its wrong shape.**
+>
+> **SBR-015 (`48ad4dfc`, phase 77, 2026-08-28) already repaired both wires in the template**, changing
+> them to `done`. Measured at HEAD: `publishPage` has **zero** `completed` wires; the wire that marks
+> the page published is `RunTasks.done → SetDbModelProperties.store`, and `RunTasks.failure` and
+> `.unchanged` both reach a refusal Response. The whole shipped template carries exactly **two**
+> `completed` wires, and neither is `publishPage`'s.
+>
+> This is the third wrong reading of this row (§1 records the first two), and it is the same shape
+> each time: **the file was read, the artefact was not.** *Measure the artefact, not the task file* —
+> and when a task file states a defect in the present tense, `git log` the artefact before believing
+> the tense. What survived correction is the *mechanism*: `completed` into a commit is a real defect,
+> it really did ship, and §4c builds the rule for it. What did not survive is AC4's list of targets.
+
 🔴 **This is a recurrence, not a discovery.** `outcome.ts`'s own FH-022 / TALK-006 note records
 Richard hitting the `done`/`completed` pair on `Condition` and reading two identically-behaving ports
 as the vocabulary doubling up. **The repair then was wording.** This is the same confusion arriving
@@ -188,7 +203,7 @@ accident.
    carry different node ids for the same function** — noted here because anything that joins a
    record back to a canvas has to know that.
 
-## 4b. What is left
+## 4b. What was left after (a) — ✅ **CLOSED by §4c, 2026-08-29**
 
 - **AC4 — a rule about where `completed` lands**, beside DEF-002's rules (they live in
   `packages/noodl-editor/src/editor/src/validation/diagnostics.ts`, not in `noodl-mcp`).
@@ -224,6 +239,120 @@ accident.
 - ⚠️ **Nothing drives `MAX_STEPS_PER_RUN`** (1000, announced once as `function.steps.suppressed`).
   Named rather than left silent; a graph that reaches it is a `Run Tasks` loop and building one in
   a spec costs more than the cap is currently worth.
+
+## 4c. (b) CLOSED 2026-08-29 — the rule, and why it is not the rule AC4 asked for
+
+**`completed-commits-unchecked`**, at
+`packages/noodl-editor/src/editor/src/validation/rules/completedCommitsUnchecked.ts`, registered
+immediately after `failureReachesNothing` and promoted into `AUTHORED_BLOCKING_WARNINGS`.
+`def-004/completed-commits-unchecked.test.ts` — **21 specs**.
+
+### 🔴 The predicate, and the four instances that chose it
+
+§4b was right that AC4 contradicts itself and **still had the wrong replacement**. It proposed
+*"a `completed` reaching a **write** whose payload asserts the outcome"*. Driven: that does not
+separate the corpus either. `publishPage`'s `published` flag and `submitContactForm`'s `received`
+flag are both booleans, both committed by a `completed`, and **both come from a node that is not
+downstream of the completing one**. On payload provenance they are identical.
+
+All four shipped instances, on every structural axis:
+
+| wire | commit? | failure routed to the **same** commit? | |
+|---|---|---|---|
+| `publishPage` `RunTasks.completed → Set….store` | yes | **no** — sole wire | ❌ defect |
+| `duplicatePage` `RunTasks.completed → response.send` | yes | **no** — sole wire | ❌ defect |
+| `submitContactForm` `sendemail.completed → response.send` | yes | **yes** — `save.failure`, `stored.failure` | ✅ correct |
+| `ContactRecipient` `secret.completed → JavaScriptFunction.run` | **no** | — | ✅ correct |
+
+✅ **The discriminator is whether a Failure route reaches the same commit.** Where one does, the
+author **has** enumerated the bad outcomes and `completed` is genuinely the carry-on-regardless leg
+the port is for. Where none does, `completed` is not supplementary — it is the only exit, used as
+if it meant success. `submitContactForm` proves it: `received` is set by `stored`, which runs on
+`save.done`, so `received: true` means *the message was stored* and a bounced mail does not make it
+false. That graph is correct, and AC4 as written refuses it.
+
+🔴 **AC4's target list was a hypothesis and is now a permanent arm.** The spec keeps AC4's own words
+as a predicate and asserts it fires on `submitContactForm` — the graph the same criterion requires
+it to accept. **SBR-015's template gate escapes the contradiction only by also requiring
+`type === 'RunTasks'`**, a hand-list wearing a predicate: its comment says the rule is about where
+the wire lands, its code is about the source node type, and the two disagree. It cannot see the
+same defect from a `sendemail` or a `DbModel2`. The probe graph in the spec is exactly that case.
+
+### ✅ Not a duplicate — measured before it was written
+
+*A check in a second pipeline is a duplicate first.* Run against the real pre-SBR-015 graphs,
+`failureReachesNothing` fires on `prep`, `prep-2` and `afterCopy` — the `JavaScriptFunction`s — and
+**never on the `RunTasks` carrying the `completed` wire**, because `prep.out-pageId →
+res.pm-pageId` answers the caller without passing through it, so `answeredWithout` excuses it. The
+two rules ask different questions and this one covers the hole in the other: DEF-002's asks *is the
+caller answered at all* (a 30s hang); this defect answers the caller perfectly well, with a lie.
+Both arms are pinned, including a known-firing control — `expect([])` from a rule that never speaks
+proves nothing.
+
+### ✅ The corpus, and the blocking promotion it justifies
+
+`scripts/def-004-corpus-completed.ts` (`npm run calibrate:completed`). Over **179 projects and 319
+cloud-function components**:
+
+| | |
+|---|---|
+| `completed` wires reaching a commit | **34** |
+| refused | **20** |
+| accepted | **14** |
+| false positives | **0** |
+
+The split is exact. The 20 are `publishPage`/`duplicatePage` in ten copies of the site-builder
+predating SBR-015, every one carrying literally the wire that task repaired — true positives by
+construction, since the repaired template spells it `done`. The 14 are all `submitContactForm →
+send`. 🔴 **The second corpus's zero is explained rather than bare**: 82 further projects hold 257
+cloud-function components and **no `completed` wires at all**. `completed` is a rare port — authors
+reach for `done` — so the blast radius of making this blocking is small, and that is measured.
+
+⚠️ **The honest limit on this denominator: 15 of the 17 projects with any `completed` wire are
+copies of one template.** The rule is calibrated against one author's habits. The 257-component
+corpus is what stops that being invisible, not what fixes it.
+
+### ✅ AC5 — mutation-graded, 8 mutants, 8 killed
+
+The failure-route guard disarmed (5 red) · commit narrowing removed (1) · cloud scope removed (1) ·
+reachability made untargeted (4) · `unchanged` dropped from the negative set (1) · `done` graded
+instead of `completed` (7) · direct failure wires not seeded (4) · the catalog check inverted (7).
+
+🔴 **`unchanged` killed nothing on the first run — that was the finding.** It was in the rule and
+exercised by no arm. It belongs there (`RunTasks` fires it on an empty list, and the shipped
+`publishPage` routes it), so the arm was added rather than the port removed, with a negative
+control beside it: a `done` wire into the same commit does **not** clear the finding.
+
+### 🔴 Three things this cost, that the next reader should not re-buy
+
+1. **A literal NUL byte in a template literal made the file invisible to `grep`, and I "fixed"
+   the wrong thing.** The composite Map key was written `` `${a}\0${b}` `` — which is the **house
+   idiom** (`author.ts` keys connections that way, `unlabelledNode.ts` uses `'\0root'`, five files
+   in all) and is *correct*: a node id or a derived port name can contain a space, and two pairs
+   must never collapse to one key. But a literal NUL makes `grep` call the whole file binary and
+   **return nothing at all, with exit 0** — which is how three mutants silently failed to apply.
+   The fix was not to remove the NUL but to write it as the `\0` **escape**: same value, greppable
+   file. ⚠️ **I first read the deliberate idiom as corruption**, because my instrument had lied
+   about the file and I doubted the file rather than the instrument.
+2. **A mutation harness needs an assert that the mutant applied.** Three of eight silently did not
+   (zsh ate the backticks, then the NUL). Without `assert old in s`, that run reads as *"three
+   mutants killed nothing"* — a finding about the rule, when it was a finding about the harness.
+   *A mutant killing nothing is the finding* only once you know it ran.
+3. **The task file's tense was the defect.** §2 described a state SBR-015 had ended the previous
+   day, in the present tense, and AC4 was written from it — which is how a criterion came to demand
+   a rule that refuses the one graph it also requires be accepted. **`git log` the artefact before
+   believing a task file's tense.**
+
+### What is still open
+
+- **AC1's second half.** The steps say which node failed; whether the *record* should say a run
+  "succeeded" while carrying an `error` step is still the argument §4a left open. Unchanged by this.
+- ⚠️ **The rule is cloud-only, deliberately.** A browser-side `store` fired on `completed` is the
+  same shape in front of somebody who can see it did not work, and the browser population is large
+  and uncalibrated. Widening it is a separate measurement, not a one-line change.
+- ⚠️ **`noodl.cloud.sendemail`'s `send` is not treated as a commit**, though it is a signal input
+  spelled the same as a Response's. Sending a mail asserts no fact about upstream work. Named in the
+  rule and pinned by a spec so the decision cannot drift into an accident.
 
 ## 5. Traps
 

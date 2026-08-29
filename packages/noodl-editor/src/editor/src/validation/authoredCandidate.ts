@@ -300,7 +300,31 @@ export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   // **249 -> 182 -> 33**. Neither measurement that argued about this could see
   // the firing case: one counted only failure wires that *exist*, and an unwired
   // port is not a wire.
-  DiagnosticCode.FailureReachesNothing
+  DiagnosticCode.FailureReachesNothing,
+  // DEF-004 §4c — the other half of `FailureReachesNothing`, and the one that
+  // fits this set's charter more exactly than anything else in it. That rule is
+  // about a caller who is told **nothing**; this is about a caller who is told
+  // the **wrong thing**, and a record written to say work happened that did not.
+  // For a graph an agent just wrote there is no benign reading of it.
+  //
+  // ✅ Promoted on a measurement, not on the argument. Over 179 projects and
+  // **319 cloud-function components**: 34 `completed` wires reach a commit, **20
+  // are refused and 14 accepted**, and the split is exact —
+  //
+  //   - the 20 are `publishPage` / `duplicatePage` in ten copies of the
+  //     site-builder predating SBR-015, every one carrying literally the wire
+  //     that task repaired (`tasks.completed -> page.store`). True positives by
+  //     construction: the repaired template spells it `done`.
+  //   - the 14 are all `submitContactForm -> send`, the graph written to honour
+  //     this task's own trap. Accepted because `save.failure` and
+  //     `stored.failure` reach that same `send`.
+  //
+  // 🔴 **Zero false positives, and the zero on the second corpus is explained
+  // rather than bare**: 82 further projects hold 257 cloud-function components
+  // and **no `completed` wires at all**. `completed` is a rare port — authors
+  // reach for `done` — so the blast radius of making this blocking is small, and
+  // that is a measurement rather than a hope.
+  DiagnosticCode.CompletedCommitsUnchecked
 ]);
 
 /** Whether a diagnostic rejects an authored submission. */

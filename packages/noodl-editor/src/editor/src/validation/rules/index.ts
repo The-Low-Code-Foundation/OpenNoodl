@@ -34,6 +34,7 @@ import { signalDrivenStaleInput } from './signalDrivenStaleInput';
 import { signalIntoValuePort } from './signalIntoValuePort';
 import { unwiredOutcome } from './unwiredOutcome';
 import { failureReachesNothing } from './failureReachesNothing';
+import { completedCommitsUnchecked } from './completedCommitsUnchecked';
 import { repeatedSiblingSubtree } from './repeatedSiblingSubtree';
 import { oversizedPage } from './oversizedPage';
 import { unlabelledNode } from './unlabelledNode';
@@ -72,6 +73,13 @@ export const ALL_RULES: Rule[] = [
   // missed, this one is the outcome that, inside a cloud function, decides
   // whether the caller is answered at all.
   failureReachesNothing,
+  // DEF-004 §4c — immediately after `failureReachesNothing` because they are the
+  // two halves of one question, and the second only makes sense having read the
+  // first. That one asks whether the caller is answered at all; this one asks
+  // whether what it is told is true. Measured: on the pre-SBR-015 `publishPage`
+  // the first fires on `prep` and never on the `RunTasks` carrying the defect,
+  // so this covers a hole in it rather than repeating it.
+  completedCommitsUnchecked,
   repeatedSiblingSubtree,
   oversizedPage,
   // LEG-002 — last, and deliberately: it is the only rule in the set that
@@ -95,6 +103,7 @@ export {
   signalDrivenStaleInput,
   signalIntoValuePort,
   unwiredOutcome,
+  completedCommitsUnchecked,
   repeatedSiblingSubtree,
   oversizedPage,
   unlabelledNode
