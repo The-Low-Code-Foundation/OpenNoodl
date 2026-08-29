@@ -2,102 +2,110 @@
 
 ## Where it stands
 
-**TPL-002 is built and graded.** s13 closed D29 and finished Track B; s14 took the item the prompt
-called *"the interesting half"* — an admin posting on a backend with no SMTP is told so, in a
-sentence, at the moment they post — and built the whole notification feature around it.
+**TPL-002 is built, graded, and driven.** s14 built the feature; s15 took the one thing s14 left —
+*"nobody has ticked the box on the screen, and nobody has opened the unsubscribe link in a page"* —
+and in taking it found two defects inside TPL-002's own acceptance criteria, both now fixed.
 
-The shipped artefact (`templates/members-area/`) now carries **8 cloud functions** and **13 pages**.
-
-| | before s14 | after |
+| | after s14 | after s15 |
 |---|---|---|
-| cloud functions in the artefact | 4 | **8** |
-| pages | 11 | **13** |
-| `tpl002-notifications.test.ts` | — | **29/29** |
-| noodl-mcp suite | 958/958 | **958/958** |
-| `tpl001Template.test.ts` | 71/71 | **71/71** (14 pinned counts moved, 2 gate populations scoped) |
-| the three tpl001 drives | 75/75 | **79/79** |
-| generation | 63 + 6 info | **88 + 6 info**, exit 0, no warnings |
+| `tpl002-account-drive.test.ts` | — | **22/22** |
+| `tpl002-account.look.ts` (pictures) | — | **written** |
+| `tpl001Template.test.ts` | 71/71 | **71/71** (one pinned `mounted` count 46 → 49) |
+| the four tpl001/tpl002 backend suites | 108/108 | **130/130** |
+| noodl-mcp | 958/958 | **958/958** |
+| generation | 88 + 6 info | **88 + 6 info**, exit 0 |
 
 ✅ `typecheck:mcp` and the backend `tsc` clean. ⚠️ `test:ci` **not run** — no editor source touched,
-deliberately, as every session this phase.
+deliberately, as every session this phase. Committed as `7392e687`.
 
 ## 🔴 Read this first
 
-- 🔴 **The fan-out is shaped by a product defect, and the shape is not optional.**
-  [D33](DEFECTS-THE-TEMPLATES-FOUND.md): pulse `Send Email`'s `Do` three times in one pass with three
-  different addresses and it sends **one** message — to the last — and reports **three** successes.
-  Measured with a control pair (one pass vs one pass each). There is also no loop node in the cloud
-  runtime: `For Each` is `noodl-viewer-react`'s visual repeater. So `notifyMembers` is a **serial
-  pump** — a `JavaScriptFunction` holding the cursor, and `Send Email`'s `done` **and** `failure`
-  both wired back to advance it. **Do not "simplify" it.**
-- 🔴 **Two ports I got wrong, both documented correctly, both expensive.**
-  - `visualFilter`'s `input` names a **port**; `value` is the literal. `input: true` made the opt-in
-    query return every member.
-  - `DbModel2.Fetched` is a **value-level announcement** and fires twice per fetch; `Done` is the
-    outcome and fires once. Sequenced off `Fetched`, five emails went to three people.
-- 🔴 **[D35](DEFECTS-THE-TEMPLATES-FOUND.md): `Component` scope is not per-request.** A `planned`
-  flag left in it made every later `notifyMembers` call **hang for 30s** — a graph that returns early
-  fires no Response. Write that object whole, never merge into it.
-- ⚠️ **`CLOUD_KEYS` in `tests/helpers/members-drive.ts` was a hand-written list of four** and now
-  reads the `__cloud__` directory. Before that fix every call to a new endpoint answered **404**,
-  which reads exactly like a broken endpoint rather than an undeployed one.
-- ✅ **[`tpl001-rows.look.ts`](../../../packages/nodegx-backend/tests/tpl001-rows.look.ts) is still
-  the only way to SEE this template with content in it.** Unchanged this session — s14 changed no
-  existing layout. Run it whenever you touch a row:
-
-      npx jest --config packages/nodegx-backend/jest.config.js \
-        --testMatch '**/tests/**/*.look.ts' --runTestsByPath \
-        packages/nodegx-backend/tests/tpl001-rows.look.ts
+- 🔴 **[D36](DEFECTS-THE-TEMPLATES-FOUND.md): a `Condition` can only ever turn a gate ON.** Tick the
+  account page's box and untick it **without reloading** and it showed *both* confirmations at once.
+  Every earlier reading was of a **first** change, which leaves exactly one notice up and looks
+  perfect — the defect needs two transitions in one page life. Fixed with `onClear`/`offClear`/
+  `failClear`, the `missingClear` shape, on the same `mounted` inputs.
+  **The generic form: a spec that grades a confirmation by asserting the right sentence is present
+  passes while the wrong one is present too. The row that catches it is `not.toContain` on the
+  sentence that should have gone.**
+- 🔴 **[D37](DEFECTS-THE-TEMPLATES-FOUND.md): `useLabel` defaults `false`**
+  (`node-shared-port-definitions.ts:1440`), so a control labelled with a sibling `Text` node emits no
+  `<label for>` and **its words do nothing when tapped**. The whole opt-in was a 24×24 square —
+  exactly WCAG 2.2 SC 2.5.8's floor and no more. Applies to every checkbox and radio anyone builds
+  the obvious way.
+- 🔴 **[D38](DEFECTS-THE-TEMPLATES-FOUND.md): `render-from-disk.js:452` inlines the whole project as
+  `window.projectData` in a `<script>`.** So `outerHTML` — and `querySelectorAll('*')` textContent —
+  carries **every string the template is authored out of, on every page, whether or not anything
+  rendered**. An absence check on a project string cannot pass; **a presence check on one cannot
+  fail**, which is the expensive direction. `sentence()` now excludes `SCRIPT`/`STYLE`/`NOSCRIPT`.
+  Every existing `html` assertion in the drives is about **row data**, so none was wrong — but
+  `tpl001-empty-states` carried a row that measured the harness, and it now says what is true.
+- ⚠️ **A member's band has THREE items, not six.** Three of the six are `moderatorOnly` and ship
+  `mounted: false`. A look taken only as a member measures the wrong screen.
 
 ## Then, in order
 
-1. ⬜ **Drive TPL-002's two pages — the one thing s14 did not grade.** Every endpoint is measured
-   over HTTP; `Pages/Account` and `Pages/Unsubscribe` are graded only as artefacts. Tick the box,
-   watch the email arrive, take the link **out of the message body**, open it signed out, come back
-   and see the box unticked. The harness exists (`members-drive.ts`: `clickButton`, `controls`,
-   `signIn`, `withRenderedPage`). This is AC4's first half and AC1/AC2's box.
-2. ⬜ **Look at the band.** `BAND_NAV` has **six** items now, in a `gridAutoFit` at `minWidth: 132px`
-   in a 760px band — five across and the sixth folding, by arithmetic. Nobody has looked. Richard's
-   rule is that appearance is an acceptance criterion graded **by looking**.
-3. ⬜ **T5 / publishing.** Unchanged, and still **Richard drives it first**. AC1 of TPL-001 is
+1. ⬜ **[D39](DEFECTS-THE-TEMPLATES-FOUND.md) needs Richard, and it is cheap to ask.** The
+   unsubscribe page names no association — its eyebrow is the literal *"Members' area"* — and offers
+   no way back, while its own sentence says you can turn emails on again from your account. Not an
+   oversight: the page is built to make **no** round trip, and the association name costs one public
+   query. Does it name the association and offer a way in, or stay a single sentence?
+2. ⬜ **T5 / publishing.** Unchanged, and still **Richard drives it first**. AC1 of TPL-001 is
    ungradeable until the template is on the shelf.
-4. ⬜ **T3**, the category question. Untouched, and it needs Richard.
-5. 🔴 **D32, D28, D30, D22–D24, D33, D34, D35 are all `NONE`.** Eight unowned rows now. Phase 80 owns
-   the register sweep; three of them were filed today.
+3. ⬜ **T3**, the category question. Untouched, and it needs Richard.
+4. 🔴 **D22–D24, D28, D30, D32–D39 are all `NONE`.** **Twelve** unowned rows now; four were filed
+   today. Phase 80 owns the register sweep.
+
+## The two harnesses, and when to run them
+
+**The drive** — a gate, runs in the suite:
+
+    npx jest --config packages/nodegx-backend/jest.config.js \
+      --runTestsByPath packages/nodegx-backend/tests/tpl002-account-drive.test.ts
+
+**The look** — asserts almost nothing, writes pictures. `.look.ts` so no suite runs it. Run it
+whenever you touch the account page, the unsubscribe page or `BAND_NAV`:
+
+    npx jest --config packages/nodegx-backend/jest.config.js \
+      --testMatch '**/tests/**/*.look.ts' --runTestsByPath \
+      packages/nodegx-backend/tests/tpl002-account.look.ts
+
+`TPL002_OUT=` chooses the directory (default `/tmp/tpl002-look`). It writes a PNG, the page text and
+`<label>-<w>.band.txt` — every nav button's rect grouped by its top edge, which is what says how many
+rows there are and whether anything is clipped. ✅ **The band was looked at and is right**: at 1280
+five across with "Your account" alone on row two, nothing clipped; 2×3 at 390. No change made.
+
+`tpl001-rows.look.ts` is still the only way to see the **lists** with content in them, and is
+unchanged.
 
 ## 🔴 Traps this session paid for
 
-- 🔴 **A spec that reads the endpoint's own answer would pass on D33.** `notifyMembers` reported
-  `sent: 3` while one message was sent — that is precisely the defect. Every row in
-  `tpl002-notifications.test.ts` reads the **transport**: what the mail server was handed, and for
-  whom. The endpoint's numbers are asserted too, but as a second reading, never the first.
-- 🔴 **The negative control has to be in the same send.** Ann is approved, in `role:member`, has an
-  address on her row, and differs from Mo in exactly one field. Her silence is asserted off the same
-  transport in the same call as Mo's delivery — otherwise "Ann got nothing" is equally consistent
-  with a mailer that was never reached.
-- 🔴 **A gate's population is part of the gate.** Two `tpl001Template.test.ts` rules — *every
-  members-only query carries `NO_LOAD_TIME_FETCH`* and *its only trigger comes from the standing
-  gate* — are sentences about a **page**. The four new endpoints landed in their population and made
-  them demand a gate that cannot exist in a cloud function, whose boundary is the `call` rule. Both
-  are now scoped, with the reason written where the scope is.
-- ⚠️ **And the exclusion I first wrote matched nothing**: `shipped` paths carry a leading slash
-  (`/#__cloud__/myStanding`), so `startsWith('#__cloud__/')` was a filter that filtered nothing. It
-  went red, which is the only reason I found out.
-- ⚠️ **A response parameter is under `result`.** Eight rows were red against a graph that was
-  answering correctly, because the spec read `res.json.sent` instead of `res.json.result.sent`.
-  Settled by probing `/functions/myStanding` — an endpoint the template has always had — rather than
-  by reading the Response node.
-- ⚠️ **The drive is what proved the browser half.** `tpl001-members-drive.test.ts` §7 went red with
-  the new sentence on the page, which is better evidence than any assertion I wrote: it means the
-  Post page's whole chain runs in a real browser.
+- 🔴 **The order was the finding.** The drive was written and run **before** either fix: two rows red,
+  twenty green; after the fixes, 22/22. That is a control pair taken in the only order that proves
+  anything. Had the fixes gone first, 22/22 would have been consistent with a spec that grades itself.
+- 🔴 **An absence read off the wrong string is unfalsifiable in both directions, and only one of them
+  is noisy.** `html.not.toContain(A_PROJECT_SENTENCE)` fails loudly and gets noticed;
+  `html.toContain(...)` passes silently on a blank page. D38's row had been green for four sessions.
+- 🔴 **Ann was not a control for the unsubscribe, and the spec would have looked complete without
+  Sam.** She is `false` before and after — which a token that did nothing at all satisfies exactly.
+  A negative control has to be something whose value had to **survive**.
+- 🔴 **The confirmation is not the consequence.** A page that paints "Done" and writes nothing passes
+  every sentence row. The reading that matters is the **second send**: it skipped Mo and still
+  reached Sam.
+- ⚠️ **The link had to come out of the message body.** Composing `/unsubscribe?token=` in the harness
+  from a token read out of the database would have left the whole surface between the pump and the
+  router — the query string, `encodeURIComponent`, `PageInputs.queryParams` — unmeasured.
+- ⚠️ **A pinned count is a claim, and its comment is a second one.** `tpl001Template.test.ts`'s
+  `mounted` count moved 46 → 49, and the prose beside it said the confirm step was *"the one place a
+  single node's `mounted` is driven from TWO conditions"*. That stopped being true in the same edit.
 
 ## Richard's rulings, still standing
 
 - **Appearance is an acceptance criterion, graded BEFORE the behaviour work, by looking at it.**
-  ⚠️ Not honoured for TPL-002's two pages — item 2 above is the debt, recorded rather than skipped.
+  ✅ Honoured this session — the look ran first, and it is what found D37.
 - **Seeding, 2026-08-29: close the delete gap, seed nothing.** AC6's designed empty state stands.
-- **Opt-in, never opt-out** — these are UK and EU charities and congregations. `notifyByEmail` is
-  written `false` at approval, and the box on the account page ships unticked.
+- **Opt-in, never opt-out** — UK and EU charities and congregations. ✅ Now graded on the screen, not
+  only in the row: the box is `present`, `painted`, **unticked** and drawing no tick on first load.
 - **Scope: A + B + all of C, with C done by phase 80.**
 - **Templates exist to surface product defects** — findings go in the register **as work with an
   owner**, never as notes.
